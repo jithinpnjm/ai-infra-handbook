@@ -23,7 +23,7 @@ lab_venue: "GCP / GKE"
 
 ## Why this matters for AI infrastructure
 
-Giving every data scientist or small inference service an exclusive H100 GPU will bankrupt an AI platform. Finance teams pay top dollar for flagship servers. Meanwhile, engineering teams watch most of the silicon sit empty. Consider three common workloads running on a shared platform. Together they need only a tiny fraction of a single H100 card. Yet standard Kubernetes scheduling hands them three separate physical accelerators.
+Picture an AI platform where every data scientist and every small inference service gets an exclusive H100 GPU. The finance team pays top dollar for those flagship servers. Meanwhile, the engineering teams watch most of the silicon sit empty. Now consider three common workloads on a shared platform. Together they need only a tiny fraction of a single H100 card. Yet standard Kubernetes scheduling hands them three separate physical accelerators.
 
 ```text
 Three-Workload Demand vs Single H100 80 GB Capacity (volume-24/chapter-06)
@@ -48,23 +48,29 @@ Combined Demand vs H100 SXM5 ($30,000+, 80 GB HBM3, 989 TFLOPS BF16, ~3.35 TB/s)
    - Total sustained compute: ~3.0 TFLOPS (< 1/300th of 989 TFLOPS peak; 99%+ idle)
 ```
 
-The built-in Kubernetes device plugin offers static Time-Slicing and static Multi-Instance GPU, or MIG. However, both leave a painful operational gap when paired with the default scheduler. Static Time-Slicing divides every physical GPU on a node into a fixed number of identical tokens. Those tokens are completely blind to GPU memory usage. You cannot pack one half-GPU service alongside two quarter-GPU notebooks on the first card while keeping the other three cards whole. Static MIG provides hardware fault isolation. Still, the default scheduler cannot consolidate fractional jobs or prevent slice fragmentation across a mixed fleet.
+The block above adds up what the three workloads need. Read the combined totals first. Together they use about 17.4 GB of memory and roughly 3.0 TFLOPS of compute, on a card that offers 80 GB and 989 TFLOPS.
 
-NVIDIA KAI Scheduler closes this gap. It introduces native fractional GPU scheduling, automated integer reservation Pods, and MIG-aware bin-packing. Platform engineers can let bursty notebooks share a single card safely. At the same time, they can protect latency-sensitive endpoints on hardware-isolated MIG partitions. This chapter explains how KAI Scheduler binds fractional GPUs, how to measure a safe concurrency envelope, and how to choose the right sharing model.
+The built-in Kubernetes device plugin offers static Time-Slicing and static Multi-Instance GPU, or MIG. Both leave a painful gap when you pair them with the default scheduler. Static Time-Slicing divides every physical GPU on a node into a fixed number of identical tokens. Those tokens are blind to GPU memory usage. You cannot place one half-GPU service beside two quarter-GPU notebooks on the first card and still keep the other three cards whole. Static MIG gives you hardware fault isolation. Even so, the default scheduler cannot consolidate fractional jobs or stop slice fragmentation across a mixed fleet.
+
+NVIDIA KAI Scheduler closes this gap. It adds native fractional GPU scheduling, automated integer reservation Pods, and MIG-aware bin-packing. With it, platform engineers can let bursty notebooks share a single card safely. They can also keep latency-sensitive endpoints on hardware-isolated MIG partitions. This chapter explains how KAI Scheduler binds fractional GPUs, how to measure a safe concurrency envelope, and how to choose the right sharing model.
+
+Before you let any workload onto a shared card, decide whether it can share safely or needs its own hardware partition.
 
 ## Prerequisites and outcomes
 
 ### Prerequisites
 
-- Completion of Chapter 11.2 on Device Plugin ConfigMaps, Chapter 11.14 on KAI Scheduler architecture, and Chapter 11.15 on Queue quotas.
-- Basic familiarity with GPU Streaming Multiprocessors and HBM memory allocation.
+- Finish Chapter 11.2 on Device Plugin ConfigMaps, Chapter 11.14 on KAI Scheduler architecture, and Chapter 11.15 on Queue quotas first.
+- You should already know the basics of GPU Streaming Multiprocessors and HBM memory allocation.
 
 ### Outcomes
 
-- Configure KAI Scheduler fractional GPU Pods using the `gpu-fraction` and `gpu-memory` annotations. Explain how the Binder microservice uses integer GPU reservation Pods to satisfy the node agent.
-- Execute the five-phase Time-Slicing concurrency envelope benchmark on an A100 card. Protect production namespaces with a ResourceQuota setting `nvidia.com/gpu.shared` to zero.
-- Solve the H100 multi-tenant MIG geometry problem across training, batch inference, and online embedding. Preserve free slices for additional tenants on the same card.
-- Apply the four-way GPU sharing decision tree. Run host diagnostic commands to audit whether a worker node uses Dedicated GPUs, MIG, Time-Slicing, CUDA MPS, or vGPU.
+By the end of this chapter, you should be able to do the following.
+
+- Configure KAI Scheduler fractional GPU Pods with the `gpu-fraction` and `gpu-memory` annotations. You will also see how the Binder microservice uses integer GPU reservation Pods to satisfy the node agent.
+- Run the five-phase Time-Slicing concurrency envelope benchmark on an A100 card. Then protect production namespaces by setting `nvidia.com/gpu.shared` to zero in a ResourceQuota.
+- Solve the H100 multi-tenant MIG geometry problem across training, batch inference and online embedding. Keep free slices available for additional tenants on the same card.
+- Apply the four-way GPU sharing decision tree. Then run host diagnostic commands to check whether a worker node uses Dedicated GPUs, MIG, Time-Slicing, CUDA MPS or vGPU.
 
 ## Concepts: basics to intermediate to advanced
 
@@ -72,7 +78,9 @@ NVIDIA KAI Scheduler closes this gap. It introduces native fractional GPU schedu
 
 The upstream Kubernetes API server enforces a strict rule for extended resources. Every request for `nvidia.com/gpu` must be a whole integer. Suppose a developer writes a decimal value such as `0.5` in the container resource limits. The API server rejects that Pod specification immediately. Without a specialized scheduler, platform teams cannot express heterogeneous sub-GPU requests. They also cannot track per-container GPU memory budgets in standard Pod manifests.
 
-KAI Scheduler solves this problem by moving the fractional request into Pod annotations. Behind the scenes, it uses an integer reservation Pod to satisfy the node agent. A single four-GPU worker node can therefore host three fractional workloads on its first card. Meanwhile, the remaining three cards stay completely unshared for whole-GPU jobs.
+KAI Scheduler solves this problem by moving the fractional request into Pod annotations. Behind the scenes, it uses an integer reservation Pod to satisfy the node agent. Consider a single four-GPU worker node. Its first card can host three fractional workloads, while the other three cards stay completely unshared for whole-GPU jobs.
+
+The diagram below traces that path from the user Pods to the node.
 
 ```mermaid
 flowchart TD
@@ -86,12 +94,14 @@ flowchart TD
     Kubelet --> Sandbox
 ```
 
-The fractional allocation workflow inside KAI Scheduler proceeds through four stages.
+Fractional allocation inside KAI Scheduler happens in four stages. Each stage hands its result to the next, so read the list in order.
 
-- **Declarative fractional annotations.** The user Pod leaves integer GPU limits out of the container specification. Instead, it sets `gpu-fraction` for a compute proportion or `gpu-memory` for a framebuffer ceiling in MiB. When a Pod requests `gpu-memory`, KAI Scheduler divides that value by the card capacity to find the corresponding share.
-- **Dual-constraint bin-packing.** During allocation and consolidation, KAI Scheduler tracks both remaining compute fraction and remaining memory on every physical GPU. It prefers packing new fractional Pods onto a card that is already partially shared. That bin-packing rule avoids spreading small Pods across separate cards and preserves whole GPUs for distributed training.
-- **The integer reservation Pod.** When KAI Scheduler assigns the first fractional Pod to a physical GPU, the Binder microservice acts first. It creates a lightweight reservation Pod on that worker node requesting one integer `nvidia.com/gpu` resource. The node agent and device plugin allocate one physical GPU UUID to that reservation Pod. That reservation stops any whole-GPU job from claiming the shared card.
+- **Declarative fractional annotations.** You leave integer GPU limits out of the user Pod's container specification. Instead, you set `gpu-fraction` for a compute proportion, or `gpu-memory` for a framebuffer ceiling in MiB. When a Pod requests `gpu-memory`, KAI Scheduler divides that value by the card capacity to find the matching share.
+- **Dual-constraint bin-packing.** During allocation and consolidation, KAI Scheduler tracks both the remaining compute fraction and the remaining memory on every physical GPU. It prefers packing new fractional Pods onto a card that is already partly shared. That rule avoids spreading small Pods across separate cards, and it keeps whole GPUs free for distributed training.
+- **The integer reservation Pod.** When KAI Scheduler assigns the first fractional Pod to a physical GPU, the Binder microservice acts first. It creates a lightweight reservation Pod on that worker node, and that Pod requests one integer `nvidia.com/gpu` resource. The node agent and device plugin then allocate one physical GPU UUID to the reservation Pod. The reservation keeps any whole-GPU job from claiming the shared card.
 - **Binding the fractional user Pods.** Once the reservation Pod holds the GPU UUID, the Binder injects that device identifier into the fractional user Pods. It then binds those user Pods to the worker node. Because the user Pods carry zero integer GPU requests in their container specifications, the node agent does not double-count them. When the last fractional Pod finishes, the Binder deletes the reservation Pod automatically.
+
+The worked example below uses a four-GPU node with 81,920 MiB per card. Follow the arithmetic for GPU 0 first, then check the overflow guard at the bottom.
 
 ```text
 KAI Scheduler Fractional Bin-Packing Math on a 4-GPU Node (81,920 MiB per GPU)
@@ -113,13 +123,15 @@ Placement Result on node-1:
     cannot co-reside on one GPU even though 0.25 + 0.25 = 0.50 <= 1.0.
 ```
 
+The example shows the main point of the scheduler. Compute fractions can add up to less than one card while memory still does not fit. The memory check is the one that stops the second pod.
+
 ---
 
 ### 2. Intermediate: Measuring the time-slicing concurrency envelope
 
-Guessing a time-slicing replica count in production leads to out-of-memory crashes and tail-latency spikes. Software time-slicing and fractional sharing multiplex execution contexts across the same Streaming Multiprocessors. All co-tenants also share a single physical HBM address space without hardware fault walls. If co-located workloads allocate more combined memory than the card holds, the driver kills processes without warning.
+Guessing a time-slicing replica count in production can lead to out-of-memory crashes and tail-latency spikes. Software time-slicing and fractional sharing both multiplex execution contexts across the same Streaming Multiprocessors. Every co-tenant also shares one physical HBM address space, with no hardware fault walls between them. If the co-located workloads allocate more combined memory than the card holds, the driver kills processes without warning.
 
-Platform engineers must measure the concurrency envelope empirically before publishing a shared service class. You can run a five-phase progression from single-tenant baseline through concurrent load, burst traffic, failure recovery, and driver upgrades. The table below records the host device metrics across four concurrency steps on an A100 card.
+Before you publish a shared service class, measure its concurrency envelope. Platform engineers do this in five phases: a single-tenant baseline, concurrent load, burst traffic, failure recovery, and driver upgrades. The table below records host device metrics at four concurrency steps on an A100 card.
 
 | Concurrency Phase on `1 × A100 80GB` | Observed Per-Notebook SM (`%`) | Combined HBM Used (`GB`) | Observed `p99` Kernel Launch Latency | Operational Verdict |
 |---|---|---|---|---|
@@ -128,13 +140,17 @@ Platform engineers must measure the concurrency envelope empirically before publ
 | **3. Four Concurrent Notebooks (`4` Replicas)** | `~55%` SM each | **`48 GB` / `80 GB`** (`32 GB` free) | **`120 ms`** (noticeable but acceptable for dev) | **Maximum Safe Envelope (`replicas: 4` / `0.25` fraction, keeping `>= 20 GB` headroom)** |
 | **4. Eight Concurrent Notebooks (`8` Replicas)** | `~65%` SM each | **`96 GB > 80 GB`** (`+16 GB` overflow) | **`500 ms`** (severe thrashing) | **Unsafe: Exceeds `80 GB` HBM -> Process OOM-killed** |
 
+Read the table row by row. The SM share per notebook rises as you add notebooks, and p99 latency climbs sharply with it. Memory grows in a straight line: 12 GB, then 24 GB, then 48 GB, and finally 96 GB, which is more than the card holds. The four-notebook row is the maximum safe envelope, because it keeps at least 20 GB of headroom.
+
 #### Protecting production namespaces from accidental best-effort sharing
 
-A customer-facing inference endpoint with a strict tail-latency target needs isolated hardware. It will fail its service level objective if the scheduler places it onto a best-effort time-sliced node. In one documented outage, a model service with a sub-hundred-millisecond target landed on a shared pool. Its tail latency tripled because it competed with bursty notebook kernels. Platform teams can prevent accidental placement by enforcing three rules.
+Picture a customer-facing inference endpoint with a strict tail-latency target. It needs isolated hardware. If the scheduler places it on a best-effort time-sliced node, it misses its service level objective. One documented outage shows how this happens. A model service with a sub-hundred-millisecond target landed on a shared pool. Its tail latency tripled because bursty notebook kernels competed with it. Platform teams can prevent this kind of accidental placement with three rules.
 
 - **Rename shared resource tokens.** Set `renameByDefault: true` in the device-plugin ConfigMap. That setting advertises time-sliced tokens as `nvidia.com/gpu.shared` instead of the default `nvidia.com/gpu` name.
-- **Block shared tokens in production namespaces.** Place a ResourceQuota in every production serving namespace that sets the hard limit for `nvidia.com/gpu.shared` to zero. The API server will then reject any manifest that requests best-effort shared capacity in production.
-- **Account for shared telemetry limits.** Under device-plugin time-slicing, the DCGM exporter reports utilization and memory at the physical card level rather than per container. Incident responders must therefore correlate KAI PodGroup records, host process tables, and application latency metrics.
+- **Block shared tokens in production namespaces.** Place a ResourceQuota in every production serving namespace, and set its hard limit for `nvidia.com/gpu.shared` to zero. The API server will then reject any manifest that requests best-effort shared capacity in production.
+- **Account for shared telemetry limits.** Under device-plugin time-slicing, the DCGM exporter reports utilization and memory at the physical card level, not per container. Incident responders must therefore correlate KAI PodGroup records, host process tables, and application latency metrics.
+
+The manifest below applies the second rule to the `prod-inference` namespace.
 
 ```yaml
 # Deny best-effort shared GPUs in production namespaces (volume-11/chapter-04, untested here)
@@ -149,15 +165,17 @@ spec:
     nvidia.com/gpu.shared: "0"
 ```
 
+Any Pod in that namespace that asks for `nvidia.com/gpu.shared` is now refused by the API server. Your production endpoints stay on hardware that the scheduler cannot share with notebooks.
+
 ---
 
 ### 3. Advanced: Hardware-isolated sharing with MIG and the four-way decision tree
 
-Software time-slicing is the wrong tool when workloads belong to untrusted tenants or carry strict tail-latency targets. Context-switching overhead and shared memory controllers allow one bursty neighbor to stall another tenant's kernels. Multi-Instance GPU solves this problem at the silicon level on Ampere, Hopper, and Blackwell cards. It partitions the GPU into independent GPU Instances and Compute Instances with dedicated Streaming Multiprocessors, HBM memory channels, L2 cache banks, and copy engines.
+Software time-slicing is the wrong tool when tenants do not trust each other, or when a workload has a strict tail-latency target. Context-switching overhead and shared memory controllers let one bursty neighbor stall another tenant's kernels. Multi-Instance GPU, or MIG, fixes this at the silicon level on Ampere, Hopper and Blackwell cards. It partitions the GPU into independent GPU Instances and Compute Instances. Each one gets its own dedicated Streaming Multiprocessors, HBM memory channels, L2 cache banks and copy engines.
 
 #### H100 MIG profile geometry
 
-On an eighty-gigabyte H100 SXM5 card, the hardware exposes five primary compute-and-memory profile shapes. Each slice receives a proportional share of the card's compute engines and memory bandwidth. This creates a hard silicon boundary between co-tenants.
+An eighty-gigabyte H100 SXM5 card exposes five primary profile shapes. Each slice gets a share of the card's compute engines and memory bandwidth that matches its size. That split creates a hard silicon boundary between co-tenants.
 
 | H100 `80GB` MIG Profile | Compute Slices (`Ng` of `7`) | Dedicated HBM3 Memory | Slice-Proportional BF16 TFLOPS | Typical Multi-Tenant Use Case |
 |---|---|---|---|---|
@@ -167,9 +185,11 @@ On an eighty-gigabyte H100 SXM5 card, the hardware exposes five primary compute-
 | **`2g.20gb`** | `2 / 7` | **`20 GB`** | **`283` TFLOPS** | Small LLM (`1.3B–7B`) training/serving (`12–20 GB`) |
 | **`1g.10gb`** | `1 / 7` | **`10 GB`** | **`141` TFLOPS** | CNN batch inference (`4 GB`), embedding models (`< 1 GB`), or isolated notebooks |
 
+Use the compute-slice column to see how much of the card each profile takes. Then use the memory column to see how much HBM you get.
+
 #### Solving the three-workload H100 MIG capstone
 
-Even the smallest H100 MIG slice delivers fifty times the compute needed by a standard vision model. As a result, multi-tenant MIG sizing is driven almost entirely by memory footprint and hardware fault isolation. The breakdown below solves the customer geometry primer and the three-workload benchmark on a single H100 card.
+Suppose three tenants share one H100. Even the smallest H100 MIG slice delivers fifty times the compute a standard vision model needs. So compute almost never sets the size. Memory footprint and hardware fault isolation drive the sizing. The breakdown below solves the customer geometry primer and the three-workload benchmark on one H100 card.
 
 ```text
 H100 80 GB Multi-Tenant MIG Geometry Solutions (volume-24/chapter-06, NVIDIA-SMI 535.21)
@@ -195,6 +215,10 @@ B. Three-Workload Production Capstone on GPU 0:
      * Free:     3/7 compute slices and 40 GB memory (fits a 4th tenant on 3g.40gb)
 ```
 
+Look at what is left over after you place the three workloads. Three of the seven compute slices remain free. Those slices also hold 40 GB of memory, which is enough for a fourth tenant on a `3g.40gb` profile.
+
+The flowchart below turns those requirements into a decision order. Answer the questions in sequence, and the first yes decides the pool.
+
 ```mermaid
 flowchart TD
     Req["Workload GPU Sharing Request"] --> Q1{"1. VM guest-kernel boundary required?"}
@@ -208,7 +232,7 @@ flowchart TD
 
 #### Comprehensive comparison across all GPU sharing models
 
-During architecture reviews, platform teams must weigh compute boundaries, memory isolation, fault blast radius, and operational overhead. Each sharing model trades silicon isolation for packing flexibility. The table below compares Dedicated GPUs, Hardware MIG, KAI Fractional and Time-Slicing, CUDA Multi-Process Service, and NVIDIA vGPU.
+During architecture reviews, platform teams weigh compute boundaries, memory isolation, fault blast radius and operational overhead. Every sharing model trades silicon isolation for packing flexibility. The table below compares Dedicated GPUs, Hardware MIG, KAI Fractional and Time-Slicing, CUDA Multi-Process Service, and NVIDIA vGPU.
 
 | Sharing Dimension | Dedicated Whole GPU (`nvidia.com/gpu: 1`) | Hardware MIG (`1g.10gb`, `2g.20gb`, `3g.40gb`, `4g.40gb`, `7g.80gb`) | KAI Fractional GPU (`gpu-fraction` / `gpu-memory`) & Time-Slicing | CUDA Multi-Process Service (`MPS`) | NVIDIA vGPU (Hypervisor / KubeVirt) |
 |---|---|---|---|---|---|
@@ -219,28 +243,32 @@ During architecture reviews, platform teams must weigh compute boundaries, memor
 | **Dynamic Reconfiguration Cost** | Immediate at Pod termination | Requires draining active workloads on the card (or MIG slice) before reconfiguring GI layout | **Zero reconfiguration drain with KAI Fractions:** KAI dynamically packs `0.5 + 0.25 + 0.25` and removes the reservation pod when empty | Requires managing MPS control daemon lifecycle per GPU or per MIG slice | Often tied to VM lifecycle, host vGPU driver version, and license server |
 | **Observability & Attribution** | Clean per-GPU and per-Pod DCGM metrics | Per-MIG-instance (`GPU_I_ID`) DCGM metrics for utilization and memory | Device-plugin time-slicing aggregates DCGM metrics at physical GPU level; requires KAI `PodGroup` + `nvidia-smi --query-processes` correlation | Aggregated under MPS server process unless profiled with Nsight Systems (`nsys`) | Requires matching host vGPU manager telemetry with guest OS metrics |
 
+If you run shared pools, the fault row matters most to you. A fault inside one shared model can reach every co-tenant on that card. MIG keeps a fault inside its own instance, so sibling instances keep running.
+
 #### Combining hardware MIG and software fractional sharing
 
-Hardware MIG and software time-slicing or fractional sharing are orthogonal mechanisms. You can compose both on the same physical card. Suppose two separate engineering departments share a server and security policy demands hard memory walls between them. The platform team can partition the GPU into hardware MIG slices first. Then they can time-slice each MIG slice among trusted developers within the same department.
+Hardware MIG and software time-slicing or fractional sharing are independent mechanisms, so you can combine them on one physical card. Suppose two engineering departments share a server, and security policy demands hard memory walls between them. The platform team can split the GPU into hardware MIG slices first. Then each slice can be time-sliced among trusted developers in the same department.
 
-- **Departmental hardware wall.** Partition the physical card into hardware MIG instances. Each engineering group receives its own dedicated HBM ceiling and isolated fault boundary.
+- **Departmental hardware wall.** Partition the physical card into hardware MIG instances. Each engineering group gets its own dedicated HBM ceiling and isolated fault boundary.
 - **Intra-team software sharing.** Enable time-slicing or KAI fractional sharing inside each MIG slice. Developers on the same team can then share their department's hardware partition without risking cross-department memory faults.
 - **Automatic node labeling.** When both MIG and time-slicing are active on a worker node, GPU Feature Discovery updates the node labels. It automatically appends the `-SHARED` suffix to the MIG product label on that node.
 
 #### Governance and migration discipline
 
-Rolling out fractional GPUs, time-slicing, or MIG without catalog discipline causes cluster fragmentation and outages. Platform teams should enforce four operational guardrails before onboarding tenants to shared GPU pools.
+Rolling out fractional GPUs, time-slicing or MIG without a disciplined service catalog leads to cluster fragmentation and outages. Platform teams should put four guardrails in place before they onboard tenants to shared GPU pools.
 
-- **Keep the service catalog small.** Offering every possible MIG permutation alongside arbitrary fractions creates profile geometry fragmentation. Free slices on a card can sit stranded on awkward boundaries and fail to form a newly requested profile without draining the node. Standardize on three or four tested classes covering whole dedicated GPUs, small and medium MIG slices, and quarter-GPU development fractions.
-- **Measure delivered efficiency rather than paper allocation.** Packing eight notebooks onto one card looks like full allocation on paper. However, combined memory will overflow the card and the driver will kill user sessions. Always size replica counts and KAI memory fractions so peak concurrent load leaves at least a quarter of the card's HBM as headroom.
-- **Run a cross-functional decision workshop.** Require formal sign-off from four stakeholders before promoting a workload into a shared pool. The application owner provides measured VRAM and latency targets, while the platform owner defines the driver and node drain matrix. Meanwhile, the security owner approves the tenant blast radius, and the finance owner sets chargeback weights.
-- **Treat sharing-class changes as application releases.** Moving a service from a dedicated card to a small MIG slice or a quarter-GPU fraction changes its hard memory ceiling. It also alters its compute scheduling behavior. Validate every sharing-class change in staging under production batch sizes and burst traffic before cutting over live traffic.
+- **Keep the service catalog small.** Offering every possible MIG permutation alongside arbitrary fractions creates profile geometry fragmentation. Free slices can sit stranded on awkward boundaries, and they fail to form a newly requested profile without draining the node. Standardize on three or four tested classes: whole dedicated GPUs, small and medium MIG slices, and quarter-GPU development fractions.
+- **Measure delivered efficiency rather than paper allocation.** Packing eight notebooks onto one card looks like full allocation on paper. However, their combined memory will overflow the card, and the driver will kill user sessions. Always size replica counts and KAI memory fractions so that peak concurrent load leaves at least a quarter of the card's HBM as headroom.
+- **Run a cross-functional decision workshop.** Require formal sign-off from four stakeholders before promoting a workload into a shared pool. The application owner provides measured VRAM and latency targets, and the platform owner defines the driver and node drain matrix. The security owner approves the tenant blast radius, and the finance owner sets chargeback weights.
+- **Treat sharing-class changes as application releases.** Moving a service from a dedicated card to a small MIG slice or a quarter-GPU fraction changes its hard memory ceiling. It also alters its compute scheduling behavior. Validate every sharing-class change in staging under production batch sizes and burst traffic before you cut over live traffic.
+
+Put a workload behind a hardware wall only when its tenant boundary or its latency target requires one.
 
 ## Commands and configurations that matter
 
 ### 1. Submitting fractional GPU Pods to KAI Scheduler
 
-Developers request a sub-GPU share through standard Pod metadata. Set the `kai.scheduler/queue` label and point `schedulerName` to `kai-scheduler`. Then add either the `gpu-fraction` or `gpu-memory` annotation while omitting integer GPU limits from the container specification.
+Developers ask for part of a GPU through ordinary Pod metadata, not through an integer GPU limit. Start by setting the `kai.scheduler/queue` label, and point `schedulerName` at `kai-scheduler`. Next, add either the `gpu-fraction` or the `gpu-memory` annotation. Leave out integer GPU limits from the container specification.
 
 ```yaml
 # kai-fractional-gpu-pods.yaml (untested here)
@@ -271,9 +299,11 @@ spec:
           memory: "16Gi"
 ```
 
+The manifest asks for a quarter of a GPU for a notebook. The comments explain the choice between the two annotations. Use `gpu-fraction` for a proportion, and use `gpu-memory` when you want to ask for memory in MiB.
+
 ### 2. Configuring and inspecting MIG partitions on an H100
 
-Administrators use `nvidia-smi` on the worker host to manage MIG partitions. The commands below enable MIG mode, list valid profile identifiers, create GPU and Compute Instances, and audit the active sharing mechanism.
+Administrators run `nvidia-smi` on the worker host to manage MIG partitions. The commands below walk through the whole cycle. They enable MIG mode, list valid profile identifiers, create GPU and Compute Instances, and audit the active sharing mechanism.
 
 ```bash
 # 1. Enable MIG mode on GPU 0 and list available GPU Instance Profiles (untested here)
@@ -289,9 +319,11 @@ nvidia-smi mig -lgi
 nvidia-smi --query-processes=gpu_uuid,pid,process_name,gpu_memory_usage --format=csv
 ```
 
+Run the first command to enable MIG, then query the profiles before you create anything. The last three lines confirm the mode, list the active instances, and show which processes are using the GPU.
+
 ## How it fails
 
-Shared GPU nodes fail across memory oversubscription, pool misplacement, heap fragmentation, intra-slice contention, and telemetry blind spots. The table below maps each failure mode to its command evidence, root cause boundary, and safe remediation.
+Picture an on-call page for a shared GPU node. The node is misbehaving, and the dashboard shows nothing obvious. Shared GPU nodes fail in five ways: memory oversubscription, pool misplacement, heap fragmentation, intra-slice contention, and telemetry blind spots. Each failure looks different from the outside, so you need to know which one you are seeing.
 
 | Failure mode | Exact symptom & command evidence | Root cause boundary | Remediation |
 |---|---|---|---|
@@ -301,11 +333,13 @@ Shared GPU nodes fail across memory oversubscription, pool misplacement, heap fr
 | **4. Online inference latency on `1g.10gb` jumps from `4.8 ms` to `12 ms` when a second process runs on the same MIG slice (`volume-24/chapter-06` Table)** | Two containers were assigned to the *same* `1g.10gb` MIG instance; when batch CNN starts, embedding `p99` jumps from `4.8 ms` to `12 ms`. | **Intra-Slice Kernel Priority Inversion:** Sharing a single MIG slice between two processes re-introduces time-slicing inside that slice; the long batch CNN kernel blocks the short `526K`-FLOP embedding kernel. | Assign `1` Pod per MIG instance (`1g.10gb` #1 for Batch CNN, `1g.10gb` #2 for Online Embedding), and profile kernel execution order with `nsys profile --trace=cuda ./app` and `nsys stats --report cuda_gpu_trace` (never `nvprof`, which is unsupported on Ampere+). |
 | **5. `dcgm-exporter` dashboards cannot identify which container on a time-sliced GPU is causing `100%` SM saturation (`volume-11/chapter-04` Scenario 4)** | Grafana shows physical `GPU 0` at `100%` utilization and `80 GB` memory, but `DCGM_FI_DEV_GPU_UTIL` cannot break usage down among the `4` time-sliced pods sharing `GPU 0`. | **Known Device-Plugin Time-Slicing Telemetry Limitation:** Under standard device-plugin time-slicing, all `4` pods mount the same `/dev/nvidia0` device node, so DCGM sees device-wide counters rather than per-container cgroup counters. | Correlate KAI `PodGroup` / `BindRequest` allocation timestamps, application-level request metrics, and host-level `nvidia-smi --query-processes=gpu_uuid,pid,process_name,gpu_memory_usage --format=csv`. |
 
+Start with the symptom you see, and find the row that matches it. Each row pairs that symptom with the command output that shows it. The root cause column names the mechanism behind that output. The remediation column gives the fix that keeps the workload safe.
+
 ## Hands-on lab
 
 ### Venue and scope
 
-This lab runs locally using the Python standard library in `code/part11/kai_gpu_sharing_and_fractions.py` and `code/part11/kai_gpu_sharing_and_fractions_lab.py`. It simulates the KAI Scheduler fractional GPU bin-packer and the integer reservation Pod lifecycle in the Binder microservice. It also verifies the A100 notebook concurrency envelope and the H100 three-workload MIG geometry solver. Cluster and `nvidia-smi` commands earlier in the chapter are marked untested here.
+This lab runs on your own machine with the Python standard library. The code lives in `code/part11/kai_gpu_sharing_and_fractions.py` and `code/part11/kai_gpu_sharing_and_fractions_lab.py`. It simulates the KAI Scheduler fractional GPU bin-packer and the integer reservation Pod lifecycle in the Binder microservice. It also checks the A100 notebook concurrency envelope and the H100 three-workload MIG geometry solver. The cluster and `nvidia-smi` commands earlier in the chapter are marked untested here, because the lab does not run them.
 
 ### Step 1: Run the self-checking KAI GPU sharing and fractions lab (tested here)
 
@@ -348,135 +382,139 @@ Captured output from this repository:
 Summary: 25 passed, 0 failed out of 25 checks.
 ```
 
+Each PASS line checks one claim from this chapter. The summary line counts them, so a clean run reports zero failures.
+
 ### Exercises
 
-1. **Exercise 1 — KAI fractional GPU bin-packing and reservation pods.** Inspect `pack_kai_fractional_pods()` in `code/part11/kai_gpu_sharing_and_fractions.py`. State which Pods land on the first GPU and which Pod lands on the second GPU. Then state how many integer reservation Pods the Binder creates and how many whole GPUs remain free.
-2. **Exercise 2 — Fractional memory overflow protection.** Using `pack_kai_fractional_pods()`, consider two Pods that each request a quarter compute fraction and fifty thousand MiB of GPU memory. Explain why they cannot co-reside on one card even though their compute fractions sum to half a GPU.
-3. **Exercise 3 — Determining a safe time-slicing replica ratio.** Use `evaluate_time_slicing_notebook_envelope()` to trace Streaming Multiprocessor utilization, combined memory, and tail latency across one, two, four, and eight concurrent notebooks on an A100 card. State the maximum safe replica count.
-4. **Exercise 4 — Right-sizing H100 MIG partitions.** Inspect `solve_h100_mig_three_workload_capstone()`. State the chosen MIG profile, slice fraction, memory allocation, and estimated BF16 TFLOPS for the batch CNN, online embedding, and small LLM training workloads. Also state the remaining free capacity on the H100.
-5. **Exercise 5 — Zero-waste MIG geometry.** Three tenants request thirty-five gigabytes, fifteen gigabytes, and fifteen gigabytes of hardware-isolated GPU memory on a single eighty-gigabyte H100. State which three valid H100 MIG profiles satisfy all three tenants with zero wasted slices or memory.
-6. **Exercise 6 — Auditing active sharing mechanisms on a live node.** Write the three `nvidia-smi` commands run on a worker node host to determine whether the node is currently using MIG, vGPU, or Time-Slicing.
+Work through these six exercises after you run the lab. They reuse the functions in the simulation code.
+
+1. Open `pack_kai_fractional_pods()` in `code/part11/kai_gpu_sharing_and_fractions.py`. Say which Pods land on the first GPU and which Pod lands on the second. Then count the integer reservation Pods the Binder creates, and count how many whole GPUs remain free.
+2. Use `pack_kai_fractional_pods()` to test two Pods that each request a quarter compute fraction and fifty thousand MiB of GPU memory. Explain why they cannot share one card, even though their compute fractions add up to half a GPU.
+3. Call `evaluate_time_slicing_notebook_envelope()` and follow the Streaming Multiprocessor utilization, combined memory and tail latency across one, two, four and eight concurrent notebooks on an A100 card. State the maximum safe replica count.
+4. Read `solve_h100_mig_three_workload_capstone()`. State the MIG profile chosen for the batch CNN, the online embedding and the small LLM training workloads. Include each slice fraction, memory allocation and estimated BF16 TFLOPS. Then state how much capacity remains free on the H100.
+5. Three tenants need thirty-five gigabytes, fifteen gigabytes and fifteen gigabytes of hardware-isolated GPU memory on a single eighty-gigabyte H100. Name the three valid H100 MIG profiles that satisfy all three tenants with zero wasted slices or memory.
+6. Write the three `nvidia-smi` commands you would run on a worker node host to find out whether the node is using MIG, vGPU or Time-Slicing right now.
 
 ## Checkpoint questions
 
 <details>
 <summary>**1. How does KAI Scheduler allow users to request fractional GPUs when the Kubernetes API server only accepts integers for nvidia.com/gpu?**</summary>
 
-Workloads declare fractional requirements through Pod annotations such as `gpu-fraction` or `gpu-memory`. They omit integer GPU limits from the user container specification. When KAI Scheduler assigns fractional Pods to a physical GPU, the Binder microservice spawns a lightweight integer reservation Pod on that node. That reservation Pod claims one `nvidia.com/gpu` token from the node agent, and the Binder injects the allocated GPU UUID into the fractional user Pods.
+Workloads declare their fractional needs in Pod annotations, such as `gpu-fraction` or `gpu-memory`. They leave integer GPU limits out of the user container specification. When KAI Scheduler places fractional Pods on a physical GPU, the Binder microservice starts a lightweight integer reservation Pod on that node. The reservation Pod claims one `nvidia.com/gpu` token from the node agent. The Binder then injects the allocated GPU UUID into the fractional user Pods.
 </details>
 
 <details>
 <summary>**2. Why is KAI Scheduler dynamic fractional bin-packing more flexible than static device-plugin time-slicing?**</summary>
 
-Static device-plugin time-slicing divides every GPU on the node into a fixed number of uniform, memory-blind tokens. KAI Scheduler dynamically tracks both compute fraction and memory per physical GPU. It can pack heterogeneous shares onto one card while keeping the remaining cards on the same node as unshared whole GPUs. It also rejects any Pod whose memory claim would overflow the card.
+Static device-plugin time-slicing cuts every GPU on the node into a fixed number of identical tokens, and those tokens ignore memory. KAI Scheduler instead tracks both compute fraction and memory on each physical GPU. That lets it pack shares of different sizes onto one card, while the other cards on the node stay unshared whole GPUs. It also rejects any Pod whose memory claim would overflow the card.
 </details>
 
 <details>
 <summary>**3. What happened across one, two, four, and eight concurrent PyTorch notebooks on an 80 GB A100 GPU under time-slicing?**</summary>
 
-One notebook used twelve gigabytes of VRAM with eight-millisecond tail latency. Two notebooks used twenty-four gigabytes with twenty-five-millisecond tail latency. Four notebooks used forty-eight gigabytes with one-hundred-twenty-millisecond tail latency, which represents the maximum safe envelope. Eight notebooks demanded ninety-six gigabytes, overflowed the eighty-gigabyte card, hit five-hundred-millisecond tail latency, and triggered out-of-memory kills.
+Start with one notebook. It used twelve gigabytes of VRAM and showed eight-millisecond tail latency. Two notebooks used twenty-four gigabytes, with twenty-five-millisecond tail latency. Four notebooks used forty-eight gigabytes, and their tail latency reached one-hundred-twenty-millisecond. That is the maximum safe envelope. At eight notebooks, demand reached ninety-six gigabytes. That overflowed the eighty-gigabyte card, pushed tail latency to five-hundred-millisecond, and triggered out-of-memory kills.
 </details>
 
 <details>
 <summary>**4. Why does requesting two time-sliced replicas on a time-sliced node NOT give a Pod twice the guaranteed compute or memory of one replica?**</summary>
 
-A time-sliced replica is merely a scheduler admission token for shared access to a physical GPU. It does not partition Streaming Multiprocessors or reserve HBM memory. Requesting two tokens on a shared node can even assign shares across two different physical GPUs that are still contended by other neighbors.
+Consider a time-sliced replica. It is only a scheduler admission token. It grants shared access to a physical GPU, but it does not partition Streaming Multiprocessors or reserve HBM memory. Asking for two tokens can even place the shares on two different physical GPUs. Both of those GPUs may still be contended by other neighbors.
 </details>
 
 <details>
 <summary>**5. How do you prevent a production inference Deployment from accidentally scheduling onto a best-effort time-sliced GPU pool?**</summary>
 
-Configure `renameByDefault: true` in the device-plugin ConfigMap so time-sliced GPUs are advertised as `nvidia.com/gpu.shared` rather than `nvidia.com/gpu`. Then create a ResourceQuota in production namespaces setting `nvidia.com/gpu.shared` to zero. The API server will reject any manifest requesting shared best-effort GPUs in production immediately.
+Set `renameByDefault: true` in the device-plugin ConfigMap. That advertises time-sliced GPUs as `nvidia.com/gpu.shared` rather than `nvidia.com/gpu`. Next, create a ResourceQuota in each production namespace that sets `nvidia.com/gpu.shared` to zero. From then on, the API server rejects any production manifest that requests shared best-effort GPUs immediately.
 </details>
 
 <details>
 <summary>**6. What is the known DCGM Exporter observability limitation when Kubernetes device-plugin time-slicing is enabled?**</summary>
 
-Under device-plugin time-slicing, the DCGM exporter cannot attribute GPU utilization or memory counters to individual containers. That limitation occurs because all containers mount the same underlying physical device node. Operators must correlate scheduler allocation records, application metrics, and host-side process queries.
+With device-plugin time-slicing, the DCGM exporter cannot attribute GPU utilization or memory counters to a single container. The reason is that all containers mount the same underlying physical device node. You therefore have to correlate scheduler allocation records, application metrics and host-side process queries.
 </details>
 
 <details>
 <summary>**7. List the five primary MIG profiles on an 80 GB H100 GPU with their compute slice fractions, memory sizes, and proportional BF16 TFLOPS.**</summary>
 
-The `7g.80gb` profile uses all seven slices for eighty gigabytes and nine hundred eighty-nine TFLOPS. The `4g.40gb` profile uses four slices for forty gigabytes and five hundred sixty-five TFLOPS. Meanwhile, `3g.40gb` uses three slices for forty gigabytes and four hundred twenty-four TFLOPS. Finally, `2g.20gb` uses two slices for twenty gigabytes and two hundred eighty-three TFLOPS, while `1g.10gb` uses one slice for ten gigabytes and one hundred forty-one TFLOPS.
+Start with the largest. The `7g.80gb` profile uses all seven slices, for eighty gigabytes and nine hundred eighty-nine TFLOPS. The `4g.40gb` profile uses four slices, for forty gigabytes and five hundred sixty-five TFLOPS. The `3g.40gb` profile uses three slices for forty gigabytes and four hundred twenty-four TFLOPS. The `2g.20gb` profile uses two slices for twenty gigabytes and two hundred eighty-three TFLOPS. The smallest, `1g.10gb`, uses one slice for ten gigabytes and one hundred forty-one TFLOPS.
 </details>
 
 <details>
 <summary>**8. How do you partition one 80 GB H100 GPU across the Batch CNN, Online Embedding, and 1.3B LLM Training workloads, and how much capacity remains free?**</summary>
 
-Assign `2g.20gb` to the small LLM training job, `1g.10gb` to the batch CNN service, and a second `1g.10gb` instance to the online embedding service. This layout consumes four of seven compute slices and forty of eighty gigabytes of memory. That leaves three compute slices and forty gigabytes free for a fourth tenant.
+Suppose you must fit three workloads onto one card. Give the small LLM training job a `2g.20gb` instance. Give the batch CNN service a `1g.10gb` instance, and give the online embedding service a second `1g.10gb` instance. This layout uses four of the seven compute slices and forty of the eighty gigabytes. That leaves three compute slices and forty gigabytes free for a fourth tenant.
 </details>
 
 <details>
 <summary>**9. Why is the H100 in the three-workload benchmark memory-partition-constrained rather than compute-constrained?**</summary>
 
-The three workloads combined require only about three TFLOPS of sustained compute. In contrast, the H100 provides more than three hundred times that compute capacity. Even the smallest one-slice profile provides more than fifty times the compute needed by the vision model, so partition sizing is driven by memory footprint and hardware latency isolation.
+Together the three workloads need only about three TFLOPS of sustained compute. The H100 offers more than three hundred times that capacity. Even the smallest one-slice profile provides more than fifty times the compute the vision model needs. So memory footprint and hardware latency isolation set the partition sizes, not compute.
 </details>
 
 <details>
 <summary>**10. What are the exact nvidia-smi commands to enable MIG on GPU 0, query valid profile IDs, create partitions, and list active GPU Instances?**</summary>
 
-Run `sudo nvidia-smi -i 0 -mig 1` to enable MIG mode on the first GPU and `sudo nvidia-smi mig -lgip` to list supported GPU Instance Profiles. Next, run `sudo nvidia-smi mig -i 0 -cgi 14,19,19 -C` to create the GPU and Compute Instances. Finally, run `sudo nvidia-smi mig -lgi` to verify the active instances.
+Run `sudo nvidia-smi -i 0 -mig 1` to turn on MIG mode for the first GPU. Then run `sudo nvidia-smi mig -lgip` to list the supported GPU Instance Profiles. Run `sudo nvidia-smi mig -i 0 -cgi 14,19,19 -C` to create the GPU and Compute Instances. Finish with `sudo nvidia-smi mig -lgi` to verify the active instances.
 </details>
 
 <details>
 <summary>**11. Why must you use nsys profile --trace=cuda instead of nvprof when diagnosing priority inversion or kernel stalls on an H100 or A100 MIG slice?**</summary>
 
-Legacy `nvprof` does not support NVIDIA Ampere, Hopper, or Blackwell architectures. On modern GPUs and MIG instances, engineers must use Nsight Systems for timeline and kernel ordering traces. They should use Nsight Compute for per-kernel Streaming Multiprocessor stall analysis.
+The legacy `nvprof` tool does not support Ampere, Hopper or Blackwell. On modern GPUs and MIG instances, use Nsight Systems for timeline and kernel ordering traces. For per-kernel Streaming Multiprocessor stall analysis, use Nsight Compute.
 </details>
 
 <details>
 <summary>**12. What is the difference between a GPU Instance and a Compute Instance inside NVIDIA MIG?**</summary>
 
-A GPU Instance hardware-partitions both memory-system resources and a pool of Streaming Multiprocessors into an isolated hardware fault domain. Those memory resources include HBM memory controllers, L2 cache banks, and copy engines. A Compute Instance subdivides the Streaming Multiprocessors inside a parent GPU Instance into smaller compute slices that still share the parent instance's memory space.
+A GPU Instance is a hardware partition. It takes both memory-system resources and a pool of Streaming Multiprocessors, and it forms an isolated hardware fault domain. The memory resources include HBM memory controllers, L2 cache banks and copy engines. A Compute Instance splits the Streaming Multiprocessors inside a parent GPU Instance into smaller compute slices. Those slices still share the parent instance's memory space.
 </details>
 
 <details>
 <summary>**13. Walk through the four-branch decision tree for selecting a GPU sharing model.**</summary>
 
-First check whether a virtual machine guest kernel boundary is required, which selects NVIDIA vGPU. Second, check whether full card memory or multi-GPU NVLink is required for a Dedicated GPU. Third, check whether strict hardware isolation and tail-latency guarantees are required for Hardware MIG. Otherwise, use KAI Fractional GPUs or Time-Slicing for trusted best-effort workloads.
+Start by asking whether a virtual machine guest kernel boundary is required. If it is, choose NVIDIA vGPU. Next, ask whether you need full card memory or multi-GPU NVLink. If you do, a Dedicated GPU fits. Third, ask whether you need strict hardware isolation and tail-latency guarantees. If you do, choose Hardware MIG. Otherwise, use KAI Fractional GPUs or Time-Slicing for trusted best-effort workloads.
 </details>
 
 <details>
 <summary>**14. How do you quickly determine during an incident whether a worker node is running MIG, Time-Slicing, or vGPU?**</summary>
 
-If querying `mig.mode.current` returns `Enabled` and `nvidia-smi mig -lgi` lists instances, MIG is active. Suppose MIG mode is disabled, the node advertises a high allocatable GPU count, and `--query-processes` lists multiple container processes on the same GPU UUID. In that case, Time-Slicing or fractional sharing is active, whereas vGPU runs inside a virtual machine backed by the host vGPU manager service.
+Query `mig.mode.current`. If it returns `Enabled` and `nvidia-smi mig -lgi` lists instances, MIG is active. Now suppose MIG mode is disabled, the node advertises a high allocatable GPU count, and `--query-processes` lists several container processes on the same GPU UUID. Then Time-Slicing or fractional sharing is active. By contrast, vGPU runs inside a virtual machine that the host vGPU manager service backs.
 </details>
 
 <details>
 <summary>**15. What is the difference between Allocation Efficiency and Delivered Efficiency?**</summary>
 
-Allocation efficiency is the percentage of logical GPU tokens or slices that appear assigned to Pods in Kubernetes. Delivered efficiency measures useful application work completed within its documented latency and throughput service level objective. When over-packed time-sliced Pods thrash on memory or context switches, delivered efficiency collapses.
+Allocation efficiency is the share of logical GPU tokens or slices that appear assigned to Pods in Kubernetes. Delivered efficiency measures the useful application work finished within its documented latency and throughput service level objective. When over-packed time-sliced Pods thrash on memory or context switches, delivered efficiency collapses.
 </details>
 
 <details>
 <summary>**16. Why should a platform team offer fewer MIG profile shapes in its service catalog than the hardware technically supports?**</summary>
 
-Every additional MIG profile shape multiplies capacity forecasting, quota definitions, admission rules, and profile geometry fragmentation. When too many shapes mix on the same nodes, free slices sit stranded on awkward alignment boundaries. Those slices cannot combine to form larger profiles without draining and repartitioning the host.
+Each extra MIG profile shape adds work to capacity forecasting, quota definitions, admission rules and profile geometry. When too many shapes mix on the same nodes, free slices get stranded on awkward alignment boundaries. Those slices cannot merge into larger profiles without draining and repartitioning the host.
 </details>
 
 <details>
 <summary>**17. How can KAI Scheduler combine MIG and Time-Slicing or Fractional Sharing on the same GPU, and what label suffix does GFD apply when both are enabled?**</summary>
 
-A physical GPU can first be partitioned into hardware-isolated MIG instances to enforce hard memory walls between separate teams. Each MIG slice can then be time-sliced or fractionally shared by Pods within the same team. When both mechanisms are enabled, GPU Feature Discovery appends `-SHARED` to the MIG product label on the node.
+First, partition a physical GPU into hardware-isolated MIG instances. That enforces hard memory walls between separate teams. Then time-slice each MIG slice, or share it fractionally, among Pods on the same team. When both mechanisms are enabled, GPU Feature Discovery appends `-SHARED` to the MIG product label on the node.
 </details>
 
 <details>
 <summary>**18. How does CUDA Multi-Process Service differ from Kubernetes time-slicing and MIG?**</summary>
 
-Time-slicing switches independent CUDA contexts sequentially in time quanta. In contrast, CUDA MPS funnels multiple client processes through a single server context so kernels execute concurrently side by side on the Streaming Multiprocessors. However, both time-slicing and MPS share a single physical memory space and fault domain, whereas MIG partitions compute, memory, and fault boundaries in silicon.
+Time-slicing switches between independent CUDA contexts one after another, in time quanta. CUDA MPS takes a different route. It funnels several client processes through a single server context, so their kernels run side by side on the Streaming Multiprocessors. Even so, time-slicing and MPS both share one physical memory space and fault domain. MIG draws its compute, memory and fault boundaries in silicon.
 </details>
 
 <details>
 <summary>**19. What four stakeholders must participate in the Operational Decision Workshop before approving a new shared GPU service class?**</summary>
 
-The workshop requires the application owner to provide measured memory and latency targets. Meanwhile, the platform owner defines the hardware, driver, and node drain rules. The security owner verifies the tenant blast-radius boundary, and the finance or service owner defines the showback or chargeback unit and entitlement rules.
+The application owner supplies measured memory and latency targets. The platform owner defines the hardware, driver and node drain rules. The security owner verifies the tenant blast-radius boundary. The finance or service owner sets the showback or chargeback unit and the entitlement rules.
 </details>
 
 <details>
 <summary>**20. When migrating a workload from a dedicated whole GPU to a shared class, why must the migration be treated like an application release?**</summary>
 
-Moving from a dedicated card to time-slicing can introduce tail-latency jitter. Conversely, moving from time-slicing to a fixed MIG slice enforces a hard memory ceiling that can trigger an unexpected out-of-memory crash if peak usage was never profiled. Platform teams must canary-test the target sharing class with identical model weights, batch size, and concurrency before cutting over production traffic.
+Moving from a dedicated card to time-slicing can add tail-latency jitter. The reverse move has its own risk. A fixed MIG slice enforces a hard memory ceiling, and if peak usage was never profiled, that ceiling can trigger an unexpected out-of-memory crash. Platform teams must canary-test the target sharing class with identical model weights, batch size and concurrency before they cut over production traffic.
 </details>
 
 ## Sources and review notes
@@ -560,4 +598,3 @@ Corrections to the author's notes:
     that 92 samples/s is within the 10% measurement tolerance of the 100 samples/sec
     target stated in Success Criterion 5.
 ```
-

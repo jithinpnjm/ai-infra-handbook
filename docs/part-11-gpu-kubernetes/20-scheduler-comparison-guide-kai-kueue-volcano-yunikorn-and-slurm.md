@@ -23,11 +23,13 @@ lab_venue: "GCP / GKE"
 
 ## Why this matters for AI infrastructure
 
-Every AI platform team eventually faces the same multi-million-dollar architectural decision. When an organization operates 500 to 4,096 GPUs across research notebooks, foundation-model training, data engineering, and production serving, leadership must choose its scheduling control plane. Teams must decide whether to standardize on bare-metal Slurm or Kubernetes. When they choose Kubernetes, they must then select between NVIDIA KAI Scheduler, Kueue, Volcano, Apache YuniKorn, and the Coscheduling plugin.
+Sooner or later, every AI platform team faces the same multi-million-dollar architectural decision. Picture a team that runs research notebooks, foundation-model training, data engineering and production serving on 500 to 4,096 GPUs. Leadership has to choose the scheduling control plane for that fleet. The first decision is whether to standardize on bare-metal Slurm or Kubernetes. If the team chooses Kubernetes, it must then select between NVIDIA KAI Scheduler, Kueue, Volcano, Apache YuniKorn, and the Coscheduling plugin.
 
-Choosing the wrong scheduler, or relying on the default Kubernetes scheduler for distributed GPU workloads, causes immediate operational failures. If a researcher submits a 16-GPU distributed training job to vanilla Kubernetes when only 8 GPUs are free, the default scheduler starts 8 pods immediately and leaves 8 pods pending. The running ranks wait for collective rendezvous until they crash with NCCL timeout errors, wasting the allocated GPUs the entire time.
+Choosing the wrong scheduler, or relying on the default Kubernetes scheduler for distributed GPU work, causes failures right away. Consider a researcher who submits a 16-GPU distributed training job to vanilla Kubernetes while only 8 GPUs are free. The default scheduler starts 8 pods immediately and leaves 8 pods pending. The running ranks wait for collective rendezvous, then crash with NCCL timeout errors. The allocated GPUs are wasted for that entire time.
 
-At larger scales, hardware physics compounds the scheduling problem. In a 512-node cluster with 4,096 GPUs, where a single node has a 1,000-day mean time between failures, the fleet suffers a node or link fault every 1.95 days. Without gang scheduling, topology awareness, and automated pre-job health gating, a single degraded optical transceiver stalls all 4,095 peer GPUs inside collective spinlocks.
+At larger scales, hardware physics makes the problem worse. Picture a 512-node cluster with 4,096 GPUs. Each node has a 1,000-day mean time between failures, or MTBF, which is the average time a node runs before it fails. Across the whole fleet, a node or link fault arrives every 1.95 days. Without gang scheduling, topology awareness and automated pre-job health gating, a single degraded optical transceiver stalls all 4,095 peer GPUs inside collective spinlocks.
+
+Read the block below as a short list of what goes wrong at scale.
 
 ```text
 Scale Failures That Force Purpose-Built Scheduling & Health Gating:
@@ -36,33 +38,37 @@ Scale Failures That Force Purpose-Built Scheduling & Health Gating:
 - Silent Collective Straggler (volume-10/09): 1 throttled GPU or degraded 400G transceiver stalls peer GPUs inside ncclKernel_AllReduce at 100% spinlock utilization, doubling step time from 1.2 s to 2.4 s.
 ```
 
-This chapter synthesizes Chapters 11.7 through 11.19 into a six-way scheduler comparison guide across Coscheduling, Kueue, Volcano, NVIDIA KAI Scheduler, Apache YuniKorn, and Slurm. Before selecting a scheduler for your cluster, map your workload mix and operational maturity against each engine's architectural boundaries.
+This chapter brings Chapters 11.7 through 11.19 together into one six-way scheduler comparison. It covers Coscheduling, Kueue, Volcano, NVIDIA KAI Scheduler, Apache YuniKorn, and Slurm. Before you select a scheduler for your cluster, compare your workload mix and operational maturity with the architectural boundaries of each engine.
 
 ## Prerequisites and outcomes
 
+This chapter builds on several earlier ones. The prerequisites tell you what to read first, and the outcomes list what you should be able to do afterwards.
+
 ### Prerequisites
 
-- Completion of Chapters 11.7 through 11.9 covering gang scheduling, Kueue, Volcano, Coscheduling, JobSet, LeaderWorkerSet, PyTorchJob, and MPI Operator.
-- Completion of Chapters 11.13 through 11.19 covering NVIDIA KAI Scheduler and the Run:ai platform view.
-- Familiarity with distributed training collectives and leaf-spine network topologies.
+- You should have completed Chapters 11.7 through 11.9, which cover gang scheduling, Kueue, Volcano, Coscheduling, JobSet, LeaderWorkerSet, PyTorchJob, and MPI Operator.
+- You should also have completed Chapters 11.13 through 11.19, which cover NVIDIA KAI Scheduler and the Run:ai platform view.
+- You should be familiar with distributed training collectives and leaf-spine network topologies.
 
 ### Outcomes
 
-- Compare Coscheduling, Kueue, Volcano, NVIDIA KAI Scheduler, Apache YuniKorn, and Slurm across nine architectural dimensions.
-- Explain when to deploy Apache YuniKorn for unified Spark and PyTorch clusters, and how to compose Kueue job admission with KAI Scheduler or Volcano pod placement.
-- Architect the bare-metal Slurm, Enroot, and Pyxis container stack with three-tier health gating, NVIDIA Xid Catalog automation, and BCM Auto Scaler coexistence.
-- Apply the six-stage Solutions Architect methodology and DGX H100 SuperPOD reference architecture sizing rules to enterprise cluster design reviews.
+- By the end, you will be able to compare Coscheduling, Kueue, Volcano, NVIDIA KAI Scheduler, Apache YuniKorn, and Slurm across nine architectural dimensions.
+- You will be able to explain when to deploy Apache YuniKorn for unified Spark and PyTorch clusters, and how to compose Kueue job admission with KAI Scheduler or Volcano pod placement.
+- You will be able to architect the bare-metal Slurm, Enroot, and Pyxis container stack with three-tier health gating, NVIDIA Xid Catalog automation, and BCM Auto Scaler coexistence.
+- You will be able to apply the six-stage Solutions Architect methodology and DGX H100 SuperPOD reference architecture sizing rules to enterprise cluster design reviews.
 
 ## Concepts: basics to intermediate to advanced
 
 ### 1. Basics: The 6-scheduler taxonomy and complete feature comparison
 
-When platform teams evaluate schedulers from feature checklists alone, they often deploy overlapping controllers that fight over pod bindings. To avoid control-plane conflicts, classify each scheduler by how it integrates with Kubernetes or the host operating system.
+When platform teams evaluate schedulers from feature checklists alone, they often deploy overlapping controllers that fight over pod bindings. To avoid these control-plane conflicts, classify each scheduler by how it integrates with Kubernetes or the host operating system.
 
-1. In-process scheduler framework plugins such as Coscheduling extend the default `kube-scheduler` binary to add lightweight pod-group gang scheduling without queue trees or fractional GPUs.
-2. Job-level admission controllers such as Kueue sit above pod scheduling and toggle job suspension based on cluster queues and cohorts while delegating pod binding to a secondary scheduler.
-3. Standalone session-based Kubernetes batch schedulers such as Volcano, NVIDIA KAI Scheduler, and Apache YuniKorn evaluate entire queues and pod groups in periodic scheduling cycles.
-4. Bare-metal HPC workload managers such as Slurm run directly on the Linux host OS via `slurmctld` and `slurmd` without CNI overlays, launching unprivileged containers through NVIDIA Enroot and Pyxis.
+1. In-process scheduler framework plugins, such as Coscheduling, extend the default `kube-scheduler` binary. They add lightweight pod-group gang scheduling, with no queue trees and no fractional GPUs.
+2. Job-level admission controllers, such as Kueue, sit above pod scheduling. They toggle job suspension based on cluster queues and cohorts, and they delegate pod binding to a secondary scheduler.
+3. Standalone, session-based Kubernetes batch schedulers, such as Volcano, NVIDIA KAI Scheduler, and Apache YuniKorn, evaluate entire queues and pod groups in periodic scheduling cycles.
+4. Bare-metal HPC workload managers, such as Slurm, run directly on the Linux host OS through `slurmctld` and `slurmd`. They run without CNI overlays and launch unprivileged containers through NVIDIA Enroot and Pyxis.
+
+The flowchart below turns these four classes into a sequence of yes-or-no questions. Each question either sends you to a scheduler or moves you to the next question.
 
 ```mermaid
 flowchart TD
@@ -80,7 +86,7 @@ flowchart TD
 
 #### Comprehensive 6-Scheduler Comparison Matrix
 
-Table 7-1 of *Generative AI on Kubernetes* compares the four primary Kubernetes batch schedulers. The matrix below extends that table with Apache YuniKorn and bare-metal Slurm.
+Table 7-1 of *Generative AI on Kubernetes* compares four primary Kubernetes batch schedulers. The matrix below adds Apache YuniKorn and bare-metal Slurm to that comparison.
 
 | Dimension | Coscheduling Plugin | Kueue | Volcano | NVIDIA KAI Scheduler | Apache YuniKorn | Slurm (`+ Enroot / Pyxis`) |
 |---|---|---|---|---|---|---|
@@ -94,31 +100,33 @@ Table 7-1 of *Generative AI on Kubernetes* compares the four primary Kubernetes 
 | **Maturity & Adoption** | Kubernetes SIG Scheduling subproject | CNCF Kubernetes WG-Batch standard; high K8s-native adoption | CNCF graduated/incubating HPC-on-K8s standard | Open-sourced by NVIDIA (Apache 2.0, 2025) from battle-tested Run:ai engine | Apache Software Foundation top-level project (strong in Spark + AI clouds) | Decades-proven supercomputing standard (`Top500` & DGX SuperPOD) |
 | **Operational Complexity** | **Low** | **Medium** | **Medium-High** | **Medium** | **Medium** | **High** for K8s-only teams; **Low/Standard** for HPC teams |
 
-Use this decision matrix to eliminate schedulers that lack your required GPU sharing or gang scheduling primitives before running a proof of concept.
+Use this matrix to rule out any scheduler that lacks the GPU sharing or gang scheduling primitives you require, before you run a proof of concept.
 
 ---
 
 ### 2. Intermediate: Apache YuniKorn, hybrid Kueue composition, and Slurm containers
 
-Real-world AI platforms rarely run isolated PyTorch jobs in a vacuum. Data engineering teams run massive Apache Spark and Flink tokenization pipelines alongside GPU training, while HPC teams need container reproducibility on Slurm without root daemon risks.
+Real AI platforms rarely run isolated PyTorch jobs. Data engineering teams run large Apache Spark and Flink tokenization pipelines next to GPU training. HPC teams, meanwhile, need container reproducibility on Slurm without the risks of a root daemon.
 
 #### 1. When to Choose Apache YuniKorn
 
-When a platform runs Apache Spark and Flink data pipelines on the same Kubernetes cluster as PyTorch training, maintaining separate schedulers fragments cluster capacity. Apache YuniKorn solves this by unifying big-data batch and streaming jobs with AI workloads under a single hierarchical queue model inspired by Hadoop YARN.
+Suppose one Kubernetes cluster runs Apache Spark and Flink pipelines alongside PyTorch training. If you keep a separate scheduler for each, the cluster capacity gets split into pieces. Apache YuniKorn fixes that by placing big-data batch and streaming jobs and AI workloads under one hierarchical queue model. That model is inspired by Hadoop YARN.
 
-YuniKorn implements gang scheduling through task groups and lightweight placeholder pods. Before launching a distributed job, YuniKorn creates placeholder pods on target nodes to reserve the full gang capacity, and then swaps in the real driver and worker pods once all slots are locked. Administrators can also configure `Fair` node sorting to spread latency-sensitive services or `BinPacking` node sorting to pack GPU batch jobs onto the fewest nodes.
+YuniKorn gives you gang scheduling through task groups and placeholder pods. Before a distributed job starts, YuniKorn puts placeholder pods on the target nodes, and those pods hold the full gang capacity. Once every slot is locked, YuniKorn swaps in the real driver and worker pods. Administrators can choose the node sorting. `Fair` spreads latency-sensitive services across nodes, while `BinPacking` packs GPU batch jobs onto the fewest nodes.
 
 #### 2. Composing Kueue with KAI Scheduler or Volcano
 
-Platform teams do not have to choose exclusively between Kueue and a pod-group scheduler such as KAI Scheduler or Volcano. A common enterprise pattern uses Kueue for multi-team job admission and resource-flavor quota accounting while delegating pod-level placement to KAI Scheduler or Volcano.
+You do not have to pick either Kueue or a pod-group scheduler such as KAI Scheduler or Volcano. A common enterprise pattern uses Kueue for multi-team job admission and resource-flavor quota accounting. The pod-level placement then goes to KAI Scheduler or Volcano.
 
-In this composed workflow, a researcher submits a PyTorchJob labeled with a Kueue local queue and sets `schedulerName: kai-scheduler` inside the pod template. Kueue holds the job suspended until cohort and flavor quotas are available, and then unsuspends the job. KAI Scheduler immediately groups the unsuspended pods and binds them across NVLink domains, leaf switches, or fractional GPU reservation pods.
+Here is how the pieces fit together. A researcher submits a PyTorchJob with a Kueue local queue label, and sets `schedulerName: kai-scheduler` in the pod template. Kueue keeps the job suspended until cohort and flavor quotas are available, and then it unsuspends the job. KAI Scheduler groups the newly unsuspended pods and binds them across NVLink domains, leaf switches, or fractional GPU reservation pods.
 
 #### 3. How Slurm Runs Containers at Bare-Metal Speed: NVIDIA Enroot and Pyxis
 
-Historically, running containers on bare-metal Slurm clusters was painful because Docker required a privileged root daemon and added virtual network bridges that broke InfiniBand RDMA. **NVIDIA Enroot and Pyxis give Slurm clusters cloud-native container reproducibility at bare-metal speed without a root daemon or overlay network.**
+Historically, running containers on bare-metal Slurm clusters was painful. Docker required a privileged root daemon, and its virtual network bridges broke InfiniBand RDMA. **NVIDIA Enroot and Pyxis give Slurm clusters cloud-native container reproducibility at bare-metal speed without a root daemon or overlay network.**
 
-Enroot converts OCI container images into unprivileged `squashfs` files ending in `.sqsh`, achieving a 3x to 5x import speedup over standard layer extraction. By default, Enroot does not unshare the network, PID, IPC, or UTS namespaces, so NCCL inside the container talks directly to host InfiniBand adapters while Slurm's `cgroups v2` tree tracks every process. Pyxis is a Slurm SPANK plugin that exposes `--container-image` and `--container-mounts` flags directly on `srun` and `#SBATCH` commands.
+Enroot turns OCI container images into unprivileged squashfs files that end in `.sqsh`. That conversion makes imports 3x to 5x faster than standard layer extraction. By default, Enroot does not unshare the network, PID, IPC, or UTS namespaces. NCCL inside the container therefore talks straight to the host InfiniBand adapters, while Slurm's `cgroups v2` tree still tracks every process. Pyxis is a Slurm SPANK plugin. It adds `--container-image` and `--container-mounts` flags directly to `srun` and `#SBATCH` commands.
+
+The block below lists the operating rules for Enroot and Pyxis on Slurm.
 
 ```text
 NVIDIA Enroot and Pyxis Operational Rules on Slurm (volume-10/08):
@@ -140,7 +148,7 @@ NVIDIA Enroot and Pyxis Operational Rules on Slurm (volume-10/08):
    - In #SBATCH directives, escape the '#' character in image URIs: #SBATCH --container-image nvcr.io\#nvidia/pytorch:21.12-py3
 ```
 
-When operating Slurm at scale, pre-import shared `.sqsh` images onto Lustre once and rebuild Pyxis during every Slurm version upgrade.
+When you operate Slurm at scale, import shared `.sqsh` images onto Lustre once, and rebuild Pyxis during every Slurm version upgrade.
 
 ---
 
@@ -148,7 +156,7 @@ When operating Slurm at scale, pre-import shared `.sqsh` images onto Lustre once
 
 #### 1. The Physics of Scale: Cluster MTBF and Silent Stragglers
 
-Why do large training clusters invest so heavily in automated pre-job and post-job health gating? Because cluster mean time between failures scales inversely with the number of nodes in the job.
+Why do large training clusters spend so much effort on automated health gating before and after each job? The reason is simple arithmetic. Cluster mean time between failures shrinks as the node count of a job grows, because it scales inversely with the number of nodes.
 
 ```text
 Cluster MTBF and Silent Straggler Math (volume-10/09):
@@ -161,7 +169,9 @@ Cluster MTBF and Silent Straggler Math (volume-10/09):
   * Alerts when (avg by (instance) (DCGM_FI_PROF_PIPE_TENSOR_ACTIVE) - DCGM_FI_PROF_PIPE_TENSOR_ACTIVE) > 0.15 (15%) for 5m while DCGM_FI_DEV_GPU_UTIL > 80, or when IB PortXmitWait spikes > 3 sigma across peers.
 ```
 
-To catch both hard hardware faults and silent stragglers before they ruin a multi-node job, production Slurm clusters enforce a three-tier health gating architecture. Tier 1 runs the Node Health Check daemon every 300 seconds in the background. Tier 2 runs a fast pre-job `Prolog` script in under 10 seconds before job allocation, draining the node and requeuing the job if any GPU, ECC, NVLink, or 400G InfiniBand check fails. Tier 3 runs a post-job `Epilog` script that cleans up residual processes, resets GPUs, and audits kernel logs against the NVIDIA Xid Catalog.
+The formula gives the expected interval between faults, and the straggler case shows how one slow GPU can hold back the whole job.
+
+Production Slurm clusters use three tiers of health gating to catch hard hardware faults and silent stragglers before they ruin a multi-node job. Tier 1 runs the Node Health Check daemon every 300 seconds in the background. Tier 2 runs a fast pre-job `Prolog` script in under 10 seconds, before job allocation. If any GPU, ECC, NVLink, or 400G InfiniBand check fails, that script drains the node and requeues the job. Tier 3 runs a post-job `Epilog` script. It cleans up residual processes, resets GPUs, and audits kernel logs against the NVIDIA Xid Catalog.
 
 ```text
 3-Tier Slurm Health Gating Architecture & DCGM Diagnostic Run Levels (volume-10/09):
@@ -184,6 +194,8 @@ To catch both hard hardware faults and silent stragglers before they ruin a mult
   * Level 4 (-r 4, xlong burn-in): Extended burn-in and post-mortem hardware validation.
 ```
 
+The Xid table below lists each code with its immediate action and its investigatory action. Notice that the two actions are listed separately.
+
 | NVIDIA Xid Code | Catalog Description | Catalog Immediate Action | Catalog Investigatory Action |
 |---|---|---|---|
 | **`Xid 13` / `31` / `94`** | Graphics Engine Exception / Memory Page Fault / Contained Memory Error | **`RESTART_APP`** (Do NOT drain node for app fault) | `WORKFLOW_XID_13` / `31` / `IGNORE (sympathetic)` |
@@ -196,7 +208,7 @@ To catch both hard hardware faults and silent stragglers before they ruin a mult
 
 #### 2. DGX H100 SuperPOD Reference Facts and BCM Auto Scaler
 
-When presenting a hybrid Slurm and Kubernetes cluster design in an executive architecture review, ground your physical layout in the verified NVIDIA DGX H100 SuperPOD reference architecture and Base Command Manager 11 capabilities.
+Suppose you present a hybrid Slurm and Kubernetes design to executives. Ground the physical layout in the verified NVIDIA DGX H100 SuperPOD reference architecture and in Base Command Manager 11 capabilities.
 
 ```text
 DGX H100 SuperPOD Reference Architecture & BCM 11 Coexistence Facts (volume-10/00c):
@@ -217,22 +229,28 @@ DGX H100 SuperPOD Reference Architecture & BCM 11 Coexistence Facts (volume-10/0
    - BCM Head-Node HA (cmha-setup, BCM 11 Section 15): Uses BMC power-control fencing (STONITH), node quorum check, dedicated heartbeat link, and shared NAS storage (not Pacemaker/Corosync/DRBD), with boot and provisioning roles.
 ```
 
+Read the rack and fabric numbers as a set. The 128-node and 127-node figures differ because one DGX node is removed for UFM connectivity in the compute-fabric table.
+
 #### 3. Applying the 6-Stage Solutions Architect Methodology to Scheduler Selection
 
-When a chief information officer asks you to recommend a scheduling architecture for a new GPU cluster, never jump straight to a product name. Follow the six-stage Solutions Architect methodology and model all six critical paths before comparing options.
+Say a chief information officer asks you to recommend a scheduling architecture for a new GPU cluster. Do not jump straight to a product name. Follow the six-stage Solutions Architect methodology, and model all six critical paths before you compare options.
 
-1. Stage 1 Discover separates mathematical requirements from unproven assumptions, hard facility constraints, trade-offs, and hardware failure domains.
-2. Stage 2 Model maps the six critical paths across Data and Request flow, Control plane scheduling, Trust and Identity, Persistent State, Failure Domains, and Observability.
-3. Stage 3 Compare evaluates Option A, a hybrid Slurm and Kubernetes cluster with `cm-scale` Auto Scaler overlays, against Option B, a standardized Kubernetes cluster running KAI Scheduler, Kueue, or YuniKorn.
-4. Stage 4 Recommend selects the architecture that matches the customer's workload physics and operational maturity.
-5. Stage 5 Validate runs an acceptance proof of concept measuring `nccl-tests` bandwidth and straggler fault recovery before production cutover.
-6. Stage 6 Adopt delivers Day-2 runbooks covering `Prolog` and `Epilog` Xid gating, Pyxis rebuilds on Slurm upgrades, and KAI `PodGroup` triage.
+1. Stage 1, Discover, separates mathematical requirements from unproven assumptions, hard facility constraints, trade-offs, and hardware failure domains.
+2. Stage 2, Model, maps the six critical paths across Data and Request flow, Control plane scheduling, Trust and Identity, Persistent State, Failure Domains, and Observability.
+3. Stage 3, Compare, evaluates Option A, a hybrid Slurm and Kubernetes cluster with `cm-scale` Auto Scaler overlays, against Option B, a standardized Kubernetes cluster running KAI Scheduler, Kueue, or YuniKorn.
+4. Stage 4, Recommend, selects the architecture that matches the customer's workload physics and operational maturity.
+5. Stage 5, Validate, runs an acceptance proof of concept that measures `nccl-tests` bandwidth and straggler fault recovery before production cutover.
+6. Stage 6, Adopt, delivers Day-2 runbooks covering `Prolog` and `Epilog` Xid gating, Pyxis rebuilds on Slurm upgrades, and KAI `PodGroup` triage.
 
-Always validate your recommended scheduler with a live multi-node `nccl-tests` and fault-injection proof of concept before moving production workloads.
+Before you move production workloads, validate your recommended scheduler with a live multi-node `nccl-tests` run and a fault-injection proof of concept.
 
 ## Commands and configurations that matter
 
+The configurations below control how Slurm places jobs, launches containers and admits GPU work. Each block is shown as the source gives it, and the blocks marked untested here were not run on a live cluster.
+
 ### 1. Slurm Topology, cons_tres, and 3-Tier Health Gate Configuration
+
+Start with the `slurm.conf` excerpt, which you can read as the Slurm side of the design. It sets the topology plugin, the GPU selection, and the Prolog, Epilog and health-check options that the three tiers rely on.
 
 ```ini
 # /etc/slurm/slurm.conf excerpt for an NVIDIA DGX H100 AI Factory (volume-10/09, untested here)
@@ -252,7 +270,11 @@ HealthCheckInterval=300
 HealthCheckNodeState=ANY
 ```
 
+The `Prolog` and `Epilog` lines point to the scripts behind Tiers 2 and 3. The HealthCheck lines drive the background check in Tier 1.
+
 ### 2. Multi-Node PyTorch Launch on Slurm via Pyxis and Enroot
+
+To launch a containerized PyTorch job across four nodes, you run one `srun` command and set a few environment variables. The variables set the NCCL transport before the job starts.
 
 ```bash
 # Launch a 4-node (32-GPU) containerized PyTorch job via Slurm + Pyxis + Enroot (untested here)
@@ -268,7 +290,11 @@ srun --nodes=4 --ntasks-per-node=8 --gpus-per-node=8 \
      python3 train.py
 ```
 
+Each node reads the same `.sqsh` file from shared storage, so the job does not pull the image from the registry on every node.
+
 ### 3. Composing Kueue Job Admission with NVIDIA KAI Scheduler Pod Placement
+
+Kueue admission and KAI Scheduler placement can work on the same job. The manifest below shows both in one PyTorchJob.
 
 ```yaml
 # kueue-plus-kai-scheduler-pytorchjob.yaml (untested here)
@@ -297,9 +323,11 @@ spec:
                   nvidia.com/gpu: 8
 ```
 
+If you look at the `suspend: true` line, you see that Kueue controls admission through it. The `schedulerName` field decides which scheduler binds the pods.
+
 ## How it fails
 
-Across both Kubernetes and Slurm clusters, production scheduling failures stem from missing gang semantics, silent collective stragglers, misclassified Xid codes, SPANK plugin version mismatches, or premature job cancellation before hang forensics are collected.
+Across both Kubernetes and Slurm clusters, production scheduling failures come from one of five causes. You may see missing gang semantics, silent collective stragglers, misclassified Xid codes, SPANK plugin version mismatches, or a job cancelled before hang forensics are collected. The table lists each failure with its symptom, its root cause and its fix.
 
 | Failure mode | Exact symptom & command evidence | Root cause boundary | Remediation |
 |---|---|---|---|
@@ -309,21 +337,23 @@ Across both Kubernetes and Slurm clusters, production scheduling failures stem f
 | **4. After upgrading Slurm (`>= 21.08`), `srun --container-image=...` fails to load the Pyxis plugin (`volume-10/08`)** | `slurmd` logs `spank: pyxis.so: incompatible plugin version` and rejects containerized jobs after a minor Slurm upgrade. | **Pyxis SPANK ABI Tie (`Slurm >= 21.08`):** Pyxis must be compiled against the exact `spank.h` header of the running Slurm release. | Include rebuilding and redeploying the `pyxis` package across all compute nodes in every Slurm upgrade playbook before restarting `slurmd`. |
 | **5. `64`-node NCCL run freezes at `0%` GPU utilization while Slurm shows the job `RUNNING` (`volume-10/00c` Scenario 2)** | `squeue` shows `RUNNING`, GPU utilization drops to `0%`, and operators are tempted to `scancel` and restart immediately. | **Uncollected Hang Forensics:** Restarting before running `ncclras` (NCCL `>= 2.24` RAS client) and checking `dmesg` destroys the evidence of which rank is `MISMATCH` or `INCOMPLETE`. | Run `ncclras` twice a few seconds apart to identify `MISMATCH` / `INCOMPLETE` ranks, check `ulimit -l` (`unlimited` for `ibv_reg_mr`), grep `NVRM: Xid` in `dmesg`, and check `ibstat` error counter deltas before terminating the job. |
 
+Read the table row by row, and start from the symptom you can check with your own commands. Each row pairs what you see with the cause behind it and the fix to apply. If you start with the symptom column, each row leads you to its cause and fix.
+
 ## Hands-on lab
 
 ### Venue and scope
 
-This lab runs locally using the Python 3 standard library via `code/part11/scheduler_comparison_guide.py` and `code/part11/scheduler_comparison_guide_lab.py`. It verifies the six-scheduler comparison matrix, the workload-to-scheduler decision engine, the 512-node cluster MTBF math, and the NVIDIA Xid Catalog classifier. It also checks the DGX H100 SuperPOD reference architecture sizing calculator and `cm-scale` Auto Scaler coexistence rules. Cluster and Slurm commands are marked untested here.
+You can run this lab locally with only the Python 3 standard library. It uses `code/part11/scheduler_comparison_guide.py` and `code/part11/scheduler_comparison_guide_lab.py`. The checks fall into three groups. The first verifies the six-scheduler comparison matrix and the workload-to-scheduler decision engine. The second covers the 512-node cluster MTBF math and the NVIDIA Xid Catalog classifier. The third checks the DGX H100 SuperPOD reference architecture sizing calculator and the `cm-scale` Auto Scaler coexistence rules. Cluster and Slurm commands are marked untested here.
 
 ### Step 1: Run the self-checking scheduler comparison guide lab
 
-Run the lab script from the repository root.
+Start from the repository root and run the lab script.
 
 ```bash
 python3 code/part11/scheduler_comparison_guide_lab.py
 ```
 
-Captured output from this repository.
+The output below was captured from this repository. Each line is one check, and the summary at the end counts them.
 
 ```text
 === Chapter 11.20 Lab: Scheduler Comparison (KAI, Kueue, Volcano, YuniKorn, Slurm) ===
@@ -358,43 +388,43 @@ Summary: 25 passed, 0 failed out of 25 checks.
 
 ### Exercises
 
-1. Using `code/part11/scheduler_comparison_guide.py`, contrast Coscheduling, Kueue, Volcano, KAI Scheduler, Apache YuniKorn, and Slurm. Compare them across Architecture, Gang Scheduling, Queue Management, Topology Awareness, and GPU Optimization.
-2. State which scheduler you recommend for 512-GPU bare-metal pre-training, multi-tenant Kubernetes needing dynamic fractional GPUs, and shared Apache Spark plus PyTorch clusters. Also state your choice for cloud-native job admission that composes with secondary pod schedulers and minimal PodGroup placement.
-3. Explain why Enroot leaves the network namespace unshared by default, and name the three `/etc/enroot` configuration directories with their mandatory file extensions. Identify the two hooks that inject GPUs and InfiniBand MOFED, and state the two machine entries required in `.credentials` for NGC.
-4. Compute the cluster MTBF for 512 nodes assuming a 1,000-day single-node MTBF, and list the seven pre-job checks in the Slurm `Prolog`. Explain how the Prometheus `GPUStragglerDetected` rule catches a silent straggler when `DCGM_FI_DEV_GPU_UTIL` is 100 percent.
-5. State the NVIDIA Xid Catalog Immediate Action for Xid codes 13, 31, 44, 48, 63, 64, 74, 79, 94, 95, 109, 119, and 120. Explain why draining a node on Xid 31 or Xid 44 is an operational anti-pattern.
-6. Explain why the 4-SU DGX H100 SuperPOD reference architecture lists 128 nodes in the overview but 127 nodes in the compute-fabric table. Calculate how many 10.2 kW DGX H100 nodes fit in a 30 kW rack, and explain how `cm-scale` moves nodes between Slurm and Kubernetes.
+1. Open `code/part11/scheduler_comparison_guide.py` and contrast Coscheduling, Kueue, Volcano, KAI Scheduler, Apache YuniKorn, and Slurm. Compare the six across Architecture, Gang Scheduling, Queue Management, Topology Awareness, and GPU Optimization.
+2. Decide which scheduler you would recommend for three cases: 512-GPU bare-metal pre-training, multi-tenant Kubernetes that needs dynamic fractional GPUs, and a shared Apache Spark plus PyTorch cluster. Then give your choice for two more: cloud-native job admission that composes with secondary pod schedulers, and minimal PodGroup placement.
+3. Explain why Enroot leaves the network namespace unshared by default. Then name the three `/etc/enroot` configuration directories and their mandatory file extensions. Identify the two hooks that inject GPUs and InfiniBand MOFED. Finally, state the two machine entries that `.credentials` needs for NGC.
+4. Work out the cluster MTBF for 512 nodes, assuming a 1,000-day single-node MTBF. Then list the seven pre-job checks in the Slurm `Prolog`. Last, explain how the Prometheus `GPUStragglerDetected` rule catches a silent straggler when `DCGM_FI_DEV_GPU_UTIL` reads 100 percent.
+5. Look up the NVIDIA Xid Catalog Immediate Action for each code in the list below. The codes are Xid 13, Xid 31, Xid 44, Xid 48, Xid 63, Xid 64, Xid 74, Xid 79, Xid 94, Xid 95, Xid 109, Xid 119 and Xid 120. Then explain why draining a node on Xid 31 or Xid 44 counts as an operational anti-pattern.
+6. Explain why the 4-SU DGX H100 SuperPOD reference architecture shows 128 nodes in the overview but 127 nodes in the compute-fabric table. Then calculate how many 10.2 kW DGX H100 nodes fit in a 30 kW rack. Finish by explaining how `cm-scale` moves nodes between Slurm and Kubernetes.
 
 ## Checkpoint questions
 
 <details>
 <summary>**1. How does Kueue's architectural role differ from Volcano, NVIDIA KAI Scheduler, and Apache YuniKorn?**</summary>
 
-Kueue is a job-level admission controller that manages when a job is unsuspended based on ClusterQueue, LocalQueue, and Cohort quotas. It delegates actual Pod-to-Node binding to `kube-scheduler`, KAI Scheduler, or Volcano. Volcano, KAI Scheduler, and YuniKorn are full pod-group batch schedulers that directly bind Pods to Nodes.
+Kueue is a job-level admission controller. It decides when a job is unsuspended, based on `ClusterQueue`, `LocalQueue`, and `Cohort` quotas. It hands the actual Pod-to-Node binding to `kube-scheduler`, KAI Scheduler, or Volcano. Volcano, KAI Scheduler, and YuniKorn are full pod-group batch schedulers, and they bind Pods to Nodes directly.
 </details>
 
 <details>
 <summary>**2. What makes NVIDIA KAI Scheduler unique among the Kubernetes schedulers compared in Table 7-1 of Generative AI on Kubernetes?**</summary>
 
-KAI Scheduler is purpose-built for GPU optimization across its seven microservices. It combines hierarchical SubGroup gang and topology placement with native fractional GPU scheduling backed by `binder` reservation pods and dynamic MIG consolidation.
+KAI Scheduler is built for GPU optimization, and its seven microservices do that work. It combines hierarchical `SubGroup` gang and topology placement with native fractional GPU scheduling. That scheduling is backed by `binder` reservation pods and dynamic MIG consolidation.
 </details>
 
 <details>
 <summary>**3. When should a platform architect choose Apache YuniKorn, and how does YuniKorn implement gang scheduling?**</summary>
 
-Choose Apache YuniKorn when a Kubernetes cluster co-locates Apache Spark or Flink big-data pipelines alongside PyTorch and Kubeflow AI workloads under a unified hierarchical queue scheduler. YuniKorn implements gang scheduling via task groups and placeholder pods. It reserves all required resources on nodes with lightweight placeholder pods before swapping in the real application pods.
+You should choose Apache YuniKorn when a Kubernetes cluster runs Apache Spark or Flink big-data pipelines next to PyTorch and Kubeflow AI workloads, all under one hierarchical queue scheduler. YuniKorn implements gang scheduling with task groups and placeholder pods. It reserves all the resources a job needs on nodes with lightweight placeholder pods, then swaps in the real application pods.
 </details>
 
 <details>
 <summary>**4. How can a platform team combine Kueue and KAI Scheduler or Volcano in the same cluster?**</summary>
 
-Configure Kueue to manage job-level quota admission, Cohort fair-sharing, and ResourceFlavor selection via `suspend: true`. Set `schedulerName: kai-scheduler` or `volcano` in the workload's Pod template. Once Kueue admits and unsuspends the job, KAI Scheduler or Volcano executes fine-grained SubGroup topology placement and fractional or MIG GPU bin-packing.
+Configure Kueue to handle job-level quota admission, `Cohort` fair-sharing, and `ResourceFlavor` selection. That admission works through `suspend: true`. Set `schedulerName: kai-scheduler` or `volcano` in the workload's Pod template. After Kueue admits and unsuspends the job, KAI Scheduler or Volcano handles fine-grained `SubGroup` topology placement and fractional or MIG GPU bin-packing.
 </details>
 
 <details>
 <summary>**5. Why does submitting a 16-GPU distributed training job to vanilla Kubernetes when only 8 GPUs are free result in NCCL Timeout crashes?**</summary>
 
-The default `kube-scheduler` lacks gang scheduling, so it immediately starts 8 pods while leaving 8 pods pending. The 8 running ranks initialize `torch.distributed` and NCCL and wait for the 8 missing ranks until the collective timer expires with an NCCL timeout, wasting the 8 allocated GPUs the entire time.
+Picture the default `kube-scheduler` with no gang scheduling. It starts 8 pods right away and leaves 8 pods pending. The 8 running ranks initialize `torch.distributed` and NCCL, then wait for the 8 missing ranks. When the collective timer expires, they fail with an NCCL timeout, and you lose the 8 allocated GPUs for the whole time.
 </details>
 
 <details>
@@ -407,27 +437,27 @@ The default `kube-scheduler` lacks gang scheduling, so it immediately starts 8 p
 <details>
 <summary>**7. How does NVIDIA Enroot differ from Docker or containerd on a shared Slurm cluster, and why does it leave --net off by default?**</summary>
 
-Enroot is a daemonless, unprivileged sandbox tool with no `setuid` binary that unpacks `.sqsh` images with a 3x to 5x import speedup and runs directly under the user's UID and Slurm's `cgroups v2` tree. It leaves `--net` off by default so multi-node NCCL jobs share the host network namespace and talk directly to bare-metal InfiniBand and Ethernet NICs with zero overlay latency.
+Enroot is a daemonless, unprivileged sandbox tool with no setuid binary. It unpacks `.sqsh` images with a 3x to 5x import speedup. It runs directly under the user's UID and inside Slurm's `cgroups v2` tree. It leaves `--net` off by default, so multi-node NCCL jobs share the host network namespace. Those jobs then talk directly to bare-metal InfiniBand and Ethernet NICs with zero overlay latency.
 </details>
 
 <details>
 <summary>**8. What are the three configuration directories under /etc/enroot with their required file extensions and the two standard hooks that expose GPUs and InfiniBand?**</summary>
 
-- The three directories and required extensions are `environ.d/*.env`, `mounts.d/*.fstab`, and `hooks.d/*.sh`.
-- The two standard hardware hooks are `98-nvidia.sh`, which exposes GPUs via `libnvidia-container`, and `99-mellanox.sh`, which injects host `MLNX_OFED` libraries and selects InfiniBand HCAs.
+- The three directories and their required extensions are `environ.d/*.env`, `mounts.d/*.fstab`, and `hooks.d/*.sh`.
+- The two standard hardware hooks are `98-nvidia.sh`, which exposes GPUs through `libnvidia-container`, and `99-mellanox.sh`, which injects host `MLNX_OFED` libraries and selects InfiniBand HCAs.
 </details>
 
 <details>
 <summary>**9. What two machine entries are required in Enroot's .credentials file to import images from NVIDIA NGC, and how do you avoid HTTP 429 rate limits on a 500-node Slurm job?**</summary>
 
 1. Both `nvcr.io` and `authn.nvidia.com` machine entries with `$oauthtoken` are required in `$ENROOT_CONFIG_PATH/.credentials`.
-2. To avoid HTTP 429 registry rate limits, run `enroot import` once on a login or build node to write `/shared/containers/pytorch.sqsh` on shared storage, and pass that file path to `srun --container-image`.
+2. To avoid HTTP 429 registry rate limits, run `enroot import` once on a login or build node. That writes `/shared/containers/pytorch.sqsh` to shared storage, and you pass that file path to `srun --container-image`.
 </details>
 
 <details>
 <summary>**10. What happens to the Pyxis Slurm plugin when you upgrade Slurm?**</summary>
 
-Since Slurm 21.08, Pyxis must be compiled against the exact `spank.h` header of the deployed Slurm release. Otherwise `slurmd` refuses to load `pyxis.so`, so every Slurm upgrade playbook must rebuild and redeploy Pyxis across all compute nodes.
+Since Slurm 21.08, Pyxis has to be compiled against the exact `spank.h` header of the Slurm release you deployed. If it is not, `slurmd` refuses to load `pyxis.so`. That is why every Slurm upgrade playbook must rebuild and redeploy Pyxis across all compute nodes.
 </details>
 
 <details>
@@ -441,22 +471,22 @@ Cluster MTBF = Single Node MTBF / N = 1,000 days / 512 nodes = 1.95 days.
 <details>
 <summary>**12. Why should a multi-node Slurm sbatch script set export NCCL_NET=IB instead of relying on NCCL_IB_DISABLE=0?**</summary>
 
-`NCCL_IB_DISABLE=0` is already the default and allows NCCL to silently fall back to slow kernel TCP sockets if InfiniBand initialization fails, turning the node into a massive silent straggler. Setting `export NCCL_NET=IB` forces the InfiniBand transport plugin so the job fails fast at startup if InfiniBand is unavailable.
+`NCCL_IB_DISABLE=0` is already the default. With it, NCCL can silently fall back to slow kernel TCP sockets when InfiniBand initialization fails. That turns the node into a massive silent straggler. Setting `export NCCL_NET=IB` forces the InfiniBand transport plugin instead. If InfiniBand is unavailable, you see the job fail fast at startup.
 </details>
 
 <details>
 <summary>**13. Compare the four DCGM diagnostic run levels in Volume 10 Chapter 9 Section 7.**</summary>
 
-- Level 1 (`-r 1`) runs in seconds to check NVML libraries, device access, row remap, InfoROM, and Fabric Manager, making it safe for pre-job `Prolog` readiness.
-- Level 2 (`-r 2`) runs in about 2 minutes and adds memory and PCIe or NVLink bandwidth tests for investigating failed workloads.
-- Level 3 (`-r 3`) runs in about 15 minutes and adds hardware stress, power, and bandwidth plugins for drained-node isolation and post-repair acceptance.
-- Level 4 (`-r 4`) runs extended burn-in and post-mortem hardware diagnostics.
+- `-r 1` is Level 1. It runs in seconds and checks NVML libraries, device access, row remap, InfoROM, and Fabric Manager, which makes it safe for pre-job `Prolog` readiness.
+- `-r 2` is Level 2. It runs in about 2 minutes and adds memory and PCIe or NVLink bandwidth tests for investigating failed workloads.
+- `-r 3` is Level 3. It runs in about 15 minutes and adds hardware stress, power, and bandwidth plugins for drained-node isolation and post-repair acceptance.
+- `-r 4` is Level 4. It runs extended burn-in and post-mortem hardware diagnostics.
 </details>
 
 <details>
 <summary>**14. Why does a 1,024-GPU training job with one slow straggler GPU still report 100% DCGM_FI_DEV_GPU_UTIL on all 1,024 GPUs, and how does the Prometheus GPUStragglerDetected rule catch it?**</summary>
 
-When 1 GPU runs slow, the other 1,023 GPUs busy-wait inside the `ncclKernel_AllReduce` CUDA spinlock, which registers as 100 percent `DCGM_FI_DEV_GPU_UTIL`. The `GPUStragglerDetected` rule instead compares `DCGM_FI_PROF_PIPE_TENSOR_ACTIVE` against the node average and alerts if a GPU lags by more than 0.15 for 5 minutes while GPU utilization exceeds 80 percent.
+When one GPU runs slow, the other 1,023 GPUs busy-wait inside the `ncclKernel_AllReduce` CUDA spinlock. That spinning shows up as 100 percent `DCGM_FI_DEV_GPU_UTIL`, so you cannot spot the straggler from the utilization number alone. The `GPUStragglerDetected` rule compares `DCGM_FI_PROF_PIPE_TENSOR_ACTIVE` with the node average instead. It alerts when a GPU lags by more than 0.15 for 5 minutes while GPU utilization is above 80 percent.
 </details>
 
 <details>
@@ -474,10 +504,10 @@ When 1 GPU runs slow, the other 1,023 GPUs busy-wait inside the `ncclKernel_AllR
 <details>
 <summary>**16. According to the NVIDIA Xid Catalog table in Volume 10 Chapter 9 Section 9, what is the Immediate Action for Xid 13/31/94, Xid 44/63, Xid 48, Xid 64/95/109/119/120, Xid 74, and Xid 79?**</summary>
 
-- Xid 13, 31, and 94 map to `RESTART_APP` because they represent application or contained memory faults that should not drain the node.
-- Xid 44 and 63 map to `IGNORE`.
+- Xid 13, Xid 31, and Xid 94 map to `RESTART_APP`. They are application or contained memory faults, so you should not drain the node for them.
+- Xid 44 and Xid 63 map to `IGNORE`.
 - Xid 48 maps to `WORKFLOW_XID_48` for double-bit ECC isolation.
-- Xid 62, 64, 95, 109, 119, and 120 map to `RESET_GPU`.
+- Xid 62, Xid 64, Xid 95, Xid 109, Xid 119, and Xid 120 map to `RESET_GPU`.
 - Xid 74 maps to `WORKFLOW_NVLINK_ERR`.
 - Xid 79 maps to `RESTART_BM` for a bare-metal reboot and support escalation.
 </details>
@@ -486,30 +516,30 @@ When 1 GPU runs slow, the other 1,023 GPUs busy-wait inside the `ncclKernel_AllR
 <summary>**17. In the NVIDIA DGX SuperPOD H100 reference architecture, what are the four network fabrics, and why does a 4-SU design show 128 nodes in one table and 127 nodes in the compute-fabric table?**</summary>
 
 - The four fabrics are Compute InfiniBand, Storage InfiniBand using MQM9700-NS2F switches at over 40 GB/s per node, In-Band Management Ethernet using SN4600C switches, and Out-of-Band Management Ethernet using SN2201 switches.
-- Each Scalable Unit is nominally 32 nodes for 128 nodes and 1,024 GPUs across 4 SUs, but in the full compute-fabric table 1 DGX node is removed for UFM connectivity, leaving 31 nodes in 1 SU and 127 nodes with 1,016 GPUs across 4 SUs.
+- Each Scalable Unit, or SU, is nominally 32 nodes. For example, 4 SUs make 128 nodes and 1,024 GPUs. In the full compute-fabric table, one DGX node is removed for UFM connectivity. That leaves 31 nodes in 1 SU and 127 nodes with 1,016 GPUs across 4 SUs.
 </details>
 
 <details>
 <summary>**18. What is the maximum power specification of a single DGX H100 system, and how many DGX H100 systems fit into a 30 kW customer rack?**</summary>
 
-A single DGX H100 is rated at 10.2 kW maximum with six 3.3 kW power supplies, and the reference rack layout exceeds 40 kW. In a 30 kW customer rack, at most 2 DGX H100 systems totaling 20.4 kW fit before accounting for switch power.
+A single DGX H100 is rated at 10.2 kW maximum. It runs on six 3.3 kW power supplies. The reference rack layout exceeds 40 kW. In a 30 kW customer rack, at most 2 DGX H100 systems fit, totaling 20.4 kW, before you account for switch power.
 </details>
 
 <details>
 <summary>**19. How does NVIDIA Base Command Manager 11 dynamically share hardware between Slurm and Kubernetes, and how does BCM implement head-node High Availability?**</summary>
 
-- For dynamic node repurposing, BCM 11 uses the BCM Auto Scaler (`cm-scale`), which inspects pending workloads in Slurm and Kubernetes and switches free nodes between engines using configuration overlays.
-- For head-node HA, `cmha-setup` uses BMC power-control fencing, a node quorum check, a dedicated heartbeat link, and shared NAS storage rather than Pacemaker or DRBD.
+- For dynamic node repurposing, BCM 11 uses the BCM Auto Scaler, or `cm-scale`. It inspects pending work in Slurm and Kubernetes, then switches free nodes between the two using configuration overlays.
+- For head-node HA, `cmha-setup` uses BMC power-control fencing, a node quorum check, a dedicated heartbeat link, and shared NAS storage instead of Pacemaker or DRBD.
 </details>
 
 <details>
 <summary>**20. Walk through the evidence-driven hang triage procedure for a frozen 64-node training run where GPU utilization is 0%.**</summary>
 
-1. Confirm the Slurm allocation is intact and no participating node was drained.
-2. Confirm all ranks are alive and `ulimit -l` inside a step is `unlimited` so RDMA memory registration succeeds.
-3. Run `ncclras` twice a few seconds apart before killing the job to identify `MISMATCH` or `INCOMPLETE` ranks.
+1. Confirm the Slurm allocation is intact and that no participating node was drained.
+2. Confirm all ranks are alive. Then check that `ulimit -l` inside a step is `unlimited`, so RDMA memory registration succeeds.
+3. Run `ncclras` twice, a few seconds apart, before you kill the job. That identifies `MISMATCH` or `INCOMPLETE` ranks.
 4. Grep for `NVRM: Xid` across all participating nodes' kernel logs.
-5. Check `ibstat` port states, Subnet Manager health, and port error counter deltas across two samples before terminating the job.
+5. Check `ibstat` port states, Subnet Manager health, and port error counter deltas across two samples before you terminate the job.
 </details>
 
 ## Sources and review notes
@@ -550,4 +580,3 @@ Primary sources read in full for this chapter:
 - KAI Scheduler check: this chapter's KAI details were compared with the upstream documentation as summarized in Chapter 11.14 and Chapter 11.17.
 - Validation pass: `validate_chapter.py` and `check_coverage.py` pass. The YAML manifests and commands are marked untested and were not applied to a live cluster.
 - Vendor-verified corrections preserved from Volume 10: BCM 11 uses `cmha-setup` with fencing, quorum, and shared NAS rather than Pacemaker or DRBD, `boot` and `provisioning` roles rather than BitTorrent, and `cm-scale` Auto Scaler overlays rather than manual category edits. Enroot injects GPUs and InfiniBand via `hooks.d/98-nvidia.sh` and `99-mellanox.sh`, and Xid 44 maps to `IGNORE` while Xid 109 maps to `RESET_GPU` in the NVIDIA Xid Catalog.
-

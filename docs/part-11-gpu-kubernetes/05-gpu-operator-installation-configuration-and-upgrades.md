@@ -23,9 +23,9 @@ lab_venue: "GCP / GKE"
 
 ## Why this matters for AI infrastructure
 
-A Helm release in the deployed state is not a working GPU platform. That status means only that the Kubernetes API server accepted the rendered manifests. It also means that top-level Deployment objects reported ready within the configured timeout. It proves nothing about whether the kernel module loaded on every worker node. It does not prove that the container runtime can inject device files into a fresh container sandbox. It also fails to prove that the kubelet registered GPU capacity or that telemetry exporters scrape matching device identities.
+Picture a team that has just installed a GPU pool. Helm reports the release as deployed, so the team opens the pool to users. That status means less than it sounds. It means only that the Kubernetes API server accepted the rendered manifests and that the top-level Deployment objects reported ready within the configured timeout. It does not prove that the kernel module loaded on every worker node. It does not show that the container runtime can inject device files into a fresh container sandbox. It also does not show that the kubelet registered GPU capacity or that telemetry exporters scrape matching device identities.
 
-Treating a GPU platform upgrade as a routine chart version bump is even more dangerous. Every upgrade mutates a tightly coupled compatibility set across the host kernel, driver, container runtime, and firmware. When an unreviewed upgrade sweeps across an entire cluster, a single firmware quirk can take down every node at once. Platform teams then discover that running a chart rollback does not unload a wedged kernel module on the host. Machine learning engineers are left facing scheduling failures and broken nodes during critical training windows.
+Upgrades deserve the same suspicion. Treating a GPU platform upgrade as a routine chart version bump is even more dangerous. Every upgrade changes a tightly coupled compatibility set across the host kernel, driver, container runtime, and firmware. When an unreviewed upgrade sweeps across an entire cluster, one firmware quirk can take down every node at once. Platform teams can then discover that a chart rollback does not unload a wedged kernel module on the host. Machine learning engineers are left facing scheduling failures and broken nodes during critical training windows.
 
 ```text
 Production Upgrade & Acceptance Risk Summary:
@@ -39,28 +39,29 @@ Production Upgrade & Acceptance Risk Summary:
 - Rollback trap: helm rollback gpu-operator 1 --namespace gpu-operator --wait --timeout 20m prints success while Allocatable stays 0
 ```
 
-This chapter provides the production playbook for qualifying, installing, accepting, upgrading, and rolling back the NVIDIA GPU Operator across multi-pool Kubernetes clusters.
+The summary above previews the numbers and commands that the rest of this chapter checks. This chapter is the production playbook for qualifying, installing, accepting, upgrading, and rolling back the NVIDIA GPU Operator across multi-pool Kubernetes clusters. Decide before you install which team owns each part of the stack, because the rest of the chapter depends on that answer.
 
 ## Prerequisites and outcomes
 
 ### Prerequisites
-- Completion of Chapters 11.1 through 11.4 covering the seven-layer GPU lifecycle, Device Plugin registration, container runtime injection, and ClusterPolicy architecture.
-- Familiarity with Helm chart rendering, release history, and Kubernetes node maintenance commands including drain andPodDisruptionBudget enforcement.
+- Finish Chapters 11.1 through 11.4, which cover the seven-layer GPU lifecycle, Device Plugin registration, container runtime injection, and ClusterPolicy architecture.
+- Be comfortable with Helm chart rendering, release history, and Kubernetes node maintenance commands, including drain and PodDisruptionBudget enforcement.
 
 ### Outcomes
-- Settle the six foundational platform ownership decisions before writing a single line of Helm values.
-- Execute the eight-stage installation evidence pipeline and explain why a deployed Helm release can coexist with a failed ClusterPolicy.
-- Validate a GPU node pool against the seven-criterion production acceptance contract by correlating workload logs with Prometheus telemetry.
-- Size a multi-batch canary and progressive rollout schedule that bounds the blast radius of hardware-specific bugs across a large fleet.
-- Execute a controlled upgrade and rollback state machine that catches host-level divergence when a Helm rollback leaves zero allocatable GPUs.
+By the end of this chapter, you should be able to do the following.
+- Settle the six foundational platform ownership decisions before you write a single line of Helm values.
+- Run the eight-stage installation evidence pipeline, and explain why a deployed Helm release can coexist with a failed ClusterPolicy.
+- Check a GPU node pool against the seven-criterion production acceptance contract by matching workload logs with Prometheus telemetry.
+- Size a multi-batch canary and progressive rollout schedule that limits the blast radius of hardware-specific bugs across a large fleet.
+- Run a controlled upgrade and rollback state machine that catches host-level divergence when a Helm rollback leaves zero allocatable GPUs.
 
 ## Concepts: basics to intermediate to advanced
 
 ### 1. Basics: Defining the platform boundary and treating Helm values as a governed interface
 
-When engineers first test the GPU Operator in a lab, they often run a one-line install command with default settings. On a single disposable node, those defaults usually appear to work. Across a production fleet, unreviewed defaults cause severe operational outages. They can overwrite host runtime configurations or attempt to compile kernel drivers on hardened OS images where compilers are absent. They can also pull container images from public registries over throttled NAT gateways during a cluster recovery.
+Picture an engineer testing the GPU Operator in a lab. They run a one-line install with the default settings, and on a single disposable node everything seems to work. Move that same command to a production fleet, and the defaults can cause serious outages. They may overwrite host runtime configuration, or try to compile kernel drivers on hardened OS images that have no compiler. They can also pull container images from public registries through throttled NAT gateways during a cluster recovery.
 
-Platform teams prevent these failures by treating the Helm values file as a strictly governed contract. Before writing configuration files, infrastructure, security, and operations teams must settle six ownership boundaries. Once those boundaries are recorded, every change flows through an eight-stage installation and verification pipeline.
+Platform teams prevent these failures by treating the Helm values file as a strictly governed contract. Before anyone writes configuration files, infrastructure, security, and operations teams must settle six ownership boundaries. Once those boundaries are recorded, every change flows through an eight-stage installation and verification pipeline. The flowchart below shows that pipeline from qualification to admission into production.
 
 ```mermaid
 flowchart TD
@@ -75,8 +76,10 @@ flowchart TD
     Accept -->|"UUID-matched workload + DCGM + reboot test pass"| Operate["8. Admit Node Pool into Production Service"]
 ```
 
+Notice that a failed readiness check sends you back to diagnose the first failed operand, with the evidence preserved, before the install is reconciled again.
+
 #### Six ownership decisions that determine the architecture
-Before creating a values file, platform engineering, OS engineering, and security teams must record explicit answers to six boundary questions. Leaving any of these domains ambiguous guarantees an ownership clash during node boot or chart upgrades.
+Before you create a values file, platform engineering, OS engineering, and security teams need to write down an answer to each of six boundary questions. If any domain stays ambiguous, an ownership clash is guaranteed during node boot or chart upgrades. The table lists the questions and the failure each unanswered question causes.
 
 | Ownership Domain | Production Questions to Settle Before Deployment | Failure Mode if Left Ambiguous |
 |---|---|---|
@@ -87,8 +90,10 @@ Before creating a values file, platform engineering, OS engineering, and securit
 | **5. Sharing policy** | Which pools run exclusive full GPUs, which run MIG (`single` vs `mixed`), and which allow time-slicing (`replicas: 8` or `10`)? | Latency-sensitive inference lands on a time-sliced pool without memory isolation and suffers OOM or jitter. |
 | **6. Operations & escalation** | Which team owns the Git-controlled `values.yaml`, compatibility matrix updates, alert triage, maintenance drain windows, and NVIDIA AI Enterprise (`NVAIE`) support escalation? | Incident responders blindly delete DaemonSets or run `helm rollback` without checking host kernel state. |
 
+Read the table as a list of questions you must answer in writing before the first install. Each row also names what goes wrong when the answer is missing, such as a driver container that clashes with a host-installed module.
+
 #### Why Helm reporting deployed is not the acceptance gate
-A common operational mistake is opening a node pool to user traffic as soon as the Helm CLI exits zero. When an engineer runs a version-pinned Helm install against a 6-node canary pool, Helm waits only on top-level objects. It checks the operator controller Deployment, not the child DaemonSets dynamically created across worker nodes.
+A common mistake is opening a node pool to user traffic as soon as the Helm CLI exits with zero. Suppose you run a version-pinned Helm install against a 6-node canary pool. Helm waits only on the top-level objects. It checks the operator controller Deployment, not the child DaemonSets that get created across the worker nodes.
 
 ```text
 $ helm install gpu-operator nvidia/gpu-operator \
@@ -101,7 +106,7 @@ STATUS: deployed
 REVISION: 1
 ```
 
-Helm reports deployed for revision 1. A team that stops here and opens the pool to user traffic walks straight into an outage. Checking the ClusterPolicy and operand Pods immediately reveals that the installation is incomplete.
+Helm reports deployed for revision 1. A team that stops here and opens the pool to user traffic walks straight into an outage. The ClusterPolicy and the operand Pods show the real state of the installation.
 
 ```text
 $ kubectl get clusterpolicy cluster-policy -o jsonpath='{.status.state}{"\n"}'
@@ -112,7 +117,7 @@ NAME                                          READY   STATUS             RESTART
 nvidia-driver-daemonset-7q2kd                 0/1     CrashLoopBackOff   5          gpu-node-04
 ```
 
-Five of the 6 canary nodes succeeded, while `gpu-node-04` is stuck in CrashLoopBackOff with 5 restarts. Inspecting the previous container logs on that specific node isolates the exact host difference.
+Five of the 6 canary nodes succeeded, while `gpu-node-04` is stuck in CrashLoopBackOff with 5 restarts. The previous container logs on that specific node show the exact host difference.
 
 ```text
 $ kubectl logs -n gpu-operator nvidia-driver-daemonset-7q2kd --previous | tail -5
@@ -123,15 +128,15 @@ mount: /run/nvidia/driver/usr/src/nvidia-535.129.03: No such file or directory
 Failed to install the kernel module through DKMS
 ```
 
-Node `gpu-node-04` had UEFI Secure Boot enabled without the Machine Owner Key enrolled for the driver module. The other 5 canary nodes had matching keys in their firmware databases. Because the team inspected the first failing operand rather than deleting the Helm release, they isolated a per-node Secure Boot drift immediately.
+The logs point at Secure Boot. Node `gpu-node-04` had UEFI Secure Boot enabled, and the Machine Owner Key was not enrolled for the driver module. The other 5 canary nodes had matching keys in their firmware databases. Because the team inspected the first failing operand instead of deleting the Helm release, they found the per-node Secure Boot drift at once.
 
 ---
 
 ### 2. Intermediate: The seven-criterion production acceptance contract
 
-Relying on pod readiness probes leaves major blind spots across the GPU software stack. A device plugin container can report running while the kubelet shows zero allocatable GPUs. Even worse, a telemetry exporter can stay running after a driver restart while returning zero metric series to Prometheus. If operators admit a node pool without end-to-end verification, workloads fail at runtime or run completely blind.
+If you trust pod readiness probes alone, you will miss real failures in the GPU software stack. A device plugin container can report running while the kubelet shows zero allocatable GPUs. A telemetry exporter can stay running after a driver restart and still return zero metric series to Prometheus. Admit a node pool without end-to-end checks, and workloads either fail at runtime or run completely blind.
 
-Before any new or upgraded GPU node pool is marked eligible for production workloads, it must pass all seven acceptance criteria. Only after every check passes should automation apply the validation label and uncordon the nodes.
+Before a new or upgraded GPU node pool is marked eligible for production workloads, it must pass all seven acceptance criteria. Automation should apply the validation label and uncordon the nodes only after every check passes.
 
 | Acceptance Criterion | Concrete Verification Command | Required Passing Evidence | What Failure Here Isolates |
 |---|---|---|---|
@@ -143,7 +148,7 @@ Before any new or upgraded GPU node pool is marked eligible for production workl
 | **6. DCGM telemetry & UUID identity match** | `curl -s http://dcgm-exporter.gpu-operator:9400/metrics \| grep 'DCGM_FI_DEV_GPU_UTIL{.*gpu_node04'` | `DCGM_FI_DEV_GPU_UTIL{gpu="0",UUID="GPU-3a91...",node="gpu-node-04"} 97` with matching UUID `GPU-3a91...` | `dcgm-exporter` lost access to host NVML socket (`0` series returned despite `1/1 Running` Pod) or MIG UUID misattribution |
 | **7. Drain, reboot, and return-to-service resilience** | `kubectl drain`, host reboot, wait for reconciliation | Node reboots, reloads driver, toolkit, and plugin automatically, and re-passes Criteria 1–6 without SSH repair | Non-persistent kernel module, missing precompiled image in mirror, or boot race condition |
 
-The correlation between Criterion 5 and Criterion 6 catches silent telemetry failures before production jobs arrive. You must compare the physical device identity printed by the workload against the Prometheus series exported on port 9400.
+Criteria 5 and 6 work as a pair. The workload log names the GPU and its UUID, and the metric on port 9400 must carry the same UUID. That match catches silent telemetry failures before production jobs arrive.
 
 ```text
 $ kubectl logs gpu-validate-node04
@@ -154,15 +159,15 @@ $ curl -s http://dcgm-exporter.gpu-operator:9400/metrics | grep 'DCGM_FI_DEV_GPU
 DCGM_FI_DEV_GPU_UTIL{gpu="0",UUID="GPU-3a91...",node="gpu-node-04"} 97
 ```
 
-Checking that the exporter Pod is running is never sufficient. On a node where the driver container restarts, the exporter Pod can remain running while returning zero utilization series because its NVML socket disconnected. Furthermore, on multi-GPU or MIG-partitioned hosts, matching the exact UUID proves that the monitoring pipeline attributes utilization to the right physical device.
+A running exporter Pod proves very little, so you should not rely on it. When the driver container restarts on a node, the exporter Pod can keep running while it returns zero utilization series, because its NVML socket disconnected. On multi-GPU or MIG-partitioned hosts, matching the exact UUID proves that the monitoring pipeline attributes utilization to the right physical device. Treat the UUID match as the proof, not the Pod status.
 
 ---
 
 ### 3. Advanced: Staged canary upgrades, progressive batch sizing, and why Helm rollback is not enough
 
-Upgrading a live GPU fleet is one of the highest-risk operations in AI infrastructure. A single version bump touches kernel modules, runtime hooks, device plugins, and firmware interfaces simultaneously. If an operator pushes an upgrade across all nodes at once, a hardware batch quirk can disable the entire cluster. Even worse, when an upgrade fails, running a Helm rollback often leaves the worker nodes broken with zero allocatable GPUs.
+Upgrading a live GPU fleet is one of the highest-risk operations in AI infrastructure. A single version bump touches kernel modules, runtime hooks, device plugins, and firmware interfaces at the same time. If an operator pushes the upgrade to all nodes together, a hardware batch quirk can disable the entire cluster. Worse, when an upgrade fails, a Helm rollback often leaves the worker nodes broken with zero allocatable GPUs.
 
-To survive production upgrades, you must treat every upgrade as a modification to a six-surface compatibility set. Each surface has its own failure mode and requires a specific recovery mechanism when things go wrong.
+To survive production upgrades, treat every upgrade as a change to a six-surface compatibility set. Each surface has its own failure mode and needs a specific recovery mechanism when something goes wrong.
 
 | Change Surface | Primary Failure Boundary to Validate | Required Recovery Mechanism |
 |---|---|---|
@@ -172,6 +177,8 @@ To survive production upgrades, you must treat every upgrade as a modification t
 | **4. GPU Operator Chart / ClusterPolicy** | CRD schema, operand DaemonSet selectors, and init-container sequencing | `helm rollback` to pinned revision only when host driver and kernel state remain compatible |
 | **5. Kubernetes / kubelet** | Device-plugin socket registration (`/var/lib/kubelet/device-plugins/`) and Allocatable patching | Compare kubelet logs and Node status against an untouched peer pool |
 | **6. GPU / Switch Firmware & BIOS** | PCIe enumeration, NVLink and NVSwitch training, thermal and power caps | Hardware maintenance runbook, which often requires a cold AC power cycle |
+
+The recovery column differs from row to row. For the NVIDIA driver, a Helm rollback is not enough, because it does not unload a kernel module. The flowchart shows the canary sequence, from archiving the baseline through to the rollback path.
 
 ```mermaid
 flowchart LR
@@ -186,10 +193,14 @@ flowchart LR
     Recheck -->|"No (Allocatable == 0: Host State Diverged)"| Esc["Keep Node Cordoned: Revert Host Driver/Image & Escalate"]
 ```
 
-#### Sizing the canary and progressive rollout batches
-Choosing a single arbitrary canary node fails to catch hardware procurement differences across a large fleet. Clusters are rarely built from a single manufacturing lot. Different procurement batches often carry slightly different motherboard BIOS settings or GPU VBIOS firmware revisions. If your canary sample covers only one batch, a firmware incompatibility in another batch will escape into the main rollout.
+As you read the flowchart, pay closest attention to the Recheck branch. You should know that a rollback is not finished until the node passes it.
 
-To bound the blast radius while testing every hardware generation, select at least two canary nodes from every procurement batch. Choosing two nodes per batch lets operators distinguish an isolated hardware fault on one server from a systematic driver regression. Once the canary passes its observation window, expand the rollout in progressive waves with an independent gate after every wave.
+#### Sizing the canary and progressive rollout batches
+Picking one arbitrary canary node misses hardware differences across a large fleet. Clusters are rarely built from a single manufacturing lot. Different procurement batches often carry slightly different motherboard BIOS settings or GPU VBIOS firmware revisions. Suppose your canary covers only one batch. A firmware incompatibility in another batch then escapes into the main rollout.
+
+To bound the blast radius while testing every hardware generation, select at least two canary nodes from every procurement batch. Two nodes per batch let operators tell an isolated hardware fault on one server from a systematic driver regression. Once the canary passes its observation window, expand the rollout in progressive waves, with an independent gate after every wave.
+
+Work the numbers for the 120-node fleet yourself, because you need to know the blast radius before you start. At 8 GPUs per node, the fleet holds 960 GPUs. Wave 2 covers 24 nodes and 192 GPUs. If a batch-specific BIOS bug halts the rollout there, the blast radius is 192 of 960 GPUs, or 20%.
 
 | Rollout Stage | Node Count | GPU Count (`8` GPUs/node) | Share of `120`-Node (`960`-GPU) Fleet | Engineering Purpose & Blast Radius Bound |
 |---|---|---|---|---|
@@ -199,8 +210,10 @@ To bound the blast radius while testing every hardware generation, select at lea
 | **Step 3: Wave 2 (Doubled)** | `24` nodes | `192` GPUs (`24 * 8 = 192`) | `20%` | If a batch-specific BIOS bug halts rollout here, maximum blast radius is bounded to `192` of `960` GPUs (`20%`). |
 | **Step 4: Wave 3 (Remaining)** | `76` nodes (`8 + 12 + 24 + 76 = 120`) | `608` GPUs (`64 + 96 + 192 + 608 = 960`) | Remaining `76` nodes | Completes the fleet upgrade after three clean observation windows. |
 
+When you plan the rollout, use this table as the plan. Each wave must clear its own gate before the next one starts.
+
 #### Why Helm rollback can succeed while the node stays broken
-A dangerous failure mode occurs when a canary upgrade fails its acceptance gate and the operator runs a Helm rollback. Helm prints a success message, leading the operator or automated pipeline to believe the cluster is healthy again. If the pipeline immediately uncordons the canary node, every newly scheduled Pod on that node will fail.
+A dangerous failure happens when a canary upgrade fails its acceptance gate and the operator runs a Helm rollback. Helm prints a success message, so the operator or the automated pipeline may believe the cluster is healthy again. If the pipeline then uncordons the canary node, every newly scheduled Pod on that node will fail.
 
 ```text
 $ helm history gpu-operator -n gpu-operator
@@ -215,15 +228,15 @@ $ kubectl get node "$CANARY_NODE" -o jsonpath='{.status.allocatable.nvidia\.com/
 0
 ```
 
-Why does the allocatable GPU count still read zero after Helm printed that the rollback succeeded? A Helm rollback reverts only Kubernetes API objects such as the ClusterPolicy, DaemonSet templates, and ConfigMaps. When the newer operator chart ran on the canary node, it loaded a newer kernel module or mutated host runtime state. The older user-space device plugin cannot communicate with that newer kernel module, or a wedged module remained in memory.
+The allocatable GPU count still reads zero, even though Helm said the rollback succeeded. A Helm rollback reverts only Kubernetes API objects, such as the ClusterPolicy, DaemonSet templates, and ConfigMaps. When the newer operator chart ran on the canary node, it loaded a newer kernel module or changed host runtime state. The older user-space device plugin cannot communicate with that newer kernel module, or a wedged module stayed in memory.
 
-Every rollback must therefore pass its own Recheck gate before the node returns to service. First, verify that the allocatable GPU count returned to the archived baseline of 8. Second, re-run the validation Pod and confirm it prints the validation marker. If allocatable GPUs remain zero after the rollback, keep the canary node cordoned and restore the host state via a reboot or image rollback.
+So you need a Recheck gate for every rollback before the node returns to service. First, check that the allocatable GPU count is back at the archived baseline of 8. Then re-run the validation Pod and confirm it prints the validation marker. If allocatable GPUs still read zero, keep the canary node cordoned and restore the host state with a reboot or an image rollback.
 
 ## Commands and configurations that matter
 
 ### 1. Archiving pre-upgrade baseline and rollback artifacts
 
-Starting an upgrade without capturing the current cluster state makes clean recovery impossible during an incident. If a new chart version mutates values or corrupts a node label, operators need the exact pre-upgrade manifests to restore service. Always archive the Helm revision history, effective values, rendered manifest, and canary node specification before touching the cluster.
+Consider an upgrade that corrupts a node label halfway through a rollout. Without a saved copy of the old state, you have nothing to restore from during the incident. If a new chart version changes values or corrupts a node label, you need the exact pre-upgrade manifests to restore service. Archive the Helm revision history, effective values, rendered manifest, and canary node specification before you touch the cluster.
 
 ```bash
 # Archive recoverable baseline state before touching the cluster (untested here)
@@ -238,9 +251,11 @@ helm get manifest gpu-operator -n gpu-operator > gpu-upgrade-evidence/manifest-b
 kubectl get node "$CANARY_NODE" -o yaml > gpu-upgrade-evidence/canary-before.yaml
 ```
 
+These four files form the baseline that every rollback decision in this chapter compares against.
+
 ### 2. Quarantining and draining the canary node safely
 
-Upgrading GPU drivers or runtime hooks while tenant workloads are running on a node will crash active jobs. Kernel modules cannot unload cleanly while user containers hold open file descriptors to device nodes. You must cordon the canary node, verify that training owners have checkpointed their jobs, and drain tenant Pods while leaving DaemonSets intact.
+Suppose tenant workloads are still running on the canary node when the upgrade starts. Upgrading GPU drivers or runtime hooks at that moment will crash those active jobs. Kernel modules cannot unload cleanly while user containers hold open file descriptors to device nodes. So you cordon the canary node, confirm that training owners have checkpointed their jobs, and drain the tenant Pods while leaving DaemonSets intact.
 
 ```bash
 # Cordon, list workloads, and drain the canary node (untested here)
@@ -258,11 +273,11 @@ pod/resnet-worker-3 evicted
 node/gpu-node-07 drained
 ```
 
-Notice that the driver DaemonSet Pod remains on the node because `--ignore-daemonsets` preserves node-level agents while evicting tenant workloads.
+Notice that the driver DaemonSet Pod stays on the node. The `--ignore-daemonsets` flag keeps node-level agents running while it evicts tenant workloads.
 
 ### 3. Executing the version-pinned canary upgrade and post-upgrade validation
 
-Once the canary node is drained, apply the version-pinned upgrade and verify both control-plane readiness and host-level health. Checking only that Pods restarted is insufficient. You must verify the allocatable GPU count, run a fresh validation workload, and inspect kubelet and kernel logs for Xid errors.
+Once the canary node is drained, apply the version-pinned upgrade. Then verify both control-plane readiness and host-level health. Checking only that Pods restarted is not enough. You must verify the allocatable GPU count, run a fresh validation workload, and inspect kubelet and kernel logs for Xid errors.
 
 ```bash
 # 1. Upgrade to the pinned target version scoped to the canary values (untested here)
@@ -282,9 +297,11 @@ journalctl -u kubelet --since '30 minutes ago'
 nvidia-smi -q
 ```
 
+Each command checks a different layer. The first confirms that the operand Pods restarted, the second checks the allocatable count, and the third runs a fresh workload and reads the host logs.
+
 ### 4. GitOps rendering and pre-apply manifest diffing
 
-Applying unreviewed Helm values directly to a cluster risks breaking node selectors, image mirrors, or security contexts across all pools. Treat the Helm values file as a version-controlled platform interface synced through GitOps tools like ArgoCD or Flux. Always render the full chart locally and diff it against the archived manifest before draining a single node.
+Applying unreviewed Helm values directly to a cluster risks breaking node selectors, image mirrors, or security contexts across all pools. Treat the Helm values file as a version-controlled platform interface, synced through GitOps tools such as ArgoCD or Flux. Always render the full chart locally and diff it against the archived manifest before you drain a single node.
 
 ```bash
 # Render and diff the candidate GPU Operator manifests before applying (untested here)
@@ -297,11 +314,11 @@ diff -u gpu-upgrade-evidence/manifest-before.yaml gpu-upgrade-evidence/manifest-
 ```
 
 Reviewing the rendered diff catches three frequent mistakes before any node is touched:
-- A typo in a node selector key or toleration that prevents the driver or device plugin DaemonSet from scheduling onto the canary pool.
-- An unmirrored upstream image repository that fails with ImagePullBackOff inside an air-gapped or firewall-restricted production cluster.
-- Accidental enablement of an operand such as `driver.enabled: true` on a pool whose OS image already manages the kernel driver.
+- A typo in a node selector key or toleration stops the driver or device plugin DaemonSet from scheduling onto the canary pool.
+- An unmirrored upstream image repository fails with ImagePullBackOff inside an air-gapped or firewall-restricted production cluster.
+- Accidentally enabling an operand such as `driver.enabled: true` on a pool whose OS image already manages the kernel driver.
 
-Only after all gates pass should you clean up the validation Pod and uncordon the canary node:
+Only after every gate passes should you clean up the validation Pod and uncordon the canary node:
 
 ```bash
 # Clean up validation Pod and uncordon only after decision record approval (untested here)
@@ -311,7 +328,7 @@ kubectl uncordon "$CANARY_NODE"
 
 ## How it fails
 
-When an installation or upgrade fails in production, symptoms often appear far downstream from the actual root cause. Use the following fault isolation table to map exact command evidence to the underlying failure boundary and remediation.
+A failed install or upgrade often shows its symptom far from the real cause. You may see a Helm status, a Pod error, or a missing allocatable count, and none of them names the broken layer. The table maps each piece of command evidence to the failure boundary behind it and to the fix. Use it as a lookup when a symptom matches, and check the evidence before you act. You can start from the evidence you already have, because each row begins with the exact output you should see.
 
 | Failure mode | Exact symptom & command evidence | Root cause boundary | Remediation |
 |---|---|---|---|
@@ -322,14 +339,16 @@ When an installation or upgrade fails in production, symptoms often appear far d
 | **5. Post-upgrade DaemonSet shows `8/8 Ready`, but one node (`gpu-node-11`) has `allocatable: 0`** | After a driver bump on an `8`-node batch, `kubectl get ds -n gpu-operator nvidia-device-plugin-daemonset` shows `8/8 READY`, and `gpu-node-12` reports `allocatable: 8`, but `gpu-node-11` reports `allocatable: 0`. | **Per-Node Post-Upgrade Registration Asymmetry:** Aggregate DaemonSet readiness (`8/8`) masked a stale socket or driver reload failure on `gpu-node-11`. | Check per-node `status.allocatable["nvidia.com/gpu"]` across every node in the batch, cordon `gpu-node-11`, and inspect its driver and kubelet registration logs. |
 | **6. `helm rollback` succeeds (`REVISION 1`), but `$CANARY_NODE` still shows `allocatable: 0`** | After a failed upgrade from `24.6.0` to `24.9.1`, `helm rollback gpu-operator 1` prints `Rollback was a success`, yet `kubectl get node "$CANARY_NODE" -o jsonpath='{.status.allocatable.nvidia\.com/gpu}'` still prints `0`. | **Chart-vs-Host Rollback Divergence (`Recheck` Gate Failure):** `helm rollback` reverted control-plane YAML to `24.6.0`, but the `24.9.1` kernel module or host runtime change remained active on `$CANARY_NODE`. | Keep `$CANARY_NODE` cordoned, reboot the node or restore the archived host OS image, and uncordon only after `Allocatable: 8` and `GPU_UPGRADE_VALIDATED` pass. |
 
+If you see one of these symptoms, find the matching row and read its boundary column before you change anything. Notice that the same kind of symptom can come from different boundaries. Rows 2, 5 and 6 all involve the allocatable GPU count, yet each points to a different boundary and a different fix. Match the boundary first, and only then choose the remediation.
+
 ## Hands-on lab
 
 ### Venue and scope
-This lab runs locally using Python 3 standard library scripts `code/part11/gpu_operator_upgrades.py` and `code/part11/gpu_operator_upgrades_lab.py`. It simulates the seven-criterion production installation acceptance gate, the progressive canary wave planner, the upgrade and Recheck rollback state machine, and the failure classifier. Cluster commands are marked untested here.
+You can run this lab on your own machine with Python 3 and its standard library. Two scripts do the work: `code/part11/gpu_operator_upgrades.py` and `code/part11/gpu_operator_upgrades_lab.py`. The simulation covers four things: the seven-criterion production installation acceptance gate, the progressive canary wave planner, the upgrade and Recheck rollback state machine, and the failure classifier. Cluster commands are marked untested here.
 
 ### Step 1: Run the self-checking installation and upgrade lab
 
-Run the lab script from the repository root to verify all 25 acceptance, wave-sizing, rollback, and diagnostic checks.
+From the repository root, run the lab script. It checks all 25 acceptance, wave-sizing, rollback, and diagnostic rules, so you do not have to verify each one by hand.
 
 ```bash
 python3 code/part11/gpu_operator_upgrades_lab.py
@@ -368,166 +387,170 @@ Captured output from this repository:
 Summary: 25 passed, 0 failed out of 25 checks.
 ```
 
+Read the summary line first. It shows that all 25 checks passed with 0 failures, and each PASS line names the rule it confirms.
+
 ### Exercises
 
-1. **Exercise 1 — Seven-criterion acceptance evaluation:** Call `evaluate_pool_acceptance()` in `code/part11/gpu_operator_upgrades.py` with all first six checks passing and `drain_reboot_return_passed=False`. Identify which specific acceptance criterion fails and whether the pool is accepted.
-2. **Exercise 2 — Sizing canary and progressive waves for a 120-node fleet:** Run `plan_canary_and_progressive_batches(120, 4, 2, 10.0, 8)` to compute the node counts and GPU counts across all four waves. State the exact percentage of total fleet GPUs affected if a hardware bug halts the rollout at Wave 2.
-3. **Exercise 3 — Evaluating Helm rollback divergence:** Call `evaluate_upgrade_or_rollback_gate()` when `helm_rollback_succeeded=True` with zero allocatable GPUs versus 8 allocatable GPUs. Compare the returned Recheck gate status and required operator action.
-4. **Exercise 4 — Pod start failure vs in-container CUDA init failure:** Use `diagnose_installation_or_upgrade_symptom()` to contrast a container creation failure caused by a missing `/run/nvidia/driver/dev/nvidia0` path against a running Pod that logs a CUDA initialization error.
-5. **Exercise 5 — Silent telemetry loss on `gpu-node-07`:** Explain why a running exporter Pod does not satisfy Criterion 6 of the acceptance contract, and state the two checks required on port 9400.
-6. **Exercise 6 — Safe canary drain flags:** Explain why `--ignore-daemonsets` is mandatory when draining the canary node, and why you must never add `--force` casually if a training worker Pod blocks eviction.
+1. Evaluate a pool's seven-criterion acceptance. Call `evaluate_pool_acceptance()` in `code/part11/gpu_operator_upgrades.py` with all first six checks passing and `drain_reboot_return_passed=False`. Identify which specific acceptance criterion fails and whether the pool is accepted.
+2. Size the canary and progressive waves for a 120-node fleet. Run `plan_canary_and_progressive_batches(120, 4, 2, 10.0, 8)` to compute the node counts and GPU counts across all four waves. State the exact percentage of total fleet GPUs affected if a hardware bug halts the rollout at Wave 2.
+3. Compare two rollback outcomes. Call `evaluate_upgrade_or_rollback_gate()` when `helm_rollback_succeeded=True` with zero allocatable GPUs versus 8 allocatable GPUs. Compare the returned Recheck gate status and required operator action.
+4. Contrast two Pod failures. Use `diagnose_installation_or_upgrade_symptom()` to contrast a container creation failure caused by a missing `/run/nvidia/driver/dev/nvidia0` path against a running Pod that logs a CUDA initialization error.
+5. Explain silent telemetry loss on `gpu-node-07`. Explain why a running exporter Pod does not satisfy Criterion 6 of the acceptance contract, and state the two checks required on port 9400.
+6. Practise a safe canary drain. Explain why `--ignore-daemonsets` is mandatory when draining the canary node, and why you must never add `--force` casually if a training worker Pod blocks eviction.
 
 ## Checkpoint questions
+
+Picture an engineer on call with a GPU node that will not join the pool. Try to answer each question yourself before you open it, and check your reasoning against the short answer.
 
 <details>
 <summary>**1. Why is helm install reporting STATUS: deployed not proof that the GPU Operator installation succeeded?**</summary>
 
-A deployed status only means the Kubernetes API server accepted the Helm release manifests and top-level Deployment objects became ready. It does not prove that child DaemonSets reconciled across all worker nodes. In the 6-node canary install, Helm reported deployed while the ClusterPolicy was notReady because the driver DaemonSet was in CrashLoopBackOff on `gpu-node-04`.
+A deployed status only tells you that the API server accepted the Helm release manifests and that the top-level Deployment objects became ready. It says nothing about whether the child DaemonSets reconciled across all worker nodes. In the 6-node canary install, Helm reported deployed while the ClusterPolicy was notReady, because the driver DaemonSet was in CrashLoopBackOff on `gpu-node-04`.
 </details>
 
 <details>
 <summary>**2. What are the six ownership decisions that must be settled before deploying the GPU Operator in production?**</summary>
 
-- **Driver ownership:** Choosing between a curated OS image, host automation, or the operator-managed driver container.
-- **Runtime ownership:** Choosing between base image configuration or the operator toolkit DaemonSet patching containerd, CRI-O, and CDI.
-- **Node scope:** Defining eligible node pools, labels, taints, and admission policies.
-- **Image supply chain:** Establishing an authoritative internal registry mirror, vulnerability scanning, image signing, and air-gapped reachability.
-- **Sharing policy:** Selecting full-GPU, MIG, or time-slicing modes per node pool.
-- **Operations:** Assigning team ownership for Git values, compatibility review, maintenance windows, and vendor escalation.
+- **Driver ownership:** Choose between a curated OS image, host automation, or the operator-managed driver container.
+- **Runtime ownership:** Choose between base image configuration and the operator toolkit DaemonSet patching containerd, CRI-O, and CDI.
+- **Node scope:** Define the eligible node pools, labels, taints, and admission policies.
+- **Image supply chain:** Establish an authoritative internal registry mirror, vulnerability scanning, image signing, and air-gapped reachability.
+- **Sharing policy:** Select full-GPU, MIG, or time-slicing modes for each node pool.
+- **Operations:** Assign team ownership for Git values, compatibility review, maintenance windows, and vendor escalation.
 </details>
 
 <details>
 <summary>**3. On gpu-node-04, nvidia-driver-daemonset-7q2kd logs modprobe: ERROR: could not insert 'nvidia': Key was rejected by service and mount: /run/nvidia/driver/usr/src/nvidia-535.129.03: No such file or directory. What is the root cause?**</summary>
 
-Node `gpu-node-04` has UEFI Secure Boot enabled, and the public key used to sign the `nvidia-535.129.03` kernel module is not enrolled in its Machine Owner Key database. The other 5 canary nodes succeeded because their Secure Boot and MOK databases matched the driver image.
+Node `gpu-node-04` has UEFI Secure Boot enabled. The public key used to sign the `nvidia-535.129.03` kernel module is not enrolled in its Machine Owner Key database. The other 5 canary nodes succeeded because their Secure Boot and MOK databases matched the driver image.
 </details>
 
 <details>
 <summary>**4. What are the seven criteria in the Volume 10 Chapter 10 production acceptance contract for a GPU node pool?**</summary>
 
-- Expected GPUs are detected on the host and the driver is healthy.
+- Expected GPUs are detected on the host, and the driver is healthy.
 - The configured container runtime path creates a GPU container and initializes CUDA.
-- The device plugin advertises the expected allocatable GPU count of 8 capacity and 8 allocatable after kubelet registration.
+- The device plugin advertises 8 capacity and 8 allocatable GPUs after kubelet registration.
 - Hardware and policy labels and taints match the intended pool design.
-- A scheduled validation workload receives the expected GPU and passes a functional test printing `CUDA_VALIDATED`.
+- A scheduled validation workload receives the expected GPU and passes a functional test that prints `CUDA_VALIDATED`.
 - DCGM telemetry is scraped with a matching device UUID and reaches dashboards.
-- A controlled drain, reboot, and return-to-service cycle restores the node automatically without manual repair.
+- A controlled drain, reboot, and return-to-service cycle restores the node automatically, without manual repair.
 </details>
 
 <details>
 <summary>**5. Why does Criterion 6 require matching the GPU UUID (GPU-3a91...) between the validation Pod log and the DCGM_FI_DEV_GPU_UTIL metric series on port 9400?**</summary>
 
-Checking only that the exporter Pod is running can miss two severe failures. First, the exporter can return zero metric series after losing its driver socket connection. Second, on multi-GPU or MIG-partitioned nodes, matching the UUID proves that the scraped metric belongs to the exact physical device allocated to the validation Pod.
+If you check only that the exporter Pod is running, you can miss two severe failures. First, the exporter can return zero metric series after it loses its driver socket connection. Second, on multi-GPU or MIG-partitioned nodes, the UUID match proves that the scraped metric belongs to the exact physical device the validation Pod used.
 </details>
 
 <details>
 <summary>**6. On gpu-node-07, labels show nvidia.com/gpu.present=true, nvidia.com/gpu.count=8, and nvidia.com/gpu.deploy.device-plugin=true, yet status.allocatable["nvidia.com/gpu"] is empty. What have you ruled out, and where is the fault?**</summary>
 
-You have ruled out NFD and GFD hardware detection as well as GPU Operator node-selector targeting. Both agree that `gpu-node-07` has 8 GPUs and should run the device plugin. The fault is downstream inside the device plugin NVML initialization or its gRPC registration with the kubelet.
+You have ruled out NFD and GFD hardware detection, as well as GPU Operator node-selector targeting. Both agree that `gpu-node-07` has 8 GPUs and should run the device plugin. The fault is downstream, inside the device plugin's NVML initialization or its gRPC registration with the kubelet.
 </details>
 
 <details>
 <summary>**7. How do you distinguish a Pod start failure from a CUDA initialization failure when a validation Pod fails on gpu-node-07?**</summary>
 
-- **Pod start failure:** Describing the Pod shows an OCI runtime create failure where `/run/nvidia/driver/dev/nvidia0` is missing, meaning the container never reached its entrypoint due to a runtime or toolkit mount mismatch.
-- **CUDA initialization failure:** The container starts and reaches the Running state or exits with application logs printing a CUDA error from inside user space.
+- **Pod start failure:** Describing the Pod shows an OCI runtime create failure where `/run/nvidia/driver/dev/nvidia0` is missing. The container never reached its entrypoint, which points to a runtime or toolkit mount mismatch.
+- **CUDA initialization failure:** The container starts and reaches the Running state, or it exits with application logs that print a CUDA error from inside user space.
 </details>
 
 <details>
 <summary>**8. Why can curl -s gpu-node-07:9400/metrics | grep -c DCGM_FI_DEV_GPU_UTIL return 0 even when nvidia-dcgm-exporter-9fvqk is 1/1 Running and CUDA workloads succeed?**</summary>
 
-The telemetry exporter runs as an independent daemon path. If the driver container restarted or recreated its host socket, the already-running exporter container can lose connectivity to NVML and DCGM while its container process stays running.
+The telemetry exporter runs as an independent daemon path. If the driver container restarted or recreated its host socket, the exporter container can lose its connection to NVML and DCGM while its container process keeps running.
 </details>
 
 <details>
 <summary>**9. What six surfaces make up the compatibility set during a GPU platform upgrade?**</summary>
 
-- Kernel or node OS image.
-- NVIDIA driver including `nvidia.ko` and `libcuda.so.1`.
-- Container runtime and NVIDIA Container Toolkit or CDI.
-- GPU Operator chart and operand images.
-- Kubernetes control plane and kubelet.
-- Hardware firmware and motherboard BIOS.
+- The kernel or node OS image.
+- The NVIDIA driver, including `nvidia.ko` and `libcuda.so.1`.
+- The container runtime and the NVIDIA Container Toolkit or CDI.
+- The GPU Operator chart and operand images.
+- The Kubernetes control plane and kubelet.
+- The hardware firmware and motherboard BIOS.
 </details>
 
 <details>
 <summary>**10. For a 120-node fleet (8 GPUs/node = 960 GPUs) acquired across 4 hardware batches of 30 nodes each, how does Volume 10 Chapter 11 size the canary and subsequent rollout waves?**</summary>
 
-- **Canary:** Select 2 nodes per hardware batch for 8 nodes and 64 GPUs total, representing roughly 7% of the fleet so every hardware batch has at least 2 nodes.
-- **Wave 1:** Roll out to 10% of the fleet, which equals 12 nodes and 96 GPUs while leaving 90% of capacity untouched.
+- **Canary:** Select 2 nodes per hardware batch, for 8 nodes and 64 GPUs in total. That is roughly 7% of the fleet, and every hardware batch has at least 2 nodes.
+- **Wave 1:** Roll out to 10% of the fleet, which is 12 nodes and 96 GPUs. That leaves 90% of capacity untouched.
 - **Subsequent waves:** Double to 24 nodes and 192 GPUs in Wave 2, followed by the remaining 76 nodes and 608 GPUs in Wave 3.
 </details>
 
 <details>
 <summary>**11. In that 120-node (960-GPU) fleet, why would a driver upgrade pass the 8-node canary and 12-node Wave 1, then fail on the 24-node Wave 2, and what is the blast radius in GPUs?**</summary>
 
-Passing the canary and Wave 1 proves the driver is not universally broken. Failing on Wave 2 points to a node-population difference such as a specific BIOS setting or hardware revision concentrated in those nodes. Halting at Wave 2 bounds the blast radius to 192 GPUs out of 960 total GPUs, which is 20.0% of fleet capacity.
+Passing the canary and Wave 1 shows the driver is not universally broken. Failing on Wave 2 points to a node-population difference, such as a specific BIOS setting or hardware revision concentrated in those nodes. Halting at Wave 2 bounds the blast radius to 192 GPUs out of 960 total GPUs, which is 20.0% of fleet capacity.
 </details>
 
 <details>
 <summary>**12. After upgrading an 8-node batch, nvidia-device-plugin-daemonset reports 8/8 READY, and gpu-node-12 shows allocatable: 8, but gpu-node-11 shows allocatable: 0. Why did the DaemonSet status not catch this?**</summary>
 
-DaemonSet readiness only checks that the device plugin container process is running and passing its basic probe. It does not verify that the kubelet accepted the gRPC registration or that the node status reports non-zero allocatable GPUs on every individual host.
+When you look only at DaemonSet readiness, you learn that the device plugin container is running and passing its basic probe. That check does not confirm that the kubelet accepted the gRPC registration, or that each host reports non-zero allocatable GPUs.
 </details>
 
 <details>
 <summary>**13. What four baseline files must be captured into gpu-upgrade-evidence/ before running helm upgrade in Lab 04 Step 10?**</summary>
 
-- `helm-history-before.txt` captured from `helm history gpu-operator -n gpu-operator`.
-- `values-before.yaml` captured from `helm get values gpu-operator -n gpu-operator -a`.
-- `manifest-before.yaml` captured from `helm get manifest gpu-operator -n gpu-operator`.
-- `canary-before.yaml` captured from `kubectl get node "$CANARY_NODE" -o yaml`.
+- `helm-history-before.txt`, captured from `helm history gpu-operator -n gpu-operator`.
+- `values-before.yaml`, captured from `helm get values gpu-operator -n gpu-operator -a`.
+- `manifest-before.yaml`, captured from `helm get manifest gpu-operator -n gpu-operator`.
+- `canary-before.yaml`, captured from `kubectl get node "$CANARY_NODE" -o yaml`.
 </details>
 
 <details>
 <summary>**14. Why does Lab 04 Step 11 drain the canary node with --ignore-daemonsets --delete-emptydir-data --grace-period=120 --timeout=20m, and what happens if a PodDisruptionBudget blocks the drain?**</summary>
 
-The `--ignore-daemonsets` flag ensures Kubernetes evicts tenant workloads like `ml-training/resnet-worker-3` while leaving node-critical DaemonSets in place so the upgrade can proceed. If a PodDisruptionBudget or un-checkpointed training job blocks the drain, the operator must stop and coordinate with the workload owner rather than passing `--force` casually.
+The `--ignore-daemonsets` flag lets Kubernetes evict tenant workloads such as `ml-training/resnet-worker-3` while node-critical DaemonSets stay in place, so the upgrade can proceed. If a PodDisruptionBudget or an un-checkpointed training job blocks the drain, stop and coordinate with the workload owner. Do not pass `--force` casually.
 </details>
 
 <details>
 <summary>**15. Why can helm rollback gpu-operator 1 print Rollback was a success while kubectl get node "$CANARY_NODE" still reports allocatable: 0?**</summary>
 
-Running `helm rollback` only reverts Kubernetes control-plane resources back to revision 1. It does not automatically unload a kernel module loaded by revision 2 or revert a host OS image change, leaving host state and control-plane state out of sync.
+`helm rollback` reverts only the Kubernetes control-plane resources back to revision 1. It does not unload a kernel module that revision 2 loaded, and it does not revert a host OS image change. Host state and control-plane state can therefore stay out of sync.
 </details>
 
 <details>
 <summary>**16. What is the Recheck gate in Lab 04 Figure 4, and what must you do if Recheck fails after helm rollback?**</summary>
 
-The Recheck gate requires verifying that allocatable GPUs returned to the baseline of 8 and that the validation Pod passes after `helm rollback` completes. If Recheck fails with zero allocatable GPUs, you must keep the canary node cordoned, execute the host-level driver or node-image recovery runbook, and escalate as an incident.
+The Recheck gate requires you to verify that allocatable GPUs returned to the baseline of 8 and that the validation Pod passes after `helm rollback` completes. If Recheck fails with zero allocatable GPUs, keep the canary node cordoned, run the host-level driver or node-image recovery runbook, and escalate as an incident.
 </details>
 
 <details>
 <summary>**17. Why are new Xid errors in journalctl / dmesg during a canary test a mandatory rollback gate even if the validation Pod exits Succeeded?**</summary>
 
-A short-lived smoke test can exit zero before an intermittent driver or firmware fault manifests under sustained load. Any new Xid or kernel NVRM error during the canary window proves the new compatibility set introduced hardware or driver instability.
+A short smoke test can exit zero before an intermittent driver or firmware fault shows up under sustained load. Any new Xid or kernel NVRM error during the canary window shows that the new compatibility set introduced hardware or driver instability.
 </details>
 
 <details>
 <summary>**18. What is the correct six-step dependency order for troubleshooting any post-upgrade GPU failure (Volume 10 Chapters 11 and 12)?**</summary>
 
-- Hardware inventory, node boot state, kernel version, and host driver health via `nvidia-smi` and `dmesg`.
-- Container runtime device-injection path via `crictl inspect`, CDI `/var/run/cdi`, and fresh Pod sandbox creation.
+- Hardware inventory, node boot state, kernel version, and host driver health, checked with `nvidia-smi` and `dmesg`.
+- The container runtime device-injection path, checked with `crictl inspect`, CDI `/var/run/cdi`, and fresh Pod sandbox creation.
 - Device-plugin registration, kubelet state, capacity, and allocatable GPU counts.
 - Node labels, taints, quotas, affinity, priority, and scheduler events.
-- Allocated Pod security context, mounted `/dev/nvidia*` devices, CUDA initialization, and application image libraries.
+- The allocated Pod security context, mounted `/dev/nvidia*` devices, CUDA initialization, and application image libraries.
 - Time-correlated DCGM metrics, driver logs, and Kubernetes events.
 </details>
 
 <details>
 <summary>**19. On an NVIDIA Base Command Manager 11 (BCM 11) cluster, how must the GPU Operator be uninstalled regardless of whether it was installed via cm-kubernetes-setup or Helm?**</summary>
 
-Whether the GPU Operator was installed via the `cm-kubernetes-setup` wizard or directly via Helm, it must always be removed with `helm uninstall -n gpu-operator gpu-operator`. Removal is complete only after `kubectl get pods -n gpu-operator` returns `No resources found in gpu-operator namespace`.
+Whether you installed the GPU Operator with the `cm-kubernetes-setup` wizard or directly with Helm, always remove it with `helm uninstall -n gpu-operator gpu-operator`. Removal is complete only when `kubectl get pods -n gpu-operator` returns `No resources found in gpu-operator namespace`.
 </details>
 
 <details>
 <summary>**20. What twelve items belong in an actionable escalation evidence package for NVIDIA or platform support (Volume 10 Chapter 11)?**</summary>
 
-- Scope, business impact, and timestamped change timeline.
-- Kubernetes and GPU Operator versions from `helm history` plus pinned release values (`values-before.yaml` and `target-values.yaml`).
-- Node OS image, kernel version from `uname -r`, CRI runtime details, and physical GPU firmware inventory from `nvidia-smi -q`.
-- Operand Pod statuses, DaemonSet statuses, `journalctl -u kubelet` logs, and node capacity and allocatable counts.
-- Output from an approved minimal reproducer Pod, time-correlated DCGM metrics, kernel `dmesg` and Xid logs, and secret redaction preserving timestamps.
+- The scope, business impact, and a timestamped change timeline.
+- The Kubernetes and GPU Operator versions from `helm history`, plus the pinned release values (`values-before.yaml` and `target-values.yaml`).
+- The node OS image, the kernel version from `uname -r`, the CRI runtime details, and the physical GPU firmware inventory from `nvidia-smi -q`.
+- The operand Pod statuses, DaemonSet statuses, `journalctl -u kubelet` logs, and node capacity and allocatable counts.
+- The output from an approved minimal reproducer Pod, time-correlated DCGM metrics, kernel `dmesg` and Xid logs, and secret redaction that preserves timestamps.
 </details>
 
 ## Sources and review notes
