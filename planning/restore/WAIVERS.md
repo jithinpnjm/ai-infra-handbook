@@ -9,3 +9,4 @@
 - U043 (Learning Python ch.20 -> 3.14): 33 vs 25 verbatim 14-word overlaps, scattered short matches in own-wording prose; accepted.
 - U096 (Supercomputers ch.25 -> 6.22): remaining 18% is the chapter's copyright/author header; teaching content restored (ROCKS, out-of-the-box stacks, PelicanHPC).
 - U092 (Supercomputers ch.3 -> 6.2): remaining 20% is mostly front-matter text; teaching content restored.
+- U094 (Supercomputers ch.16 Containers -> 6.13/6.29): remaining 20% is the chapter opener (copyright/author header, typo tokens). Teaching content restored.

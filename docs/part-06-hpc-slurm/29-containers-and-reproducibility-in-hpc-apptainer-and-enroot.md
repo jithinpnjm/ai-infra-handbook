@@ -57,15 +57,17 @@ The SCL book (chapter 16) defines a container as "an isolated set of processes" 
 
 ### Layers and data mounts
 
-Containers help you avoid dependency hell, the mess that appears when you recompile a program or try to run one binary next to other software. Picture a team that wants to test a new database for an afternoon. They do not want to install it on the shared system, where it could conflict with the software already there. A container solves this by carrying its own files: the binaries, the libraries and even a private copy of `libc`. When you start it, its file system is mounted, the cgroups and namespaces are set up, and the first process starts with `chroot` into that file system.
+Containers help you avoid dependency hell, the mess that appears when you are recompiling a program or trying to run one binary next to other software. Picture a team that wants to test a new database for an afternoon. They do not want to install it on the shared system, where it could conflict with the software already there. A container solves this by carrying its own files: the binaries, the libraries and even a private copy of `libc`. A container is really a combination of cgroups, namespaces and `chroot`, applied to a set of processes. When it is started, its file system is mounted, the cgroups and namespaces are set up, and finally the first process starts with `chroot` into that file system.
 
-Docker technology adds a layered design on top. The first layer is a base system, such as a freshly installed Ubuntu system. Each later layer stores the changes you make on top of the one below, including file deletions. Layers live in the registry and on local storage, so a second image built on the same base downloads only its new layers. Almost every line in a Dockerfile creates a new squashfs layer. When you edit one line and rebuild, only that line and the lines after it are rebuilt, because the earlier layers have not changed.
+From the network side it is a bit more complicated, but the idea is the same. You can limit a container so it sees only certain interfaces, usually virtual ones you created for it. There are many options here. You can even allow a container to use no more than 20% of your memory or only one CPU core.
+
+Docker technology adds a layered design on top. The first layer is a base system, such as a freshly installed Ubuntu system. Each later layer stores the changes you make on top of the one below, including file deletions. Layers are stored in the registry and on local storage, so a second image built on the same base downloads only its new layers. Almost every line in a Dockerfile creates a new squashfs layer. When you edit one line and rebuild, only that line and the lines after it are rebuilt, because the earlier layers have not changed.
 
 Your data still has to reach the container. On Linux, the `--bind` option mounts a local directory into another directory, so your files appear inside the container. Container systems let you choose what to mount and at which path it appears inside the container.
 
 ### Containers in short
 
-Simply put, a container is an isolated set of processes. It is a light alternative to virtual machines. It is handy when you want to run an application without installing new packages or compiling it from source. On an HPC system you need to be cautious. Jobs need low-latency access to devices and must run MPI applications, so pick a runtime that supports both.
+Simply put, a container is an isolated set of processes. It is a light alternative to virtual machines. It is convenient when you want to run an application without installing new packages or compiling it from source. On an HPC system you need to be cautious. Jobs need low-latency access to devices and must run MPI applications, so pick a runtime that supports both.
 
 ## 2. Apptainer
 
@@ -73,9 +75,9 @@ Apptainer (the Linux Foundation project formerly known as Singularity; "Singular
 
 ### Singularity and Apptainer
 
-Singularity comes from Sylabs Inc. It has a mature open source community edition and uses its own image format. You can convert a Docker container into that format. Singularity was designed for HPC, so it fits well into batch systems. It gives HPC applications transparent access to InfiniBand and GPU accelerators. For NVIDIA GPUs, the host needs `nvidia-container-toolkit` installed.
+Singularity comes from Sylabs Inc. It has a mature open source community edition and uses its own image format. You can easily convert a Docker container into that format. Singularity was designed especially for HPC, so it can be easily integrated with any batch system. It gives HPC applications transparent access to InfiniBand and GPU accelerators. For NVIDIA GPUs, the host needs `nvidia-container-toolkit` installed.
 
-Apptainer is a fork of Singularity, developed independently under the Linux Foundation. Almost everything written about Singularity also applies to Apptainer. The book notes that the history is more tangled than that, because Singularity was itself a fork. The Apptainer community announcement explains the details. For day-to-day work, the commands and image workflows are the same.
+Apptainer is a fork of Singularity, developed independently under the Linux Foundation. Almost everything written about Singularity is applied to Apptainer. The book notes that the history is more tangled than that, because Singularity was itself a fork. The Apptainer community announcement explains the details. For day-to-day work, the commands and image workflows are the same.
 
 ### Core commands
 
@@ -132,7 +134,7 @@ Apptainer can run with a small setuid-root helper (to mount SIFs and set up name
 
 ## 3. Charliecloud, enroot and the comparison
 
-- **Charliecloud** (from Los Alamos): minimal, unprivileged containers using only user namespaces; images are directory trees or squashfs; `ch-image` builds, `ch-run` runs; its small code size is a selling point for security reviews. The SCL book covers it together with Singularity.
+- **Charliecloud** (from Los Alamos): minimal, unprivileged containers using only user namespaces; images are directory trees or squashfs; `ch-image` builds, `ch-run` runs; its small code size is a selling point for security reviews. The book describes Charliecloud as intended to be lightweight and uncomplicated. It integrates with job management systems through PMIx, which keeps its use simple. The SCL book covers it together with Singularity.
 - **enroot + pyxis** (6.13): NVIDIA's pair; converts OCI images to squashfs, runs unprivileged, hooks for GPU/IB/PMIx, Slurm integration via the pyxis SPANK plugin with `srun --container-*` options.
 - **Podman rootless** and **Docker rootless**: OCI-compliant tools that can run in user namespaces; more features, heavier, less HPC-tuned (can work on workstations and some clusters).
 
