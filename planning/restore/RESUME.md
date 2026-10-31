@@ -36,3 +36,7 @@ The session hit the token limit during the autonomous run. Resume with these ste
 ## Update (Oct 31 midday)
 - Parts 1-4 voice DONE. Part 5 mostly done; Part 6 prepped (V6.N_prompt.md) and started. Parts 7-15 not prepped: run tools/restore/prep_voice.py P.C ...
 - To resume cut-off agents: SendMessage to the agent id (work dirs are in scratchpad v/<P.C>), or relaunch with the V<P.C>_prompt.md prompt. Verify with tools/restore/batch_check.sh; build + mdx_guard + check_mermaid before each commit.
+
+## Owner decision (Oct 31 midday): RESTORATION FIRST
+- Voice agents were stopped on purpose. Restoration runs before further voice work; voice resumes afterwards (re-run prep_voice.py for each unfinished chapter so chapter_old.md is re-snapshotted from the restored text).
+- Restoration order: Tier A (planning/restore/TIERA.json: ASP + AI-fabric units), then Tier B (Supercomputers, Production K8s), then Tier C (How Linux Works, K8s Up&Running). Python restoration is complete.
