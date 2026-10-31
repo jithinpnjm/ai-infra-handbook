@@ -40,3 +40,4 @@ The session hit the token limit during the autonomous run. Resume with these ste
 ## Owner decision (Oct 31 midday): RESTORATION FIRST
 - Voice agents were stopped on purpose. Restoration runs before further voice work; voice resumes afterwards (re-run prep_voice.py for each unfinished chapter so chapter_old.md is re-snapshotted from the restored text).
 - Restoration order: Tier A (planning/restore/TIERA.json: ASP + AI-fabric units), then Tier B (Supercomputers, Production K8s), then Tier C (How Linux Works, K8s Up&Running). Python restoration is complete.
+- TODO after U003 finishes: U011 leftover (Supercomputers ch.28 "One-Two-Three Instructions", Xorg/xorg.conf section, ~4 paragraphs) belongs in 1.30 (remote graphical access: X11, VNC). Run a small restoration agent on docs/part-01-linux/30-*.md for that section only.
