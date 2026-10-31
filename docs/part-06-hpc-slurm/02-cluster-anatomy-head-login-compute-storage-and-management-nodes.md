@@ -223,6 +223,20 @@ When you move from high-level requirements to concrete vendor quotes and contrac
 3. **Power and cooling estimation:** Sum the power of all servers, network switches, storage, cooling systems, and UPS units. Multiply your rough server sum by `1.5` or `2` and work with facility power engineers on a professional estimate with `5–10%` headroom. Check whether you need a backup generator or if outages are short enough for a clean UPS shutdown.
 4. **Colocation and remote hands:** If you use a remote data center or colocation facility, define upfront how easily you can get physical access. Clarify how remote engineers can help perform tasks, which tasks remote hands can do, and which tasks you must do yourself. Also plan how users will reach the supercomputer and upload or download huge datasets through your external switch, NAT, and firewall.
 
+### Remote sites, network paths, and where the data lives
+
+Many of the hardest problems in a cluster show up in the first week, as users who cannot reach the machine or uploads that crawl. Most of them can be seen on paper during planning. Ask these questions before the contract is signed.
+
+If the cluster sits in a remote location, such as a data center colocation facility, start with physical access. Find out how easily your team can get inside, and how remote engineers can help you do the work. Then decide which tasks they can do for you and which ones your own team must do.
+
+Next, plan the network path. Ask how your users will reach the supercomputer and how data will get in. If users must upload and download huge amounts of data, you may need a better network channel than you first assumed. A switch of a higher class may be needed to carry data from the outside into the storage.
+
+The external connection must carry user data in both directions. If you use NAT, which is the typical choice, the switch must be powerful enough to handle that translated traffic. Do not forget the firewall and other security features. A cluster inside the corporate network should still not be fully open, so talk to network security specialists when you are unsure.
+
+The high-performance network needs its own review. Topology matters most here, so minimize the number of hops between nodes. Remove congestion points and single points of failure as well. Compare topologies with an expert, looking at strengths, weaknesses, cost, cabling complexity, and room for future growth.
+
+Finally, decide where the data lives. Plan long-term storage, scratch storage, and backups, and separate hot data from cold data. Users may also need pre- and postprocessing, so ask how quickly that data must reach the compute nodes. The book suggests reading its chapter on network file systems before you make the final storage decision.
+
 ### The 19-point planning checklist and the 7 scenario drills
 
 Review and document Zhumatiy's 19-point planning checklist before deployment:
@@ -316,6 +330,14 @@ Finally, apply four operational rules across your nodes.
 > - Enforce identical part numbers and firmware (BIOS, VBIOS) in procurement contracts, budget `1.5–2x` server power for total facility cooling and power with `5–10%` headroom, and never operate without a post-warranty support plan.
 > - Verify all 11 post-build items, establish the 5 check types, and track every maintenance in an 8-column runbook (`phase`, `action`, `start`, `duration`, `dependency`, `owner`, `status`, `info`).
 > - Protect service nodes from accidental reboots with `molly-guard`, replace SSH cron storms with local `systemd` timers, and follow NIST SP 800-223.
+
+### Post-build tuning, deployment planning, and kernel hints
+
+The eleven post-build checks are the minimum, not the full list. Once they pass, review your documents and add anything still missing. Keep the benchmark numbers you measured, because you will compare against them at every maintenance window.
+
+Plan the initial software deployment before the hardware goes live. Decide how you will handle updates and upgrades too. There are many options, so choose one deliberately and document it.
+
+Tune the node and kernel settings with the same discipline. Use standard solutions when they exist, and do not multiply complex fixes. Load only the kernel modules you need. Disable security mitigations (`mitigations=off`) only when that is safe for your site, and disable IPv6 when your cluster does not need it.
 
 ## 6. How a supercomputer does the job: user session, job life cycle, and what is hidden
 

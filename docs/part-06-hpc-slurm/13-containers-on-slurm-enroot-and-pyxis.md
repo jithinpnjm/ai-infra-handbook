@@ -62,6 +62,10 @@ Docker adds a layered `squashfs`/overlay filesystem on top of these primitivesâ€
 
 The enroot README describes itself as a "simple, yet powerful tool to turn traditional container/OS images into unprivileged sandboxes", close to a fancy `chroot`. Its design drops features HPC does not need (daemons, network isolation, image layering at runtime) and keeps what it does: importing Docker/OCI images, running them unprivileged with host GPU and IB integration. Other HPC options (Apptainer/Singularity) are in 6.29.
 
+### Where Docker runs into trouble in HPC
+
+Docker is the most popular container tool, but it has many limits on a cluster. By default it needs a special service that runs with root privileges. It does not let jobs use InfiniBand and GPUs directly, and it integrates badly with job managers. The book's view is that in 2025 you almost cannot use Docker directly in HPC. Workarounds exist for some of these issues. Other technologies already run containers, and even prebuilt Docker images, on clusters.
+
 ## 2. enroot
 
 ### Workflow
@@ -117,6 +121,12 @@ Containers are customised by directories under `ENROOT_SYSCONF_PATH` (system) an
 
 Pyxis is a **SPANK plugin** (a Slurm extension point for adding command-line options and running code at task launch): it adds options to `srun` and `sbatch`, imports/creates the container using enroot on the compute node, and runs each task inside it, so the container *is* the Slurm task. Requirements per the README: enroot 3.1.0 or later, and pyxis must be built against the Slurm version in use (since Slurm 21.08); it is installed on compute nodes (and where `srun` is used) and enabled with a `plugstack.conf` entry, e.g. symlinking `pyxis.conf` into `/etc/slurm/plugstack.conf.d/` and restarting slurmd.
 
+### Why enroot and pyxis come as a pair
+
+Enroot is a lightweight container tool. It does not need Docker or another container engine installed. When you run a container with enroot, it extracts the squashfs image into the local file system. Then it runs the application with cgroups, namespaces and `chroot` set up around it.
+
+Pyxis is a complementary Slurm plugin. It adds useful flags to `srun` and runs the container through enroot for you, so you do not call enroot yourself. Both projects come from NVIDIA, so only NVIDIA GPUs are well managed when you use them. The book calls this pair easy to use, with minimal overhead compared with the other options.
+
 Options (from the pyxis README text):
 
 | Option | Meaning |
@@ -168,6 +178,12 @@ Key points: the container starts for every task on every node, so startup cost m
 Use `srun --mpi=pmix` with a container whose MPI is PMIx-aware and compatible with the host's PMIx/Slurm (the pyxis README notes support for PMI2 and PMIx "requires Slurm support"; the `50-slurm-pmi.sh` hook forwards the PMIx variables and socket). NGC images ship HPC-X with PMIx support. A mismatch between the container's PMIx and the host's causes launch failures at `MPI_Init` (6.4 section 11). NCCL inside the container uses the injected host IB libraries and devices.
 
 ## 4. Images: sources, caching, distribution
+
+### Why caching matters at job start
+
+Each process downloads its container before it starts, then unpacks or converts it. That takes time. It also downloads the same image many times, often at the same moment, which the book calls inefficient. Its advice has three parts. First, encourage users to load containers onto the shared file system and reuse them. Second, use the caching options that Charliecloud and enroot provide. Third, run a caching proxy, such as the docker-registry-proxy project.
+
+A plain proxy is a poor choice for this. Registries often require authorization, and you should not cache image manifests for long.
 
 - **Sources**: NGC (`nvcr.io#nvidia/...`, requires an API key for some images), Docker Hub, GitHub Container Registry, private registries. Build images from NGC bases with a normal Docker/Podman/Buildah build **outside** the cluster, push to a registry, then import into squashfs.
 - **Credentials**: enroot reads registry credentials from `$ENROOT_CONFIG_PATH/.credentials` in **netrc format**, e.g. `machine nvcr.io login $oauthtoken password <NGC API key>` (the user name `$oauthtoken` is the NGC convention). Protect the file (mode 600). Do not put keys in job scripts.

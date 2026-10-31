@@ -116,6 +116,54 @@ flowchart TB
 | **3. Collapsed Fab A / Fab B Spine** | Just two switches (Leaf 1 and Leaf 2) connected back-to-back, with both AI servers (NIC A/NIC B) and storage targets dual-homed directly to the collapsed pair. | No spine tier; when replicating across sites over **40 km+** WAN/DCI links, use **deep-buffer Ethernet switches** and **NVMe-o-TCP**, avoiding long-haul lossless DCQCN/PFC. | Geographically distributed inference POPs, regional RAG caches, and compact edge pods. |
 | **4. Hybrid On-Prem + Multi-Cloud Fabric** | Local Fab A / Fab B IP Clos (Leaves 1–4, Spines 1–4) extended via border leaves (Leaves 5–6), a firewall cluster, and dual DCI gateways to two public clouds (Cloud 1, Cloud 2). | On-premises hot data runs over NVMe-o-RDMA / parallel FS (Tier 1); cold checkpoints and multi-cloud backups traverse IPsec or TLS/HTTPS (S3 REST API, Tier 2). | Disaster recovery of expensive LLM training checkpoints and unified on-prem/cloud namespace tiering. |
 
+### 1.3 PCIe-Attached Drives vs Network-Attached Storage: Latency and When Each Fits
+
+Every GPU server already has drives, so a reader might ask why a separate storage network is needed. The answer starts inside the server. Local drives sit on the PCIe bus, the same internal bus that carries the CPU and the network card. That layout works for one machine. It cannot share one dataset across many servers at the same time.
+
+Figure 9-1, labeled PCIe-connected SSD/HDD, shows this first design. A horizontal bar stands for the peripheral component interconnect express (PCIe) bus. The central processing unit sits above the bus, and a network interface card sits below it. A line runs from that NIC to the data center local area network. Several local hard disk drive or solid state drive units also sit on the same bus, so networking and storage share one internal connection.
+
+Figure 9-2, labeled network-connected SSD/HDD storage, shows the second design. A dedicated storage network interface card plugs into the PCIe bus and reaches a separate storage network. That network connects to disk arrays. In both cases, the server keeps a central processing unit and a LAN data center NIC as standard parts. That LAN is the frontend part of an AI data center.
+
+From the application's point of view, reads and writes work the same way in both designs. The difference is distance. A PCIe-attached SSD reaches its local array in about 100 nanoseconds on generation 5. A network-attached array adds about 300 nanoseconds through an InfiniBand switch, or about 800 nanoseconds through an Ethernet switch.
+
+Access to the file system on PCIe-connected HDDs or flash media is helped by the high bus speed of the lanes. Those few hundred nanoseconds matter less than they seem. When the network is only one to three hops away, and each switch adds only nanoseconds, IOPS can come close to PCIe-attached storage. A port-to-port switch latency of 700 to 900 nanoseconds still delivers high bus bandwidth for reads and writes.
+
+In AI training, both types are often used together. Local storage can run a file system that is backed by an NVMe-oF system. Parallel file systems let many nodes share the same files, and they keep extra metadata. That metadata helps during training and when regular snapshots of a training job are taken.
+
+Using the front-end LAN for storage would cut infrastructure cost. The book notes that AI data centers rarely do this. They deploy dedicated front-end and backend storage systems and storage networks instead. Keep the LAN for users and give training data its own network.
+
+### 1.4 Checkpoints and Fast Writes During Training
+
+Training is the phase where storage most often becomes the bottleneck. After the data preparation phase comes the training and tuning stage. During this stage it is vital to implement mechanisms for saving and restoring model checkpoints. Those saves and restores must be designed on purpose. A good checkpoint system protects the investment already made in training, and it keeps GPUs free for new jobs.
+
+Storage work should not steal time from the GPUs. A storage system in the backend network that writes quickly shortens the time needed to save checkpoint data. Shorter saves reduce how often training pauses and how long each pause lasts. Fast-write storage is therefore a core part of cluster efficiency, not an extra.
+
+### 1.5 Redundancy, Path Diversity, and Inter-Site Replication
+
+Storage needs the same care as the compute network. Each storage network must offer node and link redundancy. Active storage A and backup storage B should form two paths to the same data. If path A fails, path B must carry the full load without losing IOPS, bandwidth, or latency. The book calls this path diversity.
+
+Replication across sites follows the same rule. Both storage domains need local site-level redundancy, plus inter-site replication after each read or write. Inter-site traffic often uses a different transport. When Fibre Channel storage runs inside a site, Fibre Channel over IP (FCoIP) is a common choice for replication. Dedicated site-to-site replication gateways still play a role.
+
+When a design uses NFS instead of a SAN, one disaster recovery design can cover both the application and the storage. Inter-site data redundancy can then ride on the same data center interconnect link as the applications. If the site already runs RoCEv2 for storage, inter-site RDMA is the usual replication method. Lossless inter-site RDMA is rare, though. Keeping DCQCN working over a link of 40 km or more is hard.
+
+NVMe over TCP takes a different path for long-distance replication. It can run on a lossy IP core network. It does not engage DCQCN pushback mechanisms such as Priority Flow Control (PFC). Instead, it adapts to the network conditions. It uses reliable transport, and its maximum segment size (MSS) requirements are more adaptable and less restrictive than those of the training cluster storage. That is why many teams choose it for distant copies.
+
+### 1.6 Logical Fab A/B With EVPN-VXLAN Overlays
+
+Physical separation uses two independent sets of switches, and the cost is high. Logical separation keeps one physical fabric and splits it into two paths. In a physical design, each ToR switch connects to only NIC A or only NIC B. In a logical design, leaves 1 and 2 carry separate dark and light gray fabric connections. The storage SSD controllers follow the same split, either physically or logically.
+
+Logical separation usually runs an EVPN-VXLAN overlay. Fabric A and fabric B control traffic can use two separate RT5 EVPN instances. The same bridging domain can also carry two separate MAC-VRF instances. Each instance gets its own IP address at the VXLAN tunnel termination point. Separate underlay paths carry each instance, shown as dark gray and light gray. Replication between sites can use the same idea, with a Path A and a Path B through controlled overlay-to-underlay paths.
+
+### 1.7 Hot and Cold Data Across On-Premises Storage and Object Storage
+
+Not all data is accessed the same way. The book splits it into hot data and cold data. In a hybrid design, hot data stays on on-premises backend servers, which connect to a storage IP fabric or an InfiniBand fabric. Cold data sits off-premises in object storage.
+
+Applications reach both tiers with S3 calls over an HTTPS API. In hybrid deployments, that means TLS over HTTP using the S3 REST API. A framework such as TensorFlow or PyTorch still uses plain POSIX file calls. The parallel file system understands those calls. It moves files between the fast local SSD flash tier, which uses NVMe-o-PCIe, and a scale-optimized tier in the cloud. The ML developer does not need to change the code.
+
+Figure 9-8 shows this hybrid layout. At the bottom, an artificial intelligence server has storage network interface cards A and B. Network interface card A connects to leaf1, and network interface card B connects to leaf2. Both connections support read and write operations. Two fabrics carry the on-premises traffic. Fabric A holds leaves 1 and 2 and connects to spine 1 and spine 2. Fabric B holds spines 3 and 4, with leaves 3 and 4 to on-premises storage arrays. Leaves 5 and 6 reach a firewall cluster. Two data center gateways then connect to cloud 1 and cloud 2 storage. Cloud-based replication keeps snapshots of the local training cluster from being lost.
+
+The cloud path is not the same as the local path. Access goes through the firewall cluster, so an extra security tunnel is needed. The book names IPsec or HTTPS for that tunnel. Plan for that extra layer before you rely on the cloud copy.
+
 ---
 
 ## 2. NVMe-oF State Machines (NVMe-o-TCP vs NVMe-o-RDMA), Parallel File Systems, and InfiniBand Storage
@@ -234,6 +282,18 @@ Native InfiniBand Storage Addressing, Integrity, and Flow Control Specs:
 | **Requires Lossless Fabric** | No (unless over RDMA) | **No** (runs on lossy IP) | **Yes** (PFC + ECN + DCQCN) | **Yes** (native 16 VLs + 64B CBFC) |
 | **Built-in Transport Reliability** | Via TCP or RDMA | **Yes** (standard TCP) | Via NIC RDMA QP state machine | **Yes** (hardware HCA + CBFC) |
 | **Port Speeds & Multi-Vendor Scale** | 400G/800G/1.6T; High multi-vendor | 400G/800G/1.6T; High multi-vendor | 400G/800G/1.6T; High multi-vendor | 400G/800G/1.6T; Single-vendor (&lt;48,000 nodes/subnet) |
+
+### 2.6 GPUDirect Storage: Logical View and CUDA API Orchestration
+
+GPUDirect Storage lets a GPU place data straight onto storage arrays. The usual path makes the CPU copy every byte. GDS skips that copy. The book describes the result as less jitter, much better bus bandwidth, and much lower CPU load. It also means fewer competing connections on each server.
+
+Figure 9-19 gives the logical view. The top section shows a server chassis labeled PCIe. Inside it, a central processing unit and system memory connect over the PCIe bus. Below them sit eight graphics processing units, GPU1 through GPU8, so the server chassis holds a CPU, system memory, and eight GPUs. Each GPU has its own NIC, and each NIC connects to its own leaf switch. Eight spine switches form a full mesh with those leaves. Two more dedicated NICs, NIC A and NIC B, connect the server to a RoCEv2 storage network and to external storage arrays. The GPUs place their outputs over the RoCEv2 NICs without interrupting the CPU core.
+
+That design relaxes system memory use. After the direct placement, the GPU can start its next task. The server does not need a large multi-core CPU or costly local memory to do it. The book notes that this matters little in a small cluster. At 100,000 GPUs or more, the saving can have a large cost impact.
+
+GDS is also built into the CUDA API. CUDA is NVIDIA's parallel computing platform and programming interface. In Figure 9-20, a block labeled CUDA API sits at the top. An arrow labeled `cudaMalloc` and `cuFileBufRegister` leads to a block called GPU Memory, which shows that buffers are allocated and registered. From GPU Memory, an arrow labeled `PIN to direct IO` leads to GDS. The GDS block then hands off to a storage NIC. A traditional path from GPU memory through PCIe also reaches that NIC. From the storage NIC, RoCEv2 carries traffic to the storage arrays, and a feedback loop returns control to the CUDA API.
+
+The CUDA layer sets up the NIC driver for the RoCEv2 or InfiniBand transfer. It does that without using a CPU core or any other system memory. The book adds that PyTorch v2.7.0 and later also support GDS API calls directly. The book also says that RDMA access over InfiniBand or RoCEv2 is the one storage form where a GPU places data directly onto a remote SSD.
 
 ---
 

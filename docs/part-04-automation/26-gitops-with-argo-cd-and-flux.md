@@ -88,6 +88,22 @@ The gate has three useful effects. The team can merge to the production branch l
 
 Using a flag also keeps debugging simple. Disabling a feature does not require a binary rollback to an older version of the code. Such a rollback would also remove the bug fixes and improvements that the newer version brings. So the third principle of application layout is this: code lands in source control, off by default, behind a flag, and is turned on only by a code-reviewed change to configuration.
 
+### Keeping secrets out of plain Git
+
+Git as the single source of truth creates a problem. Secrets must live somewhere, and plain Secrets in Git are a leak waiting to happen. Bitnami's Sealed Secrets solves this. You commit an encrypted version of a Secret, and the controller decrypts it in the cluster once it is applied. Applications then read the Secret as usual. Plan this design early, because the GitOps model depends on it.
+
+### Alerting on drift that never heals
+
+A failed push pipeline shows up as a failed job, so someone notices. A declarative controller can fail more quietly. It keeps trying to reach the declared state, and the gap can persist. Watch for the state of the cluster and the state of Git staying different for a long time. Set an alert for that case, so the drift gets fixed.
+
+### Ordering, scripts and objects made by controllers
+
+Not every application deploys cleanly as a flat set of YAML files. While you move to GitOps, you may need ordering rules and some scripting. Watch out for controllers that create objects through the Kubernetes API. Those objects are not in Git. In strict mode, the GitOps tool may delete them as unknown resources. That deletion is often what you want, since Git is the source of truth. Still, changes made outside Git can break the model, so plan a workaround for them.
+
+### Why two repositories
+
+Keep application code and deployment configuration in separate repositories. Each concern usually belongs to a different team. Developers should know how their app deploys, and they should have a say. Sizing, environments and secret injection usually belong to the platform or operations team. Security and audit rules also differ between code repositories and repositories that hold deployment pipelines, secrets and environment settings. Separate repos let each team apply its own rules.
+
 ## 2. Argo CD
 
 Suppose an upgrade of the GPU operator stalls at two in the morning. Before you touch anything, you need to know which object holds the desired state and which one holds the live state. Argo CD is built around a small set of objects that answer that question.
@@ -502,6 +518,20 @@ SLO-aware promotion means you do not auto-promote to prod unless staging metrics
 
 Let a new model version soak in staging before it sees production traffic.
 
+### Canary, blue/green and A/B testing
+
+Deploying a version is not the same as releasing it to users. Progressive patterns separate the two steps, so you can test on real traffic first. In a canary release, a small share of traffic goes to the new version. The share can be picked by metadata, by user or by another attribute. Watch the canary, and raise its share as your confidence grows.
+
+Blue/green is a bigger cutover. Traffic moves in one step from the old version (blue) to the new one (green). The two can run in one cluster or in two. You can test green while users still hit blue. If errors rise, you move traffic back. Stateful apps, sessions and other shared state need careful handling in this pattern.
+
+A/B testing sends a version with different behavior to a subset of users. You then compare usage metrics. Those metrics decide whether to roll back, roll forward or widen the experiment.
+
+### Flagger
+
+Most of these patterns work by shifting network traffic. Kubernetes gives you the networking primitives to do it. Flagger is one open source tool that uses them. It runs as a controller in the cluster and watches the `image` field of Deployments. It then configures a service mesh to shift traffic step by step. It also checks the health of the new version, and it either continues the rollout or halts it and reverts.
+
+Flagger needs a service mesh for most of these patterns. That extra complexity is why many teams add progressive delivery in a second or third phase of their Kubernetes journey.
+
 ## 7. Operating GitOps
 
 Running GitOps day to day means watching for drift, stalls and surprises. Most of them show up as a sync that will not finish, or an app that never turns green.
@@ -777,6 +807,7 @@ Never point all 20 clusters at one unringed `HEAD` path with `automated` sync fo
   - `production-kubernetes` — Josh Rosso, Rich Lander, Alexander Brand & John Harris, *Production Kubernetes*, **Chapter 11: Building Platform Services** (read in full: eliminating human toil with platform services, Kubernetes extension points, CustomResourceDefinitions `CRDs` and Operators introduced by Brandon Phillips in 2016, App-Specific Operators vs Platform/Tenancy Operators, building the `AcmeNamespace` operator in Go with **Kubebuilder** `controller-runtime`, `Reconcile` loop idempotency, `status.phase` `CreationInProgress` -> `Created`, `ownerReferences` garbage collection via `ctrl.SetControllerReference`, **Operator Framework / Operator SDK** for Go/Ansible/Helm, and **Metacontroller**).
   - `kubernetes-up-and-running-3rd-edition` — Brendan Burns, Joe Beda, Kelsey Hightower & Lachlan Evenson, *Kubernetes: Up and Running*, 3rd ed., **Chapter 22: Organizing Your Application** (read in full: the filesystem as source of truth, code review of every change, feature gates, filesystem layout, versioning with tags/branches or directories, stages from `HEAD` to release, parameterized environments with Helm, worldwide deployment and dashboards). Used for the sections "Filesystem as the source of truth", "Code review for every change", "Feature gates", and the repository-layout subsections of Section 4.
   - `nvidia-devops` (`volume-10/11-cicd-for-infrastructure-and-cluster-configuration.md` and `volume-10/17-git-for-infrastructure-and-operations.md`): Kubernetes GitOps with Argo CD and Flux, ordering of Node Feature Discovery and GPU Operator, and pull-based vs push-based delivery.
+  - `production-kubernetes` — Josh Rosso, Rich Lander, Alexander Brand & John Harris, *Production Kubernetes*, **Chapter 15: Software Supply Chain** (read in full: GitOps as a reconciling controller, Sealed Secrets, drift alerts, ordering, controller-created resources, the two-repository layout, push-based deploys, and canary, blue/green and A/B rollouts with Flagger).
 - **Run here:** `python3 code/part04/gitops_sync_waves_lab.py` (3 passed, 0 failed).
 - **Explicitly labelled inferences:** The `plan_argocd_sync_waves`, `expand_applicationset_matrix`, and `evaluate_gitops_reconciliation` models in `code/part04/gitops_sync_waves.py`, the 6-wave GPU platform bootstrap diagram, and the Argo CD `Application`/`ApplicationSet` and Flux `GitRepository`/`Kustomization`/`HelmRelease` manifests are the author's constructions synthesizing `PK` Chapter 11 and `volume-10` (plus original study items 21, 22, 23, 24, 25, 26, 27, 28, 29, and 30).
 - **Not verified on live hardware:** Live `argocd`, `flux`, `kustomize`, and `kubeconform` executions (`v24.6.0`, `retry.limit: 5`, `duration: 10s, maxDuration: 3m`, `interval: 1m / 10m / 30m`, `timeout: 15m`, `retries: 3`, `20` clusters) are marked (`untested here`) where not executed by `gitops_sync_waves_lab.py`.

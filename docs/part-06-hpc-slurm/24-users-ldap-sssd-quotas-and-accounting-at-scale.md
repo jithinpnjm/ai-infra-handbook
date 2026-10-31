@@ -114,6 +114,34 @@ In the book's 8-step setup and Chapter 28 recipe `(untested here)`:
 7. Start `ypbind` on the clients (and on the master node if it also resolves cluster users via NIS).
 8. Add `nis` or `nis+` to `/etc/nsswitch.conf` (`passwd: compat nis`, `group: compat nis`, `shadow: compat nis`, `hosts: files dns nis`). Whenever `/etc/passwd`, `/etc/shadow`, or `/etc/group` changes on the master, run `cd /var/yp; make` `(untested here)` to rebuild and push the maps.
 
+### NIS start-up commands and access rules
+
+The NIS master must run four daemons, and each must start again after a reboot. The book gives several command sets, one for each family of init system. On a systemd host, start the daemons and enable them in one pass `(untested here)`:
+
+```bash
+systemctl start rpcbind ypserv yppasswdd ypxfrd
+systemctl enable rpcbind ypserv yppasswdd ypxfrd
+```
+
+On older SysV-style hosts, the book starts the services with `service` and enables them with `chkconfig` `(untested here)`:
+
+```bash
+service nis start
+service portmap restart
+chkconfig ypserv on
+chkconfig yppasswdd on
+chkconfig ypxfrd on
+```
+
+On Debian-like hosts, the book uses `update-rc.d nis enable` instead. Access control comes from `/etc/ypserv.securenets`. The book starts by removing access from everywhere, then adds only the internal network and any single hosts that must connect:
+
+```text
+255.255.255.0 192.168.123.0  # format: MASK SUBNET
+host 192.168.111.222         # individual host
+```
+
+Before you test a new client, confirm that its subnet is in this file. Then build the maps with `cd /var/yp; make`, as in the setup list above.
+
 ## 2. UID/GID design
 
 - **Consistency is the contract.** File ownership on shared storage is numeric. If `alice` is 10001 on login nodes and 10005 on compute nodes, her files appear to belong to someone else. A mismatch also breaks Kubernetes volume ownership and container user mapping.
@@ -217,6 +245,47 @@ ldapadd -x -W -D "cn=Manager,dc=ldap,dc=server,dc=org" -f group.ldif
 ```
 
 On legacy `nss_ldap`/`pam_ldap` clients (before SSSD), the book's recipe configures `/etc/openldap/ldap.conf` (`base`, `rootbinddn`, `port 389`, `scope sub`, `pam_filter objectclass=posixAccount`, `pam_login_attribute uid`, `nss_base_passwd`, `nss_base_shadow`, `nss_base_group`, `pam_password SSHA`), stores the bind secret in `/etc/ldap.secret` (`chmod 600`, `chown root:root`), sets `files ldap` in `/etc/nsswitch.conf`, and appends `pam_ldap.so` lines (`auth sufficient /lib/security/pam_ldap.so use_first_pass`, `account sufficient`, `password sufficient ... use_authtok`, `session optional`) to `/etc/pam.d/system-auth` without removing the local Unix PAM entries so `root` can still log in during network outages.
+
+### Loading the base entries and checking the directory
+
+A new OpenLDAP server is running but empty. The book fills it with an LDIF file, `/etc/openldap/ldap-init.ldif`, that creates the base entry and the `Manager` role. The names must match the `suffix` and `rootdn` you set earlier. Any name works; it does not have to match the server's DNS name.
+
+```text
+dn: dc=ldap,dc=server,dc=org
+objectclass: dcObject
+objectclass: organization
+o: Servidor LDAP ldap
+dc: ldap
+
+dn: cn=Manager,dc=ldap,dc=server,dc=org
+objectclass: organizationalRole
+cn: Manager
+```
+
+Load the file with `ldapadd`, which asks for the password you hashed with `slappasswd`. The book's command is:
+
+```bash
+/usr/bin/ldapadd -a -x \
+  -D 'cn=Manager,dc=ldap,dc=server,dc=org' \
+  -W -f ldap-init.ldif
+```
+
+Then search the directory from the server itself. The book expects two entries and a result code of `0`, which means success:
+
+```bash
+ldapsearch -h 127.0.0.1 -x -b "dc=ldap,dc=server,dc=org"
+```
+
+The search should report `numEntries: 2`, with the `dc=ldap` root and the `cn=Manager` role. If the counts differ, re-check the LDIF file before you move on.
+
+The client side reads `/etc/openldap/ldap.conf`. The book's example sets the search base and the server URI:
+
+```text
+BASE  dc=ldap, dc=server, dc=org
+URI   ldaps://ldap.server.ru:636/
+```
+
+The book turns encryption off on clients with `ssl no` in the client file. It calls this a shortcut. Turn encryption on later, once you have certificates and matching settings. The `pam_password` value must use the same hash method that `slappasswd` produced.
 
 ## 4. SSSD, nsswitch and PAM on the nodes
 

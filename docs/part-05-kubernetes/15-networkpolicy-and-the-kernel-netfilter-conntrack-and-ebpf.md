@@ -274,6 +274,78 @@ The DNS rule does more than allow lookups. It gives Cilium visibility into DNS, 
 
 The `policy.networking.k8s.io` API group, defined by SIG Network, adds two cluster-scoped kinds. `AdminNetworkPolicy` runs before namespace NetworkPolicies. It supports `Allow`, `Deny` and `Pass` with a priority, so cluster admins can set guardrails that tenants cannot override. `BaselineAdminNetworkPolicy` runs after NetworkPolicies and sets the default posture. For example, it can deny egress to the Internet unless something else allows it. Cilium, Calico, OVN-K, Antrea and others are adding support. Check how mature each implementation is before you depend on it.
 
+### Network identity with Calico and Cilium
+
+For a long time, teams used the network itself as identity. IP addresses, VPNs and firewalls decided which application could reach which service. Cloud native systems break that model. Containers share network stacks and machines, and workloads move between nodes often. The result is a constant churn of IP addresses. In a multicloud, API-driven setup, calls also leave the cluster for providers that need proof of who is calling.
+
+So host IPs and firewalls cannot establish workload identity on their own. They still help, but only as an extra layer of defense in depth. They work best when the policy also knows the workload context, such as its namespace, labels or service account. Networking and security teams often resist this change. Most security postures remain possible, so start from the real requirement rather than the tool.
+
+CNI tools can add that context. They combine packet-level data with metadata from the Kubernetes API. Calico and Cilium show two different ways to do it.
+
+Calico enforces policy at layers 3 (network) and 4 (transport). It restricts traffic between pods by namespace, labels and other metadata. It does this by changing the node's `iptables` or `ipvs` rules to allow or block IP addresses. Calico can also decide by service account at layer 7, using a component called Dikastes. Dikastes works with Envoy, either standalone or inside a mesh such as Istio. It runs as a sidecar next to Envoy. Envoy first checks the caller's certificate against the Istio CA, then asks Dikastes for a decision. Dikastes reads Calico policy objects like this one:
+
+```yaml
+apiVersion: projectcalico.org/v3
+kind: GlobalNetworkPolicy
+metadata:
+  name: summary
+spec:
+  selector: app == 'summary'
+  ingress:
+    - action: Allow
+      source:
+        serviceAccounts:
+          names: ["customer"]
+        namespaceSelector: app == 'bank'
+  egress:
+    - action: Allow
+```
+
+This rule covers pods labeled `app: summary`. It admits calls only from pods running under the `customer` service account, in namespaces labeled `app: bank`. The Felix node agent in the Calico control plane works out which pods run under each service account and which IP addresses they use. It then syncs that mapping to Dikastes over a Unix socket.
+
+The extra check matters for Istio. Istio stores each service account's PKI assets in a Secret in the cluster. If an attacker stole that Secret, they could pose as the account by presenting its assets, even without running as that account. Dikastes checks the pod's real identity against Kubernetes data, which blocks that attack. The trade-off is that Dikastes needs a mesh such as Istio or standalone Envoy on every connected service. That adds complexity. Its claims also depend on the mesh being present, so they are not independently verifiable. Calico and Istio are both cross-platform, so this setup can also cover applications that run outside Kubernetes.
+
+Cilium also enforces policy at layers 3 and 4, by namespace and labels. It can restrict access by service account at layer 7 without extra tooling. It does not use IP addresses to enforce policy. Instead, Cilium computes an identity for each unique pod or endpoint from a set of selectors. It encodes that identity into each packet and enforces the decision with eBPF hooks in the datapath.
+
+Here is how Cilium assigns identities for one application. The pods share a namespace, a service account and most labels. The last pod carries one extra label, so Cilium gives it a different identity:
+
+```text
+$ kubectl exec -it -n kube-system cilium-oid9h -- cilium endpoint list
+NAMESPACE   NAME                             ENDPOINT ID   IDENTITY ID
+default     deathstar-657477f57d-jpzgb       1474          1597
+default     deathstar-657477f57d-knxrl       2151          1597
+default     deathstar-657477f57d-xw2tr       16            1597
+default     deathstar-657477f57d-xz2kk       2237          1597
+default     deathstar-657477f57d-zzz65       1             57962
+```
+
+If you removed the divergent label, that last pod would get the same identity as its four peers. That granularity gives you fine control over identity per pod. Cilium also implements the Kubernetes NetworkPolicy API, and it adds its own richer objects. This policy targets service accounts directly:
+
+```yaml
+apiVersion: "cilium.io/v2"
+kind: CiliumNetworkPolicy
+metadata:
+  name: "k8s-svc-account"
+spec:
+  endpointSelector:
+    matchLabels:
+      io.cilium.k8s.policy.serviceaccount: leia
+  ingress:
+  - fromEndpoints:
+    - matchLabels:
+        io.cilium.k8s.policy.serviceaccount: luke
+    toPorts:
+    - ports:
+      - port: '80'
+        protocol: TCP
+      rules:
+        http:
+        - method: GET
+          path: "/public$"
+```
+
+The `io.cilium.k8s.policy.*` label selectors pick out service accounts. Cilium then checks its registry of identities to allow or restrict access. This policy lets pods using the `luke` account reach `/public` on port 80. Pods with the `leia` account are the ones being protected. Like Calico, Cilium works across Kubernetes and non-Kubernetes environments. Every connected service must run Cilium for its identities to be verifiable, so the networking setup grows more complex. Cilium does not need a service mesh component to work, though.
+
 ## 5. Policy design for a multi-tenant GPU platform
 
 Not every zone of the cluster deserves the same policy. A serving zone with a gateway in front of it has different needs from a training zone full of jobs. The table lists each zone, the workloads it runs and the stance to take.
@@ -591,6 +663,7 @@ NetworkPolicy filters only L3 and L4 headers on the primary CNI network, and in 
   - `networking-and-kubernetes` — James Strong & Vallery Lancey, *Networking and Kubernetes*, **Chapter 4: Kubernetes Networking Introduction** (NetworkPolicy API, `podSelector`/`namespaceSelector`/`ipBlock`, default-deny, and kubelet probe exemptions) and **Chapter 5: Kubernetes Networking Abstractions** (CNI policy enforcement, Calico, Cilium).
   - `production-kubernetes` — Josh Rosso, Rich Lander, Alexander Brand & John Harris, *Production Kubernetes*, **Chapter 5: Pod Networking** (NetworkPolicy enforcement and multi-tenancy considerations).
   - `nvidia-devops` (`volume-03/03-k8s-networking-security-ops-masterclass.md`): networking and security operations masterclass (CNI dataplane, NetworkPolicy, multi-tenancy, and admission).
+- `production-kubernetes` — Josh Rosso, Rich Lander, Alexander Brand & John Harris, *Production Kubernetes*, **Chapter 10: Identity** (read for network identity: Calico `GlobalNetworkPolicy` with service accounts and Dikastes, and Cilium identity assignment and `CiliumNetworkPolicy` service-account rules).
 - **Run here:** `python3 code/part05/networkpolicy_evaluator_lab.py` (3 passed, 0 failed).
 - **Explicitly labelled inferences:** The `match_networkpolicy_peer`, `evaluate_peer_list`, and `evaluate_policy_hierarchy` models in `code/part05/networkpolicy_evaluator.py` and the `allow-gateway-to-model`, `default-deny-all`, `allow-dns`, `deny-metadata-and-private-egress` (`GlobalNetworkPolicy`), and `trainer-egress` (`CiliumNetworkPolicy`) manifests are the author's constructions synthesizing Networking and Kubernetes Chapters 4 & 5, Production Kubernetes Chapter 5, and `volume-03/03` (plus original study items 21, 22, 23, 24, 25, 26, 27, 28, 29, 30, 31, 32, 33, 34, and 35).
 - **Not verified on live hardware:** Live `kubectl`, `calicoctl`, `cilium policy trace`, `hubble observe`, `iptables`, `ipset`, and `cyclonus` executions (`10.20.0.0/16`, `10.20.5.0/24`, ports `8000`/`9000..9010`/`53`/`443`, `10.30.0.0/16`, `169.254.20.10/32`, `0x10000/0x10000`, `order: 100`, `169.254.169.254/32`) are marked (`untested here`) where not executed by `networkpolicy_evaluator_lab.py`.

@@ -53,6 +53,16 @@ Every pod needs a place to put its files, and the volume type decides how long t
 
 The lifetime column is the one to check first. A volume that lives as long as the pod survives a container restart, but not a pod deletion. A volume that lives as long as the node disappears with the node. Only a persistentVolumeClaim is independent of the pod, which is why durable data belongs there. The table gives the comparison; the rest of this chapter explains how the durable options work.
 
+### Block, file and object storage
+
+Applications expect one of three storage types, and that choice decides which storage system and Kubernetes integration you need. File storage is the most common type. A file system sits on top of a block device, so the application writes files the same way it would on any operating system.
+
+A block device is the layer underneath the file system. You can skip the file system and give the application the raw block device instead. Every file system adds some overhead to writes. Most workloads never notice it, but a workload that needs raw blocks can use storage systems that support them.
+
+Object storage has no conventional folder hierarchy. The application gives each piece of unstructured data a unique identifier, adds some metadata, and stores it. Cloud object stores such as Amazon S3 are popular for images and binaries, partly because they offer a full web API and access control.
+
+Applications usually reach object stores directly. They use a library to authenticate and talk to the provider. Object storage has less standard interfaces than files or blocks, so platform teams rarely offer it as a transparent service. Plan for that early. A file or block volume can be mounted for the developer, but an object store usually needs the application's own code to call it.
+
 ## 2. PersistentVolumes, Claims and StorageClasses
 
 A training engineer asks for "2 TB for checkpoints" and expects it to appear on the right machine. Three objects make that happen. The claim states the need, the PersistentVolume is the storage that satisfies it, and the StorageClass describes how new storage should be created. The diagram shows how they connect.
@@ -118,6 +128,147 @@ StatefulSet claims need their own care. The `persistentVolumeClaimRetentionPolic
 
 Before you create the first claim in a namespace, decide which claims must use `Retain`.
 
+### Offering storage classes to developers
+
+Platform teams often need to offer more than one kind of disk. Many applications only persist files and do not need fast reads or writes. Others need fast disks with a set number of IOPS per gigabyte. One StorageClass per offering lets developers choose by name, and the `parameters` field maps each offering to what the provider can do.
+
+Consider two offerings. `default-block` uses optimized HDD and reaches 40 to 90 MB/s per volume. `performance-block` uses io1 SSD and reaches about 1000 MB/s per volume. The costs below are AWS prices as recorded when this material was written, so check current rates before you budget.
+
+| Offering name | Storage type | Max throughput per volume | AWS cost |
+|---|---|---|---|
+| `default-block` | HDD (optimized) | 40–90 MB/s | $0.045 per GB per month |
+| `performance-block` | SSD (io1) | ~1000 MB/s | $0.125 per GB per month + $0.065 per provisioned IOPS per month |
+
+```yaml
+kind: StorageClass
+apiVersion: storage.k8s.io/v1
+metadata:
+  name: default-block
+  annotations:
+    storageclass.kubernetes.io/is-default-class: "true"
+provisioner: ebs.csi.aws.com
+allowVolumeExpansion: true
+volumeBindingMode: WaitForFirstConsumer
+parameters:
+  type: st1
+---
+kind: StorageClass
+apiVersion: storage.k8s.io/v1
+metadata:
+  name: performance-block
+provisioner: ebs.csi.aws.com
+parameters:
+  type: io1
+  iopsPerGB: "20"
+```
+
+The `name` is what claims reference. The default annotation makes `default-block` the class for any claim that leaves out a class. Both classes use the same `provisioner`, which maps them to the AWS EBS CSI driver. `allowVolumeExpansion: true` lets developers grow their claims later.
+
+`volumeBindingMode: WaitForFirstConsumer` delays creation until a pod uses the claim. The volume then lands in the pod's availability zone. It also stops unused claims from creating disks that you pay for.
+
+Now suppose a developer needs one cheap disk and one fast disk. The first claim, `pvc0`, asks for 11Gi and names no class. The second, `pvc1`, asks for 14Gi and names `performance-block`.
+
+```yaml
+apiVersion: v1
+kind: PersistentVolumeClaim
+metadata:
+  name: pvc0
+spec:
+  resources:
+    requests:
+      storage: 11Gi
+---
+apiVersion: v1
+kind: PersistentVolumeClaim
+metadata:
+  name: pvc1
+spec:
+  resources:
+    requests:
+      storage: 14Gi
+  storageClassName: performance-block
+```
+
+`pvc0` takes the default class and the usual defaults: RWO access and filesystem mode. Its volume is not created until a pod consumes the claim, so the claim waits in `Pending` until then. You do not pay for disk that nobody uses. `pvc1` names its class, so the driver creates an unattached volume right away. That volume attaches quickly when a pod needs it.
+
+**Warning:** Letting developers create claims also lets them name any StorageClass. If that is a problem, add validating admission control to check each request.
+
+### Resizing a volume in practice
+
+Resizing takes two stages, and the second is easy to miss. The external-resizer sidecar detects the larger size in the claim and forwards it to the driver. The driver grows the disk through the cloud API, which is controller expansion.
+
+The new space is still unusable at this point. The filesystem still covers only the original size. The node plug-in must then expand the filesystem, and it can do this without terminating the pod. The node logs show the work.
+
+```
+mount_linux.go: Attempting to determine if disk "/dev/nvme1n1" is formatted
+using blkid with args: ([-p -s TYPE -s PTTYPE -o export /dev/nvme1n1])
+mount_linux.go: Output: "DEVNAME=/dev/nvme1n1\nTYPE=ext4\n", err: <nil>
+resizefs_linux.go: ResizeFS.Resize - Expanding mounted volume /dev/nvme1n1
+resizefs_linux.go: Device /dev/nvme1n1 resized successfully
+```
+
+The first lines check which filesystem sits on the device, here `ext4`. The last lines confirm that the resize finished.
+
+**Warning:** Kubernetes does not allow a claim to shrink. Unless the CSI driver works around this, going smaller means creating a new volume. Keep this in mind before you grow a volume.
+
+### Snapshots and restores in practice
+
+Snapshots let you take periodic copies of a volume's data. The work is split across two controllers, each responsible for one custom resource. The `VolumeSnapshot` object drives the snapshot lifecycle. The external-snapshotter sidecar then manages the matching `VolumeSnapshotContent` object and forwards requests to the driver.
+
+**Note:** When this material was written, these objects were CRDs rather than core Kubernetes API objects. The CSI driver or your Kubernetes distribution must install the CRD definitions first. Check which snapshot API version your cluster serves before you apply the manifests below.
+
+Snapshots are offered through a snapshot class, which works like a StorageClass:
+
+```yaml
+apiVersion: snapshot.storage.k8s.io/v1beta1
+kind: VolumeSnapshotClass
+metadata:
+  name: default-snapshots
+driver: ebs.csi.aws.com
+deletionPolicy: Delete
+```
+
+The `driver` field names the driver that receives snapshot requests. `deletionPolicy: Delete` removes the content object when the snapshot is deleted. Depending on what the provider supports, the underlying volume can be deleted too.
+
+A snapshot is created in the same namespace as the application and its claim:
+
+```yaml
+apiVersion: snapshot.storage.k8s.io/v1beta1
+kind: VolumeSnapshot
+metadata:
+  name: snap1
+spec:
+  volumeSnapshotClassName: default-snapshots
+  source:
+    persistentVolumeClaimName: pvc0
+```
+
+`volumeSnapshotClassName` picks the class, which tells the driver how to take the snapshot. `persistentVolumeClaimName` names the claim whose volume should be copied. Once the driver finishes, the snapshot reports `ReadyToUse`.
+
+Suppose the original volume fails, or its claim is deleted by mistake. You can rebuild the data with a new claim whose `dataSource` points at the snapshot:
+
+```yaml
+apiVersion: v1
+kind: PersistentVolumeClaim
+metadata:
+  name: pvc-reclaim
+spec:
+  accessModes:
+    - ReadWriteOnce
+  storageClassName: default-block
+  resources:
+    requests:
+      storage: 600Gi
+  dataSource:
+    name: snap1
+    kind: VolumeSnapshot
+    apiGroup: snapshot.storage.k8s.io
+```
+
+The new claim uses the snapshot to fill its volume. Once a pod is recreated to use this claim, the container sees the last snapshotted state again.
+
+A snapshot is only a primitive. Scheduling and retention are your job. You might run snapshots from a CronJob, write a custom controller, or use Velero to back up Kubernetes objects and data volumes on a schedule.
+
 ### Integrating External and Replicated Stateful Storage (`KUR` Chapter 16 & `PK` Chapter 4)
 
 Kubernetes: Up and Running Chapter 16 and Production Kubernetes Chapter 4 describe three patterns for connecting stateful storage to a workload. Each pattern adds more of the cluster's own machinery, so it helps to read them in order.
@@ -154,6 +305,31 @@ flowchart TB
 
 The controller runs as a Deployment on any node. The node service runs as a DaemonSet on every node. The diagram shows which sidecar watches which object and calls which driver function. Read the controller side first, then the node side. If you are tracing a failed volume, follow the steps in order until you find where it stops.
 
+### Why CSI replaced in-tree plugins
+
+Early Kubernetes shipped storage providers inside its own code. These were in-tree plugins, and examples include AWS EBS, GlusterFS, GCE PD and Ceph RBD. The core project had to hold the logic for every provider, and that code shipped inside control plane components.
+
+That model had real costs. A provider could not be updated on its own schedule, because every change waited for a Kubernetes release. Every cluster also carried code it never used. A cluster running on AWS still contained code for Google Persistent Disks.
+
+FlexVolume drivers tried to move this code out of the core project. They are now in maintenance mode, and CSI is the path forward. Provider code lives in out-of-tree projects, which you can manage separately from the cluster.
+
+### Controller and node services
+
+CSI splits the driver into a controller service and a node service. The Kubernetes control plane does not call the controller service directly. Storage community controllers, called sidecars, watch Kubernetes objects and translate them into CSI calls. A new claim, for example, leads to a `CreateVolumeRequest`. Sidecars talk to the driver over UNIX sockets, so they usually run next to it.
+
+The controller service creates and deletes volumes at the provider. It also handles optional features such as snapshots and expansion. The sidecars that sit with it are these:
+
+- `external-provisioner` watches claims. When one asks for storage, it creates the volume and then creates the PV object.
+- `external-attacher` watches `VolumeAttachment` objects and sends attach and detach requests to the driver.
+- `external-resizer` detects size changes in claims and sends expansion requests.
+- `external-snapshotter` handles `VolumeSnapshotContent` objects and sends snapshot requests.
+
+Driver authors do not have to use these sidecars. Using them is still encouraged, because it stops every driver from repeating the same logic.
+
+The node service runs on each node. It mounts attached volumes, sets up their filesystems, and mounts them into pods. The kubelet makes these requests. Two sidecars often run in the node Pod. `node-driver-registrar` tells the kubelet that the driver exists. `liveness-probe` reports whether the driver is healthy.
+
+Many drivers ship the controller and node code in one binary. They choose a mode with an environment variable such as `X_CSI_MODE`. The only firm rules are that the driver registers with the kubelet and implements the CSI endpoints. Both services also answer identity calls. These report plugin information, capabilities and health.
+
 ### Lifecycle for a dynamically provisioned volume
 
 Follow one volume from creation to teardown. The sequence has seven steps.
@@ -181,6 +357,56 @@ Drivers fall into several groups. Cloud block drivers include EBS, GCE PD or Hyp
 Each controller should run with replicas and leader election. Node plugins run as privileged DaemonSets with mount propagation set to `Bidirectional`. Treat them as part of the node's trusted base.
 
 Before you approve a driver for production, read its CSIDriver object and check `attachRequired`, `fsGroupPolicy` and `storageCapacity`.
+
+### Installing the driver and giving it access
+
+Before the driver can manage volumes, it must identify itself to the provider. You have three options. The first is to set permissions on the instance profile of the Kubernetes nodes. That keeps credentials out of Kubernetes, but every workload that can reach the AWS API gets the same privileges.
+
+The second option is likely the most secure. An identity service grants IAM permissions to specific workloads, and kiam is an example of such a project. The third option is a secret that is mounted into the driver. It looks like this, with your own values in place of the placeholders:
+
+```yaml
+apiVersion: v1
+kind: Secret
+metadata:
+  name: aws-secret
+  namespace: kube-system
+stringData:
+  key_id: "<access-key-id>"
+  access_key: "<secret-access-key>"
+```
+
+**Warning:** This account can change the underlying storage system. Manage access to this secret carefully.
+
+With the access in place, you install the CSI components. The controller runs as a Deployment. With several replicas, it uses leader election to choose the active instance. The node plugin runs as a DaemonSet, which places one Pod on every node. Each node plugin registers with its kubelet, and the kubelet then creates a `CSINode` object for the node.
+
+A three-node cluster looks like this:
+
+```
+$ kubectl get csinode
+NAME                                        DRIVERS   AGE
+ip-10-0-0-205.us-west-2.compute.internal    1         97m
+ip-10-0-0-224.us-west-2.compute.internal    1         79m
+ip-10-0-0-236.us-west-2.compute.internal    1         98m
+```
+
+Each node lists one driver. The `CSINode` object for one node shows the details:
+
+```yaml
+apiVersion: storage.k8s.io/v1
+kind: CSINode
+metadata:
+  name: ip-10-0-0-205.us-west-2.compute.internal
+spec:
+  drivers:
+  - allocatable:
+      count: 25
+    name: ebs.csi.aws.com
+    nodeID: i-0284ac0df4da1d584
+    topologyKeys:
+    - topology.ebs.csi.aws.com/zone
+```
+
+The `allocatable.count` is the most volumes that node can take. Once a node is picked for a workload, the topology value is passed in the `CreateVolumeRequest`, so the driver knows where to create the volume. The `topologyKeys` field matters when nodes cannot all reach the same storage. In AWS, a Pod scheduled in one availability zone needs its volume created in that same zone.
 
 ## 4. Mount mechanics (what the kernel does)
 

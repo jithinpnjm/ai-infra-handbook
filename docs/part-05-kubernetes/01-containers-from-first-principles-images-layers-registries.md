@@ -336,6 +336,73 @@ The base image decides how big your image is, how easy it is to debug, and wheth
 
 For GPU and ML work, the table points you to Debian or Ubuntu bases, or to NVIDIA's own images, rather than Alpine.
 
+### Build image versus runtime image
+
+Building an app needs compilers, SDKs and test tools. Running the app needs none of them. If you ship the build tools too, the image grows, takes longer to pull, and gives an attacker more to use. The fix is a multistage Dockerfile. One stage builds the program, and a second, slim stage runs it.
+
+The Go example below follows that pattern. The first stage uses the `golang` image, which holds the whole Go toolchain. The second stage starts from `gcr.io/distroless/base` and copies in only the compiled binary.
+
+```
+# Build stage
+FROM golang:1.12.7 as build
+WORKDIR /my-app
+COPY go.mod .
+RUN go mod download
+COPY main.go .
+ENV CGO_ENABLED=0
+RUN go build -o my-app
+# Deploy stage
+FROM gcr.io/distroless/base
+USER nonroot:nonroot
+COPY --from=build --chown=nonroot:nonroot /my-app/my-app /my-app
+CMD ["/my-app"]
+```
+
+Each part of this file has a clear job:
+
+- The `golang` image holds build tools that the running program never uses.
+- `go.mod` is copied and downloaded first. Docker can then reuse that cached step when only the code changes.
+- The distroless base keeps the runtime small, with no extra dependencies.
+- The app runs as `nonroot`, not as root.
+- Only the compiled `my-app` file moves from the build stage to the deploy stage.
+
+A container runs a single process and usually has no init system. That process must handle signals correctly, and it must reap orphaned child processes. Minimal init programs exist for this job, and you can use one as the bootstrap for your app.
+
+### Runtime user and pinned packages
+
+When you do not set a runtime user, the container's process usually runs as root. Containers share the host's Linux kernel, so the user matters. If an attacker escapes a root container, they can gain root on the host. Decide the user while you build the image, and set it with the `USER` directive. This example runs `my-app` as the `nonroot` user and group, which distroless images create by default:
+
+```
+FROM gcr.io/distroless/base
+USER nonroot:nonroot
+COPY ./my-app /my-app
+CMD ["./my-app", "serve"]
+```
+
+Setting the user in the image also helps developers. Their local and development environments then use the same user and group IDs. The same habit applies to packages. Pin the version of every OS package you install. The following example pins `imagemagick` to the version the application needs:
+
+```
+FROM alpine:3.12
+RUN ["apk", "add", "imagemagick=7.0.10.25-r0"]
+```
+
+Unpinned packages can change between builds and break the app. Pinned versions keep your builds repeatable and the package set compatible.
+
+### Choosing a build backend
+
+Every image build has two parts. The frontend is how you describe the build, such as a Dockerfile or a buildpack. The backend is the engine that runs the steps and writes the filesystem layers. Docker usually handles both, through its daemon. That daemon is not always a good fit, especially inside Kubernetes. A build there needs either Docker-in-Docker or the host's Docker socket mounted into the build container. Both approaches have drawbacks, and the socket approach exposes security risks.
+
+Kaniko is one alternative. It reads the same Dockerfile but builds the image with different techniques, which makes it a good fit for a Kubernetes Pod. Before you choose a tool, answer these questions:
+
+- Can the builder run as root?
+- Are we willing to mount the Docker socket?
+- Do we need to run a daemon?
+- Should builds run in containers?
+- Should builds run as workloads in Kubernetes?
+- How much will we rely on layer caching?
+- How will the tool affect distributing builds?
+- Which frontends and image definitions must we support?
+
 ## 4. Registries and distribution
 
 A registry stores your images and hands them out to nodes. It implements the OCI Distribution API. Its core calls are `GET /v2/<name>/manifests/<reference>` and `GET /v2/<name>/blobs/<digest>`, plus chunked or monolithic blob uploads and tag listing. Common choices include Docker Hub, GHCR, Quay, GCP Artifact Registry, AWS ECR, Azure ACR and NVIDIA NGC (`nvcr.io`). Self-hosted options include Harbor, which adds scanning, replication, RBAC and quotas, along with Artifactory, Nexus, `registry:2`, and Zot.
@@ -359,6 +426,16 @@ server = "https://registry-1.docker.io"
 ```
 
 Each `hosts.toml` file belongs to one registry. Its `[host]` block names the cache and the capabilities that the cache allows, here `pull` and `resolve`.
+
+### Registry anatomy and placement
+
+A registry has three main parts. A server handles the user interface and the API. A blob store holds the image data. A database holds user and image metadata. The OCI standardizes registry operations, so different products interoperate. Storage backends are often configurable, and that choice shapes the registry's design.
+
+You can host images in an artifact store such as Artifactory or Nexus. If most of your environment runs in one cloud, a cloud registry such as ECR, GCR or ACR may save money. Placement matters for availability. Many teams put a registry in each failure domain. You then choose between one central blob store and a blob store per region, with replication between them. Replication pushes an image to one registry and copies it to the others. If your product lacks replication, a pipeline tool and webhooks on each push can do a basic version.
+
+Throughput is the other factor. Thousands of developers who build on every commit create many concurrent pulls and pushes. The registry then sits on the critical path for production and for development. Monitor it like any other critical service.
+
+Running a registry inside the cluster is convenient, because Kubernetes keeps it running and discoverable. The catch is that the cluster then depends on a service inside itself to start new services. Many teams run registries on a shared services cluster, with failover to a backup cluster. Others run the registry outside Kubernetes as a bootstrap component that every cluster needs. Cloud registries bring their own availability limits and possible extra latency.
 
 ## 5. Rootless containers and security basics
 
@@ -689,6 +766,7 @@ There are two classic causes.
 
 - **Sources read in full:**
   - `kubernetes-up-and-running-3rd-edition` — Brendan Burns, Joe Beda, Kelsey Hightower & Lachlan Evenson, *Kubernetes: Up and Running*, 3rd ed., **Chapter 2: Creating and Running Containers** (read in full: container images vs shared-library dependency hell, the Docker image format and OCI standardization, layer inheritance trees and why layer ordering governs build cache hits, building an Express Node.js app and the multi-stage `kuard` Go/Alpine image, why deleting files in later layers leaves bytes in earlier layers, storing images in registries, running containers with Docker/CRI, and limiting resource usage with `--memory 200m --memory-swap 1G --cpu-shares 1024`).
+  - `production-kubernetes` — Josh Rosso, Rich Lander, Alexander Brand & John Harris, *Production Kubernetes*, **Chapter 15: Software Supply Chain** (read in full: build frontends and backends, Docker-in-Docker and socket mounts, Kaniko, the build-image and runtime-image split, the runtime user, pinned packages, the registry's server/blob store/database parts, registry placement and replication, and in-cluster registry trade-offs).
   - `production-kubernetes` — Josh Rosso, Rich Lander, Alexander Brand & John Harris, *Production Kubernetes*, **Chapter 3: Container Runtime** (read in full: history of containers, the Open Container Initiative `OCI` Image Specification and Runtime Specification `config.json`, `containerd`, `CRI-O`, `runc`, and VM-based runtimes like `Kata Containers`).
 - **Run here:** `python3 code/part05/oci_image_layers_lab.py` (3 passed, 0 failed).
 - **Explicitly labelled inferences:** The `simulate_oci_layer_sizes`, `simulate_dockerfile_cache_hits`, and `check_cuda_driver_compatibility` models in `code/part05/oci_image_layers.py`, the multi-stage FastAPI + BuildKit `Dockerfile`, and the `hosts.toml` pull-through mirror config are the author's constructions applying `KUR` Chapter 2 and `PK` Chapter 3 to AI infrastructure containers (plus original study items 21, 22, 23, 24, 25, 26, 27, 28, 29, 30, 31, 32, 33, 34, 35, 36, 37, 38, 39, and 40).

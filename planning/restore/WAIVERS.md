@@ -7,3 +7,5 @@
 - U093 (Supercomputers ch.13 -> 6.7): remaining 57% "missing" is one merged front-matter paragraph (copyright, publisher, author, DOI). All teaching content restored.
 - U089 remainder (AI Factory ch. 9 and ch. 11 topics: blockchain/smart contracts, cognitive computing, communication/ML, information security incl. railway, data quality): waived by owner decision (not relevant to the NVIDIA AI-infrastructure engineer goal).
 - U043 (Learning Python ch.20 -> 3.14): 33 vs 25 verbatim 14-word overlaps, scattered short matches in own-wording prose; accepted.
+- U096 (Supercomputers ch.25 -> 6.22): remaining 18% is the chapter's copyright/author header; teaching content restored (ROCKS, out-of-the-box stacks, PelicanHPC).
+- U092 (Supercomputers ch.3 -> 6.2): remaining 20% is mostly front-matter text; teaching content restored.

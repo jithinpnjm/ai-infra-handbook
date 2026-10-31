@@ -185,6 +185,50 @@ Discovery methods: DHCP logs showing unknown MACs, switch MAC tables per port (m
 - **Canonical MAAS**: bare-metal cloud (discover, commission, deploy Ubuntu), API-driven; **Foreman** with Katello/Puppet: lifecycle management for mixed fleets.
 - **NVIDIA Base Command Manager (BCM)**: the NVIDIA-supported cluster manager: head node, software images, categories, node discovery, provisioning, health, Slurm/Kubernetes integration (Part 8).
 
+### Out-of-the-box stacks: when they fit
+
+Setting up a cluster by hand means installing the OS, the scheduler, MPI and libraries on every node. Each new machine, and each change, repeats that work. Linux "cluster distributions" were built to cut that effort. They help, but only to a limited extent.
+
+The main limit is flexibility. A stack that ships with a fixed set of tools is hard to extend. It is not always possible to add commercial or open source software to it. If your cluster will grow beyond a limited set of tasks, or if users compile their own or open source packages, a ready-made stack is usually the wrong choice.
+
+If the set of tasks is small and the stack already runs them, the stack can save a lot of time. A deployment system takes about a day to set up at first. After that, the book says an entire cluster can be installed in an hour, and expanded or reconfigured in half an hour.
+
+Before you pick one, list the tasks and the tools your users need. If the stack cannot run that list, plan for a full provisioning system like the ones described in 6.23 and Part 8.
+
+### ROCKS: deciding and installing
+
+ROCKS suits typical tasks on small configurations. It can be a good first choice for that kind of cluster. ROCKS groups its software into so-called Roll CDs, and each one holds a software suite such as Java, Lustre or Ganglia. You can also create your own Roll CDs.
+
+The effort grows when you plan nonstandard or not-so-standard hardware, network topology or applications. In that case you will spend a lot of time tuning and configuring ROCKS to fit.
+
+Plan the network before you start the installer. The installer asks general questions, then questions about the cluster network. Decide your addresses and which network card goes where in advance.
+
+Partition the head node disk with the `Autopartition` option. It can be done by hand, but the automatic option is the safer default. Watch the network card step closely. The installer chooses which card is internal and which is external, and its choice may differ from yours. For the internal network, select manual mode by clearing `configure using DHCP`.
+
+When you answer the last question, the installer formats the disk and unpacks the packages. It asks for the HPC Roll CD during unpacking. After that the head node reboots and is ready for use. Most of the other questions are the same as in any Linux installer.
+
+Compute nodes take one more step. Use this path when the nodes are diskless, or when you want to keep the OS already on them, such as machines in a computer lab. The nodes must be able to boot over the network with PXE. Start `insert-ethers` on the head node as `root`, select `compute`, then power on each node in network boot mode. The program shows each node's MAC address as it installs the node. Press `F1` when all the nodes are installed.
+
+Once the cluster is ready, create a regular user with `useradd USERNAME`. Log out of `root` and log in as that user. You can then build MPI programs with `mpicc` or `mpif77`. Before the first MPI run, start an agent with `ssh-agent $SHELL` and load your key with `ssh-add`.
+
+For a manual run, list the compute nodes in a `machines` file, one node per line. ROCKS uses Grid Engine by default, so a batch job needs a startup script first. Submit that script with `qsub`, for example `qsub sge-run-script.sh`.
+
+### PelicanHPC: a temporary cluster from a LiveCD
+
+PelicanHPC, also called Parallel Knoppix, is a Debian-based distribution that runs from a LiveCD or LiveUSB. It is usually not installed on the head node or the compute nodes. It fits a quick, temporary cluster in a classroom or a workstation room. It is not meant for a cluster that runs permanently.
+
+You can still install the head node image for permanent use and load the compute nodes as needed. The distribution has almost no cluster monitoring or management. The purpose is to run a task or two after hours, so management is rarely needed. Changes work like most LiveCD systems: you add packages, updates and configuration by hand.
+
+Boot the LiveCD, choose `Start Debian Live`, then keep the default `/home` location on the first boot. By default `/home` sits in RAM. To keep `/home` between reboots, pass mount options for a preformatted partition. Read `/home/user/pelican_config` to see the choices. On a default boot, answer `Yes` when asked to copy the starting user settings. With persistent storage, copy them only on the first boot.
+
+Set a password for `user`, replacing the `PleaseChangeMe!` placeholder. Then log in as `user`. Type `startx` if you want the Xfce desktop.
+
+Run `pelican_setup` to build the cluster. Choose the interface that connects to the cluster network. Be careful here: the program starts a DHCP server on that network, and a wrong choice can disturb your regular network. Click `Yes` when the services start, then power on or reboot the compute nodes. A compute node that boots correctly shows `This is a PelicanHPC compute node.`
+
+When all the nodes have loaded, `pelican_setup` shows the node count. Confirm it, and the program describes the new cluster. A simple cluster performance test then runs before the program finishes. The node list is kept in `/home/user/tmp/bhosts`. Run `pelican_restart_hpc` after you add or remove compute nodes.
+
+Extra software comes from `apt-get`. The base system is Debian, so only `.deb` packages work. PelicanHPC includes parallel versions of Linpack and Octave, along with OpenMPI. You can also build your own PelicanHPC image with the packages you need. The project documentation covers that process.
+
 ## 8. Boot triage
 
 A staged method (the NVIDIA-DevOps notes call it D-T-B-I; the stages are standard):

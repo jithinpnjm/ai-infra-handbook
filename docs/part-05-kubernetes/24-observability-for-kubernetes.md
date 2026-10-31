@@ -68,6 +68,26 @@ flowchart LR
     FB --> Loki
 ```
 
+### Why Prometheus became the default
+
+Metrics are measurements recorded over time. Plotted on a timeline, they show when behavior drifts away from normal. They also give you something to alert on, so you hear about a failure early, or before it happens. Prometheus is the common open source choice for this on Kubernetes.
+
+The control plane components expose Prometheus metrics. Nearly every production cluster also uses exporters to pull metrics from its nodes. Because of this, commercial tools such as Datadog, New Relic, and VMware Tanzu Observability can read Prometheus metrics too.
+
+Prometheus uses a scraping model. It collects metrics from targets on a schedule. Applications and infrastructure do not send metrics anywhere. They expose an endpoint, and Prometheus scrapes it. The app only needs to know the output format, which keeps it free of metrics plumbing.
+
+Prometheus handles several jobs:
+
+- Collects metrics from targets by scraping them
+- Stores the metrics in a time series database
+- Sends alerts, usually to Alertmanager, based on alerting rules
+- Exposes an HTTP API that other components can use to read stored metrics
+- Provides a dashboard for ad hoc queries and status checks
+
+Many teams start with Prometheus for collection and Grafana for graphs. The trouble comes later. Long-term storage, scaling, and federation all need planning. If the upkeep of the metrics stack grows heavy, you can move to a commercial system without changing the kind of metrics you use.
+
+Metrics and alerting are vital to a platform's usefulness. Warnings of an impending failure give you time to avoid downtime and errors. So treat metrics and alerts as core platform services, not extras.
+
 ### Prometheus model
 
 Time series identified by metric name + labels (`http_requests_total{job="api",code="200"}`); types: **counter** (monotonic; use `rate()`/`increase()`), **gauge**, **histogram** (cumulative buckets; `histogram_quantile`), **summary**. Pull model: Prometheus scrapes targets at an interval (15–30 s typical), stores in a local TSDB (2 h blocks, compaction, retention by time/size), evaluates **recording and alerting rules**, and sends alerts to **Alertmanager**. Service discovery uses the Kubernetes API (`kubernetes_sd_configs`: pods, endpoints, services, nodes, ingresses) plus relabelling to choose targets and attach labels.
@@ -131,6 +151,149 @@ spec:
 ```
 
 `PodMonitor` for pod-level endpoints without Services; `Probe` for blackbox targets; `AlertmanagerConfig` for namespaced routing; `ScrapeConfig` for static/external targets. Selectors on Prometheus (`serviceMonitorSelector`) determine which monitors it picks up (the `release: kps` label trap).
+
+### Prometheus servers as custom resources
+
+With the Prometheus Operator installed, you can create a `Prometheus` resource. The operator then builds a Prometheus server from it and creates a StatefulSet to run that server. The manifest below shows a platform server.
+
+```yaml
+apiVersion: monitoring.coreos.com/v1
+kind: Prometheus
+metadata:
+  name: platform
+  namespace: platform-monitoring
+  labels:
+    monitor: platform
+    owner: platform-engineering
+spec:
+  alerting:
+    alertmanagers:
+    - name: alertmanager-main
+      namespace: platform-monitoring
+      port: web
+  image: quay.io/prometheus/prometheus:v2.20.0
+  nodeSelector:
+    kubernetes.io/os: linux
+  replicas: 2
+  resources:
+    requests:
+      memory: 400Mi
+  ruleSelector:
+    matchLabels:
+      monitor: platform
+      role: alert-rules
+  securityContext:
+    fsGroup: 2000
+    runAsNonRoot: true
+    runAsUser: 1000
+  serviceAccountName: platform-prometheus
+  version: v2.20.0
+  serviceMonitorSelector:
+    matchLabels:
+      monitor: platform
+```
+
+The `alerting` block tells Prometheus where to send alerts. The `image` field sets the container image to run. The `ruleSelector` tells the operator which PrometheusRules apply to this server. Any PrometheusRule with the labels shown is applied here. The `serviceMonitorSelector` does the same for ServiceMonitors, which feed this server's scrape configuration.
+
+Being able to create many Prometheus servers lets platform operators split the load. Collecting and processing metrics costs compute, so one server per job of work can keep any single server manageable. This is also useful for tenants. A team that emits a large volume of metrics may need its own server in its namespace, and that cost can count against its resource budget. The trade-off is more work for dashboards, alerting, federation, and long-term storage. Many teams will want a simpler layer on top, but the option is worth knowing.
+
+### Reading a ServiceMonitor
+
+Creating a ServiceMonitor makes the operator update the scrape configuration of the matching Prometheus server. The manifest below points Prometheus at the Kubernetes API server.
+
+```yaml
+apiVersion: monitoring.coreos.com/v1
+kind: ServiceMonitor
+metadata:
+  labels:
+    k8s-app: apiserver
+    monitor: platform
+  name: kube-apiserver
+  namespace: platform-monitoring
+spec:
+  endpoints:
+  - bearerTokenFile: /var/run/secrets/kubernetes.io/serviceaccount/token
+    interval: 30s
+    port: https
+    scheme: https
+    tlsConfig:
+      caFile: /var/run/secrets/kubernetes.io/serviceaccount/ca.crt
+      serverName: kubernetes
+  jobLabel: component
+  namespaceSelector:
+    matchNames:
+    - default
+  selector:
+    matchLabels:
+      component: apiserver
+      provider: kubernetes
+```
+
+The `monitor: platform` label is the one the Prometheus server's `serviceMonitorSelector` looks for. The `endpoints` block sets the port and how to connect to each instance. This example uses HTTPS, with a Certificate Authority and a server name to verify the endpoint.
+
+In Prometheus terms, a job is a group of instances of one service. A single API server is an instance, and all the API servers together form the job. The `jobLabel` field names the label that supplies the job name. Here the job is `apiserver`.
+
+The `namespaceSelector` says which namespaces to search for Services. The `selector` finds Services by their labels. Any Service in the `default` namespace with those labels becomes a scrape target.
+
+### Recording and alerting rules with PrometheusRule
+
+A PrometheusRule tells the operator to generate a rule file for Prometheus. The rules cover recording metrics and alerting on them. The operator stores the rules in a ConfigMap and mounts it into the Prometheus Pods.
+
+```yaml
+apiVersion: monitoring.coreos.com/v1
+kind: PrometheusRule
+metadata:
+  labels:
+    monitor: platform
+    role: alert-rules
+  name: sample-rules
+  namespace: platform-monitoring
+spec:
+  groups:
+  - name: kube-apiserver.rules
+    rules:
+    - expr: |
+        sum by (code,resource) (rate(
+          apiserver_request_total{job="apiserver",verb=~"LIST|GET"}[5m]
+        ))
+      labels:
+        verb: read
+      record: code_resource:apiserver_request_total:rate5m
+  - name: kubernetes-apps
+    rules:
+    - alert: KubePodNotReady
+      annotations:
+        description: Pod {{ $labels.namespace }}/{{ $labels.pod }} has been in a
+          non-ready state for longer than 15 minutes.
+        summary: Pod has been in a non-ready state for more than 15 minutes.
+      expr: |
+        sum by (namespace, pod) (
+          max by(namespace, pod) (
+            kube_pod_status_phase{job="kube-state-metrics", phase=~"Pending|Unknown"}
+          ) * on(namespace, pod) group_left(owner_kind) topk by(namespace, pod) (
+            1, max by(namespace, pod, owner_kind) (kube_pod_owner{owner_kind!="Job"})
+          )
+        ) > 0
+      for: 15m
+      labels:
+        severity: warning
+```
+
+The first group holds a recording rule. It totals the LIST and GET requests to all API server instances over a 5-minute window. It stores the result as a new metric named `code_resource:apiserver_request_total:rate5m`.
+
+The second group holds an alerting rule. It sends a warning if any Pod stays in a not-ready state for more than 15 minutes. Once you use the Prometheus Operator and these custom resources, the pattern is easy to repeat. Production Kubernetes recommends it highly if Prometheus is your main metrics tool.
+
+### Instrumenting your own software
+
+The best source of metrics is the app itself. Many applications built for Kubernetes expose Prometheus metrics natively. Official and community client libraries make this easy for developers. Production Kubernetes covers this in depth in its Chapter 14.
+
+Sometimes an app or system does not expose Prometheus metrics. An exporter fills that gap. It collects data points from the system and exposes them as Prometheus metrics. The Node Exporter is the common example. It gathers hardware and operating system metrics for Prometheus to scrape. Community exporters exist for many popular tools.
+
+Once an app exposes metrics, add it to a Prometheus scrape configuration. A ServiceMonitor does this for you. The Operator can auto-discover Services by their namespace and labels, so you do not edit scrape configs by hand.
+
+Labels are powerful, and they come with a warning. Overusing labels can make the resource use of your Prometheus servers untenable. Learn what high cardinality does to metrics before you add many labels. Check the instrumentation guide in the Prometheus docs.
+
+In short, instrument the software you write where you can. Build or use exporters where native instrumentation is not feasible. Then collect the exposed metrics with auto-discovery, so you can see your systems clearly.
 
 ### Key exporters and sources
 
@@ -209,11 +372,48 @@ DCGM_FI_DEV_GPU_TEMP > 85
   annotations: { summary: "Burning 2% of monthly error budget per hour", runbook_url: https://runbooks.example.com/inference-errors }
 ```
 
+### Alertmanager
+
+Alertmanager is a separate workload. It receives alerts from Prometheus, groups and de-duplicates them, and routes them to receivers. Receivers are the notification channels your on-call engineers use, such as email, Slack, or PagerDuty. Grouping matters because an outage that touches many replicas should not flood people with alerts. If your system is unsupported, a webhook receiver can POST a JSON payload to any URL you provide.
+
+With the Prometheus Operator, you deploy Alertmanager from a manifest like the one below.
+
+```yaml
+apiVersion: monitoring.coreos.com/v1
+kind: Alertmanager
+metadata:
+  labels:
+    alertmanager: main
+  name: main
+  namespace: platform-monitoring
+spec:
+  image: quay.io/prometheus/alertmanager:v0.21.0
+  nodeSelector:
+    kubernetes.io/os: linux
+  replicas: 2
+  securityContext:
+    fsGroup: 2000
+    runAsNonRoot: true
+    runAsUser: 1000
+  serviceAccountName: alertmanager-main
+  version: v0.21.0
+```
+
+Setting `replicas` to more than one asks for a highly available Alertmanager. Running several Alertmanagers in one cluster is rarely needed, since one HA deployment usually does the job. Some teams use a central Alertmanager for many clusters. Most prefer one per cluster, because it leaves each cluster with fewer external dependencies. A shared Alertmanager also lets tenants use a single PrometheusRule to add their own alerting rules.
+
 ### GPU-fleet specific alerts
 
 Node-level hardware (page/ticket by severity): Xid errors (esp. 79 fallen off bus, 48 DBE, 74 NVLink), uncorrectable ECC, retired pages pending, GPU temperature/power throttling (`DCGM_FI_DEV_CLOCK_THROTTLE_REASONS`), NVLink errors/down links, PCIe replay counters, lost GPU count vs expected, `nvidia-smi` hang; network (IB/RoCE link down, symbol errors, PFC storms, ECN marks, port speed lower than expected); storage (mount errors, throughput drop); job-level (training throughput below baseline, loss NaN, step-time skew across ranks (stragglers), checkpoint failing or stale); platform (queue wait time p95, pending reasons, GPU allocation efficiency). Details in Part 17.
 
 ## 4. Logs
+
+### Why logs need a central place
+
+Picture a workload with dozens of replicas. A user reports an error, and you need to find the one log line behind it. If you must open each replica's logs by hand, the search is slow and easy to get wrong. A central collection point lets you search log entries across all replicas at once.
+
+Logs used to live in a file on a server's disk. Fewer workloads and fewer instances made that manageable. Today, applications usually write to standard out and standard error, the way a command-line tool prints. Workloads are ephemeral, and often have no disk to keep logs, so the logs must leave the workload as they are written.
+
+This section covers how logs move from the platform and its tenant workloads to a storage backend. Most companies already run a log backend, so the platform's job is to capture, process, and forward logs to it. Storage itself is usually not the platform's concern.
 
 ### Architecture
 
@@ -256,6 +456,43 @@ Best practices:
 ```
 
 LogQL examples: `{namespace="training"} |= "NCCL WARN"`; `sum by (pod) (rate({namespace="serving"} |= "ERROR" [5m]))`; `{app="vllm"} | json | latency_ms > 2000`.
+
+### Kubernetes Events
+
+Logs record what an app did. Events record what the platform did to an object. Events are a native Kubernetes resource. Platform components create them to report actions, such as a Pod being scheduled or an image being pulled. They work like a platform log, but they are not usually sent to a logging backend.
+
+Events are stored in etcd and kept for one hour by default. That short life is why you should export them if you need them later. To see the Events for one object, run `kubectl describe`. The output below shows the Events for a newly created Pod.
+
+```text
+$ kubectl describe pod nginx-6db489d4b7-q8ppw
+Name:         nginx-6db489d4b7-q8ppw
+Namespace:    default
+...
+Events:
+  Type    Reason     Age        From                                        Message
+  ----    ------     ----       ----                                        -------
+  Normal  Scheduled  <unknown>  default-scheduler                           Successfully assigned default/nginx-6db489d4b7-q8ppw
+  Normal  Pulling    34s        kubelet, ip-10-0-0-229.us-east-2.compute.internal   Pulling image "nginx"
+  Normal  Pulled     30s        kubelet, ip-10-0-0-229.us-east-2.compute.internal   Successfully pulled image "nginx"
+  Normal  Created    30s        kubelet, ip-10-0-0-229.us-east-2.compute.internal   Created container nginx
+  Normal  Started    30s        kubelet, ip-10-0-0-229.us-east-2.compute.internal   Started container nginx
+```
+
+To get Events for a whole namespace, run `kubectl get events -n default`. The output includes Events for the ReplicaSet and the Deployment, not only the Pod.
+
+```text
+$ kubectl get events -n default
+LAST SEEN   TYPE     REASON                OBJECT                              MESSAGE
+2m5s        Normal   Scheduled             pod/nginx-6db489d4b7-q8ppw          Successfully assigned default/nginx-6db489d4b7-q8ppw
+2m5s        Normal   Pulling               pod/nginx-6db489d4b7-q8ppw          Pulling image "nginx"
+2m1s        Normal   Pulled                pod/nginx-6db489d4b7-q8ppw          Successfully pulled image "nginx"
+2m1s        Normal   Created               pod/nginx-6db489d4b7-q8ppw          Created container nginx
+2m1s        Normal   Started               pod/nginx-6db489d4b7-q8ppw          Started container nginx
+2m6s        Normal   SuccessfulCreate      replicaset/nginx-6db489d4b7         Created pod: nginx-6db489d4b7-q8ppw
+2m6s        Normal   ScalingReplicaSet     deployment/nginx                    Scaled up replica set nginx-6db489d4b7 to 1
+```
+
+Because Events live in the API, you could write automation that watches for specific Events and reacts to them. In practice, that is not common. A more useful option is an Event exporter, which turns Events into metrics that Prometheus can scrape.
 
 ## 5. Traces and OpenTelemetry
 

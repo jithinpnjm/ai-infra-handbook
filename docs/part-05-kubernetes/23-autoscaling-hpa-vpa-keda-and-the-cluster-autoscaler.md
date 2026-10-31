@@ -62,6 +62,22 @@ Each layer reacts to a different signal, and each one works at its own speed. HP
 
 Before you tune any single layer, check whether the layers around it can keep pace.
 
+### When not to autoscale
+
+Autoscaling sounds like a free win, but it adds a system you must set up, watch, and tune again. Ask first whether the payoff is worth that work. If your traffic stays fairly steady, the simplest plan may be to size the app for its busiest hours and leave it there.
+
+The same logic applies to predictable load. If traffic rises at the same hours each day, adjusting capacity by hand at those times may take little effort. Adopt autoscaling when its long-term benefit outweighs the cost of building and maintaining it.
+
+### Designing applications to scale
+
+Autoscaling works best when an application is split into parts that can grow on their own. Many teams already separate a web app from its database, so the web tier can scale alone. Microservices go further. An online store can grow during a sale while a blog service stays the same size.
+
+Splitting an app also adds management work, because you now run many workloads. Automation becomes more important with each one you add. At some point it becomes essential.
+
+Small, quick workloads suit autoscaling best. If a container image is small and the app starts fast, a new replica joins the pool quickly. An image over a gigabyte, paired with a startup script that runs for minutes, responds slowly to load changes. Those apps make poor autoscaling candidates, so keep this in mind when you design them.
+
+Scaling in means stopping running instances, and vertical scaling restarts the app to apply new resource values. So plan for graceful shutdown from the start. Anything that scales out must eventually scale back in.
+
 ## 2. Horizontal Pod Autoscaler (HPA)
 
 ### Controller and algorithm
@@ -179,6 +195,29 @@ kubectl describe hpa vllm -n serving         # conditions: AbleToScale, ScalingA
 
 Run the first two commands to confirm that each metric is served. Then use `describe` to read the HPA conditions, events, and current and target values.
 
+### Cluster proportional autoscaler
+
+Some workloads should grow with the cluster itself, not with a load metric. Cluster DNS is one example. The Cluster Proportional Autoscaler (CPA) handles that case. It scales replicas based on the number of nodes, or a subset of nodes, in the cluster.
+
+Unlike the HPA, the CPA does not read any metrics API. It needs no Metrics Server and no Prometheus Adapter. You do not write a Kubernetes resource for it either. You configure it with flags that name the target workload, plus a ConfigMap that holds the scaling rules.
+
+The CPA has a narrow use case. Workloads that must scale with the cluster are usually platform services. Before you choose it, check whether an HPA would fit better. If you already run HPAs, the metrics APIs are in place, and a second autoscaler adds upkeep you may not need. If you run no HPAs and the CPA covers your need, its simple model is attractive.
+
+The CPA offers two scaling methods.
+
+- The linear method scales the application in direct proportion to the number of nodes or cores.
+- The ladder method uses a step function to set a ratio of nodes to replicas, or cores to replicas.
+
+Teams have used the CPA well for services such as cluster DNS, in clusters that grow to hundreds of worker nodes. Demand at 5 nodes differs a lot from demand at 300 nodes. A proportional rule keeps the service sized to match.
+
+### Custom autoscaling
+
+Autoscaling is not limited to the tools above. Any automated method that produces the scaling behavior you need counts. For example, if you know when traffic rises each day, a Kubernetes CronJob can update the replica count on the matching Deployment.
+
+When a simple method like this works, choose it. A system with fewer moving parts is less likely to produce surprises.
+
+That covers the main ways to autoscale workloads, from core Kubernetes to add-ons and custom code. The platform underneath the workloads can scale too, and section 5 covers that.
+
 ## 3. Vertical Pod Autoscaler (VPA)
 
 Requests often drift away from real usage. The Vertical Pod Autoscaler, or VPA, fixes that by adjusting requests and limits rather than the replica count. It lives in the kubernetes/autoscaler subproject and uses the `VerticalPodAutoscaler` CRD.
@@ -194,6 +233,34 @@ If you let HPA and VPA act on the same CPU or memory metric, they fight each oth
 VPA also works as a cost lens. Compare requests with actual usage, as described in 5.22, and bound the results with `LimitRange`. Watch the caveats: the recommender's history period, OOM events that raise memory, JVM and PyTorch memory behaviour, and bursty workloads. Goldilocks from Fairwinds shows VPA recommendations for each namespace.
 
 Start with `Off` and read the recommendations before you let VPA change any pod.
+
+### Off mode as a tuning aid
+
+Many apps reach production before anyone knows how much CPU and memory they really use. Deadlines leave little time for load testing and profiling. Teams then request generous amounts as a safety margin, and the cluster ends up poorly utilized.
+
+VPA in `Off` mode can close that gap. It studies real traffic and recommends values, but it never changes or evicts a pod. Engineers review the numbers and set the requests by hand. This keeps workloads from being evicted at peak times, which matters most when an app does not yet shut down gracefully. It also saves the work of reading usage metrics and calculating values yourself. In this role VPA is a tuning aid, not an autoscaler.
+
+To read the recommendations, run `kubectl describe vpa <vpa name>` and look at the `Status` section. The output looks like this.
+
+```
+Recommendation:
+  Container Recommendations:
+    Container Name: coredns
+      Lower Bound:
+        Cpu: 25m
+        Memory: 262144k
+      Target:
+        Cpu: 25m
+        Memory: 262144k
+      Uncapped Target:
+        Cpu: 25m
+        Memory: 262144k
+      Upper Bound:
+        Cpu: 427m
+        Memory: 916943343
+```
+
+Each container gets its own recommendation. Use the `Target` value as the baseline for CPU and memory requests.
 
 ## 4. KEDA: event-driven autoscaling
 
@@ -269,6 +336,78 @@ In *Production Kubernetes* Chapter 13 (*Autoscaling*), Josh Rosso et al. highlig
 3. **Hiding Node Spin-Up Latency with `cluster-overprovisioner` (Production Kubernetes Chapter 13, Figures 13-6 & 13-7):** The Cluster Autoscaler reacts only after a pod becomes Pending, which happens once existing nodes are already full. A sudden traffic spike therefore normally waits 5 to 15 minutes for a cloud GPU VM to boot and install drivers. You can remove that wait without setting artificially low HPA thresholds (`30%`). Deploy a `PriorityClass` with negative priority (`value: -10`), and a `pause` (`registry.k8s.io/pause`) **`cluster-overprovisioner` Deployment** sized to 1 to 2 nodes' worth of resources. The model is in `simulate_overprovisioning_pause_pods()` in `code/part05/autoscaling_hpa_ca_simulator.py`.
    - In steady state, the negative-priority `pause` pods sit on warm, ready GPU nodes (`Figure 13-6`).
    - When real production inference pods scale out (`priority >= 0`), `kube-scheduler` immediately preempts the `pause` pods, with a `0s` node wait, and places the real pods on the warm nodes. The preempted `pause` pods go `Pending`, which triggers the `Cluster Autoscaler` to provision replacement buffer nodes in the background (`Figure 13-7`).
+
+### Cluster Autoscaler configuration example
+
+The CA is configured with flags, and its scaling behavior is highly configurable. The project's FAQ on GitHub documents the flags. The example below runs the CA against an AWS autoscaling group.
+
+```yaml
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: aws-cluster-autoscaler
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app.kubernetes.io/name: "aws-cluster-autoscaler"
+  template:
+    metadata:
+      labels:
+        app.kubernetes.io/name: "aws-cluster-autoscaler"
+    spec:
+      containers:
+      - name: aws-cluster-autoscaler
+        image: "us.gcr.io/k8s-artifacts-prod/autoscaling/cluster-autoscaler:v1.18"
+        command:
+        - ./cluster-autoscaler
+        - --cloud-provider=aws
+        - --namespace=kube-system
+        - --nodes=1:10:worker-auto-scaling-group
+        - --logtostderr=true
+        - --stderrthreshold=info
+        - --v=4
+        env:
+        - name: AWS_REGION
+          value: "us-east-2"
+        livenessProbe:
+          httpGet:
+            path: /health-check
+            port: 8085
+        ports:
+        - containerPort: 8085
+```
+
+The `--cloud-provider=aws` flag names the supported cloud provider, which is AWS here. The `--nodes=1:10:worker-auto-scaling-group` flag tells the CA to manage an AWS autoscaling group called `worker-auto-scaling-group`. It lets the CA scale that group between 1 and 10 machines.
+
+Cluster autoscaling is very useful. It delivers one of the main benefits of cloud native infrastructure. It also adds real complexity. Load test the setup, and learn how it behaves, before you trust it to scale business-critical production platforms.
+
+Know the upper limits your cluster can reach. If you let it grow to hundreds of nodes, find the point where parts of the platform start to become bottlenecks.
+
+Speed is another concern. Clusters need time to scale when demand arrives. This is where overprovisioning helps.
+
+### Cluster overprovisioning
+
+The CA reacts only to Pending pods, which are pods that cannot be scheduled because the cluster lacks resources. By the time it adds nodes, the cluster is already full. Scaling workloads can then wait for capacity while new nodes boot, join, and become ready. That delay can break your latency targets.
+
+Start by measuring how long new nodes take to spin up, join the cluster, and become ready for workloads. With that number in hand, pick a fix.
+
+- Set HPA target utilization low enough that workloads scale out well before the app is full. The headroom buys time for nodes to arrive. For sharp spikes you may need a very low target, which leaves workloads chronically overprovisioned to cover rare events.
+- Use cluster overprovisioning. Keep empty nodes on standby as a buffer for scaling workloads. This removes the need to set HPA targets artificially low ahead of high-load events.
+
+Cluster overprovisioning uses placeholder pods that do three things.
+
+- They request enough resources to reserve nearly all of a node.
+- They consume no actual resources.
+- They use a priority class that gets them evicted as soon as another pod needs the space.
+
+Because each placeholder reserves a whole node, the replica count of the overprovisioner Deployment sets how many standby nodes you hold. Preparing for a campaign or launch is as simple as raising that count.
+
+Create a priority class with a negative value, for example `value: -1` as in the book (the lab below uses `-10`; any value below zero works), and apply it to the overprovisioner Deployment. Every other workload then outranks these pods by default. When a real pod needs the room, the overprovisioner pod is evicted immediately. The evicted pod goes Pending, which triggers the Cluster Autoscaler to provision a new node to stand by.
+
+Figure 13-6 shows one placeholder replica, but you can run as many as the buffer requires.
+
+With the Cluster Autoscaler and cluster-overprovisioner, you have two solid ways to scale Kubernetes clusters horizontally. This fits well with horizontal workload scaling. Vertical cluster scaling is not covered here, because horizontal scaling has covered every use the authors found.
 
 ### Karpenter
 

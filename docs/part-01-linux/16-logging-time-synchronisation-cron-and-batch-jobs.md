@@ -333,6 +333,20 @@ Time problems show up in clusters in a few recurring ways.
 
 Before you debug a Slurm or authentication failure, check the clock on both ends.
 
+### Classic ntpd setup for a small cluster
+
+Many older clusters ran the reference `ntpd` daemon instead of chrony. The layout is the same as the two-tier design above. One head server talks to outside time servers, and every node talks only to that server. A cluster with no outside link still keeps one shared time source this way.
+
+On the server, install the `ntp` package. Then list the upstream servers in `/etc/ntpd.conf` and tell the daemon which internal interface to serve:
+
+```text
+server 1.us.pool.ntp.org
+server 2.centos.pool.ntp.org
+interface listen eth0   # internal interface
+```
+
+On each node, the `/etc/ntpd.conf` file needs only one line: `server server.cluster.myorg`. The last step is to enable the `ntpd` service at boot on the server and on every node. The book itself warns that this recipe may be outdated, so treat it as a plan. For new work, use chrony as described above.
+
 ## 7. Scheduling recurring tasks: cron
 
 cron is the classic periodic scheduler. The `crond` daemon wakes every minute and runs jobs from crontab files. Each job is a command with five time fields:
