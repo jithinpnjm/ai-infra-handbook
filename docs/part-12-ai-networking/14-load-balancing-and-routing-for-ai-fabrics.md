@@ -53,6 +53,16 @@ After completing this chapter, you will be able to perform five engineering task
 
 ## 1. Per-flow load balancing: from static hashing to global path awareness
 
+### Why AI traffic has low entropy
+
+Load balancing decides which uplink each packet takes. In most data centers, a simple method works well enough. AI training is different. A large language model with natural language understanding (NLU) and natural language generation (NLG) parts trains across many GPUs at the same time. Those GPUs must exchange huge amounts of data, which creates heavy east-west traffic inside the data center.
+
+Only a small number of applications usually run in such a cluster. Most of their traffic is RoCEv2, and it has low entropy at the transport layer. Entropy here means how much variety the packet headers show. Much of the traffic moves between one source and one destination pair, so the network layer has low entropy too. High-bandwidth flows then take a large share of the port bandwidth between switches.
+
+The goal of this chapter is to balance load before congestion forms. Acting early gives better fabric utilization and fewer congestion points.
+
+Flow-based load balancing is only one option inside an AI fabric. Flow entropy is often not very high in the RoCEv2 setting. A single massive flow leaves the GPU server with the same source and destination IP addresses and UDP ports. For that reason, a packet-spraying technique called per-packet load balancing can serve as an alternative. Section 2 covers it.
+
 ### 1.1 IP ECMP next-hop groups and the low-entropy RoCEv2 problem
 
 When a leaf switch learns multiple equal-cost paths to a remote GPU server, it must forward packets across those uplinks in hardware. It cannot consult the routing CPU on every frame. If the switch created a separate hardware forwarding group for every destination IP prefix across dozens of spines, ASIC next-hop table memory would run out. Instead, the switch control plane groups all remote prefixes that share the same spine next hops into one shared hardware ECMP group identifier.
@@ -170,6 +180,14 @@ Global Load Balancing (GLB) Architecture on Broadcom Tomahawk 5 (ADC Ch. 6):
 
 In five-stage Clos clusters, operators can deploy GLB in four scopes depending on hardware table scale. They can enable it across a three-stage Clos fabric on all switches. They can also enable it within individual pods of a five-stage Clos by treating each pod as a three-stage GLB domain. Alternatively, they can run GLB exclusively between the spine and super-spine layers when oversubscription exists there. Finally, they can run it across all five stages when ASIC profile table capacity permits.
 
+### GLB heartbeats, update rates, and congestion effects
+
+GLB also reduces how often congestion signals fire. Spines send link quality to leaves through GLB heartbeats at microsecond speed. When a spine link degrades, leaves move new flows to other paths. Those paths have a lower chance of congestion. Fewer congested paths can mean fewer DCQCN triggers at the spine level. DCQCN stands for Data Center Quantized Congestion Notification, and it is covered in the RoCEv2 transport and congestion chapter.
+
+Fewer DCQCN triggers also lowers the chance of an avalanche of Priority Flow Control (PFC) frames. A flood of PFC frames can stall traffic across the whole fabric. GLB therefore helps prevent that stall before it starts.
+
+GLB has a hard problem with update frequency. Topology information only needs an update when the topology changes. Link quality can update in real time or when a change starts. Propagation must be fast, at microsecond level, so each change has little impact. During frequent microbursts, the heartbeats may need tuning. Plan that tuning in the early phase of a GLB deployment.
+
 ### 1.5 Traffic engineering–based load balancing (`TELB`)
 
 Dynamic schemes like DLB and GLB react after queue occupancy begins to change. Multi-tenant LLM training clusters often require strict deterministic path pinning. That way, one tenant's bursty AllReduce or AllToAll job never shares spine links or buffers with another tenant. Traditional MPLS Traffic Engineering and Segment Routing MPLS require expensive software licenses on high-radix switches and add label overhead. They also lack full telemetry and lossless DCQCN compatibility compared to native IP fabrics.
@@ -181,6 +199,12 @@ Traffic Engineering–Based Load Balancing achieves deterministic path diversity
 | **1. Multi-tenant spine slicing and `FBF` / `PBR`** | In an `8`-spine, two-stripe `ROD` (`Leaf1..Leaf8` in Stripe 1, `Leaf9..Leaf16` in Stripe 2) with `7` tenants (`Tenant 1..7`), pin `Tenant 1` to `1` spine or split `4` and `4` spines. Host splits collectives across multiple `RoCEv2` `QPAIRs`; leaf `FBF`/`PBR` maps `QPAIR` or source UDP port ranges onto colored path IDs (`BGP DPF`). | Strict in-order delivery per pinned spine or `QPAIR` group with pre-installed ASIC backup path IDs. |
 | **2. Ingress-port coloring in `RUD`** | All `8` GPUs (`GPU 1..8`) of a server connect to the same leaf complex (`Leaf1..Leaf16` with `3 × 400G` uplinks to `Spine1..Spine8`). `TELB` classifies traffic by ingress switch interface, assigning each GPU ID to a dedicated logical fabric color. | A bandwidth spike on `GPU 1` cannot contend with jobs running on `GPU 2..8`. |
 | **3. Out-of-band (`OOB`) `TELB` controller** | External controller on the `OOB` management network collects streaming telemetry (queue buffers, `DCQCN`/`PFC` counters, active probe latencies) and coordinates with the GPU job scheduler. | Dynamically updates deterministic path placements before job launch or between training phases. |
+
+### Why MPLS-TE and SR-MPLS are rarely used in AI fabrics
+
+MPLS-TE and SR-MPLS are mature traffic engineering tools, but they are expensive to run in a data center. Upgrading 400 Gbps and 800 Gbps switches to support them can raise both capital expenditure (capex) and operating expenditure (opex). Their operating costs are also higher than those of current data center technologies. MPLS usually needs a premium license, so many operators keep MPLS only in the core network. That gives a clear boundary at the data center gateway.
+
+Telemetry support for MPLS and SRv6 is also weaker than in a plain IP fabric. Compatibility with DCQCN, which the lossless fabric requires, is usually limited or incompatible. For this reason, a pure IP fabric is still the better choice for most AI data center deployments.
 
 ---
 

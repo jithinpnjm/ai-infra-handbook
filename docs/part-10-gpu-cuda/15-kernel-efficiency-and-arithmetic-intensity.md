@@ -272,6 +272,87 @@ using Gemm = cutlass::gemm::device::Gemm<
 | Shared Memory per Thread Block (`CTA`) | `~2 KB` | `~4 KB` | Double-buffered staging footprint; negligible vs `227 KB` SMEM/SM. |
 | Development & Maintenance Effort | High (weeks per arch) | Low (declarative template) | Automatically inherits FP8/NVFP4, TMEM, TMA multicast, and cluster pairs. |
 
+### 3.4 Overlapping copies with compute using the CUDA Pipeline API
+
+A custom tile loop has a timing problem. If the kernel waits for the next tile to arrive from HBM before it starts math, the Tensor Cores sit idle during every wait. The fix is double buffering: while the current tile is being computed, the next tile is already on its way into shared memory.
+
+The book shows this with `cuda::memcpy_async` and the CUDA Pipeline API (`<cuda/pipeline>`). The example below stages A and B tiles in four shared-memory buffers. The code is copied from the book and is not compiled or run here.
+
+```cpp
+// two_stage_pipeline.cu (from ASP Ch 9, pp. 308-309; not compiled here)
+#include <cuda/pipeline>
+#include <cooperative_groups.h>
+namespace cg = cooperative_groups;
+
+extern "C" __global__
+void stage_ab_tiles(const float* __restrict__ globalA,
+                    const float* __restrict__ globalB,
+                    float* __restrict__ outC,
+                    int tile_elems,
+                    int num_tiles) {
+    assert((tile_elems % (32 * 4)) == 0 &&
+           "tile_elems must be multiple of 128 for float4 vectorization");
+
+    extern __shared__ float smem[];
+    auto block = cg::this_thread_block();
+
+    float* A0 = smem + 0 * tile_elems;
+    float* A1 = smem + 1 * tile_elems;
+    float* B0 = smem + 2 * tile_elems;
+    float* B1 = smem + 3 * tile_elems;
+
+    constexpr auto scope = cuda::thread_scope_block;
+    constexpr int stages = 2;
+    __shared__ cuda::pipeline_shared_state<scope, stages> pstate;
+    auto pipe = cuda::make_pipeline(block, &pstate);
+
+    // Prime the pipeline with tile 0
+    pipe.producer_acquire();
+    cuda::memcpy_async(block, A0, globalA + 0 * tile_elems,
+        cuda::aligned_size_t<32>{tile_elems * sizeof(float)}, pipe);
+    cuda::memcpy_async(block, B0, globalB + 0 * tile_elems,
+        cuda::aligned_size_t<32>{tile_elems * sizeof(float)}, pipe);
+    pipe.producer_commit();
+
+    for (int t = 1; t < num_tiles; ++t) {
+        // Stage the next A and B tiles
+        pipe.producer_acquire();
+        cuda::memcpy_async(block, (t & 1) ? A1 : A0,
+            globalA + t * tile_elems,
+            cuda::aligned_size_t<32>{tile_elems*sizeof(float)}, pipe);
+        cuda::memcpy_async(block, (t & 1) ? B1 : B0,
+            globalB + t * tile_elems,
+            cuda::aligned_size_t<32>{tile_elems*sizeof(float)}, pipe);
+        pipe.producer_commit();
+
+        // Consume the previously staged tiles
+        pipe.consumer_wait();
+        float* prevA = (t & 1) ? A0 : A1;
+        float* prevB = (t & 1) ? B0 : B1;
+        // Perform compute using prevA and prevB
+        pipe.consumer_release();
+    }
+
+    // Consume the final staged tiles
+    pipe.consumer_wait();
+    int last = (num_tiles - 1) & 1;
+    float* lastA = last ? A1 : A0;
+    float* lastB = last ? B1 : B0;
+    // Perform compute using lastA and lastB
+    pipe.consumer_release();
+}
+```
+
+Read the loop in three steps. The producer side issues copies for tile `t` into the free buffer. The consumer side waits until the older tile has landed, then computes on it. Finally, the last tile is consumed after the loop. When you launch this kernel, set the dynamic shared memory size to `4 x tile_elems x sizeof(float)` so all four buffers fit.
+
+The copy side matters as much as the buffer count. The book recommends `cuda::memcpy_async` for bulk tensor transfers, because it maps to the Tensor Memory Accelerator (TMA). Reserve `cp.async` for niche cases that TMA cannot express, and those cases are rare. Whichever copy you use, make sure it has completed before you read the data.
+
+### 3.5 The profile, diagnose, and optimize loop
+
+Most kernel work follows one cycle: profile, diagnose, optimize, and profile again. Start by finding out whether the kernel is memory bound or compute bound. Then work through the levers in order: occupancy tuning, warp-level refinements, ILP, and higher arithmetic intensity through tiling, fusion, and Tensor Cores.
+
+The payoff can be large. The book notes that a memory-bound GPU kernel can become compute bound after this cycle, and in strongly memory-bound workloads the gain can reach an order of magnitude. Use the Roofline view in Nsight Compute to confirm that the kernel really moved.
+
 ---
 
 ## 4. Inline PTX and SASS Micro-Optimizations and DeepSeek DeepEP Cache Bypass
@@ -322,6 +403,32 @@ Fallback Guard: DISABLE_AGGRESSIVE_PTX_INSTRS=1
 | `l1::no_allocate` | Prevents the hardware from allocating cache lines in L1, preserving hot L1 working sets for concurrent compute warps. |
 | `l2::256b` | Fetches `256-byte` chunks directly into the L2 cache for high-throughput MoE token streaming. |
 | `DISABLE_AGGRESSIVE_PTX_INSTRS=1` | Build-time fallback guard in DeepEP that disables out-of-doc PTX and reverts to standard documented instructions on new toolkits or GPUs. |
+
+### 4.3 PTX and SASS: what they are and when to stop
+
+Inline assembly is the bottom layer of CUDA work. It lets experts tune a few instructions by hand, after everything above it is already tuned. The compiler is usually very good, so the gains are small. Treat this section as a tool for one hot loop after everything else is tuned, not as a default habit.
+
+PTX is a low-level parallel thread execution virtual machine. It exposes the GPU as a parallel device and defines the instructions the GPU understands. CUDA C++ compiles to PTX, and PTX is then translated into native instructions for the target chip. SASS is that native assembly. It is what the hardware executes.
+
+Inline PTX lets you write those instructions inside C++ with `asm()`. You can mix C++ and PTX by naming inputs and outputs. The compiler then places your instructions into the final SASS. This is useful in a few cases:
+
+- The GPU instruction you need has no direct CUDA intrinsic.
+- You want a cache hint on one specific memory access.
+- You need a memory fence or barrier at an exact point.
+- You want to reorder instructions to avoid a pipeline stall.
+- You need a special register, such as the SM ID or the warp lane ID, that C++ does not expose.
+
+Instruction order is one of the more practical cases. Suppose a kernel has two independent loads, each followed by a use. The compiler may issue load 1, use 1, load 2, and then use 2. A better order is to issue both loads back to back and then use both results, so their latencies overlap. Inline PTX lets you force that order, which is a manual way of raising ILP.
+
+Some developers use `%smid` in persistent kernels so that only one block per SM does a given job. This is manual SM partitioning, and the CUDA C++ API does not offer it directly. It is a niche pattern, so use it only when the simpler approaches do not fit.
+
+PTX is generally forward compatible. SASS changes with each GPU generation, so SASS-level code can break on new hardware. Even PTX sometimes needs an update after a hardware change if you want the same performance.
+
+The expected gain is small on code that is already well optimized. For a memory-bound kernel, two independent load streams written in PTX may give a 5%–10% speedup, because the compiler can be conservative there. In a compute-bound kernel, you might pick a fast math instruction over a precise one. CUDA's fast math intrinsics, such as `__sinf()`, are one example.
+
+Assembly has real costs. It is labor-intensive, it lowers portability, and it must be checked again on each new GPU. It can also make things slower if the order is wrong. Use Nsight Compute to check the SASS throughput metrics and the Warp Stall Reasons. A good change shows less memory-dependency stall and a higher instruction issue rate.
+
+Use inline assembly as the last resort. Keep it isolated and documented, and verify every change with a profiler. For most work, CUDA's built-in optimizations, or well-tuned libraries such as CUB and Thrust, are good enough.
 
 ---
 

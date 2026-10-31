@@ -209,7 +209,7 @@ A good benchmark report states: the question; the system (hardware, firmware, so
 
 ### Remeasure after every change
 
-Change only one or two things at a time, and then measure. Otherwise you will not know which change helped. When scaling is good on the current configuration, write down the good metric values. Then aim to keep those values as you scale.
+As with any debugging effort, change only one or two things at a time, and then measure. Without that discipline, you cannot tell which change helped. When you reach good scaling on the current configuration, note the good metric values. Then aim toward maintaining those values as you scale. Each change should move you toward the goal, and you should be able to achieve the same good numbers again.
 
 ### Remove hidden synchronization and tune the environment
 
@@ -221,7 +221,7 @@ Small changes like these sometimes turn poor resource use into high use. It is n
 
 NCCL is built for scalable collective operations, such as all-reduce, which training uses heavily. NIXL targets high-throughput point-to-point and streaming transfers, which inference often needs. Use NIXL where token streaming dominates the workload. Prefer NCCL or NVSHMEM for bulk collective and symmetric-memory patterns.
 
-GPUDirect RDMA and GDS remove the host memory bounce buffer for network and storage I/O. The CPU still schedules and controls those transfers. Always use `DistributedDataParallel` over `DataParallel` for multi-GPU training. These libraries are heavily tuned, so use them instead of reinventing the wheel.
+GPUDirect RDMA and GDS both skip the host memory bounce buffer, on the network path and the storage path. The CPU still schedules those transfers. Always use `DistributedDataParallel` over `DataParallel` for multi-GPU training. These libraries are heavily tuned, so use them instead of reinventing the wheel.
 
 ### Document and educate
 

@@ -156,13 +156,13 @@ Triton applies techniques such as warp specialization and asynchronous copies wh
 
 FlexDecoding is the decode backend of `torch.nn.attention.flex_attention`. It compiles a specialized kernel for the decode phase, where `Q_len=1`, attending over a growing KV cache. At runtime it picks that kernel and reuses it across many decode steps. That reuse keeps overhead low while shapes and dtypes stay compatible.
 
-Start the tuning with a few settings. Use `torch.compile(mode="max-autotune")` for stable, latency-critical decode once recompilations are under control. Keep the capture boundary narrow, per layer or per attention block, to reduce graph invalidations from ragged batching. Keep `torch.set_float32_matmul_precision("high")` so the remaining FP32 operations fall back to TF32.
+Three habits make the tuning easier. Choose `torch.compile(mode="max-autotune")` when decode latency matters and recompiles are already under control. Narrow the capture to one layer or one attention block, so ragged batches invalidate fewer graphs. Leave `torch.set_float32_matmul_precision("high")` on, so any leftover FP32 operations can use TF32.
 
-Precision follows the same rule of matching the tool to the job. Prefer Transformer Engine FP8 (MXFP8) for prefill and decode. Consider FP4 (NVFP4) when accuracy allows and speed improves. As of this writing, FP4 support is still maturing and can underperform 8-bit and 16-bit formats in the near term.
+For number formats, FP8 through Transformer Engine (MXFP8) is the default choice for both phases. FP4 (NVFP4) is worth a trial when your accuracy tests pass and the speed gain is real. Be aware that FP4 tooling is still young. In the near term it can run slower than 8-bit and 16-bit formats.
 
 Ragged batches are common in LLM serving, because every request has a different length. FlexDecoding handles them with nested jagged tensors (NJT), which store the sequences with an offsets array instead of padding. Prefer the NJT layout when you batch ragged sequences at decode time. The decode backend also supports grouped-query attention (GQA) and PagedAttention.
 
-FlexDecoding also supports bias terms. It integrates with PagedAttention through a block mask conversion that maps logical KV blocks onto the physical cache layout. Blocks scatter into place without extra copies. To use a global KV cache such as vLLM LMCache, map the cache's page table to FlexAttention's `BlockMask`. That turns logical KV pages into physical memory addresses on the fly.
+FlexDecoding also supports bias terms. It works with PagedAttention through a block mask conversion. That conversion lines up logical KV blocks with the physical cache, so blocks land in place without extra copies. If your KV lives in a shared cache like LMCache on vLLM, point the cache's page table at FlexAttention's `BlockMask`. Logical pages then resolve to physical memory addresses as the kernel runs.
 
 Captured tensors add flexibility. FlexDecoding leverages captured tensors to vary certain mask or bias values on each iteration, without requiring a recompile. Developers get Python-level control over custom sparsity, which is useful for MoE model inference. Arbitrary attention patterns can then run close to the speed of dense attention.
 
@@ -325,7 +325,7 @@ With these methods, a KV transfer takes a few milliseconds. Computing the same K
 
 PagedAttention stores KV in fixed token blocks, commonly 16 tokens per block. Each block is small, and its byte size depends on heads, head dimension, layers, and dtype. Sending thousands of tiny pages over RDMA adds fixed latency and protocol overhead to every transfer. The bandwidth you paid for then goes unused.
 
-Engines support several page sizes, such as 8, 16, 32, 64, or 128 tokens per block. Larger pages help because sustained link throughput rises with larger collated buffers and fewer work queue elements (WQEs). When possible, collate at least 128-token pages into each RDMA write. Run the transfer on a dedicated CUDA stream, prefer nonblocking streams with event fences, and profile with Nsight Systems to confirm the overlap.
+Engines allow several block sizes, namely 8, 16, 32, 64, or 128 tokens per block. Larger pages help because sustained link throughput rises with larger collated buffers and fewer work queue elements (WQEs). When possible, collate at least 128-token pages into each RDMA write. Run the transfer on a dedicated CUDA stream, prefer nonblocking streams with event fences, and profile with Nsight Systems to confirm the overlap.
 
 Size the transfer buffer from the KV formula. Start `pd_buffer_size` at 1 GB, which is roughly the FP16 KV for about 4k to 8k tokens on a 70-billion-parameter model with 80 layers, 32 heads, and 128-dimension heads. Use 2 GB if prompts run past about 7.5k tokens. A quick estimate is `bytes ≈ 2 × L × N × (H × Dh) × bytes_per_val`, where the factor 2 counts keys and values.
 
@@ -504,7 +504,7 @@ Mooncake's early rejection is a prediction-based admission control. It manages d
 
 On a fixed on-premises cluster, scaling means reassigning GPUs. A few GPUs that were on prefill switch roles and join the decode pool for a while. That works when each node can run both roles. Switching can cost time, since the model may need different partitions for different parallelism or quantization. Some designs keep all weights loaded on every GPU and feed each one different tasks. That resembles a unified cluster with time sharing, but at a coarse grain.
 
-In the cloud, scaling can work with the Kubernetes Horizontal Pod and Cluster Autoscalers to add or remove pods and nodes for each role. Arrow could trigger new prefill pods when load stays high. That gives a fully elastic cluster that grows or shrinks each side as needed. Scaling up new GPU pods can take tens of seconds or more. So the system may need to shed load while it waits, which is what Mooncake does.
+In the cloud, the same logic can drive Kubernetes autoscaling, adding or removing pods and nodes for each role. Arrow could trigger new prefill pods when load stays high. That gives a fully elastic cluster that grows or shrinks each side as needed. Scaling up new GPU pods can take tens of seconds or more. So the system may need to shed load while it waits, which is what Mooncake does.
 
 Adaptive scheduling needs continuous metrics. Track the prefill queue length, the decode queue length, and TTFT and TPOT percentiles. Teams often feed these into dashboards with Prometheus and custom controllers in Kubernetes. Algorithms then automate the decisions. If one cluster serves several models, GPUs can be repurposed between them on demand. Idle decode GPUs could run a smaller model's inference. That is not yet mainstream as of this writing, but it is conceptually possible.
 
@@ -551,7 +551,7 @@ Latency monitoring and feedback loops keep this kind of system on target. Track 
 
 ### 6.8 Fault Recovery When a Node Fails
 
-Fault tolerance is part of running a robust inference system. If a decode node fails mid-generation, the KV saved in the pool lets another decode worker finish the remaining tokens, perhaps after a small delay. If the KV was not saved, the system must recompute prefill on another node and then continue decoding. That is why systems like vLLM periodically checkpoint or copy the KV cache to the pool, even when disaggregation is not strictly needed. It protects against failures.
+Fault tolerance is part of running a robust inference system. If a decode node fails mid-generation, the KV saved in the pool lets another decode worker finish the remaining tokens, perhaps after a small delay. If the KV was not saved, the system must recompute prefill on another node and then continue decoding. For that reason, engines such as vLLM save KV copies to the pool on a schedule, even when disaggregation is not strictly required. Those copies guard against failures.
 
 At the process level, `cuda-checkpoint` plus CRIU (Checkpoint/Restore in Userspace) can suspend and snapshot a Linux process that hosts a GPU worker. The checkpoint can then restore onto another node with the same GPU chip type. That limits the work lost on preemption or failure. The same approach can restore prewarmed GPU memory instead of recompiling graphs and reloading weights on every start. That can cut cold-start latency.
 
