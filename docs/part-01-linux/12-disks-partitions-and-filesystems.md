@@ -174,6 +174,160 @@ Several tools read and change the table. Some only look, and others change the d
 
 Partitioning happens entirely in user space. The tools rewrite the table on the block device, then ask the kernel to re-read it. `fdisk` makes one system call (an `ioctl`, `BLKRRPART`) that re-reads the whole table, and it prints `sdd: sdd1 sdd2` in the kernel log. `parted` informs the kernel partition by partition. If the disk is in use, the re-read can fail with "device or resource busy". In that case use `partprobe` or reboot. To see what changed, use `udevadm monitor --kernel`, `cat /proc/partitions`, and `ls /sys/block/sdd`.
 
+### Reading a partition table with `parted -l`
+
+Before you change a disk, read its table. The `parted -l` command prints the table for every disk it can find, so one command gives you the full picture. This sample comes from a machine with two disks, and each disk uses a different table type.
+
+```
+# parted -l
+Model: ATA KINGSTON SM2280S (scsi)
+Disk /dev/sda: 240GB
+Sector size (logical/physical): 512B/512B
+Partition Table: msdos
+Disk Flags:
+Number Start End Size Type File system Flags
+1 1049kB 223GB 223GB primary ext4 boot
+2 223GB 240GB 17.0GB extended
+5 223GB 240GB 17.0GB logical linux-swap(v1)
+Model: Generic Flash Disk (scsi)
+Disk /dev/sdf: 4284MB
+Sector size (logical/physical): 512B/512B
+Partition Table: gpt
+Disk Flags:
+Number Start End Size File system Name Flags
+1 1049kB 1050MB 1049MB myfirst
+2 1050MB 4284MB 3235MB mysecond
+```
+
+The disk `/dev/sda` uses the old MBR layout, which `parted` calls `msdos`. The disk `/dev/sdf` holds a GPT. The two table types store different details. The MBR table has no `Name` column, because MBR has no place for partition names. The GPT names in this example were picked at random for the demonstration.
+
+An MBR table holds primary, extended and logical partitions. A primary partition is a normal slice of the disk. Plain MBR allows only four primary partitions. If you need more, one of them becomes an extended partition, and the extended partition holds logical partitions. Here, partition 2 is extended and contains logical partition 5.
+
+The filesystem type that `parted` shows is not the same as the MBR system ID. The ID is a bare number, such as 83 for Linux or 82 for Linux swap. `parted` tries to work out the filesystem itself. When you need the raw ID, run `fdisk -l` instead.
+
+Read the units with care. `parted` rounds sizes to whatever it considers easy to read. `fdisk -l` shows exact counts, usually in 512-byte sectors, which can make sizes look doubled. Check the sector size line before you do any math.
+
+### Partition tables on an LVM system
+
+If the Flags column shows `lvm`, or devices under `/dev/mapper` appear as disks, the system uses LVM. The example below is a fresh Ubuntu install with LVM chosen during setup. The partition table looks normal, except for the `lvm` flag.
+
+```
+Model: ATA VBOX HARDDISK (scsi)
+Disk /dev/sda: 10.7GB
+Sector size (logical/physical): 512B/512B
+Partition Table: msdos
+Disk Flags:
+Number Start End Size Type File system Flags
+1 1049kB 10.7GB 10.7GB primary boot, lvm
+```
+
+The LVM devices then look like partitions, but the system lists them as disks. The partitions have been separated from the partition table. Section 1.13 explains how this works, so for now just recognize the pattern.
+
+### An MBR example with fdisk
+
+Picture a small, unused USB flash drive that you want to split into two Linux partitions. You can follow along with any spare device. Find its name with `lsblk` first, and make sure nothing on it is mounted. Then start `fdisk` with the device name.
+
+```
+# fdisk /dev/sdd
+Command (m for help):
+```
+
+Start by printing the current table with `p`. `fdisk` commands are short, so expect terse output:
+
+```
+Command (m for help): p
+Disk /dev/sdd: 4 GiB, 4284481536 bytes, 8368128 sectors
+Units: sectors of 1 * 512 = 512 bytes
+Sector size (logical/physical): 512 bytes / 512 bytes
+I/O size (minimum/optimal): 512 bytes / 512 bytes
+Disklabel type: dos
+Disk identifier: 0x88f290cc
+Device Boot Start End Sectors Size Id Type
+/dev/sdd1 2048 8368127 8366080 4G c W95 FAT32 (LBA)
+```
+
+Most devices already contain one FAT-style partition, like the one shown here. Since you want Linux partitions, delete the existing one:
+
+```
+Command (m for help): d
+Selected partition 1
+Partition 1 has been deleted.
+```
+
+`fdisk` does not write anything until you explicitly save the table. If you make a mistake you cannot recover from, use `q` to quit without saving. Next, create the first partition with `n`. Accept the defaults for the partition type and number. Set the size with a plus sign and a unit:
+
+```
+Command (m for help): n
+Partition type
+p primary (0 primary, 0 extended, 4 free)
+e extended (container for logical partitions)
+Select (default p): p
+Partition number (1-4, default 1): 1
+First sector (2048-8368127, default 2048): 2048
+Last sector, +sectors or +size{K,M,G,T,P} (2048-8368127, default 8368127): +200M
+Created a new partition 1 of type 'Linux' and of size 200 MiB.
+```
+
+Create the second partition the same way, using all the default values. Then print the table again to review it:
+
+```
+Command (m for help): p
+[--snip--]
+Device Boot Start End Sectors Size Id Type
+/dev/sdd1 2048 411647 409600 200M 83 Linux
+/dev/sdd2 411648 8368127 7956480 3.8G 83 Linux
+```
+
+When the layout looks right, write it with `w`. `fdisk` does not ask for confirmation. It writes the table and exits:
+
+```
+Command (m for help): w
+The partition table has been altered.
+Calling ioctl() to re-read partition table.
+Syncing disks.
+```
+
+If you want the kernel's diagnostic messages, run `journalctl -k`. You only get them when you use `fdisk`.
+
+### How the kernel learns about a new table
+
+The kernel must read the partition table before it can show partitions as devices. `fdisk` writes the table, then makes one system call that asks the kernel to reread the whole table. The kernel logs a short message, such as `sdf: sdf1 sdf2` for two new partitions.
+
+`parted` works differently. It tells the kernel about each partition as it changes, so no whole-disk message appears. Neither tool needs kernel support to rewrite the table, because user space can access the whole block device.
+
+To watch the changes, use `udevadm monitor --kernel`, which shows partitions being removed and added. You can also check `/proc/partitions`, or the `/sys/block` and `/dev` trees. If you must confirm a reload, force it with `blockdev`:
+
+```
+# blockdev --rereadpt /dev/sdf
+```
+
+This is the older system call that `fdisk` makes.
+
+### Alignment examples with `parted`
+
+Newer partitioning tools place new partitions at good offsets. They align partitions on 1 MiB boundaries, which is sector 2048 with 512-byte sectors. Existing partitions are not realigned, so check them yourself. Here is `parted` output for two disks, one of which holds an LVM partition:
+
+```
+# parted /dev/sdb print
+Model: ATA VBOX HARDDISK (scsi)
+Disk /dev/sdb: 5616MB
+Sector size (logical/physical): 512B/512B
+Partition Table: msdos
+Disk Flags:
+Number Start End Size Type File system Flags
+1 1049kB 5616MB 5615MB primary lvm
+# parted /dev/sdc print
+Model: ATA VBOX HARDDISK (scsi)
+Disk /dev/sdc: 16.0GB
+Sector size (logical/physical): 512B/512B
+Partition Table: msdos
+Disk Flags:
+Number Start End Size Type File system Flags
+1 1049kB 16.0GB 16.0GB primary lvm
+```
+
+Both partitions start at 1049kB, which is the 1 MiB boundary the tools use.
+
 ### A worked example (a spare disk, GPT)
 
 The commands below create one GPT partition on a spare disk. The first command finds the disk and confirms it is unused. The `parted` line creates the table and one partition from 1 MiB to the end of the disk. The `fdisk` steps do the same job interactively, and `p` lets you check before `w` writes anything.
@@ -259,6 +413,40 @@ These parameters matter:
 - **Labels and UUIDs**: set a `-L` label for human reference. The UUID is generated automatically.
 - **Lazy initialisation** (`lazy_itable_init`, `lazy_journal_init`) makes `mkfs` on huge ext4 volumes return quickly. The background work finishes after the first mount. For benchmarking, disable it (`-E lazy_itable_init=0`), so the initial background write does not disturb your results.
 
+### Filesystem families and their history
+
+Linux supports native filesystems, foreign ones such as the Windows FAT family, and universal formats such as ISO 9660. Knowing where a type came from tells you what it does well. The Extended series is the longest-running native family. The second Extended filesystem, `ext2`, was modeled on traditional Unix filesystems such as UFS and FFS.
+
+Its successor, `ext3`, added a journal, which is a small cache outside the normal data structures. The journal improves data integrity and speeds up boot checks. `ext4` is an incremental improvement. It supports larger files than `ext2` or `ext3`, and it allows more subdirectories.
+
+The series stays backward compatible in one direction. You can mount `ext2` and `ext3` filesystems as each other, and you can mount either as `ext4`. You cannot mount `ext4` as `ext2` or `ext3`. Btrfs, the B-tree filesystem, is newer and native to Linux. It was designed to scale beyond what `ext4` can do.
+
+The FAT types, `msdos`, `vfat` and `exfat`, come from Microsoft systems. The simple `msdos` type covers the primitive single-case names of MS-DOS. Most removable flash media, such as SD cards and USB drives, use `vfat` up to 4GB and `exfat` above that. Windows can also use NTFS, the more advanced NT File System.
+
+XFS is a high-performance filesystem. Some distributions, such as Red Hat Enterprise Linux 7.0 and later, use it by default. `hfsplus` is the Apple standard used on most Macintosh systems. `iso9660` is the CD-ROM standard, and most CD-ROMs use some version of it.
+
+Linux developers tend to replace any component that no longer meets current needs. The Extended series was upgraded each time it fell short, which explains why it stayed the default so long. Some advances, mostly for very large numbers of files and very large files, need changes that `ext4` cannot make without breaking compatibility. At the time of writing, Btrfs was the default for one major distribution. If that works out, Btrfs could replace the Extended series.
+
+### What `mkfs` runs behind the scenes
+
+`mkfs` is a front end for a family of programs named `mkfs.` plus a type. Inspect the programs behind the commands, and you will see this:
+
+```
+$ ls -l /sbin/mkfs.*
+-rwxr-xr-x 1 root root 17896 Mar 29 21:49 /sbin/mkfs.bfs
+-rwxr-xr-x 1 root root 30280 Mar 29 21:49 /sbin/mkfs.cramfs
+lrwxrwxrwx 1 root root 6 Mar 30 13:25 /sbin/mkfs.ext2 -> mke2fs
+lrwxrwxrwx 1 root root 6 Mar 30 13:25 /sbin/mkfs.ext3 -> mke2fs
+lrwxrwxrwx 1 root root 6 Mar 30 13:25 /sbin/mkfs.ext4 -> mke2fs
+lrwxrwxrwx 1 root root 6 Mar 30 13:25 /sbin/mkfs.ext4dev -> mke2fs
+-rwxr-xr-x 1 root root 26200 Mar 29 21:49 /sbin/mkfs.minix
+lrwxrwxrwx 1 root root 7 Dec 19 2011 /sbin/mkfs.msdos -> mkdosfs
+lrwxrwxrwx 1 root root 6 Mar 5 2012 /sbin/mkfs.ntfs -> mkntfs
+lrwxrwxrwx 1 root root 7 Dec 19 2011 /sbin/mkfs.vfat -> mkdosfs
+```
+
+`mkfs.ext4` is just a symbolic link to `mke2fs`. This matters on a system that lacks a specific `mkfs` command, and when you look up documentation for one filesystem. Each creation tool has its own manual page, such as `mke2fs(8)`. Opening the page for `mkfs.ext4` usually redirects you to `mke2fs`.
+
 ## 5. Mounting
 
 Picture a node that comes back from a reboot with `/data` missing. The boot log points at a mount, and you need to know how mounts work before you can fix it. **Mounting** attaches a filesystem to a directory, called the **mount point**, in the global tree. Walk into that directory and you reach the filesystem. To mount, you need three things: the **source** (a device, UUID, label, remote path, or a pseudo name for special filesystems), the **type**, and the **mount point**, which must be an existing directory. `/mnt` is a conventional place for temporary mounts. Permanent filesystems get their own directories, such as `/data` or `/scratch`.
@@ -327,6 +515,36 @@ sudo mount -o remount,noatime /data
 sudo mount -n -o remount,rw /        # -n: do not write /etc/mtab (needed when / is still read-only)
 ```
 
+### Short and long mount options
+
+Many `mount` options have a short letter, and many have a long keyword. Short letters cover common jobs, such as `-r` for read-only and `-t` for the filesystem type. Long options cover everything else. They follow `-o`, separated by commas.
+
+```
+# mount -t vfat /dev/sde1 /dos -o ro,uid=1000
+```
+
+Here `ro` means read-only, the same as `-r`. The `uid=1000` option tells the kernel to treat every file on the filesystem as owned by user ID 1000. The `exec` and `noexec` options allow or forbid running programs from the filesystem. The `suid` and `nosuid` options allow or ignore setuid bits. The `rw` option mounts read-write.
+
+The `-n` option stops `mount` from writing `/etc/mtab`, the runtime mount database. Without it, the mount fails when that file cannot be written. That happens at boot, while the root filesystem is still read-only. The option also helps in single-user mode, when the database may not be available.
+
+Unix and DOS text files end lines differently. Unix uses a single linefeed, and DOS uses a carriage return followed by a linefeed. Automatic conversion at the filesystem level causes trouble, so keep the style uniform. Editors such as vim detect the style and maintain it.
+
+### Remounting a filesystem in place
+
+The most common reason to remount is crash recovery. The root filesystem may start read-only, and you need it writable. Remounting attaches the same filesystem again at the same mount point, with new options.
+
+```
+# mount -n -o remount /
+```
+
+The `-n` option matters here, because the root is still read-only and cannot update `/etc/mtab`. This works only if `/etc/fstab` lists the right device for `/`. If it does not, add the device name to the command.
+
+### Removable media and `noauto`
+
+Some entries should not mount at boot. A removable flash device is one example. The `noauto` option makes `mount -a` skip the entry. The `user` option lets an ordinary user mount it. Because a user could place a setuid program on such a device, `user` also implies `nosuid`, `noexec` and `nodev`.
+
+Most desktops mount inserted media automatically now. The `user` option is most useful for granting access to specific directories.
+
 ### `/etc/fstab`: mounts at boot
 
 `/etc/fstab` lists the filesystems to mount at boot. It also holds the shortcuts for commands such as `mount /data`. Each line describes one filesystem and has **six fields**.
@@ -391,11 +609,66 @@ The numbers in `df` surprise people. The columns are `Filesystem`, `1024-blocks`
 
 The classic production case goes like this. A log rotation deleted a huge file while a process still held it open. So `df` showed 100% while `du` found nothing. `lsof +L1` finds the file, and `ls -l /proc/PID/fd` shows the `(deleted)` marker.
 
+### Reading the `df` output
+
+`df` reports how full each mounted filesystem is. Its output grows on a busy machine, but the lines you care about look like this:
+
+```
+$ df
+Filesystem 1K-blocks Used Available Use% Mounted on
+/dev/sda1 214234312 127989560 75339204 63% /
+/dev/sdd2 3043836 4632 2864872 1% /media/user/uuid
+```
+
+The columns show the device, the total size in blocks of 1,024 bytes, the blocks used, the blocks free, the percentage in use, and the mount point. If you cannot find the right line, pass a directory to `df`. Running `df .` limits the output to the filesystem that holds the current directory.
+
+The totals look odd at first. `Used` plus `Available` is less than the total. About 5 percent is missing from the sum. That space sits in reserved blocks, and only root can allocate them once the filesystem fills. System servers keep running even when ordinary users have filled the disk.
+
+By default, `df` counts 1 KiB blocks. Use `-k` to say so explicitly, `-m` for 1 MiB blocks, or `-h` to let the tool pick readable units. The POSIX standard defines 512-byte blocks. Set the `POSIXLY_CORRECT` environment variable to get them. The same size options work with `du`.
+
+### Finding space hogs with `du`
+
+When a disk fills, `du` shows where the space went. With no arguments, it prints the usage of every directory below the current one. That list can be very long. The `-s` option prints only a grand total.
+
+To judge everything in one directory, change into it and run `du -s *`. That pattern skips dot directories, so check those separately.
+
 ### Swap, in brief
 
 Swap is disk or file space that the kernel uses to hold less-used memory pages. The chapter on memory (1.17) covers when and how the kernel uses it. To add swap, run `mkswap /dev/sdb2 && swapon /dev/sdb2`. A swap file also works. Create it with `fallocate -l 8G /swapfile; chmod 600 /swapfile; mkswap /swapfile; swapon /swapfile`. Avoid sparse files, and note that some filesystems (btrfs, and some XFS cases) need special handling. Then add an `fstab` line with type `swap`. Use `swapoff` to remove swap. Check the state with `swapon --show`, `free -h`, or `cat /proc/swaps`.
 
 Never size swap by the outdated "twice the RAM" rule. On GPU nodes, keep swap small or absent and set `vm.swappiness` low (chapters 1.17, 1.22, 1.28). Remember that with **no** swap, memory exhaustion goes straight to the OOM killer.
+
+### Swap partitions in detail
+
+Swap can occupy a whole partition. The partition must be empty first. Run `mkswap` on it to write a swap signature, which marks the space as swap rather than a filesystem. Then run `swapon` to register the space with the kernel.
+
+To use the swap at every boot, add an `/etc/fstab` line:
+
+```
+/dev/sda5 none swap sw 0 0
+```
+
+Swap signatures have UUIDs too, so many systems refer to swap by UUID rather than by device name.
+
+### Swap files in detail
+
+A regular file works as swap when you cannot spare a partition. Create the file, format it as swap, and add it to the pool:
+
+```
+# dd if=/dev/zero of=swap_file bs=1024k count=num_mb
+# mkswap swap_file
+# swapon swap_file
+```
+
+Here `swap_file` is the file name, and `num_mb` is the size in megabytes. To remove swap, run `swapoff`. The system needs enough free memory, real and swap combined, to hold any pages still in use in the space you remove.
+
+### How much swap you need
+
+The old rule said to reserve at least twice your real memory as swap. That rule started on multi-user machines, where many people were logged in but few were active. The kernel could move idle users' memory out of the way for the active one. A single-user machine still benefits from swapping out inactive processes.
+
+Trouble starts when many active processes want memory at once. Disk I/O is far slower than memory, even on an SSD, so the whole system slows down. The fixes are more memory or fewer processes. Some administrators run with no swap at all, so the kernel never trades memory for disk cache. Busy servers that must avoid disk access often do this.
+
+Running with no swap on a general-purpose machine is risky. When memory and swap both run out, the kernel's out-of-memory (OOM) killer ends a process to free memory. Servers with monitoring and load balancing are built to stay away from that point. Chapter 1.17 covers how the kernel uses memory.
 
 ## 6. Inside a traditional filesystem
 
@@ -457,6 +730,16 @@ Not every filesystem stores data. Some expose kernel objects through the file in
 
 `grep nodev /proc/filesystems` lists the types that do not use a block device.
 
+### Special filesystem details
+
+Some filesystems present system information rather than store data. The idea goes back to `/dev`, where device nodes are files used for I/O. The `/proc` idea came from eighth edition research Unix, and the Plan 9 research system pushed filesystem abstraction much further.
+
+- `proc` is mounted on `/proc`. The name stands for process. Each numbered directory is a process ID, and `/proc/self` is the current process. `/proc/cpuinfo` holds CPU details. Kernel guidelines move non-process information to `/sys`, so `/proc` may be less current than `/sys`.
+- `sysfs` is mounted on `/sys`, and it exposes device and kernel attributes.
+- `tmpfs` is mounted on `/run` and other places. It uses memory and swap as temporary storage. Limit it with the `size` or `nr_blocks` options. Do not keep pouring data into a `tmpfs` location, because memory eventually runs out and programs start to crash.
+- `squashfs` is a read-only filesystem that stores content compressed and extracts it on demand through a loopback device. The snap package system mounts its packages under `/snap`.
+- `overlay` merges directories into one composite view. Containers often use overlay filesystems, as covered in chapters 1.19 and 1.20.
+
 ## 7. Checking and repairing filesystems
 
 The kernel trusts a mounted filesystem to be consistent, and it trusts the hardware to store data reliably. Errors come from hardware faults and from **unclean shutdowns**, such as power loss or crashes. A crash can leave the in-memory cache out of step with the disk. Journaling makes corruption rare, but you still need checks now and then.
@@ -486,6 +769,51 @@ sudo debugfs /dev/sdb1               # ext inspector (read-only by default); can
 **Worst cases**, in order: (1) `ddrescue` the failing device to a same-size disk and repair the copy; (2) patch the filesystem as far as possible, mount it **read-only**, and salvage what you can; (3) use `debugfs` (ext) or `xfs_db` to copy files out; (4) call professional recovery. Because of this, **backups and replication are the real protection**. Monitoring is the early warning. SMART data, kernel I/O errors and filesystem error counters all help.
 
 **Periodic health**: check drive health with `smartctl -H -A /dev/sda` and `nvme smart-log /dev/nvme0`. These show media errors, wear percentage and temperature. Search the kernel log with `dmesg | grep -iE 'i/o error|ext4-fs error|xfs|nvme'`. Read `cat /sys/fs/ext4/*/errors_count`, check `systemctl status fstrim.timer`, and schedule scrubs for btrfs or ZFS.
+
+### Running `fsck` by hand
+
+Give `fsck` a device or a mount point from `/etc/fstab`. It picks the checker that matches the filesystem type. Unmount the filesystem first. A repairing check on a mounted filesystem can crash the system, because the kernel keeps changing the same structures. The one exception is the root filesystem mounted read-only in single-user mode.
+
+```
+# fsck /dev/sdb1
+```
+
+In manual mode, `fsck` prints a status report for each pass. With no problems, the output looks like this:
+
+```
+Pass 1: Checking inodes, blocks, and sizes
+Pass 2: Checking directory structure
+Pass 3: Checking directory connectivity
+Pass 4: Checking reference counts
+Pass 5: Checking group summary information
+/dev/sdb1: 11/1976 files (0.0% non-contiguous), 265/7891 blocks
+```
+
+When `fsck` finds a problem in manual mode, it stops and asks how to fix it. Many questions concern the internal structure, such as reconnecting an inode or clearing blocks. A reconnection question means it found a file with no name. The file goes into `lost+found` under a number. You usually have to guess the original name from the contents.
+
+After a simple unclean shutdown, a full manual repair is rarely needed. `e2fsck -p` fixes ordinary problems on its own, and it quits when a problem is serious. Distributions run a version of `fsck -p` at boot. You may also see `fsck -a`, which does the same job.
+
+If you suspect a major problem, slow down. A hardware failure or a wrong device layout can make `fsck` do real damage. Many questions in manual mode are a warning sign. Run `fsck -n` first, because it checks without changing anything. Fix any cabling or partition-table problem before the real repair.
+
+If only the superblock is damaged, a backup can help. `fsck -b` followed by a block number replaces the superblock with the copy at that block. To find the backup locations, run `mkfs -n` on the device. It lists them without touching the data. Always include `-n` there, because a mistake without it destroys the filesystem.
+
+### Checking ext3 and ext4 after a crash
+
+You rarely need to check `ext3` or `ext4` by hand. The journal keeps the filesystem consistent. After an unclean shutdown, the journal often holds some pending data. To flush it into the filesystem, run:
+
+```
+# e2fsck -fy /dev/disk_device
+```
+
+The kernel refuses to mount an `ext3` or `ext4` filesystem with a non-empty journal. If you must reach the data anyway, you can mount it in `ext2` mode.
+
+### The worst case
+
+Severe disk damage leaves few choices. You can copy the whole filesystem image with `dd` onto a partition of another disk of the same size. You can patch the filesystem as far as possible, mount it read-only, and salvage what you can. You can also use `debugfs`.
+
+The first two options still need a repair before the filesystem is mounted, unless you want to pick through raw data by hand. Answering `y` to every question with `fsck -y` is a last resort. Some problems need manual handling.
+
+`debugfs` opens filesystems read-only by default. It lets you look through files and copy them elsewhere without changing the original. If the disk has failed and no backup exists, a professional recovery service is the last option.
 
 ### Quotas
 

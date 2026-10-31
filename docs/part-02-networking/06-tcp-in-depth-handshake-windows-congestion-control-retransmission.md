@@ -165,6 +165,39 @@ Closing happens one direction at a time. This is a half-close: `shutdown(SHUT_WR
 
 Use `ss -tan state <state>` to count sockets in each state. The states are `LISTEN`, `SYN-SENT`, `SYN-RECV`, `ESTAB`, `FIN-WAIT-1/2`, `CLOSE-WAIT`, `LAST-ACK`, `TIME-WAIT` and `CLOSING`. Many sockets in `SYN-SENT` mean you cannot reach the remote service. Many in `SYN-RECV` mean a SYN flood or a slow handshake. Many in `CLOSE-WAIT` mean a leak in your application. Many in `FIN-WAIT-2` mean the remote side is not closing its end. Many in `TIME-WAIT` are normal churn from short connections. If `CLOSE_WAIT` keeps climbing, look at the application code before you touch any kernel setting.
 
+### Ports, connections and netstat
+
+A single IP address can serve many programs at once. TCP solves this with ports, which are numbers used together with an IP address. Think of the IP address as a building's street address and the port as the mailbox number inside it.
+
+A connection is identified by four values: two IP addresses and two port numbers. A web browser might connect from local port `36406` to port `80` on a remote host. From the browser's point of view, `36406` is the local port and `80` is the remote port.
+
+To see open connections, run `netstat -nt`. The `-n` option skips name lookups, so you see raw addresses. The `-t` option limits output to TCP.
+
+```
+$ netstat -nt
+Active Internet connections (w/o servers)
+Proto Recv-Q Send-Q Local Address Foreign Address State
+tcp 0 0 10.23.2.4:47626 10.194.79.125:5222 ESTABLISHED
+tcp 0 0 10.23.2.4:41475 172.19.52.144:6667 ESTABLISHED
+tcp 0 0 10.23.2.4:57132 192.168.231.135:22 ESTABLISHED
+```
+
+The port numbers show who started each connection. The client picks an unused local port, called an ephemeral port, and connects to a well-known port on the server. In the first line, local port `47626` looks dynamically assigned, while remote port `5222` is a known service. So your machine is probably the client. Many desktop connections go to port `443`, the default for HTTPS.
+
+If the local port is well known, a remote host probably started the connection. To see what your machine listens on, run `netstat -ntl`. The `-l` option lists ports that processes are listening on. A listener on `0.0.0.0` accepts connections on every interface. A listener on `127.0.0.53` accepts only local connections, as systemd-resolved does. Use `lsof` to find the process that owns a port.
+
+### Well-known ports and /etc/services
+
+The file `/etc/services` maps well-known port numbers to names. Its lines look like `ssh 22/tcp`, `smtp 25/tcp` and `domain 53/udp`. The second column gives the port and the transport protocol, which may not be TCP. The IANA registry at `iana.org` is the wider list, governed by RFC 6335.
+
+On Linux, only the superuser can listen on ports 1 through 1023. These are the system, well-known or privileged ports. All ordinary user processes can use ports 1024 and up.
+
+### What TCP does for you
+
+TCP asks little of an application. The program only opens, reads from, writes to and closes a connection. To the program, the connection looks like a file with incoming and outgoing streams. Behind the scenes, TCP splits the outgoing stream into packets. It also reassembles incoming packets in order, even when they arrive out of order.
+
+Errors are another job for TCP. Packets can be lost or mangled on the internet, and TCP must detect and fix those cases. You rarely need the details. The Linux TCP code lives mostly in the kernel, and transport-layer tools work by changing kernel data structures. The iptables packet filter is one example.
+
 ## 5. Reliability: ACKs, retransmission and the RTO
 
 TCP counts bytes, not packets. Receivers send cumulative ACKs that name the next byte they expect. Senders retransmit anything that is not acknowledged in time. Two events trigger a retransmission.

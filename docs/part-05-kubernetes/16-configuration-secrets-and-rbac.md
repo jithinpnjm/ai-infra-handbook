@@ -516,6 +516,87 @@ Prefer volumes over environment variables. Most applications should read secrets
 
 Keep secret store providers unknown to your application. Applications can fetch secrets in many ways, from a call inside business logic to an environment variable set at startup. Separation of concerns says the application should not care whether Kubernetes, Vault or another provider manages the secret. That keeps the app portable and reduces its complexity. To fetch from a provider, an app must know how to talk to it and must authenticate to it. Prefer environment variables or volumes, with volumes as the ideal. An app can watch the filesystem for changes, and it does not matter which store is behind the files. Framework libraries that talk to the API server directly, such as Spring's, are convenient. Still, weigh the points above before you use them.
 
+### Choosing how an application reads ConfigMaps and Secrets
+
+Config should come from the platform at runtime, not from inside the container image. A baked-in setting ties the binary to one environment. It also exposes secrets to anyone who can pull the image. Kubernetes offers three ways to deliver config to a Pod, and they differ in how well they suit each app.
+
+Mounting a ConfigMap or Secret as a file is the preferred method. The Pod spec names the volume and the path where it appears. This example mounts the `my-config` ConfigMap at `/etc/my-app/config.json`:
+
+```yaml
+apiVersion: v1
+kind: Pod
+metadata:
+  name: my-app
+spec:
+  containers:
+  - image: my-app
+    name: my-app:v0.1.0
+    volumeMounts:
+    - name: my-config
+      mountPath: /etc/my-app/config.json
+  volumes:
+  - name: my-config
+    configMap:
+      name: my-config
+```
+
+Files in a volume update in place, so you can change config without restarting the app or re-creating the Pod. The app has to notice the change, though. It must watch the file and reload its settings. Many libraries do this for you. When an app cannot, a sidecar container can watch the file and send the main process a signal, such as `SIGHUP`, when new config appears.
+
+Environment variables are the natural choice when the app reads its settings from the environment or from command-line flags. This Pod sets `DEBUG` from the `debug` key in `my-config`:
+
+```yaml
+apiVersion: v1
+kind: Pod
+metadata:
+  name: my-app
+spec:
+  containers:
+  - name: my-app
+    image: my-app:v0.1.0
+    env:
+    - name: DEBUG
+      valueFrom:
+        configMapKeyRef:
+          name: my-config
+          key: debug
+```
+
+Environment variables have two downsides. A change to the ConfigMap or Secret does not reach a running Pod until it restarts. Also, some frameworks print their whole environment at startup or during a crash. For a Secret, that can leak the password into a log file.
+
+The third option is to have the app call the Kubernetes API directly. It reads ConfigMaps and Secrets from the API server and can watch them for changes. Client libraries and some frameworks, such as Spring Cloud Kubernetes, offer this. The convenience comes at a cost. The app is now tied to Kubernetes, and it needs a ServiceAccount with RBAC permissions. Each app that polls the API also adds load to the control plane. Those issues are why the book prefers volume mounts and environment variables. They keep the application decoupled from the platform.
+
+### Injecting workload metadata with the Downward API
+
+Some workloads need to know facts about themselves. They may need their Namespace, their labels, or their resource limits. The Downward API provides those facts without the app having to talk to Kubernetes. As with ConfigMaps and Secrets, you can deliver the values as environment variables or as files.
+
+This Pod receives its memory limit in the `MEM_LIMIT` environment variable:
+
+```yaml
+apiVersion: v1
+kind: Pod
+metadata:
+  name: my-app
+spec:
+  containers:
+  - name: my-app
+    image: my-app:0.1.0
+    command: [ "my-app" ]
+    env:
+    - name: MEM_LIMIT
+      valueFrom:
+        resourceFieldRef:
+          containerName: my-app
+          resource: limits.memory
+```
+
+The app reads `MEM_LIMIT` like any other setting. It can then size its heap or worker pool to fit inside the container.
+
+### Offloading external secret systems to the platform
+
+Kubernetes Secrets are not the only option. External systems such as HashiCorp Vault offer features that Kubernetes Secrets lack. Vault provides dynamic secrets, secret rotation and time-based tokens. If your app already uses Vault, keep using it on Kubernetes. Even if you do not use Vault yet, it is worth comparing it with Kubernetes Secrets.
+
+Teams that run an external system get the most value when the platform handles the integration. The platform can expose a Vault secret to a Pod as a volume or as an environment variable. The application then consumes a plain file or variable and does not need to know where the secret came from. This keeps each application simpler, and it standardizes how every team gets its secrets.
+
 ## 3. Projected volumes and ServiceAccount tokens
 
 A pod often needs a token, a CA bundle and its own labels at the same time. A projected volume gathers those in one directory. A projected volume combines several sources in one directory. The sources are `secret`, `configMap`, `downwardAPI`, `serviceAccountToken`, and `clusterTrustBundle`, which holds CA bundles. The example below combines three of them.

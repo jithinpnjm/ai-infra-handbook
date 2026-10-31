@@ -162,6 +162,16 @@ Kubernetes ties these ideas together. Each pod has a `pause` (infra) container t
 
 Before you give a pod `hostPID: true`, check whether the workload truly needs to see host processes.
 
+### Seeing a container from the host
+
+Inside a container, a process listing may show only the shell and the `ps` command itself. The shell has PID 1, the number normally reserved for init on a full system. That makes the container look like its own machine, but it is not. Open a second terminal on the host and list processes, and you will find the same shell with a much larger PID.
+
+```
+root 20189 0.2 0.0 2408 2104 pts/0 Ss+ 08:36 0:00 /bin/bash
+```
+
+This is the PID namespace at work. It gives the container's processes their own numbering, starting at 1, and hides every process outside it. The host still sees each process under its real PID. When you debug a container, look at it from the host as well as from inside.
+
 ## 4. Mount namespaces, root changes and OverlayFS
 
 ### Mount namespaces and propagation
@@ -224,6 +234,20 @@ Image builds add their own layers. Each `RUN` or `COPY` step creates one. The `H
 Three habits follow from this. Combine Dockerfile steps, and use multi-stage builds to keep build tools out of the final image. Pin base image tags or digests, because `latest` is not reproducible. An image's `ENTRYPOINT` and `CMD` define PID 1. Use the exec form `["python","train.py"]`, not the shell form, so that no `sh` wraps your program. Docker also keeps stopped containers and old images by default. Check them with `docker ps -a`, `docker images` and `docker system df`. Clean up with `docker rmi` or `docker system prune`, and do that with care.
 
 Before you size a node's disk, check whether your writes land in a volume or in the image layer.
+
+### Reading an overlay mount on the host
+
+Run `mount` inside a container and the root filesystem appears as an overlay, not a device. The output looks something like this, with long directory names under `/var/lib/docker/overlay2/`:
+
+```
+overlay on / type overlay (rw,relatime,lowerdir=/var/lib/docker/overlay2/l/C3D66CQYRP4SCXWFFY6HHF6X5Z:/var/lib/docker/overlay2/l/K4BLIOMNRROX3SS5GFPB7SFISL:/var/lib/docker/overlay2/l/2MKIOXW5SUB2YDOUBNH4G4Y7KF1,upperdir=/var/lib/docker/overlay2/d064be6692c0c6ff4a45ba9a7a02f70e2cf5810a15bcb2b728b00dc5b7d0888c/diff,workdir=/var/lib/docker/overlay2/d064be6692c0c6ff4a45ba9a7a02f70e2cf5810a15bcb2b728b00dc5b7d0888c/work)
+```
+
+The output names three directories: `lowerdir`, `upperdir` and `workdir`. The `lowerdir` value can hold several colon-separated paths. Each one is a build layer, and the last one is the base distribution from the first build step. The layers stack from right to left, so later steps sit above earlier ones.
+
+The `upperdir` sits on top of all of them, and every change the container makes lands there. The `workdir` is scratch space the filesystem driver uses before it writes changes to the upper directory. It must be empty when the filesystem is mounted.
+
+Rootless Podman uses the FUSE version of overlay, so `mount` shows less detail. You can examine the `fuse-overlayfs` processes on the host instead. Images with many build steps have many layers, so tools often combine `RUN` commands or use multistage builds to reduce them.
 
 ## 5. Network namespaces
 

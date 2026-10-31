@@ -111,6 +111,97 @@ Once LVM finishes its setup on your system (`HLW` Section 4.4.1), logical volume
 
 The LVM tools run in user space, but the kernel does the routing. Each read or write aimed at a logical volume, such as `/dev/dm-0`, must reach the matching sector on a real disk, such as `/dev/sdb1`. The kernel driver for this job is the **device mapper**, sometimes shortened to `devmapper`. It is a generic block-translation layer. It sits between the filesystem layer and the disk drivers.
 
+### How LVM finds its volumes
+
+Before LVM does anything, it must scan the block devices for physical volumes. Its user-space tools take roughly these steps:
+
+1. Find all the PVs on the system.
+2. Group the PVs into volume groups by UUID, which each PV records.
+3. Check that every PV a group needs is present.
+4. Find the logical volumes in each group.
+5. Work out how data maps from the PVs to the logical volumes.
+
+Every PV starts with a header. The header names its volume group and the logical volumes inside it. If every required PV is present, LVM passes the layout to the kernel. You can look at the header yourself, although the output is rough:
+
+```bash
+# dd if=/dev/sdb1 count=1000 | strings | less
+```
+
+Any LVM command that works with PVs, such as `pvscan`, `lvs` or `vgcreate`, performs this scan. LVM then asks the kernel's device mapper to build the virtual devices. It does that through `ioctl` calls on `/dev/mapper/control`. Udev creates the friendly `/dev/mapper` names as the new devices appear.
+
+### Physical volumes in detail
+
+A physical volume is more than a labeled slice of a disk. Its header also records the volume group and the logical volumes. The `pvs` command gives a short view:
+
+```
+# pvs
+PV VG Fmt Attr PSize PFree
+/dev/sda1 ubuntu-vg lvm2 a-- <10.00g 36.00m
+```
+
+The `pvdisplay` command shows more of the same PV:
+
+```
+# pvdisplay
+--- Physical volume ---
+PV Name /dev/sda1
+VG Name ubuntu-vg
+PV Size <10.00 GiB / not usable 2.00 MiB
+Allocatable yes
+PE Size 4.00 MiB
+Total PE 2559
+Free PE 9
+Allocated PE 2550
+PV UUID v2Qb1A-XC2e-2G4l-NdgJ-lnan-rjm5-47eMe5
+```
+
+A PV has no name beyond its block device. Logical volume names live at the group level and above. The PV does carry a UUID, because a volume group is built from PVs by that UUID. The "not usable" part is a sliver too small to hold a full extent.
+
+The `a` in the `Attr` column means allocatable, so LVM may place new logical volumes on this PV. Nine free extents, about 36 MB, leave little room for new volumes. Here the PE counts match the group's usage, since this is the only PV.
+
+### Volume groups and logical volumes in detail
+
+`vgdisplay` expands on the short `vgs` listing:
+
+```
+# vgdisplay
+--- Volume group ---
+VG Name ubuntu-vg
+System ID
+Format lvm2
+Metadata Areas 1
+Metadata Sequence No 3
+VG Access read/write
+VG Status resizable
+MAX LV 0
+Cur LV 2
+Open LV 2
+Max PV 0
+Cur PV 1
+Act PV 1
+VG Size <10.00 GiB
+PE Size 4.00 MiB
+Total PE 2559
+Alloc PE / Size 2550 / 9.96 GiB
+Free PE / Size 9 / 36.00 MiB
+VG UUID 0zs0TV-wnT5-laOy-vJ0h-rUae-YPdv-pPwaAs
+```
+
+`Open LV` counts the logical volumes in use. `Cur PV` counts the physical volumes in the group. The `VG UUID` identifies one group when two groups share a name. Most LVM tools, including `vgrename`, accept the UUID in place of the name.
+
+A physical extent (PE) is a chunk of a PV, like a block on a larger scale. The PE size here is 4 MiB. Most extents being in use is not a warning. It shows the space given to logical volumes, not how full the filesystem is.
+
+The `lvs` command lists logical volumes:
+
+```
+# lvs
+LV VG Attr LSize Pool Origin Data% Meta% Move Log Cpy%Sync Convert
+root ubuntu-vg -wi-ao---- <9.01g
+swap_1 ubuntu-vg -wi-ao---- 976.00m
+```
+
+The `Attr` value `-wi-ao----` means writable, inherited allocation, active and open. `lvdisplay` adds the device path, the major and minor numbers, and the read-ahead setting. The `LV Path` is `/dev/ubuntu-vg/root`, which is a symbolic link to a `/dev/dm-N` device. The kernel uses the `dm-N` device, not the link.
+
 ### Building: the standard sequence
 
 Building a volume takes five steps: prepare the partition, create the group, add the logical volumes, make a filesystem and mount it. The commands follow the order you would use on a new disk.
@@ -144,6 +235,102 @@ sudo lvresize -r -L 50G /dev/myvg/mylv1       # set an absolute size
 ```
 
 If you prefer two separate commands, run `lvextend -L +20G ...` and then `xfs_growfs /data` or `resize2fs /dev/myvg/mylv1`. Growing is safe online for ext4 and XFS. Shrinking is a different story. ext4 must be unmounted, checked and shrunk *before* the LV is reduced. You can run `umount; e2fsck -f; resize2fs fs 40G; lvreduce -L 40G` by hand, or use `lvreduce -r`, which does the steps in the right order. XFS cannot be shrunk at all, so you must back up, recreate and restore. If you reduce the LV first, you destroy the tail of the filesystem. Always back up before you shrink.
+
+### A worked two-disk example
+
+Here is a complete example. Two disks, one of 5 GB and one of 15 GB, become one volume group. The group is then split into two logical volumes of 10 GB each. That would be hard to do with partitions alone. The example uses VirtualBox disks, which are small by modern standards, but the steps are the same on real hardware.
+
+First, make one partition on each disk and mark it for LVM with type `8e`:
+
+```
+# parted /dev/sdb print
+Model: ATA VBOX HARDDISK (scsi)
+Disk /dev/sdb: 5616MB
+Sector size (logical/physical): 512B/512B
+Partition Table: msdos
+Disk Flags:
+Number Start End Size Type File system Flags
+1 1049kB 5616MB 5615MB primary lvm
+# parted /dev/sdc print
+Model: ATA VBOX HARDDISK (scsi)
+Disk /dev/sdc: 16.0GB
+Sector size (logical/physical): 512B/512B
+Partition Table: msdos
+Disk Flags:
+Number Start End Size Type File system Flags
+1 1049kB 16.0GB 16.0GB primary lvm
+```
+
+A PV can be any block device, even a whole disk. Partitioning still helps, because it allows booting from the disk and marks the device as LVM for other tools. Next, create the volume group with the first partition as its initial PV:
+
+```
+# vgcreate myvg /dev/sdb1
+Physical volume "/dev/sdb1" successfully created.
+Volume group "myvg" successfully created
+# vgs
+VG #PV #LV #SN Attr VSize VFree
+myvg 1 0 0 wz--n- <5.23g <5.23g
+```
+
+If the new group does not show up, run `pvscan` to reread the devices. Add the second PV with `vgextend`, then check the combined size:
+
+```
+# vgextend myvg /dev/sdc1
+Physical volume "/dev/sdc1" successfully created.
+Volume group "myvg" successfully extended
+# vgs
+VG #PV #LV #SN Attr VSize VFree
+myvg 2 0 0 wz--n- <20.16g <20.16g
+```
+
+Now create two logical volumes of 10 GB each. The `--type linear` option is the default, so it is optional here. Linear is the simplest mapping, with no redundancy or special features:
+
+```
+# lvcreate --size 10g --type linear -n mylv1 myvg
+Logical volume "mylv1" created.
+# lvcreate --size 10g --type linear -n mylv2 myvg
+Logical volume "mylv2" created.
+# vgdisplay myvg
+--- Volume group ---
+VG Name myvg
+System ID
+Format lvm2
+Metadata Areas 2
+Metadata Sequence No 4
+VG Access read/write
+VG Status resizable
+MAX LV 0
+Cur LV 2
+Open LV 0
+Max PV 0
+Cur PV 2
+Act PV 2
+VG Size 20.16 GiB
+PE Size 4.00 MiB
+Total PE 5162
+Alloc PE / Size 5120 / 20.00 GiB
+Free PE / Size 42 / 168.00 MiB
+VG UUID 1pHrOe-e5zy-TUtK-5gnN-SpDY-shM8-Cbokf3
+```
+
+The group has 42 free extents, because the chosen sizes did not use every extent. Put a filesystem on a logical volume and mount it like any partition. The device appears under `/dev/mapper`, and the volume group also gets a directory:
+
+```
+# mkfs -t ext4 /dev/mapper/myvg-mylv1
+mke2fs 1.44.1 (24-Mar-2018)
+Creating filesystem with 2621440 4k blocks and 655360 inodes
+Filesystem UUID: 83cc4119-625c-49d1-88c4-e2359a15a887
+Superblock backups stored on blocks:
+32768, 98304, 163840, 229376, 294912, 819200, 884736, 1605632
+Allocating group tables: done
+Writing inode tables: done
+Creating journal (16384 blocks): done
+Writing superblocks and filesystem accounting information: done
+# mount /dev/mapper/myvg-mylv1 /mnt
+# df /mnt
+Filesystem 1K-blocks Used Available Use% Mounted on
+/dev/mapper/myvg-mylv1 10255636 36888 9678076 1% /mnt
+```
 
 ### Moving, removing and renaming
 
@@ -227,6 +414,46 @@ myvg-mylv1: 0 20971520 linear 8:33 2048
 Each field has a job. The first is the start offset in the mapped device. Then comes the length of the segment, the target type (`linear` here), the source device as major:minor, and the offset on that device. LVM places the first LV in one contiguous run where it can. The second LV needs two segments, one on each PV. When `mylv2` is removed and `mylv1` is extended, the table gains the second segment. The kernel only follows the map. Deciding the layout is the job of LVM in user space.
 
 The table can use these target types: `linear`, `striped`, `mirror`/`raid`, `snapshot`/`snapshot-origin`, `thin`/`thin-pool`, `crypt` (dm-crypt/LUKS), `multipath`, `cache`/`writecache`, `integrity`, `verity` (read-only integrity for images), `zero`, and `error` (to inject failures for testing).
+
+### Device mapper inventory with `dmsetup`
+
+The device mapper keeps an inventory of the devices it serves. `dmsetup info` lists them:
+
+```
+# dmsetup info
+Name: myvg-mylv1
+State: ACTIVE
+Read Ahead: 256
+Tables present: LIVE
+Open count: 0
+Event number: 0
+Major, minor: 253, 1
+Number of targets: 2
+UUID: LVM-1pHrOee5zyTUtK5gnNSpDYshM8Cbokf3OfwX4T0w2XncjGrwct7nwGhpp7l7J5aQ
+```
+
+The major number 253 identifies the device mapper. Minor number 1 means the device file is `/dev/dm-1`. The kernel gives each mapped device its own name and UUID. That kernel UUID is simply the group UUID joined with the logical volume UUID.
+
+Udev creates the `/dev/mapper` links from these devices. You can view the table that LVM handed to the kernel with `dmsetup table`. For two 10 GB volumes spread across a 5 GB PV and a 15 GB PV, it looks like this:
+
+```
+# dmsetup table
+myvg-mylv2: 0 10960896 linear 8:17 2048
+myvg-mylv2: 10960896 10010624 linear 8:33 20973568
+myvg-mylv1: 0 20971520 linear 8:33 2048
+```
+
+Each line is one segment of a mapped device. The fields after the name are the start offset, the segment length, the mapping type, the source device, and the start offset on that source. The offsets use 512-byte sectors. Here `linear` is the simple one-to-one mapping. The source `8:17` is `/dev/sdb1`, and `8:33` is `/dev/sdc1`.
+
+LVM placed `mylv1` in one contiguous run on `/dev/sdc1`. It had to split `mylv2` across both PVs. After `mylv2` was removed and `mylv1` grew, the table changed:
+
+```
+# dmsetup table
+myvg-mylv1: 0 31326208 linear 8:33 2048
+myvg-mylv1: 31326208 10960896 linear 8:17 2048
+```
+
+The original start stayed on `/dev/sdc1`. The new segment added the rest of `/dev/sdb1`. Software RAID and encrypted disks are also built on the device mapper, so this table is a useful thing to learn to read.
 
 ### Encryption: dm-crypt and LUKS
 

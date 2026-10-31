@@ -185,6 +185,26 @@ Each type treats the packet differently. A blackhole drops it silently, which su
 
 `lo` carries `127.0.0.1/8` and `::1`. Any `127.x.y.z` address counts as local, so services can bind distinct loopback addresses. systemd-resolved uses 127.0.0.53. Hosts often add service or router-ID addresses as `/32` addresses on `lo` or on a `dummy` interface. For example, `ip link add dummy0 type dummy; ip addr add 10.255.0.45/32 dev dummy0` creates one. These addresses stay up whatever happens to physical links, which is why BGP and BGP-unnumbered designs advertise them (chapter 2.16). To see the addresses the kernel treats as local, run `ip route show table local`.
 
+### Adding and deleting routes by hand
+
+The default route is not always enough. Suppose your host is on `10.23.2.0/24`, and you need to reach `192.168.45.0/24`. You know that the host at `10.23.2.44` can route to that network. Add a route that sends that traffic to the router:
+
+```
+# ip route add 192.168.45.0/24 via 10.23.2.44
+```
+
+To delete the route, you do not need to name the router:
+
+```
+# ip route del 192.168.45.0/24
+```
+
+Routes are often harder than they look. The return path matters too. Hosts on `192.168.45.0/24` must have a way back to `10.23.2.0/24`, or your new route is useless.
+
+To remove the default gateway, run `ip route del default`. To set it again, run `ip route add default via gw-address dev interface`. The `gw-address` must be an address in a subnet already attached to one of your interfaces.
+
+Keep it simple where you can. Give local hosts only a default route. When you need several subnets, let the routers that act as default gateways do the routing between them.
+
 ## 4. Choosing the source address
 
 Suppose a server has several addresses and an application opens a connection. Which address does the packet carry as its source? For a packet the host generates itself, the kernel follows a fixed order. If the application bound a specific address, the kernel uses that address. If not, it uses the route's `src`, when one is set. If neither applies, it uses the primary address of the output interface, in the same subnet as the next hop. `ip addr` marks the primary address and labels the others `secondary`.

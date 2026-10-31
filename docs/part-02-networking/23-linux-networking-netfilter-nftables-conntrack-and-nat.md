@@ -331,6 +331,77 @@ For DDoS-rate filtering, look at eBPF or XDP firewalls, such as Cilium, Katran o
 
 Decide which layer owns each rule, whether switch, NIC or host, before you write the first one.
 
+### Default-deny rules, step by step
+
+A firewall is safest when it allows only what you trust. Start by changing the INPUT chain policy so that unmatched traffic is dropped:
+
+```
+# iptables -P INPUT DROP
+```
+
+Allow ping and other ICMP traffic:
+
+```
+# iptables -A INPUT -p icmp -j ACCEPT
+```
+
+Make sure your host still receives packets sent to 127.0.0.1 and to its own address. Assuming your host's address is `my_addr`:
+
+```
+# iptables -A INPUT -s 127.0.0.1 -j ACCEPT
+# iptables -A INPUT -s my_addr -j ACCEPT
+```
+
+WARNING: do not run these commands one by one on a machine you reach only remotely. The first DROP blocks you at once, and you may need a reboot to regain access. If you control the whole subnet, use it in place of `my_addr`, such as `10.23.2.0/24`.
+
+Your host still needs outbound TCP. Every TCP connection starts with a SYN packet, so accepting every TCP packet that is not a SYN lets your host open connections while blocking new inbound ones. The `!` means negation, so `! --syn` matches any non-SYN packet:
+
+```
+# iptables -A INPUT -p tcp '!' --syn -j ACCEPT
+```
+
+If you use remote DNS over UDP, accept replies from each name server listed in `/etc/resolv.conf`. Replace `ns_addr` with the server's address:
+
+```
+# iptables -A INPUT -p udp --source-port 53 -s ns_addr -j ACCEPT
+```
+
+Finally, allow SSH from anywhere:
+
+```
+# iptables -A INPUT -p tcp --destination-port 22 -j ACCEPT
+```
+
+These settings suit many situations, especially a broadband host that an intruder might port-scan. On a router, use the FORWARD chain instead, with source and destination subnets. For complex setups, a tool such as Shorewall can help. The key idea is to permit only what you accept, rather than hunting for bad traffic.
+
+### Rule order and the first match
+
+The kernel reads a chain from top to bottom and uses the first rule that matches. Start with one rule that drops a noisy host:
+
+```
+# iptables -A INPUT -s 192.168.34.63 -j DROP
+```
+
+`-A INPUT` appends the rule to the INPUT chain. `-s` sets the source address, and `-j DROP` discards matching packets. Later, you also block TCP port 25 from a whole subnet:
+
+```
+# iptables -A INPUT -s 192.168.34.0/24 -p tcp --destination-port 25 -j DROP
+```
+
+Then a colleague at `192.168.34.37` says she cannot email you. You append an accept rule for her, and it does not work, because the subnet rule above it matches first. The chain now reads:
+
+```
+Chain INPUT (policy ACCEPT)
+target prot opt source destination
+DROP all -- 192.168.34.63 anywhere
+DROP tcp -- 192.168.34.0/24 anywhere tcp dpt:smtp
+ACCEPT all -- 192.168.34.37 anywhere
+```
+
+The fix is to move the accept rule up. Delete rule 3 with `iptables -D INPUT 3`. Then insert the rule at the top with `iptables -I INPUT -s 192.168.34.37 -j ACCEPT`. To insert at another position, give the number first, as in `iptables -I INPUT 4 ...`.
+
+Each chain also has a default policy for packets that no rule matches. ACCEPT lets them through, and DROP discards them. Set a policy with `iptables -P`. View the current rules with `iptables -L`.
+
 ## 6. Debugging netfilter
 
 When a packet goes missing, your job is to find the rule that touched it. Start with counters, which show which rules matched. Then trace one packet through the hooks. The commands below follow that order.

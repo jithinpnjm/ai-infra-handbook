@@ -295,6 +295,60 @@ Labels are powerful, and they come with a warning. Overusing labels can make the
 
 In short, instrument the software you write where you can. Build or use exporters where native instrumentation is not feasible. Then collect the exposed metrics with auto-discovery, so you can see your systems clearly.
 
+### Exposing app metrics with the Prometheus client libraries
+
+Prometheus pulls metrics. It makes an HTTP request to an endpoint, usually `/metrics`, and reads the response. Your app must expose that endpoint, and the response must use the Prometheus text format. There are two ways to do this. Native instrumentation puts the Prometheus client library inside your app. An out-of-process exporter runs beside the app as a sidecar and translates metrics that already exist. Native instrumentation suits code you control. Exporters suit off-the-shelf software you cannot change. The NGINX Prometheus Exporter and the MySQL Server Exporter are examples.
+
+The client libraries support four metric types. A Counter only goes up. A Gauge can go up or down. A Histogram puts observations into buckets, and the Prometheus server uses those buckets to compute quantiles such as the 95th percentile. A Summary also reports quantiles, but it computes them in the client over a sliding time window.
+
+Instrumenting a Go service takes three steps. First, expose an HTTP endpoint that serves the metrics:
+
+```go
+func main() {
+    // app code...
+    http.Handle("/metrics",
+        promhttp.HandlerFor(
+            prometheus.DefaultGatherer,
+            promhttp.HandlerOpts{},
+        ))
+    log.Fatal(http.ListenAndServe("localhost:8080", nil))
+}
+```
+
+Second, create the metric and register it. This Counter counts queue items handled:
+
+```go
+// create the counter
+var totalItemsHandled = prometheus.NewCounter(
+    prometheus.CounterOpts{
+        Name: "items_handled_total",
+        Help: "Total number of queue items handled.",
+    },
+)
+// register the counter
+prometheus.MustRegister(totalItemsHandled)
+```
+
+Third, update the metric where the work happens. Calling `Inc()` increments the counter by one each time:
+
+```go
+func handleItem(item Item) {
+    // item handling code...
+    // increment the counter as we handle items
+    totalItemsHandled.Inc()
+}
+```
+
+The hard part is not the library. It is deciding which metrics to expose. Three common methods give you a starting point.
+
+The USE method, proposed by Brendan Gregg, looks at system resources. For each resource, you capture Utilization, Saturation and Errors. Those resources include CPU, memory and disk. They can also include resources inside the app, such as queues and thread pools.
+
+The RED method, proposed by Tom Wilkie, looks at the service instead. It captures the Rate, Errors and Duration of the requests the service handles. RED suits online services, because it shows what users experience.
+
+The four golden signals come from Google's Site Reliability Engineering book. They are Latency, Traffic, Errors and Saturation. They overlap with RED, and they add Saturation.
+
+App-specific metrics are the last category. They measure things only your app can see. Examples include how long it takes to add an item to a shopping cart, or how long it takes to connect a customer with an agent. These often tie to business KPIs. Whichever method you choose, exporting metrics is what lets you build dashboards, set alerts and spot trends over time.
+
 ### Key exporters and sources
 
 | Source | Metrics | Notes |

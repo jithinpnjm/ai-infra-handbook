@@ -205,6 +205,40 @@ Cordoning works through `kubectl cordon`, which sets `spec.unschedulable` and ta
 
 Dedicated pools need both a taint and a node selector. For spreading, prefer `topologySpreadConstraints` over required pod anti-affinity.
 
+### Spreading replicas across failure domains
+
+Running several replicas helps only when they do not share a failure. Say a web server has three replicas, and all three land in one zone. A zone outage takes every replica down together. Placement rules are how you keep replicas apart, so one bad zone cannot remove the whole service.
+
+Pod anti-affinity is the first tool. It tells the scheduler to avoid nodes that already run a replica of the same workload. The rule below prefers to spread the `my-web-server` Pods across zones, using the `zone` label on each node:
+
+```yaml
+affinity:
+  podAntiAffinity:
+    preferredDuringSchedulingIgnoredDuringExecution:
+    - labelSelector:
+        matchExpressions:
+        - key: "app"
+          operator: In
+          values:
+          - my-web-server
+      topologyKey: "zone"
+```
+
+Anti-affinity has a limit. It can prefer a spread, or it can require one replica per domain. It cannot promise an even split. Topology spread constraints fill that gap. They tell the scheduler to spread the workload across the topology. The example below uses `maxSkew: 1` across zones, based on the `zone` label of nodes:
+
+```yaml
+spec:
+  topologySpreadConstraints:
+  - maxSkew: 1
+    topologyKey: zone
+    whenUnsatisfiable: DoNotSchedule
+    labelSelector:
+      matchLabels:
+        foo: bar
+```
+
+With `whenUnsatisfiable: DoNotSchedule`, a Pod that would break the rule stays pending. Both mechanisms apply only to Pods that are being scheduled now. They do not move Pods that are already running. If your app runs several instances, use one of these placement features. Otherwise the scheduler may place your workload in a way that gives you no real failure tolerance.
+
 ## 4. Priority, preemption and disruption
 
 ### PriorityClass

@@ -305,6 +305,127 @@ In *Production Kubernetes* Chapter 8 (*Admission Control*), Josh Rosso et al. co
 - **Kubebuilder webhook code-generation markers:** Adding a single comment marker above the Go handler generates the `MutatingWebhookConfiguration` YAML automatically:
   `// +kubebuilder:webhook:path=/infoblox-ipam,mutating=true,failurePolicy=fail,groups="infrastructure.cluster.x-k8s.io",resources=vspheremachines,verbs=create;update,versions=v1alpha3,name=infoblox.mutations.io`
 
+### Serving certificates for an admission webhook
+
+The API server calls a webhook over HTTPS only. That protects the traffic, but it means the webhook needs a certificate. The easiest source is the cluster's own certificate authority (CA), which can sign a certificate for the webhook on request. The steps are: make a private key and a certificate signing request (CSR), submit it to the cluster, approve it, and download the result.
+
+First, generate the key and the CSR. The book uses a short Go program for this. It creates a 1024-bit RSA key and writes the CSR with the webhook URL in its URI field:
+
+```go
+package main
+import (
+"crypto/rand"
+"crypto/rsa"
+"crypto/x509"
+"crypto/x509/pkix"
+"encoding/asn1"
+"encoding/pem"
+"net/url"
+"os"
+)
+func main() {
+host := os.Args[1]
+name := "server"
+key, err := rsa.GenerateKey(rand.Reader, 1024)
+if err != nil {
+panic(err)
+}
+keyDer := x509.MarshalPKCS1PrivateKey(key)
+keyBlock := pem.Block{
+Type: "RSA PRIVATE KEY",
+Bytes: keyDer,
+}
+keyFile, err := os.Create(name + ".key")
+if err != nil {
+panic(err)
+}
+pem.Encode(keyFile, &keyBlock)
+keyFile.Close()
+commonName := "myuser"
+emailAddress := "someone@myco.com"
+org := "My Co, Inc."
+orgUnit := "Widget Farmers"
+city := "Seattle"
+state := "WA"
+country := "US"
+subject := pkix.Name{
+CommonName: commonName,
+Country: []string{country},
+Locality: []string{city},
+Organization: []string{org},
+OrganizationalUnit: []string{orgUnit},
+Province: []string{state},
+}
+uri, err := url.ParseRequestURI(host)
+if err != nil {
+panic(err)
+}
+asn1, err := asn1.Marshal(subject.ToRDNSequence())
+if err != nil {
+panic(err)
+}
+csr := x509.CertificateRequest{
+RawSubject: asn1,
+EmailAddresses: []string{emailAddress},
+SignatureAlgorithm: x509.SHA256WithRSA,
+URIs: []*url.URL{uri},
+}
+bytes, err := x509.CreateCertificateRequest(rand.Reader, &csr, key)
+if err != nil {
+panic(err)
+}
+csrFile, err := os.Create(name + ".csr")
+if err != nil {
+panic(err)
+}
+pem.Encode(csrFile, &pem.Block{Type: "CERTIFICATE REQUEST", Bytes: bytes})
+csrFile.Close()
+}
+```
+
+Run the program with the webhook URL as its argument:
+
+```
+$ go run csr-gen.go <URL-for-webhook>
+```
+
+The book says this writes `server.csr` and `server-key.pem`. The code above names the key file `server.key`, so check which name you get before you go on.
+
+Next, wrap the CSR in a Kubernetes CertificateSigningRequest. The `request` field must hold the base64-encoded CSR, so the book fills in the `REPLACEME` placeholder with a one-line `perl` command:
+
+```
+apiVersion: certificates.k8s.io/v1beta1
+kind: CertificateSigningRequest
+metadata:
+name: validating-controller.default
+spec:
+groups:
+- system:authenticated
+request: REPLACEME
+usages:
+usages:
+- digital signature
+- key encipherment
+- key agreement
+- server auth
+```
+
+```
+$ perl -pi -e s/REPLACEME/$(base64 server.csr | tr -d '\n')/ \
+admission-controller-csr.yaml
+```
+
+Submit the request, approve it, and then download the signed certificate:
+
+```
+$ kubectl create -f admission-controller-csr.yaml
+$ kubectl certificate approve validating-controller.default
+$ kubectl get csr validating-controller.default -o json | \
+jq -r .status.certificate | base64 -d > server.crt
+```
+
+You now have `server.crt` and the key for the webhook's HTTPS server. Serve them from the admission controller, and the API server can trust the endpoint.
+
 ## 4. Pod Security Standards and Admission
 
 The **Pod Security Standards** define three cumulative profiles:

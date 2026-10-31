@@ -228,6 +228,14 @@ The table lists the prefixes you will meet most often. The first few digits tell
 
 There is **no broadcast** in IPv6. Multicast does that job instead.
 
+### Global and link-local addresses
+
+Every IPv6 host normally has at least two addresses. The global unicast address works across the internet. Its prefix is `2000::/3`. The first byte begins with the bits 001, so that byte is either 0010 or 0011. A global unicast address therefore always starts with 2 or 3.
+
+The second is the link-local address, which only works on the local network. Link-local addresses always use the `fe80::/10` prefix. After that come an all-zero 54-bit network ID and a 64-bit interface ID. So every link-local address on your machine sits in the `fe80::/64` subnet.
+
+When `ip -6 address show` labels an address `scope link`, it is link-local. A label of `scope global` marks the internet-facing address.
+
 ### Structure and the /64 convention
 
 A global unicast address usually has three parts: a routing prefix, a subnet ID and a 64-bit interface ID. The block below shows that split for one example.
@@ -262,6 +270,14 @@ The `ip -6` commands show addresses, routes and neighbours. A default route that
 Three shortcuts are handy. `::1` is the loopback address. Pinging `ff02::1%eth0` reaches every node on the link, which reveals your neighbours. And `getent ahostsv6 name` checks how a name resolves over IPv6.
 
 On a dual-stack host, check the /64 and the link-local address before you blame the application.
+
+### Running IPv4 and IPv6 side by side
+
+Many hosts run both protocols at once. People call this a dual-stack network. The word "stack" is a little loose here, because only the network layer is duplicated. Still, IPv4 and IPv6 are independent and can run at the same time.
+
+The application decides which one to use. A web browser, for example, chooses IPv4 or IPv6 when it connects. An older application written only for IPv4 has no IPv6 support by default. The good news is that the layers above the network layer stay the same, so the code needed to add IPv6 is small. Most important applications and servers support it now.
+
+Check both families on Linux with `ip -4 address show` and `ip -6 address show`.
 
 ## 7. The IP headers
 

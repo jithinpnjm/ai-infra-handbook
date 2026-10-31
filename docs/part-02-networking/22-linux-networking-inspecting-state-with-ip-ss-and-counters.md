@@ -178,6 +178,50 @@ Several rules govern how you use these tools. Choose one manager per interface, 
 
 Before you change a manager on a remote server, confirm that you have console access.
 
+### Why boot scripts fall short
+
+For years, administrators ran `ip` commands from a boot script to set up each interface. That worked when machines were big fixed boxes wired together. It breaks down on modern systems. Laptops change networks, Wi-Fi needs passwords, and most clients get addresses from DHCP. A boot script also cannot answer questions such as "which interface should I use if two are up?" or "what happens when the cable is pulled?"
+
+Distributions tried to standardize boot-time networking files. The tools `ifup` and `ifdown` were one attempt. In theory, a boot script runs `ifup eth0` and the right `ip` commands follow. In practice, each distribution implemented them differently, with different files. Network setup also spreads across kernel and user-space tools written by different developers. Linux tools generally avoid sharing configuration files, because a change for one tool could break another.
+
+Netplan offers a different approach. It does not manage the network itself. It is a unified YAML format plus a tool that turns that format into the files used by NetworkManager or systemd-networkd. Netplan files live in `/etc/netplan`.
+
+### How NetworkManager chooses a connection
+
+NetworkManager is a daemon that starts at boot. It does not need a desktop to run. It listens to events from the system and from users, and it changes the network configuration based on rules. It tracks two levels of configuration: the hardware devices it learns from the kernel through udev over D-Bus, and the connections that describe how each device should be used. A wireless network can be a connection.
+
+To activate a connection, NetworkManager often asks a tool such as `dhclient` to fetch IP settings from the local network. Distributions format their settings differently, so NetworkManager uses plug-ins rather than forcing its own standard.
+
+On startup, it picks an Ethernet connection with this logic:
+
+1. If a wired connection is available, use it. Otherwise, try the wireless connections.
+2. Scan the wireless networks. If one you connected to before is in range, try it again.
+3. If several known networks are available, select the most recently used one.
+4. Keep the connection until it is lost, a better network appears, or the user changes it.
+
+systemd-networkd is simpler. It suits servers that need little flexibility, but it lacks NetworkManager's dynamic features. Other managers, such as OpenWRT's `netifd`, Android's ConnectivityManager, ConnMan and Wicd, target small embedded systems. The settings are described in the systemd.network(5) manual page, and the directory is `/etc/systemd/network`.
+
+### Talking to NetworkManager with nmcli
+
+Most desktop users click the network applet. From the shell, `nmcli` with no arguments gives a quick summary of interfaces and their settings. It is like `ip`, with more detail for wireless. The `nmcli` command also controls NetworkManager, and its manual page has examples in nmcli-examples(5).
+
+The utility `nm-online` reports whether the network is up. It returns exit code `0` when the network is up and a nonzero code otherwise. That makes it handy in shell scripts.
+
+### NetworkManager configuration and unmanaged interfaces
+
+The main file is `NetworkManager.conf` in `/etc/NetworkManager`. Its format resembles `.desktop` and `.ini` files, with key-value settings in sections. Most files have a `[main]` section that lists plug-ins. For example, `plugins=ifupdown,keyfile` enables the ifupdown plug-in used by Ubuntu and Debian. The keyfile plug-in supports NetworkManager's native connection files, which live in `/etc/NetworkManager/system-connections`.
+
+Some interfaces should stay unmanaged. The localhost interface is a good example, because its configuration never changes and basic services need it early in boot. To ignore an interface under ifupdown, list it in `/etc/network/interfaces` and set `managed=false` in the `[ifupdown]` section of `NetworkManager.conf`. Under the ifcfg-rh plug-in used by Fedora and Red Hat, set `NM_CONTROLLED=no` in the interface's file in `/etc/sysconfig/network-scripts`. You can also ignore a device by its MAC address:
+
+```
+[keyfile]
+unmanaged-devices=mac:10:78:d2:eb:76:97;mac:1c:65:9d:cc:ff:b9
+```
+
+### Dispatcher scripts
+
+When an interface goes up or down, NetworkManager runs the scripts in `/etc/NetworkManager/dispatcher.d`, passing an argument such as `up` or `down`. Some daemons need this signal. An SSH server, for example, must start or stop listening when an interface changes. Many distributions keep their own control scripts instead. Ubuntu uses one script, `01ifupdown`, that runs the scripts in `/etc/network/if-up.d`. If you use Netplan, let it find the right location for you.
+
 ## 4. Sockets: how processes use the network
 
 Picture a web server that accepts thousands of clients at once. Each connection needs its own handle, and the process needs a way to read and write it. That handle is a **socket**. It is the kernel interface through which a process reads and writes network data, and it sits on the boundary between user-space applications and the kernel's transport layer.

@@ -299,6 +299,38 @@ Besides HTTP checks, Kubernetes supports `tcpSocket` probes. A `tcpSocket` probe
 
 Set a startup probe for any container that loads a large model, and keep liveness checks local.
 
+### Probe mechanisms and what each one tells Kubernetes
+
+Probes give the platform a view of the app's health. Without them, Kubernetes only knows whether the process is running. A process can be running and still stuck, so that view is not enough.
+
+Every probe type uses one of three mechanisms. The `exec` probe runs a command inside the container. It succeeds when the command returns exit code zero. Any other code marks the container unhealthy. The HTTP probe sends a request to an endpoint in the Pod. Any response code from 200 up to, but not including, 400 counts as success. The `tcpSocket` probe opens a TCP connection to a port you choose. The container counts as healthy if the connection succeeds.
+
+All probes also share tuning settings, such as success and failure thresholds and timeouts. The Kubernetes documentation describes each one, so set them from there when your workload needs it.
+
+### Designing liveness and readiness endpoints
+
+Liveness and readiness serve different purposes, so they should check different things. A failed liveness probe makes the kubelet restart the Pod. A failed readiness probe only stops traffic from reaching the Pod. Because the two outcomes differ, most apps should use separate endpoints or commands for each.
+
+A liveness probe should fail only when a restart would fix the problem. A deadlock is the typical case. An HTTP server often implements a liveness endpoint that always returns 200, since a server that answers at all does not need a restart. Here is the timing from the book's example. The kubelet probes every 10 seconds. When the last 10 probes have failed, it restarts the container.
+
+The liveness probe should stay local to the workload. Restarting a Pod does not repair a database outage, so a database check inside liveness can cause cascading restarts. A better design is for the app to switch to read-only mode, or to turn off the feature that needs the database. Failing readiness is another option.
+
+A readiness probe can check conditions that come and go. An app that warms its caches on startup can report not ready until they are warm. An overloaded app can fail readiness to shed load. In the book's example, the probe has a 5-second initial delay and a 10-second period. The Pod stops receiving traffic after two consecutive failures.
+
+### Startup probes for slow-starting applications
+
+Why not just use a long liveness delay? Imagine an app that takes about 300 seconds to start. A liveness probe could wait 300 seconds before it begins. That works during startup. But if the app later hangs, the platform would still wait 300 seconds before it restarts the container. A startup probe fixes this. It guards the start-up period and then steps aside.
+
+The book's example uses a startup probe with a failure threshold of 30 and a period of 10 seconds. That gives the app up to 300 seconds to come up. Once the startup probe succeeds, the liveness and readiness probes take over. If it fails 30 times in a row, the kubelet restarts the Pod.
+
+The book suggests avoiding startup probes unless you need them. Liveness and readiness probes cover most cases. For a large model load, though, a startup probe is the right tool.
+
+Next, the book's guidance on which probes to use:
+
+- Use readiness probes for any workload that handles requests. Readiness means nothing for controllers or Jobs.
+- Use liveness probes only when a restart would fix the problem.
+- Use startup probes only when you really need them.
+
 ## 6. Node-pressure eviction
 
 Picture a node whose memory use creeps upward. Nothing has crashed yet, but the eviction manager is already watching. It samples node signals from cAdvisor and cgroup stats at `evictionPressureTransitionPeriod` intervals, and it compares them with thresholds. The table lists those signals and what each one measures.

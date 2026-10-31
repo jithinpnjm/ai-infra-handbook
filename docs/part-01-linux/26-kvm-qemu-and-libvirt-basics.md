@@ -79,6 +79,18 @@ VMs earn their place in several situations. They suit testing and disposable env
 
 For any single service, decide whether a separate kernel is worth the extra memory and boot time, or whether a container will do.
 
+### Software emulators and hardware help
+
+A virtual machine can be built entirely in software, and people usually call that an emulator. It is flexible, and it can run old computer and game systems such as the Commodore 64 and Atari 2600. It is also slow. Hardware-assisted virtualization uses the real CPU as much as it can, which gives much better performance. This chapter focuses on that second kind, because it is what a Linux user normally meets.
+
+### Drawbacks of virtual machines
+
+Virtual machines are convenient, but a few problems show up in daily work. Installing and configuring a system takes time, even with a tool such as Ansible. A VM also boots slowly, because it is still a full Linux system with systemd and sshd. You must patch and secure every one of those systems.
+
+Application conflicts are another risk. Some programs have unusual dependencies that clash with the software on a production machine. A library update inside the VM can also break something that worked before. The common advice is one application service per system, but that can be wasteful and costly, especially when cloud providers charge per instance.
+
+These problems are no different from the ones you meet on real hardware, and in a small operation they are not necessarily impediments. However, once you start running more services, they become more noticeable and cost more time and money. That is when containers become worth considering.
+
 ## 2. How the hardware helps
 
 ### CPU virtualisation

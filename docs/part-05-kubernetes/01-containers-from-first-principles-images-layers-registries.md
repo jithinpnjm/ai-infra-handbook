@@ -327,6 +327,22 @@ The principles behind a good Dockerfile are numbered below, so you can match eac
 11. For reproducibility, set `SOURCE_DATE_EPOCH`, keep the ordering deterministic, and pin packages with `apt-get install pkg=version`. Avoid `latest`. Nix, Bazel, ko and Jib are options for fully reproducible builds.
 12. Follow the habits of your language. For Python, use wheels, `uv` or pip with hashes, and avoid compiling at runtime. For Go, build a static binary and place it in `scratch` or distroless. For Java, consider Jib. For Node, run `npm ci` and install only production dependencies.
 
+### A Docker build, step by step
+
+A small example shows how a build works. Create a directory with a Dockerfile that starts from the lightweight Alpine distribution, adds the bash shell, and sets bash as the default command:
+
+```
+FROM alpine:latest
+RUN apk add bash
+CMD ["/bin/bash"]
+```
+
+Adding bash is not required. It makes the image unique, so you can see the build process at work. Run `docker build -t hlw_test .` in that directory. The command reads the Dockerfile there and tags the result as `hlw_test`. You may need to add your user to the `docker` group first.
+
+The build output has one step per Dockerfile line. The `FROM` step pulls the Alpine image. The `RUN` step starts a temporary container from the intermediate Alpine image, runs `apk add bash` inside it, and saves the changes as another intermediate image. Docker then removes that temporary container. Intermediate images stay after a build, while intermediate containers do not.
+
+`RUN` happens during the build, not when you start a container. The `CMD` line only tells the runtime what to run at startup. Afterward, `docker images` lists both `hlw_test` and the Alpine image. The output is different when you use Podman, but the steps are the same. You can use `podman` in place of `docker` in these examples. As you read the build output, you will probably recognize the lines that come from `apk add bash`.
+
 ### A Node.js example, line by line
 
 Dynamic languages such as Node.js, Python and Ruby follow the same pattern. Take a simple Express app with two files, `package.json` and `server.js`. Put them in one directory and run `npm install express --save` to add the Express dependency and install it.
@@ -477,6 +493,22 @@ Kaniko is one alternative. It reads the same Dockerfile but builds the image wit
 - How much will we rely on layer caching?
 - How will the tool affect distributing builds?
 - Which frontends and image definitions must we support?
+
+### Pitfalls of containers
+
+Containers can waste storage. Each image must carry the Linux support files its application needs, such as shared libraries, so it can grow large. Shared base layers help when several containers use the same image. Runtime data written in the upper layers still grows, so watch disk use.
+
+Containers also share the host's CPU, memory and kernel. Limits keep one container from taking everything, but an overloaded machine still slows every container on it. Plan capacity on the host, not only inside each container.
+
+Data needs a home outside the container. Changes in the writable layer disappear when the container stops. Put user data in a database and send logs to a separate log service.
+
+Most tools and examples target web servers. Kubernetes has many safety features for runaway server code, which helps with poorly written web apps. Other kinds of services can feel awkward to run this way.
+
+Careless builds cause bloat, configuration problems and failures. A container may spare you some of the intricacies of systemd, but many other things can still go wrong. Isolation does not protect you from your own mistakes. Adding packages at random until a problem disappears leaves a mess, so understand each change you make.
+
+The `latest` tag moves. A build based on it can change when the base image updates, which may break your application. Pin a specific version of the base image.
+
+Trust is also a concern. Images from a public registry are built by someone else, and you trust that they have not been altered and will stay available. LXC encourages you to build more of your own images. Containers also do not solve every problem. An application that starts slowly on a normal system will start slowly in a container too.
 
 ## 4. Registries and distribution
 
@@ -870,6 +902,7 @@ There are two classic causes.
   - `kubernetes-up-and-running-3rd-edition` — Brendan Burns, Joe Beda, Kelsey Hightower & Lachlan Evenson, *Kubernetes: Up and Running*, 3rd ed., **Chapter 2: Creating and Running Containers** (read in full: container images vs shared-library dependency hell, the Docker image format and OCI standardization, layer inheritance trees and why layer ordering governs build cache hits, building an Express Node.js app and the multi-stage `kuard` Go/Alpine image, why deleting files in later layers leaves bytes in earlier layers, storing images in registries, running containers with Docker/CRI, and limiting resource usage with `--memory 200m --memory-swap 1G --cpu-shares 1024`).
   - `production-kubernetes` — Josh Rosso, Rich Lander, Alexander Brand & John Harris, *Production Kubernetes*, **Chapter 15: Software Supply Chain** (read in full: build frontends and backends, Docker-in-Docker and socket mounts, Kaniko, the build-image and runtime-image split, the runtime user, pinned packages, the registry's server/blob store/database parts, registry placement and replication, and in-cluster registry trade-offs).
   - `production-kubernetes` — Josh Rosso, Rich Lander, Alexander Brand & John Harris, *Production Kubernetes*, **Chapter 3: Container Runtime** (read in full: history of containers, the Open Container Initiative `OCI` Image Specification and Runtime Specification `config.json`, `containerd`, `CRI-O`, `runc`, and VM-based runtimes like `Kata Containers`).
+  - `how-linux-works-3rd-edition` — Brian Ward, *How Linux Works*, 3rd ed., **Chapter 17: Virtualization** (sections 17.2 to 17.2.5: containers and their kernel features, Docker and Podman, the Alpine `hlw_test` build, the overlay mount, and container pitfalls).
 - **Run here:** `python3 code/part05/oci_image_layers_lab.py` (3 passed, 0 failed).
 - **Explicitly labelled inferences:** The `simulate_oci_layer_sizes`, `simulate_dockerfile_cache_hits`, and `check_cuda_driver_compatibility` models in `code/part05/oci_image_layers.py`, the multi-stage FastAPI + BuildKit `Dockerfile`, and the `hosts.toml` pull-through mirror config are the author's constructions applying `KUR` Chapter 2 and `PK` Chapter 3 to AI infrastructure containers (plus original study items 21, 22, 23, 24, 25, 26, 27, 28, 29, 30, 31, 32, 33, 34, 35, 36, 37, 38, 39, and 40).
 - **Not verified on live hardware:** Live `docker`, `podman`, `skopeo`, `crane`, `dive`, `nsenter`, and `nvidia-ctk cdi generate` commands (`10 to 30 GB`, `500` nodes, `256m`, `268435456`, `1.27`, `3.12-slim`, `10001`, `8000`, `12.4.1`, `24.05-py3`, `64 MB`, `200m`, `1G`, `1024`, `168h`) are marked (`untested here`) where not executed by `oci_image_layers_lab.py`.

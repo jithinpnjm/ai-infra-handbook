@@ -326,6 +326,14 @@ sudo tcpdump -nn -e -i eth0 icmp6 and 'ip6[40] >= 133 and ip6[40] <= 137'   # RS
 
 If you work in a data centre, you will often find hosts that disable RA and SLAAC, and use static addressing or DHCPv6 instead. Cloud VMs, laptops and Kubernetes pods often learn their IPv6 gateway from RA. An RA guard on switch ports blocks rogue router advertisements. For each network, choose between RA with SLAAC and static or DHCPv6 addressing, and guard the switch ports against rogue RAs.
 
+### Clearing a stale ARP entry
+
+An ARP entry can go stale when an IP address moves to a different network card. Each card has its own MAC address, so the cache may still point at the old card. Linux invalidates idle entries after a while, so a small delay is the usual result. If you need the entry gone now, run `ip neigh del host dev interface`, with the IP address as `host` and the interface name as `interface`.
+
+The `ip-neighbour(8)` manual page explains how to set entries by hand. You should rarely need that. Note the spelling of "neighbour" in the page name.
+
+Do not confuse ARP with the Reverse Address Resolution Protocol (RARP). RARP turns a MAC address back into an IP address. Some diskless workstations once used it to learn their configuration. DHCP replaced most of that job, so RARP is rare today.
+
 ## 7. L2 on Linux: the objects behind the concepts
 
 Linux builds layer 2 out of software objects as well as hardware ports. The table lists the ones you will meet most often on a server or a hypervisor.
@@ -355,6 +363,16 @@ Capacity comes from several sources. OFDM spreads data across many orthogonal su
 Real goodput is typically 40 to 60 percent of the nominal PHY rate. Preambles, ACKs, contention and protocol overhead all take a share. On Linux, you can check with `iw dev wlan0 scan/link`, which shows what the radio sees and what it is joined to. `wpa_supplicant` and NetworkManager handle the connection side.
 
 For data centres and clusters, wireless matters little. The lessons still carry over, though. Collision avoidance, hidden terminals, and goodput versus bandwidth come up again in shared-media effects, incast and lossless fabrics. When you plan a link, plan with goodput, not the headline rate.
+
+### Connecting Wi-Fi from the command line
+
+A wireless card needs more setup than a wired one. You must choose a network, prove you may join it, and scramble the traffic sent over the air. The Service Set Identifier (SSID) is the network name that identifies it. The `iw` utility talks to the kernel about the wireless device, and `wpa_supplicant` handles the security side.
+
+Start by scanning. `iw dev wlp1s0 scan` lists the networks the radio can see. The interface must be up first. If it is not, run `ip link set wlp1s0 up`. You do not need an IP address yet, because scanning belongs to the physical layer. Once joined, `iw dev wlp1s0 link` shows the access point you are talking to. The MAC address in that output belongs to the access point.
+
+Joining an open network takes one command: `iw wlp1s0 connect network_name`. Secured networks are harder. Wired Equivalent Privacy (WEP) can be set with the `keys` parameter of `iw connect`, but WEP is insecure and rarely supported. Avoid it. For WPA2 and WPA3, Linux uses the `wpa_supplicant` daemon. It reads `/etc/wpa_supplicant.conf` by default, identifies itself to the access point and sets up encryption. Do not use the older WPA scheme.
+
+Writing that configuration and running the daemon by hand is tedious. Even after the Wi-Fi link is up, the network layer is still unset. A manager such as NetworkManager knows the right order of steps, so it handles both parts for you.
 
 ## 9. AI fabrics at layer 2
 

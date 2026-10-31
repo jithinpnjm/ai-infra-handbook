@@ -52,7 +52,7 @@ Start with the job, not the tool. Many ways exist to distribute and share files,
 
 ### The scenarios in three groups
 
-The seven rows fall into three groups. Temporary sharing and regular copying use a simple web server or `rsync`. Sharing with Windows uses Samba on the Linux side and CIFS on the client side. Sharing between Linux machines, or from a NAS on your trusted local network, uses SSHFS or NFS. Cloud storage uses one of several FUSE-based filesystems, or the provider's own tools. Each group asks a different question, so start by naming your group. Make a file temporarily available to other machines, or distribute files across machines on a regular basis. Regularly share the files on your Linux machine to Windows machines. Mount Windows shares on your Linux machine. Implement small-scale sharing with minimal setup. Mount larger filesystems from a NAS or other server on your trusted local network. Mount cloud storage to your Linux machine. Each of these jobs has one natural tool, and the rest of this chapter explains each one.
+The seven rows fall into three groups. Temporary sharing and regular copying use a simple web server or `rsync`. Sharing with Windows uses Samba on the Linux side and CIFS on the client side. Sharing between Linux machines, or from a NAS on your trusted local network, uses SSHFS or NFS. Cloud storage uses one of several FUSE-based filesystems, or the provider's own tools. Each group asks a different question, so start by naming your group. A short-lived drop of one file or folder for other machines is a job for a simple web server, such as the Python SimpleHTTPServer module run by `python -m SimpleHTTPServer` on older Python 2 systems. Keeping files in step across machines, on a schedule, is a job for `rsync`. Serving your Linux files to Windows desktops is a job for Samba. Reading a Windows share from Linux is a job for the CIFS client. A small share with almost no setup suits SSHFS. Larger storage from a NAS or server on your trusted local network suits NFS. Cloud storage can appear as a directory through various FUSE-based filesystems. Each job has one natural tool, and the rest of this chapter explains each one.
 
 Notice what the table leaves out: **large-scale sharing between many locations and many users.** That is possible, but it takes a good deal of work. Sections 6 and 7 explain why, and Parts 6 and 13 cover what clusters do instead. Find your job in the left column before you pick a command.
 
@@ -179,7 +179,7 @@ A Samba server needs two things. The first is a configuration file, `smb.conf`, 
 
 ### Scope of this section
 
-This section is not a comprehensive Samba guide. It gets Windows machines on a single subnet to see a standalone Linux machine in the Windows Network Places browser. It does not try to cover every setting. Samba has countless configurations, because access control and network layout differ from site to site. A large, multi-team server needs a full Samba reference. Start with the small setup here, and check it works before you add anything.
+This section is not a comprehensive Samba guide. It gets Windows machines on a single subnet to see a standalone Linux machine in the Windows Network Places browser. It does not try to cover every setting. Samba has countless configurations, because access control and network layout differ from site to site. A large, multi-team server needs a full Samba reference. The Samba project website at `https://samba.org/` is the place to look for the complete documentation. Start with the small setup here, and check it works before you add anything.
 
 ### Setting up the server, step by step
 
@@ -336,7 +336,7 @@ Before you run an NFS server yourself, weigh that effort against buying a NAS.
 
 ### Setting up a cloud client
 
-Cloud storage has no single setup procedure. Each provider has its own client, its own credentials and its own mount tool, so this chapter describes only the general behaviour. Read your provider's documentation before you mount anything. Expect the details to differ from one service to the next.
+Cloud storage has no single setup procedure. Each provider has its own client, its own credentials and its own mount tool, so this chapter describes only the general behaviour. Contemporary tools make mounting possible, but the specifics differ from one service to the next. Read your provider's documentation before you mount anything. Early file sharing protocols gave security little regard, so check the credentials and encryption options first.
 
 ### Cloud storage
 

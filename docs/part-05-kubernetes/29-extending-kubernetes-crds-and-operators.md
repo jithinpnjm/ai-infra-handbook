@@ -55,6 +55,12 @@ Before you write a CRD, it helps to know what else Kubernetes lets you extend. E
 | **CRI/CNI/CSI/device plugin/DRA** | Node-level integrations | Runtime, network, storage, GPUs |
 | **kubectl plugins, Krew** | Client UX | Operator-specific CLIs |
 
+### Why Kubernetes made its API extensible
+
+Once an application runs inside a cluster, many more tools want to be API objects too. Monitoring, backups, load tests and policy tools all fit that pattern. The risk is API sprawl: one fixed list of built-in types that grows without bound. Kubernetes answers this by letting cluster operators add the components they need, without waiting for a new Kubernetes release. You can build those extensions yourself, use community add-ons, or install extensions sold as cluster plug-ins. Extensibility also gave rise to whole patterns of management, such as the operator pattern.
+
+Whether you build extensions or consume them, learn how the API server is extended and how those extensions are delivered. Platforms built on these mechanisms behave according to them.
+
 CRDs are the dominant approach. They give you the Kubernetes API machinery for free, including REST, watch, RBAC, audit, server-side apply, `kubectl` support and OpenAPI docs. You do not have to build any of that yourself.
 
 ## 2. Custom resources and CRDs

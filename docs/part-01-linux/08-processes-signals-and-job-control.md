@@ -351,6 +351,8 @@ Suppose `df` reports a full disk, but `du` cannot find the files that fill it. T
 
 ### Reading `lsof` output
 
+Unix puts a lot of weight on files, so `lsof` is one of the most useful tools for finding trouble spots. It does not stop at regular files. It also reports network sockets, dynamic libraries, pipes and similar objects.
+
 `lsof` prints a lot of lines, so learning its columns matters more than reading every row. The excerpt below comes from the `systemd` init process and a running `vi` editor.
 
 ```text
@@ -549,6 +551,8 @@ A `top` sample shows priority at work. The `PR` and `NI` columns sit next to the
 $ top
 Tasks: 244 total, 2 running, 242 sleeping, 0 stopped, 0 zombie
 Cpu(s): 31.7%us, 2.8%sy, 0.0%ni, 65.4%id, 0.2%wa, 0.0%hi, 0.0%si, 0.0%st
+Mem: 6137216k total, 5583560k used, 553656k free, 72008k buffers
+Swap: 4135932k total, 694192k used, 3441740k free, 767640k cached
 PID USER PR NI VIRT RES SHR S %CPU %MEM TIME+ COMMAND
 28883 bri 20 0 1280m 763m 32m S 58 12.7 213:00.65 chromium-browse
 1175 root 20 0 210m 43m 28m R 44 0.7 14292:35 Xorg
@@ -616,6 +620,8 @@ $ uptime
 ... up 91 days, ... load average: 0.08, 0.03, 0.01
 ```
 
+Desktop systems used to show a load average of about 0, except while you compiled a program or played a game. A load near 0 is a good sign. The processor is not being challenged, and you save power. Modern desktops run heavier user interfaces, though. Some websites and their advertisements can turn a browser into a resource hog.
+
 The 15-minute value of `0.01` means that, across all processors, only 0.01 processes were running on average. On a single-processor machine, that is about 1 percent of the time spent running user programs. This system was barely busy.
 
 On a one-core machine, a load near `1` usually means one process uses the CPU nearly all of the time. Run `top` to find it, and that process will usually sit at the top. On a two-core machine, a load of `1` means only one core is busy at any moment. A load of `2` means both cores have just enough work all of the time.
@@ -668,7 +674,14 @@ Here is how you should read the patterns. All idle (`id` about 99, with no `si` 
 
 ### Watching memory run out in `vmstat`
 
-A program that starts up needs memory for its code and data. `vmstat` shows what that does to the machine. Start with a quiet system, then launch a big program and watch the same columns change. At first the CPU spends more time in user code. The kernel uses spare RAM for buffers and cache, and free memory drops only slowly.
+A program that starts up needs memory for its code and data. `vmstat` shows what that does to the machine. Start with a quiet system, then launch a big program and watch the same columns change. At first the CPU spends more time in user code. The kernel uses spare RAM for buffers and cache, and free memory drops only slowly. The listing below shows the start of a big program, with the first and last rows kept as printed.
+
+```text
+procs -----------memory---------- ---swap-- -----io---- -system-- ----cpu----
+r b swpd free buff cache si so bi bo in cs us sy id wa
+1 0 320412 2861252 198920 1106804 0 0 0 0 2477 4481 25 2 72 0 1
+0 3 320244 2727632 202104 1175420 20 0 1890 216 4631 8706 36 4 46 14
+```
 
 The `si` column can rise when the kernel pulls pages back in from swap. This often happens when the new program uses shared library code that another process already loaded and that was swapped out. A few processes may also appear in the `b` column while they wait for memory pages. Disk traffic shows up in the `bi` and `bo` columns.
 

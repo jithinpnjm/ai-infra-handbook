@@ -11,3 +11,4 @@
 - U092 (Supercomputers ch.3 -> 6.2): remaining 20% is mostly front-matter text; teaching content restored.
 - U094 (Supercomputers ch.16 Containers -> 6.13/6.29): remaining 20% is the chapter opener (copyright/author header, typo tokens). Teaching content restored.
 - U007 (Supercomputers ch.24 -> 1.7/6.6): remaining 15% is the chapter's copyright/author block; teaching content restored.
+- U005 (Supercomputers ch.11 -> 1.6/6.24): remaining 17% is the copyright/title blurb; teaching content already present.

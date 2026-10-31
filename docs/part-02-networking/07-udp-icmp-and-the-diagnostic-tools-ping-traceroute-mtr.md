@@ -134,6 +134,26 @@ On a cluster, `ping` has a few practical jobs. Use `fping -a -g 10.0.0.0/24` or 
 
 Before you call a node down, ping it, and then test the port your application actually uses.
 
+### Reading ping output
+
+`ping` is often the first tool to reach for when a host seems dead. It sends ICMP echo requests, and a host set to reply sends back an echo response. By default, it sends one packet per second.
+
+Run `ping 10.23.2.1` and you see lines like these, from a wireless network:
+
+```
+PING 10.23.2.1 (10.23.2.1) 56(84) bytes of data.
+64 bytes from 10.23.2.1: icmp_req=1 ttl=64 time=1.76 ms
+64 bytes from 10.23.2.1: icmp_req=2 ttl=64 time=2.35 ms
+64 bytes from 10.23.2.1: icmp_req=4 ttl=64 time=1.69 ms
+64 bytes from 10.23.2.1: icmp_req=5 ttl=64 time=1.61 ms
+```
+
+The first line means 56 bytes of data, or 84 bytes with headers. Each reply carries a sequence number (`icmp_req`) and a round-trip time (`time`). The returned size is the request size plus 8 bytes. The packet contents do not matter for diagnosis.
+
+Watch the sequence numbers. A gap, such as the jump from 2 to 4, usually means a connectivity problem. Packets should not arrive out of order, because `ping` sends only one a second. A reply taking more than 1,000 ms means the link is extremely slow. If the destination cannot be reached, the last router that sees the packet returns an ICMP "host unreachable" message.
+
+On a wired LAN you should see no loss and very low round-trip times. Some internet hosts disable echo replies for security, so a site can load while `ping` gets no answer. Use `-4` or `-6` to force IPv4 or IPv6.
+
 ## 4. traceroute, tracepath and mtr
 
 A user says the service is slow, and you suspect a router somewhere along the path. `traceroute` finds that path for you, one router at a time. It sends probes with an increasing TTL (IPv4) or hop limit (IPv6). Each router that decrements the TTL to 0 returns ICMP time exceeded (type 11), and that reply reveals the router's address. The destination answers in its own way. It sends ICMP port unreachable for UDP probes, an echo reply for ICMP probes, and SYN-ACK or RST for TCP probes.

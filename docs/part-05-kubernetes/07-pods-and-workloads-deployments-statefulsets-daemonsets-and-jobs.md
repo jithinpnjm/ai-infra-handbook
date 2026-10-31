@@ -1329,6 +1329,102 @@ spec:
 
 The `spec.schedule` field holds the interval in standard `cron` format. Save the file as `job-cronjob.yaml`, then create the CronJob with `kubectl create -f job-cronjob.yaml`. To see its current state, run `kubectl describe` on the CronJob.
 
+### Packaging and templating manifests
+
+Raw YAML works well at first. It gets hard once the same app runs in several places. Staging may need one set of credentials and production another. A second datacenter may need a different image registry, and development may need one replica where production needs five. Copying a manifest for each case makes the copies drift apart. Templating fixes this by putting placeholders in the manifest and filling them in at deploy time.
+
+A templated Deployment looks almost like a normal one. The replica count becomes a value you inject:
+
+```yaml
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  labels:
+    app: nginx
+  name: nginx
+spec:
+  replicas: {{ .Values.replicaCount }}
+  selector:
+    matchLabels:
+      app: nginx
+  template:
+    metadata:
+      labels:
+        app: nginx
+    spec:
+      containers:
+      - image: nginx
+        name: nginx
+```
+
+Packaging goes one step further. A package bundles templates and their defaults into one unit. Most packaging tools build on templating and add more. They can push the package to OCI-compatible registries, and they can run lifecycle hooks at install and upgrade time. Helm is the common example. If you have ever installed Vault from the HashiCorp chart, you have used a package. The two commands look like this:
+
+```
+$ helm repo add hashicorp https://helm.releases.hashicorp.com
+"hashicorp" has been added to your repositories
+$ helm install vault hashicorp/vault
+```
+
+Packages are a good way to consume software that a third party maintains, or to ship your own software to others. They can fall short for complex applications that need advanced lifecycle management, such as a database that must upgrade its own schema in a set order. For those, an operator is usually the better fit. Pick a templating or packaging approach that your team can use, and spend your time on the problems that matter more.
+
+### Pre-stop hooks and graceful shutdown
+
+Kubernetes can stop a container at any time. A node drain, an upgrade or a reschedule all end with a stop. A web server that cuts off active requests in the middle creates errors for users. Two features help: the pre-stop hook and graceful shutdown.
+
+A pre-stop hook runs before Kubernetes sends the stop signal. It comes in two forms. The `exec` hook runs a command inside the container. The `HTTP` hook sends an HTTP request to an endpoint, usually on the container itself. The Contour Ingress controller uses a pre-stop hook to avoid dropping in-flight client requests. Its Deployment tells Kubernetes to run `/bin/contour envoy shutdown` before the container stops:
+
+```yaml
+lifecycle:
+  preStop:
+    exec:
+      command:
+      - /bin/contour
+      - envoy
+      - shutdown
+```
+
+Two limits matter here. Pre-stop hooks run only for planned lifecycle and rescheduling events. They do not run when a node fails. Also, the hook's work counts against the Pod's graceful shutdown period, so it must finish inside that window.
+
+Graceful shutdown is the second part. Kubernetes sends `SIGTERM` to the container first. The default termination period is 30 seconds. You can change it with `terminationGracePeriodSeconds` in the Pod spec. During that time the application can persist data, close connections and flush files. It should then exit with a success code. If the process is still running when the period ends, the kubelet sends `SIGKILL`, and nothing else runs.
+
+Your application has to handle `SIGTERM` itself. Each language has its own way to register a signal handler. The following Go code stops the HTTP server when the signal arrives:
+
+```go
+func main() {
+    // App initialization code here...
+    httpServer := app.NewHTTPServer()
+
+    // Make a channel to listen for an interrupt or terminate signal
+    // from the OS.
+    // Use a buffered channel because the signal package requires it.
+    shutdown := make(chan os.Signal, 1)
+    signal.Notify(shutdown, os.Interrupt, syscall.SIGTERM)
+
+    // Start the application and listen for errors
+    errors := make(chan error, 1)
+    go httpServer.ListenAndServe(errors)
+
+    // Block main and waiting for shutdown.
+    select {
+    case err := <-errors:
+        log.Fatalf("http server error: %v", err)
+    case <-shutdown:
+        log.Printf("shutting down http server")
+        httpServer.Shutdown()
+    }
+}
+```
+
+Handle `SIGTERM` even if your app has nothing to clean up. The handler makes the process stop sooner, and that frees the node's resources for other workloads.
+
+### Resource limits and runtimes such as the JVM
+
+Limits stop one workload from taking everything. Without a limit, a Pod gets extra resources when they are free and loses them when other Pods need them. Performance then varies from run to run. Memory is worse. You cannot take memory back from a process without ending it, so the platform kills Pods that have grown past what they were allowed when it needs the memory back.
+
+Some runtimes do not see the container's limit on their own. Java is the classic case. Older JVMs, JDK 8u131 and earlier, read the host's memory rather than the container limit. They then try to use more memory than the container allows. Pass the limit to the JVM through the `JAVA_OPTIONS` environment variable. Newer JVM versions detect container limits by themselves, so upgrading is the other fix when it is possible.
+
+Limits also matter for benchmarks. If a workload can burst into idle capacity, each test run may land on a different node with different free resources, and the results swing widely. Set limits equal to requests for a steady result. Then the application gets the same resources no matter what runs next to it.
+
 ## 4. Operating pods
 
 A pod is in a state you do not understand, and a job is waiting on it. You need to find out why. When a pod misbehaves, these commands show its state, its events and its logs.

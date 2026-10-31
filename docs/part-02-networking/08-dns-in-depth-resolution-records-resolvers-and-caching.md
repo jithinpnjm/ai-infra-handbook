@@ -223,6 +223,51 @@ The system hostname lives in `/etc/hostname`, and `hostnamectl set-hostname` set
 
 Check the order in `nsswitch.conf` first, because it decides which source answers every lookup on the host.
 
+### Following one lookup, step by step
+
+DNS is an application-layer service, and it runs entirely in user space. It sits a little outside the internet and physical-layer story. Still, a connection is nearly useless without it. Nobody publishes raw IP addresses for websites and mail servers, because addresses change and numbers are hard to remember.
+
+Most programs never talk to DNS directly. They ask a shared library to look up a name. The simplified path looks like this:
+
+1. The application calls a library function to get the IP address for a hostname. It does not need to know how the lookup works, so the details can change without breaking it.
+2. The library follows the rules in `/etc/nsswitch.conf`. Those rules usually say to check `/etc/hosts` before anything else.
+3. If the library chooses DNS, it reads a configuration file to find a name server, given as an IP address.
+4. It sends a DNS request over the network to that server.
+5. The server replies with the address, and the library returns it to the application.
+
+Real systems add helpers to speed things up. The simple path is still the right model to learn. When names resolve slowly or wrongly, start at `/etc/nsswitch.conf` and trace downward.
+
+### The hosts file and its limits
+
+On most systems, `/etc/hosts` can override a lookup. A small one looks like this:
+
+```
+127.0.0.1 localhost
+10.23.2.3 atlantic.aem7.net atlantic
+10.23.2.4 pacific.aem7.net pacific
+::1 localhost ip6-localhost
+```
+
+You will nearly always see the localhost entries. The other lines show a simple way to add hosts on a small local subnet. Keep the file short. If a host has a DNS entry, it does not belong here. The file is also useful early in boot, before the network is up. In the past, one central hosts file was copied to every machine. As the internet grew, that approach fell apart.
+
+### Caching daemons and the resolv.conf file
+
+The traditional `/etc/resolv.conf` has two problems. The local machine does not cache replies, so repeated lookups hit the name server every time. The file is also inflexible for local names. A typical file looks like this:
+
+```
+search mydomain.example.com example.com
+nameserver 10.32.45.23
+nameserver 10.3.2.3
+```
+
+The `search` line tells the resolver which suffixes to try for a short name. With that line, `myserver` is tried as `myserver.mydomain.example.com`, then as `myserver.example.com`.
+
+Many systems run a caching daemon between programs and the name server. The most common is systemd-resolved. You may also see dnsmasq, nscd or BIND set up as a cache. A clue is `127.0.0.53` or `127.0.0.1` in `/etc/resolv.conf`. With systemd-resolved, `/etc/resolv.conf` is often a link to a generated file under `/run`.
+
+Zero-configuration name systems fill the local-name gap. Multicast DNS (mDNS) and Link-Local Multicast Name Resolution (LLMNR) broadcast a request for a name. If the target host exists, it replies with its address. These protocols can also share information about services.
+
+Check the current settings with `resolvectl status`. It lists global settings, then one block per interface. Older systems call the tool `systemd-resolve`. To change settings, edit `/etc/systemd/resolved.conf`, and read the resolved.conf(5) manual page first. DNS is a large topic, so plan to study it further.
+
 ## 6. DNS in Kubernetes and containers
 
 When a pod resolves names slowly, look at its resolver settings first. Inside a pod, the kubelet generates `/etc/resolv.conf`:

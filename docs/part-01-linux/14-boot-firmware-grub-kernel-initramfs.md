@@ -87,11 +87,15 @@ On a BIOS system with a **GPT** disk, that gap holds the GPT entry array instead
 
 **UEFI**, the *Unified Extensible Firmware Interface*, works differently from MBR. For the most part it is easier to understand (`HLW` Section 5.8.2).
 
+The old way put executable boot code in raw sectors, outside any filesystem. UEFI replaces that with ordinary files. Every boot loader gets its own folder under `EFI`, such as `EFI/ubuntu`, `EFI/grub` or `EFI/microsoft`, and its file ends in `.efi`. You may find `grubx64.efi`, the UEFI version of GRUB, and `shimx64.efi` in those folders. An old BIOS-style loader cannot simply be copied into this partition, because it was written for the BIOS interface. For example, you must install the UEFI build of GRUB, not the BIOS build.
+
 - Instead of boot code sitting in raw sectors outside any filesystem, UEFI reads the GPT partition table. It then reads a VFAT (FAT32) filesystem called the **EFI System Partition (ESP)**. The ESP has partition type `EF00` and GUID `C12A7328-F81F-11D2-BA4B-00A0C93EC93B`, and it is normally mounted at **`/boot/efi`**. Boot loaders are ordinary `.efi` files inside `EFI/<vendor>/` on the ESP, such as `EFI/ubuntu/shimx64.efi`, `grubx64.efi` and `EFI/redhat/`. `EFI/BOOT/BOOTX64.EFI` is the standard fallback path for removable media.
 - Boot entries live in **NVRAM** variables, and you manage them with **`efibootmgr`**. Each entry has a number such as `Boot0003`, a label, and the path of an `.efi` file. `BootOrder` lists the sequence. A loader must be **registered** with the firmware, and the installer (`grub-install`) does that for you. This is why a disk copied to another machine can stay unbootable until its entries are recreated. The fallback path `EFI/BOOT/BOOTX64.EFI` can help in that case.
 - The firmware also has a built-in shell and a boot menu. You usually reach the menu with F11 or F12, or with Esc, F2 or Del, at power-up. BMC consoles give you remote access to it.
 - The firmware can network-boot with **PXE/HTTP boot** through its UEFI network drivers.
 - **Secure Boot**, which the next section covers.
+
+The ESP is not the same as a BIOS boot partition, and it has a different UUID. You should not find a system that has both. Once you know the ESP is the place where UEFI looks, the rest of the boot chain is easier to follow.
 
 ```bash
 [ -d /sys/firmware/efi ] && echo "UEFI boot" || echo "legacy BIOS boot"
@@ -107,6 +111,10 @@ These commands tell you which mode a machine booted in, and what it will try nex
 ### Secure Boot
 
 With **Secure Boot**, the firmware runs only boot code that is cryptographically **signed** by a key it trusts. Hardware vendors ship with Microsoft's keys. So distributions use a small Microsoft-signed **`shim`**, which verifies and runs **GRUB**. GRUB verifies the **kernel**, and when the kernel is locked down, the kernel verifies **kernel modules**. The distribution's own key is built into shim. You can enrol more keys as **Machine Owner Keys (MOK)** with `mokutil`.
+
+Microsoft requires hardware vendors that ship Windows 8 and later to use Secure Boot. An unsigned boot loader is therefore rejected, and the operating system never starts. Major Linux distributions avoid this by shipping signed boot loaders, usually a UEFI build of GRUB behind a signed `shim`. The firmware runs the shim, and the shim runs GRUB. Some distributions go further on machines that must meet a strict security rule, and they require the whole boot sequence, including the kernel, to be signed.
+
+Secure Boot makes experiments harder. If you build your own boot loader, you can turn Secure Boot off in the UEFI settings. That shortcut works poorly on a dual-boot machine, because Windows will not run without Secure Boot enabled.
 
 This chain matters a great deal on GPU nodes. **Out-of-tree kernel modules, such as the NVIDIA driver built by DKMS, must be signed** with a key enrolled in the firmware or MOK database. If they are not, the kernel refuses to load them. You will see messages such as "Required key not available" or "module verification failed". The GPU then goes missing, and `nvidia-smi` fails.
 
@@ -166,7 +174,9 @@ menuentry 'Ubuntu' --class ubuntu --class gnu-linux --class gnu --class os $menu
 }
 ```
 
-**GRUB has its own world.** Everything in that entry is GRUB's internal language. `insmod` loads *GRUB* modules, which are unrelated to Linux kernel modules. `ls` lists *GRUB's* devices and files. The most confusing part is that **"root" has two meanings**. In `set root=` and `search ... --set=root`, it is the **GRUB root**, the filesystem where GRUB looks for the kernel and initrd files. In `linux ... root=UUID=...`, it is a **kernel parameter** that names the Linux root filesystem.
+**GRUB has its own world.** Everything in that entry is GRUB's internal language. `insmod` loads *GRUB* modules, which are unrelated to Linux kernel modules. `ls` lists *GRUB's* devices and files. Seeing the configuration for the first time can feel like a double take, and that reaction is normal. GRUB borrows words from many sources, so its commands look familiar while meaning something else. It has its own "kernel", and it has its own `insmod` command. Many of its commands look like Unix shell commands. A GRUB module for LVM is needed to boot a system whose kernel sits on a logical volume, so you may see that module on your system too.
+
+The most confusing part is that **"root" has two meanings**. In `set root=` and `search ... --set=root`, it is the **GRUB root**, the filesystem where GRUB looks for the kernel and initrd files. In `linux ... root=UUID=...`, it is a **kernel parameter** that names the Linux root filesystem.
 
 GRUB device names look like `(hd0)`, `(hd0,gpt2)` and `(hd0,msdos1)`. Each name gives the disk number, the partition table type and the partition number, in that order. The numbering can change, so entries use `search` by UUID instead. `linux` loads the kernel image and takes the parameters. `initrd` loads the initial RAM filesystem, and `boot` starts it.
 
@@ -255,6 +265,29 @@ journalctl -k | grep -E 'Run /init|Freeing unused|mounted filesystem|systemd\[1\
 ```
 
 Sample milestones from `journalctl -k` (`HLW` Section 5.1) include `microcode: microcode updated early to revision 0xd6` and `Linux version 4.15.0-112-generic ...`. You will also see `Command line: BOOT_IMAGE=/boot/vmlinuz-4.15.0-43-generic root=UUID=17f12d53-c3d7-4ab3-943e-a0a72366c9fa ro quiet splash vt.handoff=1`. Next come the CPU and memory detection lines (`NUMA`, `e820`), the PCI enumeration, and `sd 0:0:0:0: [sda] Attached SCSI disk`. Then `Freeing unused kernel memory: 2408K` and `Write protecting the kernel read-only data: 20480k` appear. Two more `Freeing unused kernel memory` lines follow, with `2008K` and `1892K`. Those lines show the kernel cleaning up initialisation memory and write-protecting its own read-only data pages. `Run /init as init process` marks the start of the initramfs. After that come `EXT4-fs (sda1): mounted filesystem with ordered data mode` and `systemd[1]: ... Detected architecture x86-64`. When you see systemd's first message, user space has started.
+
+### Reading the boot log
+
+Startup scripts send their messages to the console, and the console erases them when boot finishes. systemd keeps those messages for you in the journal, so you can read them later. The kernel's own lines come first. Here is a sample from `journalctl -k`. Lines marked `--snip--` are trimmed for space.
+
+```
+microcode: microcode updated early to revision 0xd6, date = 2019-10-03
+Linux version 4.15.0-112-generic (buildd@lcy01-amd64-027) (gcc version 7.5.0 (Ubuntu 7.5.0-3ubuntu1~18.04)) #113-Ubuntu SMP Thu Jul 9 23:41:39 UTC 2020 (Ubuntu 4.15.0-112.113-generic 4.15.18)
+Command line: BOOT_IMAGE=/boot/vmlinuz-4.15.0-112-generic root=UUID=17f12d53-c3d7-4ab3-943e-a0a72366c9fa ro quiet splash vt.handoff=1
+KERNEL supported cpus:
+--snip--
+scsi 2:0:0:0: Direct-Access ATA KINGSTON SM2280S 01.R PQ: 0 ANSI: 5
+sd 2:0:0:0: Attached scsi generic sg0 type 0
+sd 2:0:0:0: [sda] 468862128 512-byte logical blocks: (240 GB/224 GiB)
+sd 2:0:0:0: [sda] Write Protect is off
+sd 2:0:0:0: [sda] Mode Sense: 00 3a 00 00
+sd 2:0:0:0: [sda] Write cache: enabled, read cache: enabled, doesn't support DPO or FUA
+sda: sda1 sda2 < sda5 >
+sd 2:0:0:0: [sda] Attached SCSI disk
+--snip--
+```
+
+Read the lines from top to bottom. The `Command line:` line repeats the parameters the boot loader handed to the kernel. The `sd` lines show the kernel finding one disk, reading its size, and attaching it. The `sda:` line lists the partitions it found on that disk. These lines are your first evidence that a disk is visible, before any filesystem is mounted.
 
 ### Kernel parameters
 

@@ -158,6 +158,22 @@ Do not spend too long on classification quarrels. Use the model to **ask the rig
 
 Read the table from left to right. Each TCP/IP layer maps to one or more OSI layers, and the last column names the unit of data at that layer. When you see a unit name in a capture, this table tells you which layer it belongs to.
 
+### Packets, headers and payloads
+
+Data crosses a network in small chunks called packets. Each packet has two parts: a header and a payload. The header holds identifying facts, such as the source and destination hosts and the basic protocol. The payload is the real application data, such as an HTML page or an image. Think of a postcard: the header is the address side, and the payload is the message.
+
+A host can send, receive and process packets in any order. That lets several hosts talk at once. A host sending to two others can alternate between them packet by packet. Small pieces also make errors easier to detect and fix. The operating system does this splitting for you, but knowing the role of packets helps when you read the lower layers.
+
+### A note on the OSI model
+
+You may meet the Open Systems Interconnection (OSI) Reference Model. It is a seven-layer model that teachers and network designers use a lot. This handbook sticks to the four-layer view, because that is the stack you work with directly on Linux. For a deeper look at layers and networks in general, see Andrew S. Tanenbaum and David J. Wetherall, *Computer Networks*, 5th edition (Prentice Hall, 2010).
+
+### Where the layers blur
+
+Layers do not always stay in neat order. For speed, some devices look at transport and internet data together, even though they once handled only the physical layer. The names can mislead too. TLS stands for Transport Layer Security, but it lives in the application layer, one level higher. Do not worry about these details while you learn the basics.
+
+In Linux, the transport layer and everything below it are mostly handled by the kernel. A few exceptions send packets into user space for processing.
+
 ### Connection-oriented and connectionless
 
 A connection-oriented service sets up state before it sends data. Often it also reserves resources and a path. After that, data flows with little overhead for each packet. TCP at the edge works this way, and so do ATM, MPLS LSPs, InfiniBand queue pairs and RDMA reliable connections.

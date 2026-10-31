@@ -285,6 +285,14 @@ For AI clusters that pull from public registries or Hugging Face, plan the NAT a
 
 Before a large cluster starts, check how many public IPs and ports the NAT gateway can offer.
 
+### Routers that run Linux: OpenWRT and BusyBox
+
+Many home routers run Linux inside. Manufacturers added the kernel features they needed, stripped the user-space tools and built a web interface on top. Some users wanted to go deeper. Linksys had to release its source code under the license of one component, and that opened the door to distributions such as OpenWRT. The "WRT" in the name comes from the Linksys model number.
+
+Installing OpenWRT can be worth the effort. It is often more stable than factory firmware, especially on older hardware, and it adds features. For example, it can bridge a wireless link with hardware from different makers. The operating system does not care what hardware you use, as long as that hardware is supported.
+
+Most of what you learn here applies to these systems, with some changes. Embedded firmware usually uses BusyBox, a single program that offers limited versions of many Unix commands, such as the shell, `ls`, `grep`, `cat` and `more`. BusyBox saves memory. Its boot-time init is also simpler. In practice, custom firmware usually includes a web administration page, so you may rarely use the command line.
+
 ## 5. NAT and the fabric: where NAT does not belong
 
 Inside AI back-end fabrics, such as InfiniBand or RoCE v2, you do not use NAT. RDMA verbs exchange queue-pair numbers and GIDs or addresses during connection setup, so each endpoint must see the other's true address. NAT state would also get in the way of line-rate transport.

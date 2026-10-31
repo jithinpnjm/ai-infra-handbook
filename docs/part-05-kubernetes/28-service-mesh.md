@@ -94,6 +94,26 @@ The first pillar is routing and reliability. It includes traffic shifting, traff
 
 You do not need all three on day one. Section 8 explains why it helps to pick one first.
 
+### Why Services and Ingress are not enough
+
+Kubernetes already has networking objects, so why add more? A `Service` treats your application as a destination and nothing more. Its label selector picks a set of Pods, and traffic goes to them. That is about all a `Service` does. An `Ingress` goes a little further as an HTTP load balancer, but its API must fit many existing load balancers and proxies. Those range from bare-metal devices to public cloud APIs, so the API can only offer so much.
+
+That limit explains where the mesh APIs come from. Ingress brings HTTP traffic from outside into your cluster, and it has to work with infrastructure built long before Kubernetes. Inside the cluster, a mesh does not carry that burden. Its APIs can be written for cloud native applications, so they can offer richer networking. Most mesh implementations add three general capabilities: network encryption and authorization, traffic shaping, and observability.
+
+Encryption comes first, because it is easy to get wrong when every team builds it alone. Mutual TLS, or mTLS, encrypts traffic between Pods and also proves each side's identity. A mesh adds a sidecar container to every Pod, which intercepts all network traffic. Install the mesh once, and every Pod in the cluster gets encryption without code changes.
+
+Traffic shaping routes requests to different versions of a service based on the request itself. A rollout moves from version X to version Y, so both versions run at once for a while. Teams often keep a new version running for a day to a week for internal users, or send 10% of traffic to it. Without a mesh, each experiment needs custom code or a new copy of the application. With a mesh, you describe the split declaratively, and the mesh applies it.
+
+Observability is the third capability. A request can span several microservices, and stitching its logs together by hand is hard. Because the mesh sees every call between Pods, it knows where each request went. It can rebuild one trace for the whole user experience, and the data looks the same no matter which team wrote each service.
+
+Adopting a mesh also has a cost, and the chapter is direct about it. A mesh sits deep in the core communication path, so when it fails, the application stops working. Every mesh release also needs watching, so you pick up security fixes and roll out upgrades without downtime. For many small applications, that overhead outweighs the benefits. A managed mesh from your cloud provider reduces the work, though your developers still need to learn it. Decide at the cluster level, and ideally adopt the mesh for all services at once.
+
+### Choosing a mesh
+
+Many mesh projects exist, and none has become the single standard. Istio is probably the most widely used. Others include Linkerd, Consul Connect and Open Service Mesh, and proprietary options such as AWS App Mesh also exist. Most of them share the same design patterns and technology, but their APIs differ, so the choice matters.
+
+The chapter suggests that the best mesh for you may be the one your cloud provider supplies. If that is not an option, do your research before you commit. Do not be swayed by flashy demos. Because mesh APIs are implementation specific, switching meshes later is hard once your applications depend on one. In some cases, the right mesh for you turns out to be no mesh at all.
+
 ## 2. Data-plane models
 
 Not every mesh puts a proxy in every pod. Each data-plane model places its proxy somewhere different, and that placement decides what you pay in overhead and what you risk when something fails. The table compares where each model runs, what it gives you and what it costs.
