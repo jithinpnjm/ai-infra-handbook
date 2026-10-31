@@ -93,6 +93,10 @@ By default, CUDA guarantees portable cluster sizes up to eight thread blocks. On
 | Max portable cluster | `8` CTAs | Up to `8x` reuse | Default CUDA portable cluster ceiling |
 | Blackwell non-portable cluster | `16` CTAs | Up to `16x` reuse | Requires `cudaFuncAttributeNonPortableClusterSizeAllowed` on `sm_100` (*ASP* Ch 9, p. 299) |
 
+The 16-block cluster is something you opt into, not the default. Blackwell can run clusters larger than the portable limit of 8 thread blocks, but only after you set `cudaFuncAttributeNonPortableClusterSizeAllowed` on the kernel. Without that attribute, the portable ceiling still applies.
+
+Bigger is not automatically faster. A 16-block cluster can raise data reuse to 16× and lift arithmetic intensity by a similar factor. Larger clusters can also reduce occupancy, so the book advises profiling before you keep the 16-block setting. Measure the same kernel at 8 and at 16 blocks, then keep whichever one is faster.
+
 ---
 
 ## 2. Kernel Fusion, 2:4 Structured Sparsity, Recomputation, and PyTorch Intensity Levers

@@ -148,6 +148,34 @@ Recent model architectures and compiler stacks push decode optimization further 
 | **FlexDecoding** | PyTorch custom sparse/paged decode (`ASP` Ch. 18) | `torch.compile(mode="max-autotune")` + Nested Jagged Tensors (`NJT`) + `BlockMask` | Zero-padding ragged decode + logical-to-physical `64–128` token page translation |
 | **POD-Attention** | Colocated chunked prefill + decode (`ASP` Ch. 18) | Runtime SM-aware CTA binding colocating prefill and decode CTAs on each SM | Up to `29%` attention speedup by smoothing Tensor Core and HBM traffic |
 
+### 1.4 FlexDecoding in Practice: Compiled Decode Kernels Without Custom CUDA
+
+Teams often want an attention pattern that the stock kernels do not offer, such as a local window or a block-sparse mask. Writing a custom CUDA kernel for each pattern is slow and hard to maintain. FlexAttention lets you JIT-compile fused kernels for arbitrary sparsity patterns from Python. Under the hood, TorchInductor and OpenAI Triton generate a fused kernel that computes only the query-key pairs the pattern allows.
+
+Triton applies techniques such as warp specialization and asynchronous copies when they help on the given hardware. You can still tune `triton.Config` yourself, for example by setting `num_consumer_groups`.
+
+FlexDecoding is the decode backend of `torch.nn.attention.flex_attention`. It compiles a specialized kernel for the decode phase, where `Q_len=1`, attending over a growing KV cache. At runtime it picks that kernel and reuses it across many decode steps. That reuse keeps overhead low while shapes and dtypes stay compatible.
+
+Start the tuning with a few settings. Use `torch.compile(mode="max-autotune")` for stable, latency-critical decode once recompilations are under control. Keep the capture boundary narrow, per layer or per attention block, to reduce graph invalidations from ragged batching. Keep `torch.set_float32_matmul_precision("high")` so the remaining FP32 operations fall back to TF32.
+
+Precision follows the same rule of matching the tool to the job. Prefer Transformer Engine FP8 (MXFP8) for prefill and decode. Consider FP4 (NVFP4) when accuracy allows and speed improves. As of this writing, FP4 support is still maturing and can underperform 8-bit and 16-bit formats in the near term.
+
+Ragged batches are common in LLM serving, because every request has a different length. FlexDecoding handles them with nested jagged tensors (NJT), which store the sequences with an offsets array instead of padding. Prefer the NJT layout when you batch ragged sequences at decode time. The decode backend also supports grouped-query attention (GQA) and PagedAttention.
+
+FlexDecoding also supports bias terms. It integrates with PagedAttention through a block mask conversion that maps logical KV blocks onto the physical cache layout. Blocks scatter into place without extra copies. To use a global KV cache such as vLLM LMCache, map the cache's page table to FlexAttention's `BlockMask`. That turns logical KV pages into physical memory addresses on the fly.
+
+Captured tensors add flexibility. FlexDecoding leverages captured tensors to vary certain mask or bias values on each iteration, without requiring a recompile. Developers get Python-level control over custom sparsity, which is useful for MoE model inference. Arbitrary attention patterns can then run close to the speed of dense attention.
+
+Many of these pieces, such as fused decode attention and NJT batching, already ship in core PyTorch. So custom fusion is less necessary for typical patterns. Verify the result with Nsight Systems and its hardware-based CUDA traces, and use Nsight Compute for memory and link metrics.
+
+### 1.5 POD-Attention: Matching Prefill and Decode Work on Each SM
+
+On a node that runs both phases, separate kernels take turns. One kernel is compute-heavy, and the next is memory-heavy. Each wave leaves part of the chip waiting on the other. The result is alternating bursts of math and memory traffic instead of a smooth load.
+
+POD-Attention takes a different route. It launches one fused kernel with enough thread blocks, or CTAs, to cover both workloads. At runtime, each CTA checks which SM it runs on and reads per-SM counters. It then decides whether to run prefill or decode, based on what else is running on that SM. This avoids isolated bursts of memory traffic and smooths out demand.
+
+Colocating both kinds of work on one SM improves locality. The fused kernel cuts redundant HBM transactions and overlaps Tensor Core math with memory fetches. The reported gain is up to about 29 percent in attention performance. The key idea is that the hardware placement of CTAs on SMs is decoupled from the software role each CTA plays. That is hardware and software codesign aimed at less memory movement.
+
 ---
 
 ## 2. Chunked Prefill Token-Budget Tuning and Prefix-Cache Alignment
@@ -277,6 +305,46 @@ Prefill and decode workers coordinate KV handoffs using one of two connector arc
 
 Disaggregation also unlocks **phase-specific parallelism**. Because prefill processes thousands of tokens in parallel, it benefits from wider Tensor Parallelism and Pipeline Parallelism to minimize Time to First Token. Because decode processes a single token per step, Pipeline Parallelism introduces stage bubbles while excessive Tensor Parallelism adds two AllReduce calls per layer. Decode therefore prefers a single pipeline stage and a smaller Tensor Parallel degree. When prefill and decode use different Tensor Parallel degrees, the KV cache layout differs across pools. For example, prefill may run with four-way Pipeline Parallelism and single-GPU Tensor Parallelism where each GPU holds all eight KV heads for a subset of layers. Meanwhile, decode may run with four-way Tensor Parallelism where each GPU expects two KV heads across all layers. **NVIDIA Dynamo** executes an on-the-fly **KV transpose kernel** over NVLink immediately after the NIXL read to repartition the KV layout before writing into decode HBM.
 
+### 4.3 Five Strategies for Fast KV Transfer
+
+Moving the bytes fast is only half the job. How the two sides hand the KV over matters just as much. Five strategies cover most designs.
+
+**Prefill-side push.** When the prefill worker finishes a prompt, it starts an RDMA write straight into a reserved buffer on the decode GPU. The transfer runs in the background while prefill moves on to other work.
+
+**Decode-side pull.** The decode worker can instead RDMA-read from the prefill GPU memory when it is ready to start. Both push and pull avoid CPU copies. Push puts the coordination work on the sender, while pull lets the receiver control the timing.
+
+**Shared-memory (CUDA IPC) buffer.** If prefill and decode run on the same machine, they can share a memory handle through CUDA interprocess communication. The copy then uses NVLink or NVSwitch inside the host and never touches the network. It is a local form of zero-copy transfer.
+
+**Connector and queue abstraction.** vLLM hides the transfer method behind one logical interface, a Pipe or a LookupBuffer. Prefill places the KV in that buffer or signals that it is ready, and decode picks it up. Underneath, the transport can be RDMA or a publish-subscribe message, such as NATS for control signals in Dynamo. Because the handoff is decoupled from the transport, you can swap transports without changing the logic.
+
+**Nonblocking overlap.** Optimized systems keep decoding other requests while KV is in transit. In Dynamo, a decode worker keeps generating tokens for other sequences while a prefill worker writes KV for a new request into GPU memory. A transfer of about 5 ms can overlap with that decode work. The first generated token then sees almost no added delay.
+
+With these methods, a KV transfer takes a few milliseconds. Computing the same KV on the prefill worker takes hundreds of milliseconds. Decode can therefore start almost right after prefill finishes, without a long stall.
+
+### 4.4 Page Size, Collation, and Transfer Buffer Sizing
+
+PagedAttention stores KV in fixed token blocks, commonly 16 tokens per block. Each block is small, and its byte size depends on heads, head dimension, layers, and dtype. Sending thousands of tiny pages over RDMA adds fixed latency and protocol overhead to every transfer. The bandwidth you paid for then goes unused.
+
+Engines support several page sizes, such as 8, 16, 32, 64, or 128 tokens per block. Larger pages help because sustained link throughput rises with larger collated buffers and fewer work queue elements (WQEs). When possible, collate at least 128-token pages into each RDMA write. Run the transfer on a dedicated CUDA stream, prefer nonblocking streams with event fences, and profile with Nsight Systems to confirm the overlap.
+
+Size the transfer buffer from the KV formula. Start `pd_buffer_size` at 1 GB, which is roughly the FP16 KV for about 4k to 8k tokens on a 70-billion-parameter model with 80 layers, 32 heads, and 128-dimension heads. Use 2 GB if prompts run past about 7.5k tokens. A quick estimate is `bytes ≈ 2 × L × N × (H × Dh) × bytes_per_val`, where the factor 2 counts keys and values.
+
+If you quantize the KV cache to FP8 or FP4, each token takes fewer bytes. A fixed token count then needs a smaller buffer. You can move more tokens per buffer, or shrink the buffer. A 1 to 2 GiB buffer works for many deployments. Size it from the formula, round up to a 256 MB boundary, and shrink it in proportion when you use FP8 or FP4 KV. Always validate against the largest collated page group you will transfer.
+
+Prefer GPUDirect RDMA with collation to 128-token pages or larger for the best link use. Collate pages before every transfer, because small I/O is inefficient.
+
+### 4.5 Choosing a Connector Pattern and Handling Failures
+
+There are two common coordination designs. In NVIDIA Dynamo, decode workers push prompt tasks into a global queue that prefill workers consume. In vLLM with LMCache, prefill and decode set up a direct channel for each request. That can be a one-to-one TCP or RDMA connection negotiated at request start. The global queue is simpler for load balancing and failure handling, while direct channels can cut queuing.
+
+Choose by the workload. If you need robust multitenant load balancing and easy failover, and a small queuing delay is acceptable, the global queue is usually the better fit. If you have strict tail-latency needs, a stable set of prefill-decode pairs, and fast interconnects, direct channels reduce hop count and jitter. Benchmark both with your own mix of prompt lengths, concurrency levels, and failure cases.
+
+The goal is a nonblocking pipeline. While one request decodes, another prompt prefills, and a third request's KV moves across the fabric. No stage sits idle when another stage has work. This is why disaggregation raises throughput at scale.
+
+The first generated token usually does not need to be transferred. The decode worker can recompute the first token's probabilities from the KV. Some systems send that output anyway to save a few hundred microseconds of decode compute. Others keep the design simple and let decode recompute the final layer.
+
+Failures need the same care. If a decode node fails mid-generation, a global KV pool lets another node resume from the saved KV. If a prefill node fails mid-prompt, that prompt can be retried elsewhere. Routers use heartbeat checks and timeouts to spot a stalled transfer, so the request can be reassigned or safely aborted. One node's failure should never fail the whole request.
+
 ---
 
 ## 5. Hierarchical KV Cache Offloading: HBM, Grace LPDDR5X, DDR5, and NVMe/GDS
@@ -328,6 +396,22 @@ Tiered KV offloading enables **Cache-Augmented Generation**, where an entire ten
 - **RAG vs Long-Context CAG Math:** Suppose a request has a 500-token cached system prompt and a 500-token user query. In RAG, retrieving ten dynamic chunks adds 5,000 uncached tokens, totaling 5,500 uncached prefill tokens and a 5.0 s TTFT. In CAG, all 100,000 knowledge tokens are cached alongside the system prompt. Only the 500 user tokens require prefill, shrinking uncached prefill by 11x and cutting TTFT **10x from 5.0 s to 0.5 s**. Under commercial API pricing, RAG costs 0.007 dollars per request whereas CAG costs 0.013 dollars per request. Self-hosted LMCache offloading captures CAG's 0.5 s TTFT without paying per-token API cache surcharges.
 - **CacheGen and CacheBlend:** **CacheGen** compresses KV tensors into compact arithmetic bitstreams keyed to layer-wise distributional statistics before network or disk transit. For dynamic RAG workloads where retrieved chunks appear in arbitrary order, naive KV concatenation fails because later chunks cannot attend to earlier chunks. **CacheBlend** stores precomputed KV caches per RAG chunk and selectively recomputes attention for only the top **15 percent** of tokens. Focusing on tokens with the largest cross-attention deviations saves **85 percent** of prefill compute, a 6.67x reduction, with negligible quality loss.
 
+### 5.3 Paging KV Blocks and Trading Memory for Compute
+
+A disaggregated KV pool can page KV blocks between GPU memory and the pool without stalling compute. The paging is asynchronous, so the GPU keeps working while blocks move. That makes ultralong contexts practical. The approach assumes that communication and computation overlap well.
+
+In short, a disaggregated KV pool trades memory, or colder storage, for compute. Keeping a larger KV cache lets the system skip recomputing KV in many cases. Reusing data from DRAM or even SSD is often cheaper than repeatedly redoing large attention matrix multiplications. Those have quadratic cost, O(N2), in sequence length.
+
+### 5.4 Exact Prefix Matching, Eviction, and Locality-Aware Routing
+
+Reuse works best when requests share an identical prefix. Most systems use exact prefix matching for simplicity. If the first N tokens match exactly, the system reuses that chunk. Merging partial overlaps is harder, because the caches must be combined, and that is not always straightforward. So typical caching stays with exact prefix caching.
+
+Keeping every user's KV forever would consume a lot of memory. The system needs an eviction policy, such as LRU, to drop caches that are unlikely to be reused. A scheduler can also keep caches based on their likelihood of reuse. The goal is to maximize cache hits inside the memory limit.
+
+Routing helps too. If a prefill node already holds part of the KV in local GPU memory or DRAM, sending the request there avoids data transfer. This is data-aware scheduling: send the compute to where the data is, instead of always pulling data to wherever compute is free. It mirrors locality-aware scheduling in distributed systems. Route each request to the server that built its prefix to maximize the chance of a hit.
+
+Prefix caching works best with a unified view of KV across requests, stored in a shared place such as the global pool. That beats a siloed, per-request or per-node approach. Even when a user's requests land on different decode servers, they can benefit from each other's cached work.
+
 ---
 
 ## 6. Heterogeneous Hardware Economics and SLO-Aware Adaptive Schedulers
@@ -359,6 +443,119 @@ Adaptive Disaggregated Routing and SLO Control Equations (ASP Ch. 17 & 18):
 - **TetriInfer Two-Level Scheduler and Instance Flip:** Packs requests across prefill and decode workers using two-level load prediction to prevent long-sequence decode hotspots. It also supports **instance flipping** where nodes dynamically switch roles between prefill and decode while enforcing a cooldown window to prevent oscillation.
 - **Arrow Adaptive Instance Scaling:** Continuously compares input versus output token arrival rates and queue backlogs. By dynamically scaling or flipping prefill and decode instances, Arrow achieves **up to 5.6x higher request serving rate** and over 90 percent SLO compliance during workload shifts.
 - **Fault Tolerance via Global KV Pool and `cuda-checkpoint`:** Checkpointing KV blocks to the disaggregated pool allows an alternate decode worker to resume mid-generation without recomputing prefill if a decode node fails. At the OS level, Linux `cuda-checkpoint` paired with **CRIU** snapshots and restores prewarmed GPU processes across nodes.
+
+### 6.3 Mixing GPU Generations and Phase-Specific Hardware
+
+Buying one GPU type for both phases wastes money, because the phases need different things. Prefill is compute-bound. It benefits from many TFLOPS, Tensor Cores, high clock rates, and substantial memory bandwidth. It does not need HBM beyond what the prompt's KV requires. Decode needs memory capacity and memory bandwidth more than raw compute.
+
+Because the phases are separate, you can mix hardware generations. Put the latest high-compute GPUs on the prefill cluster. Keep older or cost-efficient GPUs with enough memory bandwidth for decode. That way the newest Tensor Cores are not spent on a task that cannot use them fully. Prefill draws more power because it maxes out the math units. Decode uses far less power on the same GPU.
+
+The Splitwise study shows the payoff. Phase-specific hardware reached 1.4x higher throughput at 20 percent lower cost than a homogeneous baseline. Under a fixed cost and power budget, 4x H100 for prefill plus 4x A100 for decode reached 2.35x the RPS of an eight-GPU homogeneous setup. The same traffic could also run on five or six GPUs instead of eight. Six GPUs would save roughly 25 percent of hardware cost. Splitwise also found the KV transfer cost over NVSwitch to be minimal, even between GPU generations.
+
+HexGen-2 treats heterogeneous allocation as an optimization problem. Its scheduler chooses resource allocation, per-phase parallelism, and communication efficiency together. On models such as Llama 2 70B, it reaches up to 2x higher serving throughput than state-of-the-art systems at the same price point. Its average gain is about 1.3x. It also matches a high-end baseline while using about 30 percent less cost. That is an automated version of what Splitwise did by hand.
+
+Mixed hardware adds complexity, because you manage several GPU types. It also limits how freely GPUs can move between roles. For large services, the efficiency gain is often worth that cost.
+
+Disaggregating prefill and decode allows specialized hardware and parallelism for each phase. Use high-compute GPUs or multi-GPU nodes for prefill. Use memory-rich GPUs or single GPUs for decode. The goal is lower cost and higher throughput.
+
+### 6.4 Hybrid Prefill with CPU Workers
+
+GPUs are not always the best tool. At extreme scale, very large models and prompts can push past GPU memory. CPUs are much slower at neural network math. But they have ample RAM, no contention for GPU memory bandwidth, and they handle tasks GPUs do less well. Those tasks include very long sequences and nontransformer work such as tokenization and padding.
+
+In a hybrid prefill, part of the prefill runs on CPUs. One case is a superlong prompt, such as tens of thousands of tokens from a large document. A powerful GPU may struggle with memory for that prompt. The system can run the first layers on a CPU worker with lots of RAM, then stream results to a GPU. Or it can run the whole prefill on the CPU when latency is not the concern. The decode GPU then receives the large KV cache from the CPU worker.
+
+Batch and offline pipelines, such as long-running Deep Research jobs, can use CPU preprocessing for very long texts. That is not common in interactive inference. A practical use is low-priority prefill. A service can accept huge prompts for noninteractive jobs and send them to CPU-only workers. Those workers feed a decode GPU later. Latency is high, but for offline work that is acceptable, and the GPUs stay free for interactive traffic.
+
+Hybrid prefill fits CPU-GPU superchips such as Grace Blackwell best. The chip-to-chip interconnect is very fast, and CPU memory is massive compared to GPU memory. The CPU can buffer or preprocess input tokens while the GPU handles the heavy transformer layers. A Grace Blackwell Superchip can serve a massive context this way. The CPU manages memory and early layers, and the GPU runs dense attention on chunks of the sequence.
+
+The Grace CPU can also spill KV data that does not fit in HBM into CPU DDR memory. That extends the context length the GPU can support. You can slice the transformer across devices. Run the first N layers on the GPU, where most tokens are handled and the sequence is compressed. Offload the next M layers to the CPU, then bring the remaining layers back to the GPU for the final outputs. This layer partitioning adds data movement and orchestration complexity. Justify it only for ultralong contexts or severe GPU memory limits.
+
+In a disaggregated design, the CPU prefill worker becomes a third kind of worker. The scheduler can choose a GPU prefill worker, a CPU prefill worker, or local prefill on the decode GPU. The choice depends on factors such as prompt length or priority. A policy might send any prompt where `prompt_length` > 5,000 to a CPU prefill worker. That path is slow, but it does not tie up GPUs and it has large memory. The decode stage then waits longer for KV.
+
+CPU offload raises TTFT, so it does not suit normal latency-sensitive requests. Treat it as an extensibility and safety-net feature. If the path runs often, track how often. Frequent CPU offloads may mean you need more GPU capacity or model optimization instead. CPU offload handles edge cases, such as very long inputs or GPU bursts, by falling back to a slower path instead of failing. Still, fail fast if processing is too slow and breaks the SLO.
+
+CPU cores cost less than GPU hours, so some work is more economical on CPUs. Some cloud providers run a mix of GPU and CPU instances for LLM serving. CPUs can do input preprocessing, or even small model inference, before the GPUs take over. Use GPUs for massive parallel compute on moderate sequence lengths. Use CPUs where GPUs are inefficient, such as extremely long sequences, memory-heavy tasks, or low-priority work. The line between the two will blur as superchips such as Grace Blackwell mature.
+
+### 6.5 Adaptive Scheduling: Imbalance, TetriInfer, and Arrow
+
+A fixed split of prefill and decode workers goes stale, because workloads change. One hour may bring many long questions with short answers, such as summarization. That needs more prefill and less decode. The next hour may bring short questions with long answers, such as reasoning. That needs much more decode. A static ratio that worked in one scenario may not be optimal in another. The best `X_p` versus `Y_d` configuration depends on the workload, and it keeps shifting.
+
+Imbalance is the core problem. If there are too few decode workers, decode tasks queue up and TPOT rises even while prompts process quickly. If prefill is too small, new requests wait to start, TTFT rises, and decode GPUs sit idle. The ideal is both sides near capacity but not overwhelmed. Engines such as vLLM, SGLang, and NVIDIA Dynamo now add load monitoring and dynamic worker assignment. Cloud platforms run custom autoscalers and routers with similar ideas.
+
+TetriInfer is a research prototype scheduler that works at two levels. At the request level, it assigns each incoming request to a prefill or decode instance based on current load. That is normal routing. At the cluster level, it watches utilization and predicts where bottlenecks will form. It then shifts work early to prevent hotspots. If one decode node is collecting many long sequences, the scheduler sends some of them to a more available node. The name hints at packing requests like Tetris pieces, so GPU time fills up without interference.
+
+Arrow, which is not the Arrow data format, is an adaptive instance scaling technique. Disaggregated systems respond slowly to workload change. If the input-to-output mix shifts, the fixed number of prefill and decode workers does not adjust right away. That causes a temporary drop in goodput, because one side becomes the bottleneck. Arrow tracks the input token rate against the output token rate, and the backlog in each pool. It then adjusts how many workers each side gets.
+
+For input-heavy traffic, Arrow watches for growing prefill queue times and rising TTFT percentiles. It then converts some decode workers into prefill workers, or launches extra prefill instances. For output-heavy traffic, such as long reasoning chains, a rising TPOT and a long decode queue are the signs. Arrow then adds decode capacity. It might idle some prefill nodes if prompt arrivals have slowed, or add new decode nodes.
+
+Arrow's design has two parts. Request scheduling decides which node handles which request. Instance scheduling decides when to launch or shut down prefill or decode instances. In effect, Arrow puts an autoscaler inside the LLM inference scheduler. Under a sharply shifting workload, it reaches up to 5.6x the request serving rate of a nonadaptive system. Typical gains were smaller, and the size of the gain depends on how dramatic the shift is.
+
+### 6.6 Elastic Scaling, Instance Flips, and Predictive Scaling
+
+Dynamic scaling changes the split between prefill and decode in response to load. Arrow does this continuously. In Kubernetes, you can define an autoscale policy for each deployment. For example, you can keep average prefill GPU utilization at 70%. If utilization rises, the system adds a pod or node to the prefill pool. If it falls while decode stays busy, one pod can move from prefill to decode. The rule can be simple, or it can solve for the best X and Y counts at each interval.
+
+TetriInfer describes an instance flip, where a node changes roles when needed. That requires the model to be loaded, sharded, and quantized to handle both roles. Arrow relies on stateless instances. No long-lived session state lives on the worker, so workers can be reassigned freely. The KV cache of an active decode node complicates flipping it to prefill mid-generation. So you often wait until decode finishes its task before switching roles.
+
+Switching roles too quickly causes oscillation and thrashing. Enforce a minimum time that a role must hold before it can change. That keeps the cluster from flipping back and forth.
+
+Sophisticated systems use forecasting models, such as ARIMA, to foresee surges and traffic shifts. They use time-of-day patterns for this. If history shows a spike of long outputs at 9 p.m., the scheduler can add decode capacity just in time. The aim is a high share of requests inside SLO, with no manual reconfiguration.
+
+Mooncake's early rejection is a prediction-based admission control. It manages demand, while Arrow manages supply. Adaptation can happen on the supply side, by adding or reallocating resources. It can also happen on the demand side, by throttling or rejecting requests. Early rejection sheds load dynamically instead of scaling, and it protects overall performance.
+
+On a fixed on-premises cluster, scaling means reassigning GPUs. A few GPUs that were on prefill switch roles and join the decode pool for a while. That works when each node can run both roles. Switching can cost time, since the model may need different partitions for different parallelism or quantization. Some designs keep all weights loaded on every GPU and feed each one different tasks. That resembles a unified cluster with time sharing, but at a coarse grain.
+
+In the cloud, scaling can work with the Kubernetes Horizontal Pod and Cluster Autoscalers to add or remove pods and nodes for each role. Arrow could trigger new prefill pods when load stays high. That gives a fully elastic cluster that grows or shrinks each side as needed. Scaling up new GPU pods can take tens of seconds or more. So the system may need to shed load while it waits, which is what Mooncake does.
+
+Adaptive scheduling needs continuous metrics. Track the prefill queue length, the decode queue length, and TTFT and TPOT percentiles. Teams often feed these into dashboards with Prometheus and custom controllers in Kubernetes. Algorithms then automate the decisions. If one cluster serves several models, GPUs can be repurposed between them on demand. Idle decode GPUs could run a smaller model's inference. That is not yet mainstream as of this writing, but it is conceptually possible.
+
+An ultrascale system needs a feedback loop that matches resources to the current workload. Disaggregation removes phase interference, and adaptive disaggregation removes phase imbalance. You need both for the best performance under changing conditions.
+
+### 6.7 Priority Classes, Feedback Loops, and Load Shedding
+
+Requests can carry priority. Paying customers may outrank free-tier users, and interactive queries may outrank offline batch jobs. Disaggregation lets you dedicate part of the prefill and decode workers to high-priority work. For example, you can reserve 10% of capacity for premium traffic and 30% for standard traffic. Here is a QoS configuration for NVIDIA Dynamo that shows this tiered scheduling.
+
+```yaml
+# configs/qos.yaml
+scheduler:
+  # Define QoS classes and their reserved capacity
+  qos_classes:
+    - name: premium
+      reserved_fraction: 0.10  # reserve 10% of prefill/decode workers
+      priority: 100
+    - name: standard
+      reserved_fraction: 0.30  # reserve 30% for standard tier
+      priority: 50
+    - name: free
+      reserved_fraction: 0.60  # share remaining capacity (free tier)
+      priority: 10
+# Map incoming requests to QoS classes by label
+request_router:
+  routes:
+    - match:
+        header: "x-customer-tier: premium"
+      qos: premium
+    - match:
+        header: "x-customer-tier: standard"
+      qos: standard
+    - match:
+        header: "x-customer-tier: free"
+      qos: free
+    - match:
+        # default fallback
+      qos: free
+```
+
+Higher-priority requests are admitted and served with low latency from their reserved capacity. Lower-priority requests queue, or get rejected, while the system is busy with higher-priority work.
+
+Latency monitoring and feedback loops keep this kind of system on target. Track TTFT and TPOT at p99 and p99.9. When metrics approach their SLO limits, the system can scale, reject new load, cap the maximum output length, or temporarily reduce the load. In a disaggregated system, watch the prefill queue and the decode queue separately. That shows which side is the bottleneck. Stop accepting new prompts when prefill backs up. Limit long reasoning outputs when decode saturates.
+
+### 6.8 Fault Recovery When a Node Fails
+
+Fault tolerance is part of running a robust inference system. If a decode node fails mid-generation, the KV saved in the pool lets another decode worker finish the remaining tokens, perhaps after a small delay. If the KV was not saved, the system must recompute prefill on another node and then continue decoding. That is why systems like vLLM periodically checkpoint or copy the KV cache to the pool, even when disaggregation is not strictly needed. It protects against failures.
+
+At the process level, `cuda-checkpoint` plus CRIU (Checkpoint/Restore in Userspace) can suspend and snapshot a Linux process that hosts a GPU worker. The checkpoint can then restore onto another node with the same GPU chip type. That limits the work lost on preemption or failure. The same approach can restore prewarmed GPU memory instead of recompiling graphs and reloading weights on every start. That can cut cold-start latency.
+
+Checkpointing can hurt latency, but the request can still complete. A prefill node that fails after sending its KV matters less, because the KV is already off that node. A prefill failure during a prompt means that prompt must be retried on another prefill node. The architecture should handle both cases, so one node's failure does not drop the request or cascade into large delays.
 
 ---
 

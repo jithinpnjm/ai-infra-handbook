@@ -102,6 +102,8 @@ In eager mode, PyTorch dispatches matrix multiplications to cuBLAS, convolutions
 
 Writing custom GPU kernels once required C++ and `nvcc`, but modern CUDA stacks include first-class Python domain-specific languages and libraries. Launched in early 2025, cuTile provides a tile-based Python abstraction that decomposes matrices into cache-friendly tiles without manual thread indexing. Its companion library cuPyNumeric acts as a distributed GPU drop-in replacement for NumPy arrays. Developers can also call Runtime and Driver APIs directly through CUDA Python and CuTe DSL, or compile Python functions into GPU machine code using NVIDIA Warp and OpenAI Triton.
 
+PyTorch hides most of the CUDA programming work. You write intuitive Python, and it calls highly optimized CUDA routines underneath. That combination gives you ease of development and high performance together. The lower layers still matter when something breaks, so know where they live.
+
 ### 1.2 Layer 3 vs Layer 4: CUDA Runtime API (`libcudart.so`) vs CUDA Driver API (`libcuda.so`)
 
 When a container fails with a missing library or version error, the fastest way to isolate the fault is to check whether the CUDA Runtime library or the CUDA Driver library failed to load. Confusing these two shared libraries leads teams to rebuild container images when host driver injection is broken. Conversely, teams sometimes reinstall host drivers when a container image is simply missing its own toolkit path.
@@ -127,6 +129,20 @@ To cross from user space into kernel space, the user-mode driver opens Linux cha
 | `nvidia-uvm.ko` (`nvidia_uvm`) | `/dev/nvidia-uvm` (`234, 0` or `238, 0`, dynamic major) and `/dev/nvidia-uvm-tools` (`234, 1`) | Unified Virtual Memory: handles GPU page faults and migrates pages on demand between CPU RAM and GPU HBM across a shared virtual address space. | Basic `cudaMalloc` programs may still run, but `cudaMallocManaged` and modern deep learning frameworks fail during initialization. |
 | `nvidia-modeset.ko` (`nvidia_modeset`) | `/dev/nvidia-modeset` (`195, 254`) | Display mode-setting engine, often loaded alongside `nvidia_drm.ko`. | Irrelevant for headless compute math, but holds a module reference count on `nvidia.ko` that prevents `rmmod nvidia` until `nvidia_modeset` is unloaded first. |
 | `nvidia-peermem.ko` (`nvidia_peermem`) | Kernel peer-memory client; no separate `/dev` node | Registers GPU HBM physical pages with the InfiniBand/RoCE RDMA subsystem (`mlx5` / MOFED) so NICs can DMA directly to and from GPU memory. | Intra-node NVLink works normally, but multi-node training over InfiniBand/RoCE silently falls back to staging packets through host CPU RAM. |
+
+### 1.4 Python-facing CUDA libraries: cuTile and cuPyNumeric
+
+Most CUDA toolkit libraries are C++. A newer group of NVIDIA libraries offers Python entry points. Their names start with "Cu," and they are built on the C++ toolkit. cuTile and cuPyNumeric both launched in early 2025, aimed at Python developers who want to program NVIDIA GPUs.
+
+cuTile breaks a large matrix into smaller submatrices called tiles. Its tile-based abstraction makes block-wise computation easier to write. It also helps you manage memory access patterns and schedule kernels. Working in tiles can improve cache use, and you do not have to manage the low-level details by hand.
+
+cuPyNumeric is a drop-in replacement for the NumPy library, so you can switch with `import cupynumeric as np`. It offers nearly the same functions, methods and behaviors. Under the hood, it runs the work in parallel on the GPU. That can bring large speedups for big numerical jobs, while your code stays familiar.
+
+### 1.5 Why every layer matters for GPU time
+
+Each layer in this stack is a place where time can leak away. Good tuning keeps the GPU doing useful training or inference work. The GPU should not sit idle while it waits on the CPU, on memory or disk I/O, or on other GPUs to synchronize.
+
+System-level tuning is often overlooked in favor of model changes. Yet it can yield large gains, sometimes double-digit percentages from small OS-level tweaks. At the scale of a big AI project, that can save a lot of compute money. Check each layer before you assume the model is the problem.
 
 ---
 
@@ -287,6 +303,12 @@ As documented in Chapter 9 of the BCM 11 installation manual, BCM splits GPU sof
 Chapter 10.10 covers Fabric Manager in detail.
 
 ---
+
+### 3.5 No hypervisor in the path: why containers keep GPU speed
+
+People often assume a container adds a layer of virtualization. It does not. A container shares the host kernel and the host driver directly. When a kernel launches on the GPU, it behaves as if it were launched from the host. No hypervisor sits between the program and the device.
+
+With Docker and the NVIDIA Container Toolkit, the result is basically bare-metal performance. The exceptions are setups that do add a virtualization layer, such as VMware, or virtual GPUs built on SR-IOV. Those cases need their own tuning. The toolkit also works with containerd and Podman, not only Docker, which matters because many Kubernetes clusters use containerd.
 
 ## 4. Commands and Configurations That Matter
 

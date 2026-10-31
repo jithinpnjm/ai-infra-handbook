@@ -154,6 +154,18 @@ Tail Latency and Synchronous Cluster Efficiency Math (compute_tail_latency_jct &
      - Saving $2 Million on 500 H100 servers via a shared 400G enterprise VLAN with QoS fails under microburst jitter
 ```
 
+### 1.4 Three ways a model learns, and the training loop in review
+
+Not every model learns the same way. The learning style decides what data the team must prepare before training starts. Three styles appear most often, and each one trains on a different kind of input.
+
+| Learning style | What the model trains on | How it learns |
+|---|---|---|
+| **Supervised** | Labeled data, where each input comes with its expected output | Learns to map inputs to outputs |
+| **Reinforcement** | Trial and error, with feedback in the form of rewards or penalties | Learns actions that maximize success |
+| **Unsupervised** | Unlabeled data | Must find hidden patterns in the data on its own |
+
+The training loop from section 1.1 is the same for all three styles. Training runs the data through the model in a forward pass to make predictions. It then compares those predictions with the expected outputs. Backward propagation uses the gradients to adjust the model's parameters. The team repeats this over many iterations, sometimes called epochs, and across large batches of data. The model gets more accurate a little on each pass.
+
 ---
 
 ## 2. RDMA, RoCEv2 (UDP 4791), Elephant Flows, Flowlets, and Incast
@@ -182,6 +194,8 @@ Four transport protocols carry RDMA semantics across data center links. Native I
 When a network engineer captures traffic on a RoCEv2 fabric without a protocol dissector, every flow looks like opaque UDP traffic on port 4791. That outer encapsulation hides the queue pair identifiers, memory addresses, and sequence numbers that control reliability and congestion. To debug dropped packets, out-of-order delivery, or selective dynamic load balancing, you must inspect the InfiniBand headers behind the UDP header.
 
 Every RoCEv2 frame sets its outer UDP destination port to 4791. That port tells the receiving NIC to parse the next bytes as an InfiniBand Base Transport Header. Meanwhile, the sender hashes the Queue Pair number into the outer UDP source port. Inside the Base Transport Header, the Opcode field identifies the exact RDMA operation, such as an RDMA Read request, response, or acknowledgement. The header also carries the Partition Key, the Destination Queue Pair number, an Acknowledge Request flag, and a 24-bit Packet Sequence Number. The receiving NIC uses that sequence number to detect missing or out-of-order packets over connectionless UDP.
+
+Read a RoCEv2 frame from the outside in. The outermost layer is Ethernet, followed by IP and then UDP. A UDP destination port of 4791 tells the receiver that the next header is the InfiniBand Base Transport Header. That header carries the opcode, the destination queue pair, the packet sequence number, and the partition key. The partition key maps to a Layer 2 VLAN ID. The payload comes next, then a 32-bit end-to-end ICRC, and the Ethernet frame check sequence closes the frame.
 
 On RDMA Read and Write requests, an RDMA Extended Transport Header immediately follows the Base Transport Header. This extended header supplies the 64-bit remote Virtual Address, the Remote Key that authorizes memory access, and the DMA byte length. On acknowledgement frames, an ACK Extended Transport Header follows the Base Transport Header instead. It carries a Syndrome field that indicates an ACK or NACK alongside credit counts and the Message Sequence Number. Before any data frames cross the wire, the RDMA Connection Manager completes a three-step setup handshake and later closes with a four-step disconnect.
 
@@ -231,6 +245,25 @@ flowchart TB
 | **4. Proactive Defense** | 4-tier load-balancing pyramid (`SLB` → `DLB` → `GLB` → `sDLB`) | Spreads elephant flows and flowlets across all equal-cost leaf-to-spine links |
 | **5. Reactive Defense** | **`DCQCN`** (`ECN = 11` + `CNP` with `IP ECN = 01` + link-level `PFC` pause) | Throttles offending sender NICs per-flow and pauses queues before any packet drops |
 | **6. Physical Topology** | `1:1` non-blocking rail-optimized fat-tree + isolated storage fabric | Eliminates bandwidth oversubscription and storage checkpoint buffer collisions |
+
+### 2.4 InfiniBand versus Ethernet for AI fabrics
+
+Teams often ask whether an AI cluster should use InfiniBand or Ethernet. The answer depends on what matters most: speed, latency, cost, power, or how many vendors you must mix. The table compares the two on the points that come up most often.
+
+| Characteristic | InfiniBand | Ethernet |
+|---|---|---|
+| **Transmission speed** | Supports SDR, DDR, QDR, FDR, EDR, HDR, and NDR. The book rates it as slower than Ethernet. | Supports 10 Mbps, 100 Mbps, 1 Gbps, 10 Gbps, 25 Gbps, 100 Gbps, 200 Gbps, 400 Gbps, 800 Gbps, and 1.6 Tbps. |
+| **Latency** | Lower latency | Higher latency |
+| **Reliability** | Greater reliability, because it is designed to be lossless | Inherently lossy. TCP makes it reliable, and DCQCN adds reliability to UDP. |
+| **Power consumption** | Low power consumption | Comparatively higher power consumption |
+| **Scalability** | Limitations beyond a certain cluster size | Highly scalable |
+| **Standardization** | Controlled by the IBTA, which can lead to vendor lock-in | Open standards enable multi-vendor networks |
+| **Cost** | Higher cost and longer lead times | Lower cost and shorter lead times |
+| **Versatility** | Suited to certain fabrics, such as storage, HPC, and AI/ML | The most widely deployed technology. It runs in any environment if the right protocols are enabled. |
+
+The table shows the trade-off in plain terms. InfiniBand gives lower latency and lossless behavior, but it costs more and grows less easily. Ethernet is cheaper, open, and scales well, but it needs extra work to behave like a lossless fabric.
+
+The three RDMA transports from section 1.2 can be compared the same way. InfiniBand offers low latency and lossless transport, but it is less scalable and more expensive. RoCEv2 runs RDMA over Ethernet using UDP and IP. It scales and fits existing Ethernet gear, but it needs careful congestion management. iWARP runs RDMA over TCP/IP. It is less popular, with higher latency and less adoption in AI and ML clusters.
 
 ---
 
@@ -292,6 +325,12 @@ Worked 1,024-GPU Non-Blocking Fat-Tree Sizing & Isolation Rules (size_two_tier_n
   6. Why 2:1 Oversubscription Fails: 16 uplinks per 32-server Leaf stalls any 512-GPU job firing simultaneous 400 Gbps AllReduce bursts
   7. Why Storage Must Be Isolated: Writing a 100 GB model checkpoint over compute switches packs lossless queues (IB credits / PFC) and stalls AllReduce
 ```
+
+### 3.4 Key requirements for an AI data center fabric
+
+Sections 1 to 3 cover the traffic and the defenses. The fabric itself has to meet a short list of requirements. An AI data center fabric must be lossless. It must also deliver high throughput and low latency, provide dynamic load balancing, and handle large-scale parallelism.
+
+High-radix 400 Gbps and 800 Gbps Ethernet switches help meet those needs. So do RoCEv2 support and advanced congestion management such as DCQCN, which works with PFC and ECN. The design also has to leave room to grow. As the number of AI workloads rises over time, the fabric may need to move from a three-stage topology to a five-stage one.
 
 ---
 

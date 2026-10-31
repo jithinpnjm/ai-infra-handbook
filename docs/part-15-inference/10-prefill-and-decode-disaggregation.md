@@ -260,6 +260,42 @@ Smart Router Composite Latency Cost and Dynamo Score Equations (ASP Chapter 17 T
 
 For ultra-strict tail latency SLAs, production gateways can also layer **multipath inference**, also called racing. Racing dispatches an idempotent request to two routes in parallel and cancels the slower branch as soon as the winner emits its first token. Gateways can also coordinate **multibranch speculative decoding** across decode workers.
 
+### 2.6 Routing Factors Beyond Prompt Length
+
+Prompt length is only one input to the router. Four other factors shape the same decision, and the router weighs them together. The table summarizes how each one pushes the choice toward remote or local prefill.
+
+| Factor | What it measures | Effect on the routing decision |
+|---|---|---|
+| Prompt length | Input tokens left after any prefix caching | Long prompts mean more compute, so offload once the length passes a threshold. Short prompts run locally. |
+| Prefix cache hit | How much of the prompt the decode worker already holds | A large hit makes prefill short and memory-bound, so run it locally. No hit means heavy compute, so offloading likely helps. |
+| Prefill queue length | Pending tasks in the global prefill queue | A long queue means keep the request local. A light queue means offload when the other conditions fit. |
+| Decode worker load | Ongoing decode tasks on the local worker | A busy decode GPU gains from offloading. An idle decode GPU with a backed-up prefill queue should prefill locally. |
+| Latency SLO urgency | How tight the request's latency requirement is | An urgent request may offload to start sooner. A relaxed request can run locally to save prefill capacity. |
+
+Decode worker load works in both directions. A decode GPU already busy with many streams can still offload a new prompt. Otherwise it would juggle heavy prefill compute and decoding at once, and both could slow down. A nearly idle decode GPU can take a longer prefill itself.
+
+Latency urgency changes the rules for a single request. A request with a tight SLO can skip the queue check and go straight to the prefill pool, even when its local decode GPU is free. That keeps the decode GPU available for another high-priority decode task. A low-priority request can skip the prefill pool and run locally, or wait.
+
+The thresholds in these rules are not universal. Measure them on your own workload and adjust them as the hardware changes.
+
+### 2.7 Prefill Parallelism: Data and Pipeline Splits
+
+Prefill nodes are built for large matrix multiplications. Each prefill task pushes all of its input tokens through every model layer. That work keeps thousands of GPU threads busy, and it can spread across many GPU nodes. Tensor and pipeline parallelism both help reduce TTFT.
+
+When one request needs more than one GPU, there are two main choices. With data parallelism, the whole model is copied onto each GPU. The batch is split into minibatches, each GPU runs its own copy, and the outputs are gathered at the end. This pools memory bandwidth and compute for one batch, but it lowers how many requests run at once.
+
+With pipeline parallelism, the layers are cut into stages that sit on separate GPUs, for example GPU 0 and GPU 1. When GPU 0 completes its work on the first microbatch, it passes the activations along to GPU 1 and picks up the second microbatch. The result is an assembly line where every device works on a different piece. The cost is extra inter-GPU communication, plus pipeline bubbles when the microbatch size or stage split is unbalanced.
+
+Each extra GPU you dedicate to one request raises throughput and lowers how many requests the cluster can serve at once. On a fixed cluster, pick the layout based on whether your latency or throughput target matters more.
+
+### 2.8 Speculative Branches on Top of Routing
+
+Speculative decoding can also sit on top of the router. Speculative decoding produces several candidate token branches in parallel, then keeps the most likely one. A router can notice when a branch is uncertain. It can then send several speculative requests to different decode workers at once.
+
+Each worker produces one next-token branch, so the unpredictable step is covered from several sides. This trades extra compute for lower latency on hard-to-predict generations. The router must coordinate those branches and merge the results. Cap the resource use so the speculative work does not flood the cluster.
+
+It is worth knowing as a possible optimization for ultra-latency-aware inference. It spends extra compute and memory bandwidth, and some of that work may be wasted.
+
 ---
 
 ## 3. Prefill-to-Decode Worker Ratio Sizing and Asymmetric Parallelism
@@ -412,6 +448,22 @@ PagedAttention Block Collation and Layer-Pipelined Overlap Reference (ASP Chapte
 
 When sequences exceed GPU HBM capacity, NIXL and LMCache also manage a four-tier memory hierarchy across GPU HBM, CPU DRAM, local NVMe SSDs via GPUDirect Storage, and remote storage. Offloading and fetching KV blocks over NIXL delivers a massive TTFT speedup on x86 H100 servers compared to recomputing long prompts from scratch. Grace Hopper GH200 superchips double that TTFT speedup again over their coherent NVLink-C2C interconnect.
 
+### 4.4 KV Cache Offloading, Context Limits, and Memory Hierarchy
+
+Decode workers often run out of KV memory before they run out of compute. Each sequence keeps key and value tensors for every layer and every past token. Many long sequences in flight can exhaust a GPU, even after the weights are loaded. Decode workers therefore pair an optimized allocator with several extra tactics.
+
+The first tactic is a paged GPU memory allocator. vLLM's PagedAttention splits the KV cache into fixed-size pages. Inactive pages can be swapped out to CPU memory. SGLang and TensorRT-LLM also run paged KV memory managers, and NVIDIA Dynamo builds on these ideas. Some systems add lower tiers in DRAM and NVMe, and they can choose between recomputing a prefix and reading it back. LMCache is one library that works this way.
+
+High-memory GPUs help too. A Blackwell B200 has 180 GB of HBM, and a B300 has 288 GB. Paged managers allocate KV in fixed-size pages to cut fragmentation and reuse prefixes across requests.
+
+When GPU memory fills up, decode workers can offload older KV blocks to CPU RAM or NVMe. Suppose a sequence has generated 1,000 tokens, but only some of them are needed right now. The earlier KV can wait in host memory until attention needs it. Offloading adds latency when those blocks come back, so use it carefully. Prefetching and overlapping transfers with compute reduce the penalty.
+
+Some deployments cap the output length, which bounds how far the KV cache can grow. Storing KV at lower precision, such as FP16, FP8, or INT8, cuts memory use. Multiquery attention (MQA) shares one KV vector per token across all heads, which is a model design change. Grouped-query attention (GQA) and DeepSeek's Multi-Latent Attention (MLA) also shrink the KV cache.
+
+Disaggregation also simplifies the memory budget. A decode cluster's GPU memory goes to weights and KV cache only. It does not also hold the large temporary memory that a big prefill would need on a monolithic server. A decode GPU usually loads the full weights, unless it uses model parallelism, and gives the rest to KV.
+
+One example puts weights at 70 GB on a 180 GB GPU, which leaves about 122 GB for KV. Note that 180 GB minus 70 GB is 110 GB, so plan with your own GPU's numbers. That budget sets how many tokens across how many sequences can be in flight. Disaggregation does not remove KV limits. It lets you pick decode GPUs for memory capacity and bandwidth.
+
 ---
 
 ## 5. Heterogeneous GPU Pairing and Dynamic Cluster Scaling
@@ -437,6 +489,32 @@ To prevent pool starvation when the input-to-output ratio shifts, disaggregated 
 1. **Elastic pool autoscaling.** NVIDIA Dynamo's GPU Planner, Arrow, and the Kubernetes `llm-d` variant autoscaler monitor queue depths, GPU utilization, and KV cache occupancy. In the Dynamo reference configuration, the prefill pool scales between 4 and 12 replicas, while the decode pool scales between 8 and 24 replicas. Arrow's integrated request-and-instance scheduler achieves up to **5.6x higher request serving rate** than static allocations during rapid workload shifts.
 2. **Stateless instance flipping.** On fixed on-premises clusters where spinning up new cloud nodes is impossible, TetriInfer drains an underutilized decode worker until its active sequences finish and flips its role to prefill. A minimum cooldown window prevents rapid oscillation.
 3. **QoS capacity reservation and prediction-based Early Rejection.** When traffic exceeds max cluster capacity, queueing every request causes all users to miss their latency SLOs. Instead, production schedulers reserve capacity by customer tier and run `QoSController` admission control (`est_ttft = Q_prefill * t_prefill + Q_decode * t_decode`). When `est_ttft` exceeds `ttft_slo_ms`, low-priority requests are immediately rejected with HTTP 429 or 503. Alternatively, they are downgraded to local decode-worker prefill so premium traffic stays within SLA.
+
+### 5.3 Kubernetes Autoscaling for Each Tier
+
+Modern orchestrators like Kubernetes can scale each tier on its own. Suppose prefill GPU utilization stays high while decode stays low. The orchestrator can trigger an autoscaling event that adds prefill pods or nodes. It may also remove some decode pods or nodes.
+
+Teams often drive these decisions with metrics such as prefill queue length.
+
+### 5.4 Graceful Degradation Before Rejection
+
+Early rejection is not the only option when load rises. A system can also degrade service for less important requests. It might route them to a smaller model, truncate their prompts, or cap their output tokens. A simple version lowers the maximum prompt or output length for lower-tier requests during high load.
+
+Disaggregation adds one more lever. Remote prefill spends extra cluster resources to protect latency. Under stress, the system can turn remote prefill off for low-priority requests and let the decode worker prefill them. Those requests answer more slowly, but the prefill workers stay free for high-priority traffic.
+
+A router can tag each request with a priority. During busy periods, it can skip the offload check for low-priority requests, so their prefill stays local.
+
+Adaptive generation limits are a related guard. If decode threatens to run long enough to break a TPOT target, the system can stop generation early. A request for 1,000 tokens might get only 200 under heavy pressure. That leaves resources for other users.
+
+### 5.5 Scaling Balance, Shared Decode Pools, and Tail Latency
+
+Disaggregated systems scale in a fairly straight line. Add prefill nodes for more prompt throughput, and add decode nodes for more token throughput. The hard part is balance. A large system is more likely to see a traffic shift, so adaptive schedulers matter more as scale grows. A dynamic ratio lets the cluster rebalance prefill and decode on the fly.
+
+Decode capacity can also be shared across models. If two models decode in similar ways, the same decode workers can serve both. This suits several LoRA adapters that reuse one base model architecture. The result is a multitenant, multimodel server: a shared decode pool with a separate prefill front end for each model.
+
+Tail latency gets harder to control in very large fleets. With thousands or millions of GPU nodes, the chance that one node fails is much higher. Separating prefill from decode helps here. A slow node on one side will not drastically affect tasks on the other side.
+
+Early rejection, two-level scheduling, and KV cache reuse also help absorb stragglers. Caching a large part of a request's context means one slow operation does not slow the whole generation as much. Disaggregated systems hold their latency distribution steadier as concurrency grows.
 
 ---
 

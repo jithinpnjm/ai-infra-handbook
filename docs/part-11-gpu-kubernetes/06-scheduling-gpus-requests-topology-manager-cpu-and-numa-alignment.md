@@ -119,6 +119,12 @@ Every code in the topology matrix has a precise hardware meaning that determines
 - **NODE:** Traverses multiple PCIe Host Bridges within the same NUMA node.
 - **SYS:** Crosses the inter-socket link between different NUMA nodes, which is the slowest path on a host and can cut throughput by 50%.
 
+#### Why the default scheduler is blind to GPU links
+
+By default, Kubernetes counts each GPU as an identical resource. It does not know whether GPU 0 and GPU 1 share a NUMA node or an NVLink connection. That gap matters. Take an 8-GPU server with two groups of four GPUs, and NVLink inside each group. If your job asks for four GPUs, the ideal is four GPUs on one NVLink fabric and one NUMA node.
+
+A blind scheduler can hand you two GPUs from one group and two from the other. The traffic between those GPUs then crosses the slower path, through InfiniBand or Ethernet. That can cut your inter-GPU bandwidth in half. The NVL72 rack shows what is at stake. It links 72 GPUs in one NVLink domain, with about 130 TB/s of combined throughput. A placement that ignores topology can throw that advantage away.
+
 ---
 
 ### 2. Intermediate: Kubernetes QoS classes, static CPU Manager, and Topology Manager
@@ -234,6 +240,14 @@ Every hard locality constraint shrinks the set of eligible nodes and sockets, wh
 | **2. Online inference** | Low tail latency, high availability | Protected pool (`taint` + `nodeAffinity`), pod anti-affinity across nodes and zones for replica spread, `single-numa-node` where PCIe or CPU bound, `transparent_hugepage=never` |
 | **3. Batch inference** | High throughput per dollar | Flexible placement across hardware generations (`preferredDuringScheduling`), queue-aware admission |
 | **4. Distributed training** | Predictable collective step time (`AllReduce`) | Topology-validated pool (`NV12`/`NV18` + `PIX` RDMA NICs), `single-numa-node` or `restricted`, gang-scheduled admission, checkpoint-aware preemption |
+
+#### Reducing orchestration jitter and requesting the whole node
+
+Kubernetes runs background work on every node. The kubelet, the container runtime and monitoring agents all use some CPU and memory. Usually that is only a few percent of one core, so a training job barely notices. Trouble starts when a busy inference workload shares the same machine. If another container suddenly uses heavy CPU or I/O, your job feels it.
+
+Homogeneous clusters, all training or all inference, are easier to debug and tune than a mix. Pods on the same node can also cause interrupts and kernel work for your job, if they share the network or the disks. Requests and limits help here, and so does cgroup control of CPU and I/O. Kubernetes supports CPU isolation, which gives a pod the dedicated cores and memory it requests. Kubernetes does not enforce I/O limits the same way, so I/O isolation may need manual node-level tuning.
+
+For performance-sensitive jobs, request all of the CPUs and GPUs on the node. Then nothing else contends for those resources. That is hard to arrange in a shared cluster. It is still the ideal setup for consistent performance.
 
 ## Commands and configurations that matter
 

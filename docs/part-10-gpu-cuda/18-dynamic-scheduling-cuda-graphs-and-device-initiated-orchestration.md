@@ -97,6 +97,14 @@ for (int i = start; i < start + batchSize && i < N; ++i) {
 }
 ```
 
+Batching has a catch, though. Because L2 atomics are so fast on modern GPUs, a modest batch of 8 or 16 usually clears most of the contention. A faster counter does not mean the problem is gone, so check the rest of the kernel too.
+
+Nsight Compute's Warp Stall Reasons and Register Pressure reports are the place to look. They show whether your fused loop now runs into register spills or shared-memory bank conflicts.
+
+If atomics stay hot after all of this, the book points to other designs. Per-block counters and a hierarchical split of the work are the two options it names.
+
+In short, batching work per atomic keeps many warps busy with real computation. The alternative is a crowd of warps queuing at one counter that cannot keep up.
+
 ### 1.2 Warp-leader dynamic work queue (`uneven_static.cu` `200 ms` vs `uneven_dynamic.cu` `100 ms`)
 
 ```text
@@ -104,6 +112,25 @@ If every thread claims 32 contiguous items for itself, adjacent lanes in a warp 
 ```
 
 Inside the loop, the warp queries its active lanes with `unsigned mask = __activemask()` and picks the lowest active lane via `int leader = __ffs(mask) - 1`. Only that single leader lane executes `atomicAdd(&globalIndex, warpSize)` to claim 32 items, and then `__shfl_sync(mask, base, leader)` broadcasts the starting index to all active lanes in registers. On `N = 1,048,576` elements where each element idx performs `work = idx % 256` iterations of `sinf(x) * cosf(x)`. Replacing the static kernel uneven_static.cu at ~200 ms with uneven_dynamic.cu cuts runtime to ~100 ms for a 2.0x speedup.
+
+Start with the static baseline the dynamic queue replaces. Each thread takes the element that matches its own index, then loops `idx % 256` times. Threads with small values finish early, and their SMs sit idle while the longest threads keep running.
+
+```cpp
+// uneven_static.cu (baseline): fixed element per thread, uneven loop length
+__global__ void computeKernel(const float* input, float* output, int N) {
+    int idx = blockIdx.x * blockDim.x + threadIdx.x;
+    if (idx < N) {
+        int work = idx % 256;
+        float result = 0.0f;
+        for (int i = 0; i < work; ++i) {
+            result += sinf(input[idx]) * cosf(input[idx]);
+        }
+        output[idx] = result;
+    }
+}
+```
+
+The dynamic version keeps the same math but changes who owns which element. Each warp claims its next batch from a shared counter.
 
 ```cpp
 // Warp-batched dynamic atomic work queue (uneven_dynamic.cu: ~100 ms vs ~200 ms static = 2.0x speedup)
@@ -156,6 +183,16 @@ void launchDynamicBatchQueue(const float* d_in, float* d_out, int N, cudaStream_
     computeKernelDynamicBatch<<<grid, block, 0, stream>>>(d_in, d_out, N);
 }
 ```
+
+The warp-leader queue has limits. When the imbalance is mild, the cost of the atomic and the shuffle can cancel the gain. The big win appears when a few threads carry most of the work.
+
+Watch for the signs that a static split is wasting the GPU. Look for warp idle stalls, low achieved occupancy, or timeline gaps caused by uneven run times per task. With moderate imbalance, you can often see a 10% to 20% speedup.
+
+Measure before and after the change, and keep it only if the numbers move.
+
+The result is near-uniform SM utilization. Under a static split, many warps finish long before the slowest ones and leave hardware resources unused.
+
+In short, the dynamic queue keeps SM use nearly uniform. Every warp keeps claiming and processing tasks until the counter passes `N`. A static split leaves finished warps idle while the slowest warps keep going.
 
 ---
 
@@ -251,6 +288,14 @@ for _ in range(100):
 torch.cuda.synchronize()
 ```
 
+PyTorch is not the only place graphs show up. Inference engines lean on them heavily, and the pattern repeats.
+
+Engines such as vLLM and TensorRT-LLM capture a model's execution into a set of predefined graphs. Each graph covers a sequence-length range or an input batch size. These engines often pad or bucket incoming inputs so they fit a supported graph shape. The captured graph can then replay with fixed shapes, which can cut latency for large production workloads.
+
+A concrete case: the server captures one CUDA Graph per batch size at startup or model load. When a request arrives, it launches the graph that matches that request's batch size.
+
+PyTorch's compiler helps too. `torch.compile` with `mode='reduce-overhead'` may wrap eligible segments in CUDA Graphs. It does not graph every code path. Graphing needs static tensor addresses and CUDA-only regions, and it can use more memory because of pooled buffers. Profile your model to confirm the gain.
+
 Table 12-1 in *AI Systems Performance Engineering* Chapter 12 summarizes the reported impact of CUDA Graphs across 100 iterations of the three-kernel `A -> B -> C` pipeline.
 
 | Metric | Before CUDA Graphs (Standard Stream Launches) | After CUDA Graphs (`cudaGraphLaunch` / `g.replay()`) | Improvement |
@@ -269,6 +314,12 @@ Volume 03 Chapter 10 of nvidia-devops and *AI Systems Performance Engineering* C
 - Patch existing graphs in place with `cudaGraphExecUpdate(graphExec, newGraph, &resultInfo)` or `cudaGraphExecKernelNodeSetParams(...)` whenever node topology stays constant. For example, capture a template graph at a maximum batch size of 128. Update launch dimensions for an incoming batch of 64 while keeping sub-100 µs replay overhead.
 - Always check the return status of cudaGraphExecUpdate for cudaGraphExecUpdateErrorTopologyChanged. When a request shape changes from 512 to 513 in a way that alters the node topology. CudaGraphExecUpdate rejects the update, and ignoring that status with `--skip-update-check` silently replays the stale 512-shape graph against 513-shape buffers.
 - Isolate concurrent multi-stream replays using per-slot buffer ownership across `Slot 0`, `Slot 1`, and `Slot 2`, as shown in Volume 03 Chapter 10 Figure 3.10.3. Give each pipeline slot its own cudaGraphExec_t, dedicated input and output buffers, and completion cudaEvent_t, and never reuse Slot k until `Completion Event k` signals.
+
+Sometimes the graph's structure must change, such as when you need a different number of kernels. The book notes that you cannot add or remove nodes freely, so patching is not enough. Fall back to a recapture-then-update workflow. Wrap one iteration of your code with `cudaStreamBeginCapture` and `cudaStreamEndCapture` to build the new graph. After that, small tweaks on later runs can go through the lighter `cudaGraphExecUpdate`.
+
+Patching is fast. An update takes only a few microseconds, so replay keeps its sub-100 µs overhead. If a change is incompatible with the graph, the call returns an error status, and you must capture again.
+
+The same idea gives you a parameterized path. For a loop of GPU work where only the batch size changes, capture once, patch on each new size, and keep both CPU overhead and flexibility.
 
 | Diagnostic Scenario (`nsys stats --report cuda_api_sum`, V3 Ch 10) | Call Count | Total API Time | Share of API Time | Engineering Decision |
 |---|---:|---:|---:|---|
@@ -317,6 +368,18 @@ flowchart TB
 
 Combining an L2 atomic work queue `atomicAdd(&queueHead, 1)` with cudaStreamGraphTailLaunch and `cudaGetCurrentGraphExec()` turns a small scheduler kernel into a persistent GPU-resident decode driver. The scheduler kernel claims the next token batch on the device, tail-launches the pre-captured Transformer decode cudaGraphExec_t, and re-enqueues itself without touching the CPU.
 
+When a device-launched graph runs, its work shows up on the GPU timeline. Nsight Systems draws child graphs as separate streams of work. Put NVTX markers in the parent kernel just before and after each `cudaGraphLaunch` call. Then you can confirm that each graph runs where you expect relative to its parent.
+
+Fire-and-forget graphs suit side tasks, because the parent does not wait for them. Tail launches work differently. They run after the parent kernel reaches its end, one at a time, in the order they were queued. If the launched graph produces results the parent needs, pick a tail launch, since the parent waits for that work. If the graph is only a side task, fire-and-forget lets the parent move on.
+
+A tail launch can also queue more tail launches. When it does, the new ones run before the older queued tail launches.
+
+Tail launches make a useful loop. A persistent scheduler kernel can tail-launch a graph, then relaunch itself once that graph finishes. The kernel asks `cudaGetCurrentGraphExec()` for a handle to its own graph, then enqueues itself again with `cudaGraphLaunch` in tail mode. The GPU runs the loop without the host calling in again.
+
+Device-initiated graphs open up new patterns. Imagine a GPU compression pipeline where a kernel chooses a compression algorithm based on the data. Instead of ending the kernel so the CPU can launch the compressor, the kernel launches a prerecorded graph for LZ or Huffman compression. The GPU never idles while it waits for the CPU to decide.
+
+With device-initiated graphs, you must manage dependencies yourself. A tail launch is right when the next kernel consumes the graph's output. A fire-and-forget launch is right when the graph is a side job that the parent does not need to wait on.
+
 ### 3.2 Conditional Graph Nodes (`IF`, `IF/ELSE`, `WHILE`, `SWITCH`, `Figures 12-9 to 12-11`)
 
 ```text
@@ -327,6 +390,14 @@ Standard CUDA Graphs only replay a fixed sequence of nodes. If an inference loop
 - `IF/ELSE` nodes with `size = 2` execute body subgraph 0 when the handle is nonzero and body subgraph 1 when the handle is 0.
 - WHILE nodes repeatedly execute their body subgraph as long as the condition handle remains nonzero. Re-evaluating the handle after each iteration, and can nest IF nodes inside WHILE bodies as in Figure 12-11.
 - SWITCH nodes with `size = N` hold N body subgraphs and execute the i-th subgraph when `handle == i`, or skip execution if `handle >= N`.
+
+Standard CUDA Graphs replay a fixed sequence, and every decision stays on the host. Conditional graph nodes change that. A device kernel writes a small value into a condition handle, and the graph reads that value at run time. Based on it, the GPU runs a branch or loops, with no return to the CPU.
+
+Conditional graph nodes let you control graph execution from values computed in device kernels, all without involving the CPU. A complex branching workflow can then run as one repeatable graph launch.
+
+The control flow types are IF, IF/ELSE, WHILE, and SWITCH. An IF body runs once when the value is nonzero. A WHILE body keeps running while the value stays nonzero, and it checks again after each pass. A WHILE body can also hold an IF node, which gives you multilevel decisions without any CPU hop.
+
+Conditional nodes pay off most when a graph is built once and run many times. The cost of building the graph is spread across all those launches.
 
 Here is the complete C++ implementation of an IF conditional node from *AI Systems Performance Engineering* Chapter 12 using `threshold = 123456` on `N = 1 << 20 = 1,048,576` elements.
 
@@ -409,6 +480,10 @@ void runConditionalGraphExample() {
 }
 ```
 
+Two details in that example matter. Set the condition from a single thread, such as `if (threadIdx.x == 0)`, so threads do not race. Also make sure the kernels before it flush their memory writes, so the value is visible before the conditional node runs.
+
+PyTorch's CUDA Graph API does not create conditional nodes from Python, as of the book's writing. Using them means custom C++ integration for now. Framework support is still evolving.
+
 ---
 
 ## 4. Dynamic Parallelism (`DP`, `-rdc=true`) and Table 12-2
@@ -460,9 +535,53 @@ Table 12-2 in *AI Systems Performance Engineering* Chapter 12 compares host-driv
 | GPU idle cycles (during sequence) | ~40% | ~5% | -35 percentage points (87.5% less idle time) |
 | Overall execution time | 1.00 ms | 0.75 ms | 25% faster + preserves L2 cache locality |
 
+### When dynamic parallelism is the right tool
+
+Dynamic parallelism fits work that appears only at run time. A parent kernel can look at its own outputs and decide how many children to launch. Hierarchical reductions, adaptive mesh refinement, and graph traversals are typical cases. The number of follow-up tasks is unknown until the data has been processed.
+
+Take an inference pipeline where only some inputs need an extra model. In the host-driven flow, kernel A finishes, its results travel back to the CPU, and the CPU then launches kernel B. The GPU idles through that round trip. With dynamic parallelism, kernel A checks its output and launches kernel B on the device. The timeline gap closes, which keeps SMs busy.
+
+An LLM follows the same logic. Most tokens use the normal transformer path, while a few need an auxiliary attention block. A kernel can detect those tokens and tail-launch the extra attention only for them.
+
+To spot the pattern, open the profiler and look for `Kernel A`, then an idle gap, then `Kernel B`. The gap is the CPU preparing the next launch. A device-side launch replaces that gap.
+
+Dynamic parallelism has costs. Each child launch uses scheduling resources and stack space. On a stack overflow, raise the stack size with `cudaDeviceSetLimit(cudaLimitStackSize, newSize)`. CUDA warns you when it hits its default limit. By default, 2,048 device launches can be pending at once. A parent that loops over thousands of tiny kernels can exceed that, and the run then fails with a runtime error. Raise the cap with `cudaDeviceSetLimit(cudaLimitDevRuntimePendingLaunchCount, newLimit)`. Watch device memory too, because each pending child reserves resources.
+
+Use dynamic parallelism only when the parallelism comes from the data. If the sequence is fixed, capture it as a CUDA Graph and replay it on the device. Graphs also suit repeated, fixed control flow, because their setup cost is amortized.
+
+### Why the device-launched version is faster
+
+In the host-driven version, the parent kernel runs and then the CPU waits. The CPU launches each child in turn. Explicit synchronization after the parent and between children leaves idle gaps on the GPU.
+
+In the device-launched version, the parent spawns both children itself. The host submits one kernel and waits once. The parent does not finish until its children do, so no host synchronization is needed between stages.
+
+A device launch costs a little more per call. In the book's example, the per-launch cost rises from about 20 µs to about 25 µs. That small rise is minor next to the saved CPU round trips. Data also stays on the GPU between stages, so children read the parent's output without a copy back to the host.
+
+Dynamic parallelism does not win every time. A device launch has roughly the same overhead as a host launch. Small child kernels may not earn that cost back, and some algorithms run slower. Profile before and after each change. Nsight Compute can profile child kernels launched with dynamic parallelism and show what they cost.
+
 ---
 
 ## 5. Multi-GPU Orchestration (`NVSHMEM` PGAS & Graph-Captured `NCCL`), Roofline Decisions, and the Volume 03 Production Profiling Funnel
+
+### Overlapping peer copies, NCCL, and CUDA-aware MPI
+
+Scaling from one GPU to many keeps the same goal: hide data movement behind useful work. The host dispatches work to each GPU, and then the GPUs take over. While one stream computes, a second stream can move data peer to peer over NVLink or PCIe, without touching host memory.
+
+At cluster scale, overlap is essential for near-linear scaling. Even with NVLink, bandwidth and latency fall short of on-device HBM, so you hide that communication behind compute. For a simple hand-off, `cudaMemcpyPeerAsync` moves a block between GPUs on a dedicated stream.
+
+```cpp
+cudaMemcpyPeerAsync(dest_ptr, dest_gpu, src_ptr, src_gpu, size, comm_stream);
+```
+
+For collectives, such as the gradient all-reduce in PyTorch Distributed Data Parallel (DDP), use NCCL's nonblocking calls on a separate stream. NCCL arranges the tensors into rings or trees that use the NVLink and NVSwitch paths. Your compute kernels keep running on their own streams meanwhile.
+
+CUDA-aware MPI follows the same idea. If your MPI library is CUDA-aware, it recognizes GPU device pointers and sends the data over InfiniBand with GPUDirect RDMA:
+
+```cpp
+MPI_Send(device_buf, count, MPI_FLOAT, peer_rank, ...);
+```
+
+The data goes straight from GPU memory across the network, with no staging copy in host memory. Within one node, peer copies use NVLink or PCIe through GPUDirect Peer-to-Peer. These paths keep the CPU off the data path, lower transfer latency, and let node-to-node traffic overlap with GPU compute.
 
 ### 5.1 Fine-grained GPU-to-GPU PGAS orchestration with `NVSHMEM` (`Figure 12-14`)
 
@@ -507,6 +626,22 @@ __global__ void work_steal_kernel(int* queue_head, int N_tasks) {
 
 Whenever a kernel calls a device-wide NVSHMEM barrier such as `nvshmem_barrier_all()`, launch it across all Processing Elements simultaneously with `nvshmemx_collective_launch()` so every GPU co-resides in lockstep. For irregular point-to-point pipelines where GPU 0 runs Attention. Pushes activations to GPU 1's persistent MLP kernel, prefer fine-grained point-to-point signals like nvshmem_int_wait_until or nvshmemx_signal_op over global barriers.
 
+For workloads that need tight, event-driven coordination, such as dynamic task queues and fine-grained event notifications, NVSHMEM is a strong choice. It treats each GPU as a processing element (PE) in a partitioned global address space (PGAS). With PGAS, one GPU writes directly into another GPU's memory from device code, bypassing the CPU. Latency depends on the interconnect, and NVLink is generally faster than PCIe or network transports.
+
+NVSHMEM is built for irregular, data-dependent work. A PE is one OS process in an NVSHMEM application. In the book's example, each PE binds to one GPU. Because one-sided operations skip both the CPU and the kernel-launch path, a transfer behaves like a single hardware transaction. That is why it can reach near-peak wire speed.
+
+The trade-off is that NVSHMEM is shared-memory programming on GPUs. You must manage synchronization and avoid races. Global barriers are easy to misuse, because they make every GPU wait for the slowest peer. Prefer fine-grained signals and point-to-point sync when you can. The library offers `nvshmem_wait_until`, `nvshmem_signal_fetch`, `nvshmem_signal_wait_until`, and the `nvshmemx_signal_op` variants for that. They suit cases where only a subset of devices must coordinate.
+
+In short, NVSHMEM turns a cluster of GPUs into one shared-memory domain. Device-only kernel launches, data transfers, and synchronization run at latencies and throughputs that beat CPU-mediated approaches.
+
+Here is a concrete pipeline. GPU 0 computes attention for batch 1, then puts the activations into GPU 1 and signals. GPU 1 runs a persistent kernel that sees the flag and starts the MLP stage. Meanwhile GPU 0 moves on to batch 2. After a few iterations, both GPUs work in step, and each handoff hides behind active compute.
+
+For load balancing, each PE can claim work from a shared counter. The `nvshmem_int_atomic_inc` call hands each kernel its next task index, so work is stolen across GPUs without the host.
+
+When every PE must move in lockstep, launch with `nvshmemx_collective_launch()`. It starts the kernels on all GPUs at once. Inside, `nvshmem_barrier_all()` makes every PE wait there, then continue together. Any kernel that uses NVSHMEM device-level synchronization or collectives needs this launch call.
+
+NVSHMEM kernels can sit inside CUDA Graphs like any other kernel. Their device operations stay inside the kernel and are not separate graph nodes. The library's real strength is letting kernels adapt at run time, without a fixed communication script.
+
 ### 5.2 Capturing multi-GPU `NCCL` bucketed all-reduces in CUDA Graphs (`Figures 12-15 & 12-16`)
 
 ```text
@@ -516,6 +651,16 @@ At cluster scale, small variations in Python or OS scheduling on any single rank
 1. Enforce an identical collective sequence across all ranks. Every rank in the communicator captures and replays the exact same order of ncclAllReduce calls on the same ncclComm_t.
 2. Run warmup collectives before capture so NCCL ring and tree channels and RDMA buffers are initialized outside the graph capture window.
 3. Preallocate gradient and communication buffers at fixed addresses before capture, and use cudaGraphExecUpdate if pointer addresses or sizes change.
+
+Traditionally, each GPU launches `ncclAllReduce` from the host, then waits before the next compute phase. That host-driven order adds overhead and idle time between the forward and backward passes.
+
+NCCL calls can be recorded into a CUDA Graph the same way kernels are. Capture the forward kernels, the all-reduce, and the backward kernels into one graph, then replay it each training step. Use the same capture stream for everything, NCCL included. Each process replays an identical graph, so NCCL finds its peers without extra host work. The host's per-step job shrinks to one `cudaGraphLaunch`.
+
+Overlap matters too. Split the gradient work into two passes, one for the earlier layers and one for the later layers, and map them to separate streams. The all-reduce on stream B then runs while stream A computes the next layers. This bucketed pattern hides most of the network time behind computation. DDP does a version of this on its own, but a captured graph can cut CPU overhead further and make performance more predictable.
+
+Three rules apply to graph-captured collectives. First, every rank must record and replay the same collective sequence on the same communicator. A mismatched order risks a deadlock, or worse, silently wrong results. Second, run warmup collectives before capture so communicators initialize early. Third, allocate gradient and communication buffers before capture. If a parameter such as batch size changes, patch it with `cudaGraphExecUpdate` instead of recapturing.
+
+At large scale, these per-step savings add up. They produce tighter synchronization and higher utilization across the whole cluster.
 
 ### 5.3 Roofline-guided orchestration decisions (`Figure 12-17`) and the Volume 03 Production Profiling Funnel (`V3 Ch 12, Ch 13 & Lab 04`)
 
@@ -531,6 +676,37 @@ Tuning a kernel in Nsight Compute before checking whether the pipeline is actual
 | Level 3: Intermediate Regime (Under Both Roofs) | Neither compute nor HBM bandwidth is saturated by a single stream. | Increase concurrency by running multiple streams, concurrent CUDA Graphs, or multi-instance persistent kernels in parallel. |
 | Allocator Fragmentation OOM vs Physical OOM (V3 Ch 12) | `nvidia-smi -q -d MEMORY` reports Total: 40,960 MiB, Reserved: 405 MiB, Used: 38,660 MiB, Free: 1,895 MiB, yet a 512.00 MiB allocation fails because `torch.cuda.memory_summary()` shows 1,240 MiB reserved-but-unallocated fragmented across 340 blocks. | Enable stream-ordered memory pools (`PYTORCH_ALLOC_CONF=backend:cudaMallocAsync`), preallocate static graph pools (`torch.cuda.graph_pool_handle()`), and bound shape-bucketed graph caches. |
 | Deferred Asynchronous `cudaErrorIllegalAddress` (V3 Ch 12 & Ch 13) | Error surfaces lazily at a downstream `cudaMemcpy` or `cudaStreamSynchronize`. Running `compute-sanitizer --tool=memcheck` pinpoints `scale_kernel` at block `(3906,0,0)`, thread `(287,0,0)` (`blockDim = 256`) -> global index `3906 * 256 + 287 = 1,000,223 > 1,000,003`. | Enforce bounds checks (`if (idx < N)`) and collect the 10-item V3 Incident Evidence Bundle before restarting the pod or node. |
+
+### Reading the roofline before choosing a tool
+
+The roofline model is the quickest way to pick an optimization. It compares operational arithmetic intensity, the FLOPS performed per byte moved, against two ceilings. The sloped memory roof is the peak you can reach when bandwidth limits you. The flat compute roof is the peak arithmetic rate when the ALUs limit you.
+
+Memory-bound kernels sit near the sloped roof. Let the roofline chart drive your strategy. Hide transfers behind computation with asynchronous memcopies on CUDA streams, or run several memory-bound kernels at once so the memory system stays busy. Kernel fusion helps only a little here. It removes some global-memory round trips, but the larger gain comes from covering latency and keeping more loads and stores in flight.
+
+Compute-bound kernels sit under the flat roof, and their ALUs need to stay fed. Fusion helps a lot in this case. A high-intensity kernel is the clearest example. Combining the add and scale steps into one pass raises FLOPS per byte, which moves the kernel right on the plot and closer to peak FLOP/s. Persistent kernels, thread block clusters, and device-initiated graphs do not change intensity. They cut idle gaps between launches, which lifts the kernel toward the compute ceiling.
+
+Many real workloads are neither strongly memory bound nor compute bound. Concurrency helps them. Run several modest kernels in parallel using streams, concurrent graphs, or multiple persistent kernels. Their combined throughput then sits higher on both axes.
+
+Measure before deciding. Nsight Compute counts FLOPS and bytes moved, places your kernel on the plot, and shows how far it sits below each roof. If the kernel is memory bound, reach for overlap and lower precision such as FP16, FP8, or FP4, which shrinks the bytes in the denominator. If it is compute bound but short of peak, cut launch overhead with fusion, persistent kernels, CUDA Graphs, or device-side launches. If it sits under both roofs, raise concurrency.
+
+The roofline guides your expectations, but measured data tells the full story. Compute throughput, achieved occupancy, and memory throughput confirm whether an optimization worked. Keep profiling after each change.
+
+### Scaling to many GPUs
+
+The pattern is the same whether you use peer copies, NCCL rings, or NVSHMEM atomics. Dispatch kernels once, pipeline transfers with compute, and keep the host off the critical path. Four GPUs should act like one GPU that is four times faster, but only if every GPU stays fed and the transfers overlap. Without overlap, scaling flattens once communication time equals compute time. As you add GPUs, pipeline more aggressively and move orchestration onto the devices with async copies, graph-captured NCCL, and NVSHMEM primitives.
+
+### Key takeaways
+
+- Batch the work per atomic. Warp-level L2 batching cuts contention and keeps warps busy. The book cites up to about 2x in extreme imbalance and typically 10% to 30%. A batch of 8 or 16 removes most contention on modern GPUs.
+- Record fixed pipelines once. Replaying a CUDA Graph with one host call per iteration cuts per-iteration CPU scheduling overhead. The book cites a 20% to 30% latency reduction.
+- Capture launch sequences. Stream capture keeps dependencies intact while removing the per-call CPU enqueue cost.
+- Launch from the device. Tail-launch a prerecorded graph or use dynamic parallelism so the GPU stays busy without host intervention.
+- Overlap communication. Use separate streams for peer copies, NCCL collectives, CUDA-aware MPI, or NVSHMEM one-sided operations.
+- Let the roofline choose. Memory-bound kernels need overlap and lower precision. Compute-bound kernels that are launch-limited need fusion, persistent kernels, and graphs. Mixed kernels need more concurrency. Verify each change with profiling.
+
+Combining dynamic dispatch, cooperative kernels, graph capture and replay, and GPU-native memory sharing lets you build pipelines that keep every part of a GPU cluster saturated for ultrascale AI workloads.
+
+NVIDIA's modern platforms blur the line between the CPU and the GPU more than ever. The Grace Blackwell and Vera Rubin systems, for example, connect the CPU to multiple GPUs over coherent NVLink. Software still has to use that hardware well. The techniques in this chapter, whether written in CUDA C++ or through higher-level library APIs, are how you do it.
 
 ---
 

@@ -137,6 +137,144 @@ Converting the layout to a Structure of Arrays stores all first coordinates in o
 
 **Always organize multi-field GPU buffers as a Structure of Arrays so that adjacent threads in a warp read contiguous addresses with a stride of one.** Before optimizing any arithmetic inside a kernel, inspect Nsight Compute's `Average Sectors per Request` counter. Verify that scalar float loads achieve four sectors per request.
 
+### 1.3 A strided copy in C++ and PyTorch, and the contiguous fix
+
+Picture a copy kernel that reads only every second float and writes it to an output. The math is trivial, yet the kernel runs far below peak. The problem is the memory pattern. Neighboring threads sit 8 bytes apart, so one warp's reads spread across more cache lines than they need.
+
+The C++ version below uses `in[idx * stride]` with `stride = 2`. Each thread copies one element, but the reads skip over the values in between. The book sizes the array at `N = 1 << 20`.
+
+```cpp
+#include <cuda_runtime.h>
+#include <iostream>
+
+__global__ void uncoalescedCopy(const float* __restrict__ in,
+                                float* __restrict__ out,
+                                int N, int stride) {
+    // n = 1048576, stride = 2
+    int idx = blockIdx.x * blockDim.x + threadIdx.x;
+    if (idx < N) {
+        // Loads from in[] with a stride, causing
+        // multiple memory segments to be fetched
+        out[idx] = in[idx * stride];
+    }
+}
+
+int main() {
+    const int N = 1 << 20;
+    const int stride = 2;
+
+    float* h_in = nullptr;
+    float* h_out = nullptr;
+    cudaMallocHost(&h_in, N * stride * sizeof(float));
+    cudaMallocHost(&h_out, N * sizeof(float));
+    for (int i = 0; i < N * stride; ++i) {
+        h_in[i] = static_cast<float>(i);
+    }
+
+    float *d_in, *d_out;
+    cudaMalloc(&d_in, N * stride * sizeof(float));
+    cudaMalloc(&d_out, N * sizeof(float));
+    cudaMemcpy(d_in, h_in, N * stride * sizeof(float),
+               cudaMemcpyHostToDevice);
+
+    const int threadsPerBlock = 256;
+    const int blocksPerGrid = (N + threadsPerBlock - 1) / threadsPerBlock;
+    uncoalescedCopy<<<blocksPerGrid, threadsPerBlock>>>(d_in, d_out, N, stride);
+    cudaDeviceSynchronize();
+
+    cudaFree(d_in);
+    cudaFree(d_out);
+    cudaFreeHost(h_in);
+    cudaFreeHost(h_out);
+    return 0;
+}
+```
+
+The stride means each warp makes several small transactions instead of one wide one. On the measured run, each warp's request breaks into eight separate 32-byte sectors on average. A 128-byte cache line holds four sectors, so the warp spans two lines to collect those eight. Nsight Compute reports only about 25% of sustained peak DRAM throughput.
+
+The PyTorch version creates the same pattern with a gather. Calling `torch.index_select` with a strided index launches a gather kernel. Each thread in a warp loads a value that sits `stride * 4` bytes away from its neighbor's value.
+
+```python
+import torch
+
+def uncoalesced_copy(input_tensor, stride):
+    # Flatten to 1D so we know exactly
+    # which dimension we're indexing
+    flat_tensor = input_tensor.contiguous().view(-1)
+    # Generate indices with a fixed stride to gather
+    assert flat_tensor.numel() % stride == 0, "stride must divide tensor length"
+    idx = torch.arange(0, flat_tensor.numel(), stride,
+                       device=flat_tensor.device, dtype=torch.long)
+    # index_select uses a gather kernel that issues uncoalesced loads
+    return torch.index_select(flat_tensor, 0, idx)
+
+# Usage
+n, stride = 1 << 20, 2
+inp = torch.arange(n * stride, device='cuda', dtype=torch.float32)
+out = uncoalesced_copy(inp, stride)
+```
+
+The fix is to remove the stride, so each thread copies a neighboring element. Now the warp's loads merge into full 128-byte transactions. A warp usually needs one transaction when its first address is 128-byte aligned, and two when the access straddles a boundary.
+
+```cpp
+#include <cuda_runtime.h>
+#include <iostream>
+
+__global__ void coalescedCopy(const float* __restrict__ in,
+                              float* __restrict__ out,
+                              int n) {
+    int idx = blockIdx.x * blockDim.x + threadIdx.x;
+    if (idx < n) {
+        // Contiguous load
+        // Threads copy neighboring elements
+        out[idx] = in[idx];
+    }
+}
+
+int main() {
+    const int n = 1 << 20;
+    const size_t bytes = n * sizeof(float);
+
+    // 1) Allocate pinned host memory
+    float *h_in = nullptr, *h_out = nullptr;
+    cudaMallocHost(&h_in, bytes);   // page-locked host alloc
+    cudaMallocHost(&h_out, bytes);
+
+    // 2) Initialize input
+    for (int i = 0; i < n; ++i) {
+        h_in[i] = static_cast<float>(i);
+    }
+
+    // 3) Allocate device memory
+    float *d_in = nullptr, *d_out = nullptr;
+    cudaMalloc(&d_in, bytes);
+    cudaMalloc(&d_out, bytes);
+
+    // 4) Copy to device
+    cudaMemcpy(d_in, h_in, bytes, cudaMemcpyHostToDevice);
+
+    // 5) Launch kernel
+    dim3 block(256);
+    dim3 grid((n + block.x - 1) / block.x);
+    coalescedCopy<<<grid, block>>>(d_in, d_out, n);
+    cudaDeviceSynchronize();
+
+    // 6) Copy back to host
+    cudaMemcpy(h_out, d_out, bytes, cudaMemcpyDeviceToHost);
+
+    // 7) Clean up
+    cudaFree(d_in);
+    cudaFree(d_out);
+    cudaFreeHost(h_in);
+    cudaFreeHost(h_out);
+    return 0;
+}
+```
+
+You do not need to write this kernel in PyTorch. A coalesced copy is simply `out = inp.clone()`. On a contiguous tensor, `clone()` is a device-to-device copy that runs on an optimized, vectorized path. It is usually not fused into a custom kernel.
+
+You can also use `torch.compile` with the default TorchInductor backend. It can remove redundant copies and fuse neighboring operations when that is safe. Set `mode="max-autotune"` to let TorchInductor pick coalesced and vectorized schedules, as long as shapes stay stable.
+
 ---
 
 ## 2. Vectorized Global Memory Access
@@ -171,6 +309,189 @@ Comparing a scalar copy kernel against a 16-byte `float4` vectorized copy kernel
 | **Kernel Execution Time (`ms`)** | `4.2 ms` | **`1.2 ms`** | **`3.5x` faster** (`4.2 / 1.2 = 3.5x`, `N4 = N / 4`) |
 
 **When writing bandwidth-bound elementwise or copy kernels, cast aligned pointers to `float4` on Hopper or `alignas(32) float8` on Blackwell.** This allows each thread to load 16 or 32 bytes per instruction. Always verify that any interior element offset is divisible by four or eight floats before casting.
+
+### 2.3 Scalar and vector copy kernels side by side
+
+A scalar copy moves one 4-byte float per thread. Each warp then issues 32 narrow loads. The C++ kernel below is the baseline that the vectorized version beats.
+
+```cpp
+#include <cuda_runtime.h>
+
+__global__ void copyScalar(
+    const float* __restrict__ in,
+    float* __restrict__ out, int N) {
+    int idx = blockIdx.x * blockDim.x + threadIdx.x;
+    if (idx < N) {
+        // Scalar load: 4-byte copy per thread
+        out[idx] = in[idx];
+    }
+}
+
+int main() {
+    const int N = 1 << 20;
+    float* h_in = nullptr;
+    float* h_out = nullptr;
+    cudaMallocHost(&h_in, N * sizeof(float));
+    cudaMallocHost(&h_out, N * sizeof(float));
+    for (int i = 0; i < N; ++i) h_in[i] = float(i);
+
+    float *d_in, *d_out;
+    cudaMalloc(&d_in, N * sizeof(float));
+    cudaMalloc(&d_out, N * sizeof(float));
+    cudaMemcpy(d_in, h_in, N * sizeof(float), cudaMemcpyHostToDevice);
+
+    dim3 block(256), grid((N + 255) / 256);
+    copyScalar<<<grid, block>>>(d_in, d_out, N);
+    cudaDeviceSynchronize();
+
+    cudaFree(d_in); cudaFree(d_out);
+    cudaFreeHost(h_in);
+    cudaFreeHost(h_out);
+    return 0;
+}
+```
+
+The PyTorch scalar version uses a Python loop, and the book uses it only as a warning. Each iteration issues a 4-byte load from Python. Do not copy this pattern. Use tensor operations instead.
+
+```python
+import torch
+
+def copy_scalar(inp: torch.Tensor) -> torch.Tensor:
+    out = torch.empty_like(inp)
+    flat_in = inp.view(-1)
+    flat_out = out.view(-1)
+    for i in range(flat_in.numel()):
+        # Each iteration issues a 4-byte load on the GPU
+        # This is extremely slow. DO NOT DO THIS!
+        # Use vectorized operations to avoid Python loops
+        # on GPU tensors as shown in optimized version
+        flat_out[i] = flat_in[i]
+    return out
+
+# Usage
+N = 1 << 20
+inp = torch.arange(N, device='cuda', dtype=torch.float32)
+out = copy_scalar(inp)
+```
+
+With scalar 4-byte loads, a warp often issues one 128-byte transaction when aligned. It uses two when the access straddles a 128-byte boundary. A `float4` load gives each thread 16 bytes. One warp then moves 512 bytes, split into four 128-byte transactions.
+
+```cpp
+#include <cuda_runtime.h>
+
+// 16-byte (128-bit) vector copy: one float4 per thread
+static_assert(alignof(float4) == 16, "float4 alignment must be 16 bytes");
+
+__global__ void copyVector16B(const float4* __restrict__ in,
+                              float4* __restrict__ out,
+                              int N4)  // number of float4 elements
+{
+    int idx = blockIdx.x * blockDim.x + threadIdx.x;
+    if (idx < N4) {
+        // Per-thread 16B load+store.
+        // On sm_90, NVCC emits ld.global.v4.f32 / st.global.v4.f32
+        // for 16-byte vector loads and stores.
+        // On sm_100 (Blackwell), 32-byte aligned data can use
+        // ld.global.v8.f32 and st.global.v8.f32 instead.
+        out[idx] = in[idx];
+    }
+}
+
+int main() {
+    const int N = 1 << 20;     // total number of floats
+    const int N4 = N / 4;      // total number of float4s (16B chunks)
+
+    float4 *d_in = nullptr, *d_out = nullptr;
+    cudaMalloc(&d_in, N4 * sizeof(float4));   // >=256B aligned
+    cudaMalloc(&d_out, N4 * sizeof(float4));
+
+    dim3 block(256);
+    dim3 grid((N4 + block.x - 1) / block.x);
+    copyVector16B<<<grid, block>>>(d_in, d_out, N4);
+    cudaDeviceSynchronize();
+
+    cudaFree(d_in);
+    cudaFree(d_out);
+    return 0;
+}
+```
+
+This kernel launches N/4 threads, so each thread copies one `float4` of 16 bytes. Each warp then handles 128 floats in four transactions. `cudaMalloc` returns pointers aligned to at least 256 bytes, which satisfies `float4` alignment. A misaligned cast can give up the vectorized load. In the worst case it crashes with `cudaErrorMisalignedAddress`, so keep casts aligned.
+
+Blackwell doubles the bytes per thread. With CUDA 13, Blackwell can do 32-byte loads and stores instead of 16 bytes. The book defines an aligned 8-float type for this case.
+
+```cpp
+#include <cuda_runtime.h>
+
+// Blackwell-only variant: 32-byte per-thread vector copy
+// (PTX: ld.global.v8.f32). Requires 32B alignment.
+struct alignas(32) float8 { float v[8]; };
+
+// Proof of 32-byte alignment
+static_assert(alignof(float8) == 32, "float8 alignment must be 32 bytes");
+
+__global__ void copyVector32B(const float8* __restrict__ in,
+                              float8* __restrict__ out, int N8) {
+    int idx = blockIdx.x * blockDim.x + threadIdx.x;
+    if (idx < N8) {
+        // Per-thread 32B load+store
+        // NVCC emits ld.global.v8.f32/st.global.v8.f32 on sm_100
+        out[idx] = in[idx];
+    }
+}
+
+int main() {
+    const int N = 1 << 20;
+    const int N8 = N / 8;
+
+    float8 *d_in, *d_out;
+    // cudaMalloc returns pointers aligned to >=256 bytes
+    cudaMalloc(&d_in, N8 * sizeof(float8));
+    cudaMalloc(&d_out, N8 * sizeof(float8));
+
+    dim3 block(256), grid((N8 + block.x - 1) / block.x);
+    copyVector32B<<<grid, block>>>(d_in, d_out, N8);
+    cudaDeviceSynchronize();
+
+    cudaFree(d_in); cudaFree(d_out);
+    return 0;
+}
+```
+
+The 32-byte load only pays off when the compiler can prove 32-byte alignment. Otherwise it may split each access into two 16-byte instructions. That doubles the instruction count for the same bytes. A custom 8-float struct with no alignment proof still compiles into two 16-byte loads.
+
+The PyTorch version views the tensor as groups of four floats and clones it. The clone is a contiguous copy, not an element-by-element one.
+
+```python
+import torch
+
+def copy_vectorized(inp: torch.Tensor) -> torch.Tensor:
+    # Reshape into groups of 4 floats for bulk copy
+    vec = inp.view(-1, 4)
+    # clone() on a contiguous CUDA tensor performs a device-to-device copy
+    # using optimized runtime paths such as cudaMemcpyAsync().
+    out_vec = vec.clone()
+    return out_vec.view(-1)
+
+# Usage
+N = 1 << 20
+inp = torch.arange(N, device='cuda', dtype=torch.float32)
+out = copy_vectorized(inp)
+```
+
+Coalescing and vectorizing solve different problems, so they are easy to mix up. Table 7-3 puts them side by side.
+
+| Aspect | Coalesced warp load (inter-thread) | Vectorizing (intra-thread) |
+|---|---|---|
+| Granularity | Threads ↔ contiguous memory addresses | Per thread ↔ vector loads |
+| Typical fix | Contiguous indexing (stride = 1) | Use `float4`, a custom 32-byte struct with explicit 32-byte alignment, or a 32-byte-aligned vector type (e.g., Blackwell and CUDA 13+) |
+| Transactions/warp | 32 threads × 4 bytes → 128 bytes, equal to 4 32-byte sectors if aligned (4 sectors) | 32 threads × 16 bytes → 512 bytes, equal to 4 128-byte transactions, which correspond to 16 32-byte sectors (16 sectors) |
+| Instruction count change | Same number of loads | 1 vector load instead of 4 scalars |
+| Benefit | Fewer scattered sectors | Perfectly sized, fewer sectors |
+
+Use both together. Coalescing makes the warp hit one contiguous block, and vectorizing makes each thread fetch a wide chunk that fits that block. Before Blackwell and CUDA 13, global vector loads topped out at 16 bytes per thread. Prefer the 32-byte types when your hardware and alignment allow.
+
+Even a Blackwell thread that loads 32 bytes still gets serviced in 128-byte chunks. A 32-thread warp moving 32 bytes per thread moves 1,024 bytes, or 8 lines. Hopper's 16-byte version moves 512 bytes, or 4 lines. Both are fully efficient when aligned.
 
 ---
 
@@ -251,6 +572,207 @@ Shared-Memory Bank Modulo Math (32 banks x 4-byte width = 128-byte wrap; analyze
 | **Kernel Execution Time (`ms`)** | `4.0 ms` (`4 ms`) | **`1.3 ms`** | **`~3x` faster** (`N = 1,024` transpose) |
 
 **Whenever a kernel reads columns of a 32-wide shared-memory tile, pad the inner dimension to 33 elements or XOR-swizzle the column index.** This ensures every lane in the warp hits a distinct bank. Check `l1tex__data_bank_conflicts_pipe_lsu_mem_shared_op_ld.sum` in Nsight Compute to confirm that shared-memory bank conflicts drop to zero.
+
+### 3.4 Naive and tiled matrix multiply code
+
+In a naive kernel, each thread computes one element of C. For every step of the loop, it reads a value of A and a value of B straight from global memory. The kernel below shows that pattern. The host code allocates N by N matrices, copies them to the device, and launches 32 by 32 thread blocks.
+
+```cpp
+#include <cuda_runtime.h>
+
+__global__ void naiveMatMul(const float* A, const float* B, float* C, int N) {
+    int row = blockIdx.y * blockDim.y + threadIdx.y;
+    int col = blockIdx.x * blockDim.x + threadIdx.x;
+    if (row < N && col < N) {
+        float sum = 0.0f;
+        for (int k = 0; k < N; ++k) {
+            // Each thread loads A[row, k] and B[k, col]
+            // from global memory for every k.
+            // This is very memory heavy.
+            sum += A[row * N + k] * B[k * N + col];
+        }
+        C[row * N + col] = sum;
+    }
+}
+
+// Launch for N = 1024:
+// dim3 block(32, 32);
+// dim3 grid((N + 31) / 32, (N + 31) / 32);
+// naiveMatMul<<<grid, block>>>(d_A, d_B, d_C, N);
+```
+
+The PyTorch naive version uses nested Python loops. It is slow on purpose, so the redundant loads are easy to see. Each dot product reloads its row and column from global memory. The inner work runs on the GPU, but the GPU spends most of its time waiting on memory.
+
+```python
+import torch
+
+def naive_matmul(A, B):
+    N = A.size(0)
+    C = torch.zeros((N, N), device='cuda')
+    for i in range(N):
+        for j in range(N):
+            # Each dot product loads A[i,:] B[:,j] from global memory repeatedly
+            C[i, j] = (A[i, :] * B[:, j]).sum()
+    return C
+
+# Usage
+N = 1024
+A = torch.ones((N, N), device='cuda', dtype=torch.float32)
+B = torch.ones((N, N), device='cuda', dtype=torch.float32)
+C = naive_matmul(A, B)
+```
+
+The tiled kernel loads one 32 by 32 tile of A and one of B into shared memory. Then every thread in the block reuses those tiles. A 32 by 32 tile matches the warp size of 32, so each warp loads one row of the tile at a time.
+
+```cpp
+#include <cuda_runtime.h>
+
+#define TILE_SIZE 32
+
+__global__ void tiledMatMul(const float* A, const float* B, float* C, int N) {
+    __shared__ float sA[TILE_SIZE][TILE_SIZE];
+    __shared__ float sB[TILE_SIZE][TILE_SIZE];
+
+    int row = blockIdx.y * TILE_SIZE + threadIdx.y;
+    int col = blockIdx.x * TILE_SIZE + threadIdx.x;
+    float sum = 0.0f;
+
+    // compute partial results using the tile
+    // in shared memory
+    for (int t = 0; t < N; t += TILE_SIZE) {
+        // Cooperative load of a tile of A and B into shared memory
+        // Load tile A with boundary check
+        if (row < N && (t + threadIdx.x) < N) {
+            sA[threadIdx.y][threadIdx.x] = A[row * N + t + threadIdx.x];
+        } else {
+            sA[threadIdx.y][threadIdx.x] = 0.0f;
+        }
+
+        // Load tile B with boundary check
+        if ((t + threadIdx.y) < N && col < N) {
+            sB[threadIdx.y][threadIdx.x] = B[(t + threadIdx.y) * N + col];
+        } else {
+            sB[threadIdx.y][threadIdx.x] = 0.0f;
+        }
+
+        // Wait until the whole tile is in shared memory
+        __syncthreads();
+
+        // Compute using the tile loaded in shared memory
+        for (int k = 0; k < TILE_SIZE; ++k) {
+            sum += sA[threadIdx.y][k] * sB[k][threadIdx.x];
+        }
+
+        // Wait until every thread has finished using the tile
+        __syncthreads();
+    }
+
+    if (row < N && col < N) {
+        C[row * N + col] = sum;
+    }
+}
+```
+
+Each block loads its tiles once, then reuses them for 32 multiply-accumulates per value. That cuts global reads for those values by 32 times. The book counts an 8 times drop in global memory accesses per thread. Its measured run cut 9,800 global load sectors to 1,200.
+
+The PyTorch version tiles by hand and calls `torch.mm` on each block. The tile loop is in Python, but `torch.mm` runs an optimized kernel that tiles internally. The code below shows the structure.
+
+```python
+import torch
+
+def tiled_matmul(A, B, tile_size=32):
+    N = A.size(0)
+    C = torch.zeros((N, N), device='cuda')
+    for i in range(0, N, tile_size):
+        for j in range(0, N, tile_size):
+            C_block = torch.zeros((tile_size, tile_size), device='cuda')
+            for k in range(0, N, tile_size):
+                A_block = A[i:i+tile_size, k:k+tile_size]
+                B_block = B[k:k+tile_size, j:j+tile_size]
+                # torch.mm uses an optimized kernel (likely tiling internally)
+                C_block += torch.mm(A_block, B_block)
+            C[i:i+tile_size, j:j+tile_size] = C_block
+    return C
+
+# Usage
+N = 1024
+A = torch.ones((N, N), device='cuda', dtype=torch.float32)
+B = torch.ones((N, N), device='cuda', dtype=torch.float32)
+C = tiled_matmul(A, B)
+```
+
+Tiling cuts DRAM traffic and raises arithmetic intensity, because each byte pulled from memory feeds more math. The book's measured run moved the kernel from 15 to 170 GFLOPS. Its DRAM throughput fell from 90% to 25% of peak, which is the wanted result. Those GFLOPS numbers are low because the matrix is small. Bigger problems move closer to peak.
+
+Tiling is the same idea that high-performance libraries use. NVIDIA's CUTLASS exposes templated tile iterators and profilers in C++ and Python. TorchInductor, built on OpenAI Triton, generates tiled kernels when shapes and alignment allow. cuBLAS and cuDNN use similar blocking at the thread, warp, and block levels. NVIDIA also announced a Python-first API called cuTile in early 2025, built on an intermediate representation called TileIR.
+
+Use a library when it fits. Calling `torch.mm`, `torch.matmul`, or `cublasSgemm` already does this tiling and coalescing. Write your own tiles when you need a case the libraries do not cover, or when you must explain a slow kernel. Also keep in mind that a 32 by 32 tile makes warp threads share banks on column reads. Section 3.5 shows the fix.
+
+### 3.5 Transpose with and without padding, and the stride-32 trap
+
+A matrix transpose is the clearest bank-conflict example. The kernel below writes its tile row by row, which is coalesced. It then reads the tile transposed. The read is where the conflict happens.
+
+```cpp
+#include <cuda_runtime.h>
+
+#define TILE_DIM 32
+
+__global__ void transposeNaive(const float *idata, float *odata, int width) {
+    __shared__ float tile[TILE_DIM][TILE_DIM];
+
+    int x = blockIdx.x * TILE_DIM + threadIdx.x;
+    int y = blockIdx.y * TILE_DIM + threadIdx.y;
+
+    // threads in a warp write a row
+    tile[threadIdx.y][threadIdx.x] = idata[y * width + x];
+    __syncthreads();
+
+    // Read from shared memory with transposed indices
+    // This is a classic case of all threads in a warp
+    // hitting the same bank causing a bank conflict
+    odata[x * width + y] = tile[threadIdx.x][threadIdx.y];
+}
+```
+
+Each row of a 32 by 32 float tile is 32 floats, or 128 bytes. Lanes that step down a column jump 128 bytes each time. Every one of those jumps lands back on bank 0. All 32 lanes collide on one bank, and the hardware replays the access 32 times in series.
+
+The same trap appears with any stride of 32 floats. Here the index is `threadIdx.x * 32`, so the byte address is `threadIdx.x * 128`. Every thread then hits bank 0.
+
+```cpp
+// Allocate a shared buffer big enough for several warps (warpCount)
+__shared__ float arr[32 * warpCount];
+// Each thread reads from arr[threadIdx.x * 32]
+float x = arr[threadIdx.x * 32];
+```
+
+Nsight Compute shows this cost in the Shared Memory section. You see more bank conflicts and lower shared-memory efficiency. Nsight Systems shows warps waiting on bank-conflict stalls instead of doing useful work. If a kernel does not speed up the way its buffering should, check for conflicts first.
+
+Padding fixes it. Adding one unused column makes each row 33 floats. Lane k then reads from a bank that shifts from row to row, so no two lanes collide. The padded transpose looks like this.
+
+```cpp
+#include <cuda_runtime.h>
+
+#define TILE_DIM 32
+#define PAD 1  // padding columns to avoid bank conflicts
+
+__global__ void transposePadded(const float *idata, float *odata, int width) {
+    // Each row is TILE_DIM+1 elements to shift bank mapping
+    __shared__ float tile[TILE_DIM][TILE_DIM + PAD];
+
+    int x = blockIdx.x * TILE_DIM + threadIdx.x;
+    int y = blockIdx.y * TILE_DIM + threadIdx.y;
+
+    tile[threadIdx.y][threadIdx.x] = idata[y * width + x];
+    __syncthreads();
+
+    odata[x * width + y] = tile[threadIdx.x][threadIdx.y];
+}
+```
+
+The cost is small. The padding adds about 3% memory for a 32-wide tile, which is about 1 KB. The book's measured run dropped bank conflicts from 4.8 million to zero and took the kernel from 4 ms to 1.3 ms.
+
+PyTorch has no high-level padding API. You would write the padded tile in a CUDA kernel and load it with `torch.utils.cpp_extension`. In practice, cuDNN and cuBLAS already avoid these conflicts inside their kernels.
+
+Swizzling is the other fix. It changes the linear index with a compile-time transform, such as an XOR with a bit mask, so that sequential threads land on different banks. It removes the padding overhead entirely. CUTLASS uses this kind of index swizzling in its tile iterators.
 
 ---
 
@@ -334,6 +856,161 @@ pipe.consumer_release();
 | **Kernel Execution Time (`ms`)** | `18 ms` | **`7 ms`** | **`~2.6x` faster** (hides `~800-cycle` DRAM latency) |
 
 **Use `__shfl_down_sync` for intra-warp reductions and mark read-only lookup pointers `const __restrict__`.** In multi-tile loops, double-buffer tile loads with `cuda::memcpy_async` so warps never stall waiting on synchronous DRAM loads.
+
+### 4.4 Lookup tables: a naive kernel versus a `const __restrict__` kernel
+
+Take an embedding lookup. A large table is read-only during inference, and many threads read from it at once. A naive kernel sends every read to global memory, even though the table never changes.
+
+The `__constant__` memory space is 64 KB and has a small per-SM cache. It is too small for large tables. It also runs at full speed only when all threads in a warp read the same address. A large read-only table belongs in the L1 read-only cache instead. The naive kernel below does not use that path.
+
+```cpp
+#include <cuda_runtime.h>
+#define T 1024
+
+__global__ void naiveLookup(const float* table, float* out, int N) {
+    int idx = blockIdx.x * blockDim.x + threadIdx.x;
+    if (idx < N) {
+        // __ldg not used here, each access goes to
+        // global memory without using read-only cache
+        int t = idx % T;
+        out[idx] = table[t];
+    }
+}
+```
+
+The optimized kernel marks the table pointer as `const __restrict__`. That tells the compiler the data is immutable and not aliased. The compiler can then route the loads through the read-only path.
+
+```cpp
+#include <cuda_runtime.h>
+#define T 1024
+
+__global__ void lookup(const float* __restrict__ table,
+                       float* out, int N) {
+    int idx = blockIdx.x * blockDim.x + threadIdx.x;
+    if (idx < N) {
+        int t = idx % T;
+        // Compiler can turn this into a load from the
+        // read-only cache for faster loads
+        out[idx] = table[t];
+    }
+}
+```
+
+On modern GPUs, global loads are cached in L2 and often in L1 too. The read-only path is lower latency, especially for broadcast reads. It also does not evict other cached data. You rarely need the older `__ldg()` intrinsic now, because the compiler uses the path for `const __restrict__` pointers when it is safe.
+
+The common mistake is leaving off the qualifier. The compiler then cannot use the read-only path, and every access becomes a plain global load. You can spot this in a profile. The same addresses are fetched from DRAM again and again, the instruction stream has no `__ldg()` loads, the L2 hit rate for that array is low, and DRAM throughput looks like an uncached workload.
+
+A warp that reads one constant address gets a broadcast. The hardware serves all 32 lanes in one transaction, instead of 32 separate loads.
+
+In PyTorch, you could apply the same trick by writing a small CUDA extension with `torch.utils.cpp_extension` that declares the table pointer as `const __restrict__`. You could also use the PyTorch compiler to optimize this kind of code. The vectorized PyTorch version below does the lookup with a single gather.
+
+```python
+import torch
+
+def vectorized_lookup(table, N):
+    flat = table.view(-1)
+    T = flat.size(0)
+    # build indices [0,1,2,...,N-1] % T all on GPU
+    idx = torch.arange(N, device=flat.device) % T
+    # one gather kernel does all N loads in parallel
+    return flat.index_select(0, idx)
+
+# Usage
+T = 1024
+N = 1 << 20
+table = torch.arange(T, dtype=torch.float32, device='cuda')
+out = vectorized_lookup(table, N)
+```
+
+Texture and surface objects are the other read-only option. A `cudaTextureObject_t` read with `tex1Dfetch` or `tex2D` suits data with strong two- or three-dimensional locality. The legacy texture reference APIs are deprecated. For one-dimensional tensors and embedding tables, `const __restrict__` is the simpler choice.
+
+### 4.5 A full TMA double-buffer kernel
+
+Section 4.3 showed the pattern in pieces. This kernel puts the whole thing together. It uses two shared tiles and a block-scoped pipeline. The function `processTile` is the compute step that you supply.
+
+The vector width is chosen at the top. CUDA 13 and later on Blackwell prefer 32-byte vectors, and `-DUSE_256B_VEC` forces that choice.
+
+```cpp
+#include <cuda/pipeline>
+#include <cuda_runtime.h>
+#include <cstdint>
+#include <cassert>
+
+#define TILE_SIZE 1024  // example tile size
+
+// User-provided compute function operating on a shared-memory tile
+__device__ void processTile(const float* tile);
+
+// --- choose vector width ---------------------------------------------
+// Prefer 32B vectors on CUDA 13+/Blackwell.
+// Define -DUSE_256B_VEC to force.
+#ifndef VEC_BYTES
+#if defined(USE_256B_VEC) || (defined(CUDA_VERSION) && CUDA_VERSION >= 13000)
+#define VEC_BYTES 32  // 256-bit: v8.f32, double4
+#else
+#define VEC_BYTES 16  // 128-bit: v4.f32, float4
+#endif
+#endif
+
+__global__ void kernelWithTMA(const float* __restrict__ global_ptr,
+                              int nTiles) {
+    // Two ping-pong buffers in shared memory
+    __shared__ __align__(VEC_BYTES) float tile0[TILE_SIZE];
+    __shared__ __align__(VEC_BYTES) float tile1[TILE_SIZE];
+    float* tiles[2] = { tile0, tile1 };
+
+    constexpr int VEC_ELEMS = VEC_BYTES / sizeof(float);  // 4 (128b) or 8 (256b)
+    constexpr int WARP = 32;
+
+    // Alignment / size guards for vectorized copies
+    static_assert((TILE_SIZE % (WARP * VEC_ELEMS)) == 0,
+                  "TILE_SIZE must be a multiple of WARP_SIZE * VEC_ELEMS");
+    static_assert(((TILE_SIZE * sizeof(float)) % VEC_BYTES) == 0,
+                  "Tile byte size must be a multiple of VEC_BYTES");
+    assert((reinterpret_cast<std::uintptr_t>(global_ptr) % VEC_BYTES) == 0);
+
+    size_t bytes = TILE_SIZE * sizeof(float);
+
+    // Block-scoped pipeline for TMA
+    __shared__ cuda::pipeline_shared_state<cuda::thread_scope_block, 2> state;
+    auto pipe = cuda::make_pipeline(cuda::this_thread_block(), &state);
+
+    // Prime the pipeline with the first async copy into tile0
+    pipe.producer_acquire();
+    cuda::memcpy_async(tiles[0],
+                       global_ptr + 0 * TILE_SIZE,
+                       cuda::aligned_size_t<32>{bytes},
+                       pipe);
+    pipe.producer_commit();
+
+    // Loop over the remaining tiles
+    for (int t = 1; t < nTiles; ++t) {
+        // Wait for the previous copy to finish, then compute on it
+        pipe.consumer_wait();
+        processTile(tiles[(t - 1) & 1]);
+        pipe.consumer_release();
+
+        // Enqueue the next async copy into the alternate buffer
+        pipe.producer_acquire();
+        cuda::memcpy_async(tiles[t & 1],
+                           global_ptr + t * TILE_SIZE,
+                           cuda::aligned_size_t<32>{bytes},
+                           pipe);
+        pipe.producer_commit();
+    }
+
+    // Final wait and compute on the last tile
+    pipe.consumer_wait();
+    processTile(tiles[(nTiles - 1) & 1]);
+    pipe.consumer_release();
+}
+```
+
+The pattern has five steps. First, prime the pipeline by starting the copy of tile 0. Second, wait for that tile and compute on it. Third, start the copy of the next tile into the other buffer. Fourth, repeat until the last tile. Fifth, wait for the last tile and compute on it.
+
+While the TMA streams the next tile, the warps compute on the current one. The load and store units stay free for other work. That overlap is what hides the roughly 800-cycle DRAM latency. The TMA also handles 1D to 5D bulk copies with arbitrary strides, without blocking the SM instruction pipeline.
+
+Two habits follow from this. Use the highest-level pipeline API you have, because it picks the TMA path when alignment and direction allow. Also check that host buffers are pinned. Pageable memory turns off the DMA overlap that `cudaMemcpyAsync` on multiple streams needs.
 
 ---
 

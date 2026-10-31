@@ -79,6 +79,12 @@ The order matters for two reasons. First, lower layers cannot be fixed from abov
 6. Security is not optional. Keep MAC enabled, keep keys signed with Secure Boot, and apply least privilege (chapter 1.21). Document every exception.
 7. Grace-class superchips put the CPU and GPU on one package, joined by a coherent link. That reduces locality problems but does not remove them. Linux still models CPU DRAM and GPU memory as separate pools. So keep threads on the local CPU, and configure huge pages and pinning.
 
+### Tune continuously and reduce bottlenecks across the stack
+
+System tuning is not a one-time job. Workloads change, a new model arrives, and the best CPU affinity or batch size from last quarter may not be the best one now. Monitor the key metrics on a regular schedule. Adjust CPU affinities, batch sizes and prefetch settings as the workload evolves. Small gains add up into a large improvement over time.
+
+The goal is for every layer to work in harmony, from the OS and CPU up to the GPU driver and runtime. A slow memory allocation on the CPU can starve a GPU just as surely as a slow driver start. Find the bottleneck, fix it, and then look for the next one. Each fix reduces data transfer friction and wait time, so the hardware gets closer to its full potential.
+
 ## 2. Know the machine: topology first
 
 Record the topology before you tune anything. A wrong assumption at this step invalidates everything that follows.
@@ -101,6 +107,12 @@ Read the output of `nvidia-smi topo -m` with the connection codes in mind. `X` m
 Aim for GPU and NIC pairs at `PIX` or `PXB`, which is the best path for GPUDirect RDMA. Avoid `SYS` between a worker's CPU, GPU and NIC. Record the whole matrix in the node's baseline.
 
 Write down these facts for every node. Note the GPU-to-NUMA map, the NIC-to-NUMA map, the NVMe-to-NUMA map, and the CPU list for each NUMA node, including the SMT siblings. Check the PCIe link speed and width of each device. Every GPU should run at its maximum generation and x16, and every NIC at its maximum. Confirm that all memory channels are populated, because missing DIMMs cost bandwidth. Confirm that all NVLink links are up. Keep this map with the baseline, since every later step depends on it.
+
+### Superchips such as Grace Blackwell
+
+A superchip places the CPU and GPU in one package. The Grace-based designs, such as GH200 and GB200, join the CPU and GPU with NVLink-C2C. That link gives coherent access between CPU and GPU memory at up to about 900 GB/s. Coherence removes many of the copy steps you would otherwise need.
+
+Linux still treats the CPU DRAM and the GPU HBM as two separate memory pools. So you still bind CPU threads to the local CPU NUMA node and keep the data near the CPU that feeds the GPU. The coherent link lowers the software overhead, but it does not remove the need for locality. Huge pages, prefetching and pinned memory still matter on these systems.
 
 ## 3. Firmware and BIOS
 
@@ -225,6 +237,12 @@ Memory problems are quiet. A job runs, but it runs slower than it should, or it 
 
 Pick a memory policy for each job, and measure before you keep it.
 
+### The OOM killer and memory limits
+
+A memory limit protects the host, but it can also end your job. Without limits, one greedy container can take too much host memory. The host then starts to swap, and the Linux OOM killer may step in. The OOM killer picks its victims with heuristics. It may choose your large training job, even when another process caused the pressure.
+
+For this reason, many teams leave memory limits off training and inference containers. The job can then use all the memory it needs. If you do set a limit, put it above the peak you expect, and leave headroom. Watch usage with monitoring and alerts. A limit that is too tight can kill a job three days into a long run.
+
 ## 7. CPU placement and interrupts
 
 Each training process should run on the CPUs of the NUMA node that holds its GPU. The simplest pattern is one process per GPU, bound to that GPU's NUMA domain. The launcher below reads the GPU's NUMA node from sysfs, which is more robust against odd `nvidia-smi topo` text formats. Then it binds the process with `numactl`.
@@ -288,6 +306,118 @@ mpstat -P ALL 1 | egrep ' (soft|irq)'                                        # a
 
 Reserve housekeeping cores for kernel threads, `kubelet`, `containerd`, monitoring agents and IRQs. Use systemd `CPUAffinity=`, `kubelet --reserved-cpus`, Slurm `CoreSpecCount`, or `isolcpus` to do it. Verify every binding with the tools from section 6 before you trust a throughput number.
 
+### Keeping the CPU ahead of the GPU
+
+The CPU does host-side work that the GPU cannot do for itself. It loads each batch from disk, tokenizes and transforms the data, dispatches GPU kernels, and coordinates threads and processes. If that work is slow, or the OS schedules it badly, the GPU sits idle. Keep the cores that feed the GPU free of unrelated work. Set the CPU affinity so the right cores handle the right data, and move background daemons and OS tasks onto their own cores.
+
+### Scheduler priority and core isolation
+
+Linux uses the Completely Fair Scheduler by default, and it works well for most jobs. A very latency-sensitive thread that feeds the GPU can get a real-time priority, using FIFO or round-robin scheduling. That thread then runs without being preempted by normal threads. Use this with care, because real-time threads can starve other processes.
+
+If the thread already has a dedicated core, you often do not need a real-time priority. Core isolation is another tool. `cset`, the `isolcpus` and `nohz_full` kernel parameters, or a cgroup `cpuset` can leave cores free for your work. Then the scheduler leaves those cores to your job.
+
+### Finding a GPU's NUMA node in Python
+
+The helper below finds a GPU's NUMA node. It tries NVML first, then sysfs, and then the process's current preferred node. Call it once at startup, before the process binds itself to CPUs. The code follows the book's helper, with each fallback step kept in order.
+
+```python
+import glob, os, re, subprocess
+import psutil
+import torch
+try:
+    import pynvml as nvml  # pip install nvidia-ml-py3
+    _HAS_NVML = True
+except Exception:
+    _HAS_NVML = False
+
+def parse_physical_cpu_list(phys_str: str):
+    """Parse '0-3,8-11' -> [0,1,2,3,8,9,10,11]."""
+    cpus = []
+    if not phys_str:
+        return cpus
+    for part in phys_str.split(','):
+        part = part.strip()
+        if not part:
+            continue
+        if '-' in part:
+            start, end = map(int, part.split('-'))
+            cpus.extend(range(start, end + 1))
+        else:
+            cpus.append(int(part))
+    return cpus
+
+def get_numa_cpus_and_memory():
+    """Return (current_cpu_mask, preferred_node) from numactl --show."""
+    out = subprocess.run(["numactl", "--show"],
+                         capture_output=True, text=True).stdout
+    phys = re.search(r"physcpubind:\s*([\d,\-\s]+)", out).group(1)
+    cpus = parse_physical_cpu_list(phys)
+    node = int(re.search(r"preferred node:\s*(-?\d+)", out).group(1))
+    return cpus, node
+
+def get_gpu_numa_node(device: int) -> int:
+    """NVML first, then sysfs, then the current preferred node."""
+    if _HAS_NVML:
+        try:
+            nvml.nvmlInit()
+            props = torch.cuda.get_device_properties(device)
+            pci = props.pci_bus_id  # '0000:03:00.0' or '00000000:03:00.0'
+            domain, bus, devfn = pci.split(':')
+            pci8 = f"{domain.rjust(8, '0')}:{bus}:{devfn}"
+            try:
+                handle = nvml.nvmlDeviceGetHandleByPciBusId_v2(pci8)
+            except AttributeError:
+                handle = nvml.nvmlDeviceGetHandleByPciBusId(pci8)
+            # Direct NUMA ID, if the driver exposes it
+            try:
+                numa_id = nvml.nvmlDeviceGetNUMANodeId(handle)
+                if isinstance(numa_id, int) and numa_id >= 0:
+                    return numa_id
+            except Exception:
+                pass
+            # Otherwise, derive it from the GPU's CPU affinity mask
+            cpu_count = psutil.cpu_count(logical=True)
+            elems = (cpu_count + 63) // 64
+            mask = nvml.nvmlDeviceGetCpuAffinity(handle, elems)
+            cpus = []
+            for i, m in enumerate(mask):
+                m = int(m)
+                for b in range(64):
+                    if m & (1 << b):
+                        cpu_id = i * 64 + b
+                        if cpu_id < cpu_count:
+                            cpus.append(cpu_id)
+            # Build a CPU-to-NUMA map from sysfs and choose the majority node
+            cpu2node = {}
+            for node_path in sorted(glob.glob("/sys/devices/system/node/node*")):
+                node_id = int(os.path.basename(node_path).replace("node", ""))
+                with open(os.path.join(node_path, "cpulist"), "r") as f:
+                    for c in parse_physical_cpu_list(f.read().strip()):
+                        cpu2node[c] = node_id
+            counts = {}
+            for c in cpus:
+                n = cpu2node.get(c)
+                if n is not None:
+                    counts[n] = counts.get(n, 0) + 1
+            if counts:
+                return max(counts.items(), key=lambda kv: kv[1])[0]
+        except Exception:
+            pass
+    # sysfs fallback
+    try:
+        pci = torch.cuda.get_device_properties(device).pci_bus_id
+        with open(f"/sys/bus/pci/devices/{pci}/numa_node", "r") as f:
+            val = int(f.read().strip())
+        return val if val >= 0 else 0
+    except Exception:
+        pass
+    # last resort: the current preferred node
+    _, node = get_numa_cpus_and_memory()
+    return node if node >= 0 else 0
+```
+
+The NVML path is the most direct answer. If the driver exposes the NUMA node, the helper uses it. If not, it reads the GPU's CPU affinity mask and maps those CPUs to NUMA nodes, and the node that holds most of them wins. The sysfs file is the next fallback. The `numactl --show` output is the final resort.
+
 ## 8. Storage, network and the GPU driver
 
 This section covers three areas: local and network storage, the host side of the network, and the GPU driver and runtime. Each one has settings you must choose on purpose, so the reasons matter as much as the values.
@@ -307,6 +437,8 @@ This section covers three areas: local and network storage, the host side of the
 - TCP paths. Storage, the control plane and parameter services run over TCP. Apply the buffer and congestion settings from chapter 1.22. Keep the RSS and RPS queues local to the NIC's NUMA node, and set the IRQ affinity to match. Check offloads with `ethtool -k`, ring sizes with `ethtool -g`, and the pause and flow-control policy.
 - Firewall and security. As chapter 1.21 explained, IB traffic bypasses the host firewall, so protect it with fabric partitions. Where you firewall Ethernet fabric interfaces, allow RoCE v2 on UDP 4791.
 - Time. Point chrony at a local source. Use PTP where you need tracing correlation.
+
+Multinode training depends on the network as much as on the GPUs. Use an RDMA-enabled fabric, such as InfiniBand or Ethernet with RoCE, for traffic between nodes. Then tune the host side as well. TCP buffers, MTU and interrupt affinity all affect throughput during distributed training and inference. Check them with the fabric tools before you trust a benchmark.
 
 ### GPU driver and runtime settings
 
@@ -331,6 +463,26 @@ The table below lists the GPU driver and runtime settings. Each row asks you to 
 | **CUDA / driver compatibility** | Host driver at least as new as the CUDA runtime in the container requires (`R580` or newer for CUDA 13.x; `R525` or newer for CUDA 12.x; `cuda-compat` forward compatibility across minor/major updates; PTX + CUBIN fatbinaries across hardware generations) | Check NVIDIA's compatibility tables; containers carry the CUDA runtime (`libcudart.so`), hosts inject the driver libraries (`libcuda.so`, `libnvidia-ml.so`) |
 
 Read the table one row at a time, and record the choice you make for each row. For the boot order, the sequence matters: load the modules, start `nvidia-persistenced`, start `nvidia-fabricmanager`, set the clocks, power and MIG policies, start DCGM, and run the health check. Only then start `slurmd` or `kubelet`, or mark the node schedulable. A node that fails any step stays **drained**.
+
+### ECC, clocks and power: change them only with a reason
+
+Most GPU knobs trade peace of mind for speed. Start with the defaults. Change one only when a measurement shows why you need it.
+
+GPU Boost adjusts the core clock within power and thermal limits. For everyday training and inference, leave auto-boost on, unless you see large run-to-run variance and throttling. Locking clocks matters mostly for benchmarks. Later runs can throttle from the heat of earlier runs and give misleading numbers. Use `nvidia-smi -lgc` to lock the core clock, and `-ac` to lock the memory clock.
+
+Some teams underclock on purpose to reduce heat on very long jobs. A better option is a power limit set slightly below the TDP, the maximum heat in watts that the GPU can generate under sustained load. Set it with `nvidia-smi -pl`. GPU Boost then adjusts clocks below the thermal throttle point. That can cut peak heat with minimal performance cost. Data center cooling usually makes this unnecessary.
+
+ECC, error-correcting code, protects GPU memory. A single-bit error, such as one caused by a cosmic ray, is corrected on the fly. A double-bit error is detected and reported to the calling code. Data center GPUs such as Hopper and Blackwell ship with ECC on. Turning it off frees a little memory and may save a few percent of speed. It also removes the protection, so a memory error could crash a job or silently corrupt it.
+
+Keep ECC on for any serious AI workload. The only case for turning it off is a research setting where you accept the risk to fit a model into tight memory. Changing the ECC mode needs a GPU reset, and that usually restarts the jobs on that GPU. So do not switch it often.
+
+### GPU memory: watch it before it runs out
+
+Unlike CPU RAM, a GPU has no swap by default. If you ask for more memory than is free, you get an out-of-memory error, and the process usually crashes. Frameworks handle this differently. TensorFlow can grab all GPU memory at startup, which hurts when several jobs share a GPU. Setting `TF_FORCE_GPU_ALLOW_GROWTH=true` makes it grow on demand, the way PyTorch does. Neither framework can allocate more memory than the GPU physically has.
+
+PyTorch allocates GPU memory only as needed. Its caching allocator keeps freed blocks for reuse instead of returning them to the OS. Watch the usage with `nvidia-smi` or the NVML APIs during training and inference. When you get close to the limit, reduce the batch size, use activation checkpointing for training, or reduce precision.
+
+If you hit an OOM, first check for fragmentation or excessive caching. `torch.cuda.memory_stats()` and `torch.cuda.memory_summary()` show allocated memory versus reserved memory. `torch.cuda.empty_cache()` can release cached blocks, but most of the time the job really needs that much memory. Unified memory is a safety net that pages data between CPU and GPU. It keeps a job alive, but that job runs slower.
 
 ## 9. Containers, Slurm and Kubernetes as consumers of the tuned node
 

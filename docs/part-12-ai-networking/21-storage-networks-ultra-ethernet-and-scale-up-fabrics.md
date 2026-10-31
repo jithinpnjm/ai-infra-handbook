@@ -620,6 +620,12 @@ Scale-Up Interconnect vs PCIe / CXL Latency, Bandwidth, and Pod Geometry Specs:
 - Horizontal pod-to-pod scale-out: separate 400G/800G scale-out NICs over PCIe Gen5/Gen6 across multi-plane Fabric Plane 1 | Plane 2 Clos networks
 ```
 
+Across dense accelerator scale-up systems, the main goal is simpler and faster memory access. Engineers want a large model to look like one memory space that every accelerator can reach directly. That keeps the software stack smaller. The high-bandwidth memory (HBM) on many accelerators then reads as one coherent pool. Moving data from one accelerator to another also carries less overhead. There is no IP or UDP header to add, and no multi-stage network to cross. The path becomes an optimized Ethernet switch system with one hop. For a large language model, the aim is more straightforward and faster direct memory load semantics. Each xPU sees a more coherent multi-xPU high-bandwidth memory view. Less fabric interconnect setup is needed, and the software stack stays simple.
+
+Multimodal models form another use case. Text-to-video, audio, and 3D generators rely on diffusion models. These models move large tensors between GPUs, and they must sync often. That exchange can repeat thousands of times for each batch. Here is a concrete case. A batch of 1,024 images spreads across 512 xPUs. Each xPU handles two images as a micro-batch. After that, the xPUs sync their gradients across the interconnect point for one step. The sync runs over the whole shared memory, so the model behaves as if it trained on a single xPU.
+
+Financial risk analysis is another case. Traders and analysts need to see market volatility and their exposure quickly. Real-time market models keep updating with fresh financial data. High-frequency algorithms use that data to predict trends, tune trading strategies, and manage risk as the economy changes. What ties these cases together is the need for many accelerators to share one fast memory view.
+
 ### 5.2 Open Compute Project (OCP) Scale-Up Ethernet Transport (SUE-T / ESUN)
 
 Standard Ethernet frames carry tens of bytes of IP, UDP, and RDMA headers that waste wire bandwidth on small 64-byte or 256-byte memory loads and stores inside a rack. Announced in October 2025 under the OCP Ethernet Scale-Up Networking initiative, Scale-Up Ethernet Transport adapts standard 100 Gbps and 200 Gbps PAM-4 Ethernet PHY and MAC silicon for single-hop scale-up pods. It replaces IP, UDP, and BTH with two compact Layer-2 headers:
@@ -646,6 +652,10 @@ OCP SUE-T (ESUN) Framing, Header Efficiency, and On-Die Interface Specifications
 1. **AI Fabric Header Generation 2:** Replaces standard MAC addressing with a 6-byte compressed header for single-hop pods or a 12-byte non-compressed header for two-hop topologies. Both formats preserve IEEE Ethernet frame compatibility.
 2. **Reliability Header and Dual-Layer Loss Recovery:** Placed immediately after the EtherType, the 8-byte Reliability Header tracks end-to-end sequence numbers (`NPSN` and `APSN`) across up to 1,024 xPUs. Hop-by-hop Link Layer Reliability retransmits lost frames from the ESUN switch replay buffer, and link-level CBFC prevents buffer overflow.
 3. **On-Die FIFO and ARM AXI 4.0 Interfaces:** Between the xPU compute core and the on-die SUE transport block, designers choose either a raw streaming FIFO interface or a 5-channel ARM AXI 4.0 memory interface. The AXI 4.0 interface isolates Read and Write Requests (`AR`, `AW`, `W`) on `VC0` from Read and Write Responses (`B`, `R`) on `VC1`.
+
+Figure 13-7 walks the whole SUE stack from Accelerator 1 on the left, through a Scale up Switch in the center, to Accelerator 2 on the right. The SUE stack sits on the left of each column, and Ethernet is labeled on the right. The accelerator's transaction layer sends data down through the interface layer and the packing or mapping layer. The packing layer and the transport layer together form the SUE transport. The transport layers on both ends exchange ordering and reliability information. Next comes the network header layer, which carries the AFH on both ends. Below it sit the Ethernet MAC layer, the reconciliation layer, RS FEC, the PMA or PMD layer, and the PHY. The MAC layers on each end exchange LLR and CBFC information with the switch.
+
+Figure 13-8 shows the links that come up when the system boots. Accelerator 1, labeled ACC1 xPU 1, has an on-die interconnect point that can be FIFO or AXI 4. Each accelerator has twelve SUE segments, and each segment has twelve lanes, labeled E 1 through E 12. Every SUE segment fans out to all twelve ESUN switches. On the far accelerator, each switch reaches its matching segment, so ESUN 1 pairs with SUE 1 and ESUN 12 pairs with SUE 12. Each link runs as 200 Gbps or 100 Gbps SerDes Ethernet with AFH.
 
 ### 5.3 Ultra Accelerator Link (UALink 1.0): 6.4 Tbps Stations, 64B/640B Flits, UPLI, and GVA -> NPA -> SPA
 
@@ -694,6 +704,58 @@ When an engineer ports a multi-GPU kernel from an NVIDIA NVL72 rack to an open U
 | **Reliability & Flow Control** | RH (16-bit NPSN/APSN) + hop-by-hop LLR + CBFC | DL-level credits (`CRD`) + 8B CRC + replay (`RREQ`/`ACK`/`NACK`) | Hardware retry and internal credit scheduler inside NVSwitch |
 | **Topology Scope & Scale** | 1-hop or 2-hop pod; up to 1,024 (10-bit xPU ID) | In-rack / 4-rack pod up to **1,000 xPUs** (10-bit ACC-ID) | **72 GPUs** fully connected (NVL72) |
 | **1-Hop Latency & Per-xPU BW** | ~250 ns switch hop (< 1 us E2E); 0.8–3.2 Tbps typical | 200–300 ns switch hop (< 1 us RTT); **up to 6.4 Tbps (8x4x200G)** | Tens of ns switch hop (100–300 ns system); **1.8 Tbps (1,800 Gbps)** per GPU |
+
+### 5.5 Pod Building Blocks, HBM Placement, and Vendor Scope
+
+A scale-up pod is not assembled part by part on the data center floor. Vendors build the compute system with its parts already fitted into the rack. The chassis, its intra-chassis cabling, the optics, the management switches, and the storage units all come prebuilt. The buyer gets one management interface that covers the accelerators, the compute, and the storage. The options a buyer can change are limited.
+
+Interoperability between two vendors' scale-up chassis is not typically addressed. A common deployment uses one to four pods from the same vendor. Those pods then connect to the existing scale-out systems. Figure 13-1 shows four identical pods joined by a rack-to-rack link, which can use scale-out or scale-up extenders. The top bar is labeled Rack to Rack Interconnection, with Scale out or Scale up Extenders. From top to bottom, each pod holds out-of-band (OOB) management switches, power shelves, compute, and accelerators. Below them sits a boundary of interconnect switches, such as ESUN, UALink, or NVLink switches. Under that boundary come another accelerator block, compute, NVMe-oF storage, and power shelves. A three-tier IP Clos scale-out fabric can connect even more racks.
+
+A four-pod or four-rack scale-up system can hold from 72 to hundreds of xPUs. Those xPUs can be GPUs, TPUs, or other accelerators. Each accelerator has its own HBM, placed physically next to it. The HBM is still exposed as part of one coherent shared memory to every other xPU. Each HBM module holds hundreds of gigabytes. Memory software manages the HBM, usually at the compute level. The compute host connects over PCIe, much like a multi-core CPU or ARM chip. When SUE or UALink switches carry the AI training traffic, that PCIe link is not used for it.
+
+Figure 13-2 zooms into one compute node. A DDR CPU and a NIC sit stacked on the left, joined to a vertical PCIe bar. Two accelerators, ACC1 and ACC2, sit on the right, with HBM blocks inside dashed outlines above ACC1 and below ACC2. The middle section, labeled SUE switches, holds several switch blocks with bidirectional arrows. Each accelerator links to every SUE switch in a mesh. The next compute node, Compute n, follows the same layout with its own pair of accelerators.
+
+### 5.6 Single-Hop Mesh Wiring and Attaching Pods to Fabric Planes
+
+Inside the rack, the wiring forms a full mesh that is only one hop wide. Figure 13-3 shows 64 accelerators, ACC1 through ACC64. A rounded box labeled Accelerators sits at the top, with a dashed range standing in for ACC2 through ACC63. Twelve scale-up switches are enabled in that rack. Each accelerator has twelve connections, labeled SUE T 1 through SUE T 12, one to each switch, so every accelerator reaches every switch in a crisscross full mesh. Each lane runs at 100 Gbps or 200 Gbps into the SUE-T switch. Any two accelerators are one hop apart, which keeps latency low for AI workloads.
+
+The physical Ethernet connection stays the same. SUE-T adds the new AFH transport and an optimized Ethernet header to carry remote memory access from one accelerator to another. The RoCEv2 and UET frame formats are not used here, because they add overhead. A single-hop design needs less entropy handling, so the RoCEv2 and BTH fields are not needed. The memory access rules are also simpler. That shortens the time needed to write results into a remote HBM.
+
+A scale-up rack still has to reach the rest of the AI data center. Each compute system uses a dedicated scale-out NIC for that link. Figure 13-4 shows two fabric planes, and production deployments use more planes for better availability. Scale-up System 1 has two NICs. The left NIC receives 800 Gbps from Plane 1, and the right NIC receives 800 Gbps from Plane 2. Each accelerator has an 800 Gbps link that splits into two 400 Gbps links, one to each of two SUE switches.
+
+A multi-plane design offers faster convergence and controlled minimal compute capacity across several scale-up systems. If one plane goes offline, the capacity between scale-up systems still equals one plane plus the compute capacity of each system. The number of 800 Gbps NIC ports per compute node may vary from two to four with 800 Gbps cards. With 400 Gbps cards, the count runs from four to eight. Those ports connect to ToR Ethernet switches on different fabric planes. A single-plane fabric with inter-pod links also works. It supports the path diversity options from Chapter 8, IP Routing for AI/ML Fabrics.
+
+### 5.7 Full Scale-Up Comparison and Why Open Standards Matter
+
+Comparing NVLink with the open fabrics takes care. Public NVLink documentation gives fewer detailed specifications than the open standards do. SUE-T was announced as a framework, so its details may change over time. UALink is the best-defined of the three. Its transaction and data link flits over the Ethernet PHY, its request semantics, and its address translation are all specified. UALink may take longer to implement than SUE-T, which keeps standard DMAC and SMAC addressing.
+
+The table below extends the comparison from Section 5.4 with the remaining capabilities.
+
+| Capability | SUE-T/SUE | UALink 1.0 | NVLink |
+|---|---|---|---|
+| **Ordering** | Per-flow; strict or unordered per virtual channel; single-hop focus | Per-stream in-order TL delivery | In-order per flow; global fabric ordering via switches |
+| **Congestion control** | In-band credits (AFH) and endpoint rate control | Credit-based | Fabric-internal; scheduler and backpressure in NVSwitch |
+| **Programming model** | AXI or FIFO into SUE-T; one-sided verbs; libraries map collectives to SUE-T | PGAS API (load/store/atomic/fence), collectives over TL | CUDA, NCCL, NVSHMEM with coherent pointers; hardware collectives |
+| **Openness/ecosystem** | Open (OCP), leverages Ethernet optics and switches | Open consortium spec (new switches and ASICs) | Proprietary Nvidia stack and hardware |
+| **Cost** | Medium | Medium | High |
+
+Open standards matter to buyers, not only to engineers. When accelerators and switches from different vendors work together, a data center can mix hardware from several suppliers. That can lower cost, add flexibility, and speed up innovation. NVLink offers strong performance, but it ties a buyer to one vendor's stack. UALink and SUE-T are meant to be open standards from industry groups. They define interoperable protocols, hardware interfaces, and memory models, so multi-vendor super-accelerators become possible.
+
+### 5.8 UALink Flit Layout, Station Wiring, and Address Handles
+
+UALink moves data in small fixed units, and its addresses are not plain MAC addresses. Readers who expect Ethernet behavior often get confused here. The next pieces show how one write request is packed, wired, and addressed.
+
+Figure 13-13 shows how one uncompressed write request fits into a 64-byte TL flit. The flit has an upper half and a lower half, each 32 bytes. In the upper half, the data pieces `Req0.Data.0`, `Req0.Data.2`, and `Req0.Data.4` stack on top of each other. The lower half starts with four request-control slots, `Req3`, `Req2`, `Req1`, and `Req0`. The pieces `Req0.Data.1` and `Req0.Data.3` sit on the right side of the lower half. So the data for one request spreads across both halves of the flit.
+
+Figure 13-10 shows how accelerators wire into the UALink switches in one rack. Each accelerator has eight connection points, Station 0 through Station 7. Each station holds four 200 Gbps lanes. So each accelerator has 32 lanes and 6.4 Tbps of bandwidth. Station 0 connects to ULS 0 and ULS 1. Station 7 connects to ULS 30 and ULS 31. Each station fans out to several switches, and the same pattern repeats for every accelerator.
+
+The software layer registers memory regions on each accelerator. It defines local SPA ranges and exports them as an address handle table. The handle value goes into the UPLI request, next to the target accelerator identifier. The UALink switch reads the 10-bit accelerator ID and picks the outgoing interface. Ethernet MAC addresses play no role in that step. The PHY is still Ethernet, but the switch routes on a memory-mapped scheme instead.
+
+The address handle is a reference object. It holds everything needed to reach a remote memory region over UALink, including the hardware context and access control for remote memory access. The originator uses the handle ID in its UPLI requests. The UALink hardware swaps that ID for the NPA plus key bits before anything goes on the wire. A page table entry in the accelerator's MMU links the handle to the accelerator identifier.
+
+On the request side, a 10-bit `DSTACCID` field maps into the NPA address. The `SRCACCID` field lets the responder build the return NPA address. At the destination, the TL decoder takes the delivered flit from UPLI and the MMU. It queues the flit and creates the right receive memory cache entry.
+
+Figure 13-15 shows the three address spaces from end to end. On the source side, three CU blocks send requests to one accelerator MMU, all in the guest virtual address space. The middle section holds the UALink switches, which work in the network physical address space. On the destination side, the second accelerator's MMU translates the address to a system physical address, which reaches two HBM blocks.
 
 ---
 
@@ -991,6 +1053,7 @@ Primary Book Sources and Verification Notes for Chapter 12.21:
      OCP SUE-T (ESUN: 100G/200G SerDes, 12 SUE instances x 12 lanes, 256B flit / 4,096B SUE PDU, 6-byte compressed vs 12-byte non-compressed AFH Gen 2, RH with 10-bit xPU ID + 16-bit NPSN/APSN + VC + Partition, LLR + CBFC, on-die FIFO 10-bit xPU + 2-bit VC vs ARM AXI 4.0 5 channels AR/AW/W on VC0 and B/R on VC1)
      UALink 1.0 (8 stations x 4 x 200 Gbps lanes = 32 lanes = 6.4 Tbps per xPU, < 4 m cables, < 1 us RTT, ULS 0..31 switches vs UALink Direct, UPLI 4 channels Req/OrigData/RD Res/WR Res, 57-bit ReqAddr, 10-bit ACC-ID for up to 1,000 accelerators, 64-byte TL flits with 16 x 4B sectors and upper/lower 32B half-flits, 640-byte DL flits packing 10 TL flits + 8B CRC + 40B FEC = 680-byte wire unit aligned 1:1 to RS(544, 514) 10-bit PCS codewords, 1-way/2-way vs 4-way codeword interleaving, GVA -> NPA -> SPA MMU + Address Handle translation, virtual pod partitioning)
      Hardware Directory/Snoop Coherence vs Software PGAS Coherence (RMA_SYNC, NOTIFY, RMA_FENCE, RMA_COMPLETION, ATOMIC_ACK), and Table 13-1 (SUE-T vs UALink 1.0 vs NVLink)
+     Chapter 13 reference list: Arm.com, "AMBA AXI and ACE Protocol Specification," 2025, developer.arm.com/documentation/ihi0022/e; "Scale-Up Ethernet Framework Specification," 2025, docs.broadcom.com/doc/scale-up-ethernet-framework; Open Compute Project, "Introducing ESUN: Advancing Ethernet for Scale-Up AI Infrastructure at OCP," opencompute.org blog; Ultra Accelerator Link, "UALink 200G 1.0 Specification Overview and Applications," 2025 video; Nvidia, "Nvidia GB200 NVL72," nvidia.com/en-us/data-center/gb200-nvl72/; Nathan Kalyanasundharam, "Introducing UALink 200G 1.0 Specification," 2025, UALink 1.0 white paper
 2. Verification and honest-scope note:
    - Companion simulation and 25 self-checks (code/part12/storage_uec_scaleup.py and code/part12/storage_uec_scaleup_lab.py) verified locally (25 passed, 0 failed)
    - Cluster nvme, tcpdump, fi_info, ibstat, and gdscheck commands marked (untested here)

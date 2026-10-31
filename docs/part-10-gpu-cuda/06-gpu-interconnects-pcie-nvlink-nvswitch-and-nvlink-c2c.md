@@ -225,6 +225,14 @@ The book defines a scale-up system as one or more racks acting like a single lar
 
 ---
 
+### Why SHARP helps collectives
+
+Collective operations, such as aggregating gradients during training, normally pass data among the GPUs and combine it there. SHARP moves part of that combining into the network. The NVSwitch fabric combines partial results as they pass through, so the data does not have to funnel through the GPUs. The GPUs are then free for more complex computation.
+
+The benefits follow from that. Collective latency drops, and the total volume of data crossing the network falls. During distributed training, the heavy work of aggregating gradients or synchronizing parameters goes to the dedicated SHARP engines inside NVSwitch. Scaling stays efficient both within a rack and across racks. For very large models, every microsecond saved on a collective can add up to a real speedup.
+
+SHARP is one of the most useful pieces NVIDIA gained in its 2019–2020 acquisition of Mellanox. If you are not using it yet, it is worth exploring. It can cut latency and traffic for collectives, and it often improves scaling for training jobs that are limited by communication.
+
 ## 3. On-Package (NV-HBI) and Chip-to-Chip (NVLink-C2C) Interconnects and Cache Coherence Rules
 
 Engineers building on Grace Hopper and Grace Blackwell Superchips often assume that every NVLink wire in the rack provides automatic hardware cache coherence. That assumption causes subtle memory-consistency bugs when writing custom multi-GPU kernels. You must distinguish the four hardware interconnect tiers and their exact cache-coherence boundaries.

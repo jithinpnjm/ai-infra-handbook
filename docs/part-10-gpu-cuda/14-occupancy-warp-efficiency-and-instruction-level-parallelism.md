@@ -105,6 +105,28 @@ Every clock cycle, each of the four warp schedulers on a Hopper or Blackwell SM 
 | **`Stall: Not Selected`** | The warp was eligible and ready to issue, but the scheduler picked another eligible warp in the same partition this cycle | Healthy indicator of high occupancy; no action needed unless one warp monopolizes issue slots |
 | **`No Eligible` / `Idle`** | Scheduler had zero eligible warps to issue this cycle because too few blocks or warps were launched or all warps are stalled | Increase grid or batch size, tune occupancy (`__launch_bounds__`), or expose per-thread ILP |
 
+### Reading the stall breakdown in practice
+
+A stall name tells you where a warp is waiting, but one stall rarely settles the question on its own. Read the whole breakdown and start with the largest slice. The table above gives a short meaning for each reason. The notes below explain how the big slices look in a real profile.
+
+Memory-related stalls come first. When a kernel waits on global memory loads, `Stall: Long Scoreboard` climbs. The scoreboard tracks each warp's outstanding memory requests, so a high Long Scoreboard share means warps keep waiting on slow DRAM loads. The same stall also appears when spilled local memory moves to and from device memory.
+
+`Stall: Short Scoreboard` is the on-chip version. It means a warp waits for data moving between shared memory and registers. That delay is shorter than a DRAM load, but it still leaves the warp idle.
+
+Two more memory signs are `Stall: Memory Throttle` and `Stall: Not Selected`. Memory Throttle means the load and store pipelines are saturated, so the hardware queues are full and no new memory request can be issued. Not Selected means the warp could issue, but it had to wait for free memory transaction slots. When these memory reasons dominate, the kernel is memory bound.
+
+Use the source code view in Nsight Compute to find the lines behind these stalls. It highlights scoreboard dependencies and other hardware limits, such as special function unit throughput.
+
+`Stall: Exec Dependency` means warps often wait for the result of an earlier instruction. The usual cause is too little instruction-level parallelism inside each thread, or an ALU latency bottleneck. A chain of dependent arithmetic forces each step to wait for the one before it. When this reason dominates, the kernel is latency bound on compute.
+
+When `Stall: Compute Unit Busy` is high, or the FP32 cores or Tensor Cores are almost always active, the kernel is compute bound. The math units are saturated, so warps are ready but cannot run any faster. This often shows as near-peak ALU pipe busy time, and it can match high power draw. On some GPUs the matching reason is `Stall: Math Pipe Throttle`, which means the math pipelines were full on every cycle.
+
+Other reasons are rarer. `Stall: Memory Dependency` is close to Long Scoreboard, because an operation waits on an earlier memory operation. `Stall: Texture Throttle` points to a busy texture caching subsystem. `No Eligible` or `Idle` means the scheduler had no warp ready to issue that cycle, often after a synchronization or because too few warps were launched.
+
+You do not need to memorize every reason. Look at the largest parts. Memory stalls that dominate mean a memory-bound kernel. Execution dependency stalls that dominate mean a latency-bound kernel on ALU work. Almost no stalls with a nearly full pipeline mean a compute-bound kernel.
+
+Collect these numbers from realistic runs. A tiny test kernel can show a different stall profile from your real application, so do not draw conclusions from a toy case.
+
 ### 1.3 The Four Kernel Execution Regimes
 
 As you iteratively optimize a kernel using Nsight Compute, it typically progresses through four distinct performance regimes: underutilized, memory bound, latency bound, and compute bound.
@@ -129,6 +151,48 @@ In the memory-bound regime, DRAM bandwidth approaches peak capacity while math p
 In the latency-bound regime, neither DRAM bandwidth nor compute utilization is near peak. Instead, warps stall on Long Scoreboard, Short Scoreboard, or Execution Dependency because the SM has fewer than four eligible warps per cycle. Raising occupancy or exposing per-thread ILP hides those latencies. Finally, in the compute-bound regime, math pipelines and Tensor Cores saturate with Math Pipe Throttle stalls, and further gains require lower precision or structured sparsity.
 
 **Always classify a slow kernel into one of the four execution regimes before changing code.** That classification prevents you from applying memory optimizations to a latency-bound or underutilized kernel.
+
+GPUs can stall for four different reasons: underutilization, latency bound, memory bound, and compute bound. The regimes are related, but each needs its own fix. Fixing one bottleneck often reveals the next one. A kernel might move from underutilized to latency bound, then to memory bound, and finally to compute bound.
+
+### 1.4 Checking the data pipeline and host-side waits
+
+A GPU can look slow when the real delay happens somewhere else. Nsight Systems shows the whole pipeline, including data loading and preprocessing. If the GPU sits idle while the CPU prepares batches or runs augmentation, the bottleneck is usually the data pipeline, not the kernel. This pattern is common in training loops.
+
+Tune the pipeline only after you test it on a realistic, representative dataset. You can raise the number of data loader threads. You can overlap CPU preprocessing with GPU compute using double buffering. You can also move more of the preprocessing onto the GPU. Before you rewrite a kernel, confirm that the slowdown really sits inside it.
+
+Use NVTX ranges to mark the regions you care about. Nsight Systems can then capture only those ranges. The CUDA profiler Start and Stop API also controls capture, but NVTX ranges are the recommended choice for framework workflows. In PyTorch, `torch.cuda.nvtx` provides range push and pop calls. You can label phases such as `forward pass` and `backprop`, so the timeline shows which iterations matter.
+
+For years, the Nsight tools could not see Python code, and many PyTorch developers avoided them for that reason. Modern Nsight Systems can collect Python backtrace sampling. It also has a PyTorch-focused mode with Python call-stack sampling and a PyTorch domain for correlated tracing. If you work in PyTorch, it is worth using these tools again for a fuller, linked view of the system.
+
+The `torch.profiler` API works alongside them. It collects operator-level times, GPU kernel launches, memory copies, and hardware counter metrics. It relies on the Kineto library, which uses CUPTI for GPU events and Linux `perf` for CPU events. Kineto merges everything into one time-ordered trace. You can view that trace in the PyTorch profiler UI, in the Nsight Systems GUI, or in a Chrome browser.
+
+Nsight Compute reads the device code side of the story. Compile device code with `-lineinfo` so that Nsight Compute maps counters to source lines. Use `torch.cuda.nvtx` ranges from Python to link model code to the kernels it launches. The source view shows the instruction mix and a throughput breakdown for each line that stalls.
+
+The two tools work best as a pair. Start with Nsight Systems to find the hot kernels and the idle gaps on the timeline. Then zoom into each hot kernel with Nsight Compute for a detailed diagnosis. Both tools are updated for new GPU architectures, so the same workflow helps when you move a workload to a newer GPU generation.
+
+Before a kernel change, check for host-side waits. Remove unnecessary `cudaDeviceSynchronize()` calls and other host waits that stall the GPU. Small workloads can be batched with other work, or several instances can run at once on separate CUDA streams.
+
+### 1.5 Fixing each regime and re-profiling
+
+Pick the fix from the regime, not from a favorite trick. A memory-bound kernel needs less traffic per result. A latency-bound kernel needs more work in flight. A compute-bound kernel needs more arithmetic throughput. An underutilized GPU needs more launched work. Each change should target one of these four problems.
+
+Nsight Compute's guided analysis helps here. Its rules can flag messages such as `Memory Bound: L2 transactions per FLOP high` or `Compute Bound: issue stall reasons indicate pipe contention`. These rules are updated for each architecture, including Blackwell. They confirm whether the limit is memory throughput, instruction dispatch, or latency hiding, and they point you to the metrics that matter.
+
+Underutilization comes first in the usual order. The kernel has not launched enough threads or work. FLOPS and memory bandwidth both stay low, and the timeline shows idle gaps. Once you add parallelism, warps start to stall on memory loads, and the kernel becomes latency bound.
+
+A latency-bound kernel moves fewer bytes per second than the hardware can deliver. Individual loads stall the warps. The fix is more overlap: raise occupancy, add ILP, prefetch data, and pipeline the work. You can also use async copies inside the kernel and several CUDA streams to overlap copies with compute. Merge many tiny kernels with cooperative groups or kernel fusion when launch overhead dominates.
+
+A memory-bound kernel saturates DRAM bandwidth while the ALUs sit idle. The problem is not a stall. The memory pipe simply cannot supply more data each second. To fix it, raise arithmetic intensity. Use tiling to reuse data in shared memory, fuse kernels to avoid extra round trips, use the caches (L1 and texture), and reduce precision to move fewer bytes. Make sure accesses are coalesced and avoid bank conflicts.
+
+A compute-bound kernel is limited by its arithmetic pipes, such as CUDA cores and Tensor Cores. Use more ILP per thread through overlapping independent instructions, loop unrolling, and software pipelining. Reduce dependencies and fuse work where it helps. If the kernel is at the compute roof, lower precision can give more speed, moving from FP32 to FP16, then FP8, then FP4.
+
+Blackwell adds specialized hardware for this. Its Tensor Cores expose fifth-generation MMA instructions in PTX as `tcgen05.mma`, with matching loads and stores such as `tcgen05.ld` and `tcgen05.st`. The Tensor Cores accelerate microscaling formats, including MXFP8, MXFP4, and NVIDIA's NVFP4. They also support block-scaled matrix multiplies, which libraries pick automatically when scale metadata is present. TMEM and TMA support these fast data paths.
+
+For an underutilized GPU, make sure the grid is large enough to keep every SM busy. A common mistake is to launch one thread per element, even though each thread does only a little work. Sometimes you need several passes, or more threads per element, to fill the device.
+
+Work through the regimes in order, then verify each change. After a fix, profile again and confirm that the targeted stall or metric improved. Memory stalls should drop after tiling, and achieved occupancy should rise after you tune the block size. Also watch total runtime, because one bottleneck can hide another.
+
+Keep correctness in view as you go. Test each lower-precision or new parallel version against a reference result, with assertions or numeric comparisons. Compare results with an FP32 baseline. Techniques such as FP16 and even FP8 are usually validated to have a negligible accuracy effect on AI models, but confirm that for your model.
 
 ---
 
@@ -185,6 +249,56 @@ In PyTorch workloads, you rarely set thread block bounds by hand. Instead, enabl
 
 **Use `__launch_bounds__` rather than file-wide `-maxrregcount` when tuning register-limited kernels.** Stop pushing occupancy higher once Eligible Warps per Cycle stays at or above four.
 
+### 2.3 Reading achieved occupancy and its limiters
+
+Theoretical occupancy is the ceiling set by the hardware and the kernel's resources. Achieved occupancy is what the profiler measures while the kernel runs. It is the average share of warp slots that were filled on each SM. If a kernel's achieved occupancy is far below its theoretical value, the launch is probably too small to keep the SMs full.
+
+Nsight Compute also names the resource that limits the theoretical occupancy. `Limited by max registers per thread` means register usage stops more warps from being scheduled on each SM. `Limited by shared memory per block` means the shared memory each block allocates is the bottleneck. `Limited by thread count` means the launch configuration, meaning the grid or block size, did not request enough threads to fill the GPU.
+
+Each limiter points to a different fix. For registers, use fewer live variables or a `__launch_bounds__` hint so more blocks fit. For shared memory, use smaller tiles and store only what the kernel needs. For thread count, launch more blocks or larger grids.
+
+Higher occupancy is not always faster. Very low occupancy, around 10 to 20 percent, hurts performance because too few warps can hide latency. Pushing occupancy to 100 percent does not always help, because memory bandwidth and instruction dependencies can become the limit instead. You should check other hardware counters before you chase a higher number.
+
+Nsight Compute reports several of these counters: achieved memory bandwidth in GB/s, achieved FLOPS in TFLOPS, instructions per cycle, issue-slot utilization, and other resource statistics. These show how close the kernel runs to the physical limits. If ALU utilization is low while memory throughput is at 95 percent of peak, the kernel is memory bandwidth bound. If ALU utilization is near its maximum and memory throughput stays modest, the kernel is compute bound.
+
+A compute-bound kernel gains speed only by raising arithmetic throughput. The usual route is lower-precision types, such as FP16, FP8, or FP4, running on Tensor Cores. If both ALU utilization and memory throughput are low, look for long-latency operations, synchronization overhead, low ILP, or too little parallel work.
+
+### 2.4 Comparing throughput with the hardware peaks
+
+The Roofline model puts this comparison in one picture. It plots a kernel's achieved FLOPS against its arithmetic intensity, which is FLOPS per byte moved. The roofline has a compute roof, the highest FLOPS the GPU can sustain, and a memory roof, the highest bandwidth it can deliver.
+
+If your kernel's FLOP per byte ratio is below the hardware's compute-to-memory ratio, you are memory bound. You cannot supply data fast enough. If the ratio is high but the FLOPS stay far below peak, the kernel is likely latency bound or short on ILP. Each new GPU generation raises bandwidth modestly while compute grows much faster. Kernels therefore tend to become more memory bound over time.
+
+Compare two numbers in every review. Put your kernel's memory throughput next to the peak memory bandwidth. Then put its compute throughput next to the peak FLOPS. Those two comparisons show whether the next change should target memory access, compute work, or parallelism.
+
+Nsight Compute reports the achieved GB/s of a kernel. If the kernel reaches near-peak memory bandwidth, more arithmetic will not help. You must raise arithmetic intensity by moving less data per operation. Reduced precision with Tensor Cores, concurrency that hides more latency, and kernel fusion all cut the size of the intermediate data that moves through global memory. A kernel that reaches about 80 percent or more of peak bandwidth is likely memory bound, because little headroom is left.
+
+Blackwell changes this picture. It has a large 126 MB L2 cache. Its two dies connect through a 10 TB/s NV-HBI link, so they act as one for memory access. Many kernels that were memory bound on older GPUs may use the cache well on Blackwell. Use the memory chart in Nsight Compute to compare L2 traffic with DRAM traffic. A high L2 hit rate can ease a global memory bottleneck, which can leave the kernel limited by compute. On Blackwell, you can also control L2 data persistence to keep a critical working set resident.
+
+Low achieved FLOPS often come from low occupancy or from stalls inside instructions. If only 30 percent of warps are active, the kernel sits far below the compute roof. Check the Occupancy section and Source Counters in Nsight Compute. Launch enough threads to fill the GPU, up to the resident warp limit per SM, which is 64 warps on many data-center parts. Achieved occupancy is measured per SM, because only warps on the same SM share resources and hide each other's latency.
+
+Also check instruction issue efficiency. Blackwell has many SMs, so a small shortfall in each kernel adds up to a large loss across the device. The dual-die packaging does not, by itself, raise the per-SM issue rate.
+
+If FLOPS are moderate to high and memory throughput is low, the kernel is mostly compute focused but held back by instruction dependencies. Check the Exec Dependency stall share to confirm. If compute throughput is near peak, the kernel is truly compute bound. At that point the memory access pattern is already tuned, or the kernel already uses lower-precision Tensor Cores.
+
+Sustained near-peak compute can also hit the power limits of the GPU. The card then lowers its clocks to stay healthy, which can look like a kernel regression. Monitor the enforced power limit and any `HW Slowdown` flags during a run with the `nvidia-smi` query in Section 5. For scripts, NVML provides `nvmlDeviceGetPowerUsage()` and `nvmlDeviceGetEnforcedPowerLimit()` in CUDA C++, with equivalent Python APIs.
+
+Use all of these signals together. Look at occupancy, warp stall reasons, memory throughput, and compute throughput at the same time. A healthy kernel shows high occupancy, high warp efficiency, and balanced use of the execution units, including Tensor Cores.
+
+### 2.5 Block size, register pressure, and the launch configuration
+
+Block size can limit occupancy on its own. A very large block, such as 1,024 threads, can use so many registers or so much shared memory that only one block fits on an SM. A moderate block of 128 to 256 threads lets several blocks reside on the same SM at once. Smaller blocks use fewer resources each, so more of them can run in parallel.
+
+Use the Nsight Compute occupancy calculator and the CUDA Occupancy API to test different launch shapes. The calculator suggests configurations for the highest theoretical occupancy. In practice, the fastest setting can sit a little below that theoretical peak. A lower occupancy can run faster when it means less register spilling or better memory coalescing. Always time the suggested `bestBlockSize` before you adopt it.
+
+Some kernels need more threads simply because they launch too little work. If you launch only 20 warps per SM and the GPU supports 64, a larger grid or more threads per block can raise occupancy. Launch at least as many blocks as there are SMs, and usually many more, because blocks run in parallel on each SM. If SM Active Cycles stay low, scale up the workload or the batch size.
+
+Register pressure is the next limit to watch. Each thread holds registers, and a kernel with too many live values forces the compiler to cut the number of resident warps. Unrolling too far makes this worse. When Nsight Compute shows `Limited by Registers`, dial back the unrolling, reduce the number of independent accumulators, or relax the launch bounds. Lowering the minimum blocks per SM, or raising the maximum threads per block, lets each block use more registers without spilling.
+
+The compiler usually makes good choices, so start there. Reach for `__launch_bounds__` and the occupancy API when you know the kernel can trade per-thread resources for more active warps. Those tools help when heavy threads leave the SMs underoccupied.
+
+Occupancy has diminishing returns. Moving from 10 percent to 50 percent achieved occupancy on a memory-bound kernel can give a large boost, because the warps now cover the latency. Moving from 50 percent to 100 percent often adds little, since cache misses or bandwidth saturation take over. Around 60 to 70 percent, it usually pays more to improve memory locality, raise ILP, and use shared memory and registers as caches.
+
 ---
 
 ## 3. Improving Warp Execution Efficiency: Branch Divergence and Predication
@@ -236,6 +350,65 @@ Fourth, sort or partition heterogeneous data on the host or in a preprocessing p
 
 **Replace short conditional assignments with predicated ternary selects or `torch.maximum`.** When a kernel must execute multiple heavy paths, organize branches by warp identifier so all 32 lanes in a warp follow the same branch.
 
+### 3.3 Warp intrinsics for work inside one warp
+
+Sometimes the threads of one warp must share data, for example to add up a reduction. You can exchange values directly through registers with warp shuffle intrinsics, `__shfl_sync` and `__shfl_down_sync`. The other option is to stage the values in shared memory and call `__syncthreads()`. That path adds extra L1 and L2 traffic and needs a full-block barrier, so it slows the kernel down.
+
+A shuffle moves data only between registers. It also synchronizes the 32 lanes of a warp at each instruction, and it adds only a few clock cycles of latency. For purely intrawarp work, shuffles are almost always the fastest choice. The warp basics earlier in Part 10 show full reduction and prefix-sum examples.
+
+If the cooperation spans several warps, shuffles are not enough. You still need a block-level or grid-level barrier, such as `__syncthreads()`, or cooperative groups. In short, reach for `__shfl_sync` and its relatives when threads in the same warp must coordinate. Use block-level shared memory and `__syncthreads()` only when the cooperation truly crosses warp boundaries.
+
+### 3.4 Measuring divergence and the payoff from fixing it
+
+Nsight Compute's Source Counters and Warp State statistics show divergent warps. Look for a high Branch Divergence metric. Poorly coalesced loads also show up, with many replay events or L2 cache misses. The profiler can flag shared-memory bank conflicts and Tensor Core pipeline stalls too. A high share of `memory_throttle` stalls can mean the kernel lacks memory-level parallelism. Try more independent memory accesses in flight, or asynchronous copies such as `cp.async` and the CUDA Pipeline API, to hide latency.
+
+Low warp execution efficiency is the main symptom of divergence. This metric is the average percentage of active threads in a warp. An efficiency of 30 percent means that, on average, only 30 percent of the threads do useful work at any moment. The rest sit idle because of divergence.
+
+A divergent kernel also shows a high share of predicated-off instructions. These are instructions the hardware fetches and issues, but they do no work because their lane is masked off. The dynamic instruction count also looks inflated compared with the data you processed. Together, these two numbers show that each warp walks down every side of a conditional, one after another.
+
+Divergence is easy to spot in source code. Any per-thread condition, such as a threshold check, a sparse-data loop, or a data-dependent filter, can trigger this serial pattern. To reclaim the lost time, eliminate or flatten the branch. You can make the condition uniform across the warp, pull it out of a tight loop, or replace it with arithmetic or a lookup table.
+
+Divergence often gives a modest gain. Warp-level fixes like these commonly deliver speedups of about 5 to 30 percent, which is small next to a change in the algorithm. They still matter in highly tuned code, where every cycle counts. A speedup of 1.1 to 1.3 times is common in a tight kernel. These fixes also work well with occupancy and memory-access tuning.
+
+When a kernel contains several divergence points, or each divergent branch carries heavy work, removing those branches can compound the gain. In the ideal 50/50 split, removing the divergent branch can nearly double throughput, up to about 2 times. Each eliminated heavy branch can add its own gain.
+
+Predication is not free, though. Some threads still compute values whose results are never used. If each branch does substantial work, computing both sides for every thread can cost more than mild divergence. Benchmark the branch version and the predicated version, and compare their warp execution efficiency in Nsight Compute. If efficiency is low and each branch is light, predication usually wins. If one branch is heavy, a little divergence or a separate kernel may be the better choice.
+
+### 3.5 Restructuring conditions and splitting kernels
+
+The best fix is to reorganize the data so each warp follows one path. Move the divergent condition outside the inner loop when you can, or into a separate kernel launch. You can also sort or group the data, so each warp handles similar cases. Divergence only affects threads within one warp, so threads in different warps never stall each other on a branch.
+
+Take an array where negative values need different work than nonnegative values. A naive kernel puts an `if (x < 0)` check inside the loop, and every warp that mixes the two signs diverges. A better approach partitions the data first. One kernel handles all the negatives, and another handles the nonnegatives. Aligning the data with warp boundaries keeps most warps on a single path.
+
+Another option is to split the work into separate kernel launches, one for the `if` case and one for the `else` case. A prefix sum or stream compaction can distribute the threads to the right kernel. This removes the divergence, but it adds launches and extra logic that moves the data around. The trade is worth it only when divergence is a major cost and both sides are large in instruction count.
+
+You can also rewrite a condition so it is warp-unanimous, meaning all 32 threads of a warp agree on it. A common trick uses the warp index. Compute `int warpId = threadIdx.x / 32;`, and then let half the warps run task A and the other half run task B. Every warp still evaluates the check, but all its lanes agree, so no warp splits. This works well when you can divide the work into coarse blocks of 32 threads.
+
+Warp-vote tools help too. Intrinsics such as `__ballot_sync`, `__any_sync`, and `__all_sync` let a warp decide together which lanes need special work. Cooperative groups offer the same votes through warp ballot, any, and all calls. The warp can then compact that work into one or a few lanes, instead of branching all 32. This can shift load imbalance onto a few lanes, so profile the result before you keep it.
+
+### 3.6 Divergence in PyTorch code and fused kernels
+
+PyTorch does not expose warp intrinsics, so you cannot steer warp execution from Python directly. You still benefit, because PyTorch's own CUDA kernels use warp-level tricks. For example, `torch.sum(x, dim=0)` often uses warp reductions when the reduced dimension is small, within about 32 elements. Each warp then adds up its values with shuffles, without divergence or shared memory. The library does this for you.
+
+If you write a custom CUDA kernel as a PyTorch extension, use the same warp-level ideas in device code. For a warp-wide sum or an exchange between threads, prefer `__shfl_sync` over a shared-memory approach. Watch for per-element `if` statements as well. Express the condition as a tensor operation, such as `torch.where` on the whole tensor, so the library can handle it in a vectorized, warp-friendly way.
+
+Fusion helps as well. When several elementwise operations run in one fused kernel, each warp does more useful work in a single pass. Fusion does not remove a divergence that is part of the algorithm. It does spread that overhead over more computation. For example, a ReLU followed by an `abs()` can run in one fused kernel, so the branch cost is shared across both operations.
+
+```python
+# threshold_op.py
+import torch
+
+@torch.compile()
+def threshold_op(X):
+    return torch.maximum(X, torch.zeros_like(X))
+
+X = torch.randn(N, device='cuda')
+Y = threshold_op(X)
+torch.cuda.synchronize()
+```
+
+The compiler fuses these pointwise operations into kernels that behave much like the hand-written predicated version. It does not guarantee the best occupancy or ILP, so profile the result. In general, use built-in tensor operations instead of explicit Python loops with per-element conditionals.
+
 ---
 
 ## 4. Exposing Instruction-Level Parallelism and Blackwell Dual-Issue Rules
@@ -276,6 +449,53 @@ First, understand Blackwell's unified integer and floating-point core design. On
 Second, balance loop unrolling against register pressure. When `#pragma unroll` and ILP restructuring succeed, Nsight Compute shows Execution Dependency stalls dropping and per-scheduler Instructions Per Cycle rising from 1.0 to 1.8 instructions per cycle. However, keeping four or eight independent loads and accumulators live at the same time consumes extra registers per thread. Pushing ILP beyond four-way rarely improves speed and can drop occupancy or trigger Local Memory spills, so always verify in Nsight Compute that register limits were not exceeded.
 
 **Expose two-to-four-way ILP per thread by issuing independent loads and math operations back-to-back.** Pair arithmetic instructions with memory load and store instructions to exploit dual-issue on Blackwell warp schedulers.
+
+### 4.3 Writing code that exposes ILP
+
+Most ILP comes from the way you write the loop. The goal is to issue several independent operations per thread before you need any one of their results. Two patterns cover most cases. The first is unrolling a small loop with separate accumulators. The second is interleaving operations on different data.
+
+Consider a loop that multiplies four values and adds them into one sum. Each step depends on the sum of the step before, and each load waits for its own multiply. Unrolling the loop changes that. The four loads are issued first, and each multiply can start as soon as its load returns. The overlap hides the memory latency.
+
+```cpp
+float sum = 0.0f;
+for (int k = 0; k < 4; ++k) {
+    float a = A[idx * 4 + k];
+    sum += a * w[k];   // dependent on load a
+}
+```
+
+```cpp
+float a0 = A[idx * 4 + 0];
+float a1 = A[idx * 4 + 1];
+float a2 = A[idx * 4 + 2];
+float a3 = A[idx * 4 + 3];
+float sum0 = a0 * w[0];
+float sum1 = a1 * w[1];
+float sum2 = a2 * w[2];
+float sum3 = a3 * w[3];
+float sum = sum0 + sum1 + sum2 + sum3;
+```
+
+Interleaving works the same way. When two results do not depend on each other, write them as separate statements. The first multiply can start as soon as its input is ready, and the second can overlap with it. Keep the execution units busy by not letting one dependent instruction block the next independent one.
+
+```cpp
+float x = A[idx];
+float y = B[idx];
+float u = x * c;   // can start as soon as x is ready
+float v = y * d;   // can start as soon as y is ready, overlapping with u
+```
+
+Compiler hints help the compiler build these chains. `#pragma unroll` on a short loop gives it more independent work to schedule. If the unrolled code needs more registers, you can raise the limit with `-maxrregcount`. More registers per thread means more ILP and fewer threads, so occupancy trades against ILP.
+
+Be careful with very large unrolls. Excessive unrolling can bloat the code size, which saturates instruction fetch and decode. Watch the instruction-fetch and issue stall reasons in Nsight Compute after each change.
+
+A common misunderstanding is that more ILP means more work. It does not. ILP does not add operations. It keeps the existing operations busy while others wait on memory or on earlier results. ILP only helps when the issue slots sit idle because of latency. If a tight loop already uses every execution unit on every cycle, more ILP will not speed it up. ILP and occupancy also work together. Occupancy gives the scheduler many warps to switch to, and ILP lets one warp issue several independent instructions. A CPU with out-of-order execution follows the same idea, but here the compiler sets the schedule.
+
+Blackwell schedulers can issue more than one instruction per cycle. Each SM has four warp schedulers, and each scheduler can dispatch up to two independent instructions in a cycle. This is called dual issue. Two instructions do not need to fire in the same cycle to overlap, though. While one long load is pending, the warp can issue a different independent instruction on the next cycle. By the time the data returns, the arithmetic has already made progress.
+
+The register file is large enough to support this. Each SM has 256 KB of registers, which is 64K 32-bit registers. That capacity lets ILP run without spilling, as long as the unrolled code does not exceed the per-thread limit.
+
+Check the result in Nsight Compute. A successful ILP change lowers the Exec Dependency stall share. It also raises the instructions per cycle per warp scheduler. On this path, the metric can rise from 1.0 to about 1.8 instructions per cycle. The exact value depends on the instruction mix and the scheduler limits, so compare before and after on your own kernel.
 
 ---
 

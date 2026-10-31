@@ -99,6 +99,18 @@ Walking the 48U rack from bottom to top in Base Command Manager's `rack display`
 
 ---
 
+### AI factories: many racks, one plan
+
+An NVL72 is a complete supercomputer on its own, but it is also a building block. Large AI clusters are built by joining many racks together. NVIDIA uses the term AI factory for a large AI data center made of such racks. Think of each rack as one production line in a plant. The plant only works when the lines are connected well.
+
+Inside a rack, NVLink carries all the GPU-to-GPU traffic. Outside the rack, the traffic moves onto ordinary high-speed networking gear. An 8-rack NVL72 cluster with 576 GPUs is one NVLink 5 domain. InfiniBand or Ethernet then links that domain to other domains or to storage. Cross-rack links are slower than the links inside a rack, so keep the chattiest work inside one rack when you can.
+
+### Preintegrated rack appliance
+
+Because the NVL72 is so complex, NVIDIA delivers it as a preintegrated rack appliance in a single cabinet. The rack arrives with all 18 compute nodes, all 9 NVSwitch units, the internal NVLink cabling, power distribution, and the cooling system already assembled. Nobody has to cable 72 GPUs by hand. The NVIDIA Base Command Manager cluster-management software is included, along with SLURM (Simple Linux Utility for Resource Management) and Kubernetes for job scheduling.
+
+On site, the work is short. You connect the rack to facility power, attach the water cooling interfaces, connect the InfiniBand cables to your network, and power it on. The rack is built and validated before it ships. That is why an organization can treat it as one unit that is ready when it arrives.
+
 ## 2. Dissecting the Compute Tray, Switch Tray, and Power Shelves
 
 In a traditional air-cooled rack, technicians weave power cords, InfiniBand fibers, and Ethernet cables together behind the servers. In a high-density liquid-cooled NVL72 rack, the rear of the cabinet is packed solid with water manifolds, high-current DC busbars, and the blind-mate NVLink copper cartridge. If network ports or NVMe drives lived on the rear panel, technicians could never reach them without draining coolant or unseating the backplane.
@@ -159,6 +171,30 @@ When 72 GPUs jump from idle to full load in microseconds, drawing 130 kW to 150 
 :::
 
 ---
+
+### Power draw and facility feeds
+
+A fully loaded NVL72 can draw up to about 130 kW under maximum load. That is more than twice the 50–60 kW of NVIDIA's previous generation AI rack. A standard wall feed cannot carry that load. Data centers usually provision two fully independent power feeds, and each one is sized to carry the entire rack. If one feed goes offline, the other one carries the full 130 kW without tripping a breaker.
+
+Inside the rack, power is distributed to each 1U compute node, where AC is converted to DC for the local electronics. Each node holds two Grace Blackwell Superchips, which together draw on the order of 6 kW. Eighteen nodes draw about 110 kW. The NVSwitch trays, network switches, air cooling, and water cooling pumps add about 20 kW, for a total of 130 kW.
+
+Power transients need attention too. When 72 GPUs ramp from idle to full power, the rack can pull tens of kW within milliseconds. Good designs add capacitors or sequencing to avoid large voltage drops. A system might also stagger GPU boost clocks by tiny intervals so the surge is smoothed out. Eight racks together, at 576 GPUs, would draw nearly 1 MW.
+
+### Liquid cooling loop
+
+Air cannot cool 130 kW in one rack. Each of the 72 GPUs dissipates about 1,200 W. Moving that much heat with air would need hurricane-like airflow, and the result would be loud, inefficient, and hot. Water carries far more heat per unit of flow, so liquid cooling is the practical choice at this density.
+
+The NVL72 is fully liquid cooled. Each Grace Blackwell Superchip module and each NVSwitch chip has a cold plate on it. A cold plate is a metal block with internal tubing, and coolant flows through the tubing to carry heat away. Hoses, manifolds, and pumps link all the cold plates into one loop. Each node usually has quick-disconnect couplings, so you can slide a server out without spilling coolant.
+
+The rack connects to the facility's chilled water system. A Coolant Distribution Unit (CDU) moves heat from the rack's internal loop to the data center's water loop. Facility water is often supplied at 20–30°C. Newer designs can run warm-water cooling, with water entering at 30°C and leaving at 45°C. That water can be cooled by evaporative towers without active refrigeration.
+
+Coolant flow has to match the heat load. A rough estimate is 150–200 liters per minute, with a 10–12°C rise in water temperature, to remove about 130 kW. With this design, GPU temperatures stay in the 50–70°C range under load. Cooler chips throttle less and leak less power. The system also watches coolant temperature, pressure, and leaks. If a drip or pressure-loss sensor fires, the system can shut down or isolate that section. Self-sealing connections and a secondary containment tray reduce the risk further.
+
+### Rack controller and rack weight
+
+NVIDIA adds a rack management controller. It oversees the coolant pumps and valve positions, tracks power use, and monitors the status of every node. Administrators use it to update firmware across all nodes or to shut the system down safely.
+
+The weight matters as much as the cooling. A filled NVL72, with coolant, weighs about 3,000 lbs (1.3–1.4 metric tons). That is roughly the weight of a small car, packed onto a few square feet of floor. Raised floors must be checked against the load rating in pounds per square foot. High-density racks often sit on reinforced slabs or get extra struts. Moving one needs forklifts or similar equipment.
 
 ## 3. The 1-stage NVLink 5 crossbar math, NVLink SHARP, and MoE scaling
 
@@ -224,6 +260,14 @@ Consider the real-world benchmark from *AI Systems Performance Engineering* Chap
 
 ---
 
+### Off-rack traffic: NICs, DPUs and optics
+
+Traffic leaving the rack needs a different kind of hardware. Each compute node carries high-speed network interface cards and a Data Processing Unit (DPU). A DPU takes networking, storage, security, and management work off the host CPU. In the NVL72 design, the BlueField-3 DPU handles line-rate packet processing, RDMA, and NVMe over Fabrics (NVMe-oF), which extends NVMe storage across a network.
+
+The DPU matters most when data streams in from storage. It can move data straight from the network into GPU memory, while the Grace CPU keeps doing preprocessing. It also isolates traffic for different jobs and users, so it acts as a firewall and virtual switch on the node. That makes it useful for secure multitenancy.
+
+Looking ahead, co-packaged optics (CPO) is the next step for the network. NVIDIA is adding silicon photonics to its Quantum-X800 InfiniBand and Spectrum-X800 Ethernet platforms, which run at 800 Gb/s. With CPO, the optical transmitters sit right next to the switch silicon. The electrical path becomes much shorter, so links carry more bandwidth and use less power. That is how hundreds or thousands of racks can act as one fabric.
+
 ## 4. Comparing DGX GB200 NVL72 versus DGX GB300 NVL72
 
 Data center architects planning multi-rack deployments must decide between GB200 NVL72 and DGX GB300 NVL72 racks while sizing floor loading, cooling loops, and spine switches. The DGX GB300 NVL72 is powered by Grace CPUs and Blackwell Ultra B300 GPUs. It serves as a drop-in rack-scale evolution of the GB200 NVL72 with the exact same mechanical tray layout and NVLink 5 backplane. At the same time, it expands HBM3e capacity and FP4 compute throughput while doubling East-West InfiniBand bandwidth.
@@ -282,6 +326,35 @@ Both staging folders sit under `/cm/local/apps/cmd/etc/htdocs/bios/firmware/` an
 :::
 
 ---
+
+### Monitoring utilization and power in practice
+
+A rack this powerful only pays off if you keep it busy. NVIDIA's Data Center GPU Manager (DCGM) tracks per-GPU metrics such as GPU utilization, memory usage, temperature, and NVLink throughput. During a training run, you want GPUs near 100% utilization most of the time. If they sit at 50%, something is idle half the time. The cause might be a data loading bottleneck or a synchronization problem.
+
+Watch the NVLink counters too. If the links saturate often, communication is probably the limit. The DPUs and NICs expose their own statistics, so you can confirm that storage links are not saturated during data reads. Power needs the same attention. At about 130 kW, a small misconfiguration wastes real money. Administrators can cap power or clocks when a job does not need full speed. Dialing down clocks can save kilowatts over weeks of training while still meeting the throughput target.
+
+### Sharing the rack: scheduling and MIG
+
+Rarely does one job need all 72 GPUs. Several teams usually run experiments on different slices of the same rack. A cluster scheduler such as SLURM or Kubernetes, with NVIDIA's plugins, can assign 8 GPUs to one user, 16 to another, and 48 to a third, all inside one rack.
+
+Multi-Instance GPU (MIG) goes one level deeper. It splits a single physical GPU into smaller GPUs, partitioned in hardware. A Blackwell GPU with 180 GB of usable memory can be cut into smaller pieces that each run a small inference job at the same time. Each Blackwell GPU supports up to seven fully isolated MIG instances, each with dedicated memory and SMs. MIG sizes are fixed by product generation.
+
+MIG suits inference well. Use it to serve many models on one GPU. Combined with the DPU's firewall role, it lets separate departments, or even outside clients, share one system safely. The partitions do not interfere with one another, much like a cloud provider sharing one big server among customers.
+
+### Utilization, chargeback and ROI
+
+An NVL72 is a multimillion-dollar asset, and it can use tens of thousands of dollars of electricity per month. The useful measure is goodput, the work that actually gets done. An idle rack wastes both capital and running cost. Track the GPU hours used against the GPU hours available. If the rack is underused, consolidate workloads or offer the spare time to other teams.
+
+Some organizations use a chargeback model. Each internal team pays per GPU-hour from its own budget. That covers electricity and depreciation, and it makes people value the resource. Transparency of this kind keeps usage honest.
+
+Return on investment usually comes down to performance per dollar. Suppose you run 100 H100 GPUs today. Blackwell GPUs are more than twice as fast, or faster still with FP8 and FP4, so 50 of them might handle the same work. Even if each Blackwell costs more, buying half as many can be cost-neutral or better. The power picture improves too, from about 70 kW for the H100s to about 50 kW for the Blackwells. Over a year, that gap saves tens of thousands of dollars. Fewer servers also means less CPU, RAM, and networking overhead. In some cases the upgrade pays for itself in one to two years, especially if the hardware stays busy around the clock. The exact math depends on prices and usage, so run your own numbers.
+
+### Key takeaways for the NVL72
+
+- The NVL72 puts 72 GPUs in one rack, joined by NVLink and NVSwitch into one fabric.
+- It needs about 130 kW, two independent feeds, and liquid cooling with a CDU loop.
+- Keep traffic inside the rack. Use InfiniBand or Ethernet only to scale past one rack.
+- Its value depends on keeping GPUs busy, so monitor utilization and power together.
 
 ## Commands and configurations that matter
 

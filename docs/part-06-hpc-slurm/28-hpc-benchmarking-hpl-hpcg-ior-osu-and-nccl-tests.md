@@ -207,6 +207,26 @@ Keep the suite as a **regression test**: run a short version nightly or weekly a
 
 A good benchmark report states: the question; the system (hardware, firmware, software versions, topology, number of nodes); the command lines and configuration files; the environment variables; the number of runs and statistics (mean/median, spread, CI); the baseline or theoretical bound; observations of limiting resources (USE); anomalies and exclusions; raw data location; and conclusions with caveats. Present distributions (box plots) and scaling curves, not single numbers.
 
+### Remeasure after every change
+
+Change only one or two things at a time, and then measure. Otherwise you will not know which change helped. When scaling is good on the current configuration, write down the good metric values. Then aim to keep those values as you scale.
+
+### Remove hidden synchronization and tune the environment
+
+Unnecessary synchronization can quietly serialize your work. Remove `torch.cuda.synchronize()` calls and barriers that force everything to wait, because they can line up execution in the wrong order. The book covers this in its PyTorch chapter. If the environment needs tuning, set `NCCL_IGNORE_CPU_AFFINITY=1` when it helps. You can also pin CPU threads to a different topology.
+
+Small changes like these sometimes turn poor resource use into high use. It is not always easy, but it is worth trying. Measure after each change, as described above, so you can tell which one mattered.
+
+### Use the right tools for the job
+
+NCCL is built for scalable collective operations, such as all-reduce, which training uses heavily. NIXL targets high-throughput point-to-point and streaming transfers, which inference often needs. Use NIXL where token streaming dominates the workload. Prefer NCCL or NVSHMEM for bulk collective and symmetric-memory patterns.
+
+GPUDirect RDMA and GDS remove the host memory bounce buffer for network and storage I/O. The CPU still schedules and controls those transfers. Always use `DistributedDataParallel` over `DataParallel` for multi-GPU training. These libraries are heavily tuned, so use them instead of reinventing the wheel.
+
+### Document and educate
+
+Tuning often depends on tacit team knowledge, such as which environment variables are overridden or which library versions have bugs. Write these findings in the code or configuration file, where the next reader will see them. A note can be as simple as: in this cluster, setting `NCCL_SOCKET_NTHREADS=2` improved multinode throughput by 10%. Make this a standard practice, so the lesson survives staff changes.
+
 ## 6. Lab
 
 First, run the self-checking Python lab (`code/part06/bench_stats_lab.py`) locally. It runs `hpl_like()` and `triad()` from `code/part06/bench_stats.py` (verifying that the dense LU solve passes HPL's scaled residual check $< 16.0$), verifies the `nccl-tests` `algbw` and `busbw` formulas (`8 GiB` across `64` ranks in `0.60 s` $\to$ `algbw = 14.3 GB/s`, `busbw = 28.2 GB/s` for `AllReduce` and `14.1 GB/s` for `AllGather`), and checks `SP` Chapter 12's sanity-check math (`50,000 IOPS * 8 KB = 400,000 KB/s = 3.2 Gbps > 1 Gbps` limit) and Benchmark Paradox (`0.5^3 = 12.5%`):

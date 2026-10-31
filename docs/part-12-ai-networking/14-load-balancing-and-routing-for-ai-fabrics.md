@@ -308,6 +308,18 @@ flowchart LR
 | **3. Rail-Unified Design (`RUD`, `Fig. 8-11`)** | All `8` GPUs of a server connect to the same ToR leaf complex. Specific `GPU ID` (`GPU-id 0`) or `RoCEv2 QPair` is pinned to `fab-id black` across `128` servers. | `128 × GPU-id 0` across `128` servers allocated **`3 × 400 Gbps = 1.2 Tbps`** per leaf on logical fabric `black`. |
 | **4. Traffic-to-Fabric Color Mapping (`4` Options)** | (a) **Filter-Based Forwarding (`FBF`)** on ingress ports, source UDP ports, or `BTH QPairs`; (b) **On-box agent** with active probes; (c) **Central controller (`CPCE`)**; (d) **`EVPN-VXLAN` underlay-to-overlay correlation (`Fig. 8-14`)**. | `MAC-VRF-black` / `RT5-VRF-black` maps to `black` IP path (`spine1`); `MAC-VRF-gray` / `RT5-VRF-gray` maps to `gray` IP path (`spine2`). |
 
+### 3.5 Reading the DPF figures: shared pool, rail-optimized stripes, and rail-unified leaves
+
+Think of a plain Clos fabric as a shared parking lot. Every tenant drives on the same lanes, and nobody can reserve a spot. Figure 8-9 shows that shared pool. Two stripes sit at the top, and each stripe holds eight servers with eight graphics processing units each. Stripe 1 feeds leaf1 through leaf8, and stripe 2 feeds leaf9 through leaf16. All sixteen leaves connect to one pool, and eight spines connect to that pool as well.
+
+Figure 8-10 shows the same stripes with the rail-optimized layout. Each stripe holds tenant racks, such as tenant1 and tenant7, with tenant2 through tenant6 implied between them. Each rack connects to all eight leaves in its group, and every leaf meets all eight spines in a full mesh. The change is that a tenant's traffic now has defined rails to follow, instead of one shared heap.
+
+Figure 8-11 shows the rail-unified layout. Here the GPUs of one server are spread across leaves in pairs. The first server reaches leaf1 and leaf2, the second reaches leaf5 and leaf6, the third reaches leaf9 and leaf10, and the fourth reaches leaf13 and leaf14. Read this figure with the black fabric example in mind, because that is where the color mapping is shown.
+
+BGP DPF can help the ingress switch find paths to the egress router through different logical fabrics, such as the black fabric in Figure 8-11. That lets you map each traffic flow to the logical fabric that matches its SLA. The mapping works by coloring the underlay eBGP sessions and the transport routes. Start with the colors on the sessions, then check the routes that use them.
+
+Figure 8-12 shows three kinds of session on a link. A solid line is one session type. A solid line and a dashed line together mean two session types share the same link. A single dashed line is a regular session with no color. Coloring can also be set on the session itself, when the peering comes up, so one link can offer one color or several colored sessions at once.
+
 ---
 
 ## 4. Interior gateway protocols (`RIFT` and `IS-IS Flex Algo`), multi-tenancy, host BGP, and `SRv6 uSID`
@@ -391,6 +403,22 @@ Host-Level FRR BGP and SRv6 16-Bit uSID Carrier Math (ADC Ch. 8 Figs. 8-25..8-30
      * Remaining bits in 128-bit IPv6 Destination Address: (128 - 32) / 16 = 6 micro-SIDs (16-bit each), saving 72 bytes of SRH overhead
      * Carrier shift sequence: fc00:0a10:0005:0001:0000:: (ingress) -> fc00:0a10:0001:0000:0000:: (spine pops 0005) -> fc00:0a10:0000:0000:0000:: (egress leaf pops 0001)
 ```
+
+### 4.6 Reading the tenancy figures: dedicated servers, RT5 across rails, MIG, and combined tenancy
+
+The book's four multi-tenancy figures show sharing at increasing levels of detail. Figure 8-21 starts with whole servers given to one tenant. Figure 8-22 spreads tenants across two rails. Figure 8-23 looks inside one GPU server. Figure 8-24 puts the server and network levels together. Read them in that order, and each design choice makes more sense.
+
+In Figure 8-21, four server racks are labeled server1, server2, server31, and server32, with servers 3 through 30 implied between them. Each server has eight ports, and each port goes to one of eight leaves, leaf1 through leaf8. Every leaf receives one connection from each of the 32 servers, so it has 32 incoming connections. Tenant A owns server1 and server31, and tenant B owns server2 and server32.
+
+Figure 8-22 has five servers. Server1, server2, and server4 belong to tenant A, while server3 and server5 belong to tenant B. The leaves form two groups of eight, leaf1 through leaf16, and the spines are spine1 through spine8. Each GPU interface is labeled with an RT5 IP-VRF, such as RT5 IPVRF1 or RT5 IPVRF7. The tenant is defined at the ToR leaf, so traffic from server1 to server2 for tenant A rides an RT5 VXLAN tunnel. That tunnel is signaled by a BGP EVPN session and uses its own routing VNI.
+
+Reusing one IP subnet across several leaves needs a little more work. The book's approach pairs MAC-VRF with RT5 EVPN, so each tenant needs only eight subnets across all the fabric rails. Lookups then follow the longest prefix match, based on RT5 host advertisements or MAC-IP RT2 routes when symmetric inter-IRB routing is used.
+
+Figure 8-23 shows one NVIDIA H100 server with MIG enabled. MIG is a software and hardware feature that splits one GPU into up to seven separate GPU instances for CUDA applications. Each instance can be mapped to its own VLAN, so the figure shows instances 1 and 7 on VLAN 1 and VLAN 7. The link from the server to leaf1 and to leaf8 carries VLAN 1 through 7.
+
+Inside a server, you can also use vGPU and schedule work across servers with NCCL or RCCL. Figure 8-24 combines both layers. Tenant1 maps to MAC VRF 1 and a type 5 IP VRF, and tenant7 maps to MAC VRF 7 and its own IP VRF. Server1 connects to GPU instance 1 on VLAN 1 and to GPU instance 7 on VLAN 7. Server32 shows the same pattern.
+
+Every leaf then runs seven MAC-VRF instances and seven EVPN IP-VRF instances, one per tenant. A tenant can use every resource in one server, but its traffic between servers stays isolated. The book's example is tenant 1 and tenant 7, two different organizations. The operator must keep their learning jobs apart at the leaf level, both inside a rail and between rails.
 
 ---
 

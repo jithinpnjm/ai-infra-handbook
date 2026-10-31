@@ -158,6 +158,158 @@ The read side in brief (Part 13 expands):
 - **In-memory preloading, GPU graph fusion, and systematic tuning (`ASP` Chapter 5):** When a dataset (or hot subset) fits inside host RAM or unified CPU+GPU memory (such as on a Grace Blackwell Superchip), preload it into memory at startup as an ultrafast cache. Alongside NVIDIA `DALI`, fuse GPU-friendly preprocessing operations directly into TorchVision, TensorRT, or custom OpenAI Triton kernels, remove unnecessary `torch.cuda.synchronize()` barriers, use `NCCL` for collective training communication versus **NIXL** for high-throughput point-to-point/streaming inference transfers, change only one or two parameters at a time and remeasure after every change, and document environment variables and known library quirks directly in the repository config.
 - **Determinism**: record shard order and seed in the checkpoint manifest.
 
+### Sizing storage for every GPU in the job
+
+The problem is that storage has to keep up with all the GPUs at once, not with one GPU at a time. At ultra scale, the storage system must deliver steady throughput to thousands, or even millions, of GPUs that may run for months. When storage falls behind, the GPUs starve and sit idle, and that wastes the expensive part of the cluster.
+
+Placement helps a lot. Colocating NVMe SSDs inside a rack, or using NVMe over Fabrics (NVMe-oF) with rack-local switch topologies, cuts network hops and keeps performance consistent. If your data lives on NFS or cloud object storage such as Amazon S3, add up the read bandwidth of every compute node. Use the same arithmetic as above: each GPU needs 200 MB/s of training data, so 8 GPUs need about 1.6 GB/s in total.
+
+The numbers grow quickly at rack scale. A GB200 or GB300 NVL72 rack holds 72 Blackwell GPUs in one NVLink domain. If each GPU needs 200 MB/s, that rack can require 14–20 GB/s of aggregate storage throughput. Heavier media or multimodal samples push demand higher still. Measure your bytes per sample and samples per second before you buy storage.
+
+Two common fixes close the gap. The first is faster local storage, such as NVMe SSDs in the same rack or an NVMe-oF topology. The second is a parallel filesystem such as Lustre or GPFS that caches your data on local SSDs. Either way, provision several data loading threads to keep the pipe full. Watch out for the Python GIL, which is one reason loaders often use separate processes instead of threads.
+
+Place data as close to the compute nodes as you can. Close can mean the same physical node, such as a local NVMe drive, or at least the same rack with a fast interconnect. For multinode training, shard the dataset so each node reads mostly from its own disk. With 100 TB of data and 10 nodes, you might presplit 10 TB to each node. That keeps the network free of repeated reads, especially when the dataset does not fit in RAM. PyTorch's `DistributedSampler` gives each process a unique slice of data per epoch, which fits this layout.
+
+### Sequential and random reads
+
+GPUs crunch data quickly, but they want it in large, contiguous chunks. Storage also reaches much higher throughput on large sequential reads than on small random ones. Arrange your dataset so reads stay sequential as much as possible. Think of a library where every book is in a separate box scattered across the building: finding each one costs more time than reading it.
+
+That is why millions of small image files hurt. They cause random seeks all over the disk. Pack the samples into a few large files instead, such as Arrow, TFRecord, or Parquet files, database files, or WebDataset tar files. Each big file then holds many samples in a row. Combining small files into large shards matters even more with faster GPUs, because small random reads become the bottleneck sooner. For object stores such as Amazon S3, combine small objects into larger ones ahead of time.
+
+Read size matters too. Reading in 1 MB chunks gives better throughput than reading in 4 KB chunks, because each read carries less overhead. Python's `open()` uses the OS read-ahead buffer to speed up sequential scans. Random reads gain little from bigger buffers, though. So batch your reads into larger contiguous chunks, or use a high-level dataset API such as `TFRecordDataset` or PyTorch's `IterableDataset` with `DataLoader` and a configurable prefetch size.
+
+If access must stay random, issue several reads in parallel. You can use threads that call `pread()`, or Linux asynchronous I/O such as `io_uring`. With preregistered buffers and polling, `io_uring` submits batches of I/O requests with little kernel overhead. That cuts the cost per system call, hides latency, and helps you reach high IOPS.
+
+Pick a filesystem built for large, concurrent I/O. XFS is common on Linux NVMe servers, and you should mount it with `noatime` so reads do not trigger costly access-time updates. For Amazon EFS, set the filesystem to Max I/O performance mode for the highest aggregate throughput. If you need steady bandwidth, switch from the default Bursting throughput mode to Provisioned throughput.
+
+### Workers, pinned memory, and overlap
+
+Frameworks such as PyTorch's `DataLoader` take a `num_workers` setting. Each worker fetches and preprocesses data in parallel, and the main process collects finished batches from a queue. Workers are usually separate processes, which avoids Python GIL problems. The right worker count comes from measurement. Too few workers leave the GPU idle, and too many fight over CPU cores and I/O bandwidth.
+
+Monitor CPU usage and disk throughput while you tune. Ideally the disk runs near full throughput and the CPU still has some headroom. A CPU with a very high core count, such as the 72-core NVIDIA Grace CPU in GB200 and GB300 Superchips, can often run more loader workers. Expect diminishing returns, though, as I/O contention grows.
+
+The complete example below shows the pattern. The dataset returns already-batched tensors, and the loader pins memory and prefetches for each worker. The copy runs on its own CUDA stream, so the next batch moves to the GPU while the current batch computes. The `model` and `device` names come from your training script.
+
+```python
+import torch
+from torch.utils.data import Dataset, DataLoader
+
+
+class Synthetic(Dataset):
+    def __init__(self, n, shape):
+        self.n, self.shape = n, shape
+
+    def __len__(self):
+        return self.n
+
+    def __getitem__(self, i):
+        # Cheap CPU-side work; replace with real parse/decode.
+        return torch.ones(self.shape, dtype=torch.float32)
+
+
+B, C, H, W = 32, 3, 224, 224
+dataset = Synthetic(n=100_000, shape=(B, C, H, W))
+# Each of the 8 workers keeps up to 4 batches ready in pinned CPU memory.
+loader = DataLoader(
+    dataset,
+    batch_size=B,
+    num_workers=8,
+    pin_memory=True,
+    persistent_workers=True,
+    prefetch_factor=4,
+)
+
+copy_stream = torch.cuda.Stream()
+compute_stream = torch.cuda.current_stream()
+for batch in loader:
+    with torch.cuda.stream(copy_stream):
+        batch_gpu = batch.to(device, non_blocking=True)
+    # Make sure the pending host-to-device copy finishes before compute uses it.
+    with torch.cuda.stream(compute_stream):
+        torch.cuda.current_stream().wait_stream(copy_stream)
+        outputs = model(batch_gpu)
+```
+
+Read the example as a timeline. While the GPU works on batch N, the loader is already preparing and copying batch N+1. Pinned memory is what makes that copy fast and asynchronous. Without it, the system would pin memory on the fly for every transfer, which adds latency. The ideal steady state has the GPU starting each batch the moment the previous one ends.
+
+The goal is to overlap data preparation with GPU work in general. The CPU should finish batch N+2 while the GPU runs batch N+1. Most frameworks do this by default when you use multiple workers, but you should still check it. If the overlap is missing, the GPU goes idle at the start of every iteration while it waits for data.
+
+Persistent workers help when you loop over the same dataset many times, especially if each epoch is short. Setting `persistent_workers=True` keeps the workers alive so they start prefetching the next epoch at once. That skips the cost of spawning and tearing down processes at each epoch boundary. It also helps when worker startup is slow because of imports or file opening.
+
+### Finding a hidden loader bottleneck
+
+A common pitfall is a hidden bottleneck in the input pipeline. Debug logging and expensive CPU transforms are easy to add, and their cost may show up only under load. To catch this, time the DataLoader alone first. Measure how long it takes to produce 100 batches with all downstream GPU work turned off. Then compare that baseline with your target iteration time and with the GPU idle time you see in normal training.
+
+If the DataLoader alone is too slow, optimize the Python pipeline. Remove per-element logging, simplify transforms, or add more workers. If the gap between the isolated loader speed and the real-run loader speed is large, you are probably bound by host-to-device transfers or kernel-launch overhead.
+
+Be careful with the isolation test itself. Turning off GPU kernels also removes CPU-side kernel-launch overhead. As a result, the pure data-loading throughput often looks lower than what a real training run shows. The technique is still useful, as long as you keep that difference in mind.
+
+### Monitoring storage I/O
+
+Measurement comes before tuning. Monitoring the storage pipeline is like monitoring network traffic: use every tool you have. On Linux, start with `iostat`, `iotop`, `nvme-cli`, `perf`, and eBPF. Vendor utilities and dashboards show queues, latencies, read-ahead effects, and cache hit ratios. They also show whether local NVMe devices are busy and whether a NAS or object store link is saturated.
+
+On the GPU side, use Nsight Systems to trace I/O waits next to kernels. The `--trace=gds` option captures `cuFile` API activity on the timeline. To see `cuFile` events too, enable the GDS static tracepoints in `/etc/cufile.json`. Kernel-mode counters for NVMe peer-to-peer DMA paths are not exposed in Nsight Systems, and they may not be available on every GDS stack. NVIDIA's Data Center GPU Manager (DCGM) also reports useful GPU I/O statistics.
+
+Here is why this matters. Suppose your GPUs spend 30% of their time waiting for data. Then I/O limits your throughput. After tuning, the wait might fall to 5%, and the training steps per second rise in proportion, here by 6x. Small inefficiencies, such as a 5 ms latency or a buffer that is 10 MB too small, add up at scale. Keep every stage from disk to GPU memory measured.
+
+### GPUDirect Storage: what it changes and what it does not
+
+Without GDS, a read from an NVMe SSD into a GPU takes two hops. The data first goes from the SSD into CPU memory, and then a CUDA call copies it into GPU memory. GDS removes the first hop's extra copy, so the GPU can pull the data directly. GDS also reduces the CPU work each read needs.
+
+GPUDirect RDMA and GDS are related but different. GDS accelerates storage-to-GPU DMA, while GPUDirect RDMA accelerates network-to-GPU DMA. Neither one removes CPU orchestration, because the CPU still sets up the transfers. Both remove the host memory bounce buffer, which is the extra stop in CPU memory.
+
+Most of the attention goes to reads, and that is fair. Training is overwhelmingly read-heavy, so most GDS gains appear there. Checkpoint writes still need to be fast, though. For RDMA-accelerated writes, the filesystem must support RDMA writes for GDS. WekaFS is a well-known provider for ultrascale training, with GDS-aware plugins for reads and writes over RDMA. Other vendors, such as DDN, VAST, and Cloudian, also ship GDS-aware solutions.
+
+Alignment is the next rule. Use `O_DIRECT` when possible, because it enables direct DMA and bypasses the OS page cache. Recent GDS releases let `cuFile` also work with non-`O_DIRECT` file descriptors. Misalignment can then add extra copies or reduce performance. A filesystem that runs in user space through FUSE cannot give you a GDS path, since GDS needs kernel-level integration.
+
+Use a GDS-enabled kernel client if you need a true GDS path. Examples in the book include NVMe, NVMe-oF, BeeGFS, WekaFS, IBM Storage Scale, and VAST. The gain depends on the workload. If your CPU already handles the transfers easily, GDS may not change throughput much, but it still lowers CPU usage. If the CPU is saturated with `memcpy` calls, GDS helps a lot.
+
+As an example, consider a tiny batch size of 1 MB and a target of 1,000 batches per second. That is roughly 1,000 MB/s. Copying it with the CPU would consume a few cores. With GDS, the GPU pulls that data straight from disk and frees the CPU. The gap grows at higher rates and with thousands of GPUs.
+
+### DeepSeek's 3FS: storage built for random reads
+
+The problem is that AI workloads make a huge number of random reads. Traditional read caching helps little in that case, and it can even get in the way. DeepSeek built the open source Fire-Flyer File System (3FS) from scratch for this pattern. It skips caching and uses direct file I/O, so each request goes straight to the NVMe SSD.
+
+This is codesign, the same idea behind GDS. Storage is designed for AI rather than adapted to it afterward. 3FS keeps kernel page-cache work and host memory copies to a minimum, much like modern HPC filesystems do. Its four components are a cluster manager, a metadata service, a storage service, and a client. They connect over an RDMA-capable fabric such as InfiniBand or RoCE. Figure 5-2 in the book shows how these parts connect.
+
+3FS is a Linux-based filesystem, so existing applications keep working. Its clients use RDMA reads for direct, GPU-accessible transfers. Metadata is sharded and replicated across nodes so the design scales out. Data paths bypass the OS page cache entirely. 3FS also lets prefetch and transfer run alongside GPU kernels, which carries the cascading pipeline, or wave, idea from Chapter 4 down into storage.
+
+The reported throughput is large. DeepSeek has published multi-terabyte-per-second aggregate read throughput for 3FS on large clusters, with results up to 7.3 TB/s in their environment. In another benchmark, a 68-node AI-HPC cluster with 10 × 16 TB NVMe SSDs and dual 100 Gb/s networking reached about 6.6 TB/s. It did this while also serving 1.4 TB/s of background work. The book notes that Ceph reached about 1.1 TB/s on similar hardware.
+
+Building a filesystem like this takes a large upfront investment and ongoing maintenance. Most teams should start with an existing distributed filesystem or object store. The lesson still applies to any design. Match the storage layer to the access pattern, and keep the data path RDMA-first so the last I/O bottlenecks disappear. Full-stack design, storage included, is what lets a large AI system use its hardware.
+
+### Using the right library for each transfer
+
+Use NCCL for collective operations, such as all-reduce, that training depends on. NIXL targets high-throughput point-to-point and streaming transfers, which inference often needs. Use NIXL where token streaming dominates the workload. For bulk collective and symmetric-memory patterns, prefer NCCL or NVSHMEM. Leverage the purpose-built libraries instead of reinventing the wheel.
+
+### Preparing LLM datasets offline with NeMo Curator
+
+The problem is that raw text and millions of small files force the training loop to do string work instead of math. NVIDIA NeMo is a toolkit for developing and training language models. Inside it, the open source NeMo Curator framework prepares datasets before training. Curator helps when you have terabytes from many sources, and it supports cleansing, tokenizing, and shuffling.
+
+Curator can spread the preprocessing across multiple GPUs or nodes. Using several accelerators makes multiterabyte training datasets faster to prepare. It can also compress and pack data into a small number of large files. It can convert data into a binary format that machines read easily. It can even create synthetic data to augment human datasets, which are limited and getting scarcer.
+
+Curator also enforces quality. It deduplicates data and removes problematic content, which matters for both model quality and speed. A clean, preprocessed dataset gives the trainer well-structured, evenly sized data, padded to a fixed length. It never has to tokenize on the fly or handle messy strings. Once Curator does the heavy work offline, the online pipeline only reads prepared data and maybe does a light last-mile shuffle.
+
+For NeMo training, preprocessed datasets are usually memory-mappable `.bin` data files with `.idx` index files. Curator's `DocumentDataset` reads and writes sharded JSONL or Parquet, and conversion to `.bin` and `.idx` happens when you build the indexed dataset. You may also store N shuffled copies of the data, each shuffled a different way. That avoids runtime shuffling over N epochs, at the cost of disk space and memory.
+
+The general rule is to prepare data before training. You should almost never train on raw text. Offline preprocessing takes time, but it pays back in faster runs and more predictable scaling. Keep in mind that NeMo's data loading still runs on CPUs, so to bypass CPU I/O you need to combine it with tools such as GDS.
+
+### Decoding images and video on the GPU with DALI
+
+Image and video decoding and augmentation can eat CPU cores. A pipeline can keep all eight cores busy while the GPU still stalls now and then. NVIDIA DALI, the Data Loading Library, moves this work onto the GPU. It can also run optimized C++ code on the CPU when that suits the job. It is most useful for image and video data.
+
+For example, DALI can decode JPEG images on the GPU and apply random crop, resize, and normalization there too. That is often faster than the CPU when the GPU has spare cycles. It also reduces the number of CPU workers you need. DALI provides prebuilt pipelines for common workloads such as classification, object detection, and segmentation, and those pipelines use the GPU's media acceleration hardware fully.
+
+DALI pipelines are static graphs of operators. You subclass `nvidia.dali.pipeline.Pipeline` and declare your data sources and CPU or GPU operators in `define_graph()`. DALI then handles execution, prefetching, and threading with its own thread pools and queues. Integrating it into the training loop adds complexity and a learning curve. For input-bound training, though, it can boost throughput a lot.
+
+Take an object-detection job that reads images and video and augments them. Host CPU usage might sit at 800%, which means eight cores at full load, while the GPU still stalls. With DALI, CPU usage can drop to 200%, which is two cores doing the file reads. The GPU does the decoding and can read concurrently with computation.
+
+Placement decides the result. If you use DALI only to decode JPEGs and then hand raw pixels back to the CPU for augmentation and collation, you add host-to-device-to-host copies. Those copies can cancel the gain. Identify GPU-friendly preprocessing and fuse it into one GPU-side graph, using TorchVision, TensorRT, or custom CUDA kernels. Then benchmark three versions end to end: CPU only, DALI, and a fully fused GPU graph.
+
+### Keeping the pipeline full
+
+Technologies such as GDS and advanced input pipelines keep data flowing and GPUs fed. Profile and tune continuously, and you can push a distributed AI system closer to its theoretical peak at scale. A poorly tuned input pipeline can waste 50% of GPU time. Algorithmic tweaks often give only a few percent, so start with the data path.
+
 ## 6. Performance experiments (cluster, untested)
 
 1. **Shared-file write scaling**: IOR with MPI-IO collective writes, 1 to N nodes, stripe count 1 vs all OSTs; plot bandwidth vs ranks.

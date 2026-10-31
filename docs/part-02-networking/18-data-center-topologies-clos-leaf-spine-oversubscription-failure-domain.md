@@ -179,7 +179,7 @@ In this design, GPU i of every server connects to leaf i of a group of 8 leaves.
 
 Intra-rail traffic is the cheap case. It means the same GPU index on different servers, and it goes through one leaf, so latency is minimal. Inter-rail traffic, with different GPU indices, goes leaf to spine to leaf. That doubles the hops and the latency, so it should be rare. PXN is an NCCL feature that helps here. It uses NVLink to send data through the GPU on the destination's rail, which avoids the inter-rail hops.
 
-Read the sizing example slowly, because later designs in this chapter use the same steps. Here is the sizing arithmetic for a 64 × 400G leaf at 1:1, so you can check each step. Each leaf has 32 ports down and 32 up, so one rail group holds 32 servers. Eight leaves plus four spines support those 32 servers, which is 256 GPUs. That works if each leaf's 32 uplinks go to four spines with eight links each. Two rows, with 16 leaves and 8 spines, support 64 servers, or 512 GPUs. Scaling further means more spines, chassis spines or a super-spine.
+Read the sizing example slowly, because later designs in this chapter use the same steps. Here is the sizing arithmetic for a 64 × 400G leaf at 1:1, so you can check each step. Each leaf has 32 ports down and 32 up, so one rail group holds 32 servers. An arrow points upwards from the leaf toward the spine, labeled as 32 uplink ports. Another arrow points downwards toward the servers, labeled as 32 downlink ports. A label beside the leaf gives its total of 64 x 400 Gbps. Eight leaves plus four spines support those 32 servers, which is 256 GPUs. That works if each leaf's 32 uplinks go to four spines with eight links each. Two rows, with 16 leaves and 8 spines, support 64 servers, or 512 GPUs. Scaling further means more spines, chassis spines or a super-spine.
 
 A leaf failure removes one rail for every server in its stripe, so each server loses 1/8 of its bandwidth. The job may keep running in a degraded state, or it may restart, depending on library behaviour. A server NIC or cable failure removes one rail for that server alone.
 
@@ -187,11 +187,31 @@ A leaf failure removes one rail for every server in its stripe, so each server l
 
 If inter-rail traffic can be carried inside the servers over NVLink and NVSwitch, the fabric does not need to connect rails to each other at all. Traffic first reaches the target rail's GPU inside the server, then leaves through that GPU's NIC. Each rail becomes an independent network. Rails are cheaper and simpler to troubleshoot, because a fault in one rail does not touch the others. The trade-off is dependence on in-server forwarding capacity and software, and less flexibility for non-collective traffic. Adoption is still being evaluated.
 
+### Extending rail-only across a stripe
+
+Rail-only design can also extend rails across the stripe. In that case the spine layer connects different stripes, not different rails. The spine also follows the rail pattern. Spine-to-leaf links need to be 32 × 400 Gbps for a 1:1 ratio. The scaling limits stay the same as in the earlier designs.
+
+Take a rail-only example with 16 leaves. Servers 1 and 32 connect their NICs to leaf1 through leaf8. Servers 33 and 64 connect theirs to leaf9 through leaf16. Eight spines then link the leaves in a cross-connected pattern, so the spine layer carries rail traffic across the stripe.
+
+The payoff is simplicity. When rails never talk to each other, a fault in one rail stays in that rail, and troubleshooting gets simpler. Adoption is still being evaluated, so check current vendor guidance before you commit.
+
 ### Rail-unified design (RUD)
 
 In a rail-unified design, several GPUs in one server connect to the same leaf. All eight might go to one leaf, or four to each of two leaves. The advantages are simple cabling, easy scaling and a well-understood classic ToR design. The design can use copper DAC or AEC cables for short reaches. Servers on one leaf reach each other in a single hop, so a handful of servers works well. The design can even use the external leaf for in-server traffic instead of the internal NVSwitch, if that leaf offers higher throughput.
 
 The disadvantages are real, though. A leaf failure isolates whole servers. Per-rail traffic isolation inside the leaf needs extra features, such as deterministic path forwarding or colored fabrics, which chapter 2.16 covers. Latency between servers on different leaves is two hops for everything.
+
+### Rail-unified placement, hop counts and intra-server options
+
+In short, packing several GPUs from one server onto one leaf simplifies cabling and can cut costs. The trade-off is risk: a single leaf failure can isolate every GPU in that server. Scaling is easier on the cabling side, but it is less optimal for performance and fault isolation than rail-optimized design (ROD).
+
+Which leaf a server sits on sets its hop count. Four servers on the same leaf reach each other in one hop. That holds for traffic within a rail and across rails. The GPU traffic inside a server uses the internal switch, so it never touches the leaf-to-server link. Servers on other leaves are two hops away, because the traffic crosses the spine.
+
+Take a concrete layout with 16 leaves and 8 spines. Some servers attach to Leaf1 through Leaf8, and others attach to Leaf9 through Leaf16. Each leaf connects to all spines, which forms a fully meshed fabric. Server 1 and Server X join the first group, while Server 4 and Server X plus 4 join the second. That gives two independent fabric planes.
+
+Each leaf now carries several rails, so it must keep rail traffic apart. Deterministic path forwarding does that job. It makes each rail follow a predictable path through the leaf.
+
+Some builders skip the internal switch and send in-server GPU traffic through a leaf instead. The NVSwitch moves GPU-to-GPU traffic at 900 Gbps. An external leaf can take over that role if it offers higher throughput. The external switch costs more than the internal one, so compare prices before you choose.
 
 ### Rack and cable layout
 
@@ -206,6 +226,22 @@ Where the leaves sit decides how much cable you buy and how much rack space you 
 Rail-optimised builds usually end up with MoR or EoR leaves, because each server needs 8 leaf connections. Cabling plans are a first-class design output. They include pre-terminated MPO trunks, patch panels, labelling schemes and length standardisation. Power, cooling and weight often decide how many servers fit in a rack, more than the network does. Each 8-GPU server draws about 10 kW, and racks draw 20 to 40+ kW, with liquid cooling in the picture. The network is built around that physical plan.
 
 Before you pick a rail design, work out the cabling plan and the power per rack, because those often decide the layout.
+
+### Leaves in their own racks: ToR, MoR and EoR layouts
+
+Picture a row of eight server racks, with four servers in each rack. That row holds 32 servers and 256 GPUs. Where you place the leaves in that row decides the cable plan.
+
+In a top-of-rack diagram, each rack is labeled Rack at the top. Each rack holds one component labeled Switch, and four servers labeled Server sit stacked below it. A dashed line above the racks marks all eight as one rail-optimized row. The top-of-rack setup has eight distinct racks arranged horizontally. Below each leaf switch, four components are stacked vertically, each labeled Server.
+
+In the top-of-rack example, each rack holds one leaf switch at the top and four servers below it. Eight such racks form one rail-optimized row, and a dashed line marks the row. The spines can sit in two spine racks above the row. Each spine rack in the example holds seven spine switches, and a dashed line marks more spines the figure leaves out. Each spine rack feeds one line down to the leaf layer, and all eight leaf racks join that line. The overall structure has two spine racks at the top, each labeled Rack and holding seven rectangular components labeled Spine. A dashed line shows more spine components between the top four and the bottom two. Below them sit eight racks of leaf switches and servers, so the spine racks act as the aggregation layer.
+
+Spines can also share the leaf racks. In that layout each rack holds one leaf, one spine and four servers, so the spine and leaf counts match. Cable runs now cross the rack and span all eight racks. The power and cooling needs of each rack also go up. This layout suits a rail-unified design, because the cables are easier and copper DAC or AEC cables can be used to cut cost.
+
+In the middle-of-row example, the leaf racks sit in the middle of the row. Four server racks come first, then two switch racks with eight switch units each, then four more server racks. Each server connects to eight leaf switches in those middle racks. The leaves can spread over more than one rack for better failure handling. Cable runs from servers to leaves cross a maximum of five or six racks. Think of the middle-of-row layout as ten tall racks in a line, each labeled Rack at the top. The first four racks each contain four rectangular server units, stacked vertically and labeled Server. The fifth and sixth racks each contain eight rectangular switch units, stacked vertically and labeled Switch. The last four racks hold servers again. Switches in the middle racks add nothing to the power budget of a server rack, but the layout needs more rack space.
+
+In the end-of-row example, eight server racks come first, with four servers each. The ninth rack holds eight leaf switches. The tenth rack holds the spine switches, and a dashed line encloses all ten racks as one rail-optimized row. Each server connects to eight leaves in racks at the end of the row. Cable runs can cross a maximum of 10 racks, so the cabling costs more. Picture the end-of-row layout as ten racks in a horizontal row. The first eight racks are identical in structure, each labeled Rack at the top. Each of those eight racks contains four rectangular shapes, vertically stacked and labeled Server, for 32 servers in all. The ninth rack holds eight leaf switches, and the tenth holds the spine switches inside a dashed line. The leaves can also spread across more than one rack for failure isolation.
+
+Pick the placement from the cable length, rack power and rack space you can afford. Count each of those before you draw the rows.
 
 ## 5. Scheduled (cell-based) fabrics
 
@@ -244,6 +280,16 @@ Look at the risk column. Each option buys fewer hops or cheaper links, and each 
 
 If you pick a torus for an all-to-all job, expect poor bisection bandwidth.
 
+### Torus connections in one, two and three dimensions
+
+The number of connections per node shows how a torus grows. In a one-dimensional torus, each node links to its neighbor on either side. The edge nodes link to each other as well, so the layout forms a ring. Every node has two connections.
+
+A two-dimensional torus adds links up and down. Each node links to its neighbor on the left, right, up and down. Nodes on one edge wrap around to the opposite edge, so every node has four connections. A three-dimensional torus adds a third axis. Each node links to neighbors along the x, y and z axes, so it has six connections.
+
+The one-dimensional form can also build a rail topology. Each server's NIC1 connects to leaf1, NIC2 to leaf2, and so on for every server. The leaves link to each other in a shared ring, which carries inter-rail traffic in place of spines. To connect many rails, a two-dimensional or three-dimensional torus fits better.
+
+A torus has three strengths. It is cost-effective at high scale, because each node needs few ports. It is relatively easy to scale out. It performs best when applications talk to their nearest nodes, so pick it only for that traffic pattern.
+
 ## 7. Multi-planar scale-out
 
 Suppose a single 3-tier Clos fails. It has one control plane and one data plane, so a bug or failure can affect the entire fabric. A 5-stage path also adds a hop for any job that spans blocks. Multi-planar architectures address both problems. They replace one deep fabric with several independent 2-tier planes.
@@ -260,6 +306,22 @@ Here is a concrete case. Take two planes with two rails each. A server's NIC1..8
 
 Before you adopt multi-planar cabling, settle how the server side will bridge the planes without creating Ethernet loops.
 
+### One NIC, four planes: breakouts and packet spraying
+
+Consider how one GPU server joins a multi-plane design. Its NIC does not use one 400G or 800G link into one switch. Breakout cables split each port, and each piece goes to a different plane. With four planes, FP1 through FP4, each NIC has four links. An 800G port can break out into four 200G links, one for each plane.
+
+Server 1 reaches Leaf 1 in each of the four planes. Server 2 reaches Leaf 8 in each plane. The gain shows up at the leaf. A ToR switch with 64 ports at 800G offers 128 × 200G links to GPU servers. It keeps 64 × 400G or 32 × 800G ports for the spines. Each plane therefore serves more GPU connections per leaf. Software still sees 800 GB of capacity, because reordering happens lower in the stack.
+
+The NIC firmware and host libraries handle the traffic work. A single queue pair sprays its packets across all planes at once. The receiving NIC collects them and coalesces them before the application sees them. Packets can take different paths, so they may arrive out of order. The NIC or host software holds completion until the data is in order. RDMA applications need that in-order delivery.
+
+### Dual-plane and four-plane domains with super-spines
+
+Larger clusters can use two domains. Each domain holds two planes, such as Fabric Plane 1a and Fabric Plane 2a. Each plane has two rail groups, Rail A and Rail B. Every server NIC connects to two different planes, so the reliability of each GPU goes up.
+
+In the upper domain, Rail A uses Spine 1 and Spine 2, and Rail B uses Spine 3 and Spine 4. Server 1 and server 4 can talk without crossing the super spines. Server 4 reaching server 8 does cross them. In the two-plane, two-rail example, when server 4 GPU 1 needs to reach server 2 GPU 1, the traffic does not need spine devices. Reaching server 1 GPU 1 in Rail A means forwarding packets across the Fabric Plane 1 spine devices. A scheduled collective may hide that extra latency, while the reliability gain stays. Four super spines in the middle interconnect in a high-bandwidth mesh, and the lower domain repeats the same structure. Both domains connect upward to the same super-spine layer. In a larger-scale GPU cluster, the super spines may still have to interconnect two different sets of multi-planar fabrics. A dual-planar design, with two rails per plane, has each GPU server NIC connect to two different planes.
+
+A four-plane design follows the same idea with four planes per domain. GPU server 1 sprays its packets across all four planes. The spines and super spines must deliver them efficiently to server 8. Server 8 reassembles the packets before passing them to the RDMA application layer. Shuffle cables and LPO or LRO optics can cut the cabling and power for designs like this.
+
 ## 8. Inference data centres and the front-end
 
 Inference rarely needs rail alignment. A model often fits on one GPU or a few GPUs in a single server, and its traffic is client-server, or north-south, plus storage and model-weight loading. The design is a conventional collapsed 3-stage or 5-stage Clos, like an enterprise or cloud data center. Load balancers and Kubernetes ingress sit on top, as chapter 2.20 explains.
@@ -269,6 +331,16 @@ Multi-node inference is the exception. Very large models and expert parallelism 
 Overall, a server connects to three fabrics. The front-end serves inference clients and management. The storage fabric carries data. The back-end handles training and compute collectives. Each has its own topology and its own SLO.
 
 For a single-server model, a conventional Clos is enough. Multi-node inference is the point where you move toward the back-end designs.
+
+### Storage, training and inference data centers
+
+Most AI sites hold three kinds of data center, and each one has its own network job. Keep them apart in your mind before you draw any fabric.
+
+The storage data center holds all the gathered data. Small data sets may sit in the training cluster, but large volumes usually go to a storage data center. Its main need is a low-latency, lossless network. InfiniBand and Ethernet are the two choices. InfiniBand gives superior performance with a lossless, low-latency network. Ethernet reaches lossless behavior through a three-stage or five-stage Clos with RoCEv2 features.
+
+The training data center, also called the backend data center, does the learning. Research clusters hold many GPUs. They work through a broad list of models, then narrow the list to a focused set of trained models. An enterprise GPU cluster is much smaller and runs focused models on focused data sets. Its network needs are similar to those of a storage data center.
+
+The inference data center is the production site, where a trained model answers outside requests. Its design resembles an enterprise, cloud or telco data center. In most cases it looks like a collapsed three-stage or five-stage Clos. The storage fabric can be distributed or dedicated to the data center. The inference fabric is the front end for user traffic, and the training fabric is the back end for learning traffic.
 
 ## 9. Information hiding and failure domains: worked examples
 

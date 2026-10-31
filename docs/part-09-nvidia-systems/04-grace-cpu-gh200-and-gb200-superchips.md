@@ -125,6 +125,12 @@ Look at a Grace Superchip board and you will notice that there are no DIMM slots
 
 ---
 
+### The Grace CPU as a data feeder
+
+A GPU is only as fast as the data it receives. The design goal for Grace is that the CPU should never be the bottleneck when it shovels data to the GPUs. Grace can stream data from storage. It can also run on-the-fly transforms such as tokenization or data augmentation, then feed the results to the GPUs over NVLink-C2C. If part of the workload suits a CPU better, the Grace cores can handle it and leave the results where the GPUs can read them at once.
+
+The two chips complement each other. The CPU covers the work GPUs do poorly, such as random memory access and control-heavy code. The GPUs handle the number crunching that a CPU cannot keep up with. The low-latency link also lets them trade tasks cheaply. Launching a GPU kernel from the CPU is much faster here, because the command does not cross a slow PCIe bus. It is similar to calling a fast local function instead of a slow remote one.
+
 ## 3. NVLink-C2C and the hardware-coherent unified memory model
 
 Having a fast Arm CPU with half a terabyte of LPDDR5X only helps if the attached GPU can read and write that memory without squeezing through a 64 GB/s PCIe straw. On traditional systems, developers also waste weeks writing explicit host-to-device memory copies and managing pinned staging buffers whenever data spills out of GPU HBM.
@@ -171,6 +177,12 @@ NVLink-C2C unidirectional pass time: 1,200 GB / 450 GB/s = 2.67 seconds (7.03× 
 :::
 
 ---
+
+### Fitting a 500 GB model on one superchip
+
+Memory size used to be the hard limit. A model too big for one GPU's HBM had to be split across several GPUs or spilled to slower storage. On a GB200 superchip, the GPU can use the CPU's LPDDR5X as overflow. A model of about 500 GB is too large for one GPU's HBM, but it fits in one superchip. The superchip has 192 GB of HBM (180 GB usable) and about 500 GB of CPU memory, so the model runs without partitioning across GPUs.
+
+The GPU pulls the extra data from CPU memory when it needs it, and the overflow does not have to go out to NVMe storage or across a network. The trade-off is speed. Reading LPDDR5X over NVLink-C2C has higher latency and about one-tenth the bandwidth of local HBM. A smart runtime keeps hot data in HBM and uses CPU memory for the rest. Prefetch the data you can see coming. Memory size stops being a hard wall, but placement still decides how fast the model runs.
 
 ## 4. The Superchip lineup: Grace CPU Superchip, GH200, GB200, GB300, and the Vera Rubin roadmap
 
@@ -241,6 +253,12 @@ As documented in *AI Systems Performance Engineering* Chapter 2, NVIDIA continue
 :::
 
 ---
+
+### Why each generation doubles something
+
+NVIDIA's roadmap follows a pattern. Each generation doubles something important, and some years it doubles more than one thing. Blackwell introduced two GPU dies per module instead of one. NVLink bidirectional bandwidth per link doubled from about 900 GB/s to about 1.8 TB/s. Per-GPU memory grew from 180 GB in Blackwell to about 288 GB in Blackwell Ultra. Over a few years, that compound growth is large. Vera Rubin and Feynman push compute, memory, and bandwidth further.
+
+For a performance engineer, the message is steady. Hardware will keep unlocking larger scale, so models that are out of reach today may become routine. You will also have to keep adapting software to new precision formats, larger memory pools, and faster interconnects. The Grace Blackwell design is the base for that path, and the same codesign ideas carry forward to Vera Rubin and beyond.
 
 ## 5. Software co-design on Grace Superchips: data placement, NUMA, hugepages, and SuperOffload
 

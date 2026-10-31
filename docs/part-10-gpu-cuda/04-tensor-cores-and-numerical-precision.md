@@ -242,6 +242,18 @@ The table below shows how much tile data fits inside a single SM's TMEM budget u
 
 ---
 
+### Reading the rack-level FP4 peak
+
+Per-GPU numbers are hard to picture, so NVIDIA also quotes a rack total. A full NVL72 rack has 72 GPUs. Its theoretical Tensor Core throughput is over 1.4 exaFLOPS (1.4 × 10^18 floating-point operations per second) in 4-bit precision. That puts one rack in the range of the world's fastest supercomputers. The catch is the precision. The peak is measured at low FP4 precision, and real workloads do not always reach it.
+
+Treat the rack number as a ceiling, not a forecast. It shows what the hardware can do when the math fits FP4. Your job is to measure how close your own kernels get to that ceiling, and to confirm that the accuracy holds at that precision.
+
+### Adopting the precision features in your stack
+
+NVIDIA's libraries and frameworks evolve with each generation. They add unified memory management and native FP8 and FP4 support, so the same code can use new hardware with few changes. The Transformer Engine (TE) is the main path. You adopt it by using its kernels and modules in frameworks such as PyTorch. FP8 and NVFP4 are applied when they preserve accuracy.
+
+This is not a fully automatic decision for every layer in every framework. Check which layers run in which precision, and compare accuracy before you trust a faster run. Reduced precision is only a gain when the model still gives the same answers.
+
 ## 4. Using CUTLASS and auditing Tensor Core shape alignment
 
 Even when a model uses reduced-precision tensors, two software mistakes frequently prevent kernels from reaching peak Tensor Core speed. First, writing raw matrix assembly by hand for every new GPU generation takes weeks of error-prone synchronization tuning. Second, leaving a single matrix dimension unaligned to a tile boundary forces high-level libraries to abandon aligned Tensor Core tiles and fall back to slow cleanup paths.
