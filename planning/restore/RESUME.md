@@ -56,3 +56,5 @@ Update: Part 5 voice pass complete (5.21-5.35 committed). Part 6.1-6.10 prepped 
 Update: Part 6 6.1-6.20 voice done+committed. PAUSED at user request (Nemotron quality trial on 6.31). Next: 6.21-6.30 (prepped 6.21-6.30 already, re-run prep_voice before launch), then Parts 7-15. mdx_guard misses '<->' outside code: grep for it.
 
 Update (Nov 1): 5-hour limit killed 20 agents (6.21-6.31, 7.1-7.9); chapter files untouched (join-only writes), partial section work stays in scratchpad/v/<P.C>/new. User decision: SKIP Parts 7-10 for now and start Part 11. The Part 11 launch (11.1-11.20) then died on an expired OAuth login (needs /login). Relaunch 11.1-11.20 (re-run prep_voice first), then 11.21-11.30. Still pending later: 6.21-6.31, 7-10, 12-15, polish backlog. Nemotron trial dropped (invented facts, light rewrite).
+
+ORDER (user, Nov 1): finish Part 11 (11.1-11.30) -> then finish Part 6 (6.21-6.31) -> only then start Part 12. Parts 7-10 stay parked until after that unless the user says otherwise.
