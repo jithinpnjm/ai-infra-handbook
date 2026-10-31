@@ -22,60 +22,81 @@ lab_venue: "GCP / GKE"
 
 ## Why this matters for AI infrastructure
 
-Kubernetes releases a minor version about three times a year and supports each for roughly a year, so a GPU platform is always one or two upgrades away from running an unsupported version; every upgrade touches the control plane, the container runtime, CNI/CSI, the GPU Operator and driver stack, kernels, and sometimes API versions that your operators still use. At the same time training clusters hold irreplaceable state: etcd (all object state), PersistentVolumes (datasets, checkpoints, registries, metadata DBs), secrets and keys, and the knowledge in GitOps repos. A botched upgrade or lost etcd can strand thousand-GPU jobs; a regional outage can idle the whole fleet. Mature teams practise upgrades routinely, test restores, and know their recovery objectives.
+Picture an upgrade that stalls halfway through, with the API server down and a training run waiting on cluster state. Kubernetes releases a minor version about three times a year, and it supports each one for roughly a year. So a GPU platform is always one or two upgrades away from running an unsupported version.
+
+Every upgrade touches the control plane, the container runtime, CNI/CSI, the GPU Operator and driver stack, kernels, and sometimes API versions that your operators still use. At the same time, training clusters hold state you cannot easily replace. That includes etcd, which holds all object state. It also includes PersistentVolumes, which hold datasets, checkpoints, registries and metadata DBs, along with secrets, keys and the knowledge stored in GitOps repos.
+
+A botched upgrade or a lost etcd can strand thousand-GPU jobs. A regional outage can idle the whole fleet. Mature teams practise upgrades routinely, test their restores, and know their recovery objectives.
 
 ## Prerequisites and outcomes
 
-Needs 5.4, 5.5, 5.19. After this chapter you can:
+You should have read chapters 5.4, 5.5 and 5.19 first. By the end of this chapter you will be able to:
 
-- Explain Kubernetes versioning, support windows, and skew policy among control-plane components, kubelet, kubectl and clients; plan an upgrade path.
-- Execute a kubeadm upgrade (control plane then nodes) and the equivalent for managed services, with pre-flight checks (API deprecations, add-on compatibility, backups), canaries, drains and rollback strategy.
-- Upgrade the GPU stack (drivers, toolkit, operators) safely in step with Kubernetes.
+- Explain Kubernetes versioning, support windows, and skew policy among control-plane components, `kubelet`, `kubectl` and clients, and plan an upgrade path.
+- Execute a `kubeadm` upgrade, control plane first and then nodes, and the equivalent on managed services. Include pre-flight checks (API deprecations, add-on compatibility, backups), canaries, drains and a rollback strategy.
+- Upgrade the GPU stack (drivers, toolkit, operators) safely, in step with Kubernetes.
 - Back up and restore etcd (snapshots, certificates, multi-member restore), and rebuild failed control planes.
-- Design backup/DR for workloads and data: GitOps as source of truth, Velero/CSI snapshots, volume replication, object-storage durability; define RPO/RTO per tier.
-- Run DR drills and handle realistic failure scenarios (lost etcd quorum, corrupted data, expired certificates, accidental namespace deletion, regional loss).
+- Design backup and DR for workloads and data. Use GitOps as the source of truth, Velero or CSI snapshots, volume replication and object-storage durability, and define RPO and RTO for each tier.
+- Run DR drills and handle realistic failure scenarios, such as lost etcd quorum, corrupted data, expired certificates, accidental namespace deletion, and regional loss.
 
 ## 1. Versioning and skew
 
-- Versions are `v1.<minor>.<patch>`. Minor releases roughly every 4 months; patch releases roughly monthly. The project supports **the three most recent minor releases** (about 14 months of patches).
-- **Skew policy** (verify the current doc): `kube-apiserver` instances in an HA control plane may differ by one minor during rolling upgrade (newest `n`, oldest `n-1`); `kube-controller-manager`, `kube-scheduler`, `cloud-controller-manager` must not be newer than the API server and may be up to one minor older; **`kubelet` may be up to three minors older** than the API server (never newer) in recent releases (two before 1.28); `kube-proxy` same as kubelet; `kubectl` ±1 minor of the API server. Therefore the standard order is **upgrade control plane first, then nodes**, one minor at a time (no skipping minors for the control plane), and clients/operators last or in step.
-- **Feature gates and API lifecycle**: alpha (off by default), beta (on by default for many APIs, but beta APIs are off by default since 1.24), GA; deprecated APIs are removed after at least 9 months or 3 releases (GA APIs are not removed within v1). Removed APIs break manifests, Helm charts and operators that still use them (e.g., `policy/v1beta1` PodSecurityPolicy removal in 1.25, `batch/v1beta1` CronJob in 1.25, `flowcontrol.apiserver.k8s.io/v1beta2` etc.). Always read the changelog "Urgent upgrade notes" and "Deprecation" sections.
-- **Component compatibility** beyond Kubernetes itself: container runtime (containerd versions per Kubernetes), CNI (Calico/Cilium support matrix), CSI drivers and sidecars, ingress controllers, cert-manager, Prometheus operator, GPU Operator/driver/toolkit/device plugin/DCGM, Kueue and training operators, service meshes, Argo CD/Flux, CoreDNS/etcd versions shipped by kubeadm. Build a compatibility matrix per target version (5.19).
+A cluster whose components have drifted out of step fails in quiet ways. Before you upgrade anything, know which version each part runs and which versions it is allowed to mix.
+
+Versions follow the form `v1.<minor>.<patch>`. A new minor release arrives roughly every 4 months, and a patch release roughly every month. The project supports the three most recent minor releases, which gives you about 14 months of patches.
+
+Skew is the version gap between components that talk to each other, and the skew policy sets the limits (verify the current doc). HA `kube-apiserver` instances may differ by one minor during a rolling upgrade, with the newest at `n` and the oldest at `n-1`. The `kube-controller-manager`, `kube-scheduler` and `cloud-controller-manager` must not be newer than the API server, and they may be up to one minor older. The `kubelet` may be up to three minors older than the API server, but never newer, in recent releases (two before 1.28). `kube-proxy` follows the same rule as the `kubelet`. `kubectl` may sit one minor version away from the API server in either direction.
+
+These limits set the order of work. Upgrade the control plane first, then the nodes, one minor at a time. You cannot skip minors for the control plane. Upgrade clients and operators last, or in step with the cluster.
+
+Features move through three stages. Alpha features are off by default. Beta features are on by default for many APIs, but beta APIs have been off by default since 1.24. GA means generally available. Deprecated APIs are removed after at least 9 months or 3 releases, while GA APIs are not removed within v1. Removed APIs break the manifests, Helm charts and operators that still use them. Two examples are `policy/v1beta1` PodSecurityPolicy and `batch/v1beta1` CronJob, both removed in 1.25. Also watch `flowcontrol.apiserver.k8s.io/v1beta2` and others. Always read the changelog's "Urgent upgrade notes" and "Deprecation" sections.
+
+Components beyond Kubernetes itself need checking too. That list includes the container runtime (containerd versions per Kubernetes), CNI (the Calico or Cilium support matrix), CSI drivers and sidecars, ingress controllers, cert-manager, the Prometheus operator, and the GPU Operator, driver, toolkit, device plugin and DCGM. It also covers Kueue, the training operators, service meshes, Argo CD or Flux, and the CoreDNS and etcd versions that kubeadm ships. Build a compatibility matrix for each target version (5.19).
 
 ### Platform versioning
 
-Version your platform, and write down the version of every piece of software in it. That covers the operating system on the machines, every installed package (the container runtime included), the Kubernetes version, and the version of each add-on that makes up your application platform. Some teams adopt the Kubernetes version as the platform version. Then platform 1.18 runs Kubernetes 1.18, and nobody needs a lookup. That convenience matters less than the habit itself. Use whatever system your team prefers, document it, and follow it every time.
+Write down the version of every piece of software in your platform. That covers the operating system on the machines, every installed package (the container runtime included), the Kubernetes version, and the version of each add-on that makes up your application platform. Some teams adopt the Kubernetes version as the platform version. Under that scheme, platform 1.18 runs Kubernetes 1.18, and nobody needs a lookup. That convenience matters less than the habit itself. Use whatever system your team prefers, document it, and follow it every time.
 
-Pinning the platform version to one component can cause confusion, though. Suppose a security vulnerability forces an update to your container runtime. The platform version should reflect that change, probably as a bugfix bump under semantic versioning. Someone might read that bump as a Kubernetes patch change, such as `v1.18.5` to `1.18.6`. Consider giving the platform its own independent version numbers. Most software already has its own version, with dependencies on other software and their versions, so engineers will recognize the convention right away.
+Tying the platform version to one component can cause confusion, though. Suppose a security vulnerability forces an update to your container runtime. The platform version should reflect that change, probably as a bugfix bump under semantic versioning. Someone might read that bump as a Kubernetes patch change, such as `v1.18.5` to `1.18.6`. Consider giving the platform its own independent version numbers. Most software already has its own version, with dependencies on other software and their versions, so engineers will recognize the convention right away.
 
 ### Plan to fail
 
-Start from the premise that something will go wrong during an upgrade. Picture yourself recovering from a catastrophic failure, and let that fear push you to prepare. Build automation that takes and restores backups of your Kubernetes resources. Do it two ways: with direct etcd snapshots, and with Velero backups taken through the API. Do the same for the persistent data your applications use. Give your critical applications, and everything they depend on, a disaster recovery plan of their own. Stateful, distributed applications are harder. Restoring their data and Kubernetes objects is not enough, because restore order and dependencies matter. Brainstorm every failure mode you can think of, build automated recovery for each one, and test it. For the most critical workloads and their dependencies, consider standby clusters ready to fail over to. Automate and test those failovers where possible.
+Assume that something will go wrong during an upgrade. Picture yourself recovering from a catastrophic failure, and let that fear push you to prepare. Build automation that takes and restores backups of your Kubernetes resources. Do it two ways: with direct etcd snapshots, and with Velero backups taken through the API. Do the same for the persistent data your applications use.
 
-Think carefully about rollback paths. If an upgrade causes errors or outages that you cannot diagnose right away, a rollback option is good insurance. Complex distributed systems take time to troubleshoot, and the stress of a production outage slows that down. Predetermined playbooks and automation matter even more on Kubernetes-based platforms. Be practical, though. Rollbacks are not always the right answer. Deep into an upgrade, undoing every earlier change can do more harm than good. Work that out before the upgrade starts. Mark your points of no return in advance, and plan each move before it touches live systems.
+Give your critical applications, and everything they depend on, a disaster recovery plan of their own. Stateful, distributed applications are harder. Restoring their data and Kubernetes objects is not enough, because restore order and dependencies matter. Brainstorm every failure mode you can think of, build automated recovery for each one, and test it. For the most critical workloads and their dependencies, consider standby clusters ready to fail over to. Automate and test those failovers where possible.
+
+Think carefully about rollback paths. If an upgrade causes errors or outages that you cannot diagnose right away, a rollback option is good insurance. Complex distributed systems take time to troubleshoot, and the stress of a production outage slows that down. Predetermined playbooks and automation matter even more on Kubernetes-based platforms.
+
+Be practical, though. Rollbacks are not always the right answer. Deep into an upgrade, undoing every earlier change can do more harm than good. Work that out before the upgrade starts. Mark your points of no return in advance, and plan each move before it touches live systems.
 
 ### Integration testing
 
-Keeping a versioning system that lists every component is one thing. Managing those versions is another. Kubernetes-based platforms are complex, so making everything integrate correctly every time is a real challenge. Compatibility between all the components of the platform is critical. So is compatibility between your workloads and the platform itself. Lean toward platform agnosticism for your applications to reduce compatibility problems. Still, some application workloads gain tremendous value from platform features.
+Keeping a versioning system that lists every component is one thing. Managing those versions is another. Kubernetes-based platforms are complex, so making everything integrate correctly every time is a real challenge. Compatibility between all the components of the platform is critical, and so is compatibility between your workloads and the platform itself.
 
-Unit tests for every platform component matter, as they do for any sound software practice. Integration testing matters just as much, even though it is harder. Sonobuoy is an excellent conformance test utility for this. It most often runs the upstream Kubernetes end-to-end tests to confirm the cluster is healthy and all of its components work together. Many teams run a Sonobuoy scan after a new cluster is provisioned. That automates a check that would otherwise be manual, such as examining control plane Pods and deploying test workloads. Take it further. Develop your own plug-ins that test the specific features of your platform and the operations critical to your organization. Run those scans routinely. A Kubernetes CronJob can run at least a subset of your plug-ins, or the full suite. This is not available out of the box, but it is achievable with some engineering. Expose the scan results as metrics, so dashboards can display them and alerts can fire on them. Scans like these test that the distributed parts work together to produce the features you expect, which makes a strong, automated integration test.
+Lean toward platform agnosticism for your applications to reduce compatibility problems. Still, some application workloads gain tremendous value from platform features.
 
-Integration testing must extend to the applications that run on the platform. App dev teams employ different strategies, and that may be largely out of the platform team's hands. Advocate for it strongly anyway. Run integration tests on a cluster that closely resembles production. This matters most for workloads that use platform features. Operators are a compelling example. They extend the Kubernetes API and integrate deeply with the platform. If you use an operator to deploy and manage the life cycle of your organization's software, test it across versions of your platform, especially when Kubernetes upgrades are involved.
+Unit tests for every platform component matter, as they do for any sound software practice. Integration testing matters just as much, even though it is harder. Sonobuoy is an excellent conformance test utility for this. It most often runs the upstream Kubernetes end-to-end tests to confirm the cluster is healthy and all of its components work together.
+
+Many teams run a Sonobuoy scan after a new cluster is provisioned. That automates a check that would otherwise be manual, such as examining control plane Pods and deploying test workloads. Take it further. Develop your own plug-ins that test the specific features of your platform and the operations critical to your organization. Run those scans routinely.
+
+A Kubernetes CronJob can run at least a subset of your plug-ins, or the full suite. This is not available out of the box, but it is achievable with some engineering. Expose the scan results as metrics, so dashboards can display them and alerts can fire on them. Scans like these test that the distributed parts work together to produce the features you expect, which makes a strong, automated integration test.
+
+Integration testing must extend to the applications that run on the platform. App dev teams employ different strategies, and that may be largely out of the platform team's hands. Advocate for it strongly anyway. Run integration tests on a cluster that closely resembles production, especially for workloads that use platform features. Operators are a compelling example. They extend the Kubernetes API and integrate deeply with the platform. If you use an operator to deploy and manage the life cycle of your organization's software, test it across versions of your platform, especially when Kubernetes upgrades are involved.
 
 ## 2. Upgrade planning
 
-**Checklist before touching anything:**
+Before you touch anything, you need a clear picture of what the upgrade must achieve and what could break. Work through this checklist first.
 
-1. **Objective and window**: target version (usually latest patch of next minor), who is affected, freeze period for critical training runs, rollback criteria.
-2. **Read release notes** (urgent notes, deprecations, changed defaults, kubelet/containerd changes, CNI/CSI notes). Review KEPs affecting your features (DRA, sidecars, cgroup v1 deprecation, etc.).
-3. **Detect deprecated/removed API usage**: `kubectl get --raw /metrics | grep apiserver_requested_deprecated_apis`, audit logs, tools `pluto detect-helm`/`detect-files`, `kubent`, `kubectl-convert`, Helm chart `helm template | kubeconform -kubernetes-version 1.xx`. Upgrade charts/operators/CRDs to versions that support both old and new Kubernetes where possible *before* the cluster upgrade.
-4. **Compatibility matrix check** for add-ons and the GPU stack; stage upgrades of add-ons that support both versions first.
-5. **Backups**: etcd snapshot (and copies off the node), PV snapshots/Velero backups of critical namespaces, export of cluster-scoped config (CRDs, RBAC, webhooks), GitOps repo is the source for the rest. Verify the backup is restorable (do a restore drill at least before the first production upgrade).
-6. **Health baseline**: all nodes Ready, no crashlooping system pods, API/etcd metrics normal, PDB audit (`kubectl get pdb -A`: any with 0 allowed disruptions?), capacity headroom for rolling node drains.
-7. **Staging rehearsal**: upgrade a representative non-production cluster (same CNI/CSI/GPU stack, ideally a few GPU nodes) and run conformance + workload smoke tests (5.25).
-8. **Communication and runbook**: published schedule; escalation path; abort and rollback steps; success checks.
+1. **Objective and window.** Name the target version, which is usually the latest patch of the next minor. Say who is affected, which freeze period protects critical training runs, and what rollback criteria would stop the work.
+2. **Release notes.** Read the urgent notes, deprecations, changed defaults, and the kubelet, containerd, CNI and CSI notes. Review the KEPs that affect your features, such as DRA, sidecars, and the cgroup v1 deprecation.
+3. **Deprecated and removed APIs.** Detect any use of them with `kubectl get --raw /metrics | grep apiserver_requested_deprecated_apis`, the audit logs, and tools such as `pluto detect-helm`/`detect-files`, `kubent`, `kubectl-convert`, and `helm template | kubeconform -kubernetes-version 1.xx`. Upgrade charts, operators and CRDs to versions that support both the old and the new Kubernetes where possible, *before* the cluster upgrade.
+4. **Compatibility matrix.** Check the add-ons and the GPU stack against the target version. Stage the upgrades of add-ons that support both versions first.
+5. **Backups.** Take an etcd snapshot and keep a copy off the node. Export PV snapshots or Velero backups of critical namespaces, and export the cluster-scoped configuration, such as CRDs, RBAC and webhooks. The GitOps repo is the source for the rest. Verify that the backup can be restored, and run a restore drill at least before the first production upgrade.
+6. **Health baseline.** All nodes should be Ready, no system pods should be crashlooping, and the API and etcd metrics should look normal. Audit the PDBs with `kubectl get pdb -A`, and look for any with 0 allowed disruptions. Confirm there is enough capacity headroom for rolling node drains.
+7. **Staging rehearsal.** Upgrade a representative non-production cluster that has the same CNI, CSI and GPU stack, ideally with a few GPU nodes. Then run conformance and workload smoke tests (5.25).
+8. **Communication and runbook.** Publish the schedule, name the escalation path, and write down the abort and rollback steps and the success checks.
 
-**Strategies:**
+Four strategies cover most platform upgrades, and each one trades cost against risk differently. The table compares them.
 
 | Strategy | How | Pros | Cons |
 |---|---|---|---|
@@ -84,7 +105,7 @@ Integration testing must extend to the applications that run on the platform. Ap
 | **Blue/green cluster** | Build new cluster on new version, shift workloads gradually (GitOps, MultiKueue, DNS) | Easy rollback; test fully before cutover; clean state | Double capacity (hard for GPUs), data migration, identity/networking duplication |
 | **Cluster API rolling** | Declarative upgrade of `KubeadmControlPlane` and `MachineDeployment` | Automates replace-not-patch | Needs CAPI maturity |
 
-For GPU clusters, in-place rolling with canary pools and strict drain choreography is typical; blue/green is attractive for major platform shifts (CNI change, major GPU stack change) if you can borrow capacity.
+For GPU clusters, in-place rolling with canary pools and strict drain choreography is typical. Blue/green is attractive for major platform shifts, such as a CNI change or a major GPU stack change, if you can borrow capacity.
 
 ```mermaid
 flowchart TD
@@ -95,55 +116,57 @@ flowchart TD
     Canary --> Fleet["5. Rolling Batch Worker Upgrade<br/>Rack/pool batches respecting maxUnavailable & PDBs"]
 ```
 
-In *Production Kubernetes* Chapter 2 (*Deployment Models*), Josh Rosso et al. analyze a subtle quorum trap when upgrading **dedicated `etcd` nodes** via immutable node replacement:
-- **Why Subtractive `3 -> 2 -> 3` Replacement Is Dangerous on Dedicated `etcd` (`PK` Chapter 2):** If you upgrade a 3-node dedicated `etcd` cluster by *first* removing 1 member (`etcdctl member remove`) and terminating its host to replace it (`3 -> 2` members), the cluster's voting size drops to `2` with a required quorum of `2`. During the 10–15 minutes it takes the replacement machine to boot and sync, **the cluster has zero fault tolerance**—if either of the 2 remaining `etcd` nodes experiences a disk stall or network blip, the entire Kubernetes control plane loses quorum immediately.
-- **Safer Alternatives (`PK` Chapter 2):** Either perform **in-place binary upgrades** of `etcd` one node at a time (fast restart, data directory already warm), or use **additive learner replacement (`3 -> 4 learner -> promote -> remove old -> 3`)** so 3 healthy voting members remain active throughout the replacement (modeled in `evaluate_etcd_upgrade_quorum_safety()` in `code/part05/k8s_upgrade_dr_planner.py`).
-- **Air-Gapped Cluster Upgrades (`bcm11-containerization` Appendix C):** On air-gapped DGX/HGX SuperPOD clusters (such as NVIDIA Base Command Manager), pre-stage all target container images (`kubeadm config images list --kubernetes-version v1.31.x`) into the local Harbor/mirror registry and pre-populate the local OS `apt`/`yum` repository mirror before starting `kubeadm upgrade apply` or `cm-kubernetes-setup` upgrade workflows.
+In *Production Kubernetes*, chapter 2 (*Deployment Models*), Josh Rosso et al. analyze a subtle quorum trap. It appears when you upgrade **dedicated `etcd` nodes** through immutable node replacement.
+
+- **Why subtractive `3 -> 2 -> 3` replacement is dangerous on dedicated `etcd`** (Production Kubernetes, chapter 2). Suppose you upgrade a 3-node dedicated `etcd` cluster by removing one member first with `etcdctl member remove` and terminating its host. The cluster's voting size drops to `2`, with a required quorum of `2`. During the 10–15 minutes it takes the replacement machine to boot and sync, the cluster has zero fault tolerance. If either of the 2 remaining `etcd` nodes hits a disk stall or a network blip, the whole Kubernetes control plane loses quorum at once.
+- **Safer alternatives.** You can perform in-place binary upgrades of `etcd` one node at a time. That is fast, because the data directory is already warm. Or you can use additive learner replacement (`3 -> 4 learner -> promote -> remove old -> 3`), which keeps 3 healthy voting members active throughout the replacement. That behaviour is modeled in `evaluate_etcd_upgrade_quorum_safety()` in `code/part05/k8s_upgrade_dr_planner.py`.
+- **Air-gapped cluster upgrades (`bcm11-containerization` Appendix C).** On air-gapped DGX/HGX SuperPOD clusters, such as NVIDIA Base Command Manager, pre-stage every target container image into the local Harbor or mirror registry. List the images with `kubeadm config images list --kubernetes-version v1.31.x`. Also pre-populate the local OS `apt`/`yum` repository mirror, before you start `kubeadm upgrade apply` or the `cm-kubernetes-setup` upgrade workflow.
 
 ### Upgrade strategies in detail
 
-Three strategies cover most platform upgrades: cluster replacement, node replacement and in-place upgrades. They run from the highest cost with the lowest risk to the lowest cost with the highest risk. No single strategy fits everyone. Costs, benefits, budget and risk tolerance decide the trade-off. Within each strategy, the degree of automation and testing depends on engineering budget, risk tolerance and how often you upgrade.
+Three strategies cover most platform upgrades: cluster replacement, node replacement and in-place upgrades. They range from the highest cost with the lowest risk to the lowest cost with the highest risk. No single strategy fits everyone. Costs, benefits, budget and risk tolerance decide the trade-off. Within each strategy, the degree of automation and testing depends on engineering budget, risk tolerance and how often you upgrade.
 
-The strategies do not exclude each other. You could upgrade a dedicated etcd cluster in place and replace the nodes in the rest of the cluster. Different tiers can use different strategies where their risk tolerance differs. Still, it helps to use the same strategy everywhere, so the method you run in production has been tested thoroughly in development and staging first. Whatever you choose, test thoroughly and automate as much as is practical. Automation that you test in testing, development and staging makes production upgrades far less likely to affect end users, and far less stressful for the platform operations team.
+The strategies do not exclude each other. You could upgrade a dedicated etcd cluster in place and replace the nodes in the rest of the cluster. Different tiers can use different strategies where their risk tolerance differs. Still, it helps to use the same strategy everywhere, so the method you run in production has been tested thoroughly in development and staging first. Whatever you choose, test thoroughly and automate as much as is practical. Automation that you test in development and staging makes production upgrades far less likely to affect end users, and far less stressful for the platform operations team.
 
-**Cluster replacement** carries the highest cost and the lowest risk. It applies immutable infrastructure principles to the whole cluster. You deploy an entirely new cluster next to the old one, then migrate workloads to it. The new cluster scales out as workloads arrive, and the old cluster scales in as workloads leave. That keeps the cost of a second cluster in check. Picture a production cluster of 300 nodes that needs an upgrade. You do not have to build 300 new nodes on day one. You might begin with 20. When the first few workloads have moved, you scale in the old cluster, which has less usage, and scale out the new one for incoming work. Cluster autoscaling and cluster overprovisioning can make this seamless, but upgrades alone rarely justify those technologies.
+**Cluster replacement** carries the highest cost and the lowest risk. It applies immutable infrastructure principles to the whole cluster. You deploy an entirely new cluster next to the old one, then migrate workloads to it. The new cluster scales out as workloads arrive, and the old cluster scales in as workloads leave. That keeps the cost of a second cluster in check.
 
-Two challenges come up often. The first is ingress traffic. As workloads move, traffic must be rerouted to the new cluster. Public DNS for exposed workloads should resolve to a global service load balancer (GSLB) or a reverse proxy, not directly to a cluster ingress. That proxy routes traffic to the cluster ingress and gives you one point for managing routing across clusters.
+Picture a production cluster of 300 nodes that needs an upgrade. You do not have to build 300 new nodes on day one. You might begin with 20. When the first few workloads have moved, you scale in the old cluster, which has less usage, and scale out the new one for incoming work. Cluster autoscaling and cluster overprovisioning can make this seamless, but upgrades alone rarely justify those technologies.
 
-The second challenge is persistent storage. If a storage service or appliance holds your data, both clusters must reach the same storage. If you use a managed database service from a public cloud provider, that service must be available from both clusters. In a private datacenter, this can be a networking and firewalling question. In the public cloud, it is a question of networking and availability zones. AWS EBS volumes, for example, are available from specific availability zones. Managed services in AWS often have specific Virtual Private Clouds (VPCs) associated with them. You may want a single VPC for multiple clusters for this reason. Kubernetes installers often assume a VPC per cluster, but that is not always the best model.
+Two challenges come up often. The first is ingress traffic. As workloads move, traffic must be rerouted to the new cluster. Public DNS for exposed workloads should resolve to a global service load balancer (GSLB) or a reverse proxy, not directly to a cluster ingress. That proxy routes traffic to the cluster ingress, and it gives you one point for managing routing across clusters.
 
-Next comes workload migration. Mostly, you are moving the Kubernetes resources themselves, such as Deployments, Services and ConfigMaps. There are two ways to do it:
+The second challenge is persistent storage. If a storage service or appliance holds your data, both clusters must reach the same storage. If you use a managed database service from a public cloud provider, that service must be available from both clusters. In a private datacenter, this can be a networking and firewalling question. In the public cloud, it is a question of networking and availability zones. AWS EBS volumes, for example, are available from specific availability zones. Managed services in AWS often have specific Virtual Private Clouds (VPCs) associated with them, so you may want a single VPC for multiple clusters. Kubernetes installers often assume a VPC per cluster, but that is not always the best model.
 
-- Redeploy from a declared source of truth.
-- Copy the existing resources over from the old cluster.
+Next comes workload migration. Mostly, you are moving the Kubernetes resources themselves, such as Deployments, Services and ConfigMaps. There are two ways to do it: redeploy from a declared source of truth, or copy the existing resources over from the old cluster.
 
-The first option points your deployment pipeline at the new cluster, so it redeploys the same resources there. That assumes the source of truth in version control is reliable and nothing changed in place. In reality, that is uncommon. Humans, controllers and other systems often make in-place changes and adjustments. When that happens, go with the second option and copy the existing resources to the new cluster. Velero earns its keep here. People usually call it a backup tool, yet it can be just as useful for migrations. Velero can snapshot all resources in your cluster or a subset. If you migrate workloads one Namespace at a time, snapshot each Namespace at migration time and restore it into the new cluster. Velero takes these snapshots through the Kubernetes API rather than directly from the etcd data store. As long as Velero can reach the API server of both clusters, this method is reliable.
+The first option points your deployment pipeline at the new cluster, so it redeploys the same resources there. That assumes the source of truth in version control is reliable and nothing changed in place. In reality, that is uncommon, because humans, controllers and other systems often make in-place changes and adjustments. When that happens, copy the existing resources to the new cluster instead. Velero earns its keep here. People usually call it a backup tool, yet it can be just as useful for migrations. Velero can snapshot all resources in your cluster or a subset. If you migrate workloads one Namespace at a time, snapshot each Namespace at migration time and restore it into the new cluster. Velero takes these snapshots through the Kubernetes API rather than directly from the etcd data store. As long as Velero can reach the API server of both clusters, this method is reliable.
 
-**Node replacement** is a middle ground for cost and risk. It is a common approach, and Cluster API supports it. It suits larger clusters when you understand the compatibility concerns. Compatibility is the main danger with this method. From the point of view of your services and workloads, the control plane changes in place. If an API version that your workload relies on disappears during an in-place Kubernetes upgrade, that workload can go down. You can reduce the risk in several ways:
+**Node replacement** is a middle ground for cost and risk. It is a common approach, and Cluster API supports it. It suits larger clusters when you understand the compatibility concerns, and compatibility is the main danger with this method. From the point of view of your services and workloads, the control plane changes in place. If an API version that your workload relies on disappears during an in-place Kubernetes upgrade, that workload can go down. You can reduce the risk in several ways:
 
-- Read the Kubernetes release notes. Before rolling out a new platform version that includes a Kubernetes upgrade, read the CHANGELOG thoroughly. API deprecations and removals are documented there, so you get plenty of advance notice.
-- Test thoroughly before production. Run new platform versions extensively in development and staging before production. Get the latest Kubernetes running in dev shortly after it is released. That way you can test thoroughly and still run recent releases in production.
-- Avoid tight coupling with the API. This does not apply to platform services, which need to integrate closely with Kubernetes. Keep your end-user production workloads as platform-agnostic as possible, and do not make the Kubernetes API a dependency. For example, your application should know nothing about Kubernetes Secrets. It should read an environment variable or a file exposed to it. Then, as long as the manifests that deploy the app are upgraded, the workload keeps running regardless of API changes. If you want Kubernetes features in your workloads, consider a Kubernetes operator. An operator outage should not affect the availability of your application. An operator outage is an urgent problem to fix, but your customers and end users should not see it.
+- **Read the release notes.** Before you roll out a platform version that includes a Kubernetes upgrade, read the CHANGELOG thoroughly. API deprecations and removals are documented there, so you get plenty of advance notice.
+- **Test before production.** Run new platform versions extensively in development and staging before production. Get the latest Kubernetes running in dev shortly after it is released. That way you can test thoroughly and still run recent releases in production.
+- **Avoid tight coupling with the API.** This does not apply to platform services, which need to integrate closely with Kubernetes. Keep your end-user production workloads as platform-agnostic as possible, and do not make the Kubernetes API a dependency. Your application should know nothing about Kubernetes Secrets. It should read an environment variable or a file exposed to it. Then the workload keeps running regardless of API changes, as long as the manifests that deploy the app are upgraded. If you want Kubernetes features in your workloads, consider a Kubernetes operator. An operator outage is an urgent problem to fix, but it should not affect the availability of your application, and your customers and end users should not see it.
 
 Node replacement works very well when you build machine images ahead of time and verify them. You can bring up new machines quickly, because the updated operating system and packages are already installed. The deployment process for those machines can look much like the original deployment.
 
-When replacing nodes, begin with the control plane. If etcd runs on dedicated machines, begin there. Cluster data lives in etcd, so handle it with extra care. If you hit a problem while upgrading your first etcd node, and you prepared properly, aborting is fairly easy. If you upgrade all the worker nodes and the control plane first, then run into trouble with etcd, rolling back the whole upgrade is not practical. You lose the chance to abort, regroup, retest and resume later. You must solve the live problem, or at least leave the existing versions safe for a while.
+When replacing nodes, begin with the control plane. If etcd runs on dedicated machines, begin there, because cluster data lives in etcd and needs extra care. If you hit a problem while upgrading your first etcd node, and you prepared properly, aborting is fairly easy. If you upgrade all the worker nodes and the control plane first, then run into trouble with etcd, rolling back the whole upgrade is not practical. You lose the chance to abort, regroup, retest and resume later. You must solve the live problem, or at least leave the existing versions safe for a while.
 
-For a dedicated etcd cluster, consider replacing nodes subtractively. Remove a node, then add the upgraded replacement. Adding a new member first changes the member list for every etcd node. Adding a fourth member to a three-node etcd cluster, for example, requires an update to all etcd nodes' member lists, which requires a restart. Dropping one member and replacing it with a new one that has the same IP address, if possible, is much less disruptive. The etcd upgrade documentation is excellent and may lead you toward in-place upgrades for etcd. That means in-place upgrades to the OS and packages on the machine as well, which is often quite palatable and perfectly safe.
+For a dedicated etcd cluster, consider replacing nodes subtractively. Remove a node, then add the upgraded replacement. Adding a new member first changes the member list for every etcd node. Adding a fourth member to a three-node etcd cluster, for example, requires an update to all etcd nodes' member lists, which requires a restart. Dropping one member and replacing it with a new one that has the same IP address, if possible, is much less disruptive.
+
+The etcd upgrade documentation is excellent, and it may lead you toward in-place upgrades for etcd. That means in-place upgrades to the OS and packages on the machine as well, which is often quite palatable and perfectly safe.
 
 Control plane nodes can be replaced additively. Join each new machine with `kubeadm join` plus `--control-plane`. Those machines must already carry the upgraded `kubeadm`, `kubectl` and `kubelet` binaries. As each new control plane node comes online and checks out, drain and delete one old node. If etcd is colocated on the control plane nodes, include etcd checks when you confirm operational health, and use `etcdctl` to manage the cluster members as needed.
 
 Then replace the worker nodes. You can do this additively or subtractively, one at a time or several at a time. A key concern is cluster utilization. If the cluster is highly utilized, add new worker nodes before you drain and remove the existing ones, so there is enough compute for the displaced Pods. A good pattern is to bring up machines built from images that already contain the updated software, and join them with `kubeadm join`. Much of the same machinery used for cluster deployment applies here.
 
-**In-place upgrades** suit resource-constrained environments where replacing nodes is not practical. The rollback path is harder, so the risk is higher. Comprehensive testing reduces that risk. Kubernetes in production configurations is a highly available system. If you upgrade one node at a time, the risk drops. If you use a tool such as Ansible to run the steps, resist the temptation to hit all the nodes at once in production.
+**In-place upgrades** suit resource-constrained environments where replacing nodes is not practical. The rollback path is harder, so the risk is higher, and comprehensive testing reduces that risk. Kubernetes in production configurations is a highly available system, so if you upgrade one node at a time, the risk drops. If you use a tool such as Ansible to run the steps, resist the temptation to hit all the nodes at once in production.
 
-For etcd nodes, follow that project's documentation. Take each node offline, one at a time. Upgrade the OS, etcd and other packages, then bring the node back online. If etcd runs in a container, consider pre-pulling the image before taking the member offline. That minimizes downtime.
+For etcd nodes, follow that project's documentation. Take each node offline, one at a time. Upgrade the OS, etcd and other packages, then bring the node back online. If etcd runs in a container, consider pre-pulling the image before you take the member offline, because that minimizes downtime.
 
 For Kubernetes control plane and worker nodes, if `kubeadm` initialized the cluster, use `kubeadm` for upgrades too. The upstream docs have detailed instructions for each minor version upgrade from 1.13 forward. As always, plan for failure, automate as much as possible, and test extensively.
 
 ## 3. kubeadm upgrade procedure
 
-On a single minor-version upgrade (example 1.30 → 1.31); commands and flags must be verified against the docs for your versions.
+The block below walks through a single minor-version upgrade, from 1.30 → 1.31. Treat it as a template, and verify every command and flag against the docs for your versions. The first control-plane node gets `kubeadm upgrade apply`, and every other node gets `kubeadm upgrade node`.
 
 ```bash
 # 0. Pre-flight (on a control-plane node)
@@ -176,36 +199,43 @@ kubectl uncordon w1
 kubectl get nodes   # VERSION column updates
 ```
 
-Notes and gotchas:
+Several notes apply as you run this block. etcd is upgraded by `kubeadm upgrade` to the version bundled for the target, which may change minor versions. Stacked etcd members upgrade as their control-plane node does, so do one node at a time, and confirm `etcdctl endpoint health --cluster` between nodes.
 
-- **etcd** is upgraded by `kubeadm upgrade` to the version bundled for the target (may change minor versions); stacked etcd members upgrade as their control-plane node does; do one node at a time and confirm `etcdctl endpoint health --cluster` between nodes.
-- **Certificates** are renewed during `kubeadm upgrade` (unless `--certificate-renewal=false`), a useful annual side effect (5.21).
-- **Config**: kubeadm stores `ClusterConfiguration` in `kube-system/kubeadm-config`; edit with `kubeadm upgrade apply --config` if you change flags. Custom manifest edits made by hand under `/etc/kubernetes/manifests` are lost on upgrade unless expressed in the kubeadm config (use `extraArgs`, `extraVolumes`, or patches directory `--patches`).
-- **kubelet config** (`/var/lib/kubelet/config.yaml`) is regenerated from the cluster-wide `kubelet-config` ConfigMap on `upgrade node`; per-node overrides need patches.
-- **Addons**: `kubeadm upgrade` updates CoreDNS and kube-proxy only; CNI, CSI, ingress, GPU Operator, monitoring and everything else are your responsibility.
-- **API server rolling**: while control plane nodes are at mixed versions, controllers use the older API behaviours; keep the window short; don't run create/update of new fields until all are upgraded.
-- **Time**: control plane ~5 to 10 min per node; workers dominated by drains.
-- **Rollback**: Kubernetes does not support downgrading the control plane in place (etcd data and API storage versions may have advanced). Rollback = restore the pre-upgrade etcd snapshot and old binaries/manifests on all control-plane nodes (a disruptive procedure) or fall back to a blue/green cluster. Therefore rehearsal and canaries are critical, and workers can be rolled back individually (re-image/reinstall previous kubelet) since older kubelets within skew are fine.
+Certificates are renewed during `kubeadm upgrade`, unless you pass `--certificate-renewal=false`. That is a useful annual side effect (5.21). Config is stored in `kube-system/kubeadm-config`, where kubeadm keeps `ClusterConfiguration`. If you change flags, edit it and pass `kubeadm upgrade apply --config`. Hand edits made under `/etc/kubernetes/manifests` are lost on upgrade, unless you express them in the kubeadm config through `extraArgs`, `extraVolumes`, or the patches directory `--patches`.
+
+The kubelet config (`/var/lib/kubelet/config.yaml`) is regenerated from the cluster-wide `kubelet-config` ConfigMap on `upgrade node`. Per-node overrides need patches. Addons follow a narrower rule. `kubeadm upgrade` updates CoreDNS and kube-proxy only. CNI, CSI, ingress, the GPU Operator, monitoring and everything else are your responsibility.
+
+While control plane nodes run mixed versions, controllers use the older API behaviours. Keep that window short, and do not create or update new fields until every node is upgraded. Timing is predictable: each control-plane node takes about 5 to 10 minutes, while on workers the drains dominate.
+
+Kubernetes does not support downgrading the control plane in place, because etcd data and API storage versions may have advanced. Rollback therefore means restoring the pre-upgrade etcd snapshot, along with the old binaries and manifests, on all control-plane nodes. That is a disruptive procedure. The other option is to fall back to a blue/green cluster, which is why rehearsal and canaries are critical. Workers can be rolled back individually, by re-imaging or reinstalling the previous kubelet, because older kubelets within skew are fine.
+
+Rehearse this block on a staging cluster before you run it on production control-plane nodes.
 
 ### Managed services
 
-GKE/EKS/AKS: upgrade control plane via API/console/Terraform (the provider handles HA rollout), then node pools by surge or blue/green node-pool replacement with maintenance windows/exclusions and release channels (rapid/regular/stable). GPU node pools: set `maxUnavailable`/surge according to spare capacity, disable auto-upgrade for pools with reservations and pin node image versions until the driver stack is validated, and test GPU driver version bundled with node images (GKE installs drivers per node image/version; EKS-optimised GPU AMIs bundle a driver version). Provider auto-upgrades can break custom stacks; use maintenance exclusions during critical runs (4.24).
+On GKE, EKS and AKS, you upgrade the control plane through the API, the console or Terraform, and the provider handles the HA rollout. Then you upgrade node pools by surge or by blue/green node-pool replacement. Use maintenance windows, exclusions and release channels (rapid, regular or stable) to control the timing. For GPU node pools, set `maxUnavailable` and surge according to spare capacity. Disable auto-upgrade for pools with reservations, and pin node image versions until the driver stack is validated.
+
+Test the GPU driver version that is bundled with each node image. GKE installs drivers per node image or version, and EKS-optimised GPU AMIs bundle a driver version. Provider auto-upgrades can break custom stacks, so use maintenance exclusions during critical runs (4.24).
 
 ## 4. Upgrading the GPU and platform stack
 
-Order of operations (typical, verify per vendor docs):
+Before you touch the GPU stack, fix the order of the layers. The typical order is below, and you should check each step against the vendor docs.
 
-1. Review the NVIDIA GPU Operator/driver/toolkit/device plugin/DCGM/MIG manager compatibility with the target Kubernetes and OS/kernel.
-2. Upgrade **operators and CRDs** compatible with both old and new Kubernetes first (Helm chart upgrades via GitOps, CRD handling per 4.25).
-3. Upgrade the control plane, then node pools.
-4. For **driver upgrades**: with operator-managed drivers, use the operator's upgrade controller (`ClusterPolicy.spec.driver.upgradePolicy`: `autoUpgrade`, `maxParallelUpgrades`, `drain` options, `waitForCompletion`, pod deletion/ eviction policy) to cordon, drain GPU pods, reload the driver, validate, uncordon node by node; with host-installed drivers, use Ansible `serial` flows (4.17). Coordinate with training: checkpoint-and-drain windows, quotas for in-flight jobs, and fail-safe if validation fails (keep node cordoned).
-5. **Kernel/OS** upgrades require reboot and DKMS/precompiled driver rebuild; pin and test combos; roll by rack.
-6. Validate after each batch: node Ready, `nvidia.com/gpu` allocatable correct, DCGM exporter up, `nvidia-smi` pod test, NCCL smoke test across the upgraded batch (4.17), network operator secondary networks present.
-7. Upgrade **kubectl, CI/CD tools, client libraries, controllers built with older client-go** thereafter; operators compiled against removed APIs need new versions.
+1. Review the compatibility of the NVIDIA GPU Operator, driver, toolkit, device plugin, DCGM and MIG manager with the target Kubernetes version, the OS and the kernel.
+2. Upgrade the operators and CRDs that work with both the old and the new Kubernetes first. Use Helm chart upgrades through GitOps, and handle CRDs as described in 4.25.
+3. Upgrade the control plane, then the node pools.
+4. For driver upgrades, use the operator's upgrade controller when the operator manages the drivers. The `ClusterPolicy.spec.driver.upgradePolicy` settings include `autoUpgrade`, `maxParallelUpgrades`, `drain` options, `waitForCompletion`, and the pod deletion or eviction policy. The controller cordons each node, drains its GPU pods, reloads the driver and validates the result, then uncordons the node, one node at a time. If you install drivers on the host, use Ansible `serial` flows (4.17) instead. Coordinate with training. Plan checkpoint-and-drain windows and quotas for in-flight jobs, and set a fail-safe for failed validation that keeps the node cordoned.
+5. Kernel and OS upgrades require a reboot and a DKMS or precompiled driver rebuild. Pin and test the combinations, and roll them out by rack.
+6. Validate after each batch. Check that each node is Ready, that `nvidia.com/gpu` allocatable is correct, and that the DCGM exporter is up. Run an `nvidia-smi` pod test and an NCCL smoke test across the upgraded batch (4.17). Confirm that the secondary networks from the network operator are present.
+7. Afterwards, upgrade `kubectl`, the CI/CD tools, client libraries, and any controllers built with an older client-go. Operators compiled against removed APIs need new versions.
 
 ## 5. Backing up and restoring etcd
 
+Suppose the data behind your control plane is gone. Every object the cluster knows about lives in etcd, so the snapshot you saved earlier decides how fast you can recover.
+
 ### Backup
+
+Start with a snapshot. Save it, check it, copy it off the node, and protect it. The block below shows each step.
 
 ```bash
 export ETCDCTL_API=3
@@ -218,13 +248,19 @@ aws s3 cp /backup/etcd-....db s3://dr-bucket/etcd/ --sse aws:kms
 # Also back up: /etc/kubernetes/pki (CA keys!), /etc/kubernetes/*.conf, /etc/kubernetes/manifests, kubeadm config, encryption config + KMS keys
 ```
 
-Automation: a CronJob on a control-plane node (hostNetwork, hostPath mounts of PKI and backup dir) or systemd timer running every 15 to 60 minutes; managed tools (Velero doesn't back up etcd directly; etcd-operator-style backup via `etcd-backup-restore` from Gardener, Kubernetes-native CronJobs, cloud snapshots of etcd volumes with consistency caveats). **Secrets in snapshots**: contain all Secrets (encrypted only if encryption at rest was enabled; with KMS you also need the KMS key) — treat backups as top-secret. Store the **cluster CA private keys** securely; without them, restoring/rebuilding the PKI is far harder. Monitor backup age and size; alert when a backup fails or is older than the RPO.
+The `etcdutl snapshot status` line checks the integrity of the file. Its table shows the hash, revision, total keys and size. Also back up `/etc/kubernetes/pki` (the CA keys), `/etc/kubernetes/*.conf`, `/etc/kubernetes/manifests`, the kubeadm config, and the encryption config with its KMS keys.
 
-Hot backups are consistent point-in-time snapshots (MVCC); taking them from one healthy member is sufficient. Snapshot size ≈ DB size (hundreds of MB to a few GB).
+Automate the snapshot with a CronJob on a control-plane node (hostNetwork, hostPath mounts of PKI and backup dir), or with a systemd timer that runs every 15 to 60 minutes. Several tools can help. Velero doesn't back up etcd directly. Other options include etcd-operator-style backup through `etcd-backup-restore` from Gardener, Kubernetes-native CronJobs, and cloud snapshots of etcd volumes, which carry consistency caveats.
+
+Snapshots contain every Secret. They are encrypted only if encryption at rest was enabled, and with KMS you also need the KMS key. Treat backups as top-secret. Store the cluster CA private keys securely, because without them, restoring or rebuilding the PKI is far harder. Monitor backup age and size, and alert when a backup fails or is older than the RPO.
+
+Hot backups are consistent point-in-time snapshots (MVCC), so taking one from a single healthy member is sufficient. A snapshot is roughly the size of the database, which runs from hundreds of MB to a few GB.
 
 ### Restore scenarios
 
-**A. One etcd member failed (quorum intact)** — replace, don't restore:
+Restoring from a snapshot is the last resort. Start by asking whether quorum is intact, because that answer decides between replacing a member and restoring from a snapshot.
+
+**A. One etcd member failed, and quorum is intact.** Replace the member instead of restoring. The commands below remove the dead member first.
 
 ```bash
 etcdctl $EP member list -w table
@@ -233,7 +269,7 @@ etcdctl $EP member remove <failed-member-id>          # remove the dead one FIRS
 etcdctl $EP member list -w table; etcdctl $EP endpoint health --cluster
 ```
 
-**B. Quorum lost (majority of members gone) or data corrupted** — restore from snapshot. The restore creates a **new cluster** from the snapshot (new cluster ID); all members must be restored from the same snapshot.
+**B. Quorum lost or data corrupted.** A majority of members is gone, or the data is damaged, so you restore from a snapshot. The restore creates a **new cluster** from the snapshot, with a new cluster ID. Every member must be restored from the same snapshot.
 
 ```bash
 # 1. Stop API servers and etcd on ALL control-plane nodes (kubeadm: move static pod manifests away)
@@ -253,23 +289,31 @@ sudo mv /etc/kubernetes/manifests.disabled/kube-apiserver.yaml /etc/kubernetes/m
 kubectl get nodes; kubectl get pods -A
 ```
 
-Single-member shortcut for a lab: restore one member with `--initial-cluster cp1=...` only (a one-node cluster), then `member add` the others (they must have empty data dirs). For disaster scenarios with total loss: rebuild nodes with the same hostnames/IPs/certs from backups, restore the snapshot, then re-join.
+A lab can use a single-member shortcut. Restore one member with `--initial-cluster cp1=...` only, which gives you a one-node cluster. Then `member add` the others, which must have empty data dirs. For disaster scenarios with total loss, rebuild the nodes with the same hostnames, IPs and certs from backups, restore the snapshot, and then rejoin the nodes.
 
-**Expected effects of restore**: the cluster state rewinds to the snapshot time. Objects created after are gone (their pods remain running on nodes until kubelets reconcile, and then orphaned containers are removed or restarted); objects deleted after are resurrected; PV/PVC bindings may reference volumes that no longer match (cloud disks created after the snapshot exist but aren't known); node leases/status refresh quickly; controllers re-reconcile everything to the restored desired state (including scaling replicas back), e.g., a Deployment scaled up after the snapshot returns to the older replica count; Jobs may rerun; operator status can be stale; certificates/tokens issued after the snapshot are invalid (service account tokens are bound to objects that may not exist). Plan to restart controllers/operators and reconcile external state (cloud resources, DNS, load balancers). Resource versions reset relative to clients; informers relist.
+Expect the cluster state to rewind to the snapshot time. Objects created after the snapshot are gone. Their pods keep running on the nodes until the kubelets reconcile, and then orphaned containers are removed or restarted. Objects deleted after the snapshot come back. PV and PVC bindings may point at volumes that no longer match, because cloud disks created after the snapshot still exist, but the cluster no longer knows about them.
 
-**C. Lost control plane but etcd data intact on disk**: rebuild nodes, copy the etcd data dir/PKI, or restore from the latest snapshot.
+Node leases and status refresh quickly. Controllers reconcile everything back to the restored desired state, including scaling replicas back. For example, a Deployment that was scaled up after the snapshot returns to the older replica count. Jobs may run again, and operator status can be stale.
 
-**D. Expired certificates** (a common outage after one year): `kubeadm certs check-expiration`; renew with `kubeadm certs renew all` on each control-plane node and restart static pods (move manifests out and back, or restart kubelet); also renew kubelet client/serving certs if rotation failed; update `admin.conf` copies (5.21).
+Certificates and tokens issued after the snapshot are invalid, and service account tokens are bound to objects that may no longer exist. Plan to restart controllers and operators, and reconcile external state such as cloud resources, DNS and load balancers. Resource versions reset relative to clients, so informers relist.
 
-**E. Accidental deletion of a namespace/critical object**: restore from GitOps (re-sync), Velero backup, or etcd snapshot restored to a *scratch* cluster to extract the objects (`kubectl get -o yaml`) and re-apply into production (safer than rewinding production).
+**C. The control plane is lost, but the etcd data is intact on disk.** Rebuild the nodes and copy the etcd data directory and PKI, or restore from the latest snapshot.
+
+**D. Certificates have expired.** This is a common outage after one year. Run `kubeadm certs check-expiration` to see what has expired. Then run `kubeadm certs renew all` on each control-plane node, and restart the static pods by moving the manifests out and back, or by restarting the kubelet. If rotation failed, renew the kubelet client and serving certificates as well. Finally, update the `admin.conf` copies (5.21).
+
+**E. A namespace or critical object was deleted by accident.** Restore it from GitOps by re-syncing, or from a Velero backup. You can also restore an etcd snapshot into a *scratch* cluster, extract the objects with `kubectl get -o yaml`, and re-apply them into production. That is safer than rewinding production.
+
+Match the scenario to your failure before you touch any manifest.
 
 ### Test restores
 
-A backup you never restored is a hope. Schedule quarterly restore drills into an isolated VM cluster; measure RTO; verify the restored cluster boots, objects exist, and a sample workload runs (disable external side effects: scale controllers down, block egress, remove cloud credentials to avoid the restored cluster acting on real resources — a restored cluster thinks it owns your load balancers and disks).
+A backup you never restored is a hope. Schedule quarterly restore drills into an isolated VM cluster, and measure the RTO. Verify that the restored cluster boots, that the objects exist, and that a sample workload runs. Disable external side effects while you test. Scale the controllers down, block egress, and remove cloud credentials, so the restored cluster does not act on real resources. A restored cluster thinks it owns your load balancers and disks.
+
+Remove cloud credentials from every restore drill cluster before you start it.
 
 ## 6. Application and data backup
 
-Layers of protection:
+Suppose a team deletes a namespace that holds the model registry and its volumes. Whether you can recover depends on which layers of protection were in place. The table lists the layers.
 
 | Layer | What | Tools |
 |---|---|---|
@@ -281,7 +325,11 @@ Layers of protection:
 | **Identity and secrets** | CA keys, KMS keys, Vault, OIDC provider config | Escrowed offline backups; HSM/KMS multi-region keys |
 | **Observability data** | Metrics/logs | Often best-effort; keep dashboards/rules in Git |
 
-**Velero** (CNCF project): server-side controller + CLI; backs up Kubernetes resources to object storage and volumes via CSI snapshots or file-system backup (Kopia); supports schedules, TTLs, hooks (pre/post backup commands for DB quiescing), restore to the same or a different cluster, namespace mapping, and resource filters.
+Git recreates only what you declared, so runtime objects and data need the other layers. Each layer covers a gap the others leave open.
+
+Velero is a CNCF project with a server-side controller and a CLI. It backs up Kubernetes resources to object storage, and it backs up volumes through CSI snapshots or file-system backup with Kopia. It supports schedules, TTLs, and hooks (pre and post backup commands for DB quiescing). It can restore to the same or a different cluster, and it supports namespace mapping and resource filters.
+
+The commands below install Velero, run a backup and a schedule, and restore into a mapped namespace.
 
 ```bash
 velero install --provider aws --plugins velero/velero-plugin-for-aws:v1.10.0 --bucket dr-velero --backup-location-config region=us-east-1 \
@@ -291,11 +339,19 @@ velero schedule create nightly --schedule="0 2 * * *" --include-namespaces '*' -
 velero backup describe ml-platform --details; velero restore create --from-backup ml-platform --namespace-mappings mlflow:mlflow-restore
 ```
 
-Considerations for AI data: multi-terabyte checkpoints are better protected by storage-layer replication and tiering than by Velero file-system backup; datasets are re-creatable from source (store recipes and hashes); prioritise irreplaceable artefacts (trained models, fine-tuning data, evaluation sets, experiment metadata, feature stores). Define retention per class (e.g., keep last N checkpoints plus milestones).
+Use the namespace mapping to restore into a separate namespace first, so the restored copy never collides with live data.
+
+AI data needs its own thinking. Multi-terabyte checkpoints are better protected by storage-layer replication and tiering than by Velero file-system backup. Datasets can be recreated from the source, so store the recipes and hashes. Prioritise the irreplaceable artefacts: trained models, fine-tuning data, evaluation sets, experiment metadata and feature stores. Define retention per class, for example by keeping the last N checkpoints plus milestones.
+
+Decide which artefacts are irreplaceable first, and give those the strongest protection.
 
 ## 7. Disaster recovery strategies
 
-**Define objectives per tier**: RPO (maximum tolerable data loss) and RTO (maximum tolerable downtime). Example: inference gateway RTO 15 min/RPO 0 (stateless, redeploy from Git); metadata DB RTO 1 h/RPO 5 min (replicated Postgres); training in progress RTO hours/RPO last checkpoint (checkpoint cadence = RPO in GPU-time); datasets RTO days/RPO 0 (replicated objects).
+Picture a regional outage that takes the whole training fleet offline. How quickly you recover depends on the strategy you chose before the outage. Start by setting an objective for each tier.
+
+The RPO is the maximum tolerable data loss, and the RTO is the maximum tolerable downtime. An inference gateway has an RTO of 15 min and an RPO of 0. It is stateless, so you redeploy it from Git. A metadata DB, backed by replicated Postgres, has an RTO of 1 h and an RPO of 5 min. Training in progress has an RTO measured in hours, and its RPO is the last checkpoint, so the checkpoint cadence sets the RPO in GPU time. Datasets have an RTO of days and an RPO of 0, because their objects are replicated.
+
+The table compares four common strategies by recovery time and cost.
 
 | Strategy | Description | RTO | Cost | Notes |
 |---|---|---|---|---|
@@ -304,16 +360,19 @@ Considerations for AI data: multi-terabyte checkpoints are better protected by s
 | **Pilot light / warm standby** | Small standby cluster in another region/zone with replicated data and GitOps in sync | Minutes to an hour | Medium | GPU capacity at the standby is the expensive part; keep minimal inference footprint, scale up on failover |
 | **Active-active multi-cluster** | Multiple clusters serving traffic (global LB/DNS, MultiKueue for batch) | Seconds to minutes | High | Needs data replication and conflict handling (5.35) |
 
-AI-specific DR notes:
+Notice how the RTO and the cost move in opposite directions in this table.
 
-- **Training jobs** recover from **checkpoints** (frequency vs cost; async multi-tier checkpointing, redundant shards, validation of checkpoint integrity) not from cluster snapshots; make checkpoint storage durable and in another failure domain; test restart from the latest checkpoint on a different cluster/region (accounting for bandwidth).
-- **Inference** is mostly stateless: weights from a registry/object store; DR = stand up replicas elsewhere and shift traffic; pre-stage model artefacts in the standby region.
-- **GPU capacity is the DR bottleneck**: a standby region with no GPUs cannot take over; negotiate reservations/priority access or accept degraded service (smaller models, queueing).
-- **Control-plane SPOFs**: management cluster, GitOps hub, CI, registry, DNS, identity provider (OIDC), secret manager, KMS: each needs its own DR plan.
-- **Split-brain avoidance**: a restored/standby cluster must not manage the same external resources as the live one.
-- **Runbook the order**: networking/DNS → identity/secrets → storage → control plane → platform add-ons → workloads → traffic cutover.
+AI workloads add some specific points to these strategies. Training jobs recover from checkpoints, not from cluster snapshots. Checkpoint frequency is a trade-off against cost, and async multi-tier checkpointing, redundant shards and integrity validation all help. Make the checkpoint storage durable and place it in another failure domain. Test a restart from the latest checkpoint on a different cluster or region, and account for bandwidth while you do.
+
+Inference is mostly stateless. Its weights come from a registry or an object store, so DR means standing up replicas elsewhere and shifting traffic to them. Pre-stage the model artefacts in the standby region. GPU capacity is the DR bottleneck, though. A standby region with no GPUs cannot take over. Negotiate reservations or priority access, or accept degraded service, such as smaller models and queueing.
+
+Control-plane single points of failure each need their own DR plan. These include the management cluster, the GitOps hub, CI, the registry, DNS, the identity provider (OIDC), the secret manager and KMS. A restored or standby cluster must also avoid split-brain, which means it must not manage the same external resources as the live one.
+
+Runbook the order: networking/DNS → identity/secrets → storage → control plane → platform add-ons → workloads → traffic cutover. Write that order down before an outage, not during one.
 
 ## 8. Failure scenarios and responses
+
+When something breaks, start with the impact and the first response. The table pairs each scenario with both, so you can find the row that matches your symptom before you change anything.
 
 | Scenario | Impact | Response |
 |---|---|---|
@@ -329,45 +388,53 @@ AI-specific DR notes:
 | Region/zone outage | Cluster or capacity gone | Failover per DR tier: traffic shift, standby cluster, restore data in other region |
 | Ransomware / credential compromise | Data and cluster at risk | Immutable backups, break-glass rebuild, rotate CA and secrets, forensic isolation (Part 18) |
 
+Notice how many of these responses depend on a snapshot, a Velero backup or a GitOps repo. Those are the assets to confirm before you need them.
+
 ## 9. Lab
 
-First, run the self-checking Python lab (`code/part05/k8s_upgrade_dr_planner_lab.py`) locally. It verifies the Kubernetes Version Skew Policy validator (`validate_k8s_version_skew`), the `PK` Chapter 2 `etcd` upgrade quorum-safety evaluator (`evaluate_etcd_upgrade_quorum_safety`: contrasting risky subtractive `3 -> 2 -> 3` replacement against additive learner / in-place upgrades), and the AI training/inference Disaster Recovery `RPO`/`RTO` evaluator (`evaluate_dr_rpo_rto`).
+Start with the self-checking Python lab, which you can run locally to check three things. It verifies the Kubernetes Version Skew Policy validator (`validate_k8s_version_skew`). It also checks the etcd upgrade quorum-safety evaluator from Production Kubernetes, chapter 2 (`evaluate_etcd_upgrade_quorum_safety`), which contrasts the risky subtractive `3 -> 2 -> 3` replacement with additive learner or in-place upgrades. Finally, it checks the AI training and inference Disaster Recovery `RPO`/`RTO` evaluator (`evaluate_dr_rpo_rto`).
 
 ```bash
 python3 code/part05/k8s_upgrade_dr_planner_lab.py
 ```
 
-Next, on a 3-control-plane + 2-worker `kubeadm` cluster (all interactive shell steps below are `untested here`), work through these exercises:
+Next, build a 3-control-plane and 2-worker `kubeadm` cluster. All interactive shell steps below are `untested here`. Then you can work through these exercises.
 
-1. **Upgrade rehearsal**: build a 1.N cluster with kubeadm (3 CP, 2 workers); run workloads including a StatefulSet, a PDB-protected Deployment, a GPU-like fake extended resource DaemonSet; take an etcd snapshot; upgrade to 1.N+1 following section 3; record timings and issues; run `kubectl get nodes` and smoke tests at each stage.
-2. **Deprecated API scan**: before upgrading, apply a manifest using an API removed in the target version; detect it with `pluto`/`kubent` and the API server metric; migrate with `kubectl-convert`.
-3. **Skew experiment**: run a worker one minor behind the control plane (supported); try one newer than the API server (observe failure); try kubectl two minors apart.
-4. **PDB trap**: create a PDB with zero allowed disruptions and attempt drain during upgrade; fix; document the checklist.
-5. **etcd backup automation**: create the snapshot CronJob/systemd timer with checksum and offsite copy; alert on staleness; verify `snapshot status`.
-6. **Member replacement**: kill an etcd member (stop and delete data); replace using remove-then-add; compare with adding first (lab-only) to see risk.
-7. **Full restore drill**: with a 3-CP cluster, snapshot, create and delete objects, wipe etcd on all nodes, restore on all members, bring up the API server; compare restored vs expected state; list side effects (replica counts, missing objects, stale leases).
-8. **Certificate expiry**: set certificates to expire soon (or manually move the clock in a throwaway VM), observe failure modes, renew with `kubeadm certs renew all`, restart components, fix kubeconfigs.
-9. **Velero**: back up a namespace with a PVC (CSI snapshots or Kopia), delete it, restore into the same and a different cluster; test hooks for database quiescing; verify data integrity with checksums.
-10. **GitOps rebuild**: destroy a workload cluster (lab) and rebuild from Terraform/CAPI + GitOps bootstrap (4.25, 4.26); measure time to healthy platform; list manual steps and automate them.
-11. **GPU stack upgrade**: upgrade the GPU Operator/driver on a canary pool using the operator's upgrade policy with a checkpointing job running; validate; roll to the rest.
-12. **DR game day**: simulate loss of a zone or region (block network between clusters); execute the DR runbook for inference and training (restart from checkpoint in another cluster); record RTO/RPO achieved and gaps.
-13. **Webhook outage**: break an admission webhook to block all pod creation; practise emergency recovery.
-14. **Clean up**.
+1. Rehearse the upgrade. Build a 1.N cluster with `kubeadm`, using 3 control-plane nodes and 2 workers. Run workloads on it, including a StatefulSet, a PDB-protected Deployment and a GPU-like fake extended resource DaemonSet. Take an etcd snapshot, then upgrade to 1.N+1 by following section 3. Record the timings and any issues, and run `kubectl get nodes` and smoke tests at each stage.
+2. Scan for deprecated APIs. Before the upgrade, apply a manifest that uses an API removed in the target version. Detect it with `pluto` or `kubent` and the API server metric, then migrate the manifest with `kubectl-convert`.
+3. Test version skew. Run a worker one minor behind the control plane, which is supported. Then try a worker one minor newer than the API server, and observe the failure. Finally, try `kubectl` two minors apart.
+4. Trap a PDB. Create a PDB with zero allowed disruptions, and attempt a drain during the upgrade. Fix the problem, and document the checklist.
+5. Automate etcd backups. Create the snapshot CronJob or systemd timer with a checksum and an offsite copy. Alert when the backup goes stale, and verify the result with `snapshot status`.
+6. Replace a member. Kill an etcd member by stopping it and deleting its data. Replace it with remove-then-add. Then compare that with adding first (lab-only), to see the risk.
+7. Run a full restore drill. With a 3-control-plane cluster, take a snapshot, create and delete objects, wipe etcd on all nodes, restore on all members, and bring up the API server. Compare the restored state with the expected state, and list the side effects, such as replica counts, missing objects and stale leases.
+8. Test certificate expiry. Set the certificates to expire soon, or move the clock forward in a throwaway VM. Observe the failure modes. Then renew with `kubeadm certs renew all`, restart the components, and fix the kubeconfigs.
+9. Test Velero. Back up a namespace with a PVC, using CSI snapshots or Kopia. Delete the namespace, then restore it into the same cluster and into a different one. Test the hooks for database quiescing, and verify data integrity with checksums.
+10. Rebuild from GitOps. Destroy a lab workload cluster, then rebuild it from Terraform or CAPI with GitOps bootstrap (4.25, 4.26). Measure the time to a healthy platform, list the manual steps, and automate them.
+11. Upgrade the GPU stack. Upgrade the GPU Operator and driver on a canary pool, using the operator's upgrade policy while a checkpointing job runs. Validate the result, then roll the change out to the rest.
+12. Run a DR game day. Simulate the loss of a zone or region by blocking the network between clusters. Execute the DR runbook for inference and for training, including a restart from a checkpoint in another cluster. Record the RTO and RPO you achieve, and list the gaps.
+13. Break an admission webhook so that it blocks all pod creation, then practise emergency recovery.
+14. Clean up.
+
+When you finish, run the clean-up step, so the lab leaves nothing behind.
 
 ## 10. Common mistakes
 
-- Skipping minor versions or upgrading nodes before the control plane; ignoring skew policy.
-- No pre-upgrade etcd snapshot, or backups that were never restored; backups stored on the same nodes/disks.
-- Not scanning for deprecated APIs; upgrading operators after the cluster rather than before when they're incompatible.
-- Hand-edited static pod manifests lost during upgrade; kubeadm config not tracked.
-- Draining GPU nodes without checkpoint coordination; PDBs that deadlock drains.
-- Upgrading kernel/driver/Kubernetes simultaneously with no ability to bisect failures.
-- Adding an etcd member before removing the dead one; running two-member etcd clusters.
-- Forgetting the CA private key and encryption/KMS keys in DR plans; Secrets in unencrypted snapshots.
+These mistakes turn a routine upgrade or restore into an outage. Check your plan against each one.
+
+- Skipping minor versions, or upgrading nodes before the control plane, and ignoring the skew policy.
+- Running an upgrade with no pre-upgrade etcd snapshot, or relying on backups that were never restored, or keeping backups on the same nodes or disks.
+- Not scanning for deprecated APIs, or upgrading operators after the cluster when they are incompatible.
+- Losing hand-edited static pod manifests during an upgrade, or not tracking the kubeadm config.
+- Draining GPU nodes without checkpoint coordination, or using PDBs that deadlock drains.
+- Upgrading the kernel, driver and Kubernetes at the same time, with no way to bisect failures.
+- Adding an etcd member before removing the dead one, or running two-member etcd clusters.
+- Forgetting the CA private key and the encryption or KMS keys in DR plans, or leaving Secrets in unencrypted snapshots.
 - Restoring a cluster that then competes with the live one for cloud resources.
-- Treating snapshots as backups; ignoring object storage versioning/immutability.
-- DR plans that assume GPUs will be available in the standby region.
-- No game days; runbooks untested.
+- Treating snapshots as backups, and ignoring object storage versioning and immutability.
+- Writing DR plans that assume GPUs will be available in the standby region.
+- Running no game days, and leaving runbooks untested.
+
+Review this list before you start each upgrade and each DR drill.
 
 ## 11. Interview angles
 
@@ -380,14 +447,18 @@ Next, on a 3-control-plane + 2-worker `kubeadm` cluster (all interactive shell s
 - "How do you upgrade GPU drivers across hundreds of nodes without killing training jobs?"
 - "What's in a complete Kubernetes backup strategy?"
 
+Each question maps to a section above, so use the section to check your answer.
+
 ## Exercises
 
-1. **Kubernetes Release Cadence, Version Skew Policy, and Detecting Deprecated APIs:** Using `validate_k8s_version_skew()` in `code/part05/k8s_upgrade_dr_planner.py`, state the exact version skew rules across HA `kube-apiserver`s, `kube-controller-manager`, `kube-scheduler`, `kubelet`, `kube-proxy`, and `kubectl`, explain why you cannot skip minor versions when upgrading the control plane, and show how `apiserver_requested_deprecated_apis`, `pluto`, and `kubent` catch removed APIs before an upgrade.
-2. **Executing a Zero-Downtime 3-Control-Plane `kubeadm` Upgrade and Avoiding Static-Pod / `etcd` Pitfalls (`PK` Chapter 2 & `bcm11-containerization` Appendix C):** Trace the exact `kubeadm` commands in Section 3 (`kubeadm upgrade plan` -> `etcdctl snapshot save` -> `kubeadm upgrade apply` on `cp1` -> `kubeadm upgrade node` on `cp2`/`cp3` -> rolling worker drains), explain why manual edits to `/etc/kubernetes/manifests/*.yaml` are wiped during upgrade unless stored in `ClusterConfiguration` (`extraArgs` / `--patches`), and use `evaluate_etcd_upgrade_quorum_safety()` to explain `PK` Chapter 2's warning against subtractive `3 -> 2 -> 3` dedicated `etcd` replacement.
-3. **Upgrading the NVIDIA GPU Operator and Driver Stack (`ClusterPolicy.spec.driver.upgradePolicy`) Without Killing Training Jobs:** Trace the 7-step GPU stack upgrade order in Section 4, explaining how the GPU Operator's driver upgrade controller (`maxParallelUpgrades`, `drain`, pod eviction/completion policy) coordinates with training job checkpointing and post-upgrade `nvidia-smi` / `dcgmi` / `nccl-tests` validation.
-4. **`etcd` Backup Automation, Single-Member Replacement (Quorum Intact), and Full Multi-Member Snapshot Restore (Quorum Lost):** Contrast Scenario A (1 of 3 `etcd` members dead -> `etcdctl member remove` then `kubeadm join --control-plane`, **no snapshot restore**) with Scenario B (2 or 3 members dead -> stop `kube-apiserver` and `etcd` on all 3 nodes, run `etcdutl snapshot restore` on all 3 nodes with the **same snapshot** and `--initial-cluster-token=etcd-cluster-restored-1`, move into `/var/lib/etcd`, and restart), and explain what artifacts must be backed up alongside the `etcd` `.db` file (`/etc/kubernetes/pki` CA keys, KMS keys).
-5. **Workload and Volume Backups with `Velero` (`Backup`, `Schedule`, `Restore`, CSI `VolumeSnapshot`s vs. `Kopia`/`Restic`):** Trace the `nightly-platform` `Schedule` and `Restore` manifests in Section 6, explain how `pre` and `post` backup hooks quiesce stateful databases (`pg_Start_backup` / `fsfreeze`), and explain why restoring into a test cluster without isolating cloud controllers/ExternalDNS can hijack production LoadBalancers and DNS records.
-6. **Designing Disaster Recovery Tiers (`RPO` / `RTO`) and Game-Day Runbooks for AI Training, Inference, and Platform State:** Using `evaluate_dr_rpo_rto()` in `code/part05/k8s_upgrade_dr_planner.py`, explain why DR for LLM inference (stateless replicas + replicated weights + multi-region Gateway) differs fundamentally from DR for 1,000-GPU training (async cross-region checkpoint replication + MultiKueue / checkpoint resume), and write the emergency recovery steps for the 8 disaster scenarios in Section 8.
+1. Start with the release cadence, the version skew policy and deprecated APIs. Using `validate_k8s_version_skew()` in `code/part05/k8s_upgrade_dr_planner.py`, state the exact version skew rules across HA `kube-apiserver`s, `kube-controller-manager`, `kube-scheduler`, `kubelet`, `kube-proxy` and `kubectl`. Explain why you cannot skip minor versions when upgrading the control plane. Then show how `apiserver_requested_deprecated_apis`, `pluto` and `kubent` catch removed APIs before an upgrade.
+2. Run a zero-downtime 3-control-plane `kubeadm` upgrade, and avoid the static-pod and etcd pitfalls (Production Kubernetes, chapter 2, and `bcm11-containerization` Appendix C). Trace the exact `kubeadm` commands in section 3: `kubeadm upgrade plan` -> `etcdctl snapshot save` -> `kubeadm upgrade apply` on `cp1` -> `kubeadm upgrade node` on `cp2`/`cp3` -> rolling worker drains. Explain why the manual edits you make to `/etc/kubernetes/manifests/*.yaml` are wiped during upgrade unless they are stored in `ClusterConfiguration` (`extraArgs` or `--patches`). Then use `evaluate_etcd_upgrade_quorum_safety()` to explain the Production Kubernetes chapter 2 warning against subtractive `3 -> 2 -> 3` dedicated `etcd` replacement.
+3. Upgrade the NVIDIA GPU Operator and driver stack without killing training jobs, using `ClusterPolicy.spec.driver.upgradePolicy`. Trace the 7-step GPU stack upgrade order in section 4. Explain how the GPU Operator's driver upgrade controller (`maxParallelUpgrades`, `drain`, and the pod eviction and completion policy) coordinates with training job checkpointing, and how the post-upgrade `nvidia-smi`, `dcgmi` and `nccl-tests` validation fits in.
+4. Contrast the two `etcd` recovery paths, and automate the backups. Scenario A has 1 of 3 `etcd` members dead. Run `etcdctl member remove` and then `kubeadm join --control-plane`, with no snapshot restore. Scenario B has 2 or 3 members dead. Stop `kube-apiserver` and `etcd` on all three nodes, run `etcdutl snapshot restore` on all three nodes with the same snapshot and `--initial-cluster-token=etcd-cluster-restored-1`, move the result into `/var/lib/etcd`, and restart. Then explain which artifacts you must back up alongside the `etcd` `.db` file, such as the `/etc/kubernetes/pki` CA keys and the KMS keys.
+5. Back up workloads and volumes with Velero (`Backup`, `Schedule`, `Restore`, CSI `VolumeSnapshot`s vs. `Kopia`/`Restic`). Trace the `nightly-platform` `Schedule` and `Restore` manifests in section 6. Explain how `pre` and `post` backup hooks quiesce stateful databases (`pg_Start_backup` / `fsfreeze`). Then explain why restoring into a test cluster without isolating cloud controllers and ExternalDNS can hijack production LoadBalancers and DNS records.
+6. Design DR tiers and game-day runbooks for AI training, inference and platform state. Using `evaluate_dr_rpo_rto()` in `code/part05/k8s_upgrade_dr_planner.py`, explain why DR for LLM inference (stateless replicas, replicated weights and a multi-region Gateway) differs from DR for 1,000-GPU training (async cross-region checkpoint replication, with MultiKueue or checkpoint resume). Then write the emergency recovery steps you would follow for the 8 disaster scenarios in section 8.
+
+Exercise 6 ties the DR tiers from section 7 to the emergency steps from section 8.
 
 ## Checkpoint questions (20)
 
@@ -395,157 +466,172 @@ Next, on a 3-control-plane + 2-worker `kubeadm` cluster (all interactive shell s
 <summary>1. What is the Kubernetes Version Skew Policy across `kube-apiserver`, `kube-controller-manager`, `kube-scheduler`, `kubelet`, `kube-proxy`, and `kubectl`, and why does it dictate the upgrade order?</summary>
 
 - **HA `kube-apiserver` instances:** May skew by at most **1 minor version** (`1.30` and `1.31` during a rolling control-plane upgrade).
-- **`kube-controller-manager`, `kube-scheduler`, and `cloud-controller-manager`:** Must **never be newer** than the `kube-apiserver` instances they talk to; may be up to **1 minor version older**.
-- **`kubelet` and `kube-proxy`:** Must **never be newer** than `kube-apiserver`; may be up to **3 minor versions older** (`n-3` in Kubernetes 1.28+; `n-2` previously).
+- **`kube-controller-manager`, `kube-scheduler`, and `cloud-controller-manager`:** Must **never be newer** than the `kube-apiserver` instances they talk to. They may be up to **1 minor version older**.
+- **`kubelet` and `kube-proxy`:** Must **never be newer** than `kube-apiserver`. They may be up to **3 minor versions older** (`n-3` in Kubernetes 1.28 and later, `n-2` before that).
 - **`kubectl`:** May be **1 minor version newer or older** (`n+1` to `n-1`) than `kube-apiserver`.
-Because no component (except `kubectl`) is allowed to be newer than `kube-apiserver`, you must **always upgrade `kube-apiserver` (the control plane) FIRST, and worker node `kubelet`s AFTER**, one minor version at a time.
+
+No component except `kubectl` may be newer than `kube-apiserver`. That is why you upgrade `kube-apiserver` (the control plane) first, and then the worker node `kubelet`s, one minor version at a time.
 </details>
 
 <details>
 <summary>2. How do you detect whether any workload, Helm chart, or Operator in your cluster is still calling a deprecated Kubernetes API that will be removed in the next minor version?</summary>
 
-Use three complementary checks before upgrading:
-1. **Live API server Prometheus metric:**
-   `kubectl get --raw /metrics | grep apiserver_requested_deprecated_apis`
-   This shows every deprecated `(group, version, resource, removed_release)` that has actually been requested against the live API server.
-2. **Audit log query:** Filter `kube-apiserver` audit logs for the annotation **`k8s.io/deprecated: "true"`** (`k8s.io/removed-release: "1.xx"`), which identifies the exact `user.username` / ServiceAccount making the deprecated call.
-3. **Static & Helm release scanners (`pluto` and `kubent`):** Run `kubent` (Kube No Trouble) against the live cluster (scanning `helm.sh/release.v1` Secrets and `kubectl.kubernetes.io/last-applied-configuration` annotations) and `pluto detect-files` in GitOps CI.
+Run three checks before you upgrade.
+
+1. **Live API server Prometheus metric:** Run `kubectl get --raw /metrics | grep apiserver_requested_deprecated_apis`. It shows every deprecated `(group, version, resource, removed_release)` that has actually been requested against the live API server.
+2. **Audit log query:** Filter the `kube-apiserver` audit logs for the annotation **`k8s.io/deprecated: "true"`**, along with `k8s.io/removed-release: "1.xx"`. That shows the exact `user.username` or ServiceAccount making the deprecated call.
+3. **Static and Helm release scanners:** Run `kubent` (Kube No Trouble) against the live cluster. It scans `helm.sh/release.v1` Secrets and `kubectl.kubernetes.io/last-applied-configuration` annotations. Run `pluto detect-files` in your GitOps CI.
 </details>
 
 <details>
 <summary>3. During a 3-node HA `kubeadm` control-plane upgrade (`cp1`, `cp2`, `cp3`), what is the difference between `kubeadm upgrade apply` and `kubeadm upgrade node`?</summary>
 
-- **`sudo kubeadm upgrade apply v1.31.x` (run ONLY on the FIRST control-plane node `cp1`):** Runs cluster-wide preflight checks, updates the cluster-wide `kubeadm-config` and `kubelet-config` ConfigMaps in `kube-system`, renews PKI certificates on `cp1`, rewrites the Static Pod manifests (`/etc/kubernetes/manifests/*.yaml`) on `cp1` to `v1.31.x`, and upgrades the cluster-wide **`coredns`** Deployment and **`kube-proxy`** DaemonSet.
-- **`sudo kubeadm upgrade node` (run on `cp2`, `cp3`, and every worker node `w1..wN`):** Downloads the updated `ClusterConfiguration`/`KubeletConfiguration` from `kube-system`, renews local certificates and rewrites local static pod manifests (on `cp2`/`cp3`), and updates `/var/lib/kubelet/config.yaml` on that node.
+- **`sudo kubeadm upgrade apply v1.31.x`** runs only on the first control-plane node, `cp1`. It runs cluster-wide preflight checks and updates the cluster-wide `kubeadm-config` and `kubelet-config` ConfigMaps in `kube-system`. It renews the PKI certificates on `cp1` and rewrites the static pod manifests (`/etc/kubernetes/manifests/*.yaml`) on `cp1` to `v1.31.x`. It also upgrades the cluster-wide **`coredns`** Deployment and the **`kube-proxy`** DaemonSet.
+- **`sudo kubeadm upgrade node`** runs on `cp2`, `cp3`, and every worker node `w1..wN`. It downloads the updated `ClusterConfiguration` and `KubeletConfiguration` from `kube-system`. It renews the local certificates, rewrites the local static pod manifests on `cp2` and `cp3`, and updates `/var/lib/kubelet/config.yaml` on that node.
 </details>
 
 <details>
 <summary>4. Why are manual edits made directly to `/etc/kubernetes/manifests/kube-apiserver.yaml` wiped out during `kubeadm upgrade`, and how should custom flags or mounts be configured instead?</summary>
 
-During `kubeadm upgrade apply` and `kubeadm upgrade node`, `kubeadm` **regenerates `/etc/kubernetes/manifests/{kube-apiserver,kube-controller-manager,kube-scheduler,etcd}.yaml` from scratch** using the `ClusterConfiguration` stored in the `kube-system/kubeadm-config` ConfigMap. Any flag or volume edited by hand in `/etc/kubernetes/manifests/*.yaml` is overwritten.
-To make custom flags (`--audit-policy-file`, `--encryption-provider-config`) or volume mounts persist across upgrades, declare them in **`ClusterConfiguration` (`apiServer.extraArgs`, `apiServer.extraVolumes`, or Kustomize `--patches`)** and pass `kubeadm upgrade apply --config kubeadm-config.yaml`.
+Edits made by hand are overwritten because `kubeadm` regenerates `/etc/kubernetes/manifests/{kube-apiserver,kube-controller-manager,kube-scheduler,etcd}.yaml` from scratch. It does this during both `kubeadm upgrade apply` and `kubeadm upgrade node`. It builds the files from the `ClusterConfiguration` stored in the `kube-system/kubeadm-config` ConfigMap, so any flag or volume you edited by hand in `/etc/kubernetes/manifests/*.yaml` is lost.
+
+To keep custom flags (`--audit-policy-file`, `--encryption-provider-config`) or volume mounts across upgrades, declare them in **`ClusterConfiguration`**. Use `apiServer.extraArgs`, `apiServer.extraVolumes`, or Kustomize `--patches`, and pass `kubeadm upgrade apply --config kubeadm-config.yaml`.
 </details>
 
 <details>
 <summary>5. Can you downgrade a Kubernetes control plane (`1.31 -> 1.30`) in place by installing the older `kubeadm` binary, and how do you actually roll back a failed control-plane upgrade?</summary>
 
-**No—in-place control-plane downgrades are unsupported and unsafe** because the newer `kube-apiserver` and `etcd` may have already written objects using newer internal storage schemas or WAL formats that the older `1.30` binary cannot parse.
-The only supported way to roll back a failed in-place control-plane upgrade is to **restore the pre-upgrade `etcd` snapshot** (`etcdutl snapshot restore`) and restore the backed-up `1.30` `/etc/kubernetes/manifests/` and binaries across all control-plane nodes (which is why taking a verified `etcd` snapshot immediately before `kubeadm upgrade apply` is mandatory). By contrast, an individual worker node's `kubelet` *can* be rolled back by re-imaging the node to `1.30`, since a `1.30` `kubelet` is within the supported skew of a `1.31` `kube-apiserver`.
+No. In-place control-plane downgrades are unsupported and unsafe. The newer `kube-apiserver` and `etcd` may already have written objects in newer internal storage schemas or WAL formats, and the older `1.30` binary cannot parse them.
+
+The only supported way to roll back a failed in-place control-plane upgrade is to restore the pre-upgrade `etcd` snapshot with `etcdutl snapshot restore`. You also restore the backed-up `1.30` `/etc/kubernetes/manifests/` and binaries on all control-plane nodes. That is why a verified `etcd` snapshot taken right before `kubeadm upgrade apply` is mandatory. A worker node's `kubelet` is different. You can roll it back by re-imaging the node to `1.30`, because a `1.30` `kubelet` is within the supported skew of a `1.31` `kube-apiserver`.
 </details>
 
 <details>
 <summary>6. In *Production Kubernetes* Chapter 2, why is a subtractive `3 -> 2 -> 3` node replacement dangerous when upgrading a 3-node dedicated `etcd` cluster, and what are the two safe patterns?</summary>
 
-In a 3-node `etcd` cluster, if you remove and terminate 1 node first (`3 -> 2` voting members), the required quorum for a 2-node cluster is still **$\lfloor 2/2 \rfloor + 1 = 2$**—meaning **fault tolerance drops to ZERO (`2 - 2 = 0`)** for the entire time the replacement node is provisioning and syncing. If either of the 2 remaining nodes suffers a brief disk/network hiccup during that window, the cluster loses quorum completely.
-**Two safe patterns (`PK` Chapter 2):**
-1. **Additive Learner Replacement (`3 -> 4 (learner) -> promote -> remove old -> 3`):** Add the new upgraded node as a non-voting `--learner` first, let it catch up, promote it (`4` members, `3` needed for quorum, `1` fault tolerated), and immediately remove the old node.
-2. **In-Place Rolling Upgrade (one member at a time):** Upgrade the `etcd` binary/static pod in place (~5 seconds restart) while the other 2 members remain online.
+The danger is quorum. If you remove and terminate one node first, you drop to 2 voting members. The required quorum for a 2-node cluster is still $\lfloor 2/2 \rfloor + 1 = 2$. That leaves fault tolerance at zero, `2 - 2 = 0`, for as long as the replacement node takes to boot and sync. If either of the 2 remaining nodes has a brief disk or network hiccup in that window, the cluster loses quorum completely.
+
+**Two safe patterns (Production Kubernetes, chapter 2):**
+
+1. **Additive learner replacement (`3 -> 4 (learner) -> promote -> remove old -> 3`):** Add the new upgraded node as a non-voting `--learner` first, and let it catch up. Then promote it. That gives you `4` members, with `3` needed for quorum and `1` fault tolerated. Immediately remove the old node.
+2. **In-place rolling upgrade (one member at a time):** Upgrade the `etcd` binary or static pod in place, which restarts in about 5 seconds, while the other 2 members stay online.
 </details>
 
 <details>
 <summary>7. How does the NVIDIA GPU Operator's `ClusterPolicy.spec.driver.upgradePolicy` automate rolling GPU driver upgrades across worker nodes?</summary>
 
-When you update the NVIDIA driver version in `ClusterPolicy` with `driver.upgradePolicy.autoUpgrade: true`, the GPU Operator's upgrade controller orchestrates a safe state machine across at most **`maxParallelUpgrades`** nodes at a time (e.g., `1` or `2` nodes):
-1. `UpgradeRequired` -> **Cordons** the node (`kubectl cordon`).
-2. `WaitingForJobsCompletion` / `PodDeletion` -> Waits for running GPU Jobs to finish (or drains GPU pods according to `drain.enable: true` and `timeoutSeconds`).
-3. Stops the device plugin/DCGM pods so no process holds `/dev/nvidia*` open, unloads the old kernel module, starts the new driver container, and verifies `nvidia-smi` (`Validation`).
-4. **Uncordons** the node (`UpgradeDone`) and moves to the next batch (or leaves the node cordoned in `UpgradeFailed` if validation fails).
+When you change the NVIDIA driver version in `ClusterPolicy` with `driver.upgradePolicy.autoUpgrade: true`, the GPU Operator's upgrade controller works through a safe state machine. It upgrades at most `maxParallelUpgrades` nodes at a time, such as 1 or 2 nodes.
+
+1. `UpgradeRequired`: The controller cordons the node with `kubectl cordon`.
+2. `WaitingForJobsCompletion` or `PodDeletion`: The controller waits for running GPU Jobs to finish. Or it drains the GPU pods, according to `drain.enable: true` and `timeoutSeconds`.
+3. The controller stops the device plugin and DCGM pods, so no process holds `/dev/nvidia*` open. It unloads the old kernel module, starts the new driver container, and verifies `nvidia-smi` in the `Validation` step.
+4. The controller uncordons the node (`UpgradeDone`) and moves on to the next batch. If validation fails, the node stays cordoned in `UpgradeFailed`.
 </details>
 
 <details>
 <summary>8. What files and keys MUST be backed up alongside an `etcd` snapshot (`etcdctl snapshot save`) to guarantee you can actually restore the cluster onto fresh VMs?</summary>
 
-An `etcd` `.db` snapshot alone is useless on fresh machines if you lose the cryptographic keys that `kube-apiserver`, `kubelet`s, and `etcd` rely on. You must back up:
-1. **`/etc/kubernetes/pki/` (especially `ca.crt`, `ca.key`, `sa.key`, `sa.pub`, `front-proxy-ca.crt`, `front-proxy-ca.key`, and `etcd/ca.crt`, `etcd/ca.key`):** Without `ca.key`, restored control-plane nodes cannot issue certs trusted by existing worker `kubelet`s, and without `sa.key`/`sa.pub`, every existing ServiceAccount token in the cluster becomes invalid.
-2. **The `EncryptionConfiguration` file (`/etc/kubernetes/enc/enc.yaml`) AND the external KMS key (`aws:kms` / Vault transit key):** Without the encryption key, `kube-apiserver` cannot decrypt any `Secret` stored inside the restored `etcd` snapshot.
+An `etcd` `.db` snapshot is not enough on fresh machines if you lose the cryptographic keys that `kube-apiserver`, the `kubelet`s and `etcd` rely on. Back up these items as well.
+
+1. **`/etc/kubernetes/pki/`**, especially `ca.crt`, `ca.key`, `sa.key`, `sa.pub`, `front-proxy-ca.crt`, `front-proxy-ca.key`, `etcd/ca.crt` and `etcd/ca.key`. Without `ca.key`, restored control-plane nodes cannot issue certificates that existing worker `kubelet`s trust. Without `sa.key` and `sa.pub`, every existing ServiceAccount token in the cluster becomes invalid.
+2. **The `EncryptionConfiguration` file (`/etc/kubernetes/enc/enc.yaml`) and the external KMS key** (`aws:kms` or the Vault transit key). Without the encryption key, `kube-apiserver` cannot decrypt any `Secret` stored in the restored `etcd` snapshot.
 3. **`/etc/kubernetes/manifests/` and `kubeadm-config.yaml`.**
 </details>
 
 <details>
 <summary>9. When 1 of 3 control-plane nodes (`cp2`) in a stacked-etcd cluster suffers a permanent hardware failure (while `cp1` and `cp3` are still healthy), should you run `etcdutl snapshot restore`?</summary>
 
-**No.** Because 2 of the 3 `etcd` members (`cp1` and `cp3`) are still alive, **quorum (`2/3`) is intact and the cluster has lost zero data**. Running `snapshot restore` would needlessly take down the entire cluster and rewind state to an older backup.
-Instead, perform **online member replacement**:
-1. Remove the dead member from the live Raft cluster: `etcdctl member remove <cp2-member-id>` and `kubectl delete node cp2`.
-2. Provision a replacement `cp2` host and run `kubeadm join ... --control-plane --certificate-key <key>` (which joins the live `etcd` cluster and replicates current state from `cp1`/`cp3` automatically).
+No. Two of the three `etcd` members, `cp1` and `cp3`, are still alive, so quorum (`2/3`) is intact and the cluster has lost no data. A snapshot restore would take down the whole cluster for no reason, and it would rewind the state to an older backup. Replace the member online instead.
+
+1. Remove the dead member from the live Raft cluster with `etcdctl member remove <cp2-member-id>`, then run `kubectl delete node cp2`.
+2. Provision a replacement `cp2` host and run `kubeadm join ... --control-plane --certificate-key <key>`. This joins the live `etcd` cluster and copies the current state from `cp1` and `cp3` automatically.
 </details>
 
 <details>
 <summary>10. Walk through the exact steps to restore a 3-node stacked-etcd cluster when ALL 3 `etcd` members are lost or corrupted (Quorum Lost).</summary>
 
-1. **Stop `kube-apiserver` and `etcd` on all 3 control-plane nodes (`cp1`, `cp2`, `cp3`):** Move `/etc/kubernetes/manifests/{kube-apiserver,etcd}.yaml` to `/root/` and move `/var/lib/etcd` to `/var/lib/etcd.bak` on all 3 nodes.
-2. **Copy the SAME `.db` snapshot file to all 3 control-plane nodes.**
-3. **Run `etcdutl snapshot restore` on each node (`cp1`, `cp2`, `cp3`)** specifying:
-   - That node's own `--name` (`cp1`, `cp2`, `cp3`) and `--initial-advertise-peer-urls=https://<that-node-ip>:2380`.
-   - The **exact same** `--initial-cluster="cp1=https://10.0.0.11:2380,cp2=https://10.0.0.12:2380,cp3=https://10.0.0.13:2380"` and **`--initial-cluster-token=etcd-cluster-restored-1`** across all 3 nodes.
-4. Move `/var/lib/etcd-restored` to `/var/lib/etcd` (`chown -R root:root /var/lib/etcd`).
-5. Move `etcd.yaml` and `kube-apiserver.yaml` back into `/etc/kubernetes/manifests/`, verify `etcdctl endpoint health --cluster`, and restart `kube-controller-manager`, `kube-scheduler`, CNI, and operator pods to clear stale informer caches.
+1. Stop `kube-apiserver` and `etcd` on all three control-plane nodes (`cp1`, `cp2`, `cp3`). Move `/etc/kubernetes/manifests/{kube-apiserver,etcd}.yaml` to `/root/`, and move `/var/lib/etcd` to `/var/lib/etcd.bak` on all three nodes.
+2. Copy the same `.db` snapshot file to all three control-plane nodes.
+3. Run `etcdutl snapshot restore` on each node. Each node needs its own `--name` (`cp1`, `cp2` or `cp3`) and its own `--initial-advertise-peer-urls=https://<that-node-ip>:2380`. All three nodes need the exact same `--initial-cluster="cp1=https://10.0.0.11:2380,cp2=https://10.0.0.12:2380,cp3=https://10.0.0.13:2380"` and the same `--initial-cluster-token=etcd-cluster-restored-1`.
+4. Move `/var/lib/etcd-restored` to `/var/lib/etcd`, then run `chown -R root:root /var/lib/etcd`.
+5. Move `etcd.yaml` and `kube-apiserver.yaml` back into `/etc/kubernetes/manifests/`. Verify the cluster with `etcdctl endpoint health --cluster`. Then restart the `kube-controller-manager`, `kube-scheduler`, CNI and operator pods to clear their stale informer caches.
 </details>
 
 <details>
 <summary>11. Why did `etcd` split `etcdctl` and `etcdutl` in `etcd` 3.5+, and which tool runs `snapshot save` vs. `snapshot restore`?</summary>
 
-- **`etcdctl` (Network client CLI):** Connects over gRPC (`:2379`) to a **live running `etcd` server**—used for `etcdctl snapshot save`, `etcdctl endpoint health`, `etcdctl member list/remove`, `etcdctl compact`, and `etcdctl defrag`.
-- **`etcdutl` (Offline database administration utility):** Operates directly on **local `.db` files on disk without connecting to a running `etcd` server**—used for **`etcdutl snapshot status`** and **`etcdutl snapshot restore`**.
+- **`etcdctl`** is the network client CLI. It connects over gRPC (`:2379`) to a live, running `etcd` server. You use it for `etcdctl snapshot save`, `etcdctl endpoint health`, `etcdctl member list/remove`, `etcdctl compact` and `etcdctl defrag`.
+- **`etcdutl`** is the offline database administration utility. It works directly on local `.db` files on disk, without connecting to a running `etcd` server. You use it for `etcdutl snapshot status` and `etcdutl snapshot restore`.
 </details>
 
 <details>
 <summary>12. What happens if all 1-year leaf certificates on a `kubeadm` cluster expire simultaneously because the cluster was not upgraded for 13 months, and how do you recover?</summary>
 
-When `/etc/kubernetes/pki/{apiserver,apiserver-kubelet-client,front-proxy-client,etcd/server,etcd/peer}.crt` expire, `kubectl` commands fail with `x509: certificate has expired or is not yet valid` and `kubelet`/`kube-apiserver` cannot authenticate to each other (though existing running containers keep running).
-**Recovery on each control-plane node:**
-1. Check expiration: `sudo kubeadm certs check-expiration`.
-2. Renew all leaf certs using the 10-year local CA (`ca.key`): **`sudo kubeadm certs renew all`**.
-3. Restart the control-plane static pods (`crictl stopp $(crictl pods --name 'kube-apiserver|kube-controller-manager|kube-scheduler|etcd' -q)`).
-4. Copy the renewed `/etc/kubernetes/admin.conf` to `$HOME/.kube/config` (and if worker node `/etc/kubernetes/kubelet.conf` certs also expired without rotation, regenerate `kubeadm kubeconfig user --org system:nodes --client-name system:node:<node>` and restart `kubelet`).
+When `/etc/kubernetes/pki/{apiserver,apiserver-kubelet-client,front-proxy-client,etcd/server,etcd/peer}.crt` expire, `kubectl` commands fail with `x509: certificate has expired or is not yet valid`. The `kubelet` and `kube-apiserver` can no longer authenticate to each other. Running containers keep running, though.
+
+Recover on each control-plane node.
+
+1. Check the expiration with `sudo kubeadm certs check-expiration`.
+2. Renew all leaf certificates using the 10-year local CA (`ca.key`), with `sudo kubeadm certs renew all`.
+3. Restart the control-plane static pods with `crictl stopp $(crictl pods --name 'kube-apiserver|kube-controller-manager|kube-scheduler|etcd' -q)`.
+4. Copy the renewed `/etc/kubernetes/admin.conf` to `$HOME/.kube/config`. If the worker node `/etc/kubernetes/kubelet.conf` certificates also expired without rotation, regenerate them with `kubeadm kubeconfig user --org system:nodes --client-name system:node:<node>`, and restart `kubelet`.
 </details>
 
 <details>
 <summary>13. What does `Velero` back up that an `etcd` snapshot does NOT, and what are its two volume backup modes?</summary>
 
-An `etcd` snapshot is an all-or-nothing binary image of the entire cluster's `etcd` store—you cannot easily extract and restore a single accidentally deleted namespace (`team-a`) from an `etcd` `.db` file into a live cluster without rewinding every other namespace, and `etcd` does not contain the actual file data inside `PersistentVolume`s.
-**Velero** queries the Kubernetes API to export structured JSON/YAML per namespace/label into S3/GCS object storage **AND** backs up PVC data via two modes:
-1. **Native CSI `VolumeSnapshot`s:** Fast array/cloud block snapshots coordinated via the CSI snapshotter API.
-2. **File-System Backup (`Kopia` / `Restic`):** Reads the mounted filesystem inside a node daemon and uploads deduplicated, encrypted chunks directly to S3/GCS—working across **any** storage type (including NFS, `emptyDir`, or on-prem volumes without CSI snapshot support) and enabling cross-provider restores.
+An `etcd` snapshot is an all-or-nothing image of the cluster's whole `etcd` store. You cannot easily pull one accidentally deleted namespace, such as `team-a`, out of an `etcd` `.db` file and restore it into a live cluster without rewinding every other namespace. Also, `etcd` does not contain the actual file data inside `PersistentVolume`s.
+
+**Velero** queries the Kubernetes API and exports structured JSON or YAML per namespace or label into S3 or GCS object storage. It also backs up PVC data in two modes.
+
+1. **Native CSI `VolumeSnapshot`s**, which are fast array or cloud block snapshots coordinated through the CSI snapshotter API.
+2. **File-system backup with `Kopia` or `Restic`.** A node daemon reads the mounted file system and uploads deduplicated, encrypted chunks straight to S3 or GCS. This works with **any** storage type, including NFS, `emptyDir` or on-prem volumes without CSI snapshot support, and it enables cross-provider restores.
 </details>
 
 <details>
 <summary>14. Why do database or checkpoint PVCs backed up while the application is actively writing need Velero `pre` and `post` Backup Hooks?</summary>
 
-A block or filesystem snapshot taken while PostgreSQL, MySQL, Qdrant, or a metadata database is in the middle of flushing dirty memory buffers produces a **crash-consistent (or corrupted)** backup rather than an **application-consistent** backup. Configuring `pre.hooks.backup.velero.io/command` (e.g., running `CHECKPOINT` / `pg_backup_start` or `fsfreeze --freeze /data`) flushes and freezes writes for the 1–2 seconds while the snapshot is taken, and `post.hooks.backup.velero.io/command` (`fsfreeze --unfreeze /data`) immediately resumes writes.
+A block or file-system snapshot taken while PostgreSQL, MySQL, Qdrant or a metadata database is still flushing dirty memory buffers gives you a crash-consistent backup, or even a corrupted one. It does not give you an application-consistent backup.
+
+Configure the `pre` hook (`pre.hooks.backup.velero.io/command`, for example running `CHECKPOINT` or `pg_backup_start`, or `fsfreeze --freeze /data`). It flushes and freezes writes for the 1–2 seconds the snapshot takes. Then configure the `post` hook (`post.hooks.backup.velero.io/command`, running `fsfreeze --unfreeze /data`), which resumes writes straight away.
 </details>
 
 <details>
 <summary>15. What dangerous side effect can happen if you restore a production Velero backup (or `etcd` snapshot) into a DR test cluster that has network/cloud access to production?</summary>
 
-If the restored DR test cluster runs **`external-dns`**, **`cloud-controller-manager`**, **`aws-load-balancer-controller`**, or **CronJobs/Operators** with production cloud credentials:
-- `external-dns` in the test cluster will **overwrite production Route53/Cloud DNS records** to point to the test cluster.
-- `cloud-controller-manager` in the test cluster may **modify or delete production cloud LoadBalancers or detach RWO disks**.
-- Restored CronJobs or webhooks may send duplicate billing/emails or mutate external production databases.
-Always run DR test restores in an **isolated VPC/account**, strip `LoadBalancer` IPs / `external-dns` annotations via Velero restore modifiers, or restore with `restoreStatus: false` and paused controllers.
+If the restored DR test cluster runs **`external-dns`**, **`cloud-controller-manager`**, **`aws-load-balancer-controller`**, or CronJobs and operators with production cloud credentials, several things can go wrong.
+
+- `external-dns` in the test cluster can overwrite production Route53 or Cloud DNS records so that they point at the test cluster.
+- `cloud-controller-manager` in the test cluster can modify or delete production cloud LoadBalancers, or detach RWO disks.
+- Restored CronJobs or webhooks can send duplicate billing emails, or mutate external production databases.
+
+Always run DR test restores in an isolated VPC or account. Strip the `LoadBalancer` IPs and `external-dns` annotations with Velero restore modifiers, or restore with `restoreStatus: false` and paused controllers.
 </details>
 
 <details>
 <summary>16. Define `RPO` (Recovery Point Objective) and `RTO` (Recovery Time Objective), and explain why their targets and mechanisms differ between (a) LLM Inference, (b) 1,000-GPU Training, and (c) Platform Metadata DBs.</summary>
 
-- **`RPO` (Recovery Point Objective):** Maximum acceptable age of data lost (measured backward in time from the outage: e.g., `RPO = 30 min` means at most 30 minutes of writes/progress lost).
-- **`RTO` (Recovery Time Objective):** Maximum acceptable downtime from the start of the disaster until the service is restored and serving (measured forward in time: e.g., `RTO = 15 min`).
-- **By AI workload tier:**
-  1. **Stateless LLM Inference (`RPO = 0, RTO = 1–5 min`):** No mutable runtime state; run active/active or warm-standby across 2 zones/clusters with model weights pre-replicated in object storage/NVMe and shift traffic via DNS/Gateway API.
-  2. **1,000-GPU Distributed Training (`RPO = 1 checkpoint interval (~15–30 min), RTO = hours`):** Holding 1,000 idle standby GPUs in a second region is prohibitively expensive ($2M+/month). Instead, asynchronously replicate checkpoints (`RPO <= 30 min`) to cross-region object storage, and on regional loss, resume training from the latest replicated checkpoint on surviving or reallocated GPU capacity (`MultiKueue`).
-  3. **Platform Metadata DBs (`MLflow`, `Harbor`, `Keycloak`, `Airflow`: `RPO <= 5 min, RTO <= 30 min`):** Streaming WAL replication (`CloudNativePG` / `Patroni` to S3) + cross-region object storage replication.
+- **`RPO` (Recovery Point Objective)** is the maximum acceptable age of the data you lose, measured backward from the outage. For example, `RPO = 30 min` means at most 30 minutes of writes or progress are lost.
+- **`RTO` (Recovery Time Objective)** is the maximum acceptable downtime, measured forward from the start of the disaster until the service is restored and serving. For example, `RTO = 15 min`.
+
+The targets and mechanisms differ by workload.
+
+1. **Stateless LLM Inference (`RPO = 0, RTO = 1–5 min`)** has no mutable runtime state. Run it active-active, or as a warm standby across 2 zones or clusters, with model weights pre-replicated in object storage or NVMe. Shift traffic with DNS or the Gateway API.
+2. **1,000-GPU Distributed Training (`RPO = 1 checkpoint interval (~15–30 min), RTO = hours`)** cannot afford 1,000 idle standby GPUs in a second region, which would cost $2M+/month. Instead, asynchronously replicate checkpoints (`RPO <= 30 min`) to cross-region object storage. On regional loss, resume training from the latest replicated checkpoint on surviving or reallocated GPU capacity (`MultiKueue`).
+3. **Platform Metadata DBs (`MLflow`, `Harbor`, `Keycloak`, `Airflow`: `RPO <= 5 min, RTO <= 30 min`)** use streaming WAL replication (`CloudNativePG` or `Patroni` to S3), together with cross-region object storage replication.
 </details>
 
 <details>
 <summary>17. Why must `etcd` backups and `Velero` object-store buckets be configured with **Object Lock (`WORM` Immutability)** in your ransomware / compromise DR plan?</summary>
 
-If an attacker compromises `cluster-admin` credentials or a CI/CD runner that has write access to the backup S3/MinIO bucket, the attacker's first move before encrypting or wiping the cluster is **`aws s3 rm --recursive s3://dr-bucket/`**. Configuring **S3 Object Lock in Compliance/Governance mode** (Write-Once-Read-Many `WORM` retention for e.g., 14–30 days) in a **separate cloud account/IAM boundary** guarantees that even root/admin credentials in the production cluster cannot delete or overwrite historical `etcd` and Velero backups.
+If an attacker compromises `cluster-admin` credentials, or a CI/CD runner with write access to the backup S3 or MinIO bucket, the attacker's first move before encrypting or wiping the cluster is `aws s3 rm --recursive s3://dr-bucket/`. Configure S3 Object Lock in Compliance or Governance mode, with WORM retention of 14–30 days, in a separate cloud account or IAM boundary. Then even root or admin credentials in the production cluster cannot delete or overwrite the historical `etcd` and Velero backups.
 </details>
 
 <details>
 <summary>18. What is the emergency recovery procedure if a broken `MutatingAdmissionWebhook` or `ValidatingAdmissionWebhook` (`failurePolicy: Fail`) locks up the cluster so NO Pods (including the webhook's own fix) can be created?</summary>
 
-Because `DELETE` and `PATCH` on `ValidatingWebhookConfiguration` / `MutatingWebhookConfiguration` itself are not intercepted by pod webhooks, use your admin kubeconfig to immediately bypass or remove the broken webhook:
+`DELETE` and `PATCH` on the `ValidatingWebhookConfiguration` or `MutatingWebhookConfiguration` objects themselves are not intercepted by pod webhooks. So use your admin kubeconfig to bypass or remove the broken webhook right away.
+
 ```bash
 kubectl get validatingwebhookconfigurations,mutatingwebhookconfigurations
 # Either patch failurePolicy to Ignore:
@@ -554,25 +640,28 @@ kubectl patch validatingwebhookconfiguration <broken-webhook> --type='json' \
 # Or delete the webhook configuration in an emergency:
 kubectl delete validatingwebhookconfiguration <broken-webhook>
 ```
-Once the webhook pod is repaired and running, re-apply the webhook configuration (with `kube-system` and its own namespace excluded via `namespaceSelector`).
+
+Once the webhook pod is repaired and running, re-apply the webhook configuration. Exclude `kube-system` and the webhook's own namespace with a `namespaceSelector`.
 </details>
 
 <details>
 <summary>19. On an air-gapped bare-metal GPU cluster (such as NVIDIA Base Command Manager, `bcm11-containerization` Appendix C), what extra preparation is required before running a Kubernetes minor upgrade?</summary>
 
-Because nodes on an air-gapped cluster cannot reach `registry.k8s.io`, `nvcr.io`, or public Ubuntu/RHEL package mirrors:
-1. Run `kubeadm config images list --kubernetes-version v1.31.x` to get the exact list of required `kube-apiserver`, `kube-controller-manager`, `kube-scheduler`, `kube-proxy`, `etcd`, `coredns`, and `pause` image tags.
-2. Pull, verify signatures, and push those images (plus the target CNI and GPU Operator images) into the cluster's local air-gapped registry (`Harbor` / local BCM registry) and configure `imageRepository` in `ClusterConfiguration` (or `containerd` `hosts.toml` mirrors).
-3. Stage the target `kubeadm`, `kubelet`, and `kubectl` `.deb`/`.rpm` packages in the local OS repository mirror on the head node before starting `cm-kubernetes-setup` or `kubeadm upgrade`.
+The nodes on an air-gapped cluster cannot reach `registry.k8s.io`, `nvcr.io`, or the public Ubuntu or RHEL package mirrors, so the preparation has to happen first.
+
+1. Run `kubeadm config images list --kubernetes-version v1.31.x` to get the exact list of image tags you need. The list covers `kube-apiserver`, `kube-controller-manager`, `kube-scheduler`, `kube-proxy`, `etcd`, `coredns` and `pause`.
+2. Pull the images, verify their signatures, and push them into the cluster's local air-gapped registry, along with the target CNI and GPU Operator images. That registry is Harbor or the local BCM registry. Then configure `imageRepository` in `ClusterConfiguration`, or set up `containerd` `hosts.toml` mirrors.
+3. Stage the target `kubeadm`, `kubelet` and `kubectl` `.deb` or `.rpm` packages in the local OS repository mirror on the head node. Do this before you start `cm-kubernetes-setup` or `kubeadm upgrade`.
 </details>
 
 <details>
 <summary>20. What should a quarterly "Disaster Recovery Game Day" test on an AI Kubernetes platform, and what metrics prove it succeeded?</summary>
 
-A quarterly DR Game Day must execute the written runbooks hands-on (led by an on-call engineer who did *not* write the runbook) across three drills:
-1. **Control-Plane / Namespace Restore Drill:** Restore the latest automated `etcd` snapshot and `Velero` backup into an isolated sandbox cluster and verify API health, Secret decryption, and database checksums.
-2. **Inference Failover Drill:** Simulate a zone/cluster outage and shift live synthetic traffic to the secondary cluster/zone, measuring **achieved `RTO` (target $< 5$ min)** and dropped request count.
-3. **Training Checkpoint Resume Drill:** Kill a multi-node training job, restore its latest cross-region/object-store checkpoint on a second cluster/pool, and verify that training resumes cleanly from the expected global step with **achieved `RPO` $\le$ 1 checkpoint interval** and matching loss curve.
+Your quarterly DR Game Day must run the written runbooks hands-on. An on-call engineer who did *not* write the runbook should lead it. It covers three drills.
+
+1. **Control-plane and namespace restore drill:** Restore the latest automated `etcd` snapshot and `Velero` backup into an isolated sandbox cluster. Then verify API health, Secret decryption and database checksums.
+2. **Inference failover drill:** Simulate a zone or cluster outage, and shift live synthetic traffic to the secondary cluster or zone. Measure the achieved `RTO` (target $< 5$ min) and the number of dropped requests.
+3. **Training checkpoint resume drill:** Kill a multi-node training job, and restore its latest cross-region or object-store checkpoint on a second cluster or pool. Verify that training resumes cleanly from the expected global step. The achieved `RPO` must be $\le$ 1 checkpoint interval, and the loss curve must match.
 </details>
 
 ## Sources and review notes
@@ -582,5 +671,5 @@ A quarterly DR Game Day must execute the written runbooks hands-on (led by an on
   - `kubernetes-up-and-running-3rd-edition` — Brendan Burns, Joe Beda, Kelsey Hightower & Lachlan Evenson, *Kubernetes: Up and Running*, 3rd ed., **Chapter 3: Deploying a Kubernetes Cluster** (version skew and cluster lifecycle).
   - `bcm11-containerization` — *NVIDIA Base Command Manager 11 Containerization Manual*, **Chapter 4: Kubernetes** and **Appendix C: Kubernetes Upgrade On An Air-gapped BCM Cluster** (air-gapped image and package mirror preparation and upgrade sequence).
   - `nvidia-devops` (`volume-03/01-k8s-control-plane-scheduling-masterclass.md` and `volume-03/03-k8s-networking-security-ops-masterclass.md`): `etcd` backup/restore and control-plane operations.
-- **Run here:** `python3 code/part05/k8s_upgrade_dr_planner_lab.py` (3 passed, 0 failed).\n- **Explicitly labelled inferences:** The `validate_k8s_version_skew`, `evaluate_etcd_upgrade_quorum_safety`, and `evaluate_dr_rpo_rto` models in `code/part05/k8s_upgrade_dr_planner.py` and the `kubeadm upgrade`, `etcdutl snapshot restore`, and `Velero` `Schedule`/`Restore` runbooks are the author's constructions synthesizing `PK` Chapter 2, `KUR` Chapter 3, `bcm11-containerization` Appendix C, and upstream Kubernetes/`etcd`/`Velero` documentation (plus original study items 21, 22, 23, 24, 25, 26, 27, 28, 29, 30, 31, 32, 33, 34, and 35).
-- **Not verified on live hardware:** Live `kubeadm upgrade`, `etcdctl snapshot save`, `etcdutl snapshot restore`, and `velero` executions (`~4 months` release cadence, `14 months` support, `9 months` / `3 releases` deprecation, `v1.30 -> v1.31`, `5 to 10 min` per node, `15 to 60 minutes` snapshot interval, `10.0.0.11..13:2380`, `ttl: 720h`, `15-30 min` RPO) are marked (`untested here`) where not executed by `k8s_upgrade_dr_planner_lab.py`.
+- **Run here:** `python3 code/part05/k8s_upgrade_dr_planner_lab.py` (3 passed, 0 failed).\n- **Explicitly labelled inferences:** The `validate_k8s_version_skew`, `evaluate_etcd_upgrade_quorum_safety`, and `evaluate_dr_rpo_rto` models in `code/part05/k8s_upgrade_dr_planner.py` and the `kubeadm upgrade`, `etcdutl snapshot restore`, and `Velero` `Schedule`/`Restore` runbooks are the author's constructions synthesizing Production Kubernetes chapter 2, Kubernetes: Up and Running chapter 3, `bcm11-containerization` Appendix C, and upstream Kubernetes/`etcd`/`Velero` documentation (plus original study items 21, 22, 23, 24, 25, 26, 27, 28, 29, 30, 31, 32, 33, 34, and 35).
+- **Not verified on live hardware:** Live `kubeadm upgrade`, `etcdctl snapshot save`, `etcdutl snapshot restore`, and `velero` executions (~4 months release cadence, 14 months support, 9 months / 3 releases deprecation, `v1.30 -> v1.31`, 5 to 10 min per node, 15 to 60 minutes snapshot interval, `10.0.0.11..13:2380`, `ttl: 720h`, 15-30 min RPO) are marked (`untested here`) where not executed by `k8s_upgrade_dr_planner_lab.py`.

@@ -22,21 +22,30 @@ lab_venue: "GCP / GKE"
 
 ## Why this matters for AI infrastructure
 
-Inference traffic is bursty and expensive to over-provision: each replica of a 70B model occupies several GPUs and takes minutes to start, so scaling too late violates latency SLOs and scaling too early or never down burns thousands of dollars per day. Classic CPU-utilisation autoscaling is nearly useless for GPU model servers (CPU stays low while the GPU saturates; throughput is governed by request queues, batch sizes, and KV-cache pressure). Batch and training workloads need different scaling (queue-driven worker pools, elastic jobs, node pools that appear when jobs are admitted). This chapter explains how Kubernetes autoscaling works at the pod and node level, how to choose the right signals for AI services, and how to handle the slow-start and capacity-constraint realities of GPUs.
+Picture an inference endpoint that suddenly gets a burst of traffic. Traffic like this is bursty, and over-provisioning for it is expensive. Each replica of a 70B model occupies several GPUs and takes minutes to start, so you cannot add replicas in a hurry. Scale too late and you break your latency SLOs. Scale too early, or never scale down, and you burn thousands of dollars per day.
+
+Classic CPU-utilisation autoscaling is nearly useless for GPU model servers. The CPU stays low while the GPU saturates. Throughput depends on request queues, batch sizes and KV-cache pressure, and none of those show up in CPU load.
+
+Batch and training workloads need different scaling. Queue-driven worker pools, elastic jobs and node pools that appear when jobs are admitted each solve a different part of the problem.
+
+This chapter explains how Kubernetes autoscaling works at the pod and node level. It shows how to choose the right signals for AI services, and how to handle the slow-start and capacity-constraint realities of GPUs.
 
 ## Prerequisites and outcomes
 
-Needs 5.7, 5.9, 5.18, and metrics/observability basics (5.24 preview). After this chapter you can:
+Before you start, read 5.7, 5.9 and 5.18. Know the basics of metrics and observability, which 5.24 previews. When you finish this chapter, you should be able to do the following.
 
-- Explain the HPA control loop and algorithm, behaviours (stabilisation windows, policies), metric types (Resource, Pods, Object, External, ContainerResource), and write correct HPAv2 manifests.
-- Expose custom/external metrics (Prometheus Adapter, KEDA metrics server) and choose scaling signals for LLM inference (queue length, concurrency, tokens/s, KV-cache utilisation, GPU utilisation caveats).
-- Use VPA (modes, recommender) appropriately and understand the interplay with HPA and in-place resize.
-- Use KEDA for event-driven scaling and scale-to-zero (Kafka/SQS/Prometheus/cron/HTTP add-on).
-- Explain the cluster autoscaler (scale-up/down logic, node groups, expander, safe-to-evict, PDBs) and Karpenter (provisioner model); apply them to GPU pools; use ProvisioningRequest/Kueue for atomic multi-node capacity.
-- Design autoscaling for model serving and batch pipelines, including warm pools, pre-pulled images, scale-to-zero trade-offs, and capacity reservations.
-- Diagnose flapping, stuck scale-ups, and cost surprises.
+- Explain the HPA control loop and algorithm, its behaviours (stabilisation windows and policies), and the metric types (Resource, Pods, Object, External and ContainerResource). Write correct HPAv2 manifests.
+- Expose custom and external metrics through Prometheus Adapter or the KEDA metrics server. Choose scaling signals for LLM inference, such as queue length, concurrency, tokens/s and KV-cache utilisation, and know the caveats of GPU utilisation.
+- Use VPA in the right modes, with its recommender, and understand how it interacts with HPA and in-place resize.
+- Use KEDA for event-driven scaling and scale-to-zero, with Kafka, SQS, Prometheus, cron or the HTTP add-on as triggers.
+- Explain how the cluster autoscaler works, covering scale-up and scale-down logic, node groups, the expander, safe-to-evict and PDBs.
+- Explain Karpenter's provisioner model, apply both tools to GPU pools, and use ProvisioningRequest or Kueue for atomic multi-node capacity.
+- Design autoscaling for model serving and batch pipelines, including warm pools, pre-pulled images, scale-to-zero trade-offs and capacity reservations.
+- Diagnose flapping, stuck scale-ups and cost surprises.
 
 ## 1. Layers of autoscaling
+
+A scaling decision passes through several layers before it helps anyone. Read the diagram from top to bottom to follow that path.
 
 ```mermaid
 flowchart TB
@@ -49,17 +58,25 @@ flowchart TB
   IDLE["Idle/underused nodes"] --> CAD["CA scale-down: drain & remove"]
 ```
 
-Each layer reacts to a different signal with different latencies: HPA seconds to minutes; image pull and model load minutes; node provisioning minutes (cloud) to hours (hardware); scale-down conservative. The design problem is aligning them: replica scaling that cannot be satisfied by nodes just creates Pending pods.
+Each layer reacts to a different signal, and each one works at its own speed. HPA reacts in seconds to minutes. Image pull and model load take minutes. Node provisioning takes minutes in the cloud and hours on hardware, and scale-down stays conservative on purpose. The design problem is to line these speeds up. Replicas that the nodes cannot hold simply become Pending pods, so the layers have to be designed together.
+
+Before you tune any single layer, check whether the layers around it can keep pace.
 
 ## 2. Horizontal Pod Autoscaler (HPA)
 
 ### Controller and algorithm
 
-The HPA controller (in kube-controller-manager, `--horizontal-pod-autoscaler-sync-period` default 15 s) reads metrics, computes desired replicas, and updates the target's `scale` subresource (Deployment, StatefulSet, ReplicaSet, or any CRD with scale). Core formula:
+Suppose a model server slows down as traffic grows. The Horizontal Pod Autoscaler, or HPA, is the piece that adds replicas in response. The HPA controller runs inside `kube-controller-manager`, and it checks metrics every 15 s by default. You can change that interval with `--horizontal-pod-autoscaler-sync-period`. On each cycle it reads the metrics, works out the desired replica count, and writes that count to the `scale` subresource of its target. The target can be a Deployment, a StatefulSet, a ReplicaSet, or any CRD with scale.
+
+The core formula is a ratio. The desired count is the current count multiplied by the current metric value divided by the target value, rounded up.
 
 `desiredReplicas = ceil( currentReplicas × currentMetricValue / targetMetricValue )`
 
-with details: for multiple metrics it computes each and uses the **maximum**; ignores a ±10% tolerance band (`--horizontal-pod-autoscaler-tolerance` 0.1) to avoid jitter; excludes unready pods and pods with missing metrics conservatively (treats missing as 0% for scale-up, 100% for scale-down); considers pod startup/readiness (`--horizontal-pod-autoscaler-cpu-initialization-period` 5 min, initial readiness delay) to avoid reacting to warm-up CPU; clamps to `minReplicas`/`maxReplicas`; and respects **behavior** policies.
+When the metric sits above its target, the count goes up. When it sits below, the count comes down. The details matter as much as the formula. If you define several metrics, HPA computes each one and uses the largest result. A ±10% tolerance band (`--horizontal-pod-autoscaler-tolerance` 0.1) stops small fluctuations from causing jitter. HPA also handles pods it cannot measure conservatively. It excludes unready pods, and it treats missing metrics as 0% for scale-up and as 100% for scale-down.
+
+HPA also avoids reacting to warm-up CPU. The `--horizontal-pod-autoscaler-cpu-initialization-period` of 5 min and the initial readiness delay give new pods time to settle. Finally, HPA clamps the result to `minReplicas` and `maxReplicas`, and it respects `behavior` policies.
+
+The manifest below combines three metrics with a `behavior` block. Notice that the CPU target is a percentage of requests, while the custom and external targets are averages across pods or totals divided by replicas.
 
 ```yaml
 apiVersion: autoscaling/v2
@@ -94,6 +111,8 @@ spec:
 
 ### Metric types
 
+Each metric type reads from a different API, and that choice decides what you can scale on.
+
 | Type | Source API | Example |
 |---|---|---|
 | **Resource** | `metrics.k8s.io` (metrics-server, from kubelet/cAdvisor) | CPU/memory average utilisation (relative to **requests**) or average value |
@@ -102,16 +121,23 @@ spec:
 | **Object** | `custom.metrics.k8s.io` for a single object | Ingress `requests_per_second`, a Service's metric |
 | **External** | `external.metrics.k8s.io` (KEDA, Prometheus Adapter, cloud adapters) | SQS queue length, Pub/Sub backlog, global QPS |
 
-Utilisation metrics require **requests set** on all containers (HPA computes percentages of requests; no requests → metric unavailable). Memory-based scaling rarely works (memory doesn't fall after load drops); use with care. Metrics freshness: metrics-server scrapes kubelets every ~15 s (resolution configurable) with a `--horizontal-pod-autoscaler-...` pipeline; custom metrics add Prometheus scrape interval (15–30 s) and adapter delay, so end-to-end lag from load to new replica is often 30–90 s plus pod startup.
+Utilisation metrics need **requests set** on all containers, because HPA computes percentages of requests. Without requests, the metric is unavailable. Memory is a poor scaling signal, since memory does not fall after load drops, so use it with care.
+
+Freshness adds delay as well. Metrics-server scrapes kubelets every 15 s or so, and you can configure the resolution through a `--horizontal-pod-autoscaler-...` pipeline. Custom metrics add the Prometheus scrape interval of 15 to 30 s, plus the adapter delay. The lag from load to a new replica is therefore often 30 to 90 s, plus pod startup.
 
 ### Behaviour tuning
 
-- **Scale-up fast, scale-down slow**: short or zero scale-up stabilisation with generous policies; long scale-down window (5–15 min) to avoid flapping and wasteful churn of expensive-to-start pods (GPU model servers).
-- `selectPolicy: Disabled` freezes scaling in one direction.
-- Use `minReplicas` as the safety net for latency (cold start cost), `maxReplicas` as a cost/capacity cap tied to quotas and GPU availability.
-- **Readiness matters**: new pods don't count until ready; if readiness takes 8 minutes (model load), the HPA may keep adding replicas (the metric stays high) → overshoot. Mitigations: `behavior.scaleUp` limits, startup/readiness probes accuracy, ignore not-ready pods (HPA already treats unready conservatively), pre-warmed capacity, predictive/ scheduled scaling (KEDA cron).
+Tuning `behavior` comes down to a few choices. Scale up fast and scale down slowly. A short or zero scale-up stabilisation window with generous policies lets capacity arrive quickly. A long scale-down window of 5 to 15 minutes avoids flapping and the wasteful churn of expensive-to-start GPU model servers. Setting `selectPolicy: Disabled` freezes scaling in one direction.
+
+Use `minReplicas` as the safety net for latency, because it pays the cold start cost up front. Use `maxReplicas` as a cost and capacity cap, tied to quotas and GPU availability.
+
+Readiness matters most. A new pod does not count until it is ready. If readiness takes 8 minutes because the model has to load, the metric stays high while the pods start, and HPA may keep adding replicas and overshoot. The mitigations are rate limits in `behavior.scaleUp`, accurate startup and readiness probes, pre-warmed capacity, and predictive or scheduled scaling with KEDA cron. HPA already treats unready pods conservatively, so the readiness timing is the part you have to get right.
+
+For a GPU model server, set the scale-down window and measure your readiness time before you change anything else.
 
 ### Scaling signals for inference services
+
+Not every signal tells you the same thing about an inference service. The table lists the common choices, why each one matters, and what to watch for.
 
 | Signal | Why | Notes |
 |---|---|---|
@@ -124,9 +150,11 @@ Utilisation metrics require **requests set** on all containers (HPA computes per
 | **RPS at the gateway** | Simple, predictable | Needs a per-replica capacity model (RPS/replica), brittle across prompt lengths |
 | **External: queue lengths (Kafka/SQS)** | Batch inference workers | KEDA |
 
-Practical pattern: scale on **queue depth per replica** (or concurrency) for the model server, with **min replicas** covering baseline, **max** bounded by GPU quota, plus alerts on TTFT and 5xx. For cost control, combine with **Kueue/ClusterQueue quotas** (so autoscaling cannot exceed team budgets) and node-pool limits.
+The practical pattern is to scale the model server on queue depth per replica, or on concurrency. Set `minReplicas` to cover the baseline, and bound `maxReplicas` by your GPU quota. Add alerts on TTFT and 5xx errors. For cost control, combine this with Kueue or ClusterQueue quotas, so autoscaling cannot exceed a team's budget, and with node pool limits.
 
 ### Exposing custom metrics (Prometheus Adapter example)
+
+The rules below go in the Prometheus Adapter values file. They map a vLLM queue metric and a Kafka consumer lag metric into the APIs that HPA reads.
 
 ```yaml
 # prometheus-adapter rules (values.yaml)
@@ -149,15 +177,27 @@ kubectl get --raw "/apis/external.metrics.k8s.io/v1beta1/namespaces/serving/kafk
 kubectl describe hpa vllm -n serving         # conditions: AbleToScale, ScalingActive, ScalingLimited; events; current vs target
 ```
 
+Run the first two commands to confirm that each metric is served. Then use `describe` to read the HPA conditions, events, and current and target values.
+
 ## 3. Vertical Pod Autoscaler (VPA)
 
-VPA (kubernetes/autoscaler subproject; CRDs `VerticalPodAutoscaler`) has three components: **recommender** (analyses historical/live usage, produces target/lower/upper bounds), **updater** (evicts pods whose requests deviate to apply new values), **admission controller** (mutates new pods' requests). Modes: `Off` (recommendations only: best for sizing guidance), `Initial` (set at creation), `Recreate`/`Auto` (evict and recreate with new requests); `InPlaceOrRecreate`/in-place resize (newer, using the pod resize feature without restarts for CPU/memory when supported). Policies: `minAllowed`/`maxAllowed`, `controlledResources`, `controlledValues` (`RequestsOnly` or `RequestsAndLimits`).
+Requests often drift away from real usage. The Vertical Pod Autoscaler, or VPA, fixes that by adjusting requests and limits rather than the replica count. It lives in the kubernetes/autoscaler subproject and uses the `VerticalPodAutoscaler` CRD.
 
-Guidance: use VPA in **recommendation mode** to right-size requests for CPU/memory of services and data-prep jobs; avoid `Auto` for GPU model servers (restarts cost minutes; memory dominated by weights, fixed). Don't combine HPA and VPA on the *same* metric (CPU/memory): they fight; HPA on custom/external metrics with VPA on resources is acceptable. Run VPA as a cost-saving lens (compare requests to usage, 5.22) and combine with `LimitRange` bounds. Caveats: recommender history period, OOM events raising memory, JVM/PyTorch memory behaviours, bursty workloads. **Goldilocks** (Fairwinds) shows VPA recommendations per namespace.
+VPA has three components. The recommender analyses historical and live usage and produces target, lower and upper bounds. The updater evicts pods whose requests deviate, to apply the new values. The admission controller sets requests on new pods.
+
+`Off` only makes recommendations. `Initial` sets requests when a pod is created. `Recreate`/`Auto` evict and recreate pods with new requests. `InPlaceOrRecreate` uses the newer in-place resize, which changes CPU and memory without restarts where supported. Policies such as `minAllowed`, `maxAllowed`, `controlledResources` and `controlledValues` (`RequestsOnly` or `RequestsAndLimits`) set the boundaries.
+
+Use recommendation mode to right-size the CPU and memory requests of services and data-prep jobs. Avoid `Auto` for GPU model servers. A restart costs minutes there, and model weights dominate their fixed memory.
+
+If you let HPA and VPA act on the same CPU or memory metric, they fight each other. HPA on custom or external metrics with VPA on resources is acceptable.
+
+VPA also works as a cost lens. Compare requests with actual usage, as described in 5.22, and bound the results with `LimitRange`. Watch the caveats: the recommender's history period, OOM events that raise memory, JVM and PyTorch memory behaviour, and bursty workloads. Goldilocks from Fairwinds shows VPA recommendations for each namespace.
+
+Start with `Off` and read the recommendations before you let VPA change any pod.
 
 ## 4. KEDA: event-driven autoscaling
 
-**KEDA** (CNCF) extends HPA: it installs an operator, a metrics adapter for the External Metrics API, and `ScaledObject` / `ScaledJob` CRDs. It creates and manages the HPA for you and adds **scale to/from zero** (the operator activates a Deployment from 0 → 1 when the trigger is active; HPA handles 1 → N). 60+ scalers: Kafka, RabbitMQ, SQS, Pub/Sub, Redis, Azure Service Bus, PostgreSQL/MySQL queries, Prometheus queries, cron, CPU/memory, GCP/AWS metrics, HTTP (add-on), Datadog, etc.
+A plain HPA cannot scale a Deployment to zero, because the scaling formula multiplies by zero. KEDA (CNCF) fills that gap. It installs an operator, a metrics adapter for the External Metrics API, and the `ScaledObject` and `ScaledJob` CRDs. KEDA creates and manages the HPA for you. It also adds scale to and from zero: the operator activates a Deployment from 0 to 1 when a trigger becomes active, and the HPA handles 1 to N. KEDA ships with more than 60 scalers, including Kafka, RabbitMQ, SQS, Pub/Sub, Redis, Azure Service Bus, PostgreSQL and MySQL queries, Prometheus queries, cron, CPU and memory, GCP and AWS metrics, the HTTP add-on, and Datadog.
 
 ```yaml
 apiVersion: keda.sh/v1alpha1
@@ -196,32 +236,43 @@ spec:
   triggers: [ { type: aws-sqs-queue, metadata: { queueURL: https://sqs..., queueLength: "1" } } ]
 ```
 
-Use cases: queue-driven batch workers, event-driven inference for infrequent endpoints, scheduled warmups (cron), scale-to-zero for dev/test model endpoints. Scale-to-zero for GPU services costs a cold start (node provisioning + image pull + model load = minutes): acceptable for batch, rarely for interactive; mitigate with **warm minimum of 1**, node warm pools, image caching, model weights on local NVMe/shared cache, and faster loaders (safetensors, tensorizer, fast checkpoint loading).
+The manifest above has two parts. The `batch-embed` ScaledObject combines Kafka lag, a Prometheus query and a business-hours cron trigger. The `transcribe-job` ScaledJob starts one Job for each queued message. Read the trigger lists to see what each one watches.
 
-**Knative Serving / KServe** provide request-based autoscaling (KPA/concurrency, scale-to-zero with activator buffering requests during cold start), integrated routing, canary revisions; KServe's `InferenceService` + `serverless` mode uses Knative; "raw deployment" mode uses HPA/KEDA. Choose based on whether you need request buffering and revision management.
+KEDA suits queue-driven batch workers, event-driven inference on endpoints that are called only now and then, scheduled warm-ups with cron, and scale-to-zero for dev and test model endpoints. Scale-to-zero on a GPU service costs a cold start. Node provisioning, image pull and model load together take minutes. That trade is acceptable for batch work and rarely for interactive traffic. To soften it, keep a warm minimum of 1, use node warm pools and image caching, and put model weights on local NVMe or a shared cache. Faster loaders, such as safetensors, tensorizer and fast checkpoint loading, help too.
+
+Knative Serving and KServe take a different route. They provide request-based autoscaling with scale-to-zero, where the activator buffers requests during a cold start. They also provide integrated routing and canary revisions. A KServe `InferenceService` in `serverless` mode uses Knative, while the "raw deployment" mode uses HPA or KEDA. Choose between them by asking whether you need request buffering and revision management.
+
+For a GPU endpoint, decide whether a cold start is acceptable before you enable scale-to-zero.
 
 ## 5. Cluster Autoscaler and Karpenter
 
 ### Cluster Autoscaler (CA)
 
-Runs as a Deployment; manages **node groups** (cloud ASGs/MIGs/VMSS, or cluster-API MachineDeployments) with min/max sizes.
+The Cluster Autoscaler runs as a Deployment, and it manages node groups with minimum and maximum sizes. A node group can be a cloud ASG, MIG or VMSS, or a cluster-API MachineDeployment.
 
-- **Scale up**: CA watches for **unschedulable Pods** (Pending with `FailedScheduling` due to resources), simulates adding a node of each group's template to see if the pod would fit (including node labels, taints, GPU resources), picks a group via an **expander** (`random`, `least-waste`, `most-pods`, `priority`, `price`), and requests more instances. New nodes register, the scheduler places the pending pods. Delays: provider API + boot + driver readiness (GPU nodes often 5–15 min); `--max-node-provision-time` (15 min) marks groups failed if nodes don't appear.
-- **Scale down**: periodically evaluates nodes with utilisation (requests/allocatable) below `--scale-down-utilization-threshold` (0.5) for `--scale-down-unneeded-time` (10 min), checks that all pods can be moved elsewhere (respecting PDBs, `safe-to-evict` annotations, local storage, non-replicated pods, affinity), then cordons/drains and deletes the node. Blockers: pods without controllers, with local storage (`emptyDir` blocks unless annotated), PDBs, kube-system pods, `cluster-autoscaler.kubernetes.io/safe-to-evict: "false"`. GPU nodes: scale-down thresholds should consider GPU utilisation of requests (GPU requests are all-or-nothing, so a node with one running pod isn't "low utilisation" by GPU requests if it holds all GPUs).
-- **Settings for GPU pools**: `--gpu-total` limits, node group min 0 for burst pools (but cold start), `--balance-similar-node-groups` for zone spreading, `--scale-down-delay-after-add`, `--max-graceful-termination-sec` (long for training pods or disable scale-down on training pools), priority expander preferring on-demand reservations over spot, taints/tolerations so only intended pods trigger GPU pool scale-up, and labelled pools per GPU type.
-- **Limits**: reacts only to Pending pods (reactive), assumes node groups of homogeneous nodes, and doesn't understand multi-node gang needs (partial scale-ups) — hence ProvisioningRequest.
-- **Overprovisioning ("pause pods")**: run low-priority placeholder pods (priority < 0) that reserve capacity; when real pods arrive they preempt placeholders, schedule instantly, and the placeholders go Pending triggering scale-up in the background: gives headroom and hides provisioning latency (use with cost awareness).
+Scale-up starts with Pending pods. The autoscaler watches for unschedulable pods, which are Pending with `FailedScheduling` because of insufficient resources. For each group, it simulates adding a node from that group's template, to see whether the pod would fit. The check includes node labels, taints and GPU resources. An **expander** then picks one group: `random`, `least-waste`, `most-pods`, `priority` or `price`. The autoscaler requests more instances, the new nodes register, and the scheduler places the waiting pods. The delays add up. Provider API calls, boot time and driver readiness often take 5 to 15 minutes for GPU nodes. The `--max-node-provision-time` flag is 15 min, and a group whose nodes never appear is marked as failed.
 
-In *Production Kubernetes* Chapter 13 (*Autoscaling*), Josh Rosso et al. highlight four architectural lessons for combining pod-level and node-level autoscaling:
-1. **Service Decomposition and When NOT to Autoscale (`PK` Chapter 13):** Decomposing a monolith into independent services (for example, separating CPU-bound tokenization/preprocessing from GPU-bound LLM prefill/decode) lets each tier scale on its own bottleneck metric. However, do **not** blindly enable autoscaling on stateful singleton services, workloads with predictable flat traffic, or workloads that have not yet been load-tested to determine their actual saturation point and startup latency.
-2. **Cluster Autoscaler Configuration (`--nodes=1:10:worker-auto-scaling-group`) and Pod Shuffling (`PK` Chapter 13):** When configuring `cluster-autoscaler` against cloud node groups (such as `--cloud-provider=aws --nodes=1:10:worker-auto-scaling-group`), remember that adding and removing worker nodes inevitably shuffles Pod placement across the cluster—so every autoscaled workload must define `PodDisruptionBudget`s (`PDB`s), `readinessProbe`s, and `preStop` graceful drain hooks.
-3. **Hiding Node Spin-Up Latency with `cluster-overprovisioner` (`PK` Chapter 13 Figures 13-6 & 13-7):** Because `Cluster Autoscaler` only reacts *after* a Pod becomes `Pending` (when existing nodes are already full), a sudden traffic spike normally waits 5–15 minutes for a cloud GPU VM to boot and install drivers. To eliminate this wait without setting artificially low HPA thresholds (`30%`), deploy a **`PriorityClass` with negative priority (`value: -10`)** and a `pause` (`registry.k8s.io/pause`) **`cluster-overprovisioner` Deployment** sized to 1–2 nodes' worth of resources (`modeled in simulate_overprovisioning_pause_pods()` in `code/part05/autoscaling_hpa_ca_simulator.py`):
+Scale-down runs periodically. The autoscaler looks for nodes whose utilisation, measured as requests against allocatable, stays below `--scale-down-utilization-threshold` (0.5) for `--scale-down-unneeded-time` (10 min). Before it removes such a node, it checks that every pod can move somewhere else. That check respects PDBs, `safe-to-evict` annotations, local storage, non-replicated pods and affinity. Only then does it cordon and drain the node and delete it.
+
+Several things block scale-down. Pods without controllers block it, and so do pods with local storage (`emptyDir` blocks unless annotated), PDBs, kube-system pods, and pods annotated with `cluster-autoscaler.kubernetes.io/safe-to-evict: "false"`. GPU nodes need extra care. GPU requests are all-or-nothing, so a node with a single running pod is not low utilisation if that pod holds all of its GPUs. Set scale-down thresholds with GPU requests in mind.
+
+Several settings suit GPU pools. `--gpu-total` limits the total number of GPUs. Give burst pools a minimum of 0, and accept the cold start that comes with it. Use `--balance-similar-node-groups` to spread across zones. `--scale-down-delay-after-add` and `--max-graceful-termination-sec` also matter here, and the grace period should be long for training pods, or you can disable scale-down on training pools. A priority expander can prefer on-demand reservations over spot capacity. Taints and tolerations make sure only the intended pods trigger a GPU pool scale-up, and each pool is labelled by GPU type.
+
+The Cluster Autoscaler has limits. It reacts only to Pending pods. It assumes node groups of homogeneous nodes. It does not understand the all-or-nothing needs of a multi-node gang, so it can scale up only part of what a job needs. That gap is why ProvisioningRequest exists.
+
+Overprovisioning, which uses pause pods, hides provisioning latency. You run low-priority placeholder pods that reserve capacity. When real pods arrive, they preempt the placeholders and start at once. The placeholders go Pending, which triggers the Cluster Autoscaler to add capacity in the background. You get headroom, and you pay for it, so weigh the cost.
+
+In *Production Kubernetes* Chapter 13 (*Autoscaling*), Josh Rosso et al. highlight four architectural lessons for combining pod-level and node-level autoscaling.
+
+1. **Service Decomposition and When NOT to Autoscale (Production Kubernetes Chapter 13):** Decomposing a monolith into independent services lets each tier scale on its own bottleneck metric. For example, you can separate CPU-bound tokenization and preprocessing from GPU-bound LLM prefill and decode. However, do **not** enable autoscaling blindly. Stateful singleton services, workloads with predictable flat traffic, and workloads that have not been load-tested are poor candidates, because you do not yet know their saturation point or startup latency.
+2. **Cluster Autoscaler Configuration (`--nodes=1:10:worker-auto-scaling-group`) and Pod Shuffling (Production Kubernetes Chapter 13):** When you configure `cluster-autoscaler` against cloud node groups, such as with `--cloud-provider=aws --nodes=1:10:worker-auto-scaling-group`, expect pod placement to shift. Adding and removing worker nodes inevitably shuffles pods across the cluster. Every autoscaled workload should therefore define `PodDisruptionBudget`s (`PDB`s), `readinessProbe`s and `preStop` graceful drain hooks.
+3. **Hiding Node Spin-Up Latency with `cluster-overprovisioner` (Production Kubernetes Chapter 13, Figures 13-6 & 13-7):** The Cluster Autoscaler reacts only after a pod becomes Pending, which happens once existing nodes are already full. A sudden traffic spike therefore normally waits 5 to 15 minutes for a cloud GPU VM to boot and install drivers. You can remove that wait without setting artificially low HPA thresholds (`30%`). Deploy a `PriorityClass` with negative priority (`value: -10`), and a `pause` (`registry.k8s.io/pause`) **`cluster-overprovisioner` Deployment** sized to 1 to 2 nodes' worth of resources. The model is in `simulate_overprovisioning_pause_pods()` in `code/part05/autoscaling_hpa_ca_simulator.py`.
    - In steady state, the negative-priority `pause` pods sit on warm, ready GPU nodes (`Figure 13-6`).
-   - When real production inference Pods scale out (`priority >= 0`), `kube-scheduler` **immediately preempts the `pause` pods** (`0s` node wait) and places the real Pods on the warm nodes, while the preempted `pause` pods go `Pending` and trigger `Cluster Autoscaler` to provision replacement buffer nodes in the background (`Figure 13-7`).
+   - When real production inference pods scale out (`priority >= 0`), `kube-scheduler` immediately preempts the `pause` pods, with a `0s` node wait, and places the real pods on the warm nodes. The preempted `pause` pods go `Pending`, which triggers the `Cluster Autoscaler` to provision replacement buffer nodes in the background (`Figure 13-7`).
 
 ### Karpenter
 
-Karpenter (AWS-originated, CNCF, multi-cloud providers emerging) replaces node-group-centric scaling with **just-in-time provisioning**: it watches Pending pods, batches them, computes the best set of instance types satisfying constraints (`NodePool` requirements, `NodeClass` for provider details), launches nodes directly via cloud APIs (including mixed instance types, spot/on-demand, GPUs), and consolidates/removes nodes proactively (`consolidationPolicy`, `disruption` budgets, `expireAfter` for node rotation, drift detection to replace nodes when AMIs change).
+Karpenter (AWS-originated, CNCF, with multi-cloud providers emerging) replaces node-group-centric scaling with just-in-time provisioning. It watches Pending pods and batches them. It then computes the best set of instance types that satisfy the constraints in a `NodePool`, with provider details in a `NodeClass`. It launches nodes directly through cloud APIs, including mixed instance types, spot and on-demand capacity, and GPUs. It also consolidates and removes nodes proactively, using `consolidationPolicy`, `disruption` budgets, `expireAfter` for node rotation, and drift detection that replaces nodes when AMIs change.
 
 ```yaml
 apiVersion: karpenter.sh/v1
@@ -244,13 +295,17 @@ spec:
     budgets: [ { nodes: "10%" } ]
 ```
 
-Benefits: faster and more flexible provisioning, bin-packing across instance types, spot handling with interruption notices, automatic rotation/drift. Risks for GPU fleets: consolidation can disrupt long jobs (use `do-not-disrupt` annotations on training pods, disruption budgets), GPU capacity unavailability errors, topology requirements (EFA, placement groups) need NodeClass config, and cost surprises. Disable consolidation for training pools; use for inference and CPU pools.
+Karpenter brings faster and more flexible provisioning, bin-packing across instance types, spot handling with interruption notices, and automatic rotation and drift correction. The risks for GPU fleets are real, though. Consolidation can disrupt long jobs, so use `do-not-disrupt` annotations on training pods and set disruption budgets. GPU capacity can be unavailable, and topology needs such as EFA or placement groups require NodeClass configuration. Cost surprises also happen. Disable consolidation for training pools, and use Karpenter for inference and CPU pools.
 
 ### Atomic capacity for multi-node jobs
 
-Reactive scale-up can supply some nodes but not all for a gang; waiting pods hold new nodes idle. **ProvisioningRequest** (cluster-autoscaler API, `autoscaling.x-k8s.io`) asks for capacity for N pods *atomically* (providers: GKE Dynamic Workload Scheduler flex-start/ calendar, queued provisioning); **Kueue** integrates via an `AdmissionCheck` of type `ProvisioningRequest`: the workload is admitted only after capacity is guaranteed, then nodes are held for it. Similar mechanisms exist in cloud-native schedulers (AWS capacity blocks for ML + Karpenter static capacity, Azure/GCP reservations). For on-prem fixed fleets the equivalent is Kueue quotas and maintenance windows rather than node autoscaling.
+Reactive scale-up can supply some of the nodes a gang needs but not all of them. Meanwhile, the pods that are waiting hold the new nodes idle. **ProvisioningRequest**, from the `autoscaling.x-k8s.io` API, asks for capacity for N pods atomically. Providers include GKE Dynamic Workload Scheduler flex-start/ calendar, and queued provisioning. Kueue integrates through an `AdmissionCheck` of type `ProvisioningRequest`. The workload is admitted only after capacity is guaranteed, and the nodes are then held for it. Cloud-native schedulers have similar mechanisms, such as AWS capacity blocks for ML with Karpenter static capacity, and Azure or GCP reservations. For on-prem fixed fleets, the equivalent is Kueue quotas and maintenance windows rather than node autoscaling.
+
+Before you let an autoscaler manage a GPU pool, check that the pool's minimum, limit and taint match the pods you expect to run on it.
 
 ## 6. Autoscaling patterns for AI workloads
+
+Each AI workload scales differently, so the right pattern depends on what the workload does. The table gives a pattern for each common workload, and the notes below it cover techniques that apply to several of them.
 
 | Workload | Pod scaling | Node scaling | Notes |
 |---|---|---|---|
@@ -262,16 +317,20 @@ Reactive scale-up can supply some nodes but not all for a gang; waiting pods hol
 | **Interactive notebooks** | None (per-user) | Pool scaling + idle culling | Quotas to cap spend |
 | **Gateways/ingress** | HPA on CPU/RPS/connections | CPU pool | Keep ≥3 for HA |
 
-Special topics:
+Read the table one row at a time, and check the notes column before you settle on a pattern. The topics below apply across several of these workloads.
 
-- **Warm pools & pre-pulled images**: DaemonSet pre-pulls model server images and (optionally) model weights onto local NVMe; scheduler's `ImageLocality` scores favour those nodes; reduce start from minutes to seconds.
-- **Model load acceleration**: shared read-only weights volume, local NVMe cache, sharded/parallel loading, `tensorizer`/safetensors, CUDA graph warmup in readiness gating, snapshotting (CRIU/CUDA checkpoint, emerging) for faster restore.
-- **Capacity reservations**: GPU capacity may be unobtainable on demand; autoscaling needs reservations or committed capacity (4.24); scale `maxReplicas` to available reserved GPUs.
-- **Cost guardrails**: node pool `limits` (Karpenter), CA `--max-nodes-total`, Kueue quotas, budgets/alerts, scheduled scale-down for dev endpoints, scale-to-zero for non-prod.
-- **Multi-metric safety**: scale-up on queue depth OR latency; scale-down only when both are comfortably low and for a long window.
-- **Testing**: load tests that include prompt/response length distributions (autoscaling behaviour depends on token mix), cold-start tests, failure tests (scale-up impossible, spot interruption), and chaos for metrics outages (HPA falls back: if metrics unavailable it won't scale down and may hold).
+- **Warm pools & pre-pulled images:** A DaemonSet pre-pulls model server images and, optionally, model weights onto local NVMe. The scheduler's `ImageLocality` scores favour those nodes, which cuts start time from minutes to seconds.
+- **Model load acceleration:** Use a shared read-only weights volume, a local NVMe cache, sharded or parallel loading, `tensorizer` or safetensors, and CUDA graph warmup in readiness gating. Snapshotting, through CRIU or CUDA checkpoint, is emerging and can speed up restore.
+- **Capacity reservations:** GPU capacity may be unobtainable on demand, so autoscaling needs reservations or committed capacity (4.24). If you have reserved GPUs, scale `maxReplicas` to the ones that are actually available.
+- **Cost guardrails:** Set node pool `limits` in Karpenter, `--max-nodes-total` on the CA, and Kueue quotas. Add budgets and alerts, scheduled scale-down for dev endpoints, and scale-to-zero for non-production.
+- **Multi-metric safety:** Scale up on queue depth OR latency. Scale down only when both are comfortably low, and only over a long window.
+- **Testing:** Load tests should include prompt and response length distributions, because autoscaling behaviour depends on the token mix. Also run cold-start tests, failure tests such as an impossible scale-up or a spot interruption, and chaos tests for metrics outages. When metrics disappear, HPA falls back, so it will not scale down and may hold.
+
+Before you pick a pattern, write down how long the workload takes to start and whether reserved GPUs exist for it.
 
 ## 7. Troubleshooting
+
+When autoscaling misbehaves, the symptom usually points to one layer. Find your symptom in the first column, then check the likely cause and the first thing to look at.
 
 | Symptom | Likely cause | Check/fix |
 |---|---|---|
@@ -287,246 +346,253 @@ Special topics:
 | VPA evicting pods repeatedly | Auto mode with fluctuating recommendations | Use Off/Initial; set bounds; PDBs |
 | KEDA not scaling from zero | Trigger authentication, scaler errors, wrong namespace, HPA conflicts (existing HPA on same target) | `kubectl describe scaledobject`, operator logs; remove duplicate HPAs |
 
+Read the cause in your row before you change a threshold, because a threshold change can hide the real fault.
+
 ## 8. Lab
 
-First, run the self-checking Python lab (`code/part05/autoscaling_hpa_ca_simulator_lab.py`) locally. It verifies the HPAv2 multi-metric replica calculator (`compute_hpa_desired_replicas`: testing the $\pm 10\%$ tolerance band, `scaleUp` rate caps, and `scaleDown` stabilization window, `PK` Ch. 13), the Cluster Autoscaler node scale-down eligibility and blocker evaluator (`evaluate_ca_node_scale_down`), and the Cluster Overprovisioning negative-priority `pause` pod simulator (`simulate_overprovisioning_pause_pods`, `PK` Ch. 13 Figures 13-6 & 13-7).
+Start on your own machine. Run the self-checking Python lab first. It checks the HPAv2 multi-metric replica calculator (`compute_hpa_desired_replicas`), including the $\pm 10\%$ tolerance band, the `scaleUp` rate caps and the `scaleDown` stabilization window (Production Kubernetes Chapter 13). It also checks the Cluster Autoscaler scale-down eligibility and blocker evaluator (`evaluate_ca_node_scale_down`). Finally, it checks the Cluster Overprovisioning negative-priority `pause` pod simulator (`simulate_overprovisioning_pause_pods`, Production Kubernetes Chapter 13, Figures 13-6 & 13-7).
 
 ```bash
 python3 code/part05/autoscaling_hpa_ca_simulator_lab.py
 ```
 
-Next, on a `kind` or cloud cluster (all interactive shell steps below are `untested here`), work through these exercises:
+Next, move to a `kind` or cloud cluster and work through the exercises below. The interactive shell steps are marked `untested here`.
 
-1. **HPA basics**: deploy a CPU-bound app with requests; HPA at 50% CPU; generate load with `hey`; watch replicas, `describe hpa`, and `kubectl top`; test tolerance band and stabilisation by dropping load; add `behavior` policies and compare.
-2. **Missing requests**: remove CPU requests and observe `<unknown>`; fix.
-3. **Custom metric**: instrument a toy inference server with a Prometheus gauge for queue length; install Prometheus + Adapter (or KEDA); scale on `queue_depth per pod`; run a load generator with variable prompt lengths; plot queue depth, replicas, latency, and tune target and behaviours.
-4. **Slow-start overshoot**: add a 3-minute startup delay (sleep) and no startup probe; watch the HPA overshoot; add readiness probe and scale-up rate limits; compare.
-5. **VPA**: run VPA in `Off` mode on a service and a batch job; read recommendations after load; compare with your requests; try `Auto` on a non-critical app and observe evictions; test in-place resize if available.
-6. **KEDA**: scale a worker Deployment from 0 on a Kafka/Redis list/SQS-like queue; test cron pre-warming; configure a ScaledJob; compare with a plain HPA external metric.
-7. **Cluster autoscaler**: on a cloud cluster (or kind with the `clusterapi` provider / `kwok` provider), create a node group with min 0; submit pods that don't fit; measure scale-up latency; delete pods and measure scale-down; test blockers (PDB, local storage); try the `priority` expander.
-8. **Overprovisioning**: deploy low-priority pause pods sized to your typical burst; submit a high-priority pod that preempts them; measure time-to-run vs without headroom.
-9. **Karpenter (optional)**: install in a lab cloud account; define a NodePool with consolidation; observe provisioning, consolidation, disruption budgets, `do-not-disrupt`.
-10. **GPU inference scaling**: deploy vLLM (or a mock) with queue/KV-cache metrics; configure HPA/KEDA on `vllm:num_requests_waiting` and cache usage; run a bursty load; measure TTFT p95 and GPU-hours versus static provisioning; examine cold start components (node, image, load).
-11. **Atomic provisioning**: with Kueue + ProvisioningRequest (on a provider supporting it) or simulated via a custom AdmissionCheck, submit a 16-GPU gang job and verify nodes appear before pods start.
-12. **Cost experiment**: compute cost of static vs autoscaled inference for a diurnal traffic trace; adjust min/max and reserve policies; find the break-even.
-13. **Failure drills**: kill Prometheus/adapter and observe HPA behaviour; exhaust cloud GPU quota and observe Pending; simulate spot interruption.
-14. **Clean up**.
+1. Deploy a CPU-bound app with requests and set the HPA to 50% CPU. Generate load with `hey`, and watch the replicas, `describe hpa` and `kubectl top`. Test the tolerance band and the stabilisation by dropping the load. Then add `behavior` policies and compare the results.
+2. Remove the CPU requests and observe `<unknown>`. Then fix the requests and confirm that the metric comes back.
+3. Instrument a toy inference server with a Prometheus gauge for queue length. Install Prometheus and Adapter, or KEDA, and scale on `queue_depth per pod`. Run a load generator with variable prompt lengths. Plot queue depth, replicas and latency, and tune the target and behaviours.
+4. Add a 3-minute startup delay with `sleep` and no startup probe. Watch the HPA overshoot. Then add a readiness probe and scale-up rate limits, and compare the two runs.
+5. Run VPA in `Off` mode on a service and on a batch job. Read the recommendations after load, and compare them with your requests. Try `Auto` on a non-critical app and observe the evictions. Test in-place resize if it is available.
+6. Scale a worker Deployment from 0 on a Kafka, Redis list or SQS-like queue. Test cron pre-warming, configure a ScaledJob, and compare the result with a plain HPA external metric.
+7. On a cloud cluster, or on kind with the `clusterapi` provider or the `kwok` provider, create a node group with min 0. Submit pods that do not fit, and measure the scale-up latency. Delete the pods and measure the scale-down. Test blockers such as PDBs and local storage, and try the `priority` expander.
+8. Deploy low-priority pause pods sized to your typical burst. Submit a high-priority pod that preempts them. Measure the time to run, and compare it with a run that has no headroom.
+9. Optionally, install Karpenter in a lab cloud account. Define a NodePool with consolidation, and observe provisioning, consolidation, disruption budgets and `do-not-disrupt`.
+10. Deploy vLLM, or a mock, with queue and KV-cache metrics. Configure HPA or KEDA on `vllm:num_requests_waiting` and cache usage. Run a bursty load, measure TTFT p95 and GPU-hours, and compare them with static provisioning. Examine the cold-start parts: node, image and load.
+11. With Kueue and ProvisioningRequest on a provider that supports it, or with a simulated custom AdmissionCheck, submit a 16-GPU gang job. Verify that the nodes appear before the pods start.
+12. Compute the cost of static and autoscaled inference for a diurnal traffic trace. Adjust the min and max values and the reserve policies, and find the break-even point.
+13. Kill Prometheus or the adapter and observe how HPA behaves. Exhaust your cloud GPU quota and watch for Pending pods. Simulate a spot interruption.
+14. Clean up.
 
 ## 9. Common mistakes
 
-- Autoscaling GPU model servers on CPU utilisation; scaling on GPU utilisation alone; ignoring queue depth/KV-cache.
-- No resource requests (HPA/CA can't compute); HPA and VPA fighting on CPU/memory.
-- Scale-down windows too short for slow-start workloads; minReplicas 0 for latency-critical GPU services.
-- Assuming node autoscaling is fast and guaranteed for GPUs; no reservations; `maxReplicas` above available capacity.
-- CA blocked by PDBs/local storage/unannotated pods, then blamed for "not scaling down".
-- Karpenter consolidation disrupting training; missing `do-not-disrupt`.
-- Using HPA for training jobs; or expecting elastic training without checkpointing/rendezvous support.
-- Forgetting to bound autoscaling with quotas/budgets; autoscaled costs exceeding plans.
-- Metrics pipeline lag ignored; adapters not highly available.
-- Testing autoscaling with uniform synthetic prompts only.
+- You autoscale GPU model servers on CPU utilisation, or on GPU utilisation alone, and ignore queue depth and KV-cache.
+- You leave out resource requests, so HPA and CA have nothing to compute with. You also let HPA and VPA fight over CPU or memory.
+- You set scale-down windows that are too short for slow-start workloads, or you set `minReplicas` to 0 for latency-critical GPU services.
+- You assume node autoscaling is fast and guaranteed for GPUs, with no reservations and a `maxReplicas` above the capacity you have.
+- PDBs, local storage or unannotated pods block the CA, and then you blame it for "not scaling down."
+- Karpenter consolidation disrupts your training jobs because you forgot `do-not-disrupt`.
+- You use HPA for training jobs, or you expect elastic training to work without checkpointing or rendezvous support.
+- You forget to bound autoscaling with quotas or budgets, and the costs exceed your plans.
+- You ignore metrics pipeline lag, or you run adapters that are not highly available.
+- You test autoscaling only with uniform synthetic prompts.
 
 ## 10. Interview angles
 
-- "How does the HPA compute desired replicas? What are stabilisation windows and tolerance?"
-- "What metrics would you autoscale an LLM inference deployment on, and why not GPU utilisation?"
-- "HPA vs VPA vs KEDA vs cluster autoscaler vs Karpenter: roles and interactions."
-- "How do you handle slow model start times in autoscaling?"
-- "Why does the cluster autoscaler fail to scale down? How do you fix it?"
-- "How do you scale node pools for multi-node training jobs that need all-or-nothing capacity?"
-- "Scale to zero for GPU services: pros, cons, mitigations."
-- "Design autoscaling and cost controls for a shared GPU inference platform."
+- How does the HPA compute desired replicas? What are stabilisation windows and tolerance?
+- What metrics would you autoscale an LLM inference deployment on, and why not GPU utilisation?
+- HPA vs VPA vs KEDA vs cluster autoscaler vs Karpenter: what are the roles, and how do they interact?
+- How do you handle slow model start times in autoscaling?
+- Why does the cluster autoscaler fail to scale down? How do you fix it?
+- How do you scale node pools for multi-node training jobs that need all-or-nothing capacity?
+- Scale to zero for GPU services: what are the pros, the cons and the mitigations?
+- How would you design autoscaling and cost controls for a shared GPU inference platform?
 
 ## Exercises
 
-1. **The HPAv2 Algorithm, Metric APIs (`Resource`, `ContainerResource`, `Pods`, `Object`, `External`), and Behavior Tuning (`PK` Chapter 13):** Using `compute_hpa_desired_replicas()` in `code/part05/autoscaling_hpa_ca_simulator.py`, trace the `embeddings` `HorizontalPodAutoscaler` manifest in Section 2, explaining how HPA evaluates multiple metrics, why a $\pm 10\%$ tolerance band is applied, how `scaleUp` (`Percent: 100` vs `Pods: 4` with `selectPolicy: Max`) and `scaleDown` (`stabilizationWindowSeconds: 600`) prevent overshoot and flapping, and why missing `resources.requests` causes `<unknown>` utilization.
-2. **Choosing Autoscaling Signals for LLM Inference (`vLLM` / `Triton` / `TGI`) and Exposing Custom Metrics via `prometheus-adapter`:** Explain why CPU utilization and raw `DCGM_FI_DEV_GPU_UTIL` are poor primary autoscaling signals for LLM serving compared to `vllm:num_requests_waiting` (queue depth), in-flight concurrency, and `vllm:gpu_cache_usage_perc` (KV-cache utilization), and trace the `prometheus-adapter` custom/external rules in Section 2.
-3. **Vertical Pod Autoscaler (`VPA`: `Recommender`, `Updater`, `Admission Controller`) and In-Place Pod Resize (`PK` Chapter 13):** Compare VPA's update modes (`Off`, `Initial`, `Recreate`/`Auto`, `InPlaceOrRecreate`), explain why VPA in `Off` mode (`Goldilocks`) is the safest way to right-size requests, and explain why running VPA (`Auto`) and HPA on the same CPU/memory metric causes an oscillation loop.
-4. **Event-Driven Autoscaling and Scale-to-Zero with `KEDA` (`ScaledObject`, `ScaledJob`, and `cron` Pre-Warming) vs. `Knative`/`KServe`:** Trace the `batch-embed` `ScaledObject` (combining `kafka`, `prometheus`, and business-hours `cron` triggers) and `transcribe-job` `ScaledJob` in Section 4, and explain how `Knative` / `KServe` (`activator` request buffering) differs from KEDA when scaling an inference endpoint from `0 -> 1`.
-5. **Node-Level Autoscaling: `Cluster Autoscaler` vs. `Karpenter`, Scale-Down Blockers, and Overprovisioning Pause Pods (`PK` Chapter 13):** Using `evaluate_ca_node_scale_down()` and `simulate_overprovisioning_pause_pods()` in `code/part05/autoscaling_hpa_ca_simulator.py`, explain how Cluster Autoscaler's scale-up expanders and scale-down checks work, how Karpenter's `NodePool` consolidation (`WhenEmptyOrUnderutilized`, `do-not-disrupt`) works, and how negative-priority `pause` pods (`PK` Ch. 13 `Figures 13-6` & `13-7`) hide 10-minute GPU node boot delays.
-6. **Atomic Multi-Node Gang Provisioning (`ProvisioningRequest` + `Kueue`) and Mitigating 70B LLM Cold Starts:** Explain why reactive pod-by-pod Cluster Autoscaler scale-up fails for 16-node synchronous training jobs, how `ProvisioningRequest` (`autoscaling.x-k8s.io`) + Kueue `AdmissionCheck` guarantees all-or-nothing node provisioning, and list 5 techniques to cut 70B model cold-start times from 12 minutes to under 60 seconds.
+You can work through these six exercises in order, checking each answer against the code or manifest it names.
+
+1. Start with the HPAv2 algorithm and the metric APIs (`Resource`, `ContainerResource`, `Pods`, `Object`, `External`) and with behavior tuning (Production Kubernetes Chapter 13). Use `compute_hpa_desired_replicas()` in `code/part05/autoscaling_hpa_ca_simulator.py` to trace the `embeddings` `HorizontalPodAutoscaler` manifest in Section 2. Explain how HPA evaluates multiple metrics, and why a $\pm 10\%$ tolerance band applies. Then explain how the `scaleUp` settings (`Percent: 100` and `Pods: 4`, with `selectPolicy: Max`) and the `scaleDown` setting (`stabilizationWindowSeconds: 600`) prevent overshoot and flapping. Finish by explaining why missing `resources.requests` causes `<unknown>` utilization.
+2. Explain why CPU utilization and raw `DCGM_FI_DEV_GPU_UTIL` make poor primary autoscaling signals for LLM serving. Compare them with `vllm:num_requests_waiting` (queue depth), in-flight concurrency, and `vllm:gpu_cache_usage_perc` (KV-cache utilization). This covers the choice of signals for `vLLM`, `Triton` and `TGI`. Then trace the `prometheus-adapter` custom and external rules in Section 2.
+3. Compare the VPA update modes (`Off`, `Initial`, `Recreate`/`Auto`, `InPlaceOrRecreate`) and the components that serve them (Production Kubernetes Chapter 13). Explain why `Off` mode with Goldilocks is the safest way to right-size requests. Then explain why running VPA in `Auto` and HPA on the same CPU or memory metric causes an oscillation loop.
+4. Trace the `batch-embed` `ScaledObject`, which combines `kafka`, `prometheus` and business-hours `cron` triggers, along with the `transcribe-job` `ScaledJob`, both from Section 4. Then explain how Knative and KServe, with their activator request buffering, differ from KEDA when an inference endpoint scales from `0 -> 1`.
+5. Use `evaluate_ca_node_scale_down()` and `simulate_overprovisioning_pause_pods()` in `code/part05/autoscaling_hpa_ca_simulator.py`. Explain how the Cluster Autoscaler's scale-up expanders and scale-down checks work. Then explain how Karpenter's `NodePool` consolidation works, using `WhenEmptyOrUnderutilized` and `do-not-disrupt`. Finish by explaining, in your own words, how negative-priority `pause` pods (Production Kubernetes Chapter 13, `Figures 13-6` and `13-7`) hide the 10-minute GPU node boot delays.
+6. Explain why reactive, pod-by-pod Cluster Autoscaler scale-up fails for 16-node synchronous training jobs. Then explain how `ProvisioningRequest` (`autoscaling.x-k8s.io`) with a Kueue `AdmissionCheck` guarantees all-or-nothing node provisioning. Finally, list 5 techniques that could cut 70B model cold-start times from 12 minutes to under 60 seconds, and say which one you would try first.
 
 ## Checkpoint questions (20)
 
 <details>
-<summary>1. State the core HPA replica formula (`PK` Chapter 13), and explain how HPA handles (a) the $\pm 10\%$ tolerance band and (b) multiple metrics defined on the same HPA.</summary>
+<summary>1. State the core HPA replica formula (Production Kubernetes Chapter 13), and explain how HPA handles (a) the $\pm 10\%$ tolerance band and (b) multiple metrics defined on the same HPA.</summary>
 
 - **Core formula:**
   `desiredReplicas = ceil(currentReplicas * (currentMetricValue / targetMetricValue))`
-- **$\pm 10\%$ tolerance band (`--horizontal-pod-autoscaler-tolerance=0.1`):** If the ratio `currentMetricValue / targetMetricValue` is between **`0.90` and `1.10`**, HPA makes **no change** to replica count, preventing constant 1-pod jitter on minor load fluctuations.
-- **Multiple metrics:** HPA evaluates the formula independently for each metric in `spec.metrics[]` and selects the **maximum** proposed replica count across all metrics.
+- **$\pm 10\%$ tolerance band (`--horizontal-pod-autoscaler-tolerance=0.1`):** If the ratio `currentMetricValue / targetMetricValue` falls between **`0.90` and `1.10`**, HPA makes **no change** to the replica count. That stops constant one-pod jitter from minor load changes.
+- **Multiple metrics:** HPA works out the formula for each metric in `spec.metrics[]`, and it picks the **maximum** proposed replica count.
 </details>
 
 <details>
 <summary>2. Why does `kubectl get hpa` show `<unknown>/60%` for CPU utilization (`FailedGetResourceMetric`), and what two things must be present for `type: Resource` CPU scaling to work?</summary>
 
-For HPA `type: Resource` (`averageUtilization: 60`) to compute a percentage:
-1. **`metrics-server` (`metrics.k8s.io/v1beta1`) must be installed and healthy** in the cluster (verify with `kubectl top pods`).
-2. **Every container in the target Pod MUST declare `resources.requests.cpu`** (because HPA defines "utilization" as `current CPU usage / requested CPU`, *not* usage over node capacity or limits; if any container in the Pod omits `requests.cpu`, HPA cannot compute the denominator and reports `<unknown>` unless you use `ContainerResource` scoped to a specific container).
+For `type: Resource` with `averageUtilization: 60` to compute a percentage, two things must be in place.
+1. **`metrics-server` (`metrics.k8s.io/v1beta1`) must be installed and healthy** in the cluster. Check it with `kubectl top pods`.
+2. **Every container in the target Pod must declare `resources.requests.cpu`.** HPA defines utilization as current CPU usage divided by requested CPU, not by node capacity or limits. If any container in the Pod omits `requests.cpu`, HPA has no denominator, so it reports `<unknown>`. The exception is `ContainerResource`, which you can scope to a specific container.
 </details>
 
 <details>
 <summary>3. In HPAv2 `spec.behavior`, how do `scaleUp.policies` (`selectPolicy: Max`) and `scaleDown.stabilizationWindowSeconds: 600` work?</summary>
 
-- **`scaleUp.policies` with `selectPolicy: Max`:** Suppose `currentReplicas = 4`, `Percent: 100` (allows scaling to $4 \times 2 = 8$), and `Pods: 4` (allows scaling to $4 + 4 = 8$) per 60 seconds. `selectPolicy: Max` permits the **larger** of the two step sizes, while still capping scale-up at +100% per minute so a sudden queue spike while new 70B model Pods are still loading weights doesn't immediately spawn 40 replicas (**slow-start overshoot protection**).
-- **`scaleDown.stabilizationWindowSeconds: 600` (10 minutes):** HPA records every desired-replica recommendation over the past 10 minutes and picks the **highest** recommendation in that 10-minute rolling window—ensuring replicas are only terminated after traffic has stayed consistently low for a full 10 minutes.
+- **`scaleUp.policies` with `selectPolicy: Max`:** Suppose `currentReplicas = 4`. `Percent: 100` allows scaling to $4 \times 2 = 8$, and `Pods: 4` allows scaling to $4 + 4 = 8$, per 60 seconds. `selectPolicy: Max` takes the larger of the two step sizes, but scale-up is still capped at +100% per minute. A sudden queue spike, while new 70B Pods are still loading weights, therefore cannot spawn 40 replicas at once. That is the protection against slow-start overshoot.
+- **`scaleDown.stabilizationWindowSeconds: 600` (10 minutes):** HPA keeps every desired-replica recommendation from the past 10 minutes, and it picks the **highest** one in that rolling window. Replicas go away only after traffic has stayed low for a full 10 minutes.
 </details>
 
 <details>
 <summary>4. Why is `DCGM_FI_DEV_GPU_UTIL` (raw GPU utilization %) often a misleading metric for autoscaling an LLM inference server (`vLLM` / `Triton` / `TensorRT-LLM`), and what metrics should you use instead?</summary>
 
-`DCGM_FI_DEV_GPU_UTIL` measures the percentage of time over the sample interval during which **at least one CUDA kernel was executing on the GPU**—regardless of whether 1 single token or a full batch of 128 requests was being processed.
-Because continuous batching in `vLLM` runs decode iterations back-to-back even for **1 single active user stream**, `DCGM_FI_DEV_GPU_UTIL` quickly jumps to **90–100% with just 1–2 users** (when the GPU still has 95% of its KV-cache and compute throughput available).
-**Better primary LLM autoscaling signals:**
-1. **Waiting request queue depth per replica:** `vllm:num_requests_waiting` (or `nv_inference_pending_request_count` in Triton), targeting e.g. `1–5` waiting requests per pod.
-2. **KV-cache memory utilization:** `vllm:gpu_cache_usage_perc` (scale up when sustained $> 75–80\%$).
-3. **Active in-flight concurrency per replica (`vllm:num_requests_running`).**
+`DCGM_FI_DEV_GPU_UTIL` measures the share of time, over the sample interval, during which at least one CUDA kernel was running on the GPU. It does not distinguish between one token and a full batch of 128 requests. Continuous batching in `vLLM` runs decode iterations back to back, even for a single active user stream. So the metric often jumps to 90–100% with just one or two users, while the GPU still has 95% of its KV-cache and compute throughput available.
+
+Use these signals instead.
+1. **Waiting request queue depth per replica:** `vllm:num_requests_waiting` (or `nv_inference_pending_request_count` in Triton). A target of, for example, 1–5 waiting requests per pod works well.
+2. **KV-cache memory utilization:** `vllm:gpu_cache_usage_perc`. Scale up when it stays above $> 75–80\%$.
+3. **Active in-flight concurrency per replica** (`vllm:num_requests_running`).
 </details>
 
 <details>
 <summary>5. What are the three Kubernetes Metrics APIs (`metrics.k8s.io`, `custom.metrics.k8s.io`, `external.metrics.k8s.io`), and which component serves each?</summary>
 
-1. **`metrics.k8s.io` (Resource Metrics API):** Served by **`metrics-server`**; provides only current Pod and Node CPU and memory usage for `kubectl top` and HPA `Resource` / `ContainerResource` metrics.
-2. **`custom.metrics.k8s.io` (Custom Metrics API):** Served by **`prometheus-adapter`** (or Datadog/custom adapter); provides arbitrary metrics associated with a **Kubernetes object** (`Pods` metric like `vllm_requests_waiting` per Pod, or `Object` metric per Ingress/Service).
-3. **`external.metrics.k8s.io` (External Metrics API):** Served by **`keda-operator-metrics-apiserver`** or `prometheus-adapter`/cloud adapters; provides metrics from **outside Kubernetes** (`kafka_consumergroup_lag`, AWS SQS queue length, GCP Pub/Sub backlog).
+1. **`metrics.k8s.io` (Resource Metrics API):** `metrics-server` serves this API. It gives only current Pod and Node CPU and memory usage, which feeds `kubectl top` and the HPA `Resource` and `ContainerResource` metrics.
+2. **`custom.metrics.k8s.io` (Custom Metrics API):** `prometheus-adapter` serves this API, or a Datadog or custom adapter. It gives you any metric tied to a Kubernetes object, such as a `Pods` metric like `vllm_requests_waiting` per Pod, or an `Object` metric on an Ingress or Service.
+3. **`external.metrics.k8s.io` (External Metrics API):** `keda-operator-metrics-apiserver` serves this API, or `prometheus-adapter` or a cloud adapter does. It gives metrics from outside Kubernetes, such as `kafka_consumergroup_lag`, AWS SQS queue length, or GCP Pub/Sub backlog.
 </details>
 
 <details>
-<summary>6. What are the three components of the Vertical Pod Autoscaler (`VPA`), and what are its four `updateMode` values (`PK` Chapter 13)?</summary>
+<summary>6. What are the three components of the Vertical Pod Autoscaler (`VPA`), and what are its four `updateMode` values (Production Kubernetes Chapter 13)?</summary>
 
 - **Three VPA components:**
-  1. **`vpa-recommender`:** Watches historical and live resource usage from `metrics-server`/Prometheus and computes `target`, `lowerBound`, `upperBound`, and `uncappedTarget` CPU/memory requests.
-  2. **`vpa-updater`:** Compares running Pods' current requests against the recommendation and **evicts** Pods that need resizing (when in `Recreate`/`Auto` mode).
-  3. **`vpa-admission-controller` (Mutating Webhook):** Overwrites `resources.requests` (and proportionally `limits`) on newly created/recreated Pods with the VPA recommendation.
+  1. **`vpa-recommender`** watches historical and live resource usage from `metrics-server` or Prometheus. It computes the `target`, `lowerBound`, `upperBound` and `uncappedTarget` CPU and memory requests.
+  2. **`vpa-updater`** compares the running Pods' requests with the recommendation. In `Recreate` or `Auto` mode, it evicts the Pods that need resizing.
+  3. **`vpa-admission-controller`** is a mutating webhook. It overwrites `resources.requests` (and, in proportion, `limits`) on new or recreated Pods with the recommendation.
 - **Four `updateMode` values:**
-  - **`Off` (safest & most widely used in production, `PK` Chapter 13):** Only computes recommendations in `vpa.status.recommendation` (visualized via **Goldilocks**) without mutating or evicting Pods.
-  - **`Initial`:** Only sets requests when a Pod is first created; never evicts running Pods.
-  - **`Recreate` / `Auto`:** Evicts and recreates running Pods when recommendations diverge significantly.
-  - **`InPlaceOrRecreate`:** Uses Kubernetes **In-Place Pod Vertical Scaling** to resize CPU/memory cgroups without restarting the container when possible.
+  - **`Off`** is the safest option and the most widely used in production. It only computes recommendations in `vpa.status.recommendation`, which Goldilocks can visualize. It never changes or evicts Pods.
+  - **`Initial`** sets requests only when a Pod is first created, and it never evicts running Pods.
+  - **`Recreate` / `Auto`** evict and recreate running Pods when recommendations diverge significantly.
+  - **`InPlaceOrRecreate`** uses Kubernetes In-Place Pod Vertical Scaling to resize the CPU and memory cgroups without restarting the container, when that is possible.
 </details>
 
 <details>
-<summary>7. Why must you NEVER run `HPA` and `VPA` (`Auto`/`Recreate`) on the same CPU or memory metric simultaneously (`PK` Chapter 13)?</summary>
+<summary>7. Why must you NEVER run `HPA` and `VPA` (`Auto`/`Recreate`) on the same CPU or memory metric simultaneously (Production Kubernetes Chapter 13)?</summary>
 
-If both HPA and VPA watch CPU utilization on the same Deployment: when load rises, **HPA adds more Pod replicas** (spreading load across more Pods) *at the exact same time* that **VPA evicts Pods to make each Pod's CPU request larger** (which lowers the percentage utilization `usage / request` seen by HPA, causing HPA to scale back down). The two controllers fight each other in an unstable oscillation loop. Only combine VPA (`Off` mode, or sizing memory) with HPA scaling on **custom/external request metrics** (queue depth / RPS).
+If both watch CPU utilization on the same Deployment, they work against each other. When load rises, HPA adds replicas to spread it out. At the same moment, VPA evicts Pods to give each one a larger CPU request. A larger request lowers the usage-to-request percentage that HPA sees, so HPA scales back down. The two controllers end up in an unstable oscillation loop. Use VPA in `Off` mode, or let it size memory, and pair HPA with custom or external request metrics such as queue depth or RPS.
 </details>
 
 <details>
 <summary>8. How does `KEDA` achieve Scale-to-Zero (`0 <-> 1` replicas) when standard Kubernetes HPA has a minimum of `minReplicas: 1`?</summary>
 
-Standard HPA (`autoscaling/v2`) cannot scale a Deployment to `0` by default (unless `HPAScaleToZero` alpha/beta feature gate is enabled for object/external metrics) because `0 * ratio = 0`.
-**KEDA (`keda-operator`)** splits responsibility across two phases:
-1. **`0 <-> 1` (Activation phase, owned by `keda-operator`):** KEDA polls the external trigger (`Kafka`, `SQS`, `Prometheus`, `Cron`). When all triggers are below `activationThreshold` for `cooldownPeriod` (default `300s`), KEDA scales the Deployment directly to **`0` replicas**. The instant a trigger becomes active (e.g., 1 message arrives in SQS), KEDA scales the Deployment from **`0` to `1` replica**.
-2. **`1 <-> N` (Proportional scaling phase, owned by the KEDA-managed `HPA`):** Once at $\ge 1$ replica, the underlying `HorizontalPodAutoscaler` scales between `1` and `maxReplicaCount` using KEDA's external metrics server.
+Standard HPA (`autoscaling/v2`) cannot scale a Deployment to `0` by default. The exception is the `HPAScaleToZero` alpha or beta feature gate for object and external metrics. The reason is that `0 * ratio = 0`. KEDA (`keda-operator`) splits the work into two phases.
+1. **`0 <-> 1`, the activation phase, is owned by `keda-operator`.** KEDA polls the external trigger, such as Kafka, SQS, Prometheus or Cron. When every trigger stays below `activationThreshold` for `cooldownPeriod` (default `300s`), KEDA scales the Deployment straight to `0` replicas. When a trigger becomes active, such as one message arriving in SQS, KEDA scales the Deployment from `0` to `1` replica.
+2. **`1 <-> N`, the proportional phase, is owned by the KEDA-managed `HPA`.** Once there is at least $\ge 1$ replica, the underlying HorizontalPodAutoscaler scales between `1` and `maxReplicaCount`, using KEDA's external metrics server.
 </details>
 
 <details>
 <summary>9. When should you use KEDA's `ScaledJob` instead of `ScaledObject` for GPU workloads?</summary>
 
-- **`ScaledObject`:** Scales a long-running **`Deployment` or `StatefulSet`** up and down (best for online HTTP/gRPC inference servers or fast sub-second queue consumers).
-- **`ScaledJob`:** Creates one-off **Kubernetes `Job` Pods** for each queued work item (up to `maxReplicaCount` parallel Jobs). **Best for long-running batch GPU tasks** (e.g., a 20-minute video transcoding, batch document OCR/embedding, or Whisper audio transcription job per SQS message), because scaling down a `Deployment` mid-task would kill a worker that is 18 minutes into a 20-minute job, whereas each `ScaledJob` Pod runs to completion and exits `0` cleanly.
+- **`ScaledObject`** scales a long-running **`Deployment` or `StatefulSet`** up and down. It suits online HTTP or gRPC inference servers and fast consumers that work through queue items in under a second.
+- **`ScaledJob`** creates one-off Kubernetes `Job` Pods, one for each queued work item, up to `maxReplicaCount` parallel Jobs. It suits **long-running batch GPU tasks**, such as a 20-minute video transcode, batch document OCR or embedding, or a Whisper transcription job for each SQS message. Scaling a Deployment down mid-task would kill a worker that is 18 minutes into a 20-minute job. Each `ScaledJob` Pod runs to completion and exits with `0` cleanly.
 </details>
 
 <details>
 <summary>10. How does `Knative Serving` / `KServe` serverless mode handle incoming HTTP requests while a scaled-to-zero GPU model server is cold-starting (`0 -> 1`)?</summary>
 
-If KEDA scales a standard Kubernetes `Deployment` to `0`, any HTTP request arriving at its `Service` while `replicas == 0` fails immediately with **`Connection refused` / `503 Service Unavailable`** because `EndpointSlice` is empty.
-**Knative Serving (used by `KServe` in serverless mode)** solves this with its **`Activator`** component: when a revision scales to `0` replicas, Knative switches the Service's network path to point to the **`activator` proxy**. When the first HTTP request arrives, the **`activator` holds/buffers the open HTTP request in memory**, triggers the autoscaler (`KPA`) to start a `vLLM` Pod (`0 -> 1`), waits for the Pod to pass readiness, and then forwards the buffered HTTP request to the newly started Pod without dropping it.
+If KEDA scales a standard Kubernetes `Deployment` to `0`, any HTTP request that reaches its `Service` while `replicas == 0` fails at once, with `Connection refused` or `503 Service Unavailable`. The reason is that the `EndpointSlice` is empty.
+
+**Knative Serving**, which `KServe` uses in serverless mode, solves this with its `Activator` component. When a revision scales to `0` replicas, Knative points the Service's network path at the `activator` proxy. When the first HTTP request arrives, the `activator` holds it in memory and triggers the autoscaler (`KPA`) to start a `vLLM` Pod, from `0` to `1`. Once that Pod passes readiness, the `activator` forwards the held request to it, so the request is not dropped.
 </details>
 
 <details>
 <summary>11. What triggers the `Cluster Autoscaler` (`CA`) to scale UP a node group, and what do its five `expander` strategies do?</summary>
 
-- **Scale-up trigger:** Cluster Autoscaler **never looks at node CPU or GPU utilization % to scale up**. It only scales up when one or more Pods are **unschedulable (`Pending` with `FailedScheduling` due to insufficient resources)** and simulating adding a node from a managed node group shows the Pending Pod would pass all scheduler `Filter` predicates on that new node.
-- **Five `--expander` strategies (when multiple node groups could fit the Pending Pod):**
+- **Scale-up trigger:** The Cluster Autoscaler never looks at node CPU or GPU utilization to decide to scale up. It acts only when one or more Pods are unschedulable (Pending with `FailedScheduling` because of insufficient resources), and a simulated node from a managed node group would pass all the scheduler `Filter` predicates for that Pending Pod.
+- **Five `--expander` strategies,** used when several node groups could fit the Pending Pod:
   1. **`random` (default)**
-  2. **`least-waste`:** Picks the node group that will have the least idle CPU/memory left over after placing the Pending Pods.
-  3. **`most-pods`:** Picks the node group that can schedule the largest number of Pending Pods.
-  4. **`price`:** Picks the cheapest node group.
-  5. **`priority`:** Uses a user-defined priority ConfigMap (`kube-system/cluster-autoscaler-priority-expander`)—ideal for GPU clusters to prefer **reserved/committed GPU node groups** first, then **spot GPU pools**, and finally **on-demand burst pools**.
+  2. **`least-waste`** picks the group that leaves the least idle CPU and memory after the Pending Pods are placed.
+  3. **`most-pods`** picks the group that can schedule the most Pending Pods.
+  4. **`price`** picks the cheapest group.
+  5. **`priority`** uses a user-defined priority ConfigMap (`kube-system/cluster-autoscaler-priority-expander`). That suits GPU clusters well, because it prefers reserved or committed GPU groups first, then spot GPU pools, and finally on-demand burst pools.
 </details>
 
 <details>
 <summary>12. Under what conditions does `Cluster Autoscaler` scale DOWN a node, and what five things prevent a node from being scaled down?</summary>
 
-A node becomes a candidate for scale-down when the sum of CPU and memory (and GPU) **requests** on the node is below **`--scale-down-utilization-threshold` (default `0.5` = 50%)** continuously for **`--scale-down-unneeded-time` (default `10m`)**, AND all movable Pods on the node can be simulated to fit onto other existing nodes in the cluster.
-**Five scale-down blockers:**
-1. A Pod has annotation **`cluster-autoscaler.kubernetes.io/safe-to-evict: "false"`**.
-2. A Pod uses **local node storage (`emptyDir` or `hostPath`)** unless annotated with `safe-to-evict: "true"` (or `--skip-nodes-with-local-storage=false`).
-3. A Pod's **`PodDisruptionBudget` (`PDB`)** has `disruptionsAllowed == 0`.
-4. A **standalone Pod not owned by a controller** (`ReplicaSet`/`StatefulSet`/`Job`), or a non-DaemonSet `kube-system` Pod without a PDB (`--skip-nodes-with-system-pods=true`).
-5. A Pod has hard node-affinity or anti-affinity that prevents it from fitting on any other node.
+A node becomes a scale-down candidate when its CPU, memory and GPU requests stay below `--scale-down-utilization-threshold` (default `0.5`, or 50%) for `--scale-down-unneeded-time` (default `10m`). All the movable Pods on it must also be simulated onto other nodes in the cluster. Five things block that.
+1. A Pod has the annotation `cluster-autoscaler.kubernetes.io/safe-to-evict: "false"`.
+2. A Pod uses local node storage (`emptyDir` or `hostPath`), unless it is annotated `safe-to-evict: "true"` or `--skip-nodes-with-local-storage=false` is set.
+3. A Pod's `PodDisruptionBudget` (`PDB`) has `disruptionsAllowed == 0`.
+4. A standalone Pod not owned by a controller (`ReplicaSet`, `StatefulSet` or `Job`) blocks the node. So does a non-DaemonSet kube-system Pod without a PDB, when `--skip-nodes-with-system-pods=true` is set.
+5. A Pod has hard node affinity or anti-affinity that stops it from fitting on any other node.
 </details>
 
 <details>
 <summary>13. Walk through the `cluster-overprovisioner` ("Pause Pod") pattern from *Production Kubernetes* Chapter 13 (`Figures 13-6` & `13-7`).</summary>
 
-Because spinning up a new cloud GPU VM and loading drivers takes **5 to 15 minutes**, waiting for a production traffic spike to create `Pending` Pods before starting node scale-up violates latency SLOs.
-**The `cluster-overprovisioner` solution (`PK` Chapter 13):**
-1. Create a `PriorityClass` named `overprovisioning` with a **negative priority value (`value: -10`)** while all real workloads use priority $\ge 0$.
-2. Deploy a `Deployment` running the tiny `registry.k8s.io/pause` image with `priorityClassName: overprovisioning` and resource requests equal to 1 or 2 warm GPU nodes (`nvidia.com/gpu: 8`).
+Starting a new cloud GPU VM and loading its drivers takes 5 to 15 minutes. If you wait for a production spike to create Pending Pods before scale-up begins, you break your latency SLOs. The `cluster-overprovisioner` pattern avoids that wait in five steps.
+1. Create a `PriorityClass` named `overprovisioning` with a negative value (`value: -10`). Real workloads use priority $\ge 0$.
+2. Deploy a `Deployment` that runs the small `registry.k8s.io/pause` image, with `priorityClassName: overprovisioning`. Its resource requests equal one or two warm GPU nodes (`nvidia.com/gpu: 8`).
 3. In steady state (`Figure 13-6`), the `pause` Pod occupies a warm, fully initialized GPU node.
-4. When HPA scales out a real inference Deployment (`Figure 13-7`), `kube-scheduler` **immediately preempts the `-10` priority `pause` Pod** and schedules the real inference Pod onto the warm GPU node in **0 seconds**.
-5. The preempted `pause` Pod becomes `Pending`, which immediately triggers `Cluster Autoscaler` to provision a new warm buffer node in the background for the *next* spike.
+4. When HPA scales out a real inference Deployment (`Figure 13-7`), `kube-scheduler` immediately preempts the `-10` priority `pause` Pod. It then schedules the real inference Pod onto the warm GPU node in **0 seconds**.
+5. The preempted `pause` Pod becomes Pending. That immediately triggers the Cluster Autoscaler to provision a new warm buffer node in the background, for the *next* spike.
 </details>
 
 <details>
 <summary>14. How does `Karpenter` differ from the `Cluster Autoscaler`, and why must you set `karpenter.sh/do-not-disrupt: "true"` on GPU training Pods?</summary>
 
-- **Cluster Autoscaler:** Operates on pre-created, fixed-shape cloud **Auto Scaling Groups (`ASG`s / `MIG`s)** where every node in a group has the exact same instance type.
-- **Karpenter:** Operates **node-group-less** by watching Pending Pods directly and calling cloud fleet APIs (`CreateFleet`) to launch the optimal mix of instance types, sizes, zones, and capacity types matching a declarative **`NodePool`** and **`EC2NodeClass`**.
-- **Why `karpenter.sh/do-not-disrupt: "true"` is mandatory on training Pods:** Karpenter continuously runs **node consolidation** (`consolidationPolicy: WhenEmptyOrUnderutilized`), replacing nodes with cheaper/smaller instances or bin-packing pods onto fewer nodes. If Karpenter consolidates a node running a stateful or multi-node GPU training job, it evicts the training rank and restarts the training step. Annotating training Pods with **`karpenter.sh/do-not-disrupt: "true"`** (or setting `consolidationPolicy: WhenEmpty` on the training `NodePool`) forbids Karpenter from evicting them until the Job finishes.
+- **Cluster Autoscaler** works on pre-created, fixed-shape cloud **Auto Scaling Groups (`ASG`s / `MIG`s)**, where every node in a group has the same instance type.
+- **Karpenter** works without node groups. It watches Pending Pods directly and calls cloud fleet APIs (`CreateFleet`) to launch the best mix of instance types, sizes, zones and capacity types. That mix matches a declarative **`NodePool`** and **`EC2NodeClass`**.
+- **Why `karpenter.sh/do-not-disrupt: "true"` is required on training Pods:** Karpenter runs node consolidation all the time (`consolidationPolicy: WhenEmptyOrUnderutilized`). It replaces nodes with cheaper or smaller instances, or packs Pods onto fewer nodes. If it consolidates a node that runs a stateful or multi-node GPU training job, it evicts the training rank and restarts the training step. Set `karpenter.sh/do-not-disrupt: "true"` on the training Pods, or set `consolidationPolicy: WhenEmpty` on the training `NodePool`, so Karpenter leaves them alone until the Job finishes.
 </details>
 
 <details>
 <summary>15. Why does reactive `Cluster Autoscaler` scale-up fail for multi-node distributed GPU training jobs in scarce cloud regions, and how does `ProvisioningRequest` + `Kueue` solve it?</summary>
 
-Suppose you submit a 16-node (128-GPU) `PyTorchJob` and the cloud region currently only has 10 H100 VMs available:
-- With reactive `Cluster Autoscaler`, the cloud provisions 10 H100 VMs (which start billing immediately at ~$80/hour each) while the remaining 6 VMs fail with `InsufficientInstanceCapacity`. Your 16-node job cannot start with 10 nodes, so **10 expensive H100 nodes sit 100% idle burning money**.
-- With **`ProvisioningRequest` (`autoscaling.x-k8s.io`) integrated via a Kueue `AdmissionCheck`** (such as GKE Dynamic Workload Scheduler / queued provisioning), Kueue keeps the job suspended (`0` Pods, `0` VMs billed) and submits an **atomic capacity request for all 16 nodes** to the cloud provider. Only when the cloud provider guarantees and provisions all 16 nodes together does Kueue admit the job.
+Suppose you submit a 16-node (128-GPU) `PyTorchJob`, and the cloud region has only 10 H100 VMs available right now.
+- With reactive `Cluster Autoscaler`, the cloud provisions 10 H100 VMs, which start billing at about $80 an hour each. The remaining 6 VMs fail with `InsufficientInstanceCapacity`. Your 16-node job cannot start on 10 nodes, so those 10 expensive H100 nodes sit 100% idle and keep burning money.
+- With **`ProvisioningRequest` (`autoscaling.x-k8s.io`)** connected through a Kueue `AdmissionCheck`, such as GKE Dynamic Workload Scheduler or queued provisioning, Kueue keeps the job suspended, with `0` Pods and `0` VMs billed. It then sends an atomic capacity request for all 16 nodes to the cloud provider. Kueue admits the job only when the provider guarantees and provisions all 16 nodes together.
 </details>
 
 <details>
 <summary>16. What causes "Slow-Start HPA Overshoot" on a 70B LLM Deployment that takes 6 minutes to load weights, and what three settings prevent it?</summary>
 
-Suppose 4 replicas are serving at 100% queue saturation, and HPA scales the Deployment from `4` to `8` replicas at `T=0`:
-- During minutes `0..6`, the 4 new Pods are still downloading/loading 140 GB of weights (`Ready=False`), so **all incoming traffic still hits the original 4 Pods**, and the average waiting queue on the Ready Pods stays high.
-- If `behavior.scaleUp` is unthrottled, on the next sync cycles (`T=1m, 2m, 3m`), HPA sees the metric is still high and scales `8 -> 16 -> 32`—vastly overshooting actual demand.
-**Three fixes:**
-1. **Rate-limit `behavior.scaleUp.policies`** to match your model startup time (e.g., allow scaling by at most `+50%` or `+4` Pods per **`periodSeconds: 300`** = 5 minutes).
-2. **Use accurate `startupProbe` / `readinessProbe`** (HPAv2 automatically excludes unready Pods when averaging `Pods` / `Resource` metrics, and you should scale on **per-ready-pod average queue depth** rather than an un-normalized sum).
-3. **Accelerate cold start** via pre-pulled images and local NVMe / parallel-FS weight caching + KEDA `cron` pre-warming before known traffic peaks.
+Suppose 4 replicas are serving at 100% queue saturation, and HPA scales the Deployment from `4` to `8` replicas at `T=0`.
+- During minutes `0..6`, the four new Pods are still downloading and loading 140 GB of weights (`Ready=False`). All incoming traffic therefore still hits the original four Pods, and the average waiting queue on the Ready Pods stays high.
+- If `behavior.scaleUp` is unthrottled, the next sync cycles (`T=1m, 2m, 3m`) still see a high metric. HPA then scales `8 -> 16 -> 32`, which overshoots actual demand by far.
+
+Three settings prevent this.
+1. **Rate-limit `behavior.scaleUp.policies`** to match your model's startup time. For example, allow at most `+50%` or `+4` Pods per `periodSeconds: 300`, which is 5 minutes.
+2. **Use accurate `startupProbe` and `readinessProbe` settings.** HPAv2 leaves unready Pods out of `Pods` and `Resource` averages automatically. You should scale on the average queue depth per ready Pod, not on an un-normalized sum.
+3. **Accelerate the cold start** with pre-pulled images, local NVMe and parallel-FS weight caching, and KEDA `cron` pre-warming before known traffic peaks.
 </details>
 
 <details>
 <summary>17. How do you combine `KEDA` `cron` triggers and `prometheus` triggers on the same `ScaledObject` to handle predictable weekday morning traffic surges?</summary>
 
-When a `ScaledObject` defines **multiple triggers** (e.g., a `prometheus` trigger on `vllm:num_requests_waiting > 5` AND a `cron` trigger for `0 8 * * 1-5` to `0 20 * * 1-5` with `desiredReplicas: "8"`), KEDA evaluates all triggers and scales to the **maximum** desired replica count across all active triggers:
-- At **08:00 UTC Monday–Friday**, the `cron` trigger proactively scales the pool to a floor of **8 warm replicas** *before* user traffic arrives.
-- If traffic spikes during the day so the `prometheus` trigger needs **16 replicas**, HPA scales up to 16 (and never drops below 8 until 20:00 UTC).
-- After **20:00 UTC**, the `cron` trigger deactivates (`0`), allowing the pool to scale down to `minReplicaCount` overnight.
+When a `ScaledObject` has several triggers, such as a `prometheus` trigger on `vllm:num_requests_waiting > 5` and a `cron` trigger for `0 8 * * 1-5` to `0 20 * * 1-5` with `desiredReplicas: "8"`, KEDA checks all of them. It scales to the **maximum** desired replica count across the active triggers.
+- At 08:00 UTC, Monday to Friday, the `cron` trigger scales the pool to a floor of 8 warm replicas before user traffic arrives.
+- If traffic spikes so the `prometheus` trigger needs 16 replicas, HPA scales up to 16. The pool never drops below 8 until 20:00 UTC.
+- After 20:00 UTC the `cron` trigger deactivates (`0`), so the pool can scale down to `minReplicaCount` overnight.
 </details>
 
 <details>
 <summary>18. What happens to an `HPA`-managed Deployment if `metrics-server` or `prometheus-adapter` goes down?</summary>
 
-When HPA cannot fetch metrics (`ScalingActive=False`, `Reason: FailedGetResourceMetric` or `FailedGetPodsMetric`), **HPA fails safe by freezing the current replica count**:
-- It **refuses to scale down** (so a monitoring outage never terminates production serving capacity).
-- However, it **also cannot scale up** in response to new traffic bursts until the metrics pipeline recovers. Always run `metrics-server` and `prometheus-adapter` / `keda-metrics-apiserver` with $\ge 2$ HA replicas and alert on `kube_horizontalpodautoscaler_status_condition{condition="ScalingActive", status="false"} == 1`.
+When HPA cannot fetch metrics (`ScalingActive=False`, `Reason: FailedGetResourceMetric` or `FailedGetPodsMetric`), it fails safe and freezes the current replica count.
+- It refuses to scale down, so a monitoring outage never removes production serving capacity.
+- It also cannot scale up for new bursts until the metrics pipeline recovers. Run `metrics-server` and `prometheus-adapter` (or `keda-metrics-apiserver`) with $\ge 2$ HA replicas. Alert on `kube_horizontalpodautoscaler_status_condition{condition="ScalingActive", status="false"} == 1`.
 </details>
 
 <details>
 <summary>19. Why does `GitOps` (`Argo CD` / `Flux`) revert `HPA`-scaled replicas back to the static number in Git if you aren't careful, and how do you fix it?</summary>
 
-If your `Deployment` YAML in Git specifies `spec.replicas: 2` and an `HPA` scales the live Deployment up to `12` replicas during peak traffic, the next Argo CD sync sees a diff between Git (`2`) and live cluster (`12`) and **scales the Deployment back down to `2`**, causing an immediate production outage.
-**Two mandatory fixes for any HPA/KEDA-managed Deployment in GitOps:**
-1. **Omit `spec.replicas` from the `Deployment` YAML in Git** (letting `HPA.spec.minReplicas` set the initial floor), AND
-2. Configure Argo CD to ignore `/spec/replicas` diffs (`ignoreDifferences: [{group: "apps", kind: "Deployment", jsonPointers: ["/spec/replicas"]}]`).
+If your `Deployment` YAML in Git sets `spec.replicas: 2`, and an `HPA` scales the live Deployment up to `12` replicas at peak, the next Argo CD sync sees a difference between Git (`2`) and the live cluster (`12`). It then scales the Deployment back down to `2`, which causes an immediate production outage.
+
+Make two changes to any HPA- or KEDA-managed Deployment in GitOps.
+1. **Omit `spec.replicas` from the `Deployment` YAML in Git**, and let `HPA.spec.minReplicas` set the starting floor.
+2. **Tell Argo CD to ignore `/spec/replicas` differences**, with `ignoreDifferences: [{group: "apps", kind: "Deployment", jsonPointers: ["/spec/replicas"]}]`.
 </details>
 
 <details>
 <summary>20. How does `KubeRay` autoscale a `RayCluster` or `RayService` on Kubernetes?</summary>
 
-Instead of using a standard Kubernetes HPA, **KubeRay** runs an **in-cluster Ray Autoscaler sidecar container** inside the Ray Head Pod:\n1. The Ray Autoscaler monitors **logical resource demands** inside the Ray distributed scheduler (`ray.remote` tasks and actors requesting `num_gpus=1`, placement groups).\n2. When pending Ray tasks/actors exceed available Ray worker capacity, the Ray Autoscaler patches the `RayCluster` CRD's `workerGroupSpecs[].replicas` field (within `minReplicas`..`maxReplicas`).\n3. The `kuberay-operator` creates the new Ray worker Pods, which in turn trigger `Cluster Autoscaler` / `Karpenter` if new GPU nodes are needed; when a Ray worker sits idle for `idleTimeoutSeconds`, the Ray Autoscaler drains and removes that specific worker Pod.
+`KubeRay` does not use a standard Kubernetes HPA. Instead, it runs an in-cluster Ray Autoscaler sidecar container inside the Ray head Pod.
+1. The Ray Autoscaler watches the logical resource demands in the Ray distributed scheduler. Those are `ray.remote` tasks and actors that request `num_gpus=1`, and placement groups.
+2. When pending Ray tasks or actors need more capacity than the Ray workers provide, the Ray Autoscaler patches the `workerGroupSpecs[].replicas` field of the `RayCluster` CRD, within `minReplicas`..`maxReplicas`.
+3. The `kuberay-operator` creates the new Ray worker Pods. Those can in turn trigger `Cluster Autoscaler` or `Karpenter` if new GPU nodes are needed. When a Ray worker sits idle for `idleTimeoutSeconds`, the Ray Autoscaler drains it and removes that worker Pod.
 </details>
 
 ## Sources and review notes
@@ -534,5 +600,5 @@ Instead of using a standard Kubernetes HPA, **KubeRay** runs an **in-cluster Ray
 - **Sources read in full:**
   - `production-kubernetes` — Josh Rosso, Rich Lander, Alexander Brand & John Harris, *Production Kubernetes*, **Chapter 13: Autoscaling** (read in full: service decomposition for independent scaling, when NOT to autoscale, HPA algorithm and 10% tolerance band, custom metrics via `prometheus-adapter`, VPA `Recommender`/`Updater`/`Admission Controller` and `Off` vs `Recreate` mode, HPA + VPA conflict, `aws-cluster-autoscaler` `--nodes=1:10:worker-auto-scaling-group`, pod-shuffling impact, and `cluster-overprovisioner` negative-priority `pause` pods in `Figures 13-6` and `13-7`).
 - **Run here:** `python3 code/part05/autoscaling_hpa_ca_simulator_lab.py` (3 passed, 0 failed).
-- **Explicitly labelled inferences:** The `compute_hpa_desired_replicas`, `evaluate_ca_node_scale_down`, and `simulate_overprovisioning_pause_pods` models in `code/part05/autoscaling_hpa_ca_simulator.py` and the `embeddings` `HorizontalPodAutoscaler`, `prometheus-adapter` rules, `batch-embed` `ScaledObject`, `transcribe-job` `ScaledJob`, and `gpu-inference` Karpenter `NodePool` manifests are the author's constructions synthesizing `PK` Chapter 13 and upstream Kubernetes/KEDA/Karpenter documentation (plus original study items 21, 22, 23, 24, 25, 26, 27, 28, 29, 30, 31, 32, 33, 34, and 35).
+- **Explicitly labelled inferences:** The `compute_hpa_desired_replicas`, `evaluate_ca_node_scale_down`, and `simulate_overprovisioning_pause_pods` models in `code/part05/autoscaling_hpa_ca_simulator.py` and the `embeddings` `HorizontalPodAutoscaler`, `prometheus-adapter` rules, `batch-embed` `ScaledObject`, `transcribe-job` `ScaledJob`, and `gpu-inference` Karpenter `NodePool` manifests are the author's constructions synthesizing Production Kubernetes Chapter 13 and upstream Kubernetes/KEDA/Karpenter documentation (plus original study items 21, 22, 23, 24, 25, 26, 27, 28, 29, 30, 31, 32, 33, 34, and 35).
 - **Not verified on live hardware:** Live `HPA`, `VPA`, `KEDA`, `Cluster Autoscaler`, and `Karpenter` executions (`70B` model, `15 s` HPA sync, `0.1` tolerance, `5 min` initialization, `minReplicas: 2, maxReplicas: 40`, `averageUtilization: 60`, `stabilizationWindowSeconds: 600`, `70-80%` KV-cache, `cooldownPeriod: 300`, `0.5` CA threshold / `10 min` unneeded time, `expireAfter: 720h`, `limits: nvidia.com/gpu: 64`) are marked (`untested here`) where not executed by `autoscaling_hpa_ca_simulator_lab.py`.
