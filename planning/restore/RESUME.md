@@ -41,3 +41,9 @@ The session hit the token limit during the autonomous run. Resume with these ste
 - Voice agents were stopped on purpose. Restoration runs before further voice work; voice resumes afterwards (re-run prep_voice.py for each unfinished chapter so chapter_old.md is re-snapshotted from the restored text).
 - Restoration order: Tier A (planning/restore/TIERA.json: ASP + AI-fabric units), then Tier B (Supercomputers, Production K8s), then Tier C (How Linux Works, K8s Up&Running). Python restoration is complete.
 - TODO after U003 finishes: U011 leftover (Supercomputers ch.28 "One-Two-Three Instructions", Xorg/xorg.conf section, ~4 paragraphs) belongs in 1.30 (remote graphical access: X11, VNC). Run a small restoration agent on docs/part-01-linux/30-*.md for that section only.
+
+## Update (Oct 31 afternoon, rate limit until 15:20)
+- Tier A restoration COMPLETE (all 15 units). Tier B/C mostly done. Cut off by the rate limit mid-unit (work so far saved in files): U012, U069, U008 (resume with SendMessage to the agent, or re-run `python3 tools/restore/prep_restore.py Uxxx` then relaunch; check `python3 tools/restore/gate.py Uxxx` first). May also be cut: U076, U005, U003, U002, U015, U018.
+- Still unstarted: U059, U077, U013 (Production K8s), U066, U072, U073, U078, U083, U086, U062 (K8s Up&Running), U010, U001, U006, U004 (How Linux Works). Check `ls planning/restore/backup` for which units have been started.
+- After restoration finishes: resume the voice pass (Part 5: 5.21 5.22 5.24 5.26 5.27 5.30 5.31 5.32 5.34 5.35; Part 6 onward; Parts 7-15 need prep_voice.py). Re-run prep_voice.py for each chapter first.
+- Waivers: planning/restore/WAIVERS.md.

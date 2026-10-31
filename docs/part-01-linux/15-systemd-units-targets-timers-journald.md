@@ -69,6 +69,12 @@ systemd is **goal-oriented**. You define goals, called units, and each goal depe
 
 When a service seems stuck, first ask which goal, or unit, it is waiting for.
 
+### Older init systems
+
+Some older machines still run an init that is not systemd. System V init is a traditional sequenced init. People often say its name as "sys-five," after Unix System V. You may find it on Red Hat Enterprise Linux before version 7.0, and on Debian 8. Upstart is the init that Ubuntu used before version 15.04.
+
+Other versions of init exist, mostly on embedded devices. Android has its own init, and runit is a popular choice on lightweight systems. The BSD systems have their own init as well, but a modern Linux machine is unlikely to run it. Some distributions changed their System V setup to look more like the BSD style. Viewing the `init(1)` manual page usually tells you which one you have.
+
 ## 2. Units
 
 Everything systemd manages is a **unit**. Each unit is described by a **unit file** in an INI-like syntax, derived from the XDG desktop-entry format. Sections are marked in `[Brackets]`, settings are `Key=value` lines, and `#` or `;` starts a comment. Once you know the unit types below, most of the rest of this chapter becomes easier to follow. You will meet these names in almost every unit file you write.
@@ -241,6 +247,8 @@ Apr 16 08:15:41 node1 systemd[1]: Started OpenBSD Secure Shell server.
 
 `Loaded:` shows the file path, the enablement state and the vendor preset. `Active:` shows the state, such as `active (running)`, `active (exited)` for oneshots, `inactive (dead)`, `activating` or `failed`. When a unit fails, a `Result` such as `exit-code`, `signal`, `timeout` or `start-limit-hit` follows. `Main PID` is the tracked process. The `CGroup` tree lists every process of the service, and the last log lines appear at the bottom. For the full log, run `journalctl -u NAME`.
 
+The `status` output shows only the newest log messages for a unit. To read every message the unit has logged, run `journalctl --unit=NAME`. Depending on your system and user settings, you may need superuser rights for `journalctl`. Section 12 explains `journalctl` in more depth.
+
 ## 4. Dependencies and ordering
 
 Two ideas control how systemd starts units, and they are easy to confuse. **Requirement dependencies** say what else must also start. **Ordering dependencies** say in which order units start, once both of them are going to start.
@@ -261,6 +269,8 @@ By themselves, `Requires=` and `Wants=` do not order anything. Both units start 
 | `Condition*=` / `Assert*=` | If a condition is false the unit is **skipped silently** (`Condition`) or **fails** (`Assert`); examples `ConditionPathExists=`, `ConditionFileNotEmpty=`, `ConditionVirtualization=`, `ConditionHost=`, `ConditionKernelCommandLine=`, `ConditionACPower=`; does not affect dependencies of other units |
 | `StopWhenUnneeded=yes` | Stop this unit when nothing needs it any more |
 | `PropagatesReloadTo=` / `ReloadPropagatedFrom=` | Forward reloads |
+
+Ordering is a separate setting from requirements, and it uses two modifiers. `Before=B` means this unit activates before unit B. `After=B` means this unit activates after unit B. Suppose `foo.target` contains `Before=bar.target`. Then systemd starts `foo.target` first and `bar.target` after it. Ordering only matters once both units are going to start, so check it whenever a unit must wait for another.
 
 The soft and hard forms matter for a practical reason. Consider a login prompt that hard-requires a database server. If that server fails, you cannot log in to fix the database. `Wants` keeps a failure local, much as a traditional boot tolerated failing scripts. A missing data disk may stop an application, but it should not stop `sshd`. Use `Requires` or `BindsTo` only when a unit is genuinely useless or dangerous without the other.
 
@@ -405,6 +415,10 @@ StandardInput=socket
 ```
 
 With `Accept=true`, systemd accepts each incoming connection itself. It starts a new **instance**, named `echo@<n>-<local>-<peer>.service`, for each connection. The service is therefore a template, and it reads the connection as standard input and output. With `Accept=false`, which is the default, systemd listens and passes the **listening socket** to a single service named `echo.service`. That service is not a template. It calls `accept()` itself and keeps control until it exits. Real servers that understand socket activation use this form. They receive the descriptor in `$LISTEN_FDS`, starting at descriptor 3, through `sd_listen_fds()`. To test the setup, run `sudo systemctl start echo.socket`, then `ss -ltn | grep 22222`, then `echo hi | nc localhost 22222`, and check `systemctl list-sockets`.
+
+Each echo instance reads the connection as standard input and output, so it does not need to know that the data came from a network. That simple gateway suits only simple services. Most network services need more flexibility, so do not expect a complex server to work from a unit like this one. If a service can accept connections by itself, leave the `@` out of its filename and leave `Accept=true` out of the socket unit. The service then takes full control of the socket, and systemd does not listen on the port again until the service finishes.
+
+To test the echo example with `telnet`, connect to port 22222 and type a line. The same line comes back to you. Press `ctrl-]` on a line by itself, then `ctrl-D`, to return to your shell. Stop the socket with `systemctl stop echo.socket`. The `telnet` client may not be installed by default on your distribution. For the resource-oriented units, read `systemd.socket(5)`, `systemd.path(5)` and `systemd.device(5)`. The `systemd.exec(5)` page explains what a service can expect to receive when it is activated.
 
 Socket activation helps in three ways, and each one solves a different part of the startup problem. First, a rarely used service uses no resources until a client needs it, which is the idea behind the modern `inetd`. Second, boot runs in parallel. systemd can create the socket early, so clients connect and queue while the real service is still starting. That removes some ordering between services that depend on each other. Several system components already work this way, including `journald`, D-Bus, and `sshd` on some distributions, which uses `sshd.socket`. Third, the socket stays open while the service restarts, so connections are not dropped.
 
@@ -652,6 +666,34 @@ A unit that delays shutdown by 90 seconds each time usually has a `TimeoutStopSe
 Chapter 1.14 (`HLW` Section 6.7) adds one more point. A custom kernel that compiles in every driver needed to mount the root filesystem can skip the `initramfs` entirely. The tools differ by distribution. On Ubuntu they are `mkinitramfs` and `unmkinitramfs`, and on RHEL and Fedora they are `dracut` and `lsinitrd`.
 
 If you reboot a host and it waits, you have found the slow part. Replace legacy init scripts with native units when you touch them.
+
+### Runlevels: the older way to name a system state
+
+Older System V systems describe the machine's state with a runlevel, a number from 0 to 6. Each runlevel runs a base set of processes, such as `crond` and `udevd`. A system spends most of its time in one runlevel. When you shut down, init moves to a different runlevel so it can stop services in order.
+
+Check the current runlevel with `who -r`:
+
+```
+$ who -r
+run-level 5 2019-01-27 16:43
+```
+
+That output shows runlevel 5, and the time it was set. Runlevels mostly separate startup, shutdown, single-user mode and console mode. Runlevels 2 through 4 usually meant the text console, and runlevel 5 starts a graphical login.
+
+A System V line such as `l5:5:wait:/etc/rc.d/rc 5` runs the `rc` command for runlevel 5. The scripts for that runlevel live in `/etc/rc.d/rc5.d` or `/etc/rc5.d`. Runlevel 1 uses `rc1.d`, runlevel 2 uses `rc2.d`, and so on. A `rc5.d` directory might hold entries like these:
+
+```
+S10sysklogd S20ppp S99gpm
+S12kerneld S25netstd_nfs S99httpd
+S15netstd_init S30netstd_misc S99rmnologin
+S18netbase S45pcmcia S99sshd
+S20acct S89atd
+S20logoutd S89cron
+```
+
+The name tells `rc` what to do. An `S` means start, and the two digits from `00` to `99` set the order. A `K` means stop, and you see those mostly in runlevels that shut the system down. The `rc` command runs `S10sysklogd start` first, then `S12kerneld start`, and so on down to `S99sshd start`.
+
+But runlevels are becoming a thing of the past. systemd supports them, but it treats runlevels as obsolete end states. It prefers target units, which section 6 describes. To systemd, runlevels exist mainly to start services that need the System V init scripts.
 
 ## 16. AI-infrastructure patterns
 

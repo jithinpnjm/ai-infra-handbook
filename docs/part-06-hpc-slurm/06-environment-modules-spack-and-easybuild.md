@@ -275,6 +275,14 @@ How do you roll out operating systems, InfiniBand drivers, compilers, and shared
 10. Run end-to-end task completion tests (verifying passwordless admin/user SSH, loading an MPI module, running an OFED MPI test job through the scheduler, and confirming output writes to shared storage). Also set up monitoring and backups *before* letting users onto the cluster.
 11. **Clone the verified reference compute node** (via Kickstart `/root/anaconda-ks.cfg` / DHCP `<ip-addr>-kickstart`, `Clonezilla`, `dd`, or a read-only `NFS-root` image) to all remaining compute nodes—making sure to replace hardware-specific disk IDs (`root=/dev/disk/by-id/ata-WDC_...`) with generic device names (`root=/dev/sda1`) in `/boot/grub/grub.cfg` and `/etc/fstab` and clearing MAC bindings in `/etc/udev/rules.d/70-persistent-net.rules` before disk cloning.
 
+### Cloning a disk between nodes
+
+Suppose you want the finished system disk copied to the other nodes. One method is to connect each new disk to the reference node, one at a time, and copy the disk. This is safe only if the disk and its controller support hot swap. Otherwise, connect the disk only while the node is powered off.
+
+Another method is a network install of the OS on each node. Then you add the changes you made on the reference node after its install. The network install avoids moving disks at all.
+
+Testing a minicluster does not prove that the full cluster will run without failure. It does not show how the network responds under heavy load, or how reliable the network services are. It does catch most problems early, though. That is the point. You avoid cloning a broken setup onto every node.
+
 ### Designing the shared `/opt/apps` software tree
 
 Mount the shared software tree read-only on all login and compute nodes (`/etc/fstab` entry `myserver:/export /export nfs defaults 0 0`), organized by CPU microarchitecture baseline so heterogeneous node pools never hit `Illegal instruction` faults:

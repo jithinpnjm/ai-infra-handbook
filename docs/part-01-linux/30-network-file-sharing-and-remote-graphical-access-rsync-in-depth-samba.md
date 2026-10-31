@@ -50,6 +50,10 @@ Start with the job, not the tool. Many ways exist to distribute and share files,
 | Mount **larger filesystems** from a NAS or server on a trusted local network | NFS |
 | Mount **cloud storage** | various FUSE-based filesystems (or use the provider's CLI) |
 
+### The scenarios in three groups
+
+The seven rows fall into three groups. Temporary sharing and regular copying use a simple web server or `rsync`. Sharing with Windows uses Samba on the Linux side and CIFS on the client side. Sharing between Linux machines, or from a NAS on your trusted local network, uses SSHFS or NFS. Cloud storage uses one of several FUSE-based filesystems, or the provider's own tools. Each group asks a different question, so start by naming your group. Make a file temporarily available to other machines, or distribute files across machines on a regular basis. Regularly share the files on your Linux machine to Windows machines. Mount Windows shares on your Linux machine. Implement small-scale sharing with minimal setup. Mount larger filesystems from a NAS or other server on your trusted local network. Mount cloud storage to your Linux machine. Each of these jobs has one natural tool, and the rest of this chapter explains each one.
+
 Notice what the table leaves out: **large-scale sharing between many locations and many users.** That is possible, but it takes a good deal of work. Sections 6 and 7 explain why, and Parts 6 and 13 cover what clusters do instead. Find your job in the left column before you pick a command.
 
 ## 2. A quick copy
@@ -155,11 +159,33 @@ That gives you a simple rule. For large amounts of data that do not need frequen
 
 Security is the other side of the trade-off. Historically, file-sharing protocols gave security a low priority, and the easiest options to configure are typically the least secure. If you cannot trust the networks between the machines, you need two things. The first is authentication and authorisation: only parties with correct credentials get access, and the server is who it claims to be. The second is encryption, so data in transit cannot be read. There are no standardised ways to bolt these on. Instead, you combine tools such as `stunnel`, IPsec or VPNs to protect the layers beneath a basic protocol. Treat any file share as reachable by anyone who can reach its network.
 
+### Centralized storage and its one constant cost
+
+Centralized storage made sense for two traditional reasons. One user could log in to any machine on the network and find the same home directory. It was also cheaper to concentrate storage on a few servers than to buy and maintain a large disk for every machine. Those advantages are overshadowed by one disadvantage that has stayed the same for decades. Network storage performance is often poor compared with local storage.
+
+### Why a streamed file is fast and random access is slow
+
+The two access patterns look alike, but the network treats them very differently. Think of a video player that reads a movie from a server. The file is read from start to finish, in order. Modern hardware and networks handle that without trouble, because the server can prefetch the next blocks while the player shows the current ones. Nothing has to wait on a fresh request each time.
+
+Now picture a build that opens thousands of small source files, one after another, at random. Each open is a separate request. The server must accept it, decode it, find the file and load it before any data flows. The first steps are the slowest, and they repeat for almost every new file. The client then spends most of its time waiting on the network rather than working. That is why the same share feels fine for a movie and painful for a project tree.
+
+Keep this difference in mind when you decide where data should live. Sequential reads of large files can stay on the share. Many small, changing files should be kept on local storage.
+
 ## 5. Samba: sharing with Windows (SMB) and CIFS mounts
 
 Suppose your team runs a Linux file server, and the Windows laptops need to open its folders. That is the job SMB does. **SMB (Server Message Block)** is the standard Windows file and printer sharing protocol, and macOS can speak it too. Samba is the standard suite that implements SMB on Unix. It lets Windows machines use files and printers on your Linux system, and it lets you reach Windows shares from Linux. The client filesystem has been called CIFS, which stands for Common Internet File System. On modern systems, SMB 3 is used. Samba is a large topic, so this section covers what you need for a working server and client.
 
 A Samba server needs two things. The first is a configuration file, `smb.conf`, usually at `/etc/samba/smb.conf`. It has a `[global]` section and one section per share. The second is two daemons. `smbd` handles share requests, and `nmbd` is a NetBIOS name server. A distribution package starts them with sensible defaults, but the package cannot know which directories you want to share.
+
+### Scope of this section
+
+This section is not a comprehensive Samba guide. It gets Windows machines on a single subnet to see a standalone Linux machine in the Windows Network Places browser. It does not try to cover every setting. Samba has countless configurations, because access control and network layout differ from site to site. A large, multi-team server needs a full Samba reference. Start with the small setup here, and check it works before you add anything.
+
+### Setting up the server, step by step
+
+A Samba server needs four steps. You create the `smb.conf` file, add a section for each file share, add a section for printer sharing if you need one, and start the `nmbd` and `smbd` daemons. A distribution package does the last steps with sensible defaults. It cannot know which directories you want to offer, so you add the share sections yourself. Most distributions keep `smb.conf` in `/etc/samba`. If you built Samba from source, look under `/usr/local/samba/lib` instead.
+
+The file uses square-bracket sections, much like the systemd configuration format. The `[global]` section holds options for the whole server, and each share gets its own section. The `[global]` section sets the server name, description and workgroup, so fill those in first.
 
 ### The global section and access control
 
@@ -220,6 +246,14 @@ Each share is a section in `smb.conf`. The three below cover a directory share, 
 
 Never combine `guest ok = yes` with `writable = yes`, because anyone could then write to the share. A directory share must have `printable = no`. Check each share against both rules before you reload the server.
 
+### Reloading after configuration changes
+
+You usually do not start Samba by hand. After a package install, check that the daemons run with `systemctl --type=service`. If you built Samba from source, run `nmbd -D -s smb_config_file` and `smbd -D -s smb_config_file`, where `smb_config_file` is the full path to your `smb.conf`. `-D` runs each daemon in daemon mode. If you change `smb.conf` while `smbd` is running, you can send it a HUP signal to load the changes. Still, letting systemd supervise the server is usually the better choice, because `systemctl` can do that work for you.
+
+### How `[homes]` finds a directory
+
+The `[homes]` section exports each user's home directory. By default, Samba reads the logged-in user's entry in `/etc/passwd` to find that directory. Sometimes Windows home directories should live somewhere other than the usual Linux home. Then put `%S` in the `path` parameter. Samba replaces `%S` with the current username. For example, `path = /u/%S` sends each user to `/u/` followed by their name.
+
 ### Starting, diagnosing and the client
 
 Normally systemd starts the daemons. Check them with `systemctl status smbd nmbd`. On newer distributions the units are called `smb` and `nmb`. After you change the configuration, reload the service. If you start the daemons by hand, use `nmbd -D -s /path/smb.conf` and `smbd -D -s /path/smb.conf`, where `-D` runs them in daemon mode. Startup problems print to the terminal. Runtime diagnostics go to log files in `/var/log/samba`, namely `log.smbd`, `log.nmbd`, and one log per client. Check the configuration file with `testparm`.
@@ -230,6 +264,33 @@ The client tool, `smbclient`, lists shares and accesses them.
 smbclient -L SERVER -U alice                 # list the shares (Disk, Printer; IPC shares are for management)
 smbclient //SERVER/sharename -U alice        # an FTP-like prompt: get, put, cd, lcd, pwd, ls, help
 ```
+
+### Reading the share list
+
+The `smbclient -L` command asks the server what it offers. If you omit `-U` because your Linux name matches your name on the server, the command still works. `smbclient` then asks for a password. Press Enter to try a guest connection, or type your password on the server. A successful run prints a table like this one:
+
+```
+Sharename       Type      Comment
+---------       ----      -------
+Software        Disk      Software distribution
+Scratch         Disk      Scratch space
+IPC$            IPC       IPC Service
+ADMIN$          IPC       IPC Service
+Printer1        Printer   Printer in room 231A
+Printer2        Printer   Printer in basement
+```
+
+Read the `Type` column first. Only the `Disk` and `Printer` rows are shares you can use. The `IPC` rows exist for remote management, so ignore them. This list has two disk shares and two printer shares. Use the name in the `Sharename` column to open each one.
+
+### Using the smbclient prompt
+
+For casual access to files in a disk share, open the share with `smbclient -U alice '\\SERVER\sharename'`. On success you get an `smb: \>` prompt. This mode works much like the Unix `ftp` program. Use `get file` to copy a file from the server to the current local directory, and `put file` to copy one the other way. `cd dir` changes the directory on the server, and `lcd localdir` changes the local one. `pwd` prints the server directory, including the server and share names.
+
+A command that starts with `!` runs on your own machine. `!pwd` and `!ls` are handy for checking the local side before a transfer. Type `help` to see the full command list.
+
+### Who can change a Samba password
+
+A superuser changes any Samba password with `smbpasswd` and a username, and no other option. Once the Samba server is running, any user can change their own password by typing `smbpasswd` alone. Remember the warning about `unix password sync = yes`. If that line is in `smb.conf`, a password change here can also change the Linux login password.
 
 To mount a share as a directory, you need the CIFS utilities, which are usually a separate package.
 
@@ -273,6 +334,10 @@ Before you run an NFS server yourself, weigh that effort against buying a NAS.
 
 ## 7. Cloud storage, and the state of network file sharing
 
+### Setting up a cloud client
+
+Cloud storage has no single setup procedure. Each provider has its own client, its own credentials and its own mount tool, so this chapter describes only the general behaviour. Read your provider's documentation before you mount anything. Expect the details to differ from one service to the next.
+
 ### Cloud storage
 
 Cloud object stores such as AWS S3 and Google Cloud Storage perform worse than a local network. In return, you never maintain them, and backups are not your problem. Every provider offers web and programmatic interfaces. Most also ship command-line tools, such as `gcloud storage`, `aws s3` and `rclone`.
@@ -280,6 +345,8 @@ Cloud object stores such as AWS S3 and Google Cloud Storage perform worse than a
 Most of these services can also be mounted on Linux through `FUSE` (Filesystem in Userspace). A user-space daemon sits between the data source and the kernel, so no kernel code is involved. For popular services, several `FUSE` options exist, and the details are provider-specific. The general behaviour is that listing and small-file access are slow. Writes are often whole-object. Consistency and rename semantics differ from a disk. So do not run databases or edit-in-place workloads on them. For AI datasets and checkpoints, use the tools and formats designed for object storage, which chapter 13 covers.
 
 ### Why there is no standard answer
+
+This discussion of NFS and file sharing in general can seem incomplete. In part, that is because the file sharing systems themselves are incomplete, and the earlier performance and security sections show where. NFS has a low base security level. CIFS does better, because the encryption layers are built into current software. Its performance limits remain, and so does the poor behaviour when a client cannot reach its network storage.
 
 Network file sharing can feel incomplete, and that is because it is. NFS has a low base security level, and raising it is costly. CIFS is better, since modern software builds in encryption. Its performance limits are hard to remove, though. A client can also behave badly when it temporarily cannot reach its storage. Its processes hang in uninterruptible sleep, a state chapter 1.1 explains.
 

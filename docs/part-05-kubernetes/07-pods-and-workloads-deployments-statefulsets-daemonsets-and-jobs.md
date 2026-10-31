@@ -1058,6 +1058,277 @@ spec:
 
 For tightly coupled multi-node training, use JobSet, MPIJob or PyTorchJob with gang admission from Kueue or Volcano. A plain Job with `parallelism: N` can start some pods while others wait. That wastes GPUs and can deadlock collective initialisation. Part 14 covers these tools. Choose between a plain Job and gang-scheduled tools before you launch distributed training, because the wrong choice wastes GPUs.
 
+### Job patterns: completions and parallelism
+
+Some work should run once and then stop. Other work comes as many small items that you want processed side by side. A Job covers both cases with two settings. `completions` is how many successful finishes the Job needs. `parallelism` is how many Pods may run at the same time. A Job with neither setting changed runs a single Pod once until it succeeds.
+
+Table 12-1 shows how the two settings combine into three common patterns.
+
+| Pattern | Use case | `completions` | `parallelism` |
+|---|---|---|---|
+| One shot | Database migrations | `1` | `1` |
+| Parallel fixed completions | A set of work items processed side by side | `1` or more | `1` or more |
+| Work queue: parallel jobs | Workers pulling items from one shared queue | `1` | `2` or more |
+
+### One-shot jobs
+
+Some tasks must happen exactly once. A database schema migration is the classic example. If you ran that migration as a plain Pod, it would restart after every exit and run again and again. A Job fixes this by creating the Pod, watching it, and creating a new one whenever a run fails, until one run succeeds.
+
+Running a one-shot job takes some work behind the scenes. A Pod must be created from the Job's template and submitted to the API. Something must then watch that Pod until it finishes. A run can fail from an application error, an uncaught exception or a node failure. In every case, the job controller re-creates the Pod until one run ends successfully.
+
+The quickest way to make one is `kubectl run` with `--restart=OnFailure`. That flag tells `kubectl` to create a Job object instead of a bare Pod. The example below asks the `kuard` demo image to generate ten 4,096-bit SSH keys and then exit.
+
+```
+$ kubectl run -i oneshot \
+--image=gcr.io/kuar-demo/kuard-amd64:blue \
+--restart=OnFailure \
+--command /kuard \
+-- --keygen-enable \
+--keygen-exit-on-complete \
+--keygen-num-to-gen 10
+```
+
+A few details matter here. The `-i` flag makes the command interactive, so `kubectl` waits until the Job runs and then prints the log of its one Pod. Everything after `--` goes to the container as arguments. Your output may start a little late, because `kubectl` often misses the first lines when `-i` is set.
+
+When the run ends, the Job object and its Pod stay on the cluster, so you can read the logs. A completed Job is hidden from `kubectl get jobs` unless you add `-a`. Delete the Pod before you go on.
+
+```
+$ kubectl delete pods oneshot
+```
+
+You can also describe the same Job in a file, as Example 12-1 shows.
+
+```yaml
+apiVersion: batch/v1
+kind: Job
+metadata:
+  name: oneshot
+spec:
+  template:
+    spec:
+      containers:
+      - name: kuard
+        image: gcr.io/kuar-demo/kuard-amd64:blue
+        imagePullPolicy: Always
+        command:
+        - "/kuard"
+        args:
+        - "--keygen-enable"
+        - "--keygen-exit-on-complete"
+        - "--keygen-num-to-gen=10"
+      restartPolicy: OnFailure
+```
+
+Submit it with `kubectl apply`, then inspect it with `kubectl describe`.
+
+```
+$ kubectl apply -f job-oneshot.yaml
+job.batch/oneshot created
+$ kubectl describe jobs oneshot
+```
+
+The describe output shows `Parallelism: 1` and `Completions: 1`. It also reports `Pods Statuses: 0 Running / 1 Succeeded / 0 Failed` once the run finishes. Find the Pod that the Job created in the events, then read its logs with `kubectl logs`. A successful run shows all ten keys followed by `Workload exiting`.
+
+The example sets no labels on the Job. That matters, because other controllers, such as DaemonSets, ReplicaSets and Deployments, use labels to find their Pods. Jobs start and end, so people create many of them, and a reused label can cause odd behavior. For that reason, the Job object picks a unique label itself and uses it for its Pods. Only advanced cases, such as swapping out a running Job without killing its Pods, need you to turn that automatic label off and set your own.
+
+### One-shot failures: restart policy and backoff
+
+A Job also has to handle failure. To test that, change the arguments so the program exits with a nonzero code after it generates three keys. The file uses `--keygen-exit-code=1` and `--keygen-num-to-gen=3`.
+
+```yaml
+...
+spec:
+  template:
+    spec:
+      containers:
+        ...
+          args:
+          - "--keygen-enable"
+          - "--keygen-exit-on-complete"
+          - "--keygen-exit-code=1"
+          - "--keygen-num-to-gen=3"
+...
+```
+
+Apply the file and let it run for a few minutes. Then check the Pod with `kubectl get pod -l job-name=oneshot`. You should see the same Pod restart again and again. In the book's run, the Pod had four restarts and showed `CrashLoopBackOff`.
+
+Many programs crash as soon as they start, usually because of a bug. Kubernetes then waits longer before each restart, so a crash loop does not eat the node's resources. The `kubelet` handles that wait on the node itself. The Job controller is not involved.
+
+Next, delete the Job and change `restartPolicy` from `OnFailure` to `Never`. Apply the edited file and wait a while. Now list every Pod, including finished ones, with `kubectl get pod -l job-name=oneshot -a`. You should see several Pods in the `Error` state, along with one that is still running.
+
+Setting `restartPolicy: Never` tells the `kubelet` not to restart a failed Pod. The Pod is marked as failed, and the Job creates a replacement. Without care, this fills the cluster with failed Pods. That is why `restartPolicy: OnFailure` is the safer default, because failed Pods rerun in place. Clean up with `kubectl delete jobs oneshot` when you are done.
+
+A worker can also fail without exiting. It may get stuck and stop making progress. A liveness probe on the Job's Pod covers that case. If the probe decides the Pod is dead, the Pod is restarted or replaced.
+
+### Parallel jobs: completions and parallelism together
+
+Generating keys is slow, so you can start several workers at once. The goal here is 100 keys, made by 10 runs of `kuard` with 10 keys in each run. You do not want to swamp the cluster, so you limit the job to five Pods at a time.
+
+That means setting `completions` to `10` and `parallelism` to `5`. Example 12-3 shows the full file.
+
+```yaml
+apiVersion: batch/v1
+kind: Job
+metadata:
+  name: parallel
+  labels:
+    chapter: jobs
+spec:
+  parallelism: 5
+  completions: 10
+  template:
+    metadata:
+      labels:
+        chapter: jobs
+    spec:
+      containers:
+      - name: kuard
+        image: gcr.io/kuar-demo/kuard-amd64:blue
+        imagePullPolicy: Always
+        command:
+        - "/kuard"
+        args:
+        - "--keygen-enable"
+        - "--keygen-exit-on-complete"
+        - "--keygen-num-to-gen=10"
+      restartPolicy: OnFailure
+```
+
+Start it with `kubectl apply -f job-parallel.yaml`. Then watch the Pods with `kubectl get pods -w`. The `-w` flag keeps `kubectl` running and lists each change as it happens. New Pods appear until 10 have completed altogether, and never more than five run at once.
+
+Study the finished Pods and their logs if you like. Each one prints the fingerprints of the keys it made. When you are done, delete the finished Job with `kubectl delete job parallel`.
+
+### Work queues: parallel jobs that drain a queue
+
+A common use of Jobs is to process work from a queue. A task creates a set of work items and publishes them to a queue. Then a worker Job runs until the queue is empty.
+
+The `kuard` image includes a simple memory-based work queue, so you can use it as the queue server. First, run a single queue daemon with a ReplicaSet. A ReplicaSet creates a new Pod if the machine running the old one fails. Example 12-4 shows the file.
+
+```yaml
+apiVersion: apps/v1
+kind: ReplicaSet
+metadata:
+  labels:
+    app: work-queue
+    component: queue
+    chapter: jobs
+  name: queue
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: work-queue
+      component: queue
+      chapter: jobs
+  template:
+    metadata:
+      labels:
+        app: work-queue
+        component: queue
+        chapter: jobs
+    spec:
+      containers:
+      - name: queue
+        image: "gcr.io/kuar-demo/kuard-amd64:blue"
+        imagePullPolicy: Always
+```
+
+Apply it with `kubectl apply -f rs-queue.yaml`. To reach the queue from your laptop, forward a local port in a separate terminal and leave that command running.
+
+```
+$ kubectl port-forward rs/queue 8080:8080
+```
+
+Open http://localhost:8080 in a browser to see the `kuard` interface. The “MemQ Server” tab shows what is happening in the queue. Next, expose the queue with a Service, as Example 12-5 shows. The Service gives producers and consumers a stable DNS name for the queue. Create it with `kubectl apply -f service-queue.yaml`.
+
+Now load the queue. The simplest way is `curl`, which talks to the queue API through the port forward. The script creates a queue named `keygen` and adds 100 work items to it.
+
+```bash
+# Create a work queue called 'keygen'
+curl -X PUT localhost:8080/memq/server/queues/keygen
+# Create 100 work items and load up the queue.
+for i in work-item-{0..99}; do
+curl -X POST localhost:8080/memq/server/queues/keygen/enqueue \
+-d "$i"
+done
+```
+
+Running the script prints 100 JSON objects, one per work item, each with a unique message identifier. You can check the queue in the “MemQ Server” tab, or ask the API directly.
+
+```
+$ curl 127.0.0.1:8080/memq/server/stats
+```
+
+The stats show a `depth` of 100 and an `enqueued` count of 100, with nothing dequeued yet.
+
+Consumers are the last piece. The `kuard` image can also act as a consumer. In this mode it takes an item from the queue, makes a key, and exits when the queue is empty. Example 12-7 starts five of these workers in parallel.
+
+```yaml
+apiVersion: batch/v1
+kind: Job
+metadata:
+  labels:
+    app: message-queue
+    component: consumer
+    chapter: jobs
+  name: consumers
+spec:
+  parallelism: 5
+  template:
+    metadata:
+      labels:
+        app: message-queue
+        component: consumer
+        chapter: jobs
+    spec:
+      containers:
+      - name: worker
+        image: "gcr.io/kuar-demo/kuard-amd64:blue"
+        imagePullPolicy: Always
+        command:
+        - "/kuard"
+        args:
+        - "--keygen-enable"
+        - "--keygen-exit-on-complete"
+        - "--keygen-memq-server=http://queue:8080/memq/server"
+        - "--keygen-memq-queue=keygen"
+      restartPolicy: OnFailure
+```
+
+This Job sets no `completions`, so it runs in worker-pool mode. Once the first Pod exits with a zero code, the Job winds down and starts no new Pods. None of the workers exit until the work is done, so all of them finish their last item first.
+
+Create it with `kubectl apply -f job-consumers.yaml`. Then run `kubectl get pods` to see five consumer Pods running next to the queue Pod. As the queue empties, the consumers exit cleanly, and the `consumers` Job is complete. You can watch the same drain in the queue UI.
+
+To clean up everything from this section, use the shared label.
+
+```
+$ kubectl delete rs,svc,job -l chapter=jobs
+```
+
+### CronJobs: run a Job on a schedule
+
+Some work has to repeat on a timer, such as a periodic batch task. A CronJob handles that. It creates a new Job object at each interval you set. Example 12-8 runs a batch image every fifth hour.
+
+```yaml
+apiVersion: batch/v1
+kind: CronJob
+metadata:
+  name: example-cron
+spec:
+  # Run every fifth hour
+  schedule: "0 */5 * * *"
+  jobTemplate:
+    spec:
+      template:
+        spec:
+          containers:
+          - name: batch-job
+            image: my-batch-image
+          restartPolicy: OnFailure
+```
+
+The `spec.schedule` field holds the interval in standard `cron` format. Save the file as `job-cronjob.yaml`, then create the CronJob with `kubectl create -f job-cronjob.yaml`. To see its current state, run `kubectl describe` on the CronJob.
+
 ## 4. Operating pods
 
 A pod is in a state you do not understand, and a job is waiting on it. You need to find out why. When a pod misbehaves, these commands show its state, its events and its logs.
@@ -1375,7 +1646,7 @@ env:
 ## Sources and review notes
 
 - **Sources read in full:**
-  - `kubernetes-up-and-running-3rd-edition` — Brendan Burns, Joe Beda, Kelsey Hightower & Lachlan Evenson, *Kubernetes: Up and Running*, 3rd ed., **Chapter 4: Common kubectl Commands**, **Chapter 5: Pods** (read in full: thinking with Pods, Pod manifests, `emptyDir`/`nfs` volumes, resource requests vs limits `400m` vs `400Mi`, liveness/readiness probes), **Chapter 6: Labels and Annotations** (read in full: label key/value syntax `253`/`63` chars, selector operators, annotations), **Chapters 9–12** (ReplicaSets, Deployments `change-cause`/`pause`/`resume`/`history`/`undo`, DaemonSets, Jobs), and **Chapter 22: Organizing Your Application** (read in full: filesystems in Git as source of truth, code review, feature flags, `Development -> Staging -> Canary -> Production` & regional rollout progression, and Helm parameterization).
+  - `kubernetes-up-and-running-3rd-edition` — Brendan Burns, Joe Beda, Kelsey Hightower & Lachlan Evenson, *Kubernetes: Up and Running*, 3rd ed., **Chapter 12: Jobs** (one-shot jobs, `completions`/`parallelism` patterns, work queues, CronJobs), **Chapter 4: Common kubectl Commands**, **Chapter 5: Pods** (read in full: thinking with Pods, Pod manifests, `emptyDir`/`nfs` volumes, resource requests vs limits `400m` vs `400Mi`, liveness/readiness probes), **Chapter 6: Labels and Annotations** (read in full: label key/value syntax `253`/`63` chars, selector operators, annotations), **Chapters 9–12** (ReplicaSets, Deployments `change-cause`/`pause`/`resume`/`history`/`undo`, DaemonSets, Jobs), and **Chapter 22: Organizing Your Application** (read in full: filesystems in Git as source of truth, code review, feature flags, `Development -> Staging -> Canary -> Production` & regional rollout progression, and Helm parameterization).
   - `production-kubernetes` — Josh Rosso, Rich Lander, Alexander Brand & John Harris, *Production Kubernetes*, **Chapter 14: Application Considerations** (read in full: ConfigMaps/Secrets vs HashiCorp Vault, Downward API `resourceFieldRef` `MEM_LIMIT`, resource requests/limits and OOM behavior, `SIGTERM` signal handling + `preStop` hooks, liveness/readiness probes, structured logging, Prometheus `/metrics`, and OpenTracing/Jaeger distributed tracing).
 - **Run here:** `python3 code/part05/pod_qos_workload_validator_lab.py` (2 passed, 0 failed).
 - **Explicitly labelled inferences:** The `compute_pod_qos_and_effective_requests` and `validate_k8s_label` models in `code/part05/pod_qos_workload_validator.py` and the `trainer-0` Pod, `vllm-llama` Deployment + PDB, `qdrant` StatefulSet, `dcgm-exporter` DaemonSet, and `embed-corpus-142` Indexed Job manifests are the author's constructions synthesizing `KUR` Chapters 4–6, 9–12, 22 and `PK` Chapter 14 (plus original study items 21, 22, 23, 24, 25, 26, 27, 28, 29, 30, 31, 32, 33, 34, 35, 36, 37, 38, 39, and 40).

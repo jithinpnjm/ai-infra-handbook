@@ -118,6 +118,53 @@ The third detail concerns defaults. Marking an `IngressClass` with `ingressclass
 
 The fourth detail is cloud container-native load balancing. On GKE, Network Endpoint Groups, or NEGs, let the cloud load balancer watch Pod IPs directly. On AWS EKS, the AWS Load Balancer Controller does the same when you set `alb.ingress.kubernetes.io/target-type: ip`. Traffic then runs from the cloud edge straight to Pod IPs, skipping `NodePort` and `kube-proxy` hops. The cloud load balancer also integrates with Google Cloud Armor, Cloud CDN and IAP, or with AWS WAF.
 
+### The case for Ingress
+
+Services already route traffic to pods, so why add another mechanism? Services have two important limits. The first is routing. A Service routes by destination IP and port. That is enough for a small application, but it breaks down for a large set of microservices that need smarter rules. The second is cost. In a cloud, each `LoadBalancer` Service creates its own external load balancer, such as an ELB on AWS. Running one per Service gets expensive fast.
+
+Ingress solves both limits. It works at layer 7, the application layer, instead of layer 3 and 4. It can read the HTTP `Host` header and route on it. One entry point can then serve many applications, and the Ingress controller sorts the traffic to the right place. That also cuts the cost of bringing traffic into the platform. In a non-cloud setup, you can run one external load balancer in front of the Ingress controllers, instead of managing many NodePort Services.
+
+Ingress does not replace Services. The Ingress controller runs inside the cluster, so clients outside it still need a NodePort or LoadBalancer Service to reach it. Ingress controllers are also strongest with HTTP. Other protocols may need a Service alongside Ingress, depending on what your controller supports. Many off-the-shelf applications and cluster add-ons expect an Ingress controller to be running. Your developers will need one as well.
+
+### Host-based routing with Ingress
+
+Host-based routing is the simplest useful Ingress pattern. The next configuration sends requests with the `Host` header set to `bookhotels.com` to one service. Requests for `bookflights.com` go to another:
+
+```
+---
+apiVersion: networking.k8s.io/v1
+kind: Ingress
+metadata:
+  name: hotels-ingress
+spec:
+  rules:
+  - host: bookhotels.com
+    http:
+      paths:
+      - path: /
+        backend:
+          serviceName: hotels
+          servicePort: 80
+---
+apiVersion: networking.k8s.io/v1
+kind: Ingress
+metadata:
+  name: flights-ingress
+spec:
+  rules:
+  - host: bookflights.com
+    http:
+      paths:
+      - path: /
+        backend:
+          serviceName: flights
+          servicePort: 80
+```
+
+This listing keeps the book's older field names, `serviceName` and `servicePort`. Check the current Ingress reference before you copy it into a cluster.
+
+A common follow-on is subdomain-based routing. You assign one domain name to the platform, and each application gets a subdomain. A travel platform could use `hotels.cluster1.useast.example.com` and `flights.cluster1.useast.example.com`. The same idea supports SaaS tenants, with names such as `tenantA.example.com` and `tenantB.example.com`. Subdomain-based routing is one of the best strategies available here.
+
 ### Why Ingress has no default controller
 
 Ingress works differently from most Kubernetes objects. The object is only a specification, and a separate controller implements it. You can create and change Ingress objects like any other object. By default, though, no code acts on them. So you or your distribution must install and manage a controller. That split is what makes the controller pluggable.
@@ -495,6 +542,26 @@ The third setting is `externalTrafficPolicy: Local` on the Service. Use it when 
 The fourth setting is spreading the replicas across failure domains. When you run a `Deployment`, or select nodes across zones, use Pod anti-affinity rules to spread Ingress controller replicas across availability zones or racks.
 
 If heavy traffic shares nodes with application pods, give the Ingress tier its own nodes first.
+
+### Trade-offs of dedicated and host-network Ingress nodes
+
+Dedicating nodes to Ingress can look wasteful at first. The reasoning is simple, though. If you can afford dedicated control plane nodes, you can probably afford dedicated nodes for the layer that every workload's traffic passes through. The main gains are resource isolation, compliance and simpler external load balancers.
+
+Resource isolation matters because Kubernetes resource requests and limits are hard to tune well. Platform teams new to Kubernetes often get them wrong. Kubernetes also does not isolate network I/O or file descriptors. Fair sharing of those resources is hard to guarantee on shared nodes. Compliance is the second gain. Many organizations have firewall rules that conflict with Ingress controllers. Exceptions are easier to get for a small subset of nodes than for the whole fleet. On bare metal, the Ingress tier sits behind a hardware load balancer, which often has no API and must be configured statically. A small set of ingress nodes makes that configuration easier to manage.
+
+Host networking adds speed, but it costs isolation. Binding the controller to the host network lets requests skip the Service fabric. The controller then has full access to the node's interfaces and network services. That lowers the bar for an attacker who exploits a proxy bug and tries to move sideways. Host networking is also a privileged operation, so the controller needs elevated privileges or an exception. Even so, the authors have found the trade-off worth it. Ingress traffic reaches the controller directly.
+
+If you use dedicated ingress nodes, plan for node failures. Ingress controllers only run on the reserved nodes, so a failed node leaves the edge short-handed. Ideally, a replacement node joins and takes over the Ingress traffic.
+
+### DNS for Ingress: a wildcard record or external-dns
+
+Ingress routes by hostname, so DNS is a central part of the design. One common pattern is a wildcard DNS record, such as `*.bearcanoe.com`. The record resolves to the Ingress tier, which is usually a load balancer in front of the Ingress controllers. Each application then gets its own subdomain.
+
+A wildcard record has three benefits. Applications can use any path under their subdomain, including the root path (`/`). Developers do not need to rework their apps to run on a subpath, and some apps only work at the root. The DNS setup is also simple, because Kubernetes and the DNS provider need no integration. Finally, one wildcard record avoids the propagation delays that come with adding a new record for each application.
+
+The other approach is to integrate the platform with your DNS provider. The Kubernetes community maintains a controller for this, called external-dns. external-dns is a reconciler. It keeps the DNS records in your provider in line with the Ingress resources, creating, updating and deleting records as Ingress objects change. It needs two pieces of information. The hostname comes from the Ingress specification. The target IP address comes from the Ingress `status` field. If your DNS provider is supported, external-dns automates the work.
+
+Integration suits platforms that need many domain names. It has trade-offs, though. You must deploy, operate, monitor, version and upgrade one more component. If external-dns does not support your provider, you would have to build and maintain your own controller. That engineering effort is usually better spent elsewhere. In that case, a single wildcard record is the simpler choice.
 
 ## 3. Gateway API
 

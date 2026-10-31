@@ -78,6 +78,22 @@ The book *Kubernetes: Up and Running*, Chapter 15 (*Service Meshes*), by Brendan
 
 Those three questions are the decision that the rest of this chapter depends on.
 
+### Where service meshes came from
+
+The mesh idea is older than containers. Before Kubernetes, large internet companies already ran many microservices, and each one needed retries, load balancing and metrics. Twitter built Finagle, a Scala library that its microservices embedded. It handled load balancing, circuit breaking, automatic retries, telemetry and more. Netflix built Hystrix, a similar library for Java applications.
+
+Those libraries were the precursors of today's meshes. Their weakness was the language lock-in. Every team had to write its services in one language to use the library at all.
+
+Containers and Kubernetes changed the shape of the idea. A modern mesh is no longer a library inside each app. It is a distributed system of its own. A control plane configures a collection of proxies, and those proxies form the data plane. Routing, load balancing and telemetry live in the proxy instead of the application. Because no code changes are needed, many more apps can join a mesh.
+
+### The three pillars
+
+Service meshes cover three areas, and many products describe their features under these headings.
+
+The first pillar is routing and reliability. It includes traffic shifting, traffic mirroring, retries and circuit breaking. The second pillar is security. It covers identity, certificate management and mutual TLS (mTLS) between services. The third pillar is observability. It gathers metrics and traces from every interaction in the mesh, without extra work from developers.
+
+You do not need all three on day one. Section 8 explains why it helps to pick one first.
+
 ## 2. Data-plane models
 
 Not every mesh puts a proxy in every pod. Each data-plane model places its proxy somewhere different, and that placement decides what you pay in overhead and what you risk when something fails. The table compares where each model runs, what it gives you and what it costs.
@@ -92,6 +108,12 @@ Not every mesh puts a proxy in every pod. Each data-plane model places its proxy
 | **Gateway-only** (no east-west mesh) | Ingress/Gateway API (5.12) handles north-south | Simple | No east-west mTLS/telemetry |
 
 Read the table row by row and ask two questions each time. Where does the proxy run? And what does that location cost you? The sidecar model gives the strongest per-pod isolation, while the ambient and eBPF models share more of the work and lower the per-pod overhead.
+
+### Node proxy
+
+Sidecars are not the only option. The node proxy model runs one proxy on each node, instead of one proxy in every pod. That single proxy handles the traffic for every service running on the node. Consul Connect and Maesh follow this design. The first version of Linkerd also used node proxies, but the project moved to the sidecar model in version 2.
+
+The trade-off is isolation. Because every service on a node shares one proxy, a busy service can hurt its neighbors. This is the noisy neighbor problem. The shared proxy can also become a network bottleneck. Sidecars avoid that sharing, but a sidecar upgrade requires re-creating every pod it runs in. Weigh both costs before you pick a model.
 
 ## 3. Istio essentials
 
@@ -159,6 +181,107 @@ When something breaks, start with `istioctl proxy-status` and `istioctl analyze`
 
 When a route misbehaves, run `istioctl analyze` and `istioctl proxy-status` before you read the proxy logs.
 
+### Envoy and the xDS APIs
+
+Many proxies were built before Envoy, but they were designed for static servers. They read a configuration file, and any change needed a restart. Kubernetes changes far too quickly for that. Envoy was developed at Lyft and open-sourced in late 2016. It takes its configuration through gRPC or REST, and it supports hot restarts. A hot restart reinitializes Envoy without dropping active connections.
+
+Envoy is the proxy behind many products. Contour, Ambassador, Gloo, Istio and OSM all use it. Its dynamic configuration comes from a family of xDS APIs. The main ones are the Listener Discovery Service (LDS), the Cluster Discovery Service (CDS), the Endpoint Discovery Service (EDS) and the Route Discovery Service (RDS). At startup, Envoy connects to a configuration server and subscribes to updates. The server then streams changes as the environment shifts.
+
+Four ideas explain how Envoy routes a request. A listener binds to a port and accepts clients, such as ports 80 and 443. Each listener has filter chains that decide what happens to incoming traffic. The HTTP connection manager filter gets its routes from RDS, and those routes match requests by path or header. Each route points to a cluster, which is the group of endpoints that belong to one service.
+
+Clusters get their endpoints from EDS. Envoy has no Endpoint object in the EDS API, though. The endpoints are attached to a cluster through a `ClusterLoadAssignment`. In short, listeners accept, filters decide, and clusters receive the traffic.
+
+### istiod, sidecar injection and traffic shifting
+
+Istio's control plane is a component called `istiod`. It has three parts. Pilot is the Envoy configuration server. It implements the xDS APIs and streams configuration to every sidecar. Citadel manages certificates, minting the identities and certificates that mTLS uses. Galley reads configuration from Kubernetes and translates it for the other parts.
+
+`istiod` also includes a mutating admission webhook. The webhook injects an Envoy sidecar into each pod that joins the mesh. Injection can be opt-in or opt-out. Adding the proxy is not enough on its own, though. Traffic must be redirected into it. So Istio adds an init container that installs `iptables` rules. Those rules capture the pod's traffic and send it to Envoy. The book shows a trimmed version of that init container:
+
+```
+...
+initContainers:
+- args:
+  - istio-iptables
+  - --envoy-port
+  - "15001"
+  - --inbound-capture-port
+  - "15006"
+  - --proxy-uid
+  - "1337"
+  - --istio-inbound-interception-mode
+  - REDIRECT
+  - --istio-service-cidr
+  - '*'
+  - --istio-inbound-ports
+  - '*'
+  - --istio-local-exclude-ports
+  - 15090,15021,15020
+  image: docker.io/istio/proxyv2:1.6.7
+  imagePullPolicy: Always
+  name: istio-init
+...
+```
+
+Read the arguments in pairs. `--envoy-port 15001` is the port that captures all outbound traffic. `--inbound-capture-port 15006` captures all inbound traffic. The `--istio-service-cidr '*'` and `--istio-inbound-ports '*'` settings redirect every CIDR and every port. The `--istio-local-exclude-ports` setting lists the ports 15090, 15021 and 15020. This example is from Istio 1.6.7.
+
+Istio uses two resources for traffic shifting. The `VirtualService` names a service in the mesh and holds the routing rules that choose a destination. The `DestinationRule` lists the real backends as subsets, and each subset can carry its own policy, such as a load balancing setting or an mTLS mode.
+
+The book walks through a slow rollout of version 2 of a service. The `DestinationRule` defines two subsets, `v1` and `v2`. The `VirtualService` then sends 90% of traffic to `v1` and 10% to `v2`:
+
+```
+apiVersion: networking.istio.io/v1alpha3
+kind: DestinationRule
+metadata:
+  name: flights
+spec:
+  host: flights
+  subsets:
+  - name: v1
+    labels:
+      version: v1
+  - name: v2
+    labels:
+      version: v2
+---
+apiVersion: networking.istio.io/v1alpha3
+kind: VirtualService
+metadata:
+  name: flights
+spec:
+  hosts:
+  - flights
+  http:
+  - route:
+    - destination:
+        host: flights
+        subset: v1
+      weight: 90
+    - destination:
+        host: flights
+        subset: v2
+      weight: 10
+```
+
+Service metrics come for free with this design. Every service pair has a proxy between them, so the proxy can count requests without any change to application code. The metrics use the Prometheus format. The book shows one example, with some labels removed for brevity. It counts 7,183 successful requests from the `bookings` service to the `payments` service:
+
+```
+istio_requests_total{
+connection_security_policy="mutual_tls",
+destination_service_name="payments",
+destination_service_namespace="payments",
+destination_version="v1",
+request_protocol="http",
+...
+response_code="200",
+source_app="bookings",
+source_version="v1",
+source_workload="bookings-v1",
+source_workload_namespace="flights"
+} 7183
+```
+
+Istio supports every feature in the SMI, but at Istio v1.6 it did not implement the SMI APIs directly. The SMI community maintains an adapter that makes the SMI APIs work with Istio. Istio is the mesh most often seen in the field, and Linkerd, Consul Connect and Maesh are other common choices. How each one builds its data plane varies, and that difference is the next point to compare.
+
 ## 4. Linkerd essentials
 
 If your team wants a mesh with fewer knobs, Linkerd is the option the chapter calls simple and light. It is a CNCF graduated project. Its control plane has destination, identity and proxy-injector parts, and each pod gets a `linkerd2-proxy` sidecar. Extensions add viz dashboards, based on Prometheus and Grafana, plus multicluster and policy.
@@ -176,6 +299,103 @@ Check the licensing of the stable distribution before you pick Linkerd.
 Cilium adds mesh features to its eBPF CNI, with no sidecars. A per-node Envoy provides L7 policy and observability through Hubble. SPIFFE/SPIRE-based identity gives mutual authentication, and WireGuard or IPsec encrypts the traffic. Cilium also works as a Gateway API and Ingress controller, and Traffic management uses `CiliumEnvoyConfig`, and ClusterMesh covers multi-cluster discovery and policy.
 
 The upside is one policy language across L3 through L7. The downside is that you are tied to Cilium, and its traffic management is less mature than Istio's. Check that Cilium's features cover your traffic rules before you commit.
+
+### The Service Mesh Interface (SMI)
+
+Kubernetes already defines interfaces for pluggable parts, such as the Container Runtime Interface (CRI) and the Container Networking Interface (CNI). A mesh needs the same kind of contract. The Service Mesh Interface (SMI) is a vendor-neutral set of APIs that describes how Kubernetes and a mesh interact. It is not part of core Kubernetes. The SMI project defines its APIs as CRDs and houses libraries for them, such as the SMI SDK for Go. The SMI covers the three pillars through a set of CRDs.
+
+The Traffic Split API handles routing across services. It splits traffic by percentage, which supports blue-green deployments and A/B tests. The following `TrafficSplit` performs a canary of the `flights` service:
+
+```
+apiVersion: split.smi-spec.io/v1alpha3
+kind: TrafficSplit
+metadata:
+  name: flights-canary
+  namespace: bookings
+spec:
+  service: flights
+  backends:
+  - service: flights-v1
+    weight: 70
+  - service: flights-v2
+    weight: 30
+```
+
+The `service` field names the top-level Service that clients connect to, which is `flights.bookings.cluster.svc.local`. The `backends` list names the Services that receive the traffic. Version 1 gets 70% and version 2 gets the remaining 30%.
+
+The Traffic Access Control and Traffic Specs APIs handle security. Access control decides which services may talk to each other, and under which conditions, such as the allowed HTTP methods. Traffic specs describe the traffic itself. `HTTPRouteGroup` covers HTTP, and `TCPRoute` covers TCP. Together, these apply policy at the application level. The next example allows every request from the `bookings` service to the `payments` service. The `HTTPRouteGroup` describes the traffic, and the `TrafficTarget` names the source and destination:
+
+```
+apiVersion: specs.smi-spec.io/v1alpha3
+kind: HTTPRouteGroup
+metadata:
+  name: payment-processing
+  namespace: payments
+spec:
+  matches:
+  - name: everything
+    pathRegex: ".*"
+    methods: ["*"]
+---
+apiVersion: access.smi-spec.io/v1alpha2
+kind: TrafficTarget
+metadata:
+  name: allow-bookings
+  namespace: payments
+spec:
+  destination:
+    kind: ServiceAccount
+    name: payments
+    namespace: payments
+  port: 8080
+  rules:
+  - kind: HTTPRouteGroup
+    name: payment-processing
+    matches:
+    - everything
+  sources:
+  - kind: ServiceAccount
+    name: flights
+    namespace: bookings
+```
+
+In that listing, `everything` allows all requests in the `HTTPRouteGroup`. The `destination` is the Pods that use the `payments` ServiceAccount in the `payments` Namespace. The `rules` list names the `HTTPRouteGroup` that controls traffic between the two services. The `sources` list is the `flights` ServiceAccount in the `bookings` Namespace.
+
+The Traffic Metrics API handles telemetry. It differs from the others because it defines outputs rather than inputs. It sets a standard way to expose service metrics. Monitoring systems, autoscalers and dashboards can then read those metrics in one consistent format. The book shows a `TrafficMetrics` resource for traffic between two Pods:
+
+```
+apiVersion: metrics.smi-spec.io/v1alpha1
+kind: TrafficMetrics
+resource:
+  name: flights-19sk18sj11-a9od2
+  namespace: bookings
+  kind: Pod
+edge:
+  direction: to
+  side: client
+  resource:
+    name: payments-ks8xoa999x-xkop0
+    namespace: payments
+    kind: Pod
+timestamp: 2020-08-09T01:07:23Z
+window: 30s
+metrics:
+- name: p99_response_latency
+  unit: seconds
+  value: 13m
+- name: p90_response_latency
+  unit: seconds
+  value: 7m
+- name: p50_response_latency
+  unit: seconds
+  value: 3m
+- name: success_count
+  value: 100
+- name: failure_count
+  value: 0
+```
+
+The SMI is still under development, and it changes as the community learns. It still shows where the community is heading. Its main benefit is portability. A platform team can offer a mesh through provider-agnostic APIs, and the choice of implementation stays open.
 
 ## 6. Capabilities in practice
 
@@ -252,6 +472,14 @@ For an AI platform, a pragmatic path starts with Gateway API, cert-manager, OTel
 To exclude traffic in Istio, use `traffic.sidecar.istio.io/excludeOutboundPorts`, `excludeOutboundIPRanges`, or `sidecar.istio.io/inject: "false"` for training pods and storage clients. In Linkerd, use `config.linkerd.io/skip-outbound-ports` and `skip-inbound-ports`.
 
 Decide early which workloads stay out of the mesh, because training and storage traffic cannot be proxied safely.
+
+### Adopting too early: a cautionary tale
+
+Service meshes are popular, and some teams adopt one because it looks like a shortcut. Kubernetes is already a complex distributed system. Building a platform on top of it is a lot of work, with many chapters' worth of building blocks. Tackling a mesh while you are still starting out can slow you down, or take you off course entirely. Wait until you have operational experience in production before you adopt a mesh.
+
+Start from your requirements. Ask which problems you are trying to solve. Putting the cart before the horse increases the chance that the platform fails, and it wastes engineering effort. One team built a mesh while its platform was not yet in production. Their reason was, "We want a service mesh because we need everything it provides." Twelve months later, the only feature they used was the mesh's Ingress capability. They used no mutual TLS, no advanced routing and no tracing. A dedicated Ingress controller would have taken far less engineering effort to get into production.
+
+A minimum viable product that runs in production, followed by iterative features, is often the better path. A service mesh can solve many problems, but only if you have those problems. Success comes from adopting it at the right time and for the right reasons.
 
 ## 9. Lab
 

@@ -336,6 +336,12 @@ Host-only and generic images matter for a golden image. `dracut` builds a small 
 
 When the boot stops at the initramfs prompt, read the message first, because it names the device that is missing.
 
+### Skipping the initramfs
+
+One basic feature of the initial RAM filesystem has not changed since it was introduced. You can skip it. If your kernel already has every driver it needs to mount the root filesystem, you can leave the initramfs out of the boot loader configuration. A boot without it starts a little faster.
+
+You can test this at boot time. In the GRUB menu editor, remove the `initrd` line for one boot. Do not test by editing the GRUB configuration file, because a mistake there can be hard to repair. Skipping the initramfs is harder than it used to be. Features such as mount-by-UUID may be missing from generic distribution kernels.
+
 ## 6. `init`: the first user-space process
 
 The kernel's last job in boot is to start one program, `/sbin/init`, or the program named by `init=`. If that fails, the kernel tries several standard locations. It panics if none of them works. **`init` always has PID 1, and it is the only process the kernel watches. If it dies, the kernel panics.** Its duties are to set up the system, mount filesystems, start services, and **adopt and reap orphaned processes** (chapter 1.8).
@@ -363,6 +369,23 @@ When `init` enters a runlevel, it runs the scripts in **`/etc/rc<N>.d/`**. Those
 Script headers help tools work out the order. A header begins with `### BEGIN INIT INFO` and ends with `### END INIT INFO`. Inside it you list `Provides: skeleton`, `Required-Start: $remote_fs $syslog`, `Required-Stop: $remote_fs $syslog`, `Default-Start: 2 3 4 5`, `Default-Stop: 0 1 6`, `Short-Description` and `Description`. The file `rc.local` ran last. Using it is discouraged, although systemd keeps it working for compatibility.
 
 Historically, Unix had two main styles of `init` configuration, SystemV-style and BSD-style, the latter used by Slackware. Standard SysV `init` scripts are written in shell. They are slow and hard to parse, and they start services strictly one after another. Attempts to bolt parallelism onto SysV `init` through special header comments failed. That is why **Lennart Poettering** and **Kay Sievers** created **`systemd`** (`SCL` Chapter 23). It gives you dependency-aware parallel startup, cgroup process tracking, and on-demand socket and device activation.
+
+### The `rc*.d` link farm and `init.d`
+
+You can run the System V startup commands by hand. Normally, though, you use the scripts in the `init.d` directory instead of the `rc*.d` directories. The entries in the `rc*.d` directories are symbolic links to files in `init.d`. If you want to change services in `rc*.d`, you need to understand those links. A long listing of `rc5.d` looks like this:
+
+```
+lrwxrwxrwx . . . S10sysklogd -> ../init.d/sysklogd
+lrwxrwxrwx . . . S12kerneld -> ../init.d/kerneld
+lrwxrwxrwx . . . S15netstd_init -> ../init.d/netstd_init
+lrwxrwxrwx . . . S18netbase -> ../init.d/netbase
+...
+lrwxrwxrwx . . . S99httpd -> ../init.d/httpd
+```
+
+A large set of symbolic links across several subdirectories is called a link farm. Distributions use one so that every runlevel can share the same startup scripts. This is a convention, not a requirement, but it keeps the system organized.
+
+To start or stop a service by hand, run its `init.d` script with `start` or `stop`. For example, `/etc/init.d/httpd start` starts the web server. To change the boot sequence, the usual method is to rename a link in the link farm. Renaming `S99httpd` to `_S99httpd` with `mv` stops `rc` from running it. The underscore keeps the name readable, so you still know what the service is.
 
 ### systemd, in one screen
 
@@ -810,7 +833,7 @@ Run five checks before you reboot a GPU node after a kernel upgrade. First, conf
 ## Sources and review notes
 
 - **Sources read in full:**
-  - `how-linux-works-3rd-edition` — Brian Ward, *How Linux Works*, 3rd ed., **Chapter 5: How the Linux Kernel Boots** (sections 5.1–5.8: startup messages `journalctl -k` `Freeing unused kernel memory: 2408K` / `Write protecting the kernel read-only data: 20480k`, kernel initialization and boot options, `/proc/cmdline` `root=` and `ro`, boot loaders GRUB 2, LILO, SYSLINUX/EXTLINUX/ISOLINUX/PXELINUX, `systemd-boot`/`gummiboot`, `coreboot`/LinuxBIOS, `EFISTUB`, `efilinux`, GRUB devices `(hd0,gpt2)` and GRUB `root` vs Linux `root=`, `/etc/default/grub` and `/etc/grub.d` + `grub-mkconfig`, `grub-install` `--boot-directory` and `--efi-directory`/`--removable`, UEFI Secure Boot `shim`/MOK problems, chainloading, and MBR `441`/`446`-byte boot code vs UEFI ESP; cross-referenced with Chapter 6).
+  - `how-linux-works-3rd-edition` — Brian Ward, *How Linux Works*, 3rd ed., **Chapter 5: How the Linux Kernel Boots** (sections 5.1–5.8: startup messages `journalctl -k` `Freeing unused kernel memory: 2408K` / `Write protecting the kernel read-only data: 20480k`, kernel initialization and boot options, `/proc/cmdline` `root=` and `ro`, boot loaders GRUB 2, LILO, SYSLINUX/EXTLINUX/ISOLINUX/PXELINUX, `systemd-boot`/`gummiboot`, `coreboot`/LinuxBIOS, `EFISTUB`, `efilinux`, GRUB devices `(hd0,gpt2)` and GRUB `root` vs Linux `root=`, `/etc/default/grub` and `/etc/grub.d` + `grub-mkconfig`, `grub-install` `--boot-directory` and `--efi-directory`/`--removable`, UEFI Secure Boot `shim`/MOK problems, chainloading, and MBR `441`/`446`-byte boot code vs UEFI ESP; cross-referenced with Chapter 6). It also draws on `how-linux-works-3rd-edition`, **Chapter 6: How User Space Starts** (sections 6.1, 6.5 and 6.7: init families, the `rc*.d` link farm and the initramfs bypass).
   - `supercomputers-for-linux-sysadmins-managing-modern-hpc-clusters-and-supercomputers-from-software-to` — Sergey Zhumatiy, *Supercomputers for Linux SysAdmins*, **Chapter 23: Booting and Init** (BIOS/MBR vs UEFI/GPT `128` partitions & `> 18` exabytes, GRUB stages, `initrd`/`initramfs`, SystemV vs BSD `init`, `/etc/inittab` and runlevels `0`–`6`, LSB `### BEGIN INIT INFO` `skeleton` headers, Lennart Poettering and Kay Sievers `systemd` design, cloning `/dev/disk/by-id` pitfalls, and PXE network booting: ISC `dhcpd.conf`, `snmpwalk` `dot1dTpFdbEntry.1`/`.2` switch MAC discovery and `macs.txt` generator script, `tftpd`, `pxelinux.cfg/default`, NFS-root with `tmpfs` writable overlays, and `1`–`2` s staggered boot-storm prevention; cross-referenced with Chapters 21, 22, 24, 25, 26, 27, 28, 29, and 30).
 - **Run here:** `python3 code/part01/boot_grub_initramfs_lab.py` (23 passed, 0 failed).
 - **Explicitly labelled inferences:** GPU server BIOS/UEFI settings (Above-4G Decoding, `ReBAR`, `SR-IOV`, `IOMMU`, `NPS` modes), `mokutil` MOK signing for DKMS `nvidia.ko` (Chapters 1.21 and 1.22), and `kdump` `crashkernel=` configurations connect the Linux boot pipeline to Part 6, Part 7, Part 8, and Part 10 GPU cluster operations.

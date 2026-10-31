@@ -331,6 +331,14 @@ Follow a packet from pod A to a ClusterIP. The pod's network namespace sends the
 
 This mode has costs that grow with the cluster. The rule count grows with Services multiplied by endpoints, so matching `KUBE-SERVICES` is a linear, O(n) chain traversal. Since 1.2x, hash-based jumps mitigate this for some cases. Every sync rewrites the whole ruleset with `iptables-restore`. That call takes the xtables lock and can take seconds, and significant CPU, for tens of thousands of rules. Load balancing is random, and it applies to new connections only. Established flows stay on their backend through conntrack. Endpoints get no health checking beyond readiness. The per-packet cost stays small, but the rule update latency becomes large at scale.
 
+### Why iptables struggles at scale
+
+The iptables rules are stored as a list. When a pod opens a new connection to a Service, the first packet walks through that list until it finds a match. In the worst case, the packet must walk the entire list. The cost therefore grows linearly with the number of Services. In complexity terms, the iptables mode is O(n) when it processes packets. Connections to Services get slower as the cluster grows.
+
+Updates are the bigger problem. iptables rules are not incremental, so kube-proxy must write out the entire table for every update. On a large cluster, that write can take minutes, which risks sending traffic to stale endpoints. kube-proxy also holds the iptables lock (`/run/xtables.lock`) during the update. Other processes that change iptables rules, such as CNI plug-ins, can then contend with it.
+
+Community tests suggest you should not notice a slowdown unless the cluster runs tens of thousands of Services. Past that point, the IPVS mode is worth considering. The next subsection shows how it handles the same Services.
+
 ### IPVS mode
 
 IPVS mode uses the kernel's IP Virtual Server, an L4 load balancer inside netfilter, with hash tables. `kube-proxy` creates a virtual server for each ClusterIP:port on a dummy interface named `kube-ipvs0`. Each endpoint becomes a real server. A scheduler picks among the real servers. The schedulers are `rr`, `lc`, `sh`, `dh`, `sed` and `nq`, and you set one with `ipvs.scheduler`. Matching uses `ipset` sets such as `KUBE-CLUSTER-IP` and `KUBE-NODE-PORT-TCP`, plus a few iptables rules for masquerade.
@@ -345,6 +353,63 @@ ipvsadm -Lnc | head                     # IPVS connection table
 ipset list KUBE-CLUSTER-IP | head
 ip addr show kube-ipvs0 | head
 ```
+
+### Reading IPVS listings
+
+IPVS does not walk a list when a new connection arrives. It finds the destination right away, based on the Service IP address. kube-proxy in `ipvs` mode first adds the ClusterIP to a dummy interface named `kube-ipvs0`:
+
+```
+$ ip address show dev kube-ipvs0
+28: kube-ipvs0: <BROADCAST,NOARP> mtu 1500 qdisc noop state DOWN group default
+link/ether 96:96:1b:36:32:de brd ff:ff:ff:ff:ff:ff
+inet 10.110.34.183/32 brd 10.110.34.183 scope global kube-ipvs0
+valid_lft forever preferred_lft forever
+inet 10.96.0.10/32 brd 10.96.0.10 scope global kube-ipvs0
+valid_lft forever preferred_lft forever
+inet 10.96.0.1/32 brd 10.96.0.1 scope global kube-ipvs0
+valid_lft forever preferred_lft forever
+```
+
+Next, kube-proxy creates an IPVS virtual service for the ClusterIP. Then it adds one IPVS real server for each Service endpoint. For a ClusterIP Service with three endpoints, the listing looks like this:
+
+```
+$ ipvsadm --list --numeric --tcp-service 10.110.34.183:80
+Prot LocalAddress:Port Scheduler Flags
+  -> RemoteAddress:Port Forward Weight ActiveConn InActConn
+TCP 10.110.34.183:80 rr
+  -> 192.168.89.153:80 Masq 1 0 0
+  -> 192.168.89.154:80 Masq 1 0 0
+  -> 192.168.89.155:80 Masq 1 0 0
+```
+
+The line starting with `TCP` is the virtual service. Its address is the ClusterIP. The indented `->` lines are real servers, and each one is a Service endpoint (a pod).
+
+NodePort and LoadBalancer Services need more virtual services. kube-proxy creates one for the Service's ClusterIP. It also creates one for each node IP address and one for the loopback address. The next listing shows a NodePort Service on TCP port 30737:
+
+```
+ipvsadm --list --numeric
+IP Virtual Server version 1.2.1 (size=4096)
+Prot LocalAddress:Port Scheduler Flags
+  -> RemoteAddress:Port Forward Weight ActiveConn InActConn
+TCP 10.0.99.67:30737 rr
+  -> 192.168.89.153:80 Masq 1 0 0
+  -> 192.168.89.154:80 Masq 1 0 0
+  -> 192.168.89.155:80 Masq 1 0 0
+TCP 10.110.34.183:80 rr
+  -> 192.168.89.153:80 Masq 1 0 0
+  -> 192.168.89.154:80 Masq 1 0 0
+  -> 192.168.89.155:80 Masq 1 0 0
+TCP 127.0.0.1:30737 rr
+  -> 192.168.89.153:80 Masq 1 0 0
+  -> 192.168.89.154:80 Masq 1 0 0
+  -> 192.168.89.155:80 Masq 1 0 0
+TCP 192.168.246.64:30737 rr
+  -> 192.168.89.153:80 Masq 1 0 0
+  -> 192.168.89.154:80 Masq 1 0 0
+  -> 192.168.89.155:80 Masq 1 0 0
+```
+
+There are four virtual services in that output. The first listens on the node's IP address. The second listens on the Service's cluster IP. The third listens on `localhost`. The fourth listens on a secondary network interface on the node. Each one forwards to the same three pods, so a client can reach the NodePort through any of those addresses.
 
 ### nftables mode
 
@@ -569,6 +634,12 @@ dmesg -T | grep -i conntrack
 ```
 
 On busy nodes, check the conntrack limits early. A full table fails connections that look unrelated to the Service itself.
+
+### How a table fills up, and what to watch
+
+When the kernel performs DNAT on a Service packet, it adds a conntrack entry. Each entry maps the pre-NAT protocol, source IP, source port, destination IP and destination port onto the post-NAT values. Later packets to the same Service then get the same translation. The same table removes the NAT from response packets before they go back to the source pod. Entries hold more fields than this, but these are the ones that matter for Services.
+
+When the table is full, the kernel starts dropping or rejecting connections. Some applications handle that badly. If your workloads open many connections and you see connection failures, you may need to raise the maximum size of the table on your nodes. Monitor conntrack utilization as well. Set an alert for when the table gets close to full, so you can act before connections fail.
 
 ## 6. Topology-aware routing and other features
 

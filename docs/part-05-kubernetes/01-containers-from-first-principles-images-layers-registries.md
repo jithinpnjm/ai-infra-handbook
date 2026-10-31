@@ -97,6 +97,14 @@ Because the container shares the host kernel, several things follow. The kernel 
 
 PID 1 inside a container has special rules for signals and for reaping zombie processes. If your app forks child processes, run it with `--init` or `tini`. Finally, "it works in the container" says little about behaviour that depends on the kernel, such as RDMA, huge pages or NUMA. Those depend on the host, not the image.
 
+### The dependency problem containers solve
+
+Picture a program that runs fine on a developer's laptop and then fails on the production server. Often the cause is a shared library, such as `libc` or `libssl`, that is missing or has a different version on that server. Sometimes the cause is simpler. The developer forgot to include a dependent asset file in the package that went to production. Both problems come from a program that relies on things outside its own package.
+
+Running several programs on one machine the traditional way makes this worse. All of those programs must share the same versions of the shared libraries. If different teams or organizations build those programs, the shared dependencies add needless complexity and tie the teams together. Deployment often relies on imperative scripts, which have many failure cases. Rolling out a new version of part of a distributed system then becomes slow, manual work.
+
+A container image removes this coupling. The image carries the program, its libraries and its files as one package. A program can only run successfully if it deploys reliably onto the machine where it should run. Keep that idea in mind as you read the rest of this chapter, because each image-building rule below serves it.
+
 ### Why containers took off
 
 Cgroups and namespaces are the two main ingredients for building a container. Cgroups limit how many resources a process can use, such as CPU and memory. Namespaces control what a process can see, such as mounts, processes and network interfaces. Both have been in the Linux kernel since 2008, and namespaces are even older. So why did containers only become popular years later?
@@ -157,6 +165,14 @@ docker save nginx:1.27 -o nginx.tar && tar -tf nginx.tar                 # see b
 ```
 
 Each command answers a different question. The `docker image inspect` line shows the image's identity and its entrypoint. The `crane` and `skopeo` lines query the registry directly, so you see the index and the manifests without a download. The `docker save` line writes the image to a tar file, and the last `tar` command lists the blobs, the index and the manifest inside it.
+
+### Overlay filesystems: how layers stack
+
+The most popular container image format is the Docker image format. The Docker open source project developed it for packaging, distributing and running containers with the `docker` command. Later, Docker, Inc., and others began standardizing it through the Open Container Initiative (OCI). The OCI standard reached a 1.0 release in mid-2017, but adoption is moving slowly. The Docker image format remains the de facto standard, and it is made of a series of filesystem layers.
+
+Each layer adds, removes or modifies files from the layer before it. This stacking is an example of an overlay filesystem. The same overlay system is used when the image is packaged and again when the image runs. At run time, several concrete implementations exist, including `aufs`, `overlay` and `overlay2`. The implementations differ, but the idea is the same. Read-only layers sit underneath, and one writable layer sits on top.
+
+The word "image" can mislead. An image is not one file. It is a specification for a manifest file, and the manifest points to other files. Users often treat the manifest and those files as one unit. That extra level of indirection makes storage and transfer more efficient. The format also comes with an API for uploading and downloading images to a registry.
 
 ### Manifests, indexes and configs
 
@@ -310,6 +326,65 @@ The principles behind a good Dockerfile are numbered below, so you can match eac
 10. Add OCI labels such as `org.opencontainers.image.source`, `.revision`, `.version` and `.created`, so you can trace where an image came from. Set `HEALTHCHECK` for Docker and Compose, because Kubernetes uses probes instead.
 11. For reproducibility, set `SOURCE_DATE_EPOCH`, keep the ordering deterministic, and pin packages with `apt-get install pkg=version`. Avoid `latest`. Nix, Bazel, ko and Jib are options for fully reproducible builds.
 12. Follow the habits of your language. For Python, use wheels, `uv` or pip with hashes, and avoid compiling at runtime. For Go, build a static binary and place it in `scratch` or distroless. For Java, consider Jib. For Node, run `npm ci` and install only production dependencies.
+
+### A Node.js example, line by line
+
+Dynamic languages such as Node.js, Python and Ruby follow the same pattern. Take a simple Express app with two files, `package.json` and `server.js`. Put them in one directory and run `npm install express --save` to add the Express dependency and install it.
+
+```
+{
+"name": "simple-node",
+"version": "1.0.0",
+"description": "A sample simple application for Kubernetes Up & Running",
+"main": "server.js",
+"scripts": {
+"start": "node server.js"
+},
+"author": ""
+}
+```
+
+```
+var express = require('express');
+var app = express();
+app.get('/', function (req, res) {
+res.send('Hello World!');
+});
+app.listen(3000, function () {
+console.log('Listening on port 3000!');
+console.log(' http://localhost:3000');
+});
+```
+
+Two more files turn this app into an image. The `Dockerfile` is the recipe for building the image. The `.dockerignore` file lists the files to leave out when copying into the image. In this example, it excludes `node_modules`.
+
+```
+# Start from a Node.js 16 (LTS) image
+FROM node:16
+# Specify the directory inside the image in which all commands will run
+WORKDIR /usr/src/app
+# Copy package files and install dependencies
+COPY package*.json ./
+RUN npm install
+RUN npm install express
+# Copy all of the app files into the image
+COPY . .
+# The default command to run when starting the container
+CMD [ "npm", "start" ]
+```
+
+Every Dockerfile builds on other container images. The `FROM node:16` line starts from a preconfigured Node.js 16 image on Docker Hub. The `WORKDIR` line sets the directory where all following commands run.
+
+The next three lines prepare the dependencies. The package files are copied in first, so the install step can run on its own. The `RUN` lines then install the packages inside the container. The `COPY . .` line comes last and copies the rest of the program. Because of `.dockerignore`, `node_modules` stays out of the copy. The final `CMD` line sets the command that runs when a container starts.
+
+Build the image with the `docker build` command, then run it and map port 3000:
+
+```
+$ docker build -t simple-node .
+$ docker run --rm -p 3000:3000 simple-node
+```
+
+Open `http://localhost:3000` in a browser to reach the program running in the container. The `simple-node` image now lives in the local Docker registry of one machine. Its real power comes when you share images across many machines and the wider Docker community. Section 4 covers how to share images through a registry.
 
 ### BuildKit, buildx and builders
 
@@ -504,6 +579,33 @@ The first run command starts a web container in the background, with a restart p
 Two pairs of flags are easy to confuse. `--cpus` sets a hard CFS quota on CPU cores, so the container is throttled even when the host is idle. `--cpu-shares` sets a relative CPU weight, which matters only when the CPU is contended. The default share weight is `1024`, and it corresponds to Kubernetes `resources.requests.cpu`. The memory pair works the same way. `--memory` is the RAM limit, which is `200m` in the book's example. `--memory-swap` is the combined limit for RAM plus swap, which is `1G` in the same example.
 
 Podman is CLI-compatible with Docker, so you can alias one as the other with `alias docker=podman`. It is daemonless and starts a process for each container. It supports pods (`podman pod`), it can generate Kubernetes YAML (`podman generate kube`), and it can generate systemd units and Quadlet files.
+
+### Running a container and mapping its port
+
+In Kubernetes, a daemon on each node called the kubelet usually launches containers. To get started, the Docker command-line tool is easier. This command starts the `kuard` container from its image:
+
+```bash
+$ docker run -d --name kuard \
+--publish 8080:8080 \
+gcr.io/kuar-demo/kuard-amd64:blue
+```
+
+The `-d` option runs the container in the background, as a daemon. The `--name kuard` option gives it a friendly name. The `--publish` option maps port 8080 on your machine to port 8080 in the container, and `-p` is the short form. The mapping is needed because each container has its own IP address. An app listening on localhost inside the container does not listen on your machine. Without the mapping, your machine cannot reach it.
+
+The book's text points you to `http://localhost:3000` in a browser, but this command publishes port 8080. Use `http://localhost:8080`, or check it from the command line with `curl http://localhost:8080`. The `kuard` app also has more features that later chapters of the book explore.
+
+### Cleaning up images
+
+When you finish building an image, you can delete it with `docker rmi`. Name the image by its tag, such as `gcr.io/kuar-demo/kuard-amd64:blue`, or by its image ID:
+
+```
+docker rmi <tag-name>
+docker rmi <image-id>
+```
+
+An image ID can be shortened as long as it stays unique. Usually three or four characters are enough. Be aware that an image lives on your system forever unless you delete it. Building a new image with the same name only moves the tag to the new image, and the old image stays. Use `docker images` to list what is on your machine, then remove the tags you no longer need.
+
+For general cleanup, `docker system prune` removes all stopped containers, all untagged images and all unused image layers left by the build process. Use it carefully. For a steady approach, run `docker system prune` as a recurring `cron` job. A daily or hourly schedule fits you best if you create many images.
 
 ## 8. Troubleshooting images and containers
 

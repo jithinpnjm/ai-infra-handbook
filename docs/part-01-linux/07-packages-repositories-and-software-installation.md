@@ -790,6 +790,14 @@ If the network is used through IPoIB (IP over InfiniBand), a scheduler that gene
 
 **RAID** deserves a clear picture too. Hardware RAID protects against disk failure. It does not protect against a failed controller, a failed motherboard, or several disks lost in one power event. Keep backups regardless. Where you can choose, mirroring is the safest layout. Adding striping with RAID 0 for speed is better done in the Linux software layer (chapter 1.13). There it costs little CPU, and it often recovers more gracefully.
 
+### Installing OFED on the cluster
+
+OFED is a job you do once, carefully, because every node must end up with the same stack. Unpack the kit on a network filesystem first. Then every node can see the same files when it is time to install.
+
+Unpack the kit with `tar xzvf OFED-<version>.tgz`. Then run `install.pl` with no parameters, from inside the unpacked directory. Run it on the control node, or on the first compute node if the control node has no InfiniBand card. The installer asks questions first, mostly about which components to install. Check the list of base OS components the instructions require, and install any that are missing before you start.
+
+After that, the installer works without help. It compiles the kernel modules, builds packages and installs them. It also builds each MPI implementation with every compiler on the system. By default, the results go into `/usr/mpi`. Do not run this on a production system that is already in use, because the installer removes earlier OFED versions first.
+
 ### A sensible build order
 
 Build the cluster in an order that lets you test early. Otherwise you will clone mistakes into fifty nodes. A small cluster is typically built in these steps.
@@ -830,7 +838,9 @@ The six fields are the source (the server and the exported directory), the mount
 
 ### Compilers and libraries on nodes
 
-Install compilers once, on the network filesystem. That way the compute nodes see both the compilers and the libraries the compiled programs need. You can make the libraries visible to the dynamic linker in one of two ways. The first is to set `LD_LIBRARY_PATH` per job through environment modules. The second is to list the directories in `ld.so.conf` and run `ldconfig`. In the second case, remember to update the file and rerun `ldconfig` on every node whenever the compiler version changes, because the library path changes with it.
+Install compilers once, on the network filesystem. That way the compute nodes see both the compilers and the libraries the compiled programs need. Do not copy compilers over from the control node as a shortcut. Either run a full compiler install on each node, so the system records it and the communications build can use it, or reach the compiler over NFS. Once the cluster is running, compute nodes only need the runtime libraries.
+
+You can make the libraries visible to the dynamic linker in one of two ways. The first is to set `LD_LIBRARY_PATH` per job through environment modules. The second is to list the directories in `ld.so.conf` and run `ldconfig`. In the second case, remember to update the file and rerun `ldconfig` on every node whenever the compiler version changes, because the library path changes with it.
 
 Environment modules, from Environment Modules or Lmod, are the standard answer. Suppose a user runs `module load gcc/13 openmpi/5`. That edits `PATH`, `LD_LIBRARY_PATH`, `MANPATH` and similar variables for the current shell or job only. Running `module purge` undoes it. Several versions of the same software can coexist on the shared filesystem, and users pick one. This is also the clean answer to the earlier rule about not exporting `LD_LIBRARY_PATH` globally. Chapter 6.20 covers modules in depth.
 
@@ -888,6 +898,14 @@ Third, watch the first boot of the clone carefully.
 5. It starts, runs and writes its result into the working directory.
 
 If that whole chain works, you can connect the rest of the nodes.
+
+### Remote and RAM-disk installs
+
+Installing each compute node at a console does not scale. Many distributions can install a compute node remotely, from the management node. Text mode runs over `ssh`, and graphical mode runs over VNC. Almost all distributions also support automated installs, which follow an answer file without questions.
+
+For a single node, you can install from a USB drive. Write the installer image to the drive first. If the node's management controller supports a virtual drive over IPMI, you can use that instead. Afterwards, remove the drive's path from the node's repository settings, because the drive is no longer there.
+
+You can also load the OS into a RAM disk. That works, but it reduces the memory left for user jobs.
 
 ## 11. AI-infrastructure patterns
 

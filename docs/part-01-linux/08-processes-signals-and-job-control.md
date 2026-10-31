@@ -250,6 +250,28 @@ ps axo stat,ppid,pid,comm | awk '$1 ~ /^Z/'   # find zombies and their parents
 
 Add `w` (up to three times) to widen the command column. `VSZ` is the virtual size, and `RSS` is the resident set, which is the physical RAM the process holds right now. Chapter 1.17 explains the difference. To list threads inside a multithreaded process, such as `Xorg` or a multi-worker Python process, pass `ps m` (BSD style) or `ps m -o pid,tid,command`. See `HLW` Listings 8-1 and 8-2. Lines with a dash (`-`) in the `PID` column are individual threads of the process above them. The `tid` column shows each thread's kernel Thread ID (`TID`).
 
+### Viewing threads with `ps m`
+
+Most of the time, `ps` and `top` show only processes. A process starts with one thread, called the main thread. A process with one thread is single-threaded. A process with more than one thread is multithreaded, and the main thread can start the others. Add the `m` option to see every thread on its own line.
+
+```text
+$ ps m -o pid,tid,command
+PID TID COMMAND
+3587 - bash
+- 3587 -
+3592 - bash
+- 3592 -
+12534 - /usr/lib/xorg/Xorg -core :0
+- 12534 -
+- 13227 -
+- 14443 -
+- 14448 -
+```
+
+Lines with a number in the `PID` column are processes. Lines with a dash in that column are threads of the process above them. The two `bash` shells have one thread each, so their TIDs match their PIDs. The main thread of `Xorg` (process 12534) has the same TID as its PID. That process has four threads in all.
+
+Threads make resource monitoring harder. Individual threads of one process can use resources at the same time, and `top` hides them until you press `H`. Most other monitors need an extra option too. You rarely act on one thread by itself. Doing that safely requires knowing how the program was written.
+
 ### `top`, `htop`, `atop`
 
 `top` is the interactive display. Its summary header shows a task line such as `Tasks: 244 total, 2 running, 242 sleeping, 0 stopped, 0 zombie`. It shows a CPU line such as `%Cpu(s): 31.7%us, 2.8%sy, 0.0%ni, 65.4%id, 0.2%wa, 0.0%hi, 0.0%si, 0.0%st`. It also shows `Mem:` (total, used, free, buffers) and `Swap:` (total, used, free, cached). Below the header, a live table of processes refreshes every few seconds. Keys are case-sensitive, so you must type them exactly. For example, a key that works in one case may do nothing in the other:
@@ -326,6 +348,40 @@ sudo lsof +L1                     # files that are deleted but still open (space
 ```
 
 Suppose `df` reports a full disk, but `du` cannot find the files that fill it. Two classic cases come up again and again. The first is "**`df` shows the disk full but `du` cannot find the files**". A process still holds a deleted log open. `lsof +L1` finds it, and restarting that process frees the space. The second is "**cannot unmount, device is busy**". Here `lsof` or `fuser -vm /mountpoint` shows who is inside. Run as root for complete output. `lsof` depends on kernel interfaces, so after a kernel and `lsof` update it may misbehave until you reboot into the new kernel.
+
+### Reading `lsof` output
+
+`lsof` prints a lot of lines, so learning its columns matters more than reading every row. The excerpt below comes from the `systemd` init process and a running `vi` editor.
+
+```text
+# lsof
+COMMAND PID USER FD TYPE DEVICE SIZE/OFF NODE NAME
+systemd 1 root cwd DIR 8,1 4096 2 /
+systemd 1 root rtd DIR 8,1 4096 2 /
+systemd 1 root txt REG 8,1 1595792 9961784 /lib/systemd/systemd
+systemd 1 root mem REG 8,1 1700792 9961570 /lib/x86_64-linux-gnu/libm-2.27.so
+systemd 1 root mem REG 8,1 121016 9961695 /lib/x86_64-linux-gnu/libudev.so.1
+vi 1994 juser cwd DIR 8,1 4096 4587522 /home/juser
+vi 1994 juser 3u REG 8,1 12288 786440 /tmp/.ff.swp
+```
+
+The first columns name the owner. `COMMAND` is the command name, `PID` is the process ID, and `USER` is the user running it. The `FD` column holds either the purpose of the file or a file descriptor number. The `cwd` lines show each process's current working directory. The last line is the `vi` process (PID 1994) using a temporary swap file. Its descriptor is `3`, a number the kernel hands out when a file opens.
+
+`TYPE` gives the kind of file, such as a regular file or a directory. `DEVICE` holds the major and minor numbers of the disk that stores it. `SIZE/OFF` is the file's size, `NODE` is its inode number, and `NAME` is its filename. The `lsof(1)` manual page lists every value you might see in each field. You can run `lsof` as a regular user, but you get more information as root.
+
+### Narrowing `lsof` output
+
+There are two ways to work with `lsof`. You can list everything, pipe the output to `less`, and search for what you want. That works, but the output can take a long time to scan. The other way is to narrow the list with command-line options. `lsof` also lists network connections, dynamic libraries and pipes, not only regular files, so narrowing helps a lot.
+
+Pass a path, and `lsof` lists only the entries under it. This command shows the open files in `/usr` and all of its subdirectories.
+
+```bash
+lsof +D /usr                # (untested here) open files under /usr, recursively
+lsof -p 1994                # (untested here) open files of one process ID
+lsof -h                     # (untested here) a short summary of the options
+```
+
+Most options only change the output format. Use the summary to find the one you need.
 
 ### `strace` and `ltrace`: what is this program actually doing?
 
@@ -485,6 +541,24 @@ Real-time scheduling policies, such as `chrt -f 50 cmd` (FIFO and round-robin), 
 
 On a shared node, lower the nice value of batch work before you reach for anything stronger.
 
+### Seeing priorities in `top`
+
+A `top` sample shows priority at work. The `PR` and `NI` columns sit next to the process names. This sample is from a desktop with several browser processes running.
+
+```text
+$ top
+Tasks: 244 total, 2 running, 242 sleeping, 0 stopped, 0 zombie
+Cpu(s): 31.7%us, 2.8%sy, 0.0%ni, 65.4%id, 0.2%wa, 0.0%hi, 0.0%si, 0.0%st
+PID USER PR NI VIRT RES SHR S %CPU %MEM TIME+ COMMAND
+28883 bri 20 0 1280m 763m 32m S 58 12.7 213:00.65 chromium-browse
+1175 root 20 0 210m 43m 28m R 44 0.7 14292:35 Xorg
+4022 bri 20 0 413m 201m 28m S 29 3.4 3640:13 chromium-browse
+```
+
+`PR` is the kernel's current priority for the process. A higher number makes the kernel less likely to schedule that process when others need CPU time. The kernel can also change `PR` while the program runs, based on how much CPU the process has used. `NI` is the nice value, which is the setting you control. The kernel adds it to the current priority to pick the next time slot. Here every row shows `NI` as `0`, the default.
+
+To make a background job yield, raise its nice value with `renice`. Use a positive number, and keep negative values for rare cases. A negative value can starve system processes of CPU time. Today many systems have a single user, so nice matters less than it did when many people shared one machine.
+
 ## 7. Limits: `ulimit` and `prlimit`
 
 Each process has **resource limits**, called rlimits. Each limit has a *soft* value, which the kernel enforces, and a *hard* value, the ceiling the process may raise the soft limit to. Children inherit them. The table lists the limits you are most likely to hit.
@@ -533,6 +607,23 @@ When you run `time`, read `real` first. `real - (user + sys)` is the time a job 
 /usr/bin/time -v python3 -c 'print(sum(range(10**7)))' 2>&1 | grep -E 'Elapsed|Maximum resident|faults|Voluntary|Involuntary|Exit'
 ```
 
+### Load averages with `uptime`
+
+`uptime` prints the load average over the last 1, 5 and 15 minutes, after the time the system has been up. Here is a sample from a machine that had been idle for a long time.
+
+```text
+$ uptime
+... up 91 days, ... load average: 0.08, 0.03, 0.01
+```
+
+The 15-minute value of `0.01` means that, across all processors, only 0.01 processes were running on average. On a single-processor machine, that is about 1 percent of the time spent running user programs. This system was barely busy.
+
+On a one-core machine, a load near `1` usually means one process uses the CPU nearly all of the time. Run `top` to find it, and that process will usually sit at the top. On a two-core machine, a load of `1` means only one core is busy at any moment. A load of `2` means both cores have just enough work all of the time.
+
+A high load average does not always mean trouble. A system with enough memory and I/O can run many processes, and they share the CPU in turn. Web and compute servers can also show high load, because processes start and exit so quickly that the measurement cannot keep up. If the system still responds well, leave it alone.
+
+If the load is high and the system drags, check memory. When memory runs short, the kernel can thrash, swapping pages to and from disk. Many processes then wait for memory while they stay ready to run, so the load stays high for longer. That is the point where memory, not the CPU, is the problem.
+
 ### Memory in brief, and page faults
 
 Chapter 1.17 is the full treatment. For now, know that the CPU's **memory management unit (MMU)** translates **virtual addresses**, which processes use, into **physical addresses**. It does this with page tables that the kernel maintains, in units called **pages**. A page is 4 KiB normally, and `getconf PAGE_SIZE` reports the size on your system. The kernel loads and allocates pages **on demand**, which is called demand paging. A program that starts up has only its first pages in memory. When it touches an address that is not mapped yet, the CPU raises a **page fault**, and the kernel fixes things up.
@@ -575,6 +666,14 @@ This quiet-system output comes from *How Linux Works* (Section 8.5.4). The syste
 
 Here is how you should read the patterns. All idle (`id` about 99, with no `si` or `so`) means the system is healthy. High `us` with low `wa` is CPU-bound compute. High `wa` and `b` mean I/O-bound work, so look at `iostat`. Growing `so` with falling `free` or `cache` means memory is exhausted and the kernel is paging out. High `r` with high `us` plus `sy` means CPU contention. High `sy` and `cs` mean many system calls or lock contention. High `st` points to noisy neighbours on a shared VM.
 
+### Watching memory run out in `vmstat`
+
+A program that starts up needs memory for its code and data. `vmstat` shows what that does to the machine. Start with a quiet system, then launch a big program and watch the same columns change. At first the CPU spends more time in user code. The kernel uses spare RAM for buffers and cache, and free memory drops only slowly.
+
+The `si` column can rise when the kernel pulls pages back in from swap. This often happens when the new program uses shared library code that another process already loaded and that was swapped out. A few processes may also appear in the `b` column while they wait for memory pages. Disk traffic shows up in the `bi` and `bo` columns.
+
+Running out of memory looks different. Buffer and cache sizes shrink because the kernel needs that space for user processes. Then the `so` column starts to move, which means pages are going out to disk. System time rises, and more processes stay blocked in `b` because their memory sits in swap. Watch the trend across several lines of output, not one number.
+
 ### I/O: `iostat`, `iotop`, `pidstat`, `sar`
 
 Many of these I/O tools are not installed by default. You get `iostat`, `pidstat`, `sar` and `mpstat` from the `sysstat` package, and `iotop` from its own package. If you run `iostat` without options, it shows averages since boot. It prints an `avg-cpu:` block with `%user`, `%nice`, `%system`, `%iowait`, `%steal` and `%idle`. Then it prints a `Device` block with `tps`, `kB_read/s`, `kB_wrtn/s`, `kB_read` and `kB_wrtn`. By default, `iostat` leaves out partition information. Pass `-p ALL` to show partitions such as `sda1` alongside whole devices such as `sda`.
@@ -596,6 +695,55 @@ When you open `iostat -x`, you will see that `r/s` and `w/s` are requests per se
 To see the I/O used by individual processes, use `iotop`. It gives a continuously updating, `top`-like display. The top lines show total and current disk read and write bandwidth. Each row is a thread (`TID`) with its `PRIO` (`be/4` is best-effort level 4, `rt` is real-time, and `idle` is idle), plus `USER`, `DISK READ`, `DISK WRITE`, `SWAPIN`, `IO>` and `COMMAND`.
 
 `pidstat` prints a scrolling trace over time, such as `pidstat -p 1329 1` (`HLW` Section 8.5.6). Its columns are `UID`, `PID`, `%usr`, `%system`, `%guest`, `%CPU`, `CPU` and `Command`. It does not overwrite the screen the way `top` does. So you can watch a process move between CPU cores, for example from `CPU 1` to `CPU 3`, second by second. The book's further topics (`HLW` Section 8.7) cover **`sar`**. It comes from `sysstat`, and a collector cron job or systemd timer feeds it. Because `sar` records statistics, you can look back. Ask what the CPU was doing at 03:10 last night with `sar -u -f /var/log/sa/sa23`, or use `sar -r` for memory. Related tools are `acct` and `psacct`, which record every process that ran and its resource use, and quotas.
+
+### Partitions, per-process I/O and `pidstat` in detail
+
+By default, `iostat` shows whole disks only. Add `-p ALL` to list the partitions too. A typical machine has many partitions, so the output grows fast. This part of the output comes from a system with one disk and its partitions.
+
+```text
+$ iostat -p ALL
+Device: tps kB_read/s kB_wrtn/s kB_read kB_wrtn
+sda 4.67 7.27 49.83 9496139 65051472
+sda1 4.38 7.16 49.51 9352969 64635440
+sda2 0.00 0.00 0.00 6 0
+sda5 0.01 0.11 0.32 141884 416032
+scd0 0.00 0.00 0.00 0 0
+sde 0.00 0.00 0.00 1230 0
+```
+
+The partitions `sda1`, `sda2` and `sda5` belong to the `sda` disk. Their read and write columns overlap with the disk line, so the partition numbers do not add up to the disk total. A read from `sda1` also counts as a read from `sda`. You can also read `sda` directly, for example when the kernel reads the partition table.
+
+`iotop` answers a different question: which process is moving the data. It works like `top`, but it sorts by I/O instead of CPU. The top lines show the total read and write rates. The rows below show each busy process.
+
+```text
+# iotop
+Total DISK READ: 4.76 K/s | Total DISK WRITE: 333.31 K/s
+TID PRIO USER DISK READ DISK WRITE SWAPIN IO> COMMAND
+260 be/3 root 0.00 B/s 38.09 K/s 0.00 % 6.98 % [jbd2/sda1-8]
+2611 be/4 juser 4.76 K/s 10.32 K/s 0.00 % 0.21 % zeitgeist-daemon
+2636 be/4 juser 0.00 B/s 84.12 K/s 0.00 % 0.20 % zeitgeist-fts
+```
+
+The column is `TID`, not `PID`. `iotop` is one of the few tools that shows threads instead of processes. The `PRIO` column is the I/O priority. A lower number is more important, so `be/3` gets more disk time than `be/4`. The first part of the value is the scheduling class.
+
+There are three classes. `be` (best effort) is the default, and most processes use it. The kernel tries to share I/O fairly in this class. `rt` (real time) is served before any other class, every time. `idle` gets disk time only when no other I/O is waiting, and it has no level number. You can check or change the class with `ionice`. Most people never need to touch it.
+
+`pidstat` solves a different problem from `top` and `iotop`. Those tools redraw the screen and erase the last update. `pidstat` prints a new line for each sample, so you can compare them.
+
+```bash
+pidstat -p 1329 1          # (untested here) CPU of one process, one sample per second
+```
+
+```text
+$ pidstat -p 1329 1
+Linux 5.4.0-48-generic (duplex) 11/09/2020 _x86_64_ (4 CPU)
+09:26:55 PM UID PID %usr %system %guest %CPU CPU Command
+09:27:03 PM 1000 1329 8.00 0.00 0.00 8.00 1 myprocess
+09:27:04 PM 1000 1329 0.00 0.00 0.00 0.00 3 myprocess
+09:27:05 PM 1000 1329 3.00 0.00 0.00 3.00 1 myprocess
+```
+
+The default columns show user time (`%usr`), kernel time (`%system`) and the total (`%CPU`). They also show the CPU where the process ran. The `%guest` column is time spent inside a virtual machine. Ignore it unless you run VMs. Add `-r` to watch memory and `-d` to watch disk I/O. The `pidstat(1)` manual page lists more options.
 
 Before you tune anything, measure which resource is short.
 
