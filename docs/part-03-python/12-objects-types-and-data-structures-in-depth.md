@@ -647,6 +647,296 @@ Curly braces turn a comprehension into a set or a dictionary:
 {0: 6, 1: 15, 2: 24}
 ```
 
+### Slice and index assignment
+
+A list can change in place by assigning to one position or to a whole section. Index assignment replaces the single object at an offset. The reference at that offset then points to the new object:
+
+```python
+>>> L = ['code', 'Code', 'CODE!']
+>>> L[1] = 'Hack' # Index assignment replaces item 1
+>>> L
+['code', 'Hack', 'CODE!']
+>>> L[0:2] = ['write', 'Python'] # Slice assignment replaces items 0 and 1
+>>> L
+['write', 'Python', 'CODE!']
+```
+
+Slice assignment is harder to picture. It helps to think of it as two steps. First, Python deletes the slice to the left of the `=`. Then it inserts the items from the iterable on the right at that spot. This is a simplification, but it explains why the number of items does not have to match.
+
+For example, `L[1:2] = [4, 5]` replaces one item with two. The list grows by one. Assigning to an empty slice, or assigning an empty list, can insert or delete items:
+
+```python
+>>> L = [1, 2, 3]
+>>> L[1:2] = [4, 5] # Replacement and insertion
+>>> L
+[1, 4, 5, 3]
+>>> L[1:1] = [6, 7] # Insertion: the slice is empty
+>>> L
+[1, 6, 7, 4, 5, 3]
+>>> L[1:2] = [] # Deletion: nothing is inserted
+>>> L
+[1, 7, 4, 5, 3]
+```
+
+Slice assignment can overwrite, expand or shrink a list in one step. Python programmers often prefer clearer tools, such as the `insert`, `pop` and `remove` methods. Slice assignment can still add items at either end of a list:
+
+```python
+>>> L = [1]
+>>> L[:0] = [2, 3, 4] # Insert at the front: an empty slice at :0
+>>> L
+[2, 3, 4, 1]
+>>> L[len(L):] = [5, 6, 7] # Insert at the end: an empty slice at len(L):
+>>> L
+[2, 3, 4, 1, 5, 6, 7]
+>>> L.extend([8, 9, 10]) # The named method does the same at the end
+>>> L
+[2, 3, 4, 1, 5, 6, 7, 8, 9, 10]
+```
+
+Read the `[:0]` form as "the front, with nothing removed." The `extend` method is easier to read when you only need to add to the end.
+
+### Methods that find, insert and remove
+
+Lists have methods that search for items and change them by value or by offset. The `index` method returns the offset of an item. The `count` method returns how many times an item appears. Neither one changes the list:
+
+```python
+>>> L = ['hack', 'Py', 'code']
+>>> L.index('Py') # Offset of an object (search)
+1
+>>> L.insert(1, 'more') # Insert at an offset or position
+>>> L
+['hack', 'more', 'Py', 'code']
+>>> L.remove('code') # Delete by value
+>>> L
+['hack', 'more', 'Py']
+>>> L.pop(1) # Delete by offset
+'more'
+>>> L
+['hack', 'Py']
+>>> L.count('Py') # Number of occurrences
+1
+```
+
+The name `index` can be confusing. The method searches for an item's offset. It is not the same as the square-bracket indexing you saw earlier. The `pop` method takes an optional offset, and its default is the last item, at offset -1.
+
+### Sorting with key and reverse
+
+The `sort` method orders a list in place, using Python's standard comparison tests. Most examples here compare strings, but other objects can be sorted too. The default order is ascending. Two keyword arguments change that behavior.
+
+The `reverse` argument sorts in descending order. The `key` argument takes a one-argument function. Python calls it on each item and sorts by the value it returns. The next examples use the `lower` method of strings:
+
+```python
+>>> L = ['abc', 'ABD', 'aBe']
+>>> L.sort() # Sort with mixed case
+>>> L
+['ABD', 'aBe', 'abc']
+>>> L = ['abc', 'ABD', 'aBe']
+>>> L.sort(key=str.lower) # Normalize to lowercase
+>>> L
+['abc', 'ABD', 'aBe']
+>>> L = ['abc', 'ABD', 'aBe']
+>>> L.sort(key=str.lower, reverse=True) # And change sort order
+>>> L
+['aBe', 'ABD', 'abc']
+```
+
+The newer `casefold` method may handle some types of Unicode text better than `lower`. The `key` argument is also useful for lists of dictionaries. You can pick one field from each dictionary as the sort value.
+
+Sorts can fail on mixed types. Python treats magnitude comparisons between types such as `str` and `int` as an error, because the result is ambiguous. Sorting uses those comparisons, so the sort fails as well. Use `key` to convert each value during the sort:
+
+```python
+>>> L = [1, 'hack', 2] # Mixed-type sorts fail by default
+>>> L.sort()
+TypeError: '<' not supported between instances of 'str' and 'int'
+>>> L.sort(key=str) # Convert each item to a string for the sort
+>>> L
+[1, 2, 'hack']
+```
+
+Be careful with the return value. The `append`, `extend` and `sort` methods change the list but return `None`. If you write `L = L.append(X)`, you lose the list altogether. These methods change the object as a side effect, so do not assign their result.
+
+### The sorted built-in
+
+Python also has a `sorted` built-in function. It sorts any collection, not only lists. It returns a new list and leaves the original unchanged. Its arguments match those of `list.sort`:
+
+```python
+>>> L = ['abc', 'ABD', 'aBe']
+>>> sorted(L) # Sorting built-in function
+['ABD', 'aBe', 'abc']
+>>> L # L is not modified
+['abc', 'ABD', 'aBe']
+>>> sorted(L, key=str.lower, reverse=True) # Same arguments as list.sort
+['aBe', 'ABD', 'abc']
+```
+
+A list comprehension can change the values before the sort. The result differs from the `key` argument. The `key` function only affects the order during the sort. A comprehension changes the values that get sorted:
+
+```python
+>>> L = ['abc', 'ABD', 'aBe']
+>>> sorted([x.lower() for x in L], reverse=True) # Pretransform items: differs
+['abe', 'abd', 'abc']
+```
+
+Use `sorted` when you need a new list or when you want to sort any collection. Use `list.sort` when you already have a list and want to change it.
+
+### Reversing, stacks and reversed
+
+The `reverse` method reverses a list in place. The `pop` method deletes and returns one item, the last one by default. The `reversed` built-in does not change the list. Unlike `sorted`, it does not return a list either. It returns an iterable that produces results on demand, so wrap it in `list` to see every value:
+
+```python
+>>> L = [1, 2, 3, 4, 5]
+>>> L.pop() # Delete and return an item: the last one by default
+5
+>>> L
+[1, 2, 3, 4]
+>>> L.reverse() # In-place reversal
+>>> L
+[4, 3, 2, 1]
+>>> list(reversed(L)) # Reversal built-in with a result (iterable)
+[1, 2, 3, 4]
+>>> L # L was unchanged
+[4, 3, 2, 1]
+```
+
+Some programs use `append` and `pop` together as a stack. A stack is last in, first out. The end of the list acts as the top of the stack. Pushing adds to the top, and popping removes from the top:
+
+```python
+>>> L = []
+>>> L.append(1) # Push onto the stack
+>>> L.append(2)
+>>> L
+[1, 2]
+>>> L.pop() # Pop off the stack
+2
+>>> L
+[1]
+```
+
+### Membership, iteration and unpacking
+
+Lists respond to the same iteration tools you used with strings. The `in` operator tests membership. A `for` loop steps through the items from left to right. The `range` built-in makes a series of integers for counter loops:
+
+```python
+>>> 3 in [1, 2, 3] # Membership
+True
+>>> for x in [1, 2, 3]:
+...     print(x, end=' ') # Iteration
+...
+1 2 3
+>>> list(range(5)) # Counter generators (0 to N-1)
+[0, 1, 2, 3, 4]
+```
+
+A `for` loop works with any sequence or other iterable. It runs one or more statements for each item. The `range` values are used in many roles, including counter loops.
+
+List comprehensions build a new list by applying an expression to each item. A comprehension is close kin to a `for` loop that calls `append`. The comprehension is shorter and can run faster:
+
+```python
+>>> res = [x * 4 for x in 'code'] # List comprehension
+>>> res
+['cccc', 'oooo', 'dddd', 'eeee']
+>>> res = [] # Equivalent loop code
+>>> for x in 'code': # Append expression results
+...     res.append(x * 4)
+...
+>>> res
+['cccc', 'oooo', 'dddd', 'eeee']
+```
+
+Comprehensions can also filter with an `if` clause, or use nested `for` loops. The `map` built-in applies a function, not an expression, to each item. Wrap it in `list` to collect every result:
+
+```python
+>>> [x * 4 for x in 'program' if x >= 'p'] # Filter items with if clauses
+['pppp', 'rrrr', 'rrrr']
+>>> [x + y for x in 'py' for y in '312'] # Nested loops
+['p3', 'p1', 'p2', 'y3', 'y1', 'y2']
+>>> list(map(abs, [-1, -2, 0, 1, 2])) # Map a function across a sequence
+[1, 2, 0, 1, 2]
+```
+
+Since Python 3.5, a list literal can also use `*` to unpack any iterable. The unpacked items are flattened into the new list. Without the star, the items would be nested:
+
+```python
+>>> L = ['code', 'hack']
+>>> [L, 2, 3, L] # Normal assignments nest items
+[['code', 'hack'], 2, 3, ['code', 'hack']]
+>>> [*L, 2, 3, *L] # Iterable unpacking in list literal
+['code', 'hack', 2, 3, 'code', 'hack']
+>>> S = 'code' # Any sequence (or other iterable)
+>>> [*'Py', *S, *range(3)]
+['P', 'y', 'c', 'o', 'd', 'e', 0, 1, 2]
+```
+
+The star is never required. Concatenation with `+` gives the same result for lists. For other iterables, you need conversions with `list`, because `+` expects lists on both sides. A loop also works and is more general, though it is more verbose:
+
+```python
+>>> L + [2, 3] + L # What * unpacking does, for lists
+['code', 'hack', 2, 3, 'code', 'hack']
+>>> list('Py') + list(S) + list(range(3)) # What * unpacking does, for nonlists
+['P', 'y', 'c', 'o', 'd', 'e', 0, 1, 2]
+>>> M = []
+>>> for x in ('Py', S, range(3)): M.extend(x) # Loops are more general
+...
+>>> M
+['P', 'y', 'c', 'o', 'd', 'e', 0, 1, 2]
+```
+
+### Deleting items and slices
+
+The `del` statement removes an item or a section in place. Deleting a slice is the same as assigning an empty list to that slice:
+
+```python
+>>> L = ['hack', 'more', 'Py', 'code']
+>>> del L[0] # Delete one item (in place)
+>>> L
+['more', 'Py', 'code']
+>>> del L[1:] # Delete an entire section
+>>> L # Same as L[1:] = []
+['more']
+```
+
+Assigning an empty list to a slice deletes the slice, because Python removes it and inserts nothing. Assigning an empty list to a single index does something different. It stores a reference to the empty list in that slot. The list keeps its length:
+
+```python
+>>> L = ['hack', 'more', 'Py', 'code']
+>>> L[0:1] = []
+>>> L
+['more', 'Py', 'code']
+>>> L[1:] = []
+>>> L
+['more']
+>>> L[0] = []
+>>> L
+[[]]
+```
+
+### Common list operations
+
+Table 8-1 summarizes common list operations. It is not complete, so check `help(list)` or `dir(list)` for the full set of methods. The method list may also change over time, so cross-check it when you need it.
+
+| Operation | Meaning |
+| --- | --- |
+| `L = []` | An empty list |
+| `L = [123, 'abc', 1.23, {}]` | Four items: indexes 0 to 3 |
+| `L = ['Pat', 40.0, ['dev', 'mgr']]` | Nested sublists |
+| `L = list('code')` | List of an iterable's items |
+| `L = list(range(-4, 4))` | List of successive integers |
+| `L[i]`, `L[i][j]`, `L[i:j]`, `len(L)` | Index, index of index, slice, length |
+| `L1 + L2`, `L * 3` | Concatenate, repeat |
+| `L1 > L2`, `L1 == L2` | Comparisons: magnitude, equality |
+| `3 in L`, `for x in L: print(x)` | Membership, iteration |
+| `L.append(4)`, `L.extend([5, 6, 7])`, `L.insert(i, X)` | Methods: growing |
+| `L.index(X)`, `L.count(X)` | Methods: searching |
+| `L.sort()`, `L.reverse()`, `L.copy()`, `L.clear()` | Methods: sorting, reversing, copying, clearing |
+| `L.pop(i)`, `L.remove(X)`, `del L[i]`, `del L[i:j]`, `L[i:j] = []` | Methods and statements: shrinking |
+| `L[i] = 3`, `L[i:j] = [4, 5, 6]` | Index assignment, slice assignment |
+| `L = [*x, 0, *y, *z]` | Iterable unpacking |
+| `L = [x**2 for x in range(5)]`, `list(map(ord, 'python'))` | List comprehensions and maps |
+
+The `copy` method makes a top-level copy of a list. It is the same idea as `L[:]` and `list(L)`. Its name matches the `copy` methods of sets and dictionaries.
+
+Because lists are mutable, the in-place change operations above work on lists only. They do not work on strings or tuples, no matter how you write them. Mutability is a yes-or-no property of each object type.
+
 ## Dictionaries
 
 Dictionaries are not sequences. They are the only core mapping type. A mapping stores objects by key rather than by position. Dictionaries keep insertion order, which has been true since Python 3.7, but their main job is still mapping keys to values. Like lists, they are mutable, grow and shrink on demand, and can hold any kind of object. Their named keys suit records with labeled fields, such as the fields of a database row.
@@ -836,6 +1126,608 @@ print(key, '=>', value)
 ```
 
 The second loop uses tuple assignment, which unpacks each pair into two variables. To understand what `items` returns, you need to know about tuples first.
+
+### Dictionary operations
+
+Dictionaries are the core mapping type. Table 8-2 summarizes common dictionary operations. Like the list table, it is not complete. Run `help(dict)` or `dir(dict)` for the full list of methods.
+
+| Operation | Meaning |
+| --- | --- |
+| `D = {}` | Empty dictionary |
+| `D = {'name': 'Pat', 'age': 40.0}` | Two-item dictionary |
+| `E = {'cto': {'name': 'Sue', 'age': 40}}` | Nesting |
+| `D = dict(name='Bob', age=40)` | Alternative construction: keywords |
+| `D = dict([('name', 'Bob'), ('age', 40)])` | Alternative construction: key/value pairs |
+| `D = dict(zip(keyslist, valueslist))` | Alternative construction: zipped key and value lists |
+| `D = dict.fromkeys(['name', 'age'])` | Alternative construction: key lists |
+| `D['name']`, `E['cto']['age']` | Indexing by key, nested indexes |
+| `'age' in D`, `for key in D: print(D[key])` | Key membership and iteration |
+| `D.keys()`, `D.values()`, `D.items()` | All keys, all values, all key and value tuples |
+| `D.copy()`, `D.clear()`, `D.update(D2)` | Copy (top level), clear all items, merge by keys |
+| `D.get(key, default?)` | Fetch by key; if absent, the default (or None) |
+| `D.pop(key, default?)`, `D.setdefault(key, default?)`, `D.popitem()` | Remove by key, set default if absent, remove any pair |
+| `len(D)` | Length: number of stored entries |
+| `D[key] = 62` | Adding keys, changing key values |
+| `del D[key]` | Deleting entries by key |
+| `D1 == D2` | Comparisons: equality only |
+| `list(D.keys())`, `D1.keys() & D2.keys()` | Dictionary views |
+| `D = {**x, 'a': 1, **y, **z}` | Dictionary unpacking |
+| `D = {x: x*2 for x in range(10)}` | Dictionary comprehensions |
+| `D \| E` | Dictionary merge expression: copy plus update |
+
+Dictionaries are mostly changed by assigning to a key. Assigning to a new or existing key creates the entry or changes its value. The `del` statement deletes a key's entry. The `update` method merges one dictionary into another in place. The `pop` method removes a key and returns the value it had.
+
+### Changing dictionaries in place
+
+Dictionaries, like lists, are mutable. You can change, grow and shrink them without making new dictionaries. Assign a value to a key to change an entry or create it. The `del` statement removes the entry for a key. This example also nests a list inside a dictionary:
+
+```python
+>>> D = {'hack': 1, 'Py': 2, 'code': 3}
+>>> D['Py'] = ['app', 'dev'] # Change entry (value is a list)
+>>> D
+{'hack': 1, 'Py': ['app', 'dev'], 'code': 3}
+>>> del D['code'] # Delete entry (also D.pop(k))
+>>> D
+{'hack': 1, 'Py': ['app', 'dev']}
+>>> D['years'] = 32 # Add new entry
+>>> D
+{'hack': 1, 'Py': ['app', 'dev'], 'years': 32}
+>>> D['Py'][0] = 'program' # Change a nested list in place
+>>> D
+{'hack': 1, 'Py': ['program', 'dev'], 'years': 32}
+```
+
+Assigning to an existing list offset changes it, and assigning to an existing dictionary key changes it too. The difference is what happens with a new key. A new dictionary key creates a new entry. A list cannot do that, because it only accepts assignment to offsets that already exist. To grow a list, use `append` or slice assignment instead.
+
+The dictionary `values` and `items` methods return all the values and all the key and value tuples. Each one returns an iterable object. Wrap it in `list` to see the results at once:
+
+```python
+>>> D = {'program': 1, 'script': 2, 'app': 3}
+>>> list(D.keys()) # All keys
+['program', 'script', 'app']
+>>> list(D.values()) # All values
+[1, 2, 3]
+>>> list(D.items()) # All (key, value) tuples
+[('program', 1), ('script', 2), ('app', 3)]
+```
+
+The `get` method returns a default when a key is missing, such as `None` or a value you pass in. This avoids a missing-key error when you cannot predict the keys:
+
+```python
+>>> D.get('script') # A key that is present
+2
+>>> print(D.get('code')) # A key that is missing
+None
+>>> D.get('code', 4)
+4
+```
+
+The `update` method merges the keys and values of one dictionary into another. It adds new keys. For a key that already exists, it overwrites the value without warning:
+
+```python
+>>> D
+{'program': 1, 'script': 2, 'app': 3}
+>>> D2 = {'code': 4, 'hack': 5, 'app': 6} # New keys added, app: 6 wins
+>>> D.update(D2)
+>>> D
+{'program': 1, 'script': 2, 'app': 6, 'code': 4, 'hack': 5}
+```
+
+The dictionary `pop` method removes a key and returns its value. It works like the list `pop` method, but it takes a key instead of a position:
+
+```python
+>>> D.pop('app') # Pop a dictionary key
+6
+>>> D.pop('hack') # Delete key and return its value
+5
+>>> D
+{'program': 1, 'script': 2, 'code': 4}
+>>> L = ['aa', 'bb', 'cc', 'dd'] # Pop a list by position
+>>> L.pop() # Delete and return from the end
+'dd'
+>>> L.pop(1) # Delete from a specific position
+'bb'
+>>> L
+['aa', 'cc']
+```
+
+The `copy` method makes a copy of a dictionary. That matters when two names share one dictionary, so the shared references section covers it.
+
+### Other ways to build dictionaries
+
+Dictionaries are so useful that Python has several ways to build them. The first two forms use a literal and key assignment. The last two use the `dict` type name. They produce the same result as the literal and key-assignment forms:
+
+```python
+>>> {'name': 'Pat', 'age': 40} # 1) Traditional literal expression
+>>> D = {} # 2) Assign by keys dynamically
+>>> D['name'] = 'Pat'
+>>> D['age'] = 40
+>>> dict(name='Pat', age=40) # 3) dict keyword-argument form
+>>> dict([('name', 'Pat'), ('age', 40)]) # 4) dict key/value tuples form
+```
+
+All four forms create the same two-key dictionary. Each one fits a different case:
+
+1. The literal is handy when you can write the whole dictionary ahead of time.
+2. Key assignment works when you build the dictionary one field at a time.
+3. The keyword form takes less typing, but every key must be a string.
+4. The key/value tuples form helps when keys and values are built as sequences at runtime.
+
+The keyword form is newer than literals and common in Python code. It has less syntax, which leaves less room for mistakes. The `zip` function combines a list of keys with a list of values. This is useful when the values come from columns in a data file:
+
+```python
+>>> dict(zip(keyslist, valueslist)) # Zipped key/value tuples form
+```
+
+If all the values start out the same, `dict.fromkeys` builds the dictionary from a list of keys. The default value is `None`. Notice that you call it on the `dict` type, not on an existing dictionary:
+
+```python
+>>> dict.fromkeys(['a', 'b'], 0)
+{'a': 0, 'b': 0}
+>>> dict.fromkeys('code') # Other iterables, default value
+{'c': None, 'o': None, 'd': None, 'e': None}
+```
+
+### Dictionary unpacking and the union operator
+
+Since Python 3.5, a dictionary literal can use `**` to unpack the contents of another dictionary at its top level. You can unpack any number of dictionaries. When keys collide, the rightmost value wins:
+
+```python
+>>> D = dict(a=4, c=3)
+>>> {'a': 1, 'b': 2, **D} # Dictionary-literal unpacking
+{'a': 4, 'b': 2, 'c': 3}
+>>> dict(a=1, b=2) | D # Same, but with union operator
+{'a': 4, 'b': 2, 'c': 3}
+```
+
+The `**` form works in `dict` too, because it unpacks keyword arguments in any function call. Inside `dict`, though, a repeated key is an error. Literals allow the repeat:
+
+```python
+>>> dict(a=1, **{'b': 2}, **dict(c=3)) # Works in dict(), as in all calls
+{'a': 1, 'b': 2, 'c': 3} # As long as no keys are repeated!
+>>> dict(a=1, b=2, **dict(a=4, c=3))
+TypeError: dict() got multiple values for keyword argument 'a'
+```
+
+As of Python 3.9, dictionaries have a `|` union operator. Its result is a new dictionary, and the right side wins for repeated keys. It is a key-based merge, not a mathematical set union, even though it uses the same symbol as sets:
+
+```python
+>>> D = dict(a=1, b=2)
+>>> D | {'b': 3, 'c': 4} # Update, return, rightmost wins
+{'a': 1, 'b': 3, 'c': 4}
+>>> D | {'b': 3, 'c': 4} | dict(a=5, d=6)
+{'a': 5, 'b': 3, 'c': 4, 'd': 6}
+```
+
+The `update` method gives about the same result, but it changes the dictionary in place. To keep the original, make a copy first. The `|=` form works like calling `update` with one argument and no copy:
+
+```python
+>>> C = D.copy()
+>>> C.update({'b': 3, 'c': 4}) # "Union" without the | expression
+>>> C.update(dict(a=5, d=6))
+>>> C
+{'a': 5, 'b': 3, 'c': 4, 'd': 6}
+```
+
+A plain loop can do the same merge: `for k in D2: D1[k] = D2[k]` copies each key into `D1`. The book notes that Python now has three merge styles for one job. Choose the one that reads best in your code.
+
+### Dictionary comprehensions
+
+A dictionary comprehension runs an implied loop. It collects the key and value results of expressions on each iteration, and it fills a new dictionary. Abstractly, it maps to a loop like this, where both `k` and `v` can use the loop variable `x`:
+
+```python
+{k: v for x in iterable}  # Dictionary comprehension
+new = {}                  # Equivalent loop code
+for x in iterable:
+    new[k] = v
+```
+
+A common way to build a dictionary dynamically is to zip its keys and values. The `zip` built-in pairs items from two lists. You can wrap the result in `list` to see it:
+
+```python
+>>> list(zip(['a', 'b', 'c'], [1, 2, 3])) # Zip together keys and values
+[('a', 1), ('b', 2), ('c', 3)]
+>>> D = dict(zip(['a', 'b', 'c'], [1, 2, 3])) # Make a dict from zip result
+>>> D
+{'a': 1, 'b': 2, 'c': 3}
+```
+
+A dictionary comprehension gives the same result. It uses tuple assignment to unpack each pair as it scans the zipped list from left to right:
+
+```python
+>>> D = {k: v for (k, v) in zip(['a', 'b', 'c'], [1, 2, 3])}
+>>> D
+{'a': 1, 'b': 2, 'c': 3}
+```
+
+Comprehensions are more general than this example. The keys and the values can both be computed with expressions:
+
+```python
+>>> D = {x: x ** 2 for x in [1, 2, 3, 4]} # Or: in range(1, 5)
+>>> D
+{1: 1, 2: 4, 3: 9, 4: 16}
+>>> D = {c: c * 4 for c in 'HACK'} # Loop over any iterable
+>>> D
+{'H': 'HHHH', 'A': 'AAAA', 'C': 'CCCC', 'K': 'KKKK'}
+>>> D = {c.lower(): (c + '!') for c in ['HACK', 'PY', 'CODE']} # Expr: expr
+>>> D
+{'hack': 'HACK!', 'py': 'PY!', 'code': 'CODE!'}
+```
+
+Comprehensions can also filter with `if` clauses and use nested `for` loops. The book covers those fully in later chapters, so this section only shows the basic form.
+
+### Insertion order and popitem
+
+Dictionaries keep their keys in insertion order. This became guaranteed in Python 3.7, after CPython 3.6 had it. Keys are ordered from the oldest addition to the newest, and that is true for literals, `dict` calls, comprehensions and keys added later. Changing a value does not change its position:
+
+```python
+>>> D = dict(a=1, b=2) # Literal keys stored left to right
+>>> D['c'] = 3 # New keys always added at the end
+>>> D
+{'a': 1, 'b': 2, 'c': 3}
+>>> D.pop('b') # Method pop removes any key by name
+2
+>>> D # Other keys still in insertion order
+{'a': 1, 'c': 3}
+>>> D['b'] = 2 # Earlier key goes at the end too
+>>> D
+{'a': 1, 'c': 3, 'b': 2}
+>>> D['c'] = 0 # Changing values doesn't impact order
+>>> D['d'] = 1 # And new arrivals always go at the end
+>>> D
+{'a': 1, 'c': 0, 'b': 2, 'd': 1}
+```
+
+Insertion order works like the list stack you saw earlier. The `popitem` method returns the key and value pair added most recently. It removes that pair from the end:
+
+```python
+>>> D.popitem()
+('d', 1)
+>>> D.popitem()
+('b', 2)
+>>> D
+{'a': 1, 'c': 0}
+```
+
+Insertion order is not the same as a list. You cannot insert a key in the middle, and dictionaries are not sequences. Some outputs still need a sort. Ordering filenames for display, for example, usually calls for a sort on the strings instead of the insertion order.
+
+### Books database example
+
+Here is a small example of a dictionary at work. The table maps edition years, the keys, to titles, the values. You fetch an edition name by indexing with a year string:
+
+```python
+>>> table = {'2024': 'Learning Python, 6th Edition', # Year => title
+...          '2013': 'Learning Python, 5th Edition',
+...          '1999': 'Learning Python'}
+>>> table['2024'] # Key => value
+'Learning Python, 6th Edition'
+>>> for year in table: # Keys iteration
+...     print(year + '\t' + table[year])
+...
+2024	Learning Python, 6th Edition
+2013	Learning Python, 5th Edition
+1999	Learning Python
+```
+
+The `for` loop iterates through each key and prints a tab-separated line. The `\t` in a string means a horizontal tab. To step through a dictionary, you can call `keys` or loop over the dictionary itself. Both use the iteration protocol, and you can index from key to value inside the loop.
+
+The table maps years to titles, but not the other way around. You can build the table in reverse, with titles as keys:
+
+```python
+>>> table = {'Learning Python, 6th Edition': 2024, # Title => year
+...          'Learning Python, 5th Edition': 2013,
+...          'Learning Python': 1999}
+>>> table['Learning Python'] # Key => value
+1999
+>>> list(table.items())[:2] # The list call is required for items
+[('Learning Python, 6th Edition', 2024), ('Learning Python, 5th Edition', 2013)]
+>>> [title for (title, year) in table.items() if year == 1999] # Value => key
+['Learning Python']
+```
+
+A comprehension can also map a value back to its key. The search walks through every pair, so it is slower than a direct key lookup:
+
+```python
+>>> K = 'Learning Python'
+>>> V = 1999
+>>> table[K] # Key => value (normal usage)
+1999
+>>> [key for (key, value) in table.items() if value == V] # Value => key
+['Learning Python']
+>>> [key for key in table.keys() if table[key] == V] # Same: keys()
+['Learning Python']
+```
+
+Both of the last two commands return a list. A dictionary holds one value per key. A value can still appear under many keys, or be a collection that holds many values. You can also invert a dictionary with `zip`, but only if its values are immutable and do not repeat:
+
+```python
+>>> dict(zip(table.values(), table.keys()))[1999] # Key/value inversion?
+'Learning Python'
+```
+
+The inverted dictionary has integer keys here. That is fine, because integers are immutable. Store data once in a dictionary, and search backward only when you need to.
+
+### Keys that are not strings
+
+Keys do not have to be strings. Any immutable object works as a key, including integers and tuples. Tuples let a compound key, such as a date or an IP address, have a value. Lists, sets and dictionaries cannot be keys, because they can change. They are still allowed as values.
+
+Dictionary usage has a few more rules. A dictionary is a mapping, not a sequence. Concatenation and slicing do not apply to it, and Python raises an error if you try them. You can create a key with a literal or by assigning to a new key. The end result is the same.
+
+### Integer keys as flexible lists
+
+A list cannot be assigned past its end. A dictionary with integer keys can behave like a list that grows on assignment:
+
+```python
+>>> L = []
+>>> L[99] = 'hack'
+IndexError: list assignment index out of range
+>>> D = {}
+>>> D[99] = 'hack'
+>>> D[99]
+'hack'
+>>> D
+{99: 'hack'}
+```
+
+You can preallocate a list with repetition, such as `[0]*100`. A dictionary does not need that space, and it avoids the waste. The dictionary above looks like a 100-item list, but it has only one entry:
+
+```python
+>>> D[62] = 'code'
+>>> D[30] = 'write'
+>>> D[62]
+'code'
+>>> D
+{99: 'hack', 62: 'code', 30: 'write'}
+```
+
+Integer keys cannot contain nondigit characters. They are less expressive than string keys. A year table can use integer keys to avoid quoting the year:
+
+```python
+>>> table = {2024: 'Learning Python, 6th Edition'} # Integers work as keys
+>>> table[2024]
+'Learning Python, 6th Edition'
+```
+
+### Sparse data with tuple keys
+
+Dictionary keys are often used for sparse data. Sparse data is mostly empty, such as a three-dimensional array where only a few positions hold values. The keys are tuples that record the coordinates of the filled slots:
+
+```python
+>>> Matrix = {}
+>>> Matrix[(2, 3, 4)] = 88
+>>> Matrix[(7, 8, 9)] = 99
+>>> X = 2; Y = 3; Z = 4 # A ; separates statements
+>>> Matrix[(X, Y, Z)]
+88
+>>> Matrix
+{(2, 3, 4): 88, (7, 8, 9): 99}
+```
+
+A dictionary with two items stands in for a large, mostly empty array. Accessing an empty slot raises a missing-key exception, because no value is stored there:
+
+```python
+>>> Matrix[(2, 3, 6)]
+KeyError: (2, 3, 6)
+```
+
+Missing-key errors are common with sparse data. You usually do not want them to stop the program. There are three ways to supply a default. The `get` method is the most concise. An `if` test checks for the key first. A `try` statement catches the error and recovers:
+
+```python
+>>> Matrix.get((2, 3, 4), 0) # Exists: fetch and return
+88
+>>> Matrix.get((2, 3, 6), 0) # Doesn't exist: use passed default
+0
+>>> if (2, 3, 6) in Matrix: # Check for key before fetch
+...     print(Matrix[(2, 3, 6)])
+... else:
+...     print(0)
+...
+0
+>>> try:
+...     print(Matrix[(2, 3, 6)]) # Try to index
+... except KeyError: # Catch and recover
+...     print(0)
+...
+0
+```
+
+The `get` method is the most concise. The `if` and `try` forms are more general, and you will use them in many other places.
+
+### Dictionaries as records
+
+Dictionaries can represent structured information. They can play the role of records or structs in other languages, and of JSON content in language-neutral roles. This example fills in a book record by assigning to new keys:
+
+```python
+>>> rec = {}
+>>> rec['title'] = 'Learning Python, 5th Edition'
+>>> rec['year'] = 2013
+>>> rec['isbn'] = '9781449355739'
+>>> rec['year'], rec['isbn']
+(2013, '9781449355739')
+```
+
+You can also write the nested record all at once. Here a nested dictionary and a list describe the properties of one book:
+
+```python
+>>> rec = {'title': 'Learning Python, 5th Edition',
+...        'date': {'year': 2013, 'month': 'July'},
+...        'isbns': ['1449355730', '9781449355739']}
+>>> rec['title']
+'Learning Python, 5th Edition'
+>>> rec['isbns']
+['1449355730', '9781449355739']
+>>> rec['isbns'][1]
+'9781449355739'
+>>> rec['date']['year']
+2013
+```
+
+Chained indexes reach nested values. The record can also live inside a larger collection. A list or a dictionary can act as a database of records:
+
+```python
+db = []
+db.append(rec)  # A list "database"
+db.append(other)
+db[0]['isbns']
+db = {}
+db['lp5e'] = rec  # A dictionary "database"
+db['lp6e'] = other
+db['lp5e']['isbns']
+```
+
+Later in the book, the `shelve` module works much the same way. It maps objects to and from files, so the records stay after the program ends.
+
+### Dictionary views
+
+The `keys`, `values` and `items` methods return view objects. A view produces results on demand, instead of a physical list. Displaying a view at the prompt shows its type:
+
+```python
+>>> D = dict(program=1, script=2, app=3)
+>>> D.keys()
+dict_keys(['program', 'script', 'app'])
+```
+
+Views are iterable, so they produce one item at a time. They keep insertion order, reflect later changes to the dictionary, and support set operations. Because they are not lists, they do not support indexing or the `sort` method. Wrap them in `list` when you need list operations:
+
+```python
+>>> K = D.keys() # Makes a view object, not a list
+>>> list(K) # Force a real list when needed
+['program', 'script', 'app']
+>>> K[0] # List operations fail unless converted
+TypeError: 'dict_keys' object is not subscriptable
+>>> K.sort()
+AttributeError: 'dict_keys' object has no attribute 'sort'
+>>> list(K)[0], list(K).sort()
+('program', None)
+```
+
+Views do not copy the full results. They change as the dictionary changes. Keep this in mind if you hold on to a view. Most loops do not need it:
+
+```python
+>>> D = {'a': 1, 'b': 2, 'c': 3}
+>>> K = D.keys()
+>>> V = D.values()
+>>> list(K), list(V) # Views maintain same order as dictionary
+(['a', 'b', 'c'], [1, 2, 3])
+>>> del D['b'] # Change the dictionary in place
+>>> list(K), list(V) # Reflected in any current view objects
+(['a', 'c'], [1, 3])
+```
+
+A `for` loop uses the view automatically. `for k in D.keys()` and `for k in D` do the same thing. Most programmers write the shorter form.
+
+Some views are set-like. The `keys` view works with set operations. The `values` view does not, because its items need not be unique or hashable. An `items` view is set-like only when its pairs are hashable:
+
+```python
+>>> D = {'a': 1, 'c': 3}
+>>> K = D.keys()
+>>> V = D.values()
+>>> K | {'x': 4} # Keys (and some items) views are set-like
+{'x', 'a', 'c'} # Results are unordered sets, not views
+>>> V | {'x': 4}
+TypeError: unsupported operand type(s) for |: 'dict_values' and 'dict'
+>>> D.keys() & {'b': 1} # Intersect view and dict
+{'b'}
+>>> {'a': [1, 2]}.items() | {0, 1} # Unhashable list in an item: no set ops
+TypeError: unhashable type: 'list'
+```
+
+The `|` in a view is a set union, not a full dictionary merge. Keep this separate from the dictionary union operator earlier in this section. Set operations on views are rare, but they work when they help.
+
+### Sorting keys and comparing dictionaries
+
+Keys must be sorted when insertion order does not meet your goal. A view cannot be sorted directly, because `keys` does not return a list:
+
+```python
+>>> D = {'c': 3, 'b': 2, 'a': 1}
+>>> Ks = D.keys() # Sorting a view object doesn't work!
+>>> Ks.sort()
+AttributeError: 'dict_keys' object has no attribute 'sort'
+```
+
+You can convert the keys to a list and sort that list. You can also call `sorted` on the view or on the dictionary itself:
+
+```python
+>>> Ks = list(D.keys()) # Convert keys to a list
+>>> Ks.sort() # And then sort with list.sort()
+>>> for k in Ks: print(k, D[k])
+...
+a 1
+b 2
+c 3
+>>> for k in sorted(D): print(k, D[k]) # sorted() on the dict: iterators produce keys
+...
+a 1
+b 2
+c 3
+```
+
+Dictionaries compare for equality with `==`. The comparison checks each key and value, and it ignores insertion order:
+
+```python
+>>> D1 = dict(a=1, b=2, c=3)
+>>> D2 = dict(c=3, b=2, a=1)
+>>> D1 == D2, D1 != D2
+(True, False)
+```
+
+Magnitude comparisons such as `<` and `>` do not work on dictionaries. You can compare the `items` lists yourself, but you must sort them first, because insertion order would change the result:
+
+```python
+>>> D1 = dict(a=1, b=2, c=4)
+>>> D2 = dict(c=3, b=2, a=1)
+>>> D1 > D2
+TypeError: '>' not supported between instances of 'dict' and 'dict'
+>>> list(D1.items()) > list(D2.items()) # Fails: insertion order
+False
+>>> D1.items() > D2.items() # Fails: superset, not magnitude
+False
+>>> sorted(D1.items()) > sorted(D2.items()) # OK: sorted to neutralize order
+True
+```
+
+### Lists, dictionaries or sets
+
+Lists and dictionaries are both flexible collections. Lists assign items to positions. Dictionaries assign items to keys, and the keys are more meaningful to people. A nested list can store a record, but the reader must remember what each position means:
+
+```python
+>>> L = ['Pat', 40.5, ['dev', 'mgr']] # List-based "record"
+>>> L[0]
+'Pat'
+>>> L[1] # Positions/numbers for fields
+40.5
+>>> L[2][1]
+'mgr'
+```
+
+Dictionary data carries more meaning. The keys name the fields, so the reader does not need to count positions:
+
+```python
+>>> D = {'name': 'Pat', 'age': 40.5, 'jobs': ['dev', 'mgr']}
+>>> D['name']
+'Pat'
+>>> D['age'] # Dictionary-based "record"
+40.5
+>>> D['jobs'][1] # Names mean more than numbers
+'mgr'
+```
+
+Lists suit collections of unlabeled items, such as the files in a directory or the employees in a company. Dictionaries suit labeled data, and they allow quick, direct lookup by name. Dictionary lookup is usually faster than a linear search through a list. Dictionaries are also a good fit for sparse collections and for collections that grow in unplanned ways.
+
+A set is like the keys of a dictionary without values. Sets are useful for fast membership tests when there is no value to store. A visited-state check is a good example:
+
+```python
+>>> D = {}
+>>> D['state1'] = True # A visited-state dictionary
+>>> 'state1' in D
+True
+>>> S = set()
+>>> S.add('state1') # Same, but with sets
+>>> 'state1' in S
+True
+```
+
+Choose a list for ordered items, a dictionary for labeled fields, and a set when you only need to know whether something is present.
 
 ## Tuples
 
@@ -4975,6 +5867,46 @@ An object is true when it is a nonzero number or a nonempty collection. `True` a
 
 </details>
 
+22. Name two ways to build a list containing five integer zeros.
+
+<details><summary>Answer</summary>
+
+A literal such as `[0, 0, 0, 0, 0]` and a repetition expression such as `[0] * 5` both work. You can also start with an empty list and call `append(0)` in a loop, or use a list comprehension such as `[0 for i in range(5)]`.
+
+</details>
+
+23. Name two ways to build a dictionary with two keys, `'a'` and `'b'`, each with the value `0`.
+
+<details><summary>Answer</summary>
+
+A literal such as `{'a': 0, 'b': 0}` works, and so does a series of assignments to new keys. The keyword form `dict(a=0, b=0)` and `dict.fromkeys('ab', 0)` also work, because all the values are the same.
+
+</details>
+
+24. Name four operations that change a list in place.
+
+<details><summary>Answer</summary>
+
+Any four of these are correct: `append` and `extend` grow a list, `sort` and `reverse` reorder it, `insert` adds an item at an offset, `remove` and `pop` delete by value and by position, `del` removes an item or slice, and index and slice assignment replace items.
+
+</details>
+
+25. Name four operations that change a dictionary in place.
+
+<details><summary>Answer</summary>
+
+Any four of these are correct: assigning to a new or existing key, the `del` statement, the `update` method, and `D.pop(key)`. The `popitem` and `setdefault` methods also change a dictionary.
+
+</details>
+
+26. Why might you use a dictionary instead of a list?
+
+<details><summary>Answer</summary>
+
+Dictionaries suit data with labeled parts, such as a record with field names. Lists suit collections of unlabeled items, such as the files in a directory. Dictionary lookup is usually quicker than searching a list.
+
+</details>
+
 ## Sources and review notes
 
 - Source: *Learning Python*, 6th edition (`learning-python-6th-edition`). Chapters used are listed in each section.
@@ -4982,4 +5914,5 @@ An object is true when it is a nonzero number or a nonempty collection. `True` a
 - Source: `learning-python-6th-edition`, chapter 5, "Numbers and Expressions."
 - Source: `learning-python-6th-edition`, chapter 6, "The Dynamic Typing Interlude."
 - Source: `learning-python-6th-edition`, chapter 7, "String Fundamentals."
+- Source: `learning-python-6th-edition`, chapter 8, "Lists and Dictionaries."
 - Source: `learning-python-6th-edition`, chapter 9, "Tuples, Files, and Everything Else."

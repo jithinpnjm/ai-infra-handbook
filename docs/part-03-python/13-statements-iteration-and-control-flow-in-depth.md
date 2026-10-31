@@ -2757,6 +2757,755 @@ for line in sorted(open('data.txt')):
 
 Python's documentation covers the file calls used here. It also covers `os.popen`. By default, that returns a file object connected to a shell command's output, and that file object supports the same kind of loops.
 
+## The iteration protocol
+
+The `for` loop does not care what kind of collection it steps through. It works on any iterable object. That idea reaches well beyond loops. Comprehensions, `in` membership tests, and the `zip`, `enumerate`, and `map` built-in functions all scan objects from left to right in the same way. Even dictionaries work, although they are not sequences.
+
+```python
+>>> for k in dict(a=1, b=2, c=3): print(k, end=' ')
+a b c
+```
+
+An iterable is a generalization of a sequence. An object counts as iterable if it is a stored sequence. It also counts if it produces one result at a time during an iteration. Those results can be computed on demand. This saves memory and avoids delays, because nothing is built all at once.
+
+Virtual iterables are not true sequences, though. They do not support every operation that lists and tuples do. They only hand out values over time, when something asks for them. Whether an object is physical or virtual, it announces iteration support by implementing the iteration protocol. That protocol is a set of callable methods that all iteration tools use.
+
+### Iterables and iterators
+
+Python sometimes uses the words iterable and iterator interchangeably. That can be confusing. In this handbook, an iterable is an object with the `__iter__` method at the top of the protocol. An iterator is an object with the `__next__` method that produces results. An iterable returns an iterator, and the iterator advances on each `next` call.
+
+The phrase iteration tool means any language feature that runs an iteration. A `for` loop and a `zip` call are both iteration tools.
+
+### Reading a file one line at a time
+
+Files show the protocol clearly. Suppose `data.txt` holds three lines of text. The `readline` method reads one line on each call. At the end of the file, it returns an empty string. An empty string is false, so a loop can stop on it.
+
+```python
+>>> f = open('data.txt')
+>>> f.readline()
+'Testing file IO\n'
+>>> f.readline()
+'Learning Python, 6E\n'
+>>> f.readline()
+'Python 3.12\n'
+>>> f.readline()
+''
+```
+
+Files also have a `__next__` method that does nearly the same job. The one difference is what happens at the end. Instead of returning an empty string, `__next__` raises a `StopIteration` exception.
+
+```python
+>>> f = open('data.txt')
+>>> f.__next__()
+'Testing file IO\n'
+>>> f.__next__()
+'Learning Python, 6E\n'
+>>> f.__next__()
+'Python 3.12\n'
+>>> f.__next__()
+Traceback (most recent call last):
+StopIteration
+```
+
+Any object with a `__next__` method that raises `StopIteration` at the end counts as an iterator. Every iteration tool calls `__next__` on each pass. It catches `StopIteration` to learn when to stop. A file is its own iterator, so the initial `iter` step is optional for files.
+
+### Letting the for loop read the file
+
+The best way to read a text file line by line is to skip explicit reads. Let the `for` loop call `__next__` for you. The file iterator loads one line at a time, so the code stays short and efficient.
+
+```python
+>>> for line in open('data.txt'):
+...     print(line.upper(), end='')
+TESTING FILE IO
+LEARNING PYTHON, 6E
+PYTHON 3.12
+```
+
+The `end=''` argument stops `print` from adding another newline. Each line string already ends with `\n`. Without `end=''`, the output would be double-spaced.
+
+Older code often loads every line first with the `readlines` method. That still runs, but it is not the best practice now. It loads the whole file into memory at once. A file larger than available memory will fail that way. The iterator version reads one line at a time, so memory use stays low.
+
+A `while` loop can also read line by line, using the `:=` named assignment.
+
+```python
+>>> f = open('data.txt')
+>>> while line := f.readline():
+...     print(line.upper(), end='')
+TESTING FILE IO
+LEARNING PYTHON, 6E
+PYTHON 3.12
+```
+
+This version usually runs slower than the iterator. File iterators run at C-language speed inside standard CPython. The `while` version runs Python bytecode through the Python virtual machine. Trading Python code for C code tends to raise speed. Speed is not an absolute rule, though, so measure before you decide.
+
+Timing results from CPython 3.12 on macOS show the order. The test used `min(timeit.repeat(code, repeat=50, number=10))` on a 9k-line file, with `pass` as each loop body. The iterator took 0.0073 seconds. The `readlines` version took 0.0077 seconds. The `while` loop took 0.0102 seconds. Without `:=`, the `while` loop took 0.0104 seconds. Your numbers will vary, and memory use matters too. A gap of 0.0029 seconds may not matter in many programs.
+
+### The iter and next built-ins
+
+To simplify manual iteration, Python provides a built-in function named `next`. The call `next(X)` does the same thing as `X.__next__()`. It is simpler to type and read. It also runs slightly faster in CPython 3.12 for the cases tested.
+
+```python
+>>> f = open('data.txt')
+>>> f.__next__()
+'Testing file IO\n'
+>>> next(f)
+'Learning Python, 6E\n'
+>>> next(f)
+'Python 3.12\n'
+```
+
+The `for` loop also needs an iterator first. It calls the iterable's `__iter__` method to get one. The `iter` built-in runs the same step for you. The returned object then supplies `__next__`.
+
+```python
+>>> f = open('data.txt')
+>>> I = iter(f)
+>>> next(I)
+'Testing file IO\n'
+>>> next(I)
+'Learning Python, 6E\n'
+```
+
+### The full iteration protocol
+
+The full protocol involves two objects, used in two steps. The first is the iterable being scanned. Calling its `__iter__` method returns an iterator, just as `iter` does. The second is the iterator. Calling its `__next__` method produces results. It raises `StopIteration` when no results remain, just as `next` does.
+
+Iteration tools run these steps automatically. In some cases a single object plays both roles, as with files, which support just one scan. The iterator is often a temporary object that the tool creates and uses internally.
+
+For a list, the steps are visible when you call them yourself.
+
+```python
+>>> L = [1, 2]
+>>> I = iter(L)
+>>> next(I)
+1
+>>> next(I)
+2
+>>> next(I)
+StopIteration
+```
+
+Some objects are both an iteration tool and an iterable. The `enumerate` and `zip` built-ins are examples. They already avoid building result lists in memory. Applying them to other iterables saves even more space. No work happens until an iteration tool asks for results.
+
+Files are their own iterators, while lists are not. You can check this with `is`, which tests object identity.
+
+```python
+>>> f = open('data.txt')
+>>> iter(f) is f
+True
+>>> iter(f) is f.__iter__()
+True
+>>> L = [1, 2, 3]
+>>> iter(L) is L
+False
+>>> next(L)
+TypeError: 'list' object is not an iterator
+```
+
+Lists and many other built-in objects support multiple open scans at once. Nested loops may each sit at a different position in the same list. For such objects, call `iter` to start a manual scan.
+
+### Manual iteration
+
+Python iteration tools call these functions for you. You can also apply the protocol yourself when needed. The next example shows that a `for` loop and a manual loop give the same result.
+
+```python
+L = [1, 2, 3]
+for X in L:
+    print(X ** 2, end=' ')
+
+I = iter(L)
+while True:
+    try:
+        X = next(I)
+    except StopIteration:
+        break
+    print(X ** 2, end=' ')
+```
+
+Both loops print `1 4 9`. The second loop does by hand what the `for` loop does automatically. It gets an iterator with `iter`, calls `next` on each pass, and catches the stop signal.
+
+A `try` statement runs an action and catches any exception raised while it runs. Exceptions get a fuller treatment later in the book. The `for` loop runs the internal equivalent of `__next__`, not `next`, but the effect is the same.
+
+For user-defined classes, a `for` loop may index the object repeatedly instead of running the protocol. It prefers the protocol when the object supports it. The later chapter on operator overloading returns to this story.
+
+### next with a default value
+
+The `next` built-in takes an optional second argument. If you pass one, Python returns that value at the end instead of raising a stop exception.
+
+```python
+>>> L = [1]
+>>> I = iter(L)
+>>> next(I, 'end of list')
+1
+>>> next(I, 'end of list')
+'end of list'
+```
+
+Combined with `:=`, this default shortens manual loops. The catch is that it fails if the default can also be a real value. The following example assumes that `None` is safe to use.
+
+```python
+>>> I = iter(L)
+>>> while (X := next(I, None)) != None:
+...     print(X ** 2, end=' ')
+```
+
+The `iter` built-in can also take a second argument, a sentinel value. The call then reads from a function until the function returns the sentinel. This is a tricky way to read a file in blocks with a `for` loop. It needs `lambda`, which you will meet later.
+
+```python
+>>> f = open('data.txt')
+>>> I = iter(lambda: f.read(5), '')
+>>> for block in I: print(block, end='')
+```
+
+Python's documentation covers more modes of `next` and `iter`.
+
+## Other built-in iterables
+
+### Dictionaries, range, enumerate, and zip
+
+A `for` loop is the usual way to step through a dictionary's keys. Dictionaries are implicitly iterable. Their iterator returns one key at a time.
+
+```python
+>>> D = dict(a=1, b=2)
+>>> for key in D:
+...     print(key, D[key])
+a 1
+b 2
+>>> I = iter(D)
+>>> next(I)
+'a'
+>>> next(I)
+'b'
+```
+
+The iteration protocol also explains why `range` results need a `list` call before you can see their values in a REPL. A `range` object produces values one at a time.
+
+```python
+>>> R = range(5)
+>>> R
+range(0, 5)
+>>> I = iter(R)
+>>> next(I)
+0
+>>> next(I)
+1
+>>> list(range(5))
+[0, 1, 2, 3, 4]
+```
+
+The `list` call is not needed inside a `for` loop, where iteration happens automatically. Avoid it there. Use it when you want to display all values at once, or when you need list behavior or several scans.
+
+The `enumerate` built-in is also an iterable. Its result is its own iterator, like a file. That means `iter` is optional, and it supports just one scan per call.
+
+```python
+>>> E = enumerate('text')
+>>> iter(E) is E
+True
+>>> next(E)
+(0, 't')
+>>> list(enumerate('text'))
+[(0, 't'), (1, 'e'), (2, 'x'), (3, 't')]
+```
+
+The `zip` built-in works the same way. Like `enumerate`, `zip` is its own iterator. Call it again to iterate again.
+
+```python
+>>> Z = zip((1, 2, 3), (10, 20, 30))
+>>> I = iter(Z)
+>>> next(I)
+(1, 10)
+>>> next(I)
+(2, 20)
+>>> I is Z
+True
+>>> list(Z)
+[(3, 30)]
+>>> list(zip((1, 2, 3), (10, 20, 30)))
+[(1, 10), (2, 20), (3, 30)]
+```
+
+### Iterator nesting
+
+The `zip` built-in is both an iteration tool and an iterable. It consumes results from its arguments. It also returns an iterable with an iterator for its own results. In the next example, `zip` receives results from two `range` objects. Its own results come on demand too.
+
+```python
+>>> Z = zip(range(1, 4), range(10, 40))
+>>> next(Z)
+(1, 10)
+>>> next(Z)
+(2, 11)
+>>> next(Z)
+(3, 12)
+>>> list(zip(range(1, 4), range(10, 40)))
+[(1, 10), (2, 11), (3, 12)]
+```
+
+Iterators can nest as deep as needed. Because `enumerate` is both a tool and an object, `range`, `enumerate`, and `zip` can all produce results on demand. The `list` call starts the whole chain.
+
+```python
+>>> list(enumerate(range(1, 4)))
+[(0, 1), (1, 2), (2, 3)]
+>>> list(zip(enumerate(range(1, 4)), enumerate(range(5, 8))))
+[((0, 1), (0, 5)), ((1, 2), (1, 6)), ((2, 3), (2, 7))]
+```
+
+The following example enumerates the zipped results of two ranges. It runs only when a `for` loop asks for results.
+
+```python
+>>> for x in enumerate(zip(range(1, 4), range(5, 8))): print(x)
+(0, (1, 5))
+(1, (2, 6))
+(2, (3, 7))
+```
+
+Three levels of iterables defer their results here. Nothing happens until a tool such as `list` or `for` asks at the top. Each level then returns one result at a time. This keeps memory needs low and avoids long pauses.
+
+### Functional iterables: map and filter
+
+The `map` and `filter` built-ins also produce results one at a time. Like `enumerate` and `zip`, they are both iteration tools and iterable objects. They scan other iterables and make their own results on demand.
+
+The `map` built-in calls a function for each item in an iterable. It returns the results as another iterable. In the next example, `map` applies the `ord` built-in to collect character code points.
+
+```python
+>>> ord('p')
+112
+>>> M = map(ord, 'py3')
+>>> M
+<map object at 0x101227550>
+>>> next(M)
+112
+>>> next(M)
+121
+>>> next(M)
+51
+```
+
+The `map` object supports no sequence operations, such as indexing with `[i]`. Call `list` if you need a real list. Call `map` again to scan again. A `for` loop calls `next` for you.
+
+```python
+>>> list(map(ord, 'py3'))
+[112, 121, 51]
+>>> M = map(ord, 'py3')
+>>> for x in M: print(x, end=' ')
+112 121 51
+```
+
+The `filter` built-in is similar. It returns the items for which a function returns `True`. A value is true if it is nonempty or nonzero. The `bool` built-in returns the truth value of one object. The `isdigit` method of `str` is true for all-digit text.
+
+```python
+>>> filter(bool, ['lp6e', '', 2024])
+<filter object at 0x101227850>
+>>> list(filter(bool, ['lp6e', '', 2024]))
+['lp6e', 2024]
+>>> list(filter(str.isdigit, ['lp6e', '2024']))
+['2024']
+```
+
+Both tools call functions instead of evaluating expressions. Their full story waits until you learn functions. Their basic behavior is clear already. Both can be emulated roughly with list comprehensions, and more closely with generator expressions. Comprehensions come next.
+
+```python
+>>> [ord(x) for x in 'py3']
+[112, 121, 51]
+>>> [x for x in ['lp6e', '2024'] if x.isdigit()]
+['2024']
+```
+
+### Multiple-pass versus single-pass iterables
+
+Some iterables allow many scans. Others allow only one. The difference changes how you use them.
+
+The `range` object, dictionaries, and lists are not their own iterators. You must make one with `iter` when you iterate manually. These objects support multiple iterators, and each iterator remembers its own position.
+
+```python
+>>> R = range(3)
+>>> next(R)
+TypeError: range object is not an iterator
+>>> I1 = iter(R)
+>>> next(I1)
+0
+>>> next(I1)
+1
+>>> I2 = iter(R)
+>>> next(I2)
+0
+>>> next(I1)
+2
+```
+
+The results of `enumerate`, `zip`, `map`, and `filter` are their own iterators. Files work the same way. None of these supports multiple active iterations on one result. The `iter` call is optional for them, though harmless. To start a fresh scan, call the tool again.
+
+```python
+>>> Z = zip((1, 2, 3), (10, 11, 12))
+>>> I1 = iter(Z)
+>>> I2 = iter(Z)
+>>> next(I1)
+(1, 10)
+>>> next(I1)
+(2, 11)
+>>> next(I2)
+(3, 12)
+>>> M = map(ord, 'py3')
+>>> I1, I2 = iter(M), iter(M)
+>>> next(I1), next(I1)
+(112, 121)
+>>> next(I2)
+51
+>>> L = [0, 1, 2]
+>>> I1, I2 = iter(L), iter(L)
+>>> next(I1), next(I1)
+(0, 1)
+>>> next(I2)
+0
+```
+
+Here the list supports several active scans at once, as `range` does. The `zip` and `map` objects share one position between their iterators. Classes you write later usually return a new object from `iter`, so each scan gets its own position. A single iterator usually returns itself and supports `next` directly. Generator functions and generator expressions behave like `map` and `zip` in this regard. They support just one active scan. Code that treats such single-pass iterators as lists may fail unless you convert them with `list` first.
+
+### Standard-library iterables
+
+Python's standard library adds more iterables. Shelves give access to stored objects by key. The results of `os.popen`, which reads the output of a shell command, are iterable too. You can process both with the full set of iteration tools. The `os.walk` directory walker is iterable as well. The details of that tool wait for the book's coverage of generators.
+
+All of these implement the same `iter` and `next` interface. Loops run that machinery for you, so you rarely see it.
+
+## Comprehensions
+
+Comprehensions and `for` loops are the most common places the iteration protocol appears. Earlier, you changed a list with `range` and an index.
+
+```python
+>>> L = [1, 2, 3, 4, 5]
+>>> for i in range(len(L)):
+...     L[i] += 10
+>>> L
+[11, 12, 13, 14, 15]
+```
+
+This works, but it is not the best approach in Python. A list comprehension replaces this pattern with one expression that builds the result list.
+
+```python
+>>> L = [x + 10 for x in L]
+>>> L
+[21, 22, 23, 24, 25]
+```
+
+The result is similar, and the code is shorter. It is often twice as fast as the loop, as tested in CPython 3.12. A comprehension makes a new list object. That can matter if several names refer to the original list. For most code, the difference does not matter.
+
+### List comprehension basics
+
+List comprehensions appeared earlier in the handbook. Their syntax comes from set-theory notation, which applies an operation to each item in a set. You do not need set theory to use them. Most people read a list comprehension as a backward `for` loop.
+
+Take the earlier example apart. The square brackets mean the result is a new list. The expression on the left is one you write. It uses a loop variable you name, such as `x + 10`. The part on the right is a `for` header. It names the loop variable and the iterable, as in `for x in L`.
+
+Python runs the iteration across `L` inside the interpreter. It assigns `x` to each item in turn. It collects the result of the expression for each item. The result is a new list with `x + 10` for every `x` in `L`.
+
+Comprehensions are never strictly required. You can always build the result list with a `for` loop and `append`.
+
+```python
+>>> res = []
+>>> for x in L:
+...     res.append(x + 10)
+>>> res
+[31, 32, 33, 34, 35]
+```
+
+A comprehension does exactly this internally, using internal equivalents. The comprehension is more concise, though. Building result lists is so common that the shorter form earns its place.
+
+Comprehensions can also run faster than manual loops. Their iterations run at the speed of optimized, usually compiled, code inside the interpreter. Manual loops run as Python code. For larger data sets, this speed advantage can matter a great deal.
+
+### List comprehensions and files
+
+The `readlines` method loads a file into a list of line strings all at once. Each line keeps its newline character at the end.
+
+```python
+>>> f = open('data.txt')
+>>> lines = f.readlines()
+>>> lines
+['Testing file IO\n', 'Learning Python, 6E\n', 'Python 3.12\n']
+```
+
+For many programs, the newline gets in the way. It causes double-spacing when you print. The `rstrip` method removes whitespace from the right side of a string. A `line[:-1]` slice also works, but only if every line ends with `\n`. That may not hold for the last line in a file.
+
+```python
+>>> lines = [line.rstrip() for line in lines]
+>>> lines
+['Testing file IO', 'Learning Python, 6E', 'Python 3.12']
+```
+
+A comprehension is an iteration tool, so you do not need to open the file ahead of time. Open it inside the expression. The comprehension reads one line at a time by calling the file's `__next__` handler. It runs each line through `rstrip` and adds the result to the list.
+
+```python
+>>> lines = [line.rstrip() for line in open('data.txt')]
+>>> lines
+['Testing file IO', 'Learning Python, 6E', 'Python 3.12']
+```
+
+This expression does a lot for you. Python scans the file line by line and builds the list of results. Most of the work runs inside the interpreter, so it is often faster than an equivalent `for` statement. It also uses the file iterator, so it never loads the whole file at once. For large files, that matters a lot.
+
+You can run any string operation on each line. The following examples show the uppercase version from earlier, plus a few other operations.
+
+```python
+>>> [line.upper() for line in open('data.txt')]
+['TESTING FILE IO\n', 'LEARNING PYTHON, 6E\n', 'PYTHON 3.12\n']
+>>> [line.rstrip().upper() for line in open('data.txt')]
+['TESTING FILE IO', 'LEARNING PYTHON, 6E', 'PYTHON 3.12']
+>>> [line.split() for line in open('data.txt')]
+[['Testing', 'file', 'IO'], ['Learning', 'Python,', '6E'], ['Python', '3.12']]
+>>> [line.replace('\n', '!') for line in open('data.txt')]
+['Testing file IO!', 'Learning Python, 6E!', 'Python 3.12!']
+>>> [('Py' in line, line.split()[0]) for line in open('data.txt')]
+[(False, 'Testing'), (True, 'Learning'), (True, 'Python')]
+```
+
+Method chaining works in the second example. String methods return new strings, so you can call another string method on the result. The last example collects several results for each line. It wraps them in a tuple.
+
+In CPython, a file object closes itself when it is garbage-collected while still open. So these comprehensions close their temporary file once the expression finishes. Outside CPython, the file may stay open longer. If the code runs in a loop, open the file before the comprehension and close it after. Review the earlier file material for the close call.
+
+### Extended list comprehension syntax
+
+Comprehensions can do more than map one expression across items. They can filter items and nest loops. Together, these features form a small iteration mini-language.
+
+#### Filter clauses: if
+
+A comprehension's `for` part can have an `if` clause. The clause checks each item. If the test is false, the item is left out of the result. Strictly speaking, the clause filters items in. The result is the same.
+
+Suppose you want only the lines that begin with the letter L or P. Imagine the first character is an action code. An `if` clause does the job.
+
+```python
+>>> lines = [line.rstrip() for line in open('data.txt') if line[0] in 'LP']
+>>> lines
+['Learning Python, 6E', 'Python 3.12']
+```
+
+The `if` checks the first character of each line. If it does not match, the line is skipped, and iteration continues. The equivalent `for` statement is longer, but easier to follow.
+
+```python
+>>> res = []
+>>> for line in open('data.txt'):
+...     if line[0] in 'LP':
+...         res.append(line.rstrip())
+>>> res
+['Learning Python, 6E', 'Python 3.12']
+```
+
+Any list comprehension translates to a `for` statement by appending as you go. Indent each successive part one more level. The reverse is not always true. `for` statements handle roles that comprehensions do not address. Results collection is the common task comprehensions handle best.
+
+A comprehension can also hold more logic. The next example keeps only lines that end in a digit. It uses `[-1:]` instead of `[-1]`, so blank lines do not cause an error after `rstrip`.
+
+```python
+>>> [line.rstrip() for line in open('data.txt') if line.rstrip()[-1:].isdigit()]
+['Python 3.12']
+```
+
+Another `if` example counts lines. The first result gives the total number of lines in a text file. The second strips whitespace from both ends, so blank lines are left out of the count.
+
+```python
+>>> fname = 'data-blank-lines.txt'
+>>> len(open(fname).readlines())
+5
+>>> len([line for line in open(fname) if line.strip() != ''])
+3
+```
+
+#### Nested loops: for
+
+A comprehension can have nested loops. Each `for` clause can have an optional `if` clause. The following example combines every character in one string with every character in another.
+
+```python
+>>> [x + y for x in 'abc' for y in '123']
+['a1', 'a2', 'a3', 'b1', 'b2', 'b3', 'c1', 'c2', 'c3']
+```
+
+The statement form is easier to read, but it is slower. It builds the same list.
+
+```python
+>>> res = []
+>>> for x in 'abc':
+...     for y in '123':
+...         res.append(x + y)
+>>> res
+['a1', 'a2', 'a3', 'b1', 'b2', 'b3', 'c1', 'c2', 'c3']
+```
+
+Past a certain point, a comprehension becomes too compact to be useful. Comprehensions suit simple iterations. For more involved work, a plain `for` statement is easier to understand and change. If a comprehension is hard for you to read, a `for` statement is probably the better choice.
+
+### Comprehensions and the other forms
+
+Comprehensions continue in the book's later chapter on functions, where their syntax is defined more formally. They are as closely related to functions as they are to loops. Several related forms share the same syntax. They differ in how they are written and what they produce.
+
+```python
+[x + 10 for x in L if x > 0]      # List comprehension
+{x + 10 for x in L if x > 0}      # Set comprehension
+{x: x + 10 for x in L if x > 0}   # Dictionary comprehension
+(x + 10 for x in L if x > 0)      # Generator expression
+```
+
+The generator expression produces items on request, instead of building a list. The last three forms are used on files in the sections that follow.
+
+Speed results vary. List comprehensions were consistently about twice as fast as corresponding `for` loops on most tests through CPython 3.12. Some tests show only a small gain. With `if` filter clauses, a comprehension may even be slower. Time your own code before you trust a speed claim.
+
+## Iteration tools
+
+Later in the book, you will see how user-defined classes can implement the iteration protocol too. Any tool that uses the protocol works on any built-in type or user-defined class that provides it. This section summarizes the tools that do.
+
+So far, iterators have appeared mostly in `for` loops. But every built-in tool that scans collections from left to right uses the protocol. The `for` loop is one example.
+
+```python
+>>> for line in open('data.txt'):
+...     print(line.upper(), end='')
+TESTING FILE IO
+LEARNING PYTHON, 6E
+PYTHON 3.12
+```
+
+List comprehensions and the `map` built-in use the same protocol. When applied to a file, both use the file's iterator. They fetch an iterator with `__iter__` and call `__next__` each time through.
+
+```python
+>>> uppers = [line.upper() for line in open('data.txt')]
+>>> uppers
+['TESTING FILE IO\n', 'LEARNING PYTHON, 6E\n', 'PYTHON 3.12\n']
+>>> list(map(str.upper, open('data.txt')))
+['TESTING FILE IO\n', 'LEARNING PYTHON, 6E\n', 'PYTHON 3.12\n']
+```
+
+The `map` built-in applies a function call to each item in an iterable. It is like a list comprehension, but it requires a function instead of an arbitrary expression. It returns an iterable, so wrap it in `list` to get all values at once.
+
+Other built-ins process iterables too. The `zip` built-in combines items from iterables. The `enumerate` built-in pairs each item with its position. The `filter` built-in selects items for which a function is true. The `sorted` built-in sorts items. The `functools.reduce` function runs pairs of items through a function. All of them accept iterables.
+
+```python
+>>> import functools, operator
+>>> sorted(open('data.txt'))
+['Learning Python, 6E\n', 'Python 3.12\n', 'Testing file IO\n']
+>>> list(zip(range(99), open('data.txt')))
+[(0, 'Testing file IO\n'), (1, 'Learning Python, 6E\n'), (2, 'Python 3.12\n')]
+>>> list(enumerate(open('data.txt')))
+[(0, 'Testing file IO\n'), (1, 'Learning Python, 6E\n'), (2, 'Python 3.12\n')]
+>>> list(filter(bool, open('data.txt')))
+['Testing file IO\n', 'Learning Python, 6E\n', 'Python 3.12\n']
+>>> functools.reduce(operator.add, open('data.txt'))
+'Testing file IO\nLearning Python, 6E\nPython 3.12\n'
+```
+
+The `filter` and `reduce` tools belong to functional programming, so their details wait. The point here is that they use the iteration protocol on files.
+
+The `sorted` built-in returns a real list, not an iterable. It works like the `sort` method on lists. It returns a new sorted list, and it accepts any iterable. The `reversed` built-in returns an iterable, but it does not run the iteration protocol.
+
+Nearly everything in the built-in toolset that scans objects uses the protocol. That includes the `list` and `tuple` built-ins, which build new objects from iterables. It also includes the string `join` method, which places a substring between the strings in an iterable.
+
+```python
+>>> list(open('data.txt'))
+['Testing file IO\n', 'Learning Python, 6E\n', 'Python 3.12\n']
+>>> tuple(open('data.txt'))
+('Testing file IO\n', 'Learning Python, 6E\n', 'Python 3.12\n')
+>>> '&&'.join(open('data.txt'))
+'Testing file IO\n&&Learning Python, 6E\n&&Python 3.12\n'
+```
+
+Some syntax you might not expect also scans iterables. Sequence assignment, starred assignment, the `in` membership test, slice assignment, the list `extend` method, and single-star literal unpacking all use the protocol. Each one reads the file line by line.
+
+```python
+>>> a, b, c = open('data.txt')
+>>> b, c
+('Learning Python, 6E\n', 'Python 3.12\n')
+>>> a, *b = open('data.txt')
+>>> a, b
+('Testing file IO\n', ['Learning Python, 6E\n', 'Python 3.12\n'])
+>>> 'Python 2.7\n' in open('data.txt')
+False
+>>> 'Python 3.12\n' in open('data.txt')
+True
+>>> L = [11, 22, 33, 44]
+>>> L[1:3] = open('data.txt')
+>>> L
+[11, 'Testing file IO\n', 'Learning Python, 6E\n', 'Python 3.12\n', 44]
+>>> L = [11]
+>>> L.extend(open('data.txt'))
+>>> L
+[11, 'Testing file IO\n', 'Learning Python, 6E\n', 'Python 3.12\n']
+>>> L = [11, *open('data.txt'), 44]
+>>> L
+[11, 'Testing file IO\n', 'Learning Python, 6E\n', 'Python 3.12\n', 44]
+```
+
+The `extend` method iterates automatically, but `append` does not. Use `append` when you want to add an iterable as one item and iterate over it later.
+
+```python
+>>> L = [11]
+>>> L.append(open('data.txt'))
+>>> list(L[-1])
+['Testing file IO\n', 'Learning Python, 6E\n', 'Python 3.12\n']
+```
+
+The `dict` built-in accepts a `zip` result, as shown earlier. The `set` built-in does too. So do the set and dictionary comprehensions.
+
+```python
+>>> set(open('data.txt'))
+{'Python 3.12\n', 'Learning Python, 6E\n', 'Testing file IO\n'}
+>>> {line for line in open('data.txt')}
+{'Python 3.12\n', 'Learning Python, 6E\n', 'Testing file IO\n'}
+>>> {ix: line for ix, line in enumerate(open('data.txt'))}
+{0: 'Testing file IO\n', 1: 'Learning Python, 6E\n', 2: 'Python 3.12\n'}
+```
+
+Set and dictionary comprehensions also accept `if` tests. Both scan the file line by line and keep only the lines that begin with L or P. The comprehension syntax and the file iterator do most of the work.
+
+```python
+>>> {line for line in open('data.txt') if line[0] in 'LP'}
+{'Python 3.12\n', 'Learning Python, 6E\n'}
+>>> {ix: line for (ix, line) in enumerate(open('data.txt')) if line[0] in 'LP'}
+{1: 'Learning Python, 6E\n', 2: 'Python 3.12\n'}
+```
+
+A generator expression uses the same syntax, and it works on iterables too. It is iterable itself, so `list` can collect its results.
+
+```python
+>>> list(line.upper() for line in open('data.txt'))
+['TESTING FILE IO\n', 'LEARNING PYTHON, 6E\n', 'PYTHON 3.12\n']
+```
+
+Other built-in functions use the protocol as well, though they are harder to show with files. The `sum` call adds all the numbers in an iterable. The `any` and `all` built-ins return `True` if any or all items are true. The `max` and `min` built-ins return the largest and smallest items. Each one scans its argument and returns a single result.
+
+```python
+>>> sum(range(5))
+10
+>>> any(open('data.txt'))
+True
+>>> all(open('data.txt'))
+True
+>>> max(open('data.txt'))
+'Testing file IO\n'
+>>> min(open('data.txt'))
+'Learning Python, 6E\n'
+```
+
+A starred argument in a function call unpacks an iterable into separate arguments. It works like the starred form in list literals. You will see calls like this again in the book's functions material. It accepts any iterable.
+
+```python
+>>> def f(a, b, c):
+...     print(a, b, c, sep='&')
+>>> f(*open('data.txt'))
+Testing file IO
+&Learning Python, 6E
+&Python 3.12
+```
+
+Because starred calls accept iterables, `zip` can unzip zipped tuples. Pass a `zip` result as the argument list of another `zip` call. The result is hard to read, so use this pattern with care.
+
+```python
+>>> X, Y = (1, 2), (3, 4)
+>>> list(zip(X, Y))
+[(1, 3), (2, 4)]
+>>> A, B = zip(*zip(X, Y))
+>>> A, B
+((1, 2), (3, 4))
+```
+
+The list of iteration tools is not complete. The pattern is clear, though. Any object that supports the protocol works with all of them.
+
+### Other iteration topics
+
+The book returns to iteration in two later places. User-defined functions can become generator functions, using `yield` statements. Comprehensions in parentheses become generator expressions. User-defined classes can become iterable through `__iter__` or `__getitem__` in operator overloading. Once a class supports one of these, it works with every iteration tool in this section.
+
+### Iteration chapter summary
+
+The iteration protocol lets nonsequence objects take part in loops. Comprehensions apply an expression to every item in any iterable. A list comprehension is an expression similar to a `for` loop. Many built-in tools in Python use the same protocol. Use a `for` loop with a file iterator when you need to read a text file line by line.
+
 ## Checkpoint questions
 
 <details>
@@ -2855,9 +3604,34 @@ You can keep a counter by hand in a `while` loop, or use a `for` loop with `rang
 A `range` can repeat an action a fixed number of times, scan by offsets instead of items, and skip successive items as you go. It can also let you change a list while you step across it. None of these roles strictly requires `range`. Scanning items directly, three-limit slices, and list comprehensions are often better choices today.
 </details>
 
+<details>
+<summary>17. How are `for` loops and iterable objects related?</summary>
+
+The `for` loop normally uses the iteration protocol to step through an iterable. It gets an iterator by calling the iterable's `__iter__` method. Then it calls the iterator's `__next__` method on each pass. It catches `StopIteration` to know when to stop. Any object that supports this model works in a `for` loop and in other iteration tools.
+</details>
+
+<details>
+<summary>18. How are `for` loops and list comprehensions related?</summary>
+
+Both are iteration tools. A list comprehension is a concise, often efficient way to collect the results of applying an expression to every item in an iterable. Its syntax resembles the header of a `for` loop. Any list comprehension can be translated into a `for` loop. The `for` loop also covers looping roles that comprehensions do not.
+</details>
+
+<details>
+<summary>19. Name four iteration tools in the Python language.</summary>
+
+The `for` loop, list comprehensions, the `map` built-in, and the `in` membership test are all iteration tools. So are the built-ins `sorted`, `sum`, `any`, and `all`. The `list` and `tuple` built-ins, the string `join` method, and sequence assignments also use the protocol. Any four of these answer the question.
+</details>
+
+<details>
+<summary>20. What is the best way to read line by line from a text file today?</summary>
+
+Do not read the file explicitly. Open it inside an iteration tool, such as a `for` loop or a list comprehension. The tool then scans one line at a time by calling the file's `__next__` method on each pass. This approach is generally the simplest to code. It uses little memory, and it is often fast.
+</details>
+
 ## Sources and review notes
 
 - Source: *Learning Python*, 6th edition (`learning-python-6th-edition`). Chapters used are listed in each section.
 - Chapter used: Chapter 11, "Assignments, Expressions, and Prints" (`learning-python-6th-edition`).
 - Chapter used: Chapter 12, "if and match Selections" (`learning-python-6th-edition`).
 - Chapter used: Chapter 13, "while and for Loops" (`learning-python-6th-edition`).
+- Chapter used: Chapter 14, "Iterations and Comprehensions" (`learning-python-6th-edition`).

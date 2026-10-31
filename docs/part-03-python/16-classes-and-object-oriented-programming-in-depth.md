@@ -3231,6 +3231,3355 @@ Later chapters use several more of these methods. Chapter 34 uses `__enter__` an
 
 Provide operator overloading when a class naturally matches a built-in type's interface, or needs to emulate one. A collection might imitate a sequence or a mapping. A callable object might serve an API that expects a function. Avoid overloading expression operators that do not map naturally to your objects. A normally named method is clearer in those cases.
 
+## Designing with classes
+
+Up to now we have used the `class` statement as a tool. This section asks a different question: how do we use classes to model useful objects? Design means choosing which classes to write, how they relate, and which parts stay hidden. The patterns here are inheritance, composition, delegation, and factories. Along the way we also meet pseudoprivate attributes, multiple inheritance, bound methods, and the method resolution order (MRO) that multiple inheritance depends on.
+
+### Python and OOP
+
+Python's object-oriented model rests on three ideas. Each one is simple on its own. Together they explain most of the design choices in this section.
+
+- Inheritance: attribute lookup. The expression `X.name` searches the instance, its class, and then its superclasses.
+- Polymorphism: in `X.method`, the meaning of `method` depends on the class of the subject object `X`.
+- Encapsulation: methods and operators implement behavior, while data hiding is a convention by default.
+
+We already know the mechanics of inheritance, so we treat it as a given. It is the mechanism behind flexible code customization.
+
+Polymorphism comes from the fact that Python has no type declarations. Attributes are resolved at runtime. Objects that implement the same interface can therefore replace each other. The code that calls a method does not need to know which kind of object implements it.
+
+Encapsulation in Python means packaging. It means hiding implementation details behind an object's interface. It does not mean enforced privacy, although code can enforce some privacy in part, as Chapter 39 shows. Encapsulation still helps. It lets you change how an object works without affecting the code that uses it.
+
+#### Polymorphism means interfaces, not call signatures
+
+Some languages define polymorphism as overloading. In those languages, a function is chosen by the types or the number of its arguments. Python has no such overloading, because it does not check types in declarations. Polymorphism in Python is based on object interfaces.
+
+If you miss overloading from another language, you might try to write it this way.
+
+```python
+class C:
+    def meth(self, x):
+        ...
+    def meth(self, x, y, z):
+        ...
+```
+
+This code runs without an error. The second `def` simply assigns a new function object to the name `meth` in the class scope. The last definition is the only one kept. It works like assigning `X = 1` and then `X = 2`. The value of `X` ends up as `2`. A class can have only one definition for each method name. The rule also covers `__init__`, which is special only because Python calls it automatically.
+
+If you truly need dispatch by call signature, you can branch on the arguments. You can test the number of arguments, or their types, with the tools from Chapters 4, 9, and 18.
+
+```python
+class C:
+    def meth(self, *args):
+        if len(args) == 1:  # Branch on number of arguments
+            ...
+        elif type(args[0]) == int:  # Branch on argument types (or use isinstance())
+            ...
+```
+
+You normally should not write code like this. It is not the Python way. Write your code to expect an object interface, not a specific type. That way the code works with more kinds of objects, now and later.
+
+```python
+class C:
+    def meth(self, x):
+        x.operation()  # Assume x does the right thing
+```
+
+Distinct operations should also get distinct method names. This advice holds in every language. Names are clearer than call signatures.
+
+Python's object model is simple. Much of the skill in OOP lies in how you combine classes to reach a program's goals. The next sections tour some of the ways larger programs use classes.
+
+### Inheritance: the is-a relationship
+
+Inheritance also models the real world. From a programmer's point of view, it begins with attribute qualification. From a designer's point of view, inheritance specifies set membership. A class defines a set of properties. More specific sets, the subclasses, inherit those properties and customize them.
+
+Imagine that we open a pizza restaurant. We need employees to serve customers and prepare food. We decide to build a robot to make the pizzas. We also want the robot to be a full employee with a salary. The classes in the next example model this team.
+
+The most general class is `Employee`. It is a takeoff on the demo from Chapter 28. It provides common behavior, such as raising a salary with `giveRaise` and printing with `__repr__`. There are two kinds of employees, so there are two subclasses: `Chef` and `Server`. Both override the inherited `work` method with more specific messages. The `PizzaRobot` class is a kind of `Chef`. In OOP terms, these are "is-a" links: a robot is a chef, and a chef is an employee.
+
+**Example 31-1.** `employees.py`
+
+```python
+class Employee:
+    def __init__(self, name, salary=0):
+        self.name = name
+        self.salary = salary
+    def giveRaise(self, percent):
+        self.salary += self.salary * percent
+    def work(self):
+        print(self.name, 'does stuff')
+    def __repr__(self):
+        return (f'<{self.__class__.__name__}: '
+                f'name="{self.name}", salary={self.salary:,.2f}>')
+class Chef(Employee):
+    def __init__(self, name):
+        Employee.__init__(self, name, 50000)
+    def work(self):
+        print(self.name, 'makes food')
+class Server(Employee):
+    def __init__(self, name):
+        Employee.__init__(self, name, 40000)
+    def work(self):
+        print(self.name, 'interfaces with customer')
+class PizzaRobot(Chef):
+    def __init__(self, name):
+        Chef.__init__(self, name)
+    def work(self):
+        print(self.name, 'makes pizza')
+if __name__ == '__main__':
+    pat = PizzaRobot('pat')  # Make a robot named pat
+    print(pat)  # Run inherited __repr__
+    pat.work()  # Run type-specific action
+    pat.giveRaise(0.20)  # Give pat a 20% raise
+    print(pat); print()
+    for klass in Employee, Chef, Server, PizzaRobot:
+        object = klass(klass.__name__)
+        object.work()
+```
+
+When we run the self-test, we create a pizza robot named `pat`. The robot inherits names from three classes: `PizzaRobot`, `Chef`, and `Employee`. Printing `pat` and giving the robot a raise run the `__repr__` and `giveRaise` methods from `Employee`, two levels up. The inheritance search finds them there.
+
+```text
+$ python3 employees.py
+<PizzaRobot: name="pat", salary=50,000.00>
+pat makes pizza
+<PizzaRobot: name="pat", salary=60,000.00>
+Employee does stuff
+Chef makes food
+Server interfaces with customer
+PizzaRobot makes pizza
+```
+
+In a hierarchy like this, you can usually make instances of any class, not only the bottom ones. The `for` loop creates one instance of each of the four classes. Each one responds differently when asked to work, because `work` differs in each class. The robot `pat` gets `work` from the lowest class, `PizzaRobot`.
+
+These classes only simulate real objects. The `work` method prints a message for now. It could later control real devices, such as serial ports, Arduino boards, or a Raspberry Pi.
+
+**Note.** This example calls superclass constructors by naming the class, as in `Employee.__init__(self, name, 50000)`. The `super().__init__(...)` form does the same job in single-inheritance trees, and it avoids passing `self`. It becomes harder to read in multiple inheritance. Chapter 32 introduces `super`. The examples package also includes an alternative version, `employees-super.py`, if you want to see that form now.
+
+### Composition: the has-a relationship
+
+Composition is the second design tool. From a programmer's point of view, it means embedding other objects inside a container object. The container activates those objects to carry out its own methods. From a designer's point of view, composition describes parts of a whole. Where inheritance means set membership, composition means "has-a" relationships.
+
+Some design texts separate composition from aggregation. Aggregation describes a weaker tie between container and contained parts. In this book, "composition" simply means a collection of embedded objects. The composite class usually offers its own interface, and it implements that interface by directing the parts.
+
+Our pizza shop is a composite. It has an oven, and it has employees such as servers and chefs. When a customer places an order, the parts of the shop take action. The server takes the order, the chef makes the pizza, and the oven bakes it. The next example simulates this scene.
+
+**Example 31-2.** `pizzashop.py`
+
+```python
+from employees import PizzaRobot, Server  # From Example 31-1
+class Customer:
+    def __init__(self, name):
+        self.name = name
+    def order(self, server):
+        print(self.name, 'orders from', server)
+    def pay(self, server):
+        print(self.name, 'pays for item to', server)
+class Oven:
+    def bake(self):
+        print('oven bakes')
+class PizzaShop:
+    def __init__(self):
+        self.server = Server('Jan')  # Embed other objects
+        self.chef = PizzaRobot('Pat')  # A robot named Pat
+        self.oven = Oven()
+    def order(self, name):
+        customer = Customer(name)  # Activate other objects
+        customer.order(self.server)  # Customer orders from server
+        self.chef.work()
+        self.oven.bake()
+        customer.pay(self.server)
+if __name__ == '__main__':
+    scene = PizzaShop()  # Make the composite
+    scene.order('Sue')  # Simulate Sue's order
+    print('...')
+    scene.order('Bob')  # Simulate Bob's order
+```
+
+The `PizzaShop` class is a container and a controller. Its constructor creates and embeds instances of the employee classes from the last section. It also embeds an `Oven` object, which this module defines. When the self-test calls `order`, the embedded objects take their turns.
+
+We create a new `Customer` for each order. We pass the embedded `Server` object into the customer's methods. Customers come and go, but the server remains part of the shop. Employees still take part in inheritance here too. Composition and inheritance are complementary tools.
+
+The shop handles two orders, one from Sue and one from Bob. The overlap of orders with coroutines from Chapter 20 is outside the scope of this example.
+
+```text
+$ python3 pizzashop.py
+Sue orders from <Server: name="Jan", salary=40,000.00>
+Pat makes pizza
+oven bakes
+Sue pays for item to <Server: name="Jan", salary=40,000.00>
+...
+Bob orders from <Server: name="Jan", salary=40,000.00>
+Pat makes pizza
+oven bakes
+Bob pays for item to <Server: name="Jan", salary=40,000.00>
+```
+
+This is a toy simulation, but its objects and interactions show how composites work. A useful rule of thumb follows. Classes can represent almost any object or relationship you can describe in a sentence. Replace the nouns with classes, such as `Oven`, and the verbs with methods, such as `bake`. The result is a first draft of a design.
+
+#### Stream processors revisited
+
+A composition example that is more concrete than pizza robots comes from the stream processor in Chapter 26. Here is that generic function again.
+
+```python
+def processor(reader, converter, writer):
+    while True:
+        data = reader.read()
+        if not data: break
+        data = converter(data)
+        writer.write(data)
+```
+
+For more structure and support for inheritance, we can write this as a class. The class uses composition to do its work. Example 31-3 shows one way to code it. This version also renames the method `read` to `readline`, because it reads actual files in this example.
+
+**Example 31-3.** `streams.py`
+
+```python
+class Processor:
+    def __init__(self, reader, writer):
+        self.reader = reader
+        self.writer = writer
+    def process(self):
+        while True:
+            data = self.reader.readline()
+            if not data: break
+            data = self.converter(data)
+            self.writer.write(data)
+    def converter(self, data):
+        assert False, 'converter must be defined'  # Or raise exception
+```
+
+The class defines a `converter` method that subclasses must fill in. This is the abstract superclass model from Chapter 29. The `assert` statement raises an exception when its test is false. The `reader` and `writer` objects are embedded in the instance, which is composition. The conversion logic lives in a subclass instead of being passed in as a function, which is inheritance. Example 31-4 shows the subclass.
+
+**Example 31-4.** `converters.py`
+
+```python
+from streams import Processor
+class Uppercase(Processor):
+    def converter(self, data):
+        return data.upper()
+if __name__ == '__main__':
+    import sys
+    obj = Uppercase(open('trihack.txt'), sys.stdout)
+    obj.process()
+```
+
+The `Uppercase` class inherits the loop from `process`, along with anything else its superclasses provide. It defines only what is unique to it, which is the conversion. When you run this file, it reads `trihack.txt` from the current directory. It writes the uppercase text to `stdout`, which usually means the window you work in.
+
+```text
+$ cat trihack.txt  # Use "type" on Windows
+hack
+Hack
+HACK!
+$ python3 converters.py
+HACK
+HACK
+HACK!
+```
+
+To process other kinds of streams, pass different objects to the constructor. This example sends the output to a file instead of a stream. Exit the REPL to finalize the file.
+
+```text
+$ python3
+>>> import converters
+>>> scan = converters.Uppercase(open('trihack.txt'), open('trihackup.txt', 'w'))
+>>> scan.process()
+$ cat trihackup.txt
+HACK
+HACK
+HACK!
+```
+
+You can also pass in any object that has the required methods. Here, a writer class wraps each line in HTML tags. Lines are read from a file, converted to uppercase, and printed inside `<PRE>` tags.
+
+```text
+$ python3
+>>> from converters import Uppercase
+>>> class HTMLize:
+...     def write(self, line):
+...         print(f'<PRE>{line.rstrip()}</PRE>')
+...
+>>> Uppercase(open('trihack.txt'), HTMLize()).process()
+<PRE>HACK</PRE>
+<PRE>HACK</PRE>
+<PRE>HACK!</PRE>
+```
+
+Trace the control flow, and you see two kinds of reuse. The uppercase step comes from inheritance. The HTML formatting comes from composition. The `Processor` superclass knows nothing about either step. It only requires that the writer has a `write` method and that a `converter` method exists. It does not care what those methods do. This kind of polymorphism and encapsulation gives classes much of their power in Python.
+
+As written, `Processor` only provides a file-scanning loop. In more realistic work, we could add more tools for its subclasses. That would turn it into a full application framework. Code written once in a superclass can be reused in every program. In this example, the HTML step was the only code we wrote. The rest came packaged and inherited.
+
+Composition is used as much as inheritance in large systems. Python itself provides inheritance as its main OOP tool, which is why this book focuses on it. Composition is a design issue beyond the Python language, so this book leaves it to other resources. Inheritance and composition often complement each other, and sometimes they are alternatives.
+
+#### Classes and persistence
+
+Earlier in this part of the book we explored `pickle` and `shelve`. Those modules work especially well with class instances. Pickling an instance stores both its data and its logic. This is often enough reason to use classes at all.
+
+The pizza shop classes could also serve as the start of a restaurant database. Pickling an instance to a file keeps it between program runs.
+
+```text
+>>> from pizzashop import PizzaShop
+>>> shop = PizzaShop()
+>>> shop.chef
+<PizzaRobot: name="Pat", salary=50,000.00>
+>>> import pickle
+>>> pickle.dump(shop, open('shopfile.pkl', 'wb'))
+```
+
+One call stores the whole composite `shop` object in a file. Another session or program can load it back with one step. The restored objects keep both their state and their behavior.
+
+```text
+>>> import pickle
+>>> shop = pickle.load(open('shopfile.pkl', 'rb'))
+>>> shop.chef
+<PizzaRobot: name="Pat", salary=50,000.00>
+>>> shop.order('sue')
+sue orders from <Server: name="Jan", salary=40,000.00>
+Pat makes pizza
+oven bakes
+sue pays for item to <Server: name="Jan", salary=40,000.00>
+```
+
+This is only a prototype. We could extend the shop to track inventory and revenue. Saving the shop to its file after each change keeps the updated state. For more on pickles and shelves, see the standard library manual and Chapters 9, 28, and 37.
+
+### Delegation: the like-a relationship
+
+Inheritance and composition are not the only tools. Object-oriented programmers also talk about delegation. Delegation usually means a controller object embeds another object. The controller passes operation requests to that object. Controllers can handle administrative work, such as logging or validating access. They can also add steps to interface components or monitor active instances.
+
+Delegation is a special form of composition. A single embedded object is managed by a proxy class, also called a wrapper. The proxy keeps most or all of the embedded object's interface. Proxies can apply to other mechanisms too, such as function calls. Here we care about proxies for an object's full behavior, including method calls and other operations.
+
+Chapter 28 introduced this idea with an example. In Python, it is usually built with the `__getattr__` method hook from Chapter 30. Python calls `__getattr__` for attributes that do not exist on the instance. A wrapper class can route any such access to the object it wraps. Because the routing is generic, the wrapper keeps the wrapped object's interface and can add operations of its own.
+
+Example 31-5 reviews this idea with a small module, `trace.py`.
+
+**Example 31-5.** `trace.py`
+
+```python
+class Wrapper:
+    def __init__(self, object):
+        self.wrapped = object  # Save object
+    def __getattr__(self, attrname):
+        print('Trace: ' + attrname)  # Trace fetch
+        return getattr(self.wrapped, attrname)  # Delegate fetch
+```
+
+Recall from Chapter 30 that `__getattr__` receives the attribute name as a string. This code uses the `getattr` built-in to fetch an attribute from the wrapped object by a name string. The call `getattr(X, N)` works like `X.N`. The difference is that `N` is an expression that becomes a string at runtime. The call `getattr(X, N)` is also similar to `X.__dict__[N]`. The `getattr` version also searches the inheritance tree, but the dictionary version does not. Chapters 23 and 29 cover the `__dict__` attribute in more detail.
+
+You can use this wrapper approach to manage access to any object that has attributes. That includes lists, dictionaries, classes, and instances. The `Wrapper` class prints a trace message on each access, then passes the request to the wrapped object.
+
+```text
+>>> from trace import Wrapper
+>>> x = Wrapper([1, 2, 3])  # Wrap a list
+>>> x.append(4)  # Delegate to list method
+Trace: append
+>>> x.wrapped  # Print my member
+[1, 2, 3, 4]
+>>> x = Wrapper({'a': 1, 'b': 2})  # Wrap a dictionary
+>>> list(x.keys())  # Delegate to dictionary method
+Trace: keys
+['a', 'b']
+```
+
+The result augments the whole interface of the wrapped object. We can log method calls, send them to custom logic, or adapt a class to a new interface.
+
+Chapter 32 revives wrapped objects and delegated operations as one way to extend built-in types. Chapters 32 and 39 also cover function decorators. A decorator augments one function or method rather than an entire interface. Class decorators can add this kind of wrapper to every instance of a class automatically.
+
+**Note.** Delegating built-in operations has a limit. A general proxy like `Wrapper` cannot catch calls to operator-overloading methods that built-in operations run. The list's `__add__`, for example, is not caught, and the wrapper fails.
+
+```text
+>>> [1, 2, 3] + [4, 5]
+[1, 2, 3, 4, 5]
+>>> [1, 2, 3].__add__([4, 5])
+[1, 2, 3, 4, 5]
+>>> Wrapper([1, 2, 3]) + [4, 5]
+TypeError: unsupported operand type(s) for +: 'Wrapper' and 'list'
+```
+
+Explicit attribute fetches reach `__getattr__`. Built-in operations work differently, and that affects some delegation tools. Chapters 38 and 39 return to this issue in the context of managed attributes and decorators. For now, remember that a delegating proxy may need to define operator methods itself. It can do this by code, by tools, or through superclasses. It must do so if the embedded object uses those methods.
+
+### Pseudoprivate class attributes
+
+Class designs must also deal with name usage. Chapter 28 noted that methods in a general tool class can be replaced by subclasses if they are exposed. That policy supports customization. It also allows accidental replacement.
+
+In Part V, you learned that every name assigned at the top level of a module is exported. The same holds for classes. Data hiding is a convention. Clients can read or change any attribute of a class or instance they can reach. Python attributes are public and virtual in C++ terms. They are accessible everywhere and looked up at runtime. You can even change or delete a class's method at runtime, although programs rarely do. Python is a scripting language, so it favors enabling over restricting.
+
+Python does support name mangling. Mangling links a name to the class that created it. Such names are often called private attributes, but "pseudoprivate" is more accurate. Mangling does not prevent access from outside the class. Its main purpose is to avoid name collisions in instances. It is not a way to restrict access.
+
+Pseudoprivate names are an advanced and optional feature. You may not need them until you write general tools or large class hierarchies for multiple-programmer projects. Python programmers often use a single leading underscore instead, as in `_X`. That is only an informal signal that a name should not be changed. Python itself does not treat it differently. You may still see double underscores in other people's code, so you should understand them.
+
+#### Name mangling overview
+
+Within a `class` statement, a name that starts with two underscores and does not end with two underscores is expanded automatically. The expansion adds the enclosing class name at the front. For example, a name `__X` inside a class named `Hack` becomes `_Hack__X`. The original name gets a single underscore and the class name. Because the class name is part of the result, the name is usually unique. It will not clash with similar names from other classes in a hierarchy.
+
+Mangling applies only to names that appear inside a `class` statement, and only to names with two leading underscores. It covers class attributes, including method names. It also covers instance attributes assigned to `self`. In a class named `Hack`, a method `__meth` becomes `_Hack__meth`. An instance reference `self.__X` becomes `self._Hack__X`.
+
+If a class uses the double-underscore name everywhere, all references still work. Mangling helps avoid clashes when several classes add attributes to the same instance. An example shows how.
+
+#### Why use pseudoprivate attributes?
+
+Pseudoprivate attributes address a problem with how instance attributes are stored. In Python, instance attributes usually end up in the single instance object at the bottom of the class tree. Class-level method functions share that object, because the instance is passed into them. C++ works differently. There, each class gets its own space for the data members it defines.
+
+When a method assigns to a `self` attribute, it creates or changes an attribute on the instance. Inheritance searches happen only when you fetch a name, not when you assign one. If several classes in a hierarchy assign to the same attribute name, they collide.
+
+Suppose one programmer writes a class that assumes it owns the attribute name `X` on the instance. The methods set and fetch that name.
+
+```python
+class C1:
+    def meth1(self): self.X = 88  # I assume X is mine
+    def meth2(self): print(self.X)
+```
+
+Now suppose another programmer, working alone, makes the same assumption in another class.
+
+```python
+class C2:
+    def metha(self): self.X = 99  # Me too
+    def methb(self): print(self.X)
+```
+
+Each class works on its own. The problem appears when you mix them in one class tree with multiple inheritance.
+
+```python
+class C3(C1, C2): ...
+I = C3()  # But only 1 X in I!
+```
+
+The value that `self.X` returns depends on which class assigned it last. All assignments refer to the same instance. There is only one `X` attribute, `I.X`, no matter how many classes use that name. That sharing is normal, because it is how classes communicate. The instance acts as shared memory.
+
+When a class must own an attribute, prefix its name with two underscores everywhere the class uses it. Example 31-6 shows this.
+
+**Example 31-6.** `pseudoprivate.py`
+
+```python
+class C1:
+    def meth1(self): self.__X = 88  # Now X is mine
+    def meth2(self): print(self.__X)  # Becomes _C1__X in I
+class C2:
+    def metha(self): self.__X = 99  # Me too
+    def methb(self): print(self.__X)  # Becomes _C2__X in I
+class C3(C1, C2): pass
+I = C3()  # Two X names in I
+I.meth1(); I.metha()  # Set names
+print(I.__dict__)  # Actual storage
+I.meth2(); I.methb()  # Fetch names
+```
+
+The prefixed `X` attributes expand to include their class names. The expanded names are `_C1__X` and `_C2__X`. The name `X` does not appear. Running `dir` on `I`, or inspecting its namespace dictionary, shows the expanded names. Because the names are more unique, each class can safely assume it owns the names it prefixes with two underscores.
+
+```text
+$ python3 pseudoprivate.py
+{'_C1__X': 88, '_C2__X': 99}
+88
+99
+```
+
+This avoids collisions in the instance, but it is not true privacy. If you know the enclosing class name, you can still reach either attribute through its full name, as in `I._C1__X = 77`. Someone could also collide with the expanded pattern on purpose, which is unlikely but possible. The feature still makes it much less likely that you step on another class's names by accident.
+
+Pseudoprivate names also help in larger frameworks and tools. They keep a new method name from hiding a definition elsewhere in the class tree. They also reduce the chance that a name lower in the tree replaces an internal method. If a method is meant for use only within a class that other classes may mix in, the double underscore nearly guarantees that it will not interfere with other names. This matters most with multiple inheritance.
+
+```python
+class Super:
+    def method(self): ...  # A real application method
+class Tool:
+    def __method(self): ...  # Becomes _Tool__method
+    def other(self): self.__method()  # Use my internal method
+class Sub1(Tool, Super):
+    def actions(self): self.method()  # Runs Super.method as expected
+class Sub2(Tool):
+    def __init__(self): self.method = 99  # Doesn't break Tool.__method
+    def method(self): ...  # Ditto
+```
+
+Recall that superclasses are searched left to right in the `class` header. Here, `Sub1` prefers attributes from `Tool` over those in `Super`. You could switch the order of the superclasses in the `Sub1` header to make Python pick the application's methods first. Pseudoprivate names solve the problem completely. They also stop subclasses from accidentally redefining the internal method's name, as in `Sub2`.
+
+This feature is mostly useful in larger projects with several programmers, and only for selected names. Do not clutter simple code with it. Use it only for names that a single class must control. In general tools it can help. In simple programs it is usually overkill.
+
+**Note.** Chapter 30 covers emulating private instance attributes with `__getattr__` and `__setattr__`. Chapter 39 builds a broader `Private` class decorator with delegation. Privacy controls are possible in Python, yet they are rarely used, even in large systems.
+
+### Method objects: bound or not
+
+Methods, and bound methods in particular, make many design goals easy in Python. We met bound methods briefly when we studied `__call__` in Chapter 30. The full story is more general and flexible than it first seems.
+
+Chapter 19 showed that functions are normal objects. Methods are objects too. You can assign them to names, pass them to functions, and store them in data structures. Like functions, modules, and classes, methods are first-class objects. A class's methods can be reached from an instance or from the class itself, so there are two flavors.
+
+- Bound methods: when a method is referenced through an instance. Qualifying an instance with a function attribute of its class returns a bound method object. That object packages the instance with the function as a pair. When you call a bound method later, Python passes the instance to the `self` argument.
+- Plain functions: when a method is referenced through a class. Qualifying a class with a function attribute returns a plain function object. To call it, you must pass an instance explicitly as the `self` argument, if the function expects one.
+
+Both kinds are full objects, and you can move them around like strings or numbers. A bound method remembers its instance. A plain function does not. That is why earlier examples passed the instance explicitly when a subclass called a superclass method. Those calls produced plain functions along the way, as in `employees.py` in Example 31-1.
+
+When you call a bound method, Python supplies the instance for you. The instance is the one used to create the bound method object. That makes bound methods interchangeable with ordinary functions. They are especially useful for interfaces that were written for functions.
+
+**Note.** Python once required every method in a class to take an instance argument. Methods fetched directly from a class were called unbound methods. They needed an instance when called later. Today, methods in a class are plain functions. Their only special quality is that Python binds them to an instance when they are fetched through the instance. Unbound methods are gone. Long live plain functions.
+
+#### Bound methods in action
+
+Suppose we define a class in the REPL.
+
+```text
+>>> class Hack:
+...     def doit(self, message):
+...         print(message)
+```
+
+In normal use, we make an instance and call its method in one step. The call prints the argument.
+
+```text
+>>> inst = Hack()
+>>> inst.doit('hello')  # Typical method calls
+hello
+```
+
+Python actually creates a bound method object along the way, just before the call's parentheses. You can fetch a bound method without calling it. The expression `object.name` evaluates to an object, like any other expression. Here it returns a bound method that pairs the instance `inst` with the function `Hack.doit`. We can assign that pair to a new name and call it like a function that takes no `self`.
+
+```text
+>>> inst = Hack()
+>>> meth = inst.doit  # Bound method object: instance+function
+>>> meth('hola')  # Same effect as inst.doit('...')
+hola
+```
+
+The pair is visible if you look for it. The bound method exposes its instance through `__self__` and its function through `__func__`.
+
+```text
+>>> meth
+<bound method Hack.doit of <__main__.Hack object at 0x108f2e8a0>>
+>>> meth.__self__
+<__main__.Hack object at 0x108f2e8a0>
+>>> meth.__func__
+<function Hack.doit at 0x108f37ce0>
+```
+
+If you qualify the class instead, you get a plain function with no instance attached. To call it, you usually pass an instance as the leftmost argument. The expression has no instance to supply, and the method expects one.
+
+```text
+>>> inst = Hack()
+>>> meth = Hack.doit  # Plain function: requires self
+>>> meth(inst, 'ciao')  # Pass in instance (if the method expects one)
+ciao
+>>> meth
+<function Hack.doit at 0x108f37ce0>
+```
+
+The same rules apply inside a method. In `self.method`, `self` is an instance, so the expression is a bound method. In `Class.method`, the expression is a simple function that may require `self` when it runs.
+
+```text
+>>> class Hack2(Hack):
+...     def doit2(self):
+...         meth = self.doit  # Bound method object: instance+function
+...         meth('bonjour')  # Looks like a simple function
+...         meth = Hack.doit
+...         meth(self, 'privit')  # Plain function: requires self
+>>> Hack2().doit2()
+bonjour
+privit
+```
+
+Most of the time you call a method right after fetching it. You never notice the bound method made along the way. When you write code that calls objects generically, you must treat unbound methods with care. They usually need an explicit instance.
+
+Classes can also contain methods that take no `self` at all. These behave like functions in a module, apart from inheritance. You can call them through the class.
+
+```text
+>>> class Hack3:
+...     def doit3(message):  # A self-less method (function)
+...         print(message)
+>>> Hack3.doit3('guten tag')  # No "self" is passed
+guten tag
+```
+
+Calling the same method through an instance fails. The bound method made along the way passes the instance too, so the call sends one argument too many.
+
+```text
+>>> x = Hack3()
+>>> x.doit3('namaste')
+TypeError: Hack3.doit3() takes 1 positional argument but 2 were given
+```
+
+So you can write self-less functions in a class and call them through the class without an instance. To call them through an instance too, you need static methods and class methods. Chapter 32 covers those. The `super` built-in also binds an instance to a method. It is more involved than the bound method pairs shown here, and Chapter 32 explains it.
+
+Bound methods are also flexible in data structures. The next example stores four of them in a list and calls them with ordinary call expressions.
+
+```text
+>>> class Number:
+...     def __init__(self, base):
+...         self.base = base
+...     def double(self):
+...         return self.base * 2
+...     def triple(self):
+...         return self.base * 3
+>>> x, y, z = Number(2), Number(3), Number(4)  # Class instance objects
+>>> x.double()  # Normal immediate calls
+4
+>>> acts = [x.double, y.double, z.double, z.triple]  # List of bound methods
+>>> for act in acts:  # Calls are deferred
+...     print(act(), end=' ')
+4 6 8 12
+```
+
+Each call to `act` runs a method on a saved instance. The instance travels with the method in the bound method pair.
+
+#### Why you will care: bound method callbacks
+
+Bound methods pair an instance with a method function. You can use them anywhere a simple function is expected. A common place for this is event callbacks in GUI code. Python's `tkinter` standard-library module is one example.
+
+A plain callback takes no arguments. It keeps state in globals or in an enclosing function scope, which is called a closure.
+
+```python
+def handler():
+    ...  # use globals or closure scopes for state
+...
+widget = Button(text='Tap', command=handler)
+```
+
+With `tkinter`, you pass a callable that takes no arguments to the `command` keyword. Function names and `lambda` expressions work. Class methods also work, but if they expect an instance, they must be bound methods.
+
+```python
+class MyGui:
+    def handler(self):
+        ...  # use self.attr for state
+    def makewidgets(self):
+        b = Button(text='Tap', command=self.handler)
+```
+
+Here the event handler is `self.handler`. It is a bound method that remembers both `self` and `MyGui.handler`. When an event calls `handler`, `self` refers to the original instance. The handler can read and write instance attributes that keep state between events. With plain functions, state must live in globals or closures instead.
+
+Chapter 30 covers `__call__` as another way to make a class fit a function-based API. Chapter 19 covers `lambda`, which is also common in callback roles. You do not need to wrap a bound method in a `lambda` unless you must add extra arguments. A bound method already defers the call. There are no parentheses to trigger it, so a `lambda` would add nothing.
+
+### Classes are objects: generic object factories
+
+Some class-based designs must create objects in response to conditions that cannot be predicted when the program is written. The factory design pattern allows this deferred creation. Python's flexibility lets factories take many forms. Some of them do not look special at all.
+
+Classes are first-class objects too. You can pass them around, store them in data structures, and hand them to functions. A function that generates objects of any kind is called a factory in OOP design. Factories can be a large project in a statically typed language such as C++. In Python they are almost trivial to write.
+
+The call syntax from Chapter 18 can call any class with any positional or keyword arguments in one step. Example 31-7 shows the underlying code.
+
+**Example 31-7.** `factory.py`
+
+```python
+def factory(aClass, *pargs, **kargs):  # Varargs tuple, dict
+    return aClass(*pargs, **kargs)  # Call aClass
+class Hack:
+    def doit(self, message):
+        print(message)
+class Person:
+    def __init__(self, name, job=None):
+        self.name = name
+        self.job = job
+object1 = factory(Hack)  # Make a Hack object
+object2 = factory(Person, 'Sue', 'dev')  # Make a Person object
+object3 = factory(Person, name='Bob')  # Ditto, with keywords and default
+```
+
+The `factory` function receives a class and zero or more constructor arguments. It uses star syntax to collect the arguments and unpack them, then calls the class to return an instance. The function can call any callable, including functions and methods. Here we use it only with classes.
+
+The rest of the example defines two classes and makes instances of both through `factory`. This one function works for any class and any constructor arguments. You may never need to write another factory in Python. If you run the example live, the objects look like this.
+
+```text
+>>> from factory import *
+>>> object1.doit(99)
+99
+>>> object2.name, object2.job
+('Sue', 'dev')
+>>> object3.name, object3.job
+('Bob', None)
+```
+
+Everything in Python is a first-class object, classes included. In languages such as C++, a class is usually only compiler input. Passing classes around is natural in Python. As noted at the start of this part of the book, only objects made from classes do full OOP.
+
+#### Why factories?
+
+The `factory` function is a neat illustration, but what is it good for? Showing real uses takes more code than fits here. In general, a factory insulates code from the details of dynamically configured object creation.
+
+Recall the `Processor` class from Example 31-3. It accepts reader and writer objects to process any data stream. Chapter 26 passed in specialized objects by hand. Later examples passed in hardcoded file, stream, and formatter objects. In a more dynamic program, a configuration file or a GUI might choose the streams.
+
+In that dynamic world, you may not know the stream objects when you write the script. You may need to create them at runtime, from the contents of a configuration file. The file might name a stream class in a module, with an optional constructor argument. A factory can fetch and pass in classes that the program did not hardcode. Those classes might not even exist yet when you write the code.
+
+Here is a hypothetical version of that idea.
+
+```text
+classname = …parse from config file…
+classarg = …parse from config file…
+import streamtypes  # Customizable code
+aclass = getattr(streamtypes, classname)  # Fetch from module
+reader = factory(aclass, classarg)  # Or aclass(classarg)
+processor(reader, …)
+```
+
+The `getattr` built-in fetches a module attribute from a string name. It works like `obj.attr`, except that `attr` is a string. This snippet does not strictly need `factory`. It could create the instance with `aclass(classarg)`. A separate function is more useful when extra work is needed at creation time, such as caching objects for reuse. Either way, factories are almost trivial with Python's dynamic typing and first-class objects.
+
+### Multiple inheritance and the MRO
+
+Our last design pattern is one of the most useful. It also serves as the subject for more realistic examples, and some of its code can serve as real tools.
+
+Most examples so far used single inheritance. Each class has one superclass. That is enough for simple hierarchies, and it supports customization. In the pizza shop example, each worker belonged to one category and inherited names from one branch of the tree. In outline form:
+
+```python
+class B: ...
+class A(B): ...
+I = A()  # Use attributes from I, A, and B - in that order
+```
+
+Many designs need to combine different sets of methods. A class header can list more than one superclass in parentheses. This is multiple inheritance. The class and its instances inherit names from all the listed superclasses.
+
+```python
+class C: ...
+class B: ...
+class A(B, C): ...
+I = A()  # Use attributes from I, A, B, and C – in that order
+```
+
+Multiple inheritance suits objects that belong to more than one set. A person may be an engineer, a writer, and a musician. Such a person would inherit properties from all of those sets. The object gets the union of the behavior in its superclasses. Later in this section, multiple inheritance also supports mix-in classes. A mix-in is a class that packages mixable attributes.
+
+Multiple inheritance adds another dimension to attribute search. Single inheritance searches depth first. It checks the instance, then its class, then each superclass from lowest to highest. The order comes from the class the instance was made from and from the superclass in each `class` header. The `__bases__` attribute of a class mirrors that order.
+
+Multiple inheritance also searches left to right, in the order of the classes in parentheses. This is a nested step. It runs only after the branches to the left reach the top of the tree and are exhausted.
+
+Together these two rules form DFLR, for depth first and then left to right. DFLR is enough when an attribute name appears in only one branch, which is typical. When the same name appears in several branches, DFLR is weak. A lower and more specialized subclass to the right cannot redefine a name in a higher superclass reached through a branch on the left.
+
+To solve this, multiple inheritance uses a slightly different order called the MRO, the method resolution order. The MRO applies to all attributes, not just methods. In typical trees, the MRO works the same as DFLR. It differs in diamonds. A diamond forms when several classes share a common superclass. The tree looks like a diamond with its corners turned. In a diamond, the MRO moves across a level before it climbs up. It is more breadth-first there.
+
+The MRO is used for every class tree. It visits a common superclass only once, and only after all of its subclasses. Every class tree is also a diamond in one sense. Python adds the built-in `object` class above every root class. Without the MRO, the defaults in `object` could hide methods that you define in your classes.
+
+#### How multiple inheritance works
+
+The simple case comes first. Class `A` inherits from `B` and `C`. Both `B` and `C` are root classes that define their own attributes. When we make an instance `I` of `A` and ask for an attribute, Python searches `I`, then `A`, then `B`, then `C`. So `attr1` is found in `B` and `attr2` is found in `C`. If you work along in the REPL, type a blank line after each class.
+
+```text
+>>> class C: attr2 = 'C2'
+>>> class B: attr1 = 'B1'
+>>> class A(B, C): pass
+>>> I = A()
+>>> I.attr1, I.attr2
+('B1', 'C2')
+```
+
+If `B` and `C` both define the same name, `B` wins. That follows from the left-to-right rule. Lower classes such as `A` still beat their superclasses.
+
+```text
+>>> class C: attr2 = 'C2'
+>>> class B: attr2 = 'B2'; attr1 = 'B1'
+>>> class A(B, C): attr1 = 'A1'
+>>> I = A()
+>>> I.attr1, I.attr2
+('A1', 'B2')
+```
+
+Next, add a higher superclass above `B`. Now `B` inherits from `D`, and `C` is a root class with no superclass. Under DFLR, Python searches `I`, `A`, `B`, and `D` before it checks `C`. So `attr2` is found in `D`.
+
+```text
+>>> class D: attr2 = 'D2'
+>>> class C: attr2 = 'C2'
+>>> class B(D): attr1 = 'B1'
+>>> class A(B, C): pass
+>>> I = A()
+>>> I.attr1, I.attr2
+('B1', 'D2')
+```
+
+Now make `B` and `C` both inherit from `D`, and let `C` define the same attribute as `D`. Under the MRO, the lower class `C` wins. Its version replaces the one in `D`, even though `D` is reached first by depth.
+
+```text
+>>> class D: attr2 = 'D2'
+>>> class C(D): attr2 = 'C2'
+>>> class B(D): attr1 = 'B1'
+>>> class A(B, C): pass
+>>> I = A()
+>>> I.attr1, I.attr2
+('B1', 'C2')
+```
+
+This last case is the diamond pattern. Two classes, `B` and `C`, inherit from the same superclass. In this case, the lower class's version of an attribute wins over the superclass version. That happens even when the superclass could be reached first by depth alone.
+
+The difference appears only in diamonds. Without a diamond, the search still picks a higher superclass before a lower class. The third example shows this. The MRO lets a class override attributes from a higher class it inherits. In the last example, `C` replaces names in `D`, even though `D` comes first under DFLR.
+
+To summarize, the search goes all the way up and then to the right in a nondiamond tree. That is DFLR. In a diamond, the search checks classes to the right before it climbs to the common superclass. That is the MRO.
+
+Strictly speaking, each of these examples is an implicit diamond. The root classes inherit from the built-in `object` class. That class supplies defaults for some methods, such as the display string for `print`. The MRO keeps those `object` defaults from hiding methods in user classes below it. The next section gives the exact order.
+
+#### How the MRO works
+
+Formally, the MRO works as if all classes were listed in DFLR order. Then all but the rightmost copy of each duplicate class is removed. The computation has these steps.
+
+- List all the classes an instance inherits from, in DFLR order. Include a class more than once if it is visited more than once.
+- Scan the list for duplicate classes. Remove all but the last, or rightmost, occurrence of each duplicate.
+
+The MRO for a class holds the class itself, its superclasses, and all higher superclasses. It ends with the implicit or explicit `object` root class. Each class appears before its parents. Multiple parents keep the order they have in the `class` header.
+
+A common parent in a diamond appears only at its last visit in the MRO. So lower classes are searched first when attribute inheritance uses the list. That makes the search more breadth-first than depth-first, but only in diamonds. Each class appears once, no matter how many paths lead to it.
+
+Example 31-8 shows a nondiamond tree. Its shape is sketched in the comments.
+
+**Example 31-8.** `mro_nondiamond.py`
+
+```python
+class E: attr = 'E'  # D E
+class D: attr = 'D'  # | |
+class C(E): attr = 'C'  # B C
+class B(D): pass  # \ /
+class A(B, C): pass  # A
+# |
+X = A()  # X
+print(X.attr)  # D
+```
+
+To find the MRO for this tree, Python lists all the classes reachable by DFLR. Then it removes duplicates. Remember that `object` sits above all root classes.
+
+```text
+DFLR => [X, A, B, D, object, C, E, object]
+MRO => [X, A, B, D, C, E, object]
+```
+
+In this tree, DFLR and the MRO give the same result. The output is `D`, because `attr` comes from class `D` at the top left. The MRO differs only in where `object` appears. It is kept once at the end, after its duplicates are removed. That does not matter here, because these classes do not redefine any `object` default.
+
+Example 31-9 shows a user-defined diamond. The difference is clearer.
+
+**Example 31-9.** `mro_diamond.py`
+
+```python
+class D: attr = 'D'  # D
+class C(D): attr = 'C'  # / \
+class B(D): pass  # B C
+class A(B, C): pass  # \ /
+# A
+X = A()  # |
+print(X.attr)  # C  # X
+```
+
+In this tree, DFLR reaches the common class `D` twice. The MRO keeps only the last, rightmost `D`. So the lower class `C` defines the winning `attr`. The output is now `C` instead of `D`.
+
+```text
+DFLR => [X, A, B, D, object, C, D, object]
+MRO => [X, A, B, C, D, object]
+```
+
+Every class has a built-in `__mro__` attribute. You can see its search order there. The tuple lists the classes searched for instances of that class, after the instance itself. Python sets it when the class is created. The `mro` class method computes it. That method can be customized, but the details are too advanced for this book. The `__mro__` tuple is easier to read if you select class names, as in this check of the nondiamond tree.
+
+```text
+>>> from mro_nondiamond import *
+D
+>>> [c.__name__ for c in A.__mro__]
+['A', 'B', 'D', 'C', 'E', 'object']
+>>> [c.__name__ for c in C.__mro__]
+['C', 'E', 'object']
+```
+
+Here is the same check for the diamond in Example 31-9.
+
+```text
+>>> from mro_diamond import *
+C
+>>> [c.__name__ for c in A.__mro__]
+['A', 'B', 'C', 'D', 'object']
+>>> [c.__name__ for c in C.__mro__]
+['C', 'D', 'object']
+```
+
+The full `__mro__` lists the classes used in inheritance for a class. The `__bases__` attribute lists only the direct superclasses.
+
+```text
+>>> A.__mro__
+(<class 'mro_diamond.A'>, <class 'mro_diamond.B'>, <class 'mro_diamond.C'>,
+<class 'mro_diamond.D'>, <class 'object'>)
+>>> X.__class__.__mro__
+(<class 'mro_diamond.A'>, <class 'mro_diamond.B'>, <class 'mro_diamond.C'>,
+<class 'mro_diamond.D'>, <class 'object'>)
+>>> A.__bases__
+(<class 'mro_diamond.B'>, <class 'mro_diamond.C'>)
+>>> D.__bases__
+(<class 'object'>,)
+```
+
+Try `__mro__` on your own classes. It is the best way to confirm how Python will search a tree you are unsure about.
+
+**Note.** The MRO has more detail than this book covers. The sketch here is an approximation by design. It will not give accurate results for some complex class trees. The full details are in Python's documentation. Keeping your class trees simple keeps them clear of the tricky parts. Obscurity is rarely good engineering, in your code or in Python itself.
+
+#### Attribute conflict resolution
+
+Multiple inheritance has one main drawback. The same method name, or another attribute name, can appear in more than one branch. When that happens, the conflict is settled either by the search order or by your code.
+
+- Default: the search picks the first occurrence it finds. When you reference an attribute normally, as in `self.attr`, Python scans the MRO of the instance's class from left to right. It uses the first match.
+- Explicit: you select the attribute yourself, by naming the class that holds it, as in `superclass.attr`. Your code overrides the search's default choice.
+
+By default, multiple inheritance favors names on the left over names on the right. The MRO also favors lower classes over same-named attributes in a common superclass of a diamond. Assumptions are convenient, but they can be wrong. In Example 31-9, what if you need some same-named attributes from `B` and others from `C`?
+
+There is an escape hatch. If the default order does not work, you can force the selection. Assign or name the attribute you want at the place where the classes are combined. Any of these choices is allowed in Example 31-9. The last two are explicit, so they do not depend on the subtle choices of the MRO.
+
+```python
+class A(B, C): pass  # Use the default MRO choice (C)
+class A(B, C): attr = B.attr  # Choose attr from the left branch (D)
+class A(B, C): attr = C.attr  # Choose attr from the right branch (C)
+```
+
+Methods are attributes too. They are assignable names that refer to callable function objects. The choice can also be made inside a call.
+
+```text
+class A(B, C):
+    def method(self, ...):
+        self.method(...)  # Use the default MRO choice
+class A(B, C):
+    def method(self, ...):
+        B.method(self, ...)  # Choose method from the left branch
+class A(B, C):
+    def method(self, ...):
+        C.method(self, ...)  # Choose method from the right branch
+```
+
+Calls like these can override the MRO. They can also skip the class's own version and call up the tree. The next chapter introduces `super().method()`. That form selects the class after the host class in the MRO of `self`. It is simple in single inheritance. In multiple inheritance it can be hard to follow, and it gives less control than explicit class names.
+
+Manual overrides are needed only when the same name appears in several superclasses and you do not want the first one. For example, they let you choose unambiguously among same names on both the left and right branches. Normal inheritance would pick only from the left. You can also use overrides to make choices explicit, even in nondiamonds.
+
+This topic matters less in typical Python code than it sounds. This book defers the details until the `super` built-in in the next chapter. It returns to the topic as a gotcha at the end of that chapter.
+
+**Note.** The inheritance story continues. The complete algorithm has special cases for metaclasses, descriptors, and built-ins. Chapter 32 extends inheritance to the metaclass tree and applies the MRO in `super`. Chapter 38 covers the special case for built-in operations. A full formal definition appears in Chapter 40. The remaining details rarely affect application programs. For most programmers, this part is an optional read.
+
+#### Example: mix-in attribute listers
+
+Multiple inheritance is often used to mix in general methods from superclasses. Those superclasses are called mix-in classes. A mix-in provides methods that you add to application classes through inheritance. In a sense, a mix-in works like a module. It offers a package of methods for its client subclasses. Unlike module functions, mix-in methods take part in the inheritance hierarchy. They also have access to `self`, so they can use state and other methods in the tree.
+
+Python's default printing of an instance is not very useful.
+
+```text
+>>> class Hack:
+...     def __init__(self, what):  # No __repr__ or __str__
+...         self.data1 = what
+>>> X = Hack('code')
+>>> print(X)  # Default: class name + address (id)
+<__main__.Hack object at 0x10ba464e0>
+```
+
+Chapter 28 and Chapter 30 showed that a class can provide `__str__` or `__repr__` for a custom display. Coding that method in every class is repetitive. A better design codes it once in a general tool class and inherits it everywhere. That is the job of a mix-in. Defining the display in a mix-in lets you reuse it wherever you want that format. This works even in classes that already have another superclass.
+
+Earlier tools did related work. Chapter 28's `AttrDisplay` class formats instance attributes in a generic `__repr__`. It does not climb class trees, and it works only in single inheritance. Chapter 29's `classtree.py` module defines functions that climb and sketch class trees. It does not show object attributes, and it was not written as an inheritable class. This section revisits both ideas. It builds three mix-in classes. They list instance attributes, inherited attributes, and the attributes of every object in a class tree. These classes also work in multiple inheritance.
+
+This version uses `__str__` instead of `__repr__`. That choice is partly a matter of style. It limits the display to `print` and `str`. The displays are meant for people, not as code-like output. The choice also leaves client classes free to add a `__repr__` for interactive echoes and nested displays. It also avoids the `__repr__` looping problem covered below.
+
+##### Listing instance attributes with `__dict__`
+
+We start with the simple case. The next example lists attributes attached to an instance. The file `listinstance.py` defines a mix-in called `ListInstance`. It overloads `__str__` for every class that includes it in its header. Because it is a class, `ListInstance` works for instances of any client subclass.
+
+**Example 31-10.** `listinstance.py`
+
+```python
+class ListInstance:
+    """
+    Mix-in class that provides a formatted print() or str() of instances via
+    inheritance of __str__ coded here. Displays instance attrs only; self is
+    instance of lowest class; __X naming avoids clashing with client's attrs.
+    Works for classes with slots: a __dict__ is ensured by lack of slots here.
+    """
+    def __attrnames(self):
+        result = '\n'
+        for attr in sorted(self.__dict__):  # Slots okay
+            result += f'\t{attr}={self.__dict__[attr]!r}\n'  # Repr for quotes
+        return result
+    def __str__(self):
+        return (f'<Instance of {self.__class__.__name__}, '  # My class's name
+                f'address {id(self):#x}:'  # My address (hex)
+                f'{self.__attrnames()}>')  # name=value list
+if __name__ == '__main__':
+    import testmixin
+    testmixin.tester(ListInstance)  # Test class in this module
+```
+
+The `__attrnames` method uses a classic comprehension pattern. You could write it more concisely with a generator expression and a `''.join()` call. That change is left as an exercise. As coded, `ListInstance` uses techniques we have seen before. It gets the instance's class name with `self.__class__.__name__`. Each instance has a `__class__` attribute that names the class that created it. Each class has a `__name__` attribute that holds the name from its header.
+
+The class does most of its work by scanning the instance's attribute dictionary in `__dict__`. It builds a string that shows each name and value. The keys are sorted by name, so the output is easy to read. The dictionary's insertion order is not used.
+
+`ListInstance` is much like the `AttrDisplay` tool from Chapter 28. It adds two techniques. It shows the instance's memory address by calling the `id` built-in. The `id` function returns any object's address, which is a unique identifier. The class also uses pseudoprivate naming for its helper method, `__attrnames`. Python expands that name to `_ListInstance__attrnames`. The same expansion applies to class attributes such as methods and to instance attributes. In a general tool, this keeps the helper's name from clashing with names in client subclasses.
+
+Because `ListInstance` defines `__str__`, instances display their attributes when printed. That is more useful than a bare address. Here is the class mixed in with a simple class.
+
+```text
+>>> from listinstance import ListInstance
+>>> class Hack(ListInstance):  # Inherit a __str__ method
+...     def __init__(self, what):
+...         self.data1 = what
+>>> X = Hack('code')
+>>> print(X)  # print() and str() run __str__
+<Instance of Hack, address 0x10c890b90:
+data1='code'
+>
+```
+
+You can also get the listing as a string with `str`. Then you can apply escapes with `print` later. Interactive echoes and nested displays still use the default format, because we did not define `__repr__`.
+
+```text
+>>> str(X)
+"<Instance of Hack, address 0x10c890b90:\n\tdata1='code'\n>"
+>>> X
+<__main__.Hack object at 0x10c890b90>
+```
+
+`ListInstance` works with any class you write, even one that already has superclasses. Add it to the list of superclasses in the header, and you get its `__str__` for free. You keep the existing superclasses too. The file `testmixin.py` in Example 31-11 contains test classes that show this.
+
+**Example 31-11.** `testmixin.py`
+
+```python
+"""
+Generic lister-mixin tester: similar to transitive reloader in
+Chapter 25, but passes a class object to tester (not function),
+and testByNames adds loading of both module and class by name
+strings here, in keeping with Chapter 31's factories pattern.
+"""
+import importlib
+def tester(listerclass, sept=False):
+    "Pass any lister class to listerclass"
+    class Super:
+        def __init__(self):  # Superclass __init__
+            self.data1 = 'code'  # Create instance attrs
+        def method1(self):
+            pass
+    class Sub(Super, listerclass):  # Mix in method1 and a __str__
+        def __init__(self):  # Listers have access to self
+            Super.__init__(self)  # Or super().__init__()
+            self.data2 = 'Python'  # More instance attrs
+            self.data3 = 3.12
+        def method2(self):  # Define another method here
+            pass
+    instance = Sub()  # Build instance with lister's __str__
+    print(instance)  # Run mixed-in __str__ (or via str(x))
+    if sept: print(f'\n{'-' * 80}\n')  # Python 3.12+ f-string
+def testByNames(modname, classname, sept=False):
+    modobject = importlib.import_module(modname)  # Import mod by namestring
+    listerclass = getattr(modobject, classname)  # Fetch attr by namestring
+    tester(listerclass, sept)
+if __name__ == '__main__':
+    testByNames('listinstance', 'ListInstance', True)  # Test all three here
+    testByNames('listinherited', 'ListInherited', True)  # See others ahead...
+    testByNames('listtree', 'ListTree', False)
+```
+
+This file is built to test many listers. It receives a lister class, `listerclass`, and mixes it into test classes nested in a function. Classes are first-class objects, so the lister can be a parameter that varies per test. The file also fetches classes by name strings. We will use that part later.
+
+The self-test in `listinstance.py` imports `tester` and passes in `ListInstance`. The class `Sub` inherits names from `Super` and from `ListInstance`. It is a composite of its own names and the names of both superclasses. When you make a `Sub` instance and print it, the custom display from `ListInstance` appears.
+
+```text
+$ python3 listinstance.py
+<Instance of Sub, address 0x10caae300:
+data1='code'
+data2='Python'
+data3=3.12
+>
+```
+
+The `ListInstance` display works in any class it joins. `self` refers to an instance of whatever subclass mixes it in. Mix-ins are the class equivalent of modules. They are packages of methods for many clients. They also make maintenance easier. If you later extend `__str__` to show inherited class attributes, every class that mixes in `ListInstance` picks up the change. Such a change needs no edits in the subclasses.
+
+##### Listing inherited attributes with `dir`
+
+`ListInstance` shows only attributes attached to the instance. Extending it to show every attribute the instance can reach is easy. The trick is to call the `dir` built-in instead of scanning `__dict__`. The dictionary holds only instance attributes. The `dir` function also collects inherited attributes.
+
+Example 31-12 puts this change in `listinherited.py`. The module is separate for testing. Existing clients could switch to this version and get the new display automatically. A `from` import with an `as` clause can rename the new version to an old name.
+
+**Example 31-12.** `listinherited.py`
+
+```python
+class ListInherited:
+    """
+    Use dir() to collect both instance attrs and names inherited from
+    its classes. This includes default names inherited from the implied
+    'object' superclass above topmost classes. getattr() can fetch
+    inherited names not in self.__dict__.
+    Caution: use __str__, not __repr__, or else this loops when printing
+    bound methods that may be returned for some attributes by getattr().
+    This will normally fail for class "slots" attributes not yet assigned.
+    """
+    def __attrnames(self, unders=False):
+        result = '\n'
+        for attr in dir(self):  # Instance dir()
+            if attr[:2] == '__' and attr[-2:] == '__':  # Built-in names
+                result += f'\t{attr}\n' if unders else ''  # Skip built-ins?
+            else:
+                result += f'\t{attr}={getattr(self, attr)!r}\n'
+        return result
+    def __str__(self):
+        return (f'<Instance of {self.__class__.__name__}, '  # My class's name
+                f'address {id(self):#x}:'  # My address (hex)
+                f'{self.__attrnames()}>')  # name=value list
+if __name__ == '__main__':
+    import testmixin
+    testmixin.tester(ListInherited)  # Test class in this module
+```
+
+By default this code skips all `__X__` names to keep the output short. The test case has 27 such names. Most are internal names that a generic listing does not need. Some are operator methods, such as the `__str__` method we defined. Most come from the implied `object` root class. There is no easy way to tell which class each one came from.
+
+The `dir` results can include names from anywhere in the tree. So this version fetches each value with `getattr`, not by indexing `__dict__`. The `getattr` built-in runs the inheritance search. Some names in the list are not stored on the instance itself.
+
+To test this version, run its file. It passes `ListInherited` to the test function in `testmixin.py`. The output includes the extra inherited names. It also shows the name mangling in the lister's method name.
+
+```text
+$ python3 listinherited.py
+<Instance of Sub, address 0x101d76600:
+_ListInherited__attrnames=<bound method ListInherited.__attrnames of <…>>
+data1='code'
+data2='Python'
+data3=3.12
+method1=<bound method tester.<locals>.Super.method1 of <testmixin.tester…>>
+method2=<bound method tester.<locals>.Sub.method2 of <testmixin.tester…>>
+>
+```
+
+The output truncates the bound methods to fit the page. The first two look like this, with a line break added. Run the file yourself for the full, current picture.
+
+```text
+_ListInherited__attrnames=<bound method ListInherited.__attrnames of
+<testmixin.tester.<locals>.Sub object at 0x101d76600>>
+method1=<bound method tester.<locals>.Super.method1 of
+<testmixin.tester.<locals>.Sub object at 0x101d76600>>
+```
+
+The display format is open-ended. Python's standard `pprint` module can help with it, as an exercise. The next version gives a more useful view of the tree, so we move on.
+
+**Note.** Once the display includes inherited methods, `__str__` must replace `__repr__` for printing. With `__repr__`, the code falls into a recursive loop. The `getattr` call returns a bound method. Its display includes the instance. That triggers `__repr__` again, and the loop continues until the stack overflows. The problem is subtle, but it is real. Change `__str__` to `__repr__` to see it happen. One way to avoid the loop is to skip `getattr` results that are instances of `types.MethodType`. Using `__str__` is simpler.
+
+##### Listing attributes per object in class trees
+
+The last lister extends the earlier ones. The inherited list gives no sign of where each name comes from. Chapter 29's `classtree.py` climbs inheritance trees with straightforward code. The mix-in in Example 31-13 uses the same technique. It shows attributes grouped by the classes they live in. It sketches the full class tree and lists the attributes of each object on the way.
+
+The reader still has to work out which attributes are inherited. The final section of this chapter helps with that. Even so, this version gives much more detail than a flat list.
+
+**Example 31-13.** `listtree.py`
+
+```python
+class ListTree:
+    """
+    Mix-in that returns a __str__ trace of the entire class tree and all
+    its objects' attrs at and above the self instance. The display is
+    run by print() automatically; use str() to fetch as a string. This:
+    -Uses __X pseudoprivate attr names to avoid conflicts with clients
+    -Recurses to superclasses explicitly in DLFR (though not MRO) order
+    -Uses __dict__ instead of dir() because attrs are listed per object
+    -Supports classes with slots: lack of slots here ensures a __dict__
+    """
+    def __attrnames(self, obj, indent, unders=True):
+        spaces = ' ' * (indent + 1)
+        result = ''
+        for attr in sorted(obj.__dict__):
+            if attr.startswith('__') and attr.endswith('__'):
+                if unders: result += f'{spaces}{attr}\n'
+            else:
+                result += f'{spaces}{attr}={getattr(obj, attr)!r}\n'
+        return result
+    def __listclass(self, aClass, indent):
+        dots = '.' * indent
+        preamble = (f'\n{dots}'
+                    f'<Class {aClass.__name__}'
+                    f', address {id(aClass):#x}')
+        if aClass in self.__visited:
+            return preamble + ': (see above)>\n'  # Already listed
+        elif aClass is object:
+            self.__visited[aClass] = True
+            return preamble + ': (see dir(object))>\n'  # Skip object's 24
+        else:
+            self.__visited[aClass] = True
+            here = self.__attrnames(aClass, indent)  # My attrs + supers
+            above = ''
+            for Super in aClass.__bases__:
+                above += self.__listclass(Super, indent + 4)
+            return preamble + f':\n{here}{above}{dots}>\n'
+    def __str__(self):
+        self.__visited = {}
+        here = self.__attrnames(self, 0)  # My attrs
+        above = self.__listclass(self.__class__, 4)  # My supers tree
+        return (f'<Instance of {self.__class__.__name__}'  # My class's name
+                f', address {id(self):#x}'  # My address (hex)
+                f':\n{here}{above}>')  # attrs + supers
+if __name__ == '__main__':
+    import testmixin
+    testmixin.tester(ListTree)  # Test class in this module
+```
+
+The class walks the inheritance tree. It starts at the instance's `__class__`. Then it follows each class's `__bases__` to every superclass, recursively. At each object it scans the `__dict__` for attributes. As the recursion unwinds, it joins the strings from each part of the tree.
+
+Recursive code like this takes a while to understand. Class trees have arbitrary shapes and depths, so recursion is the natural choice here. An explicit stack would work too, as in Chapters 19 and 25. It is usually no simpler, so we skip it. The class keeps its logic explicit to maximize clarity.
+
+Run the module file to test it. The file passes `ListTree` to the `testmixin.py` tester, which mixes it into a subclass. The tree sketch looks like this.
+
+```text
+$ python3 listtree.py
+<Instance of Sub, address 0x10a45f980:
+_ListTree__visited={}
+data1='code'
+data2='Python'
+data3=3.12
+....<Class Sub, address 0x7fb26a448530:
+__doc__
+__init__
+__module__
+method2=<function tester.<locals>.Sub.method2 at 0x10a482ac0>
+........<Class Super, address 0x7fb26a445c00:
+__dict__
+__doc__
+__init__
+__module__
+__weakref__
+method1=<function tester.<locals>.Super.method1 at 0x10a4823e0>
+............<Class object, address 0x10a01b100: (see dir(object))>
+........>
+........<Class ListTree, address 0x7fb26a443d20:
+_ListTree__attrnames=<function ListTree.__attrnames at 0x10a480f40>
+_ListTree__listclass=<function ListTree.__listclass at 0x10a480fe0>
+__dict__
+__doc__
+__module__
+__str__
+__weakref__
+............<Class object, address 0x10a01b100: (see above)>
+........>
+....>
+>
+```
+
+A few points are worth noticing in this output. The `__visited` table is mangled in the instance dictionary, as a pseudoprivate name. Unless you are unlucky, it will not clash with other data there. Some of the lister's own methods are mangled too.
+
+To keep the display short, `__X__` attributes appear by name only, without values. The implied `object` class above every top class gets a single line. That line points you to its `dir` result. The `object` class has 24 attributes, which would be wasteful to repeat in every display.
+
+The attributes that were bound methods in the previous version now appear as plain functions. This version fetches methods from the classes, not from the instance. The `getattr` call runs on the current tree object whose `__dict__` is being scanned. In this context, `getattr` and `__dict__` indexing are equivalent. Class methods are plain functions. They become bound only when you fetch them through an instance.
+
+The `visited` table prevents listing a class twice. A dictionary works because class objects are hashable, so they can be keys. A set would also work.
+
+Cycles are not normally possible in a class tree. A superclass must already exist before you name it. Python also raises an exception if you try to create a cycle later by changing `__bases__`. The visited table is still needed, because it stops a class from being listed twice.
+
+```text
+>>> class C: pass
+>>> class B(C): pass
+>>> C.__bases__ = (B,)  # Dark magic
+TypeError: a __bases__ item causes an inheritance cycle
+```
+
+This class also works with bigger classes. Try mixing it into the `Button` class from the `tkinter` GUI module. In a `class` header, put `ListTree` first, on the left. That way its `__str__` is found first. `Button` has a `__str__` too. In multiple inheritance, the leftmost superclass is searched first.
+
+```text
+>>> from tkinter import Button
+>>> from listtree import ListTree
+>>> class ButtonPlus(ListTree, Button): pass  # ListTree's str, not Button's
+>>> print(ButtonPlus())
+…our class's display…
+>>> class ButtonPlus(Button, ListTree): pass  # Mix-in order can matter!
+>>> print(ButtonPlus())
+.!buttonplus2
+```
+
+Order matters in multiple inheritance. A manual override can force the choice.
+
+```text
+>>> class ButtonPlus(Button, ListTree): __str__ = ListTree.__str__
+…our class's display…
+```
+
+You can also run `testmixin.py` directly. Its self-test runs the three lister classes in turn, using their module and class name strings. It is a small class factory in action.
+
+```text
+$ python3 testmixin.py
+…all three listers' results…
+```
+
+The tree lister works as planned. It does not fully follow the MRO through trees with diamonds, though. It sketches the DFLR order and leaves readers to work out where each attribute comes from. The next example fixes that.
+
+##### Example: mapping attributes to inheritance sources
+
+This example shows the MRO in a programming tool. The tree lister shows where attributes sit in the physical tree. By matching the `dir` results to the linear MRO sequence, a tool can name the class each inherited attribute really comes from. Programmers find that useful too.
+
+Example 31-14 starts that work in `mapattrs.py`. Its `mapattrs` function shows how inheritance really searches the class tree. The MRO is handled for us by the built-in `__mro__` attribute.
+
+**Example 31-14.** `mapattrs.py`
+
+```python
+"""
+Main tool: mapattrs() maps all attributes on or inherited by an
+instance to the instance or class from which they are inherited.
+Also here: assorted dictionary tools using comprehensions.
+Assumes dir() gives all attributes of an instance. To emulate
+inheritance, this uses the class's __mro__ tuple, which gives the
+MRO search order for classes in Python 3.X. A recursive tree
+traversal for the DFLR order of classes is included but unused.
+"""
+import pprint
+def trace(label, X, end='\n'):
+    print(f'{label}\n{pprint.pformat(X)}{end}')  # Print nicely
+def filterdictvals(D, V):
+    """
+    dict D with entries for value V removed.
+    filterdictvals(dict(a=1, b=2, c=1), 1) => {'b': 2}
+    """
+    return {K: V2 for (K, V2) in D.items() if V2 != V}
+def invertdict(D):
+    """
+    dict D with values changed to keys (grouped by values).
+    Values must all be hashable to work as dict/set keys.
+    invertdict(dict(a=1, b=2, c=1)) => {1: ['a', 'c'], 2: ['b']}
+    """
+    def keysof(V):
+        return sorted(K for K in D.keys() if D[K] == V)
+    return {V: keysof(V) for V in set(D.values())}
+def dflr(cls):
+    """
+    Depth-first left-to-right order of class tree at cls.
+    Cycles not possible: Python disallows on __bases__ changes.
+    """
+    here = [cls]
+    for sup in cls.__bases__:
+        here += dflr(sup)
+    return here
+def inheritance(instance):
+    """
+    Inheritance order sequence: MRO or DFLR.
+    DFLR alone is no longer used in Python 3.X.
+    """
+    if hasattr(instance.__class__, '__mro__'):
+        return (instance,) + instance.__class__.__mro__
+    else:
+        return [instance] + dflr(instance.__class__)
+def mapattrs(instance, withobject=False, bysource=False):
+    """
+    dict with keys giving all inherited attributes of instance,
+    with values giving the object that each is inherited from.
+    withobject: False=remove object built-in class attributes.
+    bysource: True=group result by objects instead of attributes.
+    Supports classes with slots that preclude __dict__ in instances.
+    """
+    attr2obj = {}
+    inherits = inheritance(instance)
+    for attr in dir(instance):
+        for obj in inherits:
+            if hasattr(obj, '__dict__') and attr in obj.__dict__:  # Slots okay
+                attr2obj[attr] = obj
+                break
+    if not withobject:
+        attr2obj = filterdictvals(attr2obj, object)
+    return attr2obj if not bysource else invertdict(attr2obj)
+if __name__ == '__main__':
+    class D: attr2 = 'D'
+    class C(D): attr2 = 'C'
+    class B(D): attr1 = 'B'
+    class A(B, C): pass
+    I = A()
+    I.attr0 = 'I'
+    print(f'Py=>{I.attr0=}, {I.attr1=}, {I.attr2=}\n')  # Python's search
+    trace('INHERITANCE', inheritance(I))  # [Inheritance order]
+    trace('ATTRIBUTES', mapattrs(I))  # {Attr => Source}
+    trace('SOURCES', mapattrs(I, bysource=True))  # {Source => [Attrs]}
+```
+
+The main `mapattrs` function uses `dir` to collect every attribute an instance has. For each name, it finds the source by scanning the MRO in the `__mro__` of the instance's class. At each object it checks the namespace in `__dict__`. The result copies Python's real search for each attribute reachable from the instance.
+
+The self-test applies these tools to a diamond tree like the ones above. The `pprint` standard-library module displays the lists and dictionaries neatly. `pprint.pprint` prints them, and `pprint.pformat` returns the text. The attribute `attr2` is defined in `C` and `D`. The output shows that it comes from `C`, as the MRO predicts.
+
+```text
+$ python3 mapattrs.py
+Py=>I.attr0='I', I.attr1='B', I.attr2='C'
+INHERITANCE
+(<__main__.A object at 0x10cc33e00>,
+ <class '__main__.A'>,
+ <class '__main__.B'>,
+ <class '__main__.C'>,
+ <class '__main__.D'>,
+ <class 'object'>)
+ATTRIBUTES
+{'__dict__': <class '__main__.D'>,
+ '__doc__': <class '__main__.A'>,
+ '__module__': <class '__main__.A'>,
+ '__weakref__': <class '__main__.D'>,
+ 'attr0': <__main__.A object at 0x10cc33e00>,
+ 'attr1': <class '__main__.B'>,
+ 'attr2': <class '__main__.C'>}
+SOURCES
+{<__main__.A object at 0x10cc33e00>: ['attr0'],
+ <class '__main__.D'>: ['__dict__', '__weakref__'],
+ <class '__main__.C'>: ['attr2'],
+ <class '__main__.B'>: ['attr1'],
+ <class '__main__.A'>: ['__doc__', '__module__']}
+```
+
+`mapattrs.py` is not built as a mix-in. Still, listers can use its results. They can look up an attribute's source, or the attributes of a source. Wrapping the results in a `__str__` turns it into a mix-in. The next session lists the sources in the test classes from Example 31-11.
+
+```text
+$ python3
+>>> import pprint
+>>> from mapattrs import mapattrs
+>>> class ListAttr2Source:
+...     def __str__(self):
+...         return pprint.pformat(mapattrs(self))
+>>> from testmixin import tester
+>>> tester(ListAttr2Source)
+{'__dict__': <class 'testmixin.tester.<locals>.Super'>,
+ '__doc__': <class 'testmixin.tester.<locals>.Sub'>,
+ '__init__': <class 'testmixin.tester.<locals>.Sub'>,
+ '__module__': <class 'testmixin.tester.<locals>.Sub'>,
+ '__str__': <class '__main__.ListAttr2Source'>,
+ '__weakref__': <class 'testmixin.tester.<locals>.Super'>,
+ 'data1': <testmixin.tester.<locals>.Sub object at 0x102a8fa40>,
+ 'data2': <testmixin.tester.<locals>.Sub object at 0x102a8fa40>,
+ 'data3': <testmixin.tester.<locals>.Sub object at 0x102a8fa40>,
+ 'method1': <class 'testmixin.tester.<locals>.Super'>,
+ 'method2': <class 'testmixin.tester.<locals>.Sub'>}
+```
+
+Listing the attributes of each source is just as easy. The `pprint` options, such as `compact` and `width`, change the layout.
+
+```text
+>>> class ListSource2Attr:
+...     def __str__(self):
+...         return pprint.pformat(mapattrs(self, bysource=True))
+>>> tester(ListSource2Attr)
+{<testmixin.tester.<locals>.Sub object at 0x102ad12e0>: ['data1',
+                                                          'data2',
+                                                          'data3'],
+ <class 'testmixin.tester.<locals>.Super'>: ['__dict__',
+                                             '__weakref__',
+                                             'method1'],
+ <class 'testmixin.tester.<locals>.Sub'>: ['__doc__',
+                                           '__init__',
+                                           '__module__',
+                                           'method2'],
+ <class '__main__.ListSource2Attr'>: ['__str__']}
+```
+
+Study this example for more ideas. It uses `hasattr` to check whether an object has a `__dict__` before it indexes the dictionary. Some instances have no `__dict__`, because they use `__slots__`. Slots are the class extension covered earlier. `ListTree` and `ListInstance` work with slots as they are. Their own lack of slots guarantees an instance `__dict__`. `ListInherited` can fail for slots that were never assigned. Chapter 32 clarifies these findings.
+
+Other "virtual" attributes live on the class, not the instance. Properties and descriptors are examples, and so are slots. These may need generic handling. Tools can use `dir`, `getattr`, tree climbs, or MRO scans. The examples in this section handle them, but not evenly. Some names are linked to the class where their code lives, not to the instance used to reach them.
+
+No lister can show attribute names that methods such as `__getattr__` compute on the fly. Those names have no physical location to report. A class can define a `__dir__` method to control what `dir` returns. General tools cannot rely on that optional method being present.
+
+Finally, the attribute listers and mappers here work for normal instances. They do not work for classes. Printing a class gives the default display. The `mapattrs` function also attributes many names to a class called `type`. The listers skip classes because `print` skips the "instance" of a class. The `type` oddity comes from the fact that a class gets names from two trees. One is its own superclass tree and MRO. The other is a tree formed by metaclasses, which Chapter 32 covers.
+
+To understand the split caused by metaclasses, and special attributes such as slots, properties, and descriptors, we move on to the next chapter.
+
+### Other design-related topics
+
+This chapter sampled several design patterns for combining classes. It only scratches the surface of design, though. Other chapters cover related topics.
+
+- Abstract superclasses (Chapter 29)
+- Decorators (Chapters 32 and 39)
+- Type subclasses (Chapter 32)
+- Static and class methods (Chapter 32)
+- Managed attributes (Chapters 32 and 38)
+- Metaclasses (Chapters 32 and 40)
+
+Design patterns are important in OOP, and they fit Python more naturally than many other languages. They are not specific to Python, though. This book refers you to other OOP resources for more. Experience teaches most of them best.
+
+### Chapter summary: designing with classes
+
+This chapter covered common ways to use and combine classes. The goal is reuse and better factoring, which are design issues. They are mostly independent of the language, although Python makes them easier to implement.
+
+We studied inheritance, which acquires behavior from other classes. We studied composition, which controls embedded objects. We studied delegation, which wraps objects in proxy classes. We also covered pseudoprivate attributes, bound methods, factories, multiple inheritance, and the MRO.
+
+The next chapter finishes our look at classes. It surveys class-related topics that are more advanced than what we have seen. Some of that material interests tool writers more than application programmers. Most people who write OOP in Python should still review it, to understand code they reuse.
+
+## Extending built-in types
+
+Classes are sometimes used to extend Python's built-in types. A plain list can store items, but it cannot enforce rules such as keeping items unique. A class can add that behavior. There are two ways to do it: wrap a built-in object inside your own class, or subclass the built-in type directly. The next two sections show both.
+
+### Extending types by embedding
+
+Earlier chapters wrote set functions that took lists as arguments. Here is the same idea as a class. The class in `setwrapper.py` moves those functions into methods and adds some operator overloading. Most of its work is done by a list it keeps inside.
+
+Because it is a class, you can make several independent sets. Each one holds its own data and can be customized through inheritance.
+
+```python
+class Set:
+    def __init__(self, value=[]):           # Constructor
+        self.data = []                      # Manages a list
+        self.concat(value)                  # Removes duplicates
+    def intersect(self, other):             # other is any iterable
+        res = []                            # self is the subject
+        for x in self.data:
+            if x in other:                  # Pick common items
+                res.append(x)
+        return Set(res)                     # Return a new Set
+    def union(self, other):                 # other is any iterable
+        res = self.data[:]                  # Copy of my list
+        for x in other:                     # Add items in other
+            if not x in res:
+                res.append(x)
+        return Set(res)
+    def concat(self, value):                # value: list, Set...
+        for x in value:                     # Removes duplicates
+            if not x in self.data:
+                self.data.append(x)
+    def __len__(self): return len(self.data)                # len(self), if self
+    def __getitem__(self, key): return self.data[key]       # self[i], self[i:j]
+    def __and__(self, other): return self.intersect(other)  # self & other
+    def __or__(self, other): return self.union(other)       # self | other
+    def __repr__(self): return f'Set({self.data!r})'        # print(self),...
+    def __iter__(self): return iter(self.data)              # for x in self,...
+```
+
+You use this class the same way as any other class. You make instances, call methods, and run the operators it defines.
+
+```text
+$ python3
+>>> from setwrapper import Set
+>>> x = Set([1, 3, 5, 7, 3])
+>>> x.union(Set([1, 4, 7]))
+Set([1, 3, 5, 7, 4])
+>>> x | Set([1, 4, 6, 4])
+Set([1, 3, 5, 7, 4, 6])
+```
+
+Overloading indexing and iteration lets a `Set` act much like a real list. Keep this class in mind. The exercises at the end of the chapter ask you to extend it.
+
+### Extending types by subclassing
+
+Embedding works, but Python's built-in types can also be subclassed directly. Type-conversion calls such as `list('text')` are really calls to a type's constructor. Each of those names is a class you can subclass.
+
+An instance of your subclass can usually be used anywhere the original built-in type can appear. Suppose you dislike that list offsets start at 0. You can subclass `list` and change that one behavior.
+
+```python
+"""
+Subclass built-in list type/class.
+Map 1..N to 0..N-1, call back to built-in version.
+"""
+class MyList(list):
+    def __getitem__(self, offset):
+        print(f'<indexing {self} at {offset}>')
+        return list.__getitem__(self, offset - 1)
+
+if __name__ == '__main__':
+    print(list('abc'))
+    x = MyList('abc')            # __init__ inherited from list
+    print(x)                     # __str__/__repr__ inherited from list
+    print(x[1])                  # MyList.__getitem__
+    print(x[3])                  # Customizes list superclass method
+    x.append('hack!'); print(x)  # Attributes from list superclass
+    x.reverse(); print(x)
+```
+
+The subclass changes only `__getitem__`. It decrements the index and then calls the built-in version. Everything else comes from `list`.
+
+```text
+$ python3 typesubclass.py
+['a', 'b', 'c']
+['a', 'b', 'c']
+<indexing ['a', 'b', 'c'] at 1>
+a
+<indexing ['a', 'b', 'c'] at 3>
+c
+['a', 'b', 'c', 'hack!']
+['hack!', 'c', 'b', 'a']
+```
+
+The trace text comes from the print call inside `__getitem__`. Changing indexing this way is a powerful tool. It is also confusing, because users of `MyList` expect normal sequence behavior. Use it with care.
+
+The same pattern gives another way to build a set. You can subclass `list` instead of wrapping one. Python already has a built-in `set` type, as Chapter 5 showed. Writing your own is still a good way to learn how type subclassing works. The file `setsubclass.py` adds only the set methods and operators. Everything else is inherited from `list`.
+
+```python
+class Set(list):
+    def __init__(self, value=[]):           # Constructor
+        list.__init__(self)                 # Customizes list
+        self.concat(value)                  # Copies mutable defaults
+    def intersect(self, other):             # other is any iterable
+        res = []                            # self is the subject
+        for x in self:
+            if x in other:                  # Pick common items
+                res.append(x)
+        return Set(res)                     # Return a new Set
+    def union(self, other):                 # other is any iterable
+        res = Set(self)                     # Copy me and my list
+        res.concat(other)
+        return res
+    def concat(self, value):                # value: list, Set, etc.
+        for x in value:                     # Removes duplicates
+            if not x in self:
+                self.append(x)
+    def __and__(self, other): return self.intersect(other)
+    def __or__(self, other): return self.union(other)
+    def __repr__(self): return f'Set({list.__repr__(self)})'
+
+if __name__ == '__main__':
+    x = Set([1, 3, 5, 7])
+    y = Set([2, 1, 4, 5, 6])
+    print(x, y, len(x))
+    print(x.intersect(y), y.union(x))
+    print(x & y, x | y)
+    x.reverse(); print(x)
+```
+
+Here is the self-test output from the end of the file.
+
+```text
+$ python3 setsubclass.py
+Set([1, 3, 5, 7]) Set([2, 1, 4, 5, 6]) 4
+Set([1, 5]) Set([2, 1, 4, 5, 6, 3, 7])
+Set([1, 5]) Set([1, 3, 5, 7, 2, 4, 6])
+Set([7, 5, 3, 1])
+```
+
+Some inherited list operations can add duplicates to this `Set`. The nested searches also make it slower than a dictionary-based design. Sets are fun to experiment with, but you do not need them in Python today. Use the built-in `set` for real work.
+
+Why can we subclass `list` at all? The next section answers that question.
+
+## The Python object model
+
+The reason we could subclass built-in types is that types and classes are largely the same thing. This unification came with the new-style class model. For built-ins, some instances have literal syntax, such as `[]`, `'lp6e'`, and `3.12`. Instead of calling `list()` or `str()`, you write the value directly. These values are still instances of a class.
+
+Built-in types and user-defined classes are both classes. Both are also instances of the built-in `type` class. A `type` object creates classes as its instances. A class creates instances of itself. The built-in `object` class supplies defaults for every object.
+
+### Classes are types are classes
+
+You can see this in code. With one argument, `type` returns any object's type. That is normally the same as the object's `__class__`. The `isinstance` function checks whether an object inherits from a given class.
+
+```text
+>>> class Hack: pass            # A humble user-defined class
+>>> I = Hack()                  # Make an instance by calling the class
+>>> type(I)                     # Type is the user-defined class of origin
+<class '__main__.Hack'>
+>>> type(Hack)                  # User-defined classes are instances of type
+<class 'type'>
+>>> I.__class__, Hack.__class__
+(<class '__main__.Hack'>, <class 'type'>)
+>>> isinstance(I, object), isinstance(Hack, object)
+(True, True)
+```
+
+Built-in types work the same way. They are classes too, but they also have literal syntax for making instances.
+
+```text
+>>> I = 'hack'                  # Make an instance by literal syntax, or str()
+>>> type(I)                     # Built-in objects are instances of classes
+<class 'str'>
+>>> type(str)                   # Built-in classes are instances of type
+<class 'type'>
+>>> I.__class__, str.__class__
+(<class 'str'>, <class 'type'>)
+>>> isinstance(I, object), isinstance(str, object)
+(True, True)
+```
+
+The `type` class ends the chain. It reports itself as a class, so the chain loops back on itself.
+
+```text
+>>> type(type)                  # The type class ends the chain
+<class 'type'>
+>>> type(type(type))            # Hmm...the top of the chain
+<class 'type'>
+```
+
+This model can seem academic. It still matters in two ways. It lets you specialize built-in types with normal class statements. It also affects type-testing code, because you must know what a type is before you can test for it correctly.
+
+### Some instances are more equal than others
+
+It is tempting to conclude that classes and types are the same. The full story is richer. The instances you make from these objects differ in both behavior and inheritance.
+
+A metaclass is a class that creates other classes. The `type` built-in is itself a metaclass, and you can customize it with subclasses. You select a metaclass with special syntax in a class header. Metaclasses are covered in full in Chapter 40. For now, here is how instances, classes, and types fit together.
+
+- Instances are created from classes, both built-in and user-defined.
+- Classes are created from the built-in `type` class or one of its subclasses.
+- The `object` built-in class is a superclass of every object, whether it is an instance, a class, or both.
+
+Everything is ultimately an instance in Python. Even so, there are two different kinds of instances, and mixing them up hides how the model really works. The real split is not about user-defined classes. It is about how a class is created. Classes are created from `type` in a special way.
+
+A class can name its metaclass in the header. If you omit it, the metaclass defaults to `type`. Other instances get their types from a class call or a literal.
+
+```text
+class C(metaclass=Meta): ...    # Class creation: metaclass defaults to "type"
+I = C(...)                      # Instance creation: user-defined classes
+X = [1, 2]                      # Instance creation: built-in classes
+```
+
+These statements all produce instances in some sense. They still create two very different kinds of objects.
+
+Nonclass instances do not make instances. Classes are created from `type`, much as instances are created from classes. Once created, though, the analogy fails. A class creates instances of its own. A nonclass instance does not.
+
+Classes also get an extra inheritance search. Python has two inheritance trees, which are distinct but not completely separate. The second tree is formed by `type` and its subclasses. Python searches it only for classes, never for nonclass instances.
+
+### The inheritance bifurcation
+
+Inheritance for classes differs from inheritance for nonclass instances. This difference may be the most important one in the model. Inheritance always follows the MRO you studied earlier, in the multiple inheritance section. The search order changes depending on what you are searching.
+
+For a nonclass instance, Python checks the instance's `__dict__` first. It then follows `__class__` to the class and walks the class's `__bases__` to its superclasses. Python uses `__bases__` to build the `__mro__` that inheritance scans.
+
+Inheritance run on a class works in two steps. First, Python searches the class and its superclasses, as usual. If the name is still missing, it searches the separate class tree formed by `type` and its metaclass subclasses. That second tree is used only as a last resort, and only for lookups on classes.
+
+You can inspect these sources if you know where to look. The output is not pretty, but it shows the difference.
+
+```text
+>>> isinstance(I, C), type(I)
+(True, <class '__main__.C'>)
+>>> I, I.__class__, I.__class__.__bases__
+(<__main__.C object at 0x101265d60>, <class '__main__.C'>, (<class 'object'>,))
+>>> C, C.__bases__, C.__class__, C.__class__.__bases__
+(<class '__main__.C'>, (<class 'object'>,), <class 'type'>, (<class 'object'>,))
+```
+
+Each `__mro__` is a flattened version of the tree. These lines show the search order for the instance and for the class.
+
+```text
+>>> I, I.__class__.__mro__
+(<__main__.C object at 0x101265d60>, (<class '__main__.C'>, <class 'object'>))
+>>> C.__mro__, C.__class__.__mro__
+((<class '__main__.C'>, <class 'object'>), (<class 'type'>, <class 'object'>))
+```
+
+Inheritance checks the `__dict__` of each item in these lists. For a nonclass instance, the search is the instance's dictionary followed by the dictionaries of its class's MRO. For a class, the search is the MRO of the class and then the MRO of its metaclass tree. Some descriptors take precedence in both trees. You will learn about them in Chapter 40.
+
+The second tree sounds like a complication, and it is. Most application code never touches it. It explains a surprising result, though. Some class attributes, such as `__bases__`, are not inherited by instances. They live in the second tree.
+
+```text
+>>> '__bases__' in I.__dict__            # Not in instance
+False
+>>> '__bases__' in C.__dict__            # Not in instance's class
+False
+>>> '__bases__' in C.__class__.__dict__  # In instance's class's class
+True
+```
+
+Because of this two-tree model, names that classes inherit are not passed down to their instances.
+
+```text
+>>> C.__bases__                 # Instance does not inherit!
+(<class 'object'>,)
+>>> I.__bases__
+AttributeError: 'C' object has no attribute '__bases__'. Did you mean: '__class__'?
+```
+
+### The metaclass/class dichotomy
+
+Where does this leave us? Types behave as classes. You can extend them with normal class syntax in the primary tree and the metaclass tree. The model also has visible seams. There is special syntax for creating classes. There is an extra search for classes only. There are two very different kinds of instances. Metaclasses also have unique rules for customizing classes.
+
+Some people argue that the old type/class split of earlier Pythons has simply turned into a metaclass/class split. That trades a clear distinction for several seams. It also complicates inheritance and the meaning of names. All of this supports a rare use case. You must decide whether that trade is worth it.
+
+Part of the confusion comes from `type` itself. It has two roles. With one argument, it returns the type of an object. With three arguments, it creates a new class. The second role is what a `class` statement does behind the scenes.
+
+```python
+type(object)                             # Fetch object type
+type(classname, superclasses, attributedict)  # Make a class/type
+```
+
+The first role might have been better named "typeof." The second role leads into the metaclass material in Chapter 40.
+
+### One object to rule them all
+
+Every class inherits from the built-in `object` class, directly or through a superclass. This is true even when you do not write `object` yourself.
+
+```text
+>>> class C: pass
+>>> class D(object): pass
+>>> dir(C) == dir(D)
+True
+>>> C.__bases__, D.__bases__
+((<class 'object'>,), (<class 'object'>,))
+```
+
+The `type` class inherits from `object`. But `object` is an instance of `type`, so the two relationships form a circle. The two objects are different, though.
+
+```text
+>>> type is object
+False
+>>> type(type), type(object)
+(<class 'type'>, <class 'type'>)
+>>> isinstance(type, object), isinstance(object, type)
+(True, True)
+>>> type.__bases__, object.__bases__
+((<class 'object'>,), ())
+```
+
+In `isinstance`, a result is True for a subclass relationship or a creation source. For classes, this result depends on inheritance through the secondary type tree.
+
+This has practical effects. You must remember the default methods that come from `object`. For example, `object` provides a `__repr__` for display.
+
+```text
+>>> class C: pass              # All classes inherit object defaults
+>>> X = C()
+>>> X.__repr__
+<method-wrapper '__repr__' of C object at 0x1091a7920>
+```
+
+The `object` root also lets you write code that assumes an `object` superclass. You can count on it as the end of a call chain. You can also reroute attribute-interception methods to it, so the default behavior runs. For example, the earlier chapter on operator overloading used this form.
+
+```python
+object.__setattr__(self, attr, value)
+```
+
+## Advanced attribute tools
+
+Besides normal class and instance attributes, Python has attribute tools with narrower scope. These include slots, properties, and descriptors. Slots are an optimization. Properties and descriptors change how attribute access works. None of these tools are required. You may still meet them in code you read. Chapter 38 covers properties and descriptors in depth. Slots get full coverage here.
+
+### Slots: attribute declarations
+
+You have seen the effects of slots several times in this part of the book. In short, you assign a list of attribute names to the special `__slots__` class attribute. This limits which attributes instances can have. It can also save memory and sometimes speed up code. Slots add complexity, though. They can break code that you did not write. They also work only when every class in the tree uses them. Use them only when the application clearly needs them.
+
+Slot basics
+
+Assign an iterable of attribute names to `__slots__` at the top level of a class statement. Only those names can be assigned as instance attributes. Slots do not change how these attributes work. Like all names in Python, an attribute must be assigned before it is read, even if it is listed in `__slots__`.
+
+```text
+>>> class Limiter:
+...     __slots__ = ['age', 'name', 'job']  # Slots "declaration"
+>>> I = Limiter()
+>>> I.age                       # Must assign before use
+AttributeError: 'Limiter' object has no attribute 'age'
+>>> I.age = 40                  # Looks like instance data
+>>> I.age
+40
+>>> I.ape = 1000                # Fails: not in __slots__
+AttributeError: 'Limiter' object has no attribute 'ape'
+```
+
+Slots serve two purposes. They catch typos, because assignments to names outside `__slots__` raise an error instead of creating a new attribute. They also save memory. Every instance normally gets a namespace dictionary, and that dictionary is costly when you make many instances with only a few attributes. With slots, Python reserves just enough space in each instance for the slot values. The speed benefit depends on the program, the platform, and the Python version. As you will see, the speed gain is small today.
+
+You should not use slots by default
+
+Slots break Python's dynamic nature. Python normally lets any name be created by assignment. Slots partly imitate C++ for efficiency, and they can break some programs. They also come with many special rules.
+
+Python's own manual says to use slots only when clearly justified. The reasons are plain. They are hard to deploy correctly. They complicate code. They are best left to rare, memory-critical programs that create very large numbers of instances. Slots still show up in Python code more often than they should. Be wary of them, and check whether you really need them.
+
+#### Slots and namespace dictionaries
+
+Slots change how an instance stores its data. Some instances with slots have no `__dict__` at all. Others keep some data outside `__dict__`. This is a major break from the traditional class model. Code that reads attributes by name may fail.
+
+With slots, an instance usually has no attribute dictionary. Python manages the slot storage through class descriptors.
+
+```text
+>>> class C:
+...     __slots__ = ['a', 'b']  # __slots__ means no __dict__ by default
+>>> I = C()
+>>> I.a = 1
+>>> I.a
+1
+>>> I.__dict__
+AttributeError: 'C' object has no attribute '__dict__'. Did you mean: '__dir__'?
+```
+
+You can still get and set slot attributes with the storage-neutral tools `getattr` and `setattr`. The `dir` function lists them too.
+
+```text
+>>> getattr(I, 'a')
+1
+>>> setattr(I, 'b', 2)          # But getattr() and setattr() still work
+>>> I.b
+2
+>>> 'a' in dir(I)               # And dir() finds slot attributes too
+True
+>>> 'b' in dir(I)               # Though __dict__ access will fail
+True
+```
+
+Without a namespace dictionary, you cannot add new names that are not in `__slots__`.
+
+```python
+class D:
+    __slots__ = ['a', 'b']
+    def __init__(self):
+        self.d = 4              # Cannot add new names if no __dict__
+```
+
+You can add a dictionary back by listing `__dict__` in `__slots__`. Then the instance has both kinds of storage.
+
+```python
+class D:
+    __slots__ = ['a', 'b', '__dict__']   # Name __dict__ to include one too
+    c = 3                                # Class attrs work normally
+    def __init__(self):
+        self.d = 4                       # d stored in __dict__, a is a slot
+```
+
+```text
+>>> I = D()
+>>> I.d
+4
+>>> I.c
+3
+>>> I.a                         # All instance attrs undefined until assigned
+AttributeError: 'D' object has no attribute 'a'
+>>> I.a = 1
+>>> I.b = 2
+>>> I.__dict__                  # Some objects have both __dict__ and slot names
+{'d': 4}
+>>> I.__slots__
+['a', 'b', '__dict__']
+>>> getattr(I, 'a'), getattr(I, 'c'), getattr(I, 'd')   # Fetches all 3 forms
+(1, 3, 4)
+```
+
+Now both storage forms exist, and `__dict__` alone is too narrow. Generic tools such as `getattr` can still treat both forms as one set of attributes. The `dir` function is broader. It also includes methods and all the `object` defaults. A program that lists only instance attributes needs to handle both forms. A first attempt might look like this.
+
+```python
+for attr in list(I.__dict__) + I.__slots__:   # Wrong...
+    print(attr, '=>', getattr(I, attr))
+```
+
+Either source may be missing, so you can use `getattr` with defaults. This version is less wrong, but it is still not complete.
+
+```python
+for attr in list(getattr(I, '__dict__', [])) + getattr(I, '__slots__', []):
+    print(attr, '=>', getattr(I, attr))
+```
+
+```text
+d => 4
+a => 1                          # Less wrong...
+b => 2
+__dict__ => {'d': 4}
+```
+
+#### Multiple `__slots__` lists in superclasses
+
+The previous code works in one case, but not in general. It looks only at the lowest `__slots__` attribute that an instance inherits. A class tree can have several `__slots__` lists. A name missing from the lowest list can still appear in a higher one. Each slot name becomes a class-level attribute, so an instance gets the union of all slot names in the tree.
+
+```python
+class E:
+    __slots__ = ['c', 'd']                 # Superclass has slots
+
+class D(E):
+    __slots__ = ['a', '__dict__']          # But so does its subclass
+```
+
+```text
+>>> I = D()                     # The instance gets the union of each
+>>> dir(I)
+[...names omitted..., 'a', 'c', 'd']
+>>> I.a = 1; I.b = 2; I.c = 3   # slots: a, c, __dict__: b
+>>> I.a, I.c
+(1, 3)
+>>> E.__slots__                 # But __slots__ not concatenated
+['c', 'd']
+>>> D.__slots__
+['a', '__dict__']
+>>> I.__slots__                 # Instance inherits *lowest* __slots__
+['a', '__dict__']
+>>> I.__dict__                  # And has its own attr dict
+{'b': 2}
+>>> for attr in list(getattr(I, '__dict__', [])) + getattr(I, '__slots__', []):
+...     print(attr, '=>', getattr(I, attr))
+b => 2                          # Other superclass slots missed!
+a => 1
+__dict__ => {'b': 2}
+>>> dir(I)                      # But dir() includes all slot names
+[...names omitted..., 'a', 'b', 'c', 'd']
+```
+
+Inspecting only the inherited `__slots__` list misses slots defined higher in the tree. Listing instance attributes generically means facing the full inheritance search. Tools must choose a policy for this.
+
+#### Handling slots and other "virtual" attributes generically
+
+Tools that list instance data must handle slots. They must also handle other "virtual" attributes, such as properties and descriptors. These names live in classes, but they can supply values for instances on request. Slots are the most data-centric of this group.
+
+These attributes need one of three approaches. You can include them with an inclusive method. You can treat them with special handling. Or you can avoid them, which becomes unsatisfactory once any code uses slots. Class-level instance attributes like slots push us to redefine "instance data." It can mean locally stored attributes, all inherited attributes, or some subset of them.
+
+Some programs treat slot names as class attributes instead. The slot values do not live in instance dictionaries, after all. A more inclusive program uses `dir` to find all inherited names and `getattr` to read their values. This works without caring where a value is stored. If you must support slots as instance data, this is the most robust approach.
+
+```text
+>>> class Slotful:
+...     __slots__ = ['a', 'b', '__dict__']
+...     def __init__(self, data):
+...         self.c = data
+>>> I = Slotful(3)
+>>> I.a, I.b = 1, 2
+>>> I.a, I.b, I.c               # Normal attribute fetch
+(1, 2, 3)
+>>> I.__dict__                  # Both __dict__ and slots storage
+{'c': 3}
+>>> [x for x in dir(I) if not x.startswith('__')]
+['a', 'b', 'c']
+>>> I.__dict__['c']             # __dict__ is only one attr source
+3
+>>> getattr(I, 'c'), getattr(I, 'a')    # dir+getattr is broader than __dict__
+(3, 1)                          # applies to slots, properties, descriptors
+>>> for a in (x for x in dir(I) if not x.startswith('__')):
+...     print(a, '=>', getattr(I, a))
+a 1
+b 2
+c 3
+```
+
+With this `dir` and `getattr` model, you can still map attributes to their inheritance sources. You can filter them by source or type by scanning the MRO. The mapattrs tool from the earlier chapter on attributes does this. Properties and descriptors are more clearly computed values. This approach works for them too.
+
+Slots also affect the `__setattr__` method from the earlier chapter on operator overloading. Slots and some other attributes are not stored in `__dict__`. Sometimes `__dict__` does not exist at all. Because of this, a class's `__setattr__` often sends assignments to the `object` superclass.
+
+#### Slot usage rules
+
+Slot declarations can appear in several classes in a tree. When they do, a set of constraints applies. These rules are hard to explain unless you understand the implementation. Each slot name is a class-level descriptor. Instances inherit that descriptor, and the space for the value is reserved in the instance. Here are the main constraints.
+
+- Slots in a subclass are pointless when the superclass has none. The superclass creates an instance `__dict__`, and that dictionary is always accessible. The subclass still manages its slots, but it does not avoid the dictionary. Avoiding the dictionary is the main reason to use slots.
+- Slots in a superclass are pointless when the subclass has none. A `__slots__` declaration applies only to the class where it appears. A subclass without `__slots__` creates an instance `__dict__`.
+- Redefinition hides a superclass slot. If a class defines a slot name that its superclass also defines, the new definition hides the old one, as normal inheritance does. You can reach the superclass version only by fetching its descriptor directly from the superclass.
+- Slots prevent class-level defaults. Slots are class-level descriptors. A class attribute with the same name overwrites the slot descriptor. You cannot use a class attribute as a default the way you can for normal instance attributes.
+- Slots cannot be combined in multiple inheritance. If more than one mixed-in class has a nonempty `__slots__`, the class that does the mixing fails. This is true even when the slot names differ. Empty `__slots__` lists let the mixer define slots or not.
+- Slots can change `__dict__`. Slots block both the instance `__dict__` and assignments to unlisted names, unless you list `__dict__` explicitly. Slots also block the `__weakref__` attribute that supports weak references. Those are rare, so this book covers them only briefly.
+
+These rules are easier to see in code. The first bullet is the reason a namespace dictionary appears when any class in a tree omits slots. That removes the memory saving, but it also supports classes that need a `__dict__` when mixed with others.
+
+```text
+>>> class C: pass                       # Bullet 1: slots in sub but not super
+>>> class D(C): __slots__ = ['a']       # Makes instance dict for nonslots
+>>> I = D()                             # But slot name still managed in class
+>>> I.a = 1; I.b = 2
+>>> I.__dict__
+{'b': 2}
+>>> D.__dict__.keys()
+dict_keys([... '__slots__', 'a', ...])
+>>> class C: __slots__ = ['a']          # Bullet 2: slots in super but not sub
+>>> class D(C): pass                    # Makes instance dict for nonslots
+>>> I = D()                             # But slot name still managed in class
+>>> I.a = 1; I.b = 2
+>>> I.__dict__
+{'b': 2}
+>>> C.__dict__.keys()
+dict_keys([... '__slots__', 'a', ...])
+>>> class C: __slots__ = ['a']          # Bullet 3: only lowest slot accessible
+>>> class D(C): __slots__ = ['a']       # Superclass slot 'a' is pointless
+>>> class C: __slots__ = ['a']; a = 99  # Bullet 4: no class-level defaults
+ValueError: 'a' in __slots__ conflicts with class variable
+>>> class C: __slots__ = ['a']          # Bullet 5: only one nonempty in mixins
+>>> class D: __slots__ = ['a']          # Use empty slots or omit in all but one
+>>> class E(C, D): pass
+TypeError: multiple bases have instance lay-out conflict
+```
+
+Slots work only when every class in the tree uses them carefully. A slot does not compute its value the way a property does. So slots are mostly pointless unless each class uses them and defines only new slot names. The feature is all or nothing. The `super` call has the same problem, as you will see later in this chapter.
+
+```text
+>>> class C: __slots__ = ['a']          # Assumes universal use, differing names
+>>> class D(C): __slots__ = ['b']
+>>> I = D()                             # And may break code and tools you use
+>>> I.a = 1; I.b = 2
+>>> I.__dict__
+AttributeError: 'D' object has no attribute '__dict__'. Did you mean: '__dir__'?
+>>> C.__dict__.keys(), D.__dict__.keys()
+(dict_keys([... '__slots__', 'a', ...]), dict_keys([... '__slots__', 'b', ...]))
+```
+
+These rules and others omitted here explain why slots are rarely recommended. Use them only in unusual cases where the space savings are large. Even then, weigh the risk of breaking code. Slots must be spread throughout a framework. They can also break tools you depend on.
+
+#### Example impacts of slots: ListTree and mapattrs
+
+Slots can affect real tools. The first rule above explains why the `ListTree` class from the earlier attributes chapter still works when another class with `__slots__` is mixed in. `ListTree` has no slots of its own, so every instance it touches still has a `__dict__`. Its scan of that dictionary never fails.
+
+Both of the following single-inheritance trees display without error. The second one also lets you assign names that are not in the slots list, because the superclass supplies a `__dict__`.
+
+```python
+class C(ListTree): pass
+I = C()                                 # OK: no __slots__ used
+print(I)
+
+class C(ListTree):
+    __slots__ = ['a', 'b']              # OK: superclass produces __dict__
+I = C()
+I.c = 3
+print(I)                                # Displays c at I, a and b at C
+```
+
+These multiple-inheritance classes also display correctly. Any class that is not slotted, like `ListTree`, creates an instance `__dict__`. It can rely on that dictionary being there. Its subclass slots become pointless, but that is a helpful side effect for tool classes like `ListTree`.
+
+```python
+class A:
+    __slots__ = ['a']                   # Both OK by bullet 1 above
+
+class B(A, ListTree): pass
+print(B())
+
+class A:
+    __slots__ = ['a']
+
+class B(A, ListTree):
+    __slots__ = ['b']                   # Displays b at B, a at A
+print(B())
+```
+
+Tools that do not inherit from `ListTree` need more care. They may need to catch exceptions when `__dict__` is missing. They can also test with `hasattr`, or use `getattr` with a default, if slots may prevent a namespace dictionary. The `mapattrs` module checks for `__dict__` explicitly, because it is not mixed into other classes and cannot assume the attribute exists. Like `ListTree`, it also maps slots to their classes.
+
+Run these examples yourself. The impact of slots can be heavy, but knowing the rules is your best defense.
+
+#### What about slots speed?
+
+Slots mainly save memory. Their speed effect is less clear. The following test uses the `timeit` technique from the earlier chapter on built-in tools. For both the slots model and the normal dictionary model, it creates 1,000 instances. It assigns and fetches four attributes on each one. It repeats this 1,000 times. It takes the best of 5 runs. Each model therefore runs a total of 8M attribute operations.
+
+```python
+import timeit
+
+base = """
+Is = []
+for i in range(1000):
+    I = C()
+    I.a = 1; I.b = 2; I.c = 3; I.d = 4
+    t = I.a + I.b + I.c + I.d
+    Is.append(I)
+"""
+stmt = """
+class C:
+    __slots__ = ['a', 'b', 'c', 'd']
+""" + base
+print('Slots =>', end=' ')
+print(min(timeit.repeat(stmt, number=1000, repeat=5)))
+
+stmt = """
+class C:
+    pass
+""" + base
+print('Nonslots=>', end=' ')
+print(min(timeit.repeat(stmt, number=1000, repeat=5)))
+```
+
+On one macOS test host with CPython 3.12, slots were only slightly quicker. This says little about memory, and it may change in future versions. PyPy 7.3 ran this test about 10 times slower than CPython. It still showed a similar pattern.
+
+```text
+$ python3 slots-test.py
+Slots => 0.17895982996560633
+Nonslots=> 0.18887511501088738
+```
+
+For more on slots, see the Python standard manual. The `Private` decorator case study in Chapter 39 also handles attributes stored both ways. It does this with delegation and storage-neutral tools like `getattr`.
+
+### Properties: attribute accessors
+
+A property is another way for a class to run methods when an instance attribute is read or assigned. Properties resemble the getters and setters of Java and C#. In Python, use them sparingly. Add them to an attribute after the fact, when needs change. Properties let you compute an attribute's value on access, so callers do not have to call a method.
+
+Properties can replace some uses of the `__getattr__` and `__setattr__` methods from the earlier chapter on operator overloading. A property does the same job for specific attributes. It adds an extra method call only when the attribute is computed. Other attributes are read normally, with no extra call. The `__getattr__` method runs only for undefined names. The `__setattr__` method runs on every assignment.
+
+Properties and slots are related, but they serve different goals. Both are "virtual" attributes that do not live in the instance's namespace dictionary. Both rely on class-level descriptors. Slots manage storage. A property intercepts access and computes the value.
+
+Property basics
+
+A property is an object assigned to a class attribute name. You create one by calling the `property` built-in. You can pass up to three accessor methods: one for get, one for set, and one for delete. You can also pass a docstring. If an argument is `None` or omitted, that operation is not supported.
+
+You usually assign the property at the top level of a class statement. Then reading `obj.name` runs one of the accessor methods. A special decorator syntax, covered later in this chapter, can do this assignment for you.
+
+Here is a `__getattr__` version of an attribute that always returns 40.
+
+```text
+>>> class WithOperators:
+...     def __getattr__(self, name):    # On undefined attr
+...         if name == 'age':
+...             return 40
+...         else:
+...             raise AttributeError(name)
+>>> x = WithOperators()
+>>> x.age                       # Runs __getattr__
+40
+>>> x.name                      # Runs __getattr__
+AttributeError: name
+```
+
+The same example with a property looks like this.
+
+```text
+>>> class WithProperties:
+...     def getage(self):
+...         return 40
+...     age = property(getage)  # (get?, set?, del?, docs?), or @
+>>> x = WithProperties()
+>>> x.age                       # Runs getage
+40
+>>> x.name                      # Normal fetch
+AttributeError: 'WithProperties' object has no attribute 'name'
+```
+
+Properties can be simpler and faster than the older techniques. They become more attractive once you add assignment support. There is less code to write, and assignments to unmanaged attributes make no extra calls.
+
+```text
+>>> class WithProperties:
+...     def getage(self):
+...         print('get age')
+...         return 40
+...     def setage(self, value):
+...         print('set age:', value)
+...         self._age = value
+...     age = property(getage, setage)
+>>> x = WithProperties()
+>>> x.age                       # Runs getage
+get age
+40
+>>> x.age = 42                  # Runs setage
+set age: 42
+>>> x._age                      # Normal fetch: no getage call
+42
+>>> x.job = 'hacker'            # Normal assign: no setage call
+>>> x.job                       # Normal fetch: no getage call
+'hacker'
+```
+
+The same class built with operator overloading makes extra calls. Every assignment, even to attributes you do not manage, goes through `__setattr__`. You must route assignments through the instance dictionary to avoid loops. You can also send them to the `object` superclass's `__setattr__`, which supports virtual attributes such as slots and properties.
+
+```text
+>>> class WithOperators:
+...     def __getattr__(self, name):    # On undefined attr
+...         if name == 'age':
+...             print('get age')
+...             return 40
+...         else:
+...             raise AttributeError(name)
+...     def __setattr__(self, name, value):   # On all assignments
+...         print('set:', name, value)
+...         if name == 'age':
+...             self.__dict__['_age'] = value # Or object.__setattr__(self, ...)
+...         else:
+...             self.__dict__[name] = value
+>>> x = WithOperators()
+>>> x.age                       # Runs __getattr__
+get age
+40
+>>> x.age = 41                  # Runs __setattr__
+set: age 41
+>>> x._age                      # Defined: no __getattr__ call
+41
+>>> x.job = 'coder'             # Runs __setattr__ again
+set: job coder
+>>> x.job                       # Defined: no __getattr__ call
+'coder'
+```
+
+Properties look like a win for this simple case. Some uses of `__getattr__` and `__setattr__` still need more generic interfaces. The attribute names may be unknown when the class is written. They may not exist yet at all. For example, you may delegate arbitrary attribute references to an embedded object. In that situation, a generic handler that receives the attribute name is better. Properties may still be preferred for simpler cases, though, because they avoid extra calls on assignment.
+
+You can also write properties with the `@` decorator syntax, which Chapter 38 covers in depth. It is an automatic alternative to assigning the property in the class body.
+
+```python
+class WithProperties:
+    @property                   # Coding properties with decorators: ahead
+    def age(self):              # On instance.age
+        ...
+
+    @age.setter
+    def age(self, value):       # On instance.age = value
+        ...
+```
+
+Decorator syntax makes more sense after you understand the mechanics beneath it. We cover that next.
+
+### `__getattribute__` and descriptors
+
+The `__getattribute__` method intercepts every attribute reference, not only undefined ones. That makes it more powerful than `__getattr__`. It is also harder to use, because it can loop in several ways, much as `__setattr__` can.
+
+For more specialized control, Python provides descriptors. A descriptor is a class with `__get__` and `__set__` methods. You assign it to a class attribute, and instances inherit it. It intercepts reads and writes to that one attribute. Here is one of the simplest descriptors you are likely to see.
+
+```text
+>>> class AgeDesc:
+...     def __get__(self, instance, owner): return 40
+...     def __set__(self, instance, value): instance._age = value
+>>> class WithDescriptors:
+...     age = AgeDesc()        # Assign descriptor instance
+>>> x = WithDescriptors()
+>>> x.age                      # Runs AgeDesc.__get__
+40
+>>> x.age = 42                 # Runs AgeDesc.__set__
+>>> x._age                     # Normal fetch: no AgeDesc call
+42
+```
+
+A descriptor can access its own state and the state of its client class. In this sense, it is a more general form of property. A property is a simplified descriptor that runs functions on access. Descriptors also power the slots feature you saw earlier. They also have special cases in attribute inheritance.
+
+The full coverage of `__getattribute__` and descriptors is too large for this chapter. The book defers it. Chapter 38 covers descriptors and properties in more depth. Chapter 39 uses them in examples. Chapter 40 explains how they affect inheritance.
+
+## Static and class methods
+
+Most methods expect an instance as their first argument. Python also lets a class define two other kinds of methods that do not need an instance. A static method works like a simple function that lives inside a class. A class method receives the class instead of an instance. Other languages have similar features, such as C++ static methods. The bound-method section of the earlier chapter touched on these briefly. This section finishes the story.
+
+To turn on these special modes, call the built-in functions `staticmethod` or `classmethod` inside the class. You can also use the `@` decorator syntax, which you will meet later. A class method always needs `classmethod`. A static method does not need `staticmethod` if you call it only through the class name. It does need `staticmethod` when you call it through an instance.
+
+### Why the special methods?
+
+Usually a method receives an instance as its first argument. That instance is the subject of the call. This is the "object" in object-oriented programming. Two formal options can change that pattern. Before the syntax, consider why you might need them.
+
+Some work is about the class, not any one instance. Imagine you want to count how many instances a class has made. You might also want a list of the instances that are still in use. This data belongs to the class. It is usually stored on the class itself, and processed without any instance.
+
+Simple functions outside the class could do this work. They can reach class attributes through the class name, so they do not need an instance. But it is better to put that code inside the class. That keeps it near the class's other code. It also lets subclasses customize it through inheritance. To make this work, the class needs methods that do not receive a `self` argument.
+
+Calling a class's function through the class works for a plain function. Calling it through an instance fails, because the instance is passed automatically. Python solves this with static methods. A static method is a plain function nested in a class. It never receives an automatic `self`, however you call it. You only need one for methods that are accessed through instances. Methods used only through the class do not need one.
+
+Python also supports class methods. These receive the class object as their first argument instead of an instance. This happens whether you call them through an instance or through the class. A class method can access class data through its class argument. That argument is what we have been calling `self`. Normal instance methods still receive a subject instance. Static and class methods do not.
+
+### Plain-function methods
+
+Suppose you want to use class attributes to count the instances made from a class. The first attempt stores a counter as a class attribute. The constructor adds one to it each time a new instance is made. A method displays the counter. Class attributes are stored once and shared by all instances. That makes this counter span all of them.
+
+```python
+class Hack:
+    numInstances = 0
+    def __init__(self):
+        Hack.numInstances += 1
+    def printNumInstances():
+        print('Number of instances created:', Hack.numInstances)
+```
+
+The `printNumInstances` method works with class data, not instance data. It is about all the instances, not one of them. You want to call it without passing an instance. You also do not want to create an instance just to read the count. That would change the count you are trying to read. You want a `self`-less "static" method.
+
+Whether this method works depends on how you call it. Calls through the class work, because they produce plain functions. Calls through an instance produce bound methods, and those fail.
+
+```text
+$ python3
+>>> from hack1 import Hack
+>>> a, b, c = Hack(), Hack(), Hack()    # Make three instances
+>>> Hack.printNumInstances()            # Okay to call from instance – only!
+Number of instances created: 3
+>>> a.printNumInstances()
+TypeError: Hack.printNumInstances() takes 0 positional arguments but 1 was given
+```
+
+Calls through the class succeed. Calls through an instance fail, because Python passes the instance to a method that has no argument to receive it. If you call `self`-less methods only through classes, you already have a static method in practice. To call them through instances as well, you need a different design or a way to mark the method as special.
+
+### Static method alternatives
+
+You can sometimes avoid marking the method at all. If you only need functions that read class data, use ordinary functions outside the class. Then no instance is expected. The next example shows this.
+
+```python
+def printNumInstances():
+    print('Number of instances created:', Hack.numInstances)
+
+class Hack:
+    numInstances = 0
+    def __init__(self):
+        Hack.numInstances += 1
+```
+
+The function can find the class through its global name, so this works. The function name becomes global, but only inside this one module. It will not clash with names in other files.
+
+```text
+>>> import hack2 as hack
+>>> a = hack.Hack()
+>>> b = hack.Hack()
+>>> c = hack.Hack()
+>>> hack.printNumInstances()    # But function may be too far removed
+Number of instances created: 3
+>>> hack.Hack.numInstances      # And cannot be changed via inheritance
+3
+```
+
+Before Python had static methods, this was the usual approach. Modules already partition names. You might argue that functions do not need to be packaged in classes unless they implement object behavior. Functions in the module do much of what instance-less class methods could do. They are also associated with the class, because they live in the same file.
+
+This approach has weaknesses, though. It adds a name to the file that is used for only one class. The function is not structurally tied to the class. Its `def` may sit hundreds of lines away from the class. Subclasses also cannot customize a module-level function by redefining it.
+
+You could instead use a normal method and always call it through an instance. That fails when no instance exists. Making an instance also changes the class data, which we just saw. The better solution is to mark a method inside the class as never requiring an instance.
+
+### Using static and class methods
+
+To mark a `self`-less method that works through either the class or an instance, call `staticmethod` or `classmethod` on it. Each one marks a function object as special. A static method needs no instance. A class method needs a class argument. The next module shows all three kinds.
+
+```python
+class Methods:
+    def imeth(self, x):         # Instance method: passed a self
+        print([self, x])        # Always expects a self instance
+    def smeth(x):               # Static method: no instance passed
+        print([x])              # Also a plain function from the class
+    def cmeth(cls, x):          # Class method: gets class, not instance
+        print([cls, x])         # Always expects a class, not instance
+    smeth = staticmethod(smeth) # Make smeth a static method (or use @: ahead)
+    cmeth = classmethod(cmeth)  # Make cmeth a class method (or use @: ahead)
+```
+
+The last two assignments rebind the names `smeth` and `cmeth`. Any assignment inside a `class` statement creates or changes an attribute. These final lines overwrite the functions that the `def` statements made. The `@` decorator form does the same job. It makes little sense until you understand the assignment form it replaces.
+
+Python has three kinds of class methods, and each has a different argument rule.
+
+- Instance methods receive a `self` instance object. This is the default.
+- Static methods receive no extra instance object. You create one with `staticmethod`.
+- Class methods receive a class object. You create one with `classmethod`. Metaclasses also use this rule.
+
+A simple function inside a class can also act as a static method when you call it through the class only. The `allmethods` module illustrates all three kinds. We will look at each in turn.
+
+Instance methods are the normal case, and this book has used them throughout. An instance method must be called with an instance. When you call it through an instance, Python passes the instance as the first argument. When you call it through the class, you pass the instance yourself.
+
+```text
+>>> from allmethods import Methods      # Normal instance methods
+>>> obj = Methods()                     # Callable through instance or class
+>>> obj.imeth(1)                        # Becomes imeth(obj, 1)
+[<allmethods.Methods object at 0x1015a79b0>, 1]
+>>> Methods.imeth(obj, 2)
+[<allmethods.Methods object at 0x1015a79b0>, 2]
+```
+
+Static methods are called without an instance argument. Their names are local to the class where they are defined. Inheritance can find them, unlike names in a module. A function without `staticmethod` works when you call it through the class. The `staticmethod` built-in lets you call it through an instance too. The first line below works without `staticmethod`. The second does not.
+
+```text
+>>> Methods.smeth(3)                    # Static method: call through class
+[3]                                     # No instance passed or expected
+>>> obj.smeth(4)                        # Static method: call through instance
+[4]                                     # Instance not passed – requires staticmethod
+```
+
+Class methods are similar, but Python passes the class to the first argument. It does this whether you call through the class or through an instance.
+
+```text
+>>> Methods.cmeth(5)                    # Class method: call through class
+[<class 'allmethods.Methods'>, 5]       # Becomes cmeth(Methods, 5)
+>>> obj.cmeth(6)                        # Class method: call through instance
+[<class 'allmethods.Methods'>, 6]       # Becomes cmeth(Methods, 6)
+```
+
+Chapter 40 covers metaclass methods. They live in the secondary class tree of types. Their behavior is similar to the explicit class methods shown here.
+
+### Counting instances with static methods
+
+Using these built-ins, you can rewrite the instance counter as a static method. The method is marked as special, so Python never passes it an instance.
+
+```python
+class Hack:
+    numInstances = 0                    # Use static method for class data
+    def __init__(self):
+        Hack.numInstances += 1
+    def printNumInstances():
+        print('Number of instances:', Hack.numInstances)
+    printNumInstances = staticmethod(printNumInstances)
+```
+
+The static method can now be called through the class or through any instance.
+
+```text
+>>> from hack_static import Hack
+>>> a, b, c = Hack(), Hack(), Hack()
+>>> Hack.printNumInstances()            # Call as simple function
+Number of instances: 3
+>>> a.printNumInstances()               # Instance argument not passed
+Number of instances: 3
+```
+
+Compared with the module-level function, this version needs an extra `staticmethod` call, or an `@` line. It has real advantages, though. The function name lives in the class scope, so it cannot clash with other names in the module. The code sits close to where it is used. Subclasses can customize the static method through inheritance. That is more convenient than importing functions from the files where superclasses are written.
+
+A subclass can override the static method and still call the original.
+
+```text
+>>> class Sub(Hack):
+...     def printNumInstances():            # Override a static method
+...         print('Extra stuff...')        # But call back to original
+...         Hack.printNumInstances()
+...     printNumInstances = staticmethod(printNumInstances)
+>>> a, b = Sub(), Sub()
+>>> a.printNumInstances()                   # Call from subclass instance
+Extra stuff...
+Number of instances: 5
+>>> Sub.printNumInstances()                 # Call from subclass itself
+Extra stuff...
+Number of instances: 5
+>>> Hack.printNumInstances()                # Call original version
+Number of instances: 5
+```
+
+A class can also inherit the static method without redefining it. Python runs it without an instance, wherever it sits in the tree.
+
+```text
+>>> class Other(Hack): pass                 # Inherit static method verbatim
+>>> c = Other()
+>>> c.printNumInstances()
+Number of instances: 6
+```
+
+Creating `Other` also ran the inherited constructor. That bumped the superclass's counter too. This behavior leads into the next topic.
+
+### Counting instances with class methods
+
+A class method can do the same work. Example 32-9 behaves like the static method version. It uses a class method instead, which receives the instance's class in its first argument. The code does not hardcode the class name. It uses the class that Python passes in.
+
+```python
+class Hack:
+    numInstances = 0                    # Use class method instead of static
+    def __init__(self):
+        Hack.numInstances += 1
+    def printNumInstances(cls):
+        print('Number of instances:', cls.numInstances)
+    printNumInstances = classmethod(printNumInstances)
+```
+
+The class is used the same way as before. Its method receives the `Hack` class, not an instance. This happens whether you call it through the class or through an instance.
+
+```text
+>>> from hack_class import Hack
+>>> a, b = Hack(), Hack()
+>>> a.printNumInstances()               # Passes class to first argument
+Number of instances: 2
+>>> Hack.printNumInstances()            # Also passes class to first argument
+Number of instances: 2
+```
+
+A class method always receives the most specific, or lowest, class of the call's subject. That has subtle effects when the method updates class data through the class it receives. The next example subclasses `Hack`, as the static method example did. It also prints the `cls` argument.
+
+```python
+class Hack:
+    numInstances = 0                    # Trace class passed in
+    def __init__(self):
+        Hack.numInstances += 1
+    def printNumInstances(cls):
+        print('Number of instances:', cls.numInstances, cls)
+    printNumInstances = classmethod(printNumInstances)
+
+class Sub(Hack):
+    def printNumInstances(cls):         # Override a class method
+        print('Extra stuff...', cls)    # But call back to original
+        Hack.printNumInstances()
+    printNumInstances = classmethod(printNumInstances)
+
+class Other(Hack): pass                 # Inherit class method verbatim
+```
+
+Running this in a REPL shows that Python passes the lowest class. That is true even for a subclass that has no class method of its own.
+
+```text
+>>> from hack_class2 import Hack, Sub, Other
+>>> x = Sub()
+>>> y = Hack()
+>>> x.printNumInstances()               # Call from subclass instance
+Extra stuff... <class 'hack_class2.Sub'>
+Number of instances: 2 <class 'hack_class2.Hack'>
+>>> Sub.printNumInstances()             # Call from subclass itself
+Extra stuff... <class 'hack_class2.Sub'>
+Number of instances: 2 <class 'hack_class2.Hack'>
+>>> y.printNumInstances()               # Call from superclass instance
+Number of instances: 2 <class 'hack_class2.Hack'>
+```
+
+In the first call, the subclass instance triggers a class method. Python passes `Sub` to it. The subclass version then calls `Hack` explicitly, so `Hack`'s method receives `Hack` in its first argument. Now look at an object that inherits the method without changing it.
+
+```text
+>>> z = Other()                         # Call from lower sub's instance
+>>> z.printNumInstances()
+Number of instances: 3 <class 'hack_class2.Other'>
+```
+
+Here Python passes `Other` to `Hack`'s class method. The method works in this example, because the counter is found in `Hack` through inheritance. If the method assigned to the passed class's data, though, it would update `Other`, not `Hack`. Here, `Hack` is better off naming its own class. That way it counts instances of all its subclasses.
+
+### Counting instances per class with class methods
+
+Class methods always receive the lowest class in an instance's tree. That suggests a rule of thumb.
+
+- Static methods and explicit class names are a good fit for data local to one class.
+- Class methods suit data that may differ for each class in a hierarchy.
+
+Per-class instance counters are a good example of the second case. The top-level superclass in the next example uses a class method. It manages state that is stored on each class in the tree. This is similar to how an instance method manages state that varies per instance.
+
+```python
+class Hack:
+    numInstances = 0
+    def count(cls):                     # Per-class instance counters
+        cls.numInstances += 1           # cls is lowest class above instance
+    def __init__(self):
+        self.count()                    # Passes self.__class__ to count
+    count = classmethod(count)
+
+class Sub(Hack):
+    numInstances = 0
+    def __init__(self):                 # Redefines __init__ (to demo)
+        Hack.__init__(self)
+
+class Other(Hack):                      # Inherits __init__
+    numInstances = 0
+```
+
+When this runs, `Hack` tracks each subclass's instances with a counter on that subclass.
+
+```text
+>>> from hack_class3 import Hack, Sub, Other
+>>> x = Hack()
+>>> y1, y2 = Sub(), Sub()
+>>> z1, z2, z3 = Other(), Other(), Other()
+>>> x.numInstances, y1.numInstances, z1.numInstances   # Per-class data!
+(1, 2, 3)
+>>> Hack.numInstances, Sub.numInstances, Other.numInstances
+(1, 2, 3)
+```
+
+Static and class methods have more advanced roles too. This chapter skips them, and other resources cover them. Later Python versions added function decoration syntax. That made both designations simpler. Decorators also go well beyond the static method role that started them. They can augment classes, such as initializing a counter like `numInstances` in the last example. The next section explains how.
+
+Note
+
+The methods finale: Chapter 40 covers metaclass methods. They process a class that is itself an instance of a metaclass. They are similar to the class methods here. They need no `classmethod` declaration, and they apply only to the metaclass realm previewed next.
+
+## Decorators and metaclasses
+
+The `staticmethod` and `classmethod` call technique can look obscure at first. Python added a simpler device for it. Decorators are the answer. They are similar to annotations in Java. A decorator is a general tool. It adds logic that manages functions and classes, or calls to them.
+
+A decoration runs extra processing at function and class definition time. The syntax is explicit. There are two kinds.
+
+- Function decorators augment `def` statements. They set operation modes for simple functions and for class methods. They wrap a function in another layer of logic, implemented as another function. That helper is often called a metafunction, though the name is just terminology.
+- Class decorators augment `class` statements. They wrap a whole class. They manage objects and their interfaces, not just one function.
+
+Chapter 19 introduced decorators briefly, for simple functions. They are more general than that. They also work on class methods and classes. They can add almost any logic to functions and classes.
+
+Function decorators can add logging, check argument types during debugging, or time calls. They manage either the function itself or later calls to it. In the second mode, they resemble the delegation pattern from Chapter 31. They differ because they wrap one function call, not a whole object interface.
+
+Python provides a few built-in function decorators. They mark static and class methods and define properties. The `property` built-in works as a decorator automatically. You can also write your own decorators. These are often classes, so the decorator can save the original function and keep other data as state.
+
+Class decorators came later and extend the same idea to classes. They manage classes themselves or later instance creation. They often delegate an entire interface when they handle instance creation. Their roles overlap with metaclasses. Decorators are the lighter tool for some goals.
+
+### Function decorator basics
+
+A function decorator is a runtime declaration about the function that follows it. It sits on its own line, just before the `def` that defines a function or method. It starts with the `@` symbol. That is followed by a metafunction. This is a plain function, or another callable, that takes one argument: the function it manages. The name after `@` is usually a metafunction with an optional argument list. Since Python 3.9, it can be any expression that returns a one-argument function. Listing several decorators on consecutive lines nests them. Later in the book you will see that.
+
+The static method from the previous section can use decorator syntax.
+
+```python
+class C:
+    @staticmethod               # Function decoration syntax
+    def meth():
+        ...
+```
+
+Behind the scenes, this is the same as passing the function through the decorator and assigning the result back to the name.
+
+```python
+class C:
+    def meth():
+        ...
+    meth = staticmethod(meth)   # Name rebinding equivalent
+```
+
+Decoration rebinds the method name to whatever the decorator returns. Later calls to the name first trigger the decorator's result. A decorator can return any object. This lets it insert a layer of logic that runs on every later call. The decorator can return the original function. It can also return a proxy object that saves the original and calls it after the extra logic runs.
+
+Example 32-12 is a cleaner way to write the static method from Example 32-8.
+
+```python
+class Hack:
+    numInstances = 0
+    def __init__(self):
+        Hack.numInstances += 1
+    @staticmethod
+    def printNumInstances():
+        print('Number of instances:', Hack.numInstances)
+```
+
+```text
+>>> from hack_static_deco import Hack
+>>> a, b, c = Hack(), Hack(), Hack()
+>>> Hack.printNumInstances()            # Calls from classes and instances work
+Number of instances: 3
+>>> a.printNumInstances()
+Number of instances: 3
+```
+
+The built-in `classmethod` and `property` functions also work as decorators. They accept and return functions. Example 32-13 shows all three built-in decorators from this chapter.
+
+```python
+class Methods:
+    def imeth(self, x):         # Normal instance method: passed a self
+        print([self, x])
+    @staticmethod
+    def smeth(x):              # Static: no instance passed
+        print([x])
+    @classmethod
+    def cmeth(cls, x):         # Class: gets class, not instance
+        print([cls, x])
+    @property                   # Property: computed on fetch
+    def name(self):
+        return 'Pat ' + self.__class__.__name__
+```
+
+```text
+>>> from alldecorators import Methods
+>>> obj = Methods()
+>>> obj.imeth(1)
+[<alldecorators.Methods object at 0x10d2839b0>, 1]
+>>> obj.smeth(2)
+[2]
+>>> obj.cmeth(3)
+[<class 'alldecorators.Methods'>, 3]
+>>> obj.name
+'Pat Methods'
+```
+
+These built-ins are still ordinary functions. They work as decorators because they take a function and return a callable. The original name is then rebound to that callable. Any function with this shape can be a decorator, including functions you write yourself.
+
+### A first look at user-defined function decorators
+
+Python has a few built-in decorators. You can also write your own. This book saves the full treatment for a later chapter. Here is a quick example.
+
+The `__call__` method from the operator overloading chapter gives an instance a function-call interface. The next example uses it. A call proxy class saves the decorated function inside the instance, and it intercepts calls to the original name. Because it is a class, it can also hold state, such as a count of the calls made.
+
+```python
+class tracer:
+    def __init__(self, func):       # Remember original, init counter
+        self.calls = 0
+        self.func = func
+    def __call__(self, *args):      # On later calls: add logic, run original
+        self.calls += 1
+        print(f'call {self.calls} to {self.func.__name__}')
+        return self.func(*args)
+
+@tracer                             # Same as hack = tracer(hack)
+def hack(a, b, c):                  # Wrap hack in a decorator object
+    return a + b + c
+
+if __name__ == '__main__':
+    print(hack(1, 2, 3))            # Really calls the tracer wrapper object
+    print(hack('a', 'b', 'c'))      # Invokes __call__ in class
+```
+
+When the decorated `hack` name is called, it actually runs `__call__`. That method counts and logs the call. It then passes the call to the original function. The `*args` syntax packs and unpacks the arguments. Because of that, this decorator can wrap any function that takes positional arguments.
+
+The output shows the added layer. The first line comes from the `tracer` class. The second is the return value of `hack`.
+
+```text
+$ python3 tracer1.py
+call 1 to hack
+6
+call 2 to hack
+abc
+```
+
+This decorator has limits. It handles positional arguments only, not keyword arguments. It also cannot decorate methods inside a class. For a method, its `__call__` would receive the `tracer` instance and nothing else. Part VIII covers other ways to write function decorators. Some suit methods better.
+
+Nested functions are one alternative. They keep state in an enclosing scope instead of in an instance. That makes the decorator work on class methods too. The full details come later. The next example uses this closure model. It stores its counter as a function attribute, which keeps it portable. A `nonlocal` variable could do the same job.
+
+```python
+def tracer(func):                   # Remember original
+    def oncall(*args):             # On later calls
+        oncall.calls += 1
+        print(f'call {oncall.calls} to {func.__name__}')
+        return func(*args)
+    oncall.calls = 0
+    return oncall
+
+class C:
+    @tracer
+    def hack(self, a, b, c): return a + b + c
+
+if __name__ == '__main__':
+    x = C()
+    print(x.hack(1, 2, 3))
+    print(x.hack('a', 'b', 'c'))
+```
+
+The output matches the earlier version. This time the decorator wraps a class method. Keep in mind that the method receives `self` through the wrapper.
+
+### Class decorators and metaclasses
+
+Python later extended decorators to classes. A class decorator runs at the end of a `class` statement. It rebinds the class name to whatever it returns. It can manage a class right after the class is created. It can also wrap instance creation, so every later instance passes through extra logic. The two forms below are equivalent.
+
+```python
+def decorator(aClass): ...
+
+@decorator                      # Class decoration syntax
+class C: ...
+```
+
+```python
+def decorator(aClass): ...
+
+class C: ...                    # Name rebinding equivalent
+C = decorator(C)
+```
+
+The decorator can add to the class itself, or return a proxy that intercepts later instance creation. In the earlier section on counting instances per class, a class decorator could do the setup. It could add an instance counter to each class automatically.
+
+```python
+def count(aClass):
+    aClass.numInstances = 0
+    return aClass                   # Return class itself instead of a wrapper
+
+@count
+class Hack: ...                     # Same as Hack = count(Hack)
+
+@count
+class Sub(Hack): ...                # numInstances = 0 not needed here
+```
+
+As written, this decorator works on classes and functions alike. It returns the object it received, after setting an attribute on it.
+
+```python
+@count
+def hack(): pass                    # Like hack = count(hack)
+
+@count
+class Hack: pass                    # Like Hack = count(Hack)
+
+hack.numInstances                   # Both are set to zero
+Hack.numInstances
+```
+
+Class decorators can also manage an object's whole interface. They do this by intercepting construction and wrapping the new instance in a proxy. The proxy then handles later attribute requests. This technique supports attribute privacy, which Chapter 39 implements. Here is a preview of the model.
+
+```python
+def decorator(cls):                 # On @ decoration
+    class Proxy:
+        def __init__(self, *args):  # On instance creation: make a cls
+            self.wrapped = cls(*args)
+        def __getattr__(self, name):    # On attribute fetch: extra ops here
+            return getattr(self.wrapped, name)
+    return Proxy
+
+@decorator
+class C: ...                        # Like C = decorator(C)
+
+X = C()                             # Makes a Proxy that wraps a C, and catches later X.attr
+```
+
+Metaclasses are a similar tool. They are more advanced, and their roles often overlap with class decorators. A metaclass routes class creation to a subclass of `type`. That happens at the end of a `class` statement.
+
+```python
+class Meta(type):
+    def __new__(meta, classname, supers, classdict):
+        ...                         # extra logic + class creation via type call
+
+class C(metaclass=Meta):
+    ...                             # my creation routed to Meta; like C = Meta('C', (), {...})
+```
+
+Python calls the class's metaclass to create the class object. It passes in the data gathered during the `class` statement. If no metaclass is given, the default is `type`. At the end of a class statement with a metaclass, the effect is roughly this.
+
+```text
+classname = Meta(classname, superclasses, attributedict)
+```
+
+To control class creation, a metaclass usually overrides `__new__` or `__init__` of `type`. Both intercept the call that `type` would handle. Code in these methods then runs automatically at class creation time. The class name is bound to the result of calling the metaclass.
+
+Both class decorators and metaclasses can augment a class. Both can also return an arbitrary object in its place. That gives almost unlimited customization. Metaclasses can also define methods that process their instance classes. This is similar to class methods. A class decorator can imitate it with methods and data in its proxy.
+
+Chapter 40 covers these ideas in full. They can be mind-bending, so take them one step at a time.
+
+### For more details
+
+There is more to the decorator and metaclass stories than shown here. Some packages require them. Writing new user-defined decorators and metaclasses is an advanced topic, though. It matters most to tool writers, not application programmers. For that reason, the book saves more detail for its optional final part.
+
+- Chapter 38 shows how to code properties with function decorator syntax, in more depth.
+- Chapter 39 focuses on decorators and includes larger examples.
+- Chapter 40 covers metaclasses and more of the class and instance management story.
+
+## The super function
+
+The `super` built-in does two jobs. It refers to superclass attributes without naming the superclass. It also routes method calls through multiple-inheritance trees in an orderly way.
+
+So far, `super` has appeared only in a sidebar and in some notes. It has not been used in code. That was a deliberate choice. `super` is complex and has real drawbacks. It is hard to recommend to beginners. It is an all-or-nothing tool. It has several strict coding rules. Its semantics are implicit in a way that runs against Python's usual style.
+
+Many programmers use `super` anyway, and it is common in Python code. Programmers who come from Java often reach for it because it looks familiar. They may not notice its subtle effects in multiple inheritance until adding a second superclass breaks their code. This section covers how `super` works and where it can trip you up. The decision to use it is yours.
+
+### The super basics
+
+Start with the explicit form, which fits Python's idioms more closely. You can always reach a superclass attribute, method or data, by naming its source class. You pass `self` yourself.
+
+```text
+>>> class C:
+...     def act(self):
+...         print('hack')
+>>> class D(C):
+...     def act(self):
+...         C.act(self)             # Name superclass explicitly, pass self
+...         print('code')
+>>> I = D()
+>>> I.act()
+hack
+code
+```
+
+In a single-inheritance tree, `super` looks simpler. Its most common form picks the calling class's superclass automatically. An explicit call like `class.method(self)` becomes `super().method()`.
+
+```text
+>>> class C:
+...     def act(self):
+...         print('hack')
+>>> class D(C):
+...     def act(self):
+...         super().act()           # Reference superclass implicitly, omit self
+...         print('code')
+>>> I = D()
+>>> I.act()
+hack
+code
+```
+
+This works as advertised. You do not pass `self`. You do not need to update the call if the superclass changes. You also do not need long superclass names or import paths.
+
+### The super details
+
+Look closely at that example and something seems odd. The `super` call knows the class, its superclass, and `self`. None of them appear in the call. The explanation involves the MRO, a proxy object, and an algorithm. Anyone who uses `super` should understand all three.
+
+The MRO comes first. You must understand the MRO before `super` makes sense. Once you do, the core idea is simple. In a class method, `super` returns a proxy. The proxy finds an attribute in a class that follows the containing class on the MRO of `self`'s class. The result is an attribute from a superclass or another relative of the class that holds the call.
+
+In single inheritance, the superclass always comes next on the MRO. This works as expected. The mechanism behind it is more magic than it looks. `super` inspects the runtime call stack to find the calling method's arguments. It also reads the `__class__` variable that Python adds to the closure of methods that use `super`. These two pieces locate `self` and the containing class. `super` then pairs them in a proxy. The proxy sends later attribute fetches to the right superclass version of a name.
+
+The no-argument form is equivalent to passing the class and the instance yourself. Inside a method, these two forms do the same thing. The second form also works outside a method.
+
+```text
+super()
+super(class-containing-the-super-call, method-self-argument)
+```
+
+Here is the explicit version of the example above.
+
+```python
+class D(C):
+    def act(self):
+        super(D, self).act()       # Works the same as super().act()
+        print('code')              # And D is available as __class__
+```
+
+If that sounds complicated, it is. The no-argument form does not work at all outside a method.
+
+```text
+>>> super                       # A "magic" proxy object that routes later calls
+<class 'super'>
+>>> super()                     # This form has no meaning outside a method
+RuntimeError: super(): no arguments
+```
+
+Where the no-argument form does work, it hides the class and instance. Nothing in your code shows them.
+
+```text
+>>> class E(C):
+...     def method(self):
+...         proxy = super()        # self is implicit in super - only!
+...         return proxy
+>>> prx = E().method()             # The normally hidden proxy object
+>>> prx
+<super: <class 'E'>, <E object>>
+>>> prx.act()                      # Find act on MRO past hidden E, bind with hidden self, call (!)
+hack
+```
+
+This call does not look like a bound method or an unbound method. It fills in the class and `self` even though you leave both out. That breaks Python's usual rule that `self` is explicit. Class methods list and use `self` directly. Operator overloading implies a `self` too, but that is much simpler. Hiding the instance is a second strike against `super`, at least for those who value explicit code.
+
+#### Attribute-fetch algorithm
+
+In a single-inheritance tree, `super` is simple. There is only one obvious follower on the MRO. That is the superclass of the class with the `super` call. In that case, you can read the immediate superclass from `__class__.__bases__`. You do not need the MRO for it.
+
+```text
+>>> E.__mro__
+(<class '__main__.E'>, <class '__main__.C'>, <class 'object'>)
+>>> E().__class__.__bases__[0]
+<class '__main__.C'>
+```
+
+Multiple inheritance needs the full algorithm. The proxy that `super` returns resolves attribute references like this.
+
+- Fetch the MRO of the saved `self` instance's class, which is `self.__class__.__mro__`.
+- Scan this MRO from left to right to find the saved containing class, and skip it.
+- Search the namespace dictionaries of the remaining classes in the MRO, from left to right, until the attribute is found.
+- If the attribute is a method, bind it to the saved `self` instance.
+
+This procedure runs on every attribute fetch. It depends entirely on MRO order. It starts from `self`'s MRO, not the containing class's MRO. The containing class may have been mixed with other classes, so its own MRO does not apply. The tree shape can be arbitrary for instances of lower classes. In rare cases, the MRO can even change at runtime.
+
+In realistic Python code, you cannot ignore these mechanics except in simple trees. Mix-in classes are common. Multiple inheritance from disjoint, independent superclasses is therefore normal. Once you add more than one superclass, `super` becomes much harder to predict.
+
+### Universal deployment and call-chain anchors
+
+Here is an example to make the problem concrete. Suppose you wrote these classes. Each uses `super` in simple single inheritance, to call a method one level up.
+
+```text
+>>> class A:
+...     def act(self): print('A')
+>>> class B:
+...     def act(self): print('B')
+>>> class C(B):
+...     def act(self):
+...         super().act()          # super applied to a single-inheritance tree
+>>> C().act()                      # Make an instance and call its method
+B
+```
+
+Suppose these classes later grow to use more than one superclass. `super` then behaves in a surprising way. It does not raise an error when the same name appears in several superclasses. It picks the leftmost superclass that has the method. In other words, it takes the first match in the flattened MRO. That may or may not be the class you want. It is completely wrong if you want both.
+
+```text
+>>> class C(B, A):                 # Add an A mix-in class with the same method
+...     def act(self):
+...         super().act()          # Doesn't fail on conflicts - picks just one
+>>> C().act()
+B
+>>> class C(A, B):
+...     def act(self):
+...         super().act()          # If A is listed first, B.act() is no longer run
+>>> C().act()
+A
+```
+
+This silent masking causes many class bugs. Explicit calls solve the problem. With explicit class names, you choose the left class, the right class, or both. There is much less drama. If you might need explicit names later, why not use them now?
+
+```text
+>>> class C(A, B):                 # Explicit form
+...     def act(self):            # You probably want to be more explicit here
+...         A.act(self)           # This handles both single and multiple inheritance
+...         B.act(self)           # So why use the super special case at all?
+>>> C().act()
+A
+B
+```
+
+Explicit inheritance also searches the metaclass tree for names not defined in the superclasses. That is covered in the earlier discussion of the inheritance bifurcation. `super` searches only the tail of the instance's MRO, which is the superclass tree. For defined names this difference does not matter. It is unlikely to matter for undefined names either.
+
+The real problem with `super` is that every class must call it. The call chain stops at the first class that does not call `super`. In the example above, `A` and `B` do not. You can add `super` to them too. But that is the first of several strict requirements, and it leads to another problem.
+
+Both `A` and `B` lie on `C`'s MRO. You might try to make both methods run by adding `super` calls to both. This is called cooperative method dispatch. Each class runs `super` to pass the call to the next class on the MRO that cares about it. Done correctly, each class runs once. A method in a diamond's shared superclass also runs only once, because it appears only once in an MRO. The approach assumes the MRO order suits your calls. Explicit class names are the fallback when it does not.
+
+Here is the attempt, with `super` added to both classes.
+
+```text
+>>> class A:
+...     def act(self):
+...         print('A')
+...         super().act()          # Add a super here too
+>>> class B:
+...     def act(self):
+...         print('B')
+...         super().act()          # Add a super here too
+>>> class C(B, A):
+...     def act(self):
+...         super().act()          # Hope this winds up running all methods
+>>> C().act()
+B
+A
+AttributeError: 'super' object has no attribute 'act'
+```
+
+It fails. Inspect the MRO to find out why.
+
+```text
+>>> I = C()
+>>> I.__class__.__mro__
+(<class '__main__.C'>, <class '__main__.B'>, <class '__main__.A'>, <class 'object'>)
+```
+
+The `super` in `C` selects `act` in `B`, the next class on the MRO. The `super` in `B` then selects `act` in `A`. The `super` in `A` looks for `act` in `object` and beyond. Nothing defines it there, so the call fails. The chain has no anchor, meaning no end point to stop the propagation.
+
+This failure is the third strike against `super`. Dropping `super` from `A` would work for this one case. That policy does not help in general. Classes like `A` and `B` are often written to be mixed into other classes. Specializing them for one tree makes no sense. To propagate `super` calls, every class must use `super`. The chain also needs an anchor to end it.
+
+You can add an anchor by writing a class that defines the method but does not call `super` again. That is another arduous requirement. It takes more work than the explicit-name alternative.
+
+```text
+>>> class X:                       # Code a bogus class, just to appease super
+...     def act(self):
+...         print('anchor')
+>>> class A: ...same...
+>>> class B: ...same...
+>>> class C(B, A, X):              # Add a final anchor, just to appease super
+...     def act(self):
+...         super().act()
+>>> C().act()
+B
+A
+anchor
+>>> [c.__name__ for c in C().__class__.__mro__]
+['C', 'B', 'A', 'X', 'object']
+```
+
+This works because `X` comes before `object` on the MRO. It stops the `act` chain. You can also make `X` a common superclass of `A` and `B`, forming a diamond. The MRO comes out the same. The MRO removes all but the rightmost appearance of each class in the flattened order.
+
+```text
+>>> class X: ...same...
+>>> class A(X): ...same...
+>>> class B(X): ...same...
+>>> class C(B, A): ...same...
+>>> C().act()
+B
+A
+anchor
+>>> [c.__name__ for c in C().__class__.__mro__]
+['C', 'B', 'A', 'X', 'object']
+```
+
+If you must write a special class just to satisfy `super`, consider explicit class names instead. Similarity to other languages is a weak reason, especially where those languages do not have the same feature.
+
+The class `super` picks may not be a superclass at all. It can vary by tree. In the example, `super` in `B` dispatches to `A`. `A` is the next class on the MRO, but it is a sibling, not a superclass. This may not matter in most programs. If you must run an immediate superclass's method, use explicit class names instead of `super`.
+
+### Same argument lists
+
+`super` always needs a call-chain anchor. Sometimes you get one for free. The built-in `object` defines a constructor, and it can anchor some chains. Remember that `__init__` is an ordinary class attribute, despite its special name and automatic call.
+
+```text
+>>> class A:
+...     def __init__(self):
+...         print('A')
+...         super().__init__()     # Propagate constructor calls
+>>> class B:
+...     def __init__(self):
+...         print('B')
+...         super().__init__()     # Propagate constructor calls
+>>> class C(B, A):
+...     def __init__(self):
+...         super().__init__()     # Assume object anchors constructor chain
+>>> I = C()
+B
+A
+```
+
+The constructor call travels through `C`, `B`, `A`, and `object`, in MRO order. This works only for constructors that take no arguments besides `self`. If a constructor takes arguments, the chain breaks at `object`.
+
+```text
+>>> class A:
+...     def __init__(self, name):  # Add an argument to the method
+...         print('A')
+...         super().__init__(name)
+>>> class B:
+...     def __init__(self, name):
+...         print('B')
+...         super().__init__(name)
+>>> class C(B, A):
+...     def __init__(self, name):
+...         super().__init__(name) # But object's arguments list differs
+>>> I = C('Pat')
+B
+A
+TypeError: object.__init__() takes exactly one argument (the instance to initialize)
+```
+
+This is another strict requirement. `super` assumes every method in a chain uses the same argument list. The MRO order can change when the tree changes. Any change in inheritance can therefore reorder the calls.
+
+This limits flexibility. A single program may let you control the classes and their arguments. Starred argument collectors can sometimes soften the problem. Neither approach works for code meant to be reused in several contexts. Reuse across contexts is one of the main points of Python programming.
+
+### Noncalls and operator overloading
+
+`super` has two more oddities. First, it is not only about methods. Despite the jargon, it can also fetch class data attributes. It returns bound methods too, as the earlier chapter on bound methods described.
+
+```text
+>>> class C:
+...     attr1 = 'hack'            # super also fetches data attributes
+...     def attr2(self):         # And returns bound methods sans calls
+...         return 'code'
+>>> class D(C):
+...     def act(self):
+...         return super().attr1, super().attr2
+>>> I = D()
+>>> I.act()
+('hack', <bound method C.attr2 of <__main__.D object at 0x103993200>>)
+>>> I.act()[1]()
+'code'
+```
+
+When `super` returns a method like `attr2`, the proxy binds it to the saved instance. Fetching a method as a plain function may require an explicit class name, such as `C.attr2`. The details get deep. The point is that `super` departs from normal behavior here too.
+
+Second, `super` does not fully work with `__X__` operator-overloading methods. The next example shows the problem. Explicit named calls to overloading methods in the superclass work. Using `super` in an expression fails to reach the superclass method.
+
+```text
+>>> class C:
+...     def __getitem__(self, ix):  # Indexing overload method
+...         print('C index')
+>>> class D(C):
+...     def __getitem__(self, ix):  # Redefine to extend here
+...         print('D index')
+...         C.__getitem__(self, ix) # Explicit call form works
+...         super().__getitem__(ix) # Direct name calls work too
+...         super()[ix]             # But operators do not! (__getattribute__)
+>>> I = C()
+>>> I[99]
+C index
+>>> I = D()
+>>> I[99]
+D index
+C index
+C index
+TypeError: 'super' object is not subscriptable
+```
+
+The `super` proxy catches later attribute requests through `__getattribute__`. Built-in operations skip that step. Expressions such as `I[99]` begin their search in the class, not the instance. So the proxy never sees the automatic `__X__` call. This is the same limitation that affects delegation with built-in operations. Operators should generally behave like the equivalent method call. The failure here is one more exception that `super` users must learn. In Python, `self` is explicit, mix-ins and operator overloading are common, and superclass renames are rare.
+
+### The super wrap-up
+
+`super` is a brief tutorial topic, and you can find many supplements elsewhere. Some of those defend `super` as much as they document it. This section aims for a balanced view of the trade-offs.
+
+In a single-inheritance tree, `super` refers to parent classes without naming them. In a multiple-inheritance tree, it can implement cooperative method dispatch. Each superclass is visited once in a conforming chain. That is especially useful in diamonds.
+
+These are real benefits. `super` can also be highly implicit. It may not call the superclasses your program expects. Three coding requirements come with the method dispatch technique.
+
+- Anchors: the method called by `super` must exist. Without an anchor, you need extra code and calls. Mix-in classes also cannot be specialized for a single tree.
+- Arguments: the method called by `super` must have the same signature across the whole tree. This can limit flexibility, especially for constructors.
+- Deployment: every class that defines the method must use `super`, except the last one. That makes existing code harder to reuse, changes to call order harder, and self-contained classes harder to write.
+
+`super` also builds on the already complex MRO. It can hide problems when a single-inheritance tree becomes a multiple-inheritance tree. It can select a class that is not a superclass. It is also one more special case in attribute inheritance, which Chapter 40 revisits.
+
+`super` is easy to use and mostly harmless in single inheritance. Its unusual rules, strict requirements, and small net benefit make it a mixed bag. Programmers who are learning Python should often prefer the more general and transparent style of explicit class-name references. Judge this for yourself in the OOP programs you meet.
+
+## Class gotchas
+
+You have now seen the main OOP tools in this book. Pitfalls remain. Most class problems come down to namespaces, since classes are mainly namespaces with a few extra tricks. Some of the items below are usage tips more than true problems. Even experienced class programmers stumble on them.
+
+### Changing class attributes can have side effects
+
+Classes and class instances are mutable objects. You can change them in place by assigning to their attributes. Like lists and dictionaries, they can be referenced from several places. Changing one can affect every reference to it.
+
+That is usually what you want. It is how objects change state in general. The effect is especially important for class attributes. Every instance of a class shares the class's namespace. A change at the class level appears in every instance that lacks its own copy of that attribute.
+
+In the next example, the assignment to `a` inside the class body creates the attribute `X.a`. It lives on the class object and every instance inherits it.
+
+```text
+>>> class X:
+...     a = 1                     # Class attribute
+>>> I = X()
+>>> I.a                           # Inherited by instance
+1
+>>> X.a                           # Accessible through class
+1
+```
+
+Now change the class attribute outside the `class` statement. That changes every object that inherits from the class. New instances made later also see the new value, whatever the class source code says.
+
+```text
+>>> X.a = 2                       # May change more than X
+>>> I.a                           # I changes too
+2
+>>> J = X()                       # J inherits from X's runtime values
+>>> J.a                           # (but assigning to J.a changes a in J, not X or I)
+2
+```
+
+Is this useful or a trap? You decide. Chapter 27 showed that you can get work done by changing class attributes without ever making an instance. That can simulate records or structs from other languages. Here is an unusual but legal program.
+
+```python
+class X: pass                   # Make a few attribute namespaces
+class Y: pass
+
+X.a = 1                         # Use class attributes as variables
+X.b = 2                         # No instances anywhere to be found
+X.c = 3
+Y.a = X.a + X.b + X.c
+for X.i in range(Y.a):
+    print(X.i)                  # Prints 0..5
+```
+
+The classes `X` and `Y` act like fileless modules. They are namespaces for variables that should not clash. This is a legal trick, but it is risky with classes that others wrote. You cannot always know which class attributes are critical to a class's internal behavior. If you want a C-style struct, use instances instead. Then only one object is affected.
+
+```python
+class Record: pass
+
+X = Record()
+X.name = 'pat'
+X.job = 'Pizza maker'
+```
+
+### Changing mutable class attributes can have side effects, too
+
+This gotcha extends the previous one. Class attributes are shared by all instances. If a class attribute refers to a mutable object, changing that object in place from any instance affects every instance.
+
+```text
+>>> class C:
+...     shared = []               # Class attribute
+...     def __init__(self):
+...         self.perobj = []      # Instance attribute
+>>> x, y = C(), C()               # Two instances
+>>> y.shared, y.perobj            # Implicitly share class attrs
+([], [])
+>>> x.shared.append('hack')       # Impacts y's view too!
+>>> x.perobj.append('code')       # Impacts x's data only
+>>> x.shared, x.perobj
+(['hack'], ['code'])
+>>> y.shared, y.perobj            # y sees change made through x
+(['hack'], [])
+>>> C.shared                      # Stored on class and shared
+['hack']
+```
+
+This effect is not new. You have seen it with mutable objects shared by variables, globals shared by functions, module objects shared by importers, and mutable arguments shared by caller and callee. All of these involve several references to a mutable object. Changing it in place affects all of them.
+
+Assignment to an instance attribute works differently, which can make this subtle. The two lines below behave differently.
+
+```python
+x.shared.append('hack')         # Changes shared object attached to class - in place
+x.shared = 'hack'               # Changed or creates instance attribute attached to x
+```
+
+This is not a bug. It is something to be aware of. Shared mutable class attributes have many valid uses.
+
+### Multiple inheritance: order matters
+
+It is worth repeating: in multiple inheritance, the order of superclasses in the `class` header can be critical. Python always searches superclasses from left to right, in the order they appear in the header.
+
+Imagine a `Super` class with a `__str__` method, next to a `ListTree` class that also has one.
+
+```python
+class ListTree:
+    def __str__(self): ...
+
+class Super:
+    def __str__(self): ...
+
+class Sub(ListTree, Super):         # Get ListTree's __str__ by listing it first
+    x = Sub()                       # Inheritance searches ListTree before Super
+```
+
+Which `__str__` does `Sub` inherit? It inherits the one from the leftmost class in its header. You would list `ListTree` first, because its purpose is its custom `__str__`. The earlier chapter needed exactly that, when it mixed this class with a `tkinter.Button` that had its own `__str__`.
+
+Now suppose both classes have other same-named attributes too. If you want one name from `Super` and another from `ListTree`, the header order cannot give you both. You must override inheritance by assigning the attribute name in `Sub` itself.
+
+```python
+class ListTree:
+    def __str__(self): ...
+    def other(self): ...
+
+class Super:
+    def __str__(self): ...
+    def other(self): ...
+
+class Sub(ListTree, Super):         # Get ListTree's __str__ by listing it first
+    other = Super.other             # But explicitly pick Super's version of other
+    def __init__(self):
+        ...
+
+x = Sub()                           # Inheritance searches Sub before ListTree/Super
+```
+
+The assignment to `other` in `Sub` creates `Sub.other`. It refers to the same object as `Super.other`. Because `Sub` is lower in the tree, it hides `ListTree.other`. If you list `Super` first to get its `other`, you must select `ListTree`'s `__str__` explicitly.
+
+```python
+class Sub(Super, ListTree):         # Get Super's other by order
+    __str__ = ListTree.__str__      # Explicitly pick ListTree.__str__
+```
+
+The earlier section on attribute conflict resolution shows this technique in another example. Multiple inheritance is an advanced tool. Use it sparingly and carefully. Otherwise a name's meaning can depend on the order of classes mixed into a distant subclass.
+
+A good rule of thumb is to keep mix-in classes as self-contained as possible. They may be used in many contexts. They should not assume anything about names in other classes of the tree. The pseudoprivate `__X` names from the earlier chapter help here. They localize the names a class depends on. They also limit the names a mix-in adds. In the example, if `ListTree` only means to export its custom `__str__`, it can name its `other` method `__other`. That avoids clashes with like-named classes in the tree.
+
+### Scopes in methods and classes
+
+Class code follows the same scope rules as function code. Classes create local scopes, and methods are nested functions. In the next example, `generate` returns an instance of the nested `Hack` class. The name `Hack` is assigned in `generate`'s local scope. That makes it visible to nested functions, including the code in `method`. It sits in the enclosing-function layer of the LEGB rule.
+
+```python
+def generate():
+    class Hack:                     # Hack is a name in generate's local scope
+        count = 1
+        def method(self):
+            print(Hack.count)       # Visible in generate's scope, per LEGB rule (E)
+    return Hack()
+
+generate().method()
+```
+
+The example works, because nested `def` statements see the local scopes of enclosing functions. That includes nested method definitions.
+
+Method definitions cannot see the scope of the enclosing class, though. They see only the scopes of enclosing functions. So a method must reach class names through `self` or the class name. In the example, the method must use `self.count` or `Hack.count`. Plain `count` will not work.
+
+You can avoid nesting by moving the class to the top level of the module. Then both `generate` and the method find `Hack` in the global scope. The name is not local to a function, but it stays local to one module.
+
+```python
+def generate():
+    return Hack()
+
+class Hack:                         # Define at top level of module
+    count = 1
+    def method(self):
+        print(Hack.count)           # Found in global scope (enclosing module)
+
+generate().method()
+```
+
+Simpler code usually avoids nesting classes and functions. Nesting a class can still help in closures. There, the enclosing function's scope keeps state that the class or its methods use. In the next example, the nested method can see its own scope, the enclosing function's scope through `label`, the module's global scope, the `self` instance, and the class through its enclosing name.
+
+```text
+>>> def generate(label):           # Returns a class instead of an instance
+...     class Hack:
+...         count = 1
+...         def method(self):
+...             print(f'{label}={Hack.count}')
+...     return Hack
+>>> aclass = generate('Gotchas')
+>>> I = aclass()
+>>> I.method()
+Gotchas=1
+```
+
+### Miscellaneous class gotchas
+
+These are a few more class warnings. Most of them are reminders.
+
+Choose per-instance or class storage wisely. Be careful about whether an attribute belongs on the class or on its instances. Class attributes are shared by all instances. Instance attributes differ from one instance to the next. In a GUI program, you might want data shared by all windows, such as the last directory used for a Save operation. That belongs at the class level. If you store it on each window as an instance attribute, each window has its own copy. The value may also be missing when looked up through inheritance.
+
+You usually want to call superclass constructors. Python runs only one `__init__` method when it makes an instance. It is the first one found through inheritance. It does not run the constructors of superclasses higher in the tree. Constructors usually do required startup work. So a subclass constructor often has to run its superclass constructor too. Use an explicit call through the superclass name, or `super`, and pass the arguments it needs. The exceptions are when you mean to replace the superclass constructor, or when the superclass has no constructor at all.
+
+Watch out for `__getattr__` and built-ins. The earlier chapters noted this too. A class that uses `__getattr__` to delegate attribute fetches may fail on built-in operations. Operator-overloading methods that built-ins fetch implicitly do not go through generic attribute interception. To work around this, redefine those methods in the wrapper class. You can do that by hand, with tools, or by defining them in superclasses. Chapter 39 shows how.
+
+### Overwrapping-itis
+
+Code reuse is one of the main reasons to use OOP. It can cut development time. Sometimes, though, OOP's abstraction is overused. Classes layered too deeply can make code hard to understand. To find out what one operation does, you may need to search through many classes.
+
+Imagine a framework with hundreds of classes and a dozen levels of inheritance. The details are changed here, but the situation is real. Following a method call through such a system can be a major task. Several classes may need checking for even a simple operation. The logic can be so wrapped that understanding one piece takes days of reading related files. That hurts productivity.
+
+The most general rule of Python programming applies here too. Do not make things complicated unless they truly must be. Wrapping code in layers of classes until it is incomprehensible is always a bad idea. Abstraction is the basis of polymorphism and encapsulation. Used well, it is very effective. You will debug faster and maintain code more easily if your class interfaces are intuitive. Keep the hierarchies short and small, unless you have a good reason. Code you write is usually code that others must read.
+
+## Class odds and ends summary
+
+This chapter covered an assortment of class topics. It included subclassing built-in types, the relationship between types and classes, slots, properties, static methods, decorators, and `super`. Most of these are optional extensions to the OOP toolbox. They become more useful as your programs grow. They are also worth knowing when they appear in code you must understand. Some of these topics continue in the final part of the book. Look ahead there for more on properties, descriptors, decorators, and metaclasses.
+
+### Practice exercises
+
+The book closes its class material with practice exercises. Try these with your own code.
+
+- Write an `Adder` class with an `add(self, x, y)` method that prints a "Not Implemented" message. Then write `ListAdder` and `DictAdder` subclasses that implement `add` for lists and dictionaries.
+- Extend `Adder` with a constructor that stores data, and overload `+` with `__add__` so it dispatches to `add`. Decide which classes should hold the constructor and the operator method.
+- Write a `MyList` class that wraps a list and overloads most list operators. Experiment with copying the initial value, with slicing, and with mixing `MyList` and regular lists.
+- Write a `MyListSub` subclass that counts `+` calls. Decide whether the counters should be per instance or per class.
+- Write an `Attrs` class that prints a message on every attribute fetch and assignment. Then see what happens when you use the instance in expressions.
+- Use the set class from this chapter to compute intersections and unions with `&` and `|`. Then extend it with `*args` so it handles several operands.
+- Model a fast-food order with `Lunch`, `Customer`, `Employee`, and `Food` classes. Let `Lunch` embed the other objects and pass the order along.
+- Build a zoo hierarchy of six classes. Give each a `speak` method, and give the top `Animal` class a `reply` method that calls `self.speak`.
+
 ## Checkpoint questions
 
 1. When you fetch a `Manager` object from a shelf and print it, where does the display logic come from?
@@ -3309,9 +6658,59 @@ Provide operator overloading when a class naturally matches a built-in type's in
 
    Answer: Provide it when a class naturally matches, or needs to emulate, a built-in type's interface. Do not overload expression operators that do not map naturally to your objects. A normally named method is clearer in that case.
 
+20. What is multiple inheritance?
+
+   Answer: Multiple inheritance occurs when a class lists more than one superclass. It is useful for mixing together several packages of class-based code. The left-to-right order in the `class` header sets the general search order. The MRO refines that search for diamonds with common superclasses.
+
+21. What is composition?
+
+   Answer: Composition is a technique in which a controller class embeds and directs several objects and offers an interface of its own. It is a way to build larger structures from classes.
+
+22. What is delegation?
+
+   Answer: Delegation wraps an object in a proxy class. The proxy adds behavior and passes other operations to the wrapped object. The proxy usually keeps the interface of the wrapped object.
+
+23. What are bound methods?
+
+   Answer: A bound method combines an instance and a method function. You can call it without passing an instance, because the instance is kept in the pair.
+
+24. What are pseudoprivate attributes used for?
+
+   Answer: Names that begin with two underscores but do not end with two underscores, such as `__X`, are expanded to include the enclosing class name. This localizes the name to its class. It covers class attributes, such as methods, and `self` attributes assigned inside the class. The expanded names are usually unique across an inheritance tree.
+
+25. How does the MRO differ from DFLR?
+
+   Answer: The MRO selects a same-named attribute in a lower subclass over one in a higher common superclass in a diamond tree. It searches across before it climbs up in that case. Otherwise the MRO matches DFLR. It is defined by starting with the DFLR order and then removing all but the rightmost copy of each class visited more than once. The built-in `object` makes every multiple-inheritance tree a diamond, so this happens often, though it is usually implicit.
+
+26. Name two ways to extend a built-in object type.
+
+   Answer: You can embed the built-in object in a wrapper class, or subclass the built-in type directly. Subclassing tends to be simpler, because most of the original behavior is inherited automatically. It works because types are classes.
+
+27. What are function and class decorators used for?
+
+   Answer: Function decorators manage a function or method, or add a layer of logic that runs each time it is called. They can log or count calls and check argument types. They also declare static methods, class methods, and properties. Class decorators are similar, but they manage whole objects and their interfaces.
+
+28. How are normal methods and static methods different?
+
+   Answer: A normal (instance) method receives a `self` argument that holds the implied instance. A static method receives no instance, however it is called. Python allows simple functions in a class to be called through the class without a declaration. Calls through instances still need `staticmethod`.
+
+29. Are tools like `__slots__` and `super` valid to use in your code?
+
+   Answer: They are valid, but use them only after weighing their effects. Slots can break code, and they work only with universal deployment. `super` can mask later problems in single inheritance. In multiple inheritance it adds substantial complexity for an isolated use case.
+
+30. Why does a class attribute named `__bases__` not show up on an instance?
+
+   Answer: Inheritance for classes uses a second search through the `type` tree. Names found only in that tree are not inherited by nonclass instances. So `C.__bases__` works, but `I.__bases__` raises an `AttributeError` for an instance `I` of `C`.
+
+31. When should you choose a static method instead of a module-level function?
+
+   Answer: Choose a static method when the function works with class data and belongs with the class. The method name stays in the class scope, so it cannot clash with other module names. It also sits near the code that uses it. Subclasses can customize it through inheritance, which a module-level function cannot do.
+
 ## Sources and review notes
 
 - Source: *Learning Python*, 6th edition (`learning-python-6th-edition`). Chapters used are listed in each section.
 - Chapter 28, "A More Realistic Example," from *Learning Python*, 6th edition (`learning-python-6th-edition`).
 - Chapter 29, "Class Coding Details," from *Learning Python*, 6th edition (`learning-python-6th-edition`).
 - Chapter 30, "Operator Overloading," from *Learning Python*, 6th edition (`learning-python-6th-edition`).
+- Chapter 31, "Designing with Classes," from *Learning Python*, 6th edition (`learning-python-6th-edition`).
+- Chapter 32, "Class Odds and Ends," from *Learning Python*, 6th edition (`learning-python-6th-edition`).

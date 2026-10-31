@@ -4779,6 +4779,831 @@ The `try` statement is covered in a later part. In rare generators that relied o
 
 The lessons are clear. Wrapping `map` calls in `list` calls is not just for display. Generators no longer pass exit exceptions out of the code they run. Python changes can break code, both subtly and repeatedly.
 
+## Benchmarking interlude
+
+Now that you have worked through function coding and the iteration tools, this short detour puts both to use. It closes the functions part with a larger case study. The case study times the iteration tools we have met so far, in standard Python and in one of its alternatives.
+
+Along the way, you will survey Python's code-timing tools and learn general benchmarking techniques. You will also write timing code that is more realistic than most examples so far. The speeds you measure may or may not matter, depending on what your programs are for.
+
+Because this is the last chapter in the part, the section ends with common gotchas. First, though, let's time some real code.
+
+## Benchmarking with homegrown tools
+
+We have met quite a few iteration alternatives. Each one is a trade-off between expressiveness and speed. Picking the right tool is part of an engineer's job, and speed is only one factor.
+
+Earlier sections said that list comprehensions and `map` calls sometimes beat `for` loop statements for speed. They also said that sort speed depends on how the input is ordered. Generator functions and expressions tend to be slower than the other options. They do save memory, though, and they do not delay the caller when there are many results to produce.
+
+That holds in common use today. Benchmarking still comes with big caveats. Code structure and host hardware can change speed in ways that are hard to predict. Python's speed also shifts over time, because its internals keep being optimized. Alternative Pythons can differ from CPython by a wide margin.
+
+In short, if you want to verify speed for yourself, time your code on your own device. Use the Python versions you plan to run, and measure them now. That list of qualifiers is long, yet benchmarking is at heart a hands-on, measure-it-yourself task.
+
+### Timer module: take 1
+
+Python makes timing easy, which can be deceptive. To get the total time for several calls to a function with positional arguments, a small module like this is a fair first draft.
+
+Example 21-1. timer0.py
+
+```python
+"Simplistic timing function"
+import time
+def timer(func, *args): # Any positional arguments (only)
+    start = time.perf_counter()
+    for i in range(100_000): # Hardcoded reps, range() timed
+        func(*args)
+    return time.perf_counter() - start # Total elapsed time in seconds
+```
+
+The function reads the clock from the standard-library `time` module. It runs the passed-in function with the passed-in arguments 100,000 times. Then it subtracts the start time from the stop time.
+
+`time.perf_counter` is a portable clock with the best resolution for short durations. The difference between two calls is the usual way to measure performance. That difference includes time spent sleeping, and it counts system-wide time. `time.process_time` reports per-process CPU time instead, which is useful in some roles. The older `time.clock` was deprecated and later dropped, so older examples may break.
+
+Apart from those `time` calls, the code uses tools you already know. On the book's macOS machine with CPython 3.12, the REPL results look like this:
+
+```
+>>> from timer0 import timer
+>>> timer(pow, 2, 1000) # Time to call pow(2, 1000) 100k times
+0.08591239107772708
+>>> timer(str.upper, 'hack' * 100) # Time to call 'hack...'.upper() 100k times
+0.04990812297910452
+```
+
+This timer works, but it is limited. It shows several classic mistakes in function design and benchmarking:
+
+- It hardcodes the repetition count at 100,000.
+- It charges the cost of `range` to the tested function's time.
+- It does not accept keyword arguments for the tested function.
+- It gives the caller no way to check that the tested function worked.
+- It reports only total time, which can fluctuate on a busy machine.
+
+In other words, timing code is more complex than it looks.
+
+### Timer module: take 2
+
+The second version is more general and more accurate. It defines small timing utilities in a module file, so any program can import them. Its docstrings give usage details that `help` and PyDoc can display.
+
+Example 21-2. timer.py
+
+```python
+"""
+Homegrown timing tools for arbitrary function calls.
+Times one call, total of N, best of N, and best of totals of N.
+Pass any number of positional and keyword arguments for each func.
+"""
+import time
+timer = time.perf_counter # See also time.process_time()
+def once(func, *pargs, **kargs): # Collect arguments for func
+    """
+    Time to run func(...) one time.
+    Returns (time, result).
+    """
+    start = timer()
+    result = func(*pargs, **kargs) # Unpack arguments for func
+    elapsed = timer() - start
+    return (elapsed, result) # Return result to verify
+def total(reps, func, *pargs, **kargs): # Collect arguments for func
+    """
+    Total time to run func(...) reps times.
+    Returns (total-time, last-result).
+    """
+    total = 0 # Don't charge range() time
+    for i in range(reps):
+        time, result = once(func, *pargs, **kargs)
+        total += time
+    return (total, result) # Return last result to verify
+def bestof(reps, func, *pargs, **kargs):
+    """
+    Best time among reps runs of func(...).
+    Returns (best-time, best-time-result).
+    """
+    return min(once(func, *pargs, **kargs) for i in range(reps))
+def bestoftotal(reps1, reps2, func, *pargs, **kargs):
+    """
+    Best total time among reps1 runs of [reps2 runs of func(...)].
+    Returns (best-total-time, best-total-time-last-result).
+    """
+    return min(total(reps2, func, *pargs, **kargs) for i in range(reps1))
+```
+
+The module times four ways: one call, a total over many calls, the best single time, and the best total. Each mode accepts any positional and keyword arguments for the function under test. Here is how this version fixes the problems of the first one:
+
+- The repetition count is now a required argument, so each call can choose its own count.
+- The cost of `range` is no longer charged to the timed function. The `once` function times only the function it receives.
+- Positional and keyword arguments are collected and unpacked with starred syntax. Callers pass them individually, not in a sequence or a dictionary.
+- Every function returns the timed function's return value with the time, so callers can verify the result.
+- The best-of modes return the minimum time, which filters out fluctuations on the host.
+
+Each function serves a different use case. `once` times a single call. `total` runs many calls, so very short functions accumulate measurable time. `bestof` returns the minimum among single calls, which filters out other activity. `bestoftotal` takes the minimum of nested total-time runs, which combines both ideas.
+
+The `min` calls in the best-of variants work because Python compares tuples from left to right. Each result tuple begins with the time, so the time decides the comparison:
+
+```
+>>> min(tup for tup in [(2.0, 3), (3.0, 3), (1.0, 3), (0.0, 3), (4.0, 3)])
+(0.0, 3)
+```
+
+Because the functions live in a module, you can import them anywhere. Import the module and call one of its functions. The results match the first version, but they are more robust:
+
+```
+>>> import timer # Import file in this directory
+>>> help(timer) # Display module's docs nicely
+>>> reps, text = 100_000, 'hack' * 100
+>>> timer.once(pow, 2, 1000)[0] # Not useful for fast calls
+6.182119250297546e-06
+>>> timer.once(str.upper, text) # (time, result)
+(3.363005816936493e-06, 'HACKHACKHACK…etc…')
+>>> timer.total(reps, pow, 2, 1000)[0] # Compare to timer0 results
+0.08979405369609594
+>>> timer.total(reps, str.upper, text)[0] # (time, last call's result)
+0.050884191412478685
+>>> timer.bestof(50, pow, 2, 1000)[0] # Not useful for fast calls
+1.6265548765659332e-06
+>>> timer.bestof(50, str.upper, text)[0] # (best time, best time result)
+8.619390428066254e-07
+>>> timer.bestoftotal(50, reps, pow, 2, 1000)[0]
+0.07521858718246222
+>>> timer.bestoftotal(50, reps, str.upper, text)[0]
+0.03947464330121875
+```
+
+The last two calls compute best-of-totals times. Each is the lowest of 50 runs, and each run totals 100,000 calls. These roughly match the `total` times above, but the minimum filters out host noise. `bestoftotal` wraps `total` for better accuracy, and this is a common timing mode.
+
+You could nest `total` inside `bestof` instead, like this:
+
+```
+>>> timer.bestof(50, timer.total, reps, str.upper, text)
+(0.07037258706986904, (0.039281503297388554, 'HACKHACKHACK…etc…'))
+```
+
+That is not quite the same. The result is nested tuples, and the timed work now includes the `total` function itself, not only the function it runs. That adds admin overhead, which pushes the best-of time up. The nested result ends up larger than the best total shown inside it. Taking `min` of `total` directly avoids that skew. It is subtle, but it is true.
+
+### Timing runner and script
+
+To time iteration tools, write a script that defines test functions and hands them to the timer. Example 21-3 defines a utility module named `timer_runner`. Its `runner` function accepts any number of test functions. It passes each one to `bestoftotal` from the timer module.
+
+Example 21-3. timer_runner.py
+
+```python
+"Run passed-in test functions with the timer.py module"
+import timer, sys
+def runner(*tests):
+    results = []
+    print('Python', sys.version.split()[0], 'on', sys.platform)
+    # Time
+    for test in tests:
+        besttime, result = timer.bestoftotal(10, 1000, test)
+        results.append(result)
+        print(f'{test.__name__:<9}: '
+              f'{besttime:.5f} => [{result[0]}…{result[-1]}]')
+    # Verify
+    print('Results differ!'
+          if any(result != results[0] for result in results[1:])
+          else 'All results same.')
+```
+
+The `runner` function prints the Python version and platform. It steps through the tests, printing each function's `__name__` and its best time. It keeps the results, so it can check at the end that they all match. That keeps the comparison fair, because every test must build the same data.
+
+Example 21-4 defines the actual tests and passes them to the runner. Run this file as a top-level script to time the iteration styles from this part.
+
+Example 21-4. timer_tests.py
+
+```python
+"Test the relative speed of iteration coding alternatives."
+from timer_runner import runner
+repslist = list(range(10_000))
+def forLoop():
+    res = []
+    for x in repslist:
+        res.append(abs(x))
+    return res
+def listComp():
+    return [abs(x) for x in repslist]
+def mapCall():
+    return list(map(abs, repslist)) # Use list() to force results
+def genExpr():
+    return list(abs(x) for x in repslist) # Use list() to force results
+def genFunc():
+    def gen():
+        for x in repslist:
+            yield abs(x)
+    return list(gen()) # Use list() to force results
+runner(forLoop, listComp, mapCall, genExpr, genFunc)
+```
+
+This script compares five ways to build a list of results. The reported times reflect about 100 million steps for each function. Each one builds a 10,000-item list 1,000 times. The process repeats 10 times to get the best-of time. Across all five functions, the script runs roughly 500 million steps.
+
+Notice that the generator expression and the generator function go through `list`. Without that call, they would only produce generators that never do any real work. The `map` result needs `list` too, because it is an on-demand iterable.
+
+The `range` result is created once at the top of the module, and it is wrapped in `list`. That keeps construction and traversal costs out of the timed loops. Removing the `list` wrapper inflates the times by some 25 percent.
+
+### Iteration results
+
+When the script runs under CPython 3.12 on the same macOS host, it prints these total times in seconds:
+
+```
+$ python3 timer_tests.py
+Python 3.12.2 on darwin
+forLoop : 0.26035 => [0...9999]
+listComp : 0.20781 => [0...9999]
+mapCall : 0.14399 => [0...9999]
+genExpr : 0.41133 => [0...9999]
+genFunc : 0.41203 => [0...9999]
+All results same.
+```
+
+In short, `map` calls are faster than list comprehensions, and list comprehensions are quicker than `for` loops. Generator expressions and generator functions come last, and they roughly tie for slowest. Generator expressions are much slower than list comprehensions today, which is surprising. The difference shows up clearly in two lines:
+
+```
+return [abs(x) for x in repslist] # 0.20 seconds
+return list(abs(x) for x in repslist) # 0.41 seconds: differs internally
+```
+
+The generator test also times the `list` call, but that does not seem to hurt `map`, so the effect is probably minor. The exact cause would need deeper analysis. A plausible reason is that a generator expression must save and restore its state while it produces each value. A list comprehension does not, so it runs quicker here and in the tests ahead.
+
+### Other Pythons' results
+
+For comparison, here are the same tests run under PyPy. PyPy is the optimized Python implementation covered earlier in this handbook. Its 7.3 release implements the Python 3.10 language. PyPy runs roughly 5 times faster than CPython here, and up to 10 times faster. Its timings can vary widely until its JIT has compiled the code fully.
+
+```
+$ pypy3 timer_tests.py
+Python 3.10.14 on darwin
+forLoop : 0.04329 => [0...9999]
+listComp : 0.01876 => [0...9999]
+mapCall : 0.04132 => [0...9999]
+genExpr : 0.08744 => [0...9999]
+genFunc : 0.08726 => [0...9999]
+All results same.
+```
+
+On PyPy alone, list comprehensions win this test, but generators still lose badly. The bigger point is how much faster all of PyPy's results are today. On CPython, `map` is still the quickest so far.
+
+These results differ from an older run in the prior edition. That run used CPython 3.3 on Windows, and there generators sat in the middle of the pack. The `for` loops fared much worse than they do today. The script also had a different name back then:
+
+```
+C:\code> c:\python33\python timeseqs.py
+3.3.0 (v3.3.0:bd8afb90ebf2, Sep 29 2012, 10:57:17) [MSC v.1600 64 bit (AMD64)]
+forLoop : 1.33290 => [0...9999]
+listComp : 0.69658 => [0...9999]
+mapCall : 0.56483 => [0...9999]
+genExpr : 1.08457 => [0...9999]
+genFunc : 1.07623 => [0...9999]
+```
+
+The absolute times reflect older, slower machines. The relative performance of these tools has clearly changed over about 12 years. It will probably change again in another dozen.
+
+### For more good times: function calls and map
+
+Now swap the `abs` calls for an inline `+` in each test. The results shift in surprising ways. Only the code inside the test functions differs, and the shared runner treats every test the same. Example 21-5 shows the change.
+
+Example 21-5. timer_tests2.py
+
+```python
+from timer_runner import runner
+repslist = list(range(10_000))
+def forLoop():
+    res = []
+    for x in repslist:
+        res.append(x + 10)
+    return res
+def listComp():
+    return [x + 10 for x in repslist]
+def mapCall():
+    return list(map((lambda x: x + 10), repslist))
+def genExpr():
+    return list(x + 10 for x in repslist)
+def genFunc():
+    def gen():
+        for x in repslist:
+            yield x + 10
+    return list(gen())
+runner(forLoop, listComp, mapCall, genExpr, genFunc)
+```
+
+Now `map` is slower than the `for` loop statements, even though the loop version has more code. Either the need to call a user-defined function slows `map`, or the lack of function calls speeds up the others. On CPython 3.12 on the same host, the results are these:
+
+```
+$ python3 timer_tests2.py
+Python 3.12.2 on darwin
+forLoop : 0.28682 => [10...10009]
+listComp : 0.24389 => [10...10009]
+mapCall : 0.49622 => [10...10009]
+genExpr : 0.44047 => [10...10009]
+genFunc : 0.44476 => [10...10009]
+All results same.
+```
+
+The earlier edition's Python 3.3 results, on a slower machine, look similar once you allow for machine differences. The interpreter optimizes so much internally that analyzing performance like this is tricky. Without numbers, it is nearly impossible to guess which method is fastest. The best you can do is time your code with your own test parameters.
+
+On this Python, a user-defined `lambda` inside `map` seems to slow it down out of proportion. The `+` operator is also slower than a trivial `abs` call across the board. List comprehensions run quickest in this case, though `map` wins in some others. List comprehensions look consistently faster than `for` loops, but even that needs qualifiers. Extra syntax such as `if` filters can change the relative speed. So can later Python changes, and usage modes this test did not cover.
+
+Example 21-6 applies a simple user-defined function in all five iteration tests. Again, only the test functions' bodies change.
+
+Example 21-6. timer_tests3.py
+
+```python
+from timer_runner import runner
+repslist = list(range(10_000))
+def F(x): return x
+def forLoop():
+    res = []
+    for x in repslist:
+        res.append(F(x))
+    return res
+def listComp():
+    return [F(x) for x in repslist]
+def mapCall():
+    return list(map(F, repslist))
+def genExpr():
+    return list(F(x) for x in repslist)
+def genFunc():
+    def gen():
+        for x in repslist:
+            yield F(x)
+    return list(gen())
+runner(forLoop, listComp, mapCall, genExpr, genFunc)
+```
+
+With this change, CPython 3.12 on the same host gives these results:
+
+```
+$ python3 timer_tests3.py
+Python 3.12.2 on darwin
+forLoop : 0.36206 => [0...9999]
+listComp : 0.31181 => [0...9999]
+mapCall : 0.35479 => [0...9999]
+genExpr : 0.50531 => [0...9999]
+genFunc : 0.50290 => [0...9999]
+All results same.
+```
+
+Now `map` improves its relative standing. It comes second, between list comprehensions and `for` loops, instead of last as it did with `+`. That suggests `map` may be slower simply because it must call functions, and function calls are relatively slow in general. The other tools can win when they use plain expressions instead.
+
+That hypothesis cannot explain the good showing for `map` in the first `abs` test, though. Calling a built-in function may be a special, fast case for `map` in CPython. The comparison with `ord` at the end of this chapter supports that theory.
+
+Performance should not be your main concern when you write Python. The first step in optimizing Python code is to avoid optimizing too early. Write for readability and simplicity first. Optimize later, and only if you need to. Any of the five iteration styles may be quick enough for the data your program processes. If so, clarity should be the chief goal.
+
+### More module mods
+
+The `timer.py` module works as designed, but it could be friendlier. Its functions require repetition counts as their first arguments, with no defaults. That is a minor point, but it is less than ideal in a general-purpose tool. A better design accepts repetition counts as keyword arguments with defaults, much as the print emulators in an earlier chapter did.
+
+The repetition names must differ from the names in the timed function. That is why `_reps` replaces `reps`. The function object should also be positional-only, so the name `func` cannot clash with a keyword argument of the same name in the timed code. Example 21-7 makes these changes. Its docstrings are left out for space. The argument-matching sections earlier in this part give more insight.
+
+Example 21-7. timer2.py
+
+```python
+"Use keyword-only arguments with defaults for reps, and positional-only for func."
+import time
+timer = time.perf_counter
+def once(func, /, *pargs, **kargs):
+    start = timer()
+    result = func(*pargs, **kargs)
+    elapsed = timer() - start
+    return (elapsed, result)
+def total(func, /, *pargs, _reps=100_000, **kargs):
+    total = 0
+    for i in range(_reps):
+        time, result = once(func, *pargs, **kargs)
+        total += time
+    return (total, result)
+def bestof(func, /, *pargs, _reps=5, **kargs):
+    return min(once(func, *pargs, **kargs) for i in range(_reps))
+def bestoftotal(func, /, *pargs, _reps1=50, **kargs):
+    return min(total(func, *pargs, **kargs) for i in range(_reps1)) # _reps => **
+```
+
+Because the names changed, this module is not a drop-in replacement. The repetition arguments follow a new naming scheme. That means the `timer_runner` module needs a small edit to use it. Otherwise it works the same way. Compare its output on the same host with the results of `timer.py`:
+
+```
+$ python3
+>>> import timer2
+>>> timer2.total(pow, 2, 1000, _reps=100_000)[0]
+0.0865794476121664
+>>> timer2.total(str.upper, 'hack' * 100, _reps=100_000)[0]
+0.04620114527642727
+>>> timer2.bestoftotal(pow, 2, 1000, _reps1=50, _reps=100_000)[0]
+0.07179990829899907
+>>> timer2.bestoftotal(str.upper, 'hack' * 100, _reps1=50, _reps=100_000)[0]
+0.0393348871730268
+```
+
+This time, the repetition defaults can apply or not:
+
+```
+>>> timer2.total(str.upper, 'hack' * 100)[0]
+0.047992002684623
+>>> timer2.bestoftotal(str.upper, 'hack' * 100)[0]
+0.03935634717345238
+>>> timer2.bestoftotal(str.upper, 'hack' * 100, _reps=10_000)[0]
+0.00393257150426507
+```
+
+A `_reps` argument passed to `bestoftotal` travels along in `**kargs`, because nothing else matches it. For a closer look, time user-defined functions with richer argument headers:
+
+```
+>>> def f(a, b, c=88, d=99): return(a, b, c, d)
+>>> f(1, 2)
+(1, 2, 88, 99)
+>>> timer2.bestoftotal(f, 1, 2, _reps1=50, _reps=100_000)
+(0.014080120716243982, (1, 2, 88, 99))
+>>> timer2.bestoftotal(f, 1, 2, c=66, d=77, _reps1=50, _reps=100_000)
+(0.021575820166617632, (1, 2, 66, 77))
+>>> timer2.bestoftotal(f, 1, 2, c=66, d=77, _reps1=50)
+(0.021694606635719538, (1, 2, 66, 77))
+>>> timer2.bestoftotal(f, 1, 2, c=66, d=77, _reps=100_000)
+(0.021556788589805365, (1, 2, 66, 77))
+>>> def f(a, *b, c=88, **d): return(a, b, c, d)
+>>> f(1, 2, 3, c=66, d=77, e=88)
+(1, (2, 3), 66, {'d': 77, 'e': 88})
+>>> timer2.bestoftotal(f, 1, 2, 3, c=66, d=77, e=88)
+(0.030859854072332382, (1, (2, 3), 66, {'d': 77, 'e': 88}))
+>>> timer2.bestoftotal(f, 1, 2, 3, c=66, d=77, e=88, _reps1=10)
+(0.030802161898463964, (1, (2, 3), 66, {'d': 77, 'e': 88}))
+>>> timer2.bestoftotal(f, 1, 2, 3, c=66, d=77, e=88, _reps=10_000)
+(0.0030745575204491615, (1, (2, 3), 66, {'d': 77, 'e': 88}))
+```
+
+Passing keyword arguments to a timed function adds a small unpacking cost. The original `timer.py` has the same overhead. The cost is irrelevant when you compare relative times.
+
+Beyond this, custom benchmarking is fun but open-ended. You could time set and dictionary comprehensions against their `for` loop equivalents. You could explore the `profile` and `cProfile` modules, which build full-program profiles instead of focused benchmarks. Or you could explore `timeit`, which works much like this chapter's homegrown code and offers extra options.
+
+> Note: Decorator timers preview. Here we pass functions into the timers by hand. A decorator-based timer lets callers invoke functions normally, but it adds `@` syntax where the function is defined. Decorators suit instrumenting functions inside a larger system. They do not fit the test-call patterns used here as easily. Every call to a decorated function runs the timing logic, which can help or hurt depending on your goals.
+
+## Benchmarking with timeit
+
+The earlier section used custom timing functions. The standard library also ships a module named `timeit`. It works in similar ways, but it offers more flexibility. It times code strings as well as functions, and it has a command-line mode.
+
+Python's "batteries included" approach means a precoded option exists for most goals. You still need the ideas behind those options to choose and use them well. The `timeit` module shows this clearly. Newcomers have misused it when they did not understand those ideas. Now that the basics are clear, let's move to a tool that automates much of this work.
+
+### Basic timeit usage
+
+With `timeit`, tests are specified either as callable objects or as statement strings. A string can hold several statements, separated by `;` or by `\n` line breaks. It can indent nested blocks with spaces or tabs, as in `\n\t`. Tests may also include setup actions. You can launch them from the command line or from API calls, and from scripts or the REPL.
+
+### API-calls mode
+
+The `repeat` call returns a list of total times. It runs a test `number` times for each of the `repeat` runs. The `min` of that list gives the best time among the runs. That filters out system load fluctuations, which can otherwise skew results high. Pass the code to the `stmt` keyword, or as the first positional argument. It can be a string or a no-argument function.
+
+The next example times a list comprehension on CPython 3.12 and on PyPy, using REPLs on macOS. Each result is the best total time among 5 runs. Each run executes the code string 1,000 times. The string builds a 1,000-item list of integers on every pass. `timeit` has default repeat counts, but being explicit keeps the runs comparable.
+
+```
+$ python3
+>>> import timeit
+>>> min(timeit.repeat(stmt='[x ** 2 for x in range(1000)]', number=1000, repeat=5))
+0.05187674192711711
+$ pypy3
+>>>> import timeit
+>>>> min(timeit.repeat(stmt='[x ** 2 for x in range(1000)]', number=1000, repeat=5))
+0.00252467580139637
+```
+
+PyPy comes in about 20 times faster than CPython 3.12 here. This is a small, artificial benchmark, but the gap is striking. It fits a relative speed ranking seen elsewhere in this book. CPython still beats PyPy on some kinds of code, though, and a future JIT may change the picture. This test also measures integer math, which is everywhere in Python. PyPy's lead is even larger for non-integer code. Try squaring a float to see for yourself.
+
+These results differ from the earlier PyPy ratio of about 10 times for list comprehensions. The different code shape is one reason. Another is that `timeit` builds and runs a generated `def` statement around the test string. That avoids a function call on every inner loop. This does not matter for relative speed, because times from the same tool are comparable with each other.
+
+Code to be timed is a string here. Multiline code in some modes needs manual line breaks and indentation. All such code must follow Python's rules for string literals, quotes, and escapes. A code string cannot contain the same quote that encloses it unless you escape it. You can avoid that trouble by timing callables, though those take no arguments.
+
+### Command-line mode
+
+The `timeit` module also runs as a script from the command line. Use the `-m` switch, which finds `timeit` on the module search path. Or give the file path explicitly. Quote or escape the Python code according to your shell's rules. Double quotes are generally portable, but quoting is still a potential weak spot.
+
+In this mode, `timeit` reports the average time for one loop, and `-n` sets the loop count. It uses units such as usec (microseconds), msec (milliseconds), sec (seconds), and nsec (nanoseconds). To compare with API totals, multiply by the loop count. For example, a loop time of 51 usec, over 1,000 loops, totals 51 msec. That is 0.051 seconds. For CPython 3.12 on macOS:
+
+```
+$ python3 -m timeit -n 1000 "[x ** 2 for x in range(1000)]"
+1000 loops, best of 5: 51.9 usec per loop
+$ python3 -m timeit -n 1000 -r 50 "[x ** 2 for x in range(1000)]"
+1000 loops, best of 50: 51.8 usec per loop
+```
+
+The command line can also verify that the choice of timer does not change these comparisons. `timeit` uses `time.perf_counter` by default. Its `-p` flag switches it to `time.process_time`. As tested, there is no discernible difference:
+
+```
+$ python3 -m timeit -p -n 1000 -r 50 "[x ** 2 for x in range(1000)]"
+1000 loops, best of 50: 51.8 usec per loop
+```
+
+PyPy's command-line `timeit` gives a surprise:
+
+```
+$ pypy3 -m timeit -n 1000 -r 50 "[x ** 2 for x in range(1000)]"
+WARNING: timeit is a very unreliable tool. use pyperf or something
+else for real measurements
+pypy3 -m pip install pyperf
+pypy3 -m pyperf timeit -n '1000' -r '50' '[x ** 2 for x in range(1000)]'
+------------------------------------------------------------
+1000 loops, average of 50: 1.54 +- 0.568 usec per loop (using standard deviation)
+```
+
+PyPy has customized its command-line `timeit`. It prints a warning that suggests another timer, and it shows averages instead of minimums. Both changes are opinionated, and both were made since the prior edition. They are understandable for a tool so sensitive to benchmark results. The `pyperf` package is not part of the standard library. It needs a separate install, but it may offer more advanced timing options that suit some goals.
+
+### Handling multiline statements
+
+API-call mode has no shell to worry about. To time larger blocks, load the code from a file, use a triple-quoted string, or use newlines and indentation that satisfy Python's syntax. Because you pass Python strings to a Python function, watch nested quotes. Use escapes or mixed quotes when needed. The example below times the loop alternatives from an earlier chapter on CPython 3.12. The same pattern works for the file-reading alternatives too.
+
+```
+$ python3
+>>> import timeit
+>>> min(timeit.repeat(number=100_000, repeat=5,
+stmt='L = [1, 2, 3, 4, 5]\nfor i in range(len(L)): L[i] += 1'))
+0.028153221122920513
+>>> min(timeit.repeat(number=100_000, repeat=5,
+stmt='L = [1, 2, 3, 4, 5]\ni=0\nwhile i < len(L):\n\tL[i] += 1\n\ti += 1'))
+0.03337613819167018
+>>> min(timeit.repeat(number=100_000, repeat=5,
+stmt='L = [1, 2, 3, 4, 5]\nM = [x + 1 for x in L]'))
+0.021507765166461468
+```
+
+To run multiline statements from the command line, pass each statement line as a separate argument. Use spaces for indentation. `timeit` joins the lines with newlines and re-indents them as needed. Spaces usually work better than tabs in this mode, because shells vary. Quote the code arguments if your shell requires it. The first command below is split across two lines here to fit the page. In some shells, you must type it on one line.
+
+```
+$ python3 -m timeit -n 100000 -r 5 "L = [1,2,3,4,5]" "i=0" "while i < len(L):"
+" L[i] += 1" " i += 1"
+100000 loops, best of 5: 332 nsec per loop
+$ python3 -m timeit -n 100000 -r 5 "L = [1,2,3,4,5]" "M = [x + 1 for x in L]"
+100000 loops, best of 5: 218 nsec per loop
+```
+
+### Other timeit usage modes
+
+The `timeit` module also accepts setup code. Setup runs in the same scope as the main statement, but its time is not charged to the main statement's total. Use it for work you want to exclude, such as imports and building test data. Names created by setup code are available to the test statement. Names defined in the interactive shell generally are not.
+
+To give setup code from the command line, use `-s`. Repeat it for multiline setups. In API calls, use a `setup` string argument. The next pair of commands splits list creation into setup, so the second command times only the iteration:
+
+```
+$ python3 -m timeit -n 100000 -r 5 "L = [1,2,3,4,5]" "M = [x + 1 for x in L]"
+100000 loops, best of 5: 211 nsec per loop
+$ python3 -m timeit -n 100000 -r 5 -s "L = [1,2,3,4,5]" "M = [x + 1 for x in L]"
+100000 loops, best of 5: 175 nsec per loop
+```
+
+As a general rule, the more code a test statement includes, the closer its results match realistic code. Setup splitting focuses a test sharply, but it can also drift from real use.
+
+### Timing sort speed
+
+To demo setup code in API-call mode, the next example times a sort-based option from the minimum-value example earlier in this part. Here is the function, which lives in `mins.py`:
+
+```python
+def min4(*args):
+    return sorted(args)[0]
+```
+
+The results show that sequences sort much faster when they are already ordered. Run this from the folder that holds `mins.py` to see it for yourself:
+
+```
+>>> from timeit import repeat # Standard-library module
+>>> min(repeat(number=1000, repeat=5, # Sort an ordered list in min4
+setup='from mins import min4\n' # Adjacent strings concatenated
+'vals=list(range(1000))', # Code within () spans lines
+stmt= 'min4(*vals)')) # First import prints output
+0.011066518723964691
+>>> min(repeat(number=1000, repeat=5, # Sort a randomly ordered list
+setup='from mins import min4\n'
+'import random\n'
+'vals=[random.random() for i in range(1000)]',
+stmt= 'min4(*vals)'))
+0.068130933213979
+```
+
+The randomly ordered list takes far longer to sort. See Python's manuals for more on the `random` module used here. `timeit` can also report only total time, time callable objects instead of strings, and use a class-based API. Its command line accepts more switches, and its API calls accept more arguments. Those details are beyond this chapter. The following section builds a small helper around `timeit`, so you no longer type each command by hand.
+
+## Automating timeit benchmarking
+
+Rather than more `timeit` details, study a program that uses it to time coding alternatives and Python versions. It lets you define a set of tests in a separate file. It also collects data from several Pythons, both one at a time and grouped together. Grouped mode has limits today, as you will see.
+
+### Benchmark module
+
+The module in Example 21-8, `pybench.py`, times a sequence of statements. Scripts that import it supply the statements. It runs them either on the Python executing the script or on every Python version in a list. It relies on a few standard-library tools, such as `os.popen`.
+
+Because it mostly applies ideas you have already seen, and because it is well documented, treat this file as self-study material. It is also a good exercise in reading Python code.
+
+Example 21-8. pybench.py
+
+```python
+r"""
+Time the speed of one or more Pythons on multiple code-string
+benchmarks with timeit. This is a function, to allow timed tests
+to vary. It times all code strings in a passed list, in either:
+1) The Python running this script, by timeit API calls
+2) Multiple Pythons whose paths are passed in a list, by reading
+   the output of timeit command lines run by os.popen that use
+   Python's -m switch to find timeit on the module search path
+In command-line mode (2) only, this replaces all " in timed code
+with ', to avoid clashes with argument quoting; splits multiline
+statements into one quoted argument per line so all will be run;
+and replaces all \t in indentation with 4 spaces for uniformity.
+Caveats:
+- Command-line mode (only) uses naive quoting and MAY FAIL if code
+  embeds and requires double quotes; quoted code is incompatible
+  with the host shell; or command length exceeds shell limits.
+- PyPy is largely unusable in command-line mode (2) today, as its
+  modified timeit output in this mode is jarring in the report.
+- This does not (yet?) support a setup statement in any mode: the
+  time of all code in the test stmt is charged to its total time.
+As fallbacks on fails, use either this module's API-call mode to
+test one Python at a time, or the homegrown timer.py module.
+"""
+import sys, os, time, timeit
+defnum, defrep = 1000, 5 # May vary per stmt
+def show_context():
+    """
+    Show run's context using an arguably gratuitous f-string
+    that fails on 3.10 PyPy without "..." for nested ' quotes.
+    """
+    print(f"Python {'.'.join(str(x) for x in sys.version_info[:3])}"
+          f' on {sys.platform}'
+          f" at {time.strftime('%b-%d-%Y, %H:%M:%S')}")
+def runner(stmts, pythons=None, tracecmd=False):
+    """
+    Main logic: run tests per input lists which determine usage modes.
+    stmts: [(number?, repeat?, stmt-string)]
+    pythons: None=host python only, or [python-executable-paths]
+    """
+    show_context()
+    for (number, repeat, stmt) in stmts:
+        number = number or defnum
+        repeat = repeat or defrep # 0=default
+        if not pythons:
+            # Run stmt on this python: API call
+            # No need to split lines or quote here
+            best = min(timeit.repeat(stmt=stmt, number=number, repeat=repeat))
+            print(f'{best:.4f} {stmt[:70]!r}')
+        else:
+            # Run stmt on all pythons: command line
+            # Split lines into quoted arguments
+            print('-' * 80)
+            print(repr(stmt)) # show quotes
+            for python in pythons:
+                stmt = stmt.replace('"', "'") # all " => '
+                stmt = stmt.replace('\t', ' ' * 4) # tab => 4 spaces
+                lines = stmt.split('\n') # line => arg
+                args = ' '.join(f'"{line}"' for line in lines) # arg => "arg"
+                oscmd = f'{python} -m timeit -n {number} -r {repeat} {args}'
+                print(oscmd if tracecmd else python)
+                print('\t' + os.popen(oscmd).read().rstrip())
+```
+
+### Benchmark script
+
+This module is only half the picture. Test scripts pass concrete lists of statements and Pythons into its function. The script in Example 21-9 uses command-line arguments to choose its mode. The `-a` switch tests all the listed Pythons instead of just one. The `-t` switch traces the command lines it builds, so you can see how quotes, multiline statements, and tabs are handled.
+
+Example 21-9. pybench_tests.py
+
+```python
+"""
+Run pybench.py to time one or more Pythons on multiple code strings.
+Use command-line arguments (which appear in sys.argv) to select modes:
+<python> pybench_tests.py
+    times just the hosting Python on all code listed in stmts below
+python3 pybench_tests.py -a
+    times all stmts in all pythons whose paths are listed below
+python3 pybench_tests.py -a -t
+    same as -a, but also traces command lines in full
+Edit stmts below to change tested code, and edit pythons below to give
+paths of Python executables to be tested in -a mode. To find a Python's
+path, start its REPL, run "import sys", and inspect "sys.executable".
+"""
+import pybench, sys
+pythons = [
+    '/Library/Frameworks/Python.framework/Versions/3.12/bin/python3',
+    '/Users/me/Downloads/pypy3.10-v7.3.16-macos_x86_64/bin/pypy3',
+]
+stmts = [
+    # Iterations
+    (0, 0, '[x ** 2 for x in range(1000)]'), # (num,rpt,stmt)
+    (0, 0, 'res=[]\nfor x in range(1000): res.append(x ** 2)'), # \n=multistmt
+    (0, 0, 'list(map(lambda x: x ** 2, range(1000)))'), # \n\t=indent
+    (0, 0, 'list(x ** 2 for x in range(1000))'),
+    # String ops
+    (0, 0, "s = 'hack' * 2500\nx = [s[i] for i in range(10_000)]"),
+    (0, 0, "s = '?'\nfor i in range(10_000): s += '?'"), # A PyPy loss!
+]
+tracecmd = '-t' in sys.argv # -t: trace command lines?
+pythons = pythons if '-a' in sys.argv else None # -a: all in list, else one?
+pybench.runner(stmts, pythons, tracecmd) # Time pythons on all stmts
+```
+
+### Timing individual Pythons
+
+The next output comes from running the script to test the Python that runs it. This mode makes direct `timeit` API calls, not command lines. Total time appears in the left column, and the tested statement appears quoted on the right. A context line at the top comes from the `sys` and `time` modules. These two runs use CPython 3.12 and PyPy 7.3, which implements Python 3.10, on the same host:
+
+```
+$ python3 pybench_tests.py
+Python 3.12.2 on darwin at Jun-27-2024, 15:21:02
+0.0533 '[x ** 2 for x in range(1000)]'
+0.0605 'res=[]\nfor x in range(1000): res.append(x ** 2)'
+0.0804 'list(map(lambda x: x ** 2, range(1000)))'
+0.0759 'list(x ** 2 for x in range(1000))'
+0.4042 "s = 'hack' * 2500\nx = [s[i] for i in range(10_000)]"
+0.8061 "s = '?'\nfor i in range(10_000): s += '?'"
+$ pypy3 pybench_tests.py
+Python 3.10.14 on darwin at Jun-27-2024, 15:22:14
+0.0020 '[x ** 2 for x in range(1000)]'
+0.0040 'res=[]\nfor x in range(1000): res.append(x ** 2)'
+0.0030 'list(map(lambda x: x ** 2, range(1000)))'
+0.0077 'list(x ** 2 for x in range(1000))'
+0.0529 "s = 'hack' * 2500\nx = [s[i] for i in range(10_000)]"
+1.2942 "s = '?'\nfor i in range(10_000): s += '?'"
+```
+
+Drawing conclusions from this is left as an exercise. Notice, though, that PyPy loses to CPython on the very last test. Performance varies by code, and absolute numbers in benchmarking are perilous at best.
+
+### Timing multiple Pythons
+
+Adding `-a` makes the script test each statement on several Pythons. The script itself runs under CPython 3.12. It launches shell command lines that start the other Pythons, and those run the `timeit` module on the statement strings. To make this work, the script must split, format, and quote multiline statements for both `timeit` and the shell.
+
+This mode relies on the `-m` switch to find `timeit` and run it as a script. It uses `os.popen` to run shell commands, and `sys.argv` to read the command-line arguments. Add `-t` to trace the commands. Here is the result:
+
+```
+$ python3 pybench_tests.py -a
+Python 3.12.2 on darwin at Jun-27-2024, 16:12:39
+--------------------------------------------------------------------------------
+'[x ** 2 for x in range(1000)]'
+/Library/Frameworks/Python.framework/Versions/3.12/bin/python3
+1000 loops, best of 5: 52.7 usec per loop
+/Users/me/Downloads/pypy3.10-v7.3.16-macos_x86_64/bin/pypy3
+WARNING: timeit is a very unreliable tool. use pyperf or something
+else for real measurements
+pypy3 -m pip install pyperf
+pypy3 -m pyperf timeit -n '1000' -r '5' '[x ** 2 for x in range(1000)]'
+------------------------------------------------------------
+1000 loops, average of 5: 2.66 +- 1.55 usec per loop (using standard deviation)
+…more output clipped…
+```
+
+Regrettably, this all-Pythons mode is nearly unusable today. PyPy's inserted changes make its command-line output look very different from the norm, and hard to read. There is no switch to turn them off. The only fix is copying CPython's `timeit.py` into PyPy's library folder, which is too much for this demo. So the `-a` mode still works in this edition. It is best used with Pythons that do not modify a widely used standard-library module like `timeit`.
+
+### Timing set and dictionary iterations
+
+Single-Python mode is still useful for scripting a batch of benchmarks, and it works on PyPy too. Example 21-10 runs set and dictionary tests through the driver module from Example 21-8. It shows how each construction style compares.
+
+Example 21-10. pybench_tests2.py
+
+```python
+import pybench
+stmts = [
+    # Sets
+    (0, 0, '{x ** 2 for x in range(1000)}'),
+    (0, 0, 'set(x ** 2 for x in range(1000))'),
+    (0, 0, 's=set()\nfor x in range(1000): s.add(x ** 2)'),
+    # Dicts
+    (0, 0, '{x: x ** 2 for x in range(1000)}'),
+    (0, 0, 'dict((x, x ** 2) for x in range(1000))'),
+    (0, 0, 'd={}\nfor x in range(1000): d[x] = x ** 2'),
+]
+pybench.runner(stmts, None, False) # No -a mode in this script
+```
+
+Earlier, we noted that handing a generator to a type name, such as `set`, costs extra time. This output on CPython 3.12 and on PyPy 7.3, which implements Python 3.10, confirms it:
+
+```
+$ python3 pybench_tests2.py
+Python 3.12.2 on darwin at Jun-27-2024, 16:20:19
+0.0746 '{x ** 2 for x in range(1000)}'
+0.0947 'set(x ** 2 for x in range(1000))'
+0.0834 's=set()\nfor x in range(1000): s.add(x ** 2)'
+0.0745 '{x: x ** 2 for x in range(1000)}'
+0.1174 'dict((x, x ** 2) for x in range(1000))'
+0.0754 'd={}\nfor x in range(1000): d[x] = x ** 2'
+$ pypy3 pybench_tests2.py
+Python 3.10.14 on darwin at Jun-27-2024, 16:22:18
+0.0191 '{x ** 2 for x in range(1000)}'
+0.0222 'set(x ** 2 for x in range(1000))'
+0.0186 's=set()\nfor x in range(1000): s.add(x ** 2)'
+0.0188 '{x: x ** 2 for x in range(1000)}'
+0.0398 'dict((x, x ** 2) for x in range(1000))'
+0.0185 'd={}\nfor x in range(1000): d[x] = x ** 2'
+```
+
+### Conclusion: comparing tools
+
+A third script, `pybench_tests3.py`, checks that the `timeit` tools give results similar to the homegrown timer. Its findings generally match the iteration results shown earlier in this chapter, although they arrive at them by a very different route:
+
+```
+$ python3 pybench_tests3.py
+Python 3.12.2 on darwin at Jun-27-2024, 16:26:44
+0.2766 "res=[]\nfor x in 'hack' * 2500: res.append(ord(x))"
+0.2173 "[ord(x) for x in 'hack' * 2500]"
+0.1430 "list(map(ord, 'hack' * 2500))"
+0.4172 "list(ord(x) for x in 'hack' * 2500)"
+```
+
+If you want a closer look, dig into this chapter's code and write more tests of your own. Exploring benchmarks is enjoyable, and the remaining experiments are left to you as practice. Results change with every Python release and every machine, so retest with your own Pythons and devices before you trust any number here.
+
+## Function gotchas
+
+Now that the function story is complete, here are some common pitfalls. Functions have a few jagged edges you might not expect. They are obscure, and a few have started to fall away from the language in recent releases. Still, most of them have tripped up new users.
+
+### Hiding built-ins by assignment
+
+You saw earlier that you can reassign a built-in name in a closer local or global scope. The reassignment hides the built-in and replaces it for the rest of that scope. You can no longer reach the original built-in value there. If you do not need the original, this is harmless, because many names are built in and can be reused freely.
+
+If your code relies on a built-in name that you reassign, however, you will have problems. So avoid doing that unless you really mean it. The built-ins you use often will soon become second nature. Python's error trapping also tends to flag these mistakes early in testing, when a name is not what you expect.
+
+### Wrapping up the case study
+
+This case study measured the iteration alternatives from this part and other tools from earlier chapters. It also measured one alternative Python implementation. It used both custom timer code and `timeit`, with a helper that runs code in several modes. It also reviewed common function mistakes that cause trouble.
+
+This concludes the functions part. The next topic is modules, the files that group functions into reusable units. After that comes classes, which are largely packages of functions with special first arguments. Before moving on, work through the questions below to practice what you learned about functions here.
+
 ## Check your understanding
 
 Work through these questions to review the scope ideas in this chapter.
@@ -4945,6 +5770,17 @@ Answers:
 25. Both produce a series of values by applying an operation to each item of an iterable, one item at a time. `map` applies a function call to each item. A list comprehension applies any expression. Comprehensions can also nest `for` loops and use `if` clauses, which cover the work of `filter`. `map` produces a generator of values, while a list comprehension builds the whole result list in memory, which can matter for large lists.
 26. `async def` defines an asynchronous function, usually called a coroutine. `await` waits for another asynchronous object to produce its value. While it waits, it can give control back to an event loop, so other code can run. `async def` is required to use `await`, `async for`, and `async with`. Concurrency in this model generally needs an event loop and scheduling calls from the `asyncio` module.
 
+27. Which iteration tools were quickest and slowest on CPython 3.12 in this chapter's timer tests? Why should you not treat those results as final for your own code?
+28. Why does the `timer` module take the `min` of the best-of results instead of an average? Explain what the time-first tuples have to do with it.
+29. What does the `-p` flag change in `timeit` command-line mode, and did it change the results in this chapter?
+30. In `timer2.py`, why are the repetition arguments named `_reps` and `_reps1` instead of `reps`?
+31. Timing tools exercise: Which of `math.sqrt(X)`, `X ** .5`, and `pow(X, .5)` runs fastest on your device? Time each one with `bestoftotal` from `timer2.py`. How would you time dictionary comprehensions against `for` loops?
+32. Keywords exercise: Write `adder(red, green, blue)` with a default for each argument. Does the call `adder(blue=1, red=2)` work, and why? Then generalize it to accept any number of keyword arguments.
+33. Primes revisited: Package the prime-checking loop as a function that takes `num` as an argument. What goes wrong when you replace `//` with `/`, and how should negative numbers, `0`, and `1` be handled?
+34. Iterations and comprehensions exercise: Build a list of the square roots of `[2, 4, 9, 16, 25]` with a `for` loop, a `map` call, a list comprehension, and a generator expression. Which approach do you like best?
+35. Argument matching: Define `f5(a, b=2, c=3)` and `f6(a, b=2, *c)`. Predict the results of `f5(1, c=4)` and `f6(1, *[3, 4])`, then test them.
+36. Function gotchas: After you assign `open = 99` at the top level of a module, what happens to a later `open('data.txt')` call in that module? How can you restore the built-in?
+
 ## Sources and review notes
 
 - Source: *Learning Python*, 6th edition (`learning-python-6th-edition`). Chapters used are listed in each section.
@@ -4952,3 +5788,4 @@ Answers:
 - Chapter used: "18. Arguments" from *Learning Python*, 6th edition (`learning-python-6th-edition`).
 - Chapter used: "19. Function Odds and Ends" from *Learning Python*, 6th edition (`learning-python-6th-edition`).
 - Chapter used: "20. Comprehensions and Generations" from *Learning Python*, 6th edition (`learning-python-6th-edition`).
+- Chapter used: "21. The Benchmarking Interlude" from *Learning Python*, 6th edition (`learning-python-6th-edition`).

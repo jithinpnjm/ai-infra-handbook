@@ -22,20 +22,22 @@ lab_venue: "GCP / GKE"
 
 ## Why this matters for AI infrastructure
 
-Automation failures happen at the worst moments: halfway through a driver rollout across 200 GPU nodes, during a maintenance window with a deadline, or in CI where you cannot attach a debugger. Being fast at diagnosis (is it the connection, privileges, a variable, a template, the module, or the target?) saves hours and prevents the dangerous reflex of "just rerun it" or "just add `ignore_errors`". This chapter gives a layered method and the exact tools for each layer.
+Automation failures tend to arrive at the worst moments. A driver rollout stops halfway through 200 GPU nodes. A maintenance window has a deadline. Or the run happens in CI, where you cannot attach a debugger. In each case, fast diagnosis decides how the day goes. Ask first whether the problem is the connection, the privileges, a variable, a template, the module or the target. That question saves hours, and it keeps you away from the dangerous reflex of "just rerun it" or "just add `ignore_errors`". This chapter gives you a layered method, with the exact tools for each layer.
 
 ## Prerequisites and outcomes
 
-Needs 4.3 to 4.9. After this chapter you can:
+This chapter builds on 4.3 to 4.9. By the end, you will be able to:
 
-- Read an Ansible error message and classify the failure layer in seconds.
-- Use verbosity (`-v` to `-vvvv`), `debug`, `assert`, `--step`, `--start-at-task`, `--check --diff`, and the interactive debugger (`strategy: debug` / `debugger:` keyword).
-- Diagnose SSH/connection, privilege, Python interpreter, module argument, variable, template and YAML problems.
-- Reproduce a failing module by hand on the target (keeping remote files with `ANSIBLE_KEEP_REMOTE_FILES`).
-- Profile slow runs and find the expensive tasks and fact gathering.
-- Build habits that prevent bugs: lint, syntax check, dry run, small steps, canaries.
+- Read an Ansible error message and tell which layer failed, in seconds.
+- Use verbosity (`-v` to `-vvvv`), `debug`, `assert`, `--step`, `--start-at-task`, `--check --diff`, and the interactive debugger, which you turn on with `strategy: debug` or the `debugger:` keyword.
+- Diagnose SSH and connection, privilege, Python interpreter, module argument, variable, template and YAML problems.
+- Reproduce a failing module by hand on the target, keeping its remote files with `ANSIBLE_KEEP_REMOTE_FILES`.
+- Profile slow runs and find the expensive tasks and the fact gathering.
+- Build habits that prevent bugs: lint, syntax check, dry run, small steps and canaries.
 
 ## 1. A layered method
+
+Your playbook fails with a long message that does not say much. Where do you look first? The flowchart below sorts the failure into a layer, so you check the most likely cause before anything else. Read it from the top, and let each yes or no send you one step closer to the layer.
 
 ```mermaid
 flowchart TD
@@ -52,9 +54,11 @@ flowchart TD
   D -- no --> H["Succeeded but wrong result: assertions, check mode, idempotency, drift"]
 ```
 
-Questions to ask in order: **When** did it fail (before tasks, at a task, in a handler, after)? **Where** (which hosts: all, some, one)? **What changed** since the last good run (code, inventory, versions, target state)? **Can I reproduce on one host** (`--limit`, `-vvv`)? Differences between failing and passing hosts are the most informative clue (OS version, Python, facts, variables, network path).
+Four questions help you narrow the search, and you should ask them in order. **When** did it fail: before tasks, at a task, in a handler, or after? **Where** did it fail: on all hosts, some hosts, or one? **What changed** since the last good run: code, inventory, versions or target state? **Can you reproduce it** on one host, using `--limit` and `-vvv`? Differences between failing and passing hosts give the most useful clue. Compare the OS version, Python, facts, variables and network path. Before you change anything, put one failing host next to one passing host.
 
 ## 2. Verbosity and output
+
+A task fails, and the default output shows only its name and result. The flags below add detail one level at a time, so pick the level that answers your question.
 
 | Flag | Shows |
 |---|---|
@@ -65,9 +69,13 @@ Questions to ask in order: **When** did it fail (before tasks, at a task, in a h
 | `-vvvv` | Adds connection plugin internals (SSH debug), plugin loading; very noisy |
 | `-vvvvv` | Everything including WinRM/SSH raw debugging |
 
-Practical output settings in `ansible.cfg`: `stdout_callback = yaml` (readable multi-line values; in newer releases use `result_format = yaml` with the default callback), `callbacks_enabled = timer, profile_tasks, profile_roles`, `display_skipped_hosts = false` to declutter, `log_path = ansible.log` (a persistent log, remember it may contain secrets unless `no_log` is used), `ANSIBLE_NOCOLOR=1` in CI logs. For machine-readable analysis use `ANSIBLE_STDOUT_CALLBACK=json` or `ansible.posix.json` (single JSON at the end), `ansible.posix.jsonl`, or send events to a log pipeline.
+A few `ansible.cfg` settings make the output easier to read. `stdout_callback = yaml` shows multi-line values clearly, and newer releases use `result_format = yaml` with the default callback. `callbacks_enabled = timer, profile_tasks, profile_roles` adds timing, and `display_skipped_hosts = false` hides skipped hosts. `log_path = ansible.log` keeps a persistent log, which may hold secrets unless `no_log` is used. Set `ANSIBLE_NOCOLOR=1` in CI logs. For machine-readable output, use `ANSIBLE_STDOUT_CALLBACK=json` or `ansible.posix.json`, which print one JSON document at the end. You can also use `ansible.posix.jsonl`, or send events to a log pipeline.
+
+Use `-vvv` for the SSH command line or module arguments, and `-vvvv` only for connection internals.
 
 ## 3. The `debug` and `assert` modules
+
+Sometimes the quickest fix is to look at what Ansible actually sees. A value that looks right in your YAML can arrive as something else once it is templated. The `debug` and `assert` modules let you print the value and stop the run early when it is wrong.
 
 ```yaml
 - name: Look at a variable
@@ -93,11 +101,15 @@ Practical output settings in `ansible.cfg`: `stdout_callback = yaml` (readable m
     quiet: true
 ```
 
-Tips: `debug` prints values after templating, so it reveals typing issues (a string `"False"` versus boolean). Use `verbosity:` to keep helpful diagnostics in code permanently. For structured output use `| to_nice_json`/`to_nice_yaml`. Do not leave debug output of secrets in committed code or CI logs.
+The `debug` module prints values after templating. That is why it reveals typing problems, such as a string `"False"` where you expected a boolean. Use `verbosity:` to keep helpful diagnostics in the code permanently, because they stay silent on normal runs. For structured output, pass the value through `to_nice_json` or `to_nice_yaml`. Never leave debug output of secrets in committed code or CI logs.
 
-In *Ansible: Up and Running* Chapter 8 (`Table 8-3`), the authors pair `ansible.builtin.stat` with `ansible.builtin.assert` to verify filesystem invariants before or after tasks execute: registering `stat: path=/etc/nginx/conf` into `st` returns a `st.stat` dictionary containing **`exists`** (boolean), **`isdir`** (directory), **`isreg`** (regular file), **`islnk`** (symlink), **`isblk`** (block device), **`isfifo`** (named pipe), **`issock`** (Unix socket), **`uid`** / **`gid`**, **`pw_name`** / **`gr_name`** (owner/group names), **`mode`** (octal string like `'0755'`), **`rusr`/`wusr`/`xusr`**, **`size`**, **`atime`/`mtime`/`ctime`**, and **`checksum`** (SHA-1) / **`md5`**, which you can assert directly with `assert: { that: [st.stat.exists, st.stat.isdir, st.stat.pw_name == 'root'] }`.
+In *Ansible: Up and Running*, chapter 8 (`Table 8-3`), the authors pair `ansible.builtin.stat` with `ansible.builtin.assert`. You use them to verify filesystem state before or after a task runs. Registering `stat: path=/etc/nginx/conf` into `st` returns a `st.stat` dictionary. It holds **`exists`** (boolean), **`isdir`** (directory), **`isreg`** (regular file), **`islnk`** (symlink), **`isblk`** (block device), **`isfifo`** (named pipe), **`issock`** (Unix socket), **`uid`** and **`gid`**, **`pw_name`** and **`gr_name`** (owner and group names), **`mode`** (octal string like `'0755'`), **`rusr`**, **`wusr`** and **`xusr`**, **`size`**, **`atime`**, **`mtime`** and **`ctime`**, and **`checksum`** (SHA-1) and **`md5`**. You can assert on these fields directly, as in `assert: { that: [st.stat.exists, st.stat.isdir, st.stat.pw_name == 'root'] }`.
+
+Put the `stat` and `assert` pair in front of any task that depends on the file, so a bad state fails with a clear message.
 
 ## 4. Controlling the run while investigating
+
+You do not always need to run a whole playbook to learn what it will do. Ansible has flags that stop, list or limit the run, so you can see the effect before anything changes on a host.
 
 ```bash
 ansible-playbook site.yml --syntax-check                    # parse only
@@ -112,11 +124,11 @@ ansible gpu001 -m ansible.builtin.setup -a 'filter=ansible_default_ipv4'      # 
 ansible gpu001 -m ansible.builtin.command -a 'which python3' -vvv            # test connectivity & interpreter
 ```
 
-Caveat: `--start-at-task` and tags skip earlier tasks that may have set facts or variables later tasks need, producing misleading failures; reproduce with the minimum necessary context (`set_fact` in a scratch play, `-e` values).
+Each line answers one question, from a syntax check to a connectivity test. Be careful with `--start-at-task` and tags, though. They skip the earlier tasks, and those tasks may have set facts or variables that later tasks need. The result is a failure that looks real but is not. To avoid that, reproduce the problem with only the context it needs, such as a `set_fact` in a scratch play or the `-e` values.
 
 ### The interactive debugger
 
-Ansible has a built-in task debugger invoked on failure (or always), modelled on `pdb`:
+Ansible has a built-in task debugger. It runs when a task fails, or on every task if you ask for it. It is modelled on `pdb`, and you can set it on a play, a block or a single task.
 
 ```yaml
 - hosts: gpu
@@ -128,7 +140,7 @@ Ansible has a built-in task debugger invoked on failure (or always), modelled on
       debugger: on_failed
 ```
 
-or without editing playbooks: `ANSIBLE_ENABLE_TASK_DEBUGGER=True ansible-playbook site.yml`. At the prompt:
+You can also turn it on without editing any playbook, with `ANSIBLE_ENABLE_TASK_DEBUGGER=True ansible-playbook site.yml`. Once the prompt opens, you work with the commands in this table.
 
 | Command | Action |
 |---|---|
@@ -139,11 +151,15 @@ or without editing playbooks: `ANSIBLE_ENABLE_TASK_DEBUGGER=True ansible-playboo
 | `continue` (`c`) | Continue the play (task stays failed) |
 | `quit` (`q`) | Abort |
 
-Use it to experiment on one failing host interactively; then encode the fix in the playbook. It does not work in non-interactive CI.
+Use the debugger to experiment on one failing host, then write the fix into the playbook. It does not work in non-interactive CI.
 
 ## 5. Classifying common failures
 
+An error message appears in your terminal, and the next step depends on which layer produced it. The tables below pair common messages with what they mean and how to fix them. Find the table for the layer where the failure happened, then match the message to a row.
+
 ### Parse and templating errors before execution
+
+These errors stop the run before any task starts, so no host is touched. Look at the line Ansible reports, and remember that the real mistake is often on the line before it. That is where you should look first.
 
 | Message | Meaning | Fix |
 |---|---|---|
@@ -158,6 +174,8 @@ Use it to experiment on one failing host interactively; then encode the fix in t
 
 ### Connection layer (UNREACHABLE)
 
+When a host is `UNREACHABLE`, Ansible never got a working SSH session. The table lists the usual symptoms, and each one points at a different cause. Start with the symptom you see, not with a guess at the cause.
+
 | Symptom | Cause | Check |
 |---|---|---|
 | `Permission denied (publickey,password)` | Wrong user/key, key not authorised, agent has too many keys (`Too many authentication failures`) | `ssh -vvv user@host`; `ansible_user`; `IdentitiesOnly=yes`; `ssh-add -l` |
@@ -169,14 +187,16 @@ Use it to experiment on one failing host interactively; then encode the fix in t
 | `Failed to create temporary directory` | Home not writable, full disk, `noexec` mount on tmp, `remote_tmp` | Set `remote_tmp`, check `df`, mount options |
 | `Shared connection to host closed` with output truncated | Output after SSH closed; tty issues | Pipelining, `-o ControlPersist`, check `requiretty` |
 
-Also from *Ansible: Up and Running* Chapter 8 (*Common SSH Challenges*):
-- **Fixing `WARNING: REMOTE HOST IDENTIFICATION HAS CHANGED` safely:** When a lab VM (`192.168.33.10`) is destroyed and recreated (or a bare-metal GPU node is re-imaged), its Ed25519 host key changes and OpenSSH aborts with `Host key verification failed`. Remove the stale key entry and record the new host key cleanly with:
-  ```bash
-  ssh-keygen -R 192.168.33.10
-  ssh-keyscan -H 192.168.33.10 >> ~/.ssh/known_hosts
-  ```
-- **Hardening `sshd` and `authorized_keys` (`key_options` and `exclusive: true`):** On production hosts, enforce `PasswordAuthentication no` and `PermitRootLogin no` in `/etc/ssh/sshd_config`, and deploy automation SSH public keys with `ansible.posix.authorized_key` using **`key_options: 'no-port-forwarding,from="93.184.216.34"'`** (restricting the key to connections originating from the control node / bastion IP and disabling SSH port forwarding) and **`exclusive: true`** (removing any unauthorized keys from `~/.ssh/authorized_keys`).
-- **Debugging SSH Agent Forwarding on `git` tasks:** If a `git` task on a remote host fails with `Permission denied (publickey)` when cloning a private repository (`git@github.com:...`), verify that (1) your key is loaded in the local agent (`ssh-add -L`), (2) `ForwardAgent=yes` is active (`ansible web -vvv -m ping` shows `-o ForwardAgent=yes` in the `SSH: EXEC` line), and (3) the `git` task does **not** set `become: true` (or preserves `SSH_AUTH_SOCK` in `sudoers` `env_keep`), because `sudo` strips `SSH_AUTH_SOCK` by default.
+The book *Ansible: Up and Running*, chapter 8, covers some SSH problems that come up again and again. The first is a changed host key. When a lab VM (`192.168.33.10`) is destroyed and recreated, or a bare-metal GPU node is re-imaged, its Ed25519 host key changes. OpenSSH then aborts with `Host key verification failed`, and the warning `WARNING: REMOTE HOST IDENTIFICATION HAS CHANGED` appears. Remove the stale key entry, then record the new host key cleanly:
+
+```bash
+ssh-keygen -R 192.168.33.10
+ssh-keyscan -H 192.168.33.10 >> ~/.ssh/known_hosts
+```
+
+The second is hardening. On production hosts, enforce `PasswordAuthentication no` and `PermitRootLogin no` in `/etc/ssh/sshd_config`. Deploy the automation SSH public keys with `ansible.posix.authorized_key`. Use **`key_options: 'no-port-forwarding,from="93.184.216.34"'`** to limit the key to connections from the control node or bastion IP, and to turn off SSH port forwarding. Add **`exclusive: true`** so that any unauthorized keys are removed from `~/.ssh/authorized_keys`.
+
+The third is agent forwarding on `git` tasks. If a `git` task on a remote host fails with `Permission denied (publickey)` while cloning a private repository (`git@github.com:...`), work through three checks. Check 1 is `ssh-add -L`, which confirms that your key is loaded in the local agent. Check 2 confirms that `ForwardAgent=yes` is active, which you see in the `SSH: EXEC` line of `ansible web -vvv -m ping`. Check 3 is about privilege: make sure the `git` task does **not** set `become: true`. Otherwise, `sudo` strips `SSH_AUTH_SOCK` unless `sudoers` keeps it through `env_keep`. Check (3) is the one people miss most often, so check it early.
 
 ### Privilege and module layer
 
@@ -193,9 +213,11 @@ Also from *Ansible: Up and Running* Chapter 8 (*Common SSH Challenges*):
 
 ### Application layer
 
-If a `command`/`shell` task fails, copy the exact command from `-vvv` output and run it on the host **as the same user, environment and working directory** (`sudo -u user -i`). Most "Ansible problems" at this layer are plain command problems (PATH, locale, missing package, kernel module not loaded, GPU in a bad state).
+Suppose a `command` or `shell` task fails. Copy the exact command from the `-vvv` output, then run it on the host as the same user, in the same environment and working directory. You can do that with `sudo -u user -i`. Most problems at this layer are plain command problems, such as a wrong `PATH`, a missing package, a kernel module that is not loaded, or a GPU in a bad state. When a failure does not match any row above, run the command by hand and see whether it fails the same way.
 
 ## 6. Reproducing a module run by hand
+
+A module fails with a traceback you cannot explain from the controller side. Run the module on the target yourself, where you can add prints or step through it. Setting `ANSIBLE_KEEP_REMOTE_FILES=1` keeps the module wrapper on the target, and the output shows where it lives.
 
 ```bash
 ANSIBLE_KEEP_REMOTE_FILES=1 ansible gpu001 -m ansible.builtin.copy -a "src=./x dest=/tmp/x" -vvv
@@ -206,19 +228,25 @@ python3 AnsiballZ_copy.py explode     # unpack the module and its arguments (arg
 python3 AnsiballZ_copy.py execute     # run it with a debugger or modify the source
 ```
 
-This works for any module and lets you add `print` statements or run under `pdb` on the target. Clean up the kept files afterwards. For `ansible-playbook`, set the same env var; use `-vvvv` if you need to see how Ansible invoked SSH. For custom modules, a JSON args file can be passed directly (`python mymodule.py args.json`, 4.15).
+This works for any module, and it lets you add `print` statements or run under `pdb` on the target. For `ansible-playbook`, set the same environment variable, and use `-vvvv` to see how Ansible invoked SSH. For a custom module, pass a JSON args file directly, as in `python mymodule.py args.json`. See 4.15. Clean up the kept files afterwards.
 
 ## 7. Debugging variables and templates
 
-- **Which value is used?** `ansible-inventory --host`, `debug: var=...`, `-vvv`, and a repo-wide `grep`. Remember precedence (4.5): `-e` and role `vars/` override most things; dictionaries replace.
-- **Render a template locally**: `ansible localhost -m ansible.builtin.template -a "src=x.j2 dest=/tmp/out" -e @vars.yml` then inspect `/tmp/out`; or use `ansible all -m debug -a "msg={{ lookup('template', 'x.j2') }}"` with host context.
-- **Inspect types** with `{{ var | type_debug }}` (shows `str`, `int`, `bool`, `list`, `dict`, `AnsibleUnsafeText`).
-- **Check facts exist**: `ansible host -m setup -a filter=ansible_distribution*`.
-- **Conditions**: add a `debug` task that prints the expression you use in `when:` (`msg: "{{ (gpu_count | int) > 4 }}"`); `-vv` prints `false_condition` for skipped tasks.
-- **Loops**: print `item` with `loop_control: label` removed temporarily; `register` and print `results`.
-- **Idempotency problems**: run twice with `--diff -v` and examine which task changes; for `lineinfile` check the regex against the file, for `template` look at the diff, for `command` add `changed_when`.
+A variable can hold one value in one place and a different one somewhere else. The checks below show which value wins, how a template renders, and what type the value has.
+
+- **Which value is used?** Run `ansible-inventory --host`, add a `debug: var=...` task, use `-vvv`, and run a repo-wide `grep`. Remember the precedence rules from 4.5. `-e` and role `vars/` override most things, and dictionaries replace.
+- **Render a template locally.** Run `ansible localhost -m ansible.builtin.template -a "src=x.j2 dest=/tmp/out" -e @vars.yml`, then inspect `/tmp/out`. Or use `ansible all -m debug -a "msg={{ lookup('template', 'x.j2') }}"` to render with host context.
+- **Inspect types** with `{{ var | type_debug }}`. It shows `str`, `int`, `bool`, `list`, `dict` or `AnsibleUnsafeText`.
+- **Check that facts exist** with `ansible host -m setup -a filter=ansible_distribution*`.
+- **Conditions.** Add a `debug` task that prints the expression you use in `when:`, such as `msg: "{{ (gpu_count | int) > 4 }}"`. With `-vv`, skipped tasks print their `false_condition`.
+- **Loops.** Print `item` by temporarily removing the `loop_control: label` setting. Then `register` the loop and print `results`.
+- **Idempotency problems.** Run the playbook twice with `--diff -v`, and find the task that changes. For `lineinfile`, check the regex against the file. For `template`, read the diff. For `command`, add `changed_when`.
+
+When two layers disagree, the `-e` and role `vars/` layers usually win, so check them first. If you find a mismatch, you have a clear starting point.
 
 ## 8. Performance debugging
+
+A slow playbook costs you time on every change you test. Measure where the time goes before you tune anything. These settings turn on the timing callbacks and tune the connection.
 
 ```ini
 [defaults]
@@ -231,239 +259,257 @@ pipelining = True
 ssh_args = -o ControlMaster=auto -o ControlPersist=120s
 ```
 
-`profile_tasks` prints the slowest tasks and cumulative time; typical culprits: fact gathering (reduce subset or cache), `apt update` on every run (`cache_valid_time`), per-item loops that should be single calls, `git clone` per host, serial execution (`serial: 1` over a huge group), slow SSH setup (no ControlPersist), reverse DNS in sshd, single `forks=5`, `strategy: linear` waiting on stragglers (`strategy: free` for independent work), low-quality network or overloaded control node. For very large fleets consider pull mode (`ansible-pull`), AWX/AAP execution nodes (4.14), or splitting inventory into parallel jobs. Measure before and after each change.
+`profile_tasks` prints the slowest tasks and their cumulative time. The usual culprits are fact gathering, which a subset or cache reduces, and `apt update` on every run, which `cache_valid_time` addresses. Others include per-item loops that should be single calls, a `git clone` on every host, and serial execution such as `serial: 1` over a huge group. Slow SSH setup with no `ControlPersist` and reverse DNS in sshd also add up. A single `forks=5` limits parallelism, and `strategy: linear` waits on stragglers, where `strategy: free` suits independent work. A low-quality network or an overloaded control node adds more delay.
+
+For very large fleets, consider pull mode with `ansible-pull`, AWX or AAP execution nodes (see 4.14), or splitting the inventory into parallel jobs. Measure before and after each change.
 
 ## 9. Debugging at scale and in CI
 
-- Failures across many hosts: group by error message (`ansible-playbook ... 2>&1 | grep -E "fatal:|FAILED" | sed 's/.*=> //' | sort | uniq -c | sort -rn`), then examine representatives; sort failing hosts by group/rack/OS to find the common factor.
-- Persist logs with run ids; attach the `--check --diff` output to pull requests; fail CI on non-zero exit and print the recap.
-- In CI use `--diff` carefully (secrets), `ANSIBLE_FORCE_COLOR=1` for readable logs, and `ANSIBLE_STDOUT_CALLBACK=yaml`. Keep a way to reproduce locally: the same container image/execution environment (4.15) and the same inventory.
-- For rolling updates, make the playbook fail **early and safely** (canary, `max_fail_percentage`) so a broken change does not reach the fleet; debugging a failed canary is far cheaper than debugging 200 failures.
-- Reproduce on a disposable host (Vagrant, container, cloud VM) when the production host cannot be touched; Molecule scenarios (4.13) capture such reproductions as tests.
+When a fleet run fails on many hosts, reading each error one at a time wastes your time. Group the errors first, then examine a few representatives from each group. The same approach works for the CI logs that a pipeline produces.
+
+- Group the failures by error message with `ansible-playbook ... 2>&1 | grep -E "fatal:|FAILED" | sed 's/.*=> //' | sort | uniq -c | sort -rn`. Then examine one representative from each group. Sort the failing hosts by group, rack or OS to find the common factor.
+- Persist logs with run IDs. Attach the `--check --diff` output to pull requests, and fail CI on a non-zero exit code while printing the recap.
+- In CI, use `--diff` carefully, because it can expose secrets. Set `ANSIBLE_FORCE_COLOR=1` for readable logs, and `ANSIBLE_STDOUT_CALLBACK=yaml`. Keep a way to reproduce locally, using the same container image or execution environment (see 4.15) and the same inventory.
+- For rolling updates, make the playbook fail early and safely, with a canary and `max_fail_percentage`. A broken change then never reaches the whole fleet. Debugging a failed canary costs far less than debugging 200 failures.
+- Reproduce the problem on a disposable host, such as a Vagrant box, a container or a cloud VM, when the production host cannot be touched. Molecule scenarios (4.13) can capture those reproductions as tests.
+
+Make the playbook stop at the canary, so that you keep a failure small.
 
 ## 10. Prevention habits
 
-1. `ansible-lint` and `yamllint` in pre-commit and CI; `--syntax-check` always.
-2. Small playbooks, small steps; one change per run on a canary.
-3. Name every task; use `assert` for preconditions; avoid cleverness in Jinja.
-4. `--check --diff` before real runs; verification tasks after changes.
-5. Pin versions of ansible-core, collections and target packages.
-6. Keep `command`/`shell` tasks rare, guarded, and explicit about `changed_when`/`failed_when`.
-7. Avoid `ignore_errors`; use targeted `failed_when`.
-8. Write the failing case as a Molecule test when a bug is found (4.13).
+Many of these bugs can be caught before a run starts. The habits below move the checks earlier.
+
+1. Run `ansible-lint` and `yamllint` in pre-commit and CI, and always run `--syntax-check`.
+2. Keep playbooks small, and test one change per run on a canary.
+3. Name every task, use `assert` for preconditions, and avoid cleverness in Jinja.
+4. Run `--check --diff` before real runs, and add verification tasks after changes.
+5. Pin the versions of ansible-core, collections and target packages.
+6. Keep `command` and `shell` tasks rare and guarded, and be explicit about `changed_when` and `failed_when`.
+7. Avoid `ignore_errors`, and use a targeted `failed_when` instead.
+8. When you find a bug, write the failing case as a Molecule test (4.13).
+
+Start with the first habit, because it runs before any host is touched.
 
 ## 11. Lab
 
-First, run the self-checking Python lab (`code/part04/ansible_debugging_toolkit_lab.py`) locally. It verifies the 5-layer Ansible error classifier (`classify_ansible_failure_layer`: parse/syntax, connection `UNREACHABLE`, data/template, privilege/module, and application command) and the interactive Task Debugger session simulator (`InteractiveTaskDebuggerSession`: inspecting a failed task, updating `task_vars` + `update_task`, and re-running with `redo`, `AUR` Ch. 8).
+Start with the self-checking Python lab, which runs on your own machine. It checks the 5-layer error classifier and a simulated debugger session, so you can confirm the logic before you touch a real host.
+
+Run the lab locally with this command. It verifies the 5-layer Ansible error classifier, `classify_ansible_failure_layer`, which sorts failures into parse and syntax, connection `UNREACHABLE`, data and template, privilege and module, and application command. It also verifies the interactive Task Debugger session simulator, `InteractiveTaskDebuggerSession`. That simulator covers inspecting a failed task, updating `task_vars` with `update_task`, and re-running the task with `redo`. The simulator draws on chapter 8 of *Ansible: Up and Running*.
 
 ```bash
 python3 code/part04/ansible_debugging_toolkit_lab.py
 ```
 
-Next, on a control node with 2–3 Linux targets (all interactive shell steps below are `untested here`), work through these exercises:
+Next, use a control node with 2–3 Linux targets. Every interactive shell step below is `untested here`, so treat the results as yours to confirm. Work through these exercises in order.
 
-1. **Break it on purpose**: create playbooks with (a) an unquoted `{{ var }}`, (b) a tab, (c) an undefined variable, (d) a misspelled module argument, (e) a missing collection; for each, record the error text and classify the layer.
-2. **Verbosity ladder**: run one failing task at `-v`, `-vv`, `-vvv`, `-vvvv`; list what extra information each level adds (SSH command, remote tmp path, module args).
-3. **Connection faults**: change the user, remove the key, change the port, block port 22 with a firewall rule, change the host key; reproduce each `UNREACHABLE` message and fix it correctly.
-4. **Privilege faults**: remove passwordless sudo, add `requiretty`, make `/tmp` `noexec`; observe messages and fixes.
-5. **Interpreter faults**: use a host without Python, with only Python 2 (if available) or a wrong `ansible_python_interpreter`.
-6. **Interactive debugger**: fail a task due to a typo in a variable; fix `task_vars` and `redo`; also use `ANSIBLE_ENABLE_TASK_DEBUGGER`.
-7. **Keep remote files**: run with `ANSIBLE_KEEP_REMOTE_FILES=1`, explode the module, edit it, execute by hand; clean up.
-8. **Variable archaeology**: plant the same variable in five layers; find the winner with `ansible-inventory --host`, `debug`, and `grep`; print `type_debug`.
-9. **Idempotency hunt**: take a playbook with three non-idempotent tasks; find them using a double run with `--diff`; fix each.
-10. **Profile**: enable `profile_tasks`; make a slow playbook; reduce its time by 50% using caching, pipelining, `forks` and loop consolidation.
-11. **Postmortem template**: for the last failure you debugged, write a five-line note: symptom, layer, root cause, fix, prevention (lint rule, assertion or test).
-12. **Clean up.**
+1. Break it on purpose. Create playbooks with an unquoted `{{ var }}`, a tab, an undefined variable, a misspelled module argument and a missing collection. For each one, record the error text and classify its layer.
+2. Climb the verbosity ladder. Run one failing task at `-v`, `-vv`, `-vvv` and `-vvvv`. List what each level adds, such as the SSH command, the remote temp path and the module arguments.
+3. Trigger connection faults. Change the user, remove the key, change the port, block port 22 with a firewall rule, and change the host key. Reproduce each `UNREACHABLE` message, then fix it correctly.
+4. Trigger privilege faults. Remove passwordless sudo, add `requiretty`, and make `/tmp` `noexec`. Observe the messages, then apply the fixes.
+5. Trigger interpreter faults. Use a host without Python, or one with only Python 2 if you have it, or set a wrong `ansible_python_interpreter`.
+6. Use the interactive debugger. Fail a task because of a typo in a variable. Fix `task_vars` and `redo`, then try `ANSIBLE_ENABLE_TASK_DEBUGGER` as well.
+7. Keep the remote files. Run with `ANSIBLE_KEEP_REMOTE_FILES=1`, explode the module, edit it, and execute it by hand. Clean up afterwards.
+8. Hunt the variable. Plant the same variable in five layers, then find the winner with `ansible-inventory --host`, `debug` and `grep`. Print its `type_debug`.
+9. Hunt the idempotency problems. Take a playbook with three non-idempotent tasks. Find them with a double run using `--diff`, and fix each one.
+10. Profile the run. Enable `profile_tasks` and make a slow playbook. Cut its time by 50% using caching, pipelining, `forks` and loop consolidation.
+11. Write a postmortem. For the last failure you debugged, write a five-line note: symptom, layer, root cause, fix, and prevention, such as a lint rule, an assertion or a test.
+12. Clean up when you finish, so the test hosts are left as you found them.
 
 ## 12. Common mistakes
 
-- Rerunning blindly or adding `ignore_errors: true` instead of understanding the failure.
-- Debugging at `-vvvv` everywhere (drowning in output) or never going above default.
-- Using `--start-at-task` without the facts/variables from skipped tasks.
-- Not comparing a failing host to a healthy one.
+Most of these mistakes feel like progress when you make them. Each one hides the real failure, or makes the next failure harder to find.
+
+- Rerunning blindly, or adding `ignore_errors: true`, instead of understanding the failure.
+- Debugging at `-vvvv` everywhere, which drowns you in output, or never going above the default level.
+- Using `--start-at-task` without the facts and variables from the tasks it skipped.
+- Not comparing a failing host with a healthy one.
 - Disabling host key checking or sudo safeguards to "get it working".
-- Leaving debug output (secrets) in committed playbooks or CI logs.
-- Debugging on production hosts instead of reproducing on a disposable one.
-- Treating every error as an Ansible problem when the underlying command, package or kernel state is at fault.
+- Leaving debug output that shows secrets in committed playbooks or CI logs.
+- Debugging on production hosts instead of reproducing the problem on a disposable one.
+- Treating every error as an Ansible problem, when the cause is the underlying command, package or kernel state.
 - Not recording the fix as a lint rule, assertion or test.
+
+The fix for most of these is to slow down and compare the failing host with a healthy one.
 
 ## 13. Interview angles
 
-- "A playbook works on most hosts but fails on a few. How do you debug?" (compare facts/vars/OS/network; `-vvv` on one host; reproduce manually.)
+These questions are worth practising out loud. Each one comes with the key points an answer should cover.
+
+- "A playbook works on most hosts but fails on a few. How do you debug?" Compare facts, variables, OS and network path. Run `-vvv` on one host, and reproduce the failure manually.
 - "What does each verbosity level add? How do you get the SSH command and module arguments?"
-- "How do you run a module by hand on the target?" (`ANSIBLE_KEEP_REMOTE_FILES`, `explode`/`execute`.)
+- "How do you run a module by hand on the target?" Use `ANSIBLE_KEEP_REMOTE_FILES`, then `explode` and `execute`.
 - "What is the task debugger and when do you use it?"
 - "A deployment is slow. How do you find out why and speed it up?"
 - "How do you find which layer a failure belongs to?"
-- "What do you do when a playbook partially applies changes to 50 nodes and fails?" (idempotent rerun, limit to failed hosts, canary, rescue/rollback.)
+- "What do you do when a playbook partially applies changes to 50 nodes and fails?" Rerun it idempotently, limit it to the failed hosts, use a canary, and plan a rescue or rollback.
 
 ## Exercises
 
-1. **The 5-Layer Failure Classification Method and Verbosity Ladder (`-v` to `-vvvvv`, `AUR` Chapter 8):** Using `classify_ansible_failure_layer()` in `code/part04/ansible_debugging_toolkit.py`, classify seven common error messages into their exact layer (Parse/Syntax, Connection `UNREACHABLE`, Data/Template, Privilege/Module, Application Command), and state what `-v`, `-vv`, `-vvv`, and `-vvvv` add to the output.
-2. **Proactive Verification with `debug`, `assert`, `type_debug`, and `stat` Return Values (`AUR` Chapter 8 Table 8-3):** Write a task pair that runs `ansible.builtin.stat` on `/etc/slurm/slurm.conf` and uses `ansible.builtin.assert` (`quiet: true`) to verify `exists`, `isreg`, `pw_name == 'slurm'`, `mode == '0644'`, and non-zero `size`, and explain how `verbosity: 1` on `debug` and `{{ var | type_debug }}` work.
-3. **Interactive Task Debugger (`strategy: debug` / `debugger: on_failed` / `ANSIBLE_ENABLE_TASK_DEBUGGER`, `AUR` Chapter 8 Table 8-2):** Using `InteractiveTaskDebuggerSession` in `code/part04/ansible_debugging_toolkit.py`, explain the difference between modifying `task.args['name'] = 'chrony'` directly versus modifying `task_vars['ntp_pkg'] = 'chrony'` followed by `update_task` (`u`) and `redo` (`r`), and list the five `debugger:` trigger values.
-4. **Diagnosing SSH, Bastion, Host-Key, and Agent-Forwarding Failures (`AUR` Chapter 8):** (a) Explain how to resolve `WARNING: REMOTE HOST IDENTIFICATION HAS CHANGED` safely using `ssh-keygen -R` and `ssh-keyscan`, and how `authorized_key` `key_options: 'no-port-forwarding,from="..."'` and `exclusive: true` harden SSH access; (b) explain why a remote `git` task using SSH agent forwarding fails with `Permission denied (publickey)` when `become: true` is active on the task.
-5. **Reproducing a Module Execution Manually on the Target (`ANSIBLE_KEEP_REMOTE_FILES=1` and `AnsiballZ` `explode` / `execute`):** Walk through the exact commands to keep the temporary `AnsiballZ_*.py` wrapper on a target GPU node, unpack the module source and `args` JSON file with `explode`, and execute it under `python3` or `pdb` as the target user.
-6. **Performance Profiling (`profile_tasks`, `profile_roles`, `timer`) and Fleet Error Triage at Scale:** (a) Explain how `callbacks_enabled = timer, profile_tasks, profile_roles` identifies playbook bottlenecks and list the six highest-impact speedups; (b) show the shell pipeline used to aggregate and rank `FAILED`/`UNREACHABLE` reasons across a 200-node run.
+Each exercise uses a debugging tool from this chapter. Work through them in order, and run them on a disposable host, so that a mistake costs you nothing. If you get stuck, go back to the section that covers the tool.
+
+1. Classify seven common error messages. Use `classify_ansible_failure_layer()` in `code/part04/ansible_debugging_toolkit.py` to sort each message into its exact layer: Parse/Syntax, Connection `UNREACHABLE`, Data/Template, Privilege/Module, or Application Command. Then state what `-v`, `-vv`, `-vvv` and `-vvvv` each add to the output. This follows the 5-layer method and the verbosity ladder in *Ansible: Up and Running*, chapter 8, through `-vvvvv`.
+2. Write a task pair that runs `ansible.builtin.stat` on `/etc/slurm/slurm.conf`. Then use `ansible.builtin.assert` with `quiet: true` to verify `exists`, `isreg`, `pw_name == 'slurm'`, `mode == '0644'` and a non-zero `size`. Finally, explain how `verbosity: 1` on `debug` and `{{ var | type_debug }}` work. Use Table 8-3 in *Ansible: Up and Running*, chapter 8, as your reference.
+3. Explain the difference between `task.args['name'] = 'chrony'` and `task_vars['ntp_pkg'] = 'chrony'` followed by `update_task` (`u`) and `redo` (`r`). Use `InteractiveTaskDebuggerSession` in `code/part04/ansible_debugging_toolkit.py` to show it. Cover `strategy: debug`, `debugger: on_failed` and `ANSIBLE_ENABLE_TASK_DEBUGGER` as well. Then list the five `debugger:` trigger values.
+4. Work through the SSH failures. First, explain how to resolve `WARNING: REMOTE HOST IDENTIFICATION HAS CHANGED` safely with `ssh-keygen -R` and `ssh-keyscan`. Then explain how `authorized_key` with `key_options: 'no-port-forwarding,from="..."'` and `exclusive: true` hardens SSH access. Last, explain why a remote `git` task that uses SSH agent forwarding fails with `Permission denied (publickey)` when `become: true` is set on the task.
+5. Reproduce a module run by hand on the target. Walk through the exact commands to keep the temporary `AnsiballZ_*.py` wrapper on a target GPU node, using `ANSIBLE_KEEP_REMOTE_FILES=1`. Then unpack the module source and the `args` JSON file with `explode`, and execute it under `python3` or `pdb` as the target user.
+6. Cover two topics. First, explain how `callbacks_enabled = timer, profile_tasks, profile_roles` identifies playbook bottlenecks, and list the six highest-impact speedups. Second, show the shell pipeline that aggregates and ranks `FAILED` and `UNREACHABLE` reasons across a 200-node run.
 
 ## Checkpoint questions (20)
 
 <details>
 <summary>1. What are the five diagnostic layers when an Ansible playbook fails, and how do you distinguish them in seconds?</summary>
 
-1. **Parse / Syntax Layer (fails before any task starts):** Bad YAML indentation, tabs, unquoted `{{ var }}` at line start, misspelled task keywords, or missing collections (`--syntax-check`, `yamllint`, `ansible-lint`).
-2. **Connection Layer (`UNREACHABLE`):** SSH timeout, DNS failure, wrong `ansible_user` or key, changed host key, `MaxStartups` rate limit, or unmounted/full `remote_tmp`.
-3. **Data / Template Layer (`FAILED` before module runs on target):** `AnsibleUndefinedVariable`, wrong variable precedence, `when:` string-vs-boolean error, or unbalanced Jinja braces.
-4. **Privilege / Module Layer (`FAILED` during wrapper invocation):** `Missing sudo password`, `requiretty`, missing `/usr/bin/python3`, missing `acl` for `become_user`, or `MODULE FAILURE` traceback from a missing target Python library (`psycopg2`).
-5. **Application / Command Layer (`FAILED` with non-zero `rc`):** The module ran, and the underlying OS package manager, service, or CLI command (`nvidia-smi`, `nginx -t`) rejected the state change.
+1. **Parse / Syntax Layer.** It fails before any task starts. Look for bad YAML indentation, tabs, an unquoted `{{ var }}` at the start of a line, misspelled task keywords, or missing collections. The checks are `--syntax-check`, `yamllint` and `ansible-lint`.
+2. **Connection Layer (`UNREACHABLE`).** Look for an SSH timeout, a DNS failure, a wrong `ansible_user` or key, a changed host key, a `MaxStartups` rate limit, or an unmounted or full `remote_tmp`.
+3. **Data / Template Layer (`FAILED` before the module runs on the target).** Look for `AnsibleUndefinedVariable`, the wrong variable precedence, a `when:` string-versus-boolean error, or unbalanced Jinja braces.
+4. **Privilege / Module Layer (`FAILED` during the wrapper invocation).** Look for `Missing sudo password`, `requiretty`, a missing `/usr/bin/python3`, a missing `acl` for `become_user`, or a `MODULE FAILURE` traceback caused by a missing target Python library such as `psycopg2`.
+5. **Application / Command Layer (`FAILED` with a non-zero `rc`).** The module ran. The underlying package manager, service or CLI command, such as `nvidia-smi` or `nginx -t`, rejected the state change.
 </details>
 
 <details>
-<summary>2. What specific diagnostic detail does each verbosity flag (`-v`, `-vv`, `-vvv`, `-vvvv`) add (`AUR` Chapter 8)?</summary>
+<summary>2. What specific diagnostic detail does each verbosity flag (`-v`, `-vv`, `-vvv`, `-vvvv`) add (*Ansible: Up and Running*, chapter 8)?</summary>
 
-- **`-v`**: Prints the **module return dictionary** (`stdout`, `stderr`, `rc`, `msg`, `changed`) for each task.
-- **`-vv`**: Adds the **file path and line number** of every task/handler, loaded variable files, and the exact **`false_condition`** expression that caused a task to be skipped.
-- **`-vvv`**: Adds **SSH connection commands** (`SSH: EXEC ssh ...`), remote temporary directory paths (`~/.ansible/tmp/.../AnsiballZ_*.py`), and the exact **invocation arguments** passed into each module.
-- **`-vvvv`**: Passes `-vvv` to the underlying `ssh` client, printing full SSH key-exchange, cipher, `ProxyJump`, and authentication debug traces.
+- **`-v`** prints the **module return dictionary** (`stdout`, `stderr`, `rc`, `msg`, `changed`) for each task.
+- **`-vv`** adds the **file path and line number** of every task and handler, the variable files that load, and the exact **`false_condition`** expression that caused a task to be skipped.
+- **`-vvv`** adds the **SSH connection commands** (`SSH: EXEC ssh ...`), the remote temporary directory paths (`~/.ansible/tmp/.../AnsiballZ_*.py`), and the exact **invocation arguments** passed into each module.
+- **`-vvvv`** passes `-vvv` to the underlying `ssh` client. It prints the full SSH key exchange, cipher, `ProxyJump` and authentication debug traces.
 </details>
 
 <details>
-<summary>3. How do you make Ansible output human-readable for multi-line `stdout`/`stderr` tracebacks, and how do you log runs to a file (`AUR` Chapter 8)?</summary>
+<summary>3. How do you make Ansible output human-readable for multi-line `stdout`/`stderr` tracebacks, and how do you log runs to a file (*Ansible: Up and Running*, chapter 8)?</summary>
 
-Set **`stdout_callback = yaml`** (or `result_format = yaml` under the `default` callback in newer `ansible-core` releases, or `stdout_callback = debug`) in `[defaults]` in `ansible.cfg` so multi-line `stdout` and Python tracebacks render with real line breaks instead of escaped `\n` strings. Set **`log_path = ./ansible.log`** to persist output to disk (remembering to set `no_log: true` on secret tasks so credentials are not written to `ansible.log`).
+Set **`stdout_callback = yaml`** in `[defaults]` in `ansible.cfg`. Newer `ansible-core` releases can use `result_format = yaml` under the `default` callback instead, and `stdout_callback = debug` also works. Multi-line `stdout` and Python tracebacks then render with real line breaks, not escaped `\n` strings. To keep a copy on disk, set **`log_path = ./ansible.log`**. Set `no_log: true` on any task that handles secrets, so the credentials are not written to `ansible.log`.
 </details>
 
 <details>
 <summary>4. How do `verbosity: 1` on `ansible.builtin.debug` and `quiet: true` on `ansible.builtin.assert` keep production playbooks clean?</summary>
 
-- Setting **`verbosity: 1`** on a `debug` task suppresses its output during normal runs and prints it **only when `-v` (or higher)** is passed on the command line—letting you leave diagnostic probes permanently in your playbooks without cluttering routine logs.
-- Setting **`quiet: true`** on an `assert` task suppresses the verbose `"msg": "All assertions passed"` banner on every host while still failing with `fail_msg` whenever an assertion fails.
+- **`verbosity: 1`** on a `debug` task hides its output during a normal run. The output appears only when you pass `-v` or a higher level. You can leave diagnostic probes in your playbooks permanently without cluttering routine logs.
+- **`quiet: true`** on an `assert` task hides the verbose `"msg": "All assertions passed"` banner on every host. The task still fails with `fail_msg` whenever an assertion fails.
 </details>
 
 <details>
-<summary>5. In `AUR` Chapter 8 (`Table 8-3`), what fields does `ansible.builtin.stat` return, and how do you use them with `assert`?</summary>
+<summary>5. In *Ansible: Up and Running*, chapter 8 (`Table 8-3`), what fields does `ansible.builtin.stat` return, and how do you use them with `assert`?</summary>
 
-Registering `stat: { path: /etc/nginx/conf }` into `st` populates `st.stat` with:
-- **`exists`** (`bool`): whether the path exists at all (always check `st.stat.exists` first).
-- **File type booleans:** **`isdir`**, **`isreg`** (regular file), **`islnk`** (symlink, plus `lnk_source`), **`isblk`**, **`ischr`**, **`isfifo`**, **`issock`**.
-- **Ownership & permissions:** **`uid`**, **`gid`**, **`pw_name`** (owner username), **`gr_name`** (group name), **`mode`** (octal string such as `'0755'`), and `rusr`/`wusr`/`xusr`.
-- **Size, timestamps & integrity:** **`size`**, **`atime`**, **`mtime`**, **`ctime`**, and **`checksum`** (SHA-1).
+Registering `stat: { path: /etc/nginx/conf }` into `st` fills `st.stat` with these fields:
+- **`exists`** (`bool`) tells you whether the path exists at all. Always check `st.stat.exists` first.
+- **File type booleans:** **`isdir`**, **`isreg`** (regular file), **`islnk`** (symlink, plus `lnk_source`), **`isblk`**, **`ischr`**, **`isfifo`** and **`issock`**.
+- **Ownership and permissions:** **`uid`**, **`gid`**, **`pw_name`** (owner username), **`gr_name`** (group name), **`mode`** (octal string such as `'0755'`), and `rusr`, `wusr` and `xusr`.
+- **Size, timestamps and integrity:** **`size`**, **`atime`**, **`mtime`**, **`ctime`**, and **`checksum`** (SHA-1).
 </details>
 
 <details>
-<summary>6. How do you enable the interactive Ansible Task Debugger, and what are its five trigger modes (`AUR` Chapter 8)?</summary>
+<summary>6. How do you enable the interactive Ansible Task Debugger, and what are its five trigger modes (*Ansible: Up and Running*, chapter 8)?</summary>
 
-Enable the debugger via `strategy: debug`, the `debugger:` keyword (on a play, role, block, or individual task), `enable_task_debugger = True` in `ansible.cfg`, or the environment variable **`ANSIBLE_ENABLE_TASK_DEBUGGER=True`**. The five `debugger:` values are:
+You can enable the debugger with `strategy: debug`, with the `debugger:` keyword on a play, role, block or individual task, or with `enable_task_debugger = True` in `ansible.cfg`. You can also set the environment variable **`ANSIBLE_ENABLE_TASK_DEBUGGER=True`**. The five `debugger:` values are:
 1. **`on_failed`**: drop into the debugger whenever a task fails.
 2. **`on_unreachable`**: drop into the debugger when a host is `UNREACHABLE`.
 3. **`on_skipped`**: drop into the debugger when a task is skipped.
-4. **`always`**: pause in the debugger before/after every task.
-5. **`never`**: disable the debugger on this scope even if enabled globally.
+4. **`always`**: pause in the debugger before and after every task.
+5. **`never`**: disable the debugger for this scope, even when it is enabled globally.
 </details>
 
 <details>
-<summary>7. Inside the interactive `(debug)` prompt, what is the difference between changing `task.args[key]` and changing `task_vars[key]` (`AUR` Chapter 8 Table 8-2)?</summary>
+<summary>7. Inside the interactive `(debug)` prompt, what is the difference between changing `task.args[key]` and changing `task_vars[key]` (*Ansible: Up and Running*, chapter 8, `Table 8-2`)?</summary>
 
-- **`p task`, `p task.args`, `p task_vars`, `p result._result`**: inspect the task name, module arguments, variables, and failure dictionary.
-- **`task.args['name'] = 'chrony'` followed by `r` (`redo`)**: directly overwrites the already-rendered module argument and re-runs the task immediately.
-- **`task_vars['pkg'] = 'chrony'` (or `vars['pkg'] = 'chrony'`) followed by `u` (`update_task`) and `r` (`redo`)**: updates the variable in context and calls **`update_task`** to **re-template `task.args` from the original `{{ pkg }}` expression** before re-running the task.
+- **`p task`, `p task.args`, `p task_vars`, and `p result._result`** show the task name, the module arguments, the variables and the failure dictionary.
+- **`task.args['name'] = 'chrony'`, followed by `r` (`redo`),** overwrites the module argument that is already rendered, then re-runs the task right away.
+- **`task_vars['pkg'] = 'chrony'`, or `vars['pkg'] = 'chrony'`, followed by `u` (`update_task`) and `r` (`redo`),** changes the variable in context. Then `update_task` re-templates `task.args` from the original `{{ pkg }}` expression before the task runs again.
 </details>
 
 <details>
 <summary>8. What is the danger of using `--start-at-task` or `--tags` while debugging a failing playbook?</summary>
 
-Jumping directly into the middle of a playbook with `--start-at-task "Configure Slurm"` or `--tags slurm_conf` **skips all earlier tasks** in the play. If an earlier task used `register` or `set_fact` (or `include_vars`) to compute a variable consumed by `"Configure Slurm"`, the task will fail with a misleading `AnsibleUndefinedVariable` error that would never occur in a full run. Always ensure `gather_facts: true` runs (or fact caching is enabled) and tag essential variable-setup tasks with `tags: [always]`.
+Starting in the middle of a playbook, with `--start-at-task "Configure Slurm"` or `--tags slurm_conf`, skips every earlier task in the play. Suppose an earlier task used `register`, `set_fact` or `include_vars` to compute a variable that `"Configure Slurm"` needs. The task then fails with a misleading `AnsibleUndefinedVariable` error that would never appear in a full run. Make sure `gather_facts: true` runs, or fact caching is enabled, and tag the essential variable-setup tasks with `tags: [always]`.
 </details>
 
 <details>
 <summary>9. How do you reproduce and debug a failing Ansible module directly on the target host (`ANSIBLE_KEEP_REMOTE_FILES=1` and `AnsiballZ`)?</summary>
 
-1. Run the failing task with **`ANSIBLE_KEEP_REMOTE_FILES=1`** and **`-vvv`**:
-   `ANSIBLE_KEEP_REMOTE_FILES=1 ansible gpu001 -m ansible.builtin.apt -a "name=chrony" -vvv`
-2. Copy the remote path printed in the `-vvv` output (`~/.ansible/tmp/ansible-tmp-.../AnsiballZ_apt.py`) and SSH into `gpu001`.
-3. Run **`python3 AnsiballZ_apt.py explode`**, which unpacks the self-contained zip bundle into `./debug_dir/` containing the readable Python module script and the JSON `args` file.
-4. Inspect or edit `./debug_dir/` and run **`python3 AnsiballZ_apt.py execute`** (or run under `python3 -m pdb`) to see the exact local exception, then delete the temp directory when finished.
+1. Run the failing task with **`ANSIBLE_KEEP_REMOTE_FILES=1`** and **`-vvv`**: `ANSIBLE_KEEP_REMOTE_FILES=1 ansible gpu001 -m ansible.builtin.apt -a "name=chrony" -vvv`
+2. Copy the remote path printed in the `-vvv` output, `~/.ansible/tmp/ansible-tmp-.../AnsiballZ_apt.py`, then SSH into `gpu001`.
+3. Run **`python3 AnsiballZ_apt.py explode`**. It unpacks the self-contained zip bundle into `./debug_dir/`, which holds the readable Python module script and the JSON `args` file.
+4. Inspect or edit `./debug_dir/`, then run **`python3 AnsiballZ_apt.py execute`**, or run it under `python3 -m pdb`, to see the exact local exception. When you finish, delete the temp directory.
 </details>
 
 <details>
-<summary>10. What causes `ERROR: found unacceptable key (unhashable type)` vs. `mapping values are not allowed here` when parsing a playbook?</summary>
+<summary>10. What causes `ERROR: found unacceptable key (unhashable type)` versus `mapping values are not allowed here` when parsing a playbook?</summary>
 
-- **`found unacceptable key (unhashable type)`:** An unquoted value starts with `{{ var }}` (e.g., `dest: {{ my_path }}/file.conf`). YAML sees `{` at the start of the value, parses `{{ my_path }}` as a nested dictionary key inside a flow mapping, and fails because a dictionary is unhashable. Fix: quote the entire value (`dest: "{{ my_path }}/file.conf"`).
-- **`mapping values are not allowed here`:** An unquoted string contains a colon followed by a space (`: `)—for example, `msg: Failed: check logs`—or a line has wrong indentation after a key. Fix: quote the string (`msg: "Failed: check logs"`).
+- **`found unacceptable key (unhashable type)`** happens when an unquoted value starts with `{{ var }}`, as in `dest: {{ my_path }}/file.conf`. YAML reads the `{` at the start of the value as a flow mapping, and it treats `{{ my_path }}` as a nested dictionary key. A dictionary cannot be a key, so the parse fails. Quote the whole value, as in `dest: "{{ my_path }}/file.conf"`.
+- **`mapping values are not allowed here`** happens when an unquoted string contains a colon followed by a space, as in `msg: Failed: check logs`, or when a line has wrong indentation after a key. Quote the string, as in `msg: "Failed: check logs"`.
 </details>
 
 <details>
 <summary>11. Why does an SSH connection fail with `Too many authentication failures` even when the right SSH key is present, and how do you fix it?</summary>
 
-If your local `ssh-agent` holds 6 or more SSH keys (`ssh-add -l`), OpenSSH offers every key in the agent one by one before trying the `-i` identity file specified for the host—exceeding the remote `sshd`'s `MaxAuthTries` limit (default `6`) and disconnecting with `Too many authentication failures`. Fix it by adding **`-o IdentitiesOnly=yes`** to `ssh_args` in `ansible.cfg` (or in `~/.ssh/config`) so SSH offers only the specific key configured for that host.
+If your local `ssh-agent` holds six or more SSH keys, as `ssh-add -l` shows, OpenSSH offers each key in the agent one at a time before it tries the `-i` identity file set for the host. The remote `sshd` has a `MaxAuthTries` limit, whose default is `6`. Once you exceed it, the server disconnects with `Too many authentication failures`. Add **`-o IdentitiesOnly=yes`** to `ssh_args` in `ansible.cfg`, or to `~/.ssh/config`. Then SSH offers only the key configured for that host.
 </details>
 
 <details>
-<summary>12. In `AUR` Chapter 8, why did the `git` task fail with `Permission denied (publickey)` on the remote host when SSH agent forwarding was configured, and what are the three checks?</summary>
+<summary>12. In *Ansible: Up and Running*, chapter 8, why did the `git` task fail with `Permission denied (publickey)` on the remote host when SSH agent forwarding was configured, and what are the three checks?</summary>
 
-When cloning a private repo (`git@github.com:...`) on a remote host via SSH agent forwarding:
-1. Check `ssh-add -L` on the control node to ensure your private key is actually loaded into `ssh-agent` (macOS/Linux agents can lose keys after reboot).
-2. Check `ansible web -vvv -m ping` to confirm `-o ForwardAgent=yes` is passed to `ssh`.
-3. Ensure the `git` task runs as the **connected SSH user (`become: false`)** rather than `become: true` (`root`), because `sudo` clears the `SSH_AUTH_SOCK` environment variable by default (unless `Defaults env_keep += "SSH_AUTH_SOCK"` is configured in `/etc/sudoers`).
+When a remote host clones a private repository (`git@github.com:...`) through SSH agent forwarding, check three things:
+1. Run `ssh-add -L` on the control node to confirm that your private key is loaded into `ssh-agent`. macOS and Linux agents can lose keys after a reboot.
+2. Run `ansible web -vvv -m ping` to confirm that `-o ForwardAgent=yes` is passed to `ssh`.
+3. Make sure the `git` task runs as the connected SSH user, with `become: false`, rather than with `become: true` as `root`. `sudo` clears `SSH_AUTH_SOCK` by default, unless `Defaults env_keep += "SSH_AUTH_SOCK"` is set in `/etc/sudoers`.
 </details>
 
 <details>
-<summary>13. How do `key_options` and `exclusive: true` on `ansible.posix.authorized_key` secure automation SSH keys (`AUR` Chapter 8)?</summary>
+<summary>13. How do `key_options` and `exclusive: true` on `ansible.posix.authorized_key` secure automation SSH keys (*Ansible: Up and Running*, chapter 8)?</summary>
 
-- **`key_options: 'no-port-forwarding,from="93.184.216.34"'`**: prefixes the public key in `~/.ssh/authorized_keys` with OpenSSH restrictions so `sshd` only accepts that key when the TCP connection originates from the control node / bastion IP (`93.184.216.34`) and refuses port-forwarding requests.
-- **`exclusive: true`**: removes all other public keys from `~/.ssh/authorized_keys` that are not explicitly managed by the task, revoking any lingering manual or departed-admin keys.
+- **`key_options: 'no-port-forwarding,from="93.184.216.34"'`** adds OpenSSH restrictions in front of the public key in `~/.ssh/authorized_keys`. `sshd` then accepts that key only when the TCP connection comes from the control node or bastion IP, `93.184.216.34`, and it refuses port-forwarding requests.
+- **`exclusive: true`** removes every other public key from `~/.ssh/authorized_keys` that the task does not manage. This revokes any leftover manual keys or keys from departed admins.
 </details>
 
 <details>
 <summary>14. What causes `Failed to create temporary directory` or `Permission denied` when executing modules on a hardened Linux node?</summary>
 
-1. The automation user's home directory is missing, full (`df -h`, `df -i`), or read-only.
-2. `/tmp` or the user's home filesystem is mounted with the **`noexec`** mount option, preventing `/usr/bin/python3` or script wrappers from executing out of `remote_tmp`.
-Fix it by setting `remote_tmp = /var/tmp/.ansible-${USER}/tmp` (or another writable, executable path) under `[defaults]` in `ansible.cfg`.
+1. The automation user's home directory is missing, full (check with `df -h` and `df -i`), or read-only.
+2. `/tmp`, or the user's home filesystem, is mounted with the **`noexec`** mount option. That stops `/usr/bin/python3` or the script wrappers from running out of `remote_tmp`.
+
+To fix it, set `remote_tmp = /var/tmp/.ansible-${USER}/tmp`, or another writable and executable path, under `[defaults]` in `ansible.cfg`.
 </details>
 
 <details>
 <summary>15. Why does a command succeed when you run it interactively over SSH (`ssh gpu01 nvidia-smi`), yet fail inside an Ansible `command` or module task?</summary>
 
-Interactive SSH login shells source `/etc/profile`, `~/.bash_profile`, and `~/.bashrc` (which often prepend `/usr/local/cuda/bin` or `/opt/slurm/bin` to `PATH`, load environment modules, or set proxy/locale variables). Ansible executes modules in a **non-interactive, non-login shell** with a minimal default `PATH` (`/usr/bin:/bin`). Always use absolute binary paths (`/usr/local/cuda/bin/nvcc`) or pass explicit environment variables on the task/play via **`environment: { PATH: "/usr/local/cuda/bin:{{ ansible_env.PATH }}" }`**.
+An interactive SSH login shell reads `/etc/profile`, `~/.bash_profile` and `~/.bashrc`. These files often add `/usr/local/cuda/bin` or `/opt/slurm/bin` to `PATH`, load environment modules, or set proxy and locale variables. Ansible runs modules in a non-interactive, non-login shell with a minimal default `PATH` of `/usr/bin:/bin`. Use absolute binary paths, such as `/usr/local/cuda/bin/nvcc`. Or pass the variables explicitly with **`environment: { PATH: "/usr/local/cuda/bin:{{ ansible_env.PATH }}" }`** on the task or the play.
 </details>
 
 <details>
 <summary>16. How does the `type_debug` filter help diagnose mysterious `when:` or template failures?</summary>
 
-Printing **`debug: { msg: "{{ my_var | type_debug }}" }`** reveals the exact runtime Python type of `my_var`—instantly showing whether `gpu_count` is a `str` (`"8"`) instead of an `int` (`8`), whether `enabled` is `"False"` (`str`) instead of `False` (`bool`), or whether a string is wrapped as `AnsibleUnsafeText`.
+Print **`debug: { msg: "{{ my_var | type_debug }}" }`** to see the exact Python type of `my_var` at run time. It shows whether `gpu_count` is a `str` (`"8"`) instead of an `int` (`8`), whether `enabled` is the string `"False"` instead of the boolean `False`, or whether a string is wrapped as `AnsibleUnsafeText`.
 </details>
 
 <details>
-<summary>17. How do `timer`, `profile_tasks`, and `profile_roles` in `ansible.cfg` pinpoint why a playbook is slow?</summary>
+<summary>17. How do `timer`, `profile_tasks` and `profile_roles` in `ansible.cfg` pinpoint why a playbook is slow?</summary>
 
-Enabling `callbacks_enabled = timer, profile_tasks, profile_roles` in `[defaults]` in `ansible.cfg`:
-- Prints the timestamp and **elapsed wall-clock seconds** after every individual task as the playbook runs.
-- Prints a **sorted leaderboard of the top 20 slowest tasks (and roles)** at the end of the playbook run, showing immediately whether time is being spent in `Gathering Facts`, `apt update`, a slow `loop:`, or an un-multiplexed SSH connection.
+Set `callbacks_enabled = timer, profile_tasks, profile_roles` in `[defaults]` in `ansible.cfg`. Then the run prints the timestamp and the elapsed wall-clock seconds after every task. At the end of the run, it prints a sorted leaderboard of the top 20 slowest tasks and roles. That leaderboard shows at a glance whether the time goes to `Gathering Facts`, `apt update`, a slow `loop:`, or an SSH connection that is not multiplexed.
 </details>
 
 <details>
 <summary>18. What causes `kex_exchange_identification: Connection closed by remote host` when running Ansible with `forks = 100` through a bastion host?</summary>
 
-When 100 Ansible worker forks simultaneously open SSH connections through a single bastion/jump host (or to a single target via `delegate_to`), the bastion's OpenSSH daemon hits **`MaxStartups`** (default `10:30:100`, which starts randomly dropping unauthenticated connections once 10 concurrent handshakes are in flight) or triggers `fail2ban`. Fix it by enabling `ControlPersist` multiplexing, raising `MaxStartups 100:30:200` and `MaxSessions 100` in the bastion's `/etc/ssh/sshd_config`, or capping concurrency with `forks` / `throttle`.
+When 100 Ansible worker forks open SSH connections at the same moment, through one bastion or jump host, or to one target through `delegate_to`, the bastion's OpenSSH daemon can hit its **`MaxStartups`** limit. The default is `10:30:100`. Once 10 concurrent handshakes are in flight, the daemon starts randomly dropping unauthenticated connections. `fail2ban` can cause the same error. Enable `ControlPersist` multiplexing, raise `MaxStartups 100:30:200` and `MaxSessions 100` in the bastion's `/etc/ssh/sshd_config`, or cap the concurrency with `forks` or `throttle`.
 </details>
 
 <details>
 <summary>19. How do you triage a playbook failure when 40 out of 500 GPU nodes fail during a fleet run?</summary>
 
-Never inspect 40 tracebacks one by one. Group the failures by their error message and by inventory topology:
-1. Extract and count unique failure messages: `grep -E "fatal:|FAILED" ansible.log | sed 's/.*=> //' | sort | uniq -c | sort -rn`.
-2. Intersect the failing host list with your inventory groups (`rack_*`, `gpu_*`, OS kernel version) to see if all 40 failing nodes share a single ToR switch, rack PDU, NFS mount, or Ubuntu kernel version.
-3. Reproduce on **one** representative failing host with `--limit <host> -vvv`.
+Do not read 40 tracebacks one by one. Group the failures by their error message, and then by inventory topology.
+1. Extract and count the unique failure messages: `grep -E "fatal:|FAILED" ansible.log | sed 's/.*=> //' | sort | uniq -c | sort -rn`.
+2. Intersect the failing host list with your inventory groups, such as `rack_*`, `gpu_*` and the OS kernel version. For example, this shows whether all 40 nodes share one ToR switch, one rack PDU, one NFS mount or one Ubuntu kernel version.
+3. Reproduce the problem on one representative failing host with `--limit <host> -vvv`.
 </details>
 
 <details>
 <summary>20. What should you do before closing an incident caused by an Ansible playbook bug?</summary>
 
-Convert the failure into an automated guardrail so the same bug can never reach the fleet again:
-1. If it was a missing or malformed variable, add an **`ansible.builtin.assert`** task in `pre_tasks` (or `meta/argument_specs.yml`).
-2. If it was a syntax/module anti-pattern, enable the corresponding **`ansible-lint`** rule in CI.
-3. If it was a host-state or idempotency regression, add the reproduction case to the role's **Molecule + Testinfra** test suite (`molecule converge && molecule idempotence && molecule verify`).
+Turn the failure into an automated guardrail, so the same bug cannot reach the fleet again.
+1. If a variable was missing or malformed, add an **`ansible.builtin.assert`** task in `pre_tasks`, or in `meta/argument_specs.yml`.
+2. If the bug was a syntax or module anti-pattern, enable the matching **`ansible-lint`** rule in CI.
+3. If the bug was a host-state or idempotency regression, add the reproduction case to the role's **Molecule and Testinfra** test suite, using `molecule converge && molecule idempotence && molecule verify`.
 </details>
 
 ## Sources and review notes

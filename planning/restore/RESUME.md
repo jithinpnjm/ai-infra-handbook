@@ -3,8 +3,8 @@
 The session hit the token limit during the autonomous run. Resume with these steps.
 
 ## State
-- Voice rewrite DONE (changed vs original): 1.1, 1.2, 1.3, 1.4, 1.5, 1.6, 1.7, 1.8, 1.9, 1.10, 1.11, 1.12, 1.13, 1.14, 1.15, 1.16, 1.17, 1.18, 1.19, 1.20, 1.21, 1.22, 1.23, 1.24, 1.25, 1.26, 1.27, 1.28, 1.29, 1.30, 2.1, 2.2, 2.3, 2.4, 2.5, 2.6, 2.7, 2.8, 2.9, 2.10, 2.11, 2.12, 2.13, 2.14, 2.15, 2.16, 2.17, 2.18, 2.19, 2.20, 2.21, 2.22, 2.23, 2.24, 2.25, 2.26, 2.27, 2.28, 2.29, 2.30, 2.31, 2.32, 3.2, 3.3, 3.4, 3.6, 3.7, 3.8, 3.9
-- Voice prepped but NOT done (rerun; agents were killed or not launched): 3.10, 3.11, 4.1, 4.2, 4.3, 4.4, 4.5, 4.6, 4.7, 4.8, 4.9, 4.10, 4.11, 4.12, 4.13, 4.14, 4.15, 4.16, 4.17, 4.18, 4.19, 4.20, 4.21, 4.22, 4.23, 4.24, 4.25, 4.26, 4.27
+- Voice rewrite DONE (changed vs original): 1.1, 1.2, 1.3, 1.4, 1.5, 1.6, 1.7, 1.8, 1.9, 1.10, 1.11, 1.12, 1.13, 1.14, 1.15, 1.16, 1.17, 1.18, 1.19, 1.20, 1.21, 1.22, 1.23, 1.24, 1.25, 1.26, 1.27, 1.28, 1.29, 1.30, 2.1, 2.2, 2.3, 2.4, 2.5, 2.6, 2.7, 2.8, 2.9, 2.10, 2.11, 2.12, 2.13, 2.14, 2.15, 2.16, 2.17, 2.18, 2.19, 2.20, 2.21, 2.22, 2.23, 2.24, 2.25, 2.26, 2.27, 2.28, 2.29, 2.30, 2.31, 2.32, 3.2, 3.3, 3.4, 3.5, 3.6, 3.7, 3.8, 3.9, 3.10, 3.11, 4.1, 4.2, 4.3, 4.4, 4.5, 4.6, 4.7, 4.8, 4.9, 4.10
+- Voice prepped but NOT done (rerun; agents were killed or not launched): 4.11, 4.12, 4.13, 4.14, 4.15, 4.16, 4.17, 4.18, 4.19, 4.20, 4.21, 4.22, 4.23, 4.24, 4.25, 4.26, 4.27
 - Part 4 voice: prompts prepped for 4.1-4.27 (planning/restore/V4.N_prompt.md). Parts 5-15 not prepped: run `python3 tools/restore/prep_voice.py P.C ...`.
 - Python restoration (new chapters 3.12-3.17), units per chapter in order (planning/restore/PY_GROUPS.json): {"12": ["U022", "U031", "U026", "U027", "U033", "U029"], "13": ["U028", "U024", "U025", "U037"], "14": ["U035", "U030", "U023", "U043", "U032"], "15": ["U040", "U039", "U041", "U038"], "16": ["U047", "U048", "U044", "U050", "U049"], "17": ["U042", "U054", "U036", "U051", "U056"]}.
   Done units: U022 U031 U026 (3.12), U028 U024 U025 (3.13), U035 U030 U023 (3.14), U040 U039 U041 (3.15), U047 U048 U044 (3.16), U042 U054 U036 (3.17). Running when stopped: U027 U029 (3.12), U043 (3.14), U038 (3.15), U051 (3.17). Left after those: 3.13 U037; 3.14 U032; 3.16 U050 U049; 3.17 U056; 3.12 U033.
@@ -24,3 +24,7 @@ The session hit the token limit during the autonomous run. Resume with these ste
 - Python restoration done since the first note: U027 (3.12), U051 (3.17). Still open: U029 U033 (3.12), U037 (3.13), U043 U032 (3.14), U050 U049 (3.16), U056 (3.17). If an agent died mid-unit, re-run `python3 tools/restore/prep_restore.py Uxxx` (it re-backs up the current file) and relaunch; check `python3 tools/restore/gate.py Uxxx` first, since a unit may already pass.
 - Agents that were running when tokens ran out are dead; their finished work is in the files already, unfinished voice rewrites are NOT applied (the chapter file changes only at the final join step), so just relaunch those chapters.
 - Scheduled wake-up: 04:31 on 31 Oct (session-only cron). If the session was closed, say 'resume' and read this file.
+
+## Update (Oct 31 morning)
+- Python restoration COMPLETE for 3.12-3.17 (all 29 units). Next for Part 3: voice-gate/polish the new chapters 3.12-3.17 (no original to compare; run readability check only).
+- Open non-Python restoration: see QUEUE.json minus units with passing gate (ASP ch2,3,5,7,8; K8s Up&Running; Production K8s; Supercomputers; low-percent units).

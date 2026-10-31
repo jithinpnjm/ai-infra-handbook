@@ -4315,6 +4315,2132 @@ Properties are a simple form of descriptor, and both attach code to specific att
 
 Chapter 39 of the book covers decorators, which run when functions and classes are created instead of when attributes are accessed.
 
+## Decorators
+
+Decorators let you add behavior to a function or class without editing its body. You place one short line above the `def` or `class` statement, and Python applies the extra logic when the definition runs. Most application programmers only use decorators. Decorators now show up often in popular Python frameworks, so knowing the mechanics makes their role less mysterious.
+
+### What a decorator is
+
+A decorator is a callable object, usually a function, that takes another callable and returns a callable. Decoration is a way to attach management or augmentation code to functions and classes. Python supports two related kinds. A function decorator runs at the end of a `def` statement, and a class decorator runs at the end of a `class` statement.
+
+Each kind rebinds a name. A function decorator rebinds the function name, so it can manage the function or the calls later made to it. A class decorator rebinds the class name, so it can manage the class or the instances created from it.
+
+In short, decorators run automatically right after a definition finishes. The `@` line is the signal that tells Python to do this.
+
+### Managing calls and instances
+
+Most decorators wrap something. The wrapper is a proxy object that takes the place of the original name. When the name is used later, the proxy runs first. It can trace, time, check or change the request, and then it usually passes the request on to the original.
+
+A function decorator installs call proxies that intercept later function calls. A class decorator installs interface proxies that intercept instance-creation calls. The proxy often creates the real instance for you.
+
+### Managing functions and classes directly
+
+Decorators can also manage the function or class object itself. A function decorator might register a function with an API or store attributes on it. A class decorator might add methods or data to a class.
+
+If the decorator returns the same object it received, no wrapper is created. The decorator then becomes a simple post-creation step. Class decorators overlap with metaclasses, a more advanced tool, and often offer a lighter-weight option.
+
+### Why use decorators
+
+Decorators are never strictly required. You can always call a helper function or rebind the name by hand. The decorator syntax still earns its place, because it makes intent obvious and removes repeated augmentation code.
+
+The syntax has three practical benefits. The decorator is easy to spot, unlike a helper call far away from the function. It is applied once, when the definition runs, so callers need no extra code. A user of an API is also less likely to forget a required step.
+
+Decorators have drawbacks too. A wrapper can change the type of the object it decorates. It can also add an extra call every time the object is used. Any wrapping technique has the same issues, so weigh them in context.
+
+### Decorators and macros
+
+Some people compare decorators with aspect-oriented programming. That style inserts code that runs before or after a function call, and Python decorators have a similar effect. Their syntax also resembles Java annotations, though Python's model is more flexible and general.
+
+Others call decorators macros, and that comparison can mislead you. A C macro made with `#define` works by text replacement and expansion. A Python decorator is a runtime operation that rebinds a name to a callable object, often a proxy. Comparing the two is like comparing Python's `import` with C's `#include`. One works on objects at runtime, and the other inserts text.
+
+Treat a decorator as a callable that manages another callable. Python code is best understood in Python terms.
+
+## Decorator basics
+
+### Function decorator basics
+
+A function decorator is mostly syntactic sugar. It runs one function through another at the end of a `def` statement, and it rebinds the original name to the result. The line above the `def` starts with `@`, followed by a reference to a decorator. As of Python 3.9, the expression after the `@` can be any expression that returns a decorator, though it is usually a simple name.
+
+This code:
+
+```python
+@decorator  # Decorate function
+def F(arg):
+    ...
+
+F(99)  # Call function
+```
+
+works the same as this longer form:
+
+```python
+def F(arg):
+    ...
+
+F = decorator(F)  # Rebind function name to decorator result
+F(99)  # Essentially calls decorator(F)(99)
+```
+
+The decorator is a one-argument callable that returns a callable with the same number of arguments as `F`, or `F` itself. It runs only once, when the function is defined. Later calls to `F` run whatever object the decorator returned. That object may be a wrapper that adds logic, or the original function.
+
+The same rebinding explains two built-in decorators you already know. Static methods and properties are declared this way:
+
+```python
+class S:
+    @staticmethod
+    def meth(arg):
+        ...  # meth = staticmethod(meth)
+
+class P:
+    @property
+    def name(self):
+        ...  # name = property(name)
+```
+
+In both cases the method name is rebound to the result of a built-in decorator. The static method becomes a router, and the property becomes a descriptor. The process is more general than these two cases, as the next part explains.
+
+#### Implementation
+
+A decorator is a callable that returns a callable. The returned object runs when the original name is called later. It may be a wrapper that intercepts the call, or the original function augmented in some way.
+
+To run code right after a function is created, you can return the function unchanged:
+
+```python
+def decorator(F):
+    # Process function F here
+    return F
+
+@decorator
+def func():  # func = decorator(func)
+    ...
+```
+
+Because the original function is assigned back to its name, this adds a post-creation step. You might use it to register a function with an API or to set function attributes.
+
+To intercept later calls, return a different object. The most common pattern is a wrapper that keeps the original function in an enclosing scope:
+
+```python
+def decorator(F):  # On @ decoration
+    def wrapper(*args):  # On wrapped function call
+        # Use F and args
+        # F(*args) calls original function
+        ...
+    return wrapper
+
+@decorator  # func = decorator(func)
+def func(x, y):  # func is passed to decorator's F
+    ...
+
+func(6, 7)  # 6, 7 are passed to wrapper's *args
+```
+
+When `func` is later called, it really invokes `wrapper`. The wrapper can still reach the original function because `F` lives in an enclosing scope. Each decorated function therefore gets a fresh scope for its state.
+
+The same idea works with a class. The decorator stores the function on an instance, and the instance's `__call__` method runs on each call:
+
+```python
+class decorator:
+    def __init__(self, func):  # On @ decoration
+        self.func = func
+    def __call__(self, *args):  # On wrapped function call
+        # Use self.func and args
+        # self.func(*args) calls original function
+        ...
+
+@decorator  # func = decorator(func)
+def func(x, y):  # func is passed to __init__
+    ...
+
+func(6, 7)  # 6, 7 are passed to __call__'s *args
+```
+
+Each decorated function now gets its own instance, and each instance keeps its own copy of the original function.
+
+#### Supporting method decoration
+
+The class-based version has a catch. It works for plain functions, but it fails when you decorate a method inside a class:
+
+```python
+class decorator:
+    def __init__(self, func):  # func is method without instance
+        self.func = func
+    def __call__(self, *args):  # self is decorator instance
+        # self.func(*args) fails! # C instance not in args!
+        ...
+
+class C:
+    @decorator
+    def method(self, x, y):  # method = decorator(method)
+        ...  # Rebound to decorator instance
+```
+
+Here the decorated method is rebound to an instance of the decorator class. Later, the `self` in `__call__` is the decorator instance. The `C` instance never shows up in `*args`, so the decorator has no object to pass to the original method.
+
+A nested function solves this. The wrapper receives the class instance as its first argument, because the method name is rebound to a simple function:
+
+```python
+def decorator(F):  # F is func or method without instance
+    def wrapper(*args):  # class instance in args[0] for method
+        # F(*args) runs func or method
+        ...
+    return wrapper
+
+@decorator  # func = decorator(func)
+def func(x, y):
+    ...
+
+func(6, 7)  # Really calls wrapper(6, 7)
+
+class C:
+    @decorator  # method = decorator(method)
+    def method(self, x, y):  # Rebound to simple function
+        ...
+
+X = C()
+X.method(6, 7)  # Really calls wrapper(X, 6, 7)
+```
+
+Python creates a bound method only when the attribute refers to a simple function. When it refers to an instance of a callable class, that instance is passed to `self` instead. This subtle difference matters in realistic code. If you want one decorator to work on both functions and methods, the nested function style is the safest choice.
+
+### Class decorator basics
+
+Class decorators use the same syntax as function decorators, and their coding patterns are very similar. They appear just before a `class` statement. Instead of wrapping one function, a class decorator manages the class itself or wraps the instance-creation calls. In the second role it can manage a whole object interface.
+
+This code:
+
+```python
+@decorator  # Decorate class
+class C:
+    ...
+
+x = C(99)  # Make an instance
+```
+
+works the same as:
+
+```python
+class C:
+    ...
+
+C = decorator(C)  # Rebind class name to decorator result
+x = C(99)  # Essentially calls decorator(C)(99)
+```
+
+Calling the class name later triggers the callable that the decorator returned. That callable may or may not call the original class. To manage the class only, return the class unchanged:
+
+```python
+def decorator(C):
+    # Process class C here
+    return C
+
+@decorator
+class C:  # C = decorator(C)
+    ...
+```
+
+To intercept instance creation, return a different callable. This example inserts an object that intercepts undefined attributes of the instance:
+
+```python
+def decorator(cls):  # On @ decoration
+    class Wrapper:
+        def __init__(self, *args):  # On instance creation
+            self.wrapped = cls(*args)
+        def __getattr__(self, name):  # On attribute fetch
+            return getattr(self.wrapped, name)
+    return Wrapper
+
+@decorator
+class C:  # C = decorator(C)
+    def __init__(self, x, y):  # Run by Wrapper.__init__
+        self.attr = 'hack'
+
+x = C(6, 7)  # Really calls Wrapper(6, 7)
+print(x.attr)  # Runs Wrapper.__getattr__, prints "hack"
+```
+
+The decorator rebinds the class name to another class. That class keeps the original class in an enclosing scope, and it creates and embeds an instance of the original class. Attribute fetches that miss on the wrapper are delegated to the embedded instance. Each decorated class gets its own scope, so each one remembers its own original class.
+
+#### Supporting multiple instances
+
+Some pairings of callable types work better than others. This version looks reasonable, but it is wrong:
+
+```python
+class Decorator:
+    def __init__(self, C):  # On @ decoration
+        self.C = C
+    def __call__(self, *args):  # On instance creation
+        self.wrapped = self.C(*args)
+        return self
+    def __getattr__(self, attrname):  # On attribute fetch
+        return getattr(self.wrapped, attrname)
+
+@Decorator
+class C:  # C = Decorator(C)
+    ...
+
+x = C()
+y = C()  # Overwrites x!
+```
+
+It handles several decorated classes, but each instance creation overwrites the one saved instance. Two patterns support multiple wrapped instances. Each one makes a new wrapper for every instance:
+
+```python
+def decorator(C):  # On @ decoration
+    class Wrapper:
+        def __init__(self, *args):  # On instance creation: new Wrapper
+            self.wrapped = C(*args)  # Embed instance in instance
+    return Wrapper
+```
+
+```python
+class Wrapper:
+    ...
+
+def decorator(C):  # On @ decoration
+    def onCall(*args):  # On instance creation: new Wrapper
+        return Wrapper(C(*args))  # Embed instance in instance
+    return onCall
+```
+
+Choose callable types carefully, and think about how state is kept.
+
+### Decorator nesting
+
+Sometimes one decorator is not enough. Suppose you wrote one function decorator that checks argument types before a call, and another that checks return types after it. You want both on one function. Decorators can be stacked, and each decorator must sit on its own line:
+
+```python
+@A
+@B
+@C
+def f(x):
+    ...
+```
+
+Python treats that stack the same as this form:
+
+```python
+def f(x):
+    ...
+
+f = A(B(C(f)))
+```
+
+The original function passes through three decorators, and the last one written is applied first. If every decorator inserts a wrapper, the calls stack. The innermost wrapper runs closest to the original function. Each layer can augment the call in a different way.
+
+Class decorators stack in the same way:
+
+```python
+@hack
+@code
+class C:
+    ...
+
+X = C()
+```
+
+This is the same as `C = hack(code(C))` followed by `X = C()`. Each layer can return the original class or a wrapper. With wrappers, a request for an instance passes through both layers in turn.
+
+The following do-nothing decorators simply return the function they receive:
+
+```python
+def d1(F): return F
+def d2(F): return F
+def d3(F): return F
+
+@d1
+@d2
+@d3
+def func():  # func = d1(d2(d3(func)))
+    print('hack')
+
+func()  # Prints "hack"
+```
+
+When decorators insert wrappers, they can add to the result. Each layer below runs from the inside out:
+
+```python
+def d1(F): return lambda: 'X' + F()
+def d2(F): return lambda: 'Y' + F()
+def d3(F): return lambda: 'Z' + F()
+
+@d1
+@d2
+@d3
+def func():  # func = d1(d2(d3(func)))
+    return 'hack'
+
+print(func())  # Prints "XYZhack"
+```
+
+Each `lambda` keeps the wrapped function in an enclosing scope. Wrappers can also be functions or callable classes. When you design them well, nesting lets you combine steps in many ways.
+
+### Decorator arguments
+
+Decorators can take arguments too. The arguments are passed to a callable that returns the decorator. That decorator returns the callable that runs on later calls. So decorator arguments usually set up several levels of state. This code:
+
+```python
+@decorator(A, B)
+def F(arg):
+    ...
+
+F(99)
+```
+
+is mapped to this form:
+
+```python
+def F(arg):
+    ...
+
+F = decorator(A, B)(F)  # Rebind F to result of decorator's return value
+F(99)  # Essentially calls decorator(A, B)(F)(99)
+```
+
+Decorator arguments are resolved before decoration happens. They are usually kept as state for later use. The skeleton looks like this:
+
+```python
+def decorator(A, B):  # Save A and B for later
+    def actualDecorator(F):  # Save or use function F
+        def callable_object(*args):  # Runs later, on calls to F
+            ...
+        return callable_object
+    return actualDecorator
+```
+
+Decorator arguments therefore imply three levels of callables. The first accepts the arguments, the second is the decorator, and the third handles calls to the original function or class. Each level can be a function or a class, and each can keep state in scopes or attributes. Arguments can supply attribute initial values, trace labels, attribute names to validate, and more.
+
+### Decorators that manage functions and classes too
+
+Much of this chapter focuses on wrapping later calls. The decorator mechanism is more general, though. It is simply a protocol for passing a new function or class through a callable right after it is created:
+
+```python
+def decorator(O):
+    # Augment function or class O
+    return O
+
+@decorator
+def F():  # F = decorator(F)
+    ...
+
+@decorator
+class C:  # C = decorator(C)
+    ...
+```
+
+If the decorator returns the original object, it manages the function or class itself. This is useful for registering callables with an API or setting attributes when an object is created. The roles are limited only by your needs.
+
+## Coding function decorators
+
+Now for working code. This part shows the function decorator ideas in complete form, and the next part does the same for class decorators. Two larger case studies come at the end. They show typical decorator roles, including attribute privacy and argument range tests.
+
+### Tracing function calls
+
+Start with a call tracer. This `decorator1.py` module counts the calls to a function and prints a trace message for each call:
+
+```python
+class tracer:
+    def __init__(self, func):  # On @ decoration: save original func
+        self.calls = 0
+        self.func = func
+    def __call__(self, *args):  # On later calls: run original func
+        self.calls += 1
+        print(f'call {self.calls} to {self.func.__name__}')
+        self.func(*args)
+
+@tracer
+def hack(a, b, c):  # hack = tracer(hack)
+    print(a + b + c)  # Wraps hack in a decorator object
+```
+
+Each decorated function gets its own instance, with its own saved function and call counter. The `*args` syntax packs and unpacks any number of positional arguments. This first version does not handle keyword arguments, class methods or return values. Later versions fix those gaps.
+
+In an interactive session, each call prints a trace message, because the class intercepts it:
+
+```text
+$ python3
+>>> from decorator1 import hack
+>>> hack(1, 2, 3)  # Really calls the tracer wrapper object
+call 1 to hack
+6
+>>> hack('a', 'b', 'c')  # Invokes __call__ in class
+call 2 to hack
+abc
+>>> hack.calls  # Number calls in wrapper state information
+2
+>>> hack
+<decorator1.tracer object at 0x10cafc680>
+```
+
+The decorated name is now an instance of the `tracer` class. That can matter for code that checks types, but it is usually harmless. The call count lives on the decorated function as an attribute.
+
+The `@` syntax is often more convenient than changing every call site. It also avoids calling the original function by accident. You could write the same tracing without decorators, but it needs extra code wherever the function is called:
+
+```text
+>>> calls = 0
+>>> def tracer(func, *args):
+...     global calls
+...     calls += 1
+...     print(f'call {calls} to {func.__name__}')
+...     func(*args)
+>>> def hack(a, b, c):  # Nondecorated function
+...     print(a, b, c)
+>>> hack(1, 2, 3)  # Normal nontraced call: accidental?
+1 2 3
+>>> tracer(hack, 1, 2, 3)  # Special traced call without decorators
+call 1 to hack
+1 2 3
+```
+
+This alternative works on any function, but every call must use the special form. Its intent is also less obvious, and nothing guarantees that a normal call goes through the tracer. Decorators are not required, but they are often the most uniform option.
+
+### Decorator state retention options
+
+Decorators must keep state from decoration time for use during later calls. They need to support several decorated objects, each with its own calls. You have four main options: instance attributes, global variables, nonlocal closure variables and function attributes.
+
+#### State with class-instance attributes
+
+This version adds support for keyword arguments and returns the wrapped function's result, so it works in more cases. It keeps state as instance attributes:
+
+```python
+class tracer:  # State via instance attributes
+    def __init__(self, func):  # On @ decorator
+        self.calls = 0  # Save func for later call
+        self.func = func
+    def __call__(self, *args, **kwargs):  # On call to original function
+        self.calls += 1
+        print(f'call {self.calls} to {self.func.__name__}')
+        return self.func(*args, **kwargs)
+
+@tracer
+def hack(a, b, c):  # Same as: hack = tracer(hack)
+    print(a + b + c)  # Triggers tracer.__init__
+
+@tracer
+def code(x, y):  # Same as: code = tracer(code)
+    print(x ** y)  # Wraps code in a tracer object
+
+if __name__ == '__main__':
+    hack(1, 2, 3)  # Really calls tracer instance: runs tracer.__call__
+    hack(a=4, b=5, c=6)  # hack is an instance attribute
+    code(4, 2)  # Really calls tracer instance: self.func is code
+    code(2, y=16)  # self.calls is per-decoration here
+```
+
+Each decoration gets its own copy of the wrapped function and the counter. Running the script gives this output:
+
+```text
+$ python3 decorator_state_classes.py
+call 1 to hack
+6
+call 2 to hack
+15
+call 1 to code
+16
+call 2 to code
+65536
+```
+
+This scheme works well for functions, but it still has problems with methods. The next part explains why.
+
+#### State with global variables
+
+For simpler jobs, a global variable may be enough. This version keeps the call counter in the module's global scope:
+
+```python
+calls = 0
+def tracer(func):  # State via enclosing scope and global
+    def wrapper(*args, **kwargs):  # Instead of class attributes
+        global calls  # calls is global, not per-function
+        calls += 1
+        print(f'call {calls} to {func.__name__}')
+        return func(*args, **kwargs)
+    return wrapper
+
+@tracer
+def hack(a, b, c):  # Same as: hack = tracer(hack)
+    print(a + b + c)
+
+@tracer
+def code(x, y):  # Same as: code = tracer(code)
+    print(x ** y)
+
+if __name__ == '__main__':
+    hack(1, 2, 3)  # Really calls wrapper, assigned to hack
+    hack(a=4, b=5, c=6)  # wrapper calls hack
+    code(4, 2)  # Really calls wrapper, assigned to code
+    code(2, y=16)  # Global calls is not per-decoration here!
+```
+
+A global counter is shared by every wrapped function. It counts calls across the whole program, not per function. The output shows the problem clearly:
+
+```text
+$ python3 decorator_state_globals.py
+call 1 to hack
+6
+call 2 to hack
+15
+call 3 to code
+16
+call 4 to code
+65536
+```
+
+The single shared counter is updated by calls to every decorated function. That is usually not what you want for per-function data.
+
+#### State with enclosing-scope nonlocals
+
+If you want a per-function counter, use a closure with the `nonlocal` statement. It lets the nested function change a variable in the enclosing scope, so each decoration gets its own counter:
+
+```python
+def tracer(func):  # State via enclosing scope and nonlocal
+    calls = 0  # Instead of class attrs or global
+    def wrapper(*args, **kwargs):  # calls is per-function, not global
+        nonlocal calls
+        calls += 1
+        print(f'call {calls} to {func.__name__}')
+        return func(*args, **kwargs)
+    return wrapper
+
+@tracer
+def hack(a, b, c):  # Same as: hack = tracer(hack)
+    print(a + b + c)
+
+@tracer
+def code(x, y):  # Same as: code = tracer(code)
+    print(x ** y)
+
+if __name__ == '__main__':
+    hack(1, 2, 3)  # Really calls wrapper, bound to hack
+    hack(a=4, b=5, c=6)  # wrapper calls hack
+    code(4, 2)  # Really calls wrapper, bound to code
+    code(2, y=16)  # Nonlocal calls _is_ per-decoration here
+```
+
+Enclosing-scope variables are not program globals, so each wrapped function keeps its own count:
+
+```text
+$ python3 decorator_state_nonlocals.py
+call 1 to hack
+6
+call 2 to hack
+15
+call 1 to code
+16
+call 2 to code
+65536
+```
+
+#### State with function attributes
+
+You can also store changeable state as attributes of the wrapper function. A factory function creates a new function on each decoration, so its attributes are per-decoration state. Enclosing-scope references still work as usual:
+
+```python
+def tracer(func):  # State via enclosing scope and func attr
+    def wrapper(*args, **kwargs):  # calls is per-function, not global
+        wrapper.calls += 1
+        print(f'call {wrapper.calls} to {func.__name__}')
+        return func(*args, **kwargs)
+    wrapper.calls = 0
+    return wrapper
+
+@tracer
+def hack(a, b, c):  # Same as: hack = tracer(hack)
+    print(a + b + c)
+
+@tracer
+def code(x, y):  # Same as: code = tracer(code)
+    print(x ** y)
+
+if __name__ == '__main__':
+    hack(1, 2, 3)  # Really calls wrapper, assigned to hack
+    hack(a=4, b=5, c=6)  # wrapper calls hack
+    code(4, 2)  # Really calls wrapper, assigned to code
+    code(2, y=16)  # wrapper.calls _is_ per-decoration here
+```
+
+This works because the name `wrapper` lives in the enclosing `tracer` scope. Changing `wrapper.calls` does not rebind `wrapper`, so no `nonlocal` declaration is needed. The output matches the nonlocal version.
+
+This scheme is less common than `nonlocal`, so save it for cases where the other schemes do not help. It has one real advantage, though. Function attributes are visible from outside the decorator, while nonlocals are visible only inside the nested function. Attributes can be read as `hack.calls` from anywhere in your program.
+
+### Class pitfall: decorating methods
+
+The class-based `tracer` from the state section works for plain functions. It was first assumed to work for methods too, with `self` simply included at the front of `*args`. That assumption is wrong, and the reason is not obvious. When the class-based tracer decorates a method, `self` is the decorator instance. The instance of the decorated class is not in `*args` at all.
+
+Here is the class again:
+
+```python
+class tracer:  # State via instance attributes
+    def __init__(self, func):  # On @ decorator
+        self.calls = 0  # Save func for later call
+        self.func = func
+    def __call__(self, *args, **kwargs):  # On call to original function
+        self.calls += 1
+        print(f'call {self.calls} to {self.func.__name__}')
+        return self.func(*args, **kwargs)
+```
+
+It works for plain functions:
+
+```text
+>>> from decorator_state_classes import tracer
+>>> @tracer
+... def hack(a, b, c):  # hack = tracer(hack)
+...     print(a + b + c)  # Triggers tracer.__init__
+>>> hack(1, 2, 3)  # Runs tracer.__call__
+call 1 to hack
+6
+>>> hack(a=4, b=5, c=6)  # hack saved in an instance attribute
+call 2 to hack
+15
+```
+
+It fails for methods:
+
+```text
+>>> class Person:
+...     def __init__(self, name, pay):
+...         self.name = name
+...         self.pay = pay
+...     @tracer
+...     def giveRaise(self, percent):  # giveRaise = tracer(giveRaise)
+...         self.pay *= (1.0 + percent)
+>>> pat = Person('Pat Jones', 50_000)  # tracer remembers method funcs
+>>> pat.giveRaise(.10)  # Runs tracer.__call__(???, .10)
+call 1 to giveRaise
+TypeError: Person.giveRaise() missing 1 required positional argument: 'percent'
+```
+
+The `self` in `__call__` must be the `tracer` object, because it holds the `calls` and `func` state. The method needs the `Person` instance too, to dispatch the call. Python passes only the `tracer` instance, and the `Person` object is absent. Adding a print of the arguments shows it:
+
+```text
+>>> pat.giveRaise(.10)
+<__main__.tracer object at 0x108a02c00> (0.10,) {}
+```
+
+Python passes the subject instance to `self` only when a method name is bound to a simple function. When the name is bound to an instance of a callable class, that instance is passed instead. The fix is to change the coding style, not the decorator logic.
+
+#### Using nested functions to decorate methods
+
+For a decorator that works on both functions and methods, use nested `def` statements. Then you do not depend on one `self` argument serving two roles. The earlier nonlocal and attribute versions already work this way:
+
+```text
+>>> from decorator_state_nonlocals import tracer  # See the nonlocal version
+>>> @tracer
+... def hack(a, b, c):  # Works for functions
+...     print(a + b + c)
+>>> hack(1, 2, 3)
+call 1 to hack
+6
+>>> class Person:  # AND works for methods
+...     def __init__(self, name, pay):
+...         self.name = name
+...         self.pay = pay
+...     @tracer
+...     def giveRaise(self, percent):  # self included in args
+...         self.pay *= (1.0 + percent)  # Counter in nonlocals
+>>> pat = Person('Pat Jones', 50_000)
+>>> pat.giveRaise(.10)
+call 1 to giveRaise
+>>> pat.giveRaise(.10)
+call 2 to giveRaise
+>>> f'{pat.pay:,.2f}'
+'60,500.00'
+```
+
+The attribute version gives the same results. Here the decorated method is a simple function, so Python passes the `Person` object as the first argument. The decorator forwards it inside `*args` to the real method's `self`. Trace this through until the model feels familiar.
+
+#### Using descriptors to decorate methods
+
+Descriptors offer another route. A descriptor is a class attribute with a `__get__` method, which runs whenever that attribute is fetched. The `__get__` method receives both the descriptor instance and the subject instance, so it can keep the decorator's state and still reach the original object:
+
+```python
+class Descriptor:
+    def __get__(self, instance, owner): ...
+
+class Subject:
+    attr = Descriptor()
+
+X = Subject()
+X.attr  # Roughly runs Descriptor.__get__(Subject.attr, X, Subject)
+```
+
+This version of the tracer is a decorator and a descriptor at once:
+
+```python
+class tracer:  # A decorator+descriptor
+    def __init__(self, func):  # On @ decorator
+        self.calls = 0  # Save func for later call
+        self.func = func
+    def __call__(self, *args, **kwargs):  # On call to original func/meth
+        self.calls += 1
+        print(f'call {self.calls} to {self.func.__name__}')
+        return self.func(*args, **kwargs)
+    def __get__(self, instance, owner):  # On method attribute fetch
+        return wrapper(self, instance)
+
+class wrapper:
+    def __init__(self, desc, subj):  # Save both instances
+        self.desc = desc  # Route calls back to deco/desc
+        self.subj = subj
+    def __call__(self, *args, **kwargs):
+        return self.desc(self.subj, *args, **kwargs)  # Runs tracer.__call__
+
+@tracer
+def hack(a, b, c):  # hack = tracer(hack)
+    ...  # Uses __call__ only
+
+class Person:
+    ...
+    @tracer
+    def giveRaise(self, percent):  # giveRaise = tracer(giveRaise)
+        ...  # Makes giveRaise a descriptor
+```
+
+For a plain function, only `__call__` runs. For a method, the lookup `pat.giveRaise` triggers `__get__` first. The returned `wrapper` keeps the subject instance. The call expression then runs `wrapper.__call__`, which calls `tracer.__call__`, which finally calls the original method. The `wrapper` object routes control back to the one decorator instance, so every call shares the same counter.
+
+A nested-function version does the same job with less code:
+
+```python
+class tracer:
+    def __init__(self, func):  # On @ decorator
+        self.calls = 0  # Save func for later call
+        self.func = func
+    def __call__(self, *args, **kwargs):  # On call to original func
+        self.calls += 1
+        print(f'call {self.calls} to {self.func.__name__}')
+        return self.func(*args, **kwargs)
+    def __get__(self, instance, owner):  # On method fetch
+        def wrapper(*args, **kwargs):  # Retain both inst
+            return self(instance, *args, **kwargs)  # Runs __call__
+        return wrapper
+```
+
+Both descriptor versions are harder to follow than the nested-function version. They also cost more at runtime. The nested-function style is usually the better second choice.
+
+A simpler descriptor-only version looks tempting, but it only works for methods:
+
+```python
+class tracer:  # For methods, but not functions!
+    def __init__(self, meth):  # On @ decorator
+        self.calls = 0
+        self.meth = meth
+    def __get__(self, instance, owner):  # On method fetch
+        def wrapper(*args, **kwargs):  # On method call: proxy with self+inst
+            self.calls += 1
+            print(f'call {self.calls} to {self.meth.__name__}')
+            return self.meth(instance, *args, **kwargs)
+        return wrapper
+
+@tracer  # OK for methods but FAILS for functions
+def hack(a, b, c):  # hack = tracer(hack)
+    ...  # No attribute fetch occurs on calls!
+```
+
+A function call never fetches an attribute, so `__get__` never runs for it. That limit is the reverse of the problem we set out to solve. If you want one decorator for both functions and methods, go with nested functions.
+
+Some decorators do not need the subject instance at all. Python's own `staticmethod` decorator is an example, because its whole purpose is to remove the instance from the call. Those decorators can be classes that still work on plain functions. The simpler rule still holds. If you want a decorator to work on both functions and methods, nested functions are usually the best choice.
+
+### Timing function calls
+
+Another practical use is timing. This decorator measures each call, along with the total time across all calls. In this `timerdeco1.py` module, it times two ways of building a list:
+
+```python
+"Caveat: timer won't work on methods as coded (see quiz solution)"
+import time, sys
+class timer:
+    def __init__(self, func):
+        self.func = func
+        self.alltime = 0
+    def __call__(self, *args, **kargs):
+        start = time.perf_counter()
+        result = self.func(*args, **kargs)
+        elapsed = time.perf_counter() - start
+        self.alltime += elapsed
+        print(f'{self.func.__name__}: {elapsed:.5f}, {self.alltime:.5f}')
+        return result
+
+@timer
+def listcomp(N):
+    return [x * 2 for x in range(N)]
+
+@timer
+def mapcall(N):
+    return list(map((lambda x: x * 2), range(N)))
+
+if __name__ == '__main__':
+    for func in (listcomp, mapcall):
+        result = func(5)  # Time for this call, result
+        func(50_000)
+        func(500_000)
+        func(1_000_000)
+        print(result)
+        print(f'allTime = {func.alltime}\n')  # Total time for all func calls
+    print('**map/comp =', round(mapcall.alltime / listcomp.alltime, 3))
+```
+
+Run under CPython 3.12 on a macOS host, the self-test prints one line per call. Each line shows the function name, the time for that call and the running total. The output ends with the total for each function and the ratio of the two:
+
+```text
+$ python3 timerdeco1.py
+listcomp: 0.00000, 0.00000
+listcomp: 0.00366, 0.00366
+listcomp: 0.03134, 0.03500
+listcomp: 0.05213, 0.08713
+[0, 2, 4, 6, 8]
+allTime = 0.08712841104716063
+mapcall: 0.00001, 0.00001
+mapcall: 0.00396, 0.00397
+mapcall: 0.04082, 0.04479
+mapcall: 0.07789, 0.12268
+[0, 2, 4, 6, 8]
+allTime = 0.12268476499593817
+**map/comp = 1.408
+```
+
+Your times will differ with the Python version, the machine and other load. The cumulative time is kept as an instance attribute. Here `map` is slower than the list comprehension, because each element costs a function call.
+
+The `timeit` module and the timing helpers from the timing chapter do the same job without a decorator. In a REPL they look like this:
+
+```text
+>>> def listcomp(N): [x * 2 for x in range(N)]
+>>> import timer  # Timing helper techniques
+>>> timer.total(1, listcomp, 1_000_000)
+(0.08150088600814342, None)
+>>> timer.bestoftotal(5, 1, listcomp, 1_000_000)
+(0.059792334999656305, None)
+>>> import timeit
+>>> timeit.timeit(number=1, stmt=lambda: listcomp(1_000_000))
+0.08125517799635418
+>>> min(timeit.repeat(repeat=5, number=1, stmt=lambda: listcomp(1_000_000)))
+0.06156357398140244
+```
+
+A nondecorator approach lets the functions run with or without timing. But the call sites must change every time you want timing. There is also no direct way to make sure every call goes through the timer. Decorators are a good choice when functions are already deployed in a larger system and cannot easily be passed to an analysis function. A nondecorator approach may be better when you want to time only some calls.
+
+### Adding decorator arguments
+
+The timer works, but it would be more useful with settings. A label and an on-off switch for trace messages are the obvious ones. Decorator arguments provide that. Here is the general pattern:
+
+```python
+def timer(label=''):
+    def decorator(func):
+        def onCall(*args):  # Multilevel state retention:
+            ...  # args passed to function
+            func(*args)  # func retained in enclosing scope
+            print(label, ...)  # label retained in enclosing scope
+        return onCall
+    return decorator  # Returns the actual decorator
+
+@timer('==>')  # Like listcomp = timer('==>')(listcomp)
+def listcomp(N):
+    ...  # listcomp is rebound to new onCall
+
+listcomp(...)  # Really calls onCall
+```
+
+The `timer` function runs before decoration. It returns the decorator, which remembers the label and the function. The label stays in an enclosing scope, so each decoration keeps its own label.
+
+The `timerdeco2.py` module puts that idea into practice. It uses a class for the second level of state:
+
+```python
+import time
+def timer(label='', trace=True):  # On decorator args: retain args
+    class Timer:
+        def __init__(self, func):  # On @: retain decorated func
+            self.func = func
+            self.alltime = 0
+        def __call__(self, *args, **kargs):  # On calls: call original
+            start = time.perf_counter()
+            result = self.func(*args, **kargs)
+            elapsed = time.perf_counter() - start
+            self.alltime += elapsed
+            if trace:
+                if label: print(label, end=' ')
+                print(f'{self.func.__name__}: {elapsed:.5f}, {self.alltime:.5f}')
+            return result
+    return Timer
+```
+
+The outer `timer` function creates a scope that holds the decorator arguments. It runs before decoration and returns the `Timer` class as the actual decorator. Each decorated function then gets its own `Timer` instance. That instance keeps the function and can also see the arguments.
+
+A client module applies the decorator with different settings for each function:
+
+```python
+import sys
+from timerdeco2 import timer
+
+@timer(label='[CCC]==>')
+def listcomp(N):  # Like listcomp = timer(...)(listcomp)
+    return [x * 2 for x in range(N)]  # listcomp(...) triggers Timer.__call__
+
+@timer(trace=True, label='[MMM]==>')
+def mapcall(N):
+    return list(map((lambda x: x * 2), range(N)))
+
+for func in (listcomp, mapcall):
+    result = func(5)  # Time for this call, return value
+    func(50_000)
+    func(500_000)
+    func(1_000_000)
+    print(result)
+    print(f'allTime = {func.alltime}\n')  # Total time for all calls
+print('**map/comp =', round(mapcall.alltime / listcomp.alltime, 3))
+```
+
+Each function now has a label of its own. That makes the trace lines easy to find in a larger program's output:
+
+```text
+$ python3 testseqs.py
+[CCC]==> listcomp: 0.00000, 0.00000
+[CCC]==> listcomp: 0.00379, 0.00379
+[CCC]==> listcomp: 0.03142, 0.03521
+[CCC]==> listcomp: 0.05188, 0.08709
+[0, 2, 4, 6, 8]
+allTime = 0.08709081003325991
+[MMM]==> mapcall: 0.00001, 0.00001
+[MMM]==> mapcall: 0.00401, 0.00402
+[MMM]==> mapcall: 0.04025, 0.04427
+[MMM]==> mapcall: 0.07776, 0.12203
+[0, 2, 4, 6, 8]
+allTime = 0.12203056103317067
+**map/comp = 1.401
+```
+
+This timer works on any function, in modules and interactively. It is a general-purpose tool for timing code. Timing methods needs a small rewrite, because the nested `Timer` class cannot handle `self` correctly. That rewrite is a good exercise, and it is covered in the chapter quiz.
+
+## Coding class decorators
+
+Function decorators manage calls to functions. Class decorators can manage a class itself, or they can intercept instance creation to manage the instances. Like function decorators, they are syntactic sugar. They make intent obvious and reduce missed calls.
+
+### Singleton classes
+
+Class decorators can manage all instances of a class. The classic singleton pattern allows at most one instance to exist. This decorator enforces that rule:
+
+```python
+instances = {}
+def singleton(aClass):  # On @ decoration
+    def onCall(*args, **kwargs):  # On instance creation
+        if aClass not in instances:  # One dict entry per class
+            instances[aClass] = aClass(*args, **kwargs)
+        return instances[aClass]
+    return onCall
+```
+
+Decorate each class that should be a singleton:
+
+```python
+from singletons1 import singleton
+
+@singleton  # Person = singleton(Person)
+class Person:  # Rebinds Person to onCall
+    def __init__(self, name, hours, rate):  # onCall remembers Person
+        self.name = name
+        self.hours = hours
+        self.rate = rate
+    def pay(self):
+        return self.hours * self.rate
+
+@singleton  # Hack = singleton(Hack)
+class Hack:  # Rebinds Hack to onCall
+    def __init__(self, val):  # onCall remembers Hack
+        self.attr = val
+
+sue = Person('Sue', 50, 20)  # Really calls onCall
+print(sue.name, sue.pay())
+bob = Person('Bob', 40, 10)  # Same, single object
+print(bob.name, bob.pay())
+X = Hack(val=42)  # One Person, one Hack
+Y = Hack(99)
+print(X.attr, Y.attr)
+```
+
+Every creation call for a class goes to `onCall`, which returns the one saved instance. Running the script shows that Bob's object is really Sue's:
+
+```text
+$ python3 singletons.py
+Sue 1000
+Sue 1000
+42 42
+```
+
+Other versions do the same thing. This one keeps one enclosing scope per class, instead of a global table entry per class:
+
+```python
+def singleton(aClass):  # On @ decoration
+    instance = None
+    def onCall(*args, **kwargs):  # On instance creation
+        nonlocal instance
+        if instance == None:
+            instance = aClass(*args, **kwargs)  # One scope per class
+        return instance
+    return onCall
+```
+
+Function attributes can hold the instance too. This version uses one function per decoration:
+
+```python
+def singleton(aClass):  # On @ decoration
+    def onCall(*args, **kwargs):  # On instance creation
+        if onCall.instance == None:
+            onCall.instance = aClass(*args, **kwargs)  # One function per class
+        return onCall.instance
+    onCall.instance = None
+    return onCall
+```
+
+A class-based version keeps one instance per decoration in an attribute:
+
+```python
+class singleton:
+    def __init__(self, aClass):  # On @ decoration
+        self.aClass = aClass
+        self.instance = None
+    def __call__(self, *args, **kwargs):  # On instance creation
+        if self.instance == None:
+            self.instance = self.aClass(*args, **kwargs)  # One instance per class
+        return self.instance
+```
+
+The class-based version is the most explicit, and it may be easier to extend later. Simple jobs do not need a class, though. Choose the version that fits your team's style, and store it in an importable module.
+
+### Tracing object interfaces
+
+Class decorators can also wrap a whole object interface. That is useful for tracing every attribute of an instance. A simple delegation example shows the idea first.
+
+#### The nondecorator approach
+
+This wrapper intercepts attribute fetches that miss on the wrapper itself, and then it delegates them to the embedded object:
+
+```python
+class Wrapper:
+    def __init__(self, object):
+        self.wrapped = object  # Save object
+    def __getattr__(self, attrname):
+        print('Trace:', attrname)  # Trace fetch
+        return getattr(self.wrapped, attrname)  # Delegate fetch
+
+x = Wrapper([1,2,3])  # Wrap a list object
+x.append(4)  # Delegate to list method
+```
+
+The wrapper traces attribute accesses made from outside the wrapped object's class. Accesses inside that class's own methods are not caught, and they run normally. This wrapper handles the whole interface, unlike a function decorator that wraps one method.
+
+#### The class-decorator approach
+
+A class decorator can create the wrapped instance for you. Instead of passing a ready-made object into the wrapper, you just decorate the class. This version also accepts keyword arguments and counts the number of accesses:
+
+```python
+def Tracer(aClass):  # On @ decorator
+    class Wrapper:
+        def __init__(self, *args, **kargs):  # On instance creation
+            self.fetches = 0
+            self.wrapped = aClass(*args, **kargs)  # Use enclosing-scope name
+        def __getattr__(self, attrname):
+            print('Trace: ' + attrname)  # Catches all but own attrs
+            self.fetches += 1
+            return getattr(self.wrapped, attrname)  # Delegate to wrapped obj
+    return Wrapper
+
+if __name__ == '__main__':
+    @Tracer
+    class Hack:  # Hack = Tracer(Hack)
+        def display(self):  # Hack is rebound to Wrapper
+            print('Hack!' * 3)
+
+    @Tracer
+    class Person:  # Person = Tracer(Person)
+        def __init__(self, name, hours, rate):  # Wrapper remembers Person
+            self.name = name
+            self.hours = hours
+            self.rate = rate
+        def pay(self):  # Accesses outside class traced
+            return self.hours * self.rate  # In-method accesses not traced
+
+    work = Hack()  # Triggers Wrapper()
+    work.display()  # Triggers __getattr__
+    print([work.fetches])
+    print()
+
+    bob = Person('Bob', 40, 50)  # bob is really a Wrapper
+    print(bob.name)  # Wrapper embeds a Person
+    print(bob.pay())
+    print()
+
+    sue = Person('Sue', rate=100, hours=60)  # sue is a different Wrapper
+    print(sue.name)  # With a different Person
+    print(sue.pay())
+    print()
+
+    print(bob.name)  # bob's state != sue's state
+    print(bob.pay())
+    print('calls:', [bob.fetches, sue.fetches])  # Wrapper attrs are not traced
+```
+
+This is different from the function tracer. It intercepts instance creation, so it traces an entire object interface, meaning any attribute of the instance. The output shows each access as it happens:
+
+```text
+$ python3 interfacetracer.py
+Trace: display
+Hack!Hack!Hack!
+[1]
+Trace: name
+Bob
+Trace: pay
+2000
+Trace: name
+Sue
+Trace: pay
+6000
+Trace: name
+Bob
+Trace: pay
+2000
+calls: [4, 2]
+```
+
+Each decoration creates one `Wrapper` class, and each instance gets its own counter. The `Person` instances are really `Wrapper` objects. The built-in operations are not caught by `__getattr__`, a limit we return to later in this section.
+
+The decorator can also wrap a built-in type, such as a list, as long as you subclass it so the decorator syntax works:
+
+```text
+>>> from interfacetracer import Tracer
+>>> @Tracer
+... class MyList(list): pass  # MyList = Tracer(MyList)
+>>> x = MyList([1, 2, 3])  # Triggers Wrapper()
+>>> x.append(4)  # Triggers __getattr__, append
+Trace: append
+>>> x.wrapped
+[1, 2, 3, 4]
+>>> MyList = Tracer(list)  # Or perform decoration manually
+>>> x = MyList([4, 5, 6])  # Else subclass statement required
+>>> x.append(7)
+Trace: append
+>>> x.wrapped
+[4, 5, 6, 7]
+```
+
+The decorator version moves instance creation into the decorator. Normal creation syntax stays the same, and the augmentation appears only at the class definition. Compare the two styles:
+
+```python
+@Tracer  # Decorator approach
+class Person: ...
+
+bob = Person('Bob', 40, 50)
+sue = Person('Sue', rate=100, hours=60)
+```
+
+```python
+class Person: ...  # Nondecorator approach
+
+bob = Wrapper(Person('Bob', 40, 50))
+sue = Wrapper(Person('Sue', rate=100, hours=60))
+```
+
+If you make many instances and want the augmentation on all of them, decorators usually win on code size and maintenance.
+
+### Class pitfall: retaining multiple instances
+
+A class-based version of this decorator looks possible, but it has a serious flaw:
+
+```python
+class Tracer:
+    def __init__(self, aClass):  # On @decorator
+        self.aClass = aClass  # Use instance attribute
+    def __call__(self, *args):  # On instance creation
+        self.wrapped = self.aClass(*args)  # ONE (LAST) INSTANCE PER CLASS!
+        return self
+    def __getattr__(self, attrname):
+        print('Trace:', attrname)
+        return getattr(self.wrapped, attrname)
+
+@Tracer  # Triggers __init__
+class Hack:  # Like: Hack = Tracer(Hack)
+    def display(self):
+        print('Hack!' * 3)
+
+work = Hack()  # Triggers __call__
+work.display()  # Triggers __getattr__
+```
+
+The `__init__` method runs when the decorator is applied to the class. The `__call__` method runs on each instance creation. Both versions handle several classes. But each new instance overwrites the saved one, so the decorator keeps only the last instance. A second decorated class shows the problem:
+
+```python
+@Tracer
+class Person:  # Person = Tracer(Person)
+    def __init__(self, name):  # Person rebound to a Tracer
+        self.name = name
+
+bob = Person('Bob')  # bob is really a Tracer
+print(bob.name)  # Tracer embeds a Person
+sue = Person('Sue')
+print(sue.name)  # sue overwrites bob
+print(bob.name)  # OOPS: now bob's name is 'Sue'!
+```
+
+The output confirms it. Bob's name changes to Sue after Sue is created:
+
+```text
+$ python3 interfacetracer-fail.py
+Trace: display
+Hack!Hack!Hack!
+Trace: name
+Bob
+Trace: name
+Sue
+Trace: name
+Sue
+```
+
+This is bad state retention. The decorator keeps one instance per class, not one per object created from it. The function-based `Tracer` from the previous part works for multiple instances. It returns a class, so each creation call makes a new `Wrapper`. Class-based decorators have this trap, so check which callable type you need.
+
+### Private and public attributes
+
+This case study implements attribute privacy with a class decorator. The `Private` declaration blocks fetches and changes of named attributes from outside the class. Code inside the class's own methods still has full access. The decorator is not identical to the private attributes of C++ or Java. It offers a development-time check where you need one.
+
+Attribute privacy was introduced earlier in this chapter's class material. This version adds checks on fetches too. It uses delegation instead of inheritance. Its interception is still based on the `__getattr__` and `__setattr__` methods. When a private attribute is accessed, it raises a `TypeError` with a message. A `try` statement can catch that exception, or the script can stop.
+
+The first version catches explicit attribute fetches but not implicit operations, which we cover later:
+
+```python
+"""
+Class decorator with Private attribute declarations.
+Privacy for attributes fetched from class instances.
+See self-test code at end of file for a usage example.
+Rebinding is: Doubler = Private('data', 'size')(Doubler).
+Private returns onDecorator, onDecorator returns onInstance,
+and each onInstance instance embeds a new Doubler instance.
+"""
+
+traceMe = False
+
+def trace(*args):
+    if traceMe: print(f'[{" ".join(map(str, args))}]')  # Python 3.12+ f-string
+
+def Private(*privates):  # privates in enclosing scope
+    def onDecorator(aClass):  # aClass in enclosing scope
+        class onInstance:  # wrapped in instance attribute
+            def __init__(self, *args, **kargs):
+                self.wrapped = aClass(*args, **kargs)
+            def __getattr__(self, attr):  # My attrs don't call getattr
+                trace('get:', attr)  # Others assumed in wrapped
+                if attr in privates:
+                    raise TypeError('private attribute fetch, ' + attr)
+                else:
+                    return getattr(self.wrapped, attr)
+            def __setattr__(self, attr, value):  # Outside accesses
+                trace('set:', attr, value)  # Others run normally
+                if attr == 'wrapped':  # Allow my attrs
+                    self.__dict__[attr] = value  # Avoid looping
+                elif attr in privates:
+                    raise TypeError('private attribute change, ' + attr)
+                else:
+                    setattr(self.wrapped, attr, value)  # Wrapped obj attrs
+        return onInstance
+    return onDecorator
+
+if __name__ == '__main__':
+    traceMe = True
+    @Private('data', 'size')  # Doubler = Private(...)(Doubler)
+    class Doubler:
+        def __init__(self, label, start):
+            self.label = label  # Accesses inside the subject class
+            self.data = start  # Not intercepted: run normally
+        def size(self):
+            return len(self.data)  # Method bodies run with no checking
+        def double(self):  # Because privacy not inherited
+            for i in range(self.size()):
+                self.data[i] = self.data[i] * 2
+        def display(self):
+            print(f'{self.label} => {self.data}')
+
+    print('Making instances...')
+    X = Doubler('X is', [1, 2, 3])
+    Y = Doubler('Y is', [-10, -20, -30])
+    # The following all succeed properly
+    print('\nExploring X instance...')
+    print(X.label)  # Accesses outside subject class
+    X.display(); X.double(); X.display()  # Intercepted: validated, delegated
+    print('\nExploring Y instance...')
+    print(Y.label)
+    Y.display(); Y.double()
+    Y.label = 'Hack'
+    Y.display()
+    # The following all fail properly
+    """
+    print(X.size())  # Prints "TypeError: private attribute fetch, size"
+    print(X.data)
+    X.data = [1, 1, 1]  # Prints "TypeError: private attribute change, data"
+    X.size = lambda S: 0
+    print(Y.data)
+    print(Y.size())
+    """
+```
+
+With tracing on, the self-test shows each attribute fetch and assignment that comes from outside the class. Accesses inside the class run quietly:
+
+```text
+$ python3 access1.py
+Making instances...
+[set: wrapped <__main__.Doubler object at 0x1059c7d70>]
+[set: wrapped <__main__.Doubler object at 0x1059c7da0>]
+Exploring X instance...
+[get: label]
+X is
+[get: display]
+X is => [1, 2, 3]
+[get: double]
+[get: display]
+X is => [2, 4, 6]
+Exploring Y instance...
+[get: label]
+Y is
+[get: display]
+Y is => [-10, -20, -30]
+[get: double]
+[set: label Hack]
+[get: display]
+Hack => [-20, -40, -60]
+```
+
+Three points help when you study this code. First, delegation makes it easy to tell inside accesses from outside ones. The Chapter 30 version used inheritance, which made that split awkward. Second, the decorator arguments are used before decoration. The `Private` function returns the decorator, and the decorator remembers the names. Third, three levels of state live in enclosing scopes and instance attributes. The arguments, the class and the wrapped instance each have a home.
+
+The `__setattr__` method sets the proxy's own `wrapped` attribute through `__dict__`, which avoids a loop. It sets all other attributes through the built-in `setattr` on the wrapped object. It reads them with `getattr`. Because of this, the decorator works with classes that use `__slots__`, properties and descriptors. Each class gets the storage it needs, and the proxy stays out of the way.
+
+#### Generalizing for public declarations
+
+Once `Private` works, `Public` is only the inverse test. A `Private` declaration blocks outside access to the names it lists. A `Public` declaration allows outside access to the names it lists and blocks everything else. The two are mutually exclusive, so pick one per class.
+
+With `Private`, undeclared names are public. New names can be created from outside. With `Public`, undeclared names are private, and new names cannot be created from outside. The code adds one more level of state: the validation test lives in its own enclosing scope.
+
+```python
+"""
+Class decorator with Private and Public attribute declarations.
+Controls external access to attributes stored on an instance, or
+inherited by it from its classes. Private declares attribute names
+that cannot be fetched or assigned outside the decorated class,
+and Public declares all the names that can. Choose either decorator.
+Caveat: as is, this works for explicitly-named attributes only. The
+__X__ operator-overloading methods fetched implicitly for built-in
+operations do not trigger either __getattr__ or __getattribute__, and
+hence won't be delegated to any wrapped objects that define them. If
+needed, add __X__ methods to catch and delegate built-ins (per ahead).
+"""
+
+traceMe = False
+
+def trace(*args):
+    if traceMe: print('[' + ' '.join(map(str, args)) + ']')
+
+def accessControl(failIf):
+    def onDecorator(aClass):
+        class onInstance:
+            def __init__(self, *args, **kargs):
+                self.__wrapped = aClass(*args, **kargs)
+            def __getattr__(self, attr):
+                trace('get:', attr)
+                if failIf(attr):
+                    raise TypeError('private attribute fetch, ' + attr)
+                else:
+                    return getattr(self.__wrapped, attr)
+            def __setattr__(self, attr, value):
+                trace('set:', attr, value)
+                if attr == '_onInstance__wrapped':
+                    self.__dict__[attr] = value
+                elif failIf(attr):
+                    raise TypeError('private attribute change, ' + attr)
+                else:
+                    setattr(self.__wrapped, attr, value)
+        return onInstance
+    return onDecorator
+
+def Private(*attributes):
+    return accessControl(failIf=(lambda attr: attr in attributes))
+
+def Public(*attributes):
+    return accessControl(failIf=(lambda attr: attr not in attributes))
+```
+
+At the interactive prompt, both decorators behave as advertised. Undeclared names can be read and changed from outside. Declared private names cannot:
+
+```text
+>>> from access2 import Private, Public
+>>> @Private('age')  # Person = Private('age')(Person)
+... class Person:  # Person = onInstance with state
+...     def __init__(self, name, age):
+...         self.name = name
+...         self.age = age  # Inside accesses run normally
+>>> X = Person('Pat', 40)
+>>> X.name  # Outside accesses validated
+'Pat'
+>>> X.name = 'Sue'
+>>> X.name
+'Sue'
+>>> X.age
+TypeError: private attribute fetch, age
+>>> X.age = 'Bob'
+TypeError: private attribute change, age
+>>> @Public('name')
+... class Person:
+...     def __init__(self, name, age):
+...         self.name = name
+...         self.age = age
+>>> X = Person('Pat', 40)  # X is an onInstance
+>>> X.name  # onInstance embeds Person
+'Pat'
+>>> X.name = 'Sue'
+>>> X.name
+'Sue'
+>>> X.age
+TypeError: private attribute fetch, age
+>>> X.age = 'Bob'
+TypeError: private attribute change, age
+```
+
+#### Implementation details
+
+The `__X` pseudoprivate name mangling feature keeps the wrapped attribute inside the proxy class. Python prefixes the name with the class name, so the attribute becomes `_onInstance__wrapped`. That avoids a clash with a `wrapped` attribute in the real class. Mangling is not true privacy, though. The mangled name is still visible to anyone who uses it. The `__setattr__` method must test for the expanded name string.
+
+Privacy can be broken on purpose. You can fetch the proxy's inner object by its full mangled name, such as `bob._onInstance__wrapped.pay`. This is true in other languages too. Access controls prevent accidents, but they cannot stop a determined programmer. Python is about enabling, not controlling. Use privacy sparingly, if at all.
+
+#### Decorator trade-offs
+
+You could get the same results with helper functions or by rebinding names by hand. The decorator syntax keeps that work consistent and obvious. The main costs of any wrapper-based approach are an extra call per attribute access, and instances that are not really instances of the original class. A check with `X.__class__` or `isinstance(X, C)` reveals the wrapper class.
+
+Unless your program inspects types, the type issue rarely matters. The extra call matters mostly during development. Later in this section you will see a way to remove decorations automatically with the `-O` flag.
+
+#### Delegating built-in operations
+
+Explicit attribute fetches work for the decorators so far. Operator overloading is weaker. Built-in operations such as `print` and `+` skip instance-level lookup. They search the class namespace directly, so a proxy's `__getattr__` never sees them.
+
+A simple class shows normal behavior:
+
+```text
+>>> class Tally:
+...     def __init__(self):
+...         self.sum = 0
+...     def __str__(self):
+...         return f'Tally: {self.sum}'
+...     def __add__(self, add):
+...         self.sum += add
+>>> X = Tally()
+>>> X.sum  # All attributes accessible
+0
+>>> print(X)  # Same as X.__str__() {sort of}
+Tally: 0
+>>> X + 5  # Same as X.__add__(5) {ditto}
+>>> print(X)
+Tally: 5
+```
+
+Wrapped in the private proxy, the built-ins break:
+
+```text
+>>> from access2 import Private
+>>> @Private('sum', '__add__')
+... class Tally:
+...     # same as before
+>>> X = Tally()
+>>> X.sum
+TypeError: private attribute fetch, sum
+>>> X.__add__(5)
+TypeError: private attribute fetch, __add__
+>>> print(X)
+<access2.accessControl.<locals>.onDecorator.<locals>.onInstance object at 0x...etc...>
+>>> X + 5
+TypeError: unsupported operand type(s) for +: 'onInstance' and 'int'
+```
+
+The explicit fetches of `sum` and `__add__` are blocked, as they should be. The implicit `print` and `+` are not caught, so they never reach the wrapped `Tally`. The `print` works only because `object` prints the proxy itself. That is an inconsistency in Python's model.
+
+There are several workarounds. The simplest is to define each operator method on the proxy class. Each one forwards the operation to the wrapped object:
+
+```python
+"Inline methods, skip validations"
+def accessControl(failIf):
+    def onDecorator(aClass):
+        class onInstance:
+            def __init__(self, *args, **kargs):
+                self.__wrapped = aClass(*args, **kargs)
+            # Intercept and delegate built-in implicit access specifically
+            def __add__(self, other):
+                return self.__wrapped + other  # Or getattr(), __getattr__()
+            def __str__(self):
+                return str(self.__wrapped)  # Or self.__wrapped.__str__()
+            def __getitem__(self, index):
+                return self.__wrapped[index]
+            def __call__(self, *args, **kargs):
+                return self.__wrapped(*args, **kargs)
+            # Plus any others needed
+            # Intercept and delegate explicit attribute access generically
+            def __getattr__(self, attr):
+                ...  # same as in access2.py
+            def __setattr__(self, attr, value):
+                ...  # same as in access2.py
+        return onInstance
+    return onDecorator
+```
+
+This works because built-ins find the methods on the proxy class. The new methods call the wrapped object directly, so they skip the access checks in `__getattr__`. That may or may not be what you want. The code is repetitive, though a tool or a shared superclass can generate it.
+
+A common superclass can hold the operator methods instead:
+
+```python
+"Inherit methods, skip validations"
+class BuiltinsMixin:
+    def __add__(self, other):
+        return self._wrapped + other  # Assume a _wrapped
+    def __str__(self):  # Bypass __getattr__
+        return str(self._wrapped)
+    def __getitem__(self, index):
+        return self._wrapped[index]
+    def __call__(self, *args, **kargs):
+        return self._wrapped(*args, **kargs)
+    # Plus any others needed
+
+def accessControl(failIf):
+    def onDecorator(aClass):
+        class onInstance(BuiltinsMixin):
+            ...  # rest same, but use unmangled _wrapped instead of __wrapped
+        return onInstance
+    return onDecorator
+```
+
+This route requires a `_wrapped` attribute in the proxy. That name can clash with the wrapped class, and it creates a dependency on the subclass. It is still better than the mangled `_onInstance__wrapped` name.
+
+A third mixin sends each operator through `__getattr__`, so the access checks still apply:
+
+```python
+"Inherit methods, run validations"
+class BuiltinsMixin:
+    def __add__(self, other):
+        return self.__getattr__('__add__')(other)  # Route to validator
+    def __str__(self):  # Finish operations
+        return self.__getattr__('__str__')()
+    def __getitem__(self, index):
+        return self.__getattr__('__getitem__')(index)
+    def __call__(self, *args, **kargs):
+        return self.__getattr__('__call__')(*args, **kargs)
+    # Plus any others needed
+
+def accessControl(failIf):
+    def onDecorator(aClass):
+        class onInstance(BuiltinsMixin):  # Inherit methods
+            ...  # rest unchanged
+        return onInstance
+    return onDecorator
+```
+
+Here the operator names must be non-private or public under the decorator's arguments, or they will not run. Built-ins then get the same checks as explicit names.
+
+The most concise option uses class-level descriptors. Each descriptor intercepts only the attribute fetch that comes before the operation, and it routes that fetch through `__getattr__`:
+
+```python
+"Inherit descriptors, run validations"
+class BuiltinsMixin:
+    class ProxyDesc:  # Define descriptor
+        def __init__(self, attrname):
+            self.attrname = attrname
+        def __get__(self, instance, owner):
+            return instance.__getattr__(self.attrname)  # Run validations
+
+    builtins = ['add', 'str', 'getitem', 'call']  # Plus any others
+    for attr in builtins:
+        exec(f'__{attr}__ = ProxyDesc("__{attr}__")')  # Make descriptors
+
+def accessControl(failIf):
+    def onDecorator(aClass):
+        class onInstance(BuiltinsMixin):  # Inherit descriptors
+            ...  # rest unchanged
+        return onInstance
+    return onDecorator
+```
+
+The `exec` call runs a string of code inside the class body, as if the string were written there. The loop therefore creates `__add__`, `__str__` and the other names as descriptors. This coding is the most compact, but it is also the most implicit. Read it slowly. A simpler model of the same idea looks like this:
+
+```python
+class B:
+    class D:
+        def __get__(s, i, o): return i.meth()
+    name = D()
+
+class A(B):
+    def meth(self): return 'hack'
+
+I = A()
+I.name  # 'hack'
+```
+
+With the descriptor approach, the decorator works as intended for the Tally class. Public built-ins are delegated, and private built-ins are blocked:
+
+```text
+>>> from access_builtins_mixin_desc import Private
+>>> @Private('sum')
+... class Tally:
+...     def __init__(self):
+...         self.sum = 0
+...     def __str__(self):
+...         return f'Tally: {self.sum}'
+...     def __add__(self, add):
+...         self.sum += add
+>>> X = Tally()
+>>> X.sum  # Explicit validated
+TypeError: private attribute fetch, sum
+>>> X + 10  # Built-in delegated
+>>> print(X)  # Built-in delegated
+Tally: 10
+```
+
+```text
+>>> @Private('sum', '__add__')
+... class Tally:
+...     # same as before
+>>> X = Tally()
+>>> X.sum  # Explicit validated
+TypeError: private attribute fetch, sum
+>>> X + 10  # Built-in canceled: private
+TypeError: private attribute fetch, __add__
+>>> print(X)  # Built-in allowed: public
+Tally: 0
+>>> @Private('__str__')
+... class Tally:
+...     # same as before
+>>> print(Tally())  # Built-in canceled: private
+TypeError: private attribute fetch, __str__
+```
+
+## Validating function arguments
+
+Decorators can also check arguments before a function runs. This case study builds a function decorator that tests whether arguments are inside a valid numeric range. It can run during development or in production. You can use it as a template for similar checks, such as argument type tests.
+
+### The goal
+
+In the object-oriented material earlier, a class gave a raise based on a percentage:
+
+```python
+class Person:
+    ...
+    def giveRaise(self, percent):
+        self.pay = int(self.pay * (1 + percent))
+```
+
+The percentage should be between 0.0 and 1.0. You can check that with an inline `if` or with an `assert`:
+
+```python
+class Person:
+    def giveRaise(self, percent):  # Validate with inline code
+        if percent < 0.0 or percent > 1.0:
+            raise TypeError('percent invalid')
+        self.pay = int(self.pay * (1 + percent))
+
+class Person:  # Validate with asserts
+    def giveRaise(self, percent):
+        assert percent >= 0.0 and percent <= 1.0, 'percent invalid'
+        self.pay = int(self.pay * (1 + percent))
+```
+
+These checks clutter the method, and they are often useful only during development. Complex checks become tedious to inline. If the rule changes, you must find and update every copy. A general decorator solves these problems. You write the rule once, and each method declares the ranges it needs:
+
+```python
+class Person:
+    @rangetest(percent=(0.0, 1.0))  # Use decorator to validate
+    def giveRaise(self, percent):
+        self.pay = int(self.pay * (1 + percent))
+```
+
+Isolating the validation in a decorator simplifies both the client code and future maintenance. This differs from the attribute validation in the previous section. Here the function's argument values are checked when the call happens. Introspection makes this new task just as easy to code.
+
+### A basic range-testing decorator for positional arguments
+
+Start with a simple version. It handles only positional arguments that always appear in the same position. Keyword names are not supported, because they could break the positions declared in the decorator:
+
+```python
+def rangetest(*argchecks):  # Validate positional arg ranges
+    def onDecorator(func):
+        if not __debug__:  # True if "python -O main.py args..."
+            return func  # No-op: call original directly
+        else:  # Else wrapper while debugging
+            def onCall(*args):
+                for (ix, low, high) in argchecks:
+                    if args[ix] < low or args[ix] > high:
+                        errmsg = f'Argument {ix} not in {low}..{high}'
+                        raise TypeError(errmsg)
+                return func(*args)
+            return onCall
+    return onDecorator
+```
+
+This code reuses the patterns from earlier: decorator arguments, enclosing scopes for state, and nested `def` statements so it works for methods too. In a method, `onCall` receives the instance in the first item of `*args`. The argument numbers in the decorator therefore start at 1 for methods, to account for `self`.
+
+The code also uses the `__debug__` built-in variable. Python sets it to `True` unless you run with the `-O` flag, as in `python -O main.py`. When `__debug__` is `False`, the decorator returns the original function unchanged. That removes the wrapper and its cost. You do not have to delete the decoration lines to get that result.
+
+Here is how the first version is used:
+
+```python
+from rangetest0 import rangetest
+print(f'{__debug__=}')  # False if "python -O main.py"
+
+@rangetest((1, 0, 120))  # persinfo = rangetest(...)(persinfo)
+def persinfo(name, age):  # age must be in 0..120
+    print(f'{name} is {age} years old')
+
+@rangetest([0, 1, 12], [1, 1, 31], [2, 0, 2024])
+def birthday(M, D, Y):
+    print(f'birthday = {M}/{D}/{Y}')
+
+class Person:
+    def __init__(self, name, job, pay):
+        self.job = job
+        self.pay = pay
+    @rangetest([1, 0.0, 1.0])  # giveRaise = rangetest(...)(giveRaise)
+    def giveRaise(self, percent):  # Arg 0 is the self instance here
+        self.pay = int(self.pay * (1 + percent))
+
+# Comment lines raise TypeError unless "python -O" used on shell command line
+persinfo('Bob Smith', 45)  # Really runs onCall(...) with state
+#persinfo('Bob Smith', 200)  # Or persinfo if -O cmd line argument
+birthday(8, 31, 2024)
+#birthday(8, 32, 2024)
+sue = Person('Sue Jones', 'dev', 100_000)
+sue.giveRaise(.10)  # Really runs onCall(self, .10)
+print(sue.pay)  # Or giveRaise(self, .10) if -O
+#sue.giveRaise(1.10)
+```
+
+Valid calls print normally:
+
+```text
+$ python3 rangetest0_test.py
+__debug__=True
+Bob Smith is 45 years old
+birthday = 8/31/2024
+110000
+```
+
+Uncommenting an invalid call raises a `TypeError`. The message below is shortened:
+
+```text
+$ python3 rangetest0_test.py
+__debug__=True
+Bob Smith is 45 years old
+birthday = 8/31/2024
+110000
+TypeError: Argument 1 not in 0.0..1.0
+```
+
+Running Python with the `-O` flag disables the range tests. It also removes the wrapping cost, so the original function runs directly. Assuming the checks are for debugging, that flag lets you ship a faster program. Here the last line still runs, with a print that shows the raise:
+
+```text
+$ python3 -O rangetest0_test.py
+__debug__=False
+Bob Smith is 45 years old
+birthday = 8/31/2024
+110000
+231000
+```
+
+### Generalizing for keywords and defaults
+
+The first version handles only positional arguments. It ignores keyword arguments, and it does not know about defaults that a call may omit. That is fine for simple cases, but a general tool needs more.
+
+The next version matches the decorated function's expected arguments against the actual call. It validates arguments passed by position or by keyword name. It skips any default argument that the call omits:
+
+```python
+"""
+A function decorator that performs range-test validation for
+arguments passed to any function or method. Usage synopsis:
+@rangetest(percent=(0.0, 1.0), month=(1, 12))
+def func-or-method(..., percent, ..., month=5, ...):
+    ...
+func-or-method(..., value, month=8, ...)
+Arguments are specified by keyword to the decorator. In the actual
+call, arguments may be passed by position or keyword, and defaults
+may be omitted. See rangetest_test.py for example use cases.
+"""
+
+trace = True
+
+def rangetest(**argchecks):  # Validate ranges for both+defaults
+    def onDecorator(func):  # onCall remembers func and argchecks
+        if not __debug__:  # True if "python -O main.py args..."
+            return func  # Wrap if debugging; else use original
+        else:
+            funcname = func.__name__
+            funccode = func.__code__
+            funcargs = funccode.co_varnames[:funccode.co_argcount]
+            def onCall(*pargs, **kargs):
+                # All pargs match first N expected args by position
+                # The rest must be in kargs or be omitted defaults
+                positionals = funcargs[:len(pargs)]
+                errormsg = lambda *args: '%s argument "%s" not in %s..%s' % args
+                for (argname, (low, high)) in argchecks.items():
+                    # For all args to be checked
+                    if argname in kargs:
+                        # Was passed by name
+                        if kargs[argname] < low or kargs[argname] > high:
+                            raise TypeError(errormsg(funcname, argname, low, high))
+                    elif argname in positionals:
+                        # Was passed by position
+                        position = positionals.index(argname)
+                        if pargs[position] < low or pargs[position] > high:
+                            raise TypeError(errormsg(funcname, argname, low, high))
+                    else:
+                        # Assume not passed: default
+                        if trace:
+                            print(f'-Argument "{argname}" defaulted')
+                return func(*pargs, **kargs)  # OK: run original call
+            return onCall
+    return onDecorator
+```
+
+The test script shows the new decorator in use. Decorator arguments name the checked parameters. At each call you can pass arguments by name or by position, and you can omit defaults that are not checked:
+
+```python
+"""
+Test the rangetest decorator (usage differs from rangetest0).
+Comment lines raise TypeError unless "python -O" or similar in compileall.
+"""
+from rangetest import rangetest
+
+def announce(what): print(what.center(24, '-'))  # str method
+
+# Test functions, positional and keyword
+announce('Functions')
+@rangetest(age=(0, 120))  # persinfo = rangetest(...)(persinfo)
+def persinfo(name, age):
+    print(f'{name} is {age} years old')
+
+@rangetest(M=(1, 12), D=(1, 31), Y=(0, 2024))
+def birthday(M, D, Y):
+    print(f'birthday = {M}/{D}/{Y}')
+
+persinfo('Pat', 40)
+persinfo(age=40, name='Pat')
+birthday(8, D=31, Y=2024)
+#persinfo('Pat', 150)
+#persinfo(age=150, name='Pat')
+#birthday(8, Y=2025, D=40)
+
+# Test methods, positional and keyword
+announce('Methods')
+class Person:
+    def __init__(self, name, job, pay):
+        self.job = job
+        self.pay = pay
+    # giveRaise = rangetest(...)(giveRaise)
+    @rangetest(percent=(0.0, 1.0))  # percent passed by name or position
+    def giveRaise(self, percent):
+        self.pay = int(self.pay * (1 + percent))
+
+sue = Person('Sue Jones', 'dev', 100_000)
+bob = Person('Bob Smith', 'dev', 100_000)
+sue.giveRaise(percent=.20)
+bob.giveRaise(.10)
+print(f'sue=>{sue.pay}, bob=>{bob.pay}')
+#sue.giveRaise(1.20)
+#bob.giveRaise(percent=1.20)
+
+# Test omitted defaults: skipped
+announce('Defaults')
+@rangetest(a=(1, 10), b=(1, 10), c=(1, 10), d=(1, 10))
+def omitargs(a, b=7, c=8, d=9):
+    print(a, b, c, d)
+
+omitargs(1, 2, 3, 4)  # Positionals
+omitargs(1, 2, 3)  # Default d
+omitargs(1, 2, 3, d=4)  # Keyword d
+omitargs(1, d=4)  # Default b and c
+omitargs(d=4, a=1)  # Ditto
+omitargs(1, b=2, d=4)  # Default c
+omitargs(d=8, c=7, a=1)  # Default b
+#omitargs(1, 2, 3, 11)  # Bad d
+#omitargs(1, 2, 11)  # Bad c
+#omitargs(1, 2, 3, d=11)  # Bad d
+#omitargs(11, d=4)  # Bad a
+#omitargs(d=4, a=11)  # Bad a
+#omitargs(1, b=11, d=4)  # Bad b
+#omitargs(d=8, c=7, a=11)  # Bad a
+```
+
+Out-of-range values raise an exception, whether they are passed by name or by position. Omitted defaults are not checked. The output shows which defaults were used:
+
+```text
+$ python3 rangetest_test.py
+-------Functions--------
+Pat is 40 years old
+Pat is 40 years old
+birthday = 8/31/2024
+--------Methods---------
+sue=>120000, bob=>110000
+--------Defaults--------
+1 2 3 4
+-Argument "d" defaulted
+1 2 3 9
+1 2 3 4
+-Argument "b" defaulted
+-Argument "c" defaulted
+1 7 8 4
+-Argument "b" defaulted
+-Argument "c" defaulted
+1 7 8 4
+-Argument "c" defaulted
+1 2 8 4
+-Argument "b" defaulted
+1 7 7 8
+```
+
+The checks run in the order listed in the decorator, because dictionaries keep insertion order. Uncommenting a method line shows the failure:
+
+```text
+$ python3 rangetest_test.py
+-------Functions--------
+Pat is 40 years old
+Pat is 40 years old
+birthday = 8/31/2024
+--------Methods---------
+sue=>120000, bob=>110000
+TypeError: giveRaise argument "percent" not in 0.0..1.0
+$ python3 -O rangetest_test.py
+...no error messages or default traces...
+```
+
+#### Implementation details
+
+This decorator relies on introspection and on rules of argument passing. Mimicking all of Python's argument matching would be too complex and fragile. A better plan matches the decorator's names against the function's expected names.
+
+Function introspection gives the expected names. The names of the first N local variables on a function's code object are its arguments:
+
+```text
+>>> def func(a, b, c, e=True, f=None):  # Args: three required, two defaults
+...     x = 1  # Plus two more local variables
+...     y = 2
+>>> code = func.__code__  # Code object of function object
+>>> code.co_nlocals
+7
+>>> code.co_varnames  # All local variable names
+('a', 'b', 'c', 'e', 'f', 'x', 'y')
+>>> code.co_varnames[:code.co_argcount]  # <== First N locals are expected args
+('a', 'b', 'c', 'e', 'f')
+```
+
+Starred names in the wrapper collect any number of arguments. Those are compared with the expected names:
+
+```text
+>>> def catcher(*pargs, **kargs): print(f'{pargs}, {kargs}')
+>>> catcher(1, 2, 3, 4, 5)
+(1, 2, 3, 4, 5), {}
+>>> catcher(1, 2, c=3, d=4, e=5)  # Arguments at calls
+(1, 2), {'d': 4, 'e': 5, 'c': 3}
+```
+
+The matching depends on two rules from Python's argument passing. At a call, positional arguments come before keyword arguments. In a `def`, nondefault arguments come before default arguments. Positional values fill names from left to right, and keywords match by name. Each argument can receive only one value.
+
+The decorator also assumes that the call is valid. If it is not, Python will raise an error when the call finally runs. That is acceptable, because checking validity in advance would mean copying Python's full matching algorithm.
+
+The matching algorithm uses those rules. Let N be the number of positional arguments in `*pargs`. The first N expected names are the ones passed by position. Any other expected name was either passed by keyword or left at its default. For each checked name, the decorator looks in three places. If the name is in `**kargs`, its value is there. If the name is among the first N expected names, its value is in `*pargs` at that position. Otherwise the argument was defaulted, so it needs no check.
+
+#### Open issues
+
+The range tester works as planned, but three caveats remain. It does not detect invalid calls, it does not handle every arbitrary-argument signature, and it does not fully support nesting.
+
+Invalid calls still fail, but only when the wrapper calls the original function. For example, both of these calls are missing the required argument `a`:
+
+```python
+omitargs()
+omitargs(d=8, c=7, b=6)
+```
+
+Trying to catch these earlier would mean imitating Python's argument matching. Letting Python report the error at the call is simpler.
+
+The decorator also does not handle starred names in the definition, such as `*pargs` and `**kargs`. Extra keyword arguments with a name can be tested if the decorator mentions that name. Extra positional arguments cannot be named, so they are skipped. Starred names are locals, but they are not expected arguments:
+
+```text
+>>> def func(*pargs, **kargs): pass
+>>> code = func.__code__
+>>> code.co_nlocals, code.co_varnames
+(2, ('pargs', 'kargs'))
+>>> code.co_argcount, code.co_varnames[:code.co_argcount]
+(0, ())
+>>> def func(a, b, *pargs, **kargs): pass
+>>> code = func.__code__
+>>> code.co_argcount, code.co_varnames[:code.co_argcount]
+(2, ('a', 'b'))
+```
+
+Starred names in a call are flattened before the function starts, so the decorator never sees them. Nesting is the last caveat. The decorator analyzes names from the function's definition. A nested wrapper has its own call signature, so the names no longer match. In nested use, only the innermost validation runs in full. The outer levels can check only keyword arguments. Proxies change the signatures, so positional checks get lost.
+
+### Decorator arguments versus function annotations
+
+Python's annotations offer another way to state range limits. An annotation is an expression written in the `def` header. Python stores annotations in a dictionary on the function. You could write the limits in the header instead of in decorator arguments:
+
+```python
+@rangetest(a=(1, 5), c=(0.0, 1.0))
+def func(a, b, c):  # func = rangetest(...)(func)
+    print(a + b + c)
+```
+
+```python
+@rangetest
+def func(a:(1, 5), b, c:(0.0, 1.0)):
+    print(a + b + c)
+```
+
+The annotation version still needs a decorator to wrap the function. It also needs one less level of nesting, because it does not keep decorator arguments as state. Both versions can be seen in this skeleton:
+
+```python
+# Using decorator arguments
+def rangetest(**argchecks):
+    def onDecorator(func):
+        def onCall(*pargs, **kargs):
+            print(argchecks)
+            for check in argchecks:
+                pass  # Add validation code here
+            return func(*pargs, **kargs)
+        return onCall
+    return onDecorator
+
+@rangetest(a=(1, 5), c=(0.0, 1.0))
+def func(a, b, c):  # func = rangetest(...)(func)
+    print(a + b + c)
+
+func(1, 2, c=3)  # Runs onCall, argchecks in scope
+
+# Using function annotations
+def rangetest(func):
+    def onCall(*pargs, **kargs):
+        argchecks = func.__annotations__
+        print(argchecks)
+        for check in argchecks:
+            pass  # Add validation code here
+        return func(*pargs, **kargs)
+    return onCall
+
+@rangetest
+def func(a:(1, 5), b, c:(0.0, 1.0)):  # func = rangetest(func)
+    print(a + b + c)
+
+func(1, 2, c=3)  # Runs onCall, annotations on func
+```
+
+Both forms see the same test information. The decorator-argument version keeps it in an enclosing scope, and the annotation version keeps it on the function as an attribute:
+
+```text
+$ python3 decoargs-vs-annotation.py
+{'a': (1, 5), 'c': (0.0, 1.0)}
+6
+{'a': (1, 5), 'c': (0.0, 1.0)}
+6
+```
+
+Annotations limit the utility of the tool. Each parameter can carry only one annotation expression, so the function is committed to a single role. Range checks would block other uses, such as type hints. Decorator arguments stay outside the function. They are easier to remove, and nested decorators can apply several steps to one function. The function itself keeps a normal appearance.
+
+If you have a single purpose in mind, the choice is largely a matter of style. One programmer's decoration may be another's syntactic clutter.
+
+## Decorators summary
+
+Decorators insert code that runs when a function or class is defined. When a decorator is used, Python rebinds the name to the callable that the decorator returns. That hook lets you manage functions and classes themselves, or the calls and instances that come later. Wrapper logic catches the later calls, so you can augment both function calls and instance interfaces. Decorators give you an explicit and uniform way to do this.
+
+Class decorators can also manage classes rather than only their instances. Decorator state can live in closures, class attributes or function attributes. Each choice has a cost, so pick the one that fits the job.
+
 ## Checkpoint questions
 
 <details>
@@ -4339,6 +6465,17 @@ Chapter 39 of the book covers decorators, which run when functions and classes a
 
 </details>
 
+<details>
+<summary>Five questions to review decorators</summary>
+
+1. What two steps does `@decorator` above a `def` perform, and what does `F = decorator(F)` show?
+2. Why does a class-based decorator fail on methods, and what does a nested function change?
+3. How would you rewrite the timer decorator so it works on both functions and methods?
+4. How would you make a `Private` class decorator skip all wrapping when Python runs with `-O`?
+5. How would you generalize the range tester so one code base handles several kinds of argument checks?
+
+</details>
+
 ## Sources and review notes
 
 - Source: *Learning Python*, 6th edition (`learning-python-6th-edition`). Chapters used are listed in each section.
@@ -4346,3 +6483,4 @@ Chapter 39 of the book covers decorators, which run when functions and classes a
 - Source: *Learning Python*, 6th edition (`learning-python-6th-edition`), Chapter 35, "Exception Objects". Used for the exception objects, built-in exception classes, custom displays and state, and exception groups sections.
 - Source: *Learning Python*, 6th edition (`learning-python-6th-edition`), Chapter 37, "Unicode and Byte Strings". Used for the Unicode and byte strings, encodings, text and binary files, Unicode tools, defaults, BOM and normalization sections.
 - Source: *Learning Python*, 6th edition (`learning-python-6th-edition`), Chapter 38, "Managed Attributes". Used for the managed attributes, properties, descriptors, `__getattr__` and `__getattribute__`, and attribute validation sections.
+- Source: *Learning Python*, 6th edition (`learning-python-6th-edition`), Chapter 39, "Decorators". Used for the decorator basics, function and class decorators, decorator nesting and arguments, state retention, method decoration, timing, singleton, interface tracing, private and public attributes, built-in delegation and argument validation sections.
