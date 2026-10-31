@@ -165,6 +165,14 @@ When a job slows down or a node drops out, you need the right slice of the journ
 
 Notice that `-S` takes a relative time, such as `-4h`, or an absolute one. Use `-p` to filter by severity, where 0 is the most severe and 7 the least.
 
+Boot filters need a habit of their own. `journalctl -b` shows the current boot, from its start until now. Add an offset such as `-1` to step back to the previous boot. To see the boot IDs and their time ranges, run `journalctl --list-boots`. The `-k` option then shows kernel messages, with or without a particular boot selected.
+
+```bash
+$ journalctl --list-boots
+-1 e598bd09e5c046838012ba61075dccbb Fri 2019-03-22 17:20:01 EDT—Fri 2019-04-12 08:13:52 EDT
+0 5696e69b1c0b42d58b9c57c31d8c89cc Fri 2019-04-12 08:15:39 EDT—Fri 2019-08-02 19:17:01 EDT
+```
+
 Trusted fields begin with an underscore, such as `_SYSTEMD_UNIT`, `_PID`, `_UID` and `_HOSTNAME`. The client cannot forge them, because journald adds them from kernel-verified credentials. Fields without an underscore, such as `MESSAGE`, `SYSLOG_IDENTIFIER` and `PRIORITY`, come from the sender, so treat them as the sender's claim. Reading the full journal needs root, or membership in `adm` or `systemd-journal`. For text logs, the classic tools still apply: `grep`, `less +F`, `tail -F`, which follows through rotation, `zgrep` for rotated `.gz` files, `awk`, and `sort | uniq -c | sort -rn` to count messages by type. `tail -f` is fine for watching one service while you debug, but it is not monitoring. A person watching a stream will miss things.
 
 On GPU nodes, a few reading habits pay off. Filter kernel messages for hardware and driver faults with `journalctl -k | grep -iE 'xid|nvrm|nvidia|mce|edac|nvme|pcie|aer|oom|segfault|tainted|call trace'`. Check the errors of the last boot with `journalctl -b -p err`. Look at the scheduler and its Munge daemon with `journalctl -u slurmd -u munge --since -2h`. Search for memory kills with `grep -E 'Out of memory|oom-kill' /var/log/kern.log`. Check login history with `last -x`, and failed attempts with `lastb | head`. Finally, find failed SSH logins with `journalctl _COMM=sshd -g 'Failed'`.
@@ -239,6 +247,8 @@ Before you add a log source, decide which alert it feeds, so the source has a re
 
 Treat logging as a pipeline, not a file. Standardise formats where you can, using JSON lines with a consistent schema. Keep time in UTC, and put a request or job ID in every message. Avoid multi-line stack traces, because they break line-based shippers. If you must log them, use the shipper's multiline parser. Never rely on a human tailing a file. Finally, remember the trust model. The sender's claim about who it is can be false unless the transport authenticates it.
 
+Trust is the last piece. The original syslog had no authentication to speak of. A server simply believed whatever machine or program sent it a message. Those messages also travelled unencrypted, so anyone snooping on the network could read them. That was a serious risk on networks with strict security needs. Modern syslog servers can encrypt a message and authenticate the machine that sent it. Individual applications are less clear. How can you be sure that the program calling itself your web server really is the web server? Ask that question before you trust a log line.
+
 Before you ship a log, check that a machine can parse each line without help from a person.
 
 ## 6. Time
@@ -258,6 +268,14 @@ Three clocks matter. `CLOCK_REALTIME` is wall time, and it jumps when someone se
 ### Time zones
 
 The zone comes from `/etc/localtime`, which is a link to, or a copy of, a binary file under `/usr/share/zoneinfo/`. That directory holds the IANA tz database, with names such as `UTC`, `America/New_York` and `Asia/Kolkata`. Set the zone with `timedatectl set-timezone UTC`, or with `ln -sf /usr/share/zoneinfo/UTC /etc/localtime`. List the names with `timedatectl list-timezones`. For a single shell or command, set the `TZ` variable instead, as in `TZ=Asia/Kolkata date` or `export TZ=UTC`. Cron and systemd timers read their schedules in the zone they run in, and timers accept an explicit zone in `OnCalendar`. Daylight-saving changes can make cron jobs run twice, or not at all, in some regions. That is one more reason to run servers in UTC.
+
+The kernel keeps one number, and user-space programs turn it into a readable time. They apply the local zone and handle daylight saving, along with any other odd local rules. The zone comes from `/etc/localtime`, a binary file, so do not try to read it. Zone files live in `/usr/share/zoneinfo`, which holds many zones and aliases. Copy one of those files to `/etc/localtime`, link to one, or use your distribution's tool. The `tzselect` command can help you find the right name. To try a zone in one shell, set the `TZ` variable. To use it for a single command, put `TZ` in front of that command.
+
+```bash
+$ export TZ=US/Central
+$ date
+$ TZ=US/Central date
+```
 
 These commands show and set the clock, the zone and the RTC.
 

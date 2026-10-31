@@ -469,6 +469,14 @@ Logs used to live in a file on a server's disk. Fewer workloads and fewer instan
 
 This section covers how logs move from the platform and its tenant workloads to a storage backend. Most companies already run a log backend, so the platform's job is to capture, process, and forward logs to it. Storage itself is usually not the platform's concern.
 
+### What your application should log
+
+Applications should write logs to standard out and standard error. That keeps the app simple, and the platform can ship those streams to a central place with the least work. The harder question is what to write. Teams often log too much. Too much logging buries the one line that matters. Too little leaves you blind during an incident. The book's rule of thumb is to ask whether the message is actionable. If someone could act on it, log it. If not, it probably adds noise.
+
+Logs come in two styles. Unstructured logs are plain strings with no fixed format. They need no planning, which is why they are so common. Structured logs have fixed fields that you must fill in every time. They usually take the form of JSON lines or key-value pairs. A structured line can look like `time="2015-08-09T03:41:12-03:21" msg="hello world!" thread="13" batchId="5"`. Machines can query structured logs much more easily. People find them harder to read, so pick the style that fits how your team works.
+
+Context makes a log line useful. Take a payment service. When a payment fails because the payee is not found, the error alone is not enough. Add the payee name or ID, the ID of the user who tried to pay, and the payment amount. That context helps you troubleshoot and prevent the next failure. Keep sensitive data out, though. A password or card number should never appear in a log.
+
 ### Architecture
 
 Containers write stdout/stderr → runtime files `/var/log/pods/...` (5.9) → **node agent** DaemonSet (Fluent Bit, Vector, Promtail/Grafana Alloy, Fluentd, Filebeat) tails files, parses (JSON/CRI), enriches with Kubernetes metadata (namespace, pod, labels, node), filters/redacts, and ships to a backend: **Loki** (label-indexed, cheap, object-storage backed), **Elasticsearch/OpenSearch** (full-text), **ClickHouse**, cloud logging (Cloud Logging, CloudWatch), or Splunk. Node-level logs: journald (`kubelet`, `containerd`, kernel `dmesg` with Xid messages), audit logs from API server, and application files in volumes.
@@ -577,6 +585,92 @@ A platform that offers tracing needs a few components in place. The models below
 - **User interface:** the layer app developers use. It queries the API and shows the data in charts they can use to study their systems.
 
 Tracing only works if the application sends the data. Get buy-in from application teams early, because the best platform cannot trace what apps do not send.
+
+### Instrumenting services for distributed tracing
+
+Tracing shows how one request moves across several services. The platform can offer tracing with Jaeger or Zipkin. But the services must still be instrumented before they produce useful traces. The book works through Jaeger with OpenTracing, using Go. A span is one named, timed operation, and spans make up a trace. The work has three parts: initialize a tracer, create spans, and propagate the span context to the next service.
+
+Start with the tracer. Its configuration should come from the environment, such as `JAEGER_SERVICE_NAME` for the service name, rather than from hardcoded values. The tracer can also report to your metrics library and your logger. It emits metrics about sampled traces and reported spans, and it logs errors. A logger that prints spans is handy in development. Here is a Go service that does this with Prometheus and the standard logger:
+
+```go
+package main
+
+import (
+    "log"
+
+    jaeger "github.com/uber/jaeger-client-go"
+    "github.com/uber/jaeger-client-go/config"
+    "github.com/uber/jaeger-lib/metrics/prometheus"
+)
+
+func main() {
+    // app initialization code...
+    metricsFactory := prometheus.New()
+    cfg := config.Configuration{}
+    tracer, closer, err := cfg.NewTracer(
+        config.Metrics(metricsFactory),
+        config.Logger(jaeger.StdLogger),
+    )
+    if err != nil {
+        log.Fatalf("error initializing tracer: %v", err)
+    }
+    defer closer.Close()
+    // continue main()...
+}
+```
+
+The code creates a Prometheus metrics factory for Jaeger. It builds a default configuration with no hardcoded values. Then it creates the tracer from that configuration, with the factory and the standard logger.
+
+When a request arrives, the service must read the span context that the previous service sent. In an HTTP service, that context travels in headers. The handler extracts it and starts a child span. The tracer from the previous step must be in scope:
+
+```go
+func (s server) handleListPayments(w http.ResponseWriter, req *http.Request) {
+    spanCtx, err := s.tracer.Extract(
+        opentracing.HTTPHeaders,
+        opentracing.HTTPHeadersCarrier(req.Header),
+    )
+    if err != nil {
+        // handle the error
+    }
+    span := opentracing.StartSpan(
+        "listPayments",
+        ext.RPCServerOption(spanCtx),
+    )
+    defer span.Finish()
+}
+```
+
+Inside the request, the service can add child spans. If a function runs a SQL query, that function can start its own span and name it:
+
+```go
+func listPayments(ctx context.Context) ([]Payment, error) {
+    span, ctx := opentracing.StartSpanFromContext(ctx, "listPayments")
+    defer span.Finish()
+    // run sql query
+}
+```
+
+When this service calls another one, it must pass the trace context along. The OpenTracing helpers inject the context into the outgoing HTTP headers. The client side marks the span as an RPC client call, records the URL and method, and then injects the context into the request:
+
+```go
+req, err := http.NewRequest("GET", serviceURL, nil)
+if err != nil {
+    // handle error
+}
+// inject context into the request's HTTP headers
+ext.SpanKindRPCClient.Set(span)
+ext.HTTPUrl.Set(span, url)
+ext.HTTPMethod.Set(span, "GET")
+span.Tracer().Inject(
+    span.Context(),
+    opentracing.HTTPHeaders,
+    opentracing.HTTPHeadersCarrier(req.Header),
+)
+// send the request
+resp, err := http.DefaultClient.Do(req)
+```
+
+The `ext.SpanKindRPCClient.Set` call tags the span as the client side of a service call. The `Inject` call writes the span context into the request headers. Tagging, logging and baggage are more features to explore after these basics. If your platform team offers tracing as a service, these three steps are what your app needs to take part.
 
 ## 6. Dashboards
 
@@ -849,6 +943,7 @@ When you view a `p99` latency spike on a Grafana panel (with Exemplars enabled),
 - **Sources read in full:**
   - `production-kubernetes` — Josh Rosso, Rich Lander, Alexander Brand & John Harris, *Production Kubernetes*, **Chapter 9: Observability** (read in full: logging mechanics, node-agent vs sidecar log forwarding `Figure 9-1`, Kubernetes `audit.k8s.io/v1` `Policy` `Example 9-1`, Kubernetes `Events` `Examples 9-2 & 9-3`, Prometheus pull model vs `Pushgateway` `Figure 9-2`, Prometheus Operator CRDs `Prometheus`/`ServiceMonitor`/`PrometheusRule`/`Alertmanager` `Examples 9-4 to 9-7`, Federation `Figure 9-3` vs `Thanos` `Figure 9-4`, Dead Man's Switch alert, Requests vs Consumption showback `Figure 9-5`, and `OpenTracing`/`OpenCensus` -> `OpenTelemetry` / `Jaeger` distributed tracing).
   - `nvidia-devops` (`volume-03/01-k8s-control-plane-scheduling-masterclass.md` and `volume-10`): control-plane, APF, and GPU cluster telemetry.
+- `production-kubernetes` — Josh Rosso, Rich Lander, Alexander Brand & John Harris, *Production Kubernetes*, **Chapter 14: Application Considerations** (read in full: structured and unstructured logs, log context, Prometheus `/metrics` instrumentation with the four metric types, USE, RED, golden signals and app-specific metrics, and OpenTracing/Jaeger tracer, span and propagation code).
 - **Run here:** `python3 code/part05/k8s_observability_slo_sim_lab.py` (3 passed, 0 failed).
 - **Explicitly labelled inferences:** The `evaluate_slo_multiwindow_burn_rate`, `estimate_prometheus_series_cardinality`, and `compute_showback_requests_vs_consumption` models in `code/part05/k8s_observability_slo_sim.py` and the `vllm` `ServiceMonitor`, `gpu-alerts` `PrometheusRule`, SLO burn-rate rules, and `Fluent Bit` ConfigMap are the author's constructions synthesizing `PK` Chapter 9, the Google SRE Workbook, and upstream Prometheus/Loki/OTel/DCGM documentation (plus original study items 21, 22, 23, 24, 25, 26, 27, 28, 29, 30, 31, 32, 33, 34, and 35).
 - **Not verified on live hardware:** Live `kube-prometheus-stack`, `dcgm-exporter`, `Fluent Bit`, `Loki`, and `OpenTelemetry Collector` executions (`40%` throughput drop, `1h` Event TTL, `15-30 s` scrape interval, `2 h` TSDB blocks, `15d` retention, `200Gi` PVC, `85°C` GPU temp, `14.4` and `6` burn rates on `99.5%` 30d SLO, `50MB` `Mem_Buf_Limit`, `1-2 bytes/sample`, ports `9100`/`9400`/`10250`) are marked (`untested here`) where not executed by `k8s_observability_slo_sim_lab.py`.

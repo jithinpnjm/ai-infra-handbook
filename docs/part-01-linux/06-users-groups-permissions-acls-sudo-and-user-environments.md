@@ -115,7 +115,15 @@ groups alice      # the same, names only
 getent group projx  # query through the C library, including network sources (section 9)
 ```
 
+Leave group passwords alone. Unix group passwords are hardly ever used, and you should not set one. In most cases, `sudo` is the better tool for granting access. The GID must be unique within the group file, because that number goes into each user's passwd entry. Any user whose passwd line names that GID belongs to the group, even when the member list leaves them out.
+
 Many distributions create a **user-private group** for each new user, with the same name and number as the user. So alice has primary group alice. That sounds odd, but it makes sharing safe by default. A file is group-owned by a group that contains only you, so a permissive group-write bit does not expose it to anyone else. This is also why the default umask on such systems can be `002` (section 3).
+
+### Why `/etc` is split into subdirectories
+
+For decades, every program and service dropped its configuration files straight into `/etc`. The directory filled up fast, and two problems followed. Files were hard to find on a running system, and the system was hard to maintain. Suppose you customize the `sudo` rules in `/etc/sudoers`. A distribution upgrade can overwrite that file, and your changes disappear with it.
+
+The trend for years has been to move configuration into subdirectories. The fix is to keep your additions in separate files inside those directories, such as the ones in `/etc/grub.d`, so upgrades leave them alone. Run `ls -F /etc` and most of what you see will be subdirectories. Settings for one machine, such as the user table (`/etc/passwd`) and network details (`/etc/network`), still belong in `/etc`. General application defaults do not. Prepackaged system defaults that you should not customize, such as the systemd unit files in `/usr/lib/systemd`, live elsewhere.
 
 ## 2. Managing users and groups
 
@@ -134,6 +142,8 @@ id alice ; getent passwd alice                             # verify
 ```
 
 On Debian and Ubuntu, `adduser` and `addgroup` are friendlier front ends. `useradd` is the portable low-level tool, and it works the same way on most systems.
+
+Hand editing is a poor default, even for root. A single typo can lock someone out. Another tool may also change the same file at the same moment, and then the two edits collide. The commands above avoid both problems. If a file is really corrupted and you must edit it directly, use `vipw`. It backs up and locks `/etc/passwd` while you work, and `vipw -s` does the same for `/etc/shadow`. You should seldom need either.
 
 :::warning The classic `usermod` mistake
 `usermod -G projx alice` **replaces** alice's supplementary groups with only projx, silently removing her from `sudo`, `docker` and the rest. You almost always want **`-aG`**, where `-a` means append. Group membership is also read only at **login**. After you add someone to a group, their existing sessions do not see the change. They must log in again, or run `newgrp projx`, or use `su - alice` in a test.
@@ -301,6 +311,8 @@ When you run a setuid program, the euid becomes the file owner's. The ruid stays
 ### Why setuid is dangerous: security implications
 
 Every setuid-root program is a place where an ordinary user's input crosses into root's authority. That makes the risk severe. Two things need control: how many such programs exist, and what each one does. A copy of a shell with the setuid-root bit set gives any local user a root shell. A bug in a legitimate setuid program becomes a privilege-escalation vulnerability, and attackers exploit those to break into systems. Audit the system from time to time with `find / -xdev -perm -4000 -type f 2>/dev/null`. You can also limit where setuid files can be created. Mount user-writable filesystems, such as home directories, `/tmp` and container volumes, with the `nosuid` option. For the same reason, containers should not run with extra capabilities, and they should drop setuid binaries (chapters 5.1 and 18.3).
+
+Both the number of setuid programs and their quality matter, along with what each one does. A copy of `bash` made setuid root would give any local user the whole system, and nothing more is needed. Even a special-purpose setuid-root program is risky when it contains a bug. Attackers get into systems mainly by exploiting weaknesses in programs that run as root, and the list of such exploits is very long. Because there are so many ways in, stopping intrusion takes several layers. One of the most essential is to enforce user authentication with usernames and good passwords.
 
 ### Identification, authentication, authorization
 

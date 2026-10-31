@@ -411,6 +411,93 @@ The reference implementation is X.Org. Modern versions detect hardware automatic
 
 Sessions usually start in one of two ways. Rarely, you start one by hand. `startx` starts the server, plus a script that starts the clients. That script lives in `~/.xsession` or `/etc/X11/Xsession.d/`, and the server stops when the script ends. Normally the server runs as a service, with a display manager as its only client. Display managers include `xdm`, `gdm`, `kdm` and `lightdm`. The display manager shows a graphical login, offers a choice of language and window manager or desktop, and starts the session after a successful login. The `xdm` files are in `/etc/X11/xdm/`, and the `gdm` files are in `/etc/gdm/`.
 
+### Customizing Xorg with `xorg.conf`
+
+Most of the time, the X server detects your hardware correctly, and you never open its configuration file. Sometimes it guesses wrong, or you need to give it a hint. That is when you edit `/etc/X11/xorg.conf`. The file is split into sections. Each section starts with the keyword `Section` and ends with `EndSection`.
+
+The `ServerFlags` section sets the options the X server starts with. On most distributions, window managers set these options, so they often live outside `xorg.conf`. In the example below, `AllowMouseOpenFail` lets the server start even when no mouse is present. `ZapWarning` makes the server sound a long beep when you press Ctrl-Alt-Backspace, instead of stopping. Press Ctrl-Alt-Backspace again, and the server stops.
+
+```text
+Section "ServerFlags"
+Option "AllowMouseOpenFail" "on"
+Option "ZapWarning" "on"
+EndSection
+```
+
+The `Files` section gives the paths the server needs, such as the font directories. Fonts can also sit on another computer that runs an X Font Server (XFS). The `Module` section lists the modules the server loads at startup.
+
+```text
+Section "Files"
+FontPath "/usr/share/fonts/misc:unscaled"
+FontPath "/usr/share/fonts/local"
+.....
+EndSection
+
+Section "Module"
+Load "dri"
+Load "glx"
+....
+EndSection
+```
+
+Each keyboard and mouse gets its own `InputDevice` section, and the `Identifier` tells them apart. Take a keyboard that switches between US and Russian layouts. The `XkbLayout` option lists the layouts, and `XkbOptions` sets the key combination that switches them, here Ctrl+Shift. It also makes the Scroll indicator light up when the Russian layout is active. The `Driver "kbd"` line applies only in graphical mode. Consoles and terminals are handled by the terminal driver built into the kernel. In the mouse section, `ZAxisMapping "4 5"` controls the mouse wheel. If you swap the 4 and the 5, scrolling runs the other way.
+
+```text
+Section "InputDevice"
+Driver "kbd"
+Identifier "Keyboard[0]"
+Option "XkbLayout" "us,ru"
+Option "XkbOptions" "grp:ctrl_shift_toggle,grp_led:scroll"
+EndSection
+
+Section "InputDevice"
+Driver "mouse"
+Identifier "Mouse[1]"
+Option "Buttons" "9"
+Option "Device" "/dev/input/mice"
+Option "Protocol" "explorerps/2"
+Option "ZAxisMapping" "4 5"
+EndSection
+```
+
+The output side uses three sections. The `Device` section describes the video card and its driver. The `Monitor` section gives the physical limits of the screen, such as the sync ranges. The `Screen` section ties a device and a monitor together, and it sets the color depth and the resolutions. You need at least one of each set. If several monitors are connected, create a set for each device. A `ServerLayout` section then combines the keyboards, mice and screens into one working setup. If you have several keyboards or monitors, you can define several layouts.
+
+```text
+Section "Device"
+Identifier "Intel Video Controller"
+Driver "i810"
+EndSection
+
+Section "Monitor"
+Identifier "Universal Monitor"
+Option "DPMS"
+HorizSync 28-64
+VertRefresh 43-60
+EndSection
+
+Section "Screen"
+Identifier "Default Screen"
+Device "Intel Video Controller"
+Monitor "Universal Monitor"
+DefaultDepth 24
+SubSection "Display"
+Depth 16
+Modes "1280x1024" "1024x768" "800x600"
+EndSubSection
+SubSection "Display"
+Depth 24
+Modes "1280x1024" "1024x768" "800x600"
+EndSubSection
+EndSection
+
+Section "ServerLayout"
+Identifier "Default Layout"
+Screen "Default Screen"
+InputDevice "Generic Keyboard"
+InputDevice "Configured Mouse"
+EndSection
+```
+
 ### Using X from a Windows or Mac workstation
 
 You need an X server on the machine in front of you. On Windows, there are commercial products and free ones. For years, the popular free choice was Xming, which has an OpenGL variant and a launch tool. Its modern relative is `VcXsrv`. Typical flags include the display number, `-clipboard` to share the clipboard, and `-multiwindow`, which makes each remote window a local window. Keyboard-layout options are also available. The Windows firewall may ask to open ports for the server, so restrict that rule to the machines that will use it. On macOS, XQuartz plays this role.
