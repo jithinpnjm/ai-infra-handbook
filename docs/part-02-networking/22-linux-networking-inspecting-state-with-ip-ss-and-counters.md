@@ -264,6 +264,56 @@ Read `Recv-Q` and `Send-Q` together with the socket's state. On a listening sock
 
 **RPC** lets a client call functions on a remote server, identified by program numbers. The **rpcbind** service (the portmapper, on TCP/UDP 111) maps those program numbers to ports. NFS (v3) and NIS depend on it, but NFSv4 does not need rpcbind. `rpcinfo -p host` lists the services a host offers. Rpcbind is a common unwanted exposure, as chapter 2.21 explains, so disable it on any machine that does not need NFS v3 or NIS.
 
+### Learning the socket interface
+
+If you write network programs, the socket interface is the tool you must learn. A process needs only a few system calls to read and write a connection. The manual pages `recv(2)` and `send(2)` describe them. The classic guide is W. Richard Stevens' *Unix Network Programming*, Volume 1, third edition, written with Bill Fenner and Andrew M. Rudoff. Volume 2 also covers interprocess communication.
+
+### Unix domain sockets
+
+Two programs on one machine often need to talk. They could send data through the loopback addresses `127.0.0.1` or `::1`, but they usually use a Unix domain socket instead. It behaves almost like a network socket. A process can listen, accept connections, and even pick a TCP-like or UDP-like socket type.
+
+Keep one idea in mind: a Unix domain socket is not a network socket. No network stands behind it, so you do not need networking configured to use one. It also does not have to live at a file path. A process can create an unnamed Unix domain socket and share its address with another process.
+
+Developers choose Unix domain sockets for two reasons. First, a socket file in the filesystem controls access. A process without permission to that file cannot connect. Second, the kernel skips many layers of its networking subsystem, so performance is usually much better. You will usually find the D-Bus socket file in `/var/run/dbus`:
+
+```bash
+$ ls -l /var/run/dbus/system_bus_socket
+srwxrwxrwx 1 root root 0 Nov 9 08:52 /var/run/dbus/system_bus_socket
+```
+
+Daemons such as systemd and NetworkManager use D-Bus to watch and react to system events. Some network servers offer a Unix domain socket too. The MySQL server, `mysqld`, accepts clients from remote hosts, and it also offers a Unix domain socket at `/var/run/mysqld/mysqld.sock`. To list the Unix domain sockets in use, run `lsof -U` as root:
+
+```bash
+# lsof -U
+COMMAND PID USER FD TYPE DEVICE SIZE/OFF NODE NAME
+mysqld 19701 mysql 12u unix 0xe4defcc0 0t0 35201227 /var/run/mysqld/mysqld.sock
+chromium- 26534 juser 5u unix 0xeeac9b00 0t0 42445141 socket
+tlsmgr 30480 postfix 5u unix 0xc3384240 0t0 17009106 socket
+tlsmgr 30480 postfix 6u unix 0xe20161c0 0t0 10965 private/tlsmgr
+...
+```
+
+Read the `NAME` column first. A path such as `/var/run/mysqld/mysqld.sock` names a socket file. The word `socket` marks an unnamed socket. Many applications use unnamed sockets, so the list can be long. Look for the program name you care about.
+
+### Who is using a port: `lsof -i`
+
+You have seen `lsof` track open files. It can also list the programs that use or listen on network ports. Run `sudo lsof -i` to see them all. As a regular user you see only your own processes. As root you see the whole system:
+
+```bash
+# lsof -i
+COMMAND PID USER FD TYPE DEVICE SIZE/OFF NODE NAME
+rpcbind 700 root 6u IPv4 10492 0t0 UDP *:sunrpc
+rpcbind 700 root 8u IPv4 10508 0t0 TCP *:sunrpc (LISTEN)
+avahi-dae 872 avahi 13u IPv4 21736375 0t0 UDP *:mdns
+cupsd 1010 root 9u IPv6 42321174 0t0 TCP ip6-localhost:ipp (LISTEN)
+ssh 14366 juser 3u IPv4 38995911 0t0 TCP thishost.local:55457->somehost.example.com:ssh (ESTABLISHED)
+chromium- 26534 juser 8r IPv4 42525253 0t0 TCP thishost.local:41551->anotherhost.example.com:https (ESTABLISHED)
+```
+
+Read the output from the top. The first rows are old-style RPC services. The `avahi` service provides multicast DNS, and `cupsd` is an IPv6-ready printer service. The last two rows are client connections: an SSH session, and a secure web connection from the Chromium browser. Long output is hard to scan, so filter it when you know the port you want.
+
+By default, `lsof` tries to turn every IP address into a hostname, and that slows the output. Add `-n` to skip the lookup. Add `-P` to skip the port-name lookup in `/etc/services`. Use `sudo lsof -n -i` on a busy host.
+
 ## 5. Counters: where packets disappear
 
 Many network problems are packets that never arrived, or that arrived late. Counters tell you which layer lost them. The diagram follows a received packet from the wire up to the application, and it marks where each layer records its drops.

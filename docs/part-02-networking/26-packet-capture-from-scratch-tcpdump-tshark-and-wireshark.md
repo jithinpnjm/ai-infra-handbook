@@ -106,6 +106,28 @@ sudo tcpdump -d 'tcp port 22'                     # show the compiled BPF byteco
 
 The flags do most of the work. The `-n` and `-nn` flags stop name lookups, which would otherwise slow the output. The `-w` flag writes to a file, which is safer than reading live. The `-C` and `-W` flags create a ring buffer, and `-G` rotates files on a timer.
 
+### What tcpdump shows on the wire
+
+Your system normally ignores traffic that is not addressed to one of its MAC addresses. To see everything that crosses the network, `tcpdump` puts the network interface card into promiscuous mode. It then reports every packet it sees. Running `tcpdump` with no arguments produces output like this, which includes an ARP request and a web connection:
+
+```bash
+# tcpdump
+tcpdump: listening on eth0
+20:36:25.771304 arp who-has mikado.example.com tell duplex.example.com
+20:36:25.774729 arp reply mikado.example.com is-at 0:2:2d:b:ee:4e
+20:36:25.774796 duplex.example.com.48455 > mikado.example.com.www: S 3200063165:3200063165(0) win 5840 <mss 1460,sackOK,timestamp 38815804[|tcp]> (DF)
+20:36:25.779283 mikado.example.com.www > duplex.example.com.48455: S 3494716463:3494716463(0) ack 3200063166 win 5792 <mss 1460,sackOK,timestamp 4620[|tcp]> (DF)
+20:36:25.779409 duplex.example.com.48455 > mikado.example.com.www: . ack 1 win 5840 <nop,nop,timestamp 38815805 4620> (DF)
+20:36:25.779787 duplex.example.com.48455 > mikado.example.com.www: P 1:427(426) ack 1 win 5840 <nop,nop,timestamp 38815805 4620> (DF)
+20:36:25.784012 mikado.example.com.www > duplex.example.com.48455: . ack 427 win 6432 <nop,nop,timestamp 4620 38815805> (DF)
+20:36:25.845645 mikado.example.com.www > duplex.example.com.48455: P 1:773(772) ack 427 win 6432 <nop,nop,timestamp 4626 38815805> (DF)
+20:36:25.845732 duplex.example.com.48455 > mikado.example.com.www: . ack 773 win 6948 <nop,nop,timestamp 38815812 4626> (DF)
+9 packets received by filter
+0 packets dropped by kernel
+```
+
+The first line is an ARP request, asking who owns an address, and the reply follows it. The remaining lines are the TCP packets of the web connection. The last two lines are the summary. They count the packets the filter matched and the packets the kernel dropped.
+
 ### Capture filter syntax (pcap-filter)
 
 A capture filter is an expression built from primitives. Each primitive can carry a qualifier, such as a type (`host`, `net`, `port` or `portrange`), a direction (`src`, `dst` or `src or dst`) and a protocol (`ether`, `ip`, `ip6`, `arp`, `tcp`, `udp`, `icmp`, `icmp6` or `vlan`). You join the pieces with `and`/`&&`, `or`/`||` and `not`/`!`, and group them with parentheses when the order matters.

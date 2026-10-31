@@ -181,6 +181,12 @@ Guaranteed, Burstable and BestEffort decide three things: cgroup placement, OOM 
 
 Size your reservations before you turn on enforcement, because a bad value kills system daemons.
 
+### CPU limits and throttling in multithreaded code
+
+CPU limits can behave in ways that surprise you. Take a container with a limit of 1 CPU. It gets 100 ms of CPU time in every 100 ms period, no matter how many threads it runs. A program with 5 busy threads can spend that whole 100 ms budget in its first 20 ms. The container is then throttled for the remaining 80 ms, even though the node may have idle CPU.
+
+The effect shows up as latency that comes and goes. The application looks fine on average, but requests that arrive late in a period wait longer. Keep this in mind when you set a low CPU limit on a multithreaded service, and test its latency under load before you ship it.
+
 ## 4. Resource managers: CPU, memory, topology, devices
 
 ### CPU Manager
@@ -352,6 +358,36 @@ Keep three kill mechanisms apart. The first is the **kernel OOM killer**, which 
 For AI nodes, set `evictionHard memory.available` large enough, several GiB, so the kubelet acts before the kernel OOM killer picks processes at random. Workloads with huge page cache and pinned memory can consume memory faster than the kubelet's housekeeping sample, which runs every 10 s. Prefer Guaranteed pods for important jobs. Keep `ephemeral-storage` requests on pods that write scratch data, so disk pressure does not arrive as a surprise.
 
 Pick the `evictionHard` memory value before a training job fills the node, not after the first OOM.
+
+### Reading an OOMKilled container
+
+Memory cannot be throttled the way CPU can. When a container uses more memory than its limit, the kernel has to stop the process. The container then restarts under its restart policy, and the pod records why. You can see that record with `kubectl describe pod`, in the `Last State` section.
+
+The output below comes from a container with a memory limit of 100Mi. Look at `Reason: OOMKilled` and the exit code. The `Restart Count` shows how many times the container has restarted.
+
+```
+$ kubectl describe pod memory
+Name:         memory
+Namespace:    default
+Priority:     0
+... <snip> ...
+Containers:
+  stress:
+... <snip> ...
+    Last State:     Terminated
+      Reason:       OOMKilled
+      Exit Code:    1
+      Started:      Fri, 23 Oct 2020 10:11:51 -0400
+      Finished:     Fri, 23 Oct 2020 10:11:56 -0400
+    Ready:          True
+    Restart Count:  1
+    Limits:
+      memory:     100Mi
+    Requests:
+      memory:     100Mi
+```
+
+When you see this reason, compare the memory limit with what the workload really uses at its peak. Change the limit, or the workload, before you assume the node is at fault.
 
 ## 7. Garbage collection and logs
 

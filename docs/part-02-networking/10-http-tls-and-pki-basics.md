@@ -103,6 +103,47 @@ curl --connect-timeout 3 --max-time 10 --retry 2 URL
 
 The `-w` timing output shows where the time goes. A long `time_namelookup` points to DNS. A long gap between `time_connect` and `time_appconnect` is the TLS handshake. A long gap before `time_starttransfer` is server processing, and for inference that means model latency. Start with this breakdown, because it shows which stage holds the delay for your request.
 
+### Reading a protocol trace
+
+A summary can hide the detail you need, so sometimes you must see the bytes. `curl --trace-ascii` writes a full log of the conversation to a file:
+
+```bash
+$ curl --trace-ascii trace_file http://www.example.org/
+```
+
+Open the file and read it from the top. The `==` lines are curl's own notes, and the first ones show the TCP connection being set up. Next comes the request, marked `=>` because curl sends it. The server's reply comes back marked `<=`:
+
+```text
+== Info: Trying 93.184.216.34...
+== Info: TCP_NODELAY set
+== Info: Connected to www.example.org (93.184.216.34) port 80 (#0)
+=> Send header, 79 bytes (0x4f)
+0000: GET / HTTP/1.1
+0010: Host: www.example.org
+0027: User-Agent: curl/7.58.0
+0040: Accept: */*
+004d:
+<= Recv header, 17 bytes (0x11)
+0000: HTTP/1.1 200 OK
+<= Recv header, 22 bytes (0x16)
+0000: Accept-Ranges: bytes
+<= Recv header, 12 bytes (0xc)
+0000: Age: 17629
+...
+<= Recv header, 22 bytes (0x16)
+0000: Content-Length: 1256
+<= Recv header, 2 bytes (0x2)
+0000:
+<= Recv data, 1256 bytes (0x4e8)
+0000: <!doctype html>.<html>.<head>. <title>Example Domain</title>.
+0040: . <meta charset="utf-8" />. <meta http-equiv="Content-type
+...
+```
+
+The hexadecimal numbers such as `0000:` are offsets that curl adds to track how many bytes moved. They are not part of the data. curl does not count headers toward the offsets, which is why the offsets restart at zero after the headers. A blank line marks the end of the headers in HTTP. When curl reads that blank line, it knows that everything after it is the requested document.
+
+This split tells you something important about the application layer. The operating system and the network handle the headers and the document in exactly the same way. The difference exists only inside the user-space `curl` program. The server works the same way in reverse: its kernel does not separate headers from document data.
+
 ## 2. Security goals and cryptographic building blocks
 
 Suppose an attacker controls the Wi-Fi network your client uses. Transport security is the set of protections that keeps your traffic safe on a network like that. It addresses four problems. It proves that data was not altered in transit. It stops others from reading the data. It proves who you are talking to. It also protects users' privacy from traffic analysis, sometimes called data exhaust.

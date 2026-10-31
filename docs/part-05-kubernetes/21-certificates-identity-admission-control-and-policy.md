@@ -454,6 +454,254 @@ In *Kubernetes: Up and Running* Chapter 19 (*Securing Applications in Kubernetes
 
 GPU/HPC realities: many GPU stacks need exceptions: the **GPU Operator, device plugin, DCGM exporter, NVIDIA driver containers, Network Operator, CNI agents, CSI node plugins, node-problem-detector** require privileged/hostPath/hostNetwork and live in dedicated system namespaces labelled `privileged`. Tenant training pods can usually meet `baseline` (no hostPath/privileged; GPUs via device plugin) and often `restricted` with `runAsNonRoot` images; RDMA workloads need `IPC_LOCK` (baseline allows only a default capability set; `IPC_LOCK` is not in it, so requires a policy exception or a profile-level allowance via policy engine/namespace label). Document exceptions per namespace instead of weakening the cluster default.
 
+### Measuring a container's security with amicontained
+
+A manifest tells you what you asked for. It does not tell you what the container really gets. The `amicontained` tool, written by Jess Frazelle, answers the question "Am I contained?" It reports the container runtime, the namespaces, the AppArmor profile, the Linux capabilities, the seccomp status and the blocked syscalls. Start with a Pod that has no SecurityContext, so you have a baseline. Save this manifest as `amicontained-pod.yaml`.
+
+```yaml
+apiVersion: v1
+kind: Pod
+metadata:
+  name: amicontained
+spec:
+  containers:
+  - image: r.j3ss.co/amicontained:v0.4.9
+    name: amicontained
+    command: [ "/bin/sh", "-c", "--" ]
+    args: [ "amicontained" ]
+```
+
+Create the Pod and read its logs:
+
+```bash
+$ kubectl apply -f amicontained-pod.yaml
+pod/amicontained created
+$ kubectl logs amicontained
+Container Runtime: kube
+Has Namespaces:
+	pid: true
+	user: false
+AppArmor Profile: docker-default (enforce)
+Capabilities:
+	BOUNDING -> chown dac_override fowner fsetid kill setgid setuid setpcap net_bind_service net_raw sys_chroot mknod audit_write setfcap
+Seccomp: disabled
+Blocked Syscalls (21):
+	SYSLOG SETPGID SETSID VHANGUP PIVOT_ROOT ACCT SETTIMEOFDAY UMOUNT2
+	SWAPON SWAPOFF REBOOT SETHOSTNAME SETDOMAINNAME INIT_MODULE
+	DELETE_MODULE LOOKUP_DCOOKIE KEXEC_LOAD FANOTIFY_INIT
+	OPEN_BY_HANDLE_AT FINIT_MODULE KEXEC_FILE_LOAD
+Looking for Docker.sock
+```
+
+The output shows that the AppArmor runtime default is applied. It also lists the capabilities allowed by default, and seccomp is disabled. A total of 21 syscalls are blocked. Your output may look different, because Kubernetes distributions and managed services set different defaults.
+
+Now add seccomp, AppArmor and capabilities to the Pod. Save this manifest as `amicontained-pod-securitycontext.yaml`. It asks for the runtime default AppArmor and seccomp profiles, and it adds one capability and drops another.
+
+```yaml
+apiVersion: v1
+kind: Pod
+metadata:
+  name: amicontained
+  annotations:
+    container.apparmor.security.beta.kubernetes.io/amicontained: "runtime/default"
+spec:
+  securityContext:
+    runAsNonRoot: true
+    runAsUser: 1000
+    runAsGroup: 3000
+    fsGroup: 2000
+    seccompProfile:
+      type: RuntimeDefault
+  containers:
+  - image: r.j3ss.co/amicontained:v0.4.9
+    name: amicontained
+    command: [ "/bin/sh", "-c", "--" ]
+    args: [ "amicontained" ]
+    securityContext:
+      capabilities:
+        add: ["SYS_TIME"]
+        drop: ["NET_BIND_SERVICE"]
+      allowPrivilegeEscalation: false
+      readOnlyRootFilesystem: true
+      privileged: false
+```
+
+Delete the old Pod first, then apply the new manifest and read the logs:
+
+```bash
+$ kubectl delete pod amicontained
+pod "amicontained" deleted
+$ kubectl apply -f amicontained-pod-securitycontext.yaml
+pod/amicontained created
+$ kubectl logs amicontained
+Container Runtime: kube
+Has Namespaces:
+	pid: true
+	user: false
+AppArmor Profile: docker-default (enforce)
+Capabilities:
+	BOUNDING -> chown dac_override fowner fsetid kill setgid setuid setpcap net_raw sys_chroot sys_time mknod audit_write setfcap
+Seccomp: filtering
+Blocked Syscalls (67):
+	SYSLOG SETUID SETGID SETPGID SETSID SETREUID SETREGID SETGROUPS
+	SETRESUID SETRESGID USELIB USTAT SYSFS VHANGUP PIVOT_ROOT_SYSCTL ACCT
+	SETTIMEOFDAY MOUNT UMOUNT2 SWAPON SWAPOFF REBOOT SETHOSTNAME
+	SETDOMAINNAME IOPL IOPERM CREATE_MODULE INIT_MODULE DELETE_MODULE
+	GET_KERNEL_SYMS QUERY_MODULE QUOTACTL NFSSERVCTL GETPMSG PUTPMSG
+	AFS_SYSCALL TUXCALL SECURITY LOOKUP_DCOOKIE VSERVER MBIND SET_MEMPOLICY
+	GET_MEMPOLICY KEXEC_LOAD ADD_KEY REQUEST_KEY KEYCTL MIGRATE_PAGES
+	FUTIMESAT UNSHARE MOVE_PAGES PERF_EVENT_OPEN FANOTIFY_INIT
+	NAME_TO_HANDLE_AT OPEN_BY_HANDLE_AT SETNS PROCESS_VM_READV
+	PROCESS_VM_WRITEV KCMP FINIT_MODULE KEXEC_FILE_LOAD BPF USERFAULTFD
+	PKEY_MPROTECT PKEY_ALLOC PKEY_FREE
+Looking for Docker.sock
+```
+
+Seccomp moves from `disabled` to `filtering`, and the blocked syscalls rise from 21 to 67. The `sys_time` capability now appears in the list, and `net_bind_service` no longer does.
+
+Applying these controls by hand is hard. Every field must be right for every Pod, and a wrong AppArmor, seccomp or SELinux profile can break the application. Tools such as the Security Profiles Operator can generate and manage seccomp profiles for you.
+
+### Pod Security Standards in a namespace: a worked example
+
+Labels on a namespace apply a Pod Security Standard to every Pod in it. Before you enforce a standard on a busy namespace, check what would fail. A single server-side dry run reports every existing Pod that violates a level, without changing anything:
+
+```bash
+$ kubectl label --dry-run=server --overwrite ns \
+--all pod-security.kubernetes.io/enforce=baseline
+Warning: kuard: privileged
+namespace/default labeled
+namespace/kube-node-lease labeled
+namespace/kube-public labeled
+Warning: kube-proxy-vxjwb: host namespaces, hostPath volumes, privileged
+Warning: kube-proxy-zxqzz: host namespaces, hostPath volumes, privileged
+Warning: kube-apiserver-kind-control-plane: host namespaces, hostPath volumes
+Warning: etcd-kind-control-plane: host namespaces, hostPath volumes
+Warning: kube-controller-manager-kind-control-plane: host namespaces, ...
+Warning: kube-scheduler-kind-control-plane: host namespaces, hostPath volumes
+namespace/kube-system labeled
+namespace/local-path-storage labeled
+```
+
+This command checks all Pods in the cluster against the `baseline` standard and prints each violation as a warning. Next, try a namespace that enforces `baseline` and only warns and audits `restricted`. Pin every mode to `v1.22`, so the rules do not change when the cluster upgrades. Save this as `baseline-ns.yaml`:
+
+```yaml
+apiVersion: v1
+kind: Namespace
+metadata:
+  name: baseline-ns
+  labels:
+    pod-security.kubernetes.io/enforce: baseline
+    pod-security.kubernetes.io/enforce-version: v1.22
+    pod-security.kubernetes.io/audit: restricted
+    pod-security.kubernetes.io/audit-version: v1.22
+    pod-security.kubernetes.io/warn: restricted
+    pod-security.kubernetes.io/warn-version: v1.22
+```
+
+```bash
+$ kubectl apply -f baseline-ns.yaml
+namespace/baseline-ns created
+```
+
+This setup lets you run a lower posture today and see which workloads would fail the stricter standard. You fix those workloads first, and then you enforce `restricted`. Next, apply a plain Pod with no security settings. Save this as `kuard-pod.yaml`:
+
+```yaml
+apiVersion: v1
+kind: Pod
+metadata:
+  name: kuard
+  labels:
+    app: kuard
+spec:
+  containers:
+  - image: gcr.io/kuar-demo/kuard-amd64:blue
+    name: kuard
+    ports:
+    - containerPort: 8080
+      name: http
+      protocol: TCP
+```
+
+```bash
+$ kubectl apply -f kuard-pod.yaml --namespace baseline-ns
+Warning: would violate "v1.22" version of "restricted" PodSecurity profile:
+allowPrivilegeEscalation != false (container "kuard" must set
+securityContext.allowPrivilegeEscalation=false), unrestricted capabilities
+(container "kuard" must set securityContext.capabilities.drop=["ALL"]),
+runAsNonRoot != true (pod or container "kuard" must set securityContext.
+runAsNonRoot=true), seccompProfile (pod or container "kuard" must set
+securityContext.seccompProfile.type to "RuntimeDefault" or "Localhost")
+pod/kuard created
+```
+
+The Pod is created, even though it breaks the `restricted` standard. The warning lists each violation, so you know what to fix. The API server audit log also records the event, because `audit` mode is set:
+
+```json
+{"kind":"Event","apiVersion":"audit.k8s.io/v1","level":"Metadata","auditID":"...
+```
+
+Pod Security gives you one place to set the security posture of a namespace. It offers ready-made levels from permissive to restricted, and it lets you roll out a change without breaking workloads at the first step.
+
+### Benchmarking the cluster with kube-bench
+
+A cluster can drift away from a security baseline, one flag at a time, and nobody notices. `kube-bench` runs the CIS Kubernetes Benchmark checks against the cluster. It is not only about Pods, but it can expose misconfigurations in the cluster and point to the fix. Run it as a Job:
+
+```bash
+$ kubectl apply -f https://raw.githubusercontent.com/aquasecurity/kube-bench...
+job.batch/kube-bench created
+```
+
+Read the results and the remediations from the Pod logs:
+
+```bash
+$ kubectl logs job/kube-bench
+[INFO] 4 Worker Node Security Configuration
+[INFO] 4.1 Worker Node Configuration Files
+[PASS] 4.1.1 Ensure that the kubelet service file permissions are set to 644...
+[PASS] 4.1.2 Ensure that the kubelet service file ownership is set to root ...
+[PASS] 4.1.3 If proxy kubeconfig file exists ensure permissions are set to ...
+[PASS] 4.1.4 Ensure that the proxy kubeconfig file ownership is set to root ...
+[PASS] 4.1.5 Ensure that the --kubeconfig kubelet.conf file permissions are ...
+[PASS] 4.1.6 Ensure that the --kubeconfig kubelet.conf file ownership is set...
+[PASS] 4.1.7 Ensure that the certificate authorities file permissions are ...
+[PASS] 4.1.8 Ensure that the client certificate authorities file ownership ...
+[PASS] 4.1.9 Ensure that the kubelet --config configuration file has permiss...
+[PASS] 4.1.10 Ensure that the kubelet --config configuration file ownership ...
+[INFO] 4.2 Kubelet
+[PASS] 4.2.1 Ensure that the anonymous-auth argument is set to false (Automated)
+[PASS] 4.2.2 Ensure that the --authorization-mode argument is not set to ...
+[PASS] 4.2.3 Ensure that the --client-ca-file argument is set as appropriate...
+[PASS] 4.2.4 Ensure that the --read-only-port argument is set to 0 (Manual)
+[PASS] 4.2.5 Ensure that the --streaming-connection-idle-timeout argument is...
+[FAIL] 4.2.6 Ensure that the --protect-kernel-defaults argument is set to ...
+[PASS] 4.2.7 Ensure that the --make-iptables-util-chains argument is set to ...
+[PASS] 4.2.8 Ensure that the --hostname-override argument is not set (Manual)
+[WARN] 4.2.9 Ensure that the --event-qps argument is set to 0 or a level ...
+[WARN] 4.2.10 Ensure that the --tls-cert-file and --tls-private-key-file arg...
+[PASS] 4.2.11 Ensure that the --rotate-certificates argument is not set to ...
+[PASS] 4.2.12 Verify that the RotateKubeletServerCertificate argument is set...
+[WARN] 4.2.13 Ensure that the Kubelet only makes use of Strong Cryptographic...
+== Remediations node ==
+4.2.6 If using a Kubelet config file, edit the file to set protectKernel...
+If using command line arguments, edit the kubelet service file
+/etc/systemd/system/kubelet.service.d/10-kubeadm.conf on each worker node and
+set the below parameter in KUBELET_SYSTEM_PODS_ARGS variable.
+--protect-kernel-defaults=true
+Based on your system, restart the kubelet service. For example:
+systemctl daemon-reload
+systemctl restart kubelet.service
+4.2.9 If using a Kubelet config file, edit the file to set eventRecordQPS...
+If using command line arguments, edit the kubelet service file
+/etc/systemd/system/kubelet.service.d/10-kubeadm.conf on each worker node and
+set the below parameter in KUBELET_SYSTEM_PODS_ARGS variable.
+Based on your system, restart the kubelet service. For example:
+systemctl daemon-reload
+systemctl restart kubelet.service
+...
+```
+
+Each check shows `PASS`, `WARN` or `FAIL`. The remediation section tells you what to change and how to restart the service. Here, `4.2.6` fails, and the fix is to set `--protect-kernel-defaults=true` on each worker node. Run `kube-bench` again after each change to confirm the result.
+
 ## 5. Policy engines
 
 ### Kyverno

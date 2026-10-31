@@ -575,6 +575,55 @@ The `securityContext` sets rules at the container and pod level. Common fields a
 
 Enforce these rules with Pod Security Admission, covered in 5.21. It offers the `baseline` and `restricted` profiles. GPU and RDMA workloads often need a few exceptions. Grant those exceptions per namespace, not cluster-wide. Host namespaces, `hostNetwork`, `hostPID` and `hostIPC`, are for system DaemonSets. Some HPC jobs use `hostIPC` or `hostNetwork` for performance, but that weakens isolation.
 
+### Reading a SecurityContext in a running Pod
+
+A manifest shows what you asked for. Checking the running process shows what you actually got. *Kubernetes: Up and Running* (3rd edition, Chapter 19) uses one Pod to show both. The Pod sets a `securityContext` at the Pod level and again at the container level. When the same field appears in both places, the container-level value wins.
+
+```yaml
+apiVersion: v1
+kind: Pod
+metadata:
+  name: kuard
+spec:
+  securityContext:
+    runAsNonRoot: true
+    runAsUser: 1000
+    runAsGroup: 3000
+    fsGroup: 2000
+  containers:
+  - image: gcr.io/kuar-demo/kuard-amd64:blue
+    name: kuard
+    securityContext:
+      allowPrivilegeEscalation: false
+      readOnlyRootFilesystem: true
+      privileged: false
+    ports:
+    - containerPort: 8080
+      name: http
+      protocol: TCP
+```
+
+The `runAsNonRoot` field stops a container from starting as the root user. Running as a nonroot user is best practice. Many misconfigurations and exploits depend on the container runtime mixing up the container's root user with the host's root user. The `kuard` image runs as the user `nobody`, set in its Dockerfile. Many images from other sources do not set a user. You may need to extend their Dockerfile, and that does not always work, because the application may need more privileges.
+
+Save the manifest as `kuard-pod-securitycontext.yaml`, create the Pod, and open a shell inside the container:
+
+```bash
+$ kubectl create -f kuard-pod-securitycontext.yaml
+pod/kuard created
+$ kubectl exec -it kuard -- ash
+/ $ id
+uid=1000 gid=3000 groups=2000
+/ $ ps
+PID   USER     TIME  COMMAND
+    1 1000      0:00 /kuard
+   30 1000      0:00 ash
+   37 1000      0:00 ps
+/ $ touch file
+touch: file: Read-only file system
+```
+
+The shell runs as user ID `1000` and group ID `3000`, and it belongs to group `2000`. The `kuard` process runs as user `1000`, as the Pod specification asked. Creating a file fails because the container's root filesystem is read-only. If you only add these few fields to your workloads, you have made a good start.
+
 ### Lifecycle, termination and restart policy
 
 Pod termination runs as a sequence. The API sets `deletionTimestamp`. The endpoints controller removes the pod from Service endpoints, in parallel with the next step. The kubelet runs `preStop` hooks, sends `SIGTERM` to PID 1 of each container, and waits up to `terminationGracePeriodSeconds`. After that it sends `SIGKILL`.

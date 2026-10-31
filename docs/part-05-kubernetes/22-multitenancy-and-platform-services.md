@@ -117,6 +117,28 @@ spec:
 
 Behaviour: ResourceQuota is enforced at admission (creation fails with `exceeded quota`), counts requests of *all* pods (including Pending) in the namespace; if a quota covers compute resources, pods must specify requests/limits for those resources (LimitRange defaults help). Quotas on `count/*` protect the API server from object floods (thousands of Jobs/Pods/ConfigMaps). Quotas are namespace-bound; per-team quota across many namespaces needs hierarchical tools (HNC, Capsule) or Kueue cohorts.
 
+### RBAC bindings that keep tenants in their own Namespace
+
+Quotas limit how much a tenant can use. RBAC decides which API objects a tenant can read or change. Without RBAC, one team could edit another team's Deployments. To authorize a tenant, bind a Role or ClusterRole to the tenant's identity with a RoleBinding. The example below gives the `app1-viewer` group read access to the `app1` Namespace only.
+
+```yaml
+apiVersion: rbac.authorization.k8s.io/v1
+kind: RoleBinding
+metadata:
+  name: viewers
+  namespace: app1
+roleRef:
+  apiGroup: rbac.authorization.k8s.io
+  kind: ClusterRole
+  name: view
+subjects:
+- apiGroup: rbac.authorization.k8s.io
+  kind: Group
+  name: app1-viewer
+```
+
+The binding points at the built-in `view` ClusterRole. That role grants read-only access to Namespace-scoped resources. A RoleBinding that uses a ClusterRole still limits the grant to its own Namespace. Avoid ClusterRoleBindings for tenants unless you have a good reason, because they let a tenant use the bound role in every Namespace.
+
 ### Priority and fair sharing
 
 Combine **PriorityClasses** with **ResourceQuota scopeSelector** to cap how many high-priority pods a team may run (prevents priority abuse), and **Kueue** for dynamic GPU sharing: each team has a `ClusterQueue` with `nominalQuota`, can borrow idle quota from a `cohort`, and is preempted when owners reclaim (5.18). Provide a few **WorkloadPriorityClasses** (`production`, `high`, `normal`, `best-effort`). Provide **fair-share** weights so large teams don't starve small ones; show queue positions and wait times to users.

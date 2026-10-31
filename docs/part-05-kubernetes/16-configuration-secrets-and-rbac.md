@@ -101,6 +101,41 @@ flowchart LR
 
 For a config change to reach running pods, pick a rollout pattern now and wire the hash into the pod template.
 
+### Reading a ConfigMap back from the cluster
+
+A ConfigMap is only key-value pairs stored in an object. The quickest way to check what a workload will see is to read the object back. Suppose you want a ConfigMap called `my-config`. It holds a settings file and two literal values. You create it like this:
+
+```bash
+kubectl create configmap my-config --from-file=my-config.txt --from-literal=extra-param=extra-value --from-literal=another-param=another-value
+```
+
+Then ask the API server for the stored object in YAML form:
+
+```bash
+kubectl get configmaps my-config -o yaml
+```
+
+```yaml
+apiVersion: v1
+data:
+  another-param: another-value
+  extra-param: extra-value
+  my-config.txt: |
+    # This is a sample config file that I might use to configure an application
+    parameter1 = value1
+    parameter2 = value2
+kind: ConfigMap
+metadata:
+  creationTimestamp: ...
+  name: my-config
+  namespace: default
+  resourceVersion: "13556"
+  selfLink: /api/v1/namespaces/default/configmaps/my-config
+  uid: 3641c553-f7de-11e6-98c9-06135271a273
+```
+
+The file name becomes the key, `my-config.txt`, and the file contents become its value. The `|` marker keeps the multi-line text together as one block. The literal values appear as plain keys next to it. Kubernetes fills in metadata such as `creationTimestamp`, `resourceVersion` and `uid` for you. Use `-o yaml` to confirm the real contents before you blame the application.
+
 ## 2. Secrets
 
 A Secret looks much like a ConfigMap. Its `data` field holds base64-encoded values, and `stringData` accepts write-only plain text. Kubernetes treats it differently, though. When a Secret is mounted, it sits in tmpfs on the node, and the kubelet does not write it to disk. RBAC restricts it through its own `secrets` resource, and it is eligible for encryption at rest. The types are `Opaque`, `kubernetes.io/tls` (which uses `tls.crt` and `tls.key`), `kubernetes.io/dockerconfigjson` for image pulls, `kubernetes.io/basic-auth`, `kubernetes.io/ssh-auth`, `kubernetes.io/service-account-token` (the legacy type) and `bootstrap.kubernetes.io/token`.
@@ -262,6 +297,57 @@ When the `nginx` Pod leaves this host, the mount goes away with it. Keep Secret 
 The last model is client API consumption, and it is not a core Kubernetes feature. The application talks to the kube-apiserver to fetch Secrets itself. Frameworks and libraries can make this easier. For Java, Spring Cloud Kubernetes connects Spring's PropertySource type to Kubernetes, so the application can read Secrets and ConfigMaps.
 
 Be careful with this approach. The book generally discourages it. Even for ConfigMaps, it is less than ideal to have each application talk to the API server. We prefer applications that do not need to know where they run. An app that can run on a VM should also run on Kubernetes or another container service. Most languages already read environment variables and files, and the kubelet can deliver Secret data through those channels. Direct access adds another connection and another watch on the API server. Each workload then needs its own ServiceAccount with RBAC to read its Secrets. When the kubelet delivers Secrets, no ServiceAccount is needed, and the `default` ServiceAccount can and should be disabled altogether.
+
+### A TLS Secret mounted as files
+
+Secrets are easier to understand with a real case. Suppose the `kuard` app needs a TLS certificate and key to serve HTTPS. You should not bake those files into the image. Keeping them out of the image keeps the image portable, so it can run in any environment. You store the files in a Secret and mount them at run time instead.
+
+Start by creating the Secret from the two files, `kuard.crt` and `kuard.key`:
+
+```bash
+kubectl create secret generic kuard-tls --from-file=kuard.crt --from-file=kuard.key
+kubectl describe secrets kuard-tls
+```
+
+The output confirms that `kuard-tls` holds two data elements. It shows their sizes, not their contents:
+
+```
+Name:         kuard-tls
+Namespace:    default
+Labels:       <none>
+Annotations:  <none>
+
+Type:  Opaque
+
+Data
+====
+kuard.crt:  1050 bytes
+kuard.key:  1679 bytes
+```
+
+Each data element of a Secret becomes its own file under the mount point. The volume mount decides where that directory lives. In the book's example, the Pod mounts `kuard-tls` at `/tls` as read-only, so the container sees `/tls/kuard.crt` and `/tls/kuard.key`:
+
+```yaml
+volumeMounts:
+- name: tls-certs
+  mountPath: "/tls"
+  readOnly: true
+volumes:
+- name: tls-certs
+  secret:
+    secretName: kuard-tls
+```
+
+Create the Pod, then forward a local port to it:
+
+```bash
+kubectl apply -f kuard-secret.yaml
+kubectl port-forward kuard-tls 8443:8443
+```
+
+Open https://localhost:8443 in a browser. The browser warns about an invalid certificate. That happens because the certificate is self-signed for `kuard.example.com`. Accept the warning, and the `kuard` server loads over HTTPS. Then open the File system browser tab to find the files in the `/tls` directory.
+
+> **Warning:** The certificate and key in the book's demo are public, so they provide no real security. Use them only to learn how Secrets work.
 
 ### Image pull secrets
 
@@ -933,6 +1019,33 @@ roleRef: { kind: Role, name: trainer-runner, apiGroup: rbac.authorization.k8s.io
 
 Notice that the RoleBinding names an OIDC group and a ServiceAccount from another namespace.
 
+### Why RBAC matters and how a request is checked
+
+Role-based access control, or RBAC, is a mechanism for restricting both access to and actions on Kubernetes APIs. Its job is to make sure only authorized users get through. It is a critical part of hardening the cluster where you deploy your application. It also prevents unexpected accidents. Picture one person working in the wrong namespace who mistakenly takes down production while believing they are clearing out their test cluster.
+
+Every request to the API passes through two checks. Authentication comes first, and it establishes who is calling. The caller might be a user, a ServiceAccount, or no identity at all. Authorization comes second. It combines the identity, the resource (the HTTP path) and the verb, then decides whether the action may proceed. If the check fails, the caller gets an HTTP 403 error.
+
+RBAC is one layer of defense, not the whole defense. Anyone who can run arbitrary code inside the cluster can effectively gain root on the entire cluster. A correct RBAC setup makes that harder and more expensive. For hostile multitenant workloads, you must also isolate the Pods themselves, usually with hypervisor-isolated containers or a container sandbox.
+
+> **Warning:** By default, the API server installs a ClusterRole that lets `system:unauthenticated` users reach API discovery. On a cluster exposed to the public internet, that is a poor choice, and at least one serious vulnerability has come from it. If your cluster faces a hostile environment, set `--anonymous-auth=false` on the API server.
+
+### Verbs and HTTP methods
+
+A Role grants a verb on a resource. Verbs match HTTP methods roughly, so you can reason about them from the API calls you already know. The commonly used verbs appear in this lookup table.
+
+| Verb | HTTP method | Meaning |
+|---|---|---|
+| `create` | `POST` | Create a new resource. |
+| `delete` | `DELETE` | Delete an existing resource. |
+| `get` | `GET` | Get a resource. |
+| `list` | `GET` | List a collection of resources. |
+| `patch` | `PATCH` | Modify an existing resource via a partial change. |
+| `update` | `PUT` | Modify an existing resource via a complete object. |
+| `watch` | `GET` | Watch for streaming updates to a resource. |
+| `proxy` | `GET` | Connect to a resource via a streaming WebSocket proxy. |
+
+Notice that `get`, `list` and `watch` all show up as `GET`. The HTTP method alone does not tell you what the caller can see. Start each Role from the smallest verb set the workload needs.
+
 ### Properties
 
 RBAC is additive only. There are no deny rules, so the permissions are the union of all bindings. A user with `edit` cannot be denied one verb, except by removing the binding or by using an admission policy.
@@ -1056,6 +1169,26 @@ rbac-tool viz / rbac-tool lookup jane@example.com / rakkess --as jane
 ```
 
 Audit logging, covered in 5.5, records `authorization.k8s.io/decision` and the reasons for it. Alert on `create` of ClusterRoleBindings, `exec` into production pods, secret reads by unusual identities, and token creation.
+
+### Managing RBAC at scale
+
+Once you orient to the basics of role-based access control, managing access to a cluster becomes relatively easy. But when you manage a large number of users or roles, you need additional advanced capabilities to manage RBAC at scale. Testing, aggregation and version control keep the rules readable as the team grows.
+
+Some actions are subresources, such as reading logs or opening a port-forward. You can test them with the `--subresource` flag. The check below asks whether the current user may read logs from Pods:
+
+```bash
+$ kubectl auth can-i get pods --subresource=logs
+```
+
+RBAC objects are YAML, just like every other Kubernetes resource. Store them in version control, and you gain accountability, auditability and rollback. The `kubectl auth reconcile` command works somewhat like `kubectl apply`. It reconciles a set of roles and role bindings with the cluster state:
+
+```bash
+$ kubectl auth reconcile -f some-rbac-config.yaml
+```
+
+To see changes before they happen, add `--dry-run`. The command then prints what it would change, but it does not apply the changes. Run this check in your pipeline before any RBAC change merges.
+
+## 6. Configuration management patterns for AI workloads
 
 ## 6. Configuration management patterns for AI workloads
 

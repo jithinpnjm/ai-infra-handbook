@@ -174,6 +174,10 @@ Verify the new fingerprint through a second channel before you trust it. Use `ss
 
 Prefer ed25519 keys. Use ECDSA or RSA of at least 3072 bits only where you must. Disable DSA, which is obsolete.
 
+### Where SSH falls short
+
+SSH has one weak spot, and it comes at the start. Before you connect, your client needs the server's public host key. You do not always receive that key through a safe channel. You can check it by hand, comparing fingerprints, so that a spoofed server does not fool you. Books such as Jean-Philippe Aumasson's *Serious Cryptography* and Michael W. Lucas's *SSH Mastery* explain the methods in more depth.
+
 ### Client
 
 The block below shows the everyday client commands. The comments show the flags that change each command's behaviour.

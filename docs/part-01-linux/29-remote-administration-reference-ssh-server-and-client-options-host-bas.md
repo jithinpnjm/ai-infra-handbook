@@ -130,6 +130,26 @@ The remote command `true` does nothing and exits instantly. The loop therefore o
 
 Protect every private key with a passphrase, and restrict shared automation keys wherever you can.
 
+### Host key files and `known_hosts`
+
+OpenSSH keeps several host key sets. Each set has a public key, with a `.pub` extension, and a private key with no extension. Never let anyone see a private key, even on your own system. If someone obtains it, you are at risk from intruders. The table lists the SSH version 2 key files that use RSA and DSA.
+
+| Filename | Key type |
+|---|---|
+| `ssh_host_rsa_key` | Private RSA key |
+| `ssh_host_rsa_key.pub` | Public RSA key |
+| `ssh_host_dsa_key` | Private DSA key |
+| `ssh_host_dsa_key.pub` | Public DSA key |
+
+Creating a key involves a numerical computation that produces both halves of the pair. Your installer normally creates the host keys for you. You need to know how to make them yourself if you plan to use a tool such as `ssh-agent` that handles authentication without a password. Use the `ssh-keygen` program that ships with OpenSSH:
+
+```bash
+# ssh-keygen -t rsa -N '' -f /etc/ssh/ssh_host_rsa_key
+# ssh-keygen -t dsa -N '' -f /etc/ssh/ssh_host_dsa_key
+```
+
+The SSH server and clients also keep a file called `ssh_known_hosts`, which stores the public keys of other hosts. If you rely on authentication based on a remote client's identity, the server's `ssh_known_hosts` must contain the public host keys of every trusted client. This matters when you replace a machine. Copy the old host key files to the new machine, and users will not see key mismatches when they connect.
+
 ## 4. The SSH client: options and configuration
 
 You will use a handful of `ssh` options often. The table below lists them all, so use it as a lookup when you need one.

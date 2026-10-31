@@ -73,6 +73,38 @@ Layers, bottom to top:
 
 Kubebuilder is a scaffolding CLI around this library (project layout, Makefile, markers, `config/` kustomize bases). Operator SDK builds on kubebuilder and adds OLM bundle tooling. You can write all of it by hand; scaffolding is convenience, not magic. The shape that matters is the same in all three.
 
+### Tooling for building operators
+
+If you have a real use case for a custom operator, community projects can speed you up. An experienced Go programmer who knows client-go can write an operator from scratch. Even so, every operator shares common parts, and experts generate that boilerplate with tools to save time. SDKs and frameworks help when their assumptions fit your project. They become a nuisance when they assume things that do not match your needs. These tools suit projects that define configuration with custom resources and implement behavior with custom controllers. The sections below cover a few projects, then walk through design and implementation with code snippets.
+
+### Kubebuilder as an SDK for APIs
+
+Kubebuilder is an SDK for building Kubernetes APIs. The name fits, but it works differently from what you might expect. You start with the Kubebuilder command-line tool, which generates boilerplate. It creates the source code, a Dockerfile, a Makefile and sample Kubernetes manifests, which are the files every project needs. That saves a lot of time at the start.
+
+Kubebuilder also uses controller-runtime, a related library. The generated source already includes the imports and common implementations. The library handles the routine work of running a controller and talking to the API server. It sets up shared caches and clients for efficient API access. The cache lets your controller list and get objects without a new API request for each query. That eases load on the API server and speeds up reconciliation. Controller-runtime also triggers reconcile requests on events such as resource changes. It does this for the parent custom resource by default. You usually want triggers when the controller's child resources change too, and helper functions exist for that. In high-availability mode, controller-runtime can enable leader election, so only one controller is active at a time. It includes a package for webhooks, which are often used for admission control. It also provides structured logging and Prometheus metrics for observability.
+
+Kubebuilder is a great choice if you are a Go programmer with Kubernetes experience. It is also a good choice if you are an experienced developer new to Go. It is for Go only, though, and it does not cater to other languages.
+
+**Tip:** If you will build tools for Kubernetes, consider learning Go. You can use other languages, since Kubernetes offers a REST API. Official client libraries exist for Python, Java, C#, JavaScript and Haskell, along with many community libraries. Kubernetes itself is written in Go, though, and its Go ecosystem is rich and well supported.
+
+Writing a CRD manifest by hand is hard. The OpenAPI v3 specification behind it is detailed and involved. The Kubebuilder CLI generates the files where you define the fields of your API types. You add the fields to struct definitions and tag them with markers, such as default values. Then a make target generates the CRD manifests. That is very handy.
+
+Other make targets generate the RBAC and sample custom resource manifests. They install custom resources in your development cluster. They build and publish images for your operator. They can also run your controller locally against a cluster during development. These conveniences save tedious time, especially early in a project. For these reasons, Kubebuilder is the tool we recommend for building operators. Many projects have used it with success.
+
+### Metacontroller: write only the logic
+
+If you want to stay with a language other than Go, Metacontroller is another option. It takes a different approach from Kubebuilder. Metacontroller is a cluster add-on that abstracts away the Kubernetes API. Your job is to write the controller webhook that holds your controller's logic. Metacontroller calls this a lambda controller. The lambda controller decides what to do with the resources it cares about.
+
+Metacontroller watches the resources under its management. When a change needs a decision, it makes an HTTP call to your lambda controller. Metacontroller uses its own custom resources to record your webhook's URL and the resources it manages. Once Metacontroller runs in your cluster, adding a controller takes two steps. You deploy your lambda controller webhook, and you add a Metacontroller custom resource, called a composite controller resource. Your endpoint accepts requests from Metacontroller. It parses the JSON payload, which holds the Kubernetes resource object, and returns any changes to send to the API.
+
+Consider Metacontroller when you want to use several languages and expect to deploy many in-house operators. Engineers sometimes prototype with it and then build the final project with Kubebuilder once the design is settled. Its strength is speed after the add-on is installed. It does not help with creating CRDs, though. You must write those yourself. This is where Kubebuilder has a significant advantage.
+
+### Operator Framework
+
+The Operator Framework is a collection of open source tools that started at Red Hat. It is now an incubating project under the CNCF. It makes operators easier to build. Its Operator SDK offers much of what Kubebuilder offers for Go, including a CLI that generates boilerplate. It also uses controller-runtime to integrate with the Kubernetes API. Beyond Go, the Operator SDK lets you build operators with Helm or Ansible.
+
+The framework also includes the Operator Lifecycle Manager, which is an operator for your operators. It gives you abstractions for installing and upgrading them. An operator hub lets users discover operators for the software they use. In the field, platform teams have rarely used these tools. Because Red Hat maintains them, they are more common among OpenShift users. OpenShift is Red Hat's Kubernetes-based offering.
+
 ## 2. Defining the API
 
 An API type is a Go struct with JSON tags and **markers** (comments beginning with `+kubebuilder:`) read by `controller-gen`.
@@ -143,6 +175,117 @@ In *Kubernetes Programming with Go* (`KPG`) Chapters 9 and 13, Philippe Martin c
    and every **Spoke** version (`v1beta1`) implements `conversion.Convertible` (`ConvertTo(dstRaw conversion.Hub) error` and `ConvertFrom(srcRaw conversion.Hub) error`), wired into the Manager via `kubebuilder create webhook --group mygroup --version v1alpha1 --kind MyResource --conversion` (modeled in `convert_myresource_spoke_to_hub_and_back()` in `code/part05/controller_runtime_reconciler_sim.py`).
 3. **Applying Child Resources with Server-Side Apply in `controller-runtime` (`KPG` Chapters 10 & 11):** Rather than fragile `Get -> Update` loops on child `Deployment`s, `KPG` Chapter 11 constructs the desired child `appsv1.Deployment` (setting `TypeMeta` `APIVersion`/`Kind` and `ownerReferences` via `ctrl.SetControllerReference`) and applies it in a single idempotent call:
    `err := r.Client.Patch(ctx, deploy, client.Apply, client.FieldOwner("myresource-controller"), client.ForceOwnership)`
+
+### Choosing the data model for a Namespace operator
+
+Designing an operator starts with the data model, much like designing a web application starts with its database schema. You often know what the spec needs before you write any code. As soon as you spot a problem to solve or a gap to fill, the desired-state fields begin to take shape.
+
+Take the Namespace operator from earlier. It could create a Namespace with a LimitRange, a ResourceQuota, Roles and NetworkPolicies for a new app team. You might also bind a team lead to the `namespace-admin` Role right away, then hand off management of the Namespace to that person. That suggests an `adminUsername` field in the spec. Example 11-3 shows the resulting manifest.
+
+```yaml
+apiVersion: tenancy.acme.com/v1alpha1
+kind: AcmeNamespace
+metadata:
+  name: team-x
+spec:
+  namespaceName: app-y
+  adminUsername: sam
+```
+
+The name `team-x` is arbitrary. The `app-y` Namespace hosts a workload. The username `sam` comes from the company's identity provider, usually an Active Directory system or something similar.
+
+Submitting Example 11-3 results in `sam` being added to the subjects of a RoleBinding to the `namespace-admin` Role. Example 11-4 shows what the controller creates.
+
+```yaml
+apiVersion: rbac.authorization.k8s.io/v1
+kind: Role
+metadata:
+  name: namespace-admin
+  namespace: app-y
+rules:
+- apiGroups:
+  - "*"
+  resources:
+  - "*"
+  verbs:
+  - "*"
+---
+apiVersion: rbac.authorization.k8s.io/v1
+kind: RoleBinding
+metadata:
+  name: namespace-admin
+  namespace: app-y
+roleRef:
+  apiGroup: rbac.authorization.k8s.io
+  kind: Role
+  name: namespace-admin
+subjects:
+- kind: User
+  name: sam
+  namespace: app-y
+```
+
+The `adminUsername` from the AcmeNamespace manifest goes into the RoleBinding, bound to the `namespace-admin` Role.
+
+Start from the behavior you want. Sam should be bound to the `namespace-admin` Role. The data you need is Sam's username and the Namespace name. Put those obvious pieces into your CRD spec first. Example 11-5 shows the Go type for the spec.
+
+```go
+// api/v1alpha1/acmenamespace_types.go
+...
+// AcmeNamespaceSpec defines the desired state of AcmeNamespace
+type AcmeNamespaceSpec struct {
+	// The name of the namespace
+	NamespaceName string `json:"namespaceName"`
+	// The username for the namespace admin
+	AdminUsername string `json:"adminUsername"`
+	...
+}
+```
+
+Kubebuilder generates your CRD manifest and a sample AcmeNamespace manifest from this source. Your first data model will probably prove too thin once you write the controller. You will then find fields you need, so expect to add them.
+
+Suppose you add a `deploymentTier` field. Example 11-6 shows a manifest that uses it.
+
+```yaml
+apiVersion: tenancy.acme.com/v1alpha1
+kind: AcmeNamespace
+metadata:
+  name: team-x
+spec:
+  namespaceName: app-y
+  adminUsername: sam
+  deploymentTier: dev
+```
+
+That field prompts the controller to create a ResourceQuota. Example 11-7 shows the quota for the `dev` tier.
+
+```yaml
+apiVersion: v1
+kind: ResourceQuota
+metadata:
+  name: dev
+spec:
+  hard:
+    cpu: "5"
+    memory: 10Gi
+    pods: "10"
+```
+
+A `prod` tier gets a much larger default quota. Example 11-8 shows it.
+
+```yaml
+apiVersion: v1
+kind: ResourceQuota
+metadata:
+  name: prod
+spec:
+  hard:
+    cpu: "500"
+    memory: 200Gi
+    pods: "100"
+```
+
+One value now drives several defaults, so users state a single field.
 
 ## 3. The manager
 
@@ -219,6 +362,72 @@ return r.Status().Patch(ctx, p, client.MergeFrom(orig))
 ```
 
 `meta.SetStatusCondition` keeps `lastTransitionTime` stable unless the status value changes; hand-rolled condition code that stamps `now` on each pass causes endless churn.
+
+### Gathering existing and desired state
+
+A controller follows three steps. It gathers an accurate picture of the existing state. It examines the desired state. Then it takes actions to reconcile the existing state with the desired state.
+
+It can gather existing state from three places. The first is the `status` of your custom resource. The second is other related resources in the cluster. The third is conditions outside the cluster, or in other systems. The `status` records observed state. Kubernetes already does this. The `status.phase` field on Pods shows whether they are `Running`, and on Namespaces whether they are `Active`.
+
+Back to the Namespace operator. The controller gets notified about an AcmeNamespace and its spec. It cannot assume the resource is new, because it may have just been updated. Creating the children again would return an error from the API. If you add a `phase` field to the status, the controller can check it. An empty phase means a new resource, so the controller creates every child. Once all children exist, it sets the phase to `Created`. Later changes then show that the children already exist.
+
+That approach has one flaw. It assumes the controller never fails. Suppose the controller creates the Namespace, then crashes before it creates the Role. On restart, the phase is still empty, so it tries to create the Namespace again and fails. The fix is to set `CreationInProgress` as the very first step. On restart, that phase tells the controller that the status alone cannot show the true state. It must then look at related resources.
+
+When the status is not enough, query the API server, or preferably the local cache. Look for the child resources you expect. In the failure case, the Namespace exists, so the controller moves on. The Role does not exist, so it creates the Role. Build the controller to tolerate failure, and always assume failure will happen.
+
+Some state lives outside the cluster. Cloud infrastructure controllers must query cloud provider APIs for the status of infrastructure. What counts as existing state depends on the purpose of the operator.
+
+The desired state lives in the `spec`. In the Namespace operator, `namespaceName` sets the `metadata.name` of the Namespace. `adminUsername` sets the name in the RoleBinding's subject. These are direct mappings. Often the mapping is less direct. The `deploymentTier` field works that way. One value chooses many defaults in the controller logic.
+
+Example 11-10 shows the controller creating the Role and RoleBinding after the Namespace.
+
+```go
+// controllers/acmenamespace_controller.go
+...
+role := &rbacv1.Role{
+	ObjectMeta: metav1.ObjectMeta{
+		Name:      "namespace-admin",
+		Namespace: nsName,
+	},
+	Rules: []rbacv1.PolicyRule{
+		{
+			APIGroups: []string{"*"},
+			Resources: []string{"*"},
+			Verbs:     []string{"*"},
+		},
+	},
+}
+if err := r.Create(ctx, role); err != nil {
+	log.Error(err, "unable to create namespace-admin role")
+	return ctrl.Result{}, err
+}
+binding := &rbacv1.RoleBinding{
+	ObjectMeta: metav1.ObjectMeta{
+		Name:      "namespace-admin",
+		Namespace: nsName,
+	},
+	RoleRef: rbacv1.RoleRef{
+		APIGroup: "rbac.authorization.k8s.io",
+		Kind:     "Role",
+		Name:     "namespace-admin",
+	},
+	Subjects: []rbacv1.Subject{
+		{
+			Kind:      "User",
+			Name:      adminUsername,
+			Namespace: nsName,
+		},
+	},
+}
+if err := r.Create(ctx, binding); err != nil {
+	log.Error(err, "unable to create namespace-admin role binding")
+	return ctrl.Result{}, err
+}
+return ctrl.Result{}, nil
+// ...
+```
+
+This code works the first time you create an AcmeNamespace. It breaks on any later reconcile, including a controller restart, unless you add the status logic above. The `phase` field tells the controller what already exists. Use it before you rely on the code in production.
 
 ## 5. Watches, predicates and mapping
 
@@ -317,6 +526,16 @@ func (w *Webhook) Handle(
 	return admission.PatchResponseFromRaw(req.Object.Raw, marshaledVM)
 }
 ```
+
+### Defaulting and validation with admission webhooks
+
+Sometimes the OpenAPI schema in your CRD cannot express the defaults or checks you need. Then turn to validating and mutating admission webhooks. The Kubebuilder CLI has a `create webhook` command that generates the boilerplate, so you start faster.
+
+A validation example: the Namespace operator could check `adminUsername` against your identity provider. The webhook confirms the username is valid before the object is stored. That prevents mistakes that would otherwise need a person to correct.
+
+A defaulting example: set `deploymentTier` to `dev` when it is missing. `dev` is the most common and least expensive choice. Defaulting also keeps old manifests working. When you add a new field, the default fills the gap for resources that never set it.
+
+Admission webhooks rarely appear in a prototype or a pre-alpha operator. They matter more when you refine the user experience for a stable release. Admission control is covered in 5.21.
 
 ## 11. Testing strategy
 

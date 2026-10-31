@@ -420,6 +420,62 @@ Image locality scoring helps large GPU images, because pods prefer nodes that al
 
 Node pools, defined by labels and taints, simplify scheduling rules and autoscaling. Avoid gigantic heterogeneous pools.
 
+### Extending the scheduler
+
+The scheduler is a core part of Kubernetes. A large part of Kubernetes' value is the abstraction of pools of machines into places to run workloads. The scheduler decides where each Pod runs. Together with the kubelet, it forms the heart of the system, and everything else is built around it. For your platform, the scheduler is a cornerstone platform service.
+
+It helps to compare the scheduler with your custom operators. Both are Kubernetes controllers that manage Kubernetes resources. Your operators bring new custom controllers and new custom resources. The scheduler is a core controller that every cluster ships with, and it manages the built-in Pod resource.
+
+Teams rarely need to extend the scheduler. Still, it matters enough that you should understand how it decides and how to change those decisions if needed. Kubernetes is built to be extended and modular. If the scheduler does not meet your needs, you can modify it, augment it or replace it.
+
+Scheduling policies configure the predicates and priorities the scheduler uses. You can write a policy file on the control plane nodes and pass it with `--policy-config-file`. The preferred method is a ConfigMap. Pass the scheduler `--policy-configmap`, and then you can update the policy through the API server. With a ConfigMap, you will likely need to update the `system:kube-scheduler` ClusterRole so it can get ConfigMaps.
+
+**Warning:** At the time of writing, both `--policy-config-file` and `--policy-configmap` still work. The official docs mark them as deprecated, though. For new custom scheduling behavior, use the scheduling profiles described earlier in this chapter instead of policies.
+
+The ConfigMap below makes a Node eligible for a Pod's `nodeSelector` only if it has the `selectable` label key.
+
+```yaml
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: scheduler-policy-config
+  namespace: kube-system
+data:
+  policy.cfg: |+
+    apiVersion: v1
+    kind: Policy
+    predicates:
+    - name: "PodMatchNodeSelector"
+      argument:
+        labelsPresence:
+          labels:
+          - "selectable"
+          presence: true
+```
+
+The file name `policy.cfg` is the name the scheduler expects for policies. The predicate `PodMatchNodeSelector` implements `nodeSelector`. The `selectable` label key adds the constraint. With `presence: true`, a Node without the `selectable: ""` label is not eligible. If you set `presence: false`, the label would have to be absent instead.
+
+With this policy in place, the Pod below schedules only to a Node that has both `device: gpu` and `selectable: ""`.
+
+```yaml
+apiVersion: v1
+kind: Pod
+metadata:
+  name: terminator
+spec:
+  containers:
+  - image: registry.acme.com/skynet/t1000:v1
+    name: terminator
+  nodeSelector:
+    device: gpu
+```
+
+Scheduling profiles enable or disable plug-ins compiled into the scheduler. You pass a file name to the `--config` flag when you run the scheduler. The plug-ins implement extension points, including the filter and scoring steps covered earlier. Teams rarely need this. The official Kubernetes docs explain how to do it.
+
+You are not limited to one scheduler. You can deploy any number of them, either Kubernetes schedulers with different policies and profiles or fully custom schedulers. A Pod's `schedulerName` field decides which scheduler places it. Multiple schedulers add complexity, so consider dedicated clusters for workloads with specialized scheduling needs.
+
+In the unlikely event that you cannot use the Kubernetes scheduler, even with policies and profiles, you can write your own. That means a controller that watches Pods. When a new Pod appears, it decides where the Pod should run and sets the `nodeName` field. The scope is narrow, but it is not a simple exercise. The core scheduler weighs many complex factors when it decides. A custom scheduler will take real engineering effort to refine. Go this route only after you have exhausted the existing options, and only with deep Kubernetes expertise on the team.
+
 ## 8. Debugging scheduling
 
 When a pod sits in Pending, start with its events. The `FailedScheduling` message gives the count of nodes rejected for each reason. The commands below show the state behind those counts.
@@ -736,6 +792,7 @@ Strictly exclude all batch and distributed GPU training Pods. Use `descheduler.a
   - `kubernetes-up-and-running-3rd-edition` — Brendan Burns, Joe Beda, Kelsey Hightower & Lachlan Evenson, *Kubernetes: Up and Running*, 3rd ed. (Pods, labels, affinity, taints/tolerations, and cluster operations).
   - `nvidia-devops` (`volume-03/01-k8s-control-plane-scheduling-masterclass.md`, `volume-03/02-k8s-node-storage-masterclass.md`, and `volume-03/03-k8s-networking-security-ops-masterclass.md`): scheduling framework, preemption and priority classes, topology and NUMA alignment, gang scheduling with Kueue and Volcano, and Dynamic Resource Allocation (`DRA`).
 - `production-kubernetes` — Josh Rosso, Rich Lander, Alexander Brand & John Harris, *Production Kubernetes*, **Chapter 14: Application Considerations** (read in full: Pod anti-affinity and Pod Topology Spread Constraints across failure domains).
+- `production-kubernetes` — Josh Rosso, Rich Lander, Alexander Brand & John Harris, *Production Kubernetes*, **Chapter 11: Building Platform Services** (read in full: the scheduler's filter and score steps, scheduling policies and ConfigMaps, scheduling profiles, multiple schedulers and custom schedulers).
 - **Run here:** `python3 code/part05/gpu_scheduler_simulator_lab.py` (3 passed, 0 failed).
 - **Explicitly labelled inferences:** The `simulate_gpu_placement_and_fragmentation`, `evaluate_kueue_cohort_gang_admission`, and `allocate_dra_same_pcie_root` models in `code/part05/gpu_scheduler_simulator.py` and the `KubeSchedulerConfiguration` (`gpu-binpack`), `PriorityClass`, Kueue `ResourceFlavor`/`ClusterQueue`/`LocalQueue`, and DRA `ResourceClaimTemplate` manifests are the author's constructions synthesizing Kubernetes: Up and Running and `volume-03` (plus original study items 21, 22, 23, 24, 25, 26, 27, 28, 29, 30, 31, 32, 33, 34, 35, 36, 37, 38, 39, and 40).
 - **Not verified on live hardware:** Live `kube-scheduler`, `Kueue`, `Volcano`, `DRA`, and `KWOK` executions (`5 min` unschedulable duration, `10 s` backoff, `percentageOfNodesToScore: 50`, `parallelism: 16`, `weight: 80` / `50`, `maxSkew: 1, minDomains: 3`, `tolerationSeconds: 60` / `300`, PriorityClass `1000000` / `1000` / `2000000000` / `2000001000`, `nominalQuota: 128, borrowingLimit: 64, lendingLimit: 32`, `2,000` nodes / `20,000` pods) are marked (`untested here`) where not executed by `gpu_scheduler_simulator_lab.py`.

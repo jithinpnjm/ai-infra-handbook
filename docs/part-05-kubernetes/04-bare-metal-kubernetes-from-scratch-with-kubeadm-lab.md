@@ -445,6 +445,23 @@ echo "source <(kubectl completion bash)" >> ${HOME}/.bashrc
 
 Pick the context you will use for the rest of the lab, and switch to it before you run more commands.
 
+### Deleting objects
+
+Suppose you applied a test manifest last week and now want the cluster clean again. You can remove what it created by pointing `kubectl` at the same file. The object's resource type comes from the file, so you do not repeat it. You can also delete by resource type and name. The commands below show both forms. They are untested here.
+
+```bash
+kubectl delete -f obj.yaml
+kubectl delete <resource-name> <obj-name>
+```
+
+Be careful with this command. `kubectl` will not prompt you to confirm a deletion. Once you issue the command, the object is deleted. Check the name before you press Enter.
+
+### Graphical and editor tools
+
+Not everyone wants to work only in a terminal. Plug-ins for several editors connect Kubernetes to the editor you already use. The book names Visual Studio Code, IntelliJ and Eclipse as examples. Each one lets you look at cluster objects from inside your code environment.
+
+If you use a managed Kubernetes service, many of them also offer a graphical interface in their web console. Managed Kubernetes in the public cloud also works with sophisticated monitoring tools. Those tools help you see how your applications are running. Open source options exist too, including the Rancher Dashboard and the Headlamp project. Keep `kubectl` in your toolkit as well, since it is the command-line tool this chapter teaches.
+
 ## 7. High-availability control plane (stacked etcd)
 
 An HA control plane needs two things from the start: a stable API endpoint, meaning a VIP or load balancer referenced as `controlPlaneEndpoint`, and three control-plane nodes.

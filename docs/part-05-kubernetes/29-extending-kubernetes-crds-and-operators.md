@@ -63,6 +63,40 @@ Whether you build extensions or consume them, learn how the API server is extend
 
 CRDs are the dominant approach. They give you the Kubernetes API machinery for free, including REST, watch, RBAC, audit, server-side apply, `kubectl` support and OpenAPI docs. You do not have to build any of that yourself.
 
+### Platform services and the toil they remove
+
+Platform services are the components you install to add features to your application platform. They usually run as containers in a `*-system` Namespace, and the platform engineering team maintains them. Application teams run their own workloads on top. Keep these two groups separate in your mind, because they have different owners and change at different speeds.
+
+The cloud native ecosystem offers many projects you can build a platform from. Vendors also sell platform service products. Use them wherever they pass a cost-benefit check, since they may take you all the way to your target platform. Still, enterprise teams often build custom components. You may need to connect to an in-house system, meet an unusual workload need, or handle a business edge case.
+
+The reason to build these services is to remove human toil. Automation is the keystone, but integration between automated parts is the mortar. Reliable interaction between systems is hard, and it matters a great deal. Kubernetes has spread widely partly because it gives every piece of software an API-driven way to fit in. You do not need to build and expose a new API for each component. Software can manage core resources or add custom resources that describe its own objects. Follow these integrated automation patterns and you remove a great deal of toil.
+
+### Points of extension
+
+Kubernetes is extensible by design. Trying to build a feature for every possible use case creates a maze of options. Internal dependencies then grow, fragile links appear, and reliability erodes. The Unix idea of doing one thing well and staying interoperable applies here. Kubernetes cannot meet every requirement, and it does not need to. It offers points of extension, so specialized needs can be met by specialized solutions that plug in. Almost any requirement can be met this way.
+
+### Plug-in extensions: network, storage, runtime and devices
+
+Plug-in extensions connect Kubernetes to the systems around it that workloads need. Each one is a specification. Third parties write the implementations that satisfy it.
+
+**Network.** The Container Network Interface (CNI) defines what a network plug-in must do to give containers a network. Many plug-ins exist, and every one of them must satisfy the CNI.
+
+**Storage.** The Container Storage Interface (CSI) exposes storage systems to containerized workloads. Many volume plug-ins expose storage from different providers.
+
+**Container runtime.** The Container Runtime Interface (CRI) lists the operations a container runtime must expose. Because of it, the kubelet does not care which runtime sits underneath. Docker has historically been the most popular runtime. Other runtimes now have strengths of their own.
+
+**Devices.** The device plug-in framework lets workloads use devices on a node. GPUs are the most common case, used by compute-heavy workloads. Teams often add node pools for nodes with these devices, so workloads can be assigned to them.
+
+Vendors usually build these plug-ins, often as part of a product they support or sell. Platform developers rarely write them in-house. Most teams evaluate the options and adopt the ones that meet their requirements.
+
+### Webhook extensions: authentication, authorization and admission
+
+Webhook extensions are backend servers. The API server calls them to change how it handles core API requests. Each request passes several steps when it reaches the API server. First, the client is authenticated. Second, the API checks that the client is authorized for the action. Third, enabled admission plug-ins mutate the resource. Last, the schema is validated and any custom validation runs.
+
+**Authentication.** Extensions such as OpenID Connect (OIDC) let you hand authentication to an outside system. The API server then relies on that system to confirm who each request comes from. Authentication is covered in depth elsewhere in this handbook. You can also have the API server call a webhook to authorize actions. This is uncommon, because Kubernetes already ships with a capable Role-Based Access Control (RBAC) system. Use a webhook only if RBAC falls short for you.
+
+**Admission control.** This is a widely used extension point. When a request arrives, the API server calls the admission webhooks that apply, based on the validating and mutating admission webhook configurations. Admission is covered in 5.21.
+
 ## 2. Custom resources and CRDs
 
 A CustomResourceDefinition, or CRD, tells the API server about a new kind of object. Take a GPU health policy as the running example. The first manifest below registers the new kind, and the second creates one instance of it.
@@ -156,6 +190,111 @@ spec:
   maxUnavailableNodes: "2"
 ```
 
+### Kinds, resources and a WebApp example
+
+Two terms come first. A kind is an API type, such as Pod. A resource is one object of that kind. A Pod you create and name `my-app` is a resource of the Pod kind. A CRD defines a new kind. Once the CRD exists, you create resources of that kind the same way you create Pods.
+
+Kubernetes does not link objects with foreign keys, as a relational database does. Each object exists on its own. Relationships are built with labels and selectors, and controllers do the work of following those links. You cannot query etcd for related objects with SQL-style queries.
+
+CRDs define fields with the OpenAPI v3 schema language. The schema can mark fields as optional or required, and it can set default values. The API server uses it to validate every create and update request. You can also group your APIs and version them.
+
+Here is a fictional WebApp type to make this concrete. One WebApp describes a web application made of six Kubernetes resources:
+
+- A Deployment runs the stateless front end, which serves users, handles requests and stores data in a relational database.
+- A StatefulSet runs the relational database that keeps the data.
+- A ConfigMap holds the front end config file, which is mounted into each Pod of the Deployment.
+- A Secret holds the credentials the app uses to reach its database.
+- A Service routes traffic to the Deployment's backend Pods.
+- An Ingress holds routing rules, so the Ingress controller can send client requests to the right place.
+
+A WebApp Operator watches for WebApp resources. When one appears, the operator creates these six children, and together they form a working copy of the app for end users.
+
+Example 11-1 shows a CRD that defines the WebApp type.
+
+```yaml
+apiVersion: apiextensions.k8s.io/v1
+kind: CustomResourceDefinition
+metadata:
+  name: webapps.workloads.apps.acme.com
+spec:
+  group: workloads.apps.acme.com
+  names:
+    kind: WebApp
+    listKind: WebAppList
+    plural: webapps
+    singular: webapp
+  scope: Namespaced
+  versions:
+  - name: v1alpha1
+    schema:
+      openAPIV3Schema:
+        description: WebApp is the Schema for the webapps API
+        properties:
+          apiVersion:
+            description: 'APIVersion defines the versioned schema of this
+              representation of an object. Servers should convert recognized
+              schemas to the latest internal value, and may reject unrecognized
+              values.'
+            type: string
+          kind:
+            description: 'Kind is a string value representing the REST resource this
+              object represents. Servers may infer this from the endpoint the client
+              submits requests to. Cannot be updated. In CamelCase.'
+            type: string
+          metadata:
+            type: object
+          spec:
+            description: WebAppSpec defines the desired state of WebApp
+            properties:
+              deploymentTier:
+                enum:
+                - dev
+                - stg
+                - prod
+                type: string
+              webAppHostname:
+                type: string
+              webAppImage:
+                type: string
+              webAppReplicas:
+                default: 2
+                type: integer
+            required:
+            - deploymentTier
+            - webAppHostname
+            - webAppImage
+            type: object
+          status:
+            description: WebAppStatus defines the observed state of WebApp
+            properties:
+              created:
+                type: boolean
+            type: object
+        type: object
+    served: true
+    storage: true
+```
+
+Two names matter here. The `metadata.name` of the CRD names the definition itself. The `names` block sets the kind, the list kind, and the plural and singular forms used for the custom resource. The `deploymentTier` field must match one of the values under `enum`, and the API server enforces that on every create or update. The `webAppReplicas` field has a default of 2, which applies when a manifest leaves it out. The `required` list names `deploymentTier`, `webAppHostname` and `webAppImage`. It leaves out `webAppReplicas` because that field has a default.
+
+Before you submit a WebApp manifest, the CRD must exist. Otherwise the API server does not know the kind and rejects the request. Example 11-2 shows a WebApp manifest.
+
+```yaml
+apiVersion: workloads.apps.acme.com/v1alpha1
+kind: WebApp
+metadata:
+  name: webapp-sample
+spec:
+  webAppReplicas: 2
+  webAppImage: registry.acme.com/app/app:v1.4
+  webAppHostname: app.acme.com
+  deploymentTier: dev
+```
+
+This manifest sets `webAppReplicas` explicitly, even though the default is 2. That is unnecessary but harmless when you want the value written down. The `deploymentTier` value is one the enum allows. Any value outside the enum gets an error from the API server.
+
+Submitting this manifest triggers the watch. The WebApp Operator sees a new WebApp and calls the API server to create the six child resources.
+
 ### Schema and validation
 
 Version 1 CRDs must use structural schemas. Every field needs a type, and no node may be left without one. The exceptions use `x-kubernetes-preserve-unknown-fields`, `x-kubernetes-int-or-string` or `x-kubernetes-embedded-resource`. The API server prunes unknown fields on write by default, because `preserveUnknownFields` is `false`. Any field you did not declare is silently dropped, which is a common surprise.
@@ -218,9 +357,19 @@ Follow the conventions for status. Use a `conditions` list where each entry has 
 
 10. Generate docs and clients from the types, using controller-gen and crd-ref-docs.
 
+### Custom resources are not a database
+
+The custom resource model is powerful, which makes it tempting to use for everything. Do not use custom resources as the primary data store for an end-user application. Kubernetes is an orchestration system. etcd should hold the state of your software deployments, not your application's own persistent data. Storing that data in etcd puts heavy load on the control plane. Use a relational database, an object store or whatever store fits the application. Leave the control plane to manage deployments.
+
 ## 3. The operator pattern
 
 Imagine an application that needs more than a Deployment. Someone has to install it, upgrade it, back it up and recover it when it fails. An operator is a custom controller that holds this operational knowledge as software. It manages the application through custom resources. Its typical jobs are to install and configure, scale, upgrade with rolling updates and migrations, back up and restore, fail over, remediate health problems, rotate certificates, correct drift, and expose status and metrics.
+
+Operators are clients of the API server, not backend webhooks for it. Software operators talk to the API the way a human operator would. Their main purpose is to take routine toil off people by performing operations for them. They follow the same engineering principles as the core control plane. Think of an operator you build for your platform as a custom extension of that control plane.
+
+The operator pattern comes down to extending Kubernetes with Kubernetes. You create new resource types with CRDs. You write controllers that reconcile the state those resources describe. The CRD creates the API type and tells the API server how to validate it. The controller applies the same design principles that make built-in controllers effective. Custom resources and controllers are the two core mechanisms of every operator.
+
+The term operator dates to November 2016, when Brandon Phillips, one of the founders of CoreOS, introduced it. His early definition was an app-specific controller that manages a complex stateful application. That definition still helps. Over time, the Kubernetes docs widened it to cover any controller that uses CRDs. This chapter uses the broader meaning. Your platform services may not manage complex stateful applications, but they can still use the pattern.
 
 ### Capability levels (Operator Framework model)
 
@@ -266,6 +415,18 @@ The core rules echo 5.6. Reconciles must be idempotent, and they should be level
 Keep each object's reconciliation independent of the others. Watch the children you own with `Owns()`, and watch the objects you reference with `Watches()` and map functions. Predicates prevent hot loops. For example, `GenerationChangedPredicate` ignores status-only changes, so a status write does not trigger another reconcile. Log with the CR key, so each line traces back to one object.
 
 Emit Events for milestones that users should see. Expose Prometheus metrics for reconcile counts, latency, errors and queue depth.
+
+### Operator use cases
+
+Operators fit three broad categories. Each one serves a different need.
+
+**Platform utilities.** These add features to the cluster itself. Many open source projects provide platform services this way, and you do not have to write them yourself. They still help you build a mental model of how operators work. The Prometheus Operator provides metrics collection, storage and alerting, covered in 5.19. cert-manager provides certificate management. It removes a lot of toil and the risk of downtime from certificate creation and renewal. Rook is a storage operator that integrates with providers such as Ceph to manage block, object and filesystem storage as a service. Vendors offer similar utilities. When none of them fits, an enterprise may build its own. A common custom example is a Namespace operator. Teams often need the same ResourceQuotas, LimitRanges and Roles in every Namespace. A controller can handle that routine setup. The rest of this chapter uses this idea as a running example.
+
+**General-purpose workload operators.** Application developers want to add stability and features to their software. Writing deployment YAML does neither. Setting resource requests and limits, mounting a ConfigMap or Secret, and matching Service labels to Pods are chores that add nothing to the software itself. An organization with common deployment patterns can encode them in a general-purpose operator. This suits teams that run many microservices with similar shapes. Take a workload made of a Deployment, a Service and an Ingress. The Service selects the Deployment's Pods by label, and the Ingress points at the Service by name. An operator can wire all of that up. Getting those details right is exactly the toil it removes.
+
+**App-specific operators.** This category matches the core idea of an operator: custom resources plus a custom controller for a complex stateful application. Each one is built for one application. Database operators are the popular examples. Community operators exist for Cassandra, Elasticsearch, MySQL, MariaDB, PostgreSQL, MongoDB and many more. They handle the first deployment and day 2 concerns, which are the tasks after install, such as configuration changes, backups and upgrades. Operators for community and vendor projects have grown popular over the past few years. Operators for internal enterprise applications are still early. If your company builds a sophisticated stateful system, such as an ecommerce site, a transaction processor or an inventory system, an app-specific operator may pay off. The gains are biggest when the application runs widely and changes often.
+
+App-specific operators are not always the right choice. For simpler use cases they are likely overkill. Production-ready operators are not trivial to build, so weigh the trade-offs. Ask how much time you spend on routine toil for deployment and day 2 work. Ask whether building an operator would cost less than that toil over the long term. Then ask whether Helm or Kustomize already automate enough of the work.
 
 ### Operator implementation choices
 

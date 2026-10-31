@@ -56,6 +56,8 @@ When a node misbehaves, the first thing you want to know is what it logged. Most
 
 On systemd systems, journald receives these messages. It also receives the standard output and error of every service, plus kernel messages, and stores them in a structured binary journal. A traditional daemon such as rsyslog may run alongside it. On some Fedora and RHEL-family defaults, journald is the only logger. Applications may also skip all of this and write their own files, as databases, web servers, Slurm, Kubernetes components and vendor daemons do.
 
+The traditional daemon is `syslogd`. On most contemporary systems, journald does most of the work, so this section concentrates on the journal while still covering the older syslog tools.
+
 A syslog line looks like this:
 
 ```text
@@ -247,7 +249,7 @@ Before you add a log source, decide which alert it feeds, so the source has a re
 
 Treat logging as a pipeline, not a file. Standardise formats where you can, using JSON lines with a consistent schema. Keep time in UTC, and put a request or job ID in every message. Avoid multi-line stack traces, because they break line-based shippers. If you must log them, use the shipper's multiline parser. Never rely on a human tailing a file. Finally, remember the trust model. The sender's claim about who it is can be false unless the transport authenticates it.
 
-Trust is the last piece. The original syslog had no authentication to speak of. A server simply believed whatever machine or program sent it a message. Those messages also travelled unencrypted, so anyone snooping on the network could read them. That was a serious risk on networks with strict security needs. Modern syslog servers can encrypt a message and authenticate the machine that sent it. Individual applications are less clear. How can you be sure that the program calling itself your web server really is the web server? Ask that question before you trust a log line.
+Trust is the last piece. The original syslog had no authentication to speak of. A server simply trusted the machine or program it heard from, assuming that sender was telling the truth. Logs also travelled without encryption, which left them vulnerable to snooping on the network. That was a serious risk on networks with strict security needs. Contemporary syslog servers offer encrypting for each message and authenticating for the machine where it originates. Individual applications are less clear. How can you be sure that the program calling itself your web server really is the web server? Ask that question before you trust a log line.
 
 Before you ship a log, check that a machine can parse each line without help from a person.
 
@@ -269,7 +271,7 @@ Three clocks matter. `CLOCK_REALTIME` is wall time, and it jumps when someone se
 
 The zone comes from `/etc/localtime`, which is a link to, or a copy of, a binary file under `/usr/share/zoneinfo/`. That directory holds the IANA tz database, with names such as `UTC`, `America/New_York` and `Asia/Kolkata`. Set the zone with `timedatectl set-timezone UTC`, or with `ln -sf /usr/share/zoneinfo/UTC /etc/localtime`. List the names with `timedatectl list-timezones`. For a single shell or command, set the `TZ` variable instead, as in `TZ=Asia/Kolkata date` or `export TZ=UTC`. Cron and systemd timers read their schedules in the zone they run in, and timers accept an explicit zone in `OnCalendar`. Daylight-saving changes can make cron jobs run twice, or not at all, in some regions. That is one more reason to run servers in UTC.
 
-The kernel keeps one number, and user-space programs turn it into a readable time. They apply the local zone and handle daylight saving, along with any other odd local rules. The zone comes from `/etc/localtime`, a binary file, so do not try to read it. Zone files live in `/usr/share/zoneinfo`, which holds many zones and aliases. Copy one of those files to `/etc/localtime`, link to one, or use your distribution's tool. The `tzselect` command can help you find the right name. To try a zone in one shell, set the `TZ` variable. To use it for a single command, put `TZ` in front of that command.
+The kernel stores a single count, and user-space programs convert it into a readable time. They apply the local zone and handle daylight saving, along with any other odd local rules. The zone comes from `/etc/localtime`, a binary file, so do not try to read it. Zone files live in `/usr/share/zoneinfo`, which holds many zones and aliases. Copy one of those files to `/etc/localtime`, link to one, or use your distribution's tool. The `tzselect` command can help you find the right name. To try a zone in one shell, set the `TZ` variable. To use it for a single command, put `TZ` in front of that command.
 
 ```bash
 $ export TZ=US/Central
