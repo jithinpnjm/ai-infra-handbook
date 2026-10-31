@@ -152,6 +152,14 @@ To list them, run `kube-controller-manager --help | grep -A100 controllers`, or 
 
 ## 4. Owners, selectors, finalizers, conditions
 
+### Reconciliation loops and the loose link to Pods
+
+A reconciliation loop compares two things. The desired state is what you asked for, such as three replicas of a `kuard` Pod. The current state is what the cluster shows right now, such as two running `kuard` Pods. The loop keeps observing and acts to close the gap, here by creating one more `kuard` Pod.
+
+The same single loop also handles a manual scale up or down, a node failure, and a node that rejoins the cluster after being absent. That is why this pattern is so useful. It is goal driven and self-healing, yet it fits in a few lines of logic. Reconciliation loops appear all over Kubernetes, including the built-in controllers in this chapter.
+
+Decoupling is a key theme in Kubernetes. The core concepts are modular, so each one can be swapped or replaced with another component. The link between a ReplicaSet and its Pods is loosely coupled. The ReplicaSet creates and manages the Pods, but the two remain decoupled objects. It identifies its Pods with label queries, and it creates them through the same Pod API you use directly. Decoupling enables several important behaviors, covered in the subsections that follow.
+
 ### ownerReferences and adoption
 
 Child objects carry `ownerReferences`, a list of entries with `apiVersion`, `kind`, `name`, `uid`, `controller: true` and `blockOwnerDeletion: true`. Each object has exactly one controller owner. A controller manages objects it owns. It can also adopt objects that match its selector, provided those objects have no other controller owner.

@@ -215,6 +215,12 @@ Do not try to fix a permission problem with `chmod -R 777`. It removes protectio
 
 **Ownership.** `chown alice file` changes the owner, and only root can do that. `chown alice:projx file` changes both the owner and the group. `chgrp projx file` changes the group, and the owner may move a file to any group they belong to. Add `-R` to recurse. `stat file` shows the owner, group and mode in full.
 
+### Absolute modes: memorize the ones you use
+
+An absolute change sets all of the permission bits at once. That is quick, but it is blunt, because the whole mode is replaced. Each digit in the mode is a number from 0 to 7 in base 8, and each digit stands for one permission set. You do not need to build these numbers from scratch every time. Learn the handful you use most often, such as `644` for ordinary files and `755` for programs and directories. The `chmod(1)` manual page or its info manual has the full rules.
+
+Be careful with world-writable files. Obviously, you should not make a file writable by everyone, because that lets any user on the system change it. Could someone on the internet change it too? Probably not, unless the system has a network security hole. In that case, file permissions will not protect you anyway.
+
 ### `umask`: default permissions for new files
 
 New regular files start from 666, which is read-write for everyone. New files are not executable by default. New directories start from 777. The **umask** is a mask of bits to remove from those starting values. With the common `umask 022`, a new file gets `666 - 022 = 644`, and a new directory gets `755`. With `umask 077`, they get `600` and `700`, which is private. With `umask 002`, which allows group write, files get `664` and directories get `775`. The umask is really a bit mask rather than a subtraction, but for normal masks the result is the same.

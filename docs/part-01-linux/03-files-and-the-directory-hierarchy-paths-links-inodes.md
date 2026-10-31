@@ -65,6 +65,8 @@ An **absolute path** starts with `/` and means the same thing everywhere, such a
 
 The name `.` means "this directory", and `..` means "the parent directory". The root's parent is itself. The `~` is shell shorthand for your home directory. The shell expands it, and the kernel never sees a tilde. Chapter 1.2 explains that step.
 
+An example makes the dots clear. Suppose you are working in `/usr/lib`. Then `..` refers to `/usr`, and `../bin` refers to `/usr/bin`. The path `.` is still `/usr/lib`, so `./X11` means `/usr/lib/X11`. Most commands use the current directory when a path does not begin with `/`, so `X11` alone works just as well as `./X11`.
+
 Names are **case-sensitive**, so `Data` and `data` are two different names. A name may contain almost any character except `/` and the NUL byte. Names are just bytes. Linux imposes no encoding and no file-extension meaning. A file called `train.py` is not special because of `.py`. The extension is a convention for humans and tools.
 
 Two helpful commands work with paths. `realpath path` prints the absolute path with every symlink resolved. `basename` and `dirname` split a path into its last component and its directory prefix.
@@ -119,6 +121,8 @@ Libraries are code that executables share, and they come in two kinds. Static li
 
 `/usr` is pronounced "user", but it is not for individual users' personal files. It holds the bulk of the installed user-space software, and its subdirectories mirror the root, such as `/usr/bin`, `/usr/sbin` and `/usr/lib`. Three more subdirectories matter, as laid out in `HLW` Section 2.19. First, `/usr/include` holds header files (`.h`) used by the C compiler. Second, `/usr/local` is where administrators install their own software, and it mirrors `/` and `/usr`, with `/usr/local/bin` and `/usr/local/lib`. Third, `/usr/share` holds architecture-independent data, such as `man`, `info`, `dict` and `doc` directories, that works on other kinds of Unix machines with no loss of functionality.
 
+The `/usr/share` directory has a history worth knowing. Long ago, networks of machines shared this directory from one file server. Today that is rare, because disk space is no longer a tight limit on contemporary systems. You will still find `man`, `info` and `doc` subdirectories here, because this layout is an easily understood convention. The root directory also stays small for a historic reason: early systems kept its space requirements low, so most of the system lives under `/usr`.
+
 `/var` is the "variable" directory, where programs record information that changes over time. That includes logs, caches, queues, user-tracking data and spool files.
 
 `/boot` holds only the files for the very first stage of startup: the kernel and the boot loader files. It does not hold information about how services start. `/media` is the usual attachment point for removable media. `/opt` may hold additional third-party software.
@@ -158,6 +162,29 @@ The rest of a long listing has more columns. The nine **permission** characters,
 When a name does not tell you enough, use `file`. It identifies a file from its *contents*, not its name. It looks for characteristic starting bytes called magic numbers. That makes it the right first step with an unknown file: `file model.bin`, `file /usr/bin/python3`, and `file run.sh`, which also reports CRLF line endings.
 
 Make `file` your first step with any unknown file.
+
+### Reading a long listing column by column
+
+A long listing packs a lot into each line, so it helps to know what each column answers. Here is a home directory from the book's example, with the `total` line at the top.
+
+```
+$ ls -l
+total 3616
+-rw-r--r-- 1 juser users 3804 May 28 10:40 abusive.c
+-rw-r--r-- 1 juser users 4165 Aug 13 10:01 battery.zip
+-rw-r--r-- 1 juser users 131219 Aug 13 10:33 beav_1.40-13.tar.gz
+-rw-r--r-- 1 juser users 6255 May 20 14:34 country.c
+drwxr-xr-x 2 juser users 4096 Jul 17 20:00 cs335
+-rwxr-xr-x 1 juser users 7108 Jun 16 13:05 dhry
+-rw-r--r-- 1 juser users 11309 Aug 13 10:26 dhry.c
+-rw-r--r-- 1 juser users 56 Jul 9 15:30 doit
+drwxr-xr-x 6 juser users 4096 Feb 20 13:51 dw
+drwxr-xr-x 3 juser users 4096 Jul 1 16:05 hough-stuff
+```
+
+Column 3 is the owner of the file, here `juser`. Column 4 is the group, here `users`. Column 5 is the file size in bytes, and the modification date and time sit between that size and the file name. Column 2 counts hard links, which section 4 explains. Column 1 holds the file type and the permissions, which chapter 1.6 covers.
+
+Use `ls -F` when you want a quick hint about each name's type. Once you can read these columns, a directory listing tells you most of what you need before you open anything.
 
 ## 4. Inodes: what a file really is
 

@@ -158,6 +158,35 @@ Tcpdump prints TCP flags as short letters in each line. `S` means SYN, and `S.` 
 
 Good habits make these captures easier to trust. Capture to a file, filter narrowly, truncate, and leave out your SSH session. Keep the clocks of your hosts in sync with NTP or PTP when you correlate captures, and capture at both ends to see what each side saw. Record the exact command, the host and the interface in your case notes so that someone else can repeat the capture.
 
+### Primitives and operators
+
+A filter is built from primitives, which are its basic elements. The table lists the most important ones.
+
+| Primitive | Packet specification |
+|---|---|
+| `tcp` | TCP packets |
+| `udp` | UDP packets |
+| `ip` | IPv4 packets |
+| `ip6` | IPv6 packets |
+| `port` *port* | TCP and/or UDP packets to or from port *port* |
+| `host` *host* | Packets to or from host *host* |
+| `net` *network* | Packets to or from network *network* |
+
+Operators combine primitives. The `or` operator passes a packet when either side of it is true. The `and` operator requires both sides to be true, and `!` negates a condition. You can group operators with parentheses. Two examples show the difference:
+
+```bash
+sudo tcpdump tcp
+sudo tcpdump udp or port 80 or port 443
+```
+
+The first command shows only TCP packets. The second shows UDP packets, plus any packet on port 80 or port 443. If you do serious work with `tcpdump`, read the `pcap-filter(7)` manual page. Its section on primitives is the reference you will return to.
+
+### Permission to capture
+
+`tcpdump` shows more than most people expect. The output in this chapter includes only the TCP and IP header details. You can also make `tcpdump` print the entire packet contents. Most important network traffic is now encrypted with TLS, but headers and metadata still reveal a lot.
+
+Even though most traffic is encrypted, you should not snoop around on a network unless you own it or have permission. Ask before you capture on a network that someone else runs.
+
 ## 3. tshark and Wireshark
 
 On a headless server, where there is no desktop to run a GUI, `tshark` is the tool to reach for. It is the command-line version of Wireshark, with the same dissectors, display filters and statistics, and it suits scripts well. Wireshark itself, the GUI, is better for interactive analysis of files copied off the host.

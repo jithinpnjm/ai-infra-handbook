@@ -708,6 +708,12 @@ A Pod that is scheduled to a node stays on that node. If the node fails, nothing
 
 Match each workload to the controller whose identity and storage rules fit it, as the table shows.
 
+### ReplicaSets: one object for a group of identical Pods
+
+Suppose you need three copies of the same web server. You could manually write several Pod manifests that are largely similar, then create each one by hand. That works once, but it is tedious and error-prone. Logically, you want to manage a replicated set of Pods as a single entity. A ReplicaSet does exactly that. It acts as a cluster-wide Pod manager, and its job is to keep the correct kinds and counts of Pods alive at every moment.
+
+Use a ReplicaSet when you want a group of replicas rather than one Pod. Its pods are interchangeable, so you can treat the group as a single service. The rest of this chapter builds on that idea.
+
 ### Deployment patterns for inference
 
 Suppose you run an inference server that takes many minutes to load its model. It needs long probe windows and careful rollout settings. The manifest below runs three replicas of such a server and adds a PodDisruptionBudget. Read the comments on the rolling update settings, because GPUs are scarce.
@@ -781,6 +787,28 @@ kubectl rollout undo deployments kuard --to-revision=3     # roll back to a spec
 ```
 
 Remember that `kubectl rollout undo` changes cluster state directly. In a GitOps workflow, revert the manifest in Git and apply it instead, so version control matches what runs in the cluster.
+
+An undo leaves a visible trail in the ReplicaSets. The Deployment does not copy files back. It only changes the desired replica counts of the ReplicaSets it manages. You can see that with `kubectl get replicasets -o wide`:
+
+```bash
+$ kubectl get replicasets -o wide
+NAME DESIRED CURRENT READY ... IMAGE(S) ...
+kuard-1128242161 0 0 0 ... gcr.io/kuar-demo/ ...
+kuard-1570155864 0 0 0 ... gcr.io/kuar-demo/ ...
+kuard-2738859366 3 3 3 ... gcr.io/kuar-demo/ ...
+```
+
+Be careful with undo in a declarative setup. When you manage production from files, the manifests in source control should match what runs in the cluster. A `kubectl rollout undo` changes production in a way your source control does not show. An alternative, and perhaps the better choice, is to revert your YAML file and run `kubectl apply` on the previous version. In this way, your "change tracked configuration" more closely tracks what is really running in your cluster. Let's look at the Deployment history again after you do this, so you can check the result.
+
+### Rolling updates and version compatibility
+
+A rolling update means two versions of your service answer requests at the same time. Imagine a frontend rollout that is halfway done. Half your servers run version 1 and half run version 2. A user's first request reaches a version 1 server and downloads the version 1 client library. That library then calls your API, and the call may reach a version 2 server.
+
+If the two versions do not agree on the API, the application breaks. At first, this might seem like an extra burden. In truth, you always had this problem; you may just not have noticed. A user can make a request at time `t`, just before you start an update. That request is serviced by a version 1 server. At `t_1`, you update the service to version 2. At `t_2`, the version 1 client code in the browser hits an endpoint on a version 2 server. No matter how you update software, you need backward and forward compatibility for reliable updates. `RollingUpdate` only makes that need obvious.
+
+The same rule applies to client libraries compiled into other services. Updating your service does not update their copies. Backward compatibility keeps your service decoupled from the systems that call it. If you do not formalize your APIs, you must coordinate every rollout with every caller, which slows you down. A decoupled design puts an API contract and a load balancer between the frontend and the backend. A coupled design uses a thick client, compiled into the frontend, that talks straight to the backends.
+
+Before you roll out a version, ask whether it can talk to the version before it and the version after it.
 
 ### StatefulSet example (vector database)
 

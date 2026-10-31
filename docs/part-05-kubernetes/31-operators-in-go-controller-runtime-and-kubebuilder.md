@@ -537,6 +537,71 @@ A defaulting example: set `deploymentTier` to `dev` when it is missing. `dev` is
 
 Admission webhooks rarely appear in a prototype or a pre-alpha operator. They matter more when you refine the user experience for a stable release. Admission control is covered in 5.21.
 
+### Plain HTTPS handler or controller-runtime
+
+A webhook is just an HTTPS server that speaks the `AdmissionReview` protocol. You can write one from scratch in any language with TLS and JSON support. That gives you the most flexibility, and it fits whatever stack your team already runs. The cost is that you lose the high-level helpers. You build the patches, the responses, the error handling and the graceful shutdown yourself. Mature Kubernetes client libraries can take some of that work off your hands.
+
+The book shows the manual approach with the AWS IAM Roles for Service Accounts webhook. It injects a projected volume into Pods. That volume holds a service account token that can authenticate to AWS services. The security side of that design is covered in 5.21. The core of the patch looks like this:
+
+```go
+type patchOperation struct {
+	Op    string      `json:"op"`
+	Path  string      `json:"path"`
+	Value interface{} `json:"value,omitempty"`
+}
+volume := corev1.Volume{
+	Name: m.volName,
+	VolumeSource: corev1.VolumeSource{
+		Projected: &corev1.ProjectedVolumeSource{
+			Sources: []corev1.VolumeProjection{
+				{
+					ServiceAccountToken: &corev1.ServiceAccountTokenProjection{
+						Audience:          audience,
+						ExpirationSeconds: &m.Expiration,
+						Path:              m.tokenName,
+					},
+				},
+			},
+		},
+	},
+}
+patch := []patchOperation{
+	{
+		Op:    "add",
+		Path:  "/spec/volumes/0",
+		Value: volume,
+	},
+}
+if pod.Spec.Volumes == nil {
+	patch = []patchOperation{
+		{
+			Op:    "add",
+			Path:  "/spec/volumes",
+			Value: []corev1.Volume{
+				volume,
+			},
+		},
+	}
+}
+patchBytes, err := json.Marshal(patch)
+```
+
+The code defines a `patchOperation` struct that marshals to JSON. It builds the `Volume` with the service account token details. Then it wraps the volume in a patch. If the Pod has no volumes yet, it adds the whole `/spec/volumes` key instead. The real webhook also adds environment variables to the patch. The book leaves that out for brevity.
+
+The handler then returns an `AdmissionResponse` with the patch, a `Patch` field and a JSON patch type. That is a lot of manual work, even with the Go libraries. The trade-off is clear. Maximum flexibility costs more domain knowledge, and more code to maintain.
+
+`controller-runtime` removes much of that work. The Kubebuilder project builds on it and adds generators and helpers. For a webhook on a built-in type, such as a Pod or Deployment, the upstream examples are a good start. For a custom resource (CRD), Kubebuilder is usually the better base. A marker comment above the handler, such as `+kubebuilder:webhook`, generates the matching webhook manifest for you. The marker lists the path, the mutating flag, the failure policy, the group, the resource, the verbs and the versions.
+
+The book's example is a controller-runtime mutating webhook for Cluster API `VSphereMachine` objects. It watches for these objects. When a configurable field is set, it asks Infoblox, an external IP address management system, for an address. It writes that address into the static IP field. Then it lets the request continue to the API server. The example has three reasons to use a custom webhook. The IP must exist before the object reaches the API server, the call goes to an external system with its own Go library, and the code stays small enough for newer developers to extend.
+
+The book also notes a companion controller that runs in the cluster. That controller keeps the external state reconciled, so the system does not depend only on the state seen at admission time. If your webhook changes or depends on external state, plan for that controller too. It adds complexity, but it protects you from drift.
+
+Two details from the handler matter for real code. First, `DecodeRaw` turns the raw request object into your typed Go struct. If decoding fails, return `admission.Errored` with a 400 status. Second, check the annotation early. If the webhook has nothing to do, return `admission.Allowed` at once, because the webhook is on the critical path. After you change the object, `admission.PatchResponseFromRaw` computes the JSON patch between the original and the changed object for you.
+
+Deletes need care too. Some teams want a webhook to intercept `DELETE` requests, to clean up external state tied to a resource. That is possible. Think first about whether you fail open or closed, and about the risk of leaving external state out of step if the webhook is skipped. A finalizer with a custom controller is safer, because it guarantees the cleanup runs. Section 6 covers finalizers.
+
+`controller-runtime` gives you a strong base, and it lets you focus on the logic. The trade-off is that the admission logic hides inside controller code. End users may see surprising results that they cannot trace easily. Document the webhook's behavior for them. If your rules do not need a full program, a policy engine such as Gatekeeper (5.21) may fit better.
+
 ## 11. Testing strategy
 
 Test at three layers:

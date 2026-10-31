@@ -287,6 +287,38 @@ For advisories, read the SANS newsletters, CISA and national CERT advisories, an
 
 Track and patch every service you expose, using the advisory sources above.
 
+### Why the rules of thumb work
+
+Patching matters most for the services you expose. If you run an SSH server, Postfix or a similar service, keep its software up to date and watch for its security alerts. Security teams concentrate their work on stable, supported releases. Development and testing releases, such as Debian Unstable and Fedora Rawhide, get much less attention. That is why servers should run long-term support releases.
+
+Local accounts deserve the same care. Gaining superuser access from a local account is much easier than breaking in from outside. A large base of software means bugs and design flaws are common, so a shell prompt alone can offer a path to root. Do not hand out accounts casually. Do not assume that your friends protect their passwords or choose good ones.
+
+Dubious binary packages are a final trap. They can contain Trojan horses, so install software only from sources you trust.
+
+### Why Linux draws attackers
+
+Linux is a popular Unix on the PC, and it runs many web servers. That popularity attracts people who want to break into systems, some for fun and some for money. Firewalls help, but they do not tell the whole story. You do not need deep expertise to stay safe, though. A few rules of thumb cover most of the risk.
+
+There are three basic kinds of network attack. A full compromise gives an intruder superuser access, which means full control of the machine. A denial-of-service attack stops a machine from doing its network work, usually with a flood of requests. It can also exploit a flaw that crashes a server program. Denial-of-service attacks are harder to prevent, but they are easier to respond to.
+
+Malware is the third kind. Linux users are mostly immune to email worms and viruses, because mail clients do not run programs sent as attachments. Linux malware does exist, though. Avoid downloading and installing executable software from places you have never heard of.
+
+### Two basic kinds of vulnerability
+
+There are two main types of vulnerability: direct attacks and cleartext password sniffing. A direct attack tries to take over a machine without subtlety. A common start is an unprotected service, such as an administrator account with no password. Once an intruder controls one service, the intruder can try to compromise the whole system.
+
+Buffer overflows were a classic direct attack. A careless programmer does not check the bounds of a buffer array, so extra data overruns it. Address Space Layout Randomization (ASLR) in the kernel, along with other protections, has mitigated the problem somewhat.
+
+Cleartext sniffing captures passwords sent across the network in plain text. An attacker can also use a password database built from one of many data breaches. Once an attacker has your password, the game is over. The attacker will then try to gain superuser access locally, which is much easier than a remote attack. The attacker may also use your machine to attack other hosts.
+
+### Security resources
+
+Three resources make a good starting point. The SANS Institute offers training, services, sample security policies and a free weekly newsletter that lists the top current vulnerabilities. The CERT Division of Carnegie Mellon University's Software Engineering Institute is a good place to find the most severe problems.
+
+Insecure.org is run by Gordon "Fyodor" Lyon, the creator of Nmap. It points you to Nmap and to many network exploit-testing tools. It is more open and specific about exploits than many other sites.
+
+If you want to understand network security, learn Transport Layer Security (TLS) and its predecessor, Secure Socket Layer (SSL). Both add public-key encryption and certificates to network clients and servers. Davies' *Implementing SSL/TLS Using Cryptography and PKI* is a good guide, as is Aumasson's *Serious Cryptography*.
+
 ## 10. Securing routing and the control plane
 
 Strong data-plane security does not help if someone can hijack the control plane. Routing protocols decide where traffic goes, so they need protection of their own. Start by authenticating them. OSPF and IS-IS use HMAC-SHA, and BGP uses TCP-AO or MD5. For eBGP, use GTSM with TTL 255. Restrict BGP and OSPF to specific interfaces and peers, and make `passive-interface` the default.

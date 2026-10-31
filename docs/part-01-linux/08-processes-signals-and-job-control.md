@@ -250,6 +250,30 @@ ps axo stat,ppid,pid,comm | awk '$1 ~ /^Z/'   # find zombies and their parents
 
 Add `w` (up to three times) to widen the command column. `VSZ` is the virtual size, and `RSS` is the resident set, which is the physical RAM the process holds right now. Chapter 1.17 explains the difference. To list threads inside a multithreaded process, such as `Xorg` or a multi-worker Python process, pass `ps m` (BSD style) or `ps m -o pid,tid,command`. See `HLW` Listings 8-1 and 8-2. Lines with a dash (`-`) in the `PID` column are individual threads of the process above them. The `tid` column shows each thread's kernel Thread ID (`TID`).
 
+### What the default `ps` columns mean
+
+The default `ps` output is short, but each column tells you something when a job misbehaves. Here is a listing from a small machine, which you can read against the table below.
+
+```
+$ ps
+PID TTY STAT TIME COMMAND
+520 p0 S 0:00 -bash
+545 ? S 3:59 /usr/X11R6/bin/ctwm -W
+548 ? S 0:10 xclock -geometry -0-0
+2159 pd SW 0:00 /usr/bin/vi lib/addresses
+31956 p3 R 0:00 ps
+```
+
+| Field | What it tells you |
+|---|---|
+| `PID` | The process ID, a number that identifies the running program. After a process ends, the kernel can reuse its number for a new process. |
+| `TTY` | The terminal device where the process is running. |
+| `STAT` | The process status: what the process is doing and where its memory resides. `S` means sleeping and `R` means running. The `ps(1)` manual page lists the other symbols. |
+| `TIME` | The CPU time the process has used so far. This is not the wall-clock time since it started, because processes do not run constantly. |
+| `COMMAND` | The command that started the program. A process can change this field, and the shell's glob expansion appears here instead of what you typed. |
+
+The `ps` command accepts Unix, BSD and GNU option styles. Many people find the BSD style the most comfortable, so this book uses it. `ps x` shows all of your running processes, and `ps ax` shows every process on the system. `ps u` adds detail, and `ps w` shows full command names instead of cutting them to fit one line. Options combine, as in `ps aux` and `ps auxw`. To inspect one process, give its PID, or use `ps u $$`, because `$$` expands to the PID of the current shell.
+
 ### Viewing threads with `ps m`
 
 Most of the time, `ps` and `top` show only processes. A process starts with one thread, called the main thread. A process with one thread is single-threaded. A process with more than one thread is multithreaded, and the main thread can start the others. Add the `m` option to see every thread on its own line.
@@ -454,6 +478,14 @@ kill -- -1234           # signal the whole PROCESS GROUP 1234 (note the minus)
 
 **Escalate in order.** When you are tempted to reach for `kill -9`, try `SIGTERM` first, and give the program time to shut down. It can flush buffers, save a checkpoint, close files and remove lock files. Use `SIGKILL` only when the program does not respond. A killed process gets no chance to clean up. That can leave lock files, half-written files and orphaned children. For GPU jobs it can also leave GPU memory that the driver must reclaim. A signal handled by a process in `D` state takes effect only when the process leaves that state.
 
+### Stopping, continuing and processes that resist
+
+Stopping a process does not end it. `kill -STOP` freezes a process, which stays in memory and waits. `kill -CONT` lets it pick up where it left off. Pressing Ctrl-C in a terminal sends the INT (interrupt) signal, which is the same as ending the process with `kill -INT`.
+
+Most processes get a chance to clean up. The kernel lets a process install a signal handler, a function that runs when a signal arrives. Some processes choose a non-terminating response, get wedged while handling the signal, or simply ignore it. A plain `kill` can therefore leave a process running. KILL is the most brutal option, and it cannot be ignored, because the operating system does not give the process any chance to respond. The kernel ends it and removes it from memory by force, so use it only as a last resort.
+
+Do not kill processes indiscriminately, especially ones you do not understand. You may be shooting yourself in the foot. Other users type `kill -9` instead of `kill -KILL`, because the kernel numbers its signals. Run `kill -l` to see the mapping from each number to its name.
+
 ### Catching signals in shell scripts
 
 A shell script handles signals with `trap`. A batch script can use it to clean up its scratch files, or to turn `SIGTERM` into a graceful stop.
@@ -507,6 +539,20 @@ Closing your terminal, or dropping your SSH session, sends the shell a `SIGHUP`.
 Two details catch people out. A background job that tries to read the terminal gets `SIGTTIN` and is stopped. That is why `command &` for an interactive program shows "Stopped (tty input)". Also, `command &` leaves the child attached to your shell's session. It is therefore *not* protected from `SIGHUP` unless you add `nohup` or `disown`.
 
 Pick the remedy before you start the job, not after the connection drops.
+
+### Job control: useful, but easy to get lost in
+
+Job control lets you suspend a program with Ctrl-Z and resume it later with `fg` or `bg`. It works by sending TSTP and CONT signals for you, which is handy. It is not required, though, and it can confuse beginners. Many people press Ctrl-Z when they meant Ctrl-C, forget what they were running, and end up with several suspended processes. Run `jobs` to see whether you have suspended anything in the current terminal.
+
+If you want to run several programs, give each one its own terminal window, or send non-interactive work to the background. Learn `screen` and `tmux` as well, as chapter 1.5 describes.
+
+### Background processes and stray output
+
+A normal command holds your prompt until it finishes. Adding `&` runs the command in the background and returns the prompt at once. For example, `gunzip file.gz &` decompresses a large file while you keep working. The shell prints the PID of the new background process. A long job can keep running after you log out, which suits number crunching, and the shell usually reports when it finishes.
+
+The trouble is that a background program may still expect the terminal. If it reads standard input, it can freeze or stop, and `fg` brings it back. If it writes to standard output or standard error, its text can appear in the middle of your work. The best fix is to redirect its output to a file, as chapter 1.2 shows.
+
+When stray output clutters the screen, press Ctrl-L to redraw it. Many full-screen programs support Ctrl-L, and so does bash. Ctrl-R usually redraws the current line in a program that reads input, but at the bash prompt it starts a reverse search, and Esc exits that mode. Pressing the wrong key at the wrong time can make things worse, so check the screen before you type again.
 
 ## 6. Priority: `nice`, `ionice`, CPU affinity
 

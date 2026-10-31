@@ -305,6 +305,148 @@ In *Production Kubernetes* Chapter 8 (*Admission Control*), Josh Rosso et al. co
 - **Kubebuilder webhook code-generation markers:** Adding a single comment marker above the Go handler generates the `MutatingWebhookConfiguration` YAML automatically:
   `// +kubebuilder:webhook:path=/infoblox-ipam,mutating=true,failurePolicy=fail,groups="infrastructure.cluster.x-k8s.io",resources=vspheremachines,verbs=create;update,versions=v1alpha3,name=infoblox.mutations.io`
 
+### How a request moves through admission
+
+Admission control sits between authorization and storage. Every request to the API server takes the same path. First the server authenticates the client and checks RBAC, to confirm the caller may perform the action, such as creating a Pod in one Namespace. Only then does admission begin. Think of it as a row of checkpoints. Each one can adjust the request or turn it away, and the order never changes.
+
+Mutating controllers run first. They can change the resource before later steps see it. The built-in Service Account controller is a good example, and it is on by default. When a Pod arrives without a `serviceAccount` field, the controller sets it to the `default` ServiceAccount for the Namespace. It also adds `ImagePullSecrets` and a volume so the Pod can reach its ServiceAccount token.
+
+Next comes schema validation. It checks that the object matches the defined schema, including required fields. Because mutation runs first, the validation step sees the finished object. That ordering lets mutating controllers fill in fields that the schema would otherwise reject as missing.
+
+The last stop before etcd is the set of validating controllers. They cannot change the object. They only admit or reject it. Their job is operational logic, such as "is this Namespace still accepting new objects?", not checking the shape of the data. The `NamespaceLifecycle` controller is a clear case. For a `CREATE` request, it checks the Namespace phase:
+
+```go
+// ensure that we're not trying to create objects in terminating Namespaces
+if a.GetOperation() == admission.Create {
+	if namespace.Status.Phase != v1.NamespaceTerminating {
+		return nil
+	}
+	err := admission.NewForbidden(a, fmt.Errorf("unable to create new content in namespace %s because it is being terminated", a.GetNamespace()))
+	if apierr, ok := err.(*errors.StatusError); ok {
+		apierr.ErrStatus.Details.Causes = append(apierr.ErrStatus.Details.Causes,
+			metav1.StatusCause{
+				Type:    v1.NamespaceTerminatingCause,
+				Message: fmt.Sprintf("namespace %s is being terminated", a.GetNamespace()),
+				Field:   "metadata.namespace",
+			})
+	}
+	return err
+}
+```
+
+If the Namespace is not terminating, the controller returns nothing, and the request passes. If it is terminating, the controller returns an API error that says the Namespace is being terminated, and the request is denied. Put simply, a Namespace that is shutting down stops accepting new objects.
+
+> **Note:** A request must pass every validating admission controller before it is persisted. Only one controller needs to reject it for the request to be denied.
+
+### In-tree controllers and the flags that control them
+
+Admission controllers were built into the core Kubernetes code for a long time. People call this the in-tree model. Many of them can be turned on or off with API server flags. That works well if you run your own control plane. It is a problem for users of cloud-managed Kubernetes, who often cannot change those flags. PodSecurityPolicy is an example. It adds strong security controls, but it is not enabled by default, so many users never benefit from it.
+
+The trend is to move this code out of the API server. The book notes that the built-in PodSecurityPolicy controller has an announced deprecation. It expects its replacement to live in an external admission controller. It also expects more built-in controllers to move out of tree over time. Mutating and validating webhooks are the first step in that direction.
+
+Most built-in controllers run by default, as a set of sane defaults. Check that the ones you need are on. To enable a controller that is off by default, pass `--enable-admission-plugins` to the API server. To disable a default controller, pass `--disable-admission-plugins`. Read both flags carefully, because it is easy to reach for the wrong one.
+
+Use the official Kubernetes documentation for the full list of built-in controllers. The real flexibility comes from webhooks, which the next subsections cover.
+
+### What the API server sends a webhook
+
+Webhooks are a special kind of admission controller. The API server sends an HTTPS request to an endpoint you run. That endpoint returns a decision: allow, deny, or change the request. Because the endpoint only needs to speak HTTPS, you can write it in any language. You can run it inside the cluster, or as a serverless function outside it. It can also call outside systems, such as a central service that tracks approved images.
+
+Webhooks are on the critical path of every matching request. They sit outside the API server and must be called over HTTPS, so they add latency. Keep each webhook fast, and return as early as you can.
+
+The API server calls webhooks over TLS only. The webhook must present a certificate that the API server trusts. In a cluster, cert-manager is a common way to issue these certificates automatically. A webhook that runs outside the cluster needs a certificate from a public root CA or from an internal CA the API server knows about.
+
+Both sides of the call follow a fixed schema called `AdmissionReview`. The request carries:
+
+- The API version, group and kind of the object
+- The name and Namespace, and a unique ID to match the response to the request
+- The operation, such as `CREATE`
+- The user who made the request, including their group membership
+- Whether the request is a dry run, which matters for side effects
+- The resource itself
+
+The response carries the same unique ID, an allow or deny decision, and an optional customized error status and message. A mutating webhook can also return a patch. That patch is a base64-encoded JSONPatch document that describes the changes to apply before the object is stored.
+
+Validating webhooks cannot change the request. They can only admit or reject the original object. That limit is fine for checks such as "this user ID is allowed," "no host mounts," or "every object carries a team label." Mutating webhooks suit adding metadata. A simple example adds team or workload labels to Pods or Deployments. A more common example is sidecar injection. A service mesh such as Istio runs a mutating webhook that adds a proxy container to Pod specs. Injection happens by default, and annotations on the Namespace or the Pod can override it.
+
+Mutation makes the platform easier to use, but it hides complexity. The user sees a different object from the one they applied. That can confuse people who do not know that a mutating controller is running. Tell your users which webhooks change their objects.
+
+A `MutatingWebhookConfiguration` tells the API server when to call a mutating webhook. Here is an annotated example from the book:
+
+```yaml
+apiVersion: admissionregistration.k8s.io/v1
+kind: MutatingWebhookConfiguration
+metadata:
+  name: "test-mutating-hook"
+webhooks:
+- name: "test-mutating-hook"
+  rules:
+  - apiGroups: [""]
+    apiVersions: ["v1"]
+    operations: ["CREATE"]
+    resources: ["pods"]
+    scope: "Namespaced"
+  clientConfig:
+    service:
+      namespace: test-ns
+      name: test-service
+      path: /test-path
+      port: 8443
+    caBundle: "Ci0tLS0tQk...tLS0K"
+  admissionReviewVersions: ["v1", "v1beta1"]
+  sideEffects: "None"
+  timeoutSeconds: "5"
+  reinvocationPolicy: "IfNeeded"
+  failurePolicy: "Fail"
+```
+
+| Field | What it controls |
+|---|---|
+| `rules` | Which API version, kind and operations send a call to the webhook |
+| `operations` | The operations, such as `CREATE`, that trigger a call |
+| `resources` | The kind to target |
+| `scope` | Whether Namespace-scoped or cluster-scoped resources are targeted |
+| `clientConfig` | How the API server reaches the webhook. This example points at a Service in the cluster |
+| `caBundle` | A PEM-encoded CA bundle that validates the webhook's server certificate |
+| `admissionReviewVersions` | The `AdmissionReview` versions the webhook supports |
+| `sideEffects` | Whether the webhook changes external systems |
+| `timeoutSeconds` | How long to wait before the `failurePolicy` applies |
+| `reinvocationPolicy` | Whether the webhook can be called again after other webhooks run |
+| `failurePolicy` | Whether the webhook fails open (`Ignore`) or closed (`Fail`) |
+
+You can narrow the rules a lot. To intercept only requests that create Secrets, use this rule:
+
+```yaml
+rules:
+- apiGroups: [""]
+  apiVersions: ["v1"]
+  operations: ["CREATE"]
+  resources: ["secrets"]
+  scope: "Namespaced"
+```
+
+You can also add a `namespaceSelector` or an `objectSelector`. The next snippet picks only Secrets in Namespaces that carry the label `webhook: enabled`:
+
+```yaml
+namespaceSelector:
+  matchExpressions:
+  - key: webhook
+    operator: In
+    values: ["enabled"]
+```
+
+Scope down as far as you can. A webhook that is not called on irrelevant objects costs far less.
+
+### Webhook failure modes, ordering and performance
+
+**Failure modes.** A webhook that is unreachable, or that returns an unknown response, counts as failing. You choose the result with `failurePolicy`. `Ignore` lets the request through, which is fail open. `Fail` rejects the request, which is fail closed. For security or other critical webhooks, `Fail` is the safer choice. For noncritical hooks, `Ignore` can be safe, especially when a reconciling controller backs it up. Weigh these choices together with the performance concerns below.
+
+**Ordering.** All mutating webhooks run before any validating webhook. So a validating webhook always sees the final version of the object before it is stored. Mutating webhooks do not run in a guaranteed order. A mutation by one hook can cause another to run again. The `reinvocationPolicy` field controls that behavior. Still, design every webhook to be idempotent, so that running it twice gives the same result as running it once.
+
+**Performance.** A webhook sits on the request path. If a critical webhook fails closed, any timeout denies the request. Build it for high availability. Admission control can turn into a bottleneck for the whole cluster if you are careless. A resource-heavy webhook, or one with external dependencies, needs extra thought. Ask how often it runs and what it costs on each call. In those cases, a controller that reconciles objects inside the cluster may be a better fit.
+
+**Side effects.** Some webhooks change things outside the cluster, such as a resource in a cloud provider. These webhooks must respect `dryRun`. When a request is a dry run, they should skip the external change. Each webhook declares this with its `sideEffects` field, so the API server knows whether a dry run is safe to send.
+
 ### Serving certificates for an admission webhook
 
 The API server calls a webhook over HTTPS only. That protects the traffic, but it means the webhook needs a certificate. The easiest source is the cluster's own certificate authority (CA), which can sign a certificate for the webhook on request. The steps are: make a private key and a certificate signing request (CSR), submit it to the cluster, approve it, and download the result.
@@ -700,7 +842,7 @@ systemctl restart kubelet.service
 ...
 ```
 
-Each check shows `PASS`, `WARN` or `FAIL`. The remediation section tells you what to change and how to restart the service. Here, `4.2.6` fails, and the fix is to set `--protect-kernel-defaults=true` on each worker node. Run `kube-bench` again after each change to confirm the result.
+Each check shows `PASS`, `WARN` or `FAIL`. The remediation section tells you what to change and how to restart the service. Here, `4.2.6` fails, and the book's fix is to set `--protect-kernel-defaults=true` on each worker node, then restart the kubelet.
 
 ## 5. Policy engines
 
@@ -863,6 +1005,145 @@ spec:
 ```
 
 4. **Gatekeeper Prometheus metrics**: Gatekeeper exports Prometheus metrics for continuous compliance monitoring and alerting, including the total number of audit violations (`gatekeeper_violations`), the number of constraints by `enforcementAction` (`gatekeeper_constraints`), constraint templates, request latency, and audit duration.
+
+### Rego and where Gatekeeper fits
+
+Rego is the declarative language that Open Policy Agent (OPA) uses for policy. OPA's creators designed it to query and reason over structured data. It is not meant to be a general-purpose programming language. The syntax is lean, which makes it a little hard to read at first. This chapter does not teach Rego syntax. The book points readers to a free online training portal for that.
+
+OPA works on plain JSON. It does not know anything about Kubernetes. Something has to pass Kubernetes requests to OPA and act on the answer. Gatekeeper fills that role. It is a controller that runs in the cluster as an admission controller. It turns Kubernetes admission requests into OPA decisions, and it adds Kubernetes-native pieces, such as templates, that make policies easier for platform operators to write and apply.
+
+Gatekeeper lets a cluster operator publish policy templates as `ConstraintTemplate` resources. Each template creates a new CRD for a constraint. A constraint takes input parameters, much like the arguments to a function. End users then create their own constraint with their own values, and Gatekeeper enforces it during admission.
+
+> **Caution:** Gatekeeper fails open by default. That can have serious security consequences. Read the trade-offs in the official documentation before you run it in production.
+
+### Worked example: one Ingress host pattern per Namespace
+
+A common rule is that teams must not overwrite each other's Ingress resources. Some Ingress controllers, such as Contour, protect against this out of the box. If your controller does not, Gatekeeper can enforce the rule. The official Gatekeeper documentation keeps a library of common policies, and this scenario is one of them.
+
+This rule needs data beyond the object being applied. Gatekeeper must look up the Ingress resources that already exist, and read the metadata of the Namespace. Here the Namespace carries a regex in an annotation. Each Ingress host must match that regex. The example below is untested here, and the book's Ingress manifests use an older API version, so check the version your cluster serves before you apply them.
+
+Step 1 is the sync config. Gatekeeper only knows about the objects you tell it to cache. The `sync` section lists the kinds it should copy into its cache, so that policies can query them:
+
+```yaml
+apiVersion: config.gatekeeper.sh/v1alpha1
+kind: Config
+metadata:
+  name: config
+  namespace: "gatekeeper-system"
+spec:
+  sync:
+    syncOnly:
+    - group: "extensions"
+      version: "v1beta1"
+      kind: "Ingress"
+    - group: "networking.k8s.io"
+      version: "v1beta1"
+      kind: "Ingress"
+    - group: ""
+      version: "v1"
+      kind: "Namespace"
+```
+
+The cache saves Gatekeeper from calling the Kubernetes API for every decision. The cost is that a decision can use stale data. To catch what slips through, Gatekeeper runs an audit. The audit runs policies against existing resources on a schedule, and it records violations in the `status` field of each constraint. Monitor those fields, so that a violation caused by a stale read does not stay unnoticed.
+
+Step 2 is the `ConstraintTemplate`. It defines the policy logic and the parameters the policy accepts:
+
+```yaml
+apiVersion: templates.gatekeeper.sh/v1beta1
+kind: ConstraintTemplate
+metadata:
+  name: limitnamespaceingress
+spec:
+  crd:
+    spec:
+      names:
+        kind: LimitNamespaceIngress
+        listKind: LimitNamespaceIngressList
+        plural: limitnamespaceingresss
+        singular: limitnamespaceingress
+      validation:
+        # Schema for the `parameters` field in the constraint
+        openAPIV3Schema:
+          properties:
+            annotation:
+              type: string
+  targets:
+  - target: admission.k8s.gatekeeper.sh
+    rego: |
+      package limitnamespaceingress
+      violation[{"msg": msg}] {
+        cluster := data.inventory.cluster.v1
+        namespace := cluster.Namespace[input.review.object.metadata.namespace]
+        regex := namespace.metadata.annotations[input.parameters.annotation]
+        hosts := input.review.object.spec.rules[_].host
+        not re_match(regex, hosts)
+        msg := sprintf("Only ingresses matching %v in namespace %v allowed",
+          [regex, input.review.object.metadata.namespace])
+      }
+```
+
+The `properties` section defines the input parameters that each rule instance can set. The `targets` section holds the Rego rules. The policy reads a parameter as `input.parameters.<parameter_name>`. Here that parameter is `annotation`, the name of the annotation that holds the regex.
+
+Rego raises a violation when a statement is true. The rule checks that the hosts match the regex, so a match should not raise a violation. The `not` keyword inverts the `re_match()` result. A positive match then lets the request through.
+
+Step 3 creates an instance of the policy. This `LimitNamespaceIngress` object applies the rule to Ingress objects in both API groups. It also names `allowed-ingress-pattern` as the annotation to read:
+
+```yaml
+apiVersion: constraints.gatekeeper.sh/v1beta1
+kind: LimitNamespaceIngress
+metadata:
+  name: limit-namespace-ingress
+spec:
+  match:
+    kinds:
+    - apiGroups: ["extensions", "networking.k8s.io"]
+      kinds: ["Ingress"]
+  parameters:
+    annotation: allowed-ingress-pattern
+```
+
+Step 4 annotates the Namespace with the pattern. Note the escaped regex special character:
+
+```yaml
+apiVersion: v1
+kind: Namespace
+metadata:
+  annotations:
+    # Note regex special character escaping
+    allowed-ingress-pattern: \w\.my-namespace\.com
+  name: ingress-test
+```
+
+Step 5 tests the rule with two Ingress objects in that Namespace. The first host does not match the pattern, so it fails. The second host matches, so it succeeds. The denied request returns an error like this one:
+
+```
+Error from server ([denied by limit-namespace-ingress] Only ingresses with
+host matching \w\.my-namespace\.com are allowed in namespace ingress-test):
+error when creating "ingress.yaml": admission webhook "validation.gatekeeper.sh"
+denied the request: [denied by limit-namespace-ingress] Only ingresses with host
+matching \w\.my-namespace\.com are allowed in namespace ingress-test
+```
+
+Read the error message closely. It names the constraint that denied the request and the pattern it expected. That tells the team exactly what to fix.
+
+### Gatekeeper strengths, weaknesses and blast radius
+
+Gatekeeper has several strengths:
+
+- The `ConstraintTemplate` model lets admins define common policies and share them across the organization as libraries.
+- Policies are written in Rego, so no general-purpose programming language is needed.
+- OPA is a mature engine with strong community support. Gatekeeper is a newer layer, but it has seen strong early adoption.
+- All policy enforcement runs through one admission controller. That gives you one central audit log, which matters in regulated environments.
+
+Its weaknesses matter too. The chapter says Gatekeeper cannot mutate requests, and that its support for external data is cumbersome to set up. The `Assign` example above shows a mutation resource, so check which mutation features your Gatekeeper version provides. If you need strong mutation or easy external data, plan a custom webhook from the earlier subsections.
+
+The broad reach that makes Gatekeeper useful also carries risk. A general-purpose admission controller sees many kinds of requests, and its permissions must cover all of them. Keep these points in mind:
+
+- The controller sits on the critical path. A bug or a bad configuration can cause a wide outage.
+- Because it intercepts control plane requests, administrators can be locked out of their own fixes. This is most painful for networking and other resources the cluster depends on.
+- It needs broad RBAC. If the policy server has a vulnerability, an attacker could take destructive actions.
+
+> **Caution:** Avoid configuring admission webhooks that intercept resources in the `kube-system` Namespace. Those objects keep the cluster running. An accidental mutation or rejection there can cause serious problems.
 
 ### Others
 

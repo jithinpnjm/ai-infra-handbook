@@ -137,6 +137,130 @@ Design guidance follows from these patterns. Start with default-deny ingress eve
 
 Start with ingress, and add egress only after audit mode shows what it would block.
 
+### Proving a default deny with a test Pod
+
+A policy on paper is not proof. *Kubernetes: Up and Running* (3rd edition, Chapter 19) tests the rules with a small application in its own namespace. You run the app, expose it as a Service, and call it from a second Pod. Then you add a default deny, and finally a policy that lets through the one source you want. Each step shows what changed.
+
+Start with a fresh namespace, then the `kuard` Pod:
+
+```bash
+$ kubectl create ns kuard-networkpolicy
+namespace/kuard-networkpolicy created
+```
+
+Save this manifest as `kuard-pod.yaml`:
+
+```yaml
+apiVersion: v1
+kind: Pod
+metadata:
+  name: kuard
+  labels:
+    app: kuard
+spec:
+  containers:
+  - image: gcr.io/kuar-demo/kuard-amd64:blue
+    name: kuard
+    ports:
+    - containerPort: 8080
+      name: http
+      protocol: TCP
+```
+
+Create the Pod and expose it as a Service:
+
+```bash
+$ kubectl apply -f kuard-pod.yaml \
+--namespace kuard-networkpolicy
+pod/kuard created
+$ kubectl expose pod kuard --port=80 --target-port=8080 \
+--namespace kuard-networkpolicy
+pod/kuard created
+```
+
+Now start a test Pod, with no policy in place, and fetch the page from `kuard`:
+
+```bash
+$ kubectl run test-source --rm -ti --image busybox /bin/sh \
+--namespace kuard-networkpolicy
+If you don't see a command prompt, try pressing enter.
+/ # wget -q kuard -O -
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<title><KUAR Demo></title>
+...
+```
+
+The test Pod reaches `kuard`, so traffic flows freely. Next, save this default deny as `networkpolicy-default-deny.yaml`. It selects every Pod in the namespace and allows no ingress:
+
+```yaml
+apiVersion: networking.k8s.io/v1
+kind: NetworkPolicy
+metadata:
+  name: default-deny-ingress
+spec:
+  podSelector: {}
+  policyTypes:
+  - Ingress
+```
+
+```bash
+$ kubectl apply -f networkpolicy-default-deny.yaml \
+--namespace kuard-networkpolicy
+networkpolicy.networking.k8s.io/default-deny-ingress created
+$ kubectl run test-source --rm -ti --image busybox /bin/sh \
+--namespace kuard-networkpolicy
+If you don't see a command prompt, try pressing enter.
+/ # wget -q --timeout=5 kuard -O -
+wget: download timed out
+```
+
+The test Pod can no longer reach `kuard`, because of the default deny. Now allow only the test source. Save this policy as `networkpolicy-kuard-allow-test-source.yaml`. It selects Pods labeled `app: kuard` and allows ingress from Pods labeled `run: test-source`:
+
+```yaml
+kind: NetworkPolicy
+apiVersion: networking.k8s.io/v1
+metadata:
+  name: access-kuard
+spec:
+  podSelector:
+    matchLabels:
+      app: kuard
+  ingress:
+  - from:
+    - podSelector:
+        matchLabels:
+          run: test-source
+```
+
+```bash
+$ kubectl apply \
+-f networkpolicy-kuard-allow-test-source.yaml \
+--namespace kuard-networkpolicy
+networkpolicy.networking.k8s.io/access-kuard created
+$ kubectl run test-source --rm -ti --image busybox /bin/sh \
+--namespace kuard-networkpolicy
+If you don't see a command prompt, try pressing enter.
+/ # wget -q kuard -O -
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<title><KUAR Demo></title>
+...
+```
+
+The test Pod can reach `kuard` again, and only through the rule you wrote. Clean up the test namespace when you finish:
+
+```bash
+$ kubectl delete namespace kuard-networkpolicy
+namespace "kuard-networkpolicy" deleted
+```
+
+Network Policy adds one more layer of security. It builds on the ideas of defense in depth and least privilege, and it works best when you test each layer as you add it.
+
 ## 2. Things NetworkPolicy does not do (and traps)
 
 NetworkPolicy has gaps, and several of them catch teams off guard. A policy set that looks complete can still leave a path open, or it can block a probe your platform depends on. The table lists the common traps, with a mitigation for each one.
@@ -664,6 +788,7 @@ NetworkPolicy filters only L3 and L4 headers on the primary CNI network, and in 
   - `production-kubernetes` — Josh Rosso, Rich Lander, Alexander Brand & John Harris, *Production Kubernetes*, **Chapter 5: Pod Networking** (NetworkPolicy enforcement and multi-tenancy considerations).
   - `nvidia-devops` (`volume-03/03-k8s-networking-security-ops-masterclass.md`): networking and security operations masterclass (CNI dataplane, NetworkPolicy, multi-tenancy, and admission).
 - `production-kubernetes` — Josh Rosso, Rich Lander, Alexander Brand & John Harris, *Production Kubernetes*, **Chapter 10: Identity** (read for network identity: Calico `GlobalNetworkPolicy` with service accounts and Dikastes, and Cilium identity assignment and `CiliumNetworkPolicy` service-account rules).
+- `kubernetes-up-and-running-3rd-edition` — Brendan Burns, Joe Beda, Kelsey Hightower & Lachlan Evenson, *Kubernetes: Up and Running*, 3rd ed., **Chapter 19: Securing Applications in Kubernetes** (the NetworkPolicy default-deny and allow test walkthrough in the `kuard-networkpolicy` namespace).
 - **Run here:** `python3 code/part05/networkpolicy_evaluator_lab.py` (3 passed, 0 failed).
 - **Explicitly labelled inferences:** The `match_networkpolicy_peer`, `evaluate_peer_list`, and `evaluate_policy_hierarchy` models in `code/part05/networkpolicy_evaluator.py` and the `allow-gateway-to-model`, `default-deny-all`, `allow-dns`, `deny-metadata-and-private-egress` (`GlobalNetworkPolicy`), and `trainer-egress` (`CiliumNetworkPolicy`) manifests are the author's constructions synthesizing Networking and Kubernetes Chapters 4 & 5, Production Kubernetes Chapter 5, and `volume-03/03` (plus original study items 21, 22, 23, 24, 25, 26, 27, 28, 29, 30, 31, 32, 33, 34, and 35).
 - **Not verified on live hardware:** Live `kubectl`, `calicoctl`, `cilium policy trace`, `hubble observe`, `iptables`, `ipset`, and `cyclonus` executions (`10.20.0.0/16`, `10.20.5.0/24`, ports `8000`/`9000..9010`/`53`/`443`, `10.30.0.0/16`, `169.254.20.10/32`, `0x10000/0x10000`, `order: 100`, `169.254.169.254/32`) are marked (`untested here`) where not executed by `networkpolicy_evaluator_lab.py`.

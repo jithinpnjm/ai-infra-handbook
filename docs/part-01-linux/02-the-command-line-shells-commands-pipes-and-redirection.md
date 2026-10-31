@@ -211,6 +211,29 @@ Manual pages are **reference material, not tutorials**. They list options system
 
 The GNU project publishes many manuals in **info** format. Run `info coreutils`, navigate it with its own keys, or pipe it through `less`. Info pages often hold more detail than the man page. Some packages also install README files and examples under `/usr/share/doc`, with no man or info page at all. For a fast option check, `command --help` or `command -h` prints a short usage summary. Inside `man`, press `/word` to search forward, `n` to jump to the next match, and `q` to quit. On a cluster, **the manual of the exact version installed on the machine is authoritative**. Trust `man slurm.conf` on your login node over any blog post.
 
+### Reading a man page without getting lost
+
+A common first reaction is to type `man ls`, see a wall of text, and give up. The problem is expectation. A manual page is a reference, not a lesson. It lists every option, often in alphabetical order, and it does not say which options matter most. Scan for the option you need instead of reading from the top.
+
+Help output can be noisy too. Try `command --help` or `command -h` first, because the flag varies from command to command. Some tools print a deluge of text, and `ls --help` is a good example, so pipe long output through `less` and search inside it with `/`.
+
+The GNU Project decided that it did not like manual pages very much, and moved much of its documentation to **info**, also called texinfo. Info pages often go further than a man page, but they are more complex to use. Run `info command` to open one, or send its output to `less` if you dislike the info reader. Some packages install documentation in `/usr/share/doc` with no man or info page at all, so look there when a search comes up empty.
+
+Patience is the real skill. If you have time, read the man page until you find the option. If you are impatient, ask a colleague instead. When you know what a tool should do but not its name, search by keyword. Here is what `man -k sort` prints, with lines removed for space:
+
+```
+$ man -k sort
+--snip--
+comm (1) - compare two sorted files line by line
+qsort (3) - sorts an array
+sort (1) - sort lines of text files
+sortm (1) - sort messages
+tsort (1) - perform topological sort
+--snip--
+```
+
+Each line gives the page name, its section number and a short description. Read the section number before you open a page, because the same name can appear in several sections.
+
 ## 5. Expansion and quoting: the rules that explain "weird" behaviour
 
 Before it runs a command, the shell expands several kinds of text. These are the ones you will use every day.
@@ -266,6 +289,8 @@ When you talk about Linux with others, the spoken names of special characters he
 | `[ ]` | square brackets | character sets and ranges in globs and regular expressions; `[ ]` as a test command |
 | `{ }` | braces, curly brackets | brace expansion, grouping, variable syntax `${var}` |
 | `_` | underscore | a space substitute where spaces are not allowed |
+
+Some utilities, such as the Perl programming language, use almost all of these special characters. Keep in mind that the names above are the American names for them. Learn the characters by what they do in a command, and the names will follow.
 
 Try this predict-then-check habit. Guess each output before you press Enter.
 
