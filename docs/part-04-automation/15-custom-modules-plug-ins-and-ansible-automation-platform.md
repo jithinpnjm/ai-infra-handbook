@@ -22,20 +22,23 @@ lab_venue: "GCP / GKE"
 
 ## Why this matters for AI infrastructure
 
-Eventually the modules on the shelf do not match your hardware or process: a vendor tool with a CLI but no module, a site-specific scheduler operation ("drain nodes in this rack if no jobs"), a Redfish OEM extension, a custom inventory source, a filter that compresses node lists into Slurm hostlist syntax. A custom module or plugin turns a fragile shell snippet into an idempotent, testable, documented task. And once more than a handful of people run automation, you need a **platform**: central credentials, role-based access, audit trails, scheduling, approvals and an API. Ansible Automation Platform (AAP, and its upstream AWX) is that layer. This chapter shows how to extend Ansible and how to operate it as a shared service.
+Sooner or later the modules on the shelf will not match your hardware or your process. You may have a vendor tool with a CLI but no module. You may need a site-specific scheduler operation, such as "drain nodes in this rack if no jobs", a Redfish OEM extension, a custom inventory source, or a filter that compresses node lists into Slurm hostlist syntax.
+
+A custom module or plugin turns a fragile shell snippet into an idempotent, testable, documented task. Once more than a handful of people run automation, you also need a **platform**. A platform gives you central credentials, role-based access, audit trails, scheduling, approvals and an API. Ansible Automation Platform (AAP, and its upstream AWX) is that layer. This chapter shows how to extend Ansible and how to operate it as a shared service.
 
 ## Prerequisites and outcomes
 
-Needs 4.6 to 4.14 and Python skills from Part 3. After this chapter you can:
+Before you start, work through 4.6 to 4.14 and be comfortable with the Python from Part 3. When you finish this chapter, you will be able to:
 
 - Decide when to write a module, a plugin, or just a role.
 - Write a Python module with `AnsibleModule` (arguments, check mode, idempotency, return values, documentation), test it, and ship it in a collection.
-- Write filter, test, lookup, inventory, callback and action plugins; know connection/become/vars/cache plugin types.
-- Explain AAP/AWX architecture (controller, execution environments, automation mesh, hub, EDA), its objects (organisations, projects, inventories, credentials, job templates, workflows, surveys, schedules, notifications), and RBAC.
-- Build and use execution environments; call the platform through its API; connect it to CI and Git; secure and operate it.
-- Choose between running Ansible from CI, from a shared bastion, and from AAP.
+- Write filter, test, lookup, inventory, callback and action plugins, and know the connection, become, vars and cache plugin types.
+- Explain the AAP and AWX architecture (controller, execution environments, automation mesh, hub, Event-Driven Ansible), its objects (organisations, projects, inventories, credentials, job templates, workflows, surveys, schedules, notifications), and RBAC.
+- Build and use execution environments, call the platform through its API, connect it to CI and Git, and secure and operate it. You will also choose between running Ansible from CI, from a shared bastion, and from AAP.
 
 ## 1. Choosing the extension point
+
+Before you write any code, pick the extension point. The table maps each kind of need to the tool built for it, so check it first.
 
 | Need | Use |
 |---|---|
@@ -50,11 +53,15 @@ Needs 4.6 to 4.14 and Python skills from Part 3. After this chapter you can:
 | Cache facts/inventory somewhere custom | Cache plugin |
 | Add variables from an external system | Vars plugin |
 
-Modules execute **on the target** (or on the controller with `delegate_to: localhost`/`connection: local` for API-based modules); plugins execute **on the controller**. Package both in a collection so they are versioned and distributed together (4.11). If a core or community module exists, use it; if a module does not exist, check Galaxy first; write your own when you have a stable, repeated need.
+Modules run on the target. For API-based modules you can run them on the controller instead, with `delegate_to: localhost` or `connection: local`. Plugins always run on the controller. Package both in a collection, so they are versioned and distributed together (4.11).
+
+If a core or community module already exists, use it. If not, check Galaxy first. Write your own module only when you have a stable, repeated need for it.
 
 ## 2. Writing a module
 
-A module is a program that receives JSON arguments and prints one JSON result. Python modules use `AnsibleModule` to handle arguments, check mode, errors and results. Idempotency is your responsibility: **read current state, compute the difference, change only if needed, report `changed` accurately**.
+A shell snippet that sets a GPU power limit works the first time. Run it again, or ask it to preview what it would change, and its limits show. A module is a program that receives JSON arguments and prints one JSON result. Python modules use `AnsibleModule` to handle arguments, check mode, errors and results.
+
+Idempotency is still your job, and `AnsibleModule` does not do it for you. **Read the current state, compute the difference, change only if needed, and report `changed` accurately.**
 
 ### Example: manage a GPU power cap
 
@@ -166,40 +173,57 @@ if __name__ == "__main__":
     main()
 ```
 
-Module checklist:
+Read the module from the top. It checks the watts, reads the current limits, and changes only the GPUs that differ from the request.
 
-- **Documentation blocks** (`DOCUMENTATION`, `EXAMPLES`, `RETURN`, YAML in raw strings) are mandatory in collections: they power `ansible-doc` and `ansible-test sanity` validates them.
-- **Argument spec**: types, `choices`, `required`, `default`, `no_log=True` for secrets, `mutually_exclusive`, `required_if`, `required_together`, `required_one_of`; `AnsibleModule` rejects unknown args.
-- **Idempotency and `changed`**: compute from state, not from "I ran a command". In **check mode** (`supports_check_mode=True`) make no changes and report what would change. Support `--diff` by returning a `diff` dict (`before`/`after`).
-- **Errors**: `module.fail_json(msg=..., **info)`; never raise raw exceptions; avoid `sys.exit`; clean up temp files.
-- **Subprocesses**: `module.run_command([...])` with a list (no shell), `check_rc`, `environ_update`, `data` for stdin; locate binaries with `get_bin_path`.
-- **Return values**: simple JSON types; document them; never return secrets (and set `no_log` on sensitive args so they are masked in output).
-- **Portability**: run on the target's Python; keep dependencies to the standard library or declare them (`requirements`) and fail clearly if missing (`missing_required_lib`). Python 2 is dead, but check the oldest target Python you support.
-- **Module utilities**: shared code goes in `plugins/module_utils/` (imported as `ansible_collections.acme.gpu.plugins.module_utils.nvml`); a doc fragment (`plugins/doc_fragments/`) shares option documentation across modules.
-- **API-style modules** that talk to a service from the controller (e.g. NetBox, a scheduler REST API) are run with `delegate_to: localhost` or `connection: local`; they should accept `url`, `token` (`no_log`), `validate_certs`, `timeout`.
-- **Action plugins** can pre-process on the controller before running the module on the target (the `template` and `copy` modules are action plugins plus a target module).
-- **Non-Python modules (`# WANT_JSON` in Bash and Perl) and Shebang Interpreter Selection (`AUR` Chapter 19):** Any executable that reads the args file and prints JSON works (`AUR` Chapter 19 `Examples 19-1` to `19-5` build a `can_reach` TCP port connectivity module in Bash, Perl, and Python):
-  - *`# WANT_JSON` for Bash/Perl/Go/Rust modules:* By default, if a module does **not** use `AnsibleModule`, Ansible writes arguments as `key=value` strings to the arguments file (`$1`). Adding the magic comment **`# WANT_JSON`** anywhere in a Bash (`can_reach.sh` using `jq -r .host < "$1"` and `nc -z -w "$timeout" "$host" "$port"`) or Perl (`can_reach.pl` using `JSON::PP::decode_json`) script tells Ansible to pass the arguments file as a **JSON document** instead.
-  - *Shebang interpreter discovery (`ansible_<lang>_interpreter` vs `#!/usr/bin/env`):* Ansible inspects line 1 of the module (`#!/usr/bin/python3`, `#!/bin/bash`, `#!/usr/bin/perl`), extracts the interpreter basename (`python3`, `bash`, `perl`), and checks whether `ansible_python_interpreter`, **`ansible_bash_interpreter`** (e.g., `/usr/local/bin/bash` on FreeBSD), or `ansible_perl_interpreter` is defined for that host. As `AUR` Chapter 19 warns, **do not use `#!/usr/bin/env bash` or `#!/usr/bin/env python` in custom modules**, because Ansible will look for `ansible_env_interpreter` instead of `ansible_bash_interpreter` / `ansible_python_interpreter`.
-  - *`add_file_common_args=True` and `./hacking/test-module`:* Setting `add_file_common_args=True` on `AnsibleModule` automatically adds `mode`, `owner`, `group`, and SELinux file parameters (`module.load_file_common_params(module.params)` + `module.set_fs_attributes_if_different(file_args, changed)`). During development, you can test any module locally without running a full playbook using `./hacking/test-module -m library/can_reach.py -a "host=example.com port=81 timeout=1"` (or `python3 module.py args.json`).
+The rules below apply to every module you write. Start with the documentation. The `DOCUMENTATION`, `EXAMPLES` and `RETURN` blocks are mandatory in collections, and each one is YAML inside a raw string. They power `ansible-doc`, and `ansible-test sanity` validates them.
+
+Declare every argument in the argument spec, with its type, `choices`, `required` and `default` values. Set `no_log=True` on any secret, so it is masked in output. You can also use `mutually_exclusive`, `required_if`, `required_together` and `required_one_of`. `AnsibleModule` rejects unknown arguments for you.
+
+Compute `changed` from the state you read, not from the fact that you ran a command. In check mode, which you enable with `supports_check_mode=True`, make no changes and report what would change. To support `--diff`, return a `diff` dict with `before` and `after` keys.
+
+Report failures with `module.fail_json(msg=..., **info)`. Never raise a raw exception, avoid `sys.exit`, and clean up any temporary files you created.
+
+Run subprocesses with `module.run_command([...])`, passing a list rather than a shell string. Use `check_rc`, `environ_update` and `data` for stdin when you need them, and find binaries with `get_bin_path`.
+
+Keep return values to simple JSON types, and document each one. Never return secrets.
+
+The module runs on the target's Python, so keep its dependencies to the standard library. If you need more, declare them with `requirements` and fail clearly when one is missing (`missing_required_lib`). Python 2 is dead, but check the oldest target Python you support.
+
+Put shared Python code in `plugins/module_utils/`, and import it as `ansible_collections.acme.gpu.plugins.module_utils.nvml`. Put shared option documentation in `plugins/doc_fragments/`, so several modules can reuse it.
+
+API-style modules talk to a service such as NetBox or a scheduler REST API from the controller. Run them with `delegate_to: localhost` or `connection: local`, and give them `url`, `token` (marked `no_log`), `validate_certs` and `timeout` options.
+
+Action plugins can pre-process on the controller before a module runs on the target. The `template` and `copy` modules work this way: each is an action plugin plus a target module.
+
+Non-Python modules are the exception. Any executable that reads the arguments file and prints JSON will work. *Ansible: Up and Running* chapter 19 (Examples 19-1 to 19-5) builds a `can_reach` TCP port connectivity module in Bash, Perl and Python.
+
+Bash and Perl modules need the `# WANT_JSON` comment. By default, a module that does not use `AnsibleModule` receives its arguments as `key=value` strings in the arguments file (`$1`). Put `# WANT_JSON` anywhere in the script, and Ansible passes a JSON document instead. The Bash script `can_reach.sh` reads it with `jq -r .host < "$1"` and runs `nc -z -w "$timeout" "$host" "$port"`. The Perl script `can_reach.pl` uses `JSON::PP::decode_json`.
+
+Ansible also reads line 1 of the module, such as `#!/usr/bin/python3`, `#!/bin/bash` or `#!/usr/bin/perl`. It takes the interpreter name (`python3`, `bash`, `perl`) and checks whether `ansible_python_interpreter`, `ansible_bash_interpreter` (for example `/usr/local/bin/bash` on FreeBSD) or `ansible_perl_interpreter` is set for that host. Do not use `#!/usr/bin/env bash` or `#!/usr/bin/env python` in custom modules. Ansible then looks for `ansible_env_interpreter` instead, as *Ansible: Up and Running* chapter 19 warns.
+
+Setting `add_file_common_args=True` adds the `mode`, `owner`, `group` and SELinux file parameters to your module. You then apply them with `module.load_file_common_params(module.params)` and `module.set_fs_attributes_if_different(file_args, changed)`. While you develop, `./hacking/test-module -m library/can_reach.py -a "host=example.com port=81 timeout=1"` runs a module without a full playbook. You can also run `python3 module.py args.json`.
 
 ### Testing a module
 
-1. **Run it directly**: write an args file (`args.json` containing `{"ANSIBLE_MODULE_ARGS": {"watts": 600}}`) and run `python plugins/modules/gpu_power_limit.py args.json` (use a fake `nvidia-smi` earlier in `PATH`).
-2. **Ad-hoc**: `ansible -m acme.gpu.gpu_power_limit -a "watts=600" gpu001 --check --diff -vvv`; remember `ANSIBLE_LIBRARY` or install the collection.
-3. **Unit tests** (pytest) with `ansible_collections` test helpers: patch `AnsibleModule.exit_json`/`fail_json` and `run_command`, and assert on results (3.9 patterns).
-4. **`ansible-test sanity`** for documentation and style; **integration targets** (`tests/integration/targets/gpu_power_limit/tasks/main.yml`) run the module in a container with stub binaries or on real hardware tier.
-5. **Idempotency test**: run twice and assert the second `changed` is false (Molecule, 4.13).
+Test in five steps, from the simplest to the most complete.
+
+1. Run the module directly. Write an args file that contains `{"ANSIBLE_MODULE_ARGS": {"watts": 600}}`, then run `python plugins/modules/gpu_power_limit.py args.json`, using a fake `nvidia-smi` earlier in your `PATH`.
+2. Run it ad hoc with `ansible -m acme.gpu.gpu_power_limit -a "watts=600" gpu001 --check --diff -vvv`. `ANSIBLE_LIBRARY` must point at the module, or the collection must be installed.
+3. Write unit tests with pytest, using the `ansible_collections` test helpers. Patch `AnsibleModule.exit_json`, `fail_json` and `run_command`, then assert on the results (3.9 patterns).
+4. Run `ansible-test sanity` for documentation and style. Integration targets in `tests/integration/targets/gpu_power_limit/tasks/main.yml` run the module in a container with stub binaries, or on real hardware.
+5. Run the module twice, and check that the second run reports `changed` as false (Molecule, 4.13).
 
 ### When not to write a module
 
-If you can express the behaviour in a few tasks with `command` + `changed_when`, a role is simpler. Write a module when the logic needs to parse structured output, handle many states, support check/diff, or be reused widely.
+If you can express the behaviour in a few tasks with `command` and `changed_when`, a role is simpler. Write a module when the logic has to parse structured output, handle many states, support check and diff, or get reused widely.
 
 ## 3. Plugins
 
-All plugin types live under `plugins/<type>/` in a collection (or `filter_plugins/`, `lookup_plugins/` etc. next to a playbook or in a role).
+Plugins live in a collection, under `plugins/<type>/`. You can also keep them next to a playbook or inside a role, in folders such as `filter_plugins/` and `lookup_plugins/`.
 
 ### Filter plugins
+
+A filter is the simplest plugin to start with, because it is a pure function. This one turns a list of host names into a compact Slurm hostlist.
 
 ```python
 # plugins/filter/slurm_hostlist.py
@@ -239,11 +263,11 @@ class FilterModule:
         return {"slurm_hostlist": slurm_hostlist}
 ```
 
-Usage: `{{ groups['gpu'] | acme.gpu.slurm_hostlist }}` → `gpu[001-032]`. Filters must be pure functions with no side effects; test with pytest like ordinary Python (see the property-based testing ideas in 3.9). **Test plugins** (`is something`) are the same with a `TestModule` class returning a dict of tests.
+You call it in a template like this: `{{ groups['gpu'] | acme.gpu.slurm_hostlist }}` gives `gpu[001-032]`. Because a filter is a pure function, it must have no side effects. That also makes it easy to test with pytest, like any other Python code (see the property-based testing ideas in 3.9). Test plugins, which answer `is something` questions, follow the same pattern. The difference is the class, `TestModule`, which returns a dict of tests.
 
 ### Lookup plugins
 
-A lookup runs on the controller and returns a list. Example skeleton:
+A lookup runs on the controller and returns a list. The skeleton below fetches node data from an internal API.
 
 ```python
 # plugins/lookup/node_inventory_api.py
@@ -275,27 +299,31 @@ class LookupModule(LookupBase):
         return out
 ```
 
-Lookups run once per evaluation, so cache inside the plugin if called in loops; never log tokens.
+A lookup runs every time Ansible evaluates it. If you call it inside a loop, cache the results inside the plugin. Never log the token.
 
 ### Inventory plugins
 
-Subclass `BaseInventoryPlugin` (and `Constructable`, `Cacheable`), implement `verify_file` (filename suffix) and `parse`, and call `self.inventory.add_host/add_group/add_child/set_variable`; support `compose`, `groups`, `keyed_groups` via `Constructable` and caching via `Cacheable` (4.5). Prefer inventory plugins over scripts for new work.
+Build an inventory plugin by subclassing `BaseInventoryPlugin`, and add `Constructable` and `Cacheable` when you need them. Implement `verify_file`, which checks the filename suffix, and `parse`, which calls `self.inventory.add_host/add_group/add_child/set_variable`. `Constructable` gives you `compose`, `groups` and `keyed_groups`. `Cacheable` gives you caching (4.5). For new work, prefer an inventory plugin over a script.
 
-### Callback, action, connection, vars, cache, strategy, become plugins
+### Callback, action, connection, vars, cache, strategy and become plugins
 
-- **Callback**: see 4.14 (events, display, notifications).
-- **Action**: runs on the controller in place of (or wrapping) a module; used to transform args, copy files first, or short-circuit. Subclass `ActionBase`; `run()` calls `self._execute_module(...)`.
-- **Connection**: implement how to reach a target (SSH, WinRM, docker, kubectl, network_cli, httpapi, `aws_ssm`, `community.general.lxd`); write one to reach nodes through a bespoke console server or API.
-- **Vars**: inject variables from external systems per host/group (`host_group_vars` is built in).
-- **Cache**: fact/inventory caches (redis, memcached, jsonfile, custom).
-- **Strategy**: custom execution orders (rare).
-- **Become**: custom privilege escalation (`sudo`, `su`, `doas`, `runas`, `machinectl`, `pbrun`).
+Callback plugins control how output and notifications look. See 4.14 for events, display and notifications.
 
-Document plugin options with `DOCUMENTATION`; configuration comes from `ansible.cfg`, env vars, or play variables through the options system (`env`, `ini`, `vars`, `keyword`).
+Action plugins run on the controller in place of a module, or wrapped around one. Use them to transform arguments, copy files first, or short-circuit a task. Subclass `ActionBase`, and have `run()` call `self._execute_module(...)`.
+
+Connection plugins define how Ansible reaches a target. Built-in examples include `ssh`, `winrm`, `docker`, `kubectl`, `network_cli`, `httpapi`, `aws_ssm` and `community.general.lxd`. Write your own when you need to reach nodes through a bespoke console server or API.
+
+Vars plugins inject variables from external systems, per host or per group. The `host_group_vars` plugin is built in. Cache plugins store facts and inventory, in backends such as `redis`, `memcached`, `jsonfile`, or a custom store. Strategy plugins set custom execution orders, which is rare.
+
+Become plugins add custom privilege escalation, such as `sudo`, `su`, `doas`, `runas`, `machinectl` or `pbrun`.
+
+Document each plugin option in `DOCUMENTATION`. Then decide where users will set it: in `ansible.cfg`, in an environment variable, or in a play variable, through the options system (`env`, `ini`, `vars`, `keyword`).
 
 ## 4. Execution environments (EEs)
 
-An EE is a container image with ansible-core, ansible-runner, collections, Python and system dependencies, giving every run (laptop, CI, AAP) the same runtime.
+When a playbook works on your laptop but fails on the platform, the packages underneath are a likely cause. An execution environment (EE) removes that gap. An EE is a container image with ansible-core, ansible-runner, collections, Python and system dependencies. Every run, whether from a laptop, CI or AAP, gets the same runtime.
+
+You describe the image in one file. The `dependencies` section names the pip packages, the Galaxy collections, the Python libraries and the system packages that go into it.
 
 ```yaml
 # execution-environment.yml (ansible-builder v3)
@@ -314,17 +342,19 @@ additional_build_steps:
     - RUN pip3 list && ansible --version
 ```
 
+Build the image with `ansible-builder`, then run a playbook inside it with `ansible-navigator`. Use `ansible-navigator images` when you want to inspect an EE interactively.
+
 ```bash
 ansible-builder build -t registry.example.com/platform/ee-gpu:1.2.0 -f execution-environment.yml
 ansible-navigator run site.yml -i inventories/lab --eei registry.example.com/platform/ee-gpu:1.2.0 --pp missing -m stdout
 ansible-navigator images                              # inspect an EE interactively
 ```
 
-Practices: one EE per toolchain family (base, network, cloud, GPU), semantic versions, scan images, sign them, rebuild nightly for CVEs, and pin them in AAP job templates and CI. EEs end dependency drift between "my laptop" and "the platform".
+Keep one EE per toolchain family: base, network, cloud or GPU. Use semantic versions, scan the images and sign them. Rebuild them nightly for CVEs. Pin each image in your AAP job templates and CI, so every run uses the same version of the runtime.
 
 ## 5. Ansible Automation Platform and AWX
 
-**AWX** is the open-source upstream (Kubernetes-deployed via the AWX operator); **AAP** is Red Hat's supported product built from it, adding Automation Hub (certified/private collections), Event-Driven Ansible, Insights, analytics and support. Concepts transfer directly.
+Picture a production job that needs the SSH key and the Vault password. If every operator keeps those secrets on a laptop, the platform is only as safe as the weakest laptop. AWX is the open-source upstream project, deployed on Kubernetes through the AWX operator. AAP is Red Hat's supported product built from it. AAP adds Automation Hub for certified and private collections, Event-Driven Ansible, Insights, analytics and support. The concepts transfer directly between the two.
 
 ```mermaid
 flowchart LR
@@ -341,6 +371,8 @@ flowchart LR
 ```
 
 ### Core objects
+
+The table lists the objects you will work with in the platform. A job template ties several of them together, and the credential row is the one that protects your secrets.
 
 | Object | Meaning |
 |---|---|
@@ -359,25 +391,33 @@ flowchart LR
 
 ### Why teams adopt it
 
-- **Credential isolation**: operators can run a job against production without ever holding the SSH key or vault password; the platform injects them into the EE at run time.
-- **RBAC and approvals**: a developer may run the lab template; production needs a workflow approval; auditors read job history.
-- **Audit and logging**: every job stores who launched it, from which Git revision, with which inventory and variables, plus full stdout and per-task events; stream to external logging (Splunk/ELK/Loki).
-- **Central scheduling and API**: nightly check-mode jobs, webhook-triggered runs from Git, API-driven launches from CI/ChatOps/ITSM.
-- **Scale**: job slicing, execution nodes, mesh, instance groups, concurrency limits.
-- **Consistency**: EEs plus a single place where automation executes.
+Credential isolation is the first reason. An operator can run a job against production without ever holding the SSH key or the Vault password. The platform injects those secrets into the EE at run time. For example, the `gpu-baseline-prod` template later in this section attaches the `prod-ssh` and `prod-vault` credentials.
+
+RBAC and approvals come next. A developer may run the lab template, while production needs a workflow approval, and auditors read the job history.
+
+Audit and logging come from the job record. Every job stores who launched it, from which Git revision, and with which inventory and variables. It also keeps full stdout and per-task events, and you can stream those to external logging such as Splunk, ELK or Loki.
+
+Central scheduling and the API let you run nightly check-mode jobs, trigger runs from Git webhooks, and launch jobs from CI, ChatOps or ITSM.
+
+Scale comes from job slicing, execution nodes, the mesh, instance groups and concurrency limits. Consistency comes from EEs, plus one place where automation runs.
 
 ### Operating considerations
 
-- **Architecture and HA**: controller on Kubernetes/OpenShift (operator), external PostgreSQL with backups and HA, redundant controller pods, execution nodes close to target networks; plan upgrades (database migrations, EE compatibility) and DR (restore the DB + secret key; **the SECRET_KEY encrypts credentials: back it up securely**).
-- **Security**: SSO (SAML/OIDC/LDAP), MFA at the IdP, least-privilege roles, credential types with minimal scope, network policy for the platform, restricted outbound access, signed EEs, project sources pinned to protected branches/tags, "prompt on launch" restrictions to avoid arbitrary playbook injection (`ask_variables_on_launch`, `allow_simultaneous`, `extra_vars` risks), isolate job execution (containers with limited privileges), and hardened Git credentials. The platform holds your fleet's keys: treat it as tier-0.
-- **Job design**: small, single-purpose templates; check-mode and apply variants; surveys with validation; timeouts; concurrency controls; `limit` prompt for canaries; workflows with approval nodes and rollback paths.
-- **Git flow**: playbooks merged through PRs (4.1) with lint/Molecule (4.13) before the project syncs from `main`; a CI job can call the AAP API to launch a workflow after merge, closing the loop with 4.2.
-- **Dynamic inventory and sync**: schedule inventory sources (cloud, NetBox), use `overwrite` and `update_on_launch` carefully, filter to manageable sets.
-- **Capacity**: forks per job × concurrent jobs vs execution node resources; job slicing for large inventories; instance group assignments per environment.
+Architecture and high availability depend on a few choices. Run the controller on Kubernetes or OpenShift with the operator, use an external PostgreSQL database with backups and HA, and keep redundant controller pods. Place execution nodes close to the networks they manage. Plan upgrades carefully, because database migrations and EE compatibility both change. For disaster recovery, restore the database and the secret key together. The `SECRET_KEY` encrypts your credentials, so back it up securely.
+
+Security starts with SSO (SAML, OIDC or LDAP) and MFA at the identity provider. Give people least-privilege roles, and use credential types with minimal scope. Apply network policy to the platform and restrict its outbound access. Sign your EEs, and pin project sources to protected branches or tags. Restrict "prompt on launch", because it can let someone inject arbitrary playbook content. Review the `ask_variables_on_launch` and `allow_simultaneous` settings, and the risks of `extra_vars`. Isolate job execution in containers with limited privileges, and harden your Git credentials. The platform holds your fleet's keys, so treat it as tier-0.
+
+Job design comes down to small, single-purpose templates. Give each one a check-mode variant and an apply variant. Add surveys with validation, timeouts and concurrency controls. Offer a `limit` prompt for canary runs, and build workflows with approval nodes and rollback paths.
+
+The Git flow follows the same discipline as the rest of your code. Merge playbooks through PRs (4.1), run lint and Molecule (4.13), and let the project sync from `main` only after that. A CI job can then call the AAP API to launch a workflow after the merge, which closes the loop with 4.2.
+
+For dynamic inventory, schedule the inventory sources (cloud, NetBox). Use `overwrite` and `update_on_launch` carefully, and filter the results down to the sets you can manage.
+
+Capacity is forks per job multiplied by concurrent jobs, measured against execution node resources. Use job slicing for large inventories, and assign instance groups per environment.
 
 ### API-driven automation
 
-The controller exposes a REST API (`/api/controller/v2/` in AAP; `/api/v2/` in AWX) and an official `awx`/`controller` CLI and `ansible.platform`/`awx.awx` collections for managing the platform as code (configuration-as-code for templates, credentials, projects).
+The controller exposes a REST API. In AAP the base path is `/api/controller/v2/`, and in AWX it is `/api/v2/`. There is also an official `awx` and `controller` CLI, along with the `ansible.platform` and `awx.awx` collections. Use those collections to manage the platform as code, including templates, credentials and projects.
 
 ```bash
 # Launch a job template with a limit and extra vars (token from a service account)
@@ -387,6 +427,10 @@ curl -sS -X POST -H "Authorization: Bearer $AAP_TOKEN" -H 'Content-Type: applica
 # Poll the job
 curl -sS -H "Authorization: Bearer $AAP_TOKEN" https://aap.example.com/api/controller/v2/jobs/1234/ | jq '.status,.failed'
 ```
+
+The first command launches job template 42 with a limit and extra variables, using a service-account token. The second polls job 1234 and prints its status and `failed` fields.
+
+You can also declare the same template in YAML instead of clicking through the web UI.
 
 ```yaml
 # Manage the platform declaratively
@@ -405,19 +449,23 @@ curl -sS -H "Authorization: Bearer $AAP_TOKEN" https://aap.example.com/api/contr
     state: present
 ```
 
-In *Ansible: Up and Running* Chapter 23 (*Ansible Automation Platform*), the authors trace the evolution from **Ansible Tower** to **AAP 2**—where the monolithic Tower execution engine was split into **Automation Controller** (control plane: Web UI, REST API, RBAC, scheduler) and containerized **Execution Environments** dispatched over **Automation Mesh**—and demonstrate configuring the entire controller as code using the **`awx.awx`** collection (`tower_organization`, `tower_inventory`, `tower_host`, `tower_credential`, `tower_project`, `tower_job_template`, and `tower_job_launch` + `tower_job_wait` authenticating via `TOWER_HOST`, `TOWER_USERNAME`, `TOWER_PASSWORD`).
+*Ansible: Up and Running* chapter 23 (*Ansible Automation Platform*) traces the move from Ansible Tower to AAP 2. In AAP 2, the monolithic Tower execution engine was split apart. The Automation Controller is the control plane, with the web UI, REST API, RBAC and scheduler. Containerised Execution Environments run the jobs, and Automation Mesh dispatches them. The book also shows how to configure the entire controller as code with the `awx.awx` collection. It uses `tower_organization`, `tower_inventory`, `tower_host`, `tower_credential`, `tower_project`, `tower_job_template`, and `tower_job_launch` with `tower_job_wait`, which authenticate through `TOWER_HOST`, `TOWER_USERNAME` and `TOWER_PASSWORD`.
 
 ### Architectural Best Practices and the CALMS Framework (`AUR` Chapter 24)
 
-In the closing chapter of *Ansible: Up and Running* (Chapter 24, *Best Practices*), the authors distill the architectural principles that keep an automation platform maintainable across teams and years:
-- **High modularity (loose coupling) and high option value (composability):** Co-founders Michael DeHaan and Greg DeKoenigsberg observed that open-source automation succeeds when components have *high modularity* (loose coupling, so you can add custom modules/roles cleanly) and *high option value* (composability—like the *Tao of HashiCorp*, picking Terraform for cloud/hardware provisioning and Ansible for OS/cluster configuration management, and composing focused roles that each \"do one thing well\").
-- **Don't solve complexity in YAML—push complexity into Python modules and plugins:** Keep playbooks declarative and readable for non-specialists (`#!/usr/bin/env ansible-playbook`), decouple **inventories from projects** (separate Git repositories or directories so infrastructure owners control inventory access while projects remain reusable across staging and production), and decouple **roles from collections** (`roles_path` separating project roles, shared roles, and Galaxy roles).
-- **\"Releasing software is a one-bit decision, not a transfer of bytes\":** Store pre-built packages, wheels, and container images in an artifact repository (`Nexus`, `Artifactory`, `Automation Hub`), test every role with `yamllint`, `ansible-lint`, `ansible-later`, `ShellCheck`, and `Molecule` (plus `ssh-audit` for SSH crypto hardening), and roll out changes continuously in stages (`serial`) with smoke tests.
-- **Benchmarking DevOps teams with Jez Humble's `CALMS` framework (`AUR` Chapter 24):** Measure platform maturity across **C**ulture (striving for common principles and blameless improvement), **A**utomation (automating provisioning, testing, and promotion), **L**ean / Collaboration (short cycle times and cross-team sharing), **M**easurement (automatically verifying functional and non-functional requirements before production promotion), and **S**haring (transparent feedback loops, audit trails answering *what changed, who made it, and when*, and onboarding new engineers smoothly).
+The closing chapter of *Ansible: Up and Running* (chapter 24, *Best Practices*) distills the principles that keep an automation platform maintainable across teams and years. Its first point is that open-source automation succeeds when components have high modularity and high option value. Co-founders Michael DeHaan and Greg DeKoenigsberg observed this. High modularity means loose coupling, so you can add custom modules and roles cleanly. High option value means composability. It works like the *Tao of HashiCorp*: you pick Terraform for cloud and hardware provisioning, and Ansible for OS and cluster configuration, then compose focused roles that each "do one thing well".
+
+The second point is to push complexity out of YAML and into Python modules and plugins. Keep playbooks declarative and readable for non-specialists, starting them with `#!/usr/bin/env ansible-playbook`. Decouple inventories from projects, using separate Git repositories or directories. Infrastructure owners then control inventory access, while projects stay reusable across staging and production. Decouple roles from collections with `roles_path`, which separates project roles, shared roles and Galaxy roles.
+
+The third point is "Releasing software is a one-bit decision, not a transfer of bytes." Store pre-built packages, wheels and container images in an artifact repository such as `Nexus`, `Artifactory` or `Automation Hub`. Test every role with `yamllint`, `ansible-lint`, `ansible-later`, `ShellCheck` and `Molecule`, plus `ssh-audit` for SSH crypto hardening. Then roll changes out continuously, in stages with `serial`, and run smoke tests after each stage.
+
+Jez Humble's `CALMS` framework measures platform maturity across five areas. Culture means striving for common principles and blameless improvement. Automation means automating provisioning, testing and promotion. Lean and collaboration mean short cycle times and cross-team sharing. Measurement means verifying functional and non-functional requirements automatically before production promotion. Sharing means transparent feedback loops and audit trails that answer what changed, who made it, and when, along with smooth onboarding for new engineers.
 
 ### Event-Driven Ansible (EDA)
 
-EDA runs **rulebooks**: event sources (Alertmanager webhooks, Kafka, Prometheus, cloud events, Git webhooks, `ansible.eda.range` for tests) feed rules (conditions) that trigger actions (run a playbook or job template, post events, set facts). Typical AI-infrastructure uses: on a GPU XID error alert, cordon the node and open a ticket; on repeated NIC flaps, drain and run diagnostics; on a Git webhook, run a validation workflow. Keep actions safe (idempotent, rate-limited, human approval for destructive steps, dedupe events) to avoid automation storms.
+Event-Driven Ansible (EDA) runs rulebooks. Event sources such as Alertmanager webhooks, Kafka, Prometheus, cloud events, Git webhooks, and `ansible.eda.range` for tests feed the rules. Each rule has conditions. When they match, the rule runs an action, such as a playbook or job template, posts events, or sets facts.
+
+AI infrastructure gives you clear cases. On a GPU XID error alert, cordon the node and open a ticket. On repeated NIC flaps, drain the node and run diagnostics. On a Git webhook, run a validation workflow. Keep every action safe: idempotent, rate-limited, with human approval for destructive steps and deduplicated events. Without those guards, one noisy alert can start an automation storm.
 
 ```yaml
 # rulebook sketch
@@ -441,6 +489,8 @@ EDA runs **rulebooks**: event sources (Alertmanager webhooks, Kafka, Prometheus,
 
 ## 6. Choosing where to run Ansible
 
+The place you run Ansible shapes who can see the secrets and who can audit the change. The table compares the common options and the trade-off each one brings.
+
 | Option | Fits | Watch out |
 |---|---|---|
 | Laptop | Development, one-off lab work | Not reproducible, credentials on laptops |
@@ -450,46 +500,47 @@ EDA runs **rulebooks**: event sources (Alertmanager webhooks, Kafka, Prometheus,
 | `ansible-pull` | Huge homogeneous fleets | Rollout control and visibility |
 | Cloud-native (Terraform + user-data, immutable images) | Elastic fleets | Day-2 flexibility |
 
-Many mature setups combine: CI for testing and building EEs/images, AAP for operator-run and scheduled production jobs, `ansible-pull` or images for node baselines.
+Most mature setups combine these options. CI runs the tests and builds the EEs and images. AAP runs the scheduled and operator-driven production jobs. `ansible-pull` or images handle the baseline of each node. Decide which of these jobs belongs to which option, and write that down. Read the watch-out column before you commit, because it names the cost you will pay.
 
 ## 7. Lab
 
-First, run the self-checking Python lab (`code/part04/ansible_custom_modules_aap_lab.py`) locally. It verifies the idempotent, check-mode- and diff-aware `gpu_power_limit` custom module (`execute_gpu_power_limit_module`: rejecting out-of-range watts, previewing diffs in `--check` mode without mutating state, applying changes on Run 1, and returning `changed=False` on Run 2) and the `slurm_hostlist` / `slurm_expand_hostlist` filter plugin round-trip (`gpu[001-003,005]`).
+Start on your own machine. Run the self-checking Python lab first, so you know the code works before you touch a server. The lab checks the `gpu_power_limit` custom module, run through `execute_gpu_power_limit_module`. The module is idempotent and aware of check mode and diffs. It rejects out-of-range watts. It previews diffs in `--check` mode without changing state, applies the changes on Run 1, and returns `changed=False` on Run 2. It also checks that the `slurm_hostlist` / `slurm_expand_hostlist` filter plugin round-trips `gpu[001-003,005]`.
 
 ```bash
 python3 code/part04/ansible_custom_modules_aap_lab.py
 ```
 
-Next, on a control node with `ansible-core`, `ansible-builder`, `ansible-navigator`, and Docker/kind (all interactive shell steps below are `untested here`), work through these exercises:
+The interactive steps after that need a control node with `ansible-core`, `ansible-builder`, `ansible-navigator`, and Docker or kind. All interactive shell steps below are `untested here`, so check each result yourself. Work through these exercises in order.
 
-1. **First module**: implement `gpu_power_limit` (or a simpler module around `sysctl`/a CLI) with a fake `nvidia-smi`; run directly from an args file, then via `ansible -m` with `--check --diff`; confirm idempotency.
-2. **Module quality**: add argument validation, check-mode, diff, unit tests with mocked `run_command`, and run `ansible-test sanity` in a collection.
-3. **Filter plugin**: implement `slurm_hostlist` and its inverse; write pytest tests (including property-based round-trip tests); use in a Slurm template.
-4. **Lookup plugin**: write a lookup that reads from a local JSON "API"; call it in a loop and add a cache.
-5. **Inventory plugin**: write a minimal plugin that builds hosts/groups from a YAML or REST source with `compose` and `keyed_groups`; compare with the constructed plugin.
-6. **Callback and action plugin**: reuse the 4.14 callback; write an action plugin that normalises an argument before invoking a stock module.
-7. **Execution environment**: build an EE with your collection and Python deps; run the same playbook with `ansible-navigator` locally and compare with the host install.
-8. **AWX lab**: deploy AWX on kind via the operator; create organization, project (from your Git repo), inventory, machine credential and a job template; run it; inspect job events.
-9. **RBAC and credentials**: create a team and a role granting execute-only on the template; log in as that user and prove they can run but cannot read the credential or edit the template.
-10. **Workflow with approval**: build canary → approval → rollout → verify; add failure notification; use a survey for `limit` and `app_version`.
-11. **API/CI loop**: from a CI job, call the launch endpoint after a merge and poll status; fail CI if the job fails; then manage the templates with `awx.awx` modules (configuration as code).
-12. **EDA (optional)**: run an Alertmanager source rulebook that triggers a harmless job template when a test alert fires; add rate limiting and dedupe.
-13. **Clean up.**
+1. Build your first module. Implement `gpu_power_limit`, or a simpler module around `sysctl` or a CLI, using a fake `nvidia-smi`. Run it directly from an args file, then through `ansible -m` with `--check --diff`, and confirm that it is idempotent.
+2. Raise its quality. Add argument validation, check mode, diff support and unit tests with a mocked `run_command`. Then run `ansible-test sanity` in a collection.
+3. Write a filter plugin. Implement `slurm_hostlist` and its inverse, then write pytest tests, including property-based round-trip tests. Use the filter in a Slurm template.
+4. Write a lookup plugin. Make it read from a local JSON "API", call it inside a loop, and then add a cache.
+5. Write an inventory plugin. Build hosts and groups from a YAML or REST source, using `compose` and `keyed_groups`. Compare your plugin with the constructed plugin.
+6. Reuse the 4.14 callback, and write an action plugin that normalises an argument before it calls a stock module.
+7. Build an EE with your collection and Python dependencies. Run the same playbook with `ansible-navigator` locally, and compare the result with the host install.
+8. Deploy AWX on kind through the operator. Create an organization, a project from your Git repo, an inventory, a machine credential and a job template. Run the template, then inspect the job events.
+9. Set up RBAC. Create a team with a role that grants execute-only access to the template. Log in as that user, and prove they can run the job but cannot read the credential or edit the template.
+10. Build a workflow with an approval step: canary, then approval, then rollout, then verify. Add a failure notification, and use a survey to collect `limit` and `app_version`.
+11. Close the API and CI loop. From a CI job, call the launch endpoint after a merge, then poll the status. Fail the CI job if the AAP job fails. Finally, manage the templates with the `awx.awx` modules, as configuration as code.
+12. If you have time, run an Event-Driven Ansible rulebook with an Alertmanager source. Make it trigger a harmless job template when a test alert fires, and add rate limiting and deduplication.
+13. Clean up.
 
 ## 8. Common mistakes
 
-- Writing a module when a role would do, or a role of `shell` tasks when a module is needed.
-- Modules that always report `changed`, ignore check mode, hide errors, or print secrets.
-- Missing documentation blocks (breaks `ansible-doc` and sanity tests); unvalidated arguments.
-- Plugins with side effects or network calls on every evaluation; secrets in plugin logs.
-- Custom plugins living outside versioned collections, so copies diverge.
-- Unpinned execution environment images, EEs without scanning, EEs diverging per team.
-- AAP credentials with broad scope; arbitrary `extra_vars` on launch allowing injection; projects tracking unprotected branches.
-- No backup of the controller database and secret key; no upgrade plan.
-- EDA rulebooks triggering destructive actions without rate limits or approvals.
-- Treating AAP as a replacement for testing and review rather than a controlled executor of tested code.
+Most of these mistakes come from picking the wrong tool. If you write a module when a role would do, or a role full of `shell` tasks when you need a module, you pay for it later.
+
+Modules that always report `changed`, ignore check mode, hide errors or print secrets cause trouble in production. Missing documentation blocks break `ansible-doc` and sanity tests. Unvalidated arguments let bad input through.
+
+Plugins with side effects, or with network calls on every evaluation, slow everything down. Secrets in plugin logs leak, and custom plugins kept outside versioned collections drift apart.
+
+Watch the platform too. Unpinned EE images, EEs without scanning and EEs that diverge between teams all weaken it. So do credentials with a broad scope, arbitrary `extra_vars` on launch, and projects that track unprotected branches.
+
+Without a backup of the controller database and secret key, or an upgrade plan, you have no recovery path. EDA rulebooks that trigger destructive actions without rate limits or approvals are a risk too. Treat AAP as a controlled executor of tested code, not as a replacement for testing and review.
 
 ## 9. Interview angles
+
+Use these questions to test yourself. Each one asks for a mechanism and a trade-off, not just a definition.
 
 - "How do you write an Ansible module? How do you make it idempotent and check-mode safe?"
 - "When would you write a plugin versus a module versus a role? Give examples of each type."
@@ -501,182 +552,194 @@ Next, on a control node with `ansible-core`, `ansible-builder`, `ansible-navigat
 
 ## Exercises
 
-1. **Choosing Extension Points and Writing an Idempotent Python Module (`AnsibleModule`, `gpu_power_limit`, `can_reach`, `AUR` Chapter 19):** Using `execute_gpu_power_limit_module()` in `code/part04/ansible_custom_modules_aap.py`, explain: (a) when to write a Role vs a Module vs a Filter/Lookup/Inventory/Callback/Action plugin; (b) how `AnsibleModule` handles `argument_spec`, `supports_check_mode=True`, `module._diff`, `module.run_command([...])`, `add_file_common_args=True`, `exit_json`, and `fail_json`; and (c) how non-Python modules use `# WANT_JSON` and why `#!/usr/bin/env bash` breaks `ansible_bash_interpreter`.
-2. **Writing Filter, Test, Lookup, Inventory, and Action Plugins (`slurm_hostlist`, `node_inventory_api`):** Using `slurm_hostlist()` and `slurm_expand_hostlist()` in `code/part04/ansible_custom_modules_aap.py`, trace how `FilterModule` folds `['gpu001', 'gpu002', 'gpu003', 'gpu005']` into `'gpu[001-003,005]'`, how `LookupBase` reads options from `DOCUMENTATION` (`self.set_options`, `self.get_option`), and how `BaseInventoryPlugin` (`Constructable`, `Cacheable`) and `ActionBase` work.
-3. **Building and Running Execution Environments (`execution-environment.yml`, `ansible-builder`, `ansible-navigator`, `AUR` Chapter 23):** Write an `execution-environment.yml` (v3) combining `ansible-core`, `requirements.yml` collections, `requirements.txt` Python libraries, and `bindep.txt` system packages, and show the `ansible-builder build` and `ansible-navigator run --eei ... -m stdout` commands.
-4. **AWX / Ansible Automation Platform (`AAP 2`) Architecture, Core Objects, RBAC, and DR (`SECRET_KEY`, `AUR` Chapter 23):** Trace the architecture of AWX/AAP (Web/API controller, PostgreSQL, Receptor / Automation Mesh, Execution Nodes, Automation Hub, EDA), explain how Credentials, Job Templates, Workflow Templates (with approval nodes), and Surveys provide least-privilege self-service without exposing SSH/Vault secrets, and explain why backing up `SECRET_KEY` alongside PostgreSQL is mandatory for disaster recovery.
-5. **Managing AWX/AAP as Code (`awx.awx` / `ansible.platform`) and Event-Driven Ansible (`EDA`) Rulebooks (`AUR` Chapter 23):** Show how `awx.awx` modules (`organization`, `inventory`, `credential`, `project`, `job_template`, `job_launch`) configure the controller declaratively and how CI triggers a job template via `/api/controller/v2/job_templates/<id>/launch/`; then trace the Section 5 EDA rulebook that cordons and diagnoses a node on a `GPUXid79` Alertmanager webhook.
-6. **Ansible Architectural Best Practices and the `CALMS` Framework (`AUR` Chapter 24):** Summarize the core lessons of *Ansible: Up and Running* Chapter 24: high modularity and high option value (composability), pushing complexity from YAML into Python modules, decoupling inventories from projects and roles from collections, *"releasing software is a one-bit decision, not a transfer of bytes"*, and benchmarking DevOps adoption with Jez Humble's `CALMS` framework.
+Work through these six exercises after you finish the chapter. Each one asks you to trace code from this chapter, and to explain what happens at each step.
+
+1. Start with `execute_gpu_power_limit_module()` in `code/part04/ansible_custom_modules_aap.py`. Explain when to write a role, a module, or a filter, lookup, inventory, callback or action plugin. (a) Give your reasons for each choice. Then explain how `AnsibleModule` handles `argument_spec`, `supports_check_mode=True`, `module._diff`, `module.run_command([...])`, `add_file_common_args=True`, `exit_json` and `fail_json`. (b) Finally, explain how non-Python modules use `# WANT_JSON`, and why `#!/usr/bin/env bash` breaks `ansible_bash_interpreter`. This exercise draws on `gpu_power_limit`, `can_reach` and chapter 19 of *Ansible: Up and Running*.
+2. Trace the filter and plugin code in `code/part04/ansible_custom_modules_aap.py`, including the `node_inventory_api` lookup. Start with `slurm_hostlist()` and `slurm_expand_hostlist()`, and follow how `FilterModule` folds `['gpu001', 'gpu002', 'gpu003', 'gpu005']` into `'gpu[001-003,005]'`. Then show how `LookupBase` reads its options from `DOCUMENTATION`, using `self.set_options` and `self.get_option`. Finish with how `BaseInventoryPlugin`, with `Constructable` and `Cacheable`, and `ActionBase` work.
+3. Write an `execution-environment.yml` (v3) that combines `ansible-core`, the `requirements.yml` collections, the `requirements.txt` Python libraries and the `bindep.txt` system packages. Then show the `ansible-builder build` command and the `ansible-navigator run --eei ... -m stdout` command. This exercise draws on chapter 23 of *Ansible: Up and Running*.
+4. Trace the architecture of AWX and AAP 2: the web and API controller, PostgreSQL, Receptor and the automation mesh, execution nodes, Automation Hub and EDA. Explain how credentials, job templates, workflow templates (with approval nodes) and surveys give least-privilege self-service, without exposing SSH or Vault secrets. Then explain why backing up `SECRET_KEY` alongside PostgreSQL is mandatory for disaster recovery. This exercise also draws on chapter 23.
+5. Manage AWX and AAP as code with the `awx.awx` and `ansible.platform` collections. Show how the `awx.awx` modules (`organization`, `inventory`, `credential`, `project`, `job_template`, `job_launch`) configure the controller declaratively. Show how CI triggers a job template through `/api/controller/v2/job_templates/<id>/launch/`. Then trace the rulebook from section 5 that cordons and diagnoses a node on a `GPUXid79` Alertmanager webhook.
+6. Summarise the core lessons of chapter 24 of *Ansible: Up and Running*. Cover high modularity and high option value (composability), pushing complexity from YAML into Python modules, decoupling inventories from projects and roles from collections, "releasing software is a one-bit decision, not a transfer of bytes", and benchmarking DevOps adoption with Jez Humble's `CALMS` framework.
 
 ## Checkpoint questions (20)
 
 <details>
 <summary>1. Where do Ansible Modules execute versus where Plugins execute, and when should you write a Role vs. a Module vs. a Plugin?</summary>
 
-- **Modules** execute **on the target host** (or on the control node when `delegate_to: localhost` / `connection: local` is used for REST API modules) to inspect and mutate system state.
-- **Plugins** (filter, test, lookup, inventory, callback, action, connection, vars, cache) execute **on the control node** inside the main Ansible controller process.
-- **Decision rule:** Use a **Role** to compose existing modules into a multi-step procedure; write a **Module** when wrapping a CLI or API (`nvidia-smi -pl`, `can_reach`) that requires structured output parsing, idempotency, `--check`, and `--diff`; write a **Filter/Lookup/Inventory Plugin** to transform data or fetch inventory on the controller.
+Modules run on the target host, where they inspect and change system state. For REST API modules, you can run them on the control node instead, with `delegate_to: localhost` or `connection: local`.
+
+Plugins (filter, test, lookup, inventory, callback, action, connection, vars and cache) run on the control node, inside the main Ansible controller process.
+
+Here is the rule of thumb. Use a role to compose existing modules into a multi-step procedure. Write a module when you wrap a CLI or API, such as `nvidia-smi -pl` or `can_reach`, and need structured output parsing, idempotency, `--check` and `--diff`. Write a filter, lookup or inventory plugin when you need to transform data or fetch inventory on the controller.
 </details>
 
 <details>
 <summary>2. What are the three mandatory YAML documentation blocks in a collection module, and what tool validates them?</summary>
 
-Every collection module (`plugins/modules/*.py`) must include three top-level raw-string YAML docstrings before imports:
-1. **`DOCUMENTATION`**: module name, `short_description`, `description`, `version_added`, `options` (matching `argument_spec` types, defaults, `required`, `choices`), `requirements`, `author`, and `notes`.
-2. **`EXAMPLES`**: realistic playbook task snippets showing how to call the module.
-3. **`RETURN`**: schema and description of every key returned in `exit_json` (`before`, `after`, etc.).
-They power `ansible-doc acme.gpu.gpu_power_limit` and are strictly validated by **`ansible-test sanity --test validate-modules`**.
+Every collection module (`plugins/modules/*.py`) needs three top-level YAML blocks, written as raw strings and placed before the imports:
+
+1. **`DOCUMENTATION`**: the module name, `short_description`, `description`, `version_added`, and `options` (which match the `argument_spec` types, defaults, `required` and `choices`). It also has `requirements`, `author` and `notes`.
+2. **`EXAMPLES`**: realistic playbook task snippets that show how to call the module.
+3. **`RETURN`**: the schema and description of every key returned by `exit_json`, such as `before` and `after`.
+
+`ansible-doc acme.gpu.gpu_power_limit` reads these blocks. `ansible-test sanity --test validate-modules` checks them strictly.
 </details>
 
 <details>
 <summary>3. How does a Python module using `AnsibleModule` implement idempotency, `--check` mode, and `--diff` mode (`gpu_power_limit.py`)?</summary>
 
-1. Instantiate `AnsibleModule(argument_spec=..., supports_check_mode=True)`.
-2. **Read current state first** (`before = query(module, smi, p["index"])`) and compute which items differ from desired state (`todo = [i for i, w in before.items() if w != p["watts"]]`).
+1. Create the module with `AnsibleModule(argument_spec=..., supports_check_mode=True)`.
+2. Read the current state first, with `before = query(module, smi, p["index"])`. Then find the items that differ from the desired state with `todo = [i for i, w in before.items() if w != p["watts"]]`.
 3. Set `changed = bool(todo)`.
-4. **Gate mutations on `if todo and not module.check_mode:`**—so in `--check` mode, zero `nvidia-smi -pl` commands are executed while `changed=True` is still accurately reported.
-5. **Support `--diff`:** When `module._diff` is truthy, include `result["diff"] = {"before": ..., "after": ...}` before calling `module.exit_json(**result)`.
+4. Make changes only under `if todo and not module.check_mode:`. In `--check` mode, no `nvidia-smi -pl` command runs, yet `changed=True` is still reported correctly.
+5. For `--diff`, when `module._diff` is set, add `result["diff"] = {"before": ..., "after": ...}` before calling `module.exit_json(**result)`.
 </details>
 
 <details>
 <summary>4. Why must a custom module use `module.run_command([...])` and `module.fail_json(...)` instead of `subprocess.Popen(shell=True)` and `sys.exit(1)`?</summary>
 
-- **`module.run_command([smi, "-i", i, "-pl", str(watts)], check_rc=True)`:** Executes the binary directly as an argument list **without a shell** (preventing shell injection), sanitizes environment variables, captures `(rc, out, err)` cleanly, and automatically calls `fail_json` if `check_rc=True` and `rc != 0`. (Find the binary path first with `module.get_bin_path("nvidia-smi", required=True)`.)
-- **`module.fail_json(msg=..., rc=rc)`:** Formats a structured JSON failure object (`{"failed": true, "msg": "..."}`) to `stdout` so Ansible can parse the error cleanly, whereas raising an unhandled Python exception or calling `sys.exit(1)` produces an unformatted `MODULE FAILURE` traceback.
+- **`module.run_command([smi, "-i", i, "-pl", str(watts)], check_rc=True)`:** This runs the binary directly from an argument list, with no shell, which prevents shell injection. It also cleans up the environment variables and returns `(rc, out, err)`. With `check_rc=True`, it calls `fail_json` on its own when `rc != 0`. Find the binary path first with `module.get_bin_path("nvidia-smi", required=True)`.
+- **`module.fail_json(msg=..., rc=rc)`:** This returns a structured failure object, `{"failed": true, "msg": "..."}`, on stdout, so Ansible can parse the error. An unhandled Python exception or a `sys.exit(1)` gives you an unformatted `MODULE FAILURE` traceback instead.
 </details>
 
 <details>
-<summary>5. In `AUR` Chapter 19, how does `# WANT_JSON` work for Bash/Perl modules, and why must a module shebang NOT use `#!/usr/bin/env`?</summary>
+<summary>5. In *Ansible: Up and Running* chapter 19, how does `# WANT_JSON` work for Bash/Perl modules, and why must a module shebang NOT use `#!/usr/bin/env`?</summary>
 
-- **`# WANT_JSON`:** When you write a non-Python module (`can_reach.sh` in Bash or `can_reach.pl` in Perl), placing the comment **`# WANT_JSON`** anywhere in the file tells Ansible to write the module arguments as a **JSON object** inside the temporary arguments file (`$1`), which Bash can parse with `host=$(jq -r .host < "$1")`.
-- **Why `#!/usr/bin/env bash` breaks interpreter discovery (`AUR` Chapter 19 Warning):** Ansible reads the base name of the binary in the shebang line (`#!/bin/bash` -> `bash`, `#!/usr/bin/python3` -> `python3`) to look up `ansible_bash_interpreter` or `ansible_python_interpreter` (e.g., `/usr/local/bin/bash` on FreeBSD). If the shebang is `#!/usr/bin/env bash`, Ansible sees the basename **`env`** and looks for `ansible_env_interpreter` instead, ignoring `ansible_bash_interpreter`.
+- **`# WANT_JSON`:** If you write a non-Python module, such as `can_reach.sh` in Bash or `can_reach.pl` in Perl, add the comment **`# WANT_JSON`** anywhere in the file. Ansible then writes the module arguments as a JSON object in the temporary arguments file (`$1`). Bash can read them with `host=$(jq -r .host < "$1")`.
+- **Why `#!/usr/bin/env bash` breaks interpreter discovery (chapter 19 warning):** Ansible reads the base name of the interpreter in the shebang line. `#!/bin/bash` gives `bash`, and `#!/usr/bin/python3` gives `python3`. It then looks up `ansible_bash_interpreter` or `ansible_python_interpreter`, such as `/usr/local/bin/bash` on FreeBSD. With `#!/usr/bin/env bash`, the base name is `env`. Ansible then looks for `ansible_env_interpreter` and ignores `ansible_bash_interpreter`.
 </details>
 
 <details>
-<summary>6. What does `add_file_common_args=True` on `AnsibleModule` do, and where do you put shared helper code used by multiple custom modules (`AUR` Chapter 19)?</summary>
+<summary>6. What does `add_file_common_args=True` on `AnsibleModule` do, and where do you put shared helper code used by multiple custom modules (*Ansible: Up and Running* chapter 19)?</summary>
 
-- **`add_file_common_args=True`:** Automatically extends your module's `argument_spec` with standard file parameters (`mode`, `owner`, `group`, `seuser`, `serole`, `setype`, `selevel`, `attributes`). After creating/updating the file, calling `file_args = module.load_file_common_params(module.params)` and `changed = module.set_fs_attributes_if_different(file_args, changed)` enforces ownership, permissions, and SELinux contexts idempotently.
-- **Shared module code:** Place shared Python libraries in **`plugins/module_utils/`** (imported via `from ansible_collections.acme.gpu.plugins.module_utils.nvml import ...`), and shared documentation options in **`plugins/doc_fragments/`** (`extends_documentation_fragment:`).
+- **`add_file_common_args=True`:** This adds the standard file parameters to your module's `argument_spec`: `mode`, `owner`, `group`, `seuser`, `serole`, `setype`, `selevel` and `attributes`. After you create or update the file, call `file_args = module.load_file_common_params(module.params)`, then `changed = module.set_fs_attributes_if_different(file_args, changed)`. These enforce the ownership, permissions and SELinux contexts, and they stay idempotent.
+- **Shared module code:** Put shared Python libraries in **`plugins/module_utils/`**, and import them with `from ansible_collections.acme.gpu.plugins.module_utils.nvml import ...`. Put shared documentation options in **`plugins/doc_fragments/`**, and reference them with `extends_documentation_fragment:`.
 </details>
 
 <details>
-<summary>7. How do you test a custom module locally from the command line before running it in a playbook (`args.json` and `test-module`, `AUR` Chapter 19)?</summary>
+<summary>7. How do you test a custom module locally from the command line before running it in a playbook (`args.json` and `test-module`, *Ansible: Up and Running* chapter 19)?</summary>
 
-1. **Direct Python execution with `args.json`:** Create `args.json` containing `{"ANSIBLE_MODULE_ARGS": {"watts": 600, "_ansible_check_mode": true}}` and run `python3 plugins/modules/gpu_power_limit.py args.json`.
-2. **Ansible's `test-module` harness (`AUR` Chapter 19):** Run `./hacking/test-module -m library/can_reach.py -a "host=example.com port=81 timeout=1"`, which packages the module with `AnsiballZ` exactly as `ansible-playbook` does and prints the parsed JSON output.
-3. **Unit & sanity tests:** Run `ansible-test sanity` and `ansible-test units` (`pytest` mocking `module.run_command`).
+1. **Direct Python execution with `args.json`:** Create `args.json` containing `{"ANSIBLE_MODULE_ARGS": {"watts": 600, "_ansible_check_mode": true}}`, then run `python3 plugins/modules/gpu_power_limit.py args.json`.
+2. **Ansible's `test-module` harness (chapter 19 of *Ansible: Up and Running*):** Run `./hacking/test-module -m library/can_reach.py -a "host=example.com port=81 timeout=1"`. It packages the module with `AnsiballZ`, the same way `ansible-playbook` does, and prints the parsed JSON output.
+3. **Unit and sanity tests:** Run `ansible-test sanity` and `ansible-test units`. The units use `pytest`, with `module.run_command` mocked.
 </details>
 
 <details>
 <summary>8. How do Filter Plugins (`FilterModule`), Test Plugins (`TestModule`), and Lookup Plugins (`LookupBase`) differ in structure and return values?</summary>
 
-- **Filter plugin (`plugins/filter/*.py`):** Defines `class FilterModule:` with `def filters(self): return {"slurm_hostlist": slurm_hostlist}`. Must be a pure function transforming the piped input value (`{{ groups['gpu'] | acme.gpu.slurm_hostlist }}` -> `'gpu[001-032]'`).
-- **Test plugin (`plugins/test/*.py`):** Defines `class TestModule:` with `def tests(self): return {"valid_rack": is_valid_rack}` returning a **`bool`** for `if`/`when`/`select` (`when: host is acme.gpu.valid_rack`).
-- **Lookup plugin (`plugins/lookup/*.py`):** Subclasses **`LookupBase`** and implements `def run(self, terms, variables=None, **kwargs) -> list`, calling `self.set_options(var_options=variables, direct=kwargs)` and `self.get_option(...)` to read options from `DOCUMENTATION`, env vars, or `ansible.cfg`, and **always returns a `list`** (raising `AnsibleLookupError` on failure).
+- **Filter plugin (`plugins/filter/*.py`):** Define `class FilterModule:` with `def filters(self): return {"slurm_hostlist": slurm_hostlist}`. The filter must be a pure function that transforms the value piped into it. For example, `{{ groups['gpu'] | acme.gpu.slurm_hostlist }}` gives `'gpu[001-032]'`.
+- **Test plugin (`plugins/test/*.py`):** Define `class TestModule:` with `def tests(self): return {"valid_rack": is_valid_rack}`. Each test returns a **`bool`**, which `if`, `when` and `select` can use, as in `when: host is acme.gpu.valid_rack`.
+- **Lookup plugin (`plugins/lookup/*.py`):** Subclass **`LookupBase`**, and implement `def run(self, terms, variables=None, **kwargs) -> list`. Call `self.set_options(var_options=variables, direct=kwargs)` first. Then use `self.get_option(...)` to read options from `DOCUMENTATION`, environment variables or `ansible.cfg`. A lookup always returns a `list`, and it raises `AnsibleLookupError` on failure.
 </details>
 
 <details>
 <summary>9. What is an Action Plugin (`ActionBase`), and why do built-in modules like `template` and `copy` use one?</summary>
 
-An **Action Plugin (`plugins/action/*.py`, subclassing `ActionBase`)** runs **on the control node** before (or instead of) uploading and executing a module on the target host. For example, when a playbook calls `ansible.builtin.template`, its **action plugin** renders the `.j2` template into a string on the control node, computes its checksum, compares it against the remote file's checksum, transfers the rendered file if different, and then calls `self._execute_module(module_name='ansible.builtin.file', ...)` on the target to set ownership and permissions.
+An **Action Plugin (`plugins/action/*.py`, subclassing `ActionBase`)** runs on the control node, before a module is uploaded and run on the target host, or instead of that. Take the `ansible.builtin.template` module as an example. Its action plugin renders the `.j2` template into a string on the control node, and computes its checksum. It compares that checksum with the remote file's. If they differ, it transfers the rendered file. Then it calls `self._execute_module(module_name='ansible.builtin.file', ...)` on the target, to set ownership and permissions.
 </details>
 
 <details>
-<summary>10. What is an Execution Environment (`EE`), what are the four input files to `ansible-builder`, and how do you run a playbook inside an EE (`AUR` Chapter 23)?</summary>
+<summary>10. What is an Execution Environment (`EE`), what are the four input files to `ansible-builder`, and how do you run a playbook inside an EE (*Ansible: Up and Running* chapter 23)?</summary>
 
-An **Execution Environment (`EE`)** is an immutable OCI container image packaging `ansible-core`, `ansible-runner`, Ansible collections, Python packages, and OS system libraries so every developer laptop, CI runner, and AAP execution node runs the exact same runtime. **`ansible-builder build`** reads `execution-environment.yml` (v3) which references:
-1. `ansible_core` & `ansible_runner` pip versions.
-2. **`requirements.yml`** (Ansible Galaxy/Hub collections).
-3. **`requirements.txt`** (Python pip packages such as `netaddr`, `jmespath`, `kubernetes`, `psycopg2-binary`, `hvac`).
-4. **`bindep.txt`** (OS RPM/deb packages such as `gcc`, `libpq-dev`, `openssh-clients`).
-Run playbooks locally inside the EE using **`ansible-navigator run site.yml -i inventories/lab --eei registry.example.com/platform/ee-gpu:1.2.0 --pp missing -m stdout`**.
+An **Execution Environment (`EE`)** is an immutable OCI container image. It packages `ansible-core`, `ansible-runner`, Ansible collections, Python packages and OS system libraries. Because of that, every developer laptop, CI runner and AAP execution node runs the same runtime. **`ansible-builder build`** reads `execution-environment.yml` (v3), which points to four inputs:
+
+1. The `ansible_core` and `ansible_runner` pip versions.
+2. **`requirements.yml`**, which lists the Ansible Galaxy or Hub collections.
+3. **`requirements.txt`**, which lists the Python packages, such as `netaddr`, `jmespath`, `kubernetes`, `psycopg2-binary` and `hvac`.
+4. **`bindep.txt`**, which lists the OS RPM or deb packages, such as `gcc`, `libpq-dev` and `openssh-clients`.
+
+To run a playbook inside the EE, use `ansible-navigator run site.yml -i inventories/lab --eei registry.example.com/platform/ee-gpu:1.2.0 --pp missing -m stdout`.
 </details>
 
 <details>
-<summary>11. How do AWX and Red Hat Ansible Automation Platform (`AAP 2`) relate, and what are the main components of the AAP 2 architecture (`AUR` Chapter 23)?</summary>
+<summary>11. How do AWX and Red Hat Ansible Automation Platform (`AAP 2`) relate, and what are the main components of the AAP 2 architecture (*Ansible: Up and Running* chapter 23)?</summary>
 
-**AWX** is the open-source upstream project (deployed on Kubernetes via the AWX Operator); **Ansible Automation Platform (`AAP`)** is Red Hat's enterprise product built from AWX. In AAP 2 (`AUR` Chapter 23), the architecture consists of:
-1. **Automation Controller** (formerly Ansible Tower): Web UI, REST API (`/api/controller/v2/`), RBAC, scheduler, and job dispatcher backed by **PostgreSQL**.
-2. **Automation Mesh (`Receptor`):** Overlay network dispatching jobs across distributed **Execution Nodes** (which run playbooks inside **Execution Environment** containers via `ansible-runner`) and hop nodes in remote data centers.
-3. **Automation Hub / Private Automation Hub:** Enterprise registry for certified and private Collections and Execution Environment container images.
-4. **Event-Driven Ansible (`EDA`):** Rulebook engine reacting to webhooks/alerts by launching Controller job templates.
+AWX is the open-source upstream project, and you can deploy it on Kubernetes with the AWX Operator. Ansible Automation Platform (`AAP`) is Red Hat's enterprise product, built from AWX. In AAP 2 (chapter 23 of *Ansible: Up and Running*), the architecture has four main parts:
+
+1. **Automation Controller** (formerly Ansible Tower): the web UI, the REST API (`/api/controller/v2/`), RBAC, the scheduler and the job dispatcher. It is backed by **PostgreSQL**.
+2. **Automation Mesh (`Receptor`):** an overlay network that dispatches jobs to distributed **Execution Nodes**. Those nodes run playbooks inside **Execution Environment** containers through `ansible-runner`. Hop nodes in remote data centers relay the jobs.
+3. **Automation Hub / Private Automation Hub:** an enterprise registry for certified and private Collections, and for Execution Environment container images.
+4. **Event-Driven Ansible (`EDA`):** a rulebook engine that reacts to webhooks and alerts by launching Controller job templates.
 </details>
 
 <details>
 <summary>12. Trace the relationships between the core AWX/AAP objects: Organization, Project, Inventory, Credential, Execution Environment, Job Template, Workflow Template, and Survey.</summary>
 
-- **Organization:** Top-level multi-tenant boundary owning teams, inventories, projects, and templates.
-- **Project:** Syncs playbooks and roles from a Git repository (`main` branch or signed release tag).
-- **Inventory:** Static, dynamic (NetBox, cloud plugins), or Smart Inventory filter.
-- **Credential:** Encrypted secret (SSH private key, Vault password, cloud/API token) injected into the EE at runtime—**operators granted `Execute` permission can use the credential in a job without ever seeing or extracting the secret**.
-- **Job Template:** Binds a Playbook (from a Project) + Inventory + Credentials + Execution Environment + runtime settings (`limit`, `forks`, `job_slice_count`).
-- **Survey:** Attaches a validated input form (dropdowns, regex/integer bounds for `target_rack` or `app_version`) to a Job or Workflow Template.
-- **Workflow Template:** Connects multiple Job Templates, Project/Inventory syncs, and **Approval Nodes** into a DAG with `on_success`, `on_failure`, and `always` edges.
+- **Organization:** The top-level, multi-tenant boundary. It owns teams, inventories, projects and templates.
+- **Project:** Syncs playbooks and roles from a Git repository, from the `main` branch or a signed release tag.
+- **Inventory:** Static, dynamic (NetBox or cloud plugins), or a Smart Inventory filter.
+- **Credential:** An encrypted secret, such as an SSH private key, a Vault password or a cloud or API token. It is injected into the EE at run time. Operators with `Execute` permission can use the credential in a job, and they never see or extract the secret.
+- **Job Template:** Binds a playbook (from a project) to an inventory, credentials and an Execution Environment. It also sets runtime options such as `limit`, `forks` and `job_slice_count`.
+- **Survey:** Attaches a validated input form to a job or workflow template. The form can use dropdowns, or regex and integer bounds for inputs such as `target_rack` or `app_version`.
+- **Workflow Template:** Connects several job templates, project and inventory syncs, and **Approval Nodes** into a graph. The edges are `on_success`, `on_failure` and `always`.
 </details>
 
 <details>
 <summary>13. Why is `ask_variables_on_launch: true` (`Prompt on Launch` for Extra Variables) risky on a privileged production Job Template, and what should you use instead?</summary>
 
-Remember that **extra variables (`-e`) have the highest precedence in Ansible** and can override almost any variable—including role paths, command strings, `ansible_connection`, or host lists. Allowing unprivileged operators to pass arbitrary free-form `extra_vars` JSON/YAML on launch can let them hijack what a root-privileged Job Template executes. Instead, set **`ask_variables_on_launch: false`** and expose only specific, type-checked, choice-restricted variables via a **Survey** (plus `ask_limit_on_launch: true` if host scoping is needed).
+Extra variables (`-e`) have the highest precedence in Ansible. They can override almost any variable, including role paths, command strings, `ansible_connection` and host lists. If you let unprivileged operators pass free-form `extra_vars` JSON or YAML on launch, they can change what a root-privileged job template runs. Set **`ask_variables_on_launch: false`** instead. Expose only the variables you need, through a **Survey**, where each one is type-checked and limited to choices. If operators need to scope the hosts, add `ask_limit_on_launch: true`.
 </details>
 
 <details>
 <summary>14. What two items are mandatory to back up for AWX / Automation Controller Disaster Recovery (`DR`)?</summary>
 
-1. **The PostgreSQL database** (containing all inventories, projects, templates, RBAC roles, job history, and encrypted credential ciphertexts).
-2. **The Controller `SECRET_KEY`** (`/etc/tower/SECRET_KEY` or the Kubernetes `awx-secret-key` Secret).
-Because every SSH key, Vault password, and cloud token in the PostgreSQL database is ** symmetrically encrypted with `SECRET_KEY`**, restoring a PostgreSQL backup without the matching `SECRET_KEY` renders every stored credential permanently undecryptable.
+1. **The PostgreSQL database.** It holds all inventories, projects, templates, RBAC roles, job history and the encrypted credential ciphertexts.
+2. **The Controller `SECRET_KEY`** (`/etc/tower/SECRET_KEY`, or the Kubernetes `awx-secret-key` Secret).
+
+Every SSH key, Vault password and cloud token in the database is symmetrically encrypted with `SECRET_KEY`. If you restore a PostgreSQL backup without the matching `SECRET_KEY`, every stored credential stays permanently undecryptable.
 </details>
 
 <details>
-<summary>15. How do you manage AWX / Automation Controller as Code (`Configuration as Code`) and trigger jobs from CI (`AUR` Chapter 23)?</summary>
+<summary>15. How do you manage AWX / Automation Controller as Code (`Configuration as Code`) and trigger jobs from CI (*Ansible: Up and Running* chapter 23)?</summary>
 
-- **Configuration as Code (`awx.awx` / `ansible.platform` collection):** Instead of clicking in the Controller Web UI, a playbook targeting `localhost` uses `awx.awx.organization`, `awx.awx.inventory`, `awx.awx.credential`, `awx.awx.project`, `awx.awx.job_template`, and `awx.awx.workflow_job_template` (or legacy `tower_*` aliases in `AUR` Chapter 23 `Examples 23-6` to `23-12`) to reconcile all controller objects from Git.
-- **Triggering from CI:** After a PR merges to `main`, CI either calls `POST /api/controller/v2/job_templates/<id>/launch/` (passing a scoped service-account `Bearer $AAP_TOKEN`) and polls `/api/controller/v2/jobs/<job_id>/` until `.status == "successful"`, or runs `awx.awx.job_launch` + `awx.awx.job_wait`.
+- **Configuration as Code (`awx.awx` / `ansible.platform` collection):** Rather than clicking through the Controller web UI, a playbook that targets `localhost` reconciles every controller object from Git. It uses `awx.awx.organization`, `awx.awx.inventory`, `awx.awx.credential`, `awx.awx.project`, `awx.awx.job_template` and `awx.awx.workflow_job_template`. The older `tower_*` aliases work too, as shown in chapter 23 `Examples 23-6` to `23-12`.
+- **Triggering from CI:** After a PR merges to `main`, CI can do one of two things. It can call `POST /api/controller/v2/job_templates/<id>/launch/` with a scoped service-account `Bearer $AAP_TOKEN`, then poll `/api/controller/v2/jobs/<job_id>/` until `.status == "successful"`. Or it can run `awx.awx.job_launch` followed by `awx.awx.job_wait`.
 </details>
 
 <details>
 <summary>16. How does Event-Driven Ansible (`EDA`) work for automated GPU cluster remediation, and what four safeguards prevent an \"automation storm\"?</summary>
 
-An **EDA Rulebook** listens to an event source plugin (such as `ansible.eda.alertmanager` on port `5000`, Kafka, or Prometheus), evaluates `rules:` (`condition: event.alert.labels.alertname == "GPUXid79" and event.alert.status == "firing"`), and executes an `action:` (`run_job_template: { name: drain-and-diagnose-node }`).
+An **EDA Rulebook** listens to an event source, such as `ansible.eda.alertmanager` on port `5000`, Kafka or Prometheus. It evaluates its `rules:`, for example `condition: event.alert.labels.alertname == "GPUXid79" and event.alert.status == "firing"`. When the condition matches, it runs an `action:`, such as `run_job_template: { name: drain-and-diagnose-node }`.
+
 **Four mandatory safeguards against automation storms:**
-1. **Event deduplication and throttling / cooldown windows** so 50 firing alerts on the same node do not launch 50 concurrent jobs.
-2. **Cluster-wide concurrency / capacity circuit breakers** (never auto-cordon or auto-drain more than $X\%$ of the cluster without human approval; if a power/cooling event triggers alerts across 100 nodes at once, halt auto-drain).
-3. **Strictly idempotent remediation playbooks** (cordoning an already-cordoned node is a no-op).
-4. **Human approval workflow nodes** before destructive hardware actions (such as BMC power-cycling or firmware reflashing).
+1. **Event deduplication and throttling, with cooldown windows,** so 50 firing alerts on the same node do not launch 50 concurrent jobs.
+2. **Cluster-wide concurrency and capacity circuit breakers.** Never auto-cordon or auto-drain more than $X\%$ of the cluster without human approval. If a power or cooling event fires alerts across 100 nodes at once, halt the auto-drain.
+3. **Strictly idempotent remediation playbooks.** Cordoning a node that is already cordoned must be a no-op.
+4. **Human approval workflow nodes** before destructive hardware actions, such as BMC power-cycling or firmware reflashing.
 </details>
 
 <details>
 <summary>17. When should a team run Ansible from a Laptop vs. CI Runners vs. AWX/AAP vs. `ansible-pull`?</summary>
 
-- **Laptop:** Local development and disposable Vagrant/Molecule test VMs only—never production.
-- **CI Runners (GitHub Actions / GitLab CI):** Running `yamllint`, `ansible-lint`, `Molecule` tests, building Execution Environments and golden images, and triggering post-merge deploys.
-- **AWX / AAP:** Shared enterprise control plane for multi-team RBAC, credential isolation, scheduled nightly `--check` drift audits, interactive self-service Surveys, approval workflows, and distributed Automation Mesh execution.
-- **`ansible-pull`:** Continuous node-local baseline convergence across thousands of homogeneous compute nodes.
+- **Laptop:** Use it for local development and for disposable Vagrant or Molecule test VMs only. Never run production from a laptop.
+- **CI Runners (GitHub Actions / GitLab CI):** Run `yamllint`, `ansible-lint` and Molecule tests. Build Execution Environments and golden images, and trigger deploys after a merge.
+- **AWX / AAP:** This is the shared enterprise control plane. It handles RBAC across teams, credential isolation, scheduled nightly `--check` drift audits, self-service Surveys, approval workflows and distributed Automation Mesh execution.
+- **`ansible-pull`:** Use it for continuous, node-local baseline convergence across thousands of identical compute nodes.
 </details>
 
 <details>
-<summary>18. In `AUR` Chapter 24, what do Michael DeHaan and Greg DeKoenigsberg mean by \"high modularity\" and \"high option value\" (composability)?</summary>
+<summary>18. In *Ansible: Up and Running* chapter 24, what do Michael DeHaan and Greg DeKoenigsberg mean by \"high modularity\" and \"high option value\" (composability)?</summary>
 
-- **High modularity (loose coupling):** Ansible's architecture separates the core engine from modules, plugins, roles, and collections so anyone can write a 50-line custom module (`gpu_power_limit.py`) or plugin without modifying `ansible-core`.
-- **High option value (composability):** Like the *Tao of HashiCorp*, you are not locked into a monolithic framework—you can compose Terraform for cloud/bare-metal provisioning, Packer for golden images, Ansible roles from Galaxy/Hub for OS configuration, and Kubernetes/Slurm for workload scheduling, picking the best tool for each layer.
+- **High modularity (loose coupling):** Ansible separates the core engine from modules, plugins, roles and collections. Anyone can write a 50-line custom module, such as `gpu_power_limit.py`, or a plugin, without changing `ansible-core`.
+- **High option value (composability):** Like the *Tao of HashiCorp*, Ansible does not lock you into one monolithic framework. You can combine Terraform for cloud or bare-metal provisioning, Packer for golden images, Ansible roles from Galaxy or Hub for OS configuration, and Kubernetes or Slurm for workload scheduling. You pick the best tool for each layer.
 </details>
 
 <details>
-<summary>19. What does \"Releasing software is a one-bit decision, not a transfer of bytes\" mean in `AUR` Chapter 24?</summary>
+<summary>19. What does \"Releasing software is a one-bit decision, not a transfer of bytes\" mean in *Ansible: Up and Running* chapter 24?</summary>
 
-During a production release window, target servers should **not** be compiling code from source, resolving unpinned dependency graphs, or downloading gigabytes over slow WAN links. Building, scanning, and staging the artifact (container image, RPM/deb package in Nexus/Artifactory, or staged release directory) happens **ahead of time**, so the actual production release is a fast, deterministic \"one-bit\" switch (repointing a symlink, updating an image digest tag, or flipping a load balancer / ring pointer) that can be rolled back just as fast.
+During a production release window, target servers should not compile code from source, resolve unpinned dependency graphs or download gigabytes over slow WAN links. Build, scan and stage the artifact ahead of time. That might be a container image, an RPM or deb package in Nexus or Artifactory, or a staged release directory. The production release then becomes a fast, deterministic "one-bit" switch. You repoint a symlink, update an image digest tag, or flip a load balancer or ring pointer. Rolling back is just as fast.
 </details>
 
 <details>
-<summary>20. What is Jez Humble's `CALMS` framework (`AUR` Chapter 24), and what six benchmark questions prove your infrastructure automation is production-ready?</summary>
+<summary>20. What is Jez Humble's `CALMS` framework (*Ansible: Up and Running* chapter 24), and what six benchmark questions prove your infrastructure automation is production-ready?</summary>
 
-**`CALMS`** evaluates DevOps maturity across **C**ulture, **A**utomation, **L**ean, **M**easurement, and **S**haring. In `AUR` Chapter 24 (*Benchmark Evidence*), mature infrastructure automation can answer **\"Yes\"** with verifiable evidence to six questions:
-1. Can we **reproduce any environment** (OS version, patch level, network config, software stack, app, and config) exactly from code?
-2. Can we easily make an **incremental change** to any item and deploy it cleanly across all environments?
-3. Can we **trace every change** to an environment (exact diff, who approved/ran it, and when)?
+`CALMS` measures DevOps maturity across five areas: **C**ulture, **A**utomation, **L**ean, **M**easurement and **S**haring. Chapter 24 (*Benchmark Evidence*) of *Ansible: Up and Running* lists six questions. Mature infrastructure automation can answer "Yes" to each one, with verifiable evidence:
+
+1. Can we **reproduce any environment** (OS version, patch level, network config, software stack, app and config) exactly from code?
+2. Can we make an **incremental change** to any item and deploy it cleanly across all environments?
+3. Can we **trace every change** to an environment (the exact diff, who approved and ran it, and when)?
 4. Can we satisfy all **compliance and security regulations** automatically?
-5. Can every engineer get the information they need and ship safe changes **without long cycle-time bottlenecks**?
+5. Can every engineer get the information they need, and ship safe changes, **without long cycle-time bottlenecks**?
 6. When we **onboard a new team member**, can they understand and run the automation smoothly on day one?
 </details>
 

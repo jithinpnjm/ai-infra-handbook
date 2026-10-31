@@ -22,20 +22,28 @@ lab_venue: "GCP / GKE"
 
 ## Why this matters for AI infrastructure
 
-A modern GPU cluster has hundreds to tens of thousands of nodes. A default Ansible run (five forks, fact gathering everywhere, one SSH connection per task) takes hours on that size and is fragile: one slow node holds back a batch, one network blip fails a task, one bad change reaches every node at once. Scaling Ansible is therefore two separate problems: **speed** (do the work faster) and **safety** (contain failures and know what happened). This chapter covers both: the tuning knobs, execution strategies, batching and canary patterns, asynchronous operations, pull-based and controller-fleet architectures, and callbacks/reporting for observability and audit.
+Run a default Ansible job against a large GPU cluster and you will wait for hours. A modern GPU cluster has hundreds to tens of thousands of nodes. A default run uses five forks, gathers facts on every host, and opens one SSH connection per task.
+
+That setup is also fragile. One slow node holds back a batch, one network blip fails a task, and one bad change reaches every node at once.
+
+Scaling Ansible is therefore two separate problems: **speed** and **safety**. Speed means doing the work faster. Safety means containing failures and knowing what happened.
+
+This chapter covers both. It looks at the tuning knobs, execution strategies, batching and canary patterns, asynchronous operations, pull-based and controller-fleet architectures, and callbacks and reporting for observability and audit.
 
 ## Prerequisites and outcomes
 
-Needs 4.3 to 4.8. After this chapter you can:
+You need 4.3 to 4.8 first. After this chapter you can:
 
-- Measure and profile runs, then tune forks, SSH (ControlPersist, pipelining), fact gathering/caching, module choice and loops.
-- Choose between `linear`, `free`, and `host_pinned` strategies; combine `serial`, `throttle`, `run_once`, `max_fail_percentage` and `any_errors_fatal` to control blast radius.
-- Use `async`/`poll` for long tasks and avoid SSH timeouts and control-node bottlenecks.
-- Design architectures for very large fleets: partitioned inventories, parallel jobs, AWX/AAP execution nodes, `ansible-pull`, bastions and mesh connections.
-- Use callbacks to measure, log, notify and audit; capture structured results for dashboards.
-- Reason about the control node's own capacity (CPU, memory, file descriptors, network) and failure modes at scale.
+- Measure and profile runs, then tune forks, SSH settings such as `ControlPersist` and `pipelining`, fact gathering and caching, module choice, and loops.
+- Choose between the `linear`, `free` and `host_pinned` strategies. Combine `serial`, `throttle`, `run_once`, `max_fail_percentage` and `any_errors_fatal` to control the blast radius.
+- Use `async` and `poll` for long tasks, so you avoid SSH timeouts and control-node bottlenecks.
+- Design architectures for very large fleets, using partitioned inventories, parallel jobs, AWX or AAP execution nodes, `ansible-pull`, bastions and mesh connections.
+- Use callbacks to measure, log, notify and audit, and capture structured results for dashboards.
+- Reason about the control node's own capacity, including CPU, memory, file descriptors and network, and about its failure modes at scale.
 
 ## 1. Measure before tuning
+
+When a run feels slow, the temptation is to change settings at random. Measure first, so you know where the time goes.
 
 ```ini
 # ansible.cfg
@@ -43,17 +51,31 @@ Needs 4.3 to 4.8. After this chapter you can:
 callbacks_enabled = timer, profile_tasks, profile_roles
 ```
 
-`profile_tasks` prints a sorted list of the slowest tasks and cumulative time; `timer` prints total duration. Time a baseline on a representative 10% slice (`--limit`), record numbers, change one setting at a time, and re-measure. Useful instrumentation: `ANSIBLE_LOG_PATH`, `ansible-playbook -vv` for timing of connections, `time` for whole-run wall clock, `strace -c -f -p` or `py-spy dump` on the controller if CPU-bound, `ss -s` and `ulimit -n` for socket and file descriptor limits.
+The `profile_tasks` callback prints a sorted list of the slowest tasks and their cumulative time. The `timer` callback prints the total duration of the run.
 
-Typical wall-clock model: `time ≈ (setup per host / forks) + Σ over tasks of ceil(hosts / forks) × max(task duration)` under the linear strategy. The slowest host in each batch dominates every task, so stragglers matter more than the average.
+Time a baseline on a representative 10% slice of your hosts, selected with `--limit`. Record the numbers, change one setting at a time, and measure again.
+
+Other tools help too. Set `ANSIBLE_LOG_PATH` to keep a log, and run `ansible-playbook -vv` to see connection timing. Use `time` for the whole-run wall clock. If the controller is CPU-bound, `strace -c -f -p` or `py-spy dump` shows where its time goes. For socket and file descriptor limits, check `ss -s` and `ulimit -n`.
+
+The arithmetic explains why stragglers matter. A typical wall-clock model under the linear strategy is `time ≈ (setup per host / forks) + Σ over tasks of ceil(hosts / forks) × max(task duration)`. Each batch waits for its slowest host on every task. That host sets the pace, so it matters more than the average host.
+
+Measure, change one setting, and measure again.
 
 ## 2. Execution tuning
 
+Raising forks helps only up to a point. Past that point, the controller runs short of CPU, memory or file descriptors, and the run gets slower.
+
 ### Forks and the control node
 
-`forks` (default 5) is the number of parallel host connections (worker processes on the controller). Raise to 50 to 200 on a well-provisioned controller; each fork is a Python process consuming roughly 50 to 150 MiB and CPU while templating/parsing results. Watch memory, CPU saturation (templating is CPU-bound), file descriptors (`ulimit -n`), and the ephemeral port range/SSH rate limits on targets (`MaxStartups`, fail2ban, bastion limits). Too many forks produces slower runs, not faster.
+`forks` (default 5) sets how many host connections the controller works on in parallel. Each fork is a worker process. On a well-provisioned controller, you can raise it to 50 to 200.
+
+Each fork is a Python process. It uses roughly 50 to 150 MiB of memory and some CPU while it templates and parses results. Templating is CPU-bound, so too many forks can saturate the CPU. Watch memory, CPU saturation, file descriptors (`ulimit -n`), and the ephemeral port range. On the targets, watch SSH rate limits such as `MaxStartups`, fail2ban and bastion limits.
+
+Too many forks produces slower runs, not faster.
 
 ### SSH tuning
+
+Every task opens SSH sessions, so SSH settings add up across a large fleet.
 
 ```ini
 [ssh_connection]
@@ -64,11 +86,21 @@ retries = 3                           # retry connection failures
 transfer_method = smart               # sftp/scp/piped
 ```
 
-ControlPersist multiplexes tasks over one TCP/SSH session per host (the biggest win); pipelining reduces round trips per task (second biggest). In *Ansible: Up and Running* Chapter 20 (*Making Ansible Go Faster*), the authors benchmark SSH multiplexing directly with `time ssh vagrant@192.168.56.10.nip.io /usr/bin/true`: the first connection takes **`0.319s`** (`real 0m0.319s`) to establish the TCP + SSH handshake and create the Unix domain control socket (`~/.ssh/sockets/vagrant@192.168.56.10.nip.io:22`), whereas every subsequent connection reuses that master socket (`ssh -O check` prints `Master running (pid=5099)`, stopped via `ssh -O exit`) in just **`0.010s`**—saving `~0.3s` on every single SSH session. Moreover, without `pipelining = True`, Ansible opens **at least two to three SSH sessions per task** (creating the remote temp dir, copying the `AnsiballZ` module, and executing/cleaning it); enabling `pipelining = True` reduces this to a **single SSH session per task** (provided `Defaults:{{ ansible_user }} !requiretty` is deployed to `/etc/sudoers.d/disable-requiretty` with `mode: '0440'` and validated via `validate: 'bash -c "cat /etc/sudoers /etc/sudoers.d/* %s | visudo -cf-"'`—note how concatenating `/etc/sudoers` with the drop-in `%s` allows `visudo -cf-` to validate a sudoers fragment cleanly). Also watch out for the **Unix domain socket path length limit** (`104` bytes on macOS/BSD, `108` bytes on Linux): long cloud hostnames like `ec2-203-0-113-25.compute-1.amazonaws.com` fail with `ControlPath "... too long for Unix domain socket"` unless you use the `%C` SHA-1 hash token (`control_path = %(directory)s/%%C`). On targets: `UseDNS no`, adequate `MaxSessions`/`MaxStartups`, and keep sudo fast (slow PAM modules or DNS lookups in sudo add seconds per task). Prefer SSH keys, ed25519 (and fast ciphers like `chacha20-poly1305@openssh.com` and `curve25519-sha256` key exchange in `sshd_config`). If a bastion is mandatory, multiplex through it with `ProxyJump` and ControlPersist on both hops, and size it for the fan-out.
+`ControlPersist` lets many tasks share one SSH session per host. That is the biggest win. `pipelining` cuts the round trips each task needs, and it is the second biggest win.
+
+The book *Ansible: Up and Running*, in chapter 20 (*Making Ansible Go Faster*), benchmarks SSH multiplexing directly. Its benchmark runs `time ssh vagrant@192.168.56.10.nip.io /usr/bin/true`. The first connection takes **`0.319s`** (`real 0m0.319s`) to complete the TCP and SSH handshake and create the Unix domain control socket at `~/.ssh/sockets/vagrant@192.168.56.10.nip.io:22`.
+
+Later connections reuse that master socket and take just **`0.010s`**. You can check the master with `ssh -O check`, which prints `Master running (pid=5099)`, and stop it with `ssh -O exit`. Each reused session saves about 0.3s.
+
+Without `pipelining = True`, Ansible opens at least two to three SSH sessions per task. It creates the remote temp directory, copies the `AnsiballZ` module, then executes and cleans it up. With `pipelining = True`, the task drops to a single SSH session. This works when `Defaults:{{ ansible_user }} !requiretty` is deployed to `/etc/sudoers.d/disable-requiretty` with `mode: '0440'`. Validate that drop-in before you rely on it, with `validate: 'bash -c "cat /etc/sudoers /etc/sudoers.d/* %s | visudo -cf-"'`. Note how that concatenation lets `visudo -cf-` validate a sudoers fragment cleanly.
+
+Watch the Unix domain socket path limit too. It is `104` bytes on macOS and BSD, and `108` bytes on Linux. Long cloud hostnames such as `ec2-203-0-113-25.compute-1.amazonaws.com` fail with `ControlPath "... too long for Unix domain socket"`. The fix is the `%C` SHA-1 hash token, as in `control_path = %(directory)s/%%C`.
+
+On the targets, set `UseDNS no`, size `MaxSessions` and `MaxStartups` for your fan-out, and keep sudo fast. Slow PAM modules or DNS lookups inside sudo add seconds to every task. Prefer SSH keys, and use ed25519. Fast ciphers such as `chacha20-poly1305@openssh.com` and the `curve25519-sha256` key exchange can be selected in `sshd_config`. If a bastion is mandatory, multiplex through it with `ProxyJump` and `ControlPersist` on both hops, and size it for the fan-out.
 
 ### Facts
 
-Fact gathering runs the `setup` module on every host at the start of each play: often the single largest cost.
+Fact gathering runs the `setup` module on every host at the start of each play. It is often the single largest cost in a run.
 
 ```ini
 [defaults]
@@ -78,26 +110,39 @@ fact_caching_connection = /var/cache/ansible/facts
 fact_caching_timeout = 7200
 ```
 
-Options: `gather_facts: false` in plays that do not use facts; `gather_subset: [min]` or `!all,!min,network` to collect only what is needed; run one early play to gather and cache facts, then later plays rely on the cache (`gather_facts: false`); `ansible_facts` access patterns keep working with cached facts. Remember caches can be stale and may contain sensitive data (protect the directory).
+`gather_facts: false` skips facts in plays that do not use them. `gather_subset: [min]` or `!all,!min,network` collects only what you need. You can also run one early play to gather and cache facts, and let later plays rely on that cache with `gather_facts: false`. Cached facts keep the `ansible_facts` access patterns working.
+
+Caches can go stale, and they may hold sensitive data, so protect the directory.
 
 ### Tasks, modules and loops
 
-- **One transaction beats many**: `package: name: [a,b,c]`, `user`/`file` with lists when supported; use `template` or `copy` of a whole file rather than multiple `lineinfile` calls; use `assemble`/`blockinfile` thoughtfully.
-- **Avoid per-item loops across many hosts** when the module can accept lists; every loop iteration is a separate module execution.
-- **Avoid `command`/`shell` for work Ansible can batch**; avoid `shell: ls | wc -l` style probes in loops.
-- **Reduce `gather` calls** by using already-known inventory data.
-- **Use `async` with `poll: 0`** to start slow operations in parallel then check (`async_status`) rather than serialising long waits.
-- **Package manager locks and mirrors**: use a local mirror/proxy cache; `apt update` with `cache_valid_time`; avoid every host hitting the Internet.
-- **Delegation costs**: tasks with `delegate_to: localhost` run per host on the controller; 5,000 hosts × a local API call is 5,000 controller operations. Batch with `run_once` plus loops, or use a bulk API.
-- **Inventory cost**: parsing a huge inventory and variables takes time; keep dynamic inventory cached (4.5), avoid enormous per-host dictionaries, avoid `hostvars` loops over thousands of hosts inside a per-host template (quadratic).
-- **Templating cost**: heavy Jinja in loops over `groups['all']` for each host is O(n²); precompute once with `run_once` + `set_fact` + `delegate_facts`, or render a shared file once and copy it.
-- **Python on the controller**: use a recent Python; install `ujson`/`libyaml` bindings (PyYAML with C `libyaml` loader is substantially faster); keep collections installed locally.
+How you write tasks matters too. Each loop iteration is a separate module execution.
+
+Batch work wherever you can. Pass lists to a module that supports them, as in `package: name: [a,b,c]`, and use `user` or `file` with lists when they are supported. Copy or template a whole file rather than running several `lineinfile` calls. Use `assemble` or `blockinfile` with care.
+
+Avoid per-item loops across many hosts when the module accepts a list. Avoid `command` and `shell` for work Ansible can batch, and avoid probes such as `shell: ls | wc -l` inside loops. Reduce `gather` calls by reusing inventory data you already have.
+
+Use `async` with `poll: 0` to start slow operations in parallel, then check them with `async_status`. That beats serializing long waits.
+
+Package managers can be a bottleneck too. Point hosts at a local mirror or proxy cache, and use `apt update` with `cache_valid_time`, so that every host does not reach the Internet.
+
+Tasks that use `delegate_to: localhost` run on the controller once per host. With 5,000 hosts each making a local API call, that is 5,000 controller operations. Batch them with `run_once` and loops, or use a bulk API.
+
+Parsing a large inventory and its variables takes time. Keep dynamic inventory cached, as covered in 4.5. Avoid enormous per-host dictionaries, and avoid `hostvars` loops over thousands of hosts inside a per-host template. That pattern grows quadratically.
+
+Heavy Jinja in loops over `groups['all']`, run for each host, costs O(n²) on the controller. Precompute the result once with `run_once`, `set_fact` and `delegate_facts`. Or render a shared file once and copy it.
+
+Use a recent Python on the controller. Install the `ujson` or `libyaml` bindings, because PyYAML with the C `libyaml` loader is substantially faster. Keep your collections installed locally.
 
 ### Mitogen and alternatives
 
-The Mitogen strategy plugin historically sped up Ansible dramatically by keeping a persistent Python interpreter on targets but has lagged behind recent ansible-core versions; treat it as unsupported-by-default unless verified. Modern alternatives for speed: `ansible-pull`, `ansible-runner` parallel jobs, AAP automation mesh, or restructuring work (images, immutable infrastructure).
+The Mitogen strategy plugin once sped Ansible up a great deal, by keeping a persistent Python interpreter on the targets. It has lagged behind recent ansible-core versions, so treat it as unsupported by default unless you verify it. For speed, the modern alternatives are `ansible-pull`, `ansible-runner` parallel jobs, the AAP automation mesh, or restructuring the work itself, with images and immutable infrastructure.
+
+Turn on `ControlPersist` and `pipelining` first, then cache facts, since fact gathering is often the largest cost.
 
 ## 3. Strategies and batching
+
+The strategy you pick decides whether your hosts move in step. Compare the four options below.
 
 | Strategy | Behaviour | Use |
 |---|---|---|
@@ -105,6 +150,8 @@ The Mitogen strategy plugin historically sped up Ansible dramatically by keeping
 | `free` | Each host runs through the play at its own pace | Independent work (package installs, per-host config); fastest; harder to reason about output; avoid when later tasks rely on other hosts finishing |
 | `host_pinned` | Like free but a host gets a worker until its play completes | Reduces connection churn; useful with limited forks |
 | `debug` | Interactive debugger on failure | Troubleshooting (4.10) |
+
+`linear` keeps ordering predictable, but every task waits for the slowest host. `free` lets healthy hosts finish early, but its output is harder to follow, and it is risky when later tasks depend on other hosts. `host_pinned` cuts connection churn, which helps when forks are limited.
 
 ```yaml
 - name: Per-node tuning (independent work)
@@ -119,20 +166,24 @@ The Mitogen strategy plugin historically sped up Ansible dramatically by keeping
   max_fail_percentage: 2
 ```
 
+The first play runs per-node tuning on independent work, so `strategy: free` fits there. The second play needs every node to reach a step together, so it keeps `linear`. It rolls out in batches that grow with `serial`, and it stops when failures pass 2 percent.
+
 ### Failure containment
 
-Speed without containment turns mistakes into outages. Layers:
+Speed without containment turns mistakes into outages. You need these layers together.
 
-1. **Canary first** (`serial: [1, ...]`, or a `canary` group run before `all`), with a validation step after the batch.
-2. **`serial` batches** sized to failure domains (a rack, a switch, a Slurm partition), so a bad batch never removes more capacity than SLOs allow.
-3. **`max_fail_percentage` / `any_errors_fatal`** to stop the rollout when failures exceed tolerance.
-4. **`throttle`** for tasks that hit shared dependencies (a package mirror, license server, secret manager, storage metadata server).
-5. **Order and spread**: `order: shuffle` spreads load and avoids always hitting the same racks first; `order: inventory` for deterministic ordering.
-6. **Stop-the-line automation**: callbacks or CI that parse failures and halt remaining jobs; pause between batches (`pause` or approval gates in CI).
-7. **Idempotent resume**: after a partial failure rerun with `--limit @failed.retry`-style lists so already-converged hosts are skipped quickly.
-8. **Maintenance windows and capacity checks** before draining (do not drain more than N nodes per partition).
+1. Start with a canary. Use `serial: [1, ...]`, or run a `canary` group before `all`, and validate after that batch.
+2. Size the `serial` batches to failure domains, such as a rack, a switch or a Slurm partition. Then a bad batch never removes more capacity than your SLOs allow.
+3. Set `max_fail_percentage` or `any_errors_fatal` to stop the rollout when failures exceed your tolerance.
+4. Use `throttle` for tasks that hit shared dependencies, such as a package mirror, license server, secret manager or storage metadata server.
+5. Order matters. `order: shuffle` spreads load and avoids hitting the same racks first, while `order: inventory` gives deterministic ordering.
+6. Automate a stop-the-line rule. Callbacks or CI can parse failures and halt the remaining jobs, and you can pause between batches with `pause` or approval gates in CI.
+7. After a partial failure, rerun with `--limit @failed.retry`-style lists, so already-converged hosts are skipped quickly.
+8. Check maintenance windows and capacity before draining, and do not drain more than N nodes per partition.
 
 ### Long-running tasks
+
+Consider a firmware flash that takes 30 minutes on a rack. A plain SSH session would have to stay open for all of it.
 
 ```yaml
 - name: Flash firmware (30 minutes) in the background on a rack
@@ -149,9 +200,13 @@ Speed without containment turns mistakes into outages. Layers:
   delay: 30
 ```
 
-`async` avoids SSH session timeouts and lets many hosts proceed in parallel; handle reboots (use `reboot` or `wait_for_connection`) separately because `async` jobs die when the host reboots. Idle SSH connections may be dropped by firewalls or NAT; use `ServerAliveInterval`.
+`async` avoids SSH session timeouts and lets many hosts proceed in parallel. Handle reboots separately with `reboot` or `wait_for_connection`, because `async` jobs die when the host reboots. Idle SSH connections may be dropped by firewalls or NAT, so use `ServerAliveInterval`.
+
+Decide the strategy and batch sizes for each step before the rollout starts.
 
 ## 4. Architectures for large fleets
+
+Architecture is the next lever after tuning. The questions are where the controller sits, and whether nodes pull their configuration or the controller pushes it to them.
 
 ```mermaid
 flowchart TB
@@ -166,18 +221,39 @@ flowchart TB
   end
 ```
 
-- **Partition and parallelise controllers**: split inventory by site/pod/rack and run N controller processes or AAP jobs in parallel, each with its own forks; use **AAP automation mesh** execution nodes close to the targets (in the same network zone), reducing latency and bastion fan-in.
-- **Job slicing** (AWX/AAP "job slice"): one job template split into N slices running in parallel across inventory partitions.
-- **Pull mode** (`ansible-pull -U <git-url> -C main site.yml -i localhost,`): each node fetches the repo and applies its own configuration on a schedule. Pros: scales linearly with fleet, no inbound SSH, works with unreliable networks and auto-scaling nodes. Cons: harder central visibility, rollout control and canarying (use branches/tags per ring or version pins in node-local facts), secrets distribution, the repo becomes a high-value target (sign commits, restrict deploy keys). It suits large homogeneous node fleets with strong image baselines; push suits orchestrated, ordered operations (drains, upgrades).
-- **Immutable images** reduce runtime Ansible: bake drivers and OS config into golden images (4.2), use Ansible at build time and for small post-boot parameterisation. Day-2 changes become image rollouts.
-- **Bastions and jump hosts**: ensure capacity (SSH `MaxStartups`, CPU), use multiplexing, and keep them hardened and audited.
-- **Proxy/relay patterns**: for networks where nodes cannot be reached from the controller, run a runner inside each pod/site.
-- **Idempotent "converge" jobs on a schedule** (nightly `--check` for drift and weekly converge) with results into a dashboard.
-- **Controller sizing**: CPU cores ≈ forks/2 for template-heavy plays; RAM ≈ forks × 100 MiB plus inventory; fast local SSD for fact cache and temp; high `ulimit -n`; synchronised time; dedicated service account; logs shipped off-box; disaster recovery for the controller (it holds access to everything): treat as pets with automated rebuild.
+Partition the inventory by site, pod or rack. Then run several controller processes or AAP jobs in parallel, each with its own forks. AAP automation mesh execution nodes can sit close to the targets, in the same network zone. That reduces latency and bastion fan-in.
+
+In AWX and AAP, job slicing splits one job template into N slices. The slices run in parallel across inventory partitions.
+
+Pull mode runs as `ansible-pull -U <git-url> -C main site.yml -i localhost,`. Each node fetches the repository and applies its own configuration on a schedule. The benefits are that it scales linearly with the fleet, needs no inbound SSH, and copes with unreliable networks and auto-scaling nodes.
+
+Pull mode has costs too, and you should weigh them. Central visibility is harder. Rollout control and canarying need branches or tags per ring, or version pins in node-local facts. Secrets need a distribution path. The repository becomes a high-value target, so sign commits and restrict deploy keys. Pull suits large, homogeneous fleets with strong image baselines. Push suits ordered operations, such as drains and upgrades.
+
+Immutable images cut the amount of runtime Ansible you need. Bake drivers and OS configuration into golden images, covered in 4.2, and use Ansible at build time. Keep post-boot work to small parameters. Day-2 changes then become image rollouts.
+
+Bastions and jump hosts need capacity for SSH, which means `MaxStartups` and CPU, plus multiplexing. Keep them hardened and audited.
+
+When the controller cannot reach some nodes, run a runner inside each pod or site.
+
+Run idempotent converge jobs on a schedule. A nightly `--check` run finds drift, and a weekly converge fixes it. Send the results to a dashboard.
+
+Plan the controller's CPU and memory from the fork count. For template-heavy plays, CPU cores ≈ forks/2, and RAM ≈ forks × 100 MiB plus inventory.
+
+Give the controller a fast local SSD for the fact cache and temp files, a high `ulimit -n`, synchronized time, a dedicated service account, and off-box log shipping. Plan disaster recovery for it, because it holds access to everything. Treat it as a pet, and automate its rebuild.
+
+Choose push or pull for each kind of change, based on whether the order of operations matters.
 
 ## 5. Callbacks: observing and reporting
 
-Callback plugins hook into playbook events (`v2_playbook_on_start`, `v2_runner_on_ok`, `...failed`, `...unreachable`, `v2_playbook_on_stats`). As *Ansible: Up and Running* Chapter 18 explains, Ansible divides callbacks into two categories: (1) **Stdout plugins** (`stdout_callback` in `ansible.cfg`, of which **only one** can be active at a time to control terminal rendering: `default`, `yaml`, `debug`, `dense`, `minimal`, `json`, `oneline`, `unixy`, `selective`, `actionable`) and (2) **Notification / other plugins** (`callbacks_enabled`—formerly `callback_whitelist`—where **multiple** plugins can run simultaneously). For rich web-based playbook reporting without setting up AWX/AAP, `AUR` Chapter 18 also highlights **ARA (*ARA Records Ansible*)** (`pip3 install "ara[server]"`, `export ANSIBLE_CALLBACK_PLUGINS="$(python3 -m ara.setup.callback_plugins)"`, and `ara-manage runserver`), which records every playbook, task, host, and result into a searchable database and web UI.
+When a run touches many hosts, the terminal output alone will not tell you what happened. Callbacks let you see each event and send it somewhere useful.
+
+Callback plugins hook into playbook events, such as `v2_playbook_on_start`, `v2_runner_on_ok`, `...failed`, `...unreachable` and `v2_playbook_on_stats`.
+
+As *Ansible: Up and Running*, chapter 18, explains, callbacks come in two categories. Stdout plugins control the terminal output. Only one can be active at a time, and you set it with `stdout_callback` in `ansible.cfg`. The choices are `default`, `yaml`, `debug`, `dense`, `minimal`, `json`, `oneline`, `unixy`, `selective` and `actionable`.
+
+The second category is notification and other plugins. You enable them with `callbacks_enabled`, which was formerly `callback_whitelist`, and several can run at the same time.
+
+For web-based reports without setting up AWX or AAP, the same book also covers ARA, which stands for *ARA Records Ansible*. ARA records every playbook, task, host and result in a searchable database with a web UI. Install it with `pip3 install "ara[server]"`, then run `export ANSIBLE_CALLBACK_PLUGINS="$(python3 -m ara.setup.callback_plugins)"`, and start the UI with `ara-manage runserver`.
 
 | Callback | Purpose |
 |---|---|
@@ -189,7 +265,9 @@ Callback plugins hook into playbook events (`v2_playbook_on_start`, `v2_runner_o
 | `ansible.posix.junit` | JUnit XML for CI test views |
 | `community.general.selective`, `actionable`, `dense`, `minimal` | Compact output for large runs |
 
-Custom callback example that emits one JSON line per task result to a file (feed to Loki/Elasticsearch; mask secrets):
+Use the timing rows to find slow tasks, and the JSON rows to feed machine-readable logs.
+
+If the built-in plugins do not fit, you can write your own. The example below emits one JSON line per task result to a file. You can feed that file to Loki or Elasticsearch, and it drops the output of `no_log` tasks.
 
 ```python
 # plugins/callback/jsonl_audit.py
@@ -232,11 +310,17 @@ class CallbackModule(CallbackBase):
     def v2_runner_on_unreachable(self, result):                  self._emit("unreachable", result)
 ```
 
-Enable with `callbacks_enabled = jsonl_audit` and `callback_plugins = plugins/callback` in `ansible.cfg`. In AAP/AWX the platform records job events natively (API/stream to external logging). Add run metadata (git SHA, ticket, operator, inventory) via `-e` extra vars or environment so every record is attributable. Ship logs to a central system with retention (audit) and never include secrets.
+Enable it with `callbacks_enabled = jsonl_audit` and `callback_plugins = plugins/callback` in `ansible.cfg`.
 
-Dashboards that pay for themselves: changes per environment per day, failure rate per play/role, mean run duration, hosts not converged in N days (drift), tasks that always change (idempotency regressions), and top slowest tasks.
+AAP and AWX record job events natively, and you can stream them to external logging. Add run metadata, such as the git SHA, ticket, operator and inventory, through `-e` extra vars or environment variables. That way every record is attributable. Ship logs to a central system with retention, and never include secrets.
+
+Some dashboards pay for themselves. Track changes per environment per day, failure rate per play or role, and mean run duration. Also track hosts not converged in N days, which shows drift, and tasks that always change, which points to idempotency regressions. Finish with the slowest tasks.
+
+Ship the JSON records to a central system with retention, and keep secrets out of every record.
 
 ## 6. Pull mode in detail
+
+In pull mode, each node fetches its own configuration on a timer, instead of waiting for a controller to push it.
 
 ```bash
 # On a node (systemd timer every 30 minutes with jitter)
@@ -244,12 +328,21 @@ ansible-pull -U git@git.example.com:platform/node-config.git -C main --purge \
   -d /var/lib/ansible-pull -i localhost, --only-if-changed -o node.yml
 ```
 
-- `--only-if-changed` skips the run when the repository did not change; `-o` runs only if the repo updated; add random sleep (`--sleep 120`) to spread load.
-- Per-node variation uses facts and `ansible_local` (custom facts), node name patterns, or a node-class variable file.
-- **Rings for safe rollout**: nodes of ring 0 track branch `canary`, ring 1 `stable-1`, ring 2 `stable`; promote by fast-forwarding branches (or signed tags) after validation.
-- **Security**: use read-only deploy keys, verify signed commits (`--verify-commit`), keep secrets out of the repo (fetch from a secret manager using node identity), and monitor for tampering. Unreviewed changes to the pulled repo apply fleet-wide within the timer interval, so protect branches strictly (4.1).
+`--only-if-changed` skips the run when the repository did not change, and `-o` runs only if the repository was updated. Add a random sleep, such as `--sleep 120`, to spread the load across nodes.
+
+Node-specific differences come from facts, `ansible_local` custom facts, node name patterns, or a node-class variable file.
+
+Rings make rollouts safer. Ring 0 nodes track the `canary` branch, ring 1 tracks `stable-1`, and ring 2 tracks `stable`. You promote a change by fast-forwarding the branches, or by moving signed tags, after validation.
+
+Use read-only deploy keys, and verify signed commits with `--verify-commit`. Keep secrets out of the repository, and fetch them from a secret manager using node identity. Monitor for tampering too.
+
+Protect the branches strictly, because an unreviewed change reaches the whole fleet within one timer interval, as covered in 4.1.
 
 ## 7. Putting it together: a large GPU cluster playbook skeleton
+
+A cluster playbook combines the earlier patterns in one file. Read it top to bottom, and you will see the fact cache, the rolling batches and the shared-service limit.
+
+The first play gathers and caches cluster facts once. The second play runs a rack-aware rolling change. It queries Slurm for jobs on each node, unless you force the change.
 
 ```yaml
 - name: Gather cluster facts once and cache
@@ -277,9 +370,11 @@ ansible-pull -U git@git.example.com:platform/node-config.git -C main --purge \
     - ansible.builtin.import_role: { name: gpu_node, tasks_from: validate }
 ```
 
-Design points: facts cached once; batch sizes grow after the canary; `throttle` protects shared services; the plan is idempotent and can be re-run to resume.
+Facts are cached once, batch sizes grow after the canary, and `throttle` protects shared services. Because the plan is idempotent, you can rerun it to resume.
 
 ## 8. Failure modes of the controller itself
+
+Sometimes you find that the controller is the bottleneck, not the hosts. The table maps each symptom to its likely cause and its mitigation.
 
 | Symptom | Cause | Mitigation |
 |---|---|---|
@@ -291,197 +386,205 @@ Design points: facts cached once; batch sizes grow after the canary; `throttle` 
 | Stuck runs | Hung SSH sessions, tasks without timeouts | `timeout`, `ServerAliveInterval`, task `timeout:`, `async` |
 | Output unreadable | Thousands of hosts | `stdout_callback = actionable`/`selective`, JSON logs, summaries |
 
+When a run misbehaves, check forks, file limits and SSH limits before you blame the hosts.
+
 ## 9. Lab
 
-First, run the self-checking Python lab (`code/part04/ansible_scale_performance_lab.py`) locally. It verifies the wall-clock runtime model (`estimate_play_wall_clock_seconds`: demonstrating the `>40x` speedup of `forks=50` + `ControlPersist` `0.319s -> 0.010s` + `pipelining` `3 -> 1` SSH trips, and comparing `linear` vs `free` strategy under a 5x straggler host, `AUR` Ch. 20) and the `jsonl_audit` notification callback plugin (`format_jsonl_audit_event`, masking `no_log: true` task output, `AUR` Ch. 18).
+Start with the self-checking Python lab, and run it locally before you touch any hosts. It verifies the wall-clock runtime model in `estimate_play_wall_clock_seconds`. That model shows a speedup of `>40x`. The gain comes from `forks=50`, `ControlPersist` and `pipelining` working together. `ControlPersist` cuts connection time from `0.319s` to `0.010s`, and `pipelining` cuts SSH trips per task from `3` to `1`.
+
+The lab also compares the `linear` and `free` strategies under a 5x straggler host. It checks `format_jsonl_audit_event`, which masks the output of `no_log` tasks. The lab draws on *Ansible: Up and Running*, chapters 18 and 20.
 
 ```bash
 python3 code/part04/ansible_scale_performance_lab.py
 ```
 
-Next, on a control node with lightweight targets (all interactive shell steps below are `untested here`), work through these exercises:
+Next, on a control node with lightweight targets, work through these exercises. Every interactive shell step below is `untested here`.
 
-1. **Baseline and profile**: create 30 to 50 lightweight targets (Docker with sshd) or use `ansible_connection=local` loopback hosts; run a 10-task playbook with defaults and `profile_tasks`; record totals.
-2. **Tune and compare**: change one setting at a time: `forks`, ControlPersist, pipelining, fact gathering off, `gather_subset`, fact cache; chart improvements; find the point where more forks stops helping.
-3. **Strategies**: run the same play with `linear` and `free` while injecting a slow host (`sleep 30`); compare wall time and output; identify when `free` is unsafe.
-4. **Batching and containment**: implement `serial: [1, 10%, 100%]`, `max_fail_percentage`, `any_errors_fatal` with an injected failure at the third batch; write a resume procedure with a failed-hosts list.
-5. **Async**: run a 5-minute fake firmware job with `async/poll: 0` across all hosts then collect with `async_status`; compare with a synchronous run and with a short SSH `ServerAliveInterval` misconfiguration.
-6. **Quadratic template**: render a hosts file per host that loops over all hosts; measure time at 100, 500, 2,000 simulated hosts; fix by rendering once with `run_once` and distributing.
-7. **Callbacks**: enable `timer`, `profile_tasks`, `json`; write and enable the `jsonl_audit` callback; verify `no_log` tasks are masked; load the JSONL into a small dashboard (Grafana Loki or a notebook).
-8. **Pull mode**: set up `ansible-pull` on three nodes with a systemd timer, jitter and rings (canary/stable branches); promote a change through rings; compare with push for the same change.
-9. **Partitioned controllers**: split the inventory into four shards and run four parallel `ansible-playbook` processes with `--limit` shards; compare with one run at four times the forks.
-10. **Controller failure drill**: kill the controller mid-run; resume; confirm idempotent completion; document what state may be partial.
-11. **Capacity plan**: estimate time to run a baseline play on 10,000 nodes given measured per-task cost and chosen forks and shards; state the assumptions.
-12. **Clean up.**
+1. Create 30 to 50 lightweight targets, using Docker with sshd, or use `ansible_connection=local` loopback hosts. Run a 10-task playbook with defaults and `profile_tasks`, and record the totals.
+2. Change one setting at a time, such as `forks`, `ControlPersist`, `pipelining`, fact gathering off, `gather_subset`, or the fact cache. Chart the improvements, and find the point where more forks stop helping.
+3. Run the same play with `linear` and then with `free`, while you inject a slow host with `sleep 30`. Compare the wall time and the output, and identify when `free` is unsafe.
+4. Implement `serial: [1, 10%, 100%]`, `max_fail_percentage` and `any_errors_fatal`. Inject a failure at the third batch. Then write a resume procedure that uses a failed-hosts list.
+5. Run a 5-minute fake firmware job across all hosts, using `async` with `poll: 0`, and collect the results with `async_status`. Compare it with a synchronous run, and with a short SSH `ServerAliveInterval` misconfiguration.
+6. Render a hosts file per host that loops over all hosts. Measure the time at 100, 500 and 2,000 simulated hosts. Then fix it by rendering once with `run_once` and distributing the result.
+7. Enable `timer`, `profile_tasks` and `json`. Write and enable the `jsonl_audit` callback, and verify that `no_log` tasks are masked. Then load the JSONL into a small dashboard, such as Grafana Loki or a notebook.
+8. Set up `ansible-pull` on three nodes with a systemd timer, jitter and rings, using canary and stable branches. Promote a change through the rings, and compare the process with push for the same change.
+9. Split the inventory into four shards. Run four parallel `ansible-playbook` processes, each with `--limit` set to one shard. Compare that with one run that has four times the forks.
+10. Kill the controller in the middle of a run, then resume it. Confirm the run completes idempotently, and document what state may be partial.
+11. Estimate how long a baseline play takes on 10,000 nodes, using your measured per-task cost and your chosen forks and shards. State the assumptions.
+12. Clean up when you are done.
 
 ## 10. Common mistakes
 
+Each item below is a habit that hurts a large Ansible run.
+
 - Raising forks without checking controller CPU, file descriptor limits or target SSH limits.
-- Fact gathering on every play of every run; no cache.
-- Using `free` strategy for steps with cluster-wide ordering requirements.
-- Large batches with no canary; no stop-the-line threshold.
-- Looping package installs; per-host loops calling an API from localhost thousands of times.
-- Quadratic `hostvars` templating; giant registered variables.
-- Treating pull mode as a replacement for orchestration (drains, ordered upgrades).
-- Controller as a single unmonitored pet with broad credentials and no backups.
-- Logging full task output (including secrets) to central systems.
-- Optimising speed before correctness and idempotency.
+- Gathering facts on every play of every run, with no cache.
+- Using the `free` strategy for steps that need cluster-wide ordering.
+- Running large batches with no canary and no stop-the-line threshold.
+- Looping package installs, or calling an API from localhost thousands of times in per-host loops.
+- Writing quadratic templating with `hostvars`, or registering giant variables.
+- Treating pull mode as a replacement for orchestration, such as drains and ordered upgrades.
+- Running the controller as a single unmonitored pet, with broad credentials and no backups.
+- Logging full task output, including secrets, to central systems.
+- Optimizing speed before correctness and idempotency.
+
+If you must choose, fix correctness and idempotency first, then tune speed.
 
 ## 11. Interview angles
 
-- "How do you make Ansible fast on 5,000 nodes?" (forks, SSH multiplexing/pipelining, fact caching, fewer tasks, async, sharding controllers.)
+These questions test how you reason about large fleets. Each one lists the points to cover in its answer.
+
+- "How do you make Ansible fast on 5,000 nodes?" Cover forks, SSH multiplexing and pipelining, fact caching, fewer tasks, async, and sharding controllers.
 - "Explain `serial`, `free` strategy, `max_fail_percentage` and how you roll out safely."
-- "Push versus pull configuration management at scale: trade-offs?"
-- "How do you monitor and audit Ansible runs?" (callbacks, AAP job events, JSON logs, drift dashboards.)
-- "How do you handle a task that takes an hour per host?" (async, parallel, polling, reboot handling.)
+- "Push versus pull configuration management at scale: what are the trade-offs?"
+- "How do you monitor and audit Ansible runs?" Cover callbacks, AAP job events, JSON logs, and drift dashboards.
+- "How do you handle a task that takes an hour per host?" Cover async, parallel work, polling, and reboot handling.
 - "What limits the controller? How do you scale it?"
 - "Why might more forks make a run slower?"
 
+Start with what limits the controller, since forks, SSH and fact caching all depend on it.
+
 ## Exercises
 
-1. **Wall-Clock Performance Model, `forks`, SSH Multiplexing (`ControlPersist`), and `pipelining` (`AUR` Chapter 20):** Using `estimate_play_wall_clock_seconds()` in `code/part04/ansible_scale_performance.py`, explain: (a) how `ControlPersist` drops SSH connection overhead from `0.319s` to `0.010s` (`ssh -O check` / `ssh -O exit`), why long EC2 hostnames exceed the 104-byte Unix socket limit without `%C`, and how `pipelining = True` reduces SSH sessions per task from 3 to 1; and (b) how `bash -c "cat /etc/sudoers /etc/sudoers.d/* %s | visudo -cf-"` validates `/etc/sudoers.d/disable-requiretty`.
-2. **Fact Caching (`gathering = smart`, `jsonfile`/`redis`), Quadratic $O(N^2)$ Templating, and `delegate_to: localhost` Bottlenecks:** (a) Explain why running a per-host template that loops over `groups['all']` / `hostvars` across 2,000 nodes is $O(N^2)$ on the controller CPU and how `run_once: true` + `copy` makes it $O(N)$; (b) compare file-based (`jsonfile`, `yaml`, `pickle`) and memory-based (`redis`, `memcached`) fact caches (`AUR` Chapter 20).
-3. **Execution Strategies (`linear` vs. `free` vs. `host_pinned`) and Failure-Containment Batching (`serial`, `max_fail_percentage`, `throttle`):** Using `estimate_play_wall_clock_seconds()`, explain why a single slow straggler host stalls every task wave under `strategy: linear` whereas `strategy: free` lets healthy hosts finish ahead, and state when `free` is unsafe.
-4. **Overlapping Long-Running Tasks with `async` and `poll: 0` + `async_status` (`AUR` Chapter 20):** Trace how `async: 3600` + `poll: 0` starts a 30-minute firmware flash or large `git clone` in the background while subsequent tasks (`apt` package installs) execute in parallel, and how `async_status` polls `fw_job.ansible_job_id` to completion.
-5. **Large-Fleet Architectures: Sharded Push Controllers, AWX/AAP Job Slicing & Automation Mesh, and `ansible-pull` Rings:** Contrast scaling push mode (partitioned inventories, AWX/AAP job slicing, and Automation Mesh execution nodes) with `ansible-pull` (`--only-if-changed`, `--sleep 120` jitter, `--verify-commit`, and canary/stable branch rings).
-6. **Callback Plugins (`stdout` vs. `notification`, `profile_tasks`, `junit`, `ARA`, and Custom `jsonl_audit.py`, `AUR` Chapter 18):** Using `format_jsonl_audit_event()` in `code/part04/ansible_scale_performance.py`, explain the difference between stdout and notification callback plugins, how `CallbackModule` hooks `v2_runner_on_ok`/`failed`/`unreachable` while masking `result._task.no_log`, and how ARA (`ara[server]`) records playbook runs.
+1. Use `estimate_play_wall_clock_seconds()` in `code/part04/ansible_scale_performance.py` to work through the SSH settings. First, explain how `ControlPersist` cuts SSH overhead from `0.319s` to `0.010s`, which you can check with `ssh -O check` and `ssh -O exit`. Explain why long EC2 hostnames exceed the 104-byte Unix socket limit without `%C`, and how `pipelining = True` cuts SSH sessions per task from 3 to 1. The benchmark comes from *Ansible: Up and Running*, chapter 20. Second, explain how `bash -c "cat /etc/sudoers /etc/sudoers.d/* %s | visudo -cf-"` validates `/etc/sudoers.d/disable-requiretty`.
+2. Explain why a per-host template that loops over `groups['all']` or `hostvars` across 2,000 nodes is $O(N^2)$ on the controller CPU. Then explain how `run_once: true` with `copy` makes it $O(N)$. Second, compare file-based fact caches (`jsonfile`, `yaml`, `pickle`) with memory-based ones (`redis`, `memcached`), using *Ansible: Up and Running*, chapter 20.
+3. Using `estimate_play_wall_clock_seconds()`, explain why one slow straggler host stalls every task wave under `strategy: linear`. Then explain why `strategy: free` lets healthy hosts finish ahead. Place `host_pinned` in that comparison, and state when `free` is unsafe. Last, explain how `serial`, `max_fail_percentage` and `throttle` contain the blast radius, so you can see which control does what.
+4. Trace how `async: 3600` with `poll: 0` starts a 30-minute firmware flash, or a large `git clone`, in the background. Follow the `apt` package installs that run in parallel while it works. Then trace how `async_status` polls `fw_job.ansible_job_id` until the job finishes. Use *Ansible: Up and Running*, chapter 20, as the reference.
+5. Contrast scaling push mode with `ansible-pull`. For push, cover partitioned inventories, AWX or AAP job slicing, and Automation Mesh execution nodes. For pull, cover `--only-if-changed`, `--sleep 120` jitter, `--verify-commit`, and canary and stable branch rings.
+6. Using `format_jsonl_audit_event()` in `code/part04/ansible_scale_performance.py`, explain the difference between stdout and notification callback plugins. Cover `profile_tasks` and `junit` among the notification plugins, and the custom `jsonl_audit.py` plugin you can write yourself. Then explain how `CallbackModule` hooks `v2_runner_on_ok`, `failed` and `unreachable`, while it masks `result._task.no_log`. Finally, explain how ARA (`ara[server]`) records playbook runs, using *Ansible: Up and Running*, chapter 18.
 
 ## Checkpoint questions (20)
 
 <details>
 <summary>1. What is the wall-clock runtime formula for an Ansible play under the default `linear` strategy, and why do stragglers dominate runtime?</summary>
 
-Under `strategy: linear`, every host in the active batch must finish Task $i$ before any host starts Task $i+1$. For $H$ hosts and $F$ forks (`waves = ceil(H / F)`), total play time is approximately:
+Under `strategy: linear`, every host in the active batch must finish Task $i$ before any host starts Task $i+1$. For $H$ hosts and $F$ forks, the number of waves is `waves = ceil(H / F)`. The total play time is approximately:
 `T ≈ ceil(H / F) * T_setup + sum_i(ceil(H / F) * max_h(T_task_i,h))`
-Because each wave waits for `max_h(T_task_i,h)`, **a single slow straggler host (slow disk, DNS timeout, or high latency) stretches every task across the entire batch**.
+Each wave waits for `max_h(T_task_i,h)`. So a single slow straggler host, from a slow disk, a DNS timeout or high latency, stretches every task across the entire batch.
 </details>
 
 <details>
-<summary>2. How much time does SSH Multiplexing (`ControlMaster=auto`, `ControlPersist`) save per connection, and how do you inspect or stop a master socket (`AUR` Chapter 20)?</summary>
+<summary>2. How much time does SSH multiplexing save per connection, with `ControlMaster=auto` and `ControlPersist`, and how do you inspect or stop a master socket, according to *Ansible: Up and Running*, chapter 20?</summary>
 
-In `AUR` Chapter 20's benchmark (`time ssh ... /usr/bin/true`), opening a fresh SSH connection takes **`0.319s`**, whereas reusing an open `ControlPersist` master socket takes **`0.010s`**—a **30x reduction** (`~0.3s` saved per SSH execution). You can verify an active master socket with **`ssh -O check user@host`** (`Master running (pid=5099)`) and close it manually with **`ssh -O exit user@host`**.
+In the chapter 20 benchmark, opening a fresh SSH connection with `time ssh ... /usr/bin/true` takes **`0.319s`**. Reusing an open `ControlPersist` master socket takes **`0.010s`**, a 30x reduction that saves about `0.3s` per SSH execution. You can verify an active master socket with **`ssh -O check user@host`**, which prints `Master running (pid=5099)`. Close it with **`ssh -O exit user@host`**.
 </details>
 
 <details>
-<summary>3. What causes `ControlPath "... too long for Unix domain socket"` on cloud instances, and how do you fix it in `ansible.cfg` (`AUR` Chapter 20)?</summary>
+<summary>3. What causes `ControlPath "... too long for Unix domain socket"` on cloud instances, and how do you fix it in `ansible.cfg`, according to *Ansible: Up and Running*, chapter 20?</summary>
 
-The operating system kernel limits Unix domain socket file paths (`sun_path`) to **104 bytes on macOS/BSD** and **108 bytes on Linux**. When connecting to cloud VMs with long FQDNs (`ec2-203-0-113-25.compute-1.amazonaws.com`), a control path embedding `%r@%h:%p` exceeds 104 bytes and fails. Fix it by setting **`control_path = %(directory)s/%%C`** in `[ssh_connection]` in `ansible.cfg`, where `%C` is a compact fixed-length SHA-1 hash of `%l%h%p%r`.
+The kernel limits Unix domain socket paths (`sun_path`) to 104 bytes on macOS and BSD, and 108 bytes on Linux. Cloud VMs with long hostnames, such as `ec2-203-0-113-25.compute-1.amazonaws.com`, produce a control path that embeds `%r@%h:%p`. That path exceeds the limit and fails. Set `control_path = %(directory)s/%%C` in `[ssh_connection]` in `ansible.cfg`. The `%C` token is a compact, fixed-length SHA-1 hash of `%l%h%p%r`.
 </details>
 
 <details>
-<summary>4. How does `pipelining = True` speed up task execution, and how did `AUR` Chapter 20 safely validate `/etc/sudoers.d/disable-requiretty` before enabling pipelining?</summary>
+<summary>4. How does `pipelining = True` speed up task execution, and how did *Ansible: Up and Running*, chapter 20, safely validate `/etc/sudoers.d/disable-requiretty` before enabling pipelining?</summary>
 
-Without pipelining, Ansible opens **2 to 3 SSH sessions per task** (`mkdir` temp dir -> `sftp`/`scp` `AnsiballZ` zip -> `ssh` execute & rm). With **`pipelining = True`**, Ansible streams the Python payload directly over **`stdin`** in **1 single SSH session**. Because `stdin` streaming has no TTY, `requiretty` must be disabled first. To validate a drop-in file `/etc/sudoers.d/disable-requiretty` (`Defaults:{{ ansible_user }} !requiretty`, `mode: '0440'`) that references settings defined in `/etc/sudoers`, `AUR` Chapter 20 uses:
-`validate: 'bash -c "cat /etc/sudoers /etc/sudoers.d/* %s | visudo -cf-"'`
-(running that play once with `pipelining = False` before turning `pipelining = True` on).
+Without pipelining, Ansible opens **2 to 3 SSH sessions per task**. It creates a temp directory, copies the `AnsiballZ` zip with `sftp` or `scp`, then runs and removes it over `ssh`. With **`pipelining = True`**, Ansible streams the Python payload over **`stdin`** in **1 single SSH session**. Streaming over stdin has no TTY, so `requiretty` must be disabled first. The book validates the drop-in file, which holds `Defaults:{{ ansible_user }} !requiretty` with `mode: '0440'` and references settings in `/etc/sudoers`, with `validate: 'bash -c "cat /etc/sudoers /etc/sudoers.d/* %s | visudo -cf-"'`. It runs the play once with `pipelining = False` before turning `pipelining = True` on.
 </details>
 
 <details>
 <summary>5. Why does raising `forks` from 5 to 500 on a small control node sometimes make playbooks run SLOWER or crash?</summary>
 
-Each Ansible worker fork is a separate Python process consuming **50–150 MiB of RAM**, CPU cycles (for Jinja2 templating and JSON parsing), and open file descriptors/sockets. Setting `forks = 500` on an undersized controller causes CPU context-switch thrashing, OOM kills, **`OSError: Too many open files`** (if `ulimit -n` is low), and **`kex_exchange_identification` / `MaxStartups` connection drops** on bastions and target `sshd` daemons. Size controller CPU cores to roughly `forks / 2` and RAM to `forks * 100 MiB`.
+Each fork is a separate Python process. It uses **50–150 MiB of RAM**, CPU for Jinja2 templating and JSON parsing, and open file descriptors and sockets. For example, at `forks = 500` on an undersized controller, context-switch thrashing and OOM kills can follow. A low `ulimit -n` causes **`OSError: Too many open files`**. Bastions and target `sshd` daemons can drop connections, with **`kex_exchange_identification`** or **`MaxStartups`** errors. Size the controller at about `forks / 2` CPU cores and `forks * 100 MiB` of RAM.
 </details>
 
 <details>
-<summary>6. Compare the three categories of Fact Caching plugins in Ansible (`AUR` Chapter 20).</summary>
+<summary>6. Compare the three categories of fact caching plugins in Ansible, according to *Ansible: Up and Running*, chapter 20.</summary>
 
-When `gathering = smart` and `fact_caching_timeout = 86400` (24 hours) are set in `ansible.cfg`, Ansible supports three fact-cache storage categories (`ansible-doc -t cache -l`):
-1. **File-based on the controller (`jsonfile`, `yaml`, `pickle`):** Zero external services required; stores one file per host in `fact_caching_connection = /var/cache/ansible/facts`.
-2. **In-memory (`memory`):** Default when no cache plugin is configured; persists only for the duration of the single `ansible-playbook` process.
-3. **Networked RAM store (`redis`, `memcached`, `mongodb`):** Shared across multiple controllers / CI runners.
+With `gathering = smart` and `fact_caching_timeout = 86400`, which is 24 hours, set in `ansible.cfg`, Ansible supports three categories of cache storage. You can list them with `ansible-doc -t cache -l`.
+
+1. File-based on the controller (`jsonfile`, `yaml`, `pickle`) needs no external service. It stores one file per host under `fact_caching_connection = /var/cache/ansible/facts`.
+2. In-memory (`memory`) is the default when no cache plugin is configured. It lasts only as long as a single `ansible-playbook` process.
+3. A networked RAM store (`redis`, `memcached`, `mongodb`) is shared across multiple controllers or CI runners.
 </details>
 
 <details>
 <summary>7. Why is rendering a cluster-wide `/etc/hosts` or `slurm.conf` template on 2,000 nodes an $O(N^2)$ bottleneck on the controller, and how do you make it $O(N)$?</summary>
 
-When a `template:` task runs across 2,000 hosts and the `.j2` template contains `{% for h in groups['all'] %}{{ hostvars[h]['ansible_host'] }}{% endfor %}`, the control node evaluates that 2,000-iteration Jinja2 loop **2,000 separate times** ($2,000 \times 2,000 = 4,000,000$ `hostvars` lookups). Fix it by rendering the file **once** on the controller (`delegate_to: localhost`, `run_once: true` writing `/tmp/cluster_hosts`), and then using `ansible.builtin.copy` to push that pre-rendered static file to all 2,000 nodes ($O(N)$).
+A `template:` task across 2,000 hosts can contain `{% for h in groups['all'] %}{{ hostvars[h]['ansible_host'] }}{% endfor %}` in the `.j2` file. The control node then runs that 2,000-iteration loop once for each host. That is $2,000 \times 2,000 = 4,000,000$ `hostvars` lookups. Render the file once on the controller instead, with `delegate_to: localhost` and `run_once: true`, writing `/tmp/cluster_hosts`. Then use `ansible.builtin.copy` to push that static file to all 2,000 nodes, which is $O(N)$.
 </details>
 
 <details>
 <summary>8. Why is `delegate_to: localhost` without `run_once: true` dangerous on a 5,000-node play?</summary>
 
-When a play targets 5,000 hosts and includes a task with `delegate_to: localhost` (for example, calling an external CMDB, Slack webhook, or Slurm controller API), Ansible executes that local command **5,000 times in parallel (up to `forks`) on the control node**—fork-bombing the controller and DDoS-ing the API. Either aggregate the call into a single request with **`run_once: true`** looping over `ansible_play_batch`, or cap concurrency with **`throttle: 10`**.
+On a play that targets 5,000 hosts, a task with `delegate_to: localhost` runs its local command once per host. For example, it might call an external CMDB, a Slack webhook or a Slurm controller API. Those 5,000 runs execute in parallel on the control node, up to `forks` at a time. That can fork-bomb the controller and effectively DDoS the API. Either aggregate the call into a single request with **`run_once: true`** that loops over `ansible_play_batch`, or cap the concurrency with **`throttle: 10`**.
 </details>
 
 <details>
 <summary>9. Compare `strategy: linear`, `strategy: free`, and `strategy: host_pinned` at scale.</summary>
 
-- **`linear` (default):** Lockstep task-by-task barrier across all hosts in the batch; required when Task $i+1$ depends on Task $i$ having finished on all nodes, but slowed down by the slowest host on every task.
-- **`free`:** Workers advance each host through its task list independently without waiting at task barriers; fastest for independent per-host configuration, but unsuitable when cross-host ordering matters.
-- **`host_pinned`:** Like `free`, except a worker fork stays assigned to a single host until that host finishes all tasks in the play (maximizing SSH connection cache locality when `num_hosts > forks`).
+- `linear` (default) is a lockstep, task-by-task barrier across all hosts in the batch. It is required when Task $i+1$ depends on Task $i$ finishing on every node, but the slowest host slows every task.
+- `free` lets each host advance through its task list without waiting at barriers. It is the fastest choice for independent per-host configuration, but it does not suit steps where cross-host ordering matters.
+- `host_pinned` works like `free`, except that a fork stays assigned to one host until that host finishes all its tasks. That maximizes SSH connection cache locality when there are more hosts than forks, written `num_hosts > forks`.
 </details>
 
 <details>
-<summary>10. How did `AUR` Chapter 20 (`Example 20-13`) use `async` and `poll: 0` to overlap slow I/O tasks with package installation?</summary>
+<summary>10. How did *Ansible: Up and Running*, chapter 20 (`Example 20-13`), use `async` and `poll: 0` to overlap slow I/O tasks with package installation?</summary>
 
-In `Example 20-13`, cloning the Linux kernel Git repository (`git: repo=... async: 3600, poll: 0, register: clone`) is started in the background with **`poll: 0`** so Ansible immediately moves on to installing several `apt` packages while `git clone` downloads in parallel; once the package tasks finish, an `async_status: { jid: "{{ clone.ansible_job_id }}" }` task (`until: result.finished, retries: 3600`) waits for the background clone to finish.
+In `Example 20-13`, a `git` task clones the Linux kernel Git repository with `async: 3600`, `poll: 0` and `register: clone`. Because of `poll: 0`, Ansible moves straight on to installing several `apt` packages while the clone downloads in parallel. After the package tasks, an `async_status: { jid: "{{ clone.ansible_job_id }}" }` task waits for the background clone to finish, with `until: result.finished, retries: 3600`.
 </details>
 
 <details>
 <summary>11. Why does an `async` task fail if the target host reboots during the task?</summary>
 
-`async` spawns a background wrapper process on the target host that writes its status JSON into `~/.ansible_async/<jid>`. If the command reboots the target host, the OS kills the background wrapper before it can write the completion status file (and if `/tmp` is `tmpfs`, the status file is wiped). Always use **`ansible.builtin.reboot`** (or trigger the reboot and wait from the controller with **`wait_for_connection`**) instead of `async` for reboots.
+`async` starts a background wrapper process on the target host. The wrapper writes its status JSON to `~/.ansible_async/<jid>`. If the command reboots the host, the OS kills the wrapper before it can write the completion status file. If `/tmp` is `tmpfs`, the status file is wiped as well. Always use **`ansible.builtin.reboot`** for reboots instead of `async`. Or trigger the reboot and wait from the controller with **`wait_for_connection`**.
 </details>
 
 <details>
-<summary>12. How do AWX / Ansible Automation Platform (`AAP`) "Job Slicing" and "Automation Mesh Execution Nodes" scale push-mode Ansible?</summary>
+<summary>12. How do AWX and Ansible Automation Platform (`AAP`) "Job Slicing" and "Automation Mesh Execution Nodes" scale push-mode Ansible?</summary>
 
-- **Job Slicing (`job_slice_count: 8`):** Automatically partitions a 4,000-host inventory into 8 slices of 500 hosts each and schedules 8 independent `ansible-playbook` jobs across the cluster of execution nodes in parallel.
-- **Automation Mesh Execution Nodes:** Dedicated worker nodes deployed inside remote data centers or private rack zones that maintain persistent mTLS mesh connections to the central control plane and execute SSH tasks locally against adjacent racks—eliminating WAN latency and central bastion bottlenecks.
+- **Job Slicing:** Set `job_slice_count: 8`, and the job splits a 4,000-host inventory into 8 slices of 500 hosts each. It schedules 8 independent `ansible-playbook` jobs across the execution nodes in parallel.
+- **Automation Mesh Execution Nodes:** These are worker nodes in remote data centers or private rack zones. They keep persistent mTLS mesh connections to the central control plane, and they run SSH tasks locally against nearby racks. That removes WAN latency and central bastion bottlenecks.
 </details>
 
 <details>
 <summary>13. How does `ansible-pull` work, what do `--only-if-changed` and `--sleep` do, and how do you stage rollouts in pull mode?</summary>
 
-Instead of a central controller pushing over SSH to 10,000 nodes, each node runs a `systemd` timer or cron job invoking **`ansible-pull -U <git_repo_url> -C <branch_or_tag> -i localhost, node.yml`**:
-- **`-o` / `--only-if-changed`**: runs the playbook only if the remote Git repository has new commits since the last pull.
-- **`-s 120` / `--sleep 120`**: sleeps a random delay between 0 and 120 seconds before pulling so 10,000 nodes do not hammer the Git server at the exact same second.
-- **Staged rollout rings:** Assign nodes to rings (`ring0` tracking branch/tag `canary`, `ring1` tracking `stable-1`, `ring2` tracking `stable`) and promote tested commits across rings by fast-forwarding the signed branch/tag.
+Instead of a central controller pushing over SSH to 10,000 nodes, each node runs a systemd timer or cron job. That job invokes `ansible-pull -U <git_repo_url> -C <branch_or_tag> -i localhost, node.yml`. `-o` or `--only-if-changed` runs the playbook only when the remote Git repository has new commits since the last pull. `-s 120` or `--sleep 120` waits a random delay between 0 and 120 seconds, so 10,000 nodes do not hit the Git server at the same moment. To stage rollouts, assign nodes to rings. `ring0` tracks the `canary` branch or tag, `ring1` tracks `stable-1`, and `ring2` tracks `stable`. Promote tested commits across the rings by fast-forwarding the signed branch or tag.
 </details>
 
 <details>
-<summary>14. When should you choose Push Mode vs. Pull Mode (`ansible-pull`) vs. Golden Images for a GPU cluster?</summary>
+<summary>14. When should you choose push mode, pull mode with `ansible-pull`, or golden images for a GPU cluster?</summary>
 
-- **Golden Images (Packer + Ansible at build time):** Best for the heavy, static base layer (OS, kernel, NVIDIA drivers, CUDA, containerd) so nodes boot ready to work in 2 minutes.
-- **Pull Mode (`ansible-pull`):** Best for continuous baseline convergence of node-local configuration files (`/etc/chrony.conf`, monitoring exporters, SSH certificates) across thousands of independent hosts.
-- **Push Mode (AAP / controller with `serial`):** Best for **multi-node orchestrated operations** where cross-host ordering and scheduler coordination matter (draining a rack in Slurm, upgrading switches, rolling database/controller upgrades).
+- **Golden images:** Build them with Packer and Ansible at build time. They suit the heavy, static base layer, which covers the OS, kernel, NVIDIA drivers, CUDA and containerd, so nodes boot ready to work in 2 minutes.
+- **Pull mode** (`ansible-pull`) suits continuous baseline convergence of node-local files, such as `/etc/chrony.conf`, monitoring exporters and SSH certificates, across thousands of independent hosts.
+- **Push mode**, through AAP or the controller with `serial`, suits multi-node operations where cross-host ordering and scheduler coordination matter. Examples are draining a rack in Slurm, upgrading switches, and rolling database or controller upgrades.
 </details>
 
 <details>
-<summary>15. What is the difference between a `stdout` Callback Plugin and a `notification` Callback Plugin (`AUR` Chapter 18)?</summary>
+<summary>15. What is the difference between a `stdout` callback plugin and a `notification` callback plugin, according to *Ansible: Up and Running*, chapter 18?</summary>
 
-- **Stdout callback (`stdout_callback = yaml | json | dense | minimal | debug | selective`):** Controls how Ansible formats primary terminal output on `stdout`. **Only one** stdout callback can be active at a time.
-- **Notification / aggregate callback (`callbacks_enabled = timer, profile_tasks, profile_roles, junit, slack, logstash, jsonl_audit`):** Observes playbook lifecycle events in the background (writing timing summaries, JUnit XML reports, JSONL audit logs, or Slack messages). **Multiple** notification callbacks can be enabled simultaneously.
+- **Stdout callback:** Set with `stdout_callback = yaml | json | dense | minimal | debug | selective`, it controls how Ansible formats its primary terminal output. Only one stdout callback can be active at a time.
+- **Notification or aggregate callback:** Set with `callbacks_enabled = timer, profile_tasks, profile_roles, junit, slack, logstash, jsonl_audit`, it observes the playbook lifecycle in the background. It can write timing summaries, JUnit XML reports, JSONL audit logs or Slack messages. Several notification callbacks can be enabled at the same time.
 </details>
 
 <details>
-<summary>16. How does the `junit` Callback Plugin (`AUR` Chapter 18 Table 18-5) integrate Ansible playbook runs into CI test dashboards?</summary>
+<summary>16. How does the `junit` callback plugin, from chapter 18, table 18-5 of *Ansible: Up and Running*, integrate playbook runs into CI test dashboards?</summary>
 
-Enabling `callbacks_enabled = junit` causes Ansible to write a JUnit XML report into `JUNIT_OUTPUT_DIR` (`~/.ansible.log` by default) after every playbook run, where each task is recorded as a test case. Setting `JUNIT_FAIL_ON_CHANGE=true` during a scheduled drift check or idempotence test marks any task that reported `changed` as a JUnit test failure in Jenkins/GitLab/GitHub Actions.
+Enabling `callbacks_enabled = junit` makes Ansible write a JUnit XML report into `JUNIT_OUTPUT_DIR` after every playbook run. By default that is `~/.ansible.log`. Each task is recorded as a test case. Setting `JUNIT_FAIL_ON_CHANGE=true` during a scheduled drift check or idempotence test marks any task that reports `changed` as a test failure in Jenkins, GitLab or GitHub Actions.
 </details>
 
 <details>
-<summary>17. What is ARA (*ARA Records Ansible*, `AUR` Chapter 18), and how does it work?</summary>
+<summary>17. What is ARA (*ARA Records Ansible*, from chapter 18 of *Ansible: Up and Running*), and how does it work?</summary>
 
-**ARA** is an open-source callback plugin and lightweight web/API server (`pip install "ara[server]"`, `export ANSIBLE_CALLBACK_PLUGINS="$(python3 -m ara.setup.callback_plugins)"`) that intercepts every `ansible` and `ansible-playbook` run and records playbooks, tasks, host facts, execution durations, and per-host results into an SQLite/PostgreSQL/MySQL database inspectable via the `ara` CLI or `ara-manage runserver` web UI.
+ARA is an open-source callback plugin and a lightweight web and API server. Install it with `pip install "ara[server]"`, then run `export ANSIBLE_CALLBACK_PLUGINS="$(python3 -m ara.setup.callback_plugins)"`. It intercepts every `ansible` and `ansible-playbook` run. It records playbooks, tasks, host facts, execution durations and per-host results in an SQLite, PostgreSQL or MySQL database. You can inspect that data with the `ara` CLI or the `ara-manage runserver` web UI.
 </details>
 
 <details>
-<summary>18. When writing a custom Callback Plugin (`CallbackModule`), how do you ensure `no_log: true` secrets are never written to the audit log?</summary>
+<summary>18. When writing a custom callback plugin (`CallbackModule`), how do you ensure `no_log: true` secrets are never written to the audit log?</summary>
 
-Inside your `v2_runner_on_ok` and `v2_runner_on_failed` hooks, inspect **`if result._task.no_log:`** (or check `result._result.get('_ansible_no_log')`) and **strip `msg`, `stdout`, `stderr`, `invocation`, and `diff` fields** from the emitted JSON record before writing to disk or shipping to Loki/Elasticsearch/Logstash.
+Inside your `v2_runner_on_ok` and `v2_runner_on_failed` hooks, check `if result._task.no_log:`. You can also check `result._result.get('_ansible_no_log')`. When either check shows a secret, strip the `msg`, `stdout`, `stderr`, `invocation` and `diff` fields from the JSON record. Do that before you write to disk or ship the record to Loki, Elasticsearch or Logstash.
 </details>
 
 <details>
 <summary>19. How does `order: shuffle` on a play improve safety during a large fleet rollout?</summary>
 
-By default (`order: inventory`), Ansible processes hosts in the exact order they appear in the inventory—which usually means `gpu001, gpu002, gpu003...` (all sitting in Rack 1). If a batch fails or drains capacity, Rack 1 loses 100% of its nodes at once. Setting **`order: shuffle`** (after the initial canary) randomizes host order across racks and pods, spreading both network/storage load and failure blast radius evenly across failure domains.
+By default, `order: inventory` processes hosts in inventory order. That often means `gpu001`, `gpu002`, `gpu003` and so on, all in Rack 1. If a batch fails or drains capacity, Rack 1 loses 100% of its nodes at once. With **`order: shuffle`**, applied after the initial canary, hosts are randomized across racks and pods. Load and failure blast radius then spread across failure domains.
 </details>
 
 <details>
 <summary>20. How do you resume a playbook run across 2,000 hosts after 15 hosts failed due to a transient network blip?</summary>
 
-Because every task in a well-written playbook is idempotent, you can either re-run the playbook against the failed subset using a retry list (`ansible-playbook site.yml --limit @site.retry` when `retry_files_enabled = True`, or extract failed hostnames from `jsonl_audit` / `ANSIBLE_STDOUT_CALLBACK=json` into `@failed_hosts.txt` and pass `--limit @failed_hosts.txt`).
+Every task in a well-written playbook is idempotent, so you can rerun the playbook against only the failed hosts. Use a retry file with `ansible-playbook site.yml --limit @site.retry`, which works when `retry_files_enabled = True`. Or pull the failed hostnames from the `jsonl_audit` output, or from `ANSIBLE_STDOUT_CALLBACK=json`, write them to `@failed_hosts.txt`, and pass `--limit @failed_hosts.txt`.
 </details>
 
 ## Sources and review notes
