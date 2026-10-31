@@ -22,21 +22,27 @@ lab_venue: "GCP / GKE"
 
 ## Why this matters for AI infrastructure
 
-A GPU cluster is rarely built for one team. Research groups, product teams, external customers and platform engineers share the same scarce, expensive hardware, and each expects fairness, security, performance isolation and self-service. Without a deliberate tenancy model you get noisy neighbours (one job floods the API or the storage), security incidents (cross-tenant data access), unfair allocation (one team squats on GPUs), unmanageable support load, and no cost visibility. With a good model, teams onboard in minutes via a pull request, get quotas and queues automatically, run in isolated namespaces with default-deny networking, and see their usage and cost. This chapter turns the individual mechanisms (RBAC, quotas, network policy, admission, scheduling, storage) into a coherent multi-tenant platform and describes the platform services that sit around the cluster.
+Picture a shared GPU cluster on a busy morning. One team's job floods the API or the storage, and its neighbours slow to a crawl. Nobody can say who is holding which GPUs, and nobody knows what any of it costs. A GPU cluster is rarely built for one team. Research groups, product teams, external customers and platform engineers all share the same scarce, expensive hardware, and each of them expects fairness, security, performance isolation and self-service.
+
+Without a deliberate tenancy model, those expectations collide. Noisy neighbours appear when one job floods the API or the storage. Cross-tenant data access becomes a security incident. One team squats on GPUs that others need, the support load grows beyond what you can manage, and there is no cost visibility at all.
+
+A good model changes that picture. Teams onboard in minutes through a pull request. They get quotas and queues automatically, run in isolated namespaces with default-deny networking, and can see their own usage and cost. This chapter shows how the individual mechanisms (RBAC, quotas, network policy, admission, scheduling and storage) fit together into one multi-tenant platform. It also describes the platform services that sit around the cluster.
 
 ## Prerequisites and outcomes
 
-Needs 5.7, 5.15, 5.16, 5.18, 5.21. After this chapter you can:
+Before you start, work through chapters 5.7, 5.15, 5.16, 5.18 and 5.21. This chapter builds on them. When you finish it, you should be able to:
 
-- Compare tenancy models (soft vs hard, namespace-per-tenant, cluster-per-tenant, virtual clusters) and match them to trust levels.
-- Implement namespace-level isolation: RBAC, ResourceQuota/LimitRange, NetworkPolicy, Pod Security, storage, secrets, priority, and node isolation (dedicated pools, taints, sandboxed runtimes).
-- Provide fair GPU sharing with Kueue (queues, cohorts, preemption, fair sharing), MIG/time-slicing/MPS where appropriate, and enforce quotas at multiple layers.
-- Use hierarchical namespaces/Capsule/vCluster or similar to delegate administration.
-- Automate tenant onboarding and offboarding (GitOps, Terraform, generators) and expose self-service interfaces.
-- Design platform services (registry, ingress, notebooks, CI/CD, storage, observability, model serving, experiment tracking) and operate the platform as a product with SLOs, docs and support.
-- Allocate and report cost per tenant.
+- Compare tenancy models (soft versus hard, namespace per tenant, cluster per tenant and virtual clusters), and match each one to a trust level.
+- Isolate a namespace with RBAC, ResourceQuota and LimitRange, NetworkPolicy, Pod Security, storage, secrets, priority, and node isolation through dedicated pools, taints and sandboxed runtimes.
+- Share GPUs fairly with Kueue (queues, cohorts, preemption and fair sharing), use MIG, time-slicing or MPS where they fit, and enforce quotas at several layers.
+- Use hierarchical namespaces, Capsule or vCluster, or a similar tool, to delegate administration.
+- Automate tenant onboarding and offboarding with GitOps, Terraform or generators, and expose self-service interfaces.
+- Design platform services (registry, ingress, notebooks, CI/CD, storage, observability, model serving and experiment tracking), and run the platform as a product with SLOs, docs and support.
+- Allocate and report cost for each tenant.
 
 ## 1. Tenancy models and trust levels
+
+Before you configure anything, decide how much you trust your tenants. The tenancy model you choose sets where the isolation boundary sits. Each row of the table pairs a model with the boundary it draws, the trust it assumes and the situations where it is typically used.
 
 | Model | Isolation boundary | Trust assumption | Typical use |
 |---|---|---|---|
@@ -47,11 +53,14 @@ Needs 5.7, 5.15, 5.16, 5.18, 5.21. After this chapter you can:
 | **Cluster per tenant** (hard multi-tenancy) | Separate control and data planes | Hostile or contractually separate tenants | External customers, regulated tenants |
 | **Multi-cluster fleet with workload placement** | Many clusters, federated scheduling | Scale and failure isolation | Large orgs (5.35) |
 
-Kubernetes itself provides **soft multi-tenancy**: the control plane is shared; tenants share the API server, scheduler, etcd, nodes' kernel, DNS, and often storage and network. Hard guarantees require separation at the layer you worry about (nodes, kernel, control plane). Choose by **threat model and compliance**, not by default.
+Read the trust column first. It tells you which row fits your situation, and the other columns follow from it.
 
-In *Production Kubernetes* Chapter 12 (*Multitenancy*), Josh Rosso et al. illustrate the difference using a housing analogy:
-- **Soft multitenancy ("a family living together in one house"):** Family members share the kitchen, living room, and utilities (the control plane, nodes, CNI, and storage), while each member has their own private bedroom (`Namespace` isolated by RBAC, `ResourceQuota`, `LimitRange`, `PodSecurity`, and `default-deny-all` `NetworkPolicy`). Also requires **Namespace-per-team** vs. **Namespace-per-application** planning and per-tenant log routing (for example, configuring **Fluent Bit** tag-based routing `Match kube.var.log.containers.*_alice-ns_*` so logs from `alice-ns` only ship to Alice's Elasticsearch/Loki index).
-- **Hard multitenancy ("tenants in an apartment building or hotel" / hostile tenants):** Either dedicate a **Cluster per tenant** (at the cost of multi-cluster fleet management and lower GPU bin-packing efficiency) or combine **virtual control planes (`vCluster`/`Kamaji`)**, **dedicated tainted node pools**, **sandboxed runtimes (`Kata`/`gVisor`)**, and **fabric-isolated storage/networks**.
+Kubernetes itself gives you **soft multi-tenancy**. Tenants share the control plane, including the API server, the scheduler, etcd, the kernel of every node, DNS, and often storage and networking. A hard guarantee means separating things at the layer you worry about, whether that is the nodes, the kernel or the control plane. So choose a model by your **threat model and compliance** needs, not by habit.
+
+Josh Rosso and his co-authors explain the difference with a housing analogy in Chapter 12 of *Production Kubernetes*, which is titled *Multitenancy*.
+
+- **Soft multitenancy ("a family living together in one house"):** Family members share the kitchen, the living room and the utilities. In Kubernetes those are the control plane, the nodes, the CNI and the storage. Each member also has a private bedroom. In Kubernetes that is a `Namespace` isolated by RBAC, `ResourceQuota`, `LimitRange`, `PodSecurity` and a `default-deny-all` `NetworkPolicy`. Soft multitenancy also calls for planning between namespace per team and namespace per application, and for per-tenant log routing. For example, tag-based Fluent Bit routing with `Match kube.var.log.containers.*_alice-ns_*` ships logs from `alice-ns` only to Alice's Elasticsearch or Loki index.
+- **Hard multitenancy ("tenants in an apartment building or hotel", or hostile tenants):** You either dedicate a cluster to each tenant, which costs you multi-cluster fleet management and lower GPU bin-packing efficiency, or you combine virtual control planes such as vCluster or Kamaji with dedicated tainted node pools, sandboxed runtimes such as Kata or gVisor, and fabric-isolated storage and networks.
 
 ```mermaid
 flowchart TD
@@ -62,7 +71,11 @@ flowchart TD
     Op --> Obs["4. Observability & Showback<br/>Fluent Bit / Loki tenant log routing<br/>+ Grafana Folder + OpenCost + DCGM GPU-hours"]
 ```
 
+The diagram follows one onboarding spec as it fans out. A single tenant specification becomes four groups of objects: identity, compute and GPU fairness, network and storage, and observability.
+
 ### Isolation layers (what to configure)
+
+Tenants can affect one another at every layer of the stack. The table below names each layer, the mechanisms that close it and the points to watch.
 
 | Layer | Mechanisms | Notes |
 |---|---|---|
@@ -76,9 +89,15 @@ flowchart TD
 | **Observability** | Per-tenant dashboards/log access (Grafana orgs/folders, Loki tenants), metrics label scoping | Do not expose other tenants' data |
 | **Cost** | Labels, namespace attribution, OpenCost/Kubecost, GPU-hour accounting | Chargeback/showback drives behaviour |
 
+The compute and network rows name the resources that tenants fight over most. The runtime row is the one to read twice. In runc, the kernel is shared, so a kernel exploit can cross tenant boundaries. Choose the layers your threat model cannot leave open, and then configure those first.
+
 ## 2. Namespace-level building blocks
 
+Picture two teams on the same cluster. One team's job reserves every GPU it can reach, and the other team's notebook never starts. Quotas and RBAC exist to prevent that kind of squatting. The building blocks in this section keep each tenant inside its own namespace.
+
 ### ResourceQuota and LimitRange
+
+The two objects below set the limits for a team called `team-a`. The ResourceQuota caps how much the team can request. The LimitRange fills in defaults for containers that do not set their own values.
 
 ```yaml
 apiVersion: v1
@@ -115,11 +134,11 @@ spec:
       min: { storage: 1Gi }
 ```
 
-Behaviour: ResourceQuota is enforced at admission (creation fails with `exceeded quota`), counts requests of *all* pods (including Pending) in the namespace; if a quota covers compute resources, pods must specify requests/limits for those resources (LimitRange defaults help). Quotas on `count/*` protect the API server from object floods (thousands of Jobs/Pods/ConfigMaps). Quotas are namespace-bound; per-team quota across many namespaces needs hierarchical tools (HNC, Capsule) or Kueue cohorts.
+The quota is enforced at admission, so a request that breaks it fails at creation with `exceeded quota`. The quota counts the requests of all pods in the namespace, including Pending ones. If a quota covers compute resources, every pod must state requests and limits for them, and the LimitRange defaults help with that. Here is a worked example using the `requests.nvidia.com/gpu: "32"` line. A team already running 32 GPUs has no room left under that quota. A 33rd GPU request fails at admission, because 33 is more than the 32 allowed. Quotas on `count/*` work differently. They protect the API server from object floods, such as thousands of Jobs, Pods or ConfigMaps. Quotas are bound to a single namespace, so a per-team quota across many namespaces needs hierarchical tools such as HNC or Capsule, or Kueue cohorts.
 
 ### RBAC bindings that keep tenants in their own Namespace
 
-Quotas limit how much a tenant can use. RBAC decides which API objects a tenant can read or change. Without RBAC, one team could edit another team's Deployments. To authorize a tenant, bind a Role or ClusterRole to the tenant's identity with a RoleBinding. The example below gives the `app1-viewer` group read access to the `app1` Namespace only.
+Quotas limit how much a tenant can use. RBAC decides which objects a tenant can read or change. Without RBAC, one team could edit another team's Deployments. To authorize a tenant, bind a Role or ClusterRole to the tenant's identity with a RoleBinding. The example below gives the `app1-viewer` group read access to the `app1` Namespace only.
 
 ```yaml
 apiVersion: rbac.authorization.k8s.io/v1
@@ -137,13 +156,15 @@ subjects:
   name: app1-viewer
 ```
 
-The binding points at the built-in `view` ClusterRole. That role grants read-only access to Namespace-scoped resources. A RoleBinding that uses a ClusterRole still limits the grant to its own Namespace. Avoid ClusterRoleBindings for tenants unless you have a good reason, because they let a tenant use the bound role in every Namespace.
+The binding points at the built-in `view` ClusterRole, which grants read-only access to Namespace-scoped resources. A RoleBinding that uses a ClusterRole still limits the grant to its own Namespace, so the tenant stays in its own room. A ClusterRoleBinding behaves differently. It lets a tenant use the bound role in every Namespace. Avoid ClusterRoleBindings for tenants unless you have a good reason.
 
 ### Priority and fair sharing
 
-Combine **PriorityClasses** with **ResourceQuota scopeSelector** to cap how many high-priority pods a team may run (prevents priority abuse), and **Kueue** for dynamic GPU sharing: each team has a `ClusterQueue` with `nominalQuota`, can borrow idle quota from a `cohort`, and is preempted when owners reclaim (5.18). Provide a few **WorkloadPriorityClasses** (`production`, `high`, `normal`, `best-effort`). Provide **fair-share** weights so large teams don't starve small ones; show queue positions and wait times to users.
+If you want to stop priority abuse, use PriorityClasses together with a ResourceQuota `scopeSelector` to cap how many high-priority pods a team can run. That stops priority abuse. For dynamic GPU sharing, use Kueue. Each team gets a `ClusterQueue` with a `nominalQuota`. A team can borrow idle quota from a cohort, and it is preempted when the owners reclaim their share (see 5.18). Provide a few WorkloadPriorityClasses, such as `production`, `high`, `normal` and `best-effort`. Add fair-share weights so large teams do not starve small ones, and show queue positions and wait times to users.
 
 ### GPU sharing options
+
+Sharing methods do not isolate tenants equally, so compare them before you choose one.
 
 | Method | Isolation | Use | Caveats |
 |---|---|---|---|
@@ -154,33 +175,38 @@ Combine **PriorityClasses** with **ResourceQuota scopeSelector** to cap how many
 | **vGPU** (virtualised GPUs via hypervisor, licence) | Strong | VM-based multi-tenancy | Licensing, hypervisor stack |
 | **DRA with partitionable devices** | Depends on partition type | Flexible claims for MIG/shared devices | Maturity varies |
 
-For multi-tenant security, prefer whole GPUs or MIG; avoid time-slicing/MPS between mutually untrusted tenants (side channels, DoS). Dedicated node pools per tenant class simplify driver/config differences (MIG strategy `single`/`mixed`, GPU Operator configs per pool).
+For multi-tenant security, prefer whole GPUs or MIG. Avoid time-slicing and MPS between mutually untrusted tenants, because of side channels and DoS. Dedicated node pools per tenant class simplify driver and configuration differences. Use the MIG strategy `single` or `mixed`, and keep a GPU Operator configuration for each pool.
 
 ### Node isolation
 
-Dedicated pools per tenant or sensitivity level via taints/labels + admission (inject tolerations/nodeSelector for the namespace's pool, forbid overrides); separate nodes for system components, for untrusted notebooks (sandboxed RuntimeClass), for production inference. Avoid pod-level `hostNetwork`/`hostPID`. Consider node-level encryption, secure boot/measured boot, and wiping local NVMe between tenants (init containers can't guarantee; use node recycling for strict cases).
+Node isolation matters most when you cannot trust what runs next to your workloads. Give each tenant, or each sensitivity level, a dedicated pool of nodes. Mark the pool with taints and labels, and use admission control to inject tolerations and a `nodeSelector` for the namespace's pool. Forbid tenants from overriding them. Keep separate nodes for system components, for untrusted notebooks that run under a sandboxed `RuntimeClass`, and for production inference. Avoid pod-level `hostNetwork` and `hostPID`. For strict cases, also consider node-level encryption and secure or measured boot. Wiping local NVMe between tenants is harder than it sounds. Init containers cannot guarantee it, so for strict cases recycle the node instead.
 
 ## 3. Delegated administration and virtual clusters
 
-- **Hierarchical Namespace Controller (HNC)** (`hnc.x-k8s.io`): parent/child namespaces inherit RBAC, NetworkPolicies, quotas (propagated objects); team leads create sub-namespaces via `SubnamespaceAnchor`. Maintenance mode of the project: evaluate alternatives.
-- **Capsule** (Tenant CRD): a `Tenant` groups namespaces, owners, quotas across namespaces, network/storage/ingress class restrictions, node selectors, allowed registries, namespace limits; owners create namespaces self-service; lightweight.
-- **Kubernetes multi-tenancy benchmarks** (kubernetes-sigs/multi-tenancy) and **Kyverno/VAP policies** codify rules; Argo CD AppProjects and Flux tenants constrain what each team's GitOps deploys (4.26).
-- **Virtual clusters**: **vCluster** runs a tenant control plane (API server + syncer, often k3s) inside a namespace; tenant pods are synced to the host as ordinary pods, so the host scheduler and nodes are shared while tenants get their own API, CRDs, RBAC and namespaces; strong DX for platform teams and CI. **Kamaji**, **HyperShift (hosted control planes)**, **Cluster API** for full separate clusters at scale. Trade-offs: extra control-plane overhead, syncing complexity, isolation still depends on the host's node security and policies on synced pods (enforce policies on the host).
+Picture a team lead who needs a new namespace. Without delegation, each request is a ticket to the platform team. Hierarchical Namespace Controller (HNC) and Capsule let you hand that power to the team, and virtual clusters go further by giving each tenant an API of its own.
+
+HNC uses the `hnc.x-k8s.io` group to build parent and child namespaces. Children inherit RBAC, NetworkPolicies and quotas, which HNC propagates as objects. Team leads create sub-namespaces through `SubnamespaceAnchor`. The project is in maintenance mode, so evaluate alternatives first.
+
+Capsule adds a `Tenant` CRD. A Tenant groups namespaces, owners and quotas across them. It also restricts networks, storage and ingress classes, node selectors and allowed registries, and it caps the number of namespaces. Owners then create namespaces themselves, and Capsule is lightweight. The kubernetes-sigs/multi-tenancy benchmarks, Kyverno and ValidatingAdmissionPolicy (VAP) policies, and Argo CD AppProjects or Flux tenants codify the same rules (see 4.26).
+
+**vCluster** runs a tenant control plane, an API server plus a syncer (often k3s), inside a namespace. Tenant pods are synced to the host as ordinary pods. The host scheduler and nodes stay shared, while tenants get their own API, CRDs, RBAC and namespaces. That suits platform teams and CI environments. **Kamaji**, **HyperShift** (hosted control planes) and **Cluster API** cover full separate clusters at scale.
+
+Virtual clusters cost you extra control-plane overhead and syncing complexity. Isolation still depends on the host's node security, so enforce policies on the synced pods at the host. Decide whether the team needs more namespaces or its own control plane, because that answer picks between the two.
 
 ## 4. Self-service and onboarding
 
-Many platform teams begin by building a cluster and hoping developers will come. That approach carries real risk. It often misses the needs of development, security and networking teams, and the result is rework. Bring those groups along early, so the platform fits its purpose.
+A common mistake is to build a cluster first and hope developers will come. That approach carries real risk. It often misses the needs of development, security and networking teams, and the result is rework. Bring those groups in early, so the platform fits its purpose.
 
-In the early days, the platform team usually provisions and configures every cluster by hand. Manual work does not scale. It creates repetitive toil for the platform team, and it leaves developers waiting. Once a team reaches a basic level of maturity, self-service is the next step. A CI/CD tool such as Jenkins or GitLab can offer it, since both allow pipelines with custom inputs at run time.
+Early on, the platform team usually provisions and configures every cluster by hand. Manual work does not scale. It creates repetitive toil for the platform team and leaves developers waiting. Once a team reaches a basic level of maturity, self-service is the next step. A CI/CD tool such as Jenkins or GitLab can offer it, because both allow pipelines with custom inputs at run time.
 
 Tools such as `kubeadm` and Cluster API make cluster creation consistent. A pipeline can expose a few inputs, such as the cluster name and its size. It then calls those tools with sensible defaults and returns access to the requesting team. Automation can go as far as you want. Some pipelines create load balancers and DNS records from the requester's LDAP details, and they tag resources with cost centers. Sizing can be open to users but limited by team, environment or project.
 
-For multitenant setups, the pipeline creates Namespaces and their related objects instead of whole clusters. Each new application then gets soft isolation. Developers can choose which cluster or clusters receive their application. At a minimum, the pipeline should generate these pieces:
+In a multitenant setup, the pipeline creates Namespaces and their related objects, not whole clusters. Each new application then gets soft isolation, and developers choose which cluster or clusters receive it. At a minimum, the pipeline should generate these pieces:
 
-- **Namespace**: the home for the application, which gives logical isolation for other components.
+- **Namespace**: the home for the application. It gives logical isolation from other components.
 - **RBAC**: makes sure only the authorized groups can reach resources in that Namespace.
 - **Network policies**: let the application talk to itself and to shared cluster services, but not to other applications, where that is required.
-- **Quotas**: limit how many resources one Namespace may use, which reduces the risk of a noisy neighbor.
+- **Quotas**: limit how many resources one Namespace may use. That reduces the risk of a noisy neighbor.
 - **Limit ranges**: set sensible defaults for objects created in the Namespace.
 - **Pod Security Policies**: keep workloads on safe defaults, such as not running as the root user.
 
@@ -188,7 +214,7 @@ Not every item is needed in every case. Together, though, they let platform team
 
 As the organization grows, the same pipeline can move into the cluster as an operator. The `Team` resource shown later in this section lets a controller read an owner and some quotas. The controller then creates the Namespace, RBAC rules and quotas, and ties them together. Because it works through the Kubernetes API, it can also repair drift, such as a deleted role or a changed quota.
 
-Tenant onboarding as code (GitOps/Terraform, 4.25, 4.26):
+Here is what tenant onboarding looks like as code. The spec is data, and Terraform, Helm, Kustomize or a Kyverno generate rule renders it (see 4.25 and 4.26).
 
 ```yaml
 # tenants/team-a.yaml  (data-driven; rendered by Terraform/Helm/Kustomize/Kyverno-generate)
@@ -206,27 +232,29 @@ egress: [object-store, registry, pypi-mirror]
 cost: { center: CC-1042, budgetMonthlyUsd: 120000 }
 ```
 
-Automation creates: namespaces with labels (`team`, `tier`, `cost-center`, PSA labels); RoleBindings for OIDC groups; ResourceQuota/LimitRange; Kueue `LocalQueue`s and `ClusterQueue` (and ResourceFlavor mapping); default-deny and DNS NetworkPolicies plus approved egress; StorageClass access/PVC quotas and storage subdirectories/export policies; secret store paths and workload identity bindings; ingress/hostname allocations; Grafana folder/org and alert routes; registry project/robot accounts; ArgoCD AppProject; budget alerts. **Offboarding**: archive data per retention policy, revoke access, delete namespaces after notice, release quota, reclaim volumes (`Retain` → backup → delete).
+From that one spec, automation creates the namespaces, with labels such as `team`, `tier`, `cost-center` and the PSA labels. It creates RoleBindings for the OIDC groups, plus a ResourceQuota and a LimitRange. It sets up Kueue `LocalQueue`s, a `ClusterQueue` and the ResourceFlavor mapping. It adds default-deny and DNS NetworkPolicies, along with the approved egress. It configures StorageClass access, PVC quotas, storage subdirectories and export policies. It creates secret store paths and workload identity bindings, and it allocates ingress and hostname entries. It also sets up a Grafana folder or org with alert routes, a registry project with robot accounts, an ArgoCD AppProject and budget alerts.
 
-Self-service interfaces: Git PR workflow (default), a **developer portal** (Backstage with Kubernetes, Argo, Kueue plugins; Port; internal CLI), notebook portals (JupyterHub/Kubeflow/Run:ai/ DGX Cloud UIs), a **job submission CLI/SDK** hiding YAML (`mlctl submit train.yaml --gpus 16`), templates (Helm charts/Kustomize bases/Cookiecutter) for jobs, services and pipelines with built-in best practices (resource requests, probes, checkpointing, labels).
+Offboarding runs the other way. Archive the data according to the retention policy, revoke access, and delete the namespaces after notice. Then release the quota and reclaim the volumes. For volumes, the order is `Retain`, then backup, then delete.
+
+Developers can reach this self-service through several interfaces. The default is a Git pull request workflow. A **developer portal** is another option, such as Backstage with Kubernetes, Argo and Kueue plugins, or Port, or an internal CLI. Notebook portals include JupyterHub, Kubeflow, Run:ai and the DGX Cloud UIs. A **job submission CLI or SDK** hides the YAML behind a command such as `mlctl submit train.yaml --gpus 16`. Templates such as Helm charts, Kustomize bases or Cookiecutter templates cover jobs, services and pipelines. They come with best practices built in, such as resource requests, probes, checkpointing and labels.
 
 ### Choosing how much to abstract
 
-Not every developer needs to see Kubernetes. How much you hide is a real decision. Some people say that if application developers know they use Kubernetes, you have failed. That idea fits a product where the orchestrator means nothing to the user. Picture a database system that runs its shards on Kubernetes, Bosh, or Mesos. Its users probably do not care which one.
+Not every developer needs to see Kubernetes, and how much you hide is a real decision. Some people argue that if application developers know they run on Kubernetes, you have failed. That idea suits a product where the orchestrator means nothing to the user. Picture a database system that runs its shards on Kubernetes, Bosh or Mesos. Its users probably do not care which one.
 
 Turning that slogan into a team goal is risky, though. Every layer you add on top of Kubernetes brings choices about what the right abstraction looks like.
 
 Cloud Foundry shows the fully hidden end. With one `cf push`, an application is built, deployed, and serving production traffic. As Cloud Foundry runs more on Kubernetes, that change should be an implementation detail rather than a change in features.
 
-Some companies run more than one orchestrator. A Mesos footprint may sit beside a Kubernetes one. They then build an abstraction that picks where each workload lands, so developers do not have to choose. This also avoids lock-in. The cost is effort. You must build on two systems that work differently. Developers then learn a company-specific system instead of a shared one, and many resist learning systems that do not carry over between organizations. Another pitfall is an obsession with abstraction. If you hide everything, you cannot expose key Kubernetes features. Keeping up with the project becomes a cat-and-mouse game, and your abstraction can end up as complex as the system it hides.
+Some companies run more than one orchestrator. A Mesos footprint may sit beside a Kubernetes one. They then build an abstraction that picks where each workload lands, so developers do not have to choose. This also avoids lock-in, but the cost is effort. You must build on two systems that work differently. Developers then learn a company-specific system instead of a shared one, and many resist learning systems that do not carry over between organizations. Another pitfall is an obsession with abstraction. If you hide everything, you cannot expose key Kubernetes features. Keeping up with the project becomes a cat-and-mouse game, and your abstraction can end up as complex as the system it hides.
 
-At the other end, a platform group can offer self-service clusters to development teams. That can work well. It puts Kubernetes maturity on the teams. They need to understand Deployments, ReplicaSets, Pods, Services, and Ingress. They must know how to set CPU in millicpus and how overcommit works. They must also make sure replicas land on different nodes. If they can do that, you avoid over-engineering a platform.
+At the other end, a platform group can offer self-service clusters to development teams. That can work well. It puts Kubernetes maturity on the teams. They need to understand Deployments, ReplicaSets, Pods, Services and Ingress. They must know how to set CPU in millicpus and how overcommit works. They must also make sure replicas land on different nodes. If they can do that, you avoid over-engineering a platform.
 
 Owning a cluster is less common, though. Even skilled teams rarely want to spend time on cluster lifecycle and upgrades. Expecting every team to become a Kubernetes expert while shipping software is often unrealistic. Abstraction is not all or nothing. Decide where to hide details and where to give developers more control.
 
 ### The `Team` custom resource operator pattern and the 4-stage spectrum of platform abstractions
 
-Beyond rendering tenant YAML in CI/CD pipelines, *Production Kubernetes* (Chapter 16) shows how mature platforms implement self-service tenant onboarding natively inside the cluster using a custom **`Team` operator**. When a platform engineer or portal submits a `Team` custom resource specifying the owner and resource quotas, the in-cluster controller continuously reconciles the tenant's `Namespace`, `RoleBinding`s, `ResourceQuota`, `LimitRange`, `NetworkPolicy`, and even Grafana dashboards or Alertmanager routes—automatically restoring any role or quota that someone accidentally deletes. In the book's example (untested here):
+Rendering tenant YAML in CI/CD pipelines is one option. *Production Kubernetes* (Chapter 16) shows a second one. Mature platforms implement self-service tenant onboarding inside the cluster, using a custom **`Team` operator**. A platform engineer or a portal submits a `Team` custom resource that names the owner and the resource quotas. The in-cluster controller then keeps reconciling the tenant's `Namespace`, `RoleBinding`s, `ResourceQuota`, `LimitRange`, `NetworkPolicy`, and even Grafana dashboards or Alertmanager routes. If someone accidentally deletes a role or a quota, the controller restores it. In the book's example (untested here):
 
 ```yaml
 apiVersion: examples.namespace-operator.io/v1
@@ -240,15 +268,17 @@ spec:
     storage: "300Gi"
 ```
 
-In *Production Kubernetes* Chapter 11 (*Building Platform Services*), Rosso et al. walk through the Go implementation of a custom **`AcmeNamespace` operator** (`AcmeNamespaceSpec` with `namespaceName` and `adminUsername`) built with **Kubebuilder** (`controller-runtime`) and highlight two essential operator design rules (modeled in `reconcile_acme_namespace_operator()` in `code/part05/multitenancy_quota_reconciler.py`):
-1. **Never rely solely on `status.phase == "Created"` to skip checking child resources (`PK` Chapter 11):** A naive `Reconcile` loop that sets `acmeNs.Status.Phase = "CreationInProgress"`, creates the child `Namespace`, `Role` (`namespace-admin`), and `RoleBinding`, sets `acmeNs.Status.Phase = "Created"`, and does nothing whenever `Phase == "Created"` has two critical bugs: (a) if the controller crashes mid-flight while `Phase == "CreationInProgress"`, it must query the local Informer cache to see which children already exist; and (b) if someone later deletes the child `RoleBinding` or `ResourceQuota` by hand, a controller that only checks `Phase == "Created"` will never notice or heal the missing child. Instead, `Reconcile` must inspect the Informer cache for every expected child object (`Namespace`, `Role`, `RoleBinding`, `ResourceQuota`, `NetworkPolicy`) on every pass and watch child resources via **`ownerReferences`** (`ctrl.SetControllerReference`).
-2. **Resource scoping rule for `ownerReferences` (`PK` Chapter 11):** In Kubernetes, **a namespaced object CANNOT be the `ownerReference` owner of a cluster-scoped object** (like a `Namespace`). Therefore, an operator CRD that creates and owns `Namespace` objects (`AcmeNamespace` or `Team`) must be annotated with **`// +kubebuilder:resource:scope=Cluster`** (`spec.scope: Cluster` in the `CustomResourceDefinition`). Chapter 11 also compares **Kubebuilder** (Go), **Operator SDK** (Go, Ansible, or Helm), and **Metacontroller** (language-agnostic webhook "lambda controllers").
+Chapter 11 of *Production Kubernetes*, titled *Building Platform Services*, walks through a custom **`AcmeNamespace` operator** written in Go by Rosso et al. Its `AcmeNamespaceSpec` has a `namespaceName` and an `adminUsername`. The operator is built with **Kubebuilder** on controller-runtime. The chapter highlights two design rules. The rules are modeled in `reconcile_acme_namespace_operator()` in `code/part05/multitenancy_quota_reconciler.py`.
 
-When deciding how much of Kubernetes to expose to application and ML developers after onboarding, *Production Kubernetes* (Chapter 16) organizes developer interfaces along a **4-stage spectrum of abstraction** (from least abstracted on the left to fully invisible Kubernetes on the right):
+The first rule is never to rely only on `status.phase == "Created"` to skip checking child resources. Consider a naive `Reconcile` loop. It sets `acmeNs.Status.Phase = "CreationInProgress"`, creates the child `Namespace`, `Role` (`namespace-admin`) and `RoleBinding`, and then sets `acmeNs.Status.Phase = "Created"`. After that it does nothing whenever the phase is `Created`. That loop has two critical bugs. First, if the controller crashes while the phase is `CreationInProgress`, it must query the local Informer cache to see which children already exist. Second, if someone later deletes the child `RoleBinding` or `ResourceQuota` by hand, a controller that checks only the phase never notices the gap, so it never heals it. Instead, `Reconcile` must inspect the Informer cache for every expected child on every pass. Those children are `Namespace`, `Role`, `RoleBinding`, `ResourceQuota` and `NetworkPolicy`. The controller also watches the child resources through **`ownerReferences`**, set with `ctrl.SetControllerReference`.
 
-1. **Stage 1 — Command-line tooling and local UIs (no API abstraction)**: developers use raw `kubectl` augmented by shell helpers (`kubectx` for switching contexts, `kubens` for switching namespaces, log-tailing plugins, SSO credential plugins) and workstation graphical clients such as `Octant` and `Lens` that render cluster state using the developer's local `kubeconfig`. Full flexibility, but requires RBAC, admission guardrails, and Kubernetes knowledge from every developer.
-2. **Stage 2 — Abstraction through templating (`Helm` and `Kustomize`)**: platform engineers package the roughly ten underlying objects a typical service needs (`Deployment`, `StatefulSet`, `Service`, `PVC`, `ConfigMap`, `Secret`) into a `Helm` chart exposing a small `Values.yaml` interface, optionally piped into `Kustomize` (or a web UI generator such as Ambassador's K8s Initializer) to patch fields the chart did not template. Developers still apply native Kubernetes objects, preserving upstream community documentation and debugging familiarity.
-3. **Stage 3 — Abstracting Kubernetes primitives with custom workload CRDs (`PinterestService`)**: the platform team defines a high-level Custom Resource and operator that encapsulates multiple native resources and external integrations (such as internal DNS registration). In the book's example from Pinterest (`PinterestService`, untested here), a 25-line custom resource replaces more than 350 lines of raw `Deployment`, `Service`, `Ingress`, IAM role, and sidecar YAML:
+The second rule concerns scope. In Kubernetes, a namespaced object cannot be the `ownerReference` owner of a cluster-scoped object, and a `Namespace` is cluster-scoped. So an operator CRD that creates and owns `Namespace` objects, such as `AcmeNamespace` or `Team`, must be marked cluster-scoped. Use the marker `// +kubebuilder:resource:scope=Cluster`, which sets `spec.scope: Cluster` in the `CustomResourceDefinition`. Chapter 11 also compares three ways to build such an operator. **Kubebuilder** is a Go framework. **Operator SDK** works in Go, Ansible or Helm. **Metacontroller** is language-agnostic and uses webhooks, which the chapter calls "lambda controllers".
+
+After onboarding, you still have to decide how much Kubernetes to expose to application and ML developers. *Production Kubernetes* (Chapter 16) arranges those choices on a **4-stage spectrum of abstraction**. The left end gives the least abstraction, and the right end makes Kubernetes fully invisible.
+
+1. **Stage 1, command-line tooling and local UIs (no API abstraction):** Developers use raw `kubectl`, helped by shell tools. `kubectx` switches contexts, `kubens` switches namespaces, and other plug-ins tail logs or handle SSO credentials. Workstation clients such as Octant and Lens render cluster state from the developer's local `kubeconfig`. This stage gives full flexibility. The price is that every developer needs RBAC, admission guardrails and Kubernetes knowledge.
+2. **Stage 2, templating with Helm and Kustomize:** Platform engineers package the roughly ten underlying objects a typical service needs (`Deployment`, `StatefulSet`, `Service`, PVC, `ConfigMap`, `Secret`) into a Helm chart. It exposes a small `Values.yaml` interface, which can be piped into Kustomize, or into a web UI generator such as Ambassador's K8s Initializer, to patch fields the chart did not template. Developers still apply native Kubernetes objects. That keeps the upstream community documentation and debugging familiarity.
+3. **Stage 3, abstracting Kubernetes primitives with custom workload CRDs (`PinterestService`):** The platform team defines a high-level custom resource and an operator that wraps several native resources and external integrations, such as internal DNS registration. In the book's example from Pinterest (`PinterestService`, untested here), a 25-line custom resource replaces more than 350 lines of raw `Deployment`, `Service`, `Ingress`, IAM role and sidecar YAML:
 
 ```yaml
 apiVersion: pinterest.com/v1
@@ -278,8 +308,8 @@ spec:
           image: gcr.io/kuar-demo/kuard-amd64:1
 ```
 
-   When building custom workload CRDs, the book recommends keeping a **break-glass** window into the underlying native objects (`Pod`s, `PVC`s, events) so engineers can still use standard Kubernetes troubleshooting knowledge when an abstraction leaks.
-4. **Stage 4 — Making Kubernetes invisible (full PaaS / developer portals)**: developers push source code or a minimal build/deploy/release file without writing Kubernetes YAML at all, using platforms ported to or built atop Kubernetes such as Cloud Foundry, Google App Engine, Red Hat OpenShift, Spotify's `Backstage` developer portal, or HashiCorp `Waypoint` (which encapsulates `build` with `pack`, `deploy` to `kubernetes`, and `release` in a single HCL file).
+   When you build custom workload CRDs, the book recommends keeping a **break-glass** window into the underlying native objects, such as `Pod`s, PVCs and events. That way, engineers can still use standard Kubernetes troubleshooting knowledge when an abstraction leaks.
+4. **Stage 4, making Kubernetes invisible (full PaaS and developer portals):** Developers push source code or a minimal build, deploy and release file, and never write Kubernetes YAML. The platforms involved are ported to Kubernetes or built on top of it. Examples include Cloud Foundry, Google App Engine, Red Hat OpenShift, Spotify's Backstage developer portal, and HashiCorp Waypoint. Waypoint encapsulates `build` with `pack`, `deploy` to `kubernetes` and `release` in a single HCL file.
 
 ### Stage 1 in practice: raw kubectl and its limits
 
@@ -293,7 +323,7 @@ This path has real downsides, even for teams that know Kubernetes well:
 
 Several tools soften these problems. The `kubectl` plug-ins `kubens` and `kubectx` improve visibility into namespaces and contexts. Other plug-ins combine logs from several Pods, or give a terminal view of application health. They remove common pain points, but they still expose the API almost directly.
 
-Some plug-ins connect to external authentication systems. They hide kubeconfigs, certificates and tokens from the user. In noncritical environments, access may rely on key pairs. Those keys must be generated, managed and distributed. In more stable environments, access is usually tied to a Single Sign-On system. The authors of this book built command-line utilities for several clients. Those tools pull credentials from a central cluster registry, using the user's own login.
+Some plug-ins connect to external authentication systems. They hide kubeconfigs, certificates and tokens from the user. In noncritical environments, access may rely on key pairs, which must be generated, managed and distributed. In more stable environments, access is usually tied to a Single Sign-On system. The authors of this book built command-line utilities for several clients. Those tools pull credentials from a central cluster registry, using the user's own login.
 
 You might also follow the route Airbnb took. In a QCon talk, Melanie Cebula described Airbnb's toolsets, built as standalone binaries and `kubectl` plug-ins. Those tools hook into image building, deployment and more.
 
@@ -305,7 +335,7 @@ A single application can need many Kubernetes objects. Take a simple WordPress s
 
 The goal is to expose a small set of inputs and generate the rest behind the scenes. Developers then do not need to know every field of every object. Templating tools such as Helm and Kustomize make this possible. They still show the underlying objects, so they sit between raw `kubectl` and full abstraction.
 
-Helm has become popular over the past couple of years. It can do more than templating. The book's authors have found the templating use case more compelling than some of its lifecycle features. A template contains a placeholder, and a value from elsewhere fills it in. Here is part of a `Service` template from the WordPress chart:
+Helm has become popular over the past couple of years, and it can do more than templating. The book's authors have found the templating use case more compelling than some of its lifecycle features. A template contains a placeholder, and a value from elsewhere fills it in. Here is part of a `Service` template from the WordPress chart:
 
 ```
 ports:
@@ -367,11 +397,11 @@ Stage 3 moves further right. The platform team defines a high-level custom resou
 
 Pinterest's team wrote about this in "Building a Kubernetes platform at Pinterest," with Lida Li, June Liu, Rodrigo Menezes, Suli Xu, Harry Zhang and Roberto Rodriguez Alcala.
 
-The `PinterestService` example above is a 25-line object. It creates the work of more than 350 lines of native YAML. This extends the templating idea from Stage 2. Only useful inputs are exposed, and they are shaped around the application instead of a loose `Values.yaml`. The platform team controls how the underlying resources are created and changed. A controller can run logic written in a general-purpose language, not Helm's built-in functions. The trade-off is that platform teams need programming skills. For more on platform services and operators, see Chapter 11 of the book.
+The `PinterestService` example above is a 25-line object. It replaces the work of more than 350 lines of native YAML. Put plainly, the developer writes 25 lines in place of more than 350, so the developer writes less than a tenth of the YAML. This extends the templating idea from Stage 2. Only useful inputs are exposed, and they are shaped around the application instead of a loose `Values.yaml`. The platform team controls how the underlying resources are created and changed. A controller can run logic written in a general-purpose language, not Helm's built-in functions. The trade-off is that platform teams need programming skills. For more on platform services and operators, see Chapter 11 of *Production Kubernetes*.
 
 Operators can also call external APIs. Take one client with an internal DNS system. Every application had to register there before outside clients could reach it. Developers used a web portal to add the service location and the ports to forward. An operator can cut that manual work in two ways.
 
-The first way keeps native objects. The operator reads a special annotation on an `Ingress`, such as `company.ingress.required: true`. Using the application name, its Namespace or other metadata, the controller registers DNS records. Depending on the rules, it may also change the `host` field. Developers still write the `Ingress`, so this sits at the Stage 2 level of abstraction.
+The first way keeps the native objects. The operator reads a special annotation on an `Ingress`, such as `company.ingress.required: true`. Using the application name, its Namespace or other metadata, the controller registers DNS records. Depending on the rules, it may also change the `host` field. Developers still write the `Ingress`, so this sits at the Stage 2 level of abstraction.
 
 ```
 apiVersion: networking.k8s.io/v1
@@ -452,7 +482,7 @@ Even custom resources and operators expose some core mechanics. Developers must 
 
 ## 5. Platform services around the cluster
 
-A "platform" is more than Kubernetes: these shared services turn raw GPUs into a usable AI platform. Each has tenancy implications.
+Kubernetes alone does not give your AI teams a platform. You also need shared services around the cluster, and those services turn raw GPUs into something people can use. Each service carries tenancy implications, so the table below names the service, its purpose and the detail you must design for.
 
 | Service | Purpose | Tenancy/ops notes |
 |---|---|---|
@@ -473,13 +503,15 @@ A "platform" is more than Kubernetes: these shared services turn raw GPUs into a
 | **Cost management** | OpenCost/Kubecost, GPU accounting | Showback dashboards, budgets, alerts |
 | **Support & docs** | Runbooks, FAQ, office hours, status page | Platform as a product |
 
+Read the table as a checklist. Most rows name a shared resource, such as a registry, a queue, a storage system or a set of GPUs, and the right-hand column says how to keep tenants fair in it.
+
 ### What an application platform is
 
-An application platform is a viable place to run workloads. How you meet that goal depends on the organization. The outcomes you want vary across the business. Happy developers, lower operating costs, and quicker feedback on software are common examples. The platform sits where applications meet infrastructure, and developer experience is usually a central concern.
+An application platform is a place where workloads can run well. How you reach that goal depends on your organization, because the outcomes you want vary across the business. Happy developers, lower operating costs and quicker feedback on software are common examples. The platform sits where applications meet infrastructure, which is why developer experience is usually a central concern.
 
-Platforms come in many shapes. Some hide the layers below them, such as the IaaS or the orchestrator. Heroku is a good example. You can take a Java, PHP, or Go project and deploy it to production with one command. Metrics collection, data services, and continuous delivery run alongside your app. You also get the building blocks for highly available workloads that scale easily. Does Heroku use Kubernetes? Does it run its own data centers or sit on AWS? For a Heroku user, those details do not matter. Red Hat OpenShift follows a similar model. Kubernetes is an implementation detail there, and developers work with abstractions on top.
+Platforms come in many shapes. Some hide the layers below them, such as the IaaS or the orchestrator. Heroku is a good example. You can take a Java, PHP or Go project and deploy it to production with one command. Metrics collection, data services and continuous delivery run alongside your app. You also get the building blocks for highly available workloads that scale easily. Does Heroku use Kubernetes? Does it run its own data centers or sit on AWS? For a Heroku user, those details do not matter. Red Hat OpenShift follows a similar model. Kubernetes is an implementation detail there, and developers work with abstractions on top.
 
-Why not stop with these? Prebuilt platforms such as Cloud Foundry, OpenShift, and Heroku already solve many problems. Their main trade-off is that you must accept their view of the world. Giving up ownership of the underlying system takes a big load off your team. Still, if the platform handles service discovery or secret management in a way your organization cannot accept, you may lack the control to work around it. There is also vendor or opinion lock-in. Abstractions bring opinions about how apps are built, packaged, and deployed, so moving to another system may not be simple. For example, moving workloads between GKE and EKS is much easier than moving between EKS and Cloud Foundry.
+Why not stop there? Prebuilt platforms such as Cloud Foundry, OpenShift and Heroku already solve many problems. Their main trade-off is that you must accept their view of the world. Giving up ownership of the underlying system takes a big load off your team. Still, if the platform handles service discovery or secret management in a way your organization cannot accept, you may lack the control to work around it. There is also vendor or opinion lock-in. Abstractions bring opinions about how apps are built, packaged and deployed, so moving to another system may not be simple. For example, moving workloads between GKE and EKS is much easier than moving between EKS and Cloud Foundry.
 
 ### Building on Kubernetes
 
@@ -489,7 +521,7 @@ Think of Kubernetes as a foundation. A good foundation is structurally sound, ca
 
 Compare a pre-furnished apartment. It is ready to move into, much like a platform as a service such as Heroku. You can customize the inside, but many concerns are already solved. If the rent and the fixed rules suit you, you are set on day one.
 
-Building on Kubernetes is more like building a house. It costs planning, engineering, and maintenance. In return, you control every element of the result. The house can be shaped for its future tenants, your applications. The sections below cover the layers and decisions that make this possible.
+Building on Kubernetes is more like building a house. It costs planning, engineering and maintenance. In return, you control every element of the result. The house can be shaped for its future tenants, your applications. The sections below cover the layers and decisions that make this possible.
 
 Some people criticize Kubernetes for adding a lot of complexity, for operations teams and for developers. That criticism lands on top of the shift to containers, which is hard enough alone. It also misses one of the main aims of the project. Joe Beda, one of its cofounders, has often said that Kubernetes is a platform for building platforms.
 
@@ -497,7 +529,7 @@ Complexity will always exist somewhere. Kubernetes lets you hand much of it to p
 
 ### Building blocks of an application platform
 
-Start at the bottom. Kubernetes expects to run on a technology layer, usually a data center or a cloud provider. That layer offers compute, storage, and networking. Once it exists, Kubernetes can be bootstrapped on top, and clusters can live on it within minutes. Bootstrapping methods come later in this part (see 5.4).
+Start at the bottom. Kubernetes expects to run on a technology layer, usually a data center or a cloud provider. That layer offers compute, storage and networking. Once it exists, Kubernetes can be bootstrapped on top, and clusters can live on it within minutes. Bootstrapping methods come later in this part (see 5.4).
 
 Once clusters exist, questions arrive quickly. These are common examples:
 
@@ -510,13 +542,13 @@ The list can keep growing. Part of your job is deciding which needs belong in th
 
 Each layer has its own building blocks.
 
-**Container runtime.** The container runtime manages the life cycle of workloads on each host. Common choices are CRI-O, containerd, and Docker. The Container Runtime Interface (CRI) lets you pick among them. Specialized runtimes also exist for needs such as running a workload in a micro-VM.
+**Container runtime.** Each host needs a container runtime to manage the life cycle of its workloads. Common choices are CRI-O, containerd and Docker. The Container Runtime Interface (CRI) lets you pick among them. Specialized runtimes also exist for needs such as running a workload in a micro-VM.
 
-**Container networking.** Your networking choice covers IP address management (IPAM) for workloads and the routing protocols that let them communicate. Calico and Cilium are common picks. The Container Networking Interface (CNI) makes this pluggable. Once a networking plug-in is in the cluster, the kubelet can request IP addresses for the workloads it starts. Some plug-ins go further and build service abstractions on top of the Pod network.
+**Container networking.** Your networking choice covers IP address management (IPAM) for workloads and the routing protocols that let them communicate. Calico and Cilium are common picks. The Container Networking Interface (CNI) keeps the choice pluggable. Once a networking plug-in is in the cluster, the kubelet can request IP addresses for the workloads it starts. Some plug-ins go further and build service abstractions on top of the Pod network.
 
-**Storage integration.** Storage integration covers what you do when on-host disk will not do. More organizations now run stateful workloads on Kubernetes. Those workloads need state that survives application failure or rescheduling. Systems such as vSAN, EBS, and Ceph can supply that storage. The Container Storage Interface (CSI) lets you choose the backend. As with CNI and CRI, you install a plug-in that understands the storage an application requests.
+**Storage integration.** Storage integration covers what you do when on-host disk will not do. More organizations now run stateful workloads on Kubernetes. Those workloads need state that survives application failure or rescheduling. Systems such as vSAN, EBS and Ceph can supply that storage. The Container Storage Interface (CSI) lets you choose the backend. As with CNI and CRI, you install a plug-in that understands the storage an application requests.
 
-**Service routing.** Service routing moves traffic to and from the workloads you run in Kubernetes. Kubernetes offers a Service API, but that is usually a stepping stone. Richer routing, such as layer 7 routing and traffic patterns, builds on container networking. Teams often add these features with an Ingress controller. Deeper still are service meshes, which bring service-to-service mTLS, observability, and application patterns such as circuit breaking.
+**Service routing.** Service routing moves traffic to and from the workloads you run in Kubernetes. Kubernetes offers a Service API, but that is usually a stepping stone. Richer routing, such as layer 7 routing and traffic patterns, builds on container networking. Teams often add these features with an Ingress controller. Deeper still are service meshes, which bring service-to-service mTLS, observability and application patterns such as circuit breaking.
 
 **Secret management.** Secret management covers distributing the sensitive data that workloads need. Kubernetes has a Secrets API. Out of the box, many clusters lack the secret protection some enterprises demand. This is mostly a defense-in-depth question. At a simple level, you encrypt data before it is stored, which is encryption at rest. At a more advanced level, you integrate a tool such as Vault or CyberArk.
 
@@ -526,13 +558,13 @@ Each layer has its own building blocks.
 
 **Software supply chain.** The software supply chain covers the whole life cycle from source code to runtime. It includes continuous integration (CI) and continuous delivery (CD). Developers often meet the platform through their pipelines, so getting CI/CD working well with Kubernetes matters a great deal. Beyond pipelines, look at how artifacts are stored, how safe they are from vulnerabilities, and whether the images that run in your cluster are intact.
 
-**Observability.** Observability is the umbrella term for understanding what happens in your clusters, at the system and application layers. It has three main areas: logs, metrics, and tracing. Logging forwards data from workloads on the host to a backend, where logs can be aggregated and analyzed. Metrics capture state at a point in time, and are often scraped into an analysis system. Tracing shows how the services in your stack interact. Trace data is gathered and shown with a context or correlation ID, so you can follow one request.
+**Observability.** Observability is the umbrella term for understanding what happens in your clusters, at the system and application layers. It has three main areas: logs, metrics and tracing. Logging forwards data from workloads on the host to a backend, where logs can be aggregated and analyzed. Metrics capture state at a point in time, and are often scraped into an analysis system. Tracing shows how the services in your stack interact. Trace data is gathered and shown with a context or correlation ID, so you can follow one request.
 
 **Developer abstractions.** These are the tools and platform services that help developers succeed on your platform. As covered earlier, they sit on a spectrum. Some organizations hide Kubernetes completely from teams. Others expose many of its knobs and give developers wide flexibility. Most solutions also focus on onboarding, so developers can get access and secure control of an environment they can use.
 
 ### Deciding what the platform should own
 
-Not every application concern belongs in the platform. Take mutual TLS (mTLS). Suppose every Java microservice bundles a library that handles it. That gives each workload an identity and encrypts its traffic. A platform team needs to understand that usage before deciding whether to offer the feature at the platform level. Many teams look at a service mesh for this.
+Not every application concern belongs in the platform. Take mutual TLS (mTLS) as an example. Suppose every Java microservice bundles a library that handles it. That library gives each workload an identity and encrypts its traffic. A platform team needs to understand that usage before deciding whether to offer the feature at the platform level. Many teams look at a service mesh for this.
 
 A service mesh has clear benefits. Java apps no longer need to bundle mTLS libraries. Non-Java apps can join the same encryption system. Application teams have less to solve. The costs are real, too. A mesh is another distributed system with its own operational complexity. Meshes often bring features far beyond identity and encryption. The mesh's identity API may also fail to integrate with the backend your existing applications use.
 
@@ -542,23 +574,27 @@ Weigh these pros and cons before you commit. You do not need to solve every appl
 
 "Application platform" is still a fuzzy term. The platforms discussed here bring a team experience far beyond workload orchestration. Kubernetes can be customized and extended to reach similar outcomes. Move beyond "How do I get a Kubernetes?" and ask about the developer workflow, its pain points, and what developers want. Platform and infrastructure teams that do this build better things. They are more likely to chart a real path to production and win real adoption.
 
-The goal is to meet infrastructure, security, and developer requirements. Developers are the customers. Do not hand them a powerful engine and expect each one to build a platform around it. Developers who want a drivable car will not accept an engine with no frame or wheels.
+The goal is to meet infrastructure, security and developer requirements. Developers are the customers. Do not hand them a powerful engine and expect each one to build a platform around it. Developers who want a drivable car will not accept an engine with no frame or wheels. Start from the developer workflow, not from the cluster.
 
 ### Operating the platform as a product
 
-- **Customers**: researchers, ML engineers, application teams; gather requirements, publish a roadmap, SLAs/SLOs (queue wait, start latency, availability), changelog, deprecation policy.
-- **Golden paths**: documented, supported ways to do common tasks (train, fine-tune, serve, batch infer) with templates; discourage snowflakes but allow escape hatches.
-- **Guardrails over gates**: automated policy and quotas instead of manual approvals; fast feedback in PRs.
-- **Metrics**: onboarding time, support tickets per tenant, GPU utilisation and allocation efficiency, job success rate, queue wait p95, incident count, time to resolve, user satisfaction.
-- **Fairness and governance**: transparent quota allocation process (annual/quarterly), burst/borrowing rules, priority policy, preemption notices, reserved capacity for critical teams, review forums.
-- **Capacity planning** with tenants: demand forecasting, utilisation reviews, reclaim idle quotas, charge or show costs.
-- **Communication**: maintenance calendars, incident comms, release notes, deprecation notices with migration help.
+- **Customers**: researchers, ML engineers and application teams. Gather their requirements, publish a roadmap and a changelog, and define SLAs/SLOs for queue wait, start latency and availability. Publish a deprecation policy too.
+- **Golden paths**: documented, supported ways to do common tasks, such as train, fine-tune, serve and batch infer, built from templates. They discourage snowflakes but still allow escape hatches.
+- **Guardrails over gates**: use automated policy and quotas instead of manual approvals, and give fast feedback in pull requests.
+- **Metrics**: track onboarding time, support tickets per tenant, GPU utilisation and allocation efficiency, job success rate, queue wait p95, incident count, time to resolve and user satisfaction.
+- **Fairness and governance**: run a transparent quota allocation process, on an annual or quarterly cycle. Publish burst and borrowing rules, a priority policy, preemption notices, reserved capacity for critical teams and review forums.
+- **Capacity planning** with tenants: forecast demand, review utilisation, reclaim idle quotas, and charge or show costs.
+- **Communication**: publish maintenance calendars, incident communications, release notes and deprecation notices with migration help.
+
+Run the platform the way you would run a product. Publish the customers' expectations, and measure them.
 
 ## 6. Cost allocation and showback
 
-Labels propagate from namespaces to pods (via policy) so cost tools can attribute spend: **OpenCost/Kubecost** (CPU/memory/GPU/storage/network by namespace/label), cloud billing exports with resource labels (GCP labels, AWS tags), DCGM-based GPU-hour accounting (per pod via pod-resources mapping and `DCGM_FI_DEV_*` joins). Allocation methods: by requests (what you reserved), by usage (what you used), or hybrid with idle-cost distribution; for GPUs, allocation by requested GPU-hours is usually fair and encourages release of idle resources, with utilisation reports to coach teams. Include shared costs (control plane, storage, networking, platform team) proportionally. Report weekly to team leads; alert on budget thresholds; automate idle detection (GPU allocated but under 5% utilised for hours) with notifications and auto-culling of notebooks.
+Cost tools can only attribute spend if the labels reach the pods. Policy copies labels from namespaces to pods, and then tools do the rest. **OpenCost** or **Kubecost** break CPU, memory, GPU, storage and network cost down by namespace or label. Cloud billing exports work as well, using resource labels such as GCP labels or AWS tags. For GPUs, DCGM-based accounting gives you GPU-hours per pod, using the pod-resources mapping and joins on `DCGM_FI_DEV_*` metrics.
 
-PromQL examples:
+Allocation can follow requests (what a team reserved), usage (what it used), or a hybrid that spreads idle cost across tenants. For GPUs, allocating by requested GPU-hours is usually fair, and it encourages teams to release idle resources. Pair it with utilisation reports to coach teams. Share the costs of the control plane, storage, networking and the platform team in proportion to use. Report weekly to team leads and alert when budgets cross their thresholds. Automate idle detection too. A GPU that is allocated but under 5% utilised for hours should trigger a notification, and idle notebooks should be culled automatically.
+
+The following PromQL queries show the core numbers. The first counts GPUs allocated per namespace, the second averages utilisation per namespace, and the third totals CPU-hours per day.
 
 ```promql
 sum by (namespace) (kube_pod_container_resource_requests{resource="nvidia_com_gpu"} * on (pod,namespace) group_left() (kube_pod_status_phase{phase="Running"} == 1))   # GPUs allocated per namespace
@@ -568,7 +604,7 @@ sum by (namespace) (increase(container_cpu_usage_seconds_total[24h])) / 3600    
 
 ### Two approaches to showback
 
-Showback shows a team what its workloads use. Chargeback attaches a cost to that use. Before you charge anyone, you must decide how to measure use. Teams are often made accountable this way because cluster capacity that is easy to get can also be wasted.
+Showback shows a team what its workloads use. Chargeback attaches a cost to that use. Before you charge anyone, you must decide how to measure use. Teams are often made accountable this way, because cluster capacity that is easy to get can also be wasted.
 
 Teams need a label such as `team` or `owner` on their workloads, so metrics can be grouped by team. Use admission control to require that label on every Pod that tenants deploy. Namespace is sometimes used too, but labels are the most flexible.
 
@@ -577,13 +613,17 @@ There are two common ways to calculate showback.
 - **Requests:** based on what a team reserves, using the resource requests set on each container in a Pod.
 - **Consumption:** based on what a team actually consumes, through requests or real usage, whichever is higher.
 
-The requests method reflects what the scheduler can assign. The scheduler treats requests as reserved capacity on a node. If a workload bursts into spare capacity, it got that capacity for free, and the burst is not charged to it. For example, a Deployment with 10 replicas that each request 1 CPU core counts as 10 cores while it runs. If the replicas average 1.5 cores each, the extra usage is not attributed.
+The requests method reflects what the scheduler can assign. The scheduler treats requests as reserved capacity on a node. If a workload bursts into spare capacity, it got that capacity for free, and the burst is not charged to it. For example, a Deployment with 10 replicas that each request 1 CPU core counts as 10 cores while it runs. If the replicas average 1.5 cores each, they use 15 cores in total, but only the requested 10 are attributed to the team.
 
 The consumption method charges the higher of request or usage. A team that uses more than it asked for pays for what it actually used. This removes the incentive to set low requests to game the system. It can also lead to contention on overcommitted nodes.
 
-If you use kube-state-metrics, the request metrics are `kube_pod_container_resource_requests` for CPU and `kube_pod_container_resource_requests_memory_bytes` for memory. Usage comes from `container_cpu_usage_seconds_total` for CPU and `container_memory_usage_bytes` for memory. Calculate each workload's share of cluster CPU and of cluster memory, and use the higher value. A cluster that runs out of either cannot host more workloads. A workload using 1% of CPU and 3% of memory is effectively using 3% of the cluster.
+If you use kube-state-metrics, the request metrics are `kube_pod_container_resource_requests` for CPU and `kube_pod_container_resource_requests_memory_bytes` for memory. Usage comes from `container_cpu_usage_seconds_total` for CPU and `container_memory_usage_bytes` for memory. Calculate each workload's share of cluster CPU and of cluster memory, and use the higher value. A cluster that runs out of either cannot host more workloads. Take a workload that uses 1% of CPU and 3% of memory. The higher share is 3%, so it is effectively using 3% of the cluster.
+
+Pick the method before you publish the first report, because requests and consumption produce different bills.
 
 ## 7. Failure modes and troubleshooting
+
+Start from the symptom you see, then work toward the cause. The table maps each symptom to its likely cause and to the fix. Suppose a team reports that its GPUs sit idle while another team waits in the queue. The row for idle GPUs points you to notebooks left running and to jobs stuck in the queue.
 
 | Symptom | Likely cause | Fix |
 |---|---|---|
@@ -599,217 +639,236 @@ If you use kube-state-metrics, the request metrics are `kube_pod_container_resou
 | vCluster pods violate host policy | Syncer creates pods with tenant-chosen specs | Host-level PSA/Kyverno on synced pods, node selectors for tenant pools |
 | Operator upgrades break tenants | Cluster-wide CRDs shared | Version per tenant via vCluster or strict CRD upgrade policy and compatibility testing |
 
+Most of the fixes are policy changes: a quota, a queue, a label rule or an isolation setting. Find the row that matches your symptom, check its cause column, and only then change the configuration.
+
 ## 8. Lab
 
-First, run the self-checking Python lab (`code/part05/multitenancy_quota_reconciler_lab.py`) locally. It verifies the `LimitRange` default injector and `ResourceQuota` admission evaluator (`evaluate_resource_quota_and_limitrange`), the `PK` Chapters 11 & 16 `AcmeNamespace`/`Team` operator level-triggered reconciler (`reconcile_acme_namespace_operator`: detecting and healing deleted child `RoleBinding`/`ResourceQuota` objects rather than blindly trusting `status.phase`), and the multi-tenant GPU cost and idle-waste calculator (`compute_tenant_gpu_cost_and_waste`).
+Start with the self-checking Python lab, which you can run on your own machine with the command below. It checks three things. It verifies the `LimitRange` default injector and the `ResourceQuota` admission evaluator (`evaluate_resource_quota_and_limitrange`). It tests the `AcmeNamespace` and `Team` operator's level-triggered reconciler from *Production Kubernetes* Chapters 11 and 16 (`reconcile_acme_namespace_operator`), which heals deleted child `RoleBinding` and `ResourceQuota` objects instead of blindly trusting `status.phase`. It also checks the multi-tenant GPU cost and idle-waste calculator (`compute_tenant_gpu_cost_and_waste`).
 
 ```bash
 python3 code/part05/multitenancy_quota_reconciler_lab.py
 ```
 
-Next, on a `kind` or `kubeadm` cluster (all interactive shell steps below are `untested here`), work through these exercises:
+Next, move to a `kind` or `kubeadm` cluster. All interactive shell steps below are `untested here`, so treat them as a plan until you run them yourself. Work through these exercises:
 
-1. **Namespace baseline**: build a tenant template (namespace, labels, RBAC for an OIDC group, ResourceQuota/LimitRange, default-deny + DNS NetworkPolicy, PSA labels, StorageClass access) as Helm/Kustomize; instantiate for two teams; verify isolation with cross-tenant access tests (pod-to-pod, secrets, PVCs).
-2. **Quota behaviour**: exceed each quota type (pods, GPUs via fake extended resource, storage, object counts); read errors; test quota with Pending and completed pods; apply PriorityClass scoped quotas.
-3. **Kueue sharing**: two teams, one cohort; borrow, reclaim, and preempt; WorkloadPriorityClasses; measure fairness over time with a synthetic workload generator; expose queue metrics.
-4. **GPU sharing**: on a GPU node (or simulate), configure MIG profiles and time-slicing via the GPU Operator; run tenants' workloads on each; compare isolation (latency under interference, memory limits, fault containment).
-5. **Delegated admin**: install Capsule (or HNC); create a Tenant with owners and limits; let an owner self-create namespaces; demonstrate guardrails (allowed storage classes/registries); compare with plain namespaces + Kyverno.
-6. **Virtual cluster**: create a vCluster for a team, install a CRD/operator inside it that conflicts with the host's version; show isolation; apply host policies to synced pods; measure overhead.
-7. **Node isolation**: dedicate a node pool with taints and automatic toleration/nodeSelector injection via policy; try to bypass as a tenant; add a sandbox RuntimeClass pool for notebooks.
-8. **Onboarding automation**: implement the YAML tenant spec → GitOps pipeline → all objects; time it; run offboarding (data retention, namespace deletion with finalizers).
-9. **Self-service**: provide a CLI/portal template for job submission that injects labels, queue, priority, resource defaults and secrets references; validate with policy.
-10. **Cost allocation**: install OpenCost; label namespaces; produce a per-team GPU-hour report and an idle GPU report; set budget alerts.
-11. **Attack drills**: from a tenant account try privilege escalation (create privileged pod, hostPath, read other namespace secrets, list nodes, `nodes/proxy`), scanning the network, exhausting object counts; verify controls hold; document gaps.
-12. **Platform product review**: define SLOs, build a dashboard (queue wait p95, job success, utilisation, onboarding time), write the tenant guide.
-13. **Clean up**.
+1. Build a namespace baseline. Write a tenant template as Helm or Kustomize. It should include the namespace, labels, RBAC for an OIDC group, a ResourceQuota and LimitRange, a default-deny and DNS NetworkPolicy, PSA labels and StorageClass access. Instantiate it for two teams. Then verify isolation with cross-tenant access tests for pod-to-pod traffic, secrets and PVCs.
+2. Test quota behaviour. Exceed each quota type, which covers pods, GPUs through a fake extended resource, storage and object counts. Read the errors you get. Then test quota with Pending and completed pods, and apply PriorityClass-scoped quotas.
+3. Test Kueue sharing. Put two teams in one cohort. Borrow, reclaim and preempt, using WorkloadPriorityClasses. Measure fairness over time with a synthetic workload generator, and expose the queue metrics.
+4. Compare GPU sharing. On a GPU node, or in a simulation, configure MIG profiles and time-slicing through the GPU Operator. Run the tenants' workloads on each, then compare isolation by latency under interference, memory limits and fault containment.
+5. Try delegated administration. Install Capsule or HNC, and create a Tenant with owners and limits. Let an owner create namespaces on their own, then demonstrate the guardrails, such as allowed storage classes and registries. Finally, compare the result with plain namespaces plus Kyverno.
+6. Build a virtual cluster. Create a vCluster for one team, and install a CRD or operator inside it that conflicts with the host's version. Show that the isolation holds. Apply host policies to the synced pods, and measure the overhead.
+7. Practise node isolation. Dedicate a node pool with taints, and inject tolerations and a nodeSelector automatically through policy. Then try to bypass it as a tenant. Last, add a sandbox RuntimeClass pool for notebooks.
+8. Automate onboarding. Build the path from the YAML tenant spec, through the GitOps pipeline, to all the objects. Time the run. Then test offboarding, including data retention and namespace deletion with finalizers.
+9. Build self-service. Provide a CLI or portal template for job submission. It should inject labels, queue, priority, resource defaults and secrets references. Then validate the result with policy.
+10. Work on cost allocation. Install OpenCost and label the namespaces. Produce a per-team GPU-hour report and an idle GPU report, and set budget alerts.
+11. Run attack drills from a tenant account. Try privilege escalation by creating a privileged pod, using hostPath, reading another namespace's secrets, listing nodes, or using `nodes/proxy`. Also try scanning the network and exhausting object counts. Verify that the controls hold, and document any gaps.
+12. Review the platform as a product. Define SLOs, build a dashboard for queue wait p95, job success, utilisation and onboarding time, and write the tenant guide.
+13. Clean up at the end.
+
+Keep notes on each gap you find in the attack drills, because that list is the most useful output you will get from the exercise.
 
 ## 9. Common mistakes
 
-- Assuming namespaces alone provide isolation; skipping network policy, quotas, PSA, node isolation or runtime sandboxing where trust requires it.
-- Giving tenants cluster-scoped permissions (CRDs, webhooks, nodes) that affect others; sharing one ServiceAccount or cloud identity across teams.
-- Static ResourceQuotas only, with no queueing/borrowing (low utilisation, long waits) or no quotas at all (starvation).
-- Time-slicing GPUs between untrusted tenants.
-- Manual onboarding; snowflake namespaces; unlabelled workloads (no cost attribution).
-- Overusing virtual clusters where simple namespaces suffice, or cluster-per-tenant without fleet automation.
-- Ignoring API server protection (APF, object count quotas); one tenant's operator overwhelming control plane.
-- Treating the platform as infrastructure rather than a product: no docs, no support model, no SLOs.
-- No offboarding discipline; orphaned volumes and credentials.
+- **Assuming namespaces alone provide isolation.** Where trust requires it, you also need network policy, quotas, PSA, node isolation or runtime sandboxing.
+- **Giving tenants cluster-scoped permissions.** CRDs, webhooks and nodes can affect other tenants. Sharing one ServiceAccount or cloud identity across teams is another way to spread the damage.
+- **Relying on static ResourceQuotas only.** Without queueing and borrowing, utilisation stays low and waits grow long. With no quotas at all, one team can starve the rest.
+- **Time-slicing GPUs between untrusted tenants.**
+- **Onboarding by hand.** Snowflake namespaces and unlabelled workloads make onboarding slow and leave cost attribution impossible.
+- **Overusing virtual clusters.** Simple namespaces often suffice. The same goes for cluster-per-tenant without fleet automation.
+- **Ignoring API server protection,** such as APF and object-count quotas. One tenant's operator can then overwhelm the control plane.
+- **Treating the platform as infrastructure rather than a product.** Without docs, a support model and SLOs, tenants have nothing to rely on.
+- **Skipping offboarding discipline.** That leaves orphaned volumes and credentials behind.
+
+Check your setup against this list before you add the next tenant, since each mistake looks harmless until a second team arrives.
 
 ## 10. Interview angles
 
-- "How do you design multi-tenancy on a shared GPU Kubernetes cluster? What isolation layers?"
-- "Soft vs hard multi-tenancy; when virtual clusters; when a cluster per tenant?"
-- "How do you share GPUs fairly across teams? Kueue, quotas, preemption, MIG, time-slicing: trade-offs."
-- "How do you stop one tenant from DoSing the API server or the storage?"
-- "How would you onboard a new team in 10 minutes?"
-- "How do you attribute GPU cost to teams?"
-- "What platform services does an AI platform need beyond Kubernetes?"
-- "How do you provide self-service while keeping guardrails?"
+You may hear these questions in an interview about shared AI platforms. Each one maps to a topic in this chapter, so start with the isolation-layers question, since the other answers build on it.
+
+- How do you design multi-tenancy on a shared GPU Kubernetes cluster? What isolation layers?
+- Soft vs hard multi-tenancy; when virtual clusters; when a cluster per tenant?
+- How do you share GPUs fairly across teams? Kueue, quotas, preemption, MIG, time-slicing: trade-offs.
+- How do you stop one tenant from DoSing the API server or the storage?
+- How would you onboard a new team in 10 minutes?
+- How do you attribute GPU cost to teams?
+- What platform services does an AI platform need beyond Kubernetes?
+- How do you provide self-service while keeping guardrails?
 
 ## Exercises
 
-1. **Multi-Tenancy Models (`Soft` vs. `Hard`), Trust Boundaries, and the 9 Isolation Layers (`PK` Chapter 12):** Compare the 6 tenancy models in Section 1 (Namespace per team, Dedicated node pools, Sandboxed runtimes `gVisor`/`Kata`, Virtual clusters `vCluster`/`Kamaji`, Cluster per tenant, and Multi-cluster fleet) and explain how to isolate all 9 layers (API/APF, Identity, Compute/GPU, Network, Storage, Secrets, Runtime/Kernel, Observability/Fluent Bit log routing, and Cost).
-2. **`ResourceQuota`, `LimitRange`, `scopeSelector`, and Sub-GPU Sharing (`MIG` vs. `Time-Slicing` vs. `MPS` vs. `vGPU`):** Using `evaluate_resource_quota_and_limitrange()` in `code/part05/multitenancy_quota_reconciler.py`, trace the `team-a-compute` `ResourceQuota` and `defaults` `LimitRange` manifests in Section 2, explaining why `requests.nvidia.com/gpu`, `<storageclass>.storageclass.storage.k8s.io/requests.storage`, `count/jobs.batch`, and `scopeSelector` (`PriorityClass`) are configured, and compare `MIG`, `Time-slicing`, `MPS`, and `vGPU` across hardware memory/fault isolation.
-3. **Delegated Administration (`Capsule`, `HNC`) vs. Virtual Clusters (`vCluster`, `Kamaji`, `HyperShift`):** Compare how `Capsule` (`Tenant` CRD) and `vCluster` (virtual control plane + pod syncer) allow tenants to create multiple namespaces or install conflicting CRDs/operators on a shared GPU cluster, and explain what host-level policies must still be enforced on `vCluster`-synced pods.
-4. **Building a Self-Service `AcmeNamespace` / `Team` Onboarding Operator (`PK` Chapters 11 & 16):** Using `reconcile_acme_namespace_operator()` in `code/part05/multitenancy_quota_reconciler.py`, explain why an onboarding operator CRD (`AcmeNamespace` or `Team`) must be **cluster-scoped** (`+kubebuilder:resource:scope=Cluster`) to own a `Namespace`, why trusting `status.phase == "Created"` without checking the Informer cache fails to heal deleted child `RoleBinding`s, and compare `Kubebuilder`, `Operator SDK`, and `Metacontroller`.
-5. **The 4-Stage Spectrum of Platform Abstractions (`PK` Chapter 16) and Operating the AI Platform as a Product:** Compare `PK` Chapter 16's 4 stages of developer abstraction (`kubectl`/`kubectx`/`kubens`/`Lens` -> `Helm` + `Kustomize` -> custom workload CRDs like `PinterestService` / `WebApp` with a break-glass window -> full PaaS/portals like `Backstage`/`Waypoint`), and list the golden paths and SLO metrics of a product-oriented AI platform.
-6. **Multi-Tenant GPU Cost Attribution, PromQL Showback, and Idle-GPU Reclamation:** Using `compute_tenant_gpu_cost_and_waste()` in `code/part05/multitenancy_quota_reconciler.py` and the PromQL queries in Section 6, design a weekly team showback report that attributes requested GPU-hours, proportional shared platform overhead, and wasted idle-allocated GPU dollars.
+1. Start with soft versus hard multi-tenancy, trust boundaries and the 9 isolation layers from *Production Kubernetes* Chapter 12. Compare the 6 tenancy models in Section 1, which you can find in the table: namespace per team, dedicated node pools, sandboxed runtimes (gVisor/Kata), virtual clusters (vCluster/Kamaji), cluster per tenant, and a multi-cluster fleet. Then explain how you would isolate all 9 layers: API/APF, Identity, Compute/GPU, Network, Storage, Secrets, Runtime/Kernel, Observability (including Fluent Bit log routing) and Cost.
+2. Using `evaluate_resource_quota_and_limitrange()` in `code/part05/multitenancy_quota_reconciler.py`, trace the `team-a-compute` `ResourceQuota` and the `defaults` `LimitRange` manifests from Section 2. Explain why `requests.nvidia.com/gpu`, `<storageclass>.storageclass.storage.k8s.io/requests.storage`, `count/jobs.batch` and `scopeSelector` (`PriorityClass`) are configured. Then compare MIG, Time-slicing, MPS and `vGPU` across hardware memory and fault isolation.
+3. Compare delegated administration (Capsule or HNC) with virtual clusters (vCluster, Kamaji or HyperShift). Explain how Capsule, through its `Tenant` CRD, and vCluster, a virtual control plane with a pod syncer, let tenants create multiple namespaces or install conflicting CRDs and operators on a shared GPU cluster. Then explain which host-level policies you must still enforce on vCluster-synced pods.
+4. Using `reconcile_acme_namespace_operator()` in `code/part05/multitenancy_quota_reconciler.py`, work through three points from *Production Kubernetes* Chapters 11 and 16. First, explain why an onboarding operator CRD, such as `AcmeNamespace` or `Team`, must be **cluster-scoped** (`+kubebuilder:resource:scope=Cluster`) to own a `Namespace`. Second, explain why trusting `status.phase == "Created"` without checking the Informer cache fails to heal deleted child `RoleBinding`s. Third, compare Kubebuilder, Operator SDK and Metacontroller.
+5. Compare the 4 stages of developer abstraction in *Production Kubernetes* Chapter 16. Consider where each stage sits between raw access and full abstraction. They run from `kubectl`, `kubectx`, `kubens` and Lens, through Helm plus Kustomize, then custom workload CRDs such as `PinterestService` or `WebApp` with a break-glass window, to full PaaS and portals such as Backstage and Waypoint. Then list the golden paths and SLO metrics of an AI platform run as a product.
+6. Using `compute_tenant_gpu_cost_and_waste()` in `code/part05/multitenancy_quota_reconciler.py` and the PromQL queries in Section 6, design a weekly team showback report. It should attribute requested GPU-hours, a proportional share of shared platform overhead, and the GPU dollars wasted on idle allocations.
 
 ## Checkpoint questions (20)
 
 <details>
 <summary>1. In *Production Kubernetes* Chapter 12, what is the difference between Soft Multi-Tenancy and Hard Multi-Tenancy, and why does vanilla Kubernetes default to Soft Multi-Tenancy?</summary>
 
-- **Soft Multi-Tenancy ("a family sharing a house"):** Assumes cooperative internal teams that are not actively trying to kernel-exploit each other, but need protection from accidents, noisy neighbors, and unauthorized cross-team access. Implemented within a single shared cluster using `Namespace`s, `RBAC`, `ResourceQuota`s, `LimitRange`s, `PodSecurity`, and `default-deny` `NetworkPolicy`.
-- **Hard Multi-Tenancy ("strangers in a hotel"):** Assumes mutually untrusted or hostile external tenants. Because vanilla Kubernetes shares a single `kube-apiserver`, `etcd`, and host Linux kernel (`runc` containers), achieving hard multi-tenancy requires either **separate clusters per tenant** or combining **virtual control planes (`vCluster` / `HyperShift`)**, **dedicated hardware node pools**, **VM-sandboxed runtimes (`Kata Containers` / `gVisor`)**, and **fabric-level network/storage isolation**.
+- **Soft Multi-Tenancy ("a family sharing a house"):** This assumes cooperative internal teams. They are not trying to exploit each other's kernel, but they still need protection from accidents, noisy neighbors and unauthorized cross-team access. You build it inside one shared cluster with `Namespace`s, RBAC, `ResourceQuota`s, `LimitRange`s, `PodSecurity` and a `default-deny` `NetworkPolicy`.
+- **Hard Multi-Tenancy ("strangers in a hotel"):** This assumes mutually untrusted or hostile external tenants. Vanilla Kubernetes shares one kube-apiserver, one etcd and the host Linux kernel under runc containers. Hard multi-tenancy therefore needs separate clusters per tenant, or virtual control planes (vCluster / HyperShift), dedicated hardware node pools, VM-sandboxed runtimes (Kata Containers / gVisor) and fabric-level network and storage isolation.
 </details>
 
 <details>
-<summary>2. Compare \"Namespace-per-Team\" vs. \"Namespace-per-Application/Environment\" (`team-a-dev`, `team-a-train`, `team-a-serve`, `PK` Chapter 12).</summary>
+<summary>2. Compare "Namespace-per-Team" vs. "Namespace-per-Application/Environment" (`team-a-dev`, `team-a-train`, `team-a-serve`, *Production Kubernetes* Chapter 12).</summary>
 
-- **Single Namespace per Team (`team-a`):** Easy to apply a single `ResourceQuota` for the whole team, **but mixes dev notebooks, batch training, and production inference inside the same security/network/RBAC boundary**.\n- **Multiple Namespaces per Team (`team-a-dev`, `team-a-train`, `team-a-serve`):** Gives each environment its own `NetworkPolicy`, `ServiceAccount`s, and `PodSecurity` profile, while using **Kueue `ClusterQueue` / `Capsule` `Tenant` quotas** to enforce a unified GPU and storage cap across all of `team-a`'s namespaces.
+- **Single Namespace per Team (`team-a`):** It is easy to apply one `ResourceQuota` for the whole team. But it mixes dev notebooks, batch training and production inference inside the same security, network and RBAC boundary.
+- **Multiple Namespaces per Team (`team-a-dev`, `team-a-train`, `team-a-serve`):** Each environment gets its own `NetworkPolicy`, `ServiceAccount`s and `PodSecurity` profile. Kueue `ClusterQueue` or Capsule `Tenant` quotas then enforce one GPU and storage cap across all of `team-a`'s namespaces.
 </details>
 
 <details>
 <summary>3. In a `ResourceQuota` manifest, what exact key names restrict (a) GPUs, (b) a specific `StorageClass`'s capacity, (c) total `Job` objects, and (d) external `LoadBalancer` Services?</summary>
 
-1. **GPUs (extended resources):** Must use the **`requests.` prefix**—**`requests.nvidia.com/gpu: "32"`**.
-2. **Per-StorageClass capacity:** **`<storage-class-name>.storageclass.storage.k8s.io/requests.storage: 20Ti`** (and `/persistentvolumeclaims: "10"`).
-3. **Object count quota (protecting `etcd` / API server from object floods):** **`count/jobs.batch: "500"`**, `count/pods: "2000"`, `count/secrets: "200"`.
-4. **Blocking unauthorized external Services:** **`services.loadbalancers: "0"`** and **`services.nodeports: "0"`**.
+1. **GPUs (extended resources):** Use the `requests.` prefix, as in `requests.nvidia.com/gpu: "32"`.
+2. **Per-StorageClass capacity:** Use `<storage-class-name>.storageclass.storage.k8s.io/requests.storage: 20Ti`. You can also add `/persistentvolumeclaims: "10"`.
+3. **Object counts:** Object count quotas protect etcd and the API server from object floods. Use `count/jobs.batch: "500"`, `count/pods: "2000"` and `count/secrets: "200"`.
+4. **Blocking unauthorized external Services:** Set `services.loadbalancers: "0"` and `services.nodeports: "0"`.
 </details>
 
 <details>
 <summary>4. Why does creating a Pod with NO `resources.requests` or `limits` fail immediately in a namespace that has a CPU/memory `ResourceQuota`, and how does `LimitRange` solve this?</summary>
 
-When a `ResourceQuota` tracks `requests.cpu`, `limits.cpu`, `requests.memory`, or `limits.memory` in a namespace, Kubernetes's `ResourceQuota` admission controller **rejects any Pod that omits those fields** (`must specify limits.memory`) because an unbounded container would bypass the quota.
-Deploying a **`LimitRange`** with `default` (default limits) and `defaultRequest` (default requests) in every tenant namespace runs during the **mutating admission phase** *before* `ResourceQuota` validation—automatically injecting sensible defaults (`cpu: 1..2`, `memory: 4Gi..8Gi`) into any Pod that omitted them.
+A `ResourceQuota` that tracks `requests.cpu`, `limits.cpu`, `requests.memory` or `limits.memory` rejects any Pod that leaves those fields out. The error reads `must specify limits.memory`. An unbounded container would bypass the quota, so the rejection is deliberate. A `LimitRange` solves this. Its `default` (default limits) and `defaultRequest` (default requests) settings run in the mutating admission phase, before `ResourceQuota` validation. They inject sensible defaults, such as `cpu: 1..2` and `memory: 4Gi..8Gi`, into any Pod that omitted them.
 </details>
 
 <details>
 <summary>5. Why can a tenant's new Pod fail with `exceeded quota: count/pods` or `requests.nvidia.com/gpu` even when `kubectl get pods` shows zero `Running` Pods?</summary>
 
-- **`count/pods` quota** counts **all Pod objects currently stored in `etcd`** in that namespace—including **`Completed` (`Succeeded`) and `Failed` Pods** left behind by finished `Job`s.
-- **Compute and GPU `ResourceQuota` (`requests.nvidia.com/gpu`)** counts all **non-terminal Pods**—including **`Pending` Pods** that are unschedulable or waiting on volumes/images (and terminating Pods).
-Always configure `ttlSecondsAfterFinished` on `Job`s (or a Kyverno cleanup policy) to garbage-collect finished Pods, and use **Kueue** (`suspend: true`) so queued jobs do not create `Pending` Pods until quota is available.
+Two different quota rules explain this. The `count/pods` quota counts every Pod object stored in etcd in that namespace. That includes `Completed` (`Succeeded`) and `Failed` Pods left behind by finished `Job`s. The GPU quota (`requests.nvidia.com/gpu`) counts all non-terminal Pods instead. That includes `Pending` Pods that are unschedulable or waiting on volumes or images, and terminating Pods too. Always set `ttlSecondsAfterFinished` on `Job`s, or use a Kyverno cleanup policy, so finished Pods get garbage-collected. Also use **Kueue** with `suspend: true`, so queued jobs do not create `Pending` Pods until quota is available.
 </details>
 
 <details>
 <summary>6. How do you stop a tenant from marking all of their batch training jobs with `priorityClassName: inference-critical`?</summary>
 
-Attach a **`scopeSelector`** matching `scopeName: PriorityClass` to a **`ResourceQuota`** in the tenant's namespace:
-- Create a `ResourceQuota` for `priorityClassName: inference-critical` setting `requests.nvidia.com/gpu: "0"` in training namespaces (and a specific cap in serving namespaces).
-- Any attempt by a developer in a training namespace to submit a Pod with `priorityClassName: inference-critical` is immediately rejected by `ResourceQuota` admission (`exceeded quota`).
+Attach a `scopeSelector` that matches `scopeName: PriorityClass` to a `ResourceQuota` in the tenant's namespace. Create a quota for `priorityClassName: inference-critical` that sets `requests.nvidia.com/gpu: "0"` in training namespaces. In serving namespaces, use a specific cap instead. Then any developer in a training namespace who submits a Pod with `priorityClassName: inference-critical` is rejected at once by `ResourceQuota` admission, with `exceeded quota`.
 </details>
 
 <details>
-<summary>7. Compare `MIG` (Multi-Instance GPU), `Time-Slicing`, `CUDA MPS`, and `Whole GPUs` for sharing GPUs across multiple tenants.</summary>
+<summary>7. Compare MIG (Multi-Instance GPU), Time-Slicing, CUDA MPS, and Whole GPUs for sharing GPUs across multiple tenants.</summary>
 
-- **Whole GPUs (`nvidia.com/gpu: 1..8`):** Complete per-device isolation; best for training and large model serving.
-- **MIG (`Multi-Instance GPU` on A100/H100/B200, e.g., `1g.10gb`, `2g.20gb`, `3g.40gb`):** **Hardware-enforced isolation**—each MIG instance gets dedicated SMs, dedicated HBM memory capacity, dedicated L2 cache, dedicated memory bandwidth crossbars, and **isolated GPU page tables / fault containment** (an XID fault or OOM in one MIG slice does not crash other slices on the same physical GPU). **Safe for multi-tenant sharing of sub-GPU workloads.**
-- **Time-Slicing (Device Plugin `replicas: 4`):** **Zero memory isolation and zero fault isolation**—all 4 containers share the same GPU HBM address space and context-switch SMs; if one container allocates all 80 GB of VRAM or triggers a fatal GPU fault, **all 4 tenants crash**. Only use for trusted dev notebooks from the same team.
-- **CUDA MPS (`Multi-Process Service`):** Shares a single CUDA context across processes for higher concurrent kernel utilization (`CUDA_MPS_ACTIVE_THREAD_PERCENTAGE`), **but shares fault fate**; use only within a single tenant/workload.
+- **Whole GPUs (`nvidia.com/gpu: 1..8`):** Each GPU is fully isolated from the others. This is the best choice for training and large model serving.
+- **MIG (Multi-Instance GPU, on A100, H100 and B200, with profiles such as `1g.10gb`, `2g.20gb` and `3g.40gb`):** The hardware enforces the isolation. Each MIG instance gets its own SMs, HBM memory capacity, L2 cache and memory bandwidth crossbars, along with isolated GPU page tables. A fault or out-of-memory error in one slice does not crash the other slices on the same physical GPU. That makes MIG safe for sharing sub-GPU workloads between tenants.
+- **Time-Slicing (Device Plugin `replicas: 4`):** There is no memory isolation and no fault isolation. All 4 containers share the same GPU HBM address space and take turns on the SMs through context switching. If one container allocates all 80 GB of VRAM, or triggers a fatal GPU fault, all 4 tenants crash. Use it only for trusted dev notebooks from the same team.
+- **CUDA MPS (Multi-Process Service):** Processes share a single CUDA context. That raises concurrent kernel utilization, which you tune with `CUDA_MPS_ACTIVE_THREAD_PERCENTAGE`. The processes share fault fate, though, so use MPS only within a single tenant or workload.
 </details>
 
 <details>
-<summary>8. How does `vCluster` (Virtual Clusters) work, and when should you give a tenant a `vCluster` instead of a standard `Namespace`?</summary>
+<summary>8. How does vCluster (Virtual Clusters) work, and when should you give a tenant a vCluster instead of a standard `Namespace`?</summary>
 
-A **`vCluster`** runs a lightweight **virtual Kubernetes control plane** (`kube-apiserver` + state store + a **Syncer** controller) as a StatefulSet/Deployment **inside a single host Namespace**:
-- **What stays inside the virtual cluster:** Namespaces, CRDs, Operators, RBAC `ClusterRole`s, Webhooks, ConfigMaps, and Deployments/StatefulSets (`etcd` of the host cluster never sees them).
-- **What the Syncer copies down to the host Namespace:** Only low-level executable resources (**`Pod`s, `PVC`s, `Service`s**), rewritten into the single host Namespace so the host's `kube-scheduler` and GPU nodes execute them.
-**Use `vCluster` when:** Tenants need to install their own **CRDs, Operators, or cluster-scoped webhooks** (or test different operator versions) without colliding on the shared host control plane. (Always enforce host-level PSA/Kyverno on the host Namespace so the Syncer cannot create privileged Pods.)
+A vCluster runs a lightweight virtual Kubernetes control plane inside a single host Namespace. That control plane has a kube-apiserver, a state store and a Syncer controller. It runs as a StatefulSet or Deployment.
+
+- **What stays inside the virtual cluster:** Namespaces, CRDs, operators, RBAC `ClusterRole`s, webhooks, ConfigMaps, and Deployments or StatefulSets. The host cluster's etcd never sees them.
+- **What the Syncer copies down:** Only the low-level executable resources, which are `Pod`s, PVCs and `Service`s. It rewrites them into the single host Namespace, so the host's kube-scheduler and GPU nodes can run them.
+
+Use a vCluster when tenants need to install their own CRDs, operators or cluster-scoped webhooks, or test different operator versions, without colliding on the shared host control plane. Always enforce host-level PSA or Kyverno on the host Namespace, so the Syncer cannot create privileged Pods.
 </details>
 
 <details>
-<summary>9. What problem does `Capsule` solve on a multi-tenant Kubernetes cluster?</summary>
+<summary>9. What problem does Capsule solve on a multi-tenant Kubernetes cluster?</summary>
 
-Without `Capsule`, if Team A needs 5 namespaces (`team-a-dev`, `team-a-stage`, `team-a-prod`, `team-a-exp1`, `team-a-exp2`), they must either file a ticket with the platform team every time they want a namespace, or be granted cluster-wide `create namespaces` permission (which lets them create unlimited namespaces with no quotas).
-**`Capsule`** introduces a cluster-scoped **`Tenant` CRD** (`name: team-a`, `owners: [oidc:team-a-leads]`, `namespaceQuota: 10`, aggregate `ResourceQuota` across all namespaces in the Tenant, allowed `StorageClasses`, allowed `IngressClasses`, and required `nodeSelector`). Team A's leads can now run `kubectl create namespace team-a-exp3` self-service, and Capsule's admission webhook automatically attaches it to `Tenant/team-a` and enforces the team-wide aggregate quota and guardrails.
+Picture Team A needing 5 namespaces without Capsule (`team-a-dev`, `team-a-stage`, `team-a-prod`, `team-a-exp1` and `team-a-exp2`). Each one means a ticket to the platform team. Or the team gets cluster-wide `create namespaces` permission, which lets it create unlimited namespaces with no quotas. Capsule adds a cluster-scoped `Tenant` CRD. A Tenant can set `name: team-a`, `owners: [oidc:team-a-leads]` and `namespaceQuota: 10`. It can also set an aggregate `ResourceQuota` across all the namespaces in the Tenant, the allowed `StorageClasses` and `IngressClasses`, and a required `nodeSelector`. Team A's leads can then run `kubectl create namespace team-a-exp3` themselves. Capsule's admission webhook attaches the new namespace to `Tenant/team-a` and enforces the team-wide quota and guardrails.
 </details>
 
 <details>
 <summary>10. In *Production Kubernetes* Chapter 11, why is it a bug for a custom `AcmeNamespace` / `Team` operator to check `if acmeNs.Status.Phase == "Created" { return }` and skip inspecting child resources?</summary>
 
-Two failure modes break a status-only check:
-1. **Mid-reconcile crash:** If the operator sets `Status.Phase = "CreationInProgress"`, creates the `Namespace` and `Role`, and crashes *before* creating the `RoleBinding` or updating status, the next pass must query the actual cluster state (via the local Informer cache) to see which children exist and which are still missing.
-2. **Drift / accidental deletion of child objects:** After `Status.Phase` reaches `"Created"`, if someone accidentally runs `kubectl delete rolebinding namespace-admin -n team-a` or deletes the `ResourceQuota`, an operator that blindly trusts `Status.Phase == "Created"` will **never recreate the deleted child object**. A level-triggered operator must set **`ownerReferences`** (`ctrl.SetControllerReference`) on all child resources, watch those child kinds (`Owns(&rbacv1.RoleBinding{})`), and verify every child in the Informer cache on every `Reconcile`.
+A status-only check fails in two ways.
+
+1. **A crash mid-reconcile.** If the operator sets `Status.Phase = "CreationInProgress"`, creates the `Namespace` and `Role`, and crashes before it creates the `RoleBinding` or updates the status, the next pass must query the real cluster state through the local Informer cache. Only that shows which children exist and which are still missing.
+2. **Drift or accidental deletion.** Once `Status.Phase` reaches `"Created"`, someone may run `kubectl delete rolebinding namespace-admin -n team-a` or delete the `ResourceQuota`. An operator that blindly trusts `Status.Phase == "Created"` never recreates the deleted child. A level-triggered operator sets **`ownerReferences`** (`ctrl.SetControllerReference`) on all child resources. It watches those child kinds (`Owns(&rbacv1.RoleBinding{})`), and it verifies every child in the Informer cache on every `Reconcile`.
 </details>
 
 <details>
-<summary>11. In `PK` Chapter 11, why must a CustomResourceDefinition (`AcmeNamespace` or `Team`) that creates and owns `Namespace` objects be **Cluster-Scoped** (`scope: Cluster`)?</summary>
+<summary>11. In *Production Kubernetes* Chapter 11, why must a CustomResourceDefinition (`AcmeNamespace` or `Team`) that creates and owns `Namespace` objects be **Cluster-Scoped** (`scope: Cluster`)?</summary>
 
-In Kubernetes garbage collection, **a namespaced resource is forbidden from being the `ownerReference` owner of a cluster-scoped resource** (cross-scope ownership from namespaced -> cluster-scoped is disallowed by `kube-apiserver`). Because a `Namespace` is a **cluster-scoped** resource, the parent `AcmeNamespace` / `Team` CRD that sets `ownerReferences` on `Namespace`s (and on `Role`s/`RoleBinding`s inside that namespace) must itself be **cluster-scoped** (`// +kubebuilder:resource:scope=Cluster`).
+Garbage collection forbids a namespaced resource from being the `ownerReference` owner of a cluster-scoped resource. The kube-apiserver disallows that cross-scope ownership, from namespaced to cluster-scoped. A `Namespace` is cluster-scoped. So the parent CRD, `AcmeNamespace` or `Team`, which sets `ownerReferences` on `Namespace`s (and on the `Role`s and `RoleBinding`s inside them), must itself be cluster-scoped. Mark it with `// +kubebuilder:resource:scope=Cluster`.
 </details>
 
 <details>
-<summary>12. In `PK` Chapter 11, compare `Kubebuilder`, `Operator SDK`, and `Metacontroller` for building custom platform operators.</summary>
+<summary>12. In *Production Kubernetes* Chapter 11, compare Kubebuilder, Operator SDK, and Metacontroller for building custom platform operators.</summary>
 
-- **`Kubebuilder` (and `Operator SDK` Go):** Official SIG API-Machinery scaffolding framework in **Go** built on `controller-runtime` and `controller-gen`. Best performance, native shared informers, type safety, and webhook scaffolding (`+kubebuilder:*` markers).
-- **`Operator SDK` (Ansible / Helm plugins):** Allows packaging existing **Helm charts** or **Ansible playbooks/roles** into a Kubernetes Operator without writing Go code (great for Day-1/Day-2 deployment automation, less suited for complex high-frequency control loops).
-- **`Metacontroller` (`CompositeController` / `DecoratorController`):** Runs a generic informer/reconcile loop in the cluster and invokes your custom logic as a **simple JSON HTTP webhook ("lambda controller")** written in **any language (Python, Node.js, Ruby, Starlark)**—receives `{parent, children}` JSON and returns `{status, children}` JSON.
+- **Kubebuilder** (and Operator SDK in Go) is the official SIG API-Machinery scaffolding framework. It is written in Go, and it builds on controller-runtime and controller-gen. It gives the best performance, native shared informers, type safety and webhook scaffolding through `+kubebuilder:*` markers.
+- **Operator SDK** (Ansible or Helm plugins) lets you package existing Helm charts or Ansible playbooks and roles into a Kubernetes Operator, without writing Go code. It suits Day-1/Day-2 deployment automation well. It is less suited to complex, high-frequency control loops.
+- **Metacontroller** (CompositeController / DecoratorController) runs a generic informer and reconcile loop in the cluster. It calls your logic as a simple JSON HTTP webhook, or "lambda controller", written in any language, such as Python, Node.js, Ruby or Starlark. The webhook receives `{parent, children}` JSON and returns `{status, children}` JSON.
 </details>
 
 <details>
-<summary>13. Summarize the 4-Stage Spectrum of Platform Abstractions from *Production Kubernetes* Chapter 16 (`Figure 16-2`), and state the trade-off of moving from Stage 1 to Stage 4.</summary>
+<summary>13. Summarize the 4-Stage Spectrum of Platform Abstractions from *Production Kubernetes* Chapter 16 (Figure 16-2), and state the trade-off of moving from Stage 1 to Stage 4.</summary>
 
-1. **Stage 1 — Raw Kubernetes + CLI/UI Helpers (`kubectl`, `kubectx`, `kubens`, `Octant`, `Lens`):** Zero API abstraction; 100% upstream Kubernetes compatibility and skill transferability, but requires every developer to understand Kubernetes primitives and requires strict RBAC/admission guardrails.
-2. **Stage 2 — Templating (`Helm` + `Kustomize`, `K8s Initializer`):** Developers fill in a small `values.yaml` (or web wizard) that renders standard `Deployment`/`Service`/`Ingress` objects. Hides YAML boilerplate while keeping standard Kubernetes objects visible for debugging.
-3. **Stage 3 — Custom Workload CRDs (`PinterestService`, `WebApp`):** A 25-line custom CRD replaces 350+ lines of multi-object YAML and triggers an in-cluster operator. Simplifies onboarding, **but requires providing a "break-glass" view into underlying `Pod`s/events** when abstractions leak.
-4. **Stage 4 — Invisible Kubernetes / Full PaaS (`Cloud Foundry`, `Backstage`, `HashiCorp Waypoint`):** Developers push code or a 10-line `waypoint.hcl` (`build`, `deploy`, `release`) with zero awareness of Kubernetes. Fastest developer onboarding, highest platform engineering maintenance burden when custom GPU/RDMA features are needed.
+1. **Stage 1, raw Kubernetes with CLI and UI helpers (`kubectl`, `kubectx`, `kubens`, Octant, Lens):** There is no API abstraction. You get full upstream Kubernetes compatibility and skills that transfer. But every developer must understand Kubernetes primitives, and you need strict RBAC and admission guardrails.
+2. **Stage 2, templating (Helm + Kustomize, K8s Initializer):** Developers fill in a small `values.yaml`, or a web wizard, that renders standard `Deployment`/`Service`/`Ingress` objects. This hides the YAML boilerplate, and the standard Kubernetes objects stay visible for debugging.
+3. **Stage 3, custom workload CRDs (`PinterestService`, `WebApp`):** A 25-line custom CRD replaces more than 350 lines of multi-object YAML, and it triggers an in-cluster operator. That simplifies onboarding. But you must provide a "break-glass" view into the underlying `Pod`s and events when abstractions leak.
+4. **Stage 4, invisible Kubernetes or full PaaS (Cloud Foundry, Backstage, HashiCorp Waypoint):** Developers push code or a 10-line `waypoint.hcl` with build, deploy and release steps, and they never see Kubernetes. It gives the fastest developer onboarding. The cost is the highest platform engineering maintenance burden when you need custom GPU or RDMA features.
 </details>
 
 <details>
-<summary>14. In `PK` Chapter 12, how do you isolate container logs per tenant using `Fluent Bit` or `Loki` so Team A cannot read Team B's application logs?</summary>
+<summary>14. In *Production Kubernetes* Chapter 12, how do you isolate container logs per tenant using Fluent Bit or Loki so Team A cannot read Team B's application logs?</summary>
 
-When `Fluent Bit` tails `/var/log/pods/<namespace>_<pod>_<uid>/<container>/0.log` on each node, its `kubernetes` filter tags each log stream with **`kube.var.log.containers.<pod>_<namespace>_<container>-<id>.log`**. You can isolate logs in two ways:
-1. **Tag-based `[OUTPUT]` routing (`PK` Chapter 12):** Configure `[OUTPUT]` stanzas with `Match kube.var.log.containers.*_alice-ns_*` routing each tenant's logs to their own dedicated Elasticsearch index / S3 bucket / Splunk index.
-2. **Multi-tenant Loki (`X-Scope-OrgID`):** Extract `$kubernetes['namespace_name']` (or the namespace's `team` label) and set it as the **`X-Scope-OrgID`** HTTP header when shipping to Grafana Loki, paired with Grafana org/folder RBAC so each team can only query their own tenant ID.
+On each node, Fluent Bit tails `/var/log/pods/<namespace>_<pod>_<uid>/<container>/0.log`. Its `kubernetes` filter tags each log stream as **`kube.var.log.containers.<pod>_<namespace>_<container>-<id>.log`**. You can isolate logs in two ways.
+
+1. **Tag-based `[OUTPUT]` routing (*Production Kubernetes* Chapter 12):** Configure `[OUTPUT]` stanzas with `Match kube.var.log.containers.*_alice-ns_*`. For example, the `alice-ns` logs go to Alice's own dedicated Elasticsearch index, S3 bucket or Splunk index.
+2. **Multi-tenant Loki with `X-Scope-OrgID`:** Extract `$kubernetes['namespace_name']`, or the namespace's `team` label, and set it as the **`X-Scope-OrgID`** HTTP header when you ship logs to Grafana Loki. Pair it with Grafana org and folder RBAC, so each team can query only its own tenant ID.
 </details>
 
 <details>
-<summary>15. How do you prevent one tenant's buggy custom controller or CLI script from exhausting `kube-apiserver` concurrency for all other tenants?</summary>
+<summary>15. How do you prevent one tenant's buggy custom controller or CLI script from exhausting kube-apiserver concurrency for all other tenants?</summary>
 
-Combine two built-in controls:
-1. **API Priority and Fairness (`APF`, Chapter 5.5):** Create a `FlowSchema` matching the tenant's ServiceAccounts/OIDC group (`subjects: [{kind: Group, group: {name: "oidc:team-a"}}, {kind: ServiceAccount, serviceAccount: {namespace: "team-a", name: "*"}}]`) and map it to a tenant-isolated `PriorityLevelConfiguration` with **shuffle sharding (`ByNamespace` / `ByUser`)** and bounded concurrency shares.
-2. **Object-count `ResourceQuota`s (`count/pods`, `count/jobs.batch`, `count/configmaps`, `count/secrets`):** Prevents a runaway loop in `team-a` from creating 500,000 objects and filling `etcd`.
+Combine two built-in controls.
+
+1. **API Priority and Fairness (APF, Chapter 5.5):** Create a `FlowSchema` that matches the tenant's ServiceAccounts and OIDC group, using `subjects: [{kind: Group, group: {name: "oidc:team-a"}}, {kind: ServiceAccount, serviceAccount: {namespace: "team-a", name: "*"}}]`. Map it to a tenant-isolated `PriorityLevelConfiguration`. That uses **shuffle sharding (`ByNamespace` / `ByUser`)** and bounded concurrency shares.
+2. **Object-count `ResourceQuota`s (`count/pods`, `count/jobs.batch`, `count/configmaps`, `count/secrets`):** These stop a runaway loop in `team-a` from creating 500,000 objects and filling etcd.
 </details>
 
 <details>
-<summary>16. How do you isolate shared high-performance storage (`Lustre`, `WEKA`, `VAST`, `NFS`, `CephFS`) across multiple tenants on a shared GPU cluster?</summary>
+<summary>16. How do you isolate shared high-performance storage (Lustre, WEKA, VAST, NFS, CephFS) across multiple tenants on a shared GPU cluster?</summary>
 
-Never mount the root `/` export of a shared parallel filesystem directly into multiple tenants' Pods (any tenant could `ls` or overwrite another tenant's checkpoints and datasets). Instead:
-1. **Per-tenant CSI provisioning / subvolumes:** Use the storage system's CSI driver to dynamically provision an isolated **per-PVC subdirectory/fileset/subvolume** with a **hard storage-array capacity and inode quota**.
-2. **Network/VLAN or CephX/Kerberos authentication per tenant StorageClass:** Restrict which nodes or tenant credentials can mount a given export.
-3. **Admissions policy:** Block raw `nfs:` / `hostPath:` volume blocks in Pod specs (`PodSecurity` `baseline`/`restricted`), forcing all storage consumption to go through approved `PersistentVolumeClaim`s and `StorageClass`es.
+Never mount the root `/` export of a shared parallel filesystem straight into several tenants' Pods. Any tenant could then `ls` or overwrite another tenant's checkpoints and datasets. Instead, do three things.
+
+1. **Per-tenant CSI provisioning or subvolumes:** Let the storage system's CSI driver provision an isolated per-PVC subdirectory, fileset or subvolume. Give it a hard storage-array capacity and inode quota.
+2. **Network, VLAN or CephX/Kerberos authentication per tenant StorageClass:** Restrict which nodes or tenant credentials can mount a given export.
+3. **An admission policy:** Block raw `nfs:` and `hostPath:` volume blocks in Pod specs, using `PodSecurity` `baseline` or `restricted`. That forces all storage use through approved `PersistentVolumeClaim`s and `StorageClass`es.
 </details>
 
 <details>
-<summary>17. What security controls must be applied to multi-tenant Interactive Jupyter Notebook services (`JupyterHub` / `Kubeflow Notebooks`) on a GPU cluster?</summary>
+<summary>17. What security controls must be applied to multi-tenant Interactive Jupyter Notebook services (JupyterHub / Kubeflow Notebooks) on a GPU cluster?</summary>
 
-Interactive notebooks execute arbitrary user-typed Python and shell commands and are the #1 source of both security incidents and wasted GPUs:
-1. **Runtime sandboxing:** Run untrusted notebooks under `PodSecurity: restricted` (`runAsNonRoot: true`, `allowPrivilegeEscalation: false`, `drop: ["ALL"]`) or a sandboxed `RuntimeClass` (`gVisor` / `Kata`).
-2. **No default cluster API access:** Set **`automountServiceAccountToken: false`** unless the user explicitly needs to submit jobs.
-3. **Strict Egress `NetworkPolicy`:** Block `169.254.169.254/32` (cloud metadata) and restrict egress to approved internal package mirrors (`pypi-mirror`, `huggingface-cache`, `s3`).
-4. **Automated Idle Culling & Time-Boxing:** Run `jupyterhub-idle-culler` (and a DCGM GPU-idle detector) to stop notebook servers whose kernel/GPU utilization is `< 5%` for `> 2 hours`, saving their home directory to a small PVC while freeing the GPU.
+Interactive notebooks run whatever Python and shell commands users type. That makes them the #1 source of both security incidents and wasted GPUs. Apply these controls.
+
+1. **Runtime sandboxing:** Run untrusted notebooks under `PodSecurity: restricted` (`runAsNonRoot: true`, `allowPrivilegeEscalation: false`, `drop: ["ALL"]`). Or use a sandboxed `RuntimeClass`, such as gVisor or Kata.
+2. **No default cluster API access:** Set `automountServiceAccountToken: false`, unless the user explicitly needs to submit jobs.
+3. **A strict egress `NetworkPolicy`:** Block `169.254.169.254/32`, the cloud metadata address. Restrict egress to approved internal package mirrors such as `pypi-mirror`, `huggingface-cache` and `s3`.
+4. **Automated idle culling and time-boxing:** Run `jupyterhub-idle-culler` and a DCGM GPU-idle detector. They stop notebook servers whose kernel or GPU utilization stays below `< 5%` for `> 2 hours`. The server's home directory is saved to a small PVC, and the GPU is freed.
 </details>
 
 <details>
-<summary>18. When attributing GPU costs across teams in `OpenCost` / `Kubecost`, should you charge teams based on **Requested GPU-Hours** or **Actual Utilized GPU-Hours**?</summary>
+<summary>18. When attributing GPU costs across teams in OpenCost / Kubecost, should you charge teams based on **Requested GPU-Hours** or **Actual Utilized GPU-Hours**?</summary>
 
-**Charge based on `Requested (Allocated) GPU-Hours` (while reporting `Utilized GPU-Hours` alongside it as an efficiency score).**
-Why? When a Pod requests `nvidia.com/gpu: 8` for 10 hours (`80` GPU-hours), **no other team can use those 8 GPUs during those 10 hours**—even if the Pod's data loader is bottlenecked and actual GPU compute utilization is only 15%. Charging for **requested GPU-hours** (plus a proportional share of unallocated cluster overhead) gives teams a direct financial incentive to shut down idle notebooks, right-size requests, and optimize their data loaders.
+Charge based on requested (allocated) GPU-hours, and report utilized GPU-hours alongside as an efficiency score. Consider a Pod that requests `nvidia.com/gpu: 8` for 10 hours. That is 80 GPU-hours, since 8 times 10 is 80. No other team can use those 8 GPUs during those 10 hours. That holds even if the data loader is bottlenecked and actual GPU compute utilization is only 15%. Charging for requested GPU-hours, plus a proportional share of unallocated cluster overhead, gives teams a direct financial reason to shut down idle notebooks, right-size their requests and optimize their data loaders.
 </details>
 
 <details>
 <summary>19. What happens during Tenant Offboarding, and why is a formal offboarding workflow important on an AI platform?</summary>
 
-When a research project ends or a tenant leaves, simply running `kubectl delete namespace team-a` without an offboarding runbook either **destroys irreplaceable trained model weights/datasets** (if PVCs use `reclaimPolicy: Delete`) or **leaves terabytes of orphaned `Released` PVs, cloud S3 buckets, Harbor images, and Vault secrets** accumulating monthly bills forever.\nA clean automated offboarding pipeline:\n1. Revokes OIDC group RBAC bindings and suspends Kueue `LocalQueue`s.\n2. Archives final model artifacts/checkpoints to cold storage per data-retention policy.\n3. Deletes the tenant's GitOps config (`tenants/team-a.yaml`), triggering clean teardown of Namespaces, Kueue queues, Vault paths, Harbor robot accounts, and reclaimed PVs.
+When a research project ends or a tenant leaves, running `kubectl delete namespace team-a` with no offboarding runbook causes one of two problems. Either it destroys irreplaceable trained model weights and datasets, if the PVCs use `reclaimPolicy: Delete`. Or it leaves terabytes of orphaned `Released` PVs, cloud S3 buckets, Harbor images and Vault secrets, which keep accumulating monthly bills forever. A clean, automated offboarding pipeline does three things.
+
+1. Revokes the OIDC group RBAC bindings and suspends the Kueue `LocalQueue`s.
+2. Archives the final model artifacts and checkpoints to cold storage, according to the data-retention policy.
+3. Deletes the tenant's GitOps config (`tenants/team-a.yaml`). That triggers a clean teardown of the Namespaces, Kueue queues, Vault paths, Harbor robot accounts and reclaimed PVs.
 </details>
 
 <details>
-<summary>20. What does \"Operating the AI Platform as a Product\" mean in practice, and what four KPIs measure its success?</summary>
+<summary>20. What does "Operating the AI Platform as a Product" mean in practice, and what four KPIs measure its success?</summary>
 
-Instead of treating the cluster as a ticket-driven IT gatekeeper, the platform team treats ML researchers and application engineers as **internal customers**—providing **self-service golden paths** (templates, CLI, Backstage portal), **automated policy guardrails** instead of manual change-review meetings, published documentation/runbooks, and transparent SLOs.\n**Four core Platform-as-a-Product KPIs:**\n1. **Time to Onboard a New Team / Project** (target: $< 10$ minutes via GitOps PR).\n2. **Fleet GPU Allocation & Utilization Efficiency** (e.g., $> 85\%$ allocated, $> 65\%$ active compute duty cycle, $< 5\%$ idle-allocated waste).\n3. **Job Queue Wait Time & Pod Startup Latency (`p95`)** by priority class.\n4. **Developer Satisfaction (`CSAT`/`NPS`) & Support Ticket Ratio per Tenant.**
+Operating the platform as a product means you stop treating the cluster as a ticket-driven IT gatekeeper. The platform team treats ML researchers and application engineers as **internal customers**. It provides **self-service golden paths**, such as templates, a CLI or a Backstage portal. It uses **automated policy guardrails** instead of manual change-review meetings, and it publishes documentation, runbooks and transparent SLOs.
+
+**Four core Platform-as-a-Product KPIs:**
+1. **Time to Onboard a New Team / Project** (target: $< 10$ minutes via GitOps PR).
+2. **Fleet GPU Allocation & Utilization Efficiency** (e.g., $> 85\%$ allocated, $> 65\%$ active compute duty cycle, $< 5\%$ idle-allocated waste).
+3. **Job Queue Wait Time & Pod Startup Latency (`p95`)** by priority class.
+4. **Developer Satisfaction (CSAT/NPS) & Support Ticket Ratio per Tenant.**
 </details>
 
 ## Sources and review notes
@@ -820,5 +879,5 @@ Instead of treating the cluster as a ticket-driven IT gatekeeper, the platform t
   - `kubernetes-up-and-running-3rd-edition` — Brendan Burns, Joe Beda, Kelsey Hightower & Lachlan Evenson, *Kubernetes: Up and Running*, 3rd ed. (namespaces, quotas, and RBAC).
   - `nvidia-devops` (`volume-03/03-k8s-networking-security-ops-masterclass.md`): multi-tenant RBAC, Kyverno guardrails, and platform engineering.
 - **Run here:** `python3 code/part05/multitenancy_quota_reconciler_lab.py` (3 passed, 0 failed).
-- **Explicitly labelled inferences:** The `evaluate_resource_quota_and_limitrange`, `reconcile_acme_namespace_operator`, and `compute_tenant_gpu_cost_and_waste` models in `code/part05/multitenancy_quota_reconciler.py` and the `team-a-compute` `ResourceQuota`, `defaults` `LimitRange`, and `tenants/team-a.yaml` onboarding spec are the author's constructions synthesizing `PK` Chapters 11, 12, and 16 (plus original study items 21, 22, 23, 24, 25, 26, 27, 28, 29, 30, 31, 32, 33, 34, and 35).
+- **Explicitly labelled inferences:** The `evaluate_resource_quota_and_limitrange`, `reconcile_acme_namespace_operator`, and `compute_tenant_gpu_cost_and_waste` models in `code/part05/multitenancy_quota_reconciler.py` and the `team-a-compute` `ResourceQuota`, `defaults` `LimitRange`, and `tenants/team-a.yaml` onboarding spec are the author's constructions synthesizing *Production Kubernetes* Chapters 11, 12, and 16 (plus original study items 21, 22, 23, 24, 25, 26, 27, 28, 29, 30, 31, 32, 33, 34, and 35).
 - **Not verified on live hardware:** Live `Capsule`, `HNC`, `vCluster`, `OpenCost`, and `Kueue` executions (`512` CPUs, `4Ti` RAM, `32` GPUs, `20Ti`/`100Ti` storage, `50` PVCs, `500` jobs, `2000` pods, `budgetMonthlyUsd: 120000`, `pods: "50", storage: "300Gi"`, `8080`, `350` lines vs `25` lines) are marked (`untested here`) where not executed by `multitenancy_quota_reconciler_lab.py`.

