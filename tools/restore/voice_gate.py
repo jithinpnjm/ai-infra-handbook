@@ -12,7 +12,7 @@ r = subprocess.run(['python3','tools/loss_check.py',old,new,'--list'],capture_ou
 m = re.search(r'technical terms lost: (\d+) of \d+ \| numbers lost: (\d+)', r)
 ABBR={'SCL','HLW','SP','ASP','LP','AF','HPC1','ADC','CN','NK','NPA','AIP','GAI','LLMOps1','AUR','EAS','FA','PM','FP','PK','NK1','PMO','DDIA','AIE','DMLS','LLMEH','MLPE','LIP'}
 lt=re.search(r"LOST TERMS: \[(.*?)\]", r, re.S); lost=[x.strip(" '\"") for x in (lt.group(1).split(',') if lt and lt.group(1).strip() else [])]
-real=[x for x in lost if x and x not in ABBR]
+real=[x for x in lost if x and x not in ABBR and not re.match(r'^[A-Z]{2,5}$', x)]  # all-caps tokens = source abbreviations spelled out
 say(m and not real and m.group(2)=='0', f'content loss_check terms lost (excluding spelled-out source abbreviations): {real}, numbers lost {m.group(2) if m else "?"}')
 if m and (m.group(1)!='0' or m.group(2)!='0'): print('   ', ' '.join(r.split('\n')[2:4])[:400])
 cnt = lambda t,s: t.count(s)

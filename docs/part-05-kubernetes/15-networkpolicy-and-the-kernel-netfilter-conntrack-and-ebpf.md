@@ -22,28 +22,36 @@ lab_venue: "GCP / GKE"
 
 ## Why this matters for AI infrastructure
 
-Kubernetes networking is flat and open by default: any pod can connect to any other pod and to the node. In a shared GPU platform that means one team's notebook could reach another team's model server, a compromised dependency in a training job could scan the cluster, metadata endpoints and the API server, and data-exfiltration paths are wide open. NetworkPolicy is the baseline control to segment tenants and workloads (inference vs training vs data services vs system components), to constrain egress to approved storage and registries, and to meet compliance requirements. Because enforcement lives in the node kernel (iptables/ipsets or eBPF programs), misunderstanding its semantics produces both security holes and self-inflicted outages (DNS blocked, probes failing, operators unable to reach webhooks). This chapter explains the API precisely, shows how enforcement works in the kernel, and gives practical policy patterns and testing methods for AI platforms.
+Picture a shared GPU platform where one team's notebook can open a connection to another team's model server. That is the default. Kubernetes networking is flat and open: any pod can connect to any other pod and to the node. A compromised dependency in a training job could then scan the cluster, the metadata endpoints and the API server. Data could also leave through paths nobody has closed.
+
+NetworkPolicy is the baseline control for this problem. You use it to segment tenants and workloads into inference, training, data services and system components. You also use it to constrain egress to approved storage and registries, and to meet compliance requirements.
+
+Enforcement lives in the node kernel, through iptables and ipsets or through eBPF programs. That is why a wrong guess about the semantics costs you twice. It can open a security hole, or it can cause an outage nobody intended, such as blocked DNS, failing probes or operators that cannot reach their webhooks. This chapter explains the API precisely. It then shows how enforcement works in the kernel, and gives practical policy patterns and testing methods for AI platforms.
 
 ## Prerequisites and outcomes
 
-Needs 5.10, 5.13, 5.14 and Linux netfilter basics (2.23). After this chapter you can:
+Start with chapters 5.10, 5.13 and 5.14, plus the Linux netfilter basics from chapter 2.23. By the end you should be able to:
 
-- Write correct `NetworkPolicy` resources: pod selectors, namespace selectors, ipBlock, ports (including port ranges), ingress/egress, policy types, additive semantics; predict allow/deny for any flow.
-- Implement a layered pattern: default-deny per namespace, DNS/probe/system allowances, per-app allow rules, controlled egress.
-- Explain how CNIs enforce policy: iptables chains + ipsets (Calico), eBPF policy maps with identities (Cilium), nftables; and how conntrack makes policies stateful.
-- Use extended policy APIs (CalicoGlobalNetworkPolicy, CiliumNetworkPolicy, AdminNetworkPolicy/BaselineAdminNetworkPolicy) and L7/FQDN rules.
-- Test and observe policy (Hubble, Calico flow logs, `cilium policy trace`, netshoot, kube-netpol linting tools) and debug failures.
-- Design policy for multi-tenant GPU clusters including the traps (node-local traffic, hostNetwork pods, probes, webhooks, metadata services, RDMA/secondary networks).
+- Write correct `NetworkPolicy` resources. They use pod selectors, namespace selectors, `ipBlock`, ports and port ranges, ingress and egress rules, and policy types. You should understand additive semantics and predict whether any flow is allowed or denied.
+- Build a layered pattern: default-deny for each namespace, then DNS, probe and system allowances, then per-app allow rules, and finally controlled egress.
+- Explain how CNIs enforce policy. Calico uses iptables chains with ipsets, Cilium uses eBPF policy maps keyed by identities, and nftables is another option. You should also explain how conntrack makes policies stateful.
+- Use the extended policy APIs, namely CalicoGlobalNetworkPolicy, CiliumNetworkPolicy, AdminNetworkPolicy and BaselineAdminNetworkPolicy, along with L7 and FQDN rules.
+- Test and observe policy with Hubble, Calico flow logs, `cilium policy trace`, netshoot and kube-netpol linting tools, and debug the failures you find.
+- Design policy for multi-tenant GPU clusters, and recognize the traps: node-local traffic, `hostNetwork` pods, probes, webhooks, metadata services, and RDMA or secondary networks.
+
+Keep these outcomes in mind as you read, because each one maps to a section below.
 
 ## 1. The NetworkPolicy API
 
-NetworkPolicy is namespaced, additive, and **allow-list based**. Key facts:
+Suppose you want only the gateway to reach your model server. Without a policy, every pod in the cluster can reach it. A `NetworkPolicy` closes that gap, but its rules are easy to misread. So start with the key ideas.
 
-- A policy **selects pods** (`podSelector`) in its own namespace. Pods not selected by any policy for a given direction are **non-isolated** for that direction (all traffic allowed). Once a pod is selected by at least one policy that includes the direction in `policyTypes`, it becomes **isolated** for that direction: only traffic allowed by the union of all applicable policies is permitted.
-- Policies are **additive**: there are no deny rules and no ordering; the allowed set is the union of all matching rules.
-- **Stateful**: reply traffic for an allowed connection is automatically allowed (via connection tracking); policies describe the direction in which the connection is *initiated*.
-- `policyTypes` default: `Ingress` always; `Egress` only if the policy has egress rules. Specify explicitly to avoid surprises.
-- Enforcement is **implemented by the CNI**: with a CNI that doesn't support NetworkPolicy (plain Flannel, basic bridge), policies are accepted by the API and silently ignored.
+A `NetworkPolicy` belongs to one namespace. It is additive, and it works from an allow-list. A policy selects pods with `podSelector` in its own namespace. A pod that no policy selects for a given direction is non-isolated in that direction, so all of its traffic is allowed. Once at least one policy selects the pod and lists that direction in `policyTypes`, the pod becomes isolated in that direction. From then on, only the union of all applicable policies gets through. In plain terms, a flow passes if any one policy allows it.
+
+Policies are additive. There are no deny rules and no ordering, so the allowed set is the union of all matching rules. Policies are also stateful. Reply traffic for an allowed connection is automatically allowed, through connection tracking. A policy describes the direction in which the connection is initiated.
+
+The `policyTypes` field defaults to `Ingress` always. It defaults to `Egress` only when the policy has egress rules. Set it explicitly to avoid surprises. Enforcement belongs to the CNI, not to the API. With a CNI that does not support NetworkPolicy, such as plain Flannel or a basic bridge, the API accepts your policies and silently ignores them.
+
+The manifest below shows the pattern. Read it as two halves. Ingress decides who may reach the model, and egress decides where the model may call. Port 9000 through 9010 is eleven ports in one rule.
 
 ```yaml
 apiVersion: networking.k8s.io/v1
@@ -78,17 +86,19 @@ spec:
 
 ### Selector semantics (a common source of mistakes)
 
-Within a `from`/`to` list:
+Most mistakes with NetworkPolicy come from selectors, so read them slowly. Inside one `from` or `to` list, each list element is OR'd with the others. Inside one element, `namespaceSelector` and `podSelector` are AND'd. The rule then matches pods with that label inside namespaces with that label.
 
-- Each **list element** is OR'd with the others.
-- Within one element, `namespaceSelector` **and** `podSelector` are AND'd (pods matching `podSelector` in namespaces matching `namespaceSelector`).
-- An element with only `podSelector` means "pods in the **policy's own namespace**"; with only `namespaceSelector` means "all pods in matching namespaces"; an empty `namespaceSelector: {}` matches all namespaces; an empty `podSelector: {}` matches all pods (in the relevant namespace scope).
-- `ipBlock` matches IP ranges (with `except`), intended for **cluster-external** IPs; pod IPs are ephemeral and CNI-dependent in how/if `ipBlock` applies to them; avoid using it to select pods.
-- Namespaces have the automatic label `kubernetes.io/metadata.name: <name>`, which makes by-name namespace selection reliable.
-- An **empty `ingress: []`/no rules with `policyTypes: [Ingress]`** denies all ingress to selected pods; `ingress: [{}]` allows all.
-- Ports: protocol default TCP; named ports allowed (resolved per target pod); `endPort` ranges; SCTP support depends on the CNI. Omitting `ports` allows all ports for that peer.
+An element that holds only a `podSelector` means pods in the policy's own namespace. An element that holds only a `namespaceSelector` means all pods in the matching namespaces. An empty `namespaceSelector: {}` matches all namespaces. An empty `podSelector: {}` matches all pods in the relevant namespace scope.
+
+Use `ipBlock` for cluster-external IPs. Pod IPs are ephemeral, and how or whether `ipBlock` applies to them depends on the CNI. Avoid using it to select pods. Every namespace also carries the automatic label `kubernetes.io/metadata.name: <name>`, so selecting a namespace by name is reliable.
+
+An empty `ingress: []`, or no rules with `policyTypes: [Ingress]`, denies all ingress to the selected pods. By contrast, `ingress: [{}]` allows all of it. Protocol defaults to TCP. Named ports are allowed and resolve per target pod, and `endPort` covers a range. SCTP support depends on the CNI. If you omit `ports`, the peer may use any port.
+
+Before you write any `from` list, check whether each element is an OR and whether the fields inside it are an AND.
 
 ### Default-deny and baseline patterns
+
+The three policies below form a baseline you can apply to a namespace. The first denies everything, the second restores DNS, and the third allows traffic inside the namespace.
 
 ```yaml
 # 1. Default deny all ingress and egress in a namespace
@@ -123,9 +133,13 @@ spec:
   ingress: [ { from: [ { podSelector: {} } ] } ]
 ```
 
-Design guidance: start with default-deny **ingress** everywhere (low risk), then add default-deny **egress** with explicit DNS, API server, storage, registry and monitoring allowances; roll out gradually using policy audit/logging modes (Calico staged policies, Cilium audit mode, Hubble) to see what would be blocked; manage policies as code (GitOps, 4.26) with label conventions (`app`, `tier`, `team`) and shared "building block" policies.
+Design guidance follows from these patterns. Start with default-deny ingress everywhere, because it carries the lowest risk. Then add default-deny egress, with explicit allowances for DNS, the API server, storage, registries and monitoring. Roll this out gradually. Calico staged policies, Cilium audit mode and Hubble show what would be blocked before you enforce anything. Manage policies as code through GitOps (4.26), using the labels `app`, `tier` and `team` and shared building-block policies.
+
+Start with ingress, and add egress only after audit mode shows what it would block.
 
 ## 2. Things NetworkPolicy does not do (and traps)
+
+NetworkPolicy has gaps, and several of them catch teams off guard. A policy set that looks complete can still leave a path open, or it can block a probe your platform depends on. The table lists the common traps, with a mitigation for each one.
 
 | Gap/trap | Detail | Mitigation |
 |---|---|---|
@@ -145,7 +159,11 @@ Design guidance: start with default-deny **ingress** everywhere (low risk), then
 | Policy creation races | A pod can start before policy is programmed (brief allow window or deny window) | Some CNIs block endpoint creation until policy loaded (Cilium), readiness gating |
 | Logging | Standard API has no logging | CNI features: Calico flow logs/log action, Cilium Hubble |
 
+Most of these mitigations depend on which CNI you run, so check its features before you rely on one. The traps that hit AI platforms hardest are the probe, webhook and RDMA rows.
+
 ## 3. How enforcement works in the kernel
+
+When a packet leaves a source pod or arrives at a destination pod, the policy engine checks it in a fixed order. The diagram shows that order. The sections after it explain each stage in turn.
 
 ```mermaid
 flowchart TD
@@ -160,13 +178,17 @@ flowchart TD
     NP -->|No: Non-Isolated| BANP["3. BaselineAdminNetworkPolicy<br/>(Default Cluster Posture)"]
 ```
 
+Read the diagram from the top, as you would trace a flow through it. An established flow is allowed straight away. A new connection goes through the admin policy first, then the namespace policy, and then the baseline policy when the pod is not isolated.
+
 ### Netfilter basics and conntrack
 
-Policy engines hook packets traversing the node: pod egress on the host-side veth (or tc ingress on the veth), pod ingress when delivering to the veth, and node-to-pod traffic. Linux **netfilter** provides hooks (`PREROUTING`, `FORWARD`, `INPUT`, `OUTPUT`, `POSTROUTING`) used by iptables/nftables; **conntrack** tracks flows so rules can match `ESTABLISHED,RELATED` and replies pass automatically (the "stateful" property). Because conntrack entries persist across rule changes, an already-established connection may continue after a policy that would block new connections is applied (until it ends or the entry times out), a frequent confusion when testing; to cut existing flows delete the conntrack entries (`conntrack -D`) or use CNI features that flush on policy change.
+Policy engines hook into packets as they cross the node. Pod egress is caught on the host-side veth, or at tc ingress on the veth. Pod ingress is caught when the packet is delivered to the veth, and node-to-pod traffic is caught as well. Linux netfilter provides the hooks `PREROUTING`, `FORWARD`, `INPUT`, `OUTPUT` and `POSTROUTING`, which iptables and nftables use.
+
+Conntrack tracks flows, so a rule can match `ESTABLISHED,RELATED`, and replies pass automatically. That is the stateful property. Conntrack entries persist across rule changes, so an established connection can keep running after you apply a policy that would block new connections. This is a common surprise during testing. The connection continues until it ends or its entry times out. To cut existing flows, delete the entries with `conntrack -D`, or use CNI features that flush on policy change.
 
 ### Calico (iptables dataplane)
 
-Felix compiles policy into iptables chains with **ipsets** for selectors:
+When you run Calico, its Felix agent compiles policy into iptables chains. It uses ipsets for the selectors:
 
 ```text
 cali-FORWARD → cali-from-wl-dispatch / cali-to-wl-dispatch
@@ -177,25 +199,31 @@ ipsets: cali40s:<selector-hash> (sets of pod IPs matching a selector), cali40mas
 Rule form: -m set --match-set cali40s:xxxx src -p tcp --dport 8000 -j MARK --set-xmark 0x10000/0x10000 (allow mark) ... drop at end of profile chain
 ```
 
-Selectors become ipsets maintained incrementally (membership changes = `ipset add/del`, cheap); rule counts grow with policies × ports, not with pod counts. Calico's **eBPF dataplane** replaces this with BPF programs and maps. Inspect: `iptables-save | grep cali-`, `ipset list | head`, `calicoctl get networkpolicy -A -o wide`, `calicoctl get globalnetworkpolicy`, `calicoctl get workloadendpoint -n ns pod -o yaml` (shows applied profiles).
+Selectors become ipsets, and ipsets update incrementally. A membership change is just an `ipset add` or `ipset del`, which is cheap. The number of rules grows with policies times ports, not with the number of pods. Calico's eBPF dataplane replaces these chains with BPF programs and maps. To inspect the result, run `iptables-save | grep cali-`, `ipset list | head`, `calicoctl get networkpolicy -A -o wide` and `calicoctl get globalnetworkpolicy`. The last command, `calicoctl get workloadendpoint -n ns pod -o yaml`, shows the applied profiles.
 
 ### Cilium (eBPF)
 
-Each endpoint has BPF programs at tc ingress/egress on its device; identities (from labels) replace IPs in policy decisions. The policy map per endpoint (`cilium_policy_<id>`) contains entries keyed by (identity, port, protocol, direction) with allow/deny flags and optional L7 redirect to Envoy. Pod → pod: egress program looks up the destination identity via `ipcache`, checks the source endpoint's egress policy, then the destination's ingress policy is checked at the receiver (for local) or via identity carried in the tunnel header (for remote). Connection tracking in BPF CT maps makes it stateful; policy verdicts are reported to Hubble. L7 policies redirect matching flows to a per-node Envoy proxy (adds latency but allows HTTP/gRPC/Kafka/DNS awareness; DNS-based `toFQDNs` rules use the DNS proxy to learn IPs for names and update maps with TTL). Inspect: `cilium endpoint list`, `cilium policy get`, `cilium bpf policy get <ep-id>`, `cilium monitor --type policy-verdict`, `hubble observe --verdict DROPPED`, `cilium policy trace --src-k8s-pod ns:pod --dst-k8s-pod ns:pod --dport 8000`.
+Each endpoint has BPF programs at tc ingress and egress on its device. Identities, which come from labels, replace IP addresses in policy decisions. The policy map for each endpoint, `cilium_policy_<id>`, holds entries keyed by identity, port, protocol and direction. Each entry carries an allow or deny flag, and it can redirect matching traffic to Envoy for L7 handling.
+
+For pod-to-pod traffic, the egress program looks up the destination identity in `ipcache` and checks the source endpoint's egress policy. The destination's ingress policy is checked next, at the receiver for local pods or through the identity carried in the tunnel header for remote pods. Connection tracking in BPF CT maps makes the flow stateful, and verdicts are reported to Hubble. L7 policies redirect matching flows to a per-node Envoy proxy. That adds latency, but it gives the policy awareness of HTTP, gRPC, Kafka and DNS. DNS-based `toFQDNs` rules use the DNS proxy to learn the IPs behind a name, and they update the maps with TTLs. To inspect Cilium, run `cilium endpoint list`, `cilium policy get`, `cilium bpf policy get <ep-id>`, `cilium monitor --type policy-verdict`, `hubble observe --verdict DROPPED`, and `cilium policy trace --src-k8s-pod ns:pod --dst-k8s-pod ns:pod --dport 8000`.
 
 ### nftables-based and other implementations
 
-Antrea (OVS flows), OVN-Kubernetes (OVN ACLs/OVS), kube-router (iptables + ipsets), and nftables backends exist; semantics are the Kubernetes API's, differences are in extended features and performance. Cloud: AWS VPC CNI supports policy via eBPF in newer versions or Calico add-on; GKE Dataplane V2 (Cilium) and Azure NPM/Cilium.
+Several other CNIs exist. Antrea uses OVS flows, OVN-Kubernetes uses OVN ACLs and OVS, and kube-router uses iptables with ipsets. nftables backends also exist. In every case the semantics come from the Kubernetes API, and the differences show up in extended features and performance. In the cloud, AWS VPC CNI supports policy through eBPF in newer versions or through a Calico add-on. GKE Dataplane V2 is Cilium, and Azure offers NPM or Cilium.
 
 ### Performance considerations
 
-Policy evaluation cost is O(#rules) per new connection in iptables (ipset lookups are O(1) per set), BPF map lookups O(1); most cost is on connection establishment. Large numbers of policies/selectors increase compile time and memory (Felix full resyncs, Cilium regeneration); avoid thousands of near-duplicate policies (generate fewer, label-driven ones). Egress to large dynamic FQDN sets expands maps. For AI nodes, policy overhead matters less for long-lived bulk flows and more for connection-heavy services (ingress gateways, DNS).
+Policy evaluation in iptables costs O(#rules) per new connection, while ipset lookups are O(1) per set. BPF map lookups are also O(1). Most of the cost lands on connection establishment. Large numbers of policies and selectors increase compile time and memory, as seen in Felix full resyncs and Cilium regeneration. So avoid thousands of near-duplicate policies, and generate fewer label-driven ones. Egress to large dynamic FQDN sets expands the maps. For AI nodes, policy overhead matters less for long-lived bulk flows, and more for connection-heavy services such as ingress gateways and DNS.
+
+If you see CNI agent CPU climb when policies change, keep your policies few and label-driven.
 
 ## 4. Extended policy models
 
+Standard NetworkPolicy cannot express a cluster-wide deny, so each CNI offers its own extended model. You will meet Calico first.
+
 ### Calico
 
-`NetworkPolicy` (namespaced) and `GlobalNetworkPolicy` (cluster-wide, can target host endpoints) with `order` (priority), `Allow`/`Deny`/`Log`/`Pass` actions, `selector` expressions on labels (`app == 'x' && has(team)`), namespace selectors, service accounts selectors, ICMP, protocols, CIDRs, `doNotTrack`/`preDNAT`/`applyOnForward` for host policies, staged policies (`StagedNetworkPolicy`) to preview effects, and tiers (Enterprise) for hierarchical governance.
+Calico adds `NetworkPolicy` (namespaced) and `GlobalNetworkPolicy` (cluster-wide, and able to target host endpoints). Each one takes an `order` for priority and four actions: `Allow`, `Deny`, `Log` and `Pass`. Selectors use label expressions such as `app == 'x' && has(team)`. For host policies, `doNotTrack`, `preDNAT` and `applyOnForward` apply. `StagedNetworkPolicy` previews a policy's effect before you enforce it, and tiers (Enterprise only) add hierarchical governance.
 
 ```yaml
 apiVersion: projectcalico.org/v3
@@ -215,9 +243,11 @@ spec:
       destination: { ports: [53] }
 ```
 
+This policy denies the metadata address first, then allows the object gateway, and finally allows DNS over UDP port 53. The `order` field sets its priority, here 100.
+
 ### Cilium
 
-`CiliumNetworkPolicy` / `CiliumClusterwideNetworkPolicy`: `endpointSelector`, `ingress`/`egress` plus `ingressDeny`/`egressDeny` (deny takes precedence), `fromEntities`/`toEntities` (`world`, `cluster`, `host`, `remote-node`, `kube-apiserver`, `health`), `toFQDNs` (`matchName`, `matchPattern`), `toCIDR/toCIDRSet`, `toServices`, `toPorts` with L7 `rules.http` (`method`, `path`, headers), `kafka`, `dns`; `CiliumCIDRGroup`; host policies (`nodeSelector`); policy audit mode (`policyAuditMode`); `enable-policy` modes (`default`, `always`, `never`).
+Cilium offers `CiliumNetworkPolicy` and `CiliumClusterwideNetworkPolicy`. Besides `ingress` and `egress`, they have `ingressDeny` and `egressDeny`, and deny takes precedence. Entity selectors such as `fromEntities` and `toEntities` cover `world`, `cluster`, `host`, `remote-node`, `kube-apiserver` and `health`. Destinations can be matched with `toFQDNs` (`matchName` or `matchPattern`) or `toCIDR`/`toCIDRSet`. A `toPorts` rule can carry L7 rules under `rules.http`, or Kafka and DNS rules. Other options include `toServices`, `CiliumCIDRGroup`, host policies that use `nodeSelector`, a policy audit mode (`policyAuditMode`), and `enable-policy` modes `default`, `always` and `never`.
 
 ```yaml
 apiVersion: cilium.io/v2
@@ -238,13 +268,15 @@ spec:
     - toEntities: [kube-apiserver]
 ```
 
+The DNS rule does more than allow lookups. It gives Cilium visibility into DNS, so it can learn the addresses behind the `toFQDNs` names. Traffic to `*.huggingface.co` and `storage.googleapis.com` is then allowed on TCP port 443.
+
 ### Admin and baseline network policies
 
-The `policy.networking.k8s.io` API group (SIG Network) defines **AdminNetworkPolicy** (cluster-scoped, evaluated *before* namespace NetworkPolicies, with `Allow`/`Deny`/`Pass` and priority; cluster admins set guardrails that tenants cannot override) and **BaselineAdminNetworkPolicy** (default posture evaluated *after* NetworkPolicies; e.g., default deny egress to the Internet unless allowed). Support is arriving in Cilium, Calico, OVN-K, Antrea and others: a standard route to cluster-wide guardrails for multi-tenant platforms; verify implementation maturity.
+The `policy.networking.k8s.io` API group, defined by SIG Network, adds two cluster-scoped kinds. `AdminNetworkPolicy` runs before namespace NetworkPolicies. It supports `Allow`, `Deny` and `Pass` with a priority, so cluster admins can set guardrails that tenants cannot override. `BaselineAdminNetworkPolicy` runs after NetworkPolicies and sets the default posture. For example, it can deny egress to the Internet unless something else allows it. Cilium, Calico, OVN-K, Antrea and others are adding support. Check how mature each implementation is before you depend on it.
 
 ## 5. Policy design for a multi-tenant GPU platform
 
-Tiers of the cluster and their expected flows:
+Not every zone of the cluster deserves the same policy. A serving zone with a gateway in front of it has different needs from a training zone full of jobs. The table lists each zone, the workloads it runs and the stance to take.
 
 | Zone | Examples | Policy stance |
 |---|---|---|
@@ -256,20 +288,22 @@ Tiers of the cluster and their expected flows:
 | **Interactive** | Notebooks (JupyterHub) | Egress allow-list (package mirrors, internal APIs), no access to other tenants or cloud metadata; time-limited |
 | **Untrusted code** | Customer containers, arbitrary notebooks | Default deny egress except specific proxies; sandboxed runtimes (5.2); no node/API access |
 
-Practical rules:
+Read each row as the default you should start from for that zone. The rules below apply those stances to real workloads.
 
-1. **Label discipline** underpins policy: standardise `app.kubernetes.io/name`, `team`, `tier`, `job-name`/`training.kubeflow.org/job-name`; operators propagate job labels to pods; policy selects by those labels.
-2. **Default deny + building blocks**: namespaces created by automation (Terraform/GitOps, 4.25) get default-deny and DNS/allowlist baseline automatically; teams add app-specific rules by PR.
-3. **Protect the control plane and metadata**: deny egress to the cloud metadata IP (169.254.169.254) and to node/management networks from tenant pods; allow only the Kubernetes API where needed (operators), preferably through narrow RBAC.
-4. **Training job communication**: allow all intra-job traffic by a label selector (`job-name: run-142`) in both directions; if workers need peer discovery before readiness (5.11), the policy allows the headless Service ports; sidecars, exporters and probes must be included. For NCCL over the secondary RDMA network, policy does not apply, so enforce isolation on the fabric (separate VLANs/VRFs, IB partition keys, or per-tenant physical racks) and keep primary-network policy for control traffic.
-5. **Egress to storage and registries**: allow by CIDR of internal storage gateways; for SaaS endpoints use FQDN-capable policies or an egress proxy/gateway with allow-lists and logging.
-6. **Observability**: enable flow logging/Hubble in audit mode first; review dropped flows weekly; alert on denies from production workloads (misconfiguration) and on allow-flows to forbidden destinations.
-7. **Test in CI**: render policies and run `kubectl` e2e tests with netshoot (connect tests matrix) or tools such as `netassert`, `cyclonus` (NetworkPolicy conformance/test generator), Cilium connectivity tests, `kube-linter`/`kubesec` for missing policies, `kubectl-np-viewer`/Network Policy Editor (editor.networkpolicy.io) for visualisation and review.
-8. **Break-glass and debugging**: provide a documented way to diagnose (policy trace, Hubble) and to temporarily widen a policy via PR with expiry, not by deleting the default-deny.
+1. Label discipline holds the whole design together, so settle it first. Standardize `app.kubernetes.io/name`, `team`, `tier` and `job-name` or `training.kubeflow.org/job-name`. Operators propagate job labels to pods, and policies select pods by those labels.
+2. Use default deny with building blocks. Namespaces created by automation (Terraform or GitOps, 4.25) get a default-deny policy and a DNS and allow-list baseline automatically. Teams then add app-specific rules through a pull request.
+3. Protect the control plane and the metadata service. Deny egress from tenant pods to the cloud metadata IP (169.254.169.254) and to node or management networks. Allow the Kubernetes API only where operators need it, and prefer narrow RBAC for that access.
+4. Allow intra-job traffic for training. Permit all traffic within the job by a label selector such as `job-name: run-142`, in both directions. If workers discover peers before they are ready (5.11), the policy must allow the headless Service ports. Sidecars, exporters and probes must be included too. NCCL over the secondary RDMA network is outside NetworkPolicy, so enforce that isolation on the fabric, using separate VLANs or VRFs, InfiniBand partition keys, or per-tenant physical racks. Keep the primary-network policy for control traffic.
+5. Allow egress to storage and registries by the CIDR of internal storage gateways. For SaaS endpoints, use FQDN-capable policies, or an egress proxy or gateway with allow-lists and logging.
+6. Turn on observability early. Enable flow logging or Hubble in audit mode first, review dropped flows weekly, and alert on denies from production workloads, which usually signal a misconfiguration. Also alert on allowed flows to forbidden destinations.
+7. Test policy in CI. Render the policies and run `kubectl` end-to-end tests with netshoot as a connectivity matrix. Tools such as `netassert`, `cyclonus` (a NetworkPolicy conformance and test generator), Cilium connectivity tests, `kube-linter` and `kubesec` catch missing policies. `kubectl-np-viewer` and the Network Policy Editor (editor.networkpolicy.io) help you visualize and review policies.
+8. Provide a documented break-glass path. Give operators a way to diagnose with policy trace and Hubble, and to widen a policy temporarily through a pull request with an expiry. Never widen it by deleting the default-deny.
+
+Protect the default-deny, and change only the allowances you need.
 
 ## 6. Testing and debugging
 
-Method: define the exact flow (source pod, destination pod/IP, port, direction), identify applicable policies for both ends, predict, then test.
+The method is simple to state. Define the exact flow: source pod, destination pod or IP, port and direction. Identify the applicable policies at both ends, predict the result, and then test it. The commands below follow that order, with Kubernetes checks first and then the tool for your CNI.
 
 ```bash
 # What policies select this pod?
@@ -294,6 +328,8 @@ sudo tcpdump -ni <host-veth> 'tcp port 8000' -c 20                       # see S
 dmesg | grep -i 'cali\|DROP'                                              # if Log action configured
 ```
 
+When a flow fails, match the symptom to its likely cause in the table below before you change anything. Each row pairs a symptom with a cause and a fix.
+
 | Symptom | Likely cause | Fix |
 |---|---|---|
 | Everything breaks after default-deny | DNS egress missing; probes/webhooks/API server blocked | Add DNS allow; check kubelet probe paths (node-origin traffic); allow control-plane → webhook |
@@ -308,44 +344,50 @@ dmesg | grep -i 'cali\|DROP'                                              # if L
 | NCCL/MPI works across tenants | Secondary network not under policy | Enforce at fabric/VLAN/PKey level |
 | High CPU on CNI agent during policy churn | Too many policies/selectors; frequent label changes | Consolidate policies; avoid per-job unique policies; use stable labels |
 
+Before you widen any policy, use a trace to confirm which side is dropping the packet.
+
 ## 7. Lab
 
-First, run the self-checking Python lab (`code/part05/networkpolicy_evaluator_lab.py`) locally. It verifies the `NetworkPolicy` `from`/`to` peer selector evaluator (`evaluate_peer_list`: contrasting single-element `namespaceSelector` AND `podSelector` against the accidental two-element OR YAML dash bug, plus `ipBlock` `cidr`/`except` matching) and the `AdminNetworkPolicy -> NetworkPolicy -> BaselineAdminNetworkPolicy` precedence evaluator (`evaluate_policy_hierarchy`).
+Start on your own machine, where you can run the lab without a cluster. Run the self-checking Python lab, `code/part05/networkpolicy_evaluator_lab.py`. It verifies the `from`/`to` peer selector evaluator, `evaluate_peer_list`. The check contrasts a single-element `namespaceSelector` AND `podSelector` with the accidental two-element OR caused by a YAML dash bug. It also tests `ipBlock` matching with `cidr` and `except`. Finally, it checks the precedence evaluator, `evaluate_policy_hierarchy`, for `AdminNetworkPolicy`, then `NetworkPolicy`, then `BaselineAdminNetworkPolicy`.
 
 ```bash
 python3 code/part05/networkpolicy_evaluator_lab.py
 ```
 
-Next, on a Kubernetes cluster with Calico or Cilium (all interactive shell steps below are `untested here`), work through these exercises:
+The remaining steps need a Kubernetes cluster with Calico or Cilium. Every interactive shell step below is `untested here`. Work through these exercises in order.
 
-1. **Prove CNI enforcement**: on a CNI without policy (Flannel), apply default-deny and show no effect; on Calico/Cilium show enforcement; read the netfilter/BPF artefacts.
-2. **Selector semantics**: build the namespace/pod selector truth table by creating `from` lists with AND/OR variations and testing each with netshoot; record results.
-3. **Layered policy**: implement default deny + DNS + gateway-to-app + app-to-DB rules for a three-tier app in two namespaces; add egress allowance to an "object store" pod by CIDR and by FQDN (Cilium `toFQDNs`).
-4. **Kernel view**: for Calico, trace one packet through `cali-*` chains with counters and `ipset` membership; for Cilium, read the endpoint policy map and run `cilium policy trace`; compare which is easier to reason about.
-5. **conntrack effect**: start a long TCP connection, apply a deny policy, show the connection continues; flush conntrack and show it breaks; discuss operational implications.
-6. **Probe and webhook traps**: apply default-deny egress+ingress and break readiness probes/webhooks (use a validating webhook pod); restore by allowing node/control-plane sources.
-7. **hostNetwork bypass**: show a `hostNetwork` pod ignoring pod policies; add a host policy (Calico HostEndpoint or Cilium host policy) and Pod Security restriction.
-8. **Global guardrails**: create a Calico `GlobalNetworkPolicy` or Cilium clusterwide deny for the metadata IP and cross-tenant traffic; then, if available, an AdminNetworkPolicy/BaselineAdminNetworkPolicy and observe precedence versus namespace policies.
-9. **Training job policy**: deploy a 4-pod distributed job (headless Service) with default-deny; write the policy that allows intra-job traffic by job label and egress to storage; verify rendezvous works, then block a neighbour tenant.
-10. **Observability and audit mode**: enable Hubble (or Calico flow logs); run policies in audit/staged mode; produce a report of flows that would be denied; promote to enforce.
-11. **Policy testing in CI**: generate a connectivity matrix test (expected allow/deny pairs) and run with cyclonus or a custom script against a kind cluster in CI (4.13).
-12. **Scale test**: create thousands of pods and hundreds of policies; measure agent CPU/memory and time-to-enforce; compare Calico iptables, Calico eBPF and Cilium.
-13. **Clean up**.
+1. Prove CNI enforcement. On a CNI without policy support, such as Flannel, apply default-deny and show that it has no effect. On Calico or Cilium, show real enforcement, then read the netfilter and BPF artifacts.
+2. Map the selector semantics. Build the namespace and pod selector truth table by writing `from` lists with AND and OR variations. Test each one with netshoot, and record the results.
+3. Build a layered policy. For a three-tier app across two namespaces, add default deny, DNS, gateway-to-app and app-to-DB rules. Then allow egress to an object store pod, first by CIDR and then by FQDN with Cilium `toFQDNs`.
+4. Read the kernel view. On Calico, trace one packet through the `cali-*` chains, using the counters and the `ipset` membership. On Cilium, read the endpoint policy map and run `cilium policy trace`. Then compare which one you find easier to reason about.
+5. Observe the conntrack effect. Start a long TCP connection, apply a deny policy, and show that the connection continues. Flush conntrack, show that it breaks, and then discuss what this means for operations.
+6. Test the probe and webhook traps. Apply default-deny egress and ingress, and watch the readiness probes and webhooks break. Use a validating webhook pod for this. Restore the traffic by allowing node and control-plane sources.
+7. Show the hostNetwork bypass. Demonstrate a `hostNetwork` pod that ignores pod policies. Then add a host policy, using a Calico HostEndpoint or a Cilium host policy, and a Pod Security restriction.
+8. Add global guardrails. Create a Calico `GlobalNetworkPolicy` or a Cilium clusterwide deny that blocks the metadata IP and cross-tenant traffic. If your cluster supports it, add an AdminNetworkPolicy and a BaselineAdminNetworkPolicy, and observe their precedence over namespace policies.
+9. Test a training job's policy. Deploy a four-pod distributed job behind a headless Service, with default-deny in place. Write a policy that allows intra-job traffic by job label and egress to storage. Verify that rendezvous works, then block a neighbouring tenant.
+10. Turn on observability and audit mode. Enable Hubble or Calico flow logs, and run the policies in audit or staged mode. Produce a report of the flows that would be denied, and then promote the policies to enforce.
+11. Test policy in CI. Generate a connectivity matrix of expected allow and deny pairs. Run it with cyclonus, or with a custom script against a kind cluster in CI (4.13).
+12. Run a scale test. Create thousands of pods and hundreds of policies. Measure the agent's CPU and memory and the time to enforce. Then compare Calico iptables, Calico eBPF and Cilium.
+13. Clean up.
 
 ## 8. Common mistakes
 
-- Creating NetworkPolicies on a CNI that doesn't enforce them and believing the cluster is segmented.
-- Default-deny egress without DNS, API server, or probe allowances; breaking operators and webhooks.
-- Misreading selector AND/OR semantics (a missing dash converts OR into AND, widening or narrowing the rule).
-- Using `ipBlock` for pod or Service IPs; ignoring SNAT effects on source IP.
-- Assuming policy covers `hostNetwork` pods, node processes, and secondary (Multus/RDMA) interfaces.
-- Testing only from the node (exempt) or only the allow path (never the deny).
-- Forgetting both directions: ingress on the destination and egress on the source must both permit.
-- Per-job unique policies at scale, causing agent churn.
-- No audit/rollout mode; no flow visibility; applying cluster-wide deny during peak hours.
-- Treating NetworkPolicy as the only isolation: it does not replace authentication, authorisation, mTLS, runtime isolation or fabric-level tenant separation.
+Watch for these mistakes as you write your own policies.
+
+- Creating NetworkPolicies on a CNI that does not enforce them, then believing the cluster is segmented.
+- Applying default-deny egress without allowing DNS, the API server or probes, which breaks operators and webhooks.
+- Misreading the AND and OR semantics of selectors. A missing dash turns an OR into an AND, which can widen or narrow the rule.
+- Using `ipBlock` for pod or Service IPs, and ignoring how SNAT changes the source IP.
+- Assuming the policy covers `hostNetwork` pods, node processes, and secondary (Multus or RDMA) interfaces.
+- Testing only from the node, which is exempt, or testing only the allow path and never the deny.
+- Forgetting that both directions matter. Ingress on the destination and egress on the source must both permit the flow.
+- Writing a unique policy per job at scale, which causes agent churn.
+- Skipping audit or rollout mode and flow visibility, or applying a cluster-wide deny during peak hours.
+- Treating NetworkPolicy as the only isolation. It does not replace authentication, authorization, mTLS, runtime isolation or fabric-level tenant separation.
 
 ## 9. Interview angles
+
+Interviewers often start with the basics. Be ready to explain how NetworkPolicy works, what the default is, and what additive semantics mean.
 
 - "How does NetworkPolicy work? What's the default? What is additive semantics?"
 - "Write a policy that only allows the gateway namespace to reach model servers on 8000, with DNS egress."
@@ -358,21 +400,23 @@ Next, on a Kubernetes cluster with Calico or Cilium (all interactive shell steps
 
 ## Exercises
 
-1. **`NetworkPolicy` Isolation Semantics, Additive Union Rules, and the Single-Dash AND vs. OR YAML Trap (`NK` Ch. 4–5):** Using `evaluate_peer_list()` in `code/part05/networkpolicy_evaluator.py`, explain what makes a Pod "isolated" vs "non-isolated" for `Ingress` and `Egress`, and show the exact difference in YAML and security behavior between placing `namespaceSelector` and `podSelector` in a single `from` list element (AND) versus two separate `from` list elements (OR).
-2. **Building a Layered Multi-Tenant Namespace Baseline (`default-deny-all` + `allow-dns` + `allow-same-namespace` + `allow-gateway-to-model`):** Trace the four `NetworkPolicy` manifests in Section 1, explaining why `allow-dns` must permit both `UDP/53` and `TCP/53` to `kube-system` (`k8s-app: kube-dns`) and `169.254.20.10/32` (`NodeLocal DNSCache`), and why both source egress and destination ingress policies must permit a cross-namespace flow when both ends are isolated.
-3. **Kernel Enforcement Under the Hood: `conntrack` Statefulness, Calico `iptables` + `ipset` (`cali40s:*`), and Cilium `eBPF` Identity Maps:** Trace how Calico (`cali-from-wl-dispatch` -> `cali-fw-<iface>`, `cali-to-wl-dispatch` -> `cali-tw-<iface>`, and `cali40s:<hash>` `ipset`s) and Cilium (`cilium_policy_<ep_id>` keyed by numeric Security Identity + Envoy L7 redirect) enforce policies in the kernel, and explain why an already-established TCP flow continues working after a deny policy is applied until `conntrack -D` flushes the flow.
-4. **Extended Policy Models: Calico `GlobalNetworkPolicy`, Cilium `CiliumNetworkPolicy` (`toFQDNs`, `toEntities`, L7 HTTP), and `AdminNetworkPolicy` / `BaselineAdminNetworkPolicy`:** Using `evaluate_policy_hierarchy()` in `code/part05/networkpolicy_evaluator.py`, trace the evaluation precedence of `AdminNetworkPolicy` (`Allow`/`Deny`/`Pass`) -> `NetworkPolicy` -> `BaselineAdminNetworkPolicy`, and show how `GlobalNetworkPolicy` blocks `169.254.169.254/32` (cloud metadata) while `CiliumNetworkPolicy` allows egress to `*.huggingface.co` via `toFQDNs`.
-5. **The 12 `NetworkPolicy` Traps on GPU Clusters (`hostNetwork`, Secondary Multus/RDMA Interfaces, Webhooks, API Server Egress, and Service DNAT):** Explain why standard `NetworkPolicy` does **not** filter traffic on `hostNetwork: true` pods or secondary Multus RDMA/SR-IOV interfaces (`net1..net8`), how to isolate RDMA traffic at the fabric level (VLANs / InfiniBand PKeys), and why admission webhooks break if default-deny ingress blocks the control-plane nodes.
-6. **Testing, Auditing, and Debugging Policies (`cilium policy trace`, `hubble observe`, `iptables -L -v`, and `cyclonus`):** Given a connection timeout from `edge/tester` to `serving/vllm-xxx:8000`, write the exact Calico (`iptables -L cali-tw-... -v`) and Cilium (`cilium policy trace` and `hubble observe --verdict DROPPED`) commands to prove whether `NetworkPolicy` dropped the packet.
+You can work through these six exercises in order.
+
+1. Using `evaluate_peer_list()` in `code/part05/networkpolicy_evaluator.py`, explain the isolation rules: what makes a pod isolated, and what makes it non-isolated, for `Ingress` and for `Egress`. Cover the additive union rules too, and the single-dash AND-versus-OR trap from Networking and Kubernetes, chapters 4 and 5. Then show the exact difference in YAML and in security behavior between putting `namespaceSelector` and `podSelector` in one `from` list element (AND), and putting them in two separate elements (OR).
+2. Trace the four manifests in Section 1, `default-deny-all`, `allow-dns`, `allow-same-namespace` and `allow-gateway-to-model`, which form a layered multi-tenant namespace baseline. Explain why `allow-dns` must permit both `UDP/53` and `TCP/53` to `kube-system` (`k8s-app: kube-dns`), and also `169.254.20.10/32` for NodeLocal DNSCache. Then explain why both the source's egress policy and the destination's ingress policy must permit a cross-namespace flow when both ends are isolated.
+3. Trace how enforcement works in the kernel. For Calico, follow `cali-from-wl-dispatch` to `cali-fw-<iface>`, and `cali-to-wl-dispatch` to `cali-tw-<iface>`, along with the `cali40s:<hash>` ipsets. For Cilium, follow the `eBPF` identity maps, `cilium_policy_<ep_id>`, which are keyed by numeric Security Identity, with the Envoy L7 redirect. Then explain why an already-established TCP flow keeps working after a deny policy is applied, until `conntrack -D` flushes the flow.
+4. Using `evaluate_policy_hierarchy()` in `code/part05/networkpolicy_evaluator.py`, trace the evaluation precedence: `AdminNetworkPolicy` (`Allow`, `Deny`, `Pass`), then `NetworkPolicy`, then `BaselineAdminNetworkPolicy`. Cover the extended policy models too. Show how a `GlobalNetworkPolicy` blocks `169.254.169.254/32` (the cloud metadata address), while a `CiliumNetworkPolicy` using `toFQDNs`, `toEntities` and L7 HTTP allows egress to `*.huggingface.co`.
+5. Explain why standard NetworkPolicy does not filter traffic on `hostNetwork: true` pods, or on the secondary Multus RDMA and SR-IOV interfaces (`net1..net8`). Describe how to isolate RDMA traffic at the fabric level, using VLANs or InfiniBand PKeys. Then explain why admission webhooks break if you let default-deny ingress block the control-plane nodes. These are the 12 NetworkPolicy traps on GPU clusters, covering `hostNetwork`, secondary RDMA interfaces, webhooks, API server egress and Service DNAT.
+6. If you get a connection timeout from `edge/tester` to `serving/vllm-xxx:8000`, write the exact Calico commands (`iptables -L cali-tw-... -v`) and the Cilium commands (`cilium policy trace` and `hubble observe --verdict DROPPED`). Use them to prove whether NetworkPolicy dropped the packet. Cover the testing and auditing side as well, with `cyclonus` in the mix.
 
 ## Checkpoint questions (20)
 
 <details>
 <summary>1. What does it mean that Kubernetes `NetworkPolicy` is \"non-isolated by default\", \"isolated on selection\", and \"strictly additive\"?</summary>
 
-- **Non-isolated by default:** Until a Pod is matched by the `spec.podSelector` of at least one `NetworkPolicy` that includes `Ingress` (or `Egress`) in `spec.policyTypes`, **100% of ingress (or egress) traffic to/from that Pod is allowed**.
-- **Isolated on selection:** As soon as **even one** `NetworkPolicy` selects a Pod for `Ingress`, the Pod becomes **isolated for Ingress**—meaning **all ingress traffic is denied EXCEPT what is explicitly permitted** by matching policies.
-- **Strictly additive (no deny rules in standard `NetworkPolicy`):** If 3 `NetworkPolicy` objects select the same Pod, the allowed traffic is the **mathematical union (OR)** of the traffic allowed by all 3 policies. You cannot write a "deny" rule in a standard `networking.k8s.io/v1` `NetworkPolicy` to override another `NetworkPolicy`'s allow rule.
+- **Non-isolated by default:** A pod stays open until a `NetworkPolicy` selects it with `spec.podSelector` and lists `Ingress` (or `Egress`) in `spec.policyTypes`. Until then, 100% of its ingress (or egress) traffic is allowed.
+- **Isolated on selection:** Once even one policy selects the pod for `Ingress`, the pod is isolated for ingress. Everything is denied except what a matching policy explicitly allows.
+- **Strictly additive:** If three `NetworkPolicy` objects select the same pod, the allowed traffic is the union (OR) of what all three allow. A standard `networking.k8s.io/v1` `NetworkPolicy` has no deny rule, so you cannot use one to override another policy's allow rule.
 </details>
 
 <details>
@@ -394,29 +438,26 @@ from:
   - podSelector:
       matchLabels: { app: gateway }
 ```
-- **Block A (AND):** Allows traffic **only** from Pods labeled `app: gateway` that are running **inside** the `edge` namespace.
-- **Block B (OR):** Allows traffic from **EVERY Pod in the `edge` namespace** (regardless of its labels) **OR** any Pod labeled `app: gateway` in the **policy's own namespace** (`serving`)—accidentally opening the model server to every pod in `edge`.
+- **Block A (AND):** Only pods labeled `app: gateway` that run inside the `edge` namespace are allowed.
+- **Block B (OR):** Every pod in the `edge` namespace is allowed, whatever its labels. Pods labeled `app: gateway` in the policy's own namespace (`serving`) are allowed too. That accidentally opens the model server to every pod in `edge`.
 </details>
 
 <details>
 <summary>3. If `spec.policyTypes` is omitted from a `NetworkPolicy`, how does Kubernetes infer whether the policy applies to `Ingress`, `Egress`, or both?</summary>
 
-By default, if `spec.policyTypes` is omitted:
-- Kubernetes **always** includes **`["Ingress"]`**.
-- Kubernetes includes **`"Egress"`** **only if** the policy contains a `spec.egress` field.
-Consequently, if you write a policy intending to restrict only `Egress` (`spec.egress: [...]`) and forget to set **`policyTypes: [Egress]`**, Kubernetes defaults `policyTypes` to **`[Ingress, Egress]`** with an empty `ingress` section—**silently blocking all inbound traffic to your Pods**. Always write `policyTypes` explicitly.
+When `spec.policyTypes` is omitted, Kubernetes always includes `["Ingress"]`. It includes `"Egress"` only if the policy has a `spec.egress` field. Suppose you write a policy meant to restrict only egress, with `spec.egress: [...]`, and forget `policyTypes: [Egress]`. Kubernetes then sets `policyTypes` to `[Ingress, Egress]` with an empty `ingress` section. The result silently blocks all inbound traffic to your pods. Always write `policyTypes` explicitly.
 </details>
 
 <details>
 <summary>4. How do you write a `NetworkPolicy` that denies all Ingress and all Egress in a namespace (`default-deny-all`), vs. one that allows all Ingress?</summary>
 
-- **Deny all Ingress and Egress (`default-deny-all`):** Select all Pods (`podSelector: {}`), declare `policyTypes: [Ingress, Egress]`, and omit (or leave empty `[]`) both `ingress` and `egress`:
+- **Deny all Ingress and Egress (`default-deny-all`):** Select every pod with `podSelector: {}`, declare `policyTypes: [Ingress, Egress]`, and leave out both `ingress` and `egress`, or set them to an empty `[]`:
   ```yaml
   spec:
     podSelector: {}
     policyTypes: [Ingress, Egress]
   ```
-- **Allow all Ingress:** Include an empty rule object `[{}]` inside `ingress`:
+- **Allow all Ingress:** Put an empty rule object, `[{}]`, inside `ingress`:
   ```yaml
   spec:
     podSelector: {}
@@ -429,105 +470,99 @@ Consequently, if you write a policy intending to restrict only `Egress` (`spec.e
 <details>
 <summary>5. What happens when you apply a `NetworkPolicy` on a cluster whose CNI plugin (such as basic Flannel) does not implement a NetworkPolicy controller?</summary>
 
-**`kube-apiserver` accepts and stores the `NetworkPolicy` object with zero warnings or errors, and the CNI silently ignores it—leaving all traffic wide open.** Always verify your CNI supports and has enabled NetworkPolicy enforcement, and run an automated positive/negative connectivity test in CI (`cyclonus` / `netshoot`) to prove unauthorized connections are actually dropped.
+The `kube-apiserver` accepts and stores the object with no warnings or errors. The CNI ignores it silently, so all traffic stays wide open. Always confirm that your CNI supports and has enabled NetworkPolicy enforcement. Then run a positive and negative connectivity test in CI, with `cyclonus` or `netshoot`, to prove that unauthorized connections are really dropped.
 </details>
 
 <details>
 <summary>6. Why is `NetworkPolicy` described as \"stateful\", and why does an already-open TCP stream continue working after you apply a `default-deny` policy?</summary>
 
-In both `iptables`/`nftables` (`-m conntrack --ctstate ESTABLISHED,RELATED -j ACCEPT`) and Cilium (`cilium_ct4_global` eBPF connection tracking map), policy rules are evaluated **when a new connection is initiated (`SYN` / first packet)**, and the resulting `conntrack` entry automatically permits return packets and subsequent packets on that established flow.
-Because the kernel checks `ESTABLISHED` **before** walking the policy chains (in standard `iptables` layouts), a long-lived TCP/gRPC connection opened *before* a `default-deny` policy was applied will continue passing traffic until the connection closes or its conntrack entry is flushed (`conntrack -D`).
+In `iptables` or `nftables`, the rule `-m conntrack --ctstate ESTABLISHED,RELATED -j ACCEPT` does this work. Cilium does it with its `cilium_ct4_global` eBPF connection tracking map. Policy rules are checked when a new connection starts, at the `SYN` or first packet. The `conntrack` entry then lets return packets and later packets on that flow through automatically.
+
+Standard `iptables` layouts check `ESTABLISHED` before they walk the policy chains. So a long-lived TCP or gRPC connection, opened before the `default-deny` policy existed, keeps passing traffic. It does so until the connection closes or its `conntrack` entry is flushed with `conntrack -D`.
 </details>
 
 <details>
 <summary>7. How does Calico's `iptables` dataplane avoid an `O(Pods)` rule explosion inside `iptables` chains when enforcing label selectors?</summary>
 
-Instead of writing a separate `iptables` rule for every Pod IP matching `app=gateway`, Calico's `Felix` agent creates a single Linux kernel **`ipset` hash table** per unique selector (`cali40s:<selector-hash>`) and writes **one fixed `iptables` rule** (`-m set --match-set cali40s:<hash> src -p tcp --dport 8000 -j MARK --set-xmark 0x10000/0x10000`). When Pods scale up or down, `Felix` simply adds or removes the Pod IP in the kernel `ipset` in $O(1)$ time without rewriting the `iptables` policy chain.
+Calico does not write one `iptables` rule per pod IP that matches `app=gateway`. Its `Felix` agent creates one Linux kernel `ipset` hash table for each unique selector, named `cali40s:<selector-hash>`. It then writes one fixed `iptables` rule, such as `-m set --match-set cali40s:<hash> src -p tcp --dport 8000 -j MARK --set-xmark 0x10000/0x10000`. When pods scale up or down, `Felix` adds or removes the pod IP in the kernel `ipset` in $O(1)$ time. The `iptables` chain itself is never rewritten.
 </details>
 
 <details>
 <summary>8. Why should you NEVER use `ipBlock` in a `NetworkPolicy` to select in-cluster Pods or `ClusterIP` Services?</summary>
 
-1. **Pod IPs are ephemeral:** Whenever a Pod restarts or reschedules onto another node, its IP changes.
-2. **Service `ClusterIP`s are DNAT'd before policy evaluation in most CNIs:** When a Pod connects to a `ClusterIP`, `kube-proxy` (or Cilium Socket-LB) translates the destination IP from `ClusterIP` to the backend **`PodIP`** before the egress/ingress policy filter runs—so an `ipBlock` matching the `ClusterIP` will not match the post-DNAT packet.
-3. **SNAT on external/hairpin paths:** Masquerading can rewrite source IPs.
-Always use **`podSelector` and `namespaceSelector`** for in-cluster traffic, and reserve `ipBlock` strictly for external physical subnets/VIPs (like `169.254.169.254/32` or an external storage array CIDR).
+There are three reasons. First, pod IPs are ephemeral: a pod that restarts or moves to another node gets a new IP. Second, most CNIs rewrite a `ClusterIP` to the backend `PodIP` (DNAT) before the policy filter runs. `kube-proxy`, or Cilium Socket-LB, does this, so an `ipBlock` that matches the `ClusterIP` will not match the packet. Third, masquerading on external or hairpin paths can rewrite source IPs. Use `podSelector` and `namespaceSelector` for in-cluster traffic. Reserve `ipBlock` for external subnets and VIPs, such as `169.254.169.254/32` or an external storage array CIDR.
 </details>
 
 <details>
 <summary>9. For a packet from Pod A (in `ns-a`) to reach Pod B (in `ns-b`), what must be true if BOTH Pod A and Pod B are isolated by `NetworkPolicy`?</summary>
 
-Both ends are evaluated independently:
-1. Pod A's **Egress** policies in `ns-a` must explicitly allow outbound traffic to Pod B (in `ns-b`) on the destination port.
-2. **AND** Pod B's **Ingress** policies in `ns-b` must explicitly allow inbound traffic from Pod A (in `ns-a`) on the destination port.
-If *either* side denies the flow, the packet is dropped.
+Each end is checked on its own. Pod A's egress policies in `ns-a` must allow traffic to Pod B on the destination port. At the same time, Pod B's ingress policies in `ns-b` must allow traffic from Pod A on that port. If either side denies the flow, the packet is dropped.
 </details>
 
 <details>
 <summary>10. What breaks immediately when you apply `default-deny-all` (`policyTypes: [Ingress, Egress]`) to a namespace without adding any allow rules, and what remains working?</summary>
 
-- **What breaks immediately:** All **DNS resolution** (`UDP/TCP 53` to `kube-dns` / `NodeLocal DNSCache` is blocked on Egress), all outbound calls to `kube-apiserver` (`kubernetes.default`), object storage, and other Pods, and all inbound requests from Ingress gateways or Prometheus scrapers.
-- **What still works:** **`kubelet` liveness/readiness/startup probes** originating from the Pod's own host node (because CNIs explicitly exempt local host-to-pod traffic so kubelet health checks continue to function).
+- **What breaks at once:** All DNS resolution fails, because egress on `UDP/TCP 53` to `kube-dns` or NodeLocal DNSCache is blocked. Outbound calls to `kube-apiserver` (`kubernetes.default`) stop, and so do calls to object storage and other pods. Inbound requests from ingress gateways or Prometheus scrapers stop too.
+- **What still works:** `kubelet` liveness, readiness and startup probes keep working. They come from the pod's own host node, and CNIs exempt local host-to-pod traffic, so health checks continue.
 </details>
 
 <details>
 <summary>11. Why can a `default-deny` `NetworkPolicy` break a `ValidatingAdmissionWebhook` or `MutatingAdmissionWebhook` Pod (or `metrics-server`), and how do you fix it?</summary>
 
-When `kube-apiserver` invokes an admission webhook (or an aggregated API server like `metrics-server`), the HTTPS connection originates from the **control-plane node IPs** (or the `konnectivity-agent` Pods), *not* from a labeled Pod inside the webhook's namespace. If a `default-deny-ingress` policy selects the webhook Pod and only allows same-namespace Pods, **`kube-apiserver`'s webhook calls time out**—which, if `failurePolicy: Fail` is set, blocks API writes across the cluster. Always allow ingress to webhook ports (`443`/`8443`/`9443`) from the control-plane node CIDR (or `fromEntities: [kube-apiserver, host, remote-node]` in Cilium).
+When `kube-apiserver` calls an admission webhook, or an aggregated API server such as `metrics-server`, the HTTPS connection starts at the control-plane node IPs, or at the `konnectivity-agent` pods. It does not come from a labeled pod in the webhook's namespace. If a `default-deny-ingress` policy selects the webhook pod and allows only same-namespace pods, the webhook calls from `kube-apiserver` time out. With `failurePolicy: Fail` set, that blocks API writes across the whole cluster. Allow ingress to the webhook ports (`443`, `8443` or `9443`) from the control-plane node CIDR. In Cilium, use `fromEntities: [kube-apiserver, host, remote-node]` instead.
 </details>
 
 <details>
 <summary>12. Does a standard Kubernetes `NetworkPolicy` restrict traffic on (a) `hostNetwork: true` Pods or (b) secondary `Multus` RDMA interfaces (`net1..net8`)?</summary>
 
-**No to both:**
-1. **`hostNetwork: true` Pods** share the node's root network namespace and node IP; standard pod-level `NetworkPolicy` does not apply to them (use Pod Security Admission to forbid `hostNetwork: true` for tenant workloads, and use Calico `HostEndpoint` / Cilium Host Firewall policies to protect node interfaces).
-2. **Secondary `Multus` interfaces (`net1..net8`, `macvlan`, `SR-IOV` VFs, InfiniBand)** bypass the primary CNI (`eth0`) entirely. To isolate multi-tenant GPU workloads on RDMA secondary networks, enforce isolation in the **network fabric / NIC hardware** using **per-tenant VLANs / VRFs** (for RoCEv2 Ethernet) or **InfiniBand Partition Keys (`P_Key`s)** managed by `UFM` / Network Operator.
+Standard NetworkPolicy restricts neither.
+1. `hostNetwork: true` pods share the node's root network namespace and node IP, so pod-level NetworkPolicy does not apply to them. Use Pod Security Admission to forbid `hostNetwork: true` for tenant workloads. To protect node interfaces, use Calico `HostEndpoint` or Cilium Host Firewall policies.
+2. Secondary `Multus` interfaces (`net1..net8`, `macvlan`, `SR-IOV` VFs, InfiniBand) bypass the primary CNI (`eth0`) entirely. To isolate multi-tenant GPU workloads on RDMA networks, enforce isolation in the fabric and NIC hardware. Use per-tenant VLANs or VRFs for RoCEv2 Ethernet, or InfiniBand Partition Keys (`P_Key`s) managed by `UFM` or the Network Operator.
 </details>
 
 <details>
 <summary>13. Why must tenant Pods on cloud GPU clusters be blocked from reaching `169.254.169.254/32` (`GlobalNetworkPolicy` / `CiliumClusterwideNetworkPolicy`)?</summary>
 
-`169.254.169.254` is the cloud **Instance Metadata Service (`IMDS`)** on AWS, GCP (`metadata.google.internal`), and Azure. Unless blocked by a network policy (or GKE Workload Identity metadata concealment / AWS IMDSv2 hop-limit `1`), any untrusted notebook or training container on a worker node can query `http://169.254.169.254/...` and steal the **worker node VM's IAM role credentials** (`kubelet` / node service account). Always block `169.254.169.254/32` in a cluster-wide egress policy (`except: [169.254.169.254/32]`).
+`169.254.169.254` is the cloud Instance Metadata Service (`IMDS`) on AWS, GCP (`metadata.google.internal`) and Azure. Without a network policy, or without protection such as GKE Workload Identity metadata concealment or the AWS IMDSv2 hop limit of `1`, an untrusted notebook or training container on a worker node can reach it. From there it can query `http://169.254.169.254/...` and steal the worker node VM's IAM role credentials, which belong to `kubelet` and the node service account. Block `169.254.169.254/32` in a cluster-wide egress policy, using `except: [169.254.169.254/32]`.
 </details>
 
 <details>
 <summary>14. How does Cilium's `toFQDNs` egress policy (`matchPattern: "*.huggingface.co"`) work at the kernel level?</summary>
 
-Kernel packet filters (`tc` eBPF or `iptables`) only see IP addresses in IP headers, not DNS hostnames. When a `CiliumNetworkPolicy` includes a `toFQDNs` rule (paired with a port `53` `rules.dns` rule):
-1. Cilium redirects the Pod's outbound port `53` DNS queries through Cilium's **per-node DNS Proxy**.
-2. When the Pod queries `cdn-lfs.huggingface.co` (which matches `*.huggingface.co`), the DNS proxy inspects the DNS response, extracts the returned IP addresses (`A`/`AAAA`), **inserts those IPs into the Pod's eBPF policy map (`cilium_policy_<id>`)** for the duration of the DNS TTL, and only then returns the DNS answer to the Pod.
-3. When the Pod connects to that IP on TCP port `443` milliseconds later, the eBPF map already allows it.
+Kernel packet filters, whether `tc` eBPF or `iptables`, see only IP addresses in the headers. They never see DNS names. When a `CiliumNetworkPolicy` has a `toFQDNs` rule, Cilium also needs a port `53` `rules.dns` rule. Then the flow works in three steps.
+1. Cilium redirects the pod's outbound DNS queries on port `53` through the per-node DNS Proxy.
+2. When the pod queries `cdn-lfs.huggingface.co`, which matches `*.huggingface.co`, the proxy reads the DNS response and extracts the returned `A` and `AAAA` addresses. It inserts them into the pod's eBPF policy map, `cilium_policy_<id>`, for the length of the DNS TTL. Only then does it return the answer to the pod.
+3. When the pod connects to one of those IPs on TCP port `443` a few milliseconds later, the eBPF map already allows the connection.
 </details>
 
 <details>
 <summary>15. Compare `AdminNetworkPolicy`, `NetworkPolicy`, and `BaselineAdminNetworkPolicy` (`policy.networking.k8s.io`).</summary>
 
-They form a 3-tier evaluation hierarchy:
-1. **`AdminNetworkPolicy` (Cluster-scoped, evaluated FIRST, owned by Platform/Security Admins):** Supports `Allow`, **`Deny`**, and `Pass` actions with numeric priority. A `Deny` rule here (e.g., blocking tenant-A from talking to tenant-B or blocking `169.254.169.254/32`) **cannot be overridden by any namespace `NetworkPolicy`**. A `Pass` rule delegates the decision to tier 2.
-2. **`NetworkPolicy` (Namespace-scoped, evaluated SECOND, owned by Application/ML Teams):** Standard additive `Allow` policies within a namespace.
-3. **`BaselineAdminNetworkPolicy` (Cluster-scoped, evaluated LAST for non-isolated traffic, owned by Platform Admins):** Sets the default fallback posture (e.g., default-deny cross-namespace ingress across the entire cluster) whenever a namespace owner has not written a `NetworkPolicy`, while still allowing namespace owners to open ports via standard `NetworkPolicy`.
+They form a three-tier evaluation hierarchy.
+1. `AdminNetworkPolicy` is cluster-scoped and evaluated first. Platform or security admins own it. It supports `Allow`, `Deny` and `Pass` actions, with numeric priority. A `Deny` here, such as blocking tenant A from tenant B or blocking `169.254.169.254/32`, cannot be overridden by any namespace `NetworkPolicy`. A `Pass` hands the decision to the second tier.
+2. `NetworkPolicy` is namespace-scoped and evaluated second. Application and ML teams own it. It holds standard additive `Allow` rules within the namespace.
+3. `BaselineAdminNetworkPolicy` is cluster-scoped and evaluated last, for non-isolated traffic. Platform admins own it. It sets the default posture, for example default-deny cross-namespace ingress across the cluster. That posture applies when a namespace owner has written no `NetworkPolicy`. Namespace owners can still open ports with a standard `NetworkPolicy`.
 </details>
 
 <details>
 <summary>16. How do you safely roll out new `NetworkPolicy` rules in production without causing surprise outages (`StagedNetworkPolicy` / `policyAuditMode`)?</summary>
 
-Never apply an untested `default-deny` policy directly in enforce mode in production:
-1. **Audit / Staged mode first:** In Calico, deploy a **`StagedNetworkPolicy` / `StagedGlobalNetworkPolicy`**; in Cilium, enable **`policyAuditMode: true`** on the policy or endpoint.
-2. **Observe would-be drops:** Watch `hubble observe --verdict AUDIT` (or Calico flow logs) over a full business cycle (including cron jobs, backups, and metrics scrapes) to identify any legitimate flows missing from the allow-list.
-3. **Promote to enforce mode** in GitOps once audit logs show zero legitimate flows would be dropped.
+Never apply an untested `default-deny` policy straight into enforce mode in production. Follow three steps.
+1. Start in audit or staged mode. In Calico, deploy a `StagedNetworkPolicy` or `StagedGlobalNetworkPolicy`. In Cilium, set `policyAuditMode: true` on the policy or the endpoint.
+2. Watch the would-be drops with `hubble observe --verdict AUDIT`, or with Calico flow logs. Watch over a full business cycle, including cron jobs, backups and metrics scrapes. That shows any legitimate flow missing from the allow-list.
+3. Promote the policy to enforce mode through GitOps, once the audit logs show that no legitimate flow would be dropped.
 </details>
 
 <details>
 <summary>17. Why does creating 5,000 separate per-Job `NetworkPolicy` objects on a large batch cluster hurt CNI agent performance, and what is the better pattern?</summary>
 
-If a workflow engine creates a brand-new `NetworkPolicy` object for every training Job (`allow-job-1`, `allow-job-2`, ..., `allow-job-5000`), `Felix` (Calico) and `cilium-agent` must recompile thousands of policy chains/maps on every node whenever jobs start or finish.
-Instead, use a **small, fixed set of static tier/zone policies** (e.g., 3–5 policies per namespace) and label Pods with standardized role/tier labels (`tier: training-worker`, `storage-access: allowed`)—or use Calico's label expression `selector` / Cilium's security identities so pods join existing policies automatically without creating new `NetworkPolicy` objects per job.
+Suppose a workflow engine creates a new `NetworkPolicy` for every training job, from `allow-job-1`, through `allow-job-2`, up to `allow-job-5000`. Then `Felix` in Calico and `cilium-agent` must recompile thousands of policy chains or maps on every node, each time a job starts or finishes. A better pattern uses a small, fixed set of static tier and zone policies, perhaps three to five per namespace. Label the pods with standard role and tier labels, such as `tier: training-worker` and `storage-access: allowed`. Pods then join the existing policies automatically, with no new `NetworkPolicy` per job. Calico's label expression `selector`, or Cilium's security identities, do the same job.
 </details>
 
 <details>
 <summary>18. What is the \"Policy Creation Race\" at Pod startup, and how do CNIs prevent a newly started Pod from having a brief window of unrestricted network access?</summary>
 
-When a Pod starts, if `CNI ADD` finishes wiring `eth0` *before* the CNI agent (`Felix` or `cilium-agent`) has computed and installed the Pod's `NetworkPolicy` rules on that interface, the Pod could briefly send or receive unauthorized packets for a few hundred milliseconds (or conversely, fail its first startup connection if default-deny is applied before allow rules load). Modern CNIs (such as Cilium and Calico) synchronize **`CNI ADD`** with the local agent so `RunPodSandbox` does not return until the endpoint's initial policy program/chains are atomically attached in the kernel.
+A race can happen at pod startup. If `CNI ADD` finishes wiring `eth0` before the CNI agent, `Felix` or `cilium-agent`, has computed and installed the pod's `NetworkPolicy` rules on that interface, the pod can send or receive unauthorized packets for a few hundred milliseconds. The reverse is also possible. If default-deny is applied before the allow rules load, the pod's first startup connection can fail. Modern CNIs such as Cilium and Calico synchronize `CNI ADD` with the local agent. So `RunPodSandbox` does not return until the endpoint's initial policy program or chains are attached in the kernel, all at once.
 </details>
 
 <details>
@@ -535,21 +570,19 @@ When a Pod starts, if `CNI ADD` finishes wiring `eth0` *before* the CNI agent (`
 
 - **In Cilium:**
   `cilium policy trace --src-k8s-pod edge:tester --dst-k8s-pod serving:vllm-0 --dport 8000/tcp`
-  This prints the source and destination numeric Security Identities, lists every matching `CiliumNetworkPolicy` / `NetworkPolicy`, and outputs `Final verdict: ALLOWED` or `DENIED`. Pair with `hubble observe --from-pod edge/tester --verdict DROPPED`.
+  The output prints the source and destination numeric Security Identities and lists every matching `CiliumNetworkPolicy` or `NetworkPolicy`. It ends with `Final verdict: ALLOWED` or `DENIED`. Pair it with `hubble observe --from-pod edge/tester --verdict DROPPED`.
 - **In Calico (`iptables` mode):**
-  Find the target Pod's host `cali*` interface (`calicoctl get workloadendpoint -n serving`), then run:
-  `sudo iptables -L cali-tw-<cali-iface> -n -v --line-numbers`
-  Watch the packet/byte counters on each rule and on the final `DROP` rule while running `nc -vz <pod-ip> 8000`.
+  Find the target pod's host `cali*` interface with `calicoctl get workloadendpoint -n serving`. Then run `sudo iptables -L cali-tw-<cali-iface> -n -v --line-numbers`. While you run `nc -vz <pod-ip> 8000`, watch the packet and byte counters on each rule and on the final `DROP` rule.
 </details>
 
 <details>
 <summary>20. Why is `NetworkPolicy` necessary but NOT sufficient for complete multi-tenant security on a shared GPU Kubernetes cluster?</summary>
 
-`NetworkPolicy` only filters L3/L4 (and in Cilium, L7) packet headers on the **primary CNI network**:
-1. It does **not** authenticate identity cryptographically or encrypt traffic on the wire (use **mTLS** via Service Mesh or WireGuard).
-2. It does **not** isolate the shared host Linux kernel or `/dev/nvidia*` driver state (use **Pod Security Admission**, `seccomp`, or **Kata / Confidential Containers** for untrusted code).
-3. It does **not** police **secondary RDMA/InfiniBand networks** (use fabric VLANs/VRFs or IB `P_Key`s).
-4. It does **not** replace Kubernetes **RBAC** and Admission Policy (`Kyverno` / `OPA Gatekeeper` / `ValidatingAdmissionPolicy`).
+NetworkPolicy filters only L3 and L4 headers on the primary CNI network, and in Cilium it also filters L7. It leaves four gaps.
+1. It does not authenticate identity cryptographically, and it does not encrypt traffic on the wire. For that, use mTLS through a service mesh, or WireGuard.
+2. It does not isolate the shared host kernel or the `/dev/nvidia*` driver state. For untrusted code, use Pod Security Admission, `seccomp`, or Kata and Confidential Containers.
+3. It does not police secondary RDMA or InfiniBand networks. Use fabric VLANs or VRFs, or IB `P_Key`s.
+4. It does not replace Kubernetes RBAC or admission policy, which means Kyverno, OPA Gatekeeper or `ValidatingAdmissionPolicy`.
 </details>
 
 ## Sources and review notes
@@ -559,5 +592,5 @@ When a Pod starts, if `CNI ADD` finishes wiring `eth0` *before* the CNI agent (`
   - `production-kubernetes` — Josh Rosso, Rich Lander, Alexander Brand & John Harris, *Production Kubernetes*, **Chapter 5: Pod Networking** (NetworkPolicy enforcement and multi-tenancy considerations).
   - `nvidia-devops` (`volume-03/03-k8s-networking-security-ops-masterclass.md`): networking and security operations masterclass (CNI dataplane, NetworkPolicy, multi-tenancy, and admission).
 - **Run here:** `python3 code/part05/networkpolicy_evaluator_lab.py` (3 passed, 0 failed).
-- **Explicitly labelled inferences:** The `match_networkpolicy_peer`, `evaluate_peer_list`, and `evaluate_policy_hierarchy` models in `code/part05/networkpolicy_evaluator.py` and the `allow-gateway-to-model`, `default-deny-all`, `allow-dns`, `deny-metadata-and-private-egress` (`GlobalNetworkPolicy`), and `trainer-egress` (`CiliumNetworkPolicy`) manifests are the author's constructions synthesizing `NK` Chapters 4 & 5, `PK` Chapter 5, and `volume-03/03` (plus original study items 21, 22, 23, 24, 25, 26, 27, 28, 29, 30, 31, 32, 33, 34, and 35).
+- **Explicitly labelled inferences:** The `match_networkpolicy_peer`, `evaluate_peer_list`, and `evaluate_policy_hierarchy` models in `code/part05/networkpolicy_evaluator.py` and the `allow-gateway-to-model`, `default-deny-all`, `allow-dns`, `deny-metadata-and-private-egress` (`GlobalNetworkPolicy`), and `trainer-egress` (`CiliumNetworkPolicy`) manifests are the author's constructions synthesizing Networking and Kubernetes Chapters 4 & 5, Production Kubernetes Chapter 5, and `volume-03/03` (plus original study items 21, 22, 23, 24, 25, 26, 27, 28, 29, 30, 31, 32, 33, 34, and 35).
 - **Not verified on live hardware:** Live `kubectl`, `calicoctl`, `cilium policy trace`, `hubble observe`, `iptables`, `ipset`, and `cyclonus` executions (`10.20.0.0/16`, `10.20.5.0/24`, ports `8000`/`9000..9010`/`53`/`443`, `10.30.0.0/16`, `169.254.20.10/32`, `0x10000/0x10000`, `order: 100`, `169.254.169.254/32`) are marked (`untested here`) where not executed by `networkpolicy_evaluator_lab.py`.

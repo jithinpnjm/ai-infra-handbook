@@ -22,25 +22,31 @@ lab_venue: "GCP / GKE"
 
 ## Why this matters for AI infrastructure
 
-Large training jobs turn the control plane into a stress test: a 512-GPU job can create hundreds of pods and thousands of objects (pods, services, configmaps, events) in seconds, each node's kubelet and each controller keeps watches open, schedulers and batch systems list large collections, and monitoring tools poll. When the API server or etcd becomes the bottleneck, the whole platform degrades even though no GPU is faulty: pods linger in Pending, `kubectl` times out, controllers lag, and in the worst case leader elections thrash and workloads are evicted. A senior platform engineer must understand exactly how a request flows through the API server, how etcd stores and serves data, what metrics reveal trouble, and how to scale and protect these two components.
+Picture a 512-GPU training job that starts all at once. In seconds, it creates hundreds of pods and thousands of objects: pods, services, configmaps and events. Each node's kubelet and each controller keeps a watch open. Schedulers and batch systems list large collections, and monitoring tools poll. The control plane absorbs all of this load, even though no GPU is faulty.
+
+When the API server or etcd becomes the bottleneck, the whole platform degrades. Pods linger in Pending, `kubectl` times out, and controllers fall behind. In the worst case, leader elections thrash and workloads are evicted. A senior platform engineer must understand exactly how a request flows through the API server. That means knowing how etcd stores and serves data, which metrics reveal trouble, and how to scale and protect these two components.
 
 ## Prerequisites and outcomes
 
-Needs 5.3. After this chapter you can:
+This chapter builds on 5.3. When you finish it, you should be able to do the following.
 
-- Walk the request pipeline in kube-apiserver (authentication, authorisation, admission, validation, storage, response, audit) and identify where each plugin plugs in.
-- Navigate the REST API (groups, versions, resources, subresources, verbs), use the raw API with `kubectl --raw`/`proxy`/`curl`, and read API discovery and OpenAPI.
-- Explain `resourceVersion`, optimistic concurrency (409), `generation` vs `observedGeneration`, list/watch semantics, bookmarks, the watch cache, pagination and why informers exist.
-- Use server-side apply and field managers; explain create/update/patch/apply differences and conflict handling.
-- Describe API Priority and Fairness and tune it; read the key API server and etcd metrics.
-- Explain etcd internals (Raft, WAL, snapshots, MVCC revisions, compaction, defragmentation, quotas, leases) and operate it (health, member management, backup/restore, performance tuning).
-- Diagnose control-plane saturation and apply scaling practices for large GPU clusters.
+- Walk the request pipeline in kube-apiserver. You can name each stage (authentication, authorisation, admission, validation, storage, response, audit) and find where each plugin plugs in.
+- Navigate the REST API by its groups, versions, resources, subresources and verbs. You can call the raw API with `kubectl --raw`, `proxy` or `curl`, and read API discovery and OpenAPI.
+- Explain `resourceVersion`, optimistic concurrency (409), `generation` against `observedGeneration`, list and watch semantics, bookmarks, the watch cache, pagination, and why informers exist.
+- Use server-side apply and field managers. You can explain how create, update, patch and apply differ, and how each one handles conflicts.
+- Describe API Priority and Fairness and tune it. You can read the key API server and etcd metrics.
+- Explain etcd internals (Raft, WAL, snapshots, MVCC revisions, compaction, defragmentation, quotas and leases). You can also operate etcd through health checks, member management, backup and restore, and performance tuning.
+- Diagnose control-plane saturation, and apply scaling practices for large GPU clusters.
 
 ## 1. The API surface
 
 ### Groups, versions, kinds, resources
 
-The API is organised by **group/version**: core (`/api/v1`: pods, nodes, services, configmaps, secrets, PVCs...), named groups (`/apis/apps/v1`: deployments, statefulsets, daemonsets; `batch/v1`: jobs, cronjobs; `networking.k8s.io/v1`; `rbac.authorization.k8s.io/v1`; `storage.k8s.io/v1`; `scheduling.k8s.io/v1`; `apiextensions.k8s.io/v1`; `node.k8s.io/v1`; `coordination.k8s.io/v1` leases; `flowcontrol.apiserver.k8s.io/v1`; plus CRD groups like `kueue.x-k8s.io`, `nvidia.com`). A **kind** is the type (Deployment); a **resource** is its REST collection (`deployments`); **subresources** hang off objects: `/status`, `/scale`, `/binding`, `/eviction`, `/log`, `/exec`, `/portforward`, `/token`, `/ephemeralcontainers`.
+Every object in the API belongs to a group and a version. The core group sits under `/api/v1`, and it holds pods, nodes, services, configmaps, secrets and PVCs. Named groups sit under `/apis`. The `apps/v1` group holds deployments, statefulsets and daemonsets. The `batch/v1` group holds jobs and cronjobs. Other named groups include `networking.k8s.io/v1`, `rbac.authorization.k8s.io/v1`, `storage.k8s.io/v1`, `scheduling.k8s.io/v1`, `apiextensions.k8s.io/v1`, `node.k8s.io/v1`, `coordination.k8s.io/v1` for leases, and `flowcontrol.apiserver.k8s.io/v1`. Custom resource definitions add groups of their own, such as `kueue.x-k8s.io` and `nvidia.com`.
+
+Three words cause confusion here. A kind is the type, such as Deployment. A resource is the REST collection that holds those objects, such as deployments. A subresource hangs off a single object, such as `/status`, `/scale`, `/binding`, `/eviction`, `/log`, `/exec`, `/portforward`, `/token` and `/ephemeralcontainers`.
+
+Run the commands below against a live cluster.
 
 ```bash
 kubectl proxy --port=8001 &
@@ -53,11 +59,19 @@ kubectl api-resources --verbs=list --namespaced=false -o name | head
 kubectl explain deployment.spec.strategy --api-version=apps/v1
 ```
 
+Each line shows a different slice of the same API. Some show the root paths and the groups. Others show the resources in one group, or the OpenAPI document and the field documentation behind them.
+
 ### Versioning and conversion
 
-Each resource has multiple served versions (alpha → beta → stable `v1`) but exactly one **storage version** persisted in etcd. The API server converts between versions on read/write (for built-in types via internal conversion; for CRDs via `conversion: None` or a conversion webhook). Deprecated APIs are removed on a documented schedule (for example `extensions/v1beta1` Ingress, `batch/v1beta1` CronJob); before upgrading Kubernetes, scan for removed API usage (`kubectl get --raw /metrics | grep apiserver_requested_deprecated_apis`, tools like `pluto`, `kubent`) and migrate manifests and operators. Stored objects in old storage versions are re-written via `kubectl-convert` or by the storage version migrator.
+A resource can be served in several versions, moving from alpha to beta to stable `v1`. Only one version is persisted in etcd, and that is the storage version. When a client reads or writes a different version, the API server converts the object on the way. Built-in types convert internally. For CRDs, you choose `conversion: None` or a conversion webhook.
+
+Deprecated APIs are removed on a published schedule. The `extensions/v1beta1` Ingress and the `batch/v1beta1` CronJob are examples. Before you upgrade Kubernetes, scan for removed API usage. You can run `kubectl get --raw /metrics | grep apiserver_requested_deprecated_apis`, or use tools such as `pluto` and `kubent`. Then migrate your manifests and operators. Stored objects that still use an old storage version are re-written with `kubectl-convert` or by the storage version migrator.
+
+Run the deprecated API scan before every upgrade, and fix each manifest it finds.
 
 ### Verbs and HTTP mapping
+
+Every API call uses a verb, and each verb maps to an HTTP method. You will meet these verbs in API logs and audit records, so the table below is worth keeping nearby.
 
 | Verb | HTTP | Notes |
 |---|---|---|
@@ -70,7 +84,11 @@ Each resource has multiple served versions (alpha → beta → stable `v1`) but 
 | delete / deletecollection | DELETE | Grace period, propagation policy, preconditions |
 | proxy, exec, attach, portforward, log | GET/POST/WebSocket/SPDY | Streaming subresources proxied to kubelet |
 
+Notice that `update` fails with 409 unless it carries the current `resourceVersion`. List and watch depend on `resourceVersion` too, as the next section explains.
+
 ## 2. The request pipeline
+
+A request can be rejected at several points on its way in. Knowing the order of those points tells you where to look when a call fails. The diagram shows the path.
 
 ```mermaid
 flowchart LR
@@ -85,33 +103,57 @@ flowchart LR
   A1 -.-> AU["Audit events at each stage"]
 ```
 
-1. **Authentication** determines *who* (user, groups, extra). Methods: client certificates (kubeadm admin, kubelet, controller-manager use these), ServiceAccount tokens (projected, audience-bound, short-lived JWTs verified by the API server's SA signing key), OIDC (id tokens from IdP), webhook token review, authenticating proxy headers. Anonymous requests are `system:anonymous` unless disabled.
-2. **Authorisation** decides *whether*: RBAC (the default, 5.16), the Node authorizer (kubelets may read only objects related to pods bound to them), and webhook authorizers. `kubectl auth can-i` and `kubectl auth whoami` help.
-3. **API Priority and Fairness** classifies requests into priority levels and flows; applies concurrency limits and queuing (section 6).
-4. **Mutating admission** modifies objects: built-ins (`ServiceAccount`, `DefaultStorageClass`, `LimitRanger`, `DefaultTolerationSeconds`, `MutatingAdmissionWebhook`) and webhooks (sidecar injectors like Istio, policy mutators like Kyverno, GPU-related mutators). Called in order, may be re-invoked (reinvocation policy).
-5. **Schema validation** against OpenAPI (types, required fields; unknown fields rejected or pruned for CRDs depending on `preserveUnknownFields`/structural schema; field validation levels `Strict`/`Warn`/`Ignore`).
-6. **Validating admission**: built-ins (`ResourceQuota`, `PodSecurity`, `NodeRestriction`), webhooks (OPA Gatekeeper, Kyverno), and **ValidatingAdmissionPolicy** (in-process CEL, no webhook latency).
-7. **Persistence**: encode and write with a transaction in etcd, conditional on `resourceVersion` (for updates). Secrets can be encrypted at rest here via `EncryptionConfiguration` (AES-CBC/GCM, KMS v2 envelope encryption).
-8. **Response and fan-out**: the written revision becomes the object's `resourceVersion`; the watch cache pushes events to all watchers.
+Stage 1 is authentication, which decides who is making the request. It produces a user, groups and extra fields. Clients can present a client certificate, which the kubeadm admin, the kubelet and the controller-manager all use. ServiceAccount tokens are projected, audience-bound JWTs with a short life, and the API server verifies them with its ServiceAccount signing key. OIDC id tokens from an identity provider work too, as do webhook token review and authenticating proxy headers. An anonymous request becomes `system:anonymous`, unless you turn anonymous access off.
 
-Webhook caveats: admission webhooks are a common source of outages: a slow or down webhook with `failurePolicy: Fail` blocks all matching writes (including node and system pods); set tight `timeoutSeconds`, scope with `namespaceSelector/objectSelector`, exclude `kube-system`/own namespace, use `failurePolicy: Ignore` for non-critical mutations, run multiple replicas with PDBs, and monitor `apiserver_admission_webhook_rejection_count` and duration.
+Stage 2, authorisation, then decides whether the request is allowed. RBAC is the default, and chapter 5.16 covers it. The Node authorizer lets a kubelet read only the objects related to pods bound to its own node. Webhook authorizers can add their own rules. To check a decision, run `kubectl auth can-i` or `kubectl auth whoami`.
 
-In *Kubernetes: Up and Running* Chapter 17 (*Extending Kubernetes*), Brendan Burns, Joe Beda, Kelsey Hightower, and Lachlan Evenson walk through the end-to-end mechanics of building and registering external admission webhooks for a custom resource (`apiVersion: beta.kuar.com/v1, kind: LoadTest`):
-1. **TLS requirement & Certificate Signing Request (`CSR`):** Because `kube-apiserver` only calls admission webhooks over HTTPS, the webhook server must present a certificate signed by a CA trusted by `caBundle` in the webhook configuration (or signed via the Kubernetes `certificates.k8s.io` API by submitting a `CertificateSigningRequest`, running `kubectl certificate approve validating-controller.default`, and extracting `.status.certificate | base64 -d > server.crt`).
-2. **`AdmissionReview` request/response protocol:** For a **`ValidatingWebhookConfiguration`** (`validator.kuar.com` intercepting `CREATE` on `loadtests`), `kube-apiserver` sends an `AdmissionReview` JSON payload containing `request.object` and expects a JSON response with `response.uid` and `response.allowed: true|false` (plus `status.message` on rejection). For a **`MutatingWebhookConfiguration`** (defaulting `spec.paths` to `["/index.html"]` when omitted), the webhook returns `response.allowed: true`, `response.patchType: "JSONPatch"`, and a base64-encoded **`JSONPatch`** array (`[{"op": "add", "path": "/spec/paths", "value": ["/index.html"]}]`).
-3. **Three patterns of API extension (`KUR` Chapter 17):** (a) **Just Data** (storing structured configuration in a CRD validated by OpenAPI schema and webhooks), (b) **Controllers** (watching a CRD like `LoadTest` and reconciling Pods/Services to match), and (c) **Compilers / Abstractions** (translating a high-level declarative object into lower-level Kubernetes primitives).
+Stage 3 is API Priority and Fairness. It sorts each request into a priority level and a flow, applies concurrency limits, and queues requests that must wait. Section 6 covers it in detail.
+
+Stage 4, mutating admission, can change the object before it is stored. The built-in plugins include `ServiceAccount`, `DefaultStorageClass`, `LimitRanger`, `DefaultTolerationSeconds` and `MutatingAdmissionWebhook`. Webhooks add more. Sidecar injectors such as Istio are one kind, policy mutators such as Kyverno are another, and GPU-related mutators are a third. The plugins run in order, and a plugin can be called again under the reinvocation policy.
+
+Stage 5 is schema validation. The server validates the object against the OpenAPI schema. It checks types and required fields. For CRDs, unknown fields are either rejected or pruned, depending on `preserveUnknownFields` and the structural schema. Field validation levels `Strict`, `Warn` and `Ignore` decide how strict this step is.
+
+Stage 6, validating admission, checks the object without changing it. The built-ins include `ResourceQuota`, `PodSecurity` and `NodeRestriction`. Webhooks such as OPA Gatekeeper and Kyverno run here too. `ValidatingAdmissionPolicy` runs CEL in process, so it has no webhook latency.
+
+Stage 7, persistence, encodes the object and writes it to etcd in one transaction. For an update, the transaction is conditional on `resourceVersion`. Secrets can be encrypted at rest at this point, through `EncryptionConfiguration` with AES-CBC or AES-GCM, or through KMS v2 envelope encryption.
+
+Stage 8 is the response. The revision written to etcd becomes the object's `resourceVersion`. The watch cache then pushes the change to every watcher.
+
+Admission webhooks are a common source of outages. Suppose a webhook is slow or down, and its `failurePolicy` is `Fail`. Then every matching write is blocked, including writes for node and system pods. To prevent this, set a tight `timeoutSeconds`, and scope the webhook with `namespaceSelector/objectSelector`. Exclude `kube-system` and the webhook's own namespace. Use `failurePolicy: Ignore` for mutations that are not critical. Run several replicas behind PodDisruptionBudgets, and watch `apiserver_admission_webhook_rejection_count` and the webhook duration.
+
+The book Kubernetes: Up and Running, Chapter 17 (Extending Kubernetes), walks through building and registering external admission webhooks for a custom resource. The authors are Brendan Burns, Joe Beda, Kelsey Hightower and Lachlan Evenson. Their example resource is `apiVersion: beta.kuar.com/v1, kind: LoadTest`.
+
+The first step is TLS. Because kube-apiserver calls admission webhooks only over HTTPS, the webhook server must present a certificate. That certificate must be signed by a CA trusted by `caBundle` in the webhook configuration. You can also get the certificate from the Kubernetes `certificates.k8s.io` API. Submit a `CertificateSigningRequest` (`CSR`), run `kubectl certificate approve validating-controller.default`, and extract the certificate with `.status.certificate | base64 -d > server.crt`.
+
+The second step is the AdmissionReview protocol. Take a ValidatingWebhookConfiguration that intercepts `CREATE` on `loadtests` through `validator.kuar.com`. The kube-apiserver sends an AdmissionReview JSON payload that contains `request.object`. The webhook replies with `response.uid` and `response.allowed: true|false`, and it adds `status.message` when it rejects the request. A MutatingWebhookConfiguration works differently. It defaults `spec.paths` to `["/index.html"]` when the field is missing. The webhook returns `response.allowed: true`, `response.patchType: "JSONPatch"` and a base64-encoded JSONPatch array, such as `[{"op": "add", "path": "/spec/paths", "value": ["/index.html"]}]`.
+
+The third step is to recognise three patterns of API extension from Chapter 17. The first is Just Data, which stores structured configuration in a CRD and validates it with an OpenAPI schema and webhooks. The second is Controllers, which watch a CRD such as `LoadTest` and reconcile Pods and Services to match it. The third is Compilers or Abstractions, which translate a high-level declarative object into lower-level Kubernetes primitives.
+
+Before you write a webhook, decide which of these three patterns your extension needs.
 
 ## 3. resourceVersion, generation and concurrency
 
-- **`metadata.resourceVersion`** is an opaque string (do not parse or compare except equality) that changes on every write; internally derived from etcd's global revision. Uses: (1) **optimistic concurrency**: an update including `resourceVersion=X` succeeds only if the stored object is still X, else `409 Conflict` ("the object has been modified; please apply your changes to the latest version"); controllers retry using `retry.RetryOnConflict`. (2) **watch resume points**. (3) **cache consistency** in list semantics.
-- **`metadata.generation`** increments when `spec` changes (not status/metadata); controllers write `status.observedGeneration` so you can tell whether status reflects the latest spec (`kubectl rollout status` uses this).
-- **`metadata.uid`** identifies an object instance (recreated objects have new UIDs; ownerReferences use UID to avoid adopting the wrong object).
-- **List semantics**: `resourceVersion` unset → "most recent" (quorum read from etcd; expensive); `resourceVersion="0"` → any cached version from the watch cache (cheap, may be stale); `resourceVersion=N` with `resourceVersionMatch=NotOlderThan|Exact`. Informers do an initial list (RV=0 or latest) then watch from that RV.
-- **Pagination**: `limit=500` returns a `continue` token valid for a compaction window (~5 minutes); large lists without pagination can blow up API server memory (a classic outage cause). Streaming lists (watch-list) reduce memory in newer releases.
-- **Watch**: HTTP chunked stream of JSON/protobuf events; clients resume from the last seen RV; the server only retains a bounded history in the watch cache and etcd compaction window; if the client is too far behind it receives **410 Gone** ("too old resource version") and must relist. **Bookmarks** (`allowWatchBookmarks=true`) are periodic events carrying a recent RV so a reconnecting client doesn't fall out of window. **Informers** (client-go) implement list+watch+resync+indexers+shared caches and relist on 410; custom clients that poll with `kubectl get` in a loop overload the API server.
-- **Server-side filtering**: selectors on list/watch (`labelSelector`, `fieldSelector=spec.nodeName=...`) reduce traffic; kubelets watch only pods with their node name; heavy clients should filter and use `metadata`-only watches (PartialObjectMetadata) where possible.
+Two clients can read the same object, change it, and write it back. Without a check, the second write can silently erase the first. The `resourceVersion` field is the check that prevents this.
+
+The `metadata.resourceVersion` field is an opaque string. Do not parse it or compare it, except for equality. It changes on every write, and it is derived from etcd's global revision. It does three jobs. Job 1 is optimistic concurrency. An update that includes `resourceVersion=X` succeeds only if the stored object is still at X. Otherwise the server returns `409 Conflict` with the message "the object has been modified; please apply your changes to the latest version". Controllers handle that by retrying with `retry.RetryOnConflict`. Job 2 marks the point where a watch resumes. Job 3 keeps list results consistent with the cache.
+
+The `metadata.generation` field increments when `spec` changes, but not when `status` or metadata changes. Controllers write `status.observedGeneration`, so you can tell whether the status reflects the latest spec. The `kubectl rollout status` command uses this field.
+
+The `metadata.uid` field identifies one object instance. A recreated object gets a new UID. ownerReferences use the UID, so a controller does not adopt the wrong object.
+
+List semantics depend on the `resourceVersion` you pass. With it unset, the server returns the most recent state. It does a quorum read from etcd, which is expensive. With `resourceVersion="0"`, the server returns any version held in the watch cache. That is cheap, but the data may be stale. With `resourceVersion=N`, you can add `resourceVersionMatch=NotOlderThan` or `Exact`. Informers start with an initial list, using RV=0 or the latest version, and then watch from that version.
+
+Pagination uses `limit=500`, which returns a `continue` token. That token stays valid for a compaction window of about 5 minutes. A large list without pagination can exhaust API server memory, and that is a classic cause of outages. Streaming lists, called watch-list, reduce memory use in newer releases.
+
+A watch is a long HTTP stream of JSON or protobuf events. A client resumes from the last `resourceVersion` it saw. The server keeps only a bounded history, in the watch cache and inside the etcd compaction window. If a client falls too far behind, the server returns `410 Gone` with the message "too old resource version", and the client must relist. Bookmarks prevent this. With `allowWatchBookmarks=true`, the server sends periodic BOOKMARK events that carry a recent `resourceVersion`, so a reconnecting client stays inside the window. Informers in client-go handle list, watch, resync, indexers and shared caches, and they relist on 410. A custom client that runs `kubectl get` in a loop overloads the API server.
+
+Selectors on list and watch cut the traffic. `labelSelector` and `fieldSelector=spec.nodeName=...` filter the results on the server. Kubelets watch only the pods with their own node name. Heavy clients should filter as much as they can, and use metadata-only watches with `PartialObjectMetadata` where possible.
+
+If your client polls the API with `kubectl get` in a loop, replace the loop with an informer.
 
 ## 4. Writing objects: create, update, patch, apply
+
+Writing an object is not one operation. Each verb changes the object in a different way, and your choice decides who wins when two actors touch the same field. The table compares the options.
 
 | Operation | Semantics | When |
 |---|---|---|
@@ -121,22 +163,35 @@ In *Kubernetes: Up and Running* Chapter 17 (*Extending Kubernetes*), Brendan Bur
 | **`apply` (server-side)** | Declarative: send the *fields you own*; server merges and tracks ownership in `managedFields` per field manager; conflicts reported when another manager owns a field (use `--force-conflicts` deliberately) | GitOps tools, operators, `kubectl apply --server-side` |
 | Client-side `kubectl apply` | Three-way merge using the `last-applied-configuration` annotation | Legacy default; prefer server-side apply for large objects and CRDs |
 
-Field managers matter in multi-actor environments (Argo CD, Terraform, HPA, operators): the manager that last applied a field owns it; unmanaged mutations by controllers (e.g., HPA scaling `spec.replicas`) conflict with applied manifests unless the manifest omits that field. Inspect with `kubectl get deploy x -o yaml --show-managed-fields`. See 4.25/4.26 for ownership guidance.
+Field managers matter when several actors touch one object, such as Argo CD, Terraform, the HPA and operators. The manager that last applied a field owns it. A controller can change a field that a manifest still sets, and then the two conflict. For example, the HPA scales `spec.replicas`. An applied manifest conflicts with that change, unless the manifest leaves the field out. To inspect ownership, run `kubectl get deploy x -o yaml --show-managed-fields`. See 4.25 and 4.26 for more guidance on ownership.
 
-Deletion: `DELETE` with `propagationPolicy` (`Foreground`, `Background`, `Orphan`) and `gracePeriodSeconds`; objects with **finalizers** get `deletionTimestamp` and remain until controllers remove the finalizers (common cause of stuck Terminating namespaces/PVCs/CRs). `kubectl delete --force --grace-period=0` bypasses graceful termination for pods (dangerous for StatefulSets and shared storage).
+Deleting is also a choice. `DELETE` takes a `propagationPolicy` of `Foreground`, `Background` or `Orphan`, plus a `gracePeriodSeconds`. An object with finalizers gets a `deletionTimestamp`, and it stays until the controllers remove those finalizers. This is a common cause of namespaces, PVCs and custom resources stuck in Terminating. The command `kubectl delete --force --grace-period=0` skips graceful termination for pods. That is dangerous for StatefulSets and for shared storage.
+
+Before you force-delete a pod, check whether it belongs to a StatefulSet or uses shared storage.
 
 ## 5. Audit, authn/z debugging and security notes
 
-- **Audit logging**: policy file selecting which events (Metadata, Request, RequestResponse) to record per resource/user; backends: file (with rotation) or webhook. Essential for forensics ("who deleted that namespace?"), compliance, and understanding noisy clients. Tune to avoid logging high-volume reads of secrets at RequestResponse level.
-- **Debug auth**: `kubectl auth can-i create pods --as=system:serviceaccount:team-a:trainer -n team-a`, `kubectl auth whoami`, `--v=8` to see requests, API server logs (`--v=2` default), audit events for 401/403 reasons.
-- **Anonymous and insecure ports**: disable anonymous auth for production; the insecure port was removed; protect `/metrics` and `/debug/pprof` (RBAC `system:monitoring`).
-- **Service account tokens**: use bound projected tokens (short-lived, audience-specific) instead of legacy long-lived secrets; disable `automountServiceAccountToken` where not needed (5.16).
-- **Encryption at rest**: configure `EncryptionConfiguration` with a KMS v2 provider (cloud KMS/Vault) for Secrets; rotate keys; verify by reading raw etcd values (`etcdctl get /registry/secrets/...` should show `k8s:enc:`).
-- **Network exposure**: the API server endpoint should not be on the Internet; use private endpoints/VPN/bastion, authorised networks; client certificates and tokens are bearer credentials.
+A namespace disappears overnight. Who deleted it? Audit logs and the auth debugging tools answer that.
+
+Audit logging uses a policy file. The policy selects which events to record for each resource and user, at one of three levels: Metadata, Request or RequestResponse. The backends are a file with rotation, or a webhook. Audit logs help with forensics, compliance and noisy clients. Tune the policy so that it does not record high-volume reads of secrets at RequestResponse level.
+
+To debug authentication and authorisation, run `kubectl auth can-i create pods --as=system:serviceaccount:team-a:trainer -n team-a`. Run `kubectl auth whoami` to see who you are, and add `--v=8` to see the raw requests. The API server logs at `--v=2` by default. Its audit events record the reason for each 401 or 403.
+
+For production, disable anonymous auth. The insecure port has been removed. Protect `/metrics` and `/debug/pprof` with RBAC, for example through the `system:monitoring` role.
+
+Use bound projected tokens instead of legacy long-lived secrets. They are short-lived and audience-specific. Disable `automountServiceAccountToken` where a pod does not need it. Chapter 5.16 covers this.
+
+Configure `EncryptionConfiguration` with a KMS v2 provider to encrypt Secrets. The provider can come from a cloud KMS or from Vault. Rotate the keys on a schedule. To verify the encryption, read a raw etcd value with `etcdctl get /registry/secrets/...`. An encrypted value starts with `k8s:enc:`.
+
+The API server endpoint should not sit on the Internet. Put it behind private endpoints, a VPN or a bastion, and authorised networks. Client certificates and tokens are bearer credentials, which means whoever holds one can use it.
+
+You should keep the API endpoint on a private network.
 
 ## 6. API Priority and Fairness (APF)
 
-APF replaced the crude `--max-requests-inflight` limits. Requests are matched by **FlowSchemas** (subject, verb, resource) to a **PriorityLevelConfiguration** (shares of concurrency, queues, queue length); within a level, **flows** (distinguished by user or namespace, `distinguisherMethod`) are fair-queued by shuffle sharding so a noisy tenant fills only some queues. Built-in levels: `exempt` (system masters), `node-high`, `system`, `leader-election`, `workload-high`, `workload-low`, `global-default`, `catch-all`.
+APF replaced the crude `--max-requests-inflight` limits. A request first matches a FlowSchema, based on its subject, verb and resource. The FlowSchema sends the request to a PriorityLevelConfiguration. That level holds a share of concurrency, plus queues and a queue length. Inside a level, requests form flows. A flow is distinguished by user or namespace, as set by the `distinguisherMethod`. Flows are fair-queued by shuffle sharding, so a noisy tenant fills only some of the queues. The built-in levels are `exempt` (system masters), `node-high`, `system`, `leader-election`, `workload-high`, `workload-low`, `global-default` and `catch-all`.
+
+The commands below list the FlowSchemas and priority levels, dump the live priority levels, and show the APF metrics.
 
 ```bash
 kubectl get flowschemas
@@ -144,6 +199,8 @@ kubectl get prioritylevelconfigurations
 kubectl get --raw /debug/api_priority_and_fairness/dump_priority_levels
 kubectl get --raw /metrics | grep -E 'apiserver_flowcontrol_(request_wait_duration|rejected_requests|current_inqueue|dispatched_requests)' | head
 ```
+
+The next example defines a priority level for batch controllers. A FlowSchema routes requests from the Kueue controller manager and the training operator to that level. A PriorityLevelConfiguration only matters once a FlowSchema routes requests to it, so you should read the two objects together.
 
 ```yaml
 apiVersion: flowcontrol.apiserver.k8s.io/v1
@@ -178,29 +235,33 @@ spec:
           namespaces: ["*"]
 ```
 
-A PriorityLevelConfiguration only matters once a FlowSchema routes requests to it. Symptoms of APF trouble: HTTP 429 responses with `Retry-After`, rising `apiserver_flowcontrol_request_wait_duration_seconds`, controllers logging client-side throttling ("Waited for ... due to client-side throttling") because client-go QPS/burst limits are too low (raise `--kube-api-qps`/`--kube-api-burst` on controllers/schedulers for big clusters). Fix by giving critical components (scheduler, kubelets, controllers) dedicated levels, constraining noisy clients (unfiltered list loops), and increasing API server capacity.
+APF trouble shows up in a few ways that you can spot. Clients receive HTTP 429 responses with `Retry-After`. The metric `apiserver_flowcontrol_request_wait_duration_seconds` rises. Controllers also log "Waited for ... due to client-side throttling" when their client-go QPS and burst limits are too low. The fix for that is to raise `--kube-api-qps` and `--kube-api-burst` on controllers and schedulers in big clusters. For the server side, give critical components dedicated levels, constrain noisy clients such as unfiltered list loops, and add API server capacity.
+
+Before you raise any limit, give the noisy client its own level and check whether it is listing too much.
 
 ## 7. etcd internals
 
 ### Deployment models for etcd
 
-etcd is the database for every object in a cluster. It is a distributed store that uses a consensus algorithm to keep a copy of cluster state on several machines. Consensus depends on reliable network connections between the etcd nodes, and those nodes have strict latency needs. Two architectural choices shape the deployment: whether etcd runs on dedicated machines or shares them with the control plane, and whether it runs in a container or directly on the host.
+etcd is the database behind every object in a cluster. It is a distributed store. It uses a consensus algorithm to keep one copy of the cluster state on several machines. Consensus depends on reliable network links between the etcd members, and those members need low latency. Two choices shape the deployment. One is whether etcd runs on dedicated machines or shares them with the control plane. The other is whether etcd runs in a container or directly on the host.
 
-**Network considerations.** The default etcd settings are designed for the latency inside a single datacenter. If you spread etcd across several datacenters, test the average round-trip time between members. Tune the heartbeat interval and the election timeout if you need to. Do not spread etcd clusters across different regions. The book strongly discourages it. If you use several datacenters for better availability, keep them close together within one region.
+On the network side, the default etcd settings suit the latency inside a single datacenter. If you spread etcd across several datacenters, test the average round-trip time between members. Tune the heartbeat interval and the election timeout if you need to. Do not spread etcd clusters across regions, because the book strongly discourages this. For better availability, keep your datacenters close together, inside one region.
 
-**Dedicated versus colocated.** Start with cluster size, meaning the number of worker nodes you run per cluster. If etcd performance suffers, your ability to control the cluster's resources suffers too. Workloads that do not depend on the Kubernetes API keep running during etcd trouble. Even so, the control plane must stay healthy. A car that keeps rolling with a broken steering wheel gives little comfort. If larger clusters place heavy read and write demand on etcd, dedicate machines to it. That removes resource contention with the other control plane components. A cluster is "large" depending on the size of its control plane machines, but anything above 50 worker nodes deserves the question. For clusters with over 200 workers, plan for dedicated etcd from the start. For smaller clusters, colocated etcd saves management overhead and infrastructure cost. Kubeadm supports that model and handles its concerns.
+Start the placement decision with cluster size, meaning the number of worker nodes in each cluster. If etcd slows down, your control over the cluster's resources slows down too. Workloads that do not depend on the Kubernetes API keep running during etcd trouble. The control plane must still stay healthy, though. A car that keeps rolling with a broken steering wheel gives little comfort. When a large cluster puts heavy read and write demand on etcd, give etcd its own machines. That removes resource contention with the other control plane components. What counts as large depends on the size of the control plane machines. Still, anything above 50 worker nodes deserves the question. For clusters with over 200 workers, plan for dedicated etcd from the start. For smaller clusters, colocated etcd saves management overhead and infrastructure cost. Kubeadm supports that model and handles its concerns.
 
-**Containerized versus on host.** For colocated etcd, run it in a container. Kubeadm supports and tests that setup, so it is your best option. With dedicated machines, you have two options. You can install etcd on the host, which lets you bake it into machine images and removes the need for a container runtime on those hosts. Or you can run etcd in a container, with a container runtime and kubelet on the machines and a static manifest to start etcd. That follows the same patterns and install methods as the other control plane components. Repeated patterns help in complex systems, so this choice comes down largely to preference.
+For colocated etcd, run it in a container. Kubeadm supports and tests that setup, so it is your best option. With dedicated machines, you have two choices. You can install etcd on the host. That lets you bake it into machine images, and it removes the need for a container runtime on those hosts. Or you can run etcd in a container, with a container runtime and kubelet on the machines and a static manifest that starts etcd. That follows the same patterns and install methods as the other control plane components. Repeated patterns help in complex systems, so this choice comes down largely to preference.
 
 ### Data model and Raft
 
-etcd is a replicated, linearizable key-value store. Cluster members use **Raft**: one **leader** accepts writes, appends them to its log (**WAL**), replicates to followers, and commits once a majority has persisted them (an `fsync` per commit), then applies to the state machine (bbolt B+tree). Reads can be linearizable (via the leader / read index, default for Kubernetes "quorum" reads) or serializable (local, possibly stale). Heartbeats and election timeouts (default 100 ms/1000 ms) require low network latency; a leader that cannot keep up triggers elections, visible as API latency spikes.
+etcd is a replicated, linearizable key-value store. Its members use Raft. One leader accepts writes and appends them to its log, the WAL. The leader replicates the entries to followers. Once a majority has persisted an entry, with an `fsync` per commit, the leader commits it. It then applies the entry to the state machine, which is a bbolt B+tree. Reads can be linearizable, through the leader or the read index. That is the default for Kubernetes quorum reads. Reads can also be serializable, which means they are served locally and may be stale. Heartbeats and election timeouts default to 100 ms and 1000 ms, so the network must be fast. A leader that cannot keep up triggers elections, and those show up as API latency spikes.
 
-Quorum arithmetic and operations (from 5.3): 3 members tolerate 1 failure, 5 tolerate 2; even numbers add cost without tolerance; **never add a member before removing a dead one** (the cluster size and quorum would rise while a member is down). Learner members (non-voting) allow safe catch-up before promotion.
+Quorum arithmetic governs every operation, as chapter 5.3 explains. Three members tolerate one failure, and five tolerate two. An even number of members adds cost without adding tolerance. Never add a member before you remove a dead one, because the cluster size and quorum rise while a member is down. Learner members are non-voting, so they can catch up safely before they are promoted.
 
 ### MVCC, revisions, compaction, defrag
 
-Each write creates a new **revision** (a cluster-wide monotonic counter); etcd keeps a history of key versions for watch and consistent reads. The Kubernetes `resourceVersion` is derived from the revision. History grows until **compaction** discards revisions older than a point (the API server runs periodic compaction, default every 5 minutes, `--etcd-compaction-interval`); compaction frees logical space but the bbolt file does not shrink until **defragmentation** (`etcdctl defrag`, one member at a time, blocks that member briefly). A **database quota** (`--quota-backend-bytes`, default 2 GiB; recommended up to 8 GiB) raises an alarm `NOSPACE` when exceeded, after which etcd becomes read-only until space is freed (compact + defrag + `alarm disarm`).
+Each write creates a new revision. A revision is a cluster-wide counter that only goes up. etcd keeps a history of key versions for watches and consistent reads, and the Kubernetes `resourceVersion` comes from that revision. The history grows until compaction discards revisions older than a chosen point. The API server runs compaction every 5 minutes by default, controlled by `--etcd-compaction-interval`. Compaction frees logical space, but the bbolt file does not shrink until defragmentation runs. Run `etcdctl defrag` one member at a time, because it briefly blocks that member. The database quota, set by `--quota-backend-bytes`, defaults to 2 GiB and is recommended up to 8 GiB. When the database exceeds the quota, etcd raises a `NOSPACE` alarm and becomes read-only until you free space. Compact, defragment and disarm the alarm, in that order.
+
+The commands below check member health, list alarms, and compact and defragment the store. Run them from a control-plane node.
 
 ```bash
 export ETCDCTL_API=3
@@ -215,15 +276,19 @@ etcdctl $EP get /registry/ --prefix --keys-only | awk -F/ '{print $3}' | sort | 
 etcdctl $EP get /registry/namespaces/default       # protobuf-encoded value (binary)
 ```
 
+The first lines show the status, health and membership. The compaction and defragmentation steps come next. The last two commands tell you which resource types take the most space, and they show that a stored value is protobuf-encoded binary.
+
 ### What lives in etcd
 
-Keys under `/registry/<resource>/...` (for namespaced: `/registry/pods/<ns>/<name>`), leases (node heartbeats, leader election), events (high churn, 1-hour TTL: often moved to a **separate etcd cluster** via `--etcd-servers-overrides=/events#https://...`), CRD custom resources (`/registry/<group>/<resource>/...`). Sizes: objects up to ~1.5 MiB limit (etcd request size limit); large ConfigMaps/Secrets and huge CRs (e.g., Argo Workflows with big status, huge Pod lists) hurt performance. Anti-patterns: storing blobs, logs or metrics in objects; very high-frequency status updates (every second per pod) across tens of thousands of objects; thousands of Events per second.
+Keys live under `/registry/<resource>/...`. For namespaced objects, the key is `/registry/pods/<ns>/<name>`. Leases hold node heartbeats and leader election state. Events churn quickly and expire after one hour. Many clusters move events into a separate etcd cluster with `--etcd-servers-overrides=/events#https://...`. CRD custom resources live under `/registry/<group>/<resource>/...`.
+
+An object can be up to about 1.5 MiB, the etcd request size limit. Large ConfigMaps and Secrets, and huge custom resources such as Argo Workflows with a large status, hurt performance. Huge Pod lists do the same. Avoid three patterns. Do not store blobs, logs or metrics in objects. Do not update status every second across tens of thousands of objects. And do not create thousands of Events per second.
 
 ### Encrypting Secrets in etcd
 
-Like most Kubernetes objects, Secrets are stored in etcd. By default, Kubernetes does not encrypt Secret data before it reaches etcd. That does not mean the data is exposed the moment someone touches the hardware. Encryption at rest on the disk still protects a removed drive. The weak point is access to the running host.
+Like most Kubernetes objects, Secrets are stored in etcd. By default, Kubernetes does not encrypt Secret data before it reaches etcd. That does not mean the data is exposed the moment someone touches the hardware. Encryption at rest still protects a removed drive. The weak point is access to the running host.
 
-Suppose an attacker signs in over `ssh` and gains root on the kube-apiserver node. The attacker can run a small wrapper around `etcdctl` that uses the cluster's own certificates. The script below assumes the certificate paths that kubeadm sets by default:
+Suppose an attacker signs in over `ssh` and gains root on the kube-apiserver node. The attacker can run a small wrapper around `etcdctl` that uses the cluster's own certificates. The script below assumes the certificate paths that kubeadm sets by default.
 
 ```bash
 #!/bin/bash
@@ -237,7 +302,7 @@ ETCDCTL_API=3 etcdctl \
 ${@}
 ```
 
-etcd stores Secret data under `/registry/secrets/${NAMESPACE}/${SECRET_NAME}`. Using this script to read a Secret named `login1` shows the values in plain text:
+With that script, reading a Secret takes one command. Here it reads a Secret named `login1`, and the values appear in plain text:
 
 ```
 # ./etcdctl-script get /registry/secrets/default/login1
@@ -258,19 +323,19 @@ Opaque"
 
 With that, the attacker has read the Secret `login1`.
 
-Plain storage can be acceptable in some setups. If etcd runs outside the API server, a hypervisor separates the two. An attacker would then need root on the etcd node, find the data, and read it. Or they would need root on the API server, find the etcd certificates, and impersonate the API server to read from etcd. Both paths assume other breaches came first. Frankly, an RBAC mistake or an application compromise is far more likely to expose a Secret first.
+Plain storage can be acceptable in some setups. If etcd runs outside the API server, a hypervisor separates the two. An attacker would then need root on the etcd node, find the data, and read it. Or they would need root on the API server, find the etcd certificates, and impersonate the API server to read from etcd. Both paths assume that other breaches came first. In practice, an RBAC mistake or an application compromise is more likely to expose a Secret first.
 
-Many platform operators still choose to go further. Kubernetes can encrypt Secret data at the Kubernetes layer before it rests in etcd, which adds depth to your defense. There are two models: static-key encryption and envelope encryption.
+Many platform operators still choose to go further. Kubernetes can encrypt Secret data at the Kubernetes layer before it rests in etcd, which adds depth to your defence. There are two models: static-key encryption and envelope encryption.
 
-**Static-key encryption.** The kube-apiserver can encrypt Secrets with a key you provide. It uses that key to encrypt every Secret object before persisting it to etcd. The key lives in an `EncryptionConfiguration`. If an attacker reads etcd, they see only encrypted data. Keys can be created with providers such as `secretbox`, `aescbc`, and `aesgcm`. Each provider has trade-offs, so work with your security team to choose. If you must meet FIPS requirements, weigh the choice carefully. The book's example uses `secretbox`, a fairly performant and secure option. Kubernetes issue #81127 discusses some of these considerations.
+With static-key encryption, the kube-apiserver encrypts Secrets with a key you provide. It uses that key to encrypt every Secret object before it persists the object to etcd. The key lives in an `EncryptionConfiguration`. If an attacker reads etcd, they see only encrypted data. You can create keys with providers such as `secretbox`, `aescbc` and `aesgcm`. Each provider has trade-offs, so work with your security team to choose. If you must meet FIPS requirements, weigh the choice carefully. The book's example uses `secretbox`, a fairly performant and secure option. Kubernetes issue #81127 discusses some of these considerations.
 
-To set up static-key encryption, generate a 32-byte key. The model is symmetric, so one key both encrypts and decrypts. How you generate keys varies from enterprise to enterprise. On a Linux host, `/dev/urandom` works if you are satisfied with its entropy:
+To set up static-key encryption, generate a 32-byte key. The model is symmetric, so one key both encrypts and decrypts. Enterprises generate keys in different ways. On a Linux host, `/dev/urandom` works if you are satisfied with its entropy.
 
 ```bash
 head -c 32 /dev/urandom | base64
 ```
 
-Add an `EncryptionConfiguration` with that key to every node that runs kube-apiserver. Deliver the file with configuration management such as Ansible, or with `KubeadmConfigSpec` when you use Cluster API. That way, keys can be added, deleted, and rotated. The example assumes the file lives at `/etc/kubernetes/pki/secrets/encryption-config.yaml`:
+Add an `EncryptionConfiguration` with that key to every node that runs kube-apiserver. Deliver the file with configuration management such as Ansible, or with `KubeadmConfigSpec` when you use Cluster API. That way, you can add, delete and rotate keys. The example assumes the file lives at `/etc/kubernetes/pki/secrets/encryption-config.yaml`.
 
 ```
 apiVersion: apiserver.config.k8s.io/v1
@@ -287,9 +352,9 @@ secret: u7mcOcHKbFh9eVluB18hbFIsVfwpvgbXv650QacDYXA==
 - identity: {}
 ```
 
-The providers list is ordered. Encryption always uses the first key, and decryption tries keys in the order listed. `identity` is the plain-text provider, and it belongs last. If it comes first, Secrets will not be encrypted.
+The providers list is ordered. Encryption always uses the first key, and decryption tries keys in the order listed. The `identity` provider is the plain-text one, and it belongs last. If it comes first, Secrets will not be encrypted.
 
-Every kube-apiserver must load this file. Add the flag to `/etc/kubernetes/manifests/kube-apiserver.yaml`:
+Every kube-apiserver must load this file. Add the flag to `/etc/kubernetes/manifests/kube-apiserver.yaml`.
 
 ```
 --encryption-provider-config=/etc/kubernetes/pki/secrets/encryption-config.yaml
@@ -297,7 +362,7 @@ Every kube-apiserver must load this file. Add the flag to `/etc/kubernetes/manif
 
 After the kube-apiserver restarts, Secrets are encrypted before they reach etcd. For static Pods, a change to the manifest triggers that restart. Once you move past experimentation, pre-provision hosts with this file and enable `encryption-provider` by default. With Cluster API, the EncryptionConfiguration ends up in user data, so make sure that user data is encrypted. With kubeadm, add the flag to the `apiServer` section of a `ClusterConfiguration`. Otherwise, make sure your server startup includes the flag.
 
-To validate the encryption, apply a new Secret named `login2` and read it back from etcd:
+To validate the encryption, apply a new Secret named `login2` and read it back from etcd.
 
 ```
 # ./etcdctl-script get /registry/secrets/default/login2
@@ -305,7 +370,7 @@ To validate the encryption, apply a new Secret named `login2` and read it back f
 k8s:enc:secretbox:v1:secret-key-1:
 ```
 
-The rest of that output is unreadable binary data. The data is fully encrypted in etcd. The metadata names the provider (`secretbox`) and the key (`secret-key-1`) that did the encryption. Kubernetes needs that information because several providers and keys can be active at once. An object created before the key existed still shows up in plain text:
+The rest of that output is unreadable binary data, so the data is fully encrypted in etcd. The prefix names the provider, `secretbox`, and the key, `secret-key-1`, that did the encryption. Kubernetes needs that information because several providers and keys can be active at once. An object created before the key existed still shows up in plain text.
 
 ```
 # ./etcdctl-script get /registry/secrets/default/login1
@@ -315,7 +380,7 @@ k8s
 
 This shows two important points. First, `login1` is not encrypted. Only new or altered Secrets use the active key. Second, when an unencrypted object passes back through the kube-apiserver, there is no provider or key mapping, so no decryption is attempted.
 
-Rotate encryption keys over a defined span. Suppose you rotate every three months. You add a new key at the top of the list:
+Rotate encryption keys over a defined span. Suppose you rotate every three months. You add a new key at the top of the list.
 
 ```
 - secretbox:
@@ -326,7 +391,7 @@ secret: xgI5XTIRQHN/C6mlS43MuAWTSzuwkGSvIDmEcw6DDl8=
 secret: u7mcOcHKbFh9eVluB18hbFIsVfwpvgbXv650QacDYXA=
 ```
 
-Do not remove `secret-key-1`. It no longer encrypts new data, but it still decrypts existing Secrets. Because the new key is first, all new encryption uses it. Updated Secrets are re-encrypted with the new key over time. Until then, the old key stays in the list as a fallback. If you delete the old key too early, clients see this error:
+Do not remove `secret-key-1`. It no longer encrypts new data, but it still decrypts existing Secrets. The new key sits first, so all new encryption uses it. Updated Secrets are re-encrypted with the new key over time. Until then, the old key stays in the list as a fallback. If you delete the old key too early, clients see this error.
 
 ```
 Error from server (InternalError): Internal error occurred: unable to transform
@@ -334,9 +399,9 @@ key "/registry/secrets/default/login1": no matching key was found for the
 provided Secretbox transformer
 ```
 
-**Understand the new vectors.** Each step toward more defense changes how attacks work. Static-key encryption is clearly better than no encryption. However, the encryption key lives on the same host as the API server. Many deployments run etcd and kube-apiserver on one host. With root access there, an attacker could decrypt the data they read from etcd. Ideally, do not rely only on static-key encryption at rest. If that is unacceptable, consider an external secret store or a KMS plug-in, both covered next.
+Each step toward more defence changes how attacks work. Static-key encryption is clearly better than no encryption. However, the encryption key lives on the same host as the API server. Many deployments run etcd and kube-apiserver on one host. With root access there, an attacker could decrypt the data they read from etcd. Ideally, do not rely only on static-key encryption at rest. If that is unacceptable, consider an external secret store or a KMS plug-in, both covered next.
 
-**Envelope encryption.** Kubernetes 1.10 and later can integrate with a KMS for envelope encryption. This model uses two keys. The key encryption key (KEK) is stored externally in a KMS. The data encryption key (DEK) encrypts each Secret. The KEK encrypts the DEKs. Each Secret object gets its own DEK. Since the KEK encrypts the DEKs, they can be stored with the data, so kube-apiserver does not need to know many keys. This model has several benefits:
+Kubernetes 1.10 and later can integrate with a KMS for envelope encryption. This model uses two keys. The key encryption key (KEK) lives outside the cluster, in a KMS. The data encryption key (DEK) encrypts each Secret. Each Secret object gets its own DEK, and the KEK encrypts the DEKs. Because the KEK encrypts the DEKs, they can be stored with the data. As a result, kube-apiserver does not need to know many keys. This model has several benefits.
 
 - The KMS sits outside Kubernetes, which adds isolation.
 - Centralized KEKs make key rotation easier.
@@ -344,7 +409,7 @@ provided Secretbox transformer
 - The KMS is concerned only with decrypting DEKs.
 - Encrypted DEKs are easy to store alongside their Secrets.
 
-KMS plug-ins run as a privileged container with a gRPC server that talks to a remote KMS. That container runs only on master nodes where kube-apiserver is present. As with static-key encryption, add an `EncryptionConfiguration` to the master nodes, this time with a `kms` provider:
+KMS plug-ins run as a privileged container with a gRPC server that talks to a remote KMS. That container runs only on master nodes where kube-apiserver is present. As with static-key encryption, add an `EncryptionConfiguration` to the master nodes. This time, use a `kms` provider.
 
 ```
 apiVersion: apiserver.config.k8s.io/v1
@@ -362,7 +427,7 @@ timeout: 3s
 - identity: {}
 ```
 
-Save the file on each master node at `/etc/kubernetes/pki/secrets/encryption-config.yaml`, then update the kube-apiserver arguments:
+Save the file on each master node at `/etc/kubernetes/pki/secrets/encryption-config.yaml`. Then update the kube-apiserver arguments.
 
 ```
 --encryption-provider-config=/etc/kubernetes/pki/secrets/encryption-config.yaml
@@ -374,16 +439,23 @@ The design is viable, but KMS plug-in implementations are scarce, and the ones t
 
 ### Performance factors and tuning
 
-- **Disk**: the dominant factor. WAL fsync latency (`etcd_disk_wal_fsync_duration_seconds`; p99 < 10 ms is a common target) and backend commit (`etcd_disk_backend_commit_duration_seconds`). Use dedicated NVMe/SSD, a separate device for the WAL if possible, no noisy neighbours, no network-attached slow disks, no swap.
-- **CPU and memory**: modest but must not be starved; etcd benefits from having its working set in page cache (RAM ≥ db size × ~2).
-- **Network**: low latency and high reliability between members (same region/datacenter, ideally same rack topology awareness); cross-AZ is acceptable in a metro, cross-region is not for Kubernetes.
-- **Heartbeat/election tuning** (`--heartbeat-interval`, `--election-timeout`): increase on high-latency networks (keep election timeout 5-10× heartbeat).
-- **Snapshot count and compaction**: `--snapshot-count`, `--auto-compaction-*`; Kubernetes handles compaction itself.
-- **Separate etcd for events** and sometimes for leases at very large scale.
-- **Client behaviour**: reduce write amplification (avoid controllers updating status needlessly, use patch vs update thoughtfully, set sensible resync periods), paginate lists, use watches with filters.
-- **Observability**: `etcd_server_has_leader`, `etcd_server_leader_changes_seen_total`, `etcd_server_proposals_failed_total`, `etcd_mvcc_db_total_size_in_bytes`, `etcd_network_peer_round_trip_time_seconds`, `grpc_server_handled_total`, plus `apiserver_storage_*` metrics (`apiserver_storage_db_total_size_in_bytes`, `etcd_request_duration_seconds` from the API server's view).
+Disk is the dominant factor. Watch WAL fsync latency in `etcd_disk_wal_fsync_duration_seconds`, where a p99 below 10 ms is a common target. Also watch backend commit latency in `etcd_disk_backend_commit_duration_seconds`. Use dedicated NVMe or SSD storage, with a separate device for the WAL if possible. Avoid noisy neighbours, network-attached slow disks and swap.
+
+CPU and memory needs are modest, but etcd must not be starved. It benefits when its working set stays in the page cache, so keep RAM at or above about twice the database size.
+
+The network needs low latency and high reliability between members. Keep members in the same region or datacenter, ideally with rack-aware topology. Cross-AZ links inside one metro are acceptable for Kubernetes. Cross-region links are not.
+
+On high-latency networks, increase `--heartbeat-interval` and `--election-timeout`. Keep the election timeout 5 to 10 times the heartbeat.
+
+Snapshot count and compaction are controlled by `--snapshot-count` and `--auto-compaction-*`, although Kubernetes handles compaction itself. At very large scale, run a separate etcd for events, and sometimes for leases.
+
+Client behaviour matters too. Reduce write amplification. Avoid controllers that update status without a reason, choose patch or update with care, and set sensible resync periods. Paginate lists, and use watches with filters.
+
+Watch these metrics: `etcd_server_has_leader`, `etcd_server_leader_changes_seen_total`, `etcd_server_proposals_failed_total`, `etcd_mvcc_db_total_size_in_bytes`, `etcd_network_peer_round_trip_time_seconds` and `grpc_server_handled_total`. Add the `apiserver_storage_*` metrics too, such as `apiserver_storage_db_total_size_in_bytes`, and `etcd_request_duration_seconds` as the API server sees it.
 
 ### Backup, restore, and member operations
+
+Take snapshots regularly. Run the save on a healthy member, schedule it, and ship the file off the cluster. The commands below save a snapshot, check it, restore it and replace a dead member.
 
 ```bash
 # Snapshot (run on a healthy member; schedule it and ship off-cluster)
@@ -401,35 +473,45 @@ etcdctl $EP member remove <id>      # FIRST remove the dead member
 etcdctl $EP member add cp4 --peer-urls=https://10.0.0.14:2380      # then add the new one (as --learner then promote in newer versions)
 ```
 
-Restoring etcd rewinds the cluster to the snapshot time: objects created after are lost (pods reappear/disappear relative to reality; kubelets reconcile); coordinate with a freeze of controllers and expect orphaned cloud resources (5.20). Practise restoring on a scratch cluster.
+Restoring means stopping kube-apiserver and etcd on every control-plane node. You restore the data directory on each member with a new cluster token, and then you restart. Restoring etcd rewinds the cluster to the snapshot time. Objects created after the snapshot are lost. Pods can reappear or disappear relative to what is really running, and kubelets reconcile the difference. Coordinate a freeze of the controllers first, and expect orphaned cloud resources, as chapter 5.20 describes.
+
+Practise restores on a scratch cluster before you need one.
 
 ## 8. API server operations and scaling
 
-Key flags and settings (kubeadm exposes them through `ClusterConfiguration.apiServer.extraArgs`):
+kubeadm sets these flags through `ClusterConfiguration.apiServer.extraArgs`.
 
-- `--etcd-servers`, `--etcd-servers-overrides` (events), `--etcd-compaction-interval`.
-- `--max-requests-inflight`, `--max-mutating-requests-inflight` (used when APF disabled; with APF they bound total), `--request-timeout`, `--min-request-timeout` (watch).
-- `--watch-cache`, `--default-watch-cache-size`, `--watch-cache-sizes=pods#5000` (bigger caches for hot resources).
-- `--audit-policy-file`, `--audit-log-path`, `--audit-log-maxage`.
-- `--encryption-provider-config`.
-- `--enable-admission-plugins`, `--disable-admission-plugins`.
-- `--feature-gates` (stable-by-default features per version; avoid alpha in production).
-- Horizontal scale: multiple API servers behind a load balancer (stateless); each has its own watch cache and connections to etcd; sticky connections for long watches; ensure the LB idle timeout > watch timeouts, or clients reconnect storm.
-- Vertical: CPU/RAM; API server memory is dominated by watch caches and list responses.
-- **Aggregation layer** and webhooks add latency and failure modes; monitor them.
+| Flag | What it controls |
+|---|---|
+| `--etcd-servers`, `--etcd-servers-overrides`, `--etcd-compaction-interval` | etcd location, a separate events store, compaction interval |
+| `--max-requests-inflight`, `--max-mutating-requests-inflight` | Request limits when APF is disabled; with APF, they bound the total |
+| `--request-timeout`, `--min-request-timeout` | Request timeouts, and the minimum timeout for watches |
+| `--watch-cache`, `--default-watch-cache-size`, `--watch-cache-sizes=pods#5000` | Watch cache, with a bigger cache for hot resources |
+| `--audit-policy-file`, `--audit-log-path`, `--audit-log-maxage` | Audit policy, log location, log retention |
+| `--encryption-provider-config` | Encryption of data at rest |
+| `--enable-admission-plugins`, `--disable-admission-plugins` | Which admission plugins run |
+| `--feature-gates` | Feature gates; avoid alpha features in production |
 
-Scaling levers for 1,000 to 5,000 node GPU clusters:
+You scale out with several API servers behind a load balancer. The servers are stateless, but each keeps its own watch cache and etcd connections. Long watches need sticky connections, and the load balancer idle timeout must exceed the watch timeouts, or clients reconnect in a storm. You scale up with more CPU and RAM, because memory is dominated by watch caches and list responses. The aggregation layer and webhooks add latency and failure modes, so monitor them.
 
-1. Dedicated control-plane machines (e.g., 16+ vCPU, 64+ GB) with NVMe for etcd; three or five API servers.
-2. Separate events etcd; compaction tuned; defrag schedule.
-3. Larger client QPS/burst for scheduler/controllers; APF levels for batch controllers and tenants.
-4. Filter and paginate clients; replace polling with informers; use `PartialObjectMetadata` watches in custom controllers; avoid cluster-wide list loops from dashboards.
-5. Reduce object churn: batch Job design (fewer, larger pods; indexed Jobs; JobSet), avoid per-pod ConfigMaps/Secrets, consolidate Services (EndpointSlices already help), tune kubelet status update frequency (`nodeStatusReportFrequency`, `nodeLeaseDurationSeconds`) at huge node counts.
-6. Admission webhook hygiene (timeouts, scoping, HA).
-7. Upgrade to releases with streaming lists / consistent reads from cache for lower memory.
-8. Split into multiple clusters beyond ~5k nodes (5.35).
+The table lists eight levers for a GPU cluster of 1,000 to 5,000 nodes. Decide which ones your cluster needs before you buy hardware.
+
+| Lever | What to do |
+|---|---|
+| 1. Control-plane machines | Dedicated machines (for example, 16+ vCPU, 64+ GB) with NVMe for etcd; three or five API servers. |
+| 2. Events and compaction | Separate events etcd; tuned compaction; a defrag schedule. |
+| 3. Client QPS and APF | Raise QPS and burst for the scheduler and controllers; APF levels for batch controllers and tenants. |
+| 4. Client traffic | Filter and paginate; replace polling with informers; use `PartialObjectMetadata` watches; avoid cluster-wide list loops from dashboards. |
+| 5. Object churn | Fewer, larger batch pods (indexed Jobs, JobSet); avoid per-pod ConfigMaps and Secrets; consolidate Services (EndpointSlices already help); tune `nodeStatusReportFrequency` and `nodeLeaseDurationSeconds` at huge node counts. |
+| 6. Admission webhooks | Tight timeouts, scoping, high availability. |
+| 7. Upgrades | Releases with streaming lists and consistent cache reads, which use less memory. |
+| 8. Cluster count | Split into multiple clusters beyond ~5k nodes (chapter 5.35). |
+
+Work through the levers that match your bottleneck first, rather than changing all eight at once.
 
 ## 9. Diagnosing control-plane saturation
+
+When the platform slows down, match the symptom to a cause in the table below. Each row names the metric or log to check and the fix that usually follows.
 
 | Symptom | Metrics/logs | Likely cause | Fix |
 |---|---|---|---|
@@ -444,45 +526,49 @@ Scaling levers for 1,000 to 5,000 node GPU clusters:
 | `context deadline exceeded` to webhooks | `apiserver_admission_webhook_admission_duration_seconds` | Webhook slow/down | Timeouts, failurePolicy, scale webhook |
 | Event storms | `etcd` key counts for events; `kubectl get events` rate | Crash loops, flapping probes, scheduler failures | Fix root cause; separate events etcd; event rate limiting |
 
-Debugging toolkit: `kubectl get --raw /metrics`, `/debug/pprof` (CPU/heap profiles via `go tool pprof`), `/livez?verbose`, `/readyz?verbose`, audit logs, `kubectl top`, API server `-v=4` temporarily, `etcdctl` checks, Prometheus rules from kube-prometheus (`KubeAPIErrorBudgetBurn`, `etcdHighCommitDurations`, `etcdInsufficientMembers`).
+Start with the metric named in the matching row. If the metric points at a client, the audit log shows which one is sending the traffic.
+
+The debugging toolkit gives you the endpoints and tools to confirm a cause. Use `kubectl get --raw /metrics`, and `/debug/pprof` for CPU and heap profiles through `go tool pprof`. The `/livez?verbose` and `/readyz?verbose` endpoints report health in detail. Audit logs, `kubectl top` and `etcdctl` checks help too. You can raise the API server to `-v=4` for a short time. Prometheus rules from kube-prometheus, such as `KubeAPIErrorBudgetBurn`, `etcdHighCommitDurations` and `etcdInsufficientMembers`, alert you to these problems automatically.
 
 ## 10. Lab
 
-First, run the self-checking Python lab (`code/part05/apiserver_etcd_mvcc_lab.py`) locally. It verifies the `etcd` MVCC revision store and `kube-apiserver` optimistic concurrency (`EtcdMVCCSimulator`: testing monotonic revisions, HTTP `409 Conflict` on stale `resourceVersion`, compaction, and `410 Gone` vs `BOOKMARK` watch resumption), Server-Side Apply field-ownership conflict detection (`evaluate_ssa_field_ownership` on `managedFields`), and API Priority and Fairness concurrency allocation (`compute_apf_concurrency_limit`).
+Start with the self-checking Python lab. You run it locally first, because it tests the models before you touch a real cluster. It checks the etcd MVCC revision store and kube-apiserver's optimistic concurrency. The `EtcdMVCCSimulator` tests monotonic revisions, the HTTP `409 Conflict` on a stale `resourceVersion`, compaction, and the `410 Gone` versus `BOOKMARK` watch resumption. It also detects Server-Side Apply field-ownership conflicts with `evaluate_ssa_field_ownership` on `managedFields`. Last, it works out API Priority and Fairness concurrency allocation with `compute_apf_concurrency_limit`.
 
 ```bash
 python3 code/part05/apiserver_etcd_mvcc_lab.py
 ```
 
-Next, on a `kind` or `kubeadm` cluster (all interactive shell steps below are `untested here`), work through these exercises:
+Next, you should work on a `kind` or `kubeadm` cluster. The interactive shell steps below are untested here, so check each result yourself. Work through these exercises in order.
 
-1. **Raw API tour**: start `kubectl proxy`; `curl` discovery docs, list pods, get a pod, create a ConfigMap with `curl -X POST`, watch with `?watch=1`; read response headers and chunked events; then repeat with `kubectl get --raw`.
-2. **Pipeline observation**: set `-v=8`; apply a Deployment; map HTTP calls to stages; enable audit logging with a policy that records `RequestResponse` for ConfigMaps in one namespace; read the events for authentication, authorization decision and stage timings.
-3. **Optimistic concurrency**: get a ConfigMap, update it twice from two shells using stale `resourceVersion` (`kubectl replace`); observe 409; use `kubectl patch` instead; repeat with server-side apply from two field managers and trigger a conflict.
-4. **Watch semantics**: open a watch from an old resourceVersion after enough writes to exceed compaction (or via a very old RV) and observe `410 Gone`; use `allowWatchBookmarks`; write a 20-line Python client using the `kubernetes` library with and without an informer-like relist.
-5. **Admission**: add a mutating webhook (tiny Python server) that adds a label and a validating webhook that rejects a field; deploy with `failurePolicy: Fail` and stop the webhook to see writes blocked; fix with scoping and `Ignore`; try the same logic using ValidatingAdmissionPolicy (CEL).
-6. **APF**: create a FlowSchema/PriorityLevelConfiguration for a test service account; generate load with a looped `kubectl get pods -A` (many parallel clients) and observe `apiserver_flowcontrol_*` metrics and 429s; compare with the default catch-all.
-7. **etcd exploration**: with `etcdctl` list key prefixes, count per resource type, read a Secret value and confirm encryption (before/after enabling `EncryptionConfiguration`); inspect `etcd` metrics endpoint; take and verify a snapshot.
-8. **Compaction and defrag**: churn a ConfigMap rapidly to grow the DB; observe DB size vs in-use size; compact and defrag; trigger and clear a NOSPACE alarm in a throwaway cluster with a tiny quota.
-9. **Restore drill**: snapshot a kind/kubeadm lab cluster, create objects, restore to the snapshot on a spare control plane and observe which objects vanish; note the steps and timings.
-10. **HA etcd**: with 3 members, stop one, then two; observe API behaviour (reads vs writes); replace a member correctly (remove then add) and incorrectly (add first) in a lab and compare.
-11. **Load**: use `kube-burner` or `clusterloader2` to create thousands of objects/pods (fake nodes via `KWOK` for scale testing without real machines); watch API/etcd metrics, find the first bottleneck, tune (watch cache, QPS, APF) and re-test.
-12. **Dashboards and alerts**: import a control-plane dashboard; define alerts for API p99 latency, 5xx ratio, etcd fsync, DB size, leader changes, APF rejections.
-13. **Clean up**.
+1. Start `kubectl proxy`. Use `curl` to read the discovery documents and list pods. Get one pod, and create a ConfigMap with `curl -X POST`. Watch with `?watch=1`, and read the response headers and the chunked events. Then repeat the same steps with `kubectl get --raw`.
+2. Set `-v=8` and apply a Deployment. Map each HTTP call to a stage in the pipeline. Enable audit logging with a policy that records `RequestResponse` for ConfigMaps in one namespace. Read the events for authentication, the authorization decision and the stage timings.
+3. Get a ConfigMap, then update it twice from two shells. Use a stale `resourceVersion` each time with `kubectl replace`, and observe the 409. Next, use `kubectl patch` instead. Then repeat the exercise with server-side apply from two field managers, and trigger a conflict.
+4. Open a watch from an old resourceVersion. Write enough changes to pass the compaction point first, or use a very old RV. Observe the `410 Gone`. Use `allowWatchBookmarks` to compare. Then write a 20-line Python client with the `kubernetes` library. Build it once with an informer-like relist, and once without.
+5. Add a mutating webhook, which is a tiny Python server that adds a label. Add a validating webhook that rejects a field. Deploy the webhooks with `failurePolicy: Fail`, then stop the webhook and see the writes blocked. Fix the problem with scoping and with `Ignore`. Last, try the same logic with ValidatingAdmissionPolicy (CEL).
+6. Create a FlowSchema and a PriorityLevelConfiguration for a test service account. Generate load with a looped `kubectl get pods -A`, using many parallel clients. Watch the `apiserver_flowcontrol_*` metrics and the 429s, and compare them with the default catch-all.
+7. With `etcdctl`, list the key prefixes and count them per resource type. Read a Secret value and confirm that it is encrypted, both before and after you enable `EncryptionConfiguration`. Inspect the etcd metrics endpoint. Then take a snapshot and verify it.
+8. Churn a ConfigMap quickly to grow the database. Compare the DB size with the in-use size. Compact and defragment the store. Then, on a throwaway cluster with a tiny quota, trigger a NOSPACE alarm and clear it.
+9. Snapshot a kind or kubeadm lab cluster. Create some objects, and then restore the snapshot on a spare control plane. Observe which objects vanish, and note the steps and timings.
+10. Start with three etcd members. Stop one, then stop two, and observe how the API behaves for reads and writes. Replace a member the correct way, by removing it first and then adding the new one. Then try the incorrect way, adding first. Compare the two results in the lab.
+11. Use `kube-burner` or `clusterloader2` to create thousands of objects and pods. Use fake nodes from `KWOK` to test scale without real machines. Watch the API and etcd metrics, and find the first bottleneck. Tune the watch cache, the QPS or the APF settings, and then test again.
+12. Import a control-plane dashboard. Define alerts for API p99 latency, the 5xx ratio, etcd fsync, DB size, leader changes and APF rejections.
+13. Clean up the lab.
 
 ## 11. Common mistakes
 
-- Treating `resourceVersion` as a number to compare; polling with `kubectl get` loops instead of watching; unfiltered cluster-wide lists.
-- Webhooks with `failurePolicy: Fail`, no namespace exclusions, single replica, slow endpoints.
-- Running etcd on shared or network disks; no monitoring of fsync latency and DB size; never defragmenting; no backups, or untested ones.
-- Even-numbered etcd clusters; adding a member before removing a dead one; spreading etcd across high-latency links.
-- Storing large blobs/state in ConfigMaps, CRs or annotations; high-frequency status writes; unbounded Event creation.
-- Using `kubectl delete --force` on pods of StatefulSets or with RWO volumes; removing finalizers blindly.
+- Treating `resourceVersion` as a number to compare. Polling with `kubectl get` loops instead of watching. Running unfiltered cluster-wide lists.
+- Setting webhooks to `failurePolicy: Fail` with no namespace exclusions, a single replica, or slow endpoints.
+- Running etcd on shared or network disks. Skipping monitoring of fsync latency and DB size, and never defragmenting. Having no backups, or backups that were never tested.
+- Using an even number of etcd members. Adding a member before you remove a dead one. Spreading etcd across high-latency links.
+- Storing large blobs or state in ConfigMaps, CRs or annotations. Writing status too often. Creating Events without a bound.
+- Running `kubectl delete --force` on pods of StatefulSets or on pods with RWO volumes. Before you remove finalizers, check why they are there.
 - Ignoring API deprecations until an upgrade breaks controllers.
-- Exposing the API server publicly; leaving anonymous auth on; unencrypted Secrets in etcd.
-- Leaving client-go default QPS (5/10) on custom controllers handling thousands of objects.
+- Exposing the API server publicly. Leaving anonymous auth on. Keeping unencrypted Secrets in etcd.
+- Leaving the client-go default QPS (5/10) on custom controllers that handle thousands of objects.
 
 ## 12. Interview angles
+
+You can use these questions to check what you have learned. Each one points back to a section above.
 
 - "Describe the lifecycle of an API request in kube-apiserver."
 - "What are mutating and validating admission? What happens when a webhook is down?"
@@ -496,170 +582,177 @@ Next, on a `kind` or `kubeadm` cluster (all interactive shell steps below are `u
 
 ## Exercises
 
-1. **Navigating the Kubernetes REST API (`Groups`, `Versions`, `Kinds`, `Resources`, `Subresources`, and Storage Version Conversion, `KPG` Ch. 2):** Explain the URL mapping for core (`/api/v1/...`) vs named groups (`/apis/<group>/<version>/...`), the difference between a `Kind` (`Deployment`) and a `resource` (`deployments`), how `kube-apiserver` converts between multiple served versions (`v1alpha1`, `v1beta1`, `v1`) and the single **storage version** persisted in `etcd`, and how to detect deprecated APIs before a cluster upgrade.
-2. **The `kube-apiserver` Request Pipeline and Admission Webhooks vs. CEL (`KUR` Chapter 17):** Trace a `POST` request through Authentication -> Authorization -> APF -> Mutating Admission -> OpenAPI Schema Validation -> Validating Admission -> `etcd` persistence & KMS v2 encryption -> Watch fan-out, and explain how `MutatingWebhookConfiguration` (`JSONPatch` response) and `ValidatingWebhookConfiguration` (`KUR` Ch. 17) differ from in-process `ValidatingAdmissionPolicy` (CEL).
-3. **`resourceVersion`, Optimistic Concurrency (`409 Conflict`), Watch Semantics (`410 Gone`, `BOOKMARK`), and `LIST` Cache Modes:** Using `EtcdMVCCSimulator` in `code/part05/apiserver_etcd_mvcc.py`, explain how `metadata.resourceVersion` maps to `etcd`'s global MVCC revision, why a stale `PUT` returns `409 Conflict`, why a watch behind the compacted revision returns `410 Gone`, how `allowWatchBookmarks=true` prevents `410 Gone` on quiet resources, and the difference between `LIST` with `resourceVersion=""` (quorum read) vs `resourceVersion="0"` (watch cache).
-4. **Writing Objects: `PUT` (`update`) vs. `PATCH` (Strategic/Merge/JSON) vs. Server-Side Apply (`managedFields`):** Using `evaluate_ssa_field_ownership()` in `code/part05/apiserver_etcd_mvcc.py`, compare client-side `kubectl apply` (`last-applied-configuration` annotation) with Server-Side Apply (`application/apply-patch+yaml`, `metadata.managedFields`), and trace what happens when Argo CD and an HPA both touch `/spec/replicas`.
-5. **API Priority and Fairness (`APF`: `FlowSchema` and `PriorityLevelConfiguration`):** Using `compute_apf_concurrency_limit()` in `code/part05/apiserver_etcd_mvcc.py`, trace the `batch-controllers` `PriorityLevelConfiguration` and `kueue-and-training-operators` `FlowSchema` in Section 6, explaining `nominalConcurrencyShares`, `lendablePercent`, shuffle sharding (`queues: 64, handSize: 6`), and how to distinguish server-side APF `429` throttling from client-side `client-go` QPS/burst throttling.
-6. **`etcd` Internals (`Raft`, `WAL`, `MVCC`, `Compaction`, `Defrag`, `NOSPACE`), Member Replacement, and 5,000-Node GPU Control-Plane Scaling:** Explain why `etcd` compaction alone does not shrink the on-disk `bbolt` file until `etcdctl defrag` runs, how to clear an `etcdserver: mvcc: database space exceeded` (`NOSPACE`) alarm, why a dead `etcd` member must be **removed before adding** a replacement, and list the 8 scaling levers in Section 8 for a 5,000-node GPU cluster.
+These exercises connect the chapter's ideas to the code and to the cluster. Work through them in order, and note what you observe.
+
+1. Explain the URL paths for the core group (`/api/v1/...`) and for named groups (`/apis/<group>/<version>/...`). Explain the difference between a Kind (`Deployment`) and a resource (`deployments`). Describe how kube-apiserver converts between several served versions (`v1alpha1`, `v1beta1`, `v1`) and the single storage version persisted in etcd. Finally, explain how to detect deprecated APIs before a cluster upgrade. This exercise draws on groups, versions, kinds, resources, subresources and storage version conversion in Programming Kubernetes, Chapter 2.
+2. Trace a `POST` request through authentication, authorization, APF, mutating admission, OpenAPI schema validation, validating admission, etcd persistence with KMS v2 encryption, and watch fan-out. Then explain how a `MutatingWebhookConfiguration` with a `JSONPatch` response, and a `ValidatingWebhookConfiguration`, differ from the in-process `ValidatingAdmissionPolicy` (CEL). Use Kubernetes: Up and Running, Chapter 17, as your reference.
+3. Use `EtcdMVCCSimulator` in `code/part05/apiserver_etcd_mvcc.py` to explain how `metadata.resourceVersion` maps to etcd's global MVCC revision. Explain why a stale `PUT` returns `409 Conflict`, and why a watch that falls behind the compacted revision returns `410 Gone`. Explain how `allowWatchBookmarks=true` prevents `410 Gone` on quiet resources. Finally, explain the difference between a `LIST` with `resourceVersion=""` (a quorum read) and one with `resourceVersion="0"` (the watch cache).
+4. Use `evaluate_ssa_field_ownership()` in `code/part05/apiserver_etcd_mvcc.py` to compare client-side `kubectl apply`, which relies on the `last-applied-configuration` annotation, with Server-Side Apply, which uses `application/apply-patch+yaml` and `metadata.managedFields`. Then trace what happens when Argo CD and an HPA both touch `/spec/replicas`.
+5. Use `compute_apf_concurrency_limit()` in `code/part05/apiserver_etcd_mvcc.py` to trace the `batch-controllers` PriorityLevelConfiguration and the `kueue-and-training-operators` FlowSchema from section 6. Explain `nominalConcurrencyShares`, `lendablePercent` and shuffle sharding (`queues: 64, handSize: 6`). Finally, explain how to tell server-side APF `429` throttling apart from client-side `client-go` QPS and burst throttling.
+6. Explain Raft and the write-ahead log (`WAL`) in etcd. Explain why etcd compaction alone does not shrink the on-disk `bbolt` file until `etcdctl defrag` runs. Explain how to clear an `etcdserver: mvcc: database space exceeded` (`NOSPACE`) alarm. Explain why a dead etcd member must be removed before you add its replacement. Then list the 8 scaling levers from section 8 for a 5,000-node GPU cluster.
 
 ## Checkpoint questions (20)
 
 <details>
-<summary>1. What is the difference between a Kubernetes API `Kind`, a `Resource`, and a `Subresource`, and how do Core and Named API URL paths differ (`KPG` Chapter 2)?</summary>
+<summary>1. What is the difference between a Kubernetes API `Kind`, a `Resource`, and a `Subresource`, and how do Core and Named API URL paths differ (Programming Kubernetes, Chapter 2)?</summary>
 
-- **Core (legacy) API group (`""`):** Served under **`/api/v1/...`** (e.g., `/api/v1/namespaces/default/pods`).
-- **Named API groups (`apps`, `batch`, `networking.k8s.io`, CRDs):** Served under **`/apis/<group>/<version>/...`** (e.g., `/apis/apps/v1/namespaces/default/deployments`).
-- **Kind vs. Resource:** A **Kind** (`Deployment`, `Pod`) is the PascalCase Go/JSON type name inside `kind:`; a **Resource** (`deployments`, `pods`) is the lowercase plural HTTP collection noun in the URL path.
-- **Subresource (`/status`, `/scale`, `/logs`, `/exec`, `/binding`, `/eviction`):** A scoped endpoint hanging off an individual resource instance that has its own RBAC rules and behavior (for example, `PUT /.../deployments/web/status` updates only `.status` without incrementing `.metadata.generation`).
+- The core (legacy) API group, with the empty name `""`, is served under `/api/v1/...`. For example, `/api/v1/namespaces/default/pods`.
+- Named API groups, such as `apps`, `batch`, `networking.k8s.io` and CRDs, are served under `/apis/<group>/<version>/...`. For example, `/apis/apps/v1/namespaces/default/deployments`.
+- A Kind, such as `Deployment` or `Pod`, is the PascalCase type name inside `kind:`. A resource, such as `deployments` or `pods`, is the lowercase plural noun in the URL path.
+- A subresource, such as `/status`, `/scale`, `/logs`, `/exec`, `/binding` or `/eviction`, hangs off one object instance. It has its own RBAC rules and behaviour. For example, `PUT /.../deployments/web/status` updates only `.status`, and it does not increment `.metadata.generation`.
 </details>
 
 <details>
 <summary>2. When a CRD or built-in resource serves three API versions (`v1alpha1`, `v1beta1`, `v1`), how many versions are stored in `etcd`?</summary>
 
-**Exactly one version—the designated `storage: true` version—is persisted in `etcd`.** A CRD can mark `served: true` on multiple versions (`v1alpha1`, `v1beta1`, `v1`) so old and new clients can read and write using their preferred schema (over default HTTPS port `6443`), while `kube-apiserver` converts objects on the fly (via a `Webhook` conversion service or `None` schema-only conversion) into the single **storage version** before writing to `etcd`.
+Exactly one version is persisted in etcd, the one marked `storage: true`. A CRD can set `served: true` on several versions, such as `v1alpha1`, `v1beta1` and `v1`. That lets old and new clients read and write with the schema they prefer, over the default HTTPS port `6443`. The kube-apiserver converts each object on the fly into the single storage version before it writes to etcd. The conversion uses a `Webhook` conversion service, or `None` for schema-only conversion.
 </details>
 
 <details>
 <summary>3. Why do Mutating Admission plugins always run BEFORE Validating Admission plugins in `kube-apiserver`?</summary>
 
-Because a mutating plugin or `MutatingAdmissionWebhook` can modify the object (for example, injecting a sidecar container, adding default resource limits via `LimitRanger`, or setting `runtimeClassName: nvidia`), **validating admission (`ValidatingAdmissionWebhook` / `ValidatingAdmissionPolicy` / `ResourceQuota`) must see the final mutated object** so a mutation cannot violate cluster security or quota policies. Furthermore, `kube-apiserver` validates the object against the OpenAPI schema *after* mutating admission so broken webhook patches are caught immediately.
+Mutating plugins run first because they can change the object. Examples include injecting a sidecar container, adding default resource limits with `LimitRanger`, or setting `runtimeClassName: nvidia`. Validating admission, which covers `ValidatingAdmissionWebhook`, `ValidatingAdmissionPolicy` and `ResourceQuota`, must see the final mutated object. That way, a mutation cannot break security or quota policy. kube-apiserver also validates the object against the OpenAPI schema after mutating admission, so a broken webhook patch is caught right away.
 </details>
 
 <details>
 <summary>4. In *Kubernetes: Up and Running* Chapter 17, how does a `MutatingAdmissionWebhook` return modifications to `kube-apiserver`?</summary>
 
-When `kube-apiserver` sends an `AdmissionReview` HTTPS POST request to a `MutatingAdmissionWebhook`, the webhook inspects `request.object` and returns an `AdmissionResponse` with:
-- `allowed: true`
-- `patchType: "JSONPatch"`
-- `patch`: a **base64-encoded RFC 6902 JSON Patch array** (for example, `[{"op": "add", "path": "/spec/paths", "value": ["/index.html"]}]`).
+When kube-apiserver sends an `AdmissionReview` HTTPS POST to a `MutatingAdmissionWebhook`, the webhook reads `request.object`. It replies with an `AdmissionResponse` that has three fields. The `allowed` field is `true`. The `patchType` field is `"JSONPatch"`. The `patch` field is a base64-encoded RFC 6902 JSON Patch array, such as `[{"op": "add", "path": "/spec/paths", "value": ["/index.html"]}]`.
 </details>
 
 <details>
 <summary>5. How can a misconfigured `ValidatingAdmissionWebhook` or `MutatingAdmissionWebhook` take down an entire Kubernetes cluster, and what five safeguards prevent it?</summary>
 
-If a webhook is configured with **`failurePolicy: Fail`** and matches all namespaces (`*`) and Pods, and the webhook's own Pods crash or become unreachable during a node roll, `kube-apiserver` rejects all Pod creations—**including the webhook's own replacement Pods, `kube-system` DaemonSets, and `coredns`** (a total cluster deadlock). Five mandatory safeguards:
-1. **Exclude `kube-system` and the webhook's own namespace** via `namespaceSelector` (`matchExpressions: [{key: kubernetes.io/metadata.name, operator: NotIn, values: [kube-system, webhook-ns]}]`).
-2. Set a short **`timeoutSeconds` (e.g., `2`–`5` seconds)** rather than the 10-second default.
-3. Run **$\ge 2$ webhook replicas** across zones with a `PodDisruptionBudget` and `system-cluster-critical` `PriorityClass`.
-4. Prefer in-process **`ValidatingAdmissionPolicy` (`CEL`)** (and `MutatingAdmissionPolicy`) whenever external HTTP calls are not needed—zero network latency and zero webhook pod dependency.
-5. Use `failurePolicy: Ignore` for non-security-critical mutations.
+A webhook configured with `failurePolicy: Fail` that matches all namespaces (`*`) and Pods can take down the whole cluster. If its own Pods crash or become unreachable during a node roll, kube-apiserver rejects every Pod creation. That includes the webhook's replacement Pods, the `kube-system` DaemonSets and `coredns`, which makes a total cluster deadlock. Five safeguards prevent this.
+
+1. Exclude `kube-system` and the webhook's own namespace with a `namespaceSelector`, for example `matchExpressions: [{key: kubernetes.io/metadata.name, operator: NotIn, values: [kube-system, webhook-ns]}]`.
+2. Set a short `timeoutSeconds`, such as `2` to `5` seconds, rather than the 10-second default.
+3. Run $\ge 2$ webhook replicas across zones, with a `PodDisruptionBudget` and the `system-cluster-critical` `PriorityClass`.
+4. Prefer the in-process `ValidatingAdmissionPolicy` (`CEL`), and `MutatingAdmissionPolicy`, when you do not need external HTTP calls. They add zero network latency and have zero webhook Pod dependency.
+5. Use `failurePolicy: Ignore` for mutations that are not critical.
 </details>
 
 <details>
 <summary>6. Compare `metadata.resourceVersion`, `metadata.generation`, and `status.observedGeneration`.</summary>
 
-- **`metadata.resourceVersion`:** Opaque string backed by `etcd`'s MVCC `mod_revision`; **changes on every single write to the object** (including `metadata`, `spec`, or `status` updates). Used for optimistic concurrency (`409 Conflict`) and watch resumption.
-- **`metadata.generation`:** Integer counter (`1, 2, 3...`) that increments **only when `.spec` changes** (never when `.status` or `.metadata` labels/annotations change).
-- **`status.observedGeneration`:** Written by the controller into `.status` to record which `metadata.generation` it has most recently reconciled. When `status.observedGeneration == metadata.generation`, you know the controller's status report reflects the latest desired spec.
+- `metadata.resourceVersion` is an opaque string backed by etcd's MVCC `mod_revision`. It changes on every single write to the object, whether to metadata, spec or status. It drives optimistic concurrency (`409 Conflict`) and watch resumption.
+- `metadata.generation` is an integer counter, 1, 2, 3 and so on. It increments only when `.spec` changes. It never changes when `.status` or the labels and annotations in `.metadata` change.
+- `status.observedGeneration` is written by the controller into `.status`. It records the `metadata.generation` that the controller reconciled most recently. When `status.observedGeneration == metadata.generation`, the controller's status report reflects the latest desired spec.
 </details>
 
 <details>
 <summary>7. What is the difference between a `LIST` request with `resourceVersion` unset vs. `resourceVersion="0"`?</summary>
 
-- **`resourceVersion` unset (`""`, default):** Performs a **linearizable quorum read from `etcd`** (or consistent read from cache via etcd read-index), guaranteeing the most up-to-date cluster state at the cost of an `etcd` round-trip.
-- **`resourceVersion="0"`:** Serves the response **directly from `kube-apiserver`'s in-memory watch cache** without touching `etcd`. It is orders of magnitude faster and cheaper on `etcd`, though the cached snapshot may be slightly behind if the API server watch briefly lagged.
+- With `resourceVersion` unset (`""`, the default), the server does a linearizable quorum read from etcd, or a consistent read from cache through the etcd read index. That guarantees the most up-to-date state, at the cost of an etcd round trip.
+- With `resourceVersion="0"`, the server serves the response straight from the kube-apiserver's in-memory watch cache, without touching etcd. That is orders of magnitude faster and cheaper on etcd. The cached snapshot may be slightly behind, though, if the watch briefly lagged.
 </details>
 
 <details>
 <summary>8. Why does a watch client receive HTTP `410 Gone` (`too old resource version`), and how do Watch Bookmarks (`allowWatchBookmarks=true`) prevent it?</summary>
 
-`etcd` and `kube-apiserver`'s watch cache only keep a sliding window of historical revisions (default `etcd` compaction runs every **5 minutes**). If a client opens or reconnects a watch `?watch=1&resourceVersion=1000` and revision `1000` has already been compacted away, `kube-apiserver` returns **`410 Gone`**, forcing the client informer to perform a full `LIST` to re-synchronize.
-On quiet resources (or heavily filtered watches where no matching object changes for hours), a client's last-seen `resourceVersion` would naturally fall behind the 5-minute compaction window if the connection drops. Enabling **`allowWatchBookmarks=true`** causes `kube-apiserver` to periodically send lightweight synthetic **`BOOKMARK`** events containing only the current head `resourceVersion` (zero object payload), keeping the client's resume bookmark fresh so reconnects never hit `410 Gone`.
+etcd and the kube-apiserver watch cache keep only a sliding window of historical revisions. The default etcd compaction runs every 5 minutes. If a client opens or reconnects a watch with `?watch=1&resourceVersion=1000`, and revision `1000` has already been compacted away, kube-apiserver returns `410 Gone`. The client informer must then perform a full `LIST` to resynchronise.
+
+On quiet resources, or on heavily filtered watches where no matching object changes for hours, the client's last-seen `resourceVersion` can fall behind the 5-minute compaction window when the connection drops. Setting `allowWatchBookmarks=true` fixes that. kube-apiserver periodically sends lightweight synthetic `BOOKMARK` events. Each one carries only the current head `resourceVersion`, with no object payload. The client's resume point stays fresh, so reconnects never hit `410 Gone`.
 </details>
 
 <details>
 <summary>9. Compare Client-Side `kubectl apply` (`last-applied-configuration`) with Server-Side Apply (`SSA`, `managedFields`).</summary>
 
-- **Client-Side `kubectl apply`:** Stores a full copy of the previous YAML/JSON manifest in the **`kubectl.kubernetes.io/last-applied-configuration`** annotation (failing on objects > 256 KiB like large CRDs) and computes a 3-way merge on the client.
-- **Server-Side Apply (`kubectl apply --server-side`, `PatchType: application/apply-patch+yaml`):** Sends your declarative intent directly to `kube-apiserver`, which merges fields on the server and records **per-field ownership inside `metadata.managedFields`** (`manager: argocd`, `manager: kube-controller-manager`). If a second actor tries to modify a field owned by another manager, `kube-apiserver` returns a **409 field conflict** unless `--force-conflicts` is specified, preventing controllers and GitOps tools from silently overwriting each other's fields.
+- Client-side `kubectl apply` stores a full copy of the previous manifest in the `kubectl.kubernetes.io/last-applied-configuration` annotation. That fails on objects over 256 KiB, such as large CRDs. The client computes a three-way merge.
+- Server-Side Apply (`kubectl apply --server-side`, `PatchType: application/apply-patch+yaml`) sends your declared intent straight to kube-apiserver. The server merges the fields and records per-field ownership in `metadata.managedFields`, under managers such as `manager: argocd` and `manager: kube-controller-manager`. If a second actor tries to change a field that another manager owns, kube-apiserver returns a 409 field conflict, unless you pass `--force-conflicts`. That stops controllers and GitOps tools from silently overwriting each other's fields.
 </details>
 
 <details>
 <summary>10. How does API Priority and Fairness (`APF`) protect `kube-apiserver` from noisy tenants, and what is Shuffle Sharding?</summary>
 
-1. Every incoming request matches a **`FlowSchema`** (by user, ServiceAccount, namespace, verb, and resource) which assigns it to a **`PriorityLevelConfiguration`** (e.g., `system`, `node-high`, `leader-election`, `workload-high`, `batch-controllers`, `global-default`) and computes a **flow distinguisher** (`ByUser` or `ByNamespace`).
-2. Each `PriorityLevelConfiguration` gets a guaranteed slice of the server's total concurrency limit based on `nominalConcurrencyShares` (with optional borrowing via `lendablePercent`).
-3. Within a queued priority level (e.g., `64` queues), **Shuffle Sharding** hashes each flow's distinguisher to a pseudo-random subset of **`handSize` queues (e.g., `6` of `64`)** and enqueues the request into the shortest of those 6 queues. Even if one buggy script in `team-a` floods the API server, it only fills its 6 queues while 58 queues remain clear for other tenants.
+1. Every incoming request matches a `FlowSchema`, by user, ServiceAccount, namespace, verb and resource. The FlowSchema assigns the request to a `PriorityLevelConfiguration`, such as `system`, `node-high`, `leader-election`, `workload-high`, `batch-controllers` or `global-default`. It also computes a flow distinguisher, either `ByUser` or `ByNamespace`.
+2. Each `PriorityLevelConfiguration` gets a guaranteed slice of the server's total concurrency limit, based on `nominalConcurrencyShares`. It can borrow more with `lendablePercent`.
+3. Inside a queued level with `64` queues, **Shuffle Sharding** hashes each flow's distinguisher to a pseudo-random subset of `handSize` queues, such as `6` of `64`. The request goes into the shortest of those `6` queues. Even if one buggy script in `team-a` floods the API server, it fills only its `6` queues. The other `58` queues stay clear for other tenants.
 </details>
 
 <details>
 <summary>11. How do you tell whether a slow Kubernetes controller is being throttled by Server-Side APF vs. Client-Side `client-go` rate limiting?</summary>
 
-- **Client-Side `client-go` throttling (most common on custom operators):** The controller's own logs print `Waited for 1.04s due to client-side throttling, not priority and fairness`. By default, `client-go` sets a tiny **`QPS = 5` and `Burst = 10`**. Fix it by raising `cfg.QPS` / `--kube-api-qps` (e.g., `50`–`100`) and `cfg.Burst` / `--kube-api-burst` (`100`–`200`).
-- **Server-Side APF queueing/rejection:** Visible on `kube-apiserver` metrics via `apiserver_flowcontrol_rejected_requests_total` (HTTP `429 Too Many Requests`) and `apiserver_flowcontrol_request_wait_duration_seconds`.
+- Client-side `client-go` throttling is the most common case on custom operators. The controller's own logs print `Waited for 1.04s due to client-side throttling, not priority and fairness`. By default, client-go sets `QPS = 5` and `Burst = 10`, which is very low. Raise `cfg.QPS` or `--kube-api-qps`, for example to `50`–`100`. Raise `cfg.Burst` or `--kube-api-burst`, for example to `100`–`200`.
+- Server-side APF queueing and rejection show up in kube-apiserver metrics. Watch `apiserver_flowcontrol_rejected_requests_total`, which counts HTTP `429 Too Many Requests`, and `apiserver_flowcontrol_request_wait_duration_seconds`.
 </details>
 
 <details>
 <summary>12. How does `etcd` execute a write using Raft, and why is disk `fsync` latency the #1 determinant of `etcd` performance?</summary>
 
-1. A client (`kube-apiserver`) sends a gRPC write (`Put`/`Txn`) to `etcd` (forwarded to the **Raft leader**).
-2. The Raft leader appends the entry to its local **Write-Ahead Log (`WAL`)** on disk (`fsync`) and broadcasts `AppendEntries` RPCs to all follower members (`:2380`).
-3. Each follower appends the entry to its own `WAL` and calls **`fsync`** before replying with an acknowledgment.
-4. Once a **quorum ($\lfloor N/2 \rfloor + 1$)** of members has `fsync`ed the WAL entry, the leader commits the entry, applies it to its **`bbolt` B+tree** key-value store, and returns success to `kube-apiserver`.
-Because **every single write requires a synchronous disk `fsync` on a majority of members**, slow or contended disks (`etcd_disk_wal_fsync_duration_seconds` p99 > 10 ms) immediately stall the entire Kubernetes control plane and trigger Raft leader elections.
+1. A client, kube-apiserver, sends a gRPC write (`Put` or `Txn`) to etcd. The write is forwarded to the Raft leader.
+2. The leader appends the entry to its local Write-Ahead Log (`WAL`) on disk, with an `fsync`. It then broadcasts `AppendEntries` RPCs to all follower members on `:2380`.
+3. Each follower appends the entry to its own WAL and calls `fsync` before it replies with an acknowledgment.
+4. Once a quorum, $\lfloor N/2 \rfloor + 1$, of members has fsynced the WAL entry, the leader commits it. It applies the entry to its `bbolt` B+tree key-value store and returns success to kube-apiserver.
+
+Every single write needs a synchronous disk `fsync` on a majority of members. Slow or contended disks, where `etcd_disk_wal_fsync_duration_seconds` p99 is above 10 ms, stall the entire Kubernetes control plane at once. They also trigger Raft leader elections.
 </details>
 
 <details>
 <summary>13. What is the difference between `etcd` Compaction and Defragmentation (`defrag`), and why do you need both?</summary>
 
-- **Compaction (`etcdctl compact <rev>`, run automatically every 5 minutes by `kube-apiserver`):** Marks historical MVCC revisions older than `<rev>` as logically dead so their pages inside the `bbolt` B+tree can be reused by future `etcd` writes. However, **compaction does NOT shrink the on-disk `/var/lib/etcd/member/snap/db` file size** or return bytes to the OS filesystem.
-- **Defragmentation (`etcdctl defrag`, run sequentially one member at a time):** Rewrites the `bbolt` database file without the free holes, shrinking the actual file size on disk. Because `defrag` briefly blocks reads and writes on the target member while rewriting the file, always run `defrag` **one member at a time** (followers first, then transfer leadership and defrag the old leader).
+- Compaction (`etcdctl compact <rev>`, run automatically every 5 minutes by kube-apiserver) marks historical MVCC revisions older than `<rev>` as logically dead. Their pages inside the `bbolt` B+tree can then be reused by new etcd writes. However, compaction does NOT shrink the on-disk `/var/lib/etcd/member/snap/db` file, and it does not return bytes to the filesystem.
+- Defragmentation (`etcdctl defrag`, run sequentially, one member at a time) rewrites the `bbolt` database file without the free holes. That shrinks the actual file size on disk. Defrag briefly blocks reads and writes on the member it runs on. So always run it one member at a time: followers first, then transfer leadership and defragment the old leader.
 </details>
 
 <details>
 <summary>14. What happens when `etcd` hits `--quota-backend-bytes` (default `2 GiB`, max recommended `8 GiB`), and how do you recover?</summary>
 
-When any member's `bbolt` database size reaches `--quota-backend-bytes`, `etcd` raises a cluster-wide **`NOSPACE` alarm** and puts the entire cluster into **maintenance read-only mode**—all `PUT`/`POST`/`DELETE` requests fail with `mvcc: database space exceeded`. To recover:
+When any member's `bbolt` database reaches `--quota-backend-bytes`, etcd raises a cluster-wide `NOSPACE` alarm. The whole cluster then goes into maintenance read-only mode. Every `PUT`, `POST` and `DELETE` request fails with `mvcc: database space exceeded`. To recover:
+
 1. Find the current revision: `rev=$(etcdctl endpoint status -w json | jq '.[0].Status.header.revision')`.
-2. Compact old history: **`etcdctl compact $rev`**.
-3. Defragment every member to shrink the DB below quota: **`etcdctl defrag --cluster`** (or member-by-member).
-4. Disarm the alarm so writes resume: **`etcdctl alarm disarm`**.
+2. Compact the old history: `etcdctl compact $rev`.
+3. Defragment every member so the DB shrinks below the quota: `etcdctl defrag --cluster`, or member by member.
+4. Disarm the alarm so writes resume: `etcdctl alarm disarm`.
 </details>
 
 <details>
 <summary>15. Why must you ALWAYS remove a dead `etcd` member BEFORE adding its replacement in a 3-node cluster?</summary>
 
-Suppose you have a 3-member `etcd` cluster (`cp1`, `cp2`, `cp3`) and `cp3` dies (`2` of `3` alive -> quorum is `2`, cluster is still up). If you run `etcdctl member add cp4` **before** removing `cp3` (and without `--learner`), the cluster membership immediately becomes **4 members** (with `cp3` dead and `cp4` not yet started = only `2` of `4` alive), while **quorum for a 4-member cluster jumps to $\lfloor 4/2 \rfloor + 1 = 3$**. You have just caused an immediate quorum loss (`2 < 3`) and taken down the cluster.
-Instead, **first** run `etcdctl member remove <cp3-id>` (`2` of `2` alive), and **then** add `cp4` (or add `cp4` as a non-voting **`--learner`** first and promote it once caught up).
+Suppose you have a three-member etcd cluster, `cp1`, `cp2` and `cp3`, and `cp3` dies. Two of the three are alive, so the quorum is 2 and the cluster stays up. If you run `etcdctl member add cp4` before you remove `cp3`, and without `--learner`, the membership jumps to four members at once. With `cp3` dead and `cp4` not yet started, only 2 of 4 are alive. A four-member cluster needs $\lfloor 4/2 \rfloor + 1 = 3$ for quorum. That is an immediate quorum loss, since 2 < 3, and it takes the cluster down.
+
+Instead, run `etcdctl member remove <cp3-id>` first. That leaves 2 of 2 alive. Then add `cp4`, or add `cp4` as a non-voting `--learner` and promote it once it has caught up.
 </details>
 
 <details>
 <summary>16. How do you encrypt Kubernetes `Secret`s at rest in `etcd` (`EncryptionConfiguration`), and how do you verify it is working?</summary>
 
-By default, Kubernetes `Secret` objects are stored in `etcd` as **unencrypted** Protobuf/base64 values. Passing `--encryption-provider-config=/etc/kubernetes/enc/enc.yaml` to `kube-apiserver` with an `EncryptionConfiguration` specifying a **`kms` (v2)** provider (or `aesgcm`/`aescbc`) listed *before* the `identity: {}` fallback provider encrypts every newly written `Secret` before it leaves `kube-apiserver`.
-- **Verify in `etcd`:** Run `etcdctl get /registry/secrets/default/my-secret` and confirm the raw value starts with the **`k8s:enc:kms:v2:`** (or `k8s:enc:aesgcm:v1:`) prefix rather than plaintext.
-- **Encrypt existing Secrets:** Run `kubectl get secrets --all-namespaces -o json | kubectl replace -f -`.
+By default, Kubernetes Secret objects are stored in etcd as unencrypted Protobuf or base64 values. Pass `--encryption-provider-config=/etc/kubernetes/enc/enc.yaml` to kube-apiserver. Its `EncryptionConfiguration` should specify a `kms` (v2) provider, or `aesgcm` or `aescbc`, and list it before the `identity: {}` fallback provider. Then every newly written Secret is encrypted before it leaves kube-apiserver.
+
+- Verify it in etcd. Run `etcdctl get /registry/secrets/default/my-secret`. The raw value should start with the `k8s:enc:kms:v2:` prefix, or `k8s:enc:aesgcm:v1:`, rather than plaintext.
+- Encrypt existing Secrets. Run `kubectl get secrets --all-namespaces -o json | kubectl replace -f -`.
 </details>
 
 <details>
 <summary>17. Why do large GPU clusters (>1,000 nodes) run a separate `etcd` instance for `/registry/events` (`--etcd-servers-overrides`)?</summary>
 
-During a 2,000-pod distributed training launch, image pulls, probe checks, or network hiccups can generate **tens of thousands of Kubernetes `Event` writes per minute**. Although `Event`s have a 1-hour TTL and are non-critical troubleshooting telemetry, if they share the main `etcd` cluster they consume WAL `fsync` IOPS, bloat the MVCC revision counter (accelerating compaction and causing `410 Gone` watch resets on Pods/Nodes), and risk triggering a `NOSPACE` quota alarm. Passing **`--etcd-servers-overrides=/events#https://etcd-events:2379`** on `kube-apiserver` isolates all `Event` churn onto a dedicated `etcd` instance.
+During a 2,000-pod distributed training launch, image pulls, probe checks and network hiccups can generate tens of thousands of Kubernetes Event writes per minute. Events have a one-hour TTL, and they are non-critical troubleshooting telemetry. Sharing the main etcd cluster still costs you, though. Event writes consume WAL `fsync` IOPS. They bloat the MVCC revision counter, which speeds up compaction and can cause `410 Gone` watch resets on Pods and Nodes. They also risk triggering a `NOSPACE` quota alarm. Passing `--etcd-servers-overrides=/events#https://etcd-events:2379` to kube-apiserver isolates all Event churn on a dedicated etcd instance.
 </details>
 
 <details>
 <summary>18. What are the three Audit Policy levels in `kube-apiserver`, and why shouldn't you log `Secret`s or `TokenReview`s at `RequestResponse`?</summary>
 
-The four audit levels are `None` (do not log), **`Metadata`** (log user, timestamp, resource, verb, and status code, but *not* the request/response body), **`Request`** (metadata + request body), and **`RequestResponse`** (metadata + both request and response bodies).
-If you log `secrets` or `tokenreviews` at `Request` or `RequestResponse` level, **every secret plaintext and bearer token in the cluster is written in cleartext into `/var/log/kubernetes/audit.log` and your SIEM**—and logging `RequestResponse` on high-volume `watch`/`list` endpoints will saturate disk I/O and CPU. Always log `secrets` and `tokenreviews` at **`Metadata`** level only.
+The four audit levels are `None` (do not log), `Metadata` (log user, timestamp, resource, verb and status code, but not the request or response body), `Request` (metadata plus the request body), and `RequestResponse` (metadata plus both the request and response bodies).
+
+If you log `secrets` or `tokenreviews` at `Request` or `RequestResponse` level, every Secret plaintext and bearer token in the cluster is written in cleartext to `/var/log/kubernetes/audit.log` and to your SIEM. Logging `RequestResponse` on high-volume `watch` and `list` endpoints also saturates disk I/O and CPU. Always log `secrets` and `tokenreviews` at `Metadata` level only.
 </details>
 
 <details>
 <summary>19. What happens to cluster state and running workloads when you restore `etcd` from a snapshot taken 2 hours ago?</summary>
 
-Restoring an `etcd` snapshot (`etcdutl snapshot restore`) **rewinds the entire cluster's desired state back to 2 hours ago**:
-- Any Pod, Job, Deployment, PVC, or Secret created in the last 2 hours **disappears from `etcd`**. When `kubelet`s reconnect to `kube-apiserver`, they see pods running locally on the node that no longer exist in `kube-apiserver` and **terminate those containers**.
-- Any Pod or Deployment deleted in the last 2 hours **reappears in `etcd`**, causing controllers and `kubelet`s to recreate it.
-- Cloud resources (LoadBalancers, disks) provisioned in the last 2 hours become orphaned in the cloud account.
+Restoring an etcd snapshot with `etcdutl snapshot restore` rewinds the cluster's desired state to the snapshot time. In this case, that is 2 hours ago.
+
+- Any Pod, Job, Deployment, PVC or Secret created in the last 2 hours disappears from etcd. When kubelets reconnect to kube-apiserver, they find pods running locally that the server no longer knows about, so they terminate those containers.
+- Any Pod or Deployment deleted in the last 2 hours reappears in etcd. Controllers and kubelets then recreate it.
+- Cloud resources, such as LoadBalancers and disks, provisioned in the last 2 hours become orphaned in the cloud account.
 </details>
 
 <details>
 <summary>20. A cluster operator reports that `kubectl get pods -A` takes 15 seconds and `kube-apiserver` memory usage is spiking to 32 GB. How do you diagnose and fix it?</summary>
 
-1. **Check `apiserver_request_duration_seconds` and `apiserver_response_sizes` by verb and resource:** Almost always caused by a rogue client (a monitoring script, dashboard, or poorly written controller) running unpaginated, unfiltered **`LIST` requests on `pods`, `events`, or large CRDs** in a tight loop without using an Informer watch cache.
-2. **Identify the culprit client `User-Agent` and IP:** Query `sum by (client, verb, resource) (rate(apiserver_request_total[5m]))` or inspect the audit log.
-3. **Mitigate immediately:** Restrict the noisy ServiceAccount via **APF (`FlowSchema` -> low-concurrency `PriorityLevelConfiguration`)** or RBAC, refactor the client to use SharedInformers / `PartialObjectMetadata` / field selectors / pagination (`limit=500`), and enable **WatchList (streaming lists)** on recent Kubernetes versions.
+1. Check `apiserver_request_duration_seconds` and `apiserver_response_sizes` by verb and resource. The usual cause is a rogue client, such as a monitoring script, a dashboard or a poorly written controller. It sends unpaginated, unfiltered `LIST` requests on `pods`, `events` or large CRDs in a tight loop, without using an Informer watch cache.
+2. Identify the culprit client by its `User-Agent` and IP. Query `sum by (client, verb, resource) (rate(apiserver_request_total[5m]))`, or inspect the audit log.
+3. Mitigate right away. Restrict the noisy ServiceAccount with APF, using a FlowSchema that routes it to a low-concurrency PriorityLevelConfiguration, or restrict it with RBAC. Refactor the client to use SharedInformers, `PartialObjectMetadata`, field selectors and pagination with `limit=500`. On recent Kubernetes versions, enable **WatchList (streaming lists)**.
 </details>
 
 ## Sources and review notes

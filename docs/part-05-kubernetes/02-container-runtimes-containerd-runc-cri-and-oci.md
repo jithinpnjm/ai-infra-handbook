@@ -22,20 +22,28 @@ lab_venue: "GCP / GKE"
 
 ## Why this matters for AI infrastructure
 
-When a training pod will not start, the cause is often below Kubernetes: an image pull that stalls, a runtime misconfigured for the NVIDIA toolkit, a wrong cgroup driver, a snapshotter running out of space, a shim that leaked, a runtime upgrade that restarted every container. The kubelet does not run containers; it asks a **container runtime** through the Container Runtime Interface, which in turn uses an **OCI runtime** to create the namespaces and cgroups. Knowing the layers (and the tools that talk to each of them) is what lets you debug on a node when `kubectl describe` is not enough, configure GPU runtimes correctly, and choose between runtimes such as runc, crun, Kata and gVisor.
+Picture a training pod that will not start. The cause is often below Kubernetes itself. An image pull may stall, a runtime may be misconfigured for the NVIDIA toolkit, or the cgroup driver may be wrong. A snapshotter might run out of space, a shim might leak, or a runtime upgrade might restart every container.
+
+The kubelet does not run containers. It asks a **container runtime** to do that, through the Container Runtime Interface. That runtime relies on an **OCI runtime** to create the namespaces and cgroups. Knowing these layers, and the tools that talk to each one, lets you debug a node when `kubectl describe` is not enough.
+
+The same knowledge helps you configure GPU runtimes correctly. It also helps you choose between runtimes such as runc, crun, Kata and gVisor. Read the rest of this chapter with one question in mind: which layer is failing?
 
 ## Prerequisites and outcomes
 
-Needs 5.1. After this chapter you can:
+You should read 5.1 before this chapter. Once you finish it, you will be able to do the following:
 
 - Draw the stack kubelet → CRI → containerd/CRI-O → shim → OCI runtime → container, and say what each layer owns.
-- Explain the CRI services (RuntimeService, ImageService), sandbox vs container, and how a pod maps to a sandbox (pause) container plus app containers.
-- Configure containerd (`config.toml`: CRI plugin, runtimes, snapshotters, registry mirrors, cgroup driver, sandbox image) and CRI-O basics.
-- Compare OCI runtimes (runc, crun, youki, Kata, gVisor, Firecracker-based) and use `RuntimeClass`.
-- Use `crictl`, `ctr`, `nerdctl` for node-level inspection and debugging; understand namespaces in containerd (`k8s.io`).
-- Configure the NVIDIA container runtime/CDI for Kubernetes nodes; handle upgrades, restarts and garbage collection.
+- Explain the two CRI services, RuntimeService and ImageService. Explain the difference between a sandbox and a container, and how a pod maps to a sandbox made of a pause container plus app containers.
+- Configure containerd through `config.toml`, covering the CRI plugin, runtimes, snapshotters, registry mirrors, cgroup driver and sandbox image. Know the basics of CRI-O.
+- Compare OCI runtimes such as runc, crun, youki, Kata, gVisor and Firecracker-based runtimes, and use `RuntimeClass`.
+- Use crictl, ctr and nerdctl for node-level inspection and debugging. Understand the containerd namespace `k8s.io`.
+- Configure the NVIDIA container runtime and CDI for Kubernetes nodes, and handle upgrades, restarts and garbage collection.
+
+The next section draws the full stack, so keep it in view as you read the rest of the chapter.
 
 ## 1. The stack
+
+Suppose a pod sits in `ContainerCreating` while the other pods on its node run fine. The diagram below shows every layer that could be holding it up.
 
 ```mermaid
 flowchart TB
@@ -49,6 +57,10 @@ flowchart TB
   CNI["CNI plugins (network)"] <-. "called by runtime for sandbox networking" .-> CD
 ```
 
+Read the diagram from top to bottom. Solid arrows are calls from one layer into the next. Dotted lines show hooks and plugins that reach the container processes or the network.
+
+The table gives each layer a job and a few examples you will see on a node.
+
 | Layer | Responsibility | Examples |
 |---|---|---|
 | **Kubelet** | Node agent: watches the API server for pods assigned to the node; calls the runtime via CRI; runs probes, manages volumes, reports status (5.9) | `kubelet` |
@@ -58,20 +70,30 @@ flowchart TB
 | **Low-level (OCI) runtime** | Creates the container from a bundle (`config.json` + rootfs): sets up namespaces, cgroups, mounts, capabilities, seccomp; then `exec`s the process | **runc** (Go), **crun** (C, faster/lower memory), youki (Rust), Kata Containers (lightweight VM), gVisor `runsc` (user-space kernel), Firecracker (via kata-fc or firecracker-containerd) |
 | **Kernel** | The actual isolation | namespaces, cgroups v2, overlayfs, seccomp, LSM |
 
-Docker Engine is itself built on containerd and runc. As Josh Rosso, Rich Lander, Alexander Brand, and John Harris explain in *Production Kubernetes* Chapter 3 (*Container Runtime*), prior to the **Container Runtime Interface (`CRI`)** in Kubernetes 1.5, support for Docker (`dockershim`) and CoreOS `rkt` (`rktnetes`) was compiled directly into the `kubelet` source code—meaning adding a new runtime or fixing a runtime integration bug required a full Kubernetes release and deep knowledge of `kubelet` internals. CRI replaced that tight coupling with a standard **gRPC client-server interface over a local Unix socket** (`/run/containerd/containerd.sock` for `containerd`, or `/var/run/crio/crio.sock` for `CRI-O`) exposing two gRPC services:
-1. **`ImageService`**: `ListImages`, `ImageStatus`, `PullImage`, `RemoveImage`, and `ImageFsInfo`.
-2. **`RuntimeService`**: Pod-sandbox lifecycle (`RunPodSandbox`, `StopPodSandbox`, `RemovePodSandbox`, `PodSandboxStatus`, `ListPodSandbox`) and container lifecycle (`CreateContainer`, `StartContainer`, `StopContainer`, `RemoveContainer`, `ListContainers`, `ContainerStatus`, `UpdateContainerResources`, `ReopenContainerLog`, `ExecSync`, `Exec`, `Attach`, `PortForward`).
-Kubernetes removed the built-in **dockershim** in 1.24 (cutting out the redundant `kubelet -> dockershim -> dockerd -> containerd` hop so `kubelet` talks directly to `containerd`'s built-in CRI plugin); to use Docker Engine as a CRI runtime today you need external `cri-dockerd`, while nearly all production clusters use `containerd` or `CRI-O` directly.
+Notice that only the kernel row is labelled as the actual isolation. That is where the namespaces, cgroups and seccomp rules live.
+
+Docker Engine is itself built on containerd and runc. As Josh Rosso, Rich Lander, Alexander Brand, and John Harris explain in *Production Kubernetes*, Chapter 3, *Container Runtime*, Kubernetes once compiled support for Docker and CoreOS rkt straight into the kubelet source code. Docker support came through `dockershim`, and rkt support came through `rktnetes`. That meant a new runtime, or a fix to a runtime integration bug, needed a full Kubernetes release and deep knowledge of kubelet internals.
+
+The Container Runtime Interface (`CRI`) arrived in Kubernetes 1.5 and replaced that tight coupling with a standard **gRPC client-server interface over a local Unix socket**. Each runtime listens on its own socket: `/run/containerd/containerd.sock` for containerd, or `/var/run/crio/crio.sock` for CRI-O. The interface exposes two gRPC services:
+
+1. **`ImageService`** handles images, with `ListImages`, `ImageStatus`, `PullImage`, `RemoveImage`, and `ImageFsInfo`.
+2. **`RuntimeService`** handles two things. It manages the pod sandbox with `RunPodSandbox`, `StopPodSandbox`, `RemovePodSandbox`, `PodSandboxStatus` and `ListPodSandbox`. It also manages each container with `CreateContainer`, `StartContainer`, `StopContainer`, `RemoveContainer`, `ListContainers`, `ContainerStatus`, `UpdateContainerResources`, `ReopenContainerLog`, `ExecSync`, `Exec`, `Attach` and `PortForward`.
+
+Kubernetes removed the built-in **dockershim** in 1.24. That cut out one redundant hop, `kubelet -> dockershim -> dockerd -> containerd`. The kubelet now talks straight to containerd's built-in CRI plugin. If you want Docker Engine as a CRI runtime today, you need the external `cri-dockerd`. Nearly all production clusters use containerd or CRI-O directly.
 
 ### Why the CRI exists
 
-Before the CRI, adding support for a new container runtime required a new Kubernetes release. It also required intimate knowledge of the Kubernetes code base. Once the CRI was established, runtime developers could simply adhere to the interface to stay compatible with Kubernetes.
+Imagine you maintain a new container runtime. Before the CRI, supporting Kubernetes meant waiting for a new Kubernetes release. It also meant learning the Kubernetes code base in depth. Once the CRI was in place, you only had to follow the interface to stay compatible.
 
-The point of the CRI was to keep runtime internals away from Kubernetes, and most of all away from the kubelet. This is a classic example of the dependency inversion principle. Over time, the kubelet shed the runtime-specific code and if-statements that had been scattered through it. Now it relies on the interface. That made the kubelet simpler, more extensible and easier to test. These are the qualities of well-designed software.
+The point of the CRI was to keep runtime internals away from Kubernetes, and most of all away from the kubelet. This is a classic example of the dependency inversion principle. Over time, the kubelet shed the runtime-specific code and the if-statements that had been scattered through it. Now it relies on the interface alone. That made the kubelet simpler, more extensible and easier to test, which are the qualities of well-designed software.
 
 ### The pod sandbox
 
-A Kubernetes pod is a group of containers sharing network (and optionally PID/IPC) namespaces. The runtime creates a **sandbox**: a pause container (tiny `pause` process, image `registry.k8s.io/pause:3.x`) that holds the pod's network namespace, IP and cgroup parent; containers then join those namespaces. Sequence for `RunPodSandbox`: pull the pause image, create the pod cgroup, create the network namespace, invoke **CNI** plugins to attach interfaces and assign an IP (5.13), start the pause container. Then for each container: `PullImage` (if needed), `CreateContainer` (prepare snapshot, generate OCI `config.json` from the CRI config: env, mounts, devices, resources, security context), `StartContainer` (shim + runc create/start). `StopPodSandbox` and `RemovePodSandbox` tear down. If the CNI plugin fails, the sandbox fails and the pod sits in `ContainerCreating` with events such as "failed to set up sandbox container network".
+A Kubernetes pod is a group of containers that share network namespaces, and optionally PID and IPC namespaces. The runtime creates a **sandbox** for that group. The sandbox holds a pause container, which is a tiny `pause` process with the image `registry.k8s.io/pause:3.x`. The pause container holds the pod's network namespace, IP and cgroup parent. Application containers then join those namespaces.
+
+The sequence for `RunPodSandbox` runs in a fixed order. The runtime pulls the pause image, creates the pod cgroup, and creates the network namespace. It then invokes **CNI** plugins to attach interfaces and assign an IP, a step covered in 5.13. Finally, it starts the pause container.
+
+For each container after that, the runtime calls `PullImage` if the image is needed. `CreateContainer` prepares a snapshot and generates an OCI `config.json` from the CRI config. That config covers the environment, mounts, devices, resources and security context. `StartContainer` then starts the shim, and runc creates and starts the process. `StopPodSandbox` and `RemovePodSandbox` tear the pod down. If the CNI plugin fails, the sandbox fails too. The pod then sits in `ContainerCreating`, with events such as "failed to set up sandbox container network".
 
 ### Starting a Pod through the CRI
 
@@ -86,11 +108,11 @@ The most important operation in Kubernetes is starting a Pod on a node. Once the
 
 The book's walkthrough is based on Kubernetes v1.18.2 and containerd v1.3.4. Those versions use the `v1alpha2` version of the CRI.
 
-The kubelet starts by creating a Pod sandbox with the `RunPodSandbox` method of the RuntimeService. A Pod is made of one or more containers, so the sandbox must come first. The sandbox establishes the Linux network namespace, among other things, for all the containers to share. The kubelet sends the Pod's name, unique ID, Kubernetes Namespace and DNS configuration. The runtime replies with a Pod sandbox ID that the kubelet uses to create containers.
+The kubelet starts by creating a Pod sandbox with the `RunPodSandbox` method of the RuntimeService. A Pod is made of one or more containers, so the sandbox must come first. The sandbox sets up the Linux network namespace, among other things, for all the containers to share. The kubelet sends the Pod's name, unique ID, Kubernetes Namespace and DNS configuration. The runtime replies with a Pod sandbox ID, and the kubelet uses that ID to create containers.
 
-Next, the kubelet checks whether the container image is on the node. It calls the `ImageStatus` method of the ImageService. If the image is not present, the method returns null, and the kubelet calls the `PullImage` method. Once the runtime pulls the image, it replies with the image SHA256 digest. The kubelet uses that digest to create the container.
+Next, the kubelet checks whether the container image is on the node. It calls the `ImageStatus` method of the ImageService. If the image is missing, the method returns null, and the kubelet calls `PullImage`. Once the runtime pulls the image, it replies with the image SHA256 digest. The kubelet uses that digest to create the container.
 
-The kubelet then calls the `CreateContainer` method of the RuntimeService. It passes the sandbox ID and the container configuration. That configuration includes the image digest, the command and arguments, environment variables and volume mounts. The runtime generates a container ID and returns it. That ID is the one you see in the Pod's status under container statuses:
+The kubelet then calls the `CreateContainer` method of the RuntimeService. It passes the sandbox ID and the container configuration. That configuration includes the image digest, the command and arguments, environment variables and volume mounts. The runtime generates a container ID and returns it. That ID appears in the Pod's status under container statuses:
 
 ```
 containerStatuses:
@@ -98,15 +120,17 @@ containerStatuses:
 image: docker.io/library/nginx:latest
 ```
 
-Finally, the kubelet calls the `StartContainer` method with that container ID. Besides the Pod and container management methods, the CRI also defines `Exec` and `ExecSync` to run a command inside a container. It also defines `Attach` to attach to a container and `PortForward` to forward a container port. Knowing these calls by name makes a stuck Pod start much easier to read.
+Finally, the kubelet calls the `StartContainer` method with that container ID. The CRI also defines `Exec` and `ExecSync` to run a command inside a container, `Attach` to attach to one, and `PortForward` to forward a container port. Knowing these method names makes a stuck Pod start much easier to read. When a pod stalls, the step it reached in this sequence tells you where to look, as the earlier sections showed.
 
 ## 2. containerd in depth
 
-containerd is a daemon (`containerd`) exposing a gRPC API on `/run/containerd/containerd.sock`. Subsystems are **plugins**: content store, snapshotters, metadata (bolt DB), image service, tasks (runtime v2 shims), events, CRI, NRI, CDI, and more. Everything is namespaced: Kubernetes uses the containerd namespace **`k8s.io`**, Docker uses `moby`, `nerdctl` uses `default`. Tools in the wrong namespace see nothing (`ctr -n k8s.io containers ls`).
+Suppose you open the containerd configuration on a new GPU node. You want to know what each block controls before you change anything.
+
+containerd is a daemon that exposes a gRPC API on `/run/containerd/containerd.sock`. Its subsystems are plugins. They include the content store, snapshotters, metadata kept in a bolt DB, the image service, tasks that run through runtime v2 shims, events, CRI, NRI, CDI and more. Everything is namespaced. Kubernetes uses the containerd namespace `k8s.io`, Docker uses `moby`, and nerdctl uses `default`. A tool that looks in the wrong namespace sees nothing, so use `ctr -n k8s.io containers ls` for Kubernetes containers.
 
 ### Configuration
 
-`/etc/containerd/config.toml` (version 2 or 3 schema; generate defaults with `containerd config default`):
+The settings live in `/etc/containerd/config.toml`, which uses the version 2 or 3 schema. You can print the defaults with `containerd config default`.
 
 ```toml
 version = 2
@@ -138,27 +162,27 @@ version = 2
 [plugins."io.containerd.grpc.v1.cri".cdi]            # in newer versions: enable_cdi = true, cdi_spec_dirs = ["/etc/cdi", "/var/run/cdi"]
 ```
 
-Key settings:
+The first setting to get right is `SystemdCgroup = true`. Use it when you run the systemd cgroup driver, which is the default for kubeadm clusters on systemd hosts with cgroup v2. A mismatch between the kubelet, set to `cgroupDriver: systemd`, and containerd is a classic cause of nodes flapping or pods failing with cgroup errors. Both must use the same driver.
 
-- **`SystemdCgroup = true`** when using the systemd cgroup driver (the default for kubeadm clusters on systemd hosts with cgroup v2). A mismatch between kubelet (`cgroupDriver: systemd`) and containerd is a classic cause of nodes flapping or pods failing with cgroup errors. Both must use the same driver.
-- **`sandbox_image`**: the pause image; in air-gapped clusters point it to your registry; kubelet's `--pod-infra-container-image` is deprecated in favour of runtime config.
-- **Runtimes map** (`runtimes.<name>`) defines named OCI runtimes selectable by `RuntimeClass.handler` (section 4).
-- **Registry config**: `config_path` with `certs.d/<registry>/hosts.toml` for mirrors, custom CAs, and credentials (5.1). Avoid the deprecated inline `registry.mirrors`.
-- **Snapshotter**: `overlayfs` default; alternatives `native`, `btrfs`, `zfs`, `devmapper`, and remote/lazy snapshotters (`stargz`, `soci`, `nydus`, `overlaybd`) registered as proxy plugins for fast starts of large images.
-- **Garbage collection and disk**: content blobs and snapshots under `/var/lib/containerd`; kubelet image GC thresholds (`imageGCHighThresholdPercent`, `imageGCLowThresholdPercent`) trigger `RemoveImage`; keep this on a separate large fast disk for GPU nodes (images of tens of GB × many versions).
-- **Restart behaviour**: restarting containerd does not kill running containers (shims keep them); shims are re-attached. Upgrading runc affects only new containers.
+The `sandbox_image` setting names the pause image. In air-gapped clusters, point it to your own registry. The kubelet's `--pod-infra-container-image` flag is deprecated in favour of runtime config.
 
-Reload: `systemctl restart containerd` (and often kubelet). Verify with `containerd config dump`, `crictl info`.
+The runtimes map, `runtimes.<name>`, defines named OCI runtimes. A `RuntimeClass` selects one of them through `RuntimeClass.handler`, as section 4 explains. Registry settings use `config_path` with `certs.d/<registry>/hosts.toml` for mirrors, custom CAs and credentials, covered in 5.1. Avoid the deprecated inline `registry.mirrors` setting.
+
+The snapshotter defaults to `overlayfs`. Alternatives include `native`, `btrfs`, `zfs` and `devmapper`. Remote and lazy snapshotters, such as `stargz`, `soci`, `nydus` and `overlaybd`, register as proxy plugins. They speed up starts for large images.
+
+Garbage collection and disk usage matter too. Content blobs and snapshots live under `/var/lib/containerd`. The kubelet's image GC thresholds, `imageGCHighThresholdPercent` and `imageGCLowThresholdPercent`, trigger `RemoveImage`. On GPU nodes, keep this directory on a separate large, fast disk, because images of tens of GB pile up across many versions.
+
+Restarting containerd does not kill running containers, since the shims keep them alive and containerd re-attaches to them. Upgrading runc affects only new containers. Reload the config with `systemctl restart containerd`, and often the kubelet as well. Verify the result with `containerd config dump` and `crictl info`.
 
 ### containerd data model
 
-Images → content blobs (by digest) → snapshots (layered, keyed by chain ID) → containers (metadata referencing a snapshot and an OCI spec) → tasks (running processes via shims). Leases protect objects from GC while in use. CRI sandboxes and containers are labelled with Kubernetes metadata (`io.kubernetes.pod.name`, namespace, uid) visible in `ctr`/`crictl` output.
+Images lead to content blobs, which you find by digest. Blobs become layered snapshots keyed by chain ID. Containers hold metadata that points to a snapshot and an OCI spec. Tasks are the running processes, managed through shims. Leases protect objects from garbage collection while they are in use. CRI sandboxes and containers carry Kubernetes metadata, such as `io.kubernetes.pod.name` and the namespace and uid, and you can see it in `ctr` and `crictl` output.
 
 ### The containerd CRI plugin on a node
 
-The containerd CRI plugin is a native containerd plugin. It has been available since containerd v1.1 and is enabled by default. The containerd runtime is perhaps the most common one the book's authors encounter when building Kubernetes-based platforms. It is the default in Cluster API-based node images, and it is available across managed offerings such as AKS, EKS and GKE. containerd serves its gRPC APIs through a Unix socket, `/run/containerd/containerd.sock`, and the kubelet connects to it to run Pods.
+The containerd CRI plugin is a native containerd plugin. It has been available since containerd v1.1 and is enabled by default. Of the runtimes the book's authors encounter when building Kubernetes-based platforms, containerd is perhaps the most common. It is the default in Cluster API node images, and it is available across managed offerings such as AKS, EKS and GKE. containerd serves its gRPC APIs through the Unix socket `/run/containerd/containerd.sock`, and the kubelet connects there to run Pods.
 
-The process tree of spawned containers looks the same as with the Docker Engine. That is expected, because the Docker Engine uses containerd to manage containers:
+Containers started this way show the same process tree you would see with Docker Engine. That is expected, because Docker Engine uses containerd to manage containers:
 
 ```
 systemd
@@ -168,14 +192,14 @@ systemd
 └─nginx
 ```
 
-To inspect containers on a node, use `ctr`, the containerd CLI. Unlike Docker, the containers that Kubernetes manages live in a containerd namespace called `k8s.io`, not `moby`:
+To inspect containers on a node, use `ctr`, the containerd CLI. Unlike Docker, the containers that Kubernetes manages live in the containerd namespace `k8s.io`, not `moby`:
 
 ```
 $ ctr --namespace k8s.io containers ls | grep nginx
 c85e47fa... docker.io/library/nginx:latest io.containerd.runtime.v1.linux
 ```
 
-You can also use `crictl` with the containerd Unix socket:
+You can also use `crictl` with the containerd socket:
 
 ```
 $ crictl --runtime-endpoint unix:///run/containerd/containerd.sock ps
@@ -184,29 +208,35 @@ CONTAINER ID IMAGE CREATED STATE NAME POD ID
 c85e47faf3616 4bb46517cac39 39 seconds ago Running nginx 73caea404b92a
 ```
 
+If `ctr` shows nothing on a Kubernetes node, check the namespace you passed first.
+
 ## 3. CRI-O and alternatives
+
+Which runtime should your platform team pick? The answer depends on a few trade-offs, and the CRI is what makes the choice possible.
 
 ### Choosing a runtime
 
-Because the CRI exists, platform teams can pick the container runtime that suits them. Over the last couple of years, though, the container runtime has become an implementation detail. If you use a Kubernetes distribution or a managed Kubernetes service, the runtime is most likely chosen for you. That holds even for Cluster API, which provides prebaked node images that include a container runtime.
+Because the CRI exists, platform teams can pick the container runtime that suits them. Over the last couple of years, though, the container runtime has become an implementation detail. If you use a Kubernetes distribution or a managed service, the runtime is most likely chosen for you. That holds even for Cluster API, which ships prebaked node images with a container runtime included.
 
-If you do have the option to choose, or you need a specialized runtime such as a VM-based one, weigh four things. The first is experience. Organizations with a long history in containers usually use Docker and know its toolchain. Kubernetes supports Docker, but the book's authors discourage its use. The fully fledged Docker daemon has extra capabilities that Kubernetes does not need, such as building images and creating container networks. The good news is that Docker uses containerd under the covers. The downside is that operators then have to learn the containerd CLI.
+If you do have the choice, or you need a specialized runtime such as a VM-based one, weigh four things. The first is experience. Organizations with a long history in containers usually use Docker and know its toolchain. Kubernetes supports Docker, but the book's authors discourage its use. The full Docker daemon has extra capabilities that Kubernetes does not need, such as building images and creating container networks. The good news is that Docker uses containerd under the covers. The downside is that operators then have to learn the containerd CLI.
 
 The second is support. Kubernetes distributions such as VMware's Tanzu Kubernetes Grid and RedHat's OpenShift usually ship a specific container runtime. Stick to that choice unless you have an extremely compelling reason not to. If you do switch, make sure you understand the support implications.
 
-The third is conformance testing. The Node Special Interest Group (sig-node) in the Kubernetes project defines CRI validation tests and node conformance tests. These run in every Kubernetes release, and some runtimes have more coverage than others. More test coverage is better, because issues are caught during the release process. The community publishes all tests and results on the Kubernetes Test Grid. Look at a runtime's conformance tests and its relationship with the overall Kubernetes project.
+The third is conformance testing. The Node Special Interest Group, sig-node, in the Kubernetes project defines CRI validation tests and node conformance tests. These run in every Kubernetes release, and some runtimes have more coverage than others. More coverage is better, because issues get caught during the release process. The community publishes all tests and results on the Kubernetes Test Grid. Look at a runtime's conformance tests and how it relates to the wider Kubernetes project.
 
-The fourth is isolation. Some workloads need stronger guarantees than Linux containers provide. VM-level isolation is less common, but it matters for executing untrusted code or for applications that need strong multitenancy. In those cases, specialized runtimes such as Kata Containers are an option.
+The fourth is isolation. Some workloads need stronger guarantees than Linux containers provide. VM-level isolation is less common, but it matters for running untrusted code or for applications that need strong multitenancy. In those cases, specialized runtimes such as Kata Containers are an option.
 
-Now let us review the most prevalent runtimes: Docker, containerd and CRI-O. Kata Containers shows how to run Pods in VMs instead of Linux containers. Virtual Kubelet is not a container runtime, but it offers another way to run workloads on Kubernetes.
+Next, the most common runtimes are Docker, containerd and CRI-O. Kata Containers shows how to run pods in VMs instead of Linux containers. Virtual Kubelet is not a container runtime, but it offers another way to run workloads on Kubernetes.
 
 ### CRI-O and the other runtimes
 
-**CRI-O** implements only what Kubernetes needs: pull (via `containers/image`), store (`containers/storage` overlay), run via `conmon` + OCI runtime, CNI. Configuration under `/etc/crio/crio.conf` and drop-ins in `/etc/crio/crio.conf.d/`, runtimes defined in `[crio.runtime.runtimes.<name>]`, registries from `/etc/containers/registries.conf`. Used by OpenShift and some distributions; Kubernetes minor versions are matched one-to-one with CRI-O versions. Behaviour is equivalent for most users; differences appear in debug tooling (`crictl` works for both; `ctr` is containerd-only), configuration format, and image/storage libraries shared with Podman/Buildah.
+CRI-O implements only what Kubernetes needs. It pulls images with `containers/image`, stores them with the `containers/storage` overlay, and runs containers through `conmon` and an OCI runtime. It sets up networking with CNI. Its configuration lives in `/etc/crio/crio.conf`, with drop-ins in `/etc/crio/crio.conf.d/`. You define runtimes under `[crio.runtime.runtimes.<name>]`, and registries come from `/etc/containers/registries.conf`.
+
+OpenShift and some distributions use CRI-O, and Kubernetes minor versions are matched one-to-one with CRI-O versions. For most users the behaviour is equivalent. The differences show up in debug tooling, in the configuration format, and in the image and storage libraries that CRI-O shares with Podman and Buildah. crictl works with both runtimes, but ctr works only with containerd.
 
 ### CRI-O in practice
 
-Like containerd, CRI-O exposes the CRI over a Unix socket. The kubelet uses that socket, typically `/var/run/crio/crio.sock`, to talk to CRI-O directly. When CRI-O spawns containers, it instantiates a process called `conmon`, a container monitor. `conmon` is the parent of the container process. It exposes a way to attach to the container, stores the container's STDOUT and STDERR streams in log files, and handles container termination:
+Like containerd, CRI-O exposes the CRI over a Unix socket. The kubelet uses that socket, typically `/var/run/crio/crio.sock`, to talk to CRI-O directly. When CRI-O spawns a container, it starts a process called `conmon`, a container monitor. `conmon` is the parent of the container process. It provides a way to attach to the container, writes the container's STDOUT and STDERR streams to log files, and handles termination:
 
 ```
 systemd
@@ -215,7 +245,7 @@ systemd
 └─nginx
 ```
 
-Because CRI-O was designed as a low-level component for Kubernetes, the project provides no CLI. You can still use `crictl` with CRI-O, as with any runtime that implements the CRI:
+Because CRI-O was built as a low-level component for Kubernetes, the project ships no CLI. You can still use crictl with CRI-O, as with any runtime that implements the CRI:
 
 ```
 $ crictl --runtime-endpoint unix:///var/run/crio/crio.sock ps --name nginx
@@ -225,9 +255,9 @@ CONTAINER IMAGE CREATED STATE NAME POD ID
 
 ### Docker Engine and the dockershim
 
-**Docker Engine / cri-dockerd**: possible but adds layers; used when teams need Docker-specific features on nodes. The book also walks through the Docker path in detail, as it worked in the Kubernetes versions it describes. Kubernetes supported the Docker Engine through a CRI shim called the dockershim. The shim is built into the kubelet. It is a gRPC server that implements the CRI services. It is needed because the Docker Engine does not implement the CRI itself. Rather than special-casing every kubelet code path for both the CRI and the Docker Engine, the dockershim acts as a facade. It translates CRI calls into Docker Engine API calls.
+Docker Engine can still run through cri-dockerd. That path adds layers, so teams use it mainly when they need Docker-specific features on nodes. The book also walks through the Docker path in detail, as it worked in the Kubernetes versions it describes. Kubernetes supported Docker Engine through a CRI shim called the dockershim. Docker Engine does not implement the CRI itself, so the shim had to. The shim is built into the kubelet and is a gRPC server that implements the CRI services.
 
-Docker uses containerd under the hood, so calls from the kubelet are relayed to containerd, which starts the containers. The spawned container ends up under containerd, not under the Docker daemon:
+Rather than special-casing every kubelet code path for both the CRI and Docker Engine, the dockershim acts as a facade. It translates CRI calls into Docker Engine API calls. Docker uses containerd under the hood, so calls from the kubelet are relayed to containerd, which starts the containers. The spawned container ends up under containerd, not under the Docker daemon:
 
 ```
 systemd
@@ -237,7 +267,7 @@ systemd
 └─nginx
 ```
 
-From a troubleshooting point of view, you can use the Docker CLI to list and inspect containers on a node. Docker has no concept of Pods, so the dockershim encodes the Kubernetes Namespace, Pod name and Pod ID into container names. Here, a filter keeps only the containers of one Pod called `nginx` in the `default` namespace. The pause container, which holds the Pod's infrastructure, carries the `k8s_POD_` prefix:
+From a troubleshooting point of view, you can use the Docker CLI to list and inspect containers on a node. Docker has no concept of pods, so the dockershim encodes the Kubernetes Namespace, pod name and pod ID into container names. The filter below keeps only the containers of one pod called `nginx` in the `default` namespace. The pause container, which holds the pod's infrastructure, carries the `k8s_POD_` prefix:
 
 ```
 $ docker ps --format='{{.ID}}\t{{.Names}}' | grep nginx_default
@@ -245,7 +275,7 @@ $ docker ps --format='{{.ID}}\t{{.Names}}' | grep nginx_default
 c34ad8d80c4d k8s_POD_nginx_default_6470b3d3-87a3-499c-8562-d59ba27bced5_3
 ```
 
-You can also use the containerd CLI, `ctr`, to inspect containers. The output is less friendly than the Docker CLI output. The Docker Engine uses a containerd namespace called `moby`:
+You can also use the containerd CLI, `ctr`, to inspect containers. The output is less friendly than the Docker CLI output. Docker Engine uses a containerd namespace called `moby`:
 
 ```
 $ ctr --namespace moby containers list
@@ -256,7 +286,7 @@ CONTAINER IMAGE RUNTIME
 ...
 ```
 
-Finally, you can use `crictl` if it is available on the node. It is a command-line tool developed by the Kubernetes community that talks to container runtimes over the CRI. Docker does not implement the CRI, but `crictl` can still use the dockershim Unix socket:
+Finally, you can use crictl if it is available on the node. It is a command-line tool developed by the Kubernetes community that talks to container runtimes over the CRI. Docker does not implement the CRI, but crictl can still use the dockershim Unix socket:
 
 ```
 $ crictl --runtime-endpoint unix:///var/run/dockershim.sock ps --name nginx
@@ -264,17 +294,21 @@ CONTAINER ID IMAGE CREATED STATE NAME POD ID
 07ba23a409f31 nginx@sha256:b0a... 3 seconds ago Running nginx ea179944...
 ```
 
-**Podman** is not a CRI runtime but shares libraries with CRI-O and can run pods locally (`podman kube play`).
+Podman is not a CRI runtime. It shares libraries with CRI-O, though, and it can run pods locally with `podman kube play`.
 
 ### Virtual Kubelet
 
-Virtual Kubelet is an open source project. It acts like a kubelet, but its backend is a pluggable API. Strictly speaking, it is not a container runtime. Its job is to bring alternative runtimes to Kubernetes Pods. Those runtimes can be any system that can run an application, such as serverless or edge frameworks. On a cloud service, for example, it can start Pods on Azure Container Instances or AWS Fargate.
+Virtual Kubelet is an open source project. It acts like a kubelet, but its backend is a pluggable API. Strictly speaking, it is not a container runtime. Its job is to bring alternative runtimes to Kubernetes pods. Those runtimes can be any system that can run an application, such as serverless or edge frameworks. On a cloud service, for example, it can start pods on Azure Container Instances or AWS Fargate.
 
-Providers come from the Virtual Kubelet community, and they include AWS Fargate, Azure Container Instances, HashiCorp Nomad and others. If you need a custom backend, you can write your own provider. A provider is a Go program that uses the Virtual Kubelet libraries. It handles node registration, running Pods, and exporting the APIs that Kubernetes expects. The book's authors have not yet needed Virtual Kubelet in the field. It is still useful to know that it exists.
+Providers come from the Virtual Kubelet community, and they include AWS Fargate, Azure Container Instances, HashiCorp Nomad and others. If you need a custom backend, you can write your own provider. A provider is a Go program that uses the Virtual Kubelet libraries. It handles node registration, running pods, and exporting the APIs that Kubernetes expects. The book's authors have not yet needed Virtual Kubelet in the field, but it is still useful to know that it exists.
+
+If your distribution ships a runtime, stick with it unless you have an extremely compelling reason to switch.
 
 ## 4. OCI runtimes and RuntimeClass
 
-The OCI Runtime Spec defines a **bundle** (directory with `config.json` and a `rootfs/`) and a CLI contract: `create`, `start`, `state`, `kill`, `delete`. A runtime reads the bundle and creates the isolated process.
+Suppose notebooks from many users run on the same cluster as your training jobs. Before you pick a runtime, you need to know how much isolation each one gives.
+
+The OCI Runtime Spec defines a **bundle**, which is a directory holding `config.json` and a `rootfs/`. It also defines a CLI contract with `create`, `start`, `state`, `kill` and `delete`. A runtime reads the bundle and creates the isolated process.
 
 | Runtime | Isolation model | Notes |
 |---|---|---|
@@ -286,15 +320,17 @@ The OCI Runtime Spec defines a **bundle** (directory with `config.json` and a `r
 | **Firecracker (firecracker-containerd)** | microVMs | Serverless-style isolation |
 | **Confidential containers (CoCo)** | Kata + TEEs (SEV-SNP, TDX), plus NVIDIA confidential computing on H100 | Emerging for sensitive model/data processing (Part 18) |
 
+Read the notes column for the caveats. Runc, for example, has a CVE history of container breakouts through `/proc` handling, so its security patches matter.
+
 ### The OCI project and runc
 
-The OCI includes three specifications: the runtime specification, the image specification and the distribution specification. These specs enable development and innovation around containers and platforms such as Kubernetes. The OCI also aims to let end users use containers in a portable, interoperable way, so they can move between products more easily. This section covers the runtime and image specs. The distribution spec is mainly about container image registries.
+The OCI has three specifications: the runtime spec, the image spec and the distribution spec. Together they let development around containers and platforms such as Kubernetes move forward. They also help users move between products in a portable, interoperable way. This section covers the runtime and image specs. The distribution spec mainly concerns container image registries.
 
-runc is a low-level runtime that implements the OCI runtime spec, and it lives in the OCI project. Docker, containerd and CRI-O all use runc to spawn containers according to the OCI spec. Leaning on runc lets those runtimes focus on higher-level work, such as pulling images, configuring networking and handling storage. The OCI was founded in 2015 to collaborate on container specifications. Docker donated runc to it, and CoreOS pushed the needle on container runtimes with rkt.
+runc implements the OCI runtime spec, and it lives in the OCI project. Docker, containerd and CRI-O all use runc to spawn containers according to the spec. Leaning on runc lets those runtimes focus on higher-level work, such as pulling images, configuring networking and handling storage. The OCI was founded in 2015 to collaborate on container specifications. Docker donated runc to it, and CoreOS pushed container runtimes forward with rkt.
 
 ### The OCI runtime configuration
 
-The OCI runtime specification describes how to instantiate and run containers in an OCI-compatible way. First, it defines the schema of a container's configuration. The schema covers the root filesystem, the command to run, environment variables, the user and group, resource limits and more. Here is a shortened container configuration from the spec:
+The OCI runtime specification describes how to start and run containers in a compatible way. It begins by defining the schema of a container's configuration. That schema covers the root filesystem, the command to run, environment variables, the user and group, resource limits and more. Here is a shortened container configuration from the spec:
 
 ```
 {
@@ -332,14 +368,14 @@ The OCI runtime specification describes how to instantiate and run containers in
 }
 ```
 
-The runtime spec also defines the operations a runtime must support. These are `create`, `start`, `kill`, `delete` and `state`, where `state` reports information about the container's state. The spec also describes the container life cycle and the stages a container moves through:
+The spec also defines the operations a runtime must support: `create`, `start`, `kill`, `delete` and `state`. The `state` operation reports information about the container's state. The spec describes four stages in a container's life cycle:
 
 - `creating`: the container runtime is creating the container.
 - `created`: the runtime has completed the `create` operation.
 - `running`: the container process has started and is running.
 - `stopped`: the container process has finished.
 
-`RuntimeClass` lets pods choose a runtime handler:
+A pod picks its runtime through a `RuntimeClass`. The handler must match a runtime name in containerd or a CRI-O runtime. The overhead field makes the scheduler add a fixed amount to the pod's requests, which matters for VM-based runtimes. The pod then names the class in `runtimeClassName`:
 
 ```yaml
 apiVersion: node.k8s.io/v1
@@ -362,15 +398,15 @@ spec:
       command: ["nvidia-smi"]
 ```
 
-Choosing: runc/crun for performance and compatibility in trusted environments; Kata/gVisor for multi-tenant isolation of untrusted workloads (notebooks, arbitrary code execution, customer-supplied containers), accepting overhead and GPU limitations. Most GPU training clusters use runc/crun with strong pod security policy rather than sandboxed runtimes.
+For performance and compatibility in a trusted environment, use runc or crun. For multi-tenant isolation of untrusted workloads, such as notebooks, arbitrary code execution or customer-supplied containers, choose Kata or gVisor. You accept their overhead and GPU limitations in return. Most GPU training clusters use runc or crun with strong pod security policy instead of sandboxed runtimes.
 
 ### Kata Containers in more detail
 
 Kata Containers is an open source, specialized runtime. It uses lightweight VMs instead of plain containers to run workloads. The project merged two earlier VM-based runtimes, Clear Containers from Intel and RunV from Hyper.sh.
 
-Because Kata uses VMs, it provides stronger isolation than Linux containers. If workloads cannot share a Linux kernel, or cgroup isolation cannot meet your resource guarantees, Kata can be a good fit. A common case is a multitenant Kubernetes cluster that runs untrusted code. Baidu Cloud and Huawei Cloud run Kata Containers in their infrastructure.
+Because Kata uses VMs, it gives stronger isolation than Linux containers. If workloads cannot share a Linux kernel, or cgroup isolation cannot meet your resource guarantees, Kata can be a good fit. A common case is a multitenant Kubernetes cluster that runs untrusted code. Baidu Cloud and Huawei Cloud run Kata Containers in their infrastructure.
 
-Kata does not implement the CRI. Kubernetes still needs a pluggable runtime between the kubelet and Kata, and containerd fills that role. Kata plugs into containerd by implementing its runtime API, namely the v2 containerd-shim API. Because containerd is available on the nodes anyway, Linux container Pods and VM-based Pods can run on the same node.
+Kata does not implement the CRI. Kubernetes still needs a pluggable runtime between the kubelet and Kata, and containerd fills that role. Kata plugs into containerd by implementing its runtime API, the v2 containerd-shim API. Because containerd is available on the nodes anyway, Linux container pods and VM-based pods can run on the same node.
 
 Kubernetes configures multiple container runtimes with `RuntimeClass`. The RuntimeClass API lets you offer different runtimes on the same platform, so developers can pick the one that fits their needs. This is an example RuntimeClass for Kata Containers:
 
@@ -382,7 +418,7 @@ name: kata-containers
 handler: kata
 ```
 
-To run a Pod under the `kata-containers` runtime, the developer names the runtime class in the Pod's specification:
+To run a pod under the `kata-containers` runtime, the developer names the runtime class in the pod's specification:
 
 ```
 apiVersion: v1
@@ -396,7 +432,7 @@ name: nginx
 runtimeClassName: kata-containers
 ```
 
-Kata Containers supports several hypervisors, including QEMU, NEMU and AWS Firecracker. With QEMU, a QEMU process appears after you launch a Pod that uses the `kata-containers` runtime class:
+Kata Containers supports several hypervisors, including QEMU, NEMU and AWS Firecracker. With QEMU, a QEMU process appears after you launch a pod that uses the `kata-containers` runtime class:
 
 ```
 $ ps -ef | grep qemu
@@ -410,18 +446,20 @@ root 38290 1 0 16:02 ? 00:00:17
 ...
 ```
 
-The book calls Kata Containers a niche, and its authors have not seen it used in the field. Still, if you need VM-level isolation guarantees in your Kubernetes cluster, it is worth looking into.
+The book calls Kata Containers a niche, and its authors have not seen it used in the field. Still, if you need VM-level isolation guarantees in your Kubernetes cluster, it is worth a look. For untrusted workloads, weigh Kata and gVisor against their overhead and GPU limits before you choose.
 
 ## 5. GPU runtimes: NVIDIA Container Toolkit with containerd
 
-Two integration styles:
+A GPU pod starts, but the GPU is not visible inside it. The runtime configuration is one place to look, and this section shows how the toolkit hooks into containerd.
 
-1. **`nvidia-container-runtime` wrapper**: a runtime shim that adds a prestart hook (`nvidia-container-runtime-hook`) to the OCI spec so `libnvidia-container` mounts the devices and driver libraries. Configured with `nvidia-ctk runtime configure --runtime=containerd --set-as-default` (edits `config.toml` to add the `nvidia` runtime), then restart containerd. With the GPU Operator, the toolkit DaemonSet does this automatically and writes a drop-in config.
-2. **CDI (Container Device Interface)**: the toolkit generates a spec (`nvidia-ctk cdi generate --output=/var/run/cdi/nvidia.yaml`) describing devices (`nvidia.com/gpu=0`, `=all`, MIG devices) with their device nodes, mounts and env; runtimes read specs from `/etc/cdi` and `/var/run/cdi` and apply edits to the OCI spec. No wrapper binary or hook is needed; this is the direction of travel and underpins Kubernetes Dynamic Resource Allocation (Part 11).
+There are two ways to connect the NVIDIA Container Toolkit to containerd.
 
-Notes: GPU pods are requested through the **device plugin** (`resources.limits: nvidia.com/gpu: 1`), which tells the kubelet which devices to hand to the runtime (via `NVIDIA_VISIBLE_DEVICES` env, CDI names or annotations); the runtime then wires them in. The default runtime setting (`default_runtime_name = "nvidia"`) makes all containers use the wrapper (convenient but affects non-GPU pods); `RuntimeClass` limits it to GPU pods (the GPU Operator can create a `nvidia` RuntimeClass).
+1. **The `nvidia-container-runtime` wrapper** is a runtime shim. It adds a prestart hook, `nvidia-container-runtime-hook`, to the OCI spec, so `libnvidia-container` mounts the devices and driver libraries. You configure it with `nvidia-ctk runtime configure --runtime=containerd --set-as-default`, which edits `config.toml` to add the `nvidia` runtime. Then restart containerd. With the GPU Operator, the toolkit DaemonSet does this for you and writes a drop-in config.
+2. **CDI (Container Device Interface)** uses a spec that the toolkit generates with `nvidia-ctk cdi generate --output=/var/run/cdi/nvidia.yaml`. The spec describes devices such as `nvidia.com/gpu=0`, `=all` and MIG devices, along with their device nodes, mounts and environment. Runtimes read specs from `/etc/cdi` and `/var/run/cdi` and apply the edits to the OCI spec. No wrapper binary or hook is needed. This is the direction things are heading, and it underpins Kubernetes Dynamic Resource Allocation in Part 11.
 
-Verify on a node:
+GPU pods request devices through the device plugin, with `resources.limits: nvidia.com/gpu: 1`. The device plugin tells the kubelet which devices to hand to the runtime. It does this through the `NVIDIA_VISIBLE_DEVICES` environment variable, CDI names or annotations. The runtime then wires those devices in. Setting `default_runtime_name = "nvidia"` makes every container use the wrapper. That is convenient, but it also affects non-GPU pods. A `RuntimeClass` limits the NVIDIA runtime to GPU pods, and the GPU Operator can create an `nvidia` RuntimeClass for you.
+
+To check a node, run these commands. Each line checks one part of the chain, from the config file to the CDI devices and the runtimes the CRI plugin sees.
 
 ```bash
 nvidia-ctk runtime configure --runtime=containerd --set-as-default=false
@@ -432,7 +470,11 @@ nvidia-ctk cdi list                                     # devices known to CDI
 crictl info | jq '.config.containerd.runtimes'          # runtimes the CRI plugin sees
 ```
 
+Pick the default runtime deliberately. On mixed nodes, keep it as runc and let GPU pods opt in through a `RuntimeClass`.
+
 ## 6. Node-level tools
+
+When an on-call page lands on a node, you need the right tool for the layer that is failing. Each tool talks to a different part of the stack, and the table shows which one to reach for.
 
 | Tool | Talks to | Use |
 |---|---|---|
@@ -444,7 +486,7 @@ crictl info | jq '.config.containerd.runtimes'          # runtimes the CRI plugi
 | **`nsenter`, `lsns`, `systemd-cgls`, `systemd-cgtop`** | kernel/host | Enter namespaces, inspect cgroup tree and usage |
 | **`journalctl -u containerd -u kubelet`** | logs | The first place to look |
 
-Cheat sheet:
+Start with the logs. The table lists `journalctl -u containerd -u kubelet` as the first place to look. The cheat sheet below collects the commands you are most likely to need.
 
 ```bash
 cat /etc/crictl.yaml
@@ -469,29 +511,49 @@ ctr -n k8s.io content ls | head
 ctr plugins ls                                          # plugin status; errored plugins explain failures
 ```
 
+Begin with the pod and container views from `crictl`, and drop down to `ctr` only when you need the low-level details.
+
 ## 7. Cgroup drivers and cgroup v2
 
-The kubelet and runtime must agree on how cgroups are managed:
+Two parts of the node both touch cgroups, so the kubelet and the runtime must agree on who manages them.
 
-- **systemd driver** (recommended on systemd distros): the runtime asks systemd to create slices/scopes (`kubepods.slice/kubepods-burstable.slice/kubepods-burstable-pod<uid>.slice/cri-containerd-<id>.scope`). One cgroup manager (systemd) owns the hierarchy.
-- **cgroupfs driver**: the runtime writes the cgroup filesystem directly; two managers (systemd and the runtime) competing causes instability on systemd hosts. Use only on non-systemd hosts.
-- Kubernetes defaults to `cgroupDriver: systemd` for kubeadm on systemd hosts since 1.22+. Set it consistently in the kubelet config (`KubeletConfiguration.cgroupDriver`) and containerd (`SystemdCgroup = true`).
-- **cgroup v2** (unified hierarchy) is the default on modern distros and supported in Kubernetes; it offers better memory accounting (`memory.high`, MemoryQoS), PSI, and is required for some features (swap support, user namespaces). Check: `stat -fc %T /sys/fs/cgroup` → `cgroup2fs`. Old runtimes and tools expecting v1 break; ensure runc ≥ 1.0 and recent containerd.
+The systemd driver is recommended on systemd distributions. The runtime asks systemd to create slices and scopes, such as `kubepods.slice/kubepods-burstable.slice/kubepods-burstable-pod<uid>.slice/cri-containerd-<id>.scope`. One cgroup manager, systemd, owns the hierarchy.
 
-The pod QoS hierarchy (Guaranteed, Burstable, BestEffort) maps to cgroup parents (5.9). Memory `limits` map to `memory.max`; CPU `limits` to `cpu.max` (CFS quota); requests to `cpu.weight`/`memory.min` (with some features).
+The cgroupfs driver works differently. The runtime writes to the cgroup filesystem directly. Two managers then compete, systemd and the runtime, and that causes instability on systemd hosts. Use cgroupfs only on non-systemd hosts.
+
+Kubernetes has defaulted to `cgroupDriver: systemd` for kubeadm on systemd hosts since 1.22 and later. Set the same value in the kubelet config, as `KubeletConfiguration.cgroupDriver`, and in containerd, as `SystemdCgroup = true`.
+
+cgroup v2, the unified hierarchy, is the default on modern distributions, and Kubernetes supports it. It offers better memory accounting, through `memory.high` and MemoryQoS, and PSI. Some features, such as swap support and user namespaces, require it. To check which version you run, use `stat -fc %T /sys/fs/cgroup`. It prints `cgroup2fs` on v2. Old runtimes and tools that expect v1 break, so make sure runc is 1.0 or newer and containerd is recent.
+
+Pod QoS classes, Guaranteed, Burstable and BestEffort, map to cgroup parents, covered in 5.9. Memory limits map to `memory.max`, and CPU limits map to `cpu.max`, which is the CFS quota. Requests map to `cpu.weight` and `memory.min`, though only with some features enabled.
+
+Pick systemd on systemd hosts, and set the same value in both the kubelet and containerd. If you mix the two drivers, expect the failures described in section 2.
 
 ## 8. Operations: upgrades, GC, logs, security
 
-- **Upgrades**: drain the node (5.20), upgrade containerd/runc/crictl packages, restart containerd and kubelet, uncordon. A containerd restart keeps containers running (shims independent), but a runtime upgrade with config schema changes can leave the CRI plugin failing; test on a canary node. Pin versions and track CVEs for runc, containerd, and the NVIDIA toolkit (container escape CVEs have affected the toolkit).
-- **Logs**: container stdout/stderr are written by the runtime to `/var/log/pods/<ns>_<pod>_<uid>/<container>/<n>.log` (CRI log format) with symlinks in `/var/log/containers/`; the kubelet rotates them (`containerLogMaxSize`, `containerLogMaxFiles`); log shippers (Fluent Bit, Vector) tail these files (5.24).
-- **Image GC**: kubelet removes unused images when disk usage crosses `imageGCHighThresholdPercent` (default 85%); aggressive GC of multi-GB GPU images causes repeated slow pulls; give GPU nodes ample dedicated image storage and consider pre-pulling and `imageMinimumGCAge`.
-- **Disk pressure**: containerd's `/var/lib/containerd` and kubelet's `/var/lib/kubelet` on the root disk fill up; evictions follow (5.9). Use separate fast NVMe volumes for container storage on GPU nodes (and local NVMe for scratch).
-- **Resource limits for system daemons**: reserve CPU/memory for containerd/kubelet (`kubeReserved`, `systemReserved`) so a runaway container cannot starve them.
-- **Security**: runtime socket access equals root; do not mount `/run/containerd/containerd.sock` into pods except in tightly controlled cases (CI builders); seccomp default profile (`seccompDefault: true` in kubelet), user namespaces for pods (`hostUsers: false`, GA path in recent Kubernetes), AppArmor/SELinux, restricting `privileged`, read-only rootfs, signed images (5.27).
-- **NRI (Node Resource Interface)**: plugin mechanism letting node-level plugins adjust containers at creation (topology-aware resource allocation, device injection); some GPU/CPU managers use it.
-- **Monitoring**: kubelet cAdvisor metrics, `containerd` metrics endpoint (Prometheus), `runc` events, shim counts; alert on shim leaks (`ps aux | grep containerd-shim | wc -l` vs running pods), `ContainerCreating` durations, image pull errors.
+Suppose you must upgrade containerd on a busy GPU node. The upgrade itself is only part of the work. The day-to-day care of images, logs and security matters just as much.
+
+Upgrades start with a drain of the node, covered in 5.20. Then upgrade the containerd, runc and crictl packages, restart containerd and the kubelet, and uncordon the node. A containerd restart keeps containers running, because the shims are independent. A runtime upgrade with config schema changes can leave the CRI plugin failing, though, so test it on a canary node first. Pin versions, and track CVEs for runc, containerd and the NVIDIA toolkit, since container escape CVEs have affected the toolkit.
+
+Container stdout and stderr are written by the runtime to `/var/log/pods/<ns>_<pod>_<uid>/<container>/<n>.log`, in CRI log format. Symlinks in `/var/log/containers/` point to those files. The kubelet rotates them according to `containerLogMaxSize` and `containerLogMaxFiles`. Log shippers such as Fluent Bit and Vector tail these files, covered in 5.24.
+
+The kubelet removes unused images when disk usage crosses `imageGCHighThresholdPercent`, which defaults to 85%. Aggressive GC of multi-GB GPU images causes repeated slow pulls. Give GPU nodes ample dedicated image storage. Consider pre-pulling images, and look at `imageMinimumGCAge`.
+
+The containerd directory, `/var/lib/containerd`, and the kubelet directory, `/var/lib/kubelet`, can fill the root disk. When that happens, evictions follow, covered in 5.9. Put container storage on separate fast NVMe volumes, and use local NVMe for scratch space on GPU nodes.
+
+Reserve CPU and memory for containerd and the kubelet through `kubeReserved` and `systemReserved`. That way a runaway container cannot starve them.
+
+Runtime socket access equals root. Do not mount `/run/containerd/containerd.sock` into pods, except in tightly controlled cases such as CI builders. Other controls include the seccomp default profile, set with `seccompDefault: true` in the kubelet, and user namespaces for pods, set with `hostUsers: false` on the GA path in recent Kubernetes. Also use AppArmor or SELinux, restrict `privileged`, use a read-only rootfs and sign your images, covered in 5.27.
+
+NRI, the Node Resource Interface, is a plugin mechanism. It lets node-level plugins adjust containers at creation, for example for topology-aware resource allocation or device injection. Some GPU and CPU managers use it.
+
+Watch the kubelet cAdvisor metrics, the containerd metrics endpoint for Prometheus, runc events and shim counts. Alert on shim leaks by comparing `ps aux | grep containerd-shim | wc -l` with the number of running pods. Also alert on `ContainerCreating` durations and image pull errors.
+
+Treat every containerd upgrade as a change to test on a canary node first.
 
 ## 9. Failure modes and diagnostics
+
+When a pod has sat in `ContainerCreating` for a long time, the table below tells you which layer to check first.
 
 | Symptom | Layer | Check |
 |---|---|---|
@@ -506,220 +568,238 @@ The pod QoS hierarchy (Guaranteed, Burstable, BestEffort) maps to cgroup parents
 | Slow container start | Large image unpack, slow disk, no lazy pull | Pre-pull, faster disk, lazy snapshotter, smaller images |
 | Zombie shims | Containers deleted abnormally | Reconcile with `crictl pods`/`ctr tasks`; restart node if needed |
 
+Match the symptom column to what you see, then run the check beside it. If you find a node `NotReady` with runtime errors, start with containerd's CPU and I/O use, then check the disk.
+
 ## 10. Lab
 
-First, run the self-checking Python lab (`code/part05/cri_runtime_simulator_lab.py`) locally. It verifies the CRI `RunPodSandbox -> CreateContainer -> StartContainer` lifecycle and `containerd-shim-runc-v2` survival across `containerd` daemon restarts (`CRIRuntimeSimulator`, `PK` Ch. 3) and validates `kubelet` vs `containerd` `SystemdCgroup` matching and `RuntimeClass` `overhead.podFixed` resource accounting (`validate_cgroup_and_runtime_class`).
+You can work through the lab in two parts. Run the self-checking Python lab on your own machine first. Then move to a Linux node for the shell exercises.
+
+Run the self-checking Python lab (`code/part05/cri_runtime_simulator_lab.py`) locally. It verifies the CRI `RunPodSandbox -> CreateContainer -> StartContainer` lifecycle, and it checks that `containerd-shim-runc-v2` survives restarts of the containerd daemon. It uses `CRIRuntimeSimulator`, which follows Production Kubernetes, Chapter 3. The lab also checks that the kubelet and containerd `SystemdCgroup` settings match, and it verifies `RuntimeClass` `overhead.podFixed` resource accounting through `validate_cgroup_and_runtime_class`.
 
 ```bash
 python3 code/part05/cri_runtime_simulator_lab.py
 ```
 
-Next, on a Linux node with `containerd`, `runc`, and `crictl` (all interactive shell steps below are `untested here`), work through these exercises:
+Next, work through the exercises on a Linux node with containerd, runc and crictl. All the interactive shell steps below are `untested here`.
 
-1. **Layers on a node**: on a kind or kubeadm node, run `crictl pods`, `crictl ps`, `ctr -n k8s.io containers ls`, `ctr -n k8s.io snapshots ls`; map a Kubernetes pod to its sandbox and containers by labels; find the pause container and the pod's network namespace (`crictl inspectp`, `nsenter`).
-2. **Run an OCI bundle with runc**: create a rootfs (`docker export`), generate `config.json` (`runc spec`), adjust `process.args` and namespaces, run with `runc run`; then add a cgroup memory limit and observe an OOM kill; compare with containerd `ctr run` of the same image.
-3. **Walk a CRI flow**: with `crictl`, write pod and container JSON, run `crictl runp`, `create`, `start`; watch `ctr`/`runc` state and the CNI result; remove them; understand what the kubelet does for you.
-4. **Config exercises**: dump the effective config; toggle `SystemdCgroup`; deliberately mismatch the kubelet cgroup driver in a lab and read the errors; restore.
-5. **Registry mirror**: configure `hosts.toml` for a mirror/pull-through cache; prove a pull uses it (registry logs); test fallback when the mirror is down.
-6. **RuntimeClass**: define a second runtime (e.g. `crun` or a second runc entry with different options), create a RuntimeClass, run a pod with `runtimeClassName`, and verify via `crictl inspect` which runtime ran. Optionally install gVisor (`runsc`) and compare syscall behaviour (`dmesg` inside container) and performance of a simple benchmark.
-7. **Kata (optional)**: install Kata on a node with virtualization, run a pod with the Kata RuntimeClass, compare `uname -r` inside versus host, and measure overhead.
-8. **GPU runtime**: install the NVIDIA toolkit, configure containerd (`nvidia-ctk runtime configure`), restart, run a pod with `runtimeClassName: nvidia`, then switch to CDI (`nvidia-ctk cdi generate`) and compare the OCI spec edits (`crictl inspect` runtimeSpec mounts/devices).
-9. **Disk and GC**: pull many large images on a small disk; observe kubelet image GC and eviction messages; tune thresholds; relocate containerd root to a dedicated volume.
-10. **Failure drills**: kill the shim of a running container and see what happens; restart containerd with workloads running and verify containers survive; fill the root disk until DiskPressure and recover.
-11. **Observability**: scrape containerd metrics; chart pull durations and running containers; alert on `ContainerCreating` for more than N minutes (5.24).
-12. **Clean up**.
+1. Start with the layers on a node. On a kind or kubeadm node, run `crictl pods`, `crictl ps`, `ctr -n k8s.io containers ls` and `ctr -n k8s.io snapshots ls`. Map one Kubernetes pod to its sandbox and containers using labels. Then find the pause container and the pod's network namespace with `crictl inspectp` and `nsenter`.
+2. Run an OCI bundle with runc. Create a rootfs with `docker export`, and generate `config.json` with `runc spec`. Adjust `process.args` and the namespaces, then run it with `runc run`. Add a cgroup memory limit and watch for an OOM kill. Compare the result with a containerd `ctr run` of the same image.
+3. Walk through a CRI flow by hand. With `crictl`, write pod and container JSON files, then run `crictl runp`, `create` and `start`. Watch the `ctr` and `runc` state and the CNI result. Remove everything afterwards, and think about what the kubelet normally does for you.
+4. Work with the config. Dump the effective config, toggle `SystemdCgroup`, and deliberately mismatch the kubelet cgroup driver in a lab. Read the errors, then restore the original settings.
+5. Set up a registry mirror. Configure `hosts.toml` for a mirror or pull-through cache. Prove that a pull uses it by checking the registry logs. Then test the fallback when the mirror is down.
+6. Define a second runtime, such as crun or a second runc entry with different options. Create a RuntimeClass and run a pod with `runtimeClassName`. Verify with `crictl inspect` which runtime ran. Optionally, install gVisor, which runs as `runsc`, and compare syscall behaviour with `dmesg` inside a container. Run a simple benchmark to compare performance.
+7. Try Kata, optionally, on a node with virtualization. Install Kata, run a pod with the Kata RuntimeClass, compare `uname -r` inside the pod with the host, and measure the overhead.
+8. Test the GPU runtime. Install the NVIDIA toolkit and configure containerd with `nvidia-ctk runtime configure`. Restart, then run a pod with `runtimeClassName: nvidia`. Next switch to CDI with `nvidia-ctk cdi generate`, and compare the OCI spec edits, the runtimeSpec mounts and devices, in `crictl inspect`.
+9. Work on disk and garbage collection. Pull many large images onto a small disk. Observe the kubelet image GC and eviction messages. Tune the thresholds, then move the containerd root to a dedicated volume.
+10. Run failure drills. Kill the shim of a running container and see what happens. Restart containerd while workloads run, and check that the containers survive. Fill the root disk until `DiskPressure` appears, then recover.
+11. Add observability. Scrape the containerd metrics, chart pull durations and running containers, and alert on `ContainerCreating` for more than N minutes, as covered in 5.24.
+12. Clean up when you finish.
+
+Run the Python lab first, then work through the node exercises in order, since the later ones build on the earlier layers.
 
 ## 11. Common mistakes
 
-- Different cgroup drivers in kubelet and containerd.
-- Editing containerd config and forgetting to restart (or editing the wrong schema version).
-- Using `ctr` in the default namespace and concluding "no containers".
+Watch for these mistakes when you review a node or a cluster configuration. Each one comes up earlier in the chapter.
+
+- Running different cgroup drivers in the kubelet and containerd.
+- Editing the containerd config and forgetting to restart, or editing the wrong schema version.
+- Using `ctr` in the default namespace and concluding there are no containers.
 - Mounting the container runtime socket into workloads casually.
-- Setting `nvidia` as the default runtime on mixed clusters without understanding impact; manual toolkit config fighting the GPU Operator.
-- No dedicated disk for container storage; images and logs filling the root volume.
-- Aggressive image GC thresholds that evict large ML images, causing repeated multi-minute pulls.
-- Treating a runtime upgrade as harmless (no drain/canary).
-- Assuming sandboxed runtimes (gVisor/Kata) support GPUs and RDMA the same as runc.
+- Setting `nvidia` as the default runtime on mixed clusters without understanding the impact, or running manual toolkit config that fights the GPU Operator.
+- Having no dedicated disk for container storage, so images and logs fill the root volume.
+- Setting aggressive image GC thresholds that evict large ML images and cause repeated multi-minute pulls.
+- Treating a runtime upgrade as harmless, with no drain or canary.
+- Assuming sandboxed runtimes such as gVisor and Kata support GPUs and RDMA the same way runc does.
 - Ignoring the pause image in air-gapped clusters.
 
+Check the cgroup drivers and the sandbox image on every node you build, since two of these mistakes depend on them.
+
 ## 12. Interview angles
+
+An interviewer may open with one of these questions. Each one is answered somewhere in this chapter.
 
 - "Walk through what happens when the kubelet starts a pod: CRI calls, sandbox, CNI, image pull, runc."
 - "containerd vs CRI-O vs Docker; what was dockershim?"
 - "What is the role of the shim? What happens to containers if containerd restarts?"
 - "runc vs crun vs gVisor vs Kata: when each?"
-- "How do you debug a node when `kubectl` shows ContainerCreating?" (`crictl`, kubelet/containerd logs, CNI, image pull.)
+- "How do you debug a node when `kubectl` shows ContainerCreating? Mention `crictl`, the kubelet and containerd logs, CNI and image pull."
 - "How does Kubernetes expose GPUs to containers? Wrapper runtime vs CDI?"
 - "What breaks if the kubelet and containerd cgroup drivers differ?"
 - "How would you handle image storage and GC for 30 GB ML images?"
 
+Answer each question by naming the layer it touches first, then give the detail.
+
 ## Exercises
 
-1. **The Kubernetes Runtime Stack (`kubelet` -> `CRI` -> `containerd`/`CRI-O` -> `shim` -> `OCI runtime` -> Kernel, `PK` Chapter 3):** Using `CRIRuntimeSimulator` in `code/part05/cri_runtime_simulator.py`, trace the exact gRPC sequence when `kubelet` starts a Pod (`RunPodSandbox` -> `pause` container + CNI attachment -> `PullImage` -> `CreateContainer` -> `StartContainer`), and explain why `dockershim` was removed in Kubernetes 1.24 and why `systemctl restart containerd` does not kill running containers.
-2. **Configuring `containerd` (`/etc/containerd/config.toml`), `SystemdCgroup = true`, and `CRI-O`:** Using `validate_cgroup_and_runtime_class()` in `code/part05/cri_runtime_simulator.py`, explain the critical sections of `/etc/containerd/config.toml` (`sandbox_image`, `default_runtime_name`, `snapshotter`, `runtimes.runc.options.SystemdCgroup = true`, `runtimes.nvidia`, `config_path = "/etc/containerd/certs.d"`), what breaks if `kubelet` uses `systemd` while `containerd` uses `cgroupfs`, and how `containerd` namespaces (`k8s.io` vs `moby` vs `default`) work.
-3. **Comparing OCI Runtimes (`runc`, `crun`, `gVisor` `runsc`, `Kata Containers`, Confidential Containers) and `RuntimeClass` (`PK` Chapter 3):** Compare the isolation architecture and GPU/performance trade-offs of `runc`/`crun`, `gVisor` (`runsc` user-space kernel), and `Kata Containers` (`qemu-system-x86_64 -machine pc,accel=kvm` VM-per-pod), and explain how `RuntimeClass` (`handler` and `overhead.podFixed`) routes Pods to a specific runtime and accounts for VM memory/CPU overhead in `kube-scheduler`.
-4. **Integrating the NVIDIA Container Toolkit with `containerd` (Wrapper Runtime vs. `CDI`):** Contrast the two GPU runtime integration models on a Kubernetes node: (a) the `nvidia-container-runtime` wrapper (`BinaryName = "/usr/bin/nvidia-container-runtime"` invoked via `RuntimeClass: nvidia`) and (b) native **Container Device Interface (`CDI`)** (`enable_cdi = true`, `/etc/cdi/nvidia.yaml`, `/var/run/cdi`).
-5. **Node-Level Debugging with `crictl`, `ctr -n k8s.io`, `nerdctl`, and `runc`:** Given a Pod stuck in `ContainerCreating` or `CrashLoopBackOff` on `gpu-node-04`, write the exact `crictl` and `ctr -n k8s.io` commands to inspect the Pod Sandbox network/CNI status, list exited containers, view container exit codes and OCI `runtimeSpec.linux.resources`, and check for errored containerd plugins.
-6. **Day-2 Runtime Operations on GPU Nodes: Image Garbage Collection, Dedicated NVMe Storage, and `PLEG is not healthy`:** Explain why default kubelet image GC (`imageGCHighThresholdPercent: 85`) and shared root disks cause thrashing and `DiskPressure` evictions with 25 GB ML images, how to partition `/var/lib/containerd` and `/var/log/pods` on dedicated NVMe storage, and how to diagnose `PLEG is not healthy`.
+Each exercise below ties one part of the runtime stack to a task you can carry out. Work through them in order, and note where you get stuck.
+
+1. Begin with the runtime stack, from kubelet through CRI, containerd or CRI-O, the shim and the OCI runtime, down to the kernel. Production Kubernetes, Chapter 3, covers it. Use `CRIRuntimeSimulator` in `code/part05/cri_runtime_simulator.py` to trace the gRPC sequence when the kubelet starts a pod. The sequence runs `RunPodSandbox`, then the pause container with CNI attachment, then `PullImage`, `CreateContainer` and `StartContainer`. Then explain why dockershim was removed in Kubernetes 1.24, and why `systemctl restart containerd` does not kill running containers.
+2. Configure containerd through `/etc/containerd/config.toml`, with `SystemdCgroup = true` and CRI-O. Use `validate_cgroup_and_runtime_class()` in `code/part05/cri_runtime_simulator.py`. Explain the critical sections of the config file: `sandbox_image`, `default_runtime_name`, `snapshotter`, `runtimes.runc.options.SystemdCgroup = true`, `runtimes.nvidia`, and `config_path = "/etc/containerd/certs.d"`. Then explain what breaks if the kubelet uses systemd while containerd uses cgroupfs, and how containerd namespaces (`k8s.io` vs `moby` vs `default`) work.
+3. Compare the OCI runtimes: runc, crun, gVisor with its `runsc` user-space kernel, Kata Containers, and Confidential Containers. Compare their isolation architecture and their GPU and performance trade-offs. Include Kata's VM-per-pod model, `qemu-system-x86_64 -machine pc,accel=kvm`. Then explain how RuntimeClass, through `handler` and `overhead.podFixed`, routes pods to a specific runtime and accounts for VM memory and CPU overhead in `kube-scheduler`. Use Production Kubernetes, Chapter 3, as background.
+4. Contrast the two GPU runtime integration models on a Kubernetes node. The first is the `nvidia-container-runtime` wrapper, with `BinaryName = "/usr/bin/nvidia-container-runtime"` invoked through `RuntimeClass: nvidia`. The second is native Container Device Interface (CDI), with `enable_cdi = true`, `/etc/cdi/nvidia.yaml` and `/var/run/cdi`.
+5. Suppose you must debug a pod stuck in `ContainerCreating` or `CrashLoopBackOff` on `gpu-node-04`. Write the exact `crictl` and `ctr -n k8s.io` commands that inspect the pod sandbox network and CNI status, list exited containers, show container exit codes and the OCI `runtimeSpec.linux.resources`, and check for errored containerd plugins.
+6. Work through day-two runtime operations on GPU nodes. Explain why the default kubelet image GC (`imageGCHighThresholdPercent: 85`) and shared root disks cause thrashing and `DiskPressure` evictions with 25 GB ML images. Then explain how to partition `/var/lib/containerd` and `/var/log/pods` on dedicated NVMe storage, and how to diagnose `PLEG is not healthy`.
+
+Start with exercise 1 if the stack is new to you, and move on once you can draw the path from kubelet to the kernel.
 
 ## Checkpoint questions (20)
 
-<details>
-<summary>1. Why did Kubernetes introduce the Container Runtime Interface (`CRI`), and why was `dockershim` removed in Kubernetes 1.24 (`PK` Chapter 3)?</summary>
+Suppose a colleague asks you these twenty questions. Click each one to see an answer you could give. Your answers should keep the chapter's numbers and terms.
 
-- **Why CRI was introduced:** In early Kubernetes, Docker (`dockershim`) and `rkt` (`rktnetes`) were compiled directly into the `kubelet` binary. Introducing **CRI** defined a clean gRPC protobuf contract (`ImageService` and `RuntimeService` over a Unix socket) so any runtime (`containerd`, `CRI-O`) can plug into `kubelet` without modifying Kubernetes source code.
-- **Why `dockershim` was removed in 1.24:** Docker Engine (`dockerd`) did not implement CRI natively and already used `containerd` under the hood. Maintaining `kubelet -> dockershim -> dockerd -> containerd -> runc` added an unnecessary daemon hop and maintenance burden in `kubelet`. Talking directly from `kubelet -> containerd` (via containerd's built-in CRI plugin) removes `dockershim` and `dockerd` from the path while running the exact same OCI images.
+<details>
+<summary>1. Why did Kubernetes introduce the Container Runtime Interface (`CRI`), and why was `dockershim` removed in Kubernetes 1.24 (Production Kubernetes, Chapter 3)?</summary>
+
+- **Why CRI was introduced:** Early Kubernetes compiled Docker (`dockershim`) and `rkt` (`rktnetes`) straight into the `kubelet` binary. CRI gave every runtime a clean gRPC contract, with `ImageService` and `RuntimeService` over a Unix socket. Now any runtime, such as `containerd` or `CRI-O`, can plug into the `kubelet` without changing Kubernetes source code.
+- **Why `dockershim` was removed in 1.24:** Docker Engine (`dockerd`) did not implement CRI natively, and it already used `containerd` under the hood. Keeping `kubelet -> dockershim -> dockerd -> containerd -> runc` added an extra daemon hop and maintenance work in the `kubelet`. Going straight from `kubelet` to `containerd`, through its built-in CRI plugin, removes `dockershim` and `dockerd` from the path and runs the same OCI images.
 </details>
 
 <details>
-<summary>2. What are the two gRPC services in the CRI specification, and what are their primary RPC methods (`PK` Chapter 3)?</summary>
+<summary>2. What are the two gRPC services in the CRI specification, and what are their primary RPC methods (Production Kubernetes, Chapter 3)?</summary>
 
-1. **`ImageService`:** Manages container images in the node's local store: `ListImages`, `ImageStatus`, `PullImage`, `RemoveImage`, and `ImageFsInfo` (used by kubelet Image Garbage Collection).
-2. **`RuntimeService`:** Manages the lifecycle of Pod Sandboxes (`RunPodSandbox`, `StopPodSandbox`, `RemovePodSandbox`, `PodSandboxStatus`, `ListPodSandbox`) and individual containers (`CreateContainer`, `StartContainer`, `StopContainer`, `RemoveContainer`, `ListContainers`, `ContainerStatus`, `UpdateContainerResources`, `ReopenContainerLog`, `ExecSync`, `Exec`, `Attach`, `PortForward`).
+1. **`ImageService`** manages images in the node's local store. Its methods are `ListImages`, `ImageStatus`, `PullImage`, `RemoveImage`, and `ImageFsInfo`. The kubelet's image garbage collection uses `ImageFsInfo`.
+2. **`RuntimeService`** manages pod sandboxes with `RunPodSandbox`, `StopPodSandbox`, `RemovePodSandbox`, `PodSandboxStatus`, and `ListPodSandbox`. It manages containers with `CreateContainer`, `StartContainer`, `StopContainer`, `RemoveContainer`, `ListContainers`, `ContainerStatus`, `UpdateContainerResources`, `ReopenContainerLog`, `ExecSync`, `Exec`, `Attach`, and `PortForward`.
 </details>
 
 <details>
 <summary>3. What is the \"Pod Sandbox\" (`pause` container), and what happens step-by-step during `RunPodSandbox`?</summary>
 
-In Kubernetes, all containers in a Pod share a single Network, IPC, and UTS namespace. When `kubelet` calls **`RunPodSandbox`**, the high-level runtime (`containerd` or `CRI-O`):
-1. Pulls `sandbox_image` (`registry.k8s.io/pause:3.9`) if not already cached.
-2. Creates the Pod-level cgroup slice (`kubepods-pod<uid>.slice`).
-3. Creates and starts the tiny **`pause` container** (which simply sleeps forever and reaps zombies), establishing the Pod's **network, IPC, and UTS namespaces**.
-4. Invokes the configured **CNI plugin binary** (e.g., Cilium, Calico) inside that network namespace to attach `eth0`, assign the Pod IP, and program routes.
-Subsequently, when `CreateContainer` and `StartContainer` run for each application/init container in the Pod, their OCI `config.json` joins the `pause` container's network/IPC/UTS namespaces.
+All containers in a pod share one network, IPC and UTS namespace. When the kubelet calls **`RunPodSandbox`**, containerd or CRI-O does four things:
+1. It pulls `sandbox_image` (`registry.k8s.io/pause:3.9`) if the image is not cached.
+2. It creates the pod-level cgroup slice (`kubepods-pod<uid>.slice`).
+3. It creates and starts the tiny **`pause` container**. That process sleeps forever and reaps zombies. It sets up the pod's **network, IPC and UTS namespaces**.
+4. It calls the CNI plugin binary, such as Cilium or Calico, inside that network namespace. The plugin attaches `eth0`, assigns the pod IP and programs routes.
+
+After that, each application or init container starts with `CreateContainer` and `StartContainer`. Its OCI `config.json` joins the `pause` container's network, IPC and UTS namespaces.
 </details>
 
 <details>
 <summary>4. What is the role of `containerd-shim-runc-v2` (or CRI-O's `conmon`), and why do running containers survive `systemctl restart containerd`?</summary>
 
-An OCI runtime like `runc` is a **short-lived CLI binary**: once `runc` sets up the container's namespaces and cgroups and `exec`s the container process, **`runc` exits**. The per-pod **`containerd-shim-runc-v2`** process (or `conmon` in CRI-O) becomes the parent of the container processes:
-1. It keeps the container's `stdin`/`stdout`/`stderr` file descriptors open and writes logs to `/var/log/pods/...` even if `containerd` or `kubelet` is down.
-2. It acts as the subreaper that waits for the container PID to exit and reports the exit code back to `containerd`.
-3. Because the shim is reparented to `systemd` (PID 1) rather than being killed when `containerd` stops, restarting `containerd` leaves all running containers untouched and `containerd` simply re-attaches to the existing shim Unix sockets on startup.
+`runc` is a short-lived CLI. Once it sets up the container's namespaces and cgroups and calls `exec` on the container process, `runc` exits. The per-pod **`containerd-shim-runc-v2`** process, or `conmon` in CRI-O, then becomes the parent of the container processes. It does three things:
+1. It keeps the container's stdin, stdout and stderr file descriptors open. It writes logs to `/var/log/pods/...`, even if containerd or the kubelet is down.
+2. It acts as the subreaper. It waits for the container PID to exit and reports the exit code back to containerd.
+3. The shim is reparented to systemd (PID 1) instead of being killed when containerd stops. So restarting containerd leaves the containers untouched, and containerd re-attaches to the existing shim Unix sockets when it starts.
 </details>
 
 <details>
 <summary>5. Why does running `ctr containers ls` on a Kubernetes node return an empty list even when 50 Pods are running?</summary>
 
-`containerd` partitions all images, snapshots, containers, and tasks into isolated **containerd namespaces** (unrelated to Linux kernel namespaces or Kubernetes namespaces):
-- `ctr` defaults to the **`default`** namespace (`nerdctl` also uses `default` by default).
+containerd splits images, snapshots, containers and tasks into separate **containerd namespaces**. These have nothing to do with Linux kernel namespaces or Kubernetes namespaces.
+- `ctr` defaults to the **`default`** namespace, and `nerdctl` also uses `default`.
 - Docker Engine uses the **`moby`** namespace.
-- Kubernetes (`CRI` plugin) stores everything in the **`k8s.io`** namespace.
-Always pass **`ctr -n k8s.io containers ls`** (or `ctr -n k8s.io images ls`, `ctr -n k8s.io tasks ls`)—or use **`crictl ps`**, which talks to the CRI plugin directly in `k8s.io`.
+- Kubernetes, through the CRI plugin, stores everything in the **`k8s.io`** namespace.
+
+So an empty list is expected unless you pass `ctr -n k8s.io containers ls`, `ctr -n k8s.io images ls` or `ctr -n k8s.io tasks ls`. You can also use `crictl ps`, which talks to the CRI plugin directly and reads `k8s.io`.
 </details>
 
 <details>
 <summary>6. What happens if `kubelet` is configured with `cgroupDriver: systemd` while `/etc/containerd/config.toml` has `SystemdCgroup = false`?</summary>
 
-When `kubelet` uses `systemd` (`kubepods.slice/...`) and `containerd` uses `cgroupfs` (`/sys/fs/cgroup/k8s.io/...`), the node has **two competing cgroup managers** placing kubelet resource accounting and actual container processes into different cgroup hierarchies. This causes `kubelet` to misreport node allocatable/used memory, fail to start pods under load, or flap between `Ready` and `NotReady`. Both `KubeletConfiguration.cgroupDriver` and `/etc/containerd/config.toml` (`[plugins."io.containerd.grpc.v1.cri".containerd.runtimes.runc.options] SystemdCgroup = true`) **must match**.
+The kubelet puts pods under systemd (`kubepods.slice/...`), while containerd uses cgroupfs (`/sys/fs/cgroup/k8s.io/...`). That leaves two competing cgroup managers. The kubelet's resource accounting and the container processes land in different cgroup hierarchies. The node may misreport allocatable and used memory, pods may fail to start under load, or the node may flap between `Ready` and `NotReady`. Both `KubeletConfiguration.cgroupDriver` and the `SystemdCgroup` setting, `[plugins."io.containerd.grpc.v1.cri".containerd.runtimes.runc.options] SystemdCgroup = true` in `/etc/containerd/config.toml`, must match.
 </details>
 
 <details>
 <summary>7. Trace the 5 objects in `containerd`'s internal data model from Image pull to running Process.</summary>
 
-1. **Image:** Metadata pointer mapping an image reference (`nvcr.io/nvidia/pytorch:24.06-py3`) to its manifest digest.
-2. **Content Store (`/var/lib/containerd/io.containerd.content.v1.content`):** Immutable compressed blobs (index, manifests, config JSON, compressed `.tar.gz`/`.tar.zst` layers) addressed by SHA-256.
-3. **Snapshotter (`/var/lib/containerd/io.containerd.snapshotter.v1.overlayfs`):** Unpacked filesystem layers mounted via `overlayfs` into a rootfs view for each container.
-4. **Container:** Metadata object binding a rootfs snapshot and an OCI `config.json` specification.
-5. **Task:** The live running process tree managed by `containerd-shim-runc-v2`.
+1. **Image:** A metadata pointer that maps an image reference, such as `nvcr.io/nvidia/pytorch:24.06-py3`, to its manifest digest.
+2. **Content store** at `/var/lib/containerd/io.containerd.content.v1.content`: immutable compressed blobs, such as the index, manifests, config JSON and `.tar.gz` or `.tar.zst` layers. They are addressed by SHA-256.
+3. **Snapshotter** at `/var/lib/containerd/io.containerd.snapshotter.v1.overlayfs`: unpacked file layers, mounted with `overlayfs` into a rootfs view for each container.
+4. **Container:** metadata that binds a rootfs snapshot to an OCI `config.json` spec.
+5. **Task:** the live process tree, managed by `containerd-shim-runc-v2`.
 </details>
 
 <details>
-<summary>8. Compare `containerd` and `CRI-O` (`PK` Chapter 3).</summary>
+<summary>8. Compare `containerd` and `CRI-O` (Production Kubernetes, Chapter 3).</summary>
 
-- **`containerd`:** Graduated CNCF project originally extracted from Docker; general-purpose container daemon with a plugin architecture supporting Kubernetes (via its built-in CRI plugin), Docker (`moby`), BuildKit, and standalone `nerdctl`/`ctr` workflows. Default in GKE, EKS, AKS, Cluster API, and upstream `kubeadm`.
-- **`CRI-O`:** Purpose-built solely to implement the Kubernetes CRI (`/var/run/crio/crio.sock`), sharing `containers/image` and `containers/storage` libraries with Podman/Buildah/Skopeo and using `conmon` as its per-container monitor. Default in Red Hat OpenShift, with CRI-O versions locked 1:1 to Kubernetes minor releases (`v1.30 <-> v1.30`).
+- **`containerd`:** a graduated CNCF project, originally extracted from Docker. It is a general-purpose daemon with a plugin design. It serves Kubernetes through its built-in CRI plugin, and it also serves Docker (`moby`), BuildKit, and standalone `nerdctl` or `ctr` workflows. It is the default in GKE, EKS, AKS, Cluster API and upstream `kubeadm`.
+- **`CRI-O`:** built only to implement the Kubernetes CRI, at `/var/run/crio/crio.sock`. It shares the `containers/image` and `containers/storage` libraries with Podman, Buildah and Skopeo, and it uses `conmon` as its per-container monitor. It is the default in Red Hat OpenShift. Its versions lock one-to-one with Kubernetes minor releases, such as `v1.30` with `v1.30`.
 </details>
 
 <details>
 <summary>9. Compare the four main OCI runtime families: `runc` / `crun`, `gVisor` (`runsc`), `Kata Containers`, and `Confidential Containers` (`CoCo`).</summary>
 
-1. **`runc` (Go) & `crun` (C):** Standard Linux namespace + cgroup isolation sharing the host kernel (`crun` starts faster with a smaller memory footprint). Zero syscall/virtualization overhead; standard for trusted high-performance GPU training.
-2. **`gVisor` (`runsc`):** User-space application kernel (`Sentry` + `Gofer` file proxy) written in Go that intercepts and emulates guest application syscalls in user space without passing them directly to the host Linux kernel. Strong multi-tenant isolation, but adds syscall/I/O overhead and supports only specific GPU workloads via `nvproxy`.
-3. **`Kata Containers` (`PK` Chapter 3):** Runs each Pod Sandbox inside a dedicated lightweight **hardware-virtualized VM (`qemu-system-x86_64 -machine pc,accel=kvm`, Cloud Hypervisor, or Firecracker)** with its own isolated guest Linux kernel; supports PCIe/VFIO GPU passthrough.
-4. **`Confidential Containers` (`CoCo`):** Combines Kata VMs with CPU/GPU hardware **Trusted Execution Environments (`TEEs`)** (AMD SEV-SNP, Intel TDX, and NVIDIA Hopper/Blackwell Confidential Computing) so model weights and tenant data remain encrypted in RAM even from the host OS/hypervisor.
+1. **`runc` (Go) and `crun` (C):** standard Linux namespace and cgroup isolation on the host kernel. `crun` starts faster and uses less memory. Neither adds syscall or virtualization overhead, so they are the standard choice for trusted, high-performance GPU training.
+2. **`gVisor` (`runsc`):** a user-space application kernel written in Go. It has a Sentry and a Gofer file proxy. It intercepts guest application syscalls and emulates them in user space, instead of passing them straight to the host Linux kernel. It gives strong multi-tenant isolation, but it adds syscall and I/O overhead. It supports only certain GPU workloads, through `nvproxy`.
+3. **`Kata Containers`:** runs each pod sandbox inside its own lightweight, hardware-virtualized VM. The VM runs on QEMU, Cloud Hypervisor or Firecracker. A QEMU launch looks like `qemu-system-x86_64 -machine pc,accel=kvm`. Each VM has its own guest Linux kernel and supports PCIe and VFIO GPU passthrough.
+4. **`Confidential Containers` (`CoCo`):** combines Kata VMs with CPU and GPU hardware Trusted Execution Environments, or TEEs. Those include AMD SEV-SNP, Intel TDX, and NVIDIA Hopper and Blackwell Confidential Computing. Model weights and tenant data stay encrypted in RAM, even from the host OS and hypervisor.
 </details>
 
 <details>
 <summary>10. How does a Kubernetes `RuntimeClass` object route a Pod to a specific OCI runtime, and what does `overhead.podFixed` do?</summary>
 
-A `RuntimeClass` (e.g., `name: nvidia` or `name: kata`) specifies:
-- **`handler: kata`**: matches the exact runtime key configured in `/etc/containerd/config.toml` (`[plugins."io.containerd.grpc.v1.cri".containerd.runtimes.kata]`).
-- **`scheduling.nodeSelector`**: automatically constrains pods using this `RuntimeClass` to nodes that have that runtime/hardware installed.
-- **`overhead.podFixed: { cpu: 250m, memory: 160Mi }`**: tells `kube-scheduler` and `kubelet` to **add the VM/hypervisor's own fixed CPU and RAM footprint** to the Pod's container resource requests/limits for scheduling and cgroup sizing.
+A `RuntimeClass`, such as `name: nvidia` or `name: kata`, sets three things:
+- **`handler: kata`** must match the exact runtime key in `/etc/containerd/config.toml`, such as `[plugins."io.containerd.grpc.v1.cri".containerd.runtimes.kata]`.
+- **`scheduling.nodeSelector`** limits pods that use the class to nodes that have that runtime or hardware installed.
+- **`overhead.podFixed: { cpu: 250m, memory: 160Mi }`** tells the `kube-scheduler` and the `kubelet` to add the VM or hypervisor's own fixed CPU and RAM to the pod's requests and limits. The sum is used for scheduling and cgroup sizing.
 </details>
 
 <details>
 <summary>11. Compare the two ways the NVIDIA Container Toolkit integrates with `containerd` on a Kubernetes GPU node.</summary>
 
-1. **Runtime Wrapper (`nvidia-container-runtime`):** Configured under `runtimes.nvidia` with `BinaryName = "/usr/bin/nvidia-container-runtime"`. When a Pod with `runtimeClassName: nvidia` starts, the wrapper intercepts the OCI `config.json`, injects the `nvidia-container-runtime-hook` prestart hook (which calls `libnvidia-container` to mount `/dev/nvidia*` and `libcuda.so` based on `NVIDIA_VISIBLE_DEVICES`), and then delegates to `runc`.
-2. **CDI (`Container Device Interface`):** `nvidia-ctk cdi generate` writes device specifications to `/var/run/cdi/nvidia.yaml` (`enable_cdi = true` in `containerd`). The Kubernetes device plugin / DRA passes CDI device IDs (`nvidia.com/gpu=0`) to `containerd`, which natively injects the mounts, device nodes, and hooks from the CDI spec into standard `runc`/`crun` without needing a separate wrapper binary.
+1. **Runtime wrapper (`nvidia-container-runtime`):** configured under `runtimes.nvidia` with `BinaryName = "/usr/bin/nvidia-container-runtime"`. When a pod with `runtimeClassName: nvidia` starts, the wrapper edits the OCI `config.json` and injects the `nvidia-container-runtime-hook` prestart hook. That hook calls `libnvidia-container` to mount `/dev/nvidia*` and `libcuda.so`, based on `NVIDIA_VISIBLE_DEVICES`. Then the wrapper hands off to `runc`.
+2. **CDI (`Container Device Interface`):** `nvidia-ctk cdi generate` writes device specs to `/var/run/cdi/nvidia.yaml`, and `enable_cdi = true` is set in containerd. The device plugin or DRA passes CDI device IDs, such as `nvidia.com/gpu=0`, to containerd. containerd injects the mounts, device nodes and hooks from the CDI spec into standard `runc` or `crun`. No separate wrapper binary is needed.
 </details>
 
 <details>
 <summary>12. Why should you use `runtimeClassName: nvidia` for GPU Pods instead of setting `default_runtime_name = "nvidia"` globally on mixed nodes?</summary>
 
-When `default_runtime_name = "nvidia"` is set globally, **every single container on the node**—including `coredns`, `kube-proxy`, CNI agents, log shippers, and CPU-only jobs—is launched through the `nvidia-container-runtime` wrapper. Using `default_runtime_name = "runc"` (or `crun`) and assigning **`runtimeClassName: nvidia`** (automatically injected by the NVIDIA GPU Operator's mutating webhook on pods requesting `nvidia.com/gpu`) restricts the NVIDIA runtime hook strictly to GPU workloads.
+If `default_runtime_name = "nvidia"` is set, every container on the node goes through the wrapper. That includes CoreDNS, kube-proxy, CNI agents, log shippers and CPU-only jobs. If you keep `default_runtime_name = "runc"` (or `crun`) instead, set `runtimeClassName: nvidia` on GPU pods. The NVIDIA GPU Operator's mutating webhook adds that class automatically to pods that request `nvidia.com/gpu`. That keeps the NVIDIA runtime hook limited to GPU workloads.
 </details>
 
 <details>
 <summary>13. Compare the three node-level CLI tools on a `containerd` Kubernetes node: `crictl`, `ctr`, and `nerdctl`.</summary>
 
-- **`crictl` (`cri-tools`):** Talks to the **CRI gRPC socket** (works on both `containerd` and `CRI-O`). Understands Kubernetes **Pod Sandboxes (`crictl pods`, `crictl inspectp`)** and containers (`crictl ps -a`, `crictl logs`, `crictl exec`, `crictl stats`, `crictl info`). **First choice for Kubernetes node debugging.**
-- **`ctr`:** Shipped with `containerd`; talks directly to containerd's internal gRPC API (`ctr -n k8s.io`). Low-level inspection of content blobs, overlayfs snapshots, tasks, leases, and plugins (`ctr plugins ls`).
-- **`nerdctl`:** Docker-compatible CLI for `containerd` (`nerdctl --namespace k8s.io ps`), supporting `nerdctl build` (with BuildKit), rootless mode, and lazy-pulling snapshotters.
+- **`crictl` (`cri-tools`):** talks to the CRI gRPC socket, so it works with both containerd and CRI-O. You reach for it first when you debug Kubernetes nodes. It understands pod sandboxes, through `crictl pods` and `crictl inspectp`, and containers, through `crictl ps -a`, `crictl logs`, `crictl exec`, `crictl stats` and `crictl info`. It is the first choice for Kubernetes node debugging, so you will use it most.
+- **`ctr`:** ships with containerd and talks to its internal gRPC API, as in `ctr -n k8s.io`. It is low-level. Use it to inspect content blobs, overlayfs snapshots, tasks, leases and plugins, including with `ctr plugins ls`.
+- **`nerdctl`:** a Docker-compatible CLI for containerd, as in `nerdctl --namespace k8s.io ps`. It supports `nerdctl build` with BuildKit, rootless mode and lazy-pulling snapshotters.
 </details>
 
 <details>
 <summary>14. Why do Pods get stuck in `ContainerCreating` with `failed to get sandbox image "registry.k8s.io/pause:3.9"` in air-gapped GPU clusters, and how do you fix it?</summary>
 
-Before any container in a Pod can start, `RunPodSandbox` must pull the `pause` container image configured in `sandbox_image` in `/etc/containerd/config.toml`. In an air-gapped cluster without internet access to `registry.k8s.io`, sandbox creation fails. Fix it either by mirroring `pause:3.9` into your private registry and updating `sandbox_image = "registry.internal/k8s/pause:3.9"` in `config.toml`, or by configuring a registry mirror in `/etc/containerd/certs.d/registry.k8s.io/hosts.toml`.
+Before any container in a pod can start, `RunPodSandbox` must pull the pause image named by `sandbox_image` in `/etc/containerd/config.toml`. An air-gapped cluster cannot reach `registry.k8s.io`, so sandbox creation fails. There are two fixes. Either mirror `pause:3.9` into your private registry and set `sandbox_image = "registry.internal/k8s/pause:3.9"` in `config.toml`, or configure a registry mirror in `/etc/containerd/certs.d/registry.k8s.io/hosts.toml`.
 </details>
 
 <details>
 <summary>15. Where does the container runtime write Pod container stdout/stderr logs on the node's filesystem, and how are they rotated?</summary>
 
-`containerd` / `CRI-O` writes every container's `stdout` and `stderr` stream (prefixed with an RFC 3339 timestamp and `stdout`/`stderr` stream tag in CRI log format) to:
-**`/var/log/pods/<namespace>_<pod_name>_<pod_uid>/<container_name>/<restart_count>.log`**
-(with symlinks in `/var/log/containers/*.log`). The **`kubelet`** automatically rotates and compresses these log files based on `containerLogMaxSize` (e.g., `100Mi`) and `containerLogMaxFiles` (e.g., `5`).
+containerd and CRI-O write each container's stdout and stderr stream to `/var/log/pods/<namespace>_<pod_name>_<pod_uid>/<container_name>/<restart_count>.log`, in CRI log format. Each line carries an RFC 3339 timestamp and a `stdout` or `stderr` tag. Symlinks in `/var/log/containers/*.log` point to these files. The kubelet rotates and compresses them, based on `containerLogMaxSize`, such as `100Mi`, and `containerLogMaxFiles`, such as `5`.
 </details>
 
 <details>
 <summary>16. How does Kubelet Image Garbage Collection (`imageGCHighThresholdPercent`) work, and why must it be tuned carefully on GPU nodes?</summary>
 
-`kubelet` polls disk usage of the image filesystem via CRI `ImageFsInfo`:
-- When disk usage exceeds **`imageGCHighThresholdPercent` (default `85%`)**, `kubelet` starts deleting unused images (oldest-last-used first, respecting `imageMinimumGCAge`) until disk usage drops below **`imageGCLowThresholdPercent` (default `80%`)**.
-On GPU nodes where each PyTorch/NGC image is 15–30 GB, a small 100 GB root disk will cross 85% after just 2–3 images—causing `kubelet` to constantly delete cached base images right before the next job needs them. Always mount `/var/lib/containerd` on a dedicated 500 GB–2 TB NVMe volume.
+The kubelet polls the image filesystem's disk usage through the CRI `ImageFsInfo` call. When usage goes above `imageGCHighThresholdPercent`, which defaults to 85%, the kubelet deletes unused images, oldest last used first, and respects `imageMinimumGCAge`. It keeps going until usage falls below `imageGCLowThresholdPercent`, which defaults to 80%. For example, each PyTorch or NGC image is 15 to 30 GB, so a 100 GB root disk crosses 85% after two or three images. The kubelet then keeps deleting cached base images just before the next job needs them. You should mount `/var/lib/containerd` on a dedicated 500 GB to 2 TB NVMe volume.
 </details>
 
 <details>
 <summary>17. What does the kubelet error `PLEG is not healthy: pleg was last seen active 3m4s ago` mean, and what causes it?</summary>
 
-**PLEG (`Pod Lifecycle Event Generator`)** is the internal `kubelet` loop that periodically calls CRI `ListPodSandbox` and `ListContainers` (relying on `containerd`) to detect container state changes. If PLEG takes longer than **3 minutes** to complete a relist, `kubelet` marks the node **`NotReady` (`PLEG is not healthy`)**. Common causes:
-1. Disk I/O saturation on `/var/lib/containerd` or `/var/log` (e.g., unpacking a massive 30 GB image on a slow disk or a kernel hung on a dead NFS/Lustre mount).
-2. `containerd` daemon deadlocked, OOM-killed, or starved of CPU (`systemReserved` not configured).
-3. Thousands of exited/zombie containers or leaked `containerd-shim` processes accumulated on the node.
+PLEG, the Pod Lifecycle Event Generator, is an internal kubelet loop. It periodically calls the CRI `ListPodSandbox` and `ListContainers` methods, which rely on containerd, to detect container state changes. If a relist takes longer than 3 minutes, the kubelet marks the node `NotReady` with `PLEG is not healthy`. Common causes are:
+1. Disk I/O saturation on `/var/lib/containerd` or `/var/log`, such as unpacking a 30 GB image on a slow disk, or a kernel hung on a dead NFS or Lustre mount.
+2. The containerd daemon is deadlocked, OOM-killed or starved of CPU, especially when `systemReserved` is not configured.
+3. Thousands of exited or zombie containers, or leaked `containerd-shim` processes, have built up on the node.
 </details>
 
 <details>
 <summary>18. Why is mounting `/run/containerd/containerd.sock` (or `/var/run/docker.sock`) inside a Pod equivalent to granting root on the host node?</summary>
 
-Anyone who can speak to `/run/containerd/containerd.sock` has unauthenticated access to containerd's gRPC API across all namespaces (`k8s.io`, `default`)—allowing them to launch a new privileged container mounting the host's `/` filesystem at `/host` with `hostPID: true`, read secrets from every other Pod on the node, or overwrite `/etc/shadow` and `/etc/sudoers`. Never mount the runtime socket into tenant or CI pods; use rootless `buildkitd` or `kaniko`/`buildah` for in-cluster image builds.
+Anyone who can talk to `/run/containerd/containerd.sock` has unauthenticated access to containerd's gRPC API across all namespaces, including `k8s.io` and `default`. That access lets them start a privileged container that mounts the host's `/` at `/host` with `hostPID: true`. They can read secrets from every other pod on the node, or overwrite `/etc/shadow` and `/etc/sudoers`. Never mount the runtime socket into tenant or CI pods, as you would hand out root. For in-cluster image builds, use rootless `buildkitd`, `kaniko` or `buildah` instead.
 </details>
 
 <details>
 <summary>19. What is `NRI` (Node Resource Interface) in `containerd` and `CRI-O`?</summary>
 
-**NRI (`Node Resource Interface`)** is a common plugin framework built into both `containerd` and `CRI-O` that allows node-level resource managers (such as fine-grained NUMA/CPU/memory topology policies, custom LLC cache allocation, or device injectors) to hook into container lifecycle events (`CreateContainer`, `UpdateContainer`, `StopContainer`) and adjust OCI Linux resource specs (`cgroups`, CPU sets, mounts) without modifying `kubelet` or the CRI API.
+NRI, the Node Resource Interface, is a plugin framework built into both containerd and CRI-O. Node-level resource managers use it. Examples are fine-grained NUMA, CPU or memory topology policies, custom last-level cache allocation, and device injectors. These plugins hook into container lifecycle events, including `CreateContainer`, `UpdateContainer` and `StopContainer`. They adjust the OCI Linux resource spec, covering cgroups, CPU sets and mounts, without changing the kubelet or the CRI API.
 </details>
 
 <details>
 <summary>20. Walk through the safe procedure for upgrading `containerd` and `runc` on a production GPU Kubernetes node.</summary>
 
 1. **Cordon and drain the node:** `kubectl cordon <node> && kubectl drain <node> --ignore-daemonsets --delete-emptydir-data`.
-2. **Stop `kubelet` first** (`systemctl stop kubelet`) so it does not try to schedule or restart pods during the upgrade.
-3. **Upgrade packages** (`apt-get install --only-upgrade containerd.io` / `runc`, pinned to your tested version) and validate `/etc/containerd/config.toml` (`containerd config dump > /dev/null`).
-4. **Restart `containerd` and `kubelet`** (`systemctl restart containerd && systemctl start kubelet`), verify `crictl info` and `nvidia-ctk cdi list`, run a quick GPU validation pod, and **`kubectl uncordon <node>`**.
+2. **Stop the kubelet first** with `systemctl stop kubelet`, so it does not schedule or restart pods during the upgrade.
+3. **Upgrade the packages** with `apt-get install --only-upgrade containerd.io` and `runc`, pinned to your tested version. Then validate the config with `containerd config dump > /dev/null`.
+4. **Restart containerd and the kubelet** with `systemctl restart containerd && systemctl start kubelet`. Verify with `crictl info` and `nvidia-ctk cdi list`, run a quick GPU validation pod, and then run `kubectl uncordon <node>`.
 </details>
 
 ## Sources and review notes
