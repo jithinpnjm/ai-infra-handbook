@@ -22,22 +22,24 @@ lab_venue: "GCP / GKE"
 
 ## Why this matters for AI infrastructure
 
-Training at scale is a long sequence of fast compute phases punctuated by I/O: reading data, and periodically writing state so that a failure costs minutes rather than days. Checkpoint design decides how much GPU time is lost on every save, how quickly a run recovers after a failure, whether a crash can corrupt the only good checkpoint, and whether you can resume on a different number of GPUs. The HPC world solved the shared-file and collective-write problems with MPI-IO and HDF5; AI frameworks re-implemented the ideas (sharded distributed checkpoints, asynchronous staging). This chapter covers both and gives you tested building blocks.
+Suppose a node fails halfway through a long training run. How much work you lose depends on how the job saves its state. Training is a long series of fast compute phases, punctuated by I/O: reading data, and periodically writing state. Writing state periodically means a failure costs minutes rather than days.
+
+Checkpoint design decides several things for you. It sets how much GPU time each save consumes and how quickly a run recovers after a failure. It also decides whether a crash can corrupt the only good checkpoint, and whether you can resume on a different number of GPUs. The HPC world solved the shared-file and collective-write problems with MPI-IO and HDF5. AI frameworks re-implemented those ideas through sharded distributed checkpoints and asynchronous staging. This chapter covers both, and it gives you tested building blocks.
 
 ## Prerequisites and outcomes
 
-Needs 6.4, 6.18, 6.19, Part 14 basics (parallelism strategies). After this chapter you can:
+You need 6.4, 6.18, 6.19, and the Part 14 basics on parallelism strategies before you start. After this chapter you can:
 
 - Explain independent versus collective I/O, MPI-IO views and hints, HDF5 parallel patterns, and why alignment with stripes matters.
 - Compare checkpoint layouts: file-per-process, single shared file, sharded distributed checkpoints, node-local plus drain, and in-memory replicas.
-- Demonstrate and explain resharding (saving on N ranks, loading on M).
-- Implement a crash-safe commit protocol with manifests, checksums and atomic rename; validate checkpoints on restart.
-- Budget checkpoint time and overhead; reduce stall with asynchronous and tiered designs.
-- Design the data-loading side: sharded datasets, prefetch, worker counts, caching.
+- Demonstrate and explain resharding, which means saving on N ranks and loading on M.
+- Implement a crash-safe commit protocol with manifests, checksums and atomic rename, and validate checkpoints on restart.
+- Budget checkpoint time and overhead, and reduce stall with asynchronous and tiered designs.
+- Design the data-loading side, including sharded datasets, prefetch, worker counts, and caching.
 
 ## 1. Parallel I/O in HPC: MPI-IO and HDF5
 
-*Parallel and High Performance Computing* (PHPC, chapter 16) presents the standard stack. Layers from the application down:
+Suppose many ranks each need to write their piece of one large array into the same file. If every rank works on its own, the file system spends its time sorting out scattered writes. The HPC world avoids that with a layered stack, which *Parallel and High Performance Computing* (chapter 16) describes. Each layer hands its work down to the layer below.
 
 ```mermaid
 flowchart TB
@@ -46,32 +48,47 @@ flowchart TB
   MPIIO --> FS[POSIX / parallel file system client: Lustre, GPFS, NFS]
 ```
 
-**MPI-IO** lets all ranks of a communicator open one file and read/write their portions:
+Read the diagram from the top. Your application holds arrays, one set per rank. A self-describing format organizes them, MPI-IO decides how the ranks touch the file, and the file system client moves the bytes.
 
-- `MPI_File_open`, `MPI_File_set_view` (each rank sees only its part of the file through a *view* built from derived datatypes), `MPI_File_write_at`/`write` (independent), `MPI_File_write_all`/`write_at_all` (**collective**), non-blocking variants, `MPI_File_sync`, `MPI_File_close`.
-- **Collective buffering (two-phase I/O)**: instead of every rank issuing small scattered writes, the library gathers data to a few **aggregator** ranks that write large contiguous blocks aligned to stripes; this converts many small noncontiguous requests into few large ones, usually a big win on parallel file systems. **Data sieving** does the same for independent noncontiguous access (read a big block, pick the pieces).
-- **Hints** (`MPI_Info`): `cb_nodes` (aggregator count), `cb_buffer_size`, `romio_cb_read/write` (`automatic`/`enable`/`disable`), `romio_ds_read/write`, `ind_rd_buffer_size`, `ind_wr_buffer_size`, `striping_unit`, `striping_factor`, and GPFS `IBM_largeblock_io=true`. The PHPC book shows how to print them with `ROMIO_PRINT_HINTS=1` (Cray MPICH: `MPICH_MPIIO_HINTS_DISPLAY=1`, `MPICH_MPIIO_STATS=1`, `MPICH_MPIIO_ABORT_ON_RW_ERROR`), and its sample output reports `romio_filesystem_type = NFS:`, `cb_nodes = 1`, `striping_unit = 4194304`, a good reminder to check that the library recognises your file system (using `statfs` and `/usr/include/linux/magic.h` as in `PHPC` `Listing 16.10` `fs_detect.c`); wrongly detected file systems get poor defaults.
-- **OpenMPI `ompio` vs `romio` plugins (`PHPC` Chapter 16)**: Parallel file operations entered MPI in the MPI-2 standard in the late 1990s via Argonne National Laboratory's **ROMIO** library (led by Rajeev Thakur). In OpenMPI, `ompi_info | grep "MCA io:"` lists two MCA `io` plugins: `romio321` (default on older releases) and **`ompio`** (default on newer OpenMPI releases), selectable via `mpirun --mca io [ompio|romio]`. Inspecting `ompi_info --param io ompio --level 9` reveals key tuning parameters (`io_ompio_num_aggregators`, `io_ompio_max_aggregators_ratio=8`, `io_ompio_aggregators_cutoff_threshold=3`, `io_ompio_overwrite_amode=1`, `io_ompio_delete_priority=30`, `io_ompio_record_file_offset_info=0`, `io_ompio_coll_timing_info=1`), and running `mpirun --mca io_ompio_verbose_info_parsing 1 -n 4 ./mpi_io_block2d` verifies active info hints.
-- **2D block-decomposed MPI-IO views (`PHPC` `Listings 16.1`–`16.4`)**: When a 2D domain of global shape `(ny_global, nx_global)` is decomposed across ranks where each rank holds a local subarray `(ny, nx)` padded by `ng` halo/ghost cells (`local_sizes = {ny+2*ng, nx+2*ng}`, `local_starts = {ng, ng}`), `mpi_io_file_init` creates two derived datatypes once at startup with `MPI_Type_create_subarray(..., MPI_ORDER_C, MPI_DOUBLE, ...)` and `MPI_Type_commit`: `filetype` (mapping the rank's global block in the file) and `memtype` (selecting only the interior `ny` $\times$ `nx` non-ghost cells in RAM). Writing or reading then takes four steps: `MPI_File_open`, `MPI_File_set_size` (preallocating file space so metadata does not grow piecewise during writes), `MPI_File_set_view(fh, disp, MPI_DOUBLE, filetype, "native", info)`, and collective `MPI_File_write_all(fh, data, 1, memtype, &status)` / `MPI_File_read_all`, followed by `MPI_File_close`.
-- **HDF5** (`PHPC` `Listings 16.5`–`16.9` and `Tables 16.4`–`16.6`) adds self-describing structure: datasets, attributes, chunking, compression (verify a parallel build in CMake with `set(HDF5_PREFER_PARALLEL true)` and `find_package(HDF5 1.10.1 REQUIRED)` / `if (NOT HDF5_IS_PARALLEL)`). Parallel HDF5 uses MPI-IO underneath across three API groups:
-  1. **Collective file routines (`Table 16.4`):** `H5Fcreate`, `H5Fopen`, and `H5Fclose`, using a file access property list configured with `H5Pcreate(H5P_FILE_ACCESS)` and `H5Pset_fapl_mpio(file_access_plist, mpi_hdf5_comm, info)`.
-  2. **Dataspace routines (`Table 16.5`):** `H5Screate_simple`, `H5Sselect_hyperslab`, and `H5Sclose` to define both the global `filespace` hyperslab and the interior ghost-stripped `memspace` hyperslab.
-  3. **Dataset and collective transfer routines (`Table 16.6`):** `H5Dcreate2`, `H5Dopen2`, `H5Dclose`, `H5Dwrite`, and `H5Dread`, passing a dataset transfer property list `xfer_plist = H5Pcreate(H5P_DATASET_XFER)` with **`H5Pset_dxpl_mpio(xfer_plist, H5FD_MPIO_COLLECTIVE)`** (plus collective metadata `H5Pset_coll_metadata_write` / `H5Pset_all_coll_metadata_ops`).
-  Chunk size should match access patterns and stripe size. Also **NetCDF-4** / **PnetCDF** (Northwestern/ANL), **ADIOS2** (Oak Ridge National Laboratory, staging and burst-buffer friendly such as Cray `DataWarp`), and for AI: `safetensors`, Arrow/Parquet, WebDataset tar shards, Zarr.
+**MPI-IO** lets all ranks of a communicator open one file and read or write their own portions. Its main calls are `MPI_File_open`, `MPI_File_set_view`, `MPI_File_write_at` or `MPI_File_write`, `MPI_File_write_all` or `MPI_File_write_at_all`, `MPI_File_sync`, and `MPI_File_close`. There are also non-blocking variants. `MPI_File_set_view` gives each rank a view of the file, built from derived datatypes, so each rank sees only its part. `MPI_File_write_at` is independent, so one rank writes on its own. `MPI_File_write_all` is collective, so every rank in the communicator calls it together.
 
-Why it matters for AI: the same issues recur. N ranks writing disjoint regions of one file need alignment and collective aggregation to avoid lock thrash; file-per-rank avoids locks but explodes metadata. Frameworks hide this, but their performance still obeys these rules.
+Collective buffering, also called two-phase I/O, is what makes collective calls pay off. Instead of every rank issuing small scattered writes, the library gathers data onto a few aggregator ranks. Those aggregators write large contiguous blocks aligned to stripes. Many small noncontiguous requests become a few large ones, which is usually a big win on parallel file systems. Data sieving does the same for independent access to noncontiguous data: it reads one big block and picks out the pieces it needs.
+
+Hints are settings passed in an `MPI_Info` object, and they tune how the library behaves. The list includes `cb_nodes` for the aggregator count, `cb_buffer_size`, `romio_cb_read/write` (set to `automatic`, `enable`, or `disable`), and `romio_ds_read/write`. It also covers `ind_rd_buffer_size`, `ind_wr_buffer_size`, `striping_unit`, `striping_factor`, and, for GPFS, `IBM_largeblock_io=true`. The same book shows how to print them. With ROMIO, set `ROMIO_PRINT_HINTS=1`. On Cray MPICH, use `MPICH_MPIIO_HINTS_DISPLAY=1` and `MPICH_MPIIO_STATS=1`, and the variable `MPICH_MPIIO_ABORT_ON_RW_ERROR` is available too.
+
+The sample output in the book reports `romio_filesystem_type = NFS:`, `cb_nodes = 1`, and `striping_unit = 4194304`. That output is a useful reminder to check that the library recognizes your file system. The book's `fs_detect.c` file, Listing 16.10, uses `statfs` and `/usr/include/linux/magic.h` for that check. A wrongly detected file system gets poor defaults.
+
+OpenMPI has two MPI-IO plugins, and the choice matters. Parallel file operations entered MPI in the MPI-2 standard in the late 1990s, through Argonne National Laboratory's ROMIO library, which Rajeev Thakur led. In OpenMPI, `ompi_info | grep "MCA io:"` lists two MCA `io` plugins. One is `romio321`, the default on older releases. The other is `ompio`, the default on newer OpenMPI releases. You select one with `mpirun --mca io [ompio|romio]`.
+
+To see the key tuning parameters, run `ompi_info --param io ompio --level 9`. The output includes `io_ompio_num_aggregators`, `io_ompio_max_aggregators_ratio=8`, `io_ompio_aggregators_cutoff_threshold=3`, `io_ompio_overwrite_amode=1`, `io_ompio_delete_priority=30`, `io_ompio_record_file_offset_info=0`, and `io_ompio_coll_timing_info=1`. To confirm that your hints are active, run `mpirun --mca io_ompio_verbose_info_parsing 1 -n 4 ./mpi_io_block2d`.
+
+The book's 2D example, in Listings 16.1 to 16.4, shows a block-decomposed domain. Suppose a 2D domain with global shape `(ny_global, nx_global)` is split across ranks. Each rank holds a local subarray `(ny, nx)`, padded by `ng` halo, or ghost, cells. That gives `local_sizes = {ny+2*ng, nx+2*ng}` and `local_starts = {ng, ng}`. The function `mpi_io_file_init` creates two derived datatypes once, at startup. It uses `MPI_Type_create_subarray(..., MPI_ORDER_C, MPI_DOUBLE, ...)` and then `MPI_Type_commit`. The first type is `filetype`, which maps the rank's global block in the file. The second is `memtype`, which selects only the interior `ny` $\times$ `nx` non-ghost cells in RAM.
+
+Writing or reading then takes four steps: `MPI_File_open`, `MPI_File_set_size`, `MPI_File_set_view(fh, disp, MPI_DOUBLE, filetype, "native", info)`, and the collective `MPI_File_write_all(fh, data, 1, memtype, &status)` or `MPI_File_read_all`, followed by `MPI_File_close`. `MPI_File_set_size` preallocates the file space, so metadata does not grow piece by piece during writes.
+
+HDF5 adds self-describing structure to the file, covering datasets, attributes, chunking, and compression. The book's listings 16.5 to 16.9 and tables 16.4 to 16.6 cover it. To check for a parallel build, use CMake with `set(HDF5_PREFER_PARALLEL true)` and `find_package(HDF5 1.10.1 REQUIRED)`, then test `if (NOT HDF5_IS_PARALLEL)`. Parallel HDF5 uses MPI-IO underneath, and its calls fall into three groups.
+
+1. Collective file routines (`Table 16.4`) are `H5Fcreate`, `H5Fopen`, and `H5Fclose`. You configure them with a file access property list, created by `H5Pcreate(H5P_FILE_ACCESS)` and set by `H5Pset_fapl_mpio(file_access_plist, mpi_hdf5_comm, info)`.
+2. Dataspace routines (`Table 16.5`) are `H5Screate_simple`, `H5Sselect_hyperslab`, and `H5Sclose`. You use them to define both the global `filespace` hyperslab and the interior, ghost-stripped `memspace` hyperslab.
+3. Dataset and collective transfer routines (`Table 16.6`) are `H5Dcreate2`, `H5Dopen2`, `H5Dclose`, `H5Dwrite`, and `H5Dread`. For collective transfers, you pass a dataset transfer property list, `xfer_plist = H5Pcreate(H5P_DATASET_XFER)`, with `H5Pset_dxpl_mpio(xfer_plist, H5FD_MPIO_COLLECTIVE)`. Collective metadata uses `H5Pset_coll_metadata_write` and `H5Pset_all_coll_metadata_ops`.
+
+Chunk size should match access patterns and stripe size. Other formats matter too. NetCDF-4 and PnetCDF come from Northwestern and Argonne National Laboratory. ADIOS2 comes from Oak Ridge National Laboratory, and it suits staging and burst buffers, such as Cray `DataWarp`. For AI work, you will also meet `safetensors`, Arrow and Parquet, WebDataset tar shards, and Zarr.
+
+The same problems show up in AI work. When N ranks write disjoint regions of one file, they need alignment and collective aggregation, or they fight over locks. A file per rank avoids locks but creates too much metadata. Frameworks hide most of this, but their performance still follows these rules.
 
 ### Alignment rules of thumb
 
-1. Make write block sizes multiples of the file system's stripe size (Lustre `stripe_size`, 6.19) and align offsets; avoid two ranks touching the same stripe.
-2. Use few, large writes (MiB scale) rather than many small ones; buffer in memory.
-3. Set the stripe count for shared files high enough that aggregate bandwidth covers all aggregators; set it low (1) for file-per-process outputs.
-4. Prefer collective I/O for noncontiguous patterns; independent I/O only for tiny, rare operations (headers).
-5. Keep metadata operations (open/close/stat) off the critical path: open once, close once; aggregate small outputs into one file per node or per job.
+1. Make write block sizes multiples of the file system's stripe size, such as Lustre `stripe_size` from 6.19, and align the offsets. Avoid having two ranks touch the same stripe.
+2. Use few, large writes at the MiB scale rather than many small ones, and buffer them in memory.
+3. Set the stripe count for a shared file high enough that aggregate bandwidth covers all aggregators. For file-per-process outputs, set it low, to 1.
+4. Prefer collective I/O for noncontiguous patterns. Reserve independent I/O for tiny, rare operations such as headers.
+5. Keep metadata operations, such as open, close, and stat, off the critical path. Open once, close once, and aggregate small outputs into one file per node or per job.
+
+Settle the stripe size and the aggregator count first, because those two settings decide whether your shared-file writes line up.
 
 ## 2. Checkpoint layouts
 
-A training checkpoint is the model weights plus optimiser state plus bookkeeping (step, RNG, data position, learning-rate schedule). At scale each rank holds only a shard (FSDP/ZeRO/tensor-pipeline parallel). Layout options:
+Saving a checkpoint sounds simple until each of 4,096 ranks holds its own piece of the model. A training checkpoint is the model weights, plus the optimizer state, plus bookkeeping: the step, the RNG state, the data position, and the learning-rate schedule. At scale, each rank holds only a shard, for example under FSDP, ZeRO, or tensor and pipeline parallelism. The layouts below differ in how many files they write and how you load them back.
 
 | Layout | Description | Pros | Cons |
 |---|---|---|---|
@@ -83,11 +100,11 @@ A training checkpoint is the model weights plus optimiser state plus bookkeeping
 | **In-memory replicas** (buddy checkpoints) | Keep copies in peer-node memory for fast recovery from single-node failure | Seconds to recover from common failures | Memory cost; not durable against multi-node failure; complexity |
 | **Differential / incremental** | Save only changes or only optimiser state less often | Smaller | Restore complexity |
 
-Real systems combine these: frequent cheap in-memory or local-NVMe checkpoints, less frequent durable sharded checkpoints to the parallel file system, occasional exports to object storage for archival and for evaluation.
+The table compares the layouts, so read each row as a trade-off. Each one is good at something and costs you something else. Real systems combine them. They take frequent, cheap checkpoints to memory or local NVMe. They take less frequent, durable sharded checkpoints to the parallel file system. Occasionally they export a copy to object storage for archival and evaluation.
 
 ### Tested: sharded checkpoint and resharding
 
-`code/part06/dcp_reshard.py` shards an 8x3 tensor across 4 ranks with `DTensor` (`Shard(0)`), saves it with `torch.distributed.checkpoint.save`, then loads it into 2 ranks and into 1 rank. Run through the `fake_srun.py` harness from 6.12 (gloo backend, CPU, PyTorch 2.14.1):
+`code/part06/dcp_reshard.py` shards an 8x3 tensor across 4 ranks with `DTensor` (`Shard(0)`). It saves the tensor with `torch.distributed.checkpoint.save`, then loads it into 2 ranks and into 1 rank. The run goes through the `fake_srun.py` harness from 6.12, with the gloo backend, on CPU, using PyTorch 2.14.1.
 
 ```text
 rank 0/4: saved shard (2, 3)     ... (each of 4 ranks saved its 2 rows)
@@ -99,29 +116,45 @@ rank 1/2: loaded shard (4, 3) reassembled_equal=True
 rank 0/1: loaded shard (8, 3) reassembled_equal=True
 ```
 
-What it shows: DCP writes one file per rank (data) plus global metadata describing which slice of which tensor lives where; on load each rank reads exactly the slices it needs, even if the number of ranks changed. That makes it possible to restart a job on fewer or more GPUs after a failure or to load a training checkpoint into an evaluation job. (The `gloo` first attempt failed with "Numpy is not available" until `numpy` was installed in the virtual environment: DCP's object gathering needs it. Worth a line in a runbook.) The file system sees one large file per rank per checkpoint: good bandwidth, but with 4,096 ranks that is 4,096 files per checkpoint, so organise one directory per step and consider node-level aggregation.
+The output shows what DCP does. It writes one file per rank for the data, plus global metadata that records which slice of which tensor lives where. On load, each rank reads exactly the slices it needs, even if the number of ranks has changed. That makes it possible to restart a job on fewer or more GPUs after a failure. It also lets you load a training checkpoint into an evaluation job. The first gloo attempt failed with "Numpy is not available" until `numpy` was installed in the virtual environment, because DCP's object gathering needs it. Worth a line in your runbook.
+
+The file system sees one large file per rank for each checkpoint. That gives good bandwidth. With 4,096 ranks, though, it means 4,096 files per checkpoint. So organize one directory per step, and consider node-level aggregation.
 
 ### Tiering and asynchrony
 
-Checkpoint stall = time for the slowest rank to write its shard to the destination. Reduce it by (a) writing to local NVMe or pinned host memory first (copy GPU to host is fast), then letting a background thread/process drain to shared storage while training continues (**asynchronous checkpointing**; PyTorch DCP offers async save APIs, Megatron and others have their own), (b) staggering or bounding concurrent writers if the file system chokes on a synchronised burst, (c) compressing carefully (CPU cost versus bytes), (d) checkpointing less state (e.g. weights only for frequent saves), (e) overlapping with a non-critical phase. Arithmetic from 6.18: a 70B model's training checkpoint is about 1 TB; at 16 GB/s it takes about a minute, at 160 GB/s about six seconds.
+The checkpoint stall is the time the slowest rank needs to write its shard to the destination. You can shrink it in five ways. First, write to local NVMe or pinned host memory before anything else, because copying from GPU to host is fast. A background thread or process then drains the data to shared storage while training continues. This is called asynchronous checkpointing. PyTorch DCP offers async save APIs, and Megatron and others have their own.
 
-Trade-off to quantify: expected lost work = half the checkpoint interval per failure (on average) plus restart time. With failure rate lambda per hour for the whole job (grows with GPU count), the interval that minimises overhead follows the Young/Daly approximation, `T_opt ~ sqrt(2 * C * MTBF)` where `C` is the checkpoint cost and MTBF the job's mean time between failures (general result; use it as a starting point). A 1-minute checkpoint cost and a 6-hour MTBF give an interval near 27 minutes.
+Second, stagger or bound the concurrent writers if the file system chokes on a synchronized burst. Third, compress carefully, since compression costs CPU time and saves bytes. Fourth, checkpoint less state. For example, save only weights for frequent saves. Fifth, overlap the write with a phase that is not on the critical path.
+
+Here is the arithmetic from 6.18 that you can check yourself. A 70B model's training checkpoint is about 1 TB. At 16 GB/s, writing it takes about a minute. At 160 GB/s, it takes about six seconds.
+
+The trade-off is worth quantifying. On average, each failure costs half the checkpoint interval in lost work, plus the restart time. The failure rate, lambda per hour for the whole job, grows with the GPU count. The Young/Daly approximation gives the interval that minimizes overhead:
+
+`T_opt ~ sqrt(2 * C * MTBF)`
+
+Here `C` is the checkpoint cost, and MTBF is the job's mean time between failures. This is a general result, so use it as a starting point. A 1-minute checkpoint cost and a 6-hour MTBF give an interval near 27 minutes.
 
 ### Driver-level transparent GPU state checkpointing (`cuda-checkpoint` and `CRIU`)
 
-Orthogonal to framework-level model checkpoints (`state_dict`, sharded DCP), Linux supports driver-level transparent GPU process checkpointing via NVIDIA's `cuda-checkpoint` utility paired with a CPU process checkpointer such as Checkpoint/Restore in Userspace (`CRIU`) for fault tolerance, preemption, and job migration. During suspend, the CUDA Driver API calls `cuCheckpointProcessLock` (locking CUDA driver entry points), `cuCheckpointProcessCheckpoint` (waiting for submitted GPU work to drain, copying the device memory image into host allocations managed by the driver, and releasing GPU resources so `CRIU` can snapshot the process), `cuCheckpointProcessRestore` (reacquiring GPUs—even remapped to different physical GPUs of the same chip type, provided persistence mode or `cuInit` is active—mapping device memory to its original addresses, and restoring streams and contexts), and `cuCheckpointProcessUnlock` (allowing CUDA calls to proceed). Unlike GPUDirect Storage (`GDS`) on the read path, `cuda-checkpoint` does not DMA directly from GPU memory to disk; the suspend time is bounded by the GPU memory image size and the GPU-to-host interconnect bandwidth before `CRIU` writes the host memory image to storage (profile with Nsight Systems markers around the lock and checkpoint calls, untested here).
+This layer sits beside the framework checkpoints, which are `state_dict` saves and sharded DCP. Linux can also checkpoint a GPU process at the driver level, with no change to the application. NVIDIA's `cuda-checkpoint` utility handles the GPU side, and a CPU process checkpointer handles the rest. CRIU, which stands for Checkpoint/Restore in Userspace, is one such checkpointer. Together they support fault tolerance, preemption, and job migration.
+
+During a suspend, the CUDA Driver API calls four functions. `cuCheckpointProcessLock` locks the CUDA driver entry points. `cuCheckpointProcessCheckpoint` waits for submitted GPU work to drain, copies the device memory image into host allocations managed by the driver, and releases GPU resources so CRIU can snapshot the process. `cuCheckpointProcessRestore` reacquires the GPUs. They can be remapped to different physical GPUs of the same chip type, provided persistence mode or `cuInit` is active. This call also maps device memory to its original addresses and restores streams and contexts. Finally, `cuCheckpointProcessUnlock` lets CUDA calls proceed again.
+
+Unlike GPUDirect Storage (`GDS`) on the read path, `cuda-checkpoint` does not DMA directly from GPU memory to disk. The suspend time is bounded by the size of the GPU memory image and by the GPU-to-host interconnect bandwidth. After that, CRIU writes the host memory image to storage. To profile this, place Nsight Systems markers around the lock and checkpoint calls. This step is untested here.
+
+Decide the layout first, because it sets how many files each checkpoint creates and how your job can restart from it.
 
 ## 3. Crash-safe commits (tested)
 
-A checkpoint that is half written when the job dies must never be mistaken for a good one, and a crash during commit must not destroy the previous good checkpoint. POSIX gives one atomic primitive across files: `rename` within a file system. `code/part06/ckpt_atomic.py` implements the protocol:
+Picture a job that dies while it is halfway through writing a checkpoint, and think about what you would find on disk. A checkpoint in that state must never be mistaken for a good one. A crash during the commit must also not destroy the previous good checkpoint. POSIX gives one atomic primitive across files, which is `rename` within one file system. The script `code/part06/ckpt_atomic.py` builds the protocol on top of it.
 
-1. Each rank writes shards into `step-N.tmp/` and `fsync`s them.
-2. The coordinator records a SHA-256 per shard in `MANIFEST.json`, `fsync`s it.
-3. Atomic `rename step-N.tmp -> step-N`, then `fsync` the parent directory.
-4. Atomically update a `latest` pointer (write temp, rename over).
-5. On restart, **do not trust `latest` alone**: scan for the newest directory that has a manifest and whose shard hashes verify.
+1. Each rank writes its shards into `step-N.tmp/` and calls `fsync` on them.
+2. The coordinator records a SHA-256 digest for each shard in `MANIFEST.json`, then calls `fsync` on that file.
+3. It renames `step-N.tmp` to `step-N` atomically, then calls `fsync` on the parent directory.
+4. It updates the `latest` pointer atomically, by writing a temp file and renaming it over the old one.
+5. On restart, do not trust `latest` alone. Scan for the newest directory that has a manifest and whose shard hashes verify.
 
-The self-test simulates crashes and corruption (4 ranks x 64 KiB shards):
+The self-test simulates crashes and corruption, using 4 ranks with 64 KiB shards.
 
 ```text
 step 100: committed                latest pointer=step-100  newest_valid=step-100
@@ -131,56 +164,71 @@ step 400: committed                latest pointer=step-400  newest_valid=step-40
 after corrupting step-400/shard-2: newest_valid=step-300
 ```
 
-Reading it: a crash before the rename leaves only a `.tmp` directory, ignored by readers; a crash after the rename but before the pointer update leaves the pointer stale while a complete newer checkpoint exists (the scan finds `step-300`); a corrupted shard is detected by the hash and the loader falls back to the previous valid checkpoint. Real deployments add: distributed barrier before the coordinator commits, checksums computed by each rank (not re-read by one process for TB-scale data), manifest versioning (framework, parallel layout, tensor shapes, dtype, git commit, data position), retention (keep last K plus periodic milestones), and verification jobs that load a checkpoint into a smaller test model. On object stores without atomic rename, use a final manifest object written last (the manifest's existence defines commit) and versioned prefixes. Caveats: `rename` atomicity holds on local file systems and Lustre/GPFS within one directory tree; NFS semantics are weaker (close-to-open consistency, 6.18) and cloud object stores differ; always test on your storage.
+Here is how you read the test. A crash before the rename leaves only a `.tmp` directory, and readers ignore it. A crash after the rename but before the pointer update leaves `latest` stale, even though a complete newer checkpoint exists. In that case the scan finds `step-300`. A corrupted shard fails its hash check, so the loader falls back to the previous valid checkpoint.
+
+Real deployments add more. They put a distributed barrier before the coordinator commits. Each rank computes its own checksums, rather than having one process re-read terabytes of data. Manifests are versioned, and they record the framework, the parallel layout, tensor shapes, dtype, the git commit, and the data position. Retention keeps the last K checkpoints plus periodic milestones. Verification jobs load a checkpoint into a smaller test model.
+
+On object stores without atomic rename, write a final manifest object last. The manifest's existence defines the commit, and versioned prefixes keep the copies apart. Keep these caveats in mind. Rename is atomic on local file systems and on Lustre and GPFS, within one directory tree. NFS semantics are weaker, with close-to-open consistency covered in 6.18. Cloud object stores differ too. Always test on your own storage.
 
 ## 4. Restart and validation
 
-- **Resume logic** must restore model, optimiser, learning-rate scheduler, RNG state, dataloader position (or accept a new shuffle), gradient scaler, and the step counter; test bitwise or statistical equivalence on a small run (train 100 steps, checkpoint, resume 100 more, compare loss with an uninterrupted run).
-- **Detect silent corruption**: hash verification, tensor shape/dtype checks on load, NaN/Inf scan, loss continuity check after restart (a spike indicates a bad checkpoint or lost optimiser state).
-- **Failure drills**: kill a rank, kill a node, fill the disk, kill during save; confirm automatic recovery within the target time (Part 17).
-- **Elastic restarts**: with resharding-capable checkpoints the job can resume on fewer nodes while waiting for repairs; keep global batch size semantics consistent.
-- **Slurm integration**: `--requeue`, `--signal` and the dependency patterns of 6.11; ensure the SIGTERM handler triggers an emergency checkpoint only if it can finish within the grace window.
+A restart that loads a checkpoint is not the same as a restart that resumes the run. Resume logic has to restore a lot of state. That includes the model, the optimizer, the learning-rate scheduler, the RNG state, the dataloader position (or a new shuffle), the gradient scaler, and the step counter. Test it on a small run. Train 100 steps, checkpoint, resume 100 more, and compare the loss with an uninterrupted run, looking for bitwise or statistical equivalence.
+
+Silent corruption needs its own checks. Use hash verification, tensor shape and dtype checks on load, a NaN and Inf scan, and a loss continuity check after restart. If you see a loss spike, it suggests a bad checkpoint or lost optimizer state.
+
+Run failure drills so that you can confirm recovery. Kill a rank, kill a node, fill the disk, and kill a job during a save. Each drill should show automatic recovery within the target time in Part 17. Elastic restarts build on resharding-capable checkpoints. The job can resume on fewer nodes while the repairs are pending, so keep the global batch size semantics consistent.
+
+Slurm integration brings in `--requeue`, `--signal`, and the dependency patterns from 6.11. Make the SIGTERM handler trigger an emergency checkpoint only if that checkpoint can finish within the grace window.
+
+Use the failure drills as your test of recovery time, and compare every result with the target in Part 17.
 
 ## 5. Data loading
 
-The read side in brief (Part 13 expands):
+The read side is covered briefly here, and Part 13 expands on it. Start with the arithmetic. In the book's example, each GPU needs `200 MB/s` of training data to stay fed. An 8-GPU node therefore needs `1.6 GB/s` (`8 × 200 MB/s`) of aggregate read bandwidth. A 72-GPU Grace Blackwell GB200/GB300 NVL72 rack needs `14–20 GB/s` of sustained throughput across the rack.
 
-- **Storage throughput scaling math:** Size storage bandwidth for the aggregate demand of all GPUs. In the book's example, if each GPU needs `200 MB/s` of training data to stay fed, an 8-GPU node requires `1.6 GB/s` (`8 × 200 MB/s`) of aggregate read bandwidth, and a 72-GPU Grace Blackwell GB200/GB300 NVL72 rack requires `14–20 GB/s` sustained throughput across the rack.
-- **Host NVMe and NFS client tuning:** On local NVMe drives (`blk-mq`), verify `/sys/block/nvme0n1/queue/scheduler` (or `/sys/block/nvme*/queue/scheduler`) is set to `none` or `mq-deadline`, and raise sequential readahead (`blockdev --setra`, untested here, or `/sys/block/<device>/queue/read_ahead_kb`) from the `128 KB` default to several MB when streaming large shards; mount local XFS with `noatime`. For small-scale NFS mounts, use `rsize=1048576,wsize=1048576,noatime,async,actimeo=60,lookupcache=pos` (untested here) to issue 1 MiB transfers and cache attributes/directory lookups for 60 seconds; for Lustre, stripe large shard files across OSTs with `lfs setstripe` (untested here; e.g., 4 OSTs at `500 MB/s` each = `2 GB/s`).
-- Store datasets as **large shards** (hundreds of MB to GB, read in `1 MB` chunks rather than `4 KB` random reads; use `pread()` or `io_uring` if random access is unavoidable) in formats supporting streaming (WebDataset tar, TFRecord, Arrow/Parquet, MDS, Zarr). For LLM pretraining, **NVIDIA `NeMo Curator`** (`DocumentDataset`) runs distributed offline cleansing, deduplication, and tokenization across GPUs/nodes over sharded JSONL or Parquet and builds memory-mapped `.bin` data files paired with `.idx` index files so the online training loop does not parse raw text or millions of small files (6.18).
-- **Hardware and GPU-accelerated decompression (`Blackwell` Decompression Engine and `DALI`):** When datasets are stored compressed, Blackwell GPUs include an on-die hardware **Decompression Engine** supporting `LZ4`, `Snappy`, and `Deflate` (at up to `800 GB/s`) to unpack compressed batches in-pipeline without consuming SM compute cycles, alongside `nvJPEG` for GPU image decoding. For multimodal/vision pipelines, **NVIDIA `DALI`** (`nvidia.dali.pipeline.Pipeline`, `define_graph()`) moves JPEG/video decoding and augmentations onto the GPU; in the book's object-detection example, `DALI` cuts host CPU utilization from `800%` (8 cores at 100%) down to `200%` (2 cores handling file reads) while avoiding GPU stalls (keep downstream augmentations on the GPU rather than copying decoded pixels back to CPU).
-- **Shuffling**: shuffle shard order plus a bounded in-memory shuffle buffer; avoids random access over the whole dataset (or pre-shuffle N offline copies for N epochs).
-- **Parallel workers and copy-stream overlap**: `DataLoader(num_workers=N, prefetch_factor=K, pin_memory=True, persistent_workers=True)` (default `prefetch_factor=2`, raised to `4` or `8` for bursty I/O) hides I/O and decode latency; overlap host-to-device DMA with compute by issuing `batch.to(device, non_blocking=True)` on a dedicated `copy_stream = torch.cuda.Stream()` and synchronizing with `torch.cuda.current_stream().wait_stream(copy_stream)`. Set N from CPUs per GPU (6.12 binding), watch for oversubscription; `DistributedSampler` (or equivalent) gives each rank unique data. Each worker process holds its own file handles and copies of the dataset object (PyTorch's multi-process loader enqueues indices to workers that load and return batches through queues).
-- **Isolating DataLoader vs H2D copy overhead:** Calling `next(data_iterator)` measures total GPU wait time across background prefetching and host-to-device copy. To separate Python dataset/transform cost from PCIe copy cost, profile first with `num_workers=0` (disabling background prefetch) to time the pure Python iterator pull, and separately time `.to("cuda", non_blocking=True)` on a Copy stream (using `torch.cuda.Event` or Nsight Systems Copy lanes). In the book's example, reducing GPU I/O wait time from `30%` of iteration time down to `5%` yields a proportional `6x` improvement in training steps per second.
-- **Locality and caching**: stage hot shards to local NVMe (per job, or presplit 100 TB across 10 nodes at 10 TB per node), use `s5cmd` / multithreaded range `Get` for S3 staging, use page cache, or a cache layer in front of object storage (such as Amazon FSx for Lustre); for many epochs over the same data the first epoch pays the cost.
-- **GPUDirect Storage (`GDS`)** (reading directly into GPU memory via `cuFileRead` / `cuFileReadAsync` and `nvidia-fs` with `O_DIRECT`, bypassing the host page cache and CPU bounce buffers; modern `cuFile` also supports non-`O_DIRECT` descriptors when unaligned, at the cost of extra copies) helps when CPU copies are the limit; for RDMA-accelerated checkpoint writes (`cuFileWrite`), the parallel filesystem must also support RDMA write paths. In the book's examples, VAST Data with GDS measured a `+20%` read-throughput gain on A100 and `+30%+` on H100, and `gdsio` showed a `+20%` gain (`8.0 GB/s` at `1.25 ms` latency and `85%` CPU util without GDS vs `9.6 GB/s` at `1.00 ms` latency and `25%` CPU util with GDS; section 6.28 and Part 13). Trace GDS calls with `nsys profile --trace=cuda,gds,nvtx,osrt` (untested here) and `/etc/cufile.json`.
-- **DeepSeek's Fire-Flyer File System (`3FS`) and AI-co-designed storage (`ASP` Chapter 5):** Born out of the observation that AI training workloads perform massive random reads that render traditional read-ahead page caches ineffective, DeepSeek built the open-source **Fire-Flyer File System (`3FS`)** around four components: (1) a **cluster manager** handling membership and configuration changes, (2) **metadata services** backed by a transactional distributed key-value store (**FoundationDB**), (3) **storage services** managing local NVMe SSDs using **CRAQ (Chain Replication with Apportioned Queries)** for strong write-all/read-any consistency across replicas, and (4) a **FUSE / native `USRBIO` client** that uses RDMA and Linux `io_uring` / shared-memory rings to deliver direct-to-GPU random-read throughput comparable to GDS.
-- **In-memory preloading, GPU graph fusion, and systematic tuning (`ASP` Chapter 5):** When a dataset (or hot subset) fits inside host RAM or unified CPU+GPU memory (such as on a Grace Blackwell Superchip), preload it into memory at startup as an ultrafast cache. Alongside NVIDIA `DALI`, fuse GPU-friendly preprocessing operations directly into TorchVision, TensorRT, or custom OpenAI Triton kernels, remove unnecessary `torch.cuda.synchronize()` barriers, use `NCCL` for collective training communication versus **NIXL** for high-throughput point-to-point/streaming inference transfers, change only one or two parameters at a time and remeasure after every change, and document environment variables and known library quirks directly in the repository config.
-- **Determinism**: record shard order and seed in the checkpoint manifest.
+Local NVMe drives need some tuning. On drives that use `blk-mq`, check that `/sys/block/nvme0n1/queue/scheduler`, or `/sys/block/nvme*/queue/scheduler`, is set to `none` or `mq-deadline`. When you stream large shards, raise the sequential readahead. Use `blockdev --setra` (untested here), or write to `/sys/block/<device>/queue/read_ahead_kb`, to move it from the `128 KB` default to several MB. Mount local XFS with `noatime`. For small NFS mounts, use `rsize=1048576,wsize=1048576,noatime,async,actimeo=60,lookupcache=pos` (untested here). That issues 1 MiB transfers and caches attributes and directory lookups for 60 seconds. For Lustre, stripe large shard files across OSTs with `lfs setstripe` (untested here). For example, 4 OSTs at `500 MB/s` each give `2 GB/s`.
+
+Store datasets as large shards, each hundreds of MB to GB. Read them in `1 MB` chunks rather than `4 KB` random reads. If random access is unavoidable, use `pread()` or `io_uring`. Choose a format that supports streaming, such as WebDataset tar, TFRecord, Arrow or Parquet, MDS, or Zarr. For LLM pretraining, NVIDIA NeMo Curator runs distributed offline cleansing, deduplication, and tokenization across GPUs and nodes. It works on sharded JSONL or Parquet, and it builds memory-mapped `.bin` data files paired with `.idx` index files. The online training loop then never parses raw text or millions of small files. See 6.18.
+
+When datasets are stored compressed, Blackwell GPUs help. They include an on-die hardware Decompression Engine, which supports `LZ4`, `Snappy`, and `Deflate` at up to `800 GB/s`. It unpacks compressed batches in the pipeline without consuming SM compute cycles. Alongside it, `nvJPEG` handles GPU image decoding. For multimodal and vision pipelines, NVIDIA DALI moves JPEG and video decoding, plus augmentations, onto the GPU. In the book's object-detection example, DALI cut host CPU use from `800%`, which means 8 cores at 100%, down to `200%`, which means 2 cores handling file reads. Keep the downstream augmentations on the GPU, so that decoded pixels are not copied back to the CPU and GPU stalls are avoided.
+
+Shuffle at two levels. Shuffle the shard order, and add a bounded in-memory shuffle buffer. That avoids random access over the whole dataset. The alternative is to pre-shuffle N offline copies for N epochs.
+
+Parallel workers and copy-stream overlap hide I/O and decode latency. A typical setup is `DataLoader(num_workers=N, prefetch_factor=K, pin_memory=True, persistent_workers=True)`. The default `prefetch_factor=2` can be raised to `4` or `8` for bursty I/O. To overlap the host-to-device copy with compute, issue `batch.to(device, non_blocking=True)` on a dedicated `copy_stream = torch.cuda.Stream()`. Then synchronize with `torch.cuda.current_stream().wait_stream(copy_stream)`. Set N from the CPUs per GPU, as in the binding from 6.12, and watch for oversubscription. A `DistributedSampler`, or an equivalent sampler, gives each rank unique data. Each worker process holds its own file handles and its own copies of the dataset object. PyTorch's multi-process loader enqueues indices to the workers. The workers load the batches and return them through queues.
+
+Calling `next(data_iterator)` measures the total GPU wait, which includes background prefetching and the host-to-device copy. To separate the Python dataset cost from the PCIe copy cost, profile in two steps. First, use `num_workers=0`, which disables background prefetch, to time the pure Python iterator pull. Then time `.to("cuda", non_blocking=True)` on a copy stream, using `torch.cuda.Event` or the Copy lanes in Nsight Systems. In the book's example, cutting GPU I/O wait from `30%` of iteration time to `5%` gives a proportional `6x` gain in training steps per second.
+
+Locality and caching matter too. Stage hot shards to local NVMe, either per job or presplit. For example, 100 TB split across 10 nodes gives 10 TB per node. For S3 staging, use `s5cmd` or multithreaded range `Get`. You can also rely on the page cache, or on a cache layer in front of object storage, such as Amazon FSx for Lustre. For many epochs over the same data, the first epoch pays the cost.
+
+GPUDirect Storage (`GDS`) reads directly into GPU memory. It uses `cuFileRead` or `cuFileReadAsync` with `nvidia-fs` and `O_DIRECT`, which bypasses the host page cache and the CPU bounce buffers. Modern `cuFile` also supports non-`O_DIRECT` descriptors when reads are unaligned, though that adds extra copies. GDS helps most when CPU copies are the bottleneck. For RDMA-accelerated checkpoint writes with `cuFileWrite`, the parallel file system also needs an RDMA write path. In the book's examples, VAST Data with GDS measured a `+20%` read-throughput gain on A100 and a `+30%+` gain on H100. The `gdsio` benchmark showed `+20%` too. It went from `8.0 GB/s` at `1.25 ms` latency and `85%` CPU use without GDS, to `9.6 GB/s` at `1.00 ms` latency and `25%` CPU use with GDS. Section 6.28 and Part 13 cover this further. To trace GDS calls, run `nsys profile --trace=cuda,gds,nvtx,osrt` (untested here), and check `/etc/cufile.json`.
+
+DeepSeek built the open-source Fire-Flyer File System, or 3FS, because AI training workloads make massive random reads. Those reads make traditional read-ahead page caches ineffective. The system has four components. A cluster manager handles membership and configuration changes. Metadata services run on a transactional distributed key-value store, FoundationDB. Storage services manage local NVMe SSDs and use CRAQ, which stands for Chain Replication with Apportioned Queries, for strong write-all, read-any consistency across replicas. A FUSE or native USRBIO client uses RDMA, Linux `io_uring`, and shared-memory rings to deliver direct-to-GPU random-read throughput comparable to GDS.
+
+When a dataset, or its hot subset, fits in host RAM or in unified CPU and GPU memory, such as on a Grace Blackwell Superchip, preload it at startup as an ultrafast cache. Next, fuse GPU-friendly preprocessing into TorchVision, TensorRT, or custom OpenAI Triton kernels. Remove unnecessary `torch.cuda.synchronize()` barriers. Use NCCL for collective training communication, and NIXL for high-throughput point-to-point or streaming inference transfers. Change only one or two parameters at a time, and remeasure after every change. Document environment variables and known library quirks in the repository config. Record the shard order and the seed in the checkpoint manifest for determinism.
 
 ### Sizing storage for every GPU in the job
 
-The problem is that storage has to keep up with all the GPUs at once, not with one GPU at a time. At ultra scale, the storage system must deliver steady throughput to thousands, or even millions, of GPUs that may run for months. When storage falls behind, the GPUs starve and sit idle, and that wastes the expensive part of the cluster.
+Storage has to keep up with every GPU at once, not with one GPU at a time. At ultra scale, the storage system must deliver steady throughput to thousands, or even millions, of GPUs. Those GPUs may run for months. When storage falls behind, the GPUs starve and sit idle, and that wastes the most expensive part of the cluster.
 
-Placement helps a lot. Colocating NVMe SSDs inside a rack, or using NVMe over Fabrics (NVMe-oF) with rack-local switch topologies, cuts network hops and keeps performance consistent. If your data lives on NFS or cloud object storage such as Amazon S3, add up the read bandwidth of every compute node. Use the same arithmetic as above: each GPU needs 200 MB/s of training data, so 8 GPUs need about 1.6 GB/s in total.
+Placement helps a lot. Colocating NVMe SSDs inside a rack, or using NVMe over Fabrics, or NVMe-oF, with rack-local switch topologies, cuts network hops and keeps performance consistent. If your data lives on NFS, or on cloud object storage such as Amazon S3, add up the read bandwidth of every compute node. Use the same arithmetic as above. Each GPU needs 200 MB/s of training data, so 8 GPUs need about 1.6 GB/s in total.
 
-The numbers grow quickly at rack scale. A GB200 or GB300 NVL72 rack holds 72 Blackwell GPUs in one NVLink domain. If each GPU needs 200 MB/s, that rack can require 14–20 GB/s of aggregate storage throughput. Heavier media or multimodal samples push demand higher still. Measure your bytes per sample and samples per second before you buy storage.
+The numbers grow quickly at rack scale. A GB200 or GB300 NVL72 rack holds 72 Blackwell GPUs in one NVLink domain. At 200 MB/s per GPU, that rack can require 14–20 GB/s of aggregate storage throughput. Heavier media or multimodal samples push demand higher still. Measure your bytes per sample and samples per second before you buy storage.
 
-Two common fixes close the gap. The first is faster local storage, such as NVMe SSDs in the same rack or an NVMe-oF topology. The second is a parallel filesystem such as Lustre or GPFS that caches your data on local SSDs. Either way, provision several data loading threads to keep the pipe full. Watch out for the Python GIL, which is one reason loaders often use separate processes instead of threads.
+Two common fixes close the gap. The first is faster local storage, such as NVMe SSDs in the same rack or an NVMe-oF topology. The second is a parallel filesystem, such as Lustre or GPFS, that caches your data on local SSDs. Either way, provision several data loading threads to keep the pipe full. Watch out for the Python GIL, which is one reason loaders often use separate processes instead of threads.
 
-Place data as close to the compute nodes as you can. Close can mean the same physical node, such as a local NVMe drive, or at least the same rack with a fast interconnect. For multinode training, shard the dataset so each node reads mostly from its own disk. Imagine 100 TB of data spread across 10 nodes, with a 10 TB slice on each node's local storage. That keeps the network free of repeated reads, especially when the dataset does not fit in RAM. PyTorch's `DistributedSampler` gives each process a unique slice of data per epoch, which fits this layout.
+Place data as close to the compute nodes as you can. Close can mean the same physical node, such as a local NVMe drive, or at least the same rack with a fast interconnect. For multinode training, shard the dataset so each node reads mostly from its own disk. For example, 100 TB of data spread across 10 nodes leaves a 10 TB slice on each node's local storage. That keeps the network free of repeated reads, especially when the dataset does not fit in RAM. PyTorch's `DistributedSampler` gives each process a unique slice of data per epoch, which fits this layout.
 
 ### Sequential and random reads
 
-GPUs crunch data quickly, but they want it in large, contiguous chunks. Storage also reaches much higher throughput on large sequential reads than on small random ones. Arrange your dataset so reads stay sequential as much as possible. Think of a library where every book is in a separate box scattered across the building: finding each one costs more time than reading it.
+GPUs crunch data quickly, but they want it in large, contiguous chunks. Storage also reaches much higher throughput on large sequential reads than on small random ones. Arrange your dataset so reads stay sequential as much as possible. Think of a library where every book is in a separate box, scattered across the building. Finding each one costs more time than reading it.
 
-That is why millions of small image files hurt. They cause random seeks all over the disk. Pack the samples into a few large files instead, such as Arrow, TFRecord, or Parquet files, database files, or WebDataset tar files. Each big file then holds many samples in a row. Combining small files into large shards matters even more with faster GPUs, because small random reads become the bottleneck sooner. For object stores such as Amazon S3, combine small objects into larger ones ahead of time.
+Millions of small image files hurt for this reason. They cause random seeks all over the disk. Pack the samples into a few large files instead, such as Arrow, TFRecord, or Parquet files, database files, or WebDataset tar files. Each big file then holds many samples in a row. Combining small files into large shards matters even more with faster GPUs, because small random reads become the bottleneck sooner. For object stores such as Amazon S3, combine small objects into larger ones ahead of time.
 
 Read size matters too. Reading in 1 MB chunks gives better throughput than reading in 4 KB chunks, because each read carries less overhead. Python's `open()` uses the OS read-ahead buffer to speed up sequential scans. Random reads gain little from bigger buffers, though. So group small reads into bigger contiguous blocks. You can also let a dataset class handle the layout, such as `TFRecordDataset`, or PyTorch's `IterableDataset` with `DataLoader` and a configurable prefetch size.
 
 If access must stay random, issue several reads in parallel. You can use threads that call `pread()`, or Linux asynchronous I/O such as `io_uring`. With preregistered buffers and polling, `io_uring` submits batches of I/O requests with little kernel overhead. That cuts the cost per system call, hides latency, and helps you reach high IOPS.
 
-Pick a filesystem built for large, concurrent I/O. XFS is common on Linux NVMe servers, and you should mount it with `noatime` so reads do not trigger costly access-time updates. For Amazon EFS, set the filesystem to Max I/O performance mode for the highest aggregate throughput. If you need steady bandwidth, switch from the default Bursting throughput mode to Provisioned throughput.
+Pick a filesystem built for large, concurrent I/O. XFS is common on Linux NVMe servers, and you should mount it with `noatime`, so reads do not trigger costly access-time updates. For Amazon EFS, set the filesystem to Max I/O performance mode for the highest aggregate throughput. If you need steady bandwidth, switch from the default Bursting throughput mode to Provisioned throughput.
 
 ### Workers, pinned memory, and overlap
 
@@ -236,7 +284,7 @@ Read the example as a timeline. While the GPU works on batch N, the loader is al
 
 The goal is to overlap data preparation with GPU work in general. The CPU should finish batch N+2 while the GPU runs batch N+1. Most frameworks do this by default when you use multiple workers, but you should still check it. If the overlap is missing, the GPU goes idle at the start of every iteration while it waits for data.
 
-Persistent workers help when you loop over the same dataset many times, especially if each epoch is short. Setting `persistent_workers=True` keeps the workers alive so they start prefetching the next epoch at once. That skips the cost of spawning and tearing down processes at each epoch boundary. It also helps when worker startup is slow because of imports or file opening.
+Persistent workers help when you loop over the same dataset many times, especially if each epoch is short. Setting `persistent_workers=True` keeps the workers alive, so they start prefetching the next epoch at once. That skips the cost of spawning and tearing down processes at each epoch boundary. It also helps when worker startup is slow because of imports or file opening.
 
 ### Finding a hidden loader bottleneck
 
@@ -248,9 +296,9 @@ Be careful with the isolation test itself. Turning off GPU kernels also removes 
 
 ### Monitoring storage I/O
 
-Measurement comes before tuning. Monitoring the storage pipeline is like monitoring network traffic: use every tool you have. On Linux, start with `iostat`, `iotop`, `nvme-cli`, `perf`, and eBPF. Vendor utilities and dashboards show queues, latencies, read-ahead effects, and cache hit ratios. They also show whether local NVMe devices are busy and whether a NAS or object store link is saturated.
+Measurement comes before tuning. Monitoring the storage pipeline is like monitoring network traffic, so use every tool you have. On Linux, start with `iostat`, `iotop`, `nvme-cli`, `perf`, and eBPF. Vendor utilities and dashboards show queues, latencies, read-ahead effects, and cache hit ratios. They also show whether local NVMe devices are busy and whether a NAS or object store link is saturated.
 
-On the GPU side, use Nsight Systems to trace I/O waits next to kernels. The `--trace=gds` option captures `cuFile` API activity on the timeline. To see `cuFile` events too, enable the GDS static tracepoints in `/etc/cufile.json`. Nsight Systems does not show kernel-level counters for NVMe peer-to-peer DMA, and they may not be available for all GDS stacks. NVIDIA's Data Center GPU Manager (DCGM) also reports useful GPU I/O statistics.
+On the GPU side, use Nsight Systems to trace I/O waits next to kernels. The `--trace=gds` option captures `cuFile` API activity on the timeline. To see `cuFile` events too, enable the GDS static tracepoints in `/etc/cufile.json`. Nsight Systems does not show kernel-level counters for NVMe peer-to-peer DMA, and those counters may not be available for all GDS stacks. NVIDIA's Data Center GPU Manager, DCGM, also reports useful GPU I/O statistics.
 
 Here is why this matters. Suppose your GPUs spend 30% of their time waiting for data. Then I/O limits your throughput. After tuning, the wait might fall to 5%, and the training steps per second rise in proportion, here by 6x. Small inefficiencies, such as a 5 ms latency or a buffer that is 10 MB too small, add up at scale. Keep every stage from disk to GPU memory measured.
 
@@ -270,9 +318,9 @@ As an example, consider a tiny batch size of 1 MB and a target of 1,000 batches 
 
 ### DeepSeek's 3FS: storage built for random reads
 
-The problem is that AI workloads make a huge number of random reads. Traditional read caching helps little in that case, and it can even get in the way. DeepSeek built the open source Fire-Flyer File System (3FS) from scratch for this pattern. It skips caching and uses direct file I/O, so each request goes straight to the NVMe SSD.
+AI workloads make a huge number of random reads, and traditional read caching helps little with that. It can even get in the way. DeepSeek built the open-source 3FS from scratch for this pattern. It skips caching and uses direct file I/O, so each request goes straight to the NVMe SSD.
 
-3FS mirrors a trend: codesigning storage specifically for AI. NVIDIA's GDS is similar, since it is designed to work with high-performance parallel filesystems and reach similar direct-GPU throughput. Storage is designed for AI rather than adapted to it afterward. 3FS keeps kernel page-cache work and host memory copies to a minimum, much like modern HPC filesystems do. Its four components are a cluster manager, a metadata service, a storage service, and a client. They connect over an RDMA-capable fabric such as InfiniBand or RoCE. Figure 5-2 in the book shows how these parts connect.
+3FS reflects a trend toward codesigning storage for AI. NVIDIA's GDS is similar, since it is designed to work with high-performance parallel filesystems and reach similar direct-GPU throughput. Storage is designed for AI rather than adapted to it afterward. 3FS keeps kernel page-cache work and host memory copies to a minimum, much like modern HPC filesystems do. Its four components are a cluster manager, a metadata service, a storage service, and a client. They connect over an RDMA-capable fabric such as InfiniBand or RoCE. Figure 5-2 in the book shows how these parts connect.
 
 3FS is a Linux-based filesystem, so existing applications keep working. Its clients use RDMA reads for direct, GPU-accessible transfers. Metadata is sharded and replicated across nodes so the design scales out. Data paths bypass the OS page cache entirely. 3FS also lets prefetch and transfer run alongside GPU kernels, which carries the cascading pipeline, or wave, idea from Chapter 4 down into storage.
 
@@ -286,7 +334,7 @@ Use NCCL for collective operations, such as all-reduce, that training depends on
 
 ### Preparing LLM datasets offline with NeMo Curator
 
-The problem is that raw text and millions of small files force the training loop to do string work instead of math. NVIDIA NeMo is a toolkit for developing and training language models. Inside it, the open source NeMo Curator framework prepares datasets before training. Curator helps when you have terabytes from many sources, and it supports cleansing, tokenizing, and shuffling.
+Raw text and millions of small files force the training loop to do string work instead of math. NVIDIA NeMo is a toolkit for developing and training language models. Inside it, the open source NeMo Curator framework prepares datasets before training. Curator helps when you have terabytes from many sources. It supports cleansing, tokenizing, and shuffling.
 
 Curator can spread the preprocessing across multiple GPUs or nodes. Using several accelerators makes multiterabyte training datasets faster to prepare. It can also compress and pack data into a small number of large files. It can convert data into a binary format that machines read easily. It can even create synthetic data to augment human datasets, which are limited and getting scarcer.
 
@@ -294,19 +342,19 @@ Curator also enforces quality. It deduplicates data and removes problematic cont
 
 For NeMo training, preprocessed datasets are usually memory-mappable `.bin` data files with `.idx` index files. Curator's `DocumentDataset` reads and writes sharded JSONL or Parquet, and conversion to `.bin` and `.idx` happens when you build the indexed dataset. You may also store N shuffled copies of the data, each shuffled a different way. That avoids runtime shuffling over N epochs, at the cost of disk space and memory.
 
-The general rule is to prepare data before training. You should almost never train on raw text. Offline preprocessing takes time, but it pays back in faster runs and more predictable scaling. Keep in mind that NeMo's data loading still runs on CPUs, so to bypass CPU I/O you need to combine it with tools such as GDS.
+The general rule is to prepare data before training. You should almost never train on raw text. Offline preprocessing takes time, but it pays back in faster runs and more predictable scaling. NeMo's data loading still runs on CPUs, so to bypass CPU I/O you need to combine it with tools such as GDS.
 
 ### Decoding images and video on the GPU with DALI
 
 Image and video decoding and augmentation can eat CPU cores. A pipeline can keep all eight cores busy while the GPU still stalls now and then. NVIDIA DALI, the Data Loading Library, moves this work onto the GPU. It can also run optimized C++ code on the CPU when that suits the job. It is most useful for image and video data.
 
-For example, DALI can decode JPEG images on the GPU and apply random crop, resize, and normalization there too. That is often faster than the CPU when the GPU has spare cycles. It also reduces the number of CPU workers you need. DALI provides prebuilt pipelines for common workloads such as classification, object detection, and segmentation, and those pipelines use the GPU's media acceleration hardware fully.
+For example, DALI can decode JPEG images on the GPU and apply random crop, resize, and normalization there too. That is often faster than the CPU when the GPU has spare cycles. It also reduces the number of CPU workers you need. DALI provides prebuilt pipelines for common workloads such as classification, object detection, and segmentation. Those pipelines use the GPU's media acceleration hardware fully.
 
-DALI pipelines are static graphs of operators. A DALI pipeline is a static graph of operators. To build one, create a class based on `nvidia.dali.pipeline.Pipeline` and list the sources and CPU or GPU steps inside `define_graph()`. DALI then handles execution, prefetching, and threading with its own thread pools and queues. Integrating it into the training loop adds complexity and a learning curve. For input-bound training, though, it can boost throughput a lot.
+DALI pipelines are static graphs of operators. To build one, create a class based on `nvidia.dali.pipeline.Pipeline`, and list the sources and CPU or GPU steps inside `define_graph()`. DALI then handles execution, prefetching, and threading with its own thread pools and queues. Integrating it into the training loop adds complexity and a learning curve. For input-bound training, though, it can boost throughput a lot.
 
 Take an object-detection job that reads images and video and augments them. Host CPU usage might sit at 800%, which means eight cores at full load, while the GPU still stalls. With DALI, CPU usage can drop to 200%, which is two cores doing the file reads. The GPU does the decoding and can read concurrently with computation.
 
-Placement decides the result. If you use DALI only to decode JPEGs and then hand raw pixels back to the CPU for augmentation and collation, you add host-to-device-to-host copies. Those copies can cancel the gain. Identify GPU-friendly preprocessing and fuse it into one GPU-side graph, using TorchVision, TensorRT, or custom CUDA kernels. Then benchmark three versions end to end: CPU only, DALI, and a fully fused GPU graph.
+Placement decides the result. If you use DALI only to decode JPEGs, and then hand raw pixels back to the CPU for augmentation and collation, you add host-to-device-to-host copies. Those copies can cancel the gain. Identify GPU-friendly preprocessing and fuse it into one GPU-side graph, using TorchVision, TensorRT, or custom CUDA kernels. Then benchmark three versions end to end: CPU only, DALI, and a fully fused GPU graph.
 
 ### Keeping the pipeline full
 
@@ -314,197 +362,218 @@ Tools like GDS and advanced input pipelines belong to a full-stack approach. The
 
 ## 6. Performance experiments (cluster, untested)
 
-1. **Shared-file write scaling**: IOR with MPI-IO collective writes, 1 to N nodes, stripe count 1 vs all OSTs; plot bandwidth vs ranks.
-2. **File-per-process vs shared**: same total data; compare bandwidth and create/open rates (`mdtest`).
-3. **Alignment**: write sizes of 64 KiB vs 1 MiB vs 4 MiB aligned/unaligned on a 4 MiB-stripe directory.
-4. **DCP at scale**: save a 100 GB sharded state from 64 ranks; time save and load; compare local NVMe, parallel FS, and NFS.
-5. **Async vs sync checkpoint**: measure training step time with and without async staging.
-6. **Fault drill**: kill a node during save and restart from the last valid checkpoint using the protocol above.
+These experiments need a cluster, so none of them has been run here. Each one answers a question about I/O design.
+
+1. Shared-file write scaling: run IOR with MPI-IO collective writes from 1 to N nodes. Try stripe count 1 and then all OSTs, and plot bandwidth against ranks.
+2. File-per-process versus shared file: use the same total data, and compare bandwidth and create or open rates with `mdtest`.
+3. Alignment: test write sizes of 64 KiB, 1 MiB, and 4 MiB, both aligned and unaligned, on a directory with a 4 MiB stripe.
+4. DCP at scale: save a 100 GB sharded state from 64 ranks, then time the save and the load. Compare local NVMe, a parallel file system, and NFS.
+5. Async versus sync checkpointing: measure training step time with and without async staging.
+6. Fault drill: kill a node during a save, then restart from the last valid checkpoint using the protocol above.
+
+Pick the experiments that match your storage, and measure before you change the layout.
 
 ## 7. Lab
 
-First, run the self-checking Python lab (`code/part06/ckpt_atomic_lab.py`) locally. It executes `code/part06/ckpt_atomic.py` to verify all 5 crash-safe commit and SHA-256 bit-rot fallback assertions (`step-100` commit, `step-200` `before_rename` crash, `step-300` `before_latest` crash recovery, `step-400` commit, and fallback to `step-300` when `step-400/shard-2.bin` is corrupted), verifies the Young/Daly optimal checkpoint interval (`27` minutes for a 1-minute checkpoint cost and 6-hour MTBF), and checks the `ASP` Chapter 5 GPU storage throughput scaling equations (`1.6 GB/s` for 8 GPUs, `14.4 GB/s` for 72 GPUs, `+20.0%` `gdsio` gain from `8.0` to `9.6 GB/s`, and `6x` step-rate gain from cutting I/O wait from `30%` to `5%`):
+Start with the self-checking Python lab, which you run locally. It runs `code/part06/ckpt_atomic.py` and verifies all 5 crash-safe commit and SHA-256 bit-rot fallback assertions. These cover the step-100 commit, and the step-200 crash at `before_rename`. They also cover the step-300 crash at `before_latest`, which the lab recovers from. Then comes the step-400 commit, and the fallback to step-300 when `step-400/shard-2.bin` is corrupted.
+
+The lab also verifies the Young/Daly optimal checkpoint interval. For a 1-minute checkpoint cost and a 6-hour MTBF, the answer is 27 minutes. Last, it checks the storage throughput equations from *AI Systems Performance Engineering*, chapter 5. For 8 GPUs, the requirement is 1.6 GB/s. For 72 GPUs, it is 14.4 GB/s. The lab also checks the +20.0% `gdsio` gain, from 8.0 to 9.6 GB/s. Finally, it checks the 6x step-rate gain from cutting I/O wait from 30% to 5%.
+
+The reason for these checks is simple. A checkpoint counts only after it commits, and a crash must never make a half-written checkpoint look valid. The lab shows what a reader finds at each point, and each assertion covers one of those cases.
 
 ```bash
 python3 code/part06/ckpt_atomic_lab.py
 ```
 
-Tested here: 1) create a venv with PyTorch and numpy, run `dcp_reshard.py` via `fake_srun.py` (PHASE=save with 4 ranks, PHASE=load with 2 and 1); inspect the checkpoint directory (use `ls -a` to see the metadata file). 2) Run `ckpt_atomic.py`; add a crash between writing the manifest and the rename in a different order and decide whether readers stay safe. 3) Modify `ckpt_atomic.py` to compute per-rank hashes at write time and store them in per-rank manifests merged by the coordinator.
+Read the output line by line, because each line matches one of the checks above. This is the quickest way to confirm that the protocol behaves as the chapter describes.
 
-Untested: 4) the performance experiments in section 6; 5) write an MPI-IO collective write with `mpi4py` (`File.Open`, `Set_view`, `Write_all`) and compare to independent writes; 6) implement async checkpointing in a toy training loop using a background thread and a pinned buffer; measure step-time impact.
+Three steps are tested here. First, create a venv with PyTorch and numpy, then run `dcp_reshard.py` through `fake_srun.py`. Use PHASE=save with 4 ranks, then PHASE=load with 2 ranks and with 1 rank. Inspect the checkpoint directory with `ls -a` to see the metadata file. Second, run `ckpt_atomic.py`, and add a crash between writing the manifest and the rename, in a different order. Decide whether readers stay safe. Third, modify `ckpt_atomic.py` to compute per-rank hashes at write time. Store them in per-rank manifests that the coordinator merges.
+
+Three more steps are untested here, so treat them as exercises rather than results. The first is the performance experiments in section 6. The second is an MPI-IO collective write with `mpi4py`, using `File.Open`, `Set_view`, and `Write_all`, compared with independent writes. The third is async checkpointing in a toy training loop, using a background thread and a pinned buffer, and then measuring the step-time impact.
+
+Run the first tested step before you change any code, so you have a baseline to compare against. Keep that baseline output, because you will compare your modified runs against it.
 
 ## 8. Interview angles
 
-- Explain collective buffering and why it speeds up shared-file writes.
-- File-per-rank, shared file, or sharded checkpoint for 4,096 GPUs? Defend your choice.
-- What does it mean that a checkpoint is reshardable? Give an example use.
-- How do you make checkpoint commits crash-safe? What can still go wrong on NFS or S3?
-- A 70B-parameter model's checkpoint stalls training for 2 minutes every 30 minutes. How do you reduce it?
+Use these prompts to check your own understanding before an interview.
+
+- Explain collective buffering. Why does it speed up writes to a shared file?
+- Would you pick file-per-rank, a shared file, or a sharded checkpoint for 4,096 GPUs? Defend your choice.
+- What does it mean for a checkpoint to be reshardable? Give an example use.
+- How do you make checkpoint commits crash-safe, and what can still go wrong on NFS or S3?
+- A 70B-parameter model's checkpoint stalls training for 2 minutes every 30 minutes. How would you reduce that stall?
 - How do you choose a checkpoint interval?
 - How do you validate that a resumed run matches an uninterrupted one?
-- Why are millions of small files bad for training and what do you do?
+- Why are millions of small files bad for training, and what do you do about them?
+
+Practice each answer out loud, and check the numbers against this chapter.
 
 ## Exercises
 
-1. **Verifying Crash-Safe Checkpoint Commits and Bit-Rot Detection (`code/part06/ckpt_atomic.py` & `ckpt_atomic_lab.py`):** Run `python3 code/part06/ckpt_atomic_lab.py`. Trace why `newest_valid()` returns `step-100` after a crash at `before_rename` (`step-200.tmp` ignored), why it recovers `step-300` after a crash at `before_latest` even when the `latest` pointer still reads `step-100`, and why zeroing 4 bytes in `step-400/shard-2.bin` causes `newest_valid()` to reject `step-400` via `MANIFEST.json` SHA-256 verification and fall back to `step-300`.
-2. **Resharding Distributed Checkpoints Across World Sizes (`code/part06/dcp_reshard.py`):** Trace how `code/part06/dcp_reshard.py` distributes an $8 \times 3$ tensor across 4 ranks (`(2, 3)` per rank) using `DTensor` (`Shard(0)`) and `torch.distributed.checkpoint.save`, and loads that exact checkpoint onto 2 ranks (`(4, 3)` per rank) and 1 rank (`(8, 3)`) without rewriting the `.distcp` shard files.
-3. **Calculating Optimal Checkpoint Intervals with the Young/Daly Approximation (`ckpt_atomic_lab.py`):** Using `young_daly_interval_min(ckpt_cost_min, mtbf_hours)` in `code/part06/ckpt_atomic_lab.py` ($T_{\text{opt}} \approx \sqrt{2 \cdot C \cdot \text{MTBF}}$), verify that a 1-minute checkpoint cost (`C = 1` min) and a 6-hour cluster MTBF (`360` min) yield $T_{\text{opt}} \approx 27\text{ minutes}$, and calculate how $T_{\text{opt}}$ changes when asynchronous NVMe staging reduces synchronous GPU stall `C` from `60 s` down to `5 s` (`7.7` minutes).
-4. **Designing 2D Block-Decomposed MPI-IO and Parallel HDF5 Collective Writes (`PHPC` Chapter 16):** Explain how `MPI_Type_create_subarray` constructs both the global file view (`filetype`) and the ghost-cell-stripped interior memory view (`memtype` inside `ny+2*ng` $\times$ `nx+2*ng`) for `MPI_File_write_all`, and map the equivalent parallel HDF5 workflow (`H5Pset_fapl_mpio`, `H5Sselect_hyperslab`, `H5Pset_dxpl_mpio(xfer_plist, H5FD_MPIO_COLLECTIVE)`, `H5Dwrite`).
-5. **Isolating PyTorch `DataLoader` vs H2D DMA Copy Bottlenecks and GPU Decoding (`ASP` Chapter 5):** Write a 3-step profiling procedure using `num_workers=0`, a dedicated `copy_stream = torch.cuda.Stream()` with `non_blocking=True`, and NVIDIA `DALI` / Blackwell Decompression Engine (`LZ4`/`Snappy`/`Deflate` at up to `800 GB/s`) to diagnose and eliminate a `30%` data-loading stall (cutting CPU usage from `800%` to `200%` and I/O wait from `30%` to `5%`).
-6. **Comparing DeepSeek `3FS` and GPUDirect Storage (`GDS`) for Random-Read AI Workloads (`ASP` Chapter 5):** Explain why AI training's random-read access patterns defeat traditional OS page-cache readahead, how `cuFileRead` (`O_DIRECT` + `nvidia-fs.ko`) boosts throughput (`8.0 GB/s` at `1.25 ms` / `85%` CPU $\to$ `9.6 GB/s` at `1.00 ms` / `25%` CPU in `gdsio`), and how DeepSeek's `3FS` combines `FoundationDB` metadata, `CRAQ` NVMe storage chains, and RDMA/`io_uring` clients.
+Work through these in order, and check each result against the chapter.
+
+1. Work with `code/part06/ckpt_atomic.py` and `code/part06/ckpt_atomic_lab.py`. Run `python3 code/part06/ckpt_atomic_lab.py`, then trace the results. Work out why `newest_valid()` returns `step-100` after a crash at `before_rename`, with `step-200.tmp` ignored. Work out why it recovers `step-300` after a crash at `before_latest`, even though the `latest` pointer still reads `step-100`. Finally, work out why zeroing 4 bytes in `step-400/shard-2.bin` makes `newest_valid()` reject `step-400` through the SHA-256 check in `MANIFEST.json`, and fall back to `step-300`.
+2. Trace how `code/part06/dcp_reshard.py` spreads an $8 \times 3$ tensor across 4 ranks, with `(2, 3)` per rank, using `DTensor` (`Shard(0)`) and `torch.distributed.checkpoint.save`. Then follow how the same checkpoint loads onto 2 ranks, with `(4, 3)` per rank, and onto 1 rank, with `(8, 3)`. The `.distcp` shard files are never rewritten.
+3. Use `young_daly_interval_min(ckpt_cost_min, mtbf_hours)` in `code/part06/ckpt_atomic_lab.py` to check the Young/Daly rule, $T_{\text{opt}} \approx \sqrt{2 \cdot C \cdot \text{MTBF}}$. Verify that a 1-minute checkpoint cost (`C = 1` min) and a 6-hour cluster MTBF (`360` min) give $T_{\text{opt}} \approx 27\text{ minutes}$. Then calculate how $T_{\text{opt}}$ changes when asynchronous NVMe staging cuts the synchronous GPU stall `C` from `60 s` to `5 s`. The answer is `7.7` minutes.
+4. Using *Parallel and High Performance Computing*, chapter 16, as your guide, explain how `MPI_Type_create_subarray` builds two views. One is the global file view, `filetype`. The other is the ghost-cell-stripped memory view, `memtype`, inside `ny+2*ng` $\times$ `nx+2*ng`, which `MPI_File_write_all` uses. Then map the equivalent parallel HDF5 workflow: `H5Pset_fapl_mpio`, `H5Sselect_hyperslab`, `H5Pset_dxpl_mpio(xfer_plist, H5FD_MPIO_COLLECTIVE)`, and `H5Dwrite`.
+5. Write a three-step profiling procedure that you can run on a `DataLoader`. Use `num_workers=0`, then a dedicated `copy_stream = torch.cuda.Stream()` with `non_blocking=True`, then NVIDIA DALI and the Blackwell Decompression Engine, which handles `LZ4`, `Snappy`, and `Deflate` at up to `800 GB/s`. Use the procedure to find and remove a `30%` data-loading stall. A good result cuts CPU usage from `800%` to `200%` and I/O wait from `30%` to `5%`.
+6. Explain why the random-read patterns of AI training defeat traditional OS page-cache readahead. Then trace how `cuFileRead`, with `O_DIRECT` and `nvidia-fs.ko`, raises throughput in `gdsio`, from `8.0 GB/s` at `1.25 ms` and `85%` CPU to `9.6 GB/s` at `1.00 ms` and `25%` CPU. Finally, explain how DeepSeek's 3FS combines `FoundationDB` metadata, `CRAQ` NVMe storage chains, and RDMA and `io_uring` clients.
 
 ## Checkpoint
 
 <details>
-<summary>1. Name the four layers of the classic HPC parallel I/O stack (`PHPC` Chapter 16) and their AI equivalents.</summary>
+<summary>1. Name the four layers of the classic HPC parallel I/O stack (*Parallel and High Performance Computing*, chapter 16) and their AI equivalents.</summary>
 
-1. **Application memory arrays / tensors** (distributed across ranks).
-2. **High-level self-describing library:** `HDF5` / `NetCDF-4` / `PnetCDF` / `ADIOS2` $\leftrightarrow$ `torch.distributed.checkpoint` (`.distcp`), `safetensors`, `WebDataset`, `Parquet`, `Zarr`.
-3. **Middleware collective I/O layer:** `MPI-IO` (`ROMIO` / OpenMPI `ompio`) $\leftrightarrow$ framework distributed checkpoint coordinators and `cuFile` / `io_uring`.
-4. **Parallel filesystem client:** `Lustre`, `GPFS`, `BeeGFS`, `WEKA`, `VAST`, `3FS`.
+1. The application memory arrays, or tensors, distributed across ranks.
+2. The high-level, self-describing library. On the HPC side that is HDF5, NetCDF-4, PnetCDF, or ADIOS2. On the AI side it is `torch.distributed.checkpoint` (`.distcp`), `safetensors`, WebDataset, Parquet, or Zarr.
+3. The middleware collective I/O layer. On the HPC side that is MPI-IO, through ROMIO or OpenMPI's `ompio`. On the AI side, framework distributed checkpoint coordinators, `cuFile`, and `io_uring` play that role.
+4. The parallel file system client, such as Lustre, GPFS, BeeGFS, WEKA, VAST, or 3FS.
 </details>
 
 <details>
-<summary>2. What is the difference between **independent I/O** (`MPI_File_write_at`) and **collective I/O** (`MPI_File_write_all`), and how does **two-phase collective buffering** work (`PHPC` Chapter 16)?</summary>
+<summary>2. What is the difference between **independent I/O** (`MPI_File_write_at`) and **collective I/O** (`MPI_File_write_all`), and how does **two-phase collective buffering** work (*Parallel and High Performance Computing*, chapter 16)?</summary>
 
-- **Independent I/O:** Each rank calls the filesystem independently with no coordination—causing lock thrashing and unaligned small writes when many ranks write interleaved regions of a shared file.
-- **Collective I/O (`_all`):** All ranks in the communicator call the operation together. Under **two-phase collective buffering**, ranks first exchange data over the high-speed fabric to a chosen subset of **aggregator ranks (`cb_nodes`)**, which then issue large, contiguous, stripe-aligned writes to the parallel filesystem.
+- **Independent I/O:** Each rank calls the filesystem on its own, with no coordination. When many ranks write interleaved regions of a shared file, this causes lock thrashing and unaligned small writes.
+- **Collective I/O (`_all`):** All ranks in the communicator call the operation together. In **two-phase collective buffering**, the ranks first exchange data over the high-speed fabric, sending it to a chosen subset of **aggregator ranks (`cb_nodes`)**. Those aggregators then issue large, contiguous, stripe-aligned writes to the parallel filesystem.
 </details>
 
 <details>
-<summary>3. How do you construct an MPI-IO **file view** (`filetype`) and **memory view** (`memtype`) for a 2D array with `ng` ghost cells (`PHPC` Chapter 16 `Listing 16.1`)?</summary>
+<summary>3. How do you construct an MPI-IO **file view** (`filetype`) and **memory view** (`memtype`) for a 2D array with `ng` ghost cells (*Parallel and High Performance Computing*, chapter 16, `Listing 16.1`)?</summary>
 
-Call `MPI_Type_create_subarray(2, ...)` twice at initialization followed by `MPI_Type_commit`:
-1. **`filetype`:** Uses `global_sizes = {ny_global, nx_global}`, `global_subsizes = {ny, nx}`, and `global_starts = {ny_off, nx_off}`, passed to `MPI_File_set_view()` so each rank sees only its assigned global tile in the shared file.
-2. **`memtype`:** Uses `local_sizes = {ny+2*ng, nx+2*ng}`, `local_subsizes = {ny, nx}`, and `local_starts = {ng, ng}`, passed to `MPI_File_write_all()` so MPI-IO reads directly from the interior cells in RAM without copying out ghost cells.
+You call `MPI_Type_create_subarray(2, ...)` twice during initialization, and then call `MPI_Type_commit`.
+
+1. For **`filetype`**, use `global_sizes = {ny_global, nx_global}`, `global_subsizes = {ny, nx}`, and `global_starts = {ny_off, nx_off}`. Pass it to `MPI_File_set_view()`, so each rank sees only its assigned global tile in the shared file.
+2. For **`memtype`**, use `local_sizes = {ny+2*ng, nx+2*ng}`, `local_subsizes = {ny, nx}`, and `local_starts = {ng, ng}`. Pass it to `MPI_File_write_all()`, so MPI-IO reads straight from the interior cells in RAM, without copying out the ghost cells.
 </details>
 
 <details>
-<summary>4. What are OpenMPI's two MCA `io` plugins, how do you inspect their parameters, and how do you print active `ROMIO` / `Cray MPICH` hints (`PHPC` Chapter 16)?</summary>
+<summary>4. What are OpenMPI's two MCA `io` plugins, how do you inspect their parameters, and how do you print active `ROMIO` / `Cray MPICH` hints (*Parallel and High Performance Computing*, chapter 16)?</summary>
 
-OpenMPI provides **`ompio`** (the default in modern OpenMPI) and **`romio`** (`--mca io [ompio|romio]`), listed via `ompi_info | grep "MCA io:"` and inspected via `ompi_info --param io ompio --level 9` (or traced at runtime with `mpirun --mca io_ompio_verbose_info_parsing 1`). For ROMIO, set `export ROMIO_PRINT_HINTS=1` (or on Cray MPICH, `export MPICH_MPIIO_HINTS_DISPLAY=1` and `MPICH_MPIIO_STATS=1`).
+OpenMPI provides **`ompio`**, the default in modern OpenMPI, and **`romio`**, which you select with `--mca io [ompio|romio]`. You can list them with `ompi_info | grep "MCA io:"`. Inspect their parameters with `ompi_info --param io ompio --level 9`, or trace them at runtime with `mpirun --mca io_ompio_verbose_info_parsing 1`. For ROMIO, set `export ROMIO_PRINT_HINTS=1`. On Cray MPICH, set `export MPICH_MPIIO_HINTS_DISPLAY=1` and `MPICH_MPIIO_STATS=1` instead.
 </details>
 
 <details>
-<summary>5. Which HDF5 C API calls enable parallel MPI-IO file access, hyperslab selection, and collective dataset transfers (`PHPC` Chapter 16 `Tables 16.4`–`16.6`)?</summary>
+<summary>5. Which HDF5 C API calls enable parallel MPI-IO file access, hyperslab selection, and collective dataset transfers (*Parallel and High Performance Computing*, chapter 16, `Tables 16.4`–`16.6`)?</summary>
 
-1. **File access property list:** `H5Pcreate(H5P_FILE_ACCESS)` + **`H5Pset_fapl_mpio(fapl, comm, info)`**, passed to `H5Fcreate` or `H5Fopen`.
-2. **Dataspace hyperslabs:** `H5Screate_simple` and **`H5Sselect_hyperslab`** for both `filespace` and `memspace`.
-3. **Collective dataset transfer:** `H5Pcreate(H5P_DATASET_XFER)` + **`H5Pset_dxpl_mpio(xfer_plist, H5FD_MPIO_COLLECTIVE)`**, passed to `H5Dwrite` or `H5Dread`.
+1. For the file access property list, you use `H5Pcreate(H5P_FILE_ACCESS)` with **`H5Pset_fapl_mpio(fapl, comm, info)`**, and pass it to `H5Fcreate` or `H5Fopen`.
+2. For dataspace hyperslabs, use `H5Screate_simple` and **`H5Sselect_hyperslab`** for both `filespace` and `memspace`.
+3. For collective dataset transfers, use `H5Pcreate(H5P_DATASET_XFER)` with **`H5Pset_dxpl_mpio(xfer_plist, H5FD_MPIO_COLLECTIVE)`**, and pass it to `H5Dwrite` or `H5Dread`.
 </details>
 
 <details>
 <summary>6. Compare five checkpoint layouts (**Rank-0 gather**, **File-per-rank**, **Shared-file collective**, **Sharded distributed checkpoint (`DCP`)**, and **Node-local NVMe + async drain**).</summary>
 
-- **Rank-0 gather:** Simple single file, but OOMs/bottlenecks rank 0 above a few billion parameters.
-- **File-per-rank (`torch.save` per rank):** Fast lock-free parallel writes, but creates $N$ unindexed files tied to a fixed world size $N$.
-- **Shared-file collective (MPI-IO/HDF5):** Single file, but requires strict stripe alignment.
-- **Sharded distributed checkpoint (PyTorch `DCP`, Megatron `.distcp`):** Parallel shard writes plus a global `.metadata` index that supports **automatic resharding** across different world sizes ($N \to M$).
-- **Node-local NVMe / host RAM + async drain:** Copies GPU state to local memory/NVMe in seconds and drains to the parallel FS in the background, minimizing GPU stall.
+- **Rank-0 gather:** A simple single file, but it runs out of memory or bottlenecks rank 0 above a few billion parameters.
+- **File-per-rank (`torch.save` per rank):** Fast, lock-free parallel writes. The cost is $N$ unindexed files, tied to a fixed world size $N$.
+- **Shared-file collective (MPI-IO/HDF5):** One file, but it requires strict stripe alignment.
+- **Sharded distributed checkpoint (PyTorch `DCP`, Megatron `.distcp`):** Parallel shard writes, plus a global `.metadata` index that supports **automatic resharding** across different world sizes ($N \to M$).
+- **Node-local NVMe or host RAM with async drain:** Copies GPU state to local memory or NVMe in seconds, then drains it to the parallel file system in the background. That keeps GPU stall to a minimum.
 </details>
 
 <details>
 <summary>7. How does `code/part06/dcp_reshard.py` demonstrate resharding from 4 ranks to 2 ranks and 1 rank?</summary>
 
-4 ranks distribute an $8 \times 3$ `DTensor` (`Shard(0)`, `(2, 3)` per rank) and call `dcp.save()`, writing `__0_0.distcp .. __3_0.distcp` plus `.metadata`. A subsequent job with 2 ranks allocates a `(4, 3)` local shard per rank and calls `dcp.load()`; DCP reads `.metadata`, fetches two 2-row slices per rank from the existing files, and reassembles the exact $8 \times 3$ tensor (`reassembled_equal=True`).
+You can see it in the example: four ranks split an $8 \times 3$ `DTensor` with `Shard(0)`, so each rank holds `(2, 3)`. They call `dcp.save()`, which writes `__0_0.distcp .. __3_0.distcp` plus `.metadata`. A later job with 2 ranks allocates a `(4, 3)` local shard per rank and calls `dcp.load()`. DCP reads `.metadata`, fetches two 2-row slices per rank from the existing files, and reassembles the exact $8 \times 3$ tensor, which gives `reassembled_equal=True`.
 </details>
 
 <details>
 <summary>8. State the **Young/Daly approximation** for the optimal checkpoint interval $T_{\text{opt}}$, and compute $T_{\text{opt}}$ when checkpoint cost $C = 1\text{ min}$ and job $\text{MTBF} = 6\text{ hours}$.</summary>
 
 $$T_{\text{opt}} \approx \sqrt{2 \cdot C \cdot \text{MTBF}}$$
-For $C = 1\text{ min}$ and $\text{MTBF} = 360\text{ min}$ ($6\text{ hours}$):
+If you plug in $C = 1\text{ min}$ and $\text{MTBF} = 360\text{ min}$ ($6\text{ hours}$):
 $$T_{\text{opt}} \approx \sqrt{2 \times 1 \times 360} = \sqrt{720} \approx \mathbf{27\text{ minutes}}$$
 </details>
 
 <details>
-<summary>9. How does driver-level GPU process checkpointing (`cuda-checkpoint` + `CRIU`) work, and how does it differ from framework-level `state_dict`/DCP checkpointing (`ASP` Chapter 5)?</summary>
+<summary>9. How does driver-level GPU process checkpointing (`cuda-checkpoint` + `CRIU`) work, and how does it differ from framework-level `state_dict`/DCP checkpointing (*AI Systems Performance Engineering*, chapter 5)?</summary>
 
-`cuda-checkpoint` operates transparently at the CUDA Driver API level without application code changes: it calls **`cuCheckpointProcessLock`** (freezing CUDA API entry points), **`cuCheckpointProcessCheckpoint`** (draining active GPU kernels, copying GPU HBM allocations into host memory, and releasing GPU handles so `CRIU` can snapshot the Linux process tree), **`cuCheckpointProcessRestore`** (re-acquiring GPUs and remapping virtual addresses), and **`cuCheckpointProcessUnlock`**. Unlike DCP, it snapshots the entire live CUDA context and CPU process state (bounded by GPU-to-host PCIe/NVLink copy speed).
+`cuda-checkpoint` works transparently at the CUDA Driver API level, so the application code does not change. It calls **`cuCheckpointProcessLock`** to freeze the CUDA API entry points. Then **`cuCheckpointProcessCheckpoint`** drains the active GPU kernels, copies the GPU HBM allocations into host memory, and releases the GPU handles, so CRIU can snapshot the Linux process tree. **`cuCheckpointProcessRestore`** re-acquires the GPUs and remaps the virtual addresses. **`cuCheckpointProcessUnlock`** finishes the sequence. Unlike DCP, this approach snapshots the entire live CUDA context and CPU process state. Its speed is bounded by the GPU-to-host PCIe or NVLink copy speed.
 </details>
 
 <details>
 <summary>10. Walk through the 5-step crash-safe checkpoint commit protocol in `code/part06/ckpt_atomic.py`.</summary>
 
-1. Every rank writes its shard into a temporary directory **`step-N.tmp/shard-R.bin`** and calls `os.fsync()`.
-2. After a barrier, rank 0 records the `sha256` digest of every shard in **`step-N.tmp/MANIFEST.json`** and `fsync`s it.
-3. Rank 0 executes an atomic POSIX **`os.rename("step-N.tmp", "step-N")`** and `fsync`s the parent directory descriptor.
-4. Rank 0 writes `latest.tmp`, `fsync`s it, atomically renames it over `latest`, and `fsync`s the parent directory.
-5. On restart, `newest_valid()` scans all non-`.tmp` `step-N` directories in descending order and loads the newest one whose `MANIFEST.json` and shard SHA-256 hashes all verify.
+1. Every rank writes its shard into a temporary directory, **`step-N.tmp/shard-R.bin`**, and calls `os.fsync()`.
+2. After a barrier, rank 0 records the `sha256` digest of every shard in **`step-N.tmp/MANIFEST.json`**, and then runs `fsync` on it.
+3. Rank 0 runs an atomic POSIX **`os.rename("step-N.tmp", "step-N")`**, then `fsync`s the parent directory descriptor.
+4. Rank 0 writes `latest.tmp`, runs `fsync` on it, renames it atomically over `latest`, and then runs `fsync` on the parent directory.
+5. On restart, `newest_valid()` scans all non-`.tmp` `step-N` directories in descending order. It loads the newest one whose `MANIFEST.json` and shard SHA-256 hashes all verify.
 </details>
 
 <details>
 <summary>11. Why must `ckpt_atomic.py` call `fsync` on the parent directory after `os.rename`, and why shouldn't a restarting job trust the `latest` pointer blindly?</summary>
 
-- **`fsync` on parent directory:** `os.rename()` updates the directory entry in memory; `fsync(parent_dir_fd)` ensures the directory entry update is committed to persistent storage so a power loss cannot lose the rename.
-- **Not trusting `latest` blindly:** If the coordinator crashes *after* renaming `step-300.tmp -> step-300` but *before* updating `latest` (or if a shard in `step-400` suffers silent bit rot), scanning and verifying `MANIFEST.json` SHA-256 hashes recovers `step-300` automatically.
+- **`fsync` on the parent directory:** `os.rename()` updates the directory entry in memory. Calling `fsync(parent_dir_fd)` commits that update to persistent storage, so a power loss cannot lose the rename.
+- **Why not trust `latest` blindly:** Suppose the coordinator crashes after renaming `step-300.tmp -> step-300` but before updating `latest`, the pointer is stale. Likewise, if a shard in `step-400` suffers silent bit rot, the pointer leads to bad data. Scanning and verifying the `MANIFEST.json` SHA-256 hashes recovers `step-300` automatically.
 </details>
 
 <details>
 <summary>12. How must the crash-safe commit protocol be adapted when writing checkpoints directly to an S3-compatible object store?</summary>
 
-Object stores lack POSIX atomic directory `rename`. Instead, write all rank shard objects under a versioned prefix (`s3://bucket/ckpt/step-N/shard-R.distcp`), wait for all ranks at a distributed barrier, and have rank 0 upload `s3://bucket/ckpt/step-N/MANIFEST.json` (single-PUT object creation is atomic in S3) as the commit marker. Readers treat a prefix `step-N/` as committed if and only if `MANIFEST.json` exists and all listed shard digests/ETags match.
+Object stores lack POSIX atomic directory `rename`, so you adapt the protocol. Write all rank shard objects under a versioned prefix, such as `s3://bucket/ckpt/step-N/shard-R.distcp`. Wait for all ranks at a distributed barrier. Then have rank 0 upload `s3://bucket/ckpt/step-N/MANIFEST.json` as the commit marker, because single-PUT object creation is atomic in S3. Readers treat the prefix `step-N/` as committed if and only if `MANIFEST.json` exists and every listed shard digest or ETag matches.
 </details>
 
 <details>
 <summary>13. What complete state must be saved and restored so that a resumed training run is statistically equivalent to an uninterrupted run?</summary>
 
-1. Model weights (`model.state_dict()`).
-2. Optimizer states (`optimizer.state_dict()`, including FP32 master weights and Adam $m, v$ moments).
-3. Learning-rate scheduler state (`lr_scheduler.state_dict()`).
-4. Mixed-precision `GradScaler` state.
-5. Global step/epoch counter and stateful `DataLoader` / sampler cursor (` shard_id, sample_offset`).
-6. Host Python, NumPy, CPU PyTorch, and per-rank CUDA **RNG states** (`torch.cuda.get_rng_state()`).
+Consider a resumed run. You need to save and restore these six pieces of state:
+
+1. The model weights, from `model.state_dict()`.
+2. The optimizer state, from `optimizer.state_dict()`. That includes the FP32 master weights and the Adam $m, v$ moments.
+3. The learning-rate scheduler state, from `lr_scheduler.state_dict()`.
+4. The mixed-precision `GradScaler` state.
+5. The global step or epoch counter, and the stateful `DataLoader` or sampler cursor (`shard_id, sample_offset`).
+6. The RNG states for the host Python, NumPy, and CPU PyTorch, plus the per-rank CUDA RNG state, from `torch.cuda.get_rng_state()`.
 </details>
 
 <details>
-<summary>14. How do you size aggregate storage read bandwidth for an 8-GPU node and a 72-GPU Grace Blackwell NVL72 rack (`ASP` Chapter 5)?</summary>
+<summary>14. How do you size aggregate storage read bandwidth for an 8-GPU node and a 72-GPU Grace Blackwell NVL72 rack (*AI Systems Performance Engineering*, chapter 5)?</summary>
 
-Multiply the per-GPU ingestion requirement by the number of GPUs: at `200 MB/s` per GPU, an 8-GPU node requires $8 \times 200\text{ MB/s} = \mathbf{1.6\text{ GB/s}}$, and a 72-GPU NVL72 rack requires $72 \times 200\text{ MB/s} = \mathbf{14.4\text{ GB/s}}$ (`14–20 GB/s` sustained rack throughput).
+You multiply the per-GPU ingestion requirement by the number of GPUs. At `200 MB/s` per GPU, an 8-GPU node needs $8 \times 200\text{ MB/s} = \mathbf{1.6\text{ GB/s}}$. A 72-GPU NVL72 rack needs $72 \times 200\text{ MB/s} = \mathbf{14.4\text{ GB/s}}$, which matches the `14–20 GB/s` sustained rack throughput.
 </details>
 
 <details>
-<summary>15. Which Linux block-layer settings optimize local NVMe drives for streaming large dataset shards (`ASP` Chapter 5)?</summary>
+<summary>15. Which Linux block-layer settings optimize local NVMe drives for streaming large dataset shards (*AI Systems Performance Engineering*, chapter 5)?</summary>
 
-1. Set `/sys/block/nvme*/queue/scheduler` to **`none`** (or `mq-deadline`) so the kernel skips redundant I/O sorting on multi-queue NVMe SSDs.
-2. Raise sequential readahead (`blockdev --setra` or `/sys/block/nvme*/queue/read_ahead_kb`) from the default `128 KB` to several megabytes (`2048–4096 KB`).
-3. Mount local XFS/ext4 filesystems with **`noatime`**.
+1. You set `/sys/block/nvme*/queue/scheduler` to **`none`**, or to `mq-deadline`, so the kernel skips redundant I/O sorting on multi-queue NVMe SSDs.
+2. Raise sequential readahead, with `blockdev --setra` or `/sys/block/nvme*/queue/read_ahead_kb`. Move it from the default `128 KB` to several megabytes, `2048–4096 KB`.
+3. Mount local XFS or ext4 filesystems with **`noatime`**.
 </details>
 
 <details>
-<summary>16. What is **NVIDIA `NeMo Curator`**, and why does it output `.bin` and `.idx` files for LLM pretraining (`ASP` Chapter 5)?</summary>
+<summary>16. What is **NVIDIA `NeMo Curator`**, and why does it output `.bin` and `.idx` files for LLM pretraining (*AI Systems Performance Engineering*, chapter 5)?</summary>
 
-`NeMo Curator` (`DocumentDataset`) is a GPU-accelerated offline data curation pipeline that performs distributed text extraction, filtering, fuzzy/exact deduplication, and tokenization across multi-node clusters, outputting contiguous binary token files (**`.bin`**) paired with byte-offset index files (**`.idx`**) that training ranks `mmap` with zero parsing overhead.
+NeMo Curator, through `DocumentDataset`, is a GPU-accelerated offline data curation pipeline. It performs distributed text extraction, filtering, fuzzy and exact deduplication, and tokenization across multinode clusters. It outputs contiguous binary token files, **`.bin`**, paired with byte-offset index files, **`.idx`**. Training ranks `mmap` these files, so they get the data with no parsing overhead.
 </details>
 
 <details>
-<summary>17. How do **NVIDIA `DALI`** and the **Blackwell Decompression Engine** eliminate host CPU bottlenecks in multimodal/compressed data pipelines (`ASP` Chapter 5)?</summary>
+<summary>17. How do **NVIDIA `DALI`** and the **Blackwell Decompression Engine** eliminate host CPU bottlenecks in multimodal/compressed data pipelines (*AI Systems Performance Engineering*, chapter 5)?</summary>
 
-- **Blackwell Hardware Decompression Engine:** Dedicated on-die hardware engine that decompresses **`LZ4`, `Snappy`, and `Deflate`** streams at up to **`800 GB/s`** without using GPU SMs or host CPUs.
-- **NVIDIA `DALI` (`nvidia.dali.pipeline.Pipeline`):** Offloads JPEG/video decoding (`nvJPEG`) and image augmentations from CPU `DataLoader` workers onto the GPU—dropping host CPU usage from `800%` (8 cores pegged) to `200%` (2 cores reading file bytes) in `ASP` Chapter 5's object-detection benchmark.
+- **Blackwell Hardware Decompression Engine:** A dedicated on-die engine that decompresses **`LZ4`, `Snappy`, and `Deflate`** streams at up to **`800 GB/s`**. It does this without using GPU SMs or host CPUs.
+- **NVIDIA `DALI` (`nvidia.dali.pipeline.Pipeline`):** Moves JPEG and video decoding, through `nvJPEG`, plus image augmentations, off the CPU `DataLoader` workers and onto the GPU. In the object-detection benchmark in *AI Systems Performance Engineering*, chapter 5, host CPU usage drops from `800%`, with 8 cores pegged, to `200%`, with 2 cores reading file bytes.
 </details>
 
 <details>
-<summary>18. How do you overlap PyTorch `DataLoader` host-to-device transfers with GPU compute, and how do you isolate Python iterator latency from PCIe copy latency (`ASP` Chapter 5)?</summary>
+<summary>18. How do you overlap PyTorch `DataLoader` host-to-device transfers with GPU compute, and how do you isolate Python iterator latency from PCIe copy latency (*AI Systems Performance Engineering*, chapter 5)?</summary>
 
-Configure `DataLoader(num_workers=N, prefetch_factor=4, pin_memory=True, persistent_workers=True)` and copy batches asynchronously on a dedicated CUDA stream (`with torch.cuda.stream(copy_stream): batch = batch.to(device, non_blocking=True)`). To isolate bottlenecks, benchmark pure Python dataset loading with **`num_workers=0`** (no background prefetch) and separately time `.to("cuda", non_blocking=True)` using `torch.cuda.Event` or Nsight Systems Copy lanes.
+You configure `DataLoader(num_workers=N, prefetch_factor=4, pin_memory=True, persistent_workers=True)`. Then copy batches asynchronously on a dedicated CUDA stream, using `with torch.cuda.stream(copy_stream): batch = batch.to(device, non_blocking=True)`. To isolate the bottleneck, benchmark pure Python dataset loading with **`num_workers=0`**, which turns off background prefetch. Separately, time `.to("cuda", non_blocking=True)` with `torch.cuda.Event` or Nsight Systems Copy lanes.
 </details>
 
 <details>
-<summary>19. What are the four components of DeepSeek's **Fire-Flyer File System (`3FS`)**, and why was it designed (`ASP` Chapter 5)?</summary>
+<summary>19. What are the four components of DeepSeek's **Fire-Flyer File System (`3FS`)**, and why was it designed (*AI Systems Performance Engineering*, chapter 5)?</summary>
 
-DeepSeek built `3FS` because AI training workloads issue massive random reads across large shards that defeat traditional page-cache readahead. Its four components are:
-1. **Cluster manager** (membership and layout distribution).
-2. **Metadata services** backed by transactional **FoundationDB**.
-3. **Storage services** managing NVMe SSDs with **CRAQ (Chain Replication with Apportioned Queries)** for write-all/read-any consistency.
-4. **FUSE / native `USRBIO` client** using RDMA and `io_uring` / shared-memory rings for zero-copy reads.
+DeepSeek built 3FS because AI training workloads issue massive random reads across large shards. Those reads defeat traditional page-cache readahead. The four components are:
+1. A **cluster manager**, which handles membership and layout distribution.
+2. **Metadata services**, backed by the transactional **FoundationDB**.
+3. **Storage services**, which manage NVMe SSDs with **CRAQ (Chain Replication with Apportioned Queries)** for write-all, read-any consistency.
+4. A **FUSE or native `USRBIO` client**, which uses RDMA and `io_uring`, or shared-memory rings, for zero-copy reads.
 </details>
 
 <details>
-<summary>20. Contrast the roles of **`NCCL`** and **`NIXL`** in distributed AI systems (`ASP` Chapter 5).</summary>
+<summary>20. Contrast the roles of **`NCCL`** and **`NIXL`** in distributed AI systems (*AI Systems Performance Engineering*, chapter 5).</summary>
 
-- **`NCCL` (NVIDIA Collective Communications Library):** Built for synchronous, gang-scheduled multi-GPU **collective operations** (`AllReduce`, `AllGather`, `ReduceScatter`) across model/data-parallel training ranks.
-- **`NIXL` (NVIDIA Inference Xfer Library):** Built for asynchronous, high-throughput **point-to-point and streaming memory/storage transfers** (such as KV-cache transfers between disaggregated prefill and decode nodes and storage tiers in LLM inference).
+- **`NCCL` (NVIDIA Collective Communications Library):** Built for synchronous, gang-scheduled multi-GPU **collective operations**, such as `AllReduce`, `AllGather`, and `ReduceScatter`, across the model and data parallel training ranks.
+- **`NIXL` (NVIDIA Inference Xfer Library):** Built for asynchronous, high-throughput **point-to-point and streaming memory and storage transfers**. Examples include KV-cache transfers between disaggregated prefill and decode nodes, and transfers to storage tiers in LLM inference.
 </details>
 
 ## Sources and review notes
