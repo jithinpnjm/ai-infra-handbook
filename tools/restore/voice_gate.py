@@ -10,7 +10,7 @@ def say(good, msg):
     global ok; ok &= bool(good); print(('PASS ' if good else 'FAIL ')+msg)
 r = subprocess.run(['python3','tools/loss_check.py',old,new,'--list'],capture_output=True,text=True).stdout
 m = re.search(r'technical terms lost: (\d+) of \d+ \| numbers lost: (\d+)', r)
-ABBR={'SCL','HLW','SP','ASP','LP','AF','HPC1','ADC','CN','NK','NPA','AIP','GAI','LLMOps1','AUR','EAS','FA','PM','FP','PK','NK1','PMO','DDIA'}
+ABBR={'SCL','HLW','SP','ASP','LP','AF','HPC1','ADC','CN','NK','NPA','AIP','GAI','LLMOps1','AUR','EAS','FA','PM','FP','PK','NK1','PMO','DDIA','AIE','DMLS','LLMEH','MLPE','LIP'}
 lt=re.search(r"LOST TERMS: \[(.*?)\]", r, re.S); lost=[x.strip(" '\"") for x in (lt.group(1).split(',') if lt and lt.group(1).strip() else [])]
 real=[x for x in lost if x and x not in ABBR]
 say(m and not real and m.group(2)=='0', f'content loss_check terms lost (excluding spelled-out source abbreviations): {real}, numbers lost {m.group(2) if m else "?"}')

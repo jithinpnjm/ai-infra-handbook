@@ -4927,6 +4927,54 @@ Six. They are `a`, a newline, `b`, the `\x1f` control character, the `\000` null
 
 </details>
 
+16. How can you find out how large a tuple is, and why is `len` a built-in function instead of a method?
+
+<details><summary>Answer</summary>
+
+Call `len(T)`. The function works on many kinds of containers, so it is a built-in. Methods belong to a single type, although some method names, such as `index`, appear on more than one type.
+
+</details>
+
+17. Write an expression that changes the first item of the tuple `(4, 5, 6)` so it becomes `(1, 5, 6)`.
+
+<details><summary>Answer</summary>
+
+Use `T = (1,) + T[1:]`. The trailing comma makes `(1,)` a one-item tuple. Converting to a list and back also works, but it costs more, so use a list when you know the object will change.
+
+</details>
+
+18. What is the default processing mode in an `open` call?
+
+<details><summary>Answer</summary>
+
+The default is `'r'`, which opens the file for text input. Pass only the filename to read a text file with the default settings.
+
+</details>
+
+19. Which standard-library module stores Python objects in a file without converting them to strings yourself?
+
+<details><summary>Answer</summary>
+
+The `pickle` module does this. The `json` module converts a limited set of objects to and from JSON text. The `struct` module assumes the data is packed binary.
+
+</details>
+
+20. How can you copy all the parts of a nested structure at once?
+
+<details><summary>Answer</summary>
+
+Import the `copy` module and call `copy.deepcopy(X)`. Shallow copies, such as `aList[:]`, `aDict.copy()` and `set(aSet)`, are enough in most programs.
+
+</details>
+
+21. When does Python consider an object to be true?
+
+<details><summary>Answer</summary>
+
+An object is true when it is a nonzero number or a nonempty collection. `True` and `False` have the same meanings as the integers `1` and `0`.
+
+</details>
+
 ## Sources and review notes
 
 - Source: *Learning Python*, 6th edition (`learning-python-6th-edition`). Chapters used are listed in each section.
@@ -4934,3 +4982,4 @@ Six. They are `a`, a newline, `b`, the `\x1f` control character, the `\000` null
 - Source: `learning-python-6th-edition`, chapter 5, "Numbers and Expressions."
 - Source: `learning-python-6th-edition`, chapter 6, "The Dynamic Typing Interlude."
 - Source: `learning-python-6th-edition`, chapter 7, "String Fundamentals."
+- Source: `learning-python-6th-edition`, chapter 9, "Tuples, Files, and Everything Else."

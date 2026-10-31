@@ -4907,6 +4907,12 @@ Work through these questions to review the scope ideas in this chapter.
 18. What are recursive functions, and how are they used?
 19. What are some general design guidelines for coding functions?
 20. Name three or more ways that functions can communicate results to a caller.
+21. What is the difference between enclosing a list comprehension in square brackets and parentheses?
+22. How are generators and iterators related?
+23. How can you tell if a function is a generator function?
+24. What does a `yield` statement do?
+25. How are `map` calls and list comprehensions related? Compare and contrast the two.
+26. What do `async def` and `await` mean in a Python script?
 
 Answers:
 
@@ -4932,9 +4938,17 @@ Answers:
 19. Keep functions small and self-contained, with one unified purpose. Communicate through arguments and return values. Change mutable arguments only when the caller expects it. Some programs need other communication mechanisms, but these basics keep code easy to reuse.
 20. Functions can send results back with `return` statements, by changing passed-in mutable arguments, and by setting global variables. Globals are generally discouraged because they make code harder to understand, except in special cases such as multithreaded programs. Functions can also communicate through files and sockets, which this chapter does not cover.
 
+21. A list comprehension in square brackets builds the whole result list in memory at once. In parentheses, it becomes a generator expression. It has the same internal syntax and a similar meaning, but it does not build the list. It returns a generator object that yields one item at a time, when an iteration tool or `next` asks for it.
+22. Generators are iterable objects that follow the iteration protocol automatically. Each has an iterator with a `__next__` method, which `next` runs. That method advances one item at a time and raises an exception at the end. Python has three ways to make one: generator functions with `def` and `yield`, generator expressions with parenthesized comprehensions, and classes that define `__iter__`.
+23. A generator function contains a `yield` statement, with or without its `from` extension. Otherwise it is written like a normal function. Python compiles it specially, so calling it returns a generator object that keeps its state between values. Deleting the `yield` turns it into a normal function, but deleting code can cause other problems.
+24. The `yield` statement sends a result back to the caller and suspends the function's state. The function resumes after that `yield` when `next` or `__next__` is called again. The generator `send` method also resumes it, and it can pass a value that becomes the value of the `yield` expression. A `return` statement ends the generator and can attach a value to the `StopIteration` exception.
+25. Both produce a series of values by applying an operation to each item of an iterable, one item at a time. `map` applies a function call to each item. A list comprehension applies any expression. Comprehensions can also nest `for` loops and use `if` clauses, which cover the work of `filter`. `map` produces a generator of values, while a list comprehension builds the whole result list in memory, which can matter for large lists.
+26. `async def` defines an asynchronous function, usually called a coroutine. `await` waits for another asynchronous object to produce its value. While it waits, it can give control back to an event loop, so other code can run. `async def` is required to use `await`, `async for`, and `async with`. Concurrency in this model generally needs an event loop and scheduling calls from the `asyncio` module.
+
 ## Sources and review notes
 
 - Source: *Learning Python*, 6th edition (`learning-python-6th-edition`). Chapters used are listed in each section.
 - Chapter used: "17. Scopes" from *Learning Python*, 6th edition (`learning-python-6th-edition`).
 - Chapter used: "18. Arguments" from *Learning Python*, 6th edition (`learning-python-6th-edition`).
 - Chapter used: "19. Function Odds and Ends" from *Learning Python*, 6th edition (`learning-python-6th-edition`).
+- Chapter used: "20. Comprehensions and Generations" from *Learning Python*, 6th edition (`learning-python-6th-edition`).
