@@ -200,6 +200,38 @@ spec:
           value: $(params.builder-image)
 ```
 
+### Cloud Native Buildpacks: no Dockerfile needed
+
+Writing and maintaining a Dockerfile for every service takes developer time. Buildpacks take a different route. They read the source code and decide how to build it, so developers never write a Dockerfile. Heroku and Cloud Foundry have used buildpacks for years. Cloud Native Buildpacks (CNB) brings the idea to containers. It packages the app into an OCI image that runs on Kubernetes.
+
+CNB inspects the source and runs the matching buildpacks. The Go buildpack runs when Go files are present. The Maven buildpack runs when a `pom.xml` file is present. Developers start the process with a CLI called `pack`, and the detection happens behind the scenes. Each buildpack has a narrow scope, so the images it produces tend to follow best practices.
+
+Platform teams can also write custom buildpacks. Those can enforce policy, meet compliance rules and standardize the images that run on the platform. The value of this grows with the size of the organization, because developers want to build features rather than package containers.
+
+### Who should own image builds
+
+Early on, developers often write their own Dockerfiles. At scale, that approach creates two problems. Developers lose time they should spend on their product. The images also vary widely, with little standardization. Many organizations therefore move build work to operations and platform teams. Those teams build pipelines that take a code repository as input and return a container image.
+
+Workshops and hands-on help with Dockerfiles are a reasonable first step. They do not scale well, though, because the ratio of development teams to platform staff is usually high.
+
+### Triggering builds from commits
+
+Builds should start when code lands in the central repository. Local builds with Docker are fine for early work. Pipeline tools either poll the repositories for changes or receive a webhook from version control. The book's examples use Tekton, a pipeline tool built for Kubernetes. Tekton models each component as a custom resource, and its catalog includes common tasks such as cloning a Git repository.
+
+A pipeline can grow from there. It can add tests, linting, static analysis and a signing step. Tasks can also run other build tools, such as Kaniko or BuildKit, when you do not use buildpacks.
+
+### Image tags and metadata
+
+Git hashes make good tags during development. They are not easy to read, but they trace each image back to its commit. As the pipeline matures, add descriptive version tags such as SemVer. Those tags show at a glance which versions run in each environment. Use immutable tags, which most registries support, so nobody overwrites an existing tag.
+
+Labels with the image owner's contact details and build information help later reporting. Policy tools can also use labels, for example to allow image access only for certain labels.
+
+### Push-based deploys and their limits
+
+Once builds are automated, the pipeline can deploy as well. The simplest approach is a final step that reads the new tag and runs `kubectl set image`. Many tutorials show this. A better approach edits the Deployment's YAML in version control. The pipeline changes the tag with `sed` or a similar tool, commits the change, and then runs `kubectl apply -f` over the updated manifests. Your YAML then stays close to the source of truth for the cluster.
+
+The push model has limits. Promoting releases across environments and clusters needs an inventory of targets and credentials for each cluster. If a pipeline is interrupted, someone must restart or reconcile it. Monitor and alert on deployment pipelines as well, so failures do not go unnoticed.
+
 ## 4. SBOMs and vulnerability management
 
 ### SBOM
@@ -214,6 +246,12 @@ A **Software Bill of Materials** lists components (packages, versions, licences,
 - **Patch SLAs**: critical (hours to days), high (days to weeks), with automated rebuild pipelines for bases; image freshness policy (max age) enforced by admission or reporting.
 - **Config and IaC scanning**: Trivy config/Checkov/Kubescape for manifests and Terraform (4.2, 4.23); secrets scanning (gitleaks, trufflehog) on repos, images, and registries.
 - **GPU stack CVEs**: NVIDIA publishes security bulletins for drivers, Container Toolkit, GPU Operator, Triton, NeMo, DCGM; track and patch (container toolkit escape CVEs have occurred: update promptly and restrict `privileged`).
+
+### Scanning over time without causing outages
+
+Scanning at pull time is a useful start. But images already in your environment can gain new CVEs. Schedule rescans, and plan how you will update or replace the affected images. Automatic patching is tempting, yet an updated image can be incompatible and break a running app. Automated updates can also bypass your change process, which makes them hard to audit.
+
+Blocking pulls has a cost too. Suppose a core application's image gets a new CVE and pulls are blocked. Pods scheduled to new nodes then cannot start. That trade-off pits security against availability, so write down the decision. Most teams prefer alerts. A registry can call a webhook when a scan completes, or expose metrics that you can scrape and alert on. Once you know the impact, decide whether and when to patch. Then run the patch through your normal pipeline, so the change stays transparent and auditable.
 
 ## 5. Signing and verification
 
@@ -240,6 +278,18 @@ Principles: **sign digests, not tags**; define **who is allowed to sign** (ident
 As *Production Kubernetes* Chapter 15 (*Software Supply Chain*) explains, early container signing with **Notary v1 (Docker Content Trust / TUF)** had two major operational pain points that modern **Sigstore (`cosign`)** and **Notary v2 (`notation`)** solved:
 1. **The Globally Unique Name (`GUN`) registry-URL coupling problem (`PK` Chapter 15):** Notary v1 bound each signature to a **Globally Unique Name (`GUN`)** that included the **registry hostname URL** (`registry-a.example.com/team/app`). Whenever an enterprise replicated or cached that exact same image digest across regional registries, edge pull-through caches, or air-gapped mirrors (`registry-b.internal/team/app`), Notary v1 signatures broke because the registry URL changed. By signing the **content-addressable image manifest digest (`@sha256:...`)** and storing signatures as OCI 1.1 artifacts/referrers inside the registry itself, `cosign` and `notation` allow signatures and SBOM attestations to travel seamlessly across mirrors and regional caches.
 2. **Push-Based vs. Pull-Based (GitOps) Deployments and Progressive Traffic Shifting (`Flagger`, `PK` Chapter 15):** After an image passes build, CVE scanning (`Clair` / `Trivy`), signing, and promotion to the `approved` registry, `PK` Chapter 15 recommends **pull-based GitOps controllers (`Flux` / `Argo CD`)** over push-based CI `kubectl apply` scripts (so CI never holds cluster-admin credentials), paired with **progressive delivery controllers (`Flagger` or `Argo Rollouts`)** that shift traffic gradually (`Canary`, `Blue/Green`, or `A/B Testing`) via Ingress/Gateway API or Service Mesh weights and automatically abort/roll back if error rates or latency degrade.
+
+### Signing at each stage of the pipeline
+
+A signature is a cryptographic proof. The publisher hashes the image and ties that hash to their identity. Anyone can check the signed hash against the publisher's public key. The useful part is that one image can be signed many times. You might sign after tests pass and again after a release team approves it. At deploy time, you require the signatures you specify. That proves the image promoted to production is exactly the image that passed each stage.
+
+Notary is the main project in this area. Docker originally built it on The Update Framework (TUF), a system for distributing software updates securely. Teams have adopted signing slowly, for three reasons:
+
+- Notary has several components, including a server and multiple databases. Signing and verification sit on the deployment's critical path, so Notary needs high availability.
+- Notary names each image with a Globally Unique Name (GUN) that includes the registry URL. Signatures then cannot move to copies in caches or edge registries.
+- Notary and TUF use different key pairs, each with its own security needs. Rotating those keys after a breach is hard.
+
+At the time the book was written, a second version of Notary was in development. It aimed to simplify key management and to bundle signatures with the OCI images themselves. Several projects already run admission webhooks that check for signatures before a cluster runs an image.
 
 ### Admission-time enforcement in Kubernetes
 
@@ -286,6 +336,18 @@ spec:
 
 Alternatives: **Sigstore policy-controller** (`ClusterImagePolicy`), **Ratify** (with Gatekeeper, Notation/cosign verifiers), **Connaisseur**, cloud-native **Binary Authorization** (GKE) / **ECR signing with Notation + Kyverno/Gatekeeper** / **Azure Policy for Kubernetes** with Notation. Operational concerns: verification latency (cache results), registry availability dependency (decide fail-open vs fail-closed), exemptions for system namespaces/bootstrap images (mirror them into your registry and sign), rolling out in `Audit` first, handling third-party images (re-sign after your own scanning/mirroring: "image promotion pipeline"), verifying **init containers and ephemeral containers**, and re-verification on Deployment updates.
 
+### Quarantine workflow
+
+Registries can scan images and block pulls, but some images need more checks. Some teams also cannot pull straight from the public internet and must use an internal registry. A multiregistry setup with a quarantine pipeline solves both problems. The flow works like this:
+
+1. Developers request an image through a self-service portal. A ServiceNow form or a Jenkins job works well, and chatbots are gaining popularity.
+2. The image is pulled automatically into a quarantine registry.
+3. The pipeline runs checks, and it can start environments that pull and verify the image against your criteria.
+4. If the checks pass, the image is optionally signed and pushed to an approved registry.
+5. The developer hears the result, with the reason if the image was rejected. A chatbot, a ticket or a job update can carry the message.
+
+Combine this flow with admission controllers. Then only signed images, or images from a specific registry, can run on the cluster.
+
 ### Image promotion pipeline
 
 ```mermaid
@@ -308,6 +370,12 @@ Clusters trust only the `approved` repository and your signer; upstream trust de
 - **Scanning and policy in the registry** (Harbor policies: block pull of vulnerable images, require signed images), pull-through caches with allow-lists, rate limits and malware/quarantine features.
 - **Other artefact types**: Helm charts (OCI), Python packages (private PyPI/devpi/Artifactory with proxy and curation), conda channels, OS package mirrors (snapshots), model registries (MLflow/Hugging Face Hub private, OCI model artefacts via ORAS/KitOps), datasets (versioned buckets with hashes), Terraform modules/providers (mirrors, lock files with hashes, 4.22).
 - **Dependency confusion defences**: scoped/private package names, reserved names on public indexes, index priority configuration (`--index-url` only your proxy; `--extra-index-url` is dangerous), namespace claims; artefact curation (allow-list of approved packages/versions), delay new releases ("cooldown") before adoption.
+
+### Registry placement and replication
+
+Put a registry in each failure domain to keep images available. Then decide between one central blob store and a blob store per region, with replication between them. Replication pushes an image to one registry and copies it to the rest of the set. A basic version can run in a pipeline tool, triggered by webhooks on each push.
+
+Registry load grows with the number of developers. When thousands of teams build on every commit, pulls and pushes add up fast. The registry is on the critical path for production and for development, so monitor it as you would any core service.
 
 ## 7. Python and ML dependency hygiene
 
@@ -342,6 +410,10 @@ Supply-chain controls fail eventually; limit the blast radius (5.15, 5.21):
 - **Node integrity**: signed/ measured boot where available, immutable node images (4.17), kernel module signing, restricting `privileged`; GPU driver containers/operators verified (signed images).
 - **Secrets hygiene**: short-lived credentials, workload identity, rotation, no long-lived keys in images.
 - **Honeytokens/canaries** in registries and buckets to detect scanning/theft.
+
+### Limit what a container can do
+
+Scanning finds known flaws, but it cannot find everything. An image can download malicious content after deployment, and a running app can be hijacked. A naive guard is a periodic filesystem scan of running containers, to catch vulnerable binaries that arrive late. A stronger guard limits the actions and behaviors a container can perform. That ends the endless chase of CVEs, and it focuses on the capabilities the app should have. Runtime scanning is a large topic. Look at Falco and the Aqua Security suite as starting points.
 
 ## 10. Incident response for supply-chain events
 

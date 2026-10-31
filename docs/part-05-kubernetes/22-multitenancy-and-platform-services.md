@@ -544,6 +544,23 @@ avg by (namespace) (DCGM_FI_DEV_GPU_UTIL * on (pod,namespace) group_left() kube_
 sum by (namespace) (increase(container_cpu_usage_seconds_total[24h])) / 3600                                                                                          # CPU-hours/day
 ```
 
+### Two approaches to showback
+
+Showback shows a team what its workloads use. Chargeback attaches a cost to that use. Before you charge anyone, you must decide how to measure use. Teams are often made accountable this way because cluster capacity that is easy to get can also be wasted.
+
+Teams need a label such as `team` or `owner` on their workloads, so metrics can be grouped by team. Use admission control to require that label on every Pod that tenants deploy. Namespace is sometimes used too, but labels are the most flexible.
+
+There are two common ways to calculate showback.
+
+- **Requests:** based on what a team reserves, using the resource requests set on each container in a Pod.
+- **Consumption:** based on what a team actually consumes, through requests or real usage, whichever is higher.
+
+The requests method reflects what the scheduler can assign. The scheduler treats requests as reserved capacity on a node. If a workload bursts into spare capacity, it got that capacity for free, and the burst is not charged to it. For example, a Deployment with 10 replicas that each request 1 CPU core counts as 10 cores while it runs. If the replicas average 1.5 cores each, the extra usage is not attributed.
+
+The consumption method charges the higher of request or usage. A team that uses more than it asked for pays for what it actually used. This removes the incentive to set low requests to game the system. It can also lead to contention on overcommitted nodes.
+
+If you use kube-state-metrics, the request metrics are `kube_pod_container_resource_requests` for CPU and `kube_pod_container_resource_requests_memory_bytes` for memory. Usage comes from `container_cpu_usage_seconds_total` for CPU and `container_memory_usage_bytes` for memory. Calculate each workload's share of cluster CPU and of cluster memory, and use the higher value. A cluster that runs out of either cannot host more workloads. A workload using 1% of CPU and 3% of memory is effectively using 3% of the cluster.
+
 ## 7. Failure modes and troubleshooting
 
 | Symptom | Likely cause | Fix |
@@ -777,6 +794,7 @@ Instead of treating the cluster as a ticket-driven IT gatekeeper, the platform t
 
 - **Sources read in full:**
   - `production-kubernetes` — Josh Rosso, Rich Lander, Alexander Brand & John Harris, *Production Kubernetes*, **Chapter 11: Building Platform Services** (read in full: operator history, points of extension, `WebApp` and `AcmeNamespace` CRDs and Kubebuilder controller implementation, why checking `status.phase == "Created"` alone fails on controller crash or deleted children, cluster-scoped `ownerReferences` rule, Kubebuilder vs Operator SDK vs Metacontroller, and scheduler policies), **Chapter 12: Multitenancy** (read in full: soft vs hard multitenancy housing analogy, Namespace-per-application vs Namespace-per-team, RBAC, `default-deny-all` NetworkPolicy, Pod security, CPU CFS quota throttling and QoS classes, and Fluent Bit tag-based per-namespace log routing), and **Chapter 16: Platform Abstractions** (read in full: self-service `Team` operator CRD and the 4-stage spectrum of abstraction from `kubectl`/`kubectx`/`kubens`/`Octant`/`Lens` -> `Helm`+`Kustomize` / `K8s Initializer` -> `PinterestService` custom workload CRDs -> `Cloud Foundry`/`Backstage`/`Waypoint`).
+  - `production-kubernetes` — Josh Rosso, Rich Lander, Alexander Brand & John Harris, *Production Kubernetes*, **Chapter 9: Observability** (read in full: showback by requests versus by consumption, and the cluster-share rule for choosing CPU or memory).
   - `kubernetes-up-and-running-3rd-edition` — Brendan Burns, Joe Beda, Kelsey Hightower & Lachlan Evenson, *Kubernetes: Up and Running*, 3rd ed. (namespaces, quotas, and RBAC).
   - `nvidia-devops` (`volume-03/03-k8s-networking-security-ops-masterclass.md`): multi-tenant RBAC, Kyverno guardrails, and platform engineering.
 - **Run here:** `python3 code/part05/multitenancy_quota_reconciler_lab.py` (3 passed, 0 failed).

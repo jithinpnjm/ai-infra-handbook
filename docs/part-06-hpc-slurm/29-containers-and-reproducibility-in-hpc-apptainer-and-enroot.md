@@ -57,15 +57,15 @@ The SCL book (chapter 16) defines a container as "an isolated set of processes" 
 
 ### Layers and data mounts
 
-Picture a team that wants to test a new database for an afternoon. They do not want to install it on the shared system, where it could clash with software already there. A container solves this by carrying its own files: the binaries, the libraries and even a private copy of `libc`. When you start it, its file system is mounted, the cgroups and namespaces are set up, and the first process starts with `chroot` into that file system.
+Containers help you avoid dependency hell, the mess that appears when you recompile a program or try to run one binary next to other software. Picture a team that wants to test a new database for an afternoon. They do not want to install it on the shared system, where it could conflict with the software already there. A container solves this by carrying its own files: the binaries, the libraries and even a private copy of `libc`. When you start it, its file system is mounted, the cgroups and namespaces are set up, and the first process starts with `chroot` into that file system.
 
-Docker adds a layered design on top. The first layer is a base system, such as a fresh Ubuntu install. Each later layer stores the changes you make on top of the one below, including file deletions. Layers live in the registry and on local storage, so a second image built on the same base downloads only its new layers. Almost every line in a Dockerfile creates a new squashfs layer. When you edit one line and rebuild, only that line and the lines after it are rebuilt, because the earlier layers have not changed.
+Docker technology adds a layered design on top. The first layer is a base system, such as a freshly installed Ubuntu system. Each later layer stores the changes you make on top of the one below, including file deletions. Layers live in the registry and on local storage, so a second image built on the same base downloads only its new layers. Almost every line in a Dockerfile creates a new squashfs layer. When you edit one line and rebuild, only that line and the lines after it are rebuilt, because the earlier layers have not changed.
 
 Your data still has to reach the container. On Linux, the `--bind` option mounts a local directory into another directory, so your files appear inside the container. Container systems let you choose what to mount and at which path it appears inside the container.
 
 ### Containers in short
 
-A container is a light alternative to a virtual machine. It is handy when you want to run an application without installing new packages or compiling it from source. On an HPC system you need more care. Jobs need low-latency access to devices and must run MPI applications, so pick a runtime that supports both.
+Simply put, a container is an isolated set of processes. It is a light alternative to virtual machines. It is handy when you want to run an application without installing new packages or compiling it from source. On an HPC system you need to be cautious. Jobs need low-latency access to devices and must run MPI applications, so pick a runtime that supports both.
 
 ## 2. Apptainer
 

@@ -120,6 +120,24 @@ Client mount options that matter:
 
 Avoid stale-handle and hang scenarios: do not unmount under running jobs; monitor server health; use automounter timeouts; make health checks (6.14) test each mount with a timeout so a hung mount drains the node instead of hanging the checker.
 
+### Minimal NFS server and client steps from the book
+
+The book gives a short recipe for sharing `/home` with the cluster. It is meant as a starting point, so check each step on a test server first. On the server, the steps are:
+
+1. Install the `nfs-server` package, or a similar one, and `portmap` if your system needs it.
+2. Start the `portmap` and `nfsd` services, and include them in the services that start at boot.
+3. Export `/home` to the clients on the `10.0.0.0/8` network by adding `/home 10.0.0.0/8(rw,no_subtree_check)` to `/etc/exports`.
+4. Run `exportfs -ra` to apply the change.
+
+On each client, the steps are:
+
+1. Install the `nfs` package, or a similar one.
+2. Add a line to `/etc/fstab` that mounts `/home` from the server at `10.0.0.1`: `10.0.0.1:/home /home nfs rw,noatime,nodiratime 0 0`.
+3. Create the `/home` directory if it does not exist.
+4. Run `mount /home`.
+
+The export line above opens the share to a whole `/8` network. On a real cluster, narrow it to the subnet your nodes actually use.
+
 ## 3. Time synchronisation
 
 The SCL book places NTP in the file system chapter deliberately: distributed file systems and authentication depend on synchronised clocks. Skewed clocks cause stale-cache decisions, `make` rebuild loops, Kerberos and munge failures (`Invalid credential`), confusing logs and, in some parallel file systems, lease/lock timeouts. Use `chronyd` (modern default on RHEL-family and widely elsewhere) or `ntpd`/systemd-timesyncd; point all nodes at two or more internal servers that themselves sync to reliable upstreams (GPS/PTP-backed sources in large sites); monitor offset (`chronyc tracking`, `chronyc sources -v`) and alert above a threshold (milliseconds are fine for most uses; PTP for tighter needs). A health check should include clock synchronisation (the `time_sync` check in 6.14).
@@ -447,4 +465,5 @@ Writing `5.67 TB` (`5,670 GB`) at `10 GB/s` blocks the training loop for **`567 
 - Shared-file-system requirements, the NFS-scaling argument, `/etc/exports` and client mount options (Tables 9-1 and 9-2), `ntpd.conf` / `openntpd` (`restrict default kod nomodify notrap nopeer noquery`), `chrony`, `ntpdate`, `timedatectl show-timesync --all`, Lustre architecture and the survey of distributed file systems: read in full from *Supercomputers for Linux SysAdmins* (`supercomputers-for-linux-sysadmins-managing-modern-hpc-clusters-and-supercomputers-from-software-to-hardware`, `SCL`) Chapter 9 ("9. Network File Systems") and Chapter 28 ("28. One-Two-Three Instructions"). Lustre and GPFS detail continues in Chapters 6.19 and 6.20.
 - Run here: `code/part06/iomix.py`, `code/part06/ckpt_math.py`, and `python3 code/part06/iomix_lab.py` (3 passed, 0 failed) with the outputs above.
 - Explicitly labelled inferences: The checkpoint bandwidth table (`ckpt_math.py`, using `14 bytes/param`) and dataset streaming examples (`49 MB/s` text vs `150 GB/s` vision in `iomix_lab.py`) are deterministic sizing calculations.
+- Book source (`supercomputers-for-linux-sysadmins-managing-modern-hpc-clusters-and-supercomputers-from-software-to-hardware`, Sergey Zhumatiy, *Supercomputers for Linux SysAdmins*), **Chapter 28: "28. One-Two-Three Instructions"**: the minimal NFS server and client recipe (`portmap`, `nfsd`, `/etc/exports`, `exportfs -ra`, and the `/etc/fstab` mount line).
 - Not verified on live hardware: NFS server/client configuration commands (`exportfs`, `showmount`, `/etc/exports`, `/etc/fstab` mounts), NTP/timesyncd commands (`ntpdate`, `timedatectl show-timesync --all`), `nconnect` behaviour on live NAS fabrics, and multi-node parallel filesystem benchmark numbers (`untested here`).

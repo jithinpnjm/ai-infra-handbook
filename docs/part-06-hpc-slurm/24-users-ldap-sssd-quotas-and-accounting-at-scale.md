@@ -248,7 +248,7 @@ On legacy `nss_ldap`/`pam_ldap` clients (before SSSD), the book's recipe configu
 
 ### Loading the base entries and checking the directory
 
-A new OpenLDAP server is running but empty. The book fills it with an LDIF file, `/etc/openldap/ldap-init.ldif`, that creates the base entry and the `Manager` role. The names must match the `suffix` and `rootdn` you set earlier. Any name works; it does not have to match the server's DNS name.
+A new OpenLDAP server is running but empty. The book fills it with an LDIF file, `/etc/openldap/ldap-init.ldif`, that creates the base entry and the `Manager` role. The `dc` values and the `Manager` name must match the `suffix` and `rootdn` you set earlier. The directory name does not have to match the server's DNS name.
 
 ```text
 dn: dc=ldap,dc=server,dc=org

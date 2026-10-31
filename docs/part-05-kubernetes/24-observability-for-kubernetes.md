@@ -195,7 +195,7 @@ spec:
 
 The `alerting` block tells Prometheus where to send alerts. The `image` field sets the container image to run. The `ruleSelector` tells the operator which PrometheusRules apply to this server. Any PrometheusRule with the labels shown is applied here. The `serviceMonitorSelector` does the same for ServiceMonitors, which feed this server's scrape configuration.
 
-Being able to create many Prometheus servers lets platform operators split the load. Collecting and processing metrics costs compute, so one server per job of work can keep any single server manageable. This is also useful for tenants. A team that emits a large volume of metrics may need its own server in its namespace, and that cost can count against its resource budget. The trade-off is more work for dashboards, alerting, federation, and long-term storage. Many teams will want a simpler layer on top, but the option is worth knowing.
+Being able to create many Prometheus servers lets platform operators split the load. Processing metrics is compute-heavy. One server can collect the platform's metrics while others collect custom application metrics or node metrics. This is also useful for tenants. A team that emits a large volume of metrics may need its own server in its namespace, and that cost can count against its resource budget. The trade-off is more work for dashboards, alerting, federation, and long-term storage. Many teams will want a simpler layer on top, but the option is worth knowing.
 
 ### Reading a ServiceMonitor
 
@@ -499,6 +499,30 @@ Because Events live in the API, you could write automation that watches for spec
 **OpenTelemetry (OTel)** standardises telemetry: SDKs/auto-instrumentation produce traces/metrics/logs; the **OpenTelemetry Collector** (agent DaemonSet and/or gateway Deployment) receives (OTLP), processes (batch, memory limiter, attributes, tail sampling, k8sattributes enrichment), and exports to backends (Tempo, Jaeger, Prometheus remote write, Loki, cloud APIs). The **OpenTelemetry Operator** manages Collector instances and auto-instruments workloads via annotations (`instrumentation.opentelemetry.io/inject-python: "true"`).
 
 For AI services, traces show: gateway → auth → router → model server → tokenizer/KV-cache/GPU kernel spans, retrieval (vector DB) latency in RAG pipelines, tool calls in agent workflows; LLM-specific observability (OpenLLMetry, Langfuse, Arize Phoenix, LangSmith) adds prompt/response/token/cost spans. Propagate W3C `traceparent` through gateways and meshes; sample intelligently (head sampling for volume, tail sampling to keep errors and slow traces); avoid storing prompts/PII in spans without policy.
+
+### Tracing vocabulary
+
+Distributed tracing follows one request across several services. The OpenTracing specification gives the ecosystem a shared set of terms. Three of them matter most.
+
+- **Trace:** the whole journey of one end-user request through the services that handle it. A trace is made of spans.
+- **Span:** the work one service does for that request. The operations inside one workload's boundaries form a single span.
+- **Tag:** metadata attached to a span. Tags add context inside the trace and give you searchable indexes.
+
+When you visualize traces, you see each one in full. The view shows which components hurt performance most. It also shows where errors start and how they spread to other parts of the application.
+
+OpenTracing merged with OpenCensus to form OpenTelemetry. The book notes that OpenTelemetry support in Jaeger was still experimental when it was written. It still expects OpenTelemetry to become the de facto standard.
+
+### Tracing components
+
+A platform that offers tracing needs a few components in place. The models below apply to open source projects such as Zipkin and Jaeger. Other products that follow the OpenTracing standards often use the same models.
+
+- **Agent:** each component in an application outputs a span for every request. The agent is a server the application sends spans to. In Kubernetes it is usually a node agent on each machine, which receives all spans for workloads on that node. It forwards batched spans to a central collector.
+- **Collector:** processes the spans and stores them. It validates them, indexes them, and transforms them before they reach storage.
+- **Storage:** the supported databases vary by project. Cassandra and Elasticsearch are the usual choices. Tracing systems collect very large volumes, even with sampling. The database must search that data quickly to be useful.
+- **API:** exposes stored traces and spans to other workloads and to visualization layers.
+- **User interface:** the layer app developers use. It queries the API and shows the data in charts they can use to study their systems.
+
+Tracing only works if the application sends the data. Get buy-in from application teams early, because the best platform cannot trace what apps do not send.
 
 ## 6. Dashboards
 

@@ -549,6 +549,144 @@ Workload identity federation maps Kubernetes ServiceAccounts to cloud IAM identi
 
 Give each workload its own ServiceAccount, and grant it only the RBAC it needs.
 
+### Service Account tokens and TokenReview
+
+Every pod runs under a ServiceAccount, and the account gives a group of pods one identity. If no account is assigned, the pod gets the default ServiceAccount of its namespace. Each ServiceAccount has a Secret that holds a JSON Web Token (JWT). Unless you say otherwise, that token is mounted into each pod that uses the account. The pod can then call the Kubernetes API, or other services, with it. The book's example shows the account pointing at its token Secret:
+
+```yaml
+apiVersion: v1
+kind: ServiceAccount
+metadata:
+  name: default
+  namespace: default
+secrets:
+- name: default-token-mf9v2
+```
+
+The Secret holds the signed token and a CA certificate, plus annotations that name the account and its unique ID:
+
+```yaml
+apiVersion: v1
+data:
+  ca.crt: <.. SNIP ...>
+  namespace: ZGVmYXVsdA==
+  token: <.. SNIP ...>
+kind: Secret
+metadata:
+  annotations:
+    kubernetes.io/service-account.name: default
+    kubernetes.io/service-account.uid: 59aee446-b36e-420f-99eb-a68895084c98
+  name: default-token-mf9v2
+  namespace: default
+type: kubernetes.io/service-account-token
+```
+
+Set `serviceAccountName` in the pod spec to choose an account. The Secret's token is then mounted at `/var/run/secrets/kubernetes.io/serviceaccount/`. The application reads it and sends it to other services in the cluster. The receiving service should not trust the token blindly. It checks the token by calling the TokenReview API:
+
+```bash
+curl -X "POST" "https://<kubernetes API IP>:<kubernetes API Port>\
+/apis/authentication.k8s.io/v1/tokenreviews" \
+  -H 'Authorization: Bearer <token>' \
+  -H 'Content-Type: application/json; charset=utf-8' \
+  -d $'{
+  "kind": "TokenReview",
+  "apiVersion": "authentication.k8s.io/v1",
+  "spec": {
+    "token": "<token to verify>"
+  }
+}'
+```
+
+The API server replies with the token's metadata and whether it authenticated. A valid token returns something like this:
+
+```json
+{
+  "kind": "TokenReview",
+  "apiVersion": "authentication.k8s.io/v1",
+  "metadata": {
+    "creationTimestamp": null
+  },
+  "spec": {
+    "token": "<token to verify>"
+  },
+  "status": {
+    "authenticated": true,
+    "user": {
+      "username": "system:serviceaccount:default:default",
+      "uid": "4afdf4d0-46d2-11e9-8716-005056bf4b40",
+      "groups": [
+        "system:serviceaccounts",
+        "system:serviceaccounts:default",
+        "system:authenticated"
+      ]
+    }
+  }
+}
+```
+
+Service Account tokens have been part of Kubernetes since early on, and they fit the platform well. The operator keeps tight control, because a token stops working when its ServiceAccount or Secret is deleted. They are a weak identifier in three ways, though. First, a token is scoped to a ServiceAccount. It cannot prove anything finer, such as one pod or one container. Second, your application must call TokenReview through a custom component to verify a caller. Third, a token belongs to one cluster. Using a token from cluster A to identify callers in cluster B means exposing each cluster's TokenReview API and encoding extra cluster metadata. The book does not recommend that path for cross-cluster identity.
+
+Create a unique ServiceAccount for each workload that needs API access, so you can grant permissions precisely. If a workload never calls the API, set `automountServiceAccountToken: false` on its ServiceAccount. You can set the same field on the Pod. When both are set, the Pod field wins. Setting it on the namespace's default ServiceAccount is a sound baseline.
+
+### Projected service account tokens (PSAT)
+
+The book dates projected service account tokens to Kubernetes v1.12. They build on ordinary tokens and fix three weak points: no time to live (TTL), wide scope and long persistence. Before they work, the API server needs a few flags:
+
+```yaml
+spec:
+  containers:
+  - command:
+    - kube-apiserver
+    - --service-account-signing-key-file=/etc/kubernetes/pki/sa.key
+    - --service-account-key-file=/etc/kubernetes/pki/sa.pub
+    - --service-account-issuer=api
+    - --service-account-api-audiences=api
+    # Additional flags removed for brevity
+    image: k8s.gcr.io/kube-apiserver:v1.17.3
+```
+
+The flow for checking identity looks much like the SAT flow. The difference is how the pod gets its token. Instead of reading the automounted token, the pod reads a projected token mounted as a volume. You can set a TTL and a custom audience on that token:
+
+```yaml
+apiVersion: v1
+kind: Pod
+metadata:
+  name: test
+  labels:
+    app: test
+spec:
+  serviceAccountName: test
+  containers:
+  - name: test
+    image: ubuntu:bionic
+    command: ['sh', '-c', 'echo Hello Kubernetes! && sleep 3600']
+    volumeMounts:
+    - mountPath: /var/run/secrets/tokens
+      name: app-token
+  volumes:
+  - name: app-token
+    projected:
+      sources:
+      - serviceAccountToken:
+          audience: api
+          expirationSeconds: 600
+          path: app-token
+```
+
+The `audience` field stops a receiving application from reusing the token to pose as the caller. The audience should match the destination. Here the destination is the API server itself. A PSAT needs a dedicated ServiceAccount. Kubernetes does not mount PSATs for a namespace's default account.
+
+Receiving services still verify the token with TokenReview. With a PSAT, the review also checks that the TTL has not expired. It returns extra data about the calling pod, including its name and UID. That scope is tighter than an ordinary token, which only names the account:
+
+```json
+"extra": {
+  "authentication.kubernetes.io/pod-name": ["test"],
+  "authentication.kubernetes.io/pod-uid":
+  ["8b9bc1be-c71f-4551-aeb9-2759887cbde0"]
+}
+```
+
+The SAT and PSAT flows are nearly the same. The only real differences are the validity and granularity of the identity. The API server also checks the audience, and it rejects a token whose audience does not match its configuration. Projected tokens give you tight integration, configurable TTLs and scope down to individual pods. They also serve as building blocks for stronger patterns.
+
 ## 4. Authentication
 
 When a request reaches the API server, the first question is who is calling. The API server answers it with the methods below. Section 5.5 covers the basics.
@@ -564,6 +702,110 @@ Webhook token authentication hands the check to a cloud IAM authenticator, such 
 Humans should authenticate through OIDC SSO with MFA and short-lived tokens. Tools such as `kubelogin`, `kubectl oidc-login` or `kubectl --token` handle that, and the groups from the token map to the groups used by RBAC. Machines use ServiceAccount tokens or federated workload identities. Run `kubectl auth whoami` to see the identity the API server resolved.
 
 Give humans OIDC login with MFA, and keep machines on ServiceAccount tokens or workload identities.
+
+### Shared secrets: static token and password files
+
+A shared secret is a value that both the caller and the server hold. A database password is one example. Kubernetes offers two static options that use this model for API access. In the first, you give the API server a CSV file that maps usernames, and optionally groups, to static tokens. A client sends the token as a Bearer token in the `Authorization` header. In the second, the CSV maps usernames and optional groups to passwords. The client sends them base64-encoded in the HTTP Basic `Authorization` header.
+
+Kubernetes has no User or Group object. Those names exist only for identification in RBAC RoleBindings. The method that authenticates a caller decides who the user is. A static file can map a token to a name, a client certificate can carry the name in its CN, and an OAuth request can supply it as a field. The book sees that design as a strength, because it lets the cluster plug in different systems and hand the job to the tool built for it.
+
+The book does not recommend either static option. Its reasons are these:
+
+- The token and password files sit in plain text where the API server can read them. A compromised API server node is a bigger problem anyway. The real risk is the repository that holds the setup assets, because it must be secured, audited and kept current.
+- Neither the static tokens nor the username and password pairs expire. If one leaks, you must find the breach quickly, remove the credential and restart the API server.
+- Any change to these files needs an API server restart. One restart is simple, but many organizations now rebuild and redeploy instead of editing running machines. That makes a restart a heavier action.
+
+The shared secret model has one more problem, outside Kubernetes. An untrusted entity cannot authenticate to a secret store to get an identity in the first place. The book calls this the secure introduction problem, and it returns to it later.
+
+### Client certificates from the CSR flow
+
+The PKI model uses certificates and keys to identify users. kubeadm builds that PKI when it creates a cluster, and it gives you a kubeconfig, usually called `admin.conf`, that holds the `kubernetes-admin` user. That file is essentially the root key to the cluster. To see which user it logs in as, decode the `client-certificate-data` field and read it with `openssl`. The output shows the subject `O=system:masters, CN=kubernetes-admin`. The `CN` is the username. Any `O` (Organization) value becomes a group the user belongs to.
+
+To let other users get certificates, the controller manager needs a cluster signing certificate and key. You set `--cluster-signing-cert-file` and `--cluster-signing-key-file` to point at the cluster CA:
+
+```yaml
+spec:
+  containers:
+  - command:
+    - kube-controller-manager
+    - --cluster-signing-cert-file=/etc/kubernetes/pki/ca.crt
+    - --cluster-signing-key-file=/etc/kubernetes/pki/ca.key
+    # Additional flags removed for brevity
+    image: k8s.gcr.io/kube-controller-manager:v1.17.3
+```
+
+Any entity with the right RBAC can submit a CertificateSigningRequest (CSR) object to the API. If users should submit their own requests, you need a path for them. Some teams grant the `system:anonymous` user or the `system:unauthenticated` group permission to submit and read CSRs. That is risky. Never let unauthenticated users reach the API server in general. A safer pattern is a thin self-service portal. The portal runs with the permissions it needs, users log in to it with SSO, and it starts the CSR flow for them.
+
+The user can create the private key locally, or the portal can generate it for them. The CSR carries the metadata to encode in the certificate, including the username and any groups. The book creates a request for a user named `john`:
+
+```bash
+$ openssl req -new -key john.key -out john.csr -subj "/CN=john"
+$ openssl req -in john.csr -text
+Certificate Request:
+    Data:
+        Version: 0 (0x0)
+        Subject: CN=john
+        Subject Public Key Info:
+            Public Key Algorithm: rsaEncryption
+                Public-Key: (1024 bit)
+```
+
+The portal then submits the request as a CertificateSigningRequest object, usually through the API rather than by hand:
+
+```yaml
+apiVersion: certificates.k8s.io/v1beta1
+kind: CertificateSigningRequest
+metadata:
+  name: john
+spec:
+  request: $(cat john.csr | base64 | tr -d '\n')
+  usages:
+  - client auth
+```
+
+The object starts in a `pending` state. It records the base64-encoded request and the requestor. For an automated flow using a pod's ServiceAccount token, the requestor is that ServiceAccount. A portal shows the account it runs under. The request stays unissued until an administrator, or an automated check, approves it. Approval needs care, because it issues a certificate that proves identity. The check must confirm that the submitter is who they claim to be, either with extra identifying metadata or an out-of-band process.
+
+After approval, the portal retrieves the certificate from the CSR `status` field. The user logs back in to pick it up. The book's approved request looks like this:
+
+```yaml
+apiVersion: certificates.k8s.io/v1beta1
+kind: CertificateSigningRequest
+metadata:
+  name: my-app
+status:
+  certificate: <.. SNIP ...>
+  conditions:
+  - lastUpdateTime: "2020-03-04T15:45:30Z"
+    message: This CSR was approved by kubectl certificate approve.
+    reason: KubectlApprove
+    type: Approved
+```
+
+The decoded certificate carries the identity in its `CN` field, here `john`. You then build a kubeconfig that pairs your private key with the approved certificate in the `client-certificate-data` field. That kubeconfig lets you talk to the API server as `john`.
+
+The book has seen teams automate this, with a system that issues certificates from SSO logins. It does not recommend this as the main authentication method, for several reasons:
+
+- Certificates from the CSR flow cannot be revoked before they expire. Kubernetes has no certificate revocation list or OCSP stapling support.
+- You must run and maintain extra PKI, plus a component that issues certificates from external logins.
+- Certificates should have short lifetimes, so that a leaked key-and-certificate pair does not last long. Short lifetimes cause high churn, and new certificates must reach users regularly.
+- You must verify who is asking for each certificate. Automation can do that with external metadata. Without it, out-of-band checks are too slow, especially with short lifetimes.
+- Each certificate works in one cluster only. Teams often run 10 to 100 clusters, so unique credentials per cluster multiply the work and degrade the user experience.
+
+Keep `admin.conf` in a secure place even when you use other login methods. If those methods fail, it is the break-glass path into the cluster.
+
+### OIDC for robot users and kubeconfig generation
+
+OIDC is the book's preferred choice for humans. Most organizations already run an SSO system, such as Okta, Auth0, Google or an internal LDAP or AD directory. Using it gives one place to manage accounts and remove access. It also lets users reach downstream applications without exposing their credentials to them. Many clusters can share one identity provider, which reduces differences between them.
+
+Kubernetes accepts OIDC directly, and configuring it is straightforward when your provider exposes the standard endpoints. Some cases need more tooling. If you have several identity providers, you need an OIDC aggregator, because Kubernetes supports only one provider in its configuration. The book has used Dex, a sandbox project of the Cloud Native Computing Foundation, many times. Keycloak and UAA offer similar features. Authentication sits on the critical path to the cluster, so optimize for availability and stability. Each of these tools is one more component to configure, update and secure.
+
+OIDC gives you a token, not a kubeconfig. Someone has to turn that token into a usable kubeconfig. The book's team built a web UI called Gangway for this. It logs in through an OIDC provider and generates a valid kubeconfig from the returned token, with the right endpoints and certificates.
+
+OIDC also has a limit. The specification requires users to log in through the provider's own web page, so the credentials never reach the consuming application. Robot users, such as CI/CD systems, cannot answer a web login challenge. The book has seen three answers:
+
+- If robot users are tied to centrally managed accounts, write a `kubectl` authentication plug-in. It logs in to the external system and receives a token. Kubernetes then verifies that token through the webhook token authenticator. This takes custom code for the token generator and webhook server.
+- For robot accounts that need no central management, use certificate-based authentication. You must then manage certificate issuance and rotation yourself, but no custom component is needed.
+- The simplest option is a ServiceAccount for the tool. Use the token it generates. In-cluster tools receive that credential mounted in their pod. Tools outside the cluster need the token copied to a secure location they can read. ServiceAccounts are covered in more detail above.
 
 ## 5. RBAC
 
@@ -712,6 +954,10 @@ kubectl create configmap my-config --from-literal=test=test
 kubectl --as=cluster-admin create configmap my-config --from-literal=test=test
 # configmap/my-config created
 ```
+
+Kubernetes has no group object. The `ops-team` group is a set of attributes that the identity carries, such as an x509 certificate field or an OIDC claim. Because of that, the three steps above work with whatever identity method you chose. Give every team the same shape: a group, a read-only view role, and a separate admin user that only members can impersonate. This removes many costly mistakes. Impersonation also shows up in the audit log. You can see the original user log in, impersonate `cluster-admin`, and then act. That gives you a trail of who actually did what.
+
+Impersonation needs its own permission. An impersonated user is denied when the caller lacks the `impersonate` verb on users, groups or service accounts. The impersonation pattern resembles `sudo` on Linux. Users see everything by default, and they must elevate on purpose to write. That deliberate step cuts the chance of an accident from the wrong kubeconfig.
 
 ### Testing and auditing RBAC
 
@@ -1007,6 +1253,7 @@ Use one of three standard patterns:
 - **Sources read in full:**
   - `kubernetes-up-and-running-3rd-edition` — Brendan Burns, Joe Beda, Kelsey Hightower & Lachlan Evenson, *Kubernetes: Up and Running*, 3rd ed., **Chapter 13: ConfigMaps and Secrets** (read in full: ConfigMaps, `kuard-config` Pod consuming env vars, `$(EXTRA_PARAM)` CLI substitution, and volume mounts, Secrets, `kuard-tls`, key naming constraints `Table 13-1`, and live updates via `create --dry-run -o yaml | replace`) and **Chapter 14: Role-Based Access Control for Kubernetes** (read in full: identity and auth, `Role`/`ClusterRole` and `RoleBinding`/`ClusterRoleBinding`, built-in roles and `rbac.authorization.kubernetes.io/autoupdate: "false"`, `kubectl auth can-i --subresource`, `kubectl auth reconcile`, and ClusterRole aggregation).
   - `production-kubernetes` — Josh Rosso, Rich Lander, Alexander Brand & John Harris, *Production Kubernetes*, **Chapter 7: Secret Management** (read in full: defense in depth, etcd threat model, `EncryptionConfiguration` with `secretbox` and `kms` providers and safe 2-key rotation, `tmpfs` secret mounts, Sealed Secrets, HashiCorp Vault `TokenReview` Kubernetes auth, Vault Agent Injector `MutatingWebhookConfiguration` and Go template annotations, and `secrets-store-csi-driver` `SecretProviderClass`) and **Chapter 10: Identity** (read in full: OIDC authentication and RBAC `cluster-admin-impersonator` `sudo`-style privilege elevation).
+- `production-kubernetes` — Josh Rosso, Rich Lander, Alexander Brand & John Harris, *Production Kubernetes*, **Chapter 10: Identity** (read for the shared secret and static token files, the CSR client certificate flow with `CertificateSigningRequest`, OIDC with Dex and Gangway, and the Service Account token and PSAT sections).
 - **Run here:** `python3 code/part05/rbac_secrets_validator_lab.py` (3 passed, 0 failed).
 - **Explicitly labelled inferences:** The `validate_configmap_or_secret_key`, `simulate_etcd_encryption_key_rotation`, and `evaluate_rbac_and_audit_escalations` models in `code/part05/rbac_secrets_validator.py` and the `trainer-config`, `hf-token`, `creds` projected volume, and `trainer-runner` RBAC manifests are the author's constructions synthesizing `KUR` Chapters 13 & 14 and `PK` Chapters 7 & 10 (plus original study items 21, 22, 23, 24, 25, 26, 27, 28, 29, 30, 31, 32, 33, 34, 35, 36, 37, 38, 39, and 40).
 - **Not verified on live hardware:** Live `kubectl`, `etcdctl`, `vault`, and `kubeseal` executions (`~1 MiB`, `0444`, `0400`, `30 days`, `vault:1.3.2`, `ttl=20m`, `expirationSeconds: 3600`, `1.22+` / `1.24`, `401`) are marked (`untested here`) where not executed by `rbac_secrets_validator_lab.py`.

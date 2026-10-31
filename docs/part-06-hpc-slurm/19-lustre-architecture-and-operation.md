@@ -147,6 +147,36 @@ Recommended OSS total RAM = 2 GB + 1 GB per OST (plus extra RAM for OS/network b
 
 Sizing rules of thumb (common practice, verify with vendor guides): MDT on fast flash (NVMe, mirrored) because metadata is small random I/O; inode count chosen at format time (ldiskfs `bytes-per-inode`) for the expected file count; OSTs sized for rebuild time (RAID/ZFS groups of 8+2 on 8-12 TB disks are typical for HDD; for NVMe systems erasure-coded or ZFS vdevs); several OSTs per OSS to use all CPUs and NICs; OSS network bandwidth at least the sum of its OST bandwidth; client network matched to OSS network (400 Gb/s IB on GPU nodes is common).
 
+### Non-HA install order from the book
+
+The book's simpler path, without failover, follows a fixed order. Each step depends on the one before it, so keep the sequence.
+
+1. Install the `lustre` package, or a similar one, on all servers and clients.
+2. On every server and client, write the LNET setup in a `lustre.conf` file under `/etc/modprobe.d`, for example `options lnet networks="o2ib0(ib0),tcp0(eth2)"`.
+3. Load the Lustre module on all servers and clients.
+4. On the MDS, create the combined MGS and MDT volume and mount it:
+
+   ```bash
+   mkfs.lustre --mdt --mgs --fsname=large-fs /dev/sdX
+   mount -t lustre /dev/sdX /mnt/mdt
+   ```
+
+5. On every OSS, create as many OSTs as you need, then mount each one. The book's example uses `--index=0` and `mds.your.org@tcp0` as the MGS address:
+
+   ```bash
+   mkfs.lustre --ost --fsname=large-fs --index=0 \
+     --mgsnode=mds.your.org@tcp0 /dev/sdZ
+   mount -t lustre /dev/sdZ /mnt/ost0
+   ```
+
+6. After the OSS nodes are ready, mount the file system on each client, using your MGS address:
+
+   ```bash
+   mount -t lustre mgsnode:/large-fs /mnt/lustre/
+   ```
+
+The `--index` value must be unique for each target of the same type, so use a new number for each extra OST.
+
 ## 3. Striping
 
 ### The raid0 layout
@@ -484,4 +514,5 @@ When 1,000 ranks run `import torch, transformers`, each rank issues thousands of
 - Command semantics and defaults: Lustre manual pages `lfs-setstripe(1)`, `lfs-getstripe(1)`, `lfs-migrate(1)`, `lfs-setquota(1)`, `lfs-df(1)`, `lfs-project(1)`, `mkfs.lustre(8)`, `lctl(8)`, `lustre(7)` from `lustre/lustre-release` (commit `6325870`, development tree).
 - Run here: `code/part06/lustre_stripe.py` and `python3 code/part06/lustre_stripe_lab.py` (3 passed, 0 failed).
 - Explicitly labelled inferences: `oss_ram_sizing_mb` in `code/part06/lustre_stripe_lab.py` (`1030.0 MB` per OST at 20 service threads and `10 GB` for an 8-OST OSS) is a deterministic calculation from `SCL` Chapter 9's formulas.
+- Book source (`supercomputers-for-linux-sysadmins-managing-modern-hpc-clusters-and-supercomputers-from-software-to-hardware`, Sergey Zhumatiy, *Supercomputers for Linux SysAdmins*), **Chapter 28: "28. One-Two-Three Instructions"**: the "Installing Lustre (No HA)" steps (`lustre.conf`, module load, MGS/MDT, OST, and client mount).
 - Not verified on live hardware: `mkfs.lustre`, `mount -t lustre`, `lnetctl`, `lctl`, `lfs` commands, tunable names, DNE default directory layout syntax, pool commands, recovery window values, sizing rules of thumb, and managed-service details (`untested here`).

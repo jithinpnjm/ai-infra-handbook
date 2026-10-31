@@ -64,7 +64,7 @@ The enroot README describes itself as a "simple, yet powerful tool to turn tradi
 
 ### Where Docker runs into trouble in HPC
 
-Docker is the most popular container tool, but it has many limits on a cluster. By default it needs a special service that runs with root privileges. It does not let jobs use InfiniBand and GPUs directly, and it integrates badly with job managers. The book's view is that in 2025 you almost cannot use Docker directly in HPC. Workarounds exist for some of these issues. Other technologies already run containers, and even prebuilt Docker images, on clusters.
+Docker is the most popular container technology, but it has many limitations on a cluster. By default it needs a special service that runs with root privileges. It does not let jobs use InfiniBand and GPUs directly, and it integrates badly with job managers. The book's view is that in 2025 you almost cannot use Docker directly in HPC. Unfortunately, there are ways to overcome some of these issues. Other technologies already run containers, and even prebuilt Docker images, on clusters.
 
 ## 2. enroot
 
@@ -123,9 +123,9 @@ Pyxis is a **SPANK plugin** (a Slurm extension point for adding command-line opt
 
 ### Why enroot and pyxis come as a pair
 
-Enroot is a lightweight container tool. It does not need Docker or another container engine installed. When you run a container with enroot, it extracts the squashfs image into the local file system. Then it runs the application with cgroups, namespaces and `chroot` set up around it.
+Enroot is a lightweight container implementation. It does not need Docker or another container engine installed. When you run a container with enroot, it extracts the squashfs image into the local file system. Then it runs the application with cgroups, namespaces and `chroot` set up around it.
 
-Pyxis is a complementary Slurm plugin. It adds useful flags to `srun` and runs the container through enroot for you, so you do not call enroot yourself. Both projects come from NVIDIA, so only NVIDIA GPUs are well managed when you use them. The book calls this pair easy to use, with minimal overhead compared with the other options.
+Pyxis is a complementary Slurm plugin. It adds useful flags to `srun` and runs the container through enroot for you, so you do not call enroot yourself. Both projects come from NVIDIA, so only NVIDIA GPUs are well managed when you use them. The book calls this technology really easy to use. It requires minimum overhead compared with the other options.
 
 Options (from the pyxis README text):
 
@@ -181,9 +181,9 @@ Use `srun --mpi=pmix` with a container whose MPI is PMIx-aware and compatible wi
 
 ### Why caching matters at job start
 
-Each process downloads its container before it starts, then unpacks or converts it. That takes time. It also downloads the same image many times, often at the same moment, which the book calls inefficient. Its advice has three parts. First, encourage users to load containers onto the shared file system and reuse them. Second, use the caching options that Charliecloud and enroot provide. Third, run a caching proxy, such as the docker-registry-proxy project.
+Each process downloads its container before it starts, then prepares it by unpacking or converting it. That takes time. It also downloads the same image many times, often at the same moment, which the book calls inefficient. Its advice has three parts. First, stimulate your users to load containers onto the shared file system and reuse them. Second, use the caching options that Charliecloud and enroot give you. Third, run a caching proxy, such as the docker-registry-proxy project.
 
-A plain proxy is a poor choice for this. Registries often require authorization, and you should not cache image manifests for long.
+A regular proxy may not be a good choice for this. Image registries frequently require authorization, and you do not want to cache image manifests for a long time.
 
 - **Sources**: NGC (`nvcr.io#nvidia/...`, requires an API key for some images), Docker Hub, GitHub Container Registry, private registries. Build images from NGC bases with a normal Docker/Podman/Buildah build **outside** the cluster, push to a registry, then import into squashfs.
 - **Credentials**: enroot reads registry credentials from `$ENROOT_CONFIG_PATH/.credentials` in **netrc format**, e.g. `machine nvcr.io login $oauthtoken password <NGC API key>` (the user name `$oauthtoken` is the NGC convention). Protect the file (mode 600). Do not put keys in job scripts.

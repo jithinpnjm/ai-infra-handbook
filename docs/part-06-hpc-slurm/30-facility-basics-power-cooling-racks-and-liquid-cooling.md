@@ -178,6 +178,23 @@ UPSMODE disable                 # disable | share
 | `pcnet` | `ipaddr:username:passphrase` | APC PowerChute Network Shutdown protocol over IP |
 | `snmp` | `hostname:port:vendor:community` | SNMP network connection (UPS must have SNMP enabled) |
 
+The rest of the file controls logging and the UPS's own memory. `STATTIME` sets how often status records are written, and `0` blocks them. `DATATIME` does the same for log entries. `LOGSTATS on` writes a very large volume, so the book leaves it off. The book's example also shows the settings that `apctest` writes into the UPS EEPROM. These lines are commented out in the example, so they show the available options:
+
+```text
+UPSNAME UPS_3       # UPS name, maximum 8 characters
+BATTDATE 02/04/08   # date the batteries were installed
+#SENSITIVITY M      # SENSITIVITY H M L (default = H): voltage measurement sensitivity
+WAKEUP 60           # delayed turn-on after voltage returns: 000 060 180 300 (default = 0)
+SLEEP 180           # standby time before the UPS shuts down: 020 180 300 600 (default = 20)
+LOTRANSFER 208      # minimum voltage to switch to batteries
+HITRANSFER 253      # maximum voltage to switch to batteries
+#RETURNCHARGE 15    # battery charge percent ready for operation: 00 15 50 90 (default = 15)
+#BEEPSTATE T        # alarm delay: 0 = none, T = +30 seconds, L = low level, N = never (default = 0)
+LOWBATT 2           # low-level alarm, in minutes of battery: 02 05 07 10 (default = 02)
+OUTPUTVOLTS 230     # output voltage on battery; depends on the UPS model
+SELFTEST 336        # hours between self-tests: 336 = 2 weeks, 168 = 1 week, ON = at power up
+```
+
 #### Staged cluster shutdown scripts (`onbattery`, `offbattery`, and `haltall`)
 
 While `/etc/apcupsd/apccontrol` handles standard `doshutdown` events when `BATTERYLEVEL` or `MINUTES` trips, shutting down an entire cluster takes longer than a single server and benefits from shedding idle nodes early. In the book's Chapter 28 recipe, `/etc/apcupsd/onbattery` emails the administrator (`apcaccess status`) and launches `/etc/apcupsd/haltall` in the background (`nohup /etc/apcupsd/haltall &`), while `/etc/apcupsd/offbattery` aborts an in-progress shutdown if utility power returns (`pkill -9 haltall`) `(untested here)`:
@@ -244,6 +261,8 @@ sleep 60
 /sbin/poweroff
 ```
 
+The `offbattery` script is the undo step. When power returns during a shutdown, it mails the administrator that the power is back, and it sends the same message to all terminals with `wall -a`. It also writes the time to `/etc/apcupsd/halt.log`, then stops the run with `pkill -9 haltall`. The book notes that a real `haltall` can be much larger, because it may shut down several clusters and workstations.
+
 #### APC SNMP ambient and internal temperature monitoring (`ambtemp.sh` and `upstemp`)
 
 Many APC UPS management cards expose both an internal UPS temperature sensor and an external room probe over SNMP. In Chapter 28, the book pairs `ambtemp.sh` (which queries the APC enterprise MIB OIDs via `snmpget`) with a daemon loop `upstemp` that polls every 10 minutes (`sleep 600`), warns `root` by mail and terminal `write` above `25.0` °C (`TMAXW=25.0`), and runs an immediate `haltall` emergency shutdown above `30.0` °C (`TMAXSH=30.0`) `(untested here)`:
@@ -266,6 +285,8 @@ function sendcmd(){
 tempamb=$(sendcmd ups_3 $ambtempcmd)
 echo $tempamb
 ```
+
+The temperature monitor works in two steps. Above 25 °C it warns the administrator by mail and on the terminal. Above 30 °C it starts `haltall`, but this emergency version powers off all equipment at once rather than in stages. The book also notes that the warning can go to several addresses or to all terminals.
 
 The book cautions that these scripts are examples and must be adapted for your storage servers, scheduler (Slurm `scontrol` instead of Torque `qstop`/`qdel`), power connections, and UPS load distribution.
 

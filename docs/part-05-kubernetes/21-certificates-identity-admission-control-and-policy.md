@@ -118,6 +118,16 @@ Note: Kubernetes cannot revoke client certificates (no CRL/OCSP support in the A
 - **Webhook token authentication** (cloud IAM authenticators), **authenticating proxy** (front proxy for dashboards; trust headers only from the proxy CA), **anonymous auth** disabled in production (`--anonymous-auth=false`; some health endpoints require care).
 - **Audit identity**: user.username, groups, impersonatedUser in audit events; ensure usernames are unique and not spoofable (prefixing avoids collisions between IdP names and system users).
 
+### Before you build workload identity
+
+Workload identity is an advanced topic. Before you build it, write down what your workloads actually need. Many organizations do not need workload-to-workload identity at first. Shared secrets are the simplest model, and teams understand them well. They also work across platforms. But a shared secret needs a fixed life span and rotation, and it must be redistributed to both the client and the server. Vault can help with the re-syncing. It still has the secure introduction problem: how do you seed the first secret safely, before any identity exists? An attacker who compromises that first step breaks the guarantee of unique identity.
+
+### Platform-mediated identity on AWS
+
+Sometimes the platform can decide who a workload is, without the workload asserting anything. If every workload runs on one homogeneous platform, the platform reads metadata about each workload and issues it a credential. On AWS, an EC2 instance asks the EC2 metadata API for credentials. AWS inspects the instance's properties and returns role-specific credentials. The instance then uses them to reach a service such as an S3 bucket. The platform must still authorize the request. Authentication alone does not grant permissions.
+
+The book focuses on AWS because it is the vendor it most often sees in the field. The node-level model works well for one workload per node. It breaks down when many containers and multitenant applications share a node. That gap is why the tools below exist. The book strongly advises against `kube2iam`. It covers `kube2iam` because teams keep running into it, and it wants you to know its limits before you adopt it.
+
 ### Cloud metadata proxies (`kube2iam` / `kiam`) versus `IRSA`
 
 Before projected ServiceAccount tokens (`PSAT`s) and cloud OIDC federation were available, clusters on AWS used node-level metadata proxies such as `kube2iam` and `kiam` to map `iam.amazonaws.com/role: <role-arn>` Pod annotations to IAM roles. As *Production Kubernetes* (Chapter 10) explains, both proxy approaches have architectural security flaws compared with **IAM Roles for Service Accounts (`IRSA`)**:
@@ -125,6 +135,44 @@ Before projected ServiceAccount tokens (`PSAT`s) and cloud OIDC federation were 
 - **`kube2iam`** runs as a `DaemonSet` on every worker node and inserts an `iptables` rule redirecting traffic destined for the EC2 metadata API to the local `kube2iam` proxy. Every worker node's IAM instance profile must be allowed to assume the superset of all IAM roles needed by any Pod in the cluster, so a container breakout on any worker compromises every role.
 - **`kiam`** splits the proxy into a node `DaemonSet` agent and a `kiam` server placed on dedicated control-plane or server nodes so that only the server nodes hold IAM role-assumption permissions. However, if a user can submit a Pod with `spec.nodeName` already populated (bypassing the scheduler and landing directly on a server node, or starting and reaching the metadata endpoint before the proxy's IP-to-Pod cache/guards prevent it), the Pod can gain unrestricted access to the EC2 metadata API unless an admission webhook blocks pre-populated `spec.nodeName` fields.
 - **`IRSA`** eliminates metadata proxying entirely: a mutating webhook injects a projected ServiceAccount token (`audience: sts.amazonaws.com`, `expirationSeconds: 86400` mounted at `/var/run/secrets/eks.amazonaws.com/serviceaccount/token` in the book's example) along with `AWS_ROLE_ARN` and `AWS_WEB_IDENTITY_TOKEN_FILE` environment variables. The AWS SDK calls `sts:AssumeRoleWithWebIdentity` directly with that short-lived JWT, which AWS IAM verifies against the cluster's public OIDC `.well-known` discovery endpoint and JWKS keys.
+
+### IRSA in practice
+
+`IRSA` keeps the same experience as `kiam` and `kube2iam`. A user annotates a pod with the IAM role it should assume. The implementation is very different, and it removes the security concerns of the earlier tools. AWS IAM can federate identity to a third-party OIDC provider, here the Kubernetes API server. Kubernetes can already create and sign short-lived tokens for each pod, as the PSAT section showed. The AWS SDK's credential provider calls `sts:AssumeRoleWithWebIdentity` and passes that PSAT. A webhook injects the role and token path as environment variables, based on `serviceAccountName`:
+
+```yaml
+apiVersion: apps/v1
+kind: Pod
+metadata:
+  name: myapp
+spec:
+  serviceAccountName: my-serviceaccount
+  containers:
+  - name: myapp
+    image: myapp:1.2
+    env:
+    - name: AWS_ROLE_ARN
+      value: "arn:aws:iam::123456789012:role/\
+eksctl-irptest-addon-iamsa-default-my-\
+serviceaccount-Role1-UCGG6NDYZ3UE"
+    - name: AWS_WEB_IDENTITY_TOKEN_FILE
+      value: /var/run/secrets/eks.amazonaws.com/serviceaccount/token
+    volumeMounts:
+    - mountPath: /var/run/secrets/eks.amazonaws.com/serviceaccount
+      name: aws-iam-token
+      readOnly: true
+  volumes:
+  - name: aws-iam-token
+    projected:
+      defaultMode: 420
+      sources:
+      - serviceAccountToken:
+          audience: sts.amazonaws.com
+          expirationSeconds: 86400
+          path: token
+```
+
+Kubernetes does not expose a `.well-known` OIDC endpoint natively. You must publish the cluster's discovery information at a public location, such as a static S3 bucket. Then AWS IAM can verify the token with Kubernetes' public service account signing key. Once verified, IAM exchanges the PSAT for the role's credentials. The setup is clunky, but its security model is the best of the pod-role approaches. Mapping service accounts to IAM roles is also easy to understand. The main downside is that IRSA is harder to deploy outside Amazon Elastic Kubernetes Service (EKS). Newer Kubernetes features, such as exposing the cluster itself as an OIDC provider, reduce that work.
 
 ### Cross-platform workload identity with `SPIFFE` and `SPIRE`
 
@@ -154,6 +202,55 @@ When workloads span multiple clouds, bare-metal GPU clusters, and virtual machin
 ```
 
 Once matched, `spire-agent` returns the workload's X.509-SVID or JWT-SVID (or streams certificates directly to an Envoy sidecar over Envoy's Secret Discovery Service, `SDS`, API). Note that because the Kubernetes workload attestor queries the `kubelet` (which validates tokens via `TokenReview`), API server downtime can interrupt attestation of newly started Pods; the `--authentication-token-webhook-cache-ttl` `kubelet` flag controls how long `TokenReview` responses are cached.
+
+### SPIRE integration points and trade-offs
+
+Once SPIRE issues identities, applications still need a way to use them. The right route depends on how tightly you accept coupling to the platform, and how much control users have over the environment.
+
+**Direct application access.** SPIRE provides SDKs for Go, C and Java. They wrap existing HTTP libraries and obtain and verify identities natively. This Go example calls a `service-b` Kubernetes Service and expects a specific SPIFFE ID in its x509-SVID:
+
+```go
+err := os.Setenv("SPIFFE_ENDPOINT_SOCKET",
+    "unix:///run/spire/sockets/agent.sock")
+conn, err := spiffe.DialTLS(ctx, "tcp", "service-b",
+    spiffe.ExpectPeer("spiffe://production-trust-domain/service-b"))
+if err != nil {
+    log.Fatalf("Unable to create TLS connection: %v", err)
+}
+```
+
+The SPIRE agent also exposes a gRPC API for languages without an SDK. The book does not recommend direct integration for end-user applications. It ties the app to the platform, requires mounting the agent's Unix socket into the pod, and is hard to extend. Direct use fits platform teams building tooling that wraps or extends SPIRE.
+
+**Sidecar proxy.** SPIRE supports the Envoy SDS API, so it can publish certificates to an Envoy proxy. Envoy uses the SVID for TLS and the trust bundle to verify incoming connections. You can restrict which SPIFFE IDs may connect in two ways. You can list `verify_subject_alt_name` values in the Envoy configuration. Or you can use Envoy's External Authorization API to delegate the decision to Open Policy Agent (OPA). This Rego policy allows a `GET` on `/api` only from the frontend's SPIFFE ID:
+
+```rego
+package envoy.authz
+import input.attributes.request.http as http_request
+import input.attributes.source.address as source_address
+default allow = false
+allow {
+  http_request.path == "/api"
+  http_request.method == "GET"
+  svc_spiffe_id == "spiffe://production-trust-domain/frontend"
+}
+svc_spiffe_id = client_id {
+  [_, _, uri_type_san] := split(
+    http_request.headers["x-forwarded-client-cert"], ";")
+  [_, client_id] := split(uri_type_san, "=")
+}
+```
+
+Envoy checks the caller's certificate against the SPIRE trust bundle, then asks OPA. The policy reads the SVID and allows the request only if its ID matches. OPA then sits in the critical request path, so account for that in the design.
+
+**Service mesh.** Istio's CA creates SVIDs for all service accounts. The format is `spiffe://cluster.local/ns/<namespace>/sa/<service_account>`, so mesh services can use SPIFFE-aware endpoints. Service meshes are outside this chapter's scope. Most of them build on the methods and tools covered here.
+
+**Other integrations.** SPIRE can write SVIDs and trust bundles to a filesystem, so applications can reload when files change. That keeps applications fairly agnostic of SPIRE, but certificates on disk can be stolen. An Nginx module can stream certificates from SPIRE, and custom Nginx modules can limit which SPIFFE IDs connect. For secrets, SPIRE can solve the secure introduction problem for HashiCorp Vault. Vault can federate OIDC with SPIRE, and Vault roles can bind to SPIFFE IDs. A workload then trades its JWT SVID for a Vault role. The same federation idea works with AWS. The downside there is that SPIRE must be publicly reachable, so AWS can fetch the JSON Web Key Set (JWKS) it needs to validate tokens.
+
+SPIFFE and SPIRE have real strengths. They rely on widely supported x509 and JWT standards. They also scope identity down to a single pod, by combining PSATs with SPIRE selectors. That helps when sidecar containers in one pod need different levels of access. The approach is also the most labor-intensive. It takes expertise and one more component to run. Each workload may need registering, which can be automated. Keep in mind that the kubelet's TokenReview cache affects permission changes. The `--authentication-token-webhook-cache-ttl` flag controls that cache. A large value slows down permission revocation, so do not set it high.
+
+### Choosing an identity model
+
+User identity usually comes from an SSO provider, so OIDC is the natural path. Kubernetes can sit outside the main identity strategy, but integrating it directly gives better visibility and control. That matters most across several clusters. Workload identity is often an afterthought beyond default ServiceAccounts. That can be fine early on. Robust in-cluster and cross-platform workload identity is complex, though, and needs deeper knowledge of external tools. Once your platform is mature, these patterns add defense in depth if a breach happens.
 
 ## 3. Admission control
 

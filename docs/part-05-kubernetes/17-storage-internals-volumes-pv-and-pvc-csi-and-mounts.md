@@ -406,7 +406,7 @@ spec:
     - topology.ebs.csi.aws.com/zone
 ```
 
-The `allocatable.count` is the most volumes that node can take. Once a node is picked for a workload, the topology value is passed in the `CreateVolumeRequest`, so the driver knows where to create the volume. The `topologyKeys` field matters when nodes cannot all reach the same storage. In AWS, a Pod scheduled in one availability zone needs its volume created in that same zone.
+The `allocatable.count` is the most volumes that node can take. Once a node is picked for a workload, that node's details go into the `CreateVolumeRequest`, so the driver knows where to create the volume. The `topologyKeys` field matters when nodes cannot all reach the same storage. In AWS, a Pod scheduled in one availability zone needs its volume created in that same zone.
 
 ## 4. Mount mechanics (what the kernel does)
 
