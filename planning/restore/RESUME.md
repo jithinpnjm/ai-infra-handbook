@@ -54,3 +54,5 @@ The session hit the token limit during the autonomous run. Resume with these ste
 - Always re-run prep_voice.py right before launching a chapter so chapter_old.md is re-snapshotted from the restored text.
 Update: Part 5 voice pass complete (5.21-5.35 committed). Part 6.1-6.10 prepped earlier; 6.11-6.20 prepped.
 Update: Part 6 6.1-6.20 voice done+committed. PAUSED at user request (Nemotron quality trial on 6.31). Next: 6.21-6.30 (prepped 6.21-6.30 already, re-run prep_voice before launch), then Parts 7-15. mdx_guard misses '<->' outside code: grep for it.
+
+Update (Nov 1): 5-hour limit killed 20 agents (6.21-6.31, 7.1-7.9); chapter files untouched (join-only writes), partial section work stays in scratchpad/v/<P.C>/new. User decision: SKIP Parts 7-10 for now and start Part 11. The Part 11 launch (11.1-11.20) then died on an expired OAuth login (needs /login). Relaunch 11.1-11.20 (re-run prep_voice first), then 11.21-11.30. Still pending later: 6.21-6.31, 7-10, 12-15, polish backlog. Nemotron trial dropped (invented facts, light rewrite).
