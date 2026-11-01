@@ -24,7 +24,9 @@ lab_venue: "Nebius GPU"
 
 ## Why this matters for AI infrastructure
 
-A distributed AI cluster that completes a training job or returns HTTP responses from an inference endpoint is not necessarily operating near its hardware speed of light. When a cluster scales poorly or suffers from storage and network stalls, almost half of the rented accelerators sit idle. They spend their time waiting on collectives or data loaders. Over a multi-week training run, those idle accelerators burn tens of thousands of dollars in wasted cloud compute. On the inference side, evaluating serving engines with fixed synthetic prompts masks real production traffic. Variable prompt lengths and long-context requests push tail latency far above your service-level agreement.
+Picture a distributed AI cluster that finishes a training job and returns answers from an inference endpoint. It may still run well below what its hardware can do. When a cluster scales poorly or suffers storage and network stalls, almost half of the rented accelerators sit idle. They spend their time waiting on collectives or data loaders. Over a multi-week training run, those idle accelerators burn tens of thousands of dollars in wasted cloud compute.
+
+Inference has its own trap. Evaluating serving engines with fixed synthetic prompts hides the real production traffic you will face. Variable prompt lengths and long-context requests push tail latency far above your service-level agreement.
 
 ```text
 Quantitative impact of unbenchmarked training and inference clusters:
@@ -40,23 +42,23 @@ Quantitative impact of unbenchmarked training and inference clusters:
   and unoptimized tail latency spikes to 500 ms P99 (2.5x the 200 ms P99 SLA)
 ```
 
-You cannot diagnose a degraded optical transceiver, a PCIe root-complex downtrain, or a missing peer-memory kernel module from inside a full PyTorch model script. High-level frameworks interleave data loading, autograd kernel launches, memory caching allocators, and asynchronous CUDA stream hooks. Instead, an infrastructure engineer isolates the hardware and middleware layers bottom-up. You validate intra-node PCIe and NVLink paths with `nvbandwidth` and raw point-to-point RDMA wires with `perftest`. Next, you benchmark standalone GPU collectives with `nccl-tests`. Only after those three tiers pass do you profile application overlap and scaling efficiency with PyTorch Profiler, NVIDIA Nsight Systems, and `genai-bench`.
+Here is the cost in one picture. A 64-GPU job at 52% scaling efficiency keeps only about 33 of its GPUs busy, and the rest of the fleet pays for idle time. You cannot diagnose a degraded optical transceiver, a PCIe root-complex downtrain, or a missing peer-memory kernel module from inside a full PyTorch model script. High-level frameworks mix data loading, autograd kernel launches, memory caching allocators and asynchronous CUDA stream hooks, so the fault gets buried. An infrastructure engineer therefore isolates the hardware and middleware layers from the bottom up. You validate intra-node PCIe and NVLink paths with `nvbandwidth`, and raw point-to-point RDMA wires with `perftest`. Next, you benchmark standalone GPU collectives with `nccl-tests`. Only after those three tiers pass do you profile application overlap and scaling efficiency with PyTorch Profiler, NVIDIA Nsight Systems and `genai-bench`.
 
 ## Prerequisites and outcomes
 
 ### Prerequisites
 
-You should complete Chapter 12.14 on GPUDirect RDMA and GPUDirect Storage first to understand BAR1 peer memory, `nvidia_peermem`, PCIe Access Control Services, and PIX versus SYS NUMA locality. You also need Chapters 12.15 and 12.16. Those chapters cover Ring, Tree, CollNet/SHARP, NVLS, and PAT algorithms alongside NCCL transport selection across P2P, SHM, NET/IB, and NET/Socket.
+Before you start, finish Chapter 12.14 on GPUDirect RDMA and GPUDirect Storage. It explains BAR1 peer memory, `nvidia_peermem`, PCIe Access Control Services, and PIX versus SYS NUMA locality. You also need Chapters 12.15 and 12.16. Those chapters cover the Ring, Tree, CollNet/SHARP, NVLS and PAT algorithms, and how NCCL picks a transport among P2P, SHM, NET/IB and NET/Socket.
 
 ### Expected learning outcomes
 
-After completing this chapter, you will be able to execute the three-tier hardware-to-collective validation sequence using `nvbandwidth`, `ib_write_bw`, and `nccl-tests`. That workflow lets you attribute bottlenecks to the exact hardware or software layer. You will derive and verify algorithmic bandwidth and bus bandwidth conversion factors across all six collective families and interpret data-integrity counters. You will isolate a single degraded straggler node across $N$ nodes in $\lceil \log_2 N \rceil$ binary-search bisection steps. You will also combine `NCCL_RUN_DIAGNOSTICS=1` with the `ncclras` daemon to identify hung or lagging ranks. Finally, you will design reproducible training and inference benchmarks with warmup, synchronization barriers, and percentile latency reporting. You will also apply Amdahl's Law scaling analysis and statistical accuracy validation.
+By the end of this chapter, you will run the three-tier validation sequence with `nvbandwidth`, `ib_write_bw` and `nccl-tests`. That sequence lets you pin a bottleneck on one exact hardware or software layer. You will derive and check the bandwidth conversion factors for all six collective families, and you will read the data-integrity counters. You will find one slow node among $N$ nodes in $\lceil \log_2 N \rceil$ bisection steps. You will combine `NCCL_RUN_DIAGNOSTICS=1` with the `ncclras` daemon to find hung or lagging ranks. Last, you will design benchmarks with warmup, synchronization barriers and percentile latency reporting, and you will apply Amdahl's Law scaling analysis and statistical accuracy validation.
 
 ---
 
 ## 1. The three-tier fabric validation hierarchy (`nvbandwidth`, `perftest`, `nccl-tests`)
 
-When a multi-node job runs 40% to 60% slower than expected, testing the full training script first violates fault-isolation discipline. A single symptom such as slow AllReduce completion can originate from a motherboard PCIe lane failure, a dirty MPO fiber connector, or a missing peer-memory module. It can also stem from a stopped `nvidia-fabricmanager` daemon or fragmented framework gradient buckets. To prove mathematically which layer is responsible, benchmark the stack in four sequential tiers from physical silicon up to the framework.
+Suppose a multi-node job runs 40% to 60% slower than expected. Your first instinct may be to open the training script, but that skips fault isolation. One symptom, such as slow AllReduce completion, can come from many places. A motherboard PCIe lane may have failed, an MPO fiber connector may be dirty, or a peer-memory module may be missing. A stopped `nvidia-fabricmanager` daemon, or fragmented gradient buckets in the framework, can cause it too. To prove which layer is responsible, benchmark the stack in four sequential tiers, from the physical silicon up to the framework.
 
 ```mermaid
 flowchart TD
@@ -67,6 +69,8 @@ flowchart TD
     T3B --> T4["Tier 4: Application Profile<br/>PyTorch Profiler & nsys"]
 ```
 
+Each row of the table below is one tier. It gives the tool to run, the healthy baseline, and the failure signature to look for. Read the failure signature column when a number falls short of its baseline.
+
 | Validation Tier | Primary Binary / Tool | Target Subsystem | Healthy Reference Baseline | Diagnostic Failure Signature |
 |---|---|---|---|---|
 | **Tier 1: Intra-node motherboard & NVLink** | `nvbandwidth -t device_to_host_memcpy_ce`, `nvidia-smi topo -m`, `nvidia-smi nvlink --status` | PCIe Gen5 x16 root complex/switches and intra-node NVLink/NVSwitch fabric | `50–60 GB/s` D2H/H2D on PCIe Gen5 x16 (`64 GB/s` raw); `~25 GB/s` per A100 NVLink3 (`~600 GB/s` total); `900 GB/s` H100 NVLink4; `1.8 TB/s` (`18 x 100 GB/s`) B200 NVLink5 | `25–30 GB/s` D2H indicates PCIe downtrained from `x16` to `x8` (`lspci -vv` `LnkSta`); `PIX` missing or NVLink `< 20 GB/s` or `inactive` |
@@ -76,11 +80,15 @@ flowchart TD
 | **Tier 3b: Multi-node collectives** | `mpirun` / `srun` `all_reduce_perf`, `all_gather_perf`, `reduce_scatter_perf`, `alltoall_perf` | Multi-rail NCCL rings/trees, SHARP/CollNet, RoCEv2 GID/PFC/ECN | Multi-node `busbw >= 80%` of single-rail-implied or local-node baseline (e.g., `~361.36 GB/s` across `8 x 400G` NDR rails) | Multi-node `busbw` drops to `58.2 GB/s` (`61.15%` of `95.18 GB/s`, failing `80%` gate) or `2.0 GB/s` (`NET/Socket` TCP fallback instead of `NET/IB`) |
 | **Tier 4: Framework & application loop** | `torch.profiler`, `nsys profile --trace=cuda,nvtx,osrt`, `ncu`, `TrainingBenchmark` | DDP `bucket_cap_mb` (`25 MB` default), stream overlap, dataloader `num_workers` | `> 80%` GPU utilization, `40%–60%` MFU (`43.48%` / `48%`), `70%–90%+` scaling efficiency, `< 10%` dataloader time | Tiers 1–3 pass at `1 GiB`, but training is `40%` slow: model issues thousands of `256 KB` AllReduce calls (fix `bucket_cap_mb` `25 MB` $\rightarrow$ `50 MB`) |
 
+The table shows the order of the work. Each tier adds one more layer on top of the one below it, so the first failing row names the layer to fix.
+
 ### Why `iperf3` cannot validate an AI fabric
 
-Engineers accustomed to standard web infrastructure often run `iperf3`, `iftop`, or `nload` when a cluster feels slow, and then wonder why those tools miss the problem. Those utilities are useful only for initial management-network reachability or coarse Ethernet sanity checks. The `iperf3` binary drives packets through the Linux kernel TCP/IP socket stack. It incurs context switches, socket buffer copies, and software interrupts that bottleneck the host CPU cores well before saturating a high-speed AI link. Even if `iperf3` measures 100 Gbps between two nodes while distributed training achieves only 20 Gbps, `iperf3` cannot isolate the cause. It cannot tell you whether the loss comes from host-staged GPU copies, NUMA misalignment, or small-message launch overhead.
+Engineers used to standard web infrastructure often reach for `iperf3`, `iftop` or `nload` when a cluster feels slow. Then they are surprised when those tools miss the problem. Those utilities are useful only for initial management-network reachability or coarse Ethernet sanity checks.
 
-For InfiniBand and RoCEv2 fabrics, Tier 2 validation always uses the OpenFabrics `perftest` suite. These binaries post Verbs Work Queue Elements directly to the Host Channel Adapter hardware queues, bypassing the operating system kernel entirely.
+The `iperf3` binary sends its packets through the Linux kernel TCP/IP socket stack. That stack brings context switches, socket buffer copies and software interrupts. These bottleneck the host CPU cores long before a high-speed AI link is saturated. Say `iperf3` reports 100 Gbps between two nodes while distributed training achieves only 20 Gbps. The tool still cannot tell you whether the loss comes from host-staged GPU copies, NUMA misalignment or small-message launch overhead.
+
+For InfiniBand and RoCEv2 fabrics, Tier 2 validation always uses the OpenFabrics `perftest` suite. These binaries post Verbs Work Queue Elements directly to the Host Channel Adapter hardware queues, bypassing the operating system kernel entirely. The numbers below show the ceiling you hit with each tool.
 
 ```text
 Why iperf3 fails on AI fabrics vs RDMA perftest:
@@ -90,9 +98,11 @@ Why iperf3 fails on AI fabrics vs RDMA perftest:
   RDMA Verbs (WQEs) or GPU BAR1 peer memory.
 ```
 
+If your first tool is `iperf3`, you are testing a path the training job never uses. Start with `perftest` for the wire and `nccl-tests` for the collectives.
+
 ### Reading `nvidia-smi topo -m` and InfiniBand port counters before benchmarking
 
-Launching `ib_write_bw` or `nccl-tests` without checking GPU-to-NIC locality and port states first can corrupt your benchmark before a single packet enters the switch. Suppose you pair a GPU on Socket 0 with an RDMA adapter on Socket 1. Every payload then crosses the CPU inter-socket link before reaching the wire. You must capture the hardware topology and counter baseline on every participating node before starting load tests.
+Launching `ib_write_bw` or `nccl-tests` before you check GPU-to-NIC locality can ruin the benchmark before a single packet leaves the node. Suppose you pair a GPU on Socket 0 with an RDMA adapter on Socket 1. Every payload then crosses the CPU inter-socket link before it reaches the wire. Capture the hardware topology and a counter baseline on every participating node before you start load tests.
 
 ```text
 Reference 8-GPU dual-socket H100 SXM node (node-a, node-b) pre-benchmark audit:
@@ -113,13 +123,17 @@ Reference 8-GPU dual-socket H100 SXM node (node-a, node-b) pre-benchmark audit:
     port_rcv_errors, local_link_integrity_errors, excessive_buffer_overrun_errors, VL15_dropped.
 ```
 
+Compare each node's output with this reference before you trust its numbers. Do not run load tests on a node until its topology and counters match the baseline.
+
 ---
 
 ## 2. `nccl-tests` architecture, CLI flags, and exact `algbw` versus `busbw` math
 
-When you need to test collective throughput without Python, autograd, or storage overhead, you run `nccl-tests` (`https://github.com/NVIDIA/nccl-tests`). The suite compiles standalone C++ and CUDA binaries for every collective operation, including `sendrecv_perf`, `gather_perf`, `scatter_perf`, and `hypercube_perf`. Each binary allocates device buffers, initializes NCCL communicators, and times collective kernels in a tight loop.
+When you need to measure collective throughput without Python, autograd or storage getting in the way, run `nccl-tests` (`https://github.com/NVIDIA/nccl-tests`). The suite compiles standalone C++ and CUDA binaries for each collective operation. That includes `sendrecv_perf`, `gather_perf`, `scatter_perf` and `hypercube_perf`. Each binary allocates device buffers, sets up the NCCL communicators and times the collective kernels in a tight loop.
 
 ### Core `nccl-tests` CLI flags
+
+The table lists the flags you will use most. Each one changes what the run measures, so read its sizing guidance before you copy a command.
 
 | Flag | Parameter Name | Default | Operational Meaning and Sizing Guidance |
 |---|---|---|---|
@@ -135,15 +149,19 @@ When you need to test collective throughput without Python, autograd, or storage
 | `-o <op>` | `--op` | `sum` | Reduction operator (`sum`, `prod`, `min`, `max`, `avg`, `all`). |
 | `-R <0\|1\|2>` | `--local_register` | `0` | Enables persistent user-buffer registration (`1` = `ncclCommRegister` local, `2` = symmetric `ncclMemAlloc`) to test zero-copy NVLS/SHARP paths. |
 
+The sizes you pick decide what you measure. A sweep that starts small shows latency, and one that reaches the large sizes shows the bandwidth ceiling. Keep both ends in mind when you set `-b` and `-e`.
+
 ### Deriving `algbw` and `busbw` from first principles
 
-Engineers who read `nccl-tests` output for the first time often compare the algorithmic bandwidth column directly against the hardware NIC or NVLink spec sheet. They then falsely conclude that their network is running at half speed. For a collective operating on a buffer of size $S$ bytes that completes in elapsed time $t$ seconds across $n$ ranks, `nccl-tests` reports two distinct bandwidth metrics. Both columns are expressed in decimal gigabytes per second.
+Engineers who read nccl-tests output for the first time often compare the algorithmic bandwidth column directly with the NIC or NVLink spec sheet. They then falsely conclude that their network runs at half speed. For a collective that works on a buffer of $S$ bytes and finishes in $t$ seconds across $n$ ranks, nccl-tests reports two bandwidth metrics. Both columns are in decimal gigabytes per second.
 
-First, **algorithmic bandwidth** (`algbw`) measures the apparent rate at which the logical collective tensor size $S$ is processed:
+The first metric is algorithmic bandwidth, written `algbw`. It shows the apparent rate at which the logical collective tensor is processed:
 
 $$\text\{algbw\} = \frac\{S\}\{t\}$$
 
-That ratio divides logical bytes by elapsed seconds. Second, **bus bandwidth** (`busbw`) accounts for the multiple physical hops required to execute a collective across $n$ ranks. It normalizes algorithmic bandwidth by the minimum theoretical per-rank data volume required on an optimal ring topology. That normalization makes bus bandwidth **directly comparable to the hardware's rated physical link speed** regardless of how many GPUs participate in the job.
+That ratio divides logical bytes by elapsed seconds. The second metric is bus bandwidth, `busbw`. It accounts for the several physical hops a collective needs across $n$ ranks. It normalizes `algbw` by the minimum per-rank data volume an optimal ring topology must move. That normalization makes `busbw` directly comparable with the hardware's rated link speed, however many GPUs take part.
+
+The conversion depends on the collective. Find your collective's row, then multiply `algbw` by its factor to get `busbw`.
 
 | `nccl-tests` Binary | Collective Operation | Logical Input $\rightarrow$ Output | Per-Rank Bytes Transferred | Exact `busbw` Conversion Formula | Factor at $n=2$ | Factor at $n=4$ | Factor at $n=8$ | Factor at $n=64$ | Factor at $n=72$ |
 |---|---|---|---|---|---|---|---|---|---|
@@ -154,7 +172,11 @@ That ratio divides logical bytes by elapsed seconds. Second, **bus bandwidth** (
 | `broadcast_perf` | Broadcast | $S$ on root rank $\rightarrow$ $S$ replicated to $n-1$ ranks | $1.0 \cdot S$ | $\text\{busbw\} = \text\{algbw\} \cdot 1$ | `1.0000` | `1.0000` | `1.0000` | `1.0000` | `1.0000` |
 | `reduce_perf` | Reduce | $S$ on each rank $\rightarrow$ reduced $S$ on root rank | $1.0 \cdot S$ | $\text\{busbw\} = \text\{algbw\} \cdot 1$ | `1.0000` | `1.0000` | `1.0000` | `1.0000` | `1.0000` |
 
-Why does AllReduce multiply algorithmic bandwidth by $2(n-1)/n$? A ring AllReduce decomposes into an $(n-1)$-step ReduceScatter pass followed by an $(n-1)$-step AllGather pass. Each pass moves $n-1$ chunks of size $S/n$ per GPU, totaling $2(n-1)$ steps and $\frac\{2(n-1)\}\{n\}S$ bytes transferred per GPU. As the GPU count $n$ grows large, the multiplier approaches 2.0. That means algorithmic bandwidth can never exceed half of the physical bottleneck link bandwidth for a ring AllReduce at scale.
+AllReduce carries the largest factor of the rows that depend on $n$. Broadcast and Reduce stay at 1.0 whatever $n$ is.
+
+Why does AllReduce multiply by $2(n-1)/n$? A ring AllReduce runs an $(n-1)$-step ReduceScatter pass, then an $(n-1)$-step AllGather pass. Each pass moves $n-1$ chunks of size $S/n$ per GPU. Together the two passes take $2(n-1)$ steps and move $\frac\{2(n-1)\}\{n\}S$ bytes per GPU. As $n$ grows large, the multiplier approaches 2.0. That means algorithmic bandwidth can never exceed half of the physical bottleneck link bandwidth for a ring AllReduce at scale.
+
+Consider a 400 MB buffer. The block below works out its `algbw` first, then shows the factor at three cluster sizes.
 
 ```text
 Worked algbw and busbw examples (1 GB/s = 10^9 B/s):
@@ -166,9 +188,11 @@ Worked algbw and busbw examples (1 GB/s = 10^9 B/s):
   * n -> inf:    2(n-1)/n -> 2.0    -> algbw is at most 50% of physical link bandwidth (50 GB/s per 400G NDR NIC or 900 GB/s on H100 NVLink4)
 ```
 
+For example, the same `algbw` gives a different `busbw` at each size of $n$, because the factor changes. Keep that in mind when you compare runs taken on different node counts.
+
 ### Annotating an `all_reduce_perf` output table
 
-When a benchmark finishes, you need to verify three things. Check that the arithmetic between elapsed time, `algbw`, and `busbw` holds. Confirm that zero elements were corrupted in the `#wrong` column, and verify that multi-node bus bandwidth clears at least 80% of the single-node or per-rail baseline. Consider an eight-GPU `all_reduce_perf` sweep from 8 MiB to 512 MiB alongside single-node and multi-node 1 GiB acceptance checks:
+When a benchmark finishes, check three things. First, the arithmetic between elapsed time, `algbw` and `busbw` must hold. Second, the `#wrong` column must stay at zero. Third, multi-node bus bandwidth must reach at least 80% of the single-node or per-rail baseline. The output below comes from an eight-GPU sweep from 8 MiB to 512 MiB, followed by single-node and multi-node 1 GiB acceptance checks.
 
 ```text
 #                                                              out-of-place                       in-place
@@ -195,17 +219,21 @@ Single-node and multi-node acceptance gates:
   algbw = 183.55 GB/s; busbw = 361.36 GB/s (~45.17 GB/s per 50 GB/s rail, or 90.34% of line rate)
 ```
 
-In out-of-place mode, the send buffer and receive buffer are separate GPU allocations. In in-place mode, the reduced output overwrites the input buffer directly, matching PyTorch DDP gradient buckets. Most importantly, the `#wrong` column must be zero on every single row. Any non-zero `#wrong` count means the collective completed but corrupted floating-point values in transit. That corruption stems from faulty HBM, bad SRAM, or broken buffer registration, and invalidates any throughput figure.
+In out-of-place mode, the send and receive buffers are separate GPU allocations. In in-place mode, the reduced output overwrites the input buffer, which matches PyTorch DDP gradient buckets. The `#wrong` column must be zero on every row. A non-zero count means the collective finished but corrupted floating-point values in transit. The cause may be faulty HBM, bad SRAM or broken buffer registration. Either way, that corruption makes the throughput figure worthless.
+
+Do not report a bandwidth number from any run whose `#wrong` column is not zero.
 
 ---
 
 ## 3. Benchmarking methodology, training scaling efficiency, and Amdahl's Law
 
-Moving from standalone microbenchmarks to distributed training benchmarks requires strict statistical discipline. Without proper warmup, synchronization barriers, and sufficient sample counts, lazy kernel compilation or asynchronous CUDA queuing will produce completely fabricated throughput numbers.
+Moving from one-off microbenchmarks to distributed training benchmarks takes real discipline. Without proper warmup, synchronization barriers and enough samples, lazy kernel compilation or asynchronous CUDA queuing can produce completely fabricated throughput numbers.
 
 ### Three rules of reproducible GPU benchmarking
 
-First, always execute untimed warmup iterations before starting your clock. The first execution of a CUDA operation triggers lazy JIT kernel compilation, cuBLAS and NCCL handle initialization, caching-allocator block reservation, and instruction cache population. Second, call `torch.cuda.synchronize()` right before recording the start timestamp and again right before recording the end timestamp. Because CUDA kernel launches and collective calls are asynchronous on the host CPU, omitting synchronization measures Python dispatch latency rather than GPU execution time. Third, run at least one hundred timed iterations and report latency percentiles so you capture thermal drift, background daemon jitter, and fabric congestion.
+Three rules keep your numbers honest. First, always run untimed warmup iterations before you start the clock. The first execution of a CUDA operation triggers lazy JIT kernel compilation, cuBLAS and NCCL handle initialization, caching-allocator block reservation and instruction cache population. Second, call `torch.cuda.synchronize()` right before you record the start timestamp, and again right before the end timestamp. Kernel launches and collective calls are asynchronous on the host CPU. Without synchronization you measure Python dispatch latency rather than GPU execution time. Third, run at least one hundred timed iterations and report latency percentiles. That captures thermal drift, background daemon jitter and fabric congestion.
+
+The block below gives the starting values for each rule.
 
 ```text
 Reproducible GPU benchmark parameters:
@@ -218,15 +246,19 @@ Reproducible GPU benchmark parameters:
   * >= 100+ timed iterations; report mean, standard deviation, median (P50), P95, and P99
 ```
 
+Compiled code needs a longer warmup than eager code, because the compiler and CUDA Graph capture run before the steady state begins.
+
 ### Key distributed training metrics and phase decomposition
 
-When a training run is slow, measuring only total step time hides whether the bottleneck is storage, forward and backward math, or collective communication. A complete `TrainingBenchmark` harness instruments four phases per step: data loading, forward, backward, and optimizer. It pairs those phase timers with three fleet-level efficiency metrics.
+A slow training run can hide its cause if you measure only total step time. Storage, forward and backward math, and collective communication all look the same from the outside. A complete `TrainingBenchmark` harness therefore instruments four phases per step: data loading, forward, backward and optimizer. It pairs those phase timers with three fleet-level efficiency metrics.
 
-First, track aggregate throughput in samples per second or tokens per second across all GPUs. Second, distinguish `nvidia-smi` GPU utilization from Model FLOPs Utilization (MFU). The `nvidia-smi` utility reports only the fraction of time that at least one kernel is active on the device. A GPU spin-waiting inside `ncclKernel_AllReduce` or running tiny unfused kernels still displays 98% to 100% utilization. By contrast, MFU compares useful floating-point operations against the hardware's theoretical peak:
+The first metric is aggregate throughput, in samples per second or tokens per second across all GPUs. The second is GPU utilization, and you should not read it on its own. The `nvidia-smi` utility reports only the fraction of time at least one kernel is active on the device. A GPU that spin-waits inside `ncclKernel_AllReduce`, or runs tiny unfused kernels, still displays 98% to 100% utilization. Model FLOPs Utilization, or MFU, answers the harder question. It compares useful floating-point operations with the hardware's theoretical peak:
 
 $$\text\{MFU\} = \frac\{6 \times N_\{\text\{params\}} \times \text\{tokens/sec\}}\{\text\{Peak Theoretical FLOPs/sec\}}$$
 
-That equation normalizes throughput by the peak silicon rating. Third, track communication overhead as you scale across nodes. On a single GPU, communication overhead is zero. At 16 GPUs, it can easily consume more than half of the iteration time, explaining why doubling GPUs fails to halve step time.
+The equation divides your throughput by the silicon's peak rating, so it shows real efficiency rather than activity. The third metric is communication overhead as you scale across nodes. On a single GPU, communication overhead is zero. At 16 GPUs, it can easily consume more than half of each iteration. That explains why doubling the GPU count often fails to halve step time.
+
+The block below turns these metrics into numbers you can check.
 
 ```text
 Training phase rules and MFU / communication benchmarks:
@@ -247,13 +279,15 @@ Training phase rules and MFU / communication benchmarks:
     of the step (18.15 ms communication vs 14.85 ms compute).
 ```
 
+Read the 70B example as a before-and-after story. The same model and hardware reach 17% MFU with a starved dataloader, and 48% MFU once the loader is tuned. The GPUs did not change. The data pipeline did.
+
 ### Scaling efficiency and Amdahl's Law
 
-To justify adding more nodes to a training job, you must measure **scaling efficiency** $\eta_N$, which quantifies the fraction of ideal linear speedup retained on $N$ GPUs:
+Before you add nodes to a training job, measure **scaling efficiency**, written $\eta_N$. It tells you what fraction of ideal linear speedup you keep on $N$ GPUs:
 
 $$\eta_N = \frac\{\text\{Throughput\}_N\}\{N \times \text\{Throughput\}_1\} = \frac\{\text\{Speedup\}_N}\{N\}$$
 
-That ratio reveals how much of your multi-node investment delivers useful throughput.
+That ratio shows how much of your multi-node investment turns into useful throughput. The table turns the ratio into a rating, and each rating points to a next step.
 
 | Scaling Efficiency Band | Operational Rating | Root-Cause Interpretation and Action |
 |---|---|---|
@@ -262,11 +296,15 @@ That ratio reveals how much of your multi-node investment delivers useful throug
 | `50%–70%` | **Moderate** | Significant communication overhead (`30%–50%` of step); check network topology, SHARP/NVLS, gradient accumulation, or FP8/gradient compression. |
 | `< 50%` | **Poor** | Severe bottleneck (`55%+` comm overhead, TCP fallback, straggler rank, or dataloader starvation); halt expansion and run the 3-tier diagnostic ladder. |
 
-Even with infinite network bandwidth, **Amdahl's Law** sets a hard mathematical upper bound on speedup when a fraction $s$ of the iteration is strictly serial and $p = 1 - s$ is parallelizable:
+A rating below 50% means you should stop expanding the job and run the 3-tier diagnostic ladder. Between 50% and 70%, the work is to find where communication overhead comes from.
 
-$$\text\{Speedup\}(N) = \frac\{1\}{s + \frac\{1 - s\}\{N\}} \xrightarrow\{N \to \infty\} \frac\{1\}\{s\}$$
+Even with infinite network bandwidth, **Amdahl's Law** sets a hard upper bound on speedup. Let $s$ be the fraction of each iteration that is strictly serial, and let $p = 1 - s$ be the part that can run in parallel:
 
-Even a small serial fraction caps maximum cluster speedup. Unoverlapped collective barriers, CPU synchronization points, and non-parallelized preprocessing all contribute to the serial fraction $s$.
+$$\text\{Speedup\}(N) = \frac\{1\}\{s + \frac\{1 - s\}\{N\}} \xrightarrow\{N \to \infty\} \frac\{1\}\{s\}$$
+
+Even a small serial fraction caps the speedup of a whole cluster. Unoverlapped collective barriers, CPU synchronization points and non-parallelized preprocessing all add to the serial fraction $s$.
+
+Two examples show the arithmetic, one for scaling efficiency and one for the serial limit.
 
 ```text
 Scaling efficiency and Amdahl's Law calculations:
@@ -279,11 +317,15 @@ Scaling efficiency and Amdahl's Law calculations:
   * Max speedup at N = 64 GPUs: 1 / (0.10 + 0.90 / 64) = 8.77x (13.70% scaling efficiency)
 ```
 
+Notice that the 10% serial case stops at 10.0x, even with unlimited GPUs. Measure your scaling efficiency at every node count before you buy the next block of nodes.
+
 ---
 
 ## 4. Isolating stragglers, silent fallbacks, and hung collectives at scale
 
-In synchronous data-parallel (DDP, FSDP, ZeRO) and tensor or expert-parallel training, every collective is a global barrier. A thousand-GPU cluster runs at the exact speed of its slowest rank. When a single GPU throttles thermally, starves on a CPU dataloader thread, or hits a degraded network rail, the other 999 GPUs spin inside `ncclKernel_AllReduce` waiting for that one rank to arrive.
+In synchronous data-parallel training (DDP, FSDP, ZeRO) and in tensor or expert-parallel training, every collective is a global barrier. A thousand-GPU cluster runs at the exact speed of its slowest rank. When one GPU throttles thermally, starves on a CPU dataloader thread or sits on a degraded network rail, the other 999 GPUs spin inside `ncclKernel_AllReduce`. They wait for that one rank to arrive.
+
+The flowchart below turns that symptom into a decision. Start at the symptom and follow the evidence until one branch fits.
 
 ```mermaid
 flowchart TD
@@ -295,6 +337,8 @@ flowchart TD
     Q2 -->|"nccl-tests fast at 1G<br/>but PyTorch DDP slow"| C4["Microscopic Message Payloads<br/>Raise DDP bucket_cap_mb 25->50MB"]
 ```
 
+Each row of the table is one branch. It gives the evidence you should see, the root cause behind it and the fix.
+
 | Isolation Branch | Primary Diagnostic Evidence | Root Cause | Remediation |
 |---|---|---|---|
 | **Software / Dataloader Straggler** | Pre-collective timer shows GPU `2` takes `1,250.5 ms` vs `124.8–126.1 ms` on GPUs `0, 1, 3` (`10.02x` ratio); `nvidia-smi dmon` shows GPU `2` at `5%` SM util / `40 W` while peers are at `96%–98%` / `315–320 W` | Unequal batch distribution, missing `DistributedSampler`, or single-threaded CPU audio/image decompression pinning one host core at `100%` | Enforce equal per-rank batch sizes with `DistributedSampler`, increase `num_workers`, and bind NUMA cores cleanly |
@@ -302,9 +346,13 @@ flowchart TD
 | **Fabric / Rail / NVLink Straggler** | `all_reduce_perf` drops from `800 GB/s` to `90 GB/s` after reboot (`nvidia-fabricmanager` inactive), or `nvidia-smi nvlink --status` shows Link `3` `DEGRADED (5 GB/s)` / `FAILED (0 Mbps)` vs `25 GB/sec`, or one HCA rail has high `PortXmitWait` | Degraded optical transceiver, loose NVLink/MPO cable, stopped `nvidia-fabricmanager`, or `NET/Socket` fallback (`2.0 GB/s` vs `100.0 GB/s`) | Restart `nvidia-fabricmanager`, isolate rail with `NCCL_IB_HCA=mlx5_x:1`, run `O(\log_2 N)` node bisection, and cordon faulty node |
 | **Microscopic Message Payloads** | `ib_write_bw` hits `400 Gbps` (`~390 Gbps`) and `all_reduce_perf` hits expected `busbw` at `1 GiB`, but 8-node PyTorch training is `40%` slower than calculated | Model has thousands of tiny layers issuing `256 KB` AllReduce calls where per-message handshake latency dominates wire bandwidth | Increase PyTorch DDP `bucket_cap_mb` from the `25 MB` (`25 MiB`) default to `50 MB` and verify kernel coalescing in Nsight Systems (`nsys`) |
 
+Notice that the first two branches are about one rank that arrives late, while the last two are about the fabric or the message size. The evidence column decides which branch you are in.
+
 ### Why post-collective timers lie—and how to instrument pre-collective arrival
 
-A classic beginner mistake when hunting stragglers is recording `iter_end = time.time()` *after* `dist.all_reduce(loss)`. Because `all_reduce` is a barrier, fast ranks block inside the collective until the straggler arrives. That barrier makes total step time look identical across every rank in the cluster. To expose a compute or dataloader straggler, synchronize the GPU with `torch.cuda.synchronize()` and record each rank's timestamp **immediately before** entering the collective. You can also inspect `torch.distributed.monitored_barrier` and `ncclras`.
+A classic beginner mistake when you hunt stragglers is to record `iter_end = time.time()` *after* `dist.all_reduce(loss)`. The `all_reduce` is a barrier, so fast ranks block inside the collective until the straggler arrives. For example, every rank then reports the same total step time, and the straggler disappears from the data. To expose a compute or dataloader straggler, call `torch.cuda.synchronize()` and record each rank's timestamp immediately before it enters the collective. You can also inspect `torch.distributed.monitored_barrier` and `ncclras`.
+
+The four-GPU example below shows the difference between the two timers.
 
 ```text
 Pre-collective vs post-collective timing on a 4-GPU node:
@@ -318,11 +366,17 @@ Pre-collective vs post-collective timing on a 4-GPU node:
   Ranks 0, 1, and 3 simply spent ~1,125 ms waiting inside AllReduce for Rank 2.
 ```
 
+The post-collective view shows the same time on every rank, so it cannot point to the culprit. The pre-collective view points straight at Rank 2.
+
 ### Active NCCL diagnostics and the `ncclras` daemon
 
-When a large job hangs or starts with a broken NVLink pair, digging through thousands of log files across hundreds of nodes wastes hours. Modern NCCL releases provide two built-in diagnostic mechanisms that pinpoint faulty hardware and lagging ranks directly.
+When a large job hangs, or starts with a broken NVLink pair, digging through thousands of log files across hundreds of nodes can waste hours. Modern NCCL releases include two built-in diagnostics that name faulty hardware and lagging ranks directly.
 
-First, setting `NCCL_RUN_DIAGNOSTICS=1` in NCCL 2.31 and later runs active hardware and topology verification checks during `ncclCommInitRank` before any user workload starts. Rank 0 prints diagnostic lines where passing checks log `[OK]` and anomalies log `[INFO]`. That check catches broken GPU peer-to-peer links immediately at startup. Second, NCCL 2.24 and later run a background Reliability, Availability, and Serviceability thread (`ncclras`) inside each process. Those threads form a peer keep-alive mesh listening on a local TCP port. When a job hangs, you connect to the daemon from any node in the job. It returns a live per-communicator table showing which ranks have lagging collective sequence numbers or dead processes.
+The first is `NCCL_RUN_DIAGNOSTICS=1`. In NCCL 2.31 and later, it runs active hardware and topology checks during `ncclCommInitRank`, before any user workload starts. Rank 0 prints a line for each check. A passing check logs `[OK]`, and an anomaly logs `[INFO]`. The check catches broken GPU peer-to-peer links right at startup.
+
+The second is the `ncclras` daemon. NCCL 2.24 and later run a background Reliability, Availability, and Serviceability thread inside each process. Those threads form a peer keep-alive mesh that listens on a local TCP port. When a job hangs, you connect to the daemon from any node in the job. It returns a live table for each communicator, showing which ranks have lagging collective sequence numbers or dead processes.
+
+The specifications below list what each diagnostic reports.
 
 ```text
 Active NCCL diagnostics and ncclras specifications:
@@ -344,6 +398,10 @@ Active NCCL diagnostics and ncclras specifications:
   NOT by NCCL itself (NCCL_WATCHDOG_DUMP does not exist in NCCL).
 ```
 
+Read the status field first, because it tells you which kind of failure you have. MISMATCH points to a lagging rank, and INCOMPLETE points to a dead or unresponsive one. The watchdog messages come from PyTorch, not from NCCL, so they do not replace the NCCL diagnostics.
+
+If you are working a hung job, the commands below query the RAS subsystem directly. They are untested in this workspace.
+
 ```bash
 # (untested here) Query the live NCCL RAS subsystem on port 28028 during a hung job
 ncclras -v
@@ -352,9 +410,11 @@ echo verbose status | nc localhost 28028
 
 ### Binary-search node bisection and per-rail isolation
 
-When `all_reduce_perf` across $N$ nodes is slow because all ranks enter the collective on time, one node likely has a degraded NIC, cable, or PCIe switch. Testing all $N$ nodes one by one takes far too long. Running $\binom\{N\}\{2\}$ pairwise tests is even worse. Instead, you use **binary-search bisection** to isolate the bad node in logarithmic time.
+Suppose `all_reduce_perf` across $N$ nodes is slow, yet every rank enters the collective on time. One node probably has a degraded NIC, cable or PCIe switch. Testing all $N$ nodes one at a time takes far too long, and running $\binom\{N\}\{2\}$ pairwise tests is even worse. Use **binary-search bisection** instead. It isolates the bad node in logarithmic time.
 
-First, split the $N$ nodes into two halves of $N/2$ nodes and run `all_reduce_perf` on each half. Second, whichever half exhibits the degraded `busbw` contains the straggler node. The other half is proven healthy and provides a known-good reference partner when a subset eventually shrinks to a single node. Third, repeat by halving the suspect group until a single node is isolated in $\lceil \log_2 N \rceil$ split steps. Once the suspect node is isolated, test each of its InfiniBand rails individually. Restrict `NCCL_IB_HCA` or run `ib_write_bw` per rail alongside `ibdiagnet` and `perfquery`.
+Split the $N$ nodes into two halves of $N/2$ nodes each, and run `all_reduce_perf` on each half. The half with the degraded `busbw` holds the straggler. The other half is proven healthy, so it becomes a known-good partner once the suspect group shrinks to a single node. Keep halving the suspect group until one node is left. That takes $\lceil \log_2 N \rceil$ split steps. Then test each InfiniBand rail on that node separately, by restricting `NCCL_IB_HCA` or by running `ib_write_bw` per rail alongside `ibdiagnet` and `perfquery`.
+
+The step counts below show why this beats testing node by node.
 
 ```text
 Binary-search node bisection step counts (ceil(log2 N) split steps, ceil(log2 N) + 1 total runs):
@@ -365,17 +425,19 @@ Binary-search node bisection step counts (ceil(log2 N) split steps, ceil(log2 N)
   Test NCCL_IB_HCA==mlx5_0:1, then =mlx5_1:1, ..., =mlx5_7:1 (8 rails) or ib_write_bw -d mlx5_<k> alongside perfquery -x <lid>.
 ```
 
+The savings grow quickly with cluster size. At 128 nodes, bisection needs 8 runs where a linear search needs 128. When the suspect node is found, cordon it and test its rails before it returns to service.
+
 ---
 
 ## 5. Profiling tools (`torch.profiler`, `nsys`, `NCCL_PROFILER_PLUGIN`), inference benchmarking (`genai-bench`), and accuracy validation
 
-Once the physical fabric and `nccl-tests` pass their acceptance gates, any remaining performance gap lives inside the application runtime. At this level, compute kernels, communication streams, memory allocators, and serving schedulers interact directly.
+Once the physical fabric and `nccl-tests` pass their acceptance gates, any remaining slowness lives inside the application runtime. At this level, compute kernels, communication streams, memory allocators and serving schedulers all interact directly.
 
 ### PyTorch Profiler, NVIDIA Nsight Systems, and the `NCCL_PROFILER_PLUGIN` API
 
-When training throughput falls short despite healthy hardware, start with **PyTorch Profiler** (`torch.profiler`) for phase-level visibility. Configure `record_function` labels with CPU and CUDA activities, shape recording, memory profiling, and call stacks enabled. For multi-iteration training jobs, use `torch.profiler.schedule` with TensorBoard or export `trace.json` for Chrome tracing. In the operator table sorted by total CUDA time, compute kernels appear as `aten::matmul` and `aten::linear`. Collective communication overhead appears as `nccl:all_reduce` and `nccl:all_gather`.
+Suppose training is slow even though the hardware checks out. Start with **PyTorch Profiler** (`torch.profiler`) for phase-level detail. Configure `record_function` labels, with CPU and CUDA activities, shape recording, memory profiling and call stacks turned on. For multi-iteration jobs, use `torch.profiler.schedule` with TensorBoard, or export `trace.json` for Chrome tracing. In the operator table sorted by total CUDA time, compute kernels appear as `aten::matmul` and `aten::linear`. Collective communication overhead appears as `nccl:all_reduce` and `nccl:all_gather`.
 
-When you need microsecond-accurate hardware timelines across multiple CUDA streams, host OS threads, and NICs, move to **NVIDIA Nsight Systems** (`nsys`):
+When you need microsecond-accurate hardware timelines across multiple CUDA streams, host threads and NICs, move to **NVIDIA Nsight Systems**, which runs as `nsys`:
 
 ```bash
 # (untested here) Capture CUDA kernels, NVTX ranges, and OS runtime events
@@ -383,7 +445,11 @@ nsys profile --trace=cuda,nvtx,osrt --output=training_profile.nsys-rep python tr
 nsys stats --report gputrace training_profile.nsys-rep
 ```
 
-In an unoptimized synchronous loop, `nsys` shows a strict two-phase split. All backward compute kernels execute before `ncclDevKernel_AllReduce` launches, leaving compute SMs idle during communication. With PyTorch DistributedDataParallel wait-free backpropagation, `nsys` shows a sawtooth pipeline instead. The `ncclDevKernel_AllReduce` kernel on the background communication CUDA stream overlaps with backward compute on the default stream. You must also avoid `nn.DataParallel`, which suffers from Python GIL contention and GPU 0 gradient gathering. Finally, remove accidental `torch.cuda.synchronize()`, `.item()`, or `print()` calls inside the step loop that destroy stream overlap.
+The first command captures the run, and the second summarizes its GPU trace. The timeline itself tells you more than any single number.
+
+In an unoptimized synchronous loop, `nsys` shows a strict two-phase split. All backward compute kernels finish before `ncclDevKernel_AllReduce` launches, so the compute SMs sit idle during communication. With PyTorch DistributedDataParallel and wait-free backpropagation, the timeline becomes a sawtooth instead. The `ncclDevKernel_AllReduce` kernel runs on a background communication stream and overlaps with backward compute on the default stream. Two habits break that overlap. Avoid `nn.DataParallel`, because it suffers from Python GIL contention and gathers gradients on GPU 0. Also remove accidental `torch.cuda.synchronize()`, `.item()` or `print()` calls from the step loop, since each one destroys stream overlap.
+
+The settings below come from AI Systems Performance Engineering, Chapter 4. They cover the profiler setup and the overlap benchmarks.
 
 ```text
 PyTorch Profiler configuration and Nsight Systems overlap benchmarks (ASP Ch. 4):
@@ -401,7 +467,9 @@ PyTorch Profiler configuration and Nsight Systems overlap benchmarks (ASP Ch. 4)
     DP = 45.00 ms/step vs DDP = 30.00 ms/step (33.33% faster with DDP)
 ```
 
-To give profilers such as PyTorch Kineto hierarchical visibility into internal NCCL proxy and network events without high CUPTI overhead, NCCL exposes the dynamic **`NCCL_PROFILER_PLUGIN`** interface. When loaded via `NCCL_PROFILER_PLUGIN=<lib>`, the plugin configures a 32-bit event activation mask covering group, collective, point-to-point, and proxy operations. It implements five C callbacks:
+The serial case is the one to fix. When communication sits idle and then compute sits idle, the step is simply the sum of both. Overlap lets one hide the other.
+
+Profilers such as PyTorch Kineto need visibility into NCCL's internal proxy and network events. They can get it without high CUPTI overhead through the **`NCCL_PROFILER_PLUGIN`** interface. When you load a plugin with `NCCL_PROFILER_PLUGIN=<lib>`, it sets a 32-bit event activation mask. That mask covers group, collective, point-to-point and proxy operations. The plugin implements five C callbacks:
 
 | `NCCL_PROFILER_PLUGIN` Callback | Lifecycle Stage | Operational Role |
 |---|---|---|
@@ -411,15 +479,19 @@ To give profilers such as PyTorch Kineto hierarchical visibility into internal N
 | 4. `recordEventState` | In-flight transitions | Tracks fine-grained state transitions across proxy queues and RDMA completions |
 | 5. `finalize` | Communicator teardown | Releases profiler resources when the communicator is destroyed |
 
+The first and last callbacks bracket the communicator's life. The middle three handle each event as it starts, changes state and ends.
+
 ### Understanding percentile latencies and LLM inference metrics
 
-In production inference serving, reporting only average latency hides severe service-level agreement violations. Suppose 95% of requests finish quickly, while 5% hit long-context KV-cache stalls or garbage collection pauses. The mean latency looks healthy, yet your P99 tail latency violates the SLA by a wide margin. Always plot the Cumulative Distribution Function and report P50 for median behavior, P95 for standard SLA targets, and P99 for worst-case user experience.
+Average latency hides SLA violations in production serving. Suppose 95% of requests finish quickly, while 5% hit long-context KV-cache stalls or garbage collection pauses. The mean looks healthy, yet P99 tail latency breaks the SLA by a wide margin. Plot the cumulative distribution function. Report P50 for typical behavior, P95 for the standard SLA target, and P99 for the worst-case user experience.
 
-Autoregressive LLM inference requires five distinct engineering metrics. **Time to First Token** (`TTFT`) measures elapsed time from request arrival through tokenization, compute-bound prompt prefill, first token generation, and detokenization. **Inter-Token Latency** (`ITL`), also called **Time per Output Token** (`TPOT`), measures the average time between consecutive generated tokens during the memory-bandwidth-bound decode phase. **End-to-End Request Latency** (`e2e_latency`) combines both phases across all generated tokens:
+Autoregressive LLM inference has five metrics you need to know. **Time to First Token**, or `TTFT`, measures the time from request arrival through tokenization, compute-bound prompt prefill, first token generation and detokenization. **Inter-Token Latency**, shortened to `ITL`, is also called **Time per Output Token**, or `TPOT`. It measures the average time between consecutive generated tokens during the memory-bandwidth-bound decode phase. End-to-end request latency, `e2e_latency`, combines both phases across all generated tokens:
 
 $$\text\{e2e\_latency\} = \text\{TTFT\} + (\text\{output\_tokens\} - 1) \times \text\{ITL\}$$
 
-That formula separates initial prefill responsiveness from streaming decode speed. Finally, **Tokens per Second** (`TPS`) measures token generation throughput, while **Requests per Second** (`RPS`) measures end-to-end API request capacity. Disaggregated prefill-and-decode inference across nodes and racks, such as NVIDIA Dynamo, avoids synchronous NCCL collectives for KV cache movement. Instead, point-to-point KV cache transfers use **NVIDIA NIXL** over UCX, GPUDirect RDMA, and IBGDA.
+That formula separates initial prefill responsiveness from streaming decode speed. **Tokens per Second**, or `TPS`, measures token generation throughput. **Requests per Second**, or `RPS`, measures end-to-end API request capacity. Disaggregated prefill and decode across nodes and racks, such as NVIDIA Dynamo, avoids synchronous NCCL collectives for KV cache movement. Instead, point-to-point KV cache transfers use NVIDIA NIXL over UCX, GPUDirect RDMA and IBGDA.
+
+The block below works through the P99 comparison and the latency arithmetic.
 
 ```text
 Inference percentile SLA comparison, e2e_latency math, and NIXL benchmarks:
@@ -437,9 +509,13 @@ Inference percentile SLA comparison, e2e_latency math, and NIXL benchmarks:
   * Up to 30x higher inference throughput on a ~680B LLM across a 72-GPU Blackwell GB200 NVL72 rack (130 TB/s NVSwitch, < 1 us latency)
 ```
 
+For the 16-token output, TTFT is 23.08% of the total, and decode makes up the rest. For the 201-token output, decode takes 97.80%, so the first token barely matters. Choose the metric that matches the request shape you serve.
+
 ### Workload-realistic inference benchmarking (`genai-bench`), cold starts, and reasoning models
 
-Benchmarking an inference server such as vLLM, SGLang, TensorRT-LLM, or NVIDIA NIM by sending identical short prompts in a constant-concurrency loop misses three critical production behaviors. First, real traffic follows variable prompt and completion length distributions, which you should model using `genai-bench` across a concurrency matrix. Second, the first request after model load suffers a severe cold-start penalty from JIT kernel compilation, weight paging, and KV cache allocation. You must benchmark cold and warm paths separately to configure autoscaler minimum warm instances. Third, chain-of-thought reasoning and multi-step agentic models interleave multiple LLM calls with external tool, vector database, and API calls. Those external requests often dominate total session time.
+Benchmarking an inference server such as vLLM, SGLang, TensorRT-LLM or NVIDIA NIM by sending identical short prompts at constant concurrency misses three production behaviors. First, real traffic follows variable prompt and completion length distributions. Model that with `genai-bench` across a concurrency matrix. Second, the first request after a model load suffers a severe cold start. JIT kernel compilation, weight paging and KV cache allocation all add delay. Benchmark the cold and warm paths separately, so you know how many warm instances your autoscaler needs as a minimum. Third, chain-of-thought and multi-step agentic models interleave LLM calls with external tool, vector database and API calls. Those external requests often dominate total session time.
+
+The parameters below set the traffic shapes and cold-start multipliers to test.
 
 ```text
 Workload-realistic inference benchmarking parameters (DAI Ch. 10):
@@ -454,11 +530,15 @@ Workload-realistic inference benchmarking parameters (DAI Ch. 10):
   * 60% or more of total end-to-end session latency comes from external tool/API/database calls rather than GPU inference.
 ```
 
+Cold starts get worse as models grow, so the largest models need the most warm capacity. For agentic workflows, measure the external calls as well, because they can take most of the session.
+
 ### Validating distributed training and inference accuracy
 
-Performance optimizations that silently corrupt model quality are regressions, not speedups. In distributed training, bugs in gradient reduction scaling such as omitting division by `world_size` leave training loss curves looking normal while downstream test accuracy drops sharply. Altered effective batch sizes under gradient accumulation or FP8 underflow cause similar silent degradation. In inference serving, aggressive INT8 or FP4 quantization can double token throughput while degrading math or coding accuracy. Two serving engines can also diverge due to sampling or kernel accumulation order.
+A performance optimization that silently corrupts model quality is a regression, not a speedup. In distributed training, a bug in gradient reduction scaling, such as omitting the division by `world_size`, leaves the training loss curve looking normal. Downstream test accuracy can still drop sharply. Altered effective batch sizes under gradient accumulation, or FP8 underflow, cause similar silent damage. In inference, aggressive INT8 or FP4 quantization can double token throughput while degrading math or coding accuracy. Two serving engines can also diverge because of sampling or kernel accumulation order.
 
-Always compare distributed training and quantized inference against a trusted baseline on standardized evaluation suites. Apply a statistical significance test to separate random seed noise from real regressions.
+Always compare distributed training and quantized inference against a trusted baseline on standardized evaluation suites. Then apply a statistical significance test. It tells you whether a difference is random seed noise or a real regression.
+
+The thresholds below show how to read a small accuracy change.
 
 ```text
 Statistical accuracy validation thresholds and suites (DAI Ch. 10):
@@ -472,13 +552,15 @@ Statistical accuracy validation thresholds and suites (DAI Ch. 10):
   * 0.5% accuracy drop with p = 0.001 (p < 0.05): statistically significant numerical regression (FAIL CI/CD gate)
 ```
 
+The same 0.5% change is noise at p = 0.3 and a regression at p = 0.001. Before you call a change a speedup, check it against a trusted baseline and a significance test.
+
 ---
 
 ## Commands and configurations that matter
 
 ### 1. Tier 1 & Tier 2: Intra-node `nvbandwidth` and point-to-point RDMA `perftest`
 
-Run these commands to verify GPU-to-NIC PCIe topology, PCIe Gen5 x16 copy bandwidth, and InfiniBand port states. Then measure host-memory RDMA wire speed and GPUDirect RDMA BAR1 bandwidth before launching any collective test.
+Run these commands to check the GPU-to-NIC PCIe topology, the PCIe Gen5 x16 copy bandwidth and the InfiniBand port states. Then measure host-memory RDMA wire speed and GPUDirect RDMA BAR1 bandwidth. Do all of this before you launch any collective test, so a bad link never gets blamed on NCCL.
 
 ```bash
 # (untested here) Tier 1: Inspect GPU-NIC locality, NVLink status, and PCIe Gen5 x16 copy bandwidth
@@ -509,9 +591,11 @@ ib_write_bw -d mlx5_0 --use_cuda=0 --report_gbits --duration 30 -a
 ib_write_bw -d mlx5_0 --use_cuda=0 --report_gbits --duration 30 -a <node-a-ip>
 ```
 
+Run the Tier 1 commands first. The `nvidia-smi topo -m` output shows whether a GPU and a NIC share a local PCIe path. The Tier 2 commands then benchmark the NIC from the NUMA node you pinned.
+
 ### 2. Tier 3: Building and launching `nccl-tests` (`mpirun` and Slurm `sbatch`/`srun`)
 
-Compile `nccl-tests` with MPI support so you can sweep message sizes across both single-node and multi-node communicators with active init-time diagnostics enabled.
+Compile `nccl-tests` with MPI support. That lets one sweep cover both single-node and multi-node communicators, with active init-time diagnostics switched on.
 
 ```bash
 # (untested here) Build nccl-tests with MPI support for multi-node collective sweeps
@@ -533,9 +617,11 @@ mpirun -np 16 -H node-a:8,node-b:8 \
   ./nccl-tests/build/all_reduce_perf -b 8M -e 1G -f 2 -g 1 -w 5 -n 100 -c 1
 ```
 
+Start with the single-node sweep, then move to the two-node launch. A failure then shows up at the smallest scale first, where it is easiest to read.
+
 ### 3. Production Slurm `sbatch` job for 4-node (32-GPU) 8-rail NDR400 `all_reduce_perf`
 
-In a Slurm cluster, this batch script binds one task per GPU with 12 CPU cores per task and pins all eight ConnectX-7 InfiniBand rails for a 1 GiB to 10 GiB burn-in sweep.
+In a Slurm cluster, this batch script binds one task per GPU, with 12 CPU cores per task. It pins all eight ConnectX-7 InfiniBand rails for a 1 GiB to 10 GiB burn-in sweep.
 
 ```bash
 #!/bin/bash
@@ -560,11 +646,13 @@ srun --mpi=pmix /shared/nccl-tests/build/all_reduce_perf \
     -b 1G -e 10G -f 2 -g 1 -c 1 -w 10 -n 100
 ```
 
+The script exports its rail and fallback settings before `srun`, so every task inherits the same environment. Check that the rails and transport variables match your fabric before you submit it.
+
 ---
 
 ## How it fails
 
-Use this fault matrix during cluster bring-up or incident response to connect `nccl-tests`, `ib_write_bw`, and PyTorch symptoms to their exact hardware or configuration fix.
+Use this fault matrix during cluster bring-up or incident response. It connects the symptoms you see in `nccl-tests`, `ib_write_bw` and PyTorch to the exact hardware or configuration fix.
 
 | Failure Mode | Observable Symptom in Logs / Metrics | Root-Cause Mechanism | Deterministic Fix & Verification |
 |---|---|---|---|
@@ -575,17 +663,21 @@ Use this fault matrix during cluster bring-up or incident response to connect `n
 | **5. Bootstrap interface hang, port exhaustion, or `memlock` QP failure** | Job hangs at `ncclCommInitRank` or prints `NCCL WARN Call to connect returned Connection timed out` or `Call to ibv_create_qp / ibv_reg_mr failed` | NCCL picked an unroutable bridge (`docker0`), ephemeral TCP ports were exhausted, or Linux `memlock` limit blocked RDMA pinned memory registration | Set `NCCL_SOCKET_IFNAME=^docker,lo` (or `=ib0`), widen `/proc/sys/net/ipv4/ip_local_port_range` (`50000 51000`), and set `memlock unlimited` in `/etc/security/limits.conf` (`ulimit -l`) |
 | **6. Microscopic DDP buckets & UCX/RDMA allocator fragmentation** | `ib_write_bw` (`390 Gbps`) and `nccl-tests` (`1 GiB`) pass, but training is `40%` slow; or `torch.cuda.memory_reserved()` climbs `0.800 GB` $\rightarrow$ `1.040 GB` $\rightarrow$ `1.240 GB` while `memory_allocated()` is `0.000 GB` | Model issues thousands of `256 KB` AllReduce calls (latency-bound); or varying `40 MB`/`200 MB` tensors fragment PyTorch's caching allocator and exhaust UCX registration pools | Increase DDP `bucket_cap_mb` from `25 MB` to `50 MB`; pre-allocate static buffers or register persistent user buffers with `ncclCommRegister` / `ncclMemAlloc` (`-R 1` / `-R 2`) |
 
+Start from the symptom column, then confirm the root cause before you change any setting. Row 1 is the one you should remember. The job runs without crashing, so only the timings give the fallback away. Pair every fix with its verification step, so you know the change worked.
+
 ---
 
 ## Hands-on lab
 
-The deterministic companion lab consists of `code/part12/nccl_tests_benchmarking.py` and `code/part12/nccl_tests_benchmarking_lab.py` and runs anywhere using the Python 3 standard library only. It verifies self-checks covering `algbw` and `busbw` math across all six collective families, `all_reduce_perf` table parsing, and `#wrong` integrity checks. It also tests the three-tier bottleneck attribution engine and $\lceil \log_2 N \rceil$ binary-search straggler bisection. Finally, it checks distributed training scaling efficiency and LLM inference latency percentile SLA evaluation.
+The companion lab uses two files, `code/part12/nccl_tests_benchmarking.py` and `code/part12/nccl_tests_benchmarking_lab.py`. It runs anywhere Python 3 is installed, because it uses only the standard library. You do not need a GPU or an InfiniBand adapter to run it. The lab checks the `algbw` and `busbw` math across all six collective families, parses an `all_reduce_perf` table and flags any `#wrong` integrity errors. It also exercises the three-tier bottleneck attribution engine and the straggler bisection. Last, it checks scaling efficiency and inference latency against the SLA.
+
+Run it from the repository root:
 
 ```bash
 python3 -B code/part12/nccl_tests_benchmarking_lab.py
 ```
 
-Expected output verified in this workspace:
+The expected output below is what the lab printed in this workspace.
 
 ```text
 === Chapter 12.17 Lab: nccl-tests and Fabric Benchmarking ===
@@ -623,27 +715,42 @@ Expected output verified in this workspace:
 Summary: 27 passed, 0 failed
 ```
 
+The last line should read `Summary: 27 passed, 0 failed`. If a line shows `[FAIL]` instead of `[PASS]`, start with that check, because each line names the calculation it covers.
+
 ---
 
 ## Common first mistakes
 
-1. **Comparing algorithmic bandwidth instead of bus bandwidth against physical hardware specs:** At $n = 64$ GPUs, AllReduce `busbw` is $1.96875 \times \text\{algbw\}$. Reading `algbw` of 183.55 GB/s and concluding that an 8x400G NDR node is running at under 50% utilization ignores the $2(n-1)/n$ ring multiplier. The actual bus bandwidth is 361.36 GB/s, or 90.34% of line rate.
-2. **Judging fabric health from small message sizes or ignoring data-integrity errors:** Small collectives from 8 B to 64 KiB are dominated by kernel launch and network hop latency rather than link bandwidth. Conversely, a high bus bandwidth at 1 GiB with `#wrong > 0` means the fabric or GPU memory is actively corrupting tensors.
-3. **Timing asynchronous GPU operations without synchronization or warmup:** Starting or stopping a host timer without `torch.cuda.synchronize()` measures only Python kernel-launch overhead. Including the first 5 to 10 eager steps or 20 to 50 `torch.compile` steps contaminates the benchmark with JIT compilation.
-4. **Measuring per-rank iteration time *after* the collective to hunt stragglers:** Because a collective synchronizes all participants, post-collective iteration times look identical across every rank. Always measure the pre-collective compute and dataload arrival time or query `ncclras` on port 28028 to identify the rank that arrived late.
-5. **Hard-coding GID index or socket interface names across heterogeneous nodes:** Modern NCCL selects the RoCE GID index dynamically, so hard-coding `NCCL_IB_GID_INDEX=3` breaks nodes whose GID tables differ. Hard-coding `=eth0` also fails when interface names vary across nodes; use prefix exclusion rules such as `^docker,lo` and verify with `show_gids`.
-6. **Exceeding the 64-socket limit or thinking socket variables tune InfiniBand RDMA:** The variables `NCCL_SOCKET_NTHREADS` and `NCCL_NSOCKS_PERTHREAD` tune only the NET/Socket TCP transport and are capped at a product of 64 connections per communicator. They have zero effect on InfiniBand or RoCEv2 NET/IB RDMA data paths.
+Each of the six mistakes below produces a number that looks plausible, which is why it is easy to miss. Read each one as a warning sign you can check in your own results.
+
+1. Comparing algorithmic bandwidth with the hardware spec. At $n = 64$ GPUs, AllReduce `busbw` is $1.96875 \times \text\{algbw\}$. If you read an `algbw` of 183.55 GB/s and conclude that an 8x400G NDR node runs under 50% utilization, you have ignored the $2(n-1)/n$ ring multiplier. The actual bus bandwidth is 361.36 GB/s, which is 90.34% of line rate. The ring multiplier is the step that turns one into the other, so never skip it.
+
+2. Judging fabric health from small messages, or ignoring data-integrity errors. Small collectives from 8 B to 64 KiB are dominated by kernel launch and network hop latency, not by link bandwidth. The reverse trap is also real. A high bus bandwidth at 1 GiB with `#wrong > 0` means the fabric or GPU memory is corrupting tensors. A fast result with errors is a failed result, however good the bandwidth looks.
+
+3. Timing asynchronous GPU work without synchronization or warmup. Starting or stopping a host timer without `torch.cuda.synchronize()` measures only Python kernel-launch overhead. Keeping the first 5 to 10 eager steps, or 20 to 50 `torch.compile` steps, contaminates the benchmark with JIT compilation. Warmup exists to absorb that one-time cost, so the timed rows should start only after it is gone.
+
+4. Measuring per-rank iteration time after the collective to hunt stragglers. A collective synchronizes all participants, so post-collective iteration times look identical on every rank. Measure the pre-collective compute and dataload arrival time instead, or query `ncclras` on port 28028, to find the rank that arrived late. The clock you start after the barrier measures the wait as well as the work, which is exactly what hides the straggler.
+
+5. Hard-coding a GID index or socket interface name across heterogeneous nodes. Modern NCCL selects the RoCE GID index dynamically, so hard-coding `NCCL_IB_GID_INDEX=3` breaks nodes whose GID tables differ. Hard-coding `=eth0` fails too when interface names vary. Use prefix exclusion rules such as `^docker,lo` instead, and verify with `show_gids`.
+
+6. Exceeding the 64-socket limit, or assuming socket variables tune InfiniBand RDMA. `NCCL_SOCKET_NTHREADS` and `NCCL_NSOCKS_PERTHREAD` tune only the NET/Socket TCP transport, and their product is capped at 64 connections per communicator. They have zero effect on InfiniBand or RoCEv2 NET/IB RDMA data paths. Because the names sound like RDMA settings, engineers often reach for them on a slow RDMA path, and that is the wrong knob.
+
+Before you publish a benchmark number, check it against these six traps.
 
 ---
 
 ## Exercises
 
-1. **Exercise 1 — Algorithmic and Bus Bandwidth Math Across Collective Families:** Using `compute_collective_bandwidths` and the parameters below, compute algorithmic bandwidth in GB/s, the exact conversion factor, and bus bandwidth in GB/s for each of the five collectives at $n = 8$ on the 512 MiB tensor. Repeat the `all_reduce_perf` calculation for the 1 GiB tensor on 8 H100 GPUs over single-node NVSwitch. Then calculate the 1 GiB result across 64 GPUs on 8 nodes of 8x400G NDR InfiniBand.
-2. **Exercise 2 — Three-Tier Hardware-to-Collective Fault Attribution:** Using `diagnose_benchmark_tier` on the four commissioning cases below, identify the exact failing tier and root cause for each case.
-3. **Exercise 3 — Binary-Search Straggler Bisection:** Using `bisect_straggler_node` on the 64-node cluster below where one node has a degraded optical transceiver, list the exact node-range splits required to isolate the faulty node. State the number of split runs, total runs including the initial full-cluster run, and how many runs are saved compared to 64 sequential single-node removals. Write the HCA filter and `ib_write_bw` commands to isolate which of its 8 ConnectX-7 rails is degraded.
-4. **Exercise 4 — Distributed Training Scaling Efficiency, Fleet Waste, and Amdahl's Law:** Using `evaluate_training_scaling_and_waste` and `compute_amdahl_speedup` on the parameters below, compute the 8-GPU speedup, scaling efficiency, and predicted 16-GPU speedup. Next, compute the effective GPU count, wasted GPU count, wasted GPU-hours, and wasted cloud cost in dollars for the 64-GPU run. Finally, compute the 16-GPU speedup, scaling efficiency, and communication versus compute milliseconds per step, plus the Amdahl's Law maximum speedup at 64 GPUs and infinite GPUs.
-5. **Exercise 5 — Pre-Collective Straggler Timing, MFU, and Communicator Lifecycle Overhead:** Using the parameters below, explain why post-collective timing fails to identify GPU 2. Compute the max/min imbalance ratio and classify whether GPU 2 has a hardware fault or a software bottleneck. Next, compute the achieved TFLOPS and MFU percentage before and after dataloader tuning on the 70B BF16 model. Finally, calculate the percentage reduction in iteration time when the 48.0 ms communicator initialization is moved outside the step loop.
-6. **Exercise 6 — LLM Inference Latency and Percentile SLA Validation:** Using `evaluate_inference_latency_and_sla` on the serving parameters below, compute decode latency, end-to-end latency, and the TTFT percentage share for the short 16-token output and the long 201-token output. Evaluate System A and System B against the 200.0 ms P99 SLA. Explain why System B fails the SLA by 2.5x despite a 20.0 ms lower average latency.
+Work through these six exercises in order, using the inputs in the block after the list. Each one asks for a specific result, and the answers depend on the exact parameters, so do not round them early.
+
+1. Start with the bandwidth math across collective families. Using `compute_collective_bandwidths` and the parameters below, compute algorithmic bandwidth in GB/s, the exact conversion factor and bus bandwidth in GB/s for each of the five collectives at $n = 8$ on the 512 MiB tensor. Repeat the `all_reduce_perf` calculation for the 1 GiB tensor on 8 H100 GPUs over single-node NVSwitch. Then calculate the 1 GiB result across 64 GPUs on 8 nodes of 8x400G NDR InfiniBand.
+2. Next, classify the failures. Using `diagnose_benchmark_tier` on the four commissioning cases below, identify the exact failing tier and root cause for each case.
+3. Practice binary-search bisection. Using `bisect_straggler_node` on the 64-node cluster below, where one node has a degraded optical transceiver, list the exact node-range splits needed to isolate the faulty node. State the number of split runs, the total runs including the initial full-cluster run, and how many runs you save compared with 64 sequential single-node removals. Then write the HCA filter and `ib_write_bw` commands that isolate which of its 8 ConnectX-7 rails is degraded.
+4. Work through scaling and waste. Using `evaluate_training_scaling_and_waste` and `compute_amdahl_speedup` on the parameters below, compute the 8-GPU speedup, scaling efficiency and predicted 16-GPU speedup. Next, compute the effective GPU count, wasted GPU count, wasted GPU-hours and wasted cloud cost in dollars for the 64-GPU run. Finally, compute the 16-GPU speedup, scaling efficiency, communication versus compute milliseconds per step, and the Amdahl's Law maximum speedup at 64 GPUs and at infinite GPUs.
+5. Explain the straggler and MFU case. Using the parameters below, explain why post-collective timing fails to identify GPU 2. Compute the max/min imbalance ratio, then classify whether GPU 2 has a hardware fault or a software bottleneck. Next, compute the achieved TFLOPS and MFU percentage before and after dataloader tuning on the 70B BF16 model. Finally, calculate the percentage reduction in iteration time when the 48.0 ms communicator initialization moves outside the step loop.
+6. Last, validate inference latency against the SLA. Using `evaluate_inference_latency_and_sla` on the serving parameters below, compute decode latency, end-to-end latency and the TTFT percentage share for the short 16-token output and the long 201-token output. Evaluate System A and System B against the 200.0 ms P99 SLA. Explain why System B fails the SLA by 2.5x despite a 20.0 ms lower average latency.
+
+The block below holds every input you need, along with the captured evidence each exercise refers to.
 
 ```text
 Exercise Input Parameters and Captured Evidence Reference:
@@ -665,21 +772,23 @@ Exercise Input Parameters and Captured Evidence Reference:
                              (b) 200.0 ms P99 SLA: System A (100.0 ms mean, uniform 90-110 ms, P99 = 110.0 ms) vs System B (80.0 ms mean, 95% @ 57.89 ms, 5% @ 500.0 ms).
 ```
 
+Use this block as your only source of inputs, so every answer traces back to a value you can check.
+
 ---
 
 ## Interview angles
 
 1. **"Why is `iperf3` useless for validating a 400G InfiniBand or RoCEv2 AI cluster, and what exact sequence of tools do you run instead?"**
-   The `iperf3` utility exercises the kernel TCP/IP socket stack, which bottlenecks on single-core CPU interrupt and copy overhead well below 400 Gbps. It never tests RDMA Verbs or GPU BAR1 peer memory. Instead, validate in three hardware-isolated tiers before touching PyTorch. Tier 1 uses `nvbandwidth` and `nvidia-smi topo -m` to prove intra-node PCIe Gen5 x16 copy speed and NVLink status. Tier 2 uses `ib_write_bw` and `ib_write_lat` with and without `--use_cuda`. That step proves raw 400G NDR wire speed and GPUDirect RDMA via `nvidia_peermem` on PIX-paired GPU and NIC pairs. Tier 3 uses `nccl-tests` `all_reduce_perf` to prove single-node and multi-node collective bus bandwidth with zero `#wrong` errors.
+   `iperf3` runs through the kernel TCP/IP socket stack, which bottlenecks on single-core CPU interrupt and copy overhead well below 400 Gbps. It never tests RDMA Verbs or GPU BAR1 peer memory. So validate in three hardware-isolated tiers before you touch PyTorch. Tier 1 uses `nvbandwidth` and `nvidia-smi topo -m` to prove the intra-node PCIe Gen5 x16 copy speed and the NVLink status. Tier 2 runs `ib_write_bw` and `ib_write_lat` with and without `--use_cuda`. That proves raw 400G NDR wire speed, and it proves GPUDirect RDMA through `nvidia_peermem` on PIX-paired GPU and NIC pairs. Tier 3 runs nccl-tests with `all_reduce_perf`, which proves single-node and multi-node collective bus bandwidth with zero `#wrong` errors. Each tier starts only after the one before it passes.
 
 2. **"In `nccl-tests`, what is the mathematical difference between `algbw` and `busbw`, and why does AllReduce multiply by `2(n-1)/n` while ReduceScatter, AllGather, and AllToAll multiply by `(n-1)/n`?"**
-   Algorithmic bandwidth divides the logical tensor size $S$ by elapsed time $t$. In a ring ReduceScatter, AllGather, or AllToAll across $n$ ranks, each rank must send and receive $n - 1$ shards of size $S/n$. That pattern moves $\frac\{n-1\}\{n\}S$ bytes over its physical links. Because a ring AllReduce executes a ReduceScatter followed by an AllGather, each rank moves $\frac\{2(n-1)\}\{n\}S$ bytes. Multiplying `algbw` by that volume factor yields `busbw`, the actual per-rank link bandwidth consumed. You can compare `busbw` directly against the 50 GB/s NIC or 900 GB/s NVLink spec sheet regardless of cluster size.
+   Algorithmic bandwidth divides the logical tensor size $S$ by the elapsed time $t$. In a ring ReduceScatter, AllGather or AllToAll across $n$ ranks, each rank sends and receives $n - 1$ shards of size $S/n$. That moves $\frac\{n-1\}\{n\}S$ bytes over its physical links. A ring AllReduce runs a ReduceScatter followed by an AllGather, so each rank moves $\frac\{2(n-1)\}\{n\}S$ bytes. Multiplying `algbw` by that volume factor gives `busbw`, the link bandwidth each rank actually uses. You can then compare `busbw` directly with the 50 GB/s NIC or 900 GB/s NVLink spec sheet, whatever the cluster size. Keep the two factors straight, because mixing them up changes the answer by almost a factor of two.
 
 3. **"An 8-node training job is 40% slower than expected, yet `ib_write_bw` shows 400 Gbps and `all_reduce_perf -b 1G -e 1G` hits full bus bandwidth. How do you explain this to the ML team and fix it?"**
-   Both `ib_write_bw` and a 1 GiB `all_reduce_perf` test large, contiguous, bandwidth-dominated payloads. When you profile the PyTorch job with Nsight Systems, you see thousands of tiny, fragmented AllReduce calls such as 256 KB payloads. On small transfers, per-collective launch and network handshake latency dominate wire serialization time. The network is healthy, but the framework is starving it with small messages. Increasing PyTorch DDP `bucket_cap_mb` from the 25 MB default to 50 MB coalesces those micro-transfers into bandwidth-bound buckets.
+   Both `ib_write_bw` and a 1 GiB `all_reduce_perf` test large, contiguous payloads that are limited by bandwidth. Profile the PyTorch job with Nsight Systems, though, and you may see thousands of tiny, fragmented AllReduce calls, such as 256 KB payloads. For small transfers, per-collective launch and network handshake latency dominate the time spent putting data on the wire. The network is healthy, but the framework feeds it small messages. Raising DDP `bucket_cap_mb` from the 25 MB default to 50 MB merges those micro-transfers into bandwidth-bound buckets.
 
 4. **"A 128-node job hangs or runs at 20% speed. How do you find the offending rank or node without running 128 individual tests?"**
-   First, if the job is currently hung on NCCL 2.24 or later, query the built-in RAS daemon via `ncclras -v` on port 28028. Inspect the output for `MISMATCH` to find ranks lagging on collective operation counts or `INCOMPLETE` for dead processes, and sweep kernel logs for Xid errors. Second, if all ranks enter collectives on time but `all_reduce_perf` is slow across the 128 nodes, run binary-search node bisection. Split the candidate node list in half at each step to isolate the bad node in $\lceil \log_2 128 \rceil = 7$ split tests, or 8 total runs. Finally, test its 8 NIC rails individually using `NCCL_IB_HCA`.
+   If the job is hung on NCCL 2.24 or later, query the built-in RAS daemon with `ncclras -v` on port 28028. Look for `MISMATCH`, which points to ranks lagging on collective operation counts, and `INCOMPLETE`, which points to dead processes. Sweep the kernel logs for Xid errors as well. If all ranks enter collectives on time but `all_reduce_perf` is still slow across the 128 nodes, run binary-search bisection. Split the candidate list in half at each step. That isolates the bad node in $\lceil \log_2 128 \rceil = 7$ split tests, or 8 total runs. Then test its 8 NIC rails one at a time with `NCCL_IB_HCA`. Ask the questions in that order, from the cheapest check to the most expensive one.
 
 ---
 
@@ -688,35 +797,37 @@ Exercise Input Parameters and Captured Evidence Reference:
 <details>
 <summary>**1. Why must you run `nvbandwidth` and `ib_write_bw` before running `nccl-tests` when troubleshooting a slow cluster?**</summary>
 
-The `nccl-tests` binaries exercise the entire stack simultaneously, including GPU HBM, PCIe switches, peer memory, NICs, cables, switch ASICs, and NCCL algorithms. If `all_reduce_perf` is slow and you skipped Tier 1 and Tier 2, you cannot isolate the fault layer. You cannot tell whether the root cause is a downtrained PCIe Gen5 x8 link, a dirty optical cable, a missing `nvidia_peermem` module, or a software TCP socket fallback.
+The `nccl-tests` binaries exercise the whole stack at once. That includes GPU HBM, PCIe switches, peer memory, NICs, cables, switch ASICs and NCCL algorithms. For example, if `all_reduce_perf` is slow and you skipped Tiers 1 and 2, you cannot tell which layer failed. The cause could be a downtrained PCIe Gen5 x8 link, a dirty optical cable, a missing `nvidia_peermem` module, or a software TCP socket fallback.
 </details>
 
 <details>
 <summary>**2. What bandwidth should `nvbandwidth -t device_to_host_memcpy_ce` report on a healthy PCIe Gen5 x16 server, and what does a reading of `25–30 GB/s` indicate?**</summary>
 
-A healthy PCIe Gen5 x16 link has 64 GB/s raw theoretical bandwidth and delivers roughly 50 to 60 GB/s in `device_to_host_memcpy_ce`. A reading of 25 to 30 GB/s indicates that the GPU or riser has downtrained its PCIe link width from x16 to x8 or speed from Gen5 to Gen4. You confirm this by checking `LnkSta` in `lspci -vv`.
+A healthy PCIe Gen5 x16 link has 64 GB/s of raw theoretical bandwidth. In `device_to_host_memcpy_ce`, it should deliver roughly 50 to 60 GB/s. A reading of 25 to 30 GB/s means the GPU or riser has downtrained the link, either from x16 to x8 or from Gen5 to Gen4. Check `LnkSta` in `lspci -vv` to confirm which one happened. Compare your reading with the healthy baseline before you decide anything.
 </details>
 
 <details>
 <summary>**3. Why is `iperf3` unsuitable for benchmarking a 400G InfiniBand or RoCEv2 fabric?**</summary>
 
-The `iperf3` tool sends data through the Linux kernel TCP/IP stack. That path incurs socket buffer copies, context switches, and CPU interrupt overhead, bottlenecking on the host CPU well below 400 Gbps. The `perftest` binaries post Verbs work requests directly to the HCA hardware and bypass the OS kernel.
+The `iperf3` tool sends its data through the Linux kernel TCP/IP stack. That path adds socket buffer copies, context switches and CPU interrupt overhead, so the host CPU becomes the bottleneck well below 400 Gbps. The `perftest` binaries post Verbs work requests straight to the HCA and skip the OS kernel. That is why perftest checks the wire, and nccl-tests checks the collectives.
 </details>
 
 <details>
 <summary>**4. In `nvidia-smi topo -m` on an 8-GPU DGX H100 node, what is the difference between `PIX`, `SYS`, and `NV18`?**</summary>
 
-PIX means the GPU and NIC communicate across at most a single PCIe bridge on the same NUMA node. That local path is the required pairing for full-speed GPUDirect RDMA. SYS means traffic between the GPU and NIC must cross the inter-socket CPU link between NUMA nodes 0 and 1. NV18 means the two GPUs are connected via 18 bonded fourth-generation NVLinks through the intra-node NVSwitch fabric at 900 GB/s bidirectional per GPU.
+PIX means the GPU and NIC are at most one PCIe bridge apart, on the same NUMA node. That local path is the pairing you need for full-speed GPUDirect RDMA. SYS means traffic between the GPU and NIC must cross the inter-socket CPU link between NUMA nodes 0 and 1. NV18 means two GPUs are linked by 18 bonded fourth-generation NVLinks through the intra-node NVSwitch fabric, at 900 GB/s bidirectional per GPU.
 </details>
 
 <details>
 <summary>**5. In `ibstat`, what does it mean when a port shows `Physical state: LinkUp` but `State: Initializing`?**</summary>
 
-A physical state of LinkUp proves the optical transceiver, laser, and physical cable have established a layer-1 lock with the switch port. A logical state of Initializing instead of Active means the InfiniBand Subnet Manager has not yet assigned an LID or programmed forwarding tables.
+A physical state of LinkUp means the optical transceiver, laser and cable have locked at layer 1 with the switch port. A logical state of Initializing, rather than Active, means the InfiniBand Subnet Manager has not yet assigned a LID or programmed the forwarding tables. Read both states together, because either one alone can mislead you.
 </details>
 
 <details>
 <summary>**6. What is the exact formula for `algbw` and `busbw` in `nccl-tests` for AllReduce, ReduceScatter, AllGather, AllToAll, and Broadcast across $n$ ranks?**</summary>
+
+Use the formulas below. The first gives `algbw`, and the rest give `busbw` for each collective.
 
 ```text
 nccl-tests algbw and busbw formulas across n ranks (tensor size S bytes, time t seconds):
@@ -730,6 +841,8 @@ nccl-tests algbw and busbw formulas across n ranks (tensor size S bytes, time t 
 <details>
 <summary>**7. On an 8-GPU `all_reduce_perf` run, a `67,108,864`-byte (`64 MiB`) collective completes in `1,653.1 µs`. What are `algbw` and `busbw`?**</summary>
 
+Work it through in this order: first `algbw`, then the ring factor, then `busbw`.
+
 ```text
 64 MiB (67,108,864 B) AllReduce on n = 8 GPUs in t = 1,653.1 us:
 - algbw = 67,108,864 B / (1,653.1 * 10^-6 s) = 40.60 GB/s
@@ -741,37 +854,37 @@ nccl-tests algbw and busbw formulas across n ranks (tensor size S bytes, time t 
 <details>
 <summary>**8. What do the `-b`, `-e`, `-f`, `-g`, `-w`, `-n`, and `-c` flags control in `all_reduce_perf`?**</summary>
 
-The `-b` flag sets the minimum starting message size in bytes, and `-e` sets the maximum ending message size. The `-f` flag sets the multiplicative step factor between sizes, while `-g` sets the number of GPUs per process or thread. Finally, `-w` sets untimed warmup iterations, `-n` sets timed measurement iterations, and `-c` enables data-integrity verification in the `#wrong` column.
+`-b` sets the minimum starting message size in bytes, and `-e` sets the largest size. `-f` sets the step factor between sizes, and `-g` sets how many GPUs each process or thread manages. `-w` sets the untimed warmup iterations, `-n` sets the timed iterations, and `-c` turns on data-integrity checking in the `#wrong` column. Together, these flags set the shape and the rigor of each sweep.
 </details>
 
 <details>
 <summary>**9. What does a non-zero value in the `#wrong` column of `nccl-tests` mean, and how should you respond?**</summary>
 
-The `#wrong` column counts the number of elements whose reduced numerical output failed validation against the expected reduction result when verification is enabled. Any non-zero count indicates silent data corruption from faulty GPU HBM or SRAM, bad PCIe or RDMA transfers, or broken buffer registration. Treat it as a critical correctness failure before evaluating any bandwidth numbers.
+The `#wrong` column counts elements whose reduced output failed validation against the expected result, when checking is on. Any non-zero count means silent corruption. It can come from faulty GPU HBM or SRAM, bad PCIe or RDMA transfers, or broken buffer registration. Treat it as a critical correctness failure, and do not evaluate any bandwidth numbers until it is fixed.
 </details>
 
 <details>
 <summary>**10. Host-memory `ib_write_bw` between two nodes measures `390 Gbps`, but `ib_write_bw --use_cuda=0` and multi-node `all_reduce_perf` are 4x slower. What is broken?**</summary>
 
-Because host-memory RDMA at 390 Gbps uses the exact same physical NIC, cable, and switch ports as `--use_cuda=0`, the physical InfiniBand or RoCE fabric is healthy. The bottleneck is in the local GPU-to-NIC GPUDirect RDMA path. Either `nvidia_peermem` is not loaded or PCIe Access Control Services is enabled on the PCIe switch. Otherwise, the test paired a GPU and NIC across different NUMA sockets as SYS instead of PIX.
+Host-memory RDMA at 390 Gbps uses the same NIC, cable and switch ports as `--use_cuda=0`. So the fabric itself is healthy, and the fault sits in the local GPU-to-NIC GPUDirect path. Either `nvidia_peermem` is not loaded, or PCIe Access Control Services is enabled on the switch. Another possibility is that the test paired a GPU and NIC across sockets, as SYS rather than PIX. Ruling out the fabric first saves you from chasing a healthy cable.
 </details>
 
 <details>
 <summary>**11. How many benchmark runs are required to isolate a single slow straggler node among `64` nodes using binary-search bisection versus linear testing?**</summary>
 
-Binary-search bisection halves the suspect candidate pool at each step. It requires $\lceil \log_2 64 \rceil = 6$ split steps, or 7 total runs including the initial 64-node test. That approach saves 58 runs compared to 64 sequential single-node exclusion tests.
+Bisection halves the suspect pool at each step. It needs $\lceil \log_2 64 \rceil = 6$ split steps, or 7 runs including the first 64-node test. Linear testing of 64 nodes takes 64 runs, so bisection saves 58 runs.
 </details>
 
 <details>
 <summary>**12. What is the difference between `NCCL_RUN_DIAGNOSTICS=1` and `ncclras`, and which NCCL versions introduced them?**</summary>
 
-The variable `NCCL_RUN_DIAGNOSTICS=1`, introduced in NCCL 2.31, runs active hardware and P2P verification checks during communicator initialization before the workload starts. The `ncclras` utility, introduced in NCCL 2.24 and listening on port 28028, queries the live peer keep-alive daemon during a running or hung job. It reports `MISMATCH` for lagging collective operation counts per rank or `INCOMPLETE` for unresponsive or dead ranks.
+`NCCL_RUN_DIAGNOSTICS=1` came in NCCL 2.31. It runs active hardware and P2P checks during communicator initialization, before the workload starts. `ncclras` came in NCCL 2.24 and listens on port 28028. You query it while a job runs or hangs. It reports `MISMATCH` for ranks with lagging collective counts, or `INCOMPLETE` for dead or unresponsive ranks. Use the first before a job runs, and the second when a job is already stuck.
 </details>
 
 <details>
 <summary>**13. Why does measuring iteration time immediately after `dist.all_reduce` fail to identify a compute or dataloader straggler?**</summary>
 
-The `dist.all_reduce` call is a synchronous collective barrier across all participating ranks. Fast ranks that finish their forward and backward passes in 125 ms block inside the collective waiting for a slow rank that takes 1,250 ms. That barrier causes every rank to report roughly 1,250 ms afterwards. You must call `torch.cuda.synchronize()` and record timestamps *before* entering the collective.
+`dist.all_reduce` is a synchronous collective barrier. Fast ranks that finish their forward and backward passes in 125 ms block inside the collective until the slow rank, which takes 1,250 ms, arrives. Every rank then reports about 1,250 ms, so the straggler is hidden. Call `torch.cuda.synchronize()` and record each timestamp *before* you enter the collective. A timer placed in the right spot shows the slow rank in its own numbers.
 </details>
 
 <details>
@@ -789,37 +902,37 @@ The `dist.all_reduce` call is a synchronous collective barrier across all partic
 <details>
 <summary>**15. What is the formula for scaling efficiency, and what does an `81.25%` scaling efficiency at `8` GPUs mean?**</summary>
 
-Scaling efficiency equals $\text\{Throughput\}_N / (N \times \text\{Throughput\}_1)$. An 81.25% scaling efficiency at 8 GPUs means the 8-GPU job achieves $8 \times 0.8125 = 6.5\times$ the throughput of a single GPU instead of 8.0x. The remaining 18.75% of ideal linear throughput is lost to communication and synchronization overhead.
+Scaling efficiency equals $\text\{Throughput\}_N / (N \times \text\{Throughput\}_1)$. At 81.25% efficiency on 8 GPUs, the job reaches $8 \times 0.8125 = 6.5\times$ single-GPU throughput instead of 8.0x. The remaining 18.75% of ideal linear throughput is lost to communication and synchronization overhead.
 </details>
 
 <details>
 <summary>**16. According to Amdahl's Law, what is the maximum theoretical speedup on `64` GPUs and on infinite GPUs if `10%` of a training step is strictly serial?**</summary>
 
-With serial fraction $s = 0.10$, the maximum speedup on $N = 64$ GPUs is $\frac\{1\}\{0.10 + 0.90/64\} = 8.77\times$. As $N \to \infty$, the speedup is bounded by $\frac\{1\}\{0.10\} = 10.0\times$ regardless of how many GPUs are added.
+With a serial fraction $s = 0.10$, the maximum speedup on $N = 64$ GPUs is $\frac\{1\}\{0.10 + 0.90/64\} = 8.77\times$. As $N$ grows without limit, the speedup is bounded by $\frac\{1\}\{0.10\} = 10.0\times$, no matter how many GPUs you add. Serial work is the part of each step that cannot run in parallel, so it sets the ceiling.
 </details>
 
 <details>
 <summary>**17. Why can a GPU show `99%–100%` utilization in `nvidia-smi` while achieving only `17%–22%` Model FLOPs Utilization (`MFU`)?**</summary>
 
-The `nvidia-smi` GPU utilization metric only reports the percentage of sampling intervals during which *at least one* CUDA kernel was active on the device. A GPU spinning inside an `ncclKernel_AllReduce` wait loop or executing thousands of small, memory-bound kernels still registers 100% `nvidia-smi` utilization. Meanwhile, its Tensor Cores sit mostly idle. Verify true compute efficiency via MFU and Nsight Compute (`ncu --metrics sm__throughput.avg.pct_of_peak_sustained_elapsed`).
+The `nvidia-smi` GPU utilization metric reports the share of sampling intervals in which at least one CUDA kernel was active. A GPU spinning inside an `ncclKernel_AllReduce` wait loop, or running thousands of small memory-bound kernels, still shows 100% utilization. Its Tensor Cores may sit mostly idle, though. Check real efficiency with MFU, and confirm it with Nsight Compute: `ncu --metrics sm__throughput.avg.pct_of_peak_sustained_elapsed`. Utilization tells you the GPU is busy, while MFU tells you the work is useful.
 </details>
 
 <details>
 <summary>**18. How do `TTFT` and `ITL` (`TPOT`) combine to determine end-to-end LLM inference latency (`e2e_latency`), and which dominates for short versus long outputs?**</summary>
 
-End-to-end latency equals $\text\{TTFT\} + (\text\{output\_tokens\} - 1) \times \text\{ITL\}$. For short outputs of 10 to 20 tokens, TTFT covers prompt tokenization and compute-bound prefill and represents a large share of total latency. For long outputs of 100 or more tokens, memory-bandwidth-bound autoregressive decode accounts for 90% to 98% of total request latency.
+End-to-end latency equals $\text\{TTFT\} + (\text\{output\_tokens\} - 1) \times \text\{ITL\}$. Suppose your outputs are short, at 10 to 20 tokens. TTFT is then a large share of the total. It covers prompt tokenization and compute-bound prefill. For outputs of 100 tokens or more, memory-bandwidth-bound decode takes 90% to 98% of total request latency.
 </details>
 
 <details>
 <summary>**19. Why is reporting only average latency dangerous for inference SLAs, and what do `P50`, `P95`, and `P99` represent?**</summary>
 
-Average latency masks high-latency outliers. A system with an 80 ms average where 5% of requests take 500 ms has a P99 of 500 ms, violating a 200 ms P99 SLA by 2.5x. The P50 median represents typical request behavior, P95 is the standard operational SLA target, and P99 captures worst-case tail latency experienced by 1% of requests.
+Averages hide outliers. A system with an 80 ms average, where 5% of requests take 500 ms, has a P99 of 500 ms. That breaks a 200 ms P99 SLA by 2.5x. P50 is the median and represents typical requests. P95 is the usual operational SLA target. P99 is the worst-case tail, which 1% of requests experience. The average hides exactly the slow requests that users notice.
 </details>
 
 <details>
 <summary>**20. When comparing model accuracy between a single-GPU baseline and a distributed training or quantized inference run, how do you distinguish random variance from a real regression?**</summary>
 
-Evaluate both models on the same held-out benchmark across multiple seeds or samples and run a statistical significance test. A small accuracy delta of 0.5% with a high $p$-value of $p = 0.3$ is consistent with random noise. The same 0.5% drop with $p = 0.001$ proves a statistically significant numerical or synchronization regression.
+Evaluate both models on the same held-out benchmark, across several seeds or samples, and run a significance test. A 0.5% accuracy delta with $p = 0.3$ is consistent with random noise. The same 0.5% drop with $p = 0.001$ is a statistically significant numerical or synchronization regression. One run can mislead you, so compare several runs before you decide.
 </details>
 
 ---
@@ -873,4 +986,3 @@ Primary Sources Cited:
 
 - Multi-GPU and multi-node shell commands such as `nvbandwidth`, `ib_write_bw` (`ib_read_bw`, `ib_send_bw`, `195.0ms` / `2045.0ms`), `all_reduce_perf` (`NCCL_SOCKET_IFNAME=eth0`, `2.21` / `4.00ms` / `45.0ms` / `100.0GB/s`, `decode_ms`, `CDF` percentiles), `mpirun`, `srun`, `ncclras`, and `nsys` are marked `untested here`. This authoring workspace does not have physical H100 or Blackwell GPUs or InfiniBand HCAs attached.
 - All mathematical formulas, `all_reduce_perf` table rows, three-tier bottleneck attributions, and $\lceil \log_2 N \rceil$ straggler bisections are verified by `python3 -B code/part12/nccl_tests_benchmarking_lab.py`. That script also verifies all scaling efficiency, fleet waste, and inference percentile SLA calculations.
-
