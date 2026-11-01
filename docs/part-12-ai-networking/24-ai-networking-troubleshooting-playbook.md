@@ -24,9 +24,9 @@ lab_venue: "Nebius GPU"
 
 ## Why this matters for AI infrastructure
 
-When a thousand-GPU training run stalls mid-step with a collective timeout or loses half its bandwidth, every team blames a different layer. The application team sees an NCCL timeout and suspects a broken network switch. The network team sees active link states on every port and blames PyTorch. Meanwhile, the platform team sees full GPU utilization in `nvidia-smi` and assumes the server hardware is completely healthy.
+Picture a thousand-GPU training run that stalls in the middle of a step. The job prints a collective timeout, and half of its bandwidth disappears. Each team looks at the same incident and blames a different layer. The application team sees an NCCL timeout and suspects a broken network switch. The network team sees active link states on every port and points at PyTorch. The platform team sees full GPU utilization in `nvidia-smi` and assumes the server hardware is completely healthy.
 
-In a synchronous collective like AllReduce, ReduceScatter, AllGather, or AllToAll, every rank must reach the barrier before any rank can proceed. If 999 GPUs arrive on time and a single rank lags behind, the remaining 999 GPUs sit idle until the watchdog timer expires. That single lagging GPU might suffer from a degraded cable, an unprogrammed InfiniBand port, a jumbo frame mismatch, or a pause storm. Equally often, the culprit is a down-trained PCIe slot, a failed NVLink lane, thermal throttling, a bus drop, or a full storage shard.
+A synchronous collective, such as AllReduce, ReduceScatter, AllGather or AllToAll, works like a meeting that cannot start until everyone arrives. Every rank must reach the barrier before any rank can move on. If 999 GPUs arrive on time and one rank lags behind, the other 999 sit idle until the watchdog timer expires. That lagging GPU might have a degraded cable, an unprogrammed InfiniBand port, a jumbo frame mismatch or a pause storm. Just as often, the culprit is a down-trained PCIe slot, a failed NVLink lane, thermal throttling, a bus drop or a full storage shard.
 
 ```text
 Representative Fault Signatures Behind a 1,000-GPU Collective Stall
@@ -46,50 +46,65 @@ Thermal & storage faults     Thermal throttling (1980 MHz -> 1200 MHz at 85 C);
 -----------------------------------------------------------------------------------------------
 ```
 
-Randomly tuning NCCL environment variables, raising process-group timeouts, or disabling flow control on live switches only prolongs the outage. Clearing port counters or rebooting nodes before capturing evidence destroys the forensic trail needed to prove the root cause. Effective incident response requires a deterministic, bottom-up playbook that follows three strict operational rules:
-1. Preserve time-windowed counter deltas and stable hardware identities before resetting any switch port, NIC, or training process.
-2. Evaluate each infrastructure layer from the physical wire up to the distributed application, stopping at the first gate that fails.
-3. Cross-correlate hardware counters, kernel logs, and collective progression so misleading single-layer metrics never send engineers down the wrong path.
+Each row in that table can stall the same collective. The symptom alone never tells you which layer failed, so you have to check the layers in order.
+
+Guessing makes the outage longer. Tuning NCCL environment variables at random, raising process-group timeouts or disabling flow control on live switches only prolongs the outage. Clearing port counters or rebooting nodes before you capture evidence destroys the trail you need to prove the root cause. A reliable response follows a deterministic, bottom-up playbook with three rules:
+
+1. Save time-windowed counter deltas and stable hardware identities before you reset any switch port, NIC or training process.
+2. Check each layer from the physical wire up to the distributed application, and stop at the first gate that fails.
+3. Compare hardware counters, kernel logs and collective progress together, so that one misleading metric cannot send you down the wrong path.
+
+Hold off on every change until the evidence is saved.
+
+---
 
 ## Prerequisites and outcomes
 
 ### Prerequisites
-- Working familiarity with InfiniBand concepts including LID, GUID, GID, P_Key, OpenSM, UFM, and virtual lane credits from earlier chapters.
-- Working familiarity with RoCEv2 QoS mechanisms including DSCP, Priority 3 lossless queues, ECN, DCQCN, CNP, and PFC.
-- Understanding of PCIe and NVLink topologies in `nvidia-smi topo -m` and GPUDirect RDMA mechanisms from Chapter 12.19.
-- Familiarity with standard Linux, RDMA, and GPU diagnostic utilities including `ibstat`, `perfquery`, `ethtool`, `lspci`, `nvidia-smi`, and `dcgmi`.
+
+Before you start, make sure these topics from earlier chapters feel familiar.
+
+- The InfiniBand terms LID, GUID, GID, P_Key, OpenSM, UFM and virtual lane credits.
+- The RoCEv2 QoS pieces: DSCP, the Priority 3 lossless queue, ECN, DCQCN, CNP and PFC.
+- PCIe and NVLink topologies as `nvidia-smi topo -m` shows them, along with the GPUDirect RDMA mechanisms from Chapter 12.19.
+- The standard Linux, RDMA and GPU tools `ibstat`, `perfquery`, `ethtool`, `lspci`, `nvidia-smi` and `dcgmi`.
 
 ### Outcomes
-1. Execute the first-ten-minute incident protocol and collect a complete, non-destructive support evidence bundle across all five infrastructure layers.
-2. Run the seven-gate InfiniBand decision tree to isolate down-trained links, unprogrammed ports, physical symbol errors, routing loops, and tail-latency spikes.
-3. Run the six-gate RoCEv2 Ethernet decision tree to separate physical FEC and CRC losses from MTU drops, GID mismatches, and pause storms.
-4. Diagnose host hardware faults that masquerade as network failures using the three-tier Xid matrix, asymmetric NVLink counters, and PCIe link state checks.
-5. Classify NCCL collective timeouts by rank operation counts, isolate straggler nodes via binary search, and defeat cross-layer metric lies.
+
+After this chapter, you should be able to do five things:
+
+1. Run the first-ten-minute incident protocol and collect a complete, non-destructive evidence bundle across all five infrastructure layers.
+2. Run the seven-gate InfiniBand decision tree to isolate down-trained links, unprogrammed ports, physical symbol errors, routing loops and tail-latency spikes.
+3. Run the six-gate RoCEv2 Ethernet decision tree to separate physical FEC and CRC losses from MTU drops, GID mismatches and pause storms.
+4. Diagnose host hardware faults that look like network failures, using the three-tier Xid matrix, asymmetric NVLink counters and PCIe link state checks.
+5. Classify NCCL collective timeouts by rank operation counts, isolate straggler nodes with a binary search, and see through cross-layer metric lies.
 
 ---
 
 ## 1. The Layered Troubleshooting Mindset and First-10-Minute Protocol
 
-When a distributed training job fails, starting at the highest software layer that printed an error message wastes hours of cluster time. Troubleshooting an AI fabric is fastest when operators follow the packet and DMA path from the lowest unproven hardware layer upward.
+A distributed training job fails with an error printed by PyTorch. It is tempting to start where the error was printed, but that habit can waste hours of cluster time. Troubleshooting an AI fabric goes faster when you follow the packet and DMA path from the lowest layer you have not yet proven, and then work upward.
 
 ### 1.1 Core Axioms of AI Fabric Incident Response
 
-Every production incident on a multi-rail GPU cluster is governed by five foundational engineering truths:
-1. Locate the first broken layer rather than the last layer that complained. An NCCL timeout is almost always the final domino to fall after a lower-layer hardware or transport fault. Raising the PyTorch process-group timeout while a cable is throwing CRC errors only forces a thousand GPUs to burn idle electricity.
-2. Basic reachability is never a performance or RDMA transport test. On InfiniBand, an active port state does not prove four-lane width, full signaling rate, or clean symbol error counters. On RoCEv2 Ethernet, a standard `ping` test never creates a Queue Pair, never registers memory, and never tests jumbo frames.
-3. Host-memory RDMA and GPU-memory RDMA validate completely different hardware paths inside the server. A clean host-to-host `ib_write_bw` run proves the NICs, cables, and switches work, but says nothing about GPUDirect RDMA or PCIe locality. Conversely, if host-memory RDMA fails, the fault lies below GPUDirect RDMA and NCCL.
-4. Pairwise tests validate a single path, whereas collective operations load the entire switching topology simultaneously. Two nodes can pass pairwise GPU RDMA tests at line rate while a multi-node AllReduce degrades by half. Synchronized collective traffic exposes spine oversubscription, hash polarization, adaptive-routing misconfiguration, and single-rank stragglers.
-5. Preserve counter deltas before resetting any port, NIC, or server. Clearing switch counters with `perfquery -R` or rebooting a node erases accumulated symbol errors, pause counts, and kernel Xid precursor chains. Always capture baseline and follow-up snapshots so you can compute the exact change over a known time window.
+Five ideas guide almost every production incident on a multi-rail GPU cluster. Keep them in mind before you touch anything.
+
+1. Find the first broken layer, not the last layer that complained. An NCCL timeout is usually the final domino to fall after a lower-layer fault. If a cable is throwing CRC errors, raising the PyTorch process-group timeout only forces a thousand GPUs to burn idle electricity.
+2. A basic reachability check is not a performance or RDMA test. On InfiniBand, an active port state does not prove four-lane width, full signaling rate or clean symbol error counters. On RoCEv2 Ethernet, a standard `ping` never creates a Queue Pair, never registers memory and never tests jumbo frames.
+3. Host-memory RDMA and GPU-memory RDMA test different hardware paths inside the server. A clean host-to-host `ib_write_bw` run proves that the NICs, cables and switches work. It says nothing about GPUDirect RDMA or PCIe locality. If host-memory RDMA fails, the fault lies below GPUDirect RDMA and NCCL.
+4. A pairwise test checks a single path, but a collective loads the whole switching topology at once. Two nodes can pass pairwise GPU RDMA tests at line rate while a multi-node AllReduce degrades by half. Synchronized collective traffic exposes spine oversubscription, hash polarization, adaptive-routing misconfiguration and single-rank stragglers.
+5. Save counter deltas before you reset any port, NIC or server. Clearing switch counters with `perfquery -R` or rebooting a node erases accumulated symbol errors, pause counts and kernel Xid precursor chains. Capture a baseline and a follow-up snapshot, so you can compute the exact change over a known time window.
 
 ### 1.2 The First-10-Minute Incident Protocol and Evidence Bundle
 
-During the first ten minutes of an outage, rushed engineers often destroy the exact evidence needed to isolate the fault. Ad-hoc changes to congestion thresholds or automated job-restart loops overwrite logs and reset hardware counters before anyone reads them. Without a structured intake protocol, teams trade vague complaints while the faulty cable or degraded GPU remains hidden.
+In the first ten minutes of an outage, rushed engineers often destroy the evidence they need. Ad-hoc changes to congestion thresholds, or automated job-restart loops, overwrite logs and reset hardware counters before anyone reads them. Without a structured intake, teams trade vague complaints while the faulty cable or degraded GPU stays hidden.
 
-Discipline during the opening minutes turns a chaotic outage into a deterministic engineering investigation:
-1. Freeze destructive retries by pausing automated job-resubmission loops and forbidding ad-hoc edits to PFC, ECN, or NCCL timeout settings.
-2. Define the symptom with falsifiable precision by recording the exact rail, rack scope, bandwidth drop percentage, and maintenance timestamp.
-3. Anchor every counter observation to stable hardware identities including the host name, NIC device, rail index, cable serial, and job ranks. Remember that an InfiniBand GUID is a permanent hardware identity, whereas a LID is a mutable address reassigned by the Subnet Manager.
-4. Capture the read-only evidence bundle across both an affected path and an equivalent known-good peer path for side-by-side comparison.
+A short, disciplined intake turns a chaotic outage into a deterministic investigation. Work through these four steps in order:
+
+1. Freeze destructive retries. Pause automated job-resubmission loops, and forbid ad-hoc edits to PFC, ECN or NCCL timeout settings.
+2. Define the symptom so precisely that someone could prove it wrong. Record the exact rail, rack scope, bandwidth drop percentage and maintenance timestamp.
+3. Tie every counter observation to a stable hardware identity: the host name, NIC device, rail index, cable serial and job ranks. An InfiniBand GUID is a permanent hardware identity. A LID is a mutable address that the Subnet Manager reassigns.
+4. Capture the read-only evidence bundle on both the affected path and an equivalent known-good peer path, so you can compare them side by side.
 
 ```text
 Example Incident Scope & Hardware Identity Anchor
@@ -104,6 +119,8 @@ Identity rule       Port GUID (0x08c0eb0300f1a2c3) = stable hardware identity
 -----------------------------------------------------------------------------------------------
 ```
 
+Compare the vague statement with the precise one. Only the precise version tells the next engineer where to look.
+
 | Evidence Layer | InfiniBand Artifacts to Preserve | RoCEv2 / AI Ethernet Artifacts to Preserve | Host / GPU / Collective Artifacts to Preserve |
 |---|---|---|---|
 | **1. Physical & Link** | `ibstat`, `iblinkinfo`, `perfquery` (`SymbolErrorCounter`, `LinkDownedCounter`, `PortRcvErrors`) | `ethtool <netdev>`, `ethtool -S` (`fec_corrected_blocks`, `fec_uncorrected_blocks`, `rx_crc_errors`), optic temp/DOM | `lspci -vvv` (`LnkCap` vs `LnkSta` speed/width), `dcgmi dmon` (`PCIE_REPLAY_COUNTER`), `dcgmi nvlink -e` |
@@ -112,11 +129,13 @@ Identity rule       Port GUID (0x08c0eb0300f1a2c3) = stable hardware identity
 | **4. Transport & Endpoint** | `ibv_devices`, `ibv_devinfo -v` (`fw_ver`, `max_qp: 262144`, `max_qp_wr: 32768`), `ib_write_bw`, `ib_write_lat` | `rdma link show`, `show_gids` (GID index `3` RoCEv2), `ib_write_bw -d mlx5_X` completion status (`RTR`/`RTS`) | `lsmod` (`nvidia_peermem` / `dma-buf`), `nvidia-smi -q` (BAR1 memory usage, clocks, power, throttle reasons) |
 | **5. Collective & App** | `all_reduce_perf` per-rail and cross-rack scaling matrix | `all_reduce_perf` with `NCCL_IB_GID_INDEX`, `NCCL_IB_TC` | `NCCL_DEBUG=INFO` (`NCCL_DEBUG_SUBSYS=COLL,GRAPH`), `ncclras`, per-rank iteration & dataloader timings |
 
+Use the table as a checklist. Each row is one layer, and each cell lists what to save before you change that layer. Collect the whole bundle first, and only then decide what to change.
+
 ---
 
 ## 2. InfiniBand Production Troubleshooting Playbook (7-Gate Decision Tree)
 
-When an InfiniBand training job hangs, slows down, or fails to initialize, guessing at software flags wastes hours. Operators need a strict bottom-up sequence that checks physical signaling, subnet management, routing, host RDMA, GPUDirect RDMA, fabric congestion, and rank health. Do not advance to the next gate until the current gate passes with concrete counter evidence.
+Suppose an InfiniBand training job hangs halfway through a collective, or one that starts slowly and never recovers. Guessing at software flags wastes hours in that moment. A better approach is a strict bottom-up sequence. Check the physical signal, the Subnet Manager, routing, host RDMA, GPUDirect RDMA, fabric congestion and rank health, in that order. Do not move to the next gate until the current one passes with concrete counter evidence.
 
 ```mermaid
 flowchart TD
@@ -135,6 +154,8 @@ flowchart TD
     G6 -->|"Yes"| G7["Gate 7: Application / Straggler<br/>Check NCCL opCount, Xid,<br/>Thermal, CPU Dataloader"]
 ```
 
+Read the flowchart from the top. Each diamond is a gate, and each stop box names the one thing to fix before you go on. The table below gives the same gates in more detail.
+
 | Gate | Primary Diagnostic Tool | Pass Condition (Baseline) | Divergence Signature | Immediate Action |
 |---|---|---|---|---|
 | **Gate 1: Physical** | `ibstat`, `iblinkinfo`, `perfquery` | `Physical state: LinkUp`, `Rate: 400` (`4x`), `SymbolErrorCounter` & `LinkDownedCounter` delta `= 0` | `Polling`/`Disabled`, `Rate: 200`/`100` (`1x`/`2x`), or rising symbol/CRC errors | Replace/re-seat damaged cable or transceiver; never mask with higher timeouts |
@@ -145,14 +166,17 @@ flowchart TD
 | **Gate 6: Collective** | `all_reduce_perf`, `perfquery` | Multi-node `busbw` matches baseline across all rails; balanced spine utilization | Pairwise tests pass, but AllReduce drops `35%+`; `PortXmitWait` high with `0` `SymbolErrorCounter` | Trace `PortXmitWait` gradient toward congested cut/receiver; enable adaptive routing / fix placement |
 | **Gate 7: App / Rank** | `NCCL_DEBUG=INFO`, `ncclras`, `dmesg`, `dcgmi` | All ranks advance `opCount` in lockstep; SM utilization `>= 90%`; `0` Xid errors | Rank `3` stuck at `opCount 4820` while ranks `0–2` wait at `4821`; or divergent collective calls | Inspect lagging rank for Xid, thermal slowdown, or slow CPU dataloader (`47.31 s` batch fetch) |
 
+Use the table as a lookup during a live incident. The first column names the gate, and the last column gives the first action to take when that gate fails.
+
 ### 2.1 Gate 1 vs Gate 2: Port Down, State Initializing, and Reduced Width
 
-Engineers frequently waste time swapping clean fiber cables when an InfiniBand port is actually waiting on the Subnet Manager. Conversely, simple up/down monitoring stays green when a damaged optical lane causes a port to negotiate at half or quarter width. Separating physical layer negotiation from logical Subnet Manager admission prevents both mistakes.
+Engineers often waste time swapping clean fiber cables when an InfiniBand port is actually waiting on the Subnet Manager. The reverse mistake is just as common. Simple up-or-down monitoring stays green when a damaged optical lane forces a port to negotiate at half or quarter width. Separating physical negotiation from Subnet Manager admission prevents both mistakes.
 
-In `ibstat`, physical port state and logical port state report two separate hardware checkpoints:
-- On a healthy NDR port, `Physical state: LinkUp` and `State: Active` appear together at full rate and four-lane width.
-- In a Gate 1 width degradation, a damaged lane causes the port to negotiate `State: Active` at `Rate: 200` or `Rate: 100`. Naive monitoring stays green because the state is active, while every collective using that rail is throttled.
-- In a Gate 2 failure, `Physical state: LinkUp` appears alongside `State: Initializing` and `Base lid: 0`. Because Layer 1 signaling has already succeeded, touching cables or transceivers is wasted effort. Run `sminfo` to confirm that one authoritative `SMINFO_MASTER` exists and its `activity count` increments on each sweep. Also verify that partition policy permits the port.
+In `ibstat`, the physical port state and the logical port state report two separate checkpoints. On a healthy NDR port, `Physical state: LinkUp` and `State: Active` show up together, at full rate and four-lane width.
+
+A Gate 1 width problem is easy to miss. A damaged lane forces the port to negotiate `State: Active` at `Rate: 200` or `Rate: 100`. If you watch only the state, the monitor stays green, while every collective on that rail runs throttled.
+
+If you see a Gate 2 failure, `ibstat` shows `Physical state: LinkUp` next to `State: Initializing` and `Base lid: 0`. Layer 1 signaling has already succeeded, so touching cables or transceivers is wasted effort. Run `sminfo` to confirm that exactly one authoritative `SMINFO_MASTER` exists and that its `activity count` climbs on each sweep. Also verify that the partition policy allows the port.
 
 ```text
 Reference InfiniBand HCA & Port Inventory (ConnectX-7 NDR 400G)
@@ -172,11 +196,13 @@ ibstat (Gate 2 Fault)  Physical state: LinkUp, State: Initializing, Base lid: 0
 -----------------------------------------------------------------------------------------------
 ```
 
+Compare the healthy row with the two fault rows. The physical and logical fields tell you which gate failed.
+
 ### 2.2 Gate 4: Reading `ib_write_lat` Tail Percentiles vs Averages
 
-A network path can pass basic bandwidth checks and show normal average latency while still stalling large collective runs. Engineers who look only at typical or average latency in `ib_write_lat` miss intermittent hardware micro-stalls. Because synchronous collectives across hundreds of GPUs run at the speed of the slowest completion, tail latency governs step time.
+A path can pass a bandwidth check and still stall a large training run. Averages are the trap here. Synchronous collectives across hundreds of GPUs run at the speed of the slowest completion, so tail latency sets the step time. If you look only at typical or average latency in `ib_write_lat`, you miss these intermittent micro-stalls. For example, the degraded path below reports a typical latency of 1.58 us, which looks healthy on its own.
 
-Compare the qualification baseline against the degraded incident capture for a two-byte RDMA Write test over one thousand iterations:
+The comparison below sets the qualification baseline against the degraded incident capture. Both runs send a two-byte RDMA Write over one thousand iterations.
 
 ```text
 # Baseline captured during qualification (2 bytes, 1000 iterations):
@@ -187,11 +213,11 @@ Compare the qualification baseline against the degraded incident capture for a t
  2       1000           1.42           6.81         1.58              1.61            2.90                    5.77
 ```
 
-Here, typical latency and average latency on the degraded path look nearly identical to the qualification baseline. However, the 99th percentile and the 99.9th percentile reveal severe micro-stalls that reach nearly three times the baseline tail. Whenever tail latency spikes while median latency stays flat, check NUMA CPU pinning, PCIe replay counters, and switch hop wait counters.
+The typical and average latency on the degraded path look almost the same as the baseline. The 99th and 99.9th percentiles tell a different story. They climb to nearly three times the baseline tail, which points to severe micro-stalls. When the tail spikes while the median stays flat, check NUMA CPU pinning, PCIe replay counters and switch hop wait counters. Read the tail percentiles first, and let them point you to the counters to check.
 
 ### 2.3 Gate 1 vs Gate 6: Distinguishing a Bad Cable from Fabric Congestion
 
-Both a marginal physical cable and fabric congestion produce the exact same complaint from training users: throughput drops under load. However, replacing optics on a congested spine wastes hardware, and tuning routing tables on a dirty fiber never fixes bit errors. Comparing physical error deltas against credit-wait deltas in `perfquery` separates the two conditions immediately.
+You will hear the same complaint whether the cable is marginal or the fabric is congested. Throughput drops under load. Replacing optics on a congested spine wastes hardware, and tuning routing tables on a dirty fiber never fixes bit errors. Comparing the physical error deltas with the wait-counter deltas in `perfquery` separates the two cases quickly.
 
 | Counter Family (`perfquery` Delta) | Case A: Physical Link Fault (Gate 1) | Case B: Congestion Without Errors (Gate 6) | Case C: Credit Loop / Deadlock (Gate 3/6) |
 |---|---|---|---|
@@ -201,11 +227,13 @@ Both a marginal physical cable and fabric congestion produce the exact same comp
 | `PortXmitDiscards` | May rise during link down events | `0` (unless head-of-line timeout expires) | Rises when switch stall-timeout discards stuck packets |
 | **Root Cause & Correct Fix** | Defective optic, dirty fiber, or loose DAC -> **Clean or replace physical media** | Incast, route polarization, or oversubscribed cut -> **Rebalance routes, enable adaptive routing, or adjust placement** | Cyclic buffer dependency across VL buffers -> **Switch to loop-free routing engine (`updn`/`ftree`/`dfp`)** |
 
+Read the table column by column. Case A rises on the error counters, Case B rises only on the wait counters, and Case C pins the wait counter inside a closed loop. Each case has its own fix. If the error counters rise, clean or replace the media first. If only the wait counters rise, rebalance the routes or the placement.
+
 ---
 
 ## 3. RoCEv2 and AI Ethernet Production Troubleshooting Playbook (6-Gate Decision Tree)
 
-On an AI Ethernet fabric running RoCEv2 over UDP port 4791, RDMA transport executes directly inside the ConnectX NIC hardware. Standard Linux tools like `tcpdump`, `ping`, and `traceroute` see only kernel control packets and miss hardware Queue Pair completions. Operators must follow a six-gate decision tree that inspects NIC and switch counters from physical FEC blocks up to collective ranks.
+An AI Ethernet fabric runs RoCEv2 over UDP port 4791. The RDMA transport runs directly inside the ConnectX NIC hardware. Standard Linux tools like `tcpdump`, `ping` and `traceroute` see only kernel control packets, so they miss the hardware Queue Pair completions. Operators therefore follow a six-gate decision tree. It inspects NIC and switch counters, starting from the physical FEC blocks and ending at the collective ranks.
 
 ```mermaid
 flowchart TD
@@ -222,6 +250,8 @@ flowchart TD
     E5 -->|"Yes"| E6["Gate 6: Host / GPU / Collective<br/>Verify PIX locality, Xids,<br/>and per-rank opCounts"]
 ```
 
+The flowchart runs the gates in order, and each stop box names the layer to fix first. The table gives the commands and the healthy evidence for every gate.
+
 | RoCEv2 Gate | Key Commands (Read-Only) | Healthy Evidence | Failure Signature |
 |---|---|---|---|
 | **Gate 1: Physical & FEC** | `ethtool ens1f0`, `ethtool -S ens1f0` | `Speed: 400000Mb/s`, `fec_uncorrected_blocks: 0`, `rx_crc_errors: 0` (`fec_corrected_blocks: 412` or `41200` is normal noise correction) | `fec_uncorrected_blocks: 3` matching `rx_crc_errors: 3` exactly |
@@ -231,11 +261,13 @@ flowchart TD
 | **Gate 5: ECN / DCQCN / PFC** | `ethtool -S` (`rx_ecn_marked_prio3`, `rx_pfc_prio3`, `tx_pfc_prio3`) | Bounded contention (`2` senders on `400G`): `rx_ecn_marked_prio3: 47829`, `rx_pfc_prio3: 412`, `tx_pfc_prio3: 14`, senders smoothly pace to `89.2 Gbps` and `87.1 Gbps` | ECN marks rise while senders stay at `100%` rate (DCQCN/CNP broken), or PFC pause duration pins queue at `100%` |
 | **Gate 6: Host / GPU / App** | `nvidia-smi topo -m`, `ib_write_bw --use_cuda`, `all_reduce_perf` | `GPU0`-`NIC0` = `PIX`, `GPU1`-`NIC1` = `PIX`; per-rail AllReduce balanced | `GPU0`-`NIC1` = `SYS` cross-NUMA hop, or single straggler rank stalls collective |
 
+Keep the healthy-evidence column beside the live output. A gate passes only when the live counters match it.
+
 ### 3.1 Gate 1 Trap: How Physical CRC Errors Masquerade as an ECN Congestion Problem
 
-Engineers often jump straight to QoS counters when cross-rack RoCEv2 throughput fluctuates and see rising ECN marks on a switch port. If they skip Gate 1 and start tuning ECN thresholds, they will waste hours chasing a phantom congestion problem. Uncorrectable physical bit errors on a degraded cable routinely trigger secondary ECN marks through RDMA transport retries.
+If you jump straight to QoS counters when cross-rack RoCEv2 throughput fluctuates and you see rising ECN marks on a switch port, you may miss the real cause. Skip Gate 1 and tune ECN thresholds, and you can spend hours chasing a phantom congestion problem. Uncorrectable bit errors on a degraded cable often trigger those ECN marks indirectly, through RDMA transport retries.
 
-Examine the counter snapshot from switch port `swp17` connected to `rack14-node07` on rail 1:
+Examine the counter snapshot from switch port `swp17`, connected to `rack14-node07` on rail 1:
 
 ```text
 $ ethtool -S swp17 | egrep "fec_corrected|fec_uncorrected|rx_crc_errors"
@@ -244,15 +276,17 @@ $ ethtool -S swp17 | egrep "fec_corrected|fec_uncorrected|rx_crc_errors"
      rx_crc_errors:           3            <- matches fec_uncorrected_blocks (3 corrupted frames dropped)
 ```
 
-When those three corrupted frames fail the receiver CRC check and get dropped, the ConnectX RDMA transport layer detects sequence gaps. The NIC immediately retransmits the affected RDMA bursts across the same link, which spikes instantaneous offered load on the switch queue. That retry burst pushes queue occupancy above the ECN marking threshold and causes `rx_ecn_marked_prio3` to climb. Replacing the faulty two-meter DAC cable fixes both the CRC drops and the secondary ECN marks.
+The second and third lines tell the story. The three uncorrectable blocks match the three CRC errors, so the cable is dropping frames. The 41200 corrected blocks are routine noise at 400G, and they are not the problem.
+
+When those three corrupted frames fail the receiver CRC check and get dropped, the ConnectX RDMA transport detects sequence gaps. The NIC immediately retransmits the affected RDMA bursts across the same link, which spikes the instantaneous offered load on the switch queue. That burst pushes queue occupancy above the ECN marking threshold and raises `rx_ecn_marked_prio3`. Replacing the faulty two-meter DAC cable fixes both the CRC drops and the secondary ECN marks.
 
 ### 3.2 Gate 2 and Gate 3: Why `ping` Works while RoCEv2 Fails (`RTR` and `RETRY_EXC_ERR`)
 
-A common frustration during cluster bring-up occurs when `ping` succeeds with zero packet loss, yet every RoCEv2 benchmark fails immediately. Standard ICMP echo requests test only small kernel packets and never exercise RDMA Queue Pair setup, GID tables, or jumbo frames.
+You may hit a common frustration during cluster bring-up. `ping` succeeds with zero packet loss, yet every RoCEv2 benchmark fails. Standard ICMP echo requests test only small kernel packets. They never exercise RDMA Queue Pair setup, GID tables or jumbo frames.
 
-Two distinct failure signatures appear at Gate 2 and Gate 3 even when Layer 1 and `ping` look clean:
-- First, `ib_write_bw` can fail immediately with `Failed to modify QP to RTR` or hang on the first burst. This happens when a routed hop still uses a 1500-byte MTU that drops 4096-byte RDMA frames, or when GID index selection mismatches.
-- Second, binding a process to the wrong NIC on a multi-rail host forces traffic across a misaligned subnet path. Instead of failing outright, throughput collapses by more than half while the NIC logs dozens of `RETRY_EXC_ERR` completions.
+Two distinct failure signatures appear at Gate 2 and Gate 3, even when Layer 1 and `ping` look clean. The first is loud. `ib_write_bw` fails at once with `Failed to modify QP to RTR`, or it hangs on the first burst. That happens when a routed hop still uses a 1500-byte MTU and drops 4096-byte RDMA frames, or when the GID index selection does not match.
+
+The second is quieter. Binding a process to the wrong NIC on a multi-rail host pushes traffic onto a misaligned subnet path. The test does not fail outright. Throughput collapses by more than half, while the NIC logs dozens of `RETRY_EXC_ERR` completions.
 
 ```text
 Gate 2 & Gate 3 Failure Signatures (Volume 09 Labs 01-04)
@@ -273,14 +307,17 @@ Scenario 2: Wrong rail / device selection on multi-rail host (Lab 04)
 -----------------------------------------------------------------------------------------------
 ```
 
+Consider Scenario 1, a clean ping with a failed QP transition. Then consider Scenario 2, which compares the healthy device with the wrong one on a multi-rail host, and the bandwidth falls from 392 Gbps to 156 Gbps.
+
 ### 3.3 Gate 5: ECN and DCQCN Feedback Validation vs Persistent PFC Pause Storms
 
-When lossless RoCEv2 queues experience congestion, operators must distinguish healthy DCQCN rate pacing from a broken feedback loop or a pause storm. Panic-disabling PFC on a live switch during a pause storm is catastrophic because it instantly turns lossless pauses into massive packet drops.
+When lossless RoCEv2 queues congest, you need to tell healthy DCQCN rate pacing apart from a broken feedback loop or a pause storm. Disabling PFC on a live switch during a pause storm is a serious mistake. It instantly turns lossless pauses into massive packet drops.
 
-In a properly tuned lossless Priority 3 queue, the ECN marking thresholds sit well below the PFC pause threshold:
-- Under healthy bounded contention, switches mark packets with ECN early and receivers return CNP frames on Priority 6. Senders then smoothly cut their rate with only brief transient PFC pauses and zero packet drops.
-- If ECN marks climb rapidly while senders stay pinned at full line rate, DCQCN is disabled on the NIC or CNP packets are being dropped.
-- If a persistent PFC pause storm pins upstream ports at full pause duration, keep PFC enabled and trace the pause tree downstream. Follow the chain of paused ports in the direction of data flow until you reach the root congested egress port. That root port transmits pauses upstream while receiving zero pauses from its downstream peer.
+In a properly tuned lossless Priority 3 queue, the ECN marking thresholds sit well below the PFC pause threshold. That ordering gives you three patterns to recognize.
+
+Under healthy, bounded contention, switches mark packets with ECN early. Receivers return CNP frames on Priority 6, and senders cut their rate smoothly, with only brief transient PFC pauses and zero packet drops. If ECN marks climb quickly while senders stay pinned at full line rate, DCQCN is disabled on the NIC or the CNP packets are being dropped.
+
+If a persistent PFC pause storm pins upstream ports at full pause duration, keep PFC enabled and trace the pause tree downstream. Follow the chain of paused ports in the direction of data flow until you reach the root congested egress port. That root port sends pauses upstream while receiving zero pauses from its downstream peer.
 
 ```text
 Gate 5 Telemetry Signatures: Healthy DCQCN Contention vs Persistent PFC Pause Tree
@@ -299,15 +336,19 @@ Gate 5 Telemetry Signatures: Healthy DCQCN Contention vs Persistent PFC Pause Tr
 -----------------------------------------------------------------------------------------------
 ```
 
+Read the three blocks as one story. The idle baseline comes first, then the 60-second load delta, then the pause tree. In the bounded contention run, the two paced senders add up to 176.3 Gbps combined, with zero drops. In the pause tree, `leafB-swp17` is the root cause, because it sends pauses while receiving none from its peer.
+
+When a pause storm appears, trace the chain to its root port before you change any setting.
+
 ---
 
 ## 4. Host, PCIe, DMA Engine, NVLink, and Xid Hardware Triage
 
-When a training run crashes or stalls and all network fabric gates pass, the fault usually lives inside the server hardware. A GPU that falls off the PCIe bus, an NVLink lane that silently degrades to PCIe, or a down-trained PCIe slot will halt every rank in the collective. Operators need a fast hardware triage workflow. It must separate recoverable application faults from hardware failures requiring immediate node drain and RMA.
+After every network gate has passed, a training run can still crash or stall. The fault now most likely lives inside the server hardware. A GPU that falls off the PCIe bus, an NVLink lane that silently degrades to PCIe, or a down-trained PCIe slot will halt every rank in the collective. You need a fast hardware triage workflow. It has to separate recoverable application faults from hardware failures that call for an immediate node drain and an RMA.
 
 ### 4.1 The Master 3-Tier Xid Triage Matrix and Precursor Chains
 
-When a GPU crashes and prints multiple Xid messages in the kernel log, operators often react to the very last line and miss the real cause. Because free-text error strings vary across driver releases, triaging by text descriptions leads to unnecessary hardware RMAs or missed memory corruption. Always classify faults by the numeric Xid code into one of three operational severity tiers, plus the dedicated NVLink triage path.
+When a GPU crashes, it often prints several Xid messages in the kernel log. Operators tend to react to the last line and miss the real cause. Free-text error strings also vary across driver releases, so triaging by text can lead to unnecessary RMAs or missed memory corruption. Classify each fault by its numeric Xid code instead. Every code falls into one of three severity tiers, or into the dedicated NVLink triage path.
 
 | Xid Code | Operational Tier | Official Meaning | Typical Root Cause | Immediate Operator Action |
 |---|---|---|---|---|
@@ -327,7 +368,9 @@ When a GPU crashes and prints multiple Xid messages in the kernel log, operators
 | **`95`** | **Tier 3** (Unrecoverable GPU Fault) | Uncontained ECC error | Uncorrectable ECC error that hardware **could not contain**; memory corruption risk | **Cordon and drain node immediately**; invalidate training checkpoints written during the fault window |
 | **`74`** | **Link Triage (NVLink)** | NVLink Error (`fatal error detected on link N`) | Physical NVLink transceiver, baseboard trace, or NVSwitch lane failure | Run `nvidia-smi topo -m` and `dcgmi nvlink -e` on both peer GPUs; reset GPU or RMA faulty transceiver side |
 
-Never inspect only the final Xid line in `dmesg -T`. Because the Linux kernel logs oldest events first, reading the chronological precursor sequence reveals what triggered the crash:
+Read the table by tier. Tier 1 codes are mostly informational, Tier 2 codes can usually be recovered by restarting the process, and Tier 3 codes call for draining the node. The NVLink row is its own path, and it starts with a link check rather than a restart.
+
+If you read only the final Xid line in `dmesg -T`, you miss the cause. The kernel logs the oldest events first, so the chronological sequence shows what set off the crash:
 
 ```text
 [Tue Aug  4 14:21:52 2026] NVRM: Xid (PCI:0000:0a:00): 92, pid=48213, name=python, High single-bit ECC error rate
@@ -339,16 +382,17 @@ Historical DCGM_FI_DEV_ECC_SBE_AGG_TOTAL slope (2-hour windows over 6 hours prio
   Operational threshold: > 10 to 100 SBE errors/hour triggers proactive node drain before Xid 79
 ```
 
-Here, Xid 92 fired first as an early warning of accelerating single-bit HBM errors. Six seconds later, the driver logged Xid 45 while cleaning up the broken context, and five seconds after that the GPU fell off the bus with Xid 79. Alerting on the accelerating single-bit ECC slope lets operators drain the node proactively before the job crashes.
+Xid 92 fired first, as an early warning of accelerating single-bit HBM errors. Six seconds later, the driver logged Xid 45 while it cleaned up the broken context. Five seconds after that, the GPU fell off the bus with Xid 79. Alerting on the accelerating single-bit ECC slope gives you the chance to drain the node before the job crashes.
 
 ### 4.2 Silent NVLink Degradation, MIG Verification, and Asymmetric Transceiver Isolation
 
-When an NVLink lane between two GPUs fails, the NVIDIA driver can silently reroute peer-to-peer traffic over the PCIe bus. Instead of crashing, multi-GPU training slows down by two to ten times while every GPU still appears online. Worse, if an operator opens a hardware RMA without checking both ends of the link, technicians often replace the healthy victim GPU.
+Suppose a multi-GPU training job runs two to ten times slower than it should, yet every GPU still shows as online. That is a silent NVLink fallback. When an NVLink lane between two GPUs fails, the NVIDIA driver can reroute peer-to-peer traffic over the PCIe bus. The job does not crash, so nothing alarms. The bigger risk comes when an operator opens a hardware RMA without checking both ends of the link, because technicians then often replace the healthy victim GPU.
 
-Follow a three-step sequence to isolate silent NVLink fallbacks accurately:
+Follow these three steps to isolate a silent NVLink fallback:
+
 1. Check `nvidia-smi topo -m` across all GPUs on the node. If one GPU pair reports `PIX` while every other pair reports `NV12` or `NV18`, that pair has fallen back to PCIe.
-2. Rule out Multi-Instance GPU mode before opening a hardware ticket. MIG mode intentionally disables NVLink peer-to-peer transfers between instances for memory isolation, so check `MIG Mode` in `nvidia-smi -q` first.
-3. Query per-link NVLink error counters on both peer GPUs using `dcgmi nvlink -e`. The GPU showing massive CRC, replay, and recovery errors owns the failed transceiver, whereas the peer GPU showing zero errors is a healthy passive victim.
+2. Rule out Multi-Instance GPU mode before you open a hardware ticket. MIG mode intentionally disables NVLink peer-to-peer transfers between instances for memory isolation, so check `MIG Mode` in `nvidia-smi -q` first.
+3. Query the per-link NVLink error counters on both peer GPUs with `dcgmi nvlink -e`. The GPU that shows massive CRC, replay and recovery errors owns the failed transceiver. The peer that shows zero errors is a healthy passive victim.
 
 ```text
 Asymmetric NVLink Transceiver Isolation (4-GPU A100 Node, GPU2 <-> GPU3 Fallback to PIX)
@@ -369,14 +413,17 @@ Step 3: Per-GPU NVLink counter comparison & kernel log (dcgmi nvlink -e / dmesg 
 -----------------------------------------------------------------------------------------------
 ```
 
+When you look at the two GPU readings in step 3 of the block, GPU 2 holds the faulty transceiver, and GPU 3 shows zero errors on the same link. Open the RMA for the GPU whose counters are bad, not for the one that only reports the fallback.
+
 ### 4.3 PCIe Link Down-Training, DMA Page Faults, and Non-Disruptive Bus Rescan
 
-Dust, thermal expansion, riser wear, or auxiliary power ripple can degrade electrical signal integrity on a PCIe slot. Instead of crashing immediately, the PCIe link state machine often down-trains to an older generation and narrower lane width. Host-to-device data loading and GPUDirect RDMA throughput then collapse by up to ninety percent while the GPU stays online.
+A PCIe slot can lose signal quality from dust, thermal expansion, riser wear or auxiliary power ripple. The GPU rarely crashes at once. Instead, the PCIe link state machine down-trains to an older generation and a narrower lane width. Host-to-device loading and GPUDirect RDMA throughput can then collapse by up to ninety percent, and the GPU stays online the whole time.
 
-Compare `LnkCap` against `LnkSta` in `lspci -vvv`, check replay counters in DCGM, and inspect `dmesg` for IOMMU faults:
+To confirm a down-trained link, compare `LnkCap` with `LnkSta` in `lspci -vvv`. Then check the replay counters in DCGM and read `dmesg` for IOMMU faults:
+
 - When a slot rated for PCIe Gen4 x16 down-trains to Gen3 x8 alongside rising PCIe replay counts, measured CUDA `bandwidthTest` throughput collapses.
-- If `dmesg` logs DMAR faults where the root entry present bit is clear, audit kernel `iommu=pt` pass-through flags and PCIe ACS settings.
-- Before rebooting an eight-GPU server, drain the node and trigger a non-disruptive Linux sysfs PCIe device remove and bus rescan.
+- If `dmesg` logs DMAR faults where the root entry present bit is clear, audit the kernel `iommu=pt` pass-through flags and the PCIe ACS settings.
+- Before you reboot an eight-GPU server, drain the node and trigger a non-disruptive Linux sysfs PCIe device remove and bus rescan.
 
 ```text
 PCIe Down-Training & DMA Triage Reference (Slot 0000:08:00.0)
@@ -397,11 +444,13 @@ DMAR / IOMMU fault log    DMAR: DRHD: processing fault logged [DMA Read] Request
 -----------------------------------------------------------------------------------------------
 ```
 
+When you read the numbers, start with the Gen4 baseline, then move to the down-trained incident line. The measured 2.3 GB/s sits far below the 22.0 GB/s Gen4 reference. Rescan the device, then check whether the link returns to full speed and width.
+
 ---
 
 ## 5. Collective Timeouts, Straggler Bisection, and Cross-Layer Diagnosis
 
-When all lower hardware and fabric gates appear clean, or when a thousand-GPU job crashes with an NCCL timeout, operators must look above the switch ports. An NCCL timeout only proves that at least one rank failed to complete a collective before the timer expired. Isolating the true cause requires inspecting per-rank operation counts, bisecting multi-node clusters, and exposing misleading single-layer metrics.
+When every lower gate looks clean, or when a thousand-GPU job crashes with an NCCL timeout, you have to look above the switch ports. An NCCL timeout proves only one thing. At least one rank failed to finish a collective before the timer expired. Finding the true cause means checking per-rank operation counts, bisecting the cluster and seeing past metrics that mislead at a single layer.
 
 ```mermaid
 flowchart TD
@@ -415,6 +464,8 @@ flowchart TD
     Lag -->|"Alive, SM util 95%+,<br/>slow kernel execution"| Throttle["Hardware Slowdown on Rank<br/>Check Throttle Bitmask (85C thermal,<br/>PSU power brake, DVFS, NVLink PIX)"]
 ```
 
+Start at the top of the flowchart. Its first question is how the rank operation counts behave at the stall, because that answer separates network problems from code problems.
+
 | NCCL Timeout / Slowdown Class | `NCCL_DEBUG=INFO` / `ncclras` Signature | Lagging Rank Telemetry (`nvidia-smi` / `dmesg`) | True Root Cause | Correct Remediation |
 |---|---|---|---|---|
 | **1. Upstream Starved Rank (Straggler)** | Ranks `0–2` reach `opCount 4821` (`count 268435456`); `rank 3` stuck at `opCount 4820` | Process alive, `0` Xids, SM util `2%`, `61 °C`, `78.3 W`; batch fetch takes `47.31 s` | Storage volume `/data` at `96%` (`480G / 500G`) or uneven data sharding (`187G` on `shard-3` vs `41G` on `shard-0`, `4.5x` / `4.56x` skew) | Rebalance dataset shards (`DistributedSampler`), clean `/data/tmp`, add `DataLoader` prefetching |
@@ -423,15 +474,20 @@ flowchart TD
 | **4. Code-Level Collective Deadlock** | Ranks freeze permanently at **different, non-converging `opCount`s** or mismatched collective types | Processes alive, GPUs idle waiting in NCCL kernel | Conditional Python bug (`if rank == 0:` calls `all_reduce` twice while `rank != 0` calls it once) | Fix distributed application code so all ranks execute identical collective sequences unconditionally |
 | **5. True Fabric / Link Stall** | All ranks reach the **exact same `opCount`** and hang inside the collective | GPUs healthy; `nccl-tests` shows low `busbw` on specific node subset | Switch port down, PFC pause storm, credit loop, or degraded `400G` optic | Isolate bad node(s) via `O(log2 N)` binary search and run the 7-gate IB / 6-gate RoCE playbook |
 
+Each row pairs a symptom with its telemetry, its true cause and its fix. Use the table to match what you see in `NCCL_DEBUG=INFO` to the right row.
+
 ### 5.1 Binary-Search Multi-Node Straggler Isolation
 
-When a multi-node training cluster suffers a sudden collective slowdown, testing every server one by one takes far too long. On a 64-node cluster, linear testing requires 64 separate benchmark runs while the rest of the cluster sits idle. Binary-search bisection isolates a single degraded node or link in logarithmic time.
+When a multi-node training cluster suffers a sudden collective slowdown, testing every server one by one takes far too long. For example, on a 64-node cluster, linear testing needs 64 separate benchmark runs while the rest of the cluster sits idle. A binary search isolates one degraded node or link in logarithmic time.
 
-Follow a four-step bisection workflow to isolate the faulty node and GPU rapidly:
-1. Split the active node list into two equal halves and run `all_reduce_perf` on each half independently.
-2. Compare the measured bus bandwidth of the left half and the right half against the healthy cluster baseline. Whichever half exhibits the bandwidth drop contains the degraded server or switch link.
-3. Recursively split the failing half in two until a single node remains.
-4. Inside the isolated node, time each rank before the `dist.all_reduce` barrier after calling `torch.cuda.synchronize()`. Measuring after `dist.all_reduce` includes barrier wait time and makes every fast GPU look just as slow as the straggler.
+Follow these four steps to isolate the faulty node and GPU quickly:
+
+1. Split the active node list into two equal halves, and run `all_reduce_perf` on each half separately.
+2. Compare the measured bus bandwidth of each half with the healthy cluster baseline. The half with the bandwidth drop contains the degraded server or switch link.
+3. Split the failing half in two again, and repeat until a single node remains.
+4. Inside the isolated node, time each rank before the `dist.all_reduce` barrier, after you call `torch.cuda.synchronize()`. If you measure after `dist.all_reduce`, the barrier wait is included, and every fast GPU looks as slow as the straggler.
+
+The block below carries the arithmetic and the timing proof. A 16-node cluster needs 4 tests, which saves 12. A 64-node cluster needs 6 tests, which saves 58.
 
 ```text
 Binary-Search Bisection Math & Pre-Collective Timing Proof
@@ -450,15 +506,18 @@ Binary-Search Bisection Math & Pre-Collective Timing Proof
 -----------------------------------------------------------------------------------------------
 ```
 
+Read the GPU timings as a ratio. GPU 2 takes 1250.5 ms, about ten times the 125 ms that its peers need before the barrier. That gap is the straggler, and it is the reason to measure before the barrier, not after it.
+
 ### 5.2 Cross-Layer Diagnosis: When Metrics Lie and Profiler Heisenbugs
 
-Single-layer monitoring dashboards routinely deceive operators during complex distributed training incidents. A GPU can report one hundred percent utilization while sitting idle ninety percent of the time, or report full memory usage when most of the pool is empty cache. Even worse, attaching a heavyweight profiler can alter the exact timing behavior under investigation and create a profiler Heisenbug.
+Single-layer monitoring dashboards routinely deceive operators during complex distributed training incidents. A GPU can report one hundred percent utilization while sitting idle ninety percent of the time. It can also report full memory usage when most of the pool is empty cache. Even worse, a heavyweight profiler can change the exact timing you are trying to measure. Engineers call that a profiler Heisenbug.
 
-Guard against four classic cross-layer metric traps during incident triage:
+Four classic traps show up again and again during incident triage:
+
 - First, `nvidia-smi` GPU utilization only reports whether at least one kernel ran during a sampling window, not how many Streaming Multiprocessors were active. When a slow CPU launches tiny kernels infrequently, `nvidia-smi` reads near one hundred percent while throughput collapses. Use synchronized seven-layer iteration timings and `DCGM_FI_PROF_SM_ACTIVE` to expose the CPU bottleneck.
-- Second, `nvidia-smi` memory usage shows the PyTorch caching allocator pool rather than live tensors. Query `torch.cuda.memory_allocated()` for real tensor usage. Also check `nvidia-smi mig -lgi` if an A100 reports zero memory because MIG mode is enabled without instances.
-- Third, lower clock speeds automatically reduce power draw, so clock and power numbers alone cannot separate thermal throttling from power capping. Always inspect the throttle reason bitmask in `nvidia-smi -q -d PERFORMANCE`. On passively cooled server GPUs, check chassis fans via `ipmitool` or Redfish.
-- Fourth, heavyweight profilers add substantial measurement overhead that can mask or create timing bugs. Always capture an uninstrumented throughput baseline first, then use low-overhead Python timers or DCGM daemons before running short `nsys` traces.
+- Second, `nvidia-smi` memory usage shows the PyTorch caching allocator pool rather than live tensors. Query `torch.cuda.memory_allocated()` for real tensor usage. Also check `nvidia-smi mig -lgi` if an A100 reports zero memory, because MIG mode may be enabled without any instances.
+- Third, lower clock speeds automatically reduce power draw, so clock and power numbers alone cannot separate thermal throttling from power capping. Always inspect the throttle reason bitmask in `nvidia-smi -q -d PERFORMANCE`. On passively cooled server GPUs, check the chassis fans with `ipmitool` or Redfish.
+- Fourth, heavyweight profilers add substantial overhead that can mask or create timing bugs. Capture an uninstrumented throughput baseline first. Then use low-overhead Python timers or DCGM daemons before you run short `nsys` traces.
 
 ```text
 Cross-Layer Metric Lies, 7-Layer Breakdown, Heisenbug Overhead & Hardware Stop Thresholds
@@ -496,13 +555,15 @@ Cross-Layer Metric Lies, 7-Layer Breakdown, Heisenbug Overhead & Hardware Stop T
 -----------------------------------------------------------------------------------------------
 ```
 
+Each numbered part of the block matches one of the traps above, and the seven-layer breakdown shows where the time actually goes. Consider the throttle bitmask and the synchronized timings together before you call a GPU slow.
+
 ---
 
 ## Commands and configurations that matter
 
 ### 1. Non-Destructive Incident Evidence Bundle Collector (`untested here`)
 
-Before resetting any switch port, clearing any counter, or killing a stalled training job, capture a timestamped read-only baseline on both the affected node and a healthy reference node.
+Before you reset a switch port, clear a counter or kill a stalled training job, capture a timestamped, read-only baseline. Take it on the affected node and on a healthy reference node, so the two can be compared later.
 
 ```bash
 # Run on affected and reference nodes BEFORE resetting ports, clearing counters, or killing ranks (untested here)
@@ -536,9 +597,11 @@ nvidia-smi -q > "${INCIDENT_DIR}/gpu/nvidia_smi_q.txt" 2>&1
 dcgmi nvlink -e > "${INCIDENT_DIR}/gpu/dcgmi_nvlink_e.txt" 2>&1
 ```
 
+The script puts everything under one timestamped folder, grouped into host, InfiniBand, RoCEv2, GPU and log files. Run the same script on both nodes, and keep the two folders side by side so you can compare them.
+
 ### 2. InfiniBand and RoCEv2 Layer-by-Layer Verification Commands (`untested here`)
 
-Use these read-only and microbenchmark commands to step through the InfiniBand seven-gate tree and the RoCEv2 six-gate tree in order.
+Work through these commands in gate order, one gate at a time, so you never skip ahead. The first group checks the InfiniBand gates, the second checks RoCEv2, and the last two groups cover host RDMA, GPUDirect RDMA and collectives.
 
 ```bash
 # Gate 1 & 2 (IB): Verify LinkUp, Active, Rate 400, Base lid > 0, and single Master SM (untested here)
@@ -560,9 +623,11 @@ ib_write_bw -d mlx5_0 -i 1 --use_cuda=0 --report_gbits 10.20.8.5
 /opt/nccl-tests/build/all_reduce_perf -b 128M -e 1G -f 2 -g 8
 ```
 
+Each command maps to one gate. As you run it, compare the output with the baseline values in the playbook tables, and move to the next gate only after the current one passes.
+
 ### 3. Host PCIe Rescan, NVLink Isolation, and NCCL Stalled-Rank Triage (`untested here`)
 
-Use these host-level commands to recover a down-trained PCIe link without rebooting, isolate an asymmetric NVLink transceiver failure, and inspect per-rank collective operation counts.
+These host-level commands cover three jobs. They recover a down-trained PCIe link without a reboot, isolate an asymmetric NVLink transceiver failure, and show per-rank collective operation counts.
 
 ```bash
 # Check PCIe LnkCap vs LnkSta and perform non-disruptive PCIe remove/rescan on a down-trained slot (untested here)
@@ -584,9 +649,13 @@ NCCL_DEBUG=INFO NCCL_DEBUG_SUBSYS=COLL,GRAPH python3 train.py 2>&1 | tee nccl_tr
 grep "AllReduce" nccl_trace.log | tail -40
 ```
 
+The two `echo 1` lines remove the device and rescan the bus, so drain the node first, as Section 4.3 describes.
+
 ---
 
 ## How it fails
+
+Each row pairs a symptom you might see on a live cluster with its discriminating evidence and its fix. Several of these symptoms look alike from the outside, so when you read a row, the discriminating evidence column matters most.
 
 | Failure Mode | Observed Symptom | Discriminating Evidence | Root Cause | Remediation |
 |---|---|---|---|---|
@@ -597,24 +666,28 @@ grep "AllReduce" nccl_trace.log | tail -40
 | **5. PCIe Link Down-Training (`Gen4 x16 -> Gen3 x8`) or Xid `79` Bus Drop** | Host-to-device copy slows by `80%–90%` (`2.3 GB/s` vs `22.0 GB/s`), or GPU vanishes from `nvidia-smi` | `lspci -vvv` shows `LnkSta: Speed 8GT/s (Gen3), Width x8 (Down-trained)` with `127` PCIe replays; or `dmesg` logs Xid `79` (`GPU has fallen off the bus`) | Loose riser/slot seating, auxiliary power sag, or Xid `92 -> 45 -> 79` degradation | Cordon node, run soft PCIe `remove`/`rescan`, check power connectors, and RMA if link fails to hold Gen4/Gen5 x16 |
 | **6. NCCL Timeout from Upstream Starved Rank (`opCount` Lag)** | Job crashes with `NCCL operation timed out` after `10–30` minutes | `NCCL_DEBUG=INFO` shows `ranks 0–2` at `opCount 4821` and `rank 3` at `opCount 4820`; `rank 3` has `0` Xids, `2%` SM util, `47.31 s` batch fetch (`187G` vs `41G` shard on `96%`-full disk) | Synchronous collective waited for `rank 3`, which was blocked in the CPU/storage data pipeline before calling AllReduce | Fix uneven dataset sharding and storage contention on `rank 3`; never mask by disabling the process-group timeout |
 
+Consider row 2 and the story in Section 3.1. Both show a rising ECN count, but only the CRC counters separate a bad cable from real congestion. Confirm the discriminating evidence first. If the evidence does not match what you see, do not change a setting yet.
+
 ---
 
 ## Hands-on lab
 
 ### Venue and Scope
-The verification script `code/part12/ai_networking_troubleshooting_lab.py` uses only the Python standard library and runs on any laptop or Nebius GPU instance. Hardware diagnostic commands shown in earlier sections are marked `untested here` because they require live multi-node switch and GPU hardware. The local verification suite validates twenty-eight deterministic checks across all four playbook domains:
-- InfiniBand seven-gate checks validate port-down detection, reduced lane width, and unprogrammed Subnet Manager ports. They also verify credit loops, tail-latency spikes, GPUDirect RDMA fallbacks, and clean-link congestion.
-- RoCEv2 six-gate and pause-tree checks validate physical FEC and CRC losses, secondary ECN inflation, and MTU drops. They also verify GID mismatches, DSCP trust failures, DCQCN pacing, and downstream PFC root-port isolation.
-- Host Xid, NVLink, and PCIe DMA checks validate chronological Xid precursor chains and three-tier severity actions. They also verify asymmetric NVLink transceiver isolation and PCIe Gen3 x8 down-training math.
-- NCCL timeout, bisection, and cross-layer checks validate starved-rank detection, collective deadlocks, and logarithmic node bisection. They also verify seven-layer iteration breakdowns, profiler Heisenbug overheads, and thermal/ECC stop rules.
+The verification script `code/part12/ai_networking_troubleshooting_lab.py` uses only the Python standard library. You can run it on any laptop or on a Nebius GPU instance. The hardware commands marked `untested here` in earlier sections need live multi-node switch and GPU hardware, so the lab does not run them. The local verification suite validates twenty-eight deterministic checks across all four playbook domains:
+- InfiniBand seven-gate checks cover port-down detection, reduced lane width and unprogrammed Subnet Manager ports. They also cover credit loops, tail-latency spikes, GPUDirect RDMA fallbacks and clean-link congestion.
+- RoCEv2 six-gate and pause-tree checks cover physical FEC and CRC losses, secondary ECN inflation and MTU drops. They also cover GID mismatches, DSCP trust failures, DCQCN pacing and downstream PFC root-port isolation.
+- Host Xid, NVLink and PCIe DMA checks cover chronological Xid precursor chains and three-tier severity actions. They also cover asymmetric NVLink transceiver isolation and PCIe Gen3 x8 down-training math.
+- NCCL timeout, bisection and cross-layer checks cover starved-rank detection, collective deadlocks and logarithmic node bisection. They also cover seven-layer iteration breakdowns, profiler Heisenbug overheads and thermal and ECC stop rules.
 
 ### Running the Lab
+
+Run the script from the repository root. As you read the output, look for the line for each check, followed by a summary.
 
 ```bash
 python3 -B code/part12/ai_networking_troubleshooting_lab.py
 ```
 
-Expected output (verified here):
+The output below is what the lab printed when it was verified here. A passing run ends with 28 passed and 0 failed.
 
 ```text
 === Chapter 12.24 Lab: AI Networking Troubleshooting Playbook ===
@@ -631,20 +704,25 @@ Summary: 28 passed, 0 failed
 
 ## Common first mistakes
 
-1. Resetting switch ports, clearing counters, or rebooting servers before capturing baseline and follow-up counter deltas erases the exact evidence needed for a hardware RMA.
-2. Treating an active link state or a clean `ping` test as proof of RDMA health ignores down-trained lanes, tail latency, Queue Pair transitions, GID indices, and jumbo frames.
-3. Disabling PFC during a pause storm or raising the collective timeout to thirty minutes causes massive packet loss or forces a thousand GPUs to sit idle for hours.
-4. Measuring per-rank iteration time after `dist.all_reduce` hides the straggler because every fast GPU blocks inside the barrier waiting for the slowest rank.
-5. Opening an NVLink hardware RMA when `nvidia-smi topo -m` shows `PIX` without checking MIG mode or comparing both peers in `dcgmi nvlink -e` risks replacing a healthy GPU.
+Watch for these five mistakes. Each one looks reasonable under pressure, and each one costs real time.
+
+1. Resetting switch ports, clearing counters or rebooting servers before you capture baseline and follow-up counter deltas erases the exact evidence you need for a hardware RMA.
+2. Treating an active link state or a clean `ping` test as proof of RDMA health ignores down-trained lanes, tail latency, Queue Pair transitions, GID indices and jumbo frames.
+3. Disabling PFC during a pause storm, or raising the collective timeout to thirty minutes, causes massive packet loss or leaves a thousand GPUs idle for hours.
+4. Measuring per-rank iteration time after `dist.all_reduce` hides the straggler, because every fast GPU blocks in the barrier while it waits for the slowest rank.
+5. Opening an NVLink hardware RMA when `nvidia-smi topo -m` shows `PIX`, without checking MIG mode or comparing both peers in `dcgmi nvlink -e`, risks replacing a healthy GPU.
+
+If you remember only one rule from this chapter, make it the first one: save the evidence before you change anything.
 
 ---
 
 ## Exercises
 
-1. **InfiniBand 7-Gate Triage and Tail Latency Analysis:**
-   Examine the two-byte `ib_write_lat` capture and `ibstat` state below.
-   - (a) Compute the ratio of observed-to-baseline latency for `t_typical`, `t_avg`, 99th percentile, and 99.9th percentile. Explain why checking only averages misses the fault and why the 99.9th percentile governs AllReduce step time.
-   - (b) On a second node pair, `ibstat` reports the port state shown in the block below. Identify which gate failed and state your first diagnostic command.
+Work these through on paper, using only the numbers in each block. Then check your answers against the sections above.
+
+1. Start with the two-byte `ib_write_lat` capture and the `ibstat` state below. Your job is to find which gate failed and what the tail latency is telling you.
+   - (a) Compute the ratio of observed to baseline latency for `t_typical`, `t_avg`, the 99th percentile and the 99.9th percentile. Then explain why checking only averages misses the fault, and why the 99.9th percentile governs AllReduce step time.
+   - (b) On a second node pair, `ibstat` reports the port state shown in the block below. Identify the gate that failed, and state your first diagnostic command.
    ```text
    Part (a) ib_write_lat (2 bytes, 1,000 iterations on 400G NDR):
      Baseline: t_min=1.41 us, t_max=2.03 us, t_typical=1.55 us, t_avg=1.56 us, 99%=1.71 us, 99.9%=1.98 us
@@ -653,10 +731,9 @@ Summary: 28 passed, 0 failed
      Physical state: LinkUp | State: Initializing | Base lid: 0
    ```
 
-2. **RoCEv2 FEC/CRC vs Secondary ECN and PFC Pause-Tree Backtracing:**
-   Examine the switch port counter deltas and three-hop PFC pause tree below.
+2. Next, look at the switch port counter deltas and the three-hop PFC pause tree below. Work out the mechanism first, and then find the root port.
    - (a) Explain the exact mechanism by which three physical `fec_uncorrected_blocks` cause `rx_ecn_marked_prio3` to rise, and state the correct fix.
-   - (b) Identify which port is the root bottleneck of the Priority 3 pause tree and explain why.
+   - (b) Identify which port is the root bottleneck of the Priority 3 pause tree, and explain why.
    ```text
    Part (a) Switch port swp17 (rack14-node07, mlx5_1, rail 1, DAC-2m serial ABC123):
      fec_corrected_blocks: 41200 | fec_uncorrected_blocks: 3 | rx_crc_errors: 3 | rx_ecn_marked_prio3: 1280
@@ -666,10 +743,9 @@ Summary: 28 passed, 0 failed
      Hop 3 (leafB-swp17, to receiver): occupancy 98%, tx_pfc: 9500, rx_pfc: 0
    ```
 
-3. **Xid Precursor Chains and Asymmetric NVLink Transceiver Isolation:**
-   Examine the kernel Xid sequence and NVLink counter capture below.
-   - (a) Classify each of the three Xid codes into Tier 1, Tier 2, or Tier 3. Explain the role of Xid 45 and state how the single-bit ECC trend prevents the crash.
-   - (b) Determine which GPU should be RMA'd and explain why the peer GPU is healthy.
+3. Read the kernel Xid sequence and the NVLink counter capture below.
+   - (a) Classify each of the three Xid codes into Tier 1, Tier 2 or Tier 3. Explain the role of Xid 45, and state how the single-bit ECC trend prevents the crash.
+   - (b) Determine which GPU should be RMA'd, and explain why the peer GPU is healthy.
    ```text
    Part (a) Kernel log & DCGM SBE history:
      14:21:52 -> Xid 92 | 14:21:58 -> Xid 45 | 14:22:03 -> Xid 79
@@ -679,9 +755,8 @@ Summary: 28 passed, 0 failed
      dcgmi nvlink -e -g 3 (Link 2 Down): 0 CRC errors, 0 replay errors
    ```
 
-4. **PCIe Down-Training Audit and Recovery Math:**
-   Examine the PCIe link telemetry for slot `0000:08:00.0` below.
-   - (a) Calculate the percentage bandwidth loss of the measured throughput relative to the Gen4 x16 baseline and relative to the Gen3 x16 baseline.
+4. Examine the PCIe link telemetry for slot `0000:08:00.0` below.
+   - (a) Calculate the percentage bandwidth loss of the measured throughput relative to the Gen4 x16 baseline, and then relative to the Gen3 x16 baseline.
    - (b) Write the exact non-disruptive Linux sysfs command sequence to retrain the link without rebooting the host, and state the pass criteria.
    ```text
    Slot 0000:08:00.0 Telemetry:
@@ -691,10 +766,9 @@ Summary: 28 passed, 0 failed
                        DCGM replays = 127 | Measured bandwidthTest = 2.3 GB/s
    ```
 
-5. **NCCL Timeout Classification and Binary-Search Straggler Bisection:**
-   Examine the four-rank timeout telemetry and cluster bisection parameters below.
-   - (a) Diagnose the exact root cause of the collective timeout and compute the dataset shard imbalance ratio.
-   - (b) Compute how many subset benchmark runs are required using binary search versus linear scanning on the 64-node cluster, and state how many runs are saved.
+5. Look at the four-rank timeout telemetry and the cluster bisection parameters below.
+   - (a) Diagnose the exact root cause of the collective timeout, and compute the dataset shard imbalance ratio.
+   - (b) Compute how many subset benchmark runs binary search needs on the 64-node cluster, compare that with linear scanning, and state how many runs you save.
    ```text
    Part (a) 4-Rank Job Timeout Telemetry:
      NCCL_DEBUG=INFO: ranks 0, 1, 2 at AllReduce opCount 4821; rank 3 stuck at opCount 4820
@@ -704,10 +778,9 @@ Summary: 28 passed, 0 failed
      1 degraded node (node-47) pulls all_reduce_perf busbw from 180.0 GB/s down to 42.0 GB/s
    ```
 
-6. **Cross-Layer Iteration Breakdown, Profiler Heisenbugs, and Thermal/ECC Thresholds:**
-   Examine the seven-stage iteration profile and hardware degradation logs below.
-   - (a) Compute the sum of the seven stages, the percentage spent in CPU data loading versus total GPU compute, and the profiler overhead percentages for both tools.
-   - (b) Compute the temperature rise rate in degrees Celsius per second and the single-bit ECC error rate per hour at 15:30, comparing each against its operational threshold.
+6. Study the seven-stage iteration profile and the hardware degradation logs below.
+   - (a) Compute the sum of the seven stages, the percentage of time spent in CPU data loading compared with total GPU compute, and the profiler overhead percentages for both tools.
+   - (b) Compute the temperature rise rate in degrees Celsius per second, and the single-bit ECC error rate per hour at 15:30. Compare each against its operational threshold.
    ```text
    Part (a) 7-Stage Synchronized Iteration Breakdown & Profiler Throughput:
      data_load_cpu=450.0 ms, allreduce_network=150.0 ms, backward_gpu=60.0 ms, forward_gpu=30.0 ms,
@@ -723,11 +796,13 @@ Summary: 28 passed, 0 failed
 ## Interview angles
 
 1. **An InfiniBand port shows an active state, or an Ethernet port passes `ping` with zero loss, yet the training job fails with an RDMA error. Walk through how you isolate the fault.**
-   A strong answer states immediately that active link states and `ping` only prove basic physical negotiation and kernel L3 reachability. On InfiniBand, check `ibstat` for down-trained width or rate, and inspect `perfquery` deltas for symbol errors versus transmit waits. Next, run NUMA-pinned `ib_write_lat` to check the 99.9th percentile tail, and verify GPUDirect RDMA with `ib_write_bw --use_cuda` and `nvidia-smi topo -m`. On RoCEv2, explain that 64-byte ICMP packets never test Queue Pair `RTR` setup, GID index 3, 9000-byte jumbo frames, or Priority 3 lossless queues.
+   A strong answer starts by saying that an active link state and a clean `ping` prove only basic physical negotiation and kernel L3 reachability. On InfiniBand, check `ibstat` for down-trained width or rate, then inspect `perfquery` deltas to tell symbol errors apart from transmit waits. Next, run NUMA-pinned `ib_write_lat` to check the 99.9th percentile tail, and verify GPUDirect RDMA with `ib_write_bw --use_cuda` and `nvidia-smi topo -m`. On RoCEv2, explain that 64-byte ICMP packets never test Queue Pair RTR setup, GID index 3, 9000-byte jumbo frames or Priority 3 lossless queues.
+
 2. **How do you distinguish a bad cable or transceiver from fabric congestion on both InfiniBand and RoCEv2?**
-   A strong answer compares physical error deltas and queue wait or mark deltas together over a fixed time window. On InfiniBand, rising `PortXmitWait` with zero `SymbolErrorCounter` and zero `LinkDownedCounter` delta proves clean-link congestion. Rising symbol errors prove bad physical media. On RoCEv2, nonzero `fec_uncorrected_blocks` matching `rx_crc_errors` proves a physical layer fault, even when `rx_ecn_marked_prio3` climbs secondarily from RDMA retries.
+   A strong answer compares physical error deltas with queue wait or mark deltas, all measured over the same fixed time window. On InfiniBand, a rising `PortXmitWait` with a zero `SymbolErrorCounter` delta and a zero `LinkDownedCounter` delta proves clean-link congestion. Rising symbol errors prove bad physical media. On RoCEv2, nonzero `fec_uncorrected_blocks` that match `rx_crc_errors` prove a physical layer fault. That holds even when `rx_ecn_marked_prio3` climbs as a side effect of RDMA retries.
+
 3. **A thousand-GPU training job crashes with `NCCL operation timed out`. Why is blaming the network usually wrong, and how do you find the exact culprit?**
-   A strong answer explains that synchronous collectives block all 999 healthy ranks whenever a single straggler fails to reach the barrier. Inspect `NCCL_DEBUG=INFO` or `ncclras` for per-rank operation counts. If all ranks freeze on the exact same `opCount`, it is a fabric stall; if ranks freeze on divergent `opCount` values, it is a conditional Python deadlock. When one rank lags at `opCount 4820` while peers wait at `4821`, check that rank for fatal Xid codes, throttle bitmasks, and slow CPU dataloader fetches.
+   A strong answer explains that a synchronous collective blocks all 999 healthy ranks when one straggler never reaches the barrier. Inspect `NCCL_DEBUG=INFO` or `ncclras` for per-rank operation counts. If every rank freezes on the same opCount, you are looking at a fabric stall. If the ranks freeze on divergent opCount values, you are looking at a conditional Python deadlock. When one rank lags at opCount 4820 while its peers wait at 4821, check that rank for fatal Xid codes, throttle bitmasks and slow CPU dataloader fetches.
 
 ---
 
@@ -736,121 +811,121 @@ Summary: 28 passed, 0 failed
 <details>
 <summary>**1. Why should an engineer never clear switch or NIC counters (`perfquery -R`) or reboot a node as the first step during an AI fabric incident?**</summary>
 
-Clearing counters or rebooting destroys accumulated forensic evidence such as `SymbolErrorCounter`, `PortXmitWait`, `fec_uncorrected_blocks`, `rx_pfc_prio3`, and kernel Xid precursor sequences. Always capture timestamped baseline and follow-up snapshots and compute counter deltas before changing system state.
+Clearing counters or rebooting wipes out evidence you cannot get back. That includes `SymbolErrorCounter`, `PortXmitWait`, `fec_uncorrected_blocks`, `rx_pfc_prio3` and the kernel Xid precursor sequence. Capture timestamped baseline and follow-up snapshots, and compute the deltas before you change anything.
 </details>
 
 <details>
 <summary>**2. What does `ibstat` showing `Physical state: LinkUp`, `State: Initializing`, and `Base lid: 0` prove about the InfiniBand stack?**</summary>
 
-`Physical state: LinkUp` proves that Layer 1 physical signaling and lane negotiation between the HCA and switch port succeeded. `State: Initializing` with `Base lid: 0` proves that the Subnet Manager at Gate 2 has not yet swept, assigned a LID, and transitioned the port to Active.
+`Physical state: LinkUp` tells you that the physical signaling and lane negotiation between the HCA and the switch port succeeded. `State: Initializing` with `Base lid: 0` tells you that the Subnet Manager has not yet swept the fabric, assigned a LID and moved the port to Active. That points to Gate 2.
 </details>
 
 <details>
 <summary>**3. Why is `State: Active` in `ibstat` insufficient proof that an InfiniBand link is healthy?**</summary>
 
-`State: Active` only confirms that physical link training and Subnet Manager admission completed. A port with a damaged lane can still report `State: Active` while negotiated down to half or quarter width. It can also accumulate symbol errors and transmit waits under load.
+`State: Active` confirms only that link training and Subnet Manager admission finished. A port with a damaged lane can still show `State: Active` after it negotiates down to half or quarter width. Under load, that same port can also pile up symbol errors and transmit waits.
 </details>
 
 <details>
 <summary>**4. In `ib_write_lat`, how can a path with normal average latency still cause severe collective slowdowns?**</summary>
 
-Averages hide tail latency micro-stalls. When the 99.9th percentile jumps to nearly three times baseline while typical latency stays flat, synchronous collectives stall waiting for the slowest tail completion.
+Averages smooth over short micro-stalls. Suppose the 99.9th percentile jumps to nearly three times its baseline while typical latency stays flat. The synchronous collective then waits on that slowest tail completion, even though the average still looks fine.
 </details>
 
 <details>
 <summary>**5. How do `perfquery` counter deltas distinguish an InfiniBand physical cable fault from fabric congestion?**</summary>
 
-If `PortXmitWait` rises sharply while `SymbolErrorCounter`, `LinkDownedCounter`, and `PortRcvErrors` remain at zero, the link is physically clean and experiencing congestion at Gate 6. If `SymbolErrorCounter` or `LinkDownedCounter` increments, the physical cable or transceiver at Gate 1 is defective and must be repaired first.
+Look at the two groups of counters. If `PortXmitWait` rises sharply while `SymbolErrorCounter`, `LinkDownedCounter` and `PortRcvErrors` stay at zero, the link is clean and the problem is congestion at Gate 6. If `SymbolErrorCounter` or `LinkDownedCounter` goes up, the cable or transceiver at Gate 1 is defective, and you repair it first.
 </details>
 
 <details>
 <summary>**6. On a RoCEv2 fabric, why can `fec_uncorrected_blocks` and `rx_crc_errors` cause `rx_ecn_marked_prio3` to rise on the same port?**</summary>
 
-When corrupted blocks exceed FEC capability, those Ethernet frames fail the CRC check and are dropped. The ConnectX RDMA transport layer retransmits the lost sequence bursts, which adds extra offered traffic and pushes switch queue occupancy above the ECN threshold.
+Once corrupted blocks exceed what FEC can correct, the affected frames fail the CRC check and get dropped. The ConnectX RDMA transport then retransmits the lost bursts. That extra traffic pushes switch queue occupancy above the ECN threshold, so the port starts marking packets.
 </details>
 
 <details>
 <summary>**7. Why does `ping` succeed with zero packet loss while `ib_write_bw` fails with `Failed to modify QP to RTR`?**</summary>
 
-`ping` sends small 64-byte ICMP packets through the Linux kernel TCP/IP stack. It never registers an RDMA Memory Region, transitions a Queue Pair to `RTR`, or validates RoCEv2 GID index 3. It also never uses lossless Priority 3 queues or tests 9000-byte jumbo frames across routed hops.
+`ping` sends small 64-byte ICMP packets through the Linux kernel stack. It never registers an RDMA Memory Region, never moves a Queue Pair to `RTR`, and never checks RoCEv2 GID index 3. It also never rides the lossless Priority 3 queue, and it never tests 9000-byte jumbo frames across routed hops.
 </details>
 
 <details>
 <summary>**8. What happens when a benchmark or training rank on a multi-rail RoCEv2 node selects the wrong NIC device for its target subnet?**</summary>
 
-Physical link state and jumbo MTU remain clean, but Gate 3 diverges because traffic exits on a misaligned GID and subnet path. ECN marks rise, the NIC logs repeated `RETRY_EXC_ERR` completions, test duration stretches fourfold, and bandwidth drops by more than half.
+The physical link and the jumbo MTU stay clean, but Gate 3 fails. Traffic leaves on a misaligned GID and subnet path. ECN marks rise, and the NIC logs repeated `RETRY_EXC_ERR` completions. The test duration stretches fourfold, and bandwidth drops by more than half.
 </details>
 
 <details>
 <summary>**9. Why must ECN marking thresholds sit below the PFC pause threshold, and what is the first action during a persistent PFC storm?**</summary>
 
-ECN must mark packets early so receivers return CNP frames and DCQCN throttles sender rates before switch buffers fill to the PFC threshold. During a persistent PFC storm, never disable PFC. Instead, trace the paused priority downstream along the data path to the root congested egress port.
+ECN has to mark packets early. That lets receivers return CNP frames, so DCQCN can slow the senders before switch buffers reach the PFC threshold. During a persistent PFC storm, leave PFC on. Trace the paused priority downstream, along the data path, until you reach the root congested egress port.
 </details>
 
 <details>
 <summary>**10. If host-memory `ib_write_bw` achieves line rate on a 400G link, but `ib_write_bw --use_cuda=0` drops to one-eighth of line rate, which layer is broken?**</summary>
 
-Host RDMA passing at line rate proves that cables, optics, Subnet Manager routing, QoS, and NIC RDMA transport at Gates 1 through 4 are healthy. The fault is isolated to Gate 5 GPUDirect RDMA and PCIe locality. Check `nvidia-peermem` or `dma-buf`, disable PCIe ACS via `setpci`, verify Large BAR1, and confirm `PIX` or `PXB` NUMA locality.
+Line-rate host RDMA shows that cables, optics, Subnet Manager routing, QoS and NIC transport at Gates 1 through 4 are healthy. That leaves Gate 5, GPUDirect RDMA and PCIe locality. Check `nvidia-peermem` or `dma-buf`, disable PCIe ACS with `setpci`, verify Large BAR1, and confirm `PIX` or `PXB` NUMA locality.
 </details>
 
 <details>
 <summary>**11. How does the three-tier Xid classification separate Tier 1, Tier 2, and Tier 3 GPU faults?**</summary>
 
-Tier 1 codes like 45, 63, and 92 are informational or self-healing events where the job keeps running while operators track seven-day trends. Tier 2 codes like 13, 31, 32, 43, and 94 are process-recoverable faults where operators restart the job and watch for repeat occurrences. Tier 3 codes like 48, 61, 62, 64, 79, and 95 are unrecoverable GPU or bus failures requiring immediate node drain and hardware RMA.
+Tier 1 holds codes like 45, 63 and 92. They are informational or self-healing, so the job keeps running while you track the seven-day trend. Tier 2 holds codes like 13, 31, 32, 43 and 94. They are recoverable at the process level, so you restart the job and watch for repeats. Tier 3 holds codes like 48, 61, 62, 64, 79 and 95. They are unrecoverable GPU or bus failures, and they call for an immediate node drain and a hardware RMA.
 </details>
 
 <details>
 <summary>**12. In `dmesg -T`, you see Xid 92 followed six seconds later by Xid 45 and five seconds later by Xid 79. How do you interpret this sequence?**</summary>
 
-`dmesg` prints oldest entries first, so Xid 92 was the early hardware warning of accelerating single-bit ECC errors. Xid 45 was the driver cleaning up the context after Xid 92, and Xid 79 was the terminal Tier 3 failure where the GPU fell off the PCIe bus.
+`dmesg` prints the oldest entries first, so read from the top. Xid 92 came first, as the early warning of accelerating single-bit ECC errors. Xid 45 followed, when the driver cleaned up the context. Xid 79 was the terminal Tier 3 failure, when the GPU fell off the PCIe bus.
 </details>
 
 <details>
 <summary>**13. `nvidia-smi topo -m` shows `PIX` instead of `NV12` between two GPUs. What check must you run before suspecting broken hardware, and how do you isolate which GPU failed?**</summary>
 
-First check whether MIG mode is enabled in `nvidia-smi -q`, because MIG mode intentionally disables NVLink peer-to-peer transfers between instances. Once MIG is confirmed disabled, run `dcgmi nvlink -e` on both GPUs. The GPU logging massive CRC and replay errors alongside Xid 74 owns the defective transceiver, whereas the peer with zero errors is a healthy victim.
+Start by checking whether MIG mode is on, using `nvidia-smi -q`. MIG mode turns off NVLink peer-to-peer transfers between instances on purpose. Once you confirm MIG is off, run `dcgmi nvlink -e` on both GPUs. The GPU with massive CRC and replay errors, alongside Xid 74, owns the defective transceiver. The peer with zero errors is the healthy victim.
 </details>
 
 <details>
 <summary>**14. What causes CUDA `bandwidthTest` throughput on a PCIe Gen4 x16 GPU to drop by ninety percent, and how do you recover it without a host reboot?**</summary>
 
-Electrical errors and PCIe replays cause the link state machine to down-train from Gen4 x16 to Gen3 x8, visible in `lspci -vvv`. Drain workloads on the GPU and trigger a non-disruptive sysfs PCIe device remove and bus rescan. Then verify that `LnkSta` returns to full speed and width.
+Electrical errors and PCIe replays make the link state machine down-train from Gen4 x16 to Gen3 x8. You can see that in `lspci -vvv`. Drain the workloads from the GPU, then trigger a non-disruptive sysfs PCIe remove and bus rescan. Finally, check that `LnkSta` returns to full speed and width.
 </details>
 
 <details>
 <summary>**15. How do you distinguish a starved straggler rank, a Python code deadlock, and a true fabric stall using `NCCL_DEBUG=INFO` or `ncclras`?**</summary>
 
-In a starved or straggler rank failure, most ranks reach operation count `N` and wait while one lagging rank sits at `N-1`. In a code-level deadlock, ranks freeze permanently at divergent operation counts because a conditional branch called mismatched collectives. In a true fabric stall, every rank reaches the exact same operation count and hangs simultaneously inside the network transfer.
+Look at where each rank stops. In a starved or straggler failure, most ranks reach operation count `N` and wait, while one lagging rank sits at `N-1`. In a code-level deadlock, ranks freeze for good at different operation counts, because a conditional branch called mismatched collectives. In a true fabric stall, every rank reaches the same operation count and hangs together inside the network transfer.
 </details>
 
 <details>
 <summary>**16. Why does measuring per-rank iteration time after `dist.all_reduce` fail to identify a straggler GPU, and how should you instrument the loop instead?**</summary>
 
-Because `dist.all_reduce` is a synchronous barrier, fast GPUs wait inside the call for the slowest GPU, making post-barrier step times look identical. Always call `torch.cuda.synchronize()` and record each rank's elapsed compute time before entering `dist.all_reduce`.
+`dist.all_reduce` is a synchronous barrier. Fast GPUs wait inside the call for the slowest one, so their step times after the barrier look identical. Call `torch.cuda.synchronize()` first, and record each rank's elapsed compute time before you enter `dist.all_reduce`.
 </details>
 
 <details>
 <summary>**17. How many `nccl-tests` runs are needed to isolate one degraded node in a 64-node cluster using binary search versus linear scanning?**</summary>
 
-Binary-search bisection splits the candidate node pool in half at each step, isolating the single degraded node in six benchmark runs instead of 64. That logarithmic workflow saves 58 multi-node benchmark runs during an outage.
+Binary search cuts the candidate pool in half at each step. For a single degraded node in a 64-node cluster, that takes six benchmark runs instead of 64. The logarithmic workflow saves 58 multi-node benchmark runs during an outage.
 </details>
 
 <details>
 <summary>**18. How can `nvidia-smi` report 100% GPU utilization and 80 GB memory used while the GPU is idle 90% of the time and only 10 GB of tensors exist?**</summary>
 
-`nvidia-smi` utilization only measures whether at least one kernel ran during a sampling interval. Slow CPU kernel launches keep utilization near 100% while Streaming Multiprocessors sit mostly idle. Similarly, `nvidia-smi` memory shows the reserved PyTorch caching allocator pool rather than active tensors reported by `torch.cuda.memory_allocated()`.
+`nvidia-smi` utilization records only whether at least one kernel ran during a sampling interval. Slow CPU kernel launches can keep that number near 100% while the Streaming Multiprocessors sit mostly idle. Memory works the same way. `nvidia-smi` shows the reserved PyTorch caching allocator pool, while `torch.cuda.memory_allocated()` reports the tensors that are actually in use.
 </details>
 
 <details>
 <summary>**19. A GPU's clock and power drop simultaneously at 80 degrees Celsius. Why can't those numbers alone separate thermal throttling from power capping, and what command decides it?**</summary>
 
-Lower clock frequency reduces power consumption automatically regardless of why the clock dropped. The discriminating evidence is the throttle reason bitmask in `nvidia-smi -q -d PERFORMANCE`. It explicitly flags hardware or software thermal slowdown, software power capping, or hardware power brake brownouts.
+A lower clock cuts power draw automatically, whatever caused the clock to drop. So the clock and power readings look the same in both cases. The throttle reason bitmask in `nvidia-smi -q -d PERFORMANCE` settles it. It flags a hardware or software thermal slowdown, a software power cap or a hardware power brake brownout.
 </details>
 
 <details>
 <summary>**20. What is a profiler Heisenbug, and what are the actionable operational thresholds for temperature rise rate and single-bit ECC escalation?**</summary>
 
-A profiler Heisenbug occurs when tool overhead alters workload timing, such as `nvidia-smi` polling or `nsys` tracing cutting throughput by ten to fifty percent. For hardware health, a temperature rise rate above 0.20 degrees Celsius per second during `gpu-burn` proves cooling degradation. A single-bit ECC rate above ten errors per hour requires stopping the job and draining the node.
+A profiler Heisenbug appears when the tool's own overhead changes the timing you are measuring. Polling with `nvidia-smi` or tracing with `nsys` can cut throughput by ten to fifty percent. For hardware health, a temperature rise rate above 0.20 degrees Celsius per second during `gpu-burn` proves cooling degradation. A single-bit ECC rate above ten errors per hour means you stop the job and drain the node.
 </details>
 
 ---
@@ -859,7 +934,7 @@ A profiler Heisenbug occurs when tool overhead alters workload timing, such as `
 
 ### Primary Sources (Read in Full and Migrated)
 
-All twenty-nine mapped source files across Volumes 08, 09, and 20, cross-referenced operator guides, and two corpus books were read in full and migrated into this playbook:
+Twenty-nine mapped source files across Volumes 08, 09 and 20 were read in full and migrated into this playbook. Cross-referenced operator guides and two corpus books were read too. The inventory below stays exactly as written, so you can trace each number back to its origin.
 
 ```text
 Primary Source Inventory & Key Migrated Artifacts / Numbers
@@ -966,6 +1041,6 @@ Primary Source Inventory & Key Migrated Artifacts / Numbers
 ```
 
 ### Inferences and Unverified Claims Note
-- All hardware CLI commands shown for InfiniBand (`ib_core`, `mlx5_core`, `200G` / 400G links, `2.9141`x tail ratio, `984500` ticks, `-works/` runbook paths), RoCEv2 (`RoCEv1`, `Ready-to-Receive`, `CNPs`), PCIe (`H2D` copies), and GPU inspection (`utilization.gpu`, `DCGM_FI_DEV_CLOCK_THROTTLE_REASONS`, `GPU2_transceiver`, `1250` ms straggler) are illustrative operational patterns from the cited sources. They have not been executed on live multi-node switch hardware in this build environment (`untested here`).
-- The Python diagnostic models and logarithmic straggler bisection algorithm reside in `code/part12/ai_networking_troubleshooting.py` and `code/part12/ai_networking_troubleshooting_lab.py`. They are deterministic encodings of the source decision trees and were verified locally (`28 passed, 0 failed`).
 
+- Several CLI examples in this chapter have not been run on live hardware. These include the InfiniBand examples (`ib_core`, `mlx5_core`, `200G` / 400G links, `2.9141`x tail ratio, `984500` ticks, `-works/` runbook paths), the RoCEv2 examples (`RoCEv1`, `Ready-to-Receive`, `CNPs`), the PCIe examples (`H2D` copies) and the GPU inspection examples (`utilization.gpu`, `DCGM_FI_DEV_CLOCK_THROTTLE_REASONS`, `GPU2_transceiver`, `1250` ms straggler). They come from the cited sources as illustrative patterns, so check them on your own hardware before you rely on them.
+- The Python diagnostic models and the logarithmic straggler bisection algorithm live in `code/part12/ai_networking_troubleshooting.py` and `code/part12/ai_networking_troubleshooting_lab.py`. They are deterministic encodings of the source decision trees, and the local run gave `28 passed, 0 failed`.
