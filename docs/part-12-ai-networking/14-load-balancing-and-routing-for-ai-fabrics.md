@@ -812,13 +812,13 @@ Work through these in order, and keep notes as you go.
 
 ## Interview angles
 
-1. **"Why does traditional 5-tuple ECMP fail in a RoCEv2 AI training cluster, and how do SLB, DLB, GLB and sDLB differ in hardware? "**
+1. **"Why does traditional 5-tuple ECMP fail in a RoCEv2 AI training cluster, and how do SLB, DLB, GLB and sDLB differ in hardware?"**
 
    RoCEv2 runs on fixed UDP destination port 4791, and a small number of persistent elephant Queue Pair flows carry most of the traffic. Even with resilient bucket tables, SLB ignores link load. It can hash two 100 Gbps flows onto one 200 Gbps spine link while putting two 50 Gbps flows on another. DLB samples local port bandwidth and queue depth in the PFE across quality bands 0 to 7. Its flowlet inactivity timer rebalances across the pauses between bursts, so both spines run at 75% utilization. GLB on Tomahawk 5 adds BGP NNHN and 20 ms PFE heartbeats, so ingress leaves can see congestion on the spine-to-egress-leaf link. Finally, sDLB uses ingress TCAM ACLs to match BTH RDMA Write opcodes and spray packets across all spines. The target ConnectX-6, ConnectX-7 or BlueField NIC then reorders those RDMA Write payloads in hardware.
-2. **"Should we assign unique BGP ASNs or a shared ASN to the spine switches in our AI Clos underlay? "**
+2. **"Should we assign unique BGP ASNs or a shared ASN to the spine switches in our AI Clos underlay?"**
 
    Assign a shared BGP ASN, such as 65001, to all spines in the same tier, and give each ToR leaf its own unique ASN. This follows RFC 7938. Suppose spines have unique ASNs and multiple uplinks fail. A route from one leaf can then bounce down through a first spine to a transit leaf, back up to a second spine, and down to the destination leaf. No ASN repeats in `AS_PATH`, so BGP accepts that path. In an AI cluster with 400 Gbps or 800 Gbps elephant flows, that valley trombone saturates the transit leaf and stalls innocent training jobs. With a shared spine ASN, the second spine drops the bounced route at once, through standard `AS_PATH` loop detection.
-3. **"When would you choose eBGP with BGP DPF instead of RIFT or IS-IS Flex Algo for an AI backend fabric? "**
+3. **"When would you choose eBGP with BGP DPF instead of RIFT or IS-IS Flex Algo for an AI backend fabric?"**
 
    Choose eBGP with RFC 5549 unnumbered peering, Link Bandwidth WCMP and BGP DPF session coloring when you want multi-vendor familiarity and rich policy control. It also works directly with unified EVPN-VXLAN multi-tenancy. Choose RIFT under RFC 9692 for thousand-switch Fat-Tree or DragonFly Sparse topologies. You get sub-second UDP hello convergence and tiny leaf FIBs. RIFT also gives automatic disaggregation on failure and K-store fabric configuration distribution. Choose IS-IS with Optimal Distributed Flooding and RFC 9502 native IP Flex Algo when you want pure Layer-2 link-state security up to 2,500 switches. It isolates storage, inference and training onto constraint-based logical planes, with no SR-MPLS or SRv6 headers.
 
