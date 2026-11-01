@@ -24,9 +24,19 @@ lab_venue: "Nebius GPU"
 
 ## Why this matters for AI infrastructure
 
-An AI Ethernet fabric rarely carries pure RoCEv2 collective traffic in isolation. GPU AllReduce and AllToAll collectives on UDP port 4791 share physical network adapters and switch ports with other services. Those services include checkpoint writes, dataset reads, BGP routing keepalives, Kubernetes RPCs, Prometheus scrapes, and operator SSH sessions. If the fabric treats all of those streams as one undifferentiated queue, a checkpoint burst or container image pull can delay Congestion Notification Packets. It can also trigger Priority Flow Control pauses that stall synchronous GPU training steps across the cluster. Conversely, if an operator creates too many lossless traffic classes, switch buffer pools fragment severely. Ordinary TCP and control-plane packets then drop under modest load.
+Picture a training job that slows down every time someone writes a checkpoint. The GPUs are not broken. Their packets are stuck behind storage traffic on the same switch port. An AI Ethernet fabric rarely carries only RoCEv2 collective traffic. GPU AllReduce and AllToAll collectives on UDP port 4791 share network adapters and switch ports with many other services.
 
-Data Center Bridging and Quality of Service provide the architectural contract that makes link sharing deterministic and observable. First, classification and marking express workload intent in the packet header using DSCP or 802.1p PCP and enforce trust boundaries at ingress ports. Second, Enhanced Transmission Selection under IEEE 802.1Qaz schedules latency-critical CNP feedback with rate-capped Strict Priority. It then shares remaining bandwidth work-conservingly across compute, storage, control, and best-effort queues using Deficit Weighted Round Robin. Third, Data Center Bridging Exchange advertises or audits ETS weights, PFC lossless bitmasks, and Application Priority TLVs over LLDP. Fourth, buffer pool carving partitions finite switch memory between dedicated lossless PFC reservations and the shared lossy pool.
+Those other services include checkpoint writes, dataset reads, BGP routing keepalives, Kubernetes RPCs, Prometheus scrapes, and operator SSH sessions. If the fabric treats all of these streams as one undifferentiated queue, a checkpoint burst or container image pull can delay Congestion Notification Packets. It can also trigger Priority Flow Control pauses that stall synchronous GPU training steps across the cluster.
+
+The reverse problem is just as real. If an operator creates too many lossless traffic classes, switch buffer pools fragment badly. Ordinary TCP and control-plane packets then drop under modest load.
+
+Data Center Bridging and Quality of Service give the fabric a contract. The contract makes link sharing predictable, and it makes that sharing visible when something goes wrong. It has four parts, and you will meet each one again in the sections that follow.
+
+First, classification and marking record the workload's intent in the packet header, using DSCP or 802.1p PCP. Ingress ports enforce trust boundaries on those markings.
+
+Second, Enhanced Transmission Selection under IEEE 802.1Qaz gives latency-critical CNP feedback rate-capped Strict Priority. It then shares the remaining bandwidth in a work-conserving way across compute, storage, control, and best-effort queues, using Deficit Weighted Round Robin.
+
+Third, Data Center Bridging Exchange advertises or audits ETS weights, PFC lossless bitmasks, and Application Priority TLVs over LLDP. Fourth, buffer pool carving splits finite switch memory between dedicated lossless PFC reservations and the shared lossy pool.
 
 ```text
 Four Pillars of AI Ethernet Data Center Bridging (DCB) & QoS:
@@ -44,18 +54,20 @@ Four Pillars of AI Ethernet Data Center Bridging (DCB) & QoS:
      - Balances dedicated lossless PFC headroom (65,536 B / 25% per lossless priority on a 262,144 B port buffer) against shared lossy burst absorption (75%)
 ```
 
-Chapter 2.19 introduced general QoS primitives, and Chapter 12.4 derived the wire-level mechanics of PFC, ECN, and DCQCN. This chapter focuses on end-to-end QoS system design. We cover IEEE 802.1Qaz ETS and DCBX state machines, buffer pool carving math, hop-by-hop trust-boundary drift detection, and production validation.
+Chapter 2.19 introduced the general QoS building blocks, and Chapter 12.4 worked out the wire-level mechanics of PFC, ECN, and DCQCN. This chapter focuses on end-to-end QoS system design. It covers the IEEE 802.1Qaz ETS and DCBX state machines, buffer pool carving math, hop-by-hop trust-boundary drift detection, and production validation.
+
+Keep the four-part contract in mind as you read, because each later section tests one part of it.
 
 ## Prerequisites and outcomes
 
-**Prerequisites:** Review queuing, QoS, ECN, PFC, and DCB basics in Chapter 2.19. Review RoCEv2 transport in Chapter 12.3 and PFC, ECN, and DCQCN in Chapter 12.4.
+**Prerequisites:** Before you start, review the queuing, QoS, ECN, PFC, and DCB basics in Chapter 2.19. Then review RoCEv2 transport in Chapter 12.3, and PFC, ECN, and DCQCN in Chapter 12.4.
 
-**Outcomes:** After completing this chapter, you will be able to:
-- Trace a packet from application socket or RDMA Queue Pair marking through ConnectX egress traffic classes. You will also follow it across switch ingress trust boundaries, internal priority queues, and ETS schedulers.
+**Outcomes:** After you finish this chapter, you will be able to:
+- Trace a packet from an application socket or RDMA Queue Pair marking through ConnectX egress traffic classes. You will also follow it across switch ingress trust boundaries, internal priority queues, and ETS schedulers.
 - Design a five-class AI QoS model. You will encode and decode 8-bit IP ToS bytes across data, storage, control, and CNP traffic.
-- Compute IEEE 802.1Qaz ETS work-conserving bandwidth shares, Strict Priority policing caps, and frame serialization jitter. You will also explain why scheduling RoCE data as strict priority starves management traffic.
+- Compute IEEE 802.1Qaz ETS work-conserving bandwidth shares, Strict Priority policing caps, and frame serialization jitter. You will also see why scheduling RoCE data as strict priority starves management traffic.
 - Decode IEEE 802.1Qaz DCBX LLDP frames and evaluate Willing bit state machines. You will also carve switch port buffer pools across lossless and lossy classes.
-- Diagnose silent hop-by-hop trust-mode drift. You will execute a six-layer production QoS validation plan across host adapters and leaf or spine switches.
+- Diagnose silent hop-by-hop trust-mode drift. You will run a six-layer production QoS validation plan across host adapters and leaf or spine switches.
 
 ---
 
@@ -63,13 +75,19 @@ Chapter 2.19 introduced general QoS primitives, and Chapter 12.4 derived the wir
 
 ### 1.1 The highway lanes mental model and why every control has a single job
 
-In a converged AI Ethernet fabric, physical links carry traffic types with fundamentally incompatible loss and latency requirements. When a massive storage checkpoint or bulk image pull shares a queue with RDMA collectives, training steps stall behind paused or dropped packets.
+On a converged AI Ethernet fabric, one physical link carries traffic types with very different loss and latency needs. Suppose a large storage checkpoint or bulk image pull shares a queue with RDMA collectives. The training steps then stall behind packets that are paused or dropped.
 
-A helpful mental model compares an eight-priority Ethernet link to a multi-lane highway. Priority 0 on TC0 is the general public lane carrying bulk transfers, container image pulls, and operator traffic. Under congestion, packets wait in a lossy queue or drop so TCP can back off. Priority 2 on TC2 is the dedicated municipal service lane for BGP routing updates, Kubernetes heartbeats, and cluster monitoring. It requires a guaranteed minimum bandwidth share so control-plane sessions never time out during a training burst.
+It helps you to think of an eight-priority Ethernet link as a highway with several lanes. Priority 0 on TC0 is the public lane. It carries bulk transfers, container image pulls, and operator traffic. Under congestion, those packets wait in a lossy queue or get dropped, so TCP can back off.
 
-Priority 4 on TC4 is the commercial trucking lane carrying massive storage payloads over NVMe-o-TCP on port 8009. It also carries parallel file systems such as Lustre, GPFS, BeeGFS, and WekaFS. It demands a 30 percent minimum bandwidth share under contention, and TCP recovers cleanly from occasional packet drops without halting the fabric. Priority 3 on TC3 is the emergency convoy express lane for RoCEv2 AI compute on UDP destination port 4791. RDMA Go-Back-N retransmission on a 400 Gbps or 800 Gbps link severely degrades collective completion time. This lane therefore uses ECN for early rate control and narrowly scoped PFC so it never drops a packet due to buffer overflow. Finally, Priority 6 on TC6 is the motorcycle courier lane for CNP feedback frames. It uses rate-capped Strict Priority so backward congestion notifications are never queued behind jumbo data frames.
+Priority 2 on TC2 is the municipal service lane for BGP routing updates, Kubernetes heartbeats, and cluster monitoring. That lane needs a guaranteed minimum bandwidth share, so control-plane sessions never time out during a training burst.
 
-If a storage flow or an untrusted bulk transfer is accidentally classified into Priority 3, a checkpoint write wanders into the lossless RoCE lane. It fills the Priority 3 buffer, triggers PFC pause frames, and freezes GPU collectives across the switch. Conversely, if a RoCEv2 packet is silently reclassified into Priority 0 at a downstream switch hop, ping and TCP connectivity continue to pass. Meanwhile, RDMA collectives suffer unexplained tail drops and `RETRY_EXC_ERR` completions.
+Priority 4 on TC4 is the commercial trucking lane. It carries large storage payloads over NVMe-o-TCP on port 8009. It also carries parallel file systems such as Lustre, GPFS, BeeGFS, and WekaFS. This lane needs a 30 percent minimum bandwidth share under contention. TCP recovers cleanly from occasional packet drops, so the fabric does not halt when packets are lost.
+
+Priority 3 on TC3 is the emergency convoy express lane for RoCEv2 AI compute on UDP destination port 4791. On a 400 Gbps or 800 Gbps link, RDMA Go-Back-N retransmission badly hurts collective completion time. So this lane uses ECN for early rate control and narrowly scoped PFC. It never drops a packet due to buffer overflow.
+
+Finally, Priority 6 on TC6 is the motorcycle courier lane for CNP feedback frames. It uses rate-capped Strict Priority, so backward congestion notifications never wait behind jumbo data frames.
+
+A misclassified flow shows how these lanes fail. If a storage flow or an untrusted bulk transfer lands in Priority 3 by accident, a checkpoint write wanders into the lossless RoCE lane. It fills the Priority 3 buffer, triggers PFC pause frames, and freezes GPU collectives across the switch. The reverse case is harder to see. If a RoCEv2 packet is silently reclassified into Priority 0 at a downstream switch hop, ping and TCP still pass. Meanwhile, RDMA collectives suffer unexplained tail drops and `RETRY_EXC_ERR` completions.
 
 ```mermaid
 flowchart LR
@@ -82,6 +100,8 @@ flowchart LR
     S --> L["Next Fabric Hop\nSpine / Receiver Leaf"]
 ```
 
+The table below lists the five control mechanisms and the one question each one answers. You can use it to match a symptom to the control that should handle it. Read the last column with care, because each mechanism leaves some jobs to the others.
+
 | Control mechanism | Layer / Header / Hardware block | Primary question it answers | What it does NOT provide |
 |---|---|---|---|
 | **DSCP / 802.1p PCP marking** | L3 IP ToS byte (6-bit DSCP) / L2 802.1Q tag (3-bit PCP) | Which service class *should* this packet use? | Guaranteed end-to-end treatment if a downstream hop rewrites or ignores the tag |
@@ -91,9 +111,11 @@ flowchart LR
 | **Explicit Congestion Notification (ECN)** | RFC 3168 (2-bit IP ECN field `10 -> 11` via WRED `K_min`/`K_max`) | Should the sending RDMA Queue Pair (QP) or TCP socket reduce its injection rate? | Immediate link-local loss protection during a sub-RTT microburst |
 | **Priority Flow Control (PFC)** | IEEE 802.1Qbb L2 MAC Control (`0x8808`, opcode `0x0101`) | Can a loss-sensitive queue (Priority 3) pause its immediate upstream link peer before overflowing? | Flow-level isolation (it pauses the entire priority class) or extra fabric capacity |
 
+Each row answers one question and says plainly what it cannot do. When you debug a QoS problem, ask which of these mechanisms should have handled the packet.
+
 ### 1.2 Designing a small, explainable QoS class model
 
-A common architectural mistake is starting from the hardware maximum of eight priorities and inventing eight distinct policies. Every additional class partitions buffer memory, multiplies `DCBX` and `mlnx_qos` configuration lines across thousands of ports, and complicates incident triage. Start instead from operational workload intents and failure domains. Add a class only when it has a distinct congestion behavior, owner, failure policy, and validation test.
+A common mistake is to start from the hardware maximum of eight priorities and invent eight separate policies. Every extra class takes its share of buffer memory, adds `mlnx_qos` and DCBX configuration lines on thousands of ports, and makes incidents harder to triage. Start instead from operational workload intents and failure domains. Add a class only when it has a distinct congestion behavior, an owner, a failure policy, and a validation test.
 
 | Workload intent | Typical protocols & ports | Recommended DSCP (Hex ToS with ECT(0) / 00) | `mlnx_qos` 8-value bucket | 802.1p Priority (PCP) | Hardware Traffic Class (TC) | Loss control (PFC / ECN) | IEEE 802.1Qaz TSA & ETS share |
 |---|---|---|---|---|---|---|---|
@@ -103,9 +125,13 @@ A common architectural mistake is starting from the hardware maximum of eight pr
 | **Storage & Checkpointing** | NVMe-o-TCP (TCP 8009), parallel FS (NFS, Lustre, WekaFS) | DSCP 18 (AF21, `0x4a` w/ ECT(0)) | `16-23` | Priority 4 | TC4 | Lossy (PFC OFF, TCP ECN ON) | `dwrr` (TSA 2), 30% |
 | **CNP & Critical Control** | RoCEv2 CNP (BTH opcode `0x81`), LACP/LLDP | DSCP 48 (CS6, `0xc1` w/ ECT(1)) or DSCP 56 (CS7, `0xe0`) | `48-55`, `56-63` | Priority 6 | TC6 | Lossy (never paused, low occupancy) | `strict` (TSA 0), policed cap 20 Gbps (5% of 400G) |
 
-Three design invariants govern this table. First, the DWRR percentages across TC0, TC2, TC3, and TC4 sum to 100 percent (`10% + 10% + 50% + 30% = 100%`). That sum satisfies the IEEE 802.1Qaz requirement for Enhanced Transmission Selection classes. Second, only TC3 on Priority 3 has PFC enabled. When storage uses NVMe-o-TCP on TCP port 8009 or parallel NFS, keeping TC4 on Priority 4 lossy with TCP ECN preserves 75 percent of the port buffer for shared burst absorption. It also prevents storage congestion from generating PFC pause frames. A second lossless class on Priority 4 is considered only if a deployment runs NVMe-o-RDMA over the same physical switches. Even then, dedicated storage fabrics are preferred at scale.
+The table rests on three design rules, and each one protects the fabric in a different way. The first rule is about the weights. The DWRR percentages across TC0, TC2, TC3, and TC4 sum to 100 percent (`10% + 10% + 50% + 30% = 100%`). That sum satisfies the IEEE 802.1Qaz requirement for Enhanced Transmission Selection classes.
 
-Third, QoS is neither tenant security nor capacity planning. An endpoint can mark any DSCP value it chooses unless the ingress switch port enforces a trust or ACL policy. QoS classification decides which queue a packet enters and how contention is arbitrated. It does not authenticate a tenant, prevent lateral movement, or manufacture bandwidth when aggregate demand exceeds link capacity.
+The second rule is about lossless traffic. Only TC3 on Priority 3 has PFC enabled. When storage uses NVMe-o-TCP on TCP port 8009 or parallel NFS, keeping TC4 on Priority 4 lossy with TCP ECN preserves 75 percent of the port buffer for shared burst absorption. It also stops storage congestion from generating PFC pause frames. A second lossless class on Priority 4 is considered only if a deployment runs NVMe-o-RDMA over the same physical switches. Even then, dedicated storage fabrics are preferred at scale.
+
+The third rule is about what QoS cannot do. QoS is neither tenant security nor capacity planning. An endpoint can mark any DSCP value it chooses, unless the ingress switch port enforces a trust or ACL policy. QoS decides which queue a packet enters and how contention is arbitrated. It does not authenticate a tenant, prevent lateral movement, or create bandwidth when aggregate demand exceeds link capacity.
+
+Before you add a new class, confirm that it has an owner, a failure policy, and a test that proves it works.
 
 ---
 
@@ -113,9 +139,11 @@ Third, QoS is neither tenant security nor capacity planning. An endpoint can mar
 
 ### 2.1 Encoding and decoding the 8-bit IP ToS / Traffic Class byte vs 802.1p PCP
 
-When operators run `tcpdump -v` on a GPU server to verify RoCEv2 markings, `tcpdump` prints the entire 8-bit IP Type of Service byte in hexadecimal. It does not print the 6-bit DSCP integer directly. Misreading the hexadecimal `tos` byte as the decimal DSCP value leads engineers to chase imaginary marking bugs or misconfigure switch buckets.
+Suppose you run `tcpdump -v` on a GPU server to check RoCEv2 markings. `tcpdump` prints the whole 8-bit IP Type of Service byte in hexadecimal. It does not print the 6-bit DSCP as a plain integer. Engineers who read the hex `tos` byte as a decimal DSCP value end up chasing marking bugs that do not exist, or they configure the wrong switch buckets.
 
-A packet can carry class-of-service markings at Layer 2, Layer 3, or both. At Layer 2, an IEEE 802.1Q VLAN tag inserts a 4-byte header after the Source MAC (`TPID 0x8100`). That tag contains a 3-bit Priority Code Point from 0 to 7, a 1-bit Drop Eligible Indicator, and a 12-bit VLAN ID from 0 to 4095. Pure routed Layer 3 Ethernet links use untagged frames with no 802.1Q header and therefore carry no PCP bits on the wire. At Layer 3, every IPv4 or IPv6 packet carries an 8-bit ToS or Traffic Class byte. The upper 6 bits hold the DSCP value from 0 to 63, and the lower 2 bits hold the ECN state.
+A packet can carry class-of-service markings at Layer 2, Layer 3, or both. At Layer 2, an IEEE 802.1Q VLAN tag adds a 4-byte header after the Source MAC (`TPID 0x8100`). That tag holds a 3-bit Priority Code Point from 0 to 7. It also holds a 1-bit Drop Eligible Indicator and a 12-bit VLAN ID from 0 to 4095.
+
+Pure routed Layer 3 Ethernet links use untagged frames, so they carry no PCP bits on the wire. At Layer 3, every IPv4 or IPv6 packet carries an 8-bit ToS or Traffic Class byte. The upper 6 bits hold the DSCP value. The lower 2 bits hold the ECN state.
 
 ```text
 IP ToS / Traffic Class Byte Bit-Shift Equations:
@@ -124,6 +152,10 @@ IP ToS / Traffic Class Byte Bit-Shift Equations:
   ECN      = ToS_byte & 0x03
   mlnx_qos 8-value DSCP buckets: 0-7, 8-15, 16-23, 24-31, 32-39, 40-47, 48-55, 56-63
 ```
+
+The math is two shifts and a mask. You shift the DSCP left by two bits and add the ECN state to get the ToS byte. To go back, you shift right and mask off the low bits.
+
+Use this table as a lookup when you read a `tcpdump` hex value and need to know which class it belongs to.
 
 | Traffic type | 6-bit DSCP (decimal & binary) | 2-bit ECN state | 8-bit ToS calculation `(DSCP << 2) \| ECN` | `tcpdump -v` hex output | `mlnx_qos` 8-value DSCP bucket | Mapped 802.1p Priority |
 |---|---|---|---|---|---|---|
@@ -136,17 +168,21 @@ IP ToS / Traffic Class Byte Bit-Shift Equations:
 | **RoCEv2 CNP (CS6) w/ ECT(1)** | 48 (`110000`) | `01` (1, ECT(1)) | `(48 << 2) \| 1 = 193` | `tos 0xc1` (193) | `48-55` | Priority 6 |
 | **Network Control (CS7)** | 56 (`111000`) | `00` (0, Not-ECT) | `(56 << 2) \| 0 = 224` | `tos 0xe0` (224) | `56-63` | Priority 6 |
 
-In NVIDIA `mlnx_qos` output, the 64 DSCP values are displayed in eight buckets of eight consecutive codepoints. Thus DSCP 26 sits in bucket `24-31`, DSCP 46 sits in bucket `40-47`, and DSCP 48 sits in bucket `48-55`.
+In NVIDIA `mlnx_qos` output, the 64 DSCP values appear in eight buckets of eight consecutive codepoints. DSCP 26 sits in bucket `24-31`. DSCP 46 sits in bucket `40-47`, and DSCP 48 sits in bucket `48-55`. The table shows that DSCP 26 with ECT(0) and DSCP 26 with CE both map to Priority 3, so the ECN state does not change the queue.
 
 ### 2.2 Trust boundaries, untrusted ingress rewrites, and PCP vs DSCP across L2/L3 hops
 
-Even when a GPU host marks every RoCEv2 packet properly, a single misconfigured switch port along the fabric path breaks the policy. If that port uses the wrong trust mode, it silently dumps RoCEv2 packets into a lossy queue. Every switch ingress port and adapter interface operates in one of three classification trust states.
+A GPU host can mark every RoCEv2 packet correctly, and one misconfigured switch port can still break the policy. If that port uses the wrong trust mode, it quietly sends RoCEv2 packets into a lossy queue. Every switch ingress port and adapter interface runs in one of three classification trust states.
 
-First, under `trust: dscp`, the ingress port inspects the 6-bit IP DSCP field and maps it through the 64-entry DSCP-to-Priority table. Because IP headers survive Layer 3 routing across leaf, spine, and super-spine switches, `trust: dscp` preserves classification end to end without requiring VLAN tags. Second, under `trust: pcp`, the ingress port ignores the IP DSCP field and inspects only the 3-bit PCP field inside an 802.1Q VLAN header. If a port is left in `trust: pcp` and receives an untagged routed IP packet, there is no 802.1Q header. The switch defaults the frame to Priority 0 Best Effort. That default silently strips lossless PFC and ECN protection even though the IP header still carries DSCP 26 or DSCP 46.
+Under `trust: dscp`, the port reads the 6-bit IP DSCP field and maps it through the 64-entry DSCP-to-Priority table. IP headers survive Layer 3 routing across leaf, spine, and super-spine switches. That means `trust: dscp` keeps the classification intact end to end, without VLAN tags.
 
-Third, at an untrusted rewrite boundary (`untrusted_rewrite_zero`) facing tenant VMs or external networks, the ingress switch port does not trust host-supplied markings. It either rewrites DSCP to zero or classifies traffic via an explicit ACL policy. Similarly, when traffic traverses VXLAN, GRE, or IPsec overlays, the encapsulating VTEP or DPU must copy the inner DSCP and ECN bits to the outer IP header. Using `uniform` or `tos inherit` mode ensures transit spine switches can classify and ECN-mark packets properly.
+Under `trust: pcp`, the port ignores the IP DSCP field and reads only the 3-bit PCP field in an 802.1Q VLAN header. Suppose a port stays in `trust: pcp` and receives an untagged routed IP packet. No 802.1Q header exists, so the switch puts the frame into Priority 0 Best Effort by default. That default strips PFC and ECN protection, even though the IP header still carries DSCP 26 or DSCP 46.
 
-In multi-tenant or bare-metal cloud environments using NVIDIA BlueField DPUs in Embedded CPU Function Ownership (`ECPF`) mode, the embedded Arm subsystem and hardware switch sit directly in front of the host PCIe function. The platform administrator can enforce DSCP marking and ACL normalization inside the DPU embedded switch before frames ever reach the leaf switch port. That architecture prevents an untrusted host OS from spoofing DSCP 26 or DSCP 48. However, it introduces a three-layer operational boundary across the host interface, DPU Arm policy service, and external leaf switch port that must be verified after every boot.
+At an untrusted rewrite boundary (`untrusted_rewrite_zero`), facing tenant VMs or external networks, the port does not trust host markings. It either rewrites DSCP to zero or classifies traffic with an explicit ACL policy. Overlays need the same care. When traffic crosses VXLAN, GRE, or IPsec, the encapsulating VTEP or DPU must copy the inner DSCP and ECN bits to the outer IP header. Use `uniform` or `tos inherit` mode so that transit spine switches can classify and ECN-mark packets properly.
+
+In multi-tenant or bare-metal cloud environments with NVIDIA BlueField DPUs in Embedded CPU Function Ownership (ECPF) mode, the embedded Arm subsystem and hardware switch sit directly in front of the host PCIe function. The platform administrator can enforce DSCP marking and ACL normalization inside the DPU embedded switch. That happens before frames reach the leaf switch port, and it stops an untrusted host OS from spoofing DSCP 26 or DSCP 48. The cost is a three-layer boundary across the host interface, the DPU Arm policy service, and the external leaf switch port. You must verify that boundary after every boot.
+
+Check the trust mode on every hop, not only on the port the host connects to.
 
 ---
 
@@ -154,9 +190,9 @@ In multi-tenant or bare-metal cloud environments using NVIDIA BlueField DPUs in 
 
 ### 3.1 How IEEE 802.1Qaz ETS combines Strict Priority (TSA 0) and DWRR (TSA 2)
 
-Once an ingress packet is mapped to an internal priority and placed into its egress Traffic Class queue, the egress port scheduler must decide which non-empty queue transmits next. If all queues share equal priority, 9,000-byte data frames delay urgent CNP feedback frames. Conversely, if data queues use unpoliced strict priority, they starve routing and management traffic completely during collective bursts.
+Once a packet lands in its egress Traffic Class queue, the port scheduler decides which non-empty queue transmits next. If every queue has equal priority, 9,000-byte data frames delay urgent CNP feedback frames. If the data queues use unpoliced strict priority instead, they starve routing and management traffic during collective bursts.
 
-IEEE 802.1Qaz Enhanced Transmission Selection standardizes a two-tier hierarchical scheduler across up to eight Traffic Classes. It assigns each Traffic Class a Transmission Selection Algorithm identifier.
+IEEE 802.1Qaz Enhanced Transmission Selection defines a two-tier hierarchical scheduler across up to eight Traffic Classes. Each Traffic Class gets a Transmission Selection Algorithm identifier, or TSA.
 
 ```text
 IEEE 802.1Qaz Transmission Selection Algorithm (TSA) Identifiers:
@@ -168,9 +204,9 @@ IEEE 802.1Qaz Transmission Selection Algorithm (TSA) Identifiers:
 
 ### 3.2 Work-conserving CBWFQ / DWRR math: minimum guarantees under contention, not hard reservations
 
-Engineers new to ETS often misread a configured weight—such as 30 percent for Storage on TC4 and 50 percent for RoCE on TC3—as either a hard static partition or a hard rate ceiling. They worry that 30 percent of the link sits idle when Storage is quiet or that Storage can never exceed 30 percent when Compute is idle.
+Engineers new to ETS often misread a configured weight. A weight of 30 percent for Storage on TC4, or 50 percent for RoCE on TC3, is not a hard partition, and it is not a hard rate ceiling. People worry that 30 percent of the link sits idle when Storage is quiet, or that Storage can never exceed 30 percent while Compute is idle.
 
-In reality, ETS under DWRR or Class-Based Weighted Fair Queueing is work-conserving. When all classes are backlogged under full contention, the scheduler first deducts bandwidth consumed by strict-priority TSA 0 classes ($R_\{\text`{strict}`}$). It then divides the remaining link bandwidth across active DWRR classes in proportion to their weights $w_i$. When some classes are idle or use less than their share, any unused bandwidth is dynamically redistributed across the remaining backlogged DWRR classes in exact proportion to their relative weights.
+In reality, ETS under DWRR or Class-Based Weighted Fair Queueing is work-conserving. Under full contention, where every class is backlogged, the scheduler first subtracts the bandwidth that the strict-priority TSA 0 classes consume ($R_\{\text`{strict}`}$). It then divides what remains across the active DWRR classes, in proportion to their weights $w_i$. When some classes sit idle or use less than their share, the unused bandwidth moves to the remaining backlogged DWRR classes, in exact proportion to their weights.
 
 ```text
 Work-Conserving ETS Bandwidth Formula & 1,024 Kbps WAN CBWFQ Example (CNPS Ch 8):
@@ -183,7 +219,7 @@ Work-Conserving ETS Bandwidth Formula & 1,024 Kbps WAN CBWFQ Example (CNPS Ch 8)
     * Cycle 4 skips empty AF21 and serves Default (Cycles 4-6); when Default runs out after 3 pkts, Cycle 8 serves AF31 again
 ```
 
-Now apply the exact same work-conserving ETS formula (`simulate_ets_scheduling` in `code/part12/dcb_qos_ai.py`) to a 400.0 Gbps AI Ethernet link running our five-class model.
+Now apply the same work-conserving ETS formula to a 400.0 Gbps AI Ethernet link running the five-class model. The function `simulate_ets_scheduling` in `code/part12/dcb_qos_ai.py` produces the numbers in the table below.
 
 | Contention scenario on a 400.0 Gbps link | Offered load per TC (Gbps) | TC6 (`strict`, CNP) allocated | TC0 (10% `dwrr`, Best Effort) | TC2 (10% `dwrr`, Control) | TC3 (50% `dwrr`, RoCEv2) | TC4 (30% `dwrr`, Storage) | Operational lesson |
 |---|---|---|---|---|---|---|---|
@@ -192,9 +228,11 @@ Now apply the exact same work-conserving ETS formula (`simulate_ets_scheduling` 
 | **3. Only Storage (TC4, 30%) active** | `TC4=400 (TC0=TC2=TC3=TC6=0)` | 0.0 Gbps | 0.0 Gbps | 0.0 Gbps | 0.0 Gbps | **400.0 Gbps** (100% of link) | 30% ETS is a minimum share under contention, **not** a ceiling when the link is idle |
 | **4. Misconfigured `strict` RoCE** | `TC1 (Prio 3 RoCE) = 400 (strict), TC0 (Mgmt) = 10 (dwrr weight 5)` | N/A (`TC1 strict` takes **400.0 Gbps**) | **0.0 Gbps (STARVED)** | N/A | **400.0 Gbps** (`TC1 strict`) | N/A | Setting RoCE (`TC1`) to `strict` without a cap completely starves `dwrr` management (`TC0`); `dwrr 95:5` guarantees `TC0` **20.0 Gbps** (`TC1 = 380.0 Gbps`) |
 
+Read the first row as a worked example, and check each number by hand as you go. Under full contention, 10 Gbps goes to TC6 first. That leaves 390 Gbps, which splits 10:10:50:30. TC0 and TC2 each get 39.0 Gbps, TC3 gets 195.0 Gbps, and TC4 gets 117.0 Gbps. Row 3 shows the other side of the rule. A 30 percent share becomes the full 400.0 Gbps when no other class is active.
+
 ### 3.3 Strict Priority (LLQ) policing math and serialization jitter (9,000 B vs 64 B)
 
-Why must a strict-priority queue always have a strict rate cap or bounded offered load? If a strict-priority queue is allowed to consume 100 percent of the link, every DWRR queue is starved. Conversely, when a strict-priority queue is rate-capped by a policer to protect the rest of the link, exceeding that cap during congestion drops traffic across the entire strict-priority class.
+Why must a strict-priority queue always have a rate cap or a bounded offered load? If it can consume 100 percent of the link, every DWRR queue starves. But if a policer caps it to protect the rest of the link, traffic above that cap drops during congestion, and the drops hit the whole strict-priority class.
 
 ```text
 LLQ Strict-Priority Policing & Serialization Jitter Derivations (CNPS Ch 8 & Ch 17, Handbook 2.19):
@@ -210,7 +248,13 @@ LLQ Strict-Priority Policing & Serialization Jitter Derivations (CNPS Ch 8 & Ch 
      - At 400 Gbps: 9,000 B (72,000 bits) = 180.0 ns; 64 B (512 bits) = 1.28 ns (180.0 / 1.28 = 140.625x ratio)
 ```
 
-Giving 64-byte CNPs on TC6 a dedicated strict-priority queue avoids head-of-line delay behind jumbo packets. On a 400 Gbps link, a newly arriving CNP waits at most one in-flight 180.0 ns jumbo frame serialization rather than sitting behind megabytes of queued 9,000-byte RoCE data payloads.
+The block above shows the policing arithmetic on a 1,024 Kbps WAN link with a 512 Kbps cap. Eight calls at 64 Kbps use exactly 512 Kbps, so they fit with no drops. A ninth call pushes the offer to 576 Kbps, and the policer drops 64 Kbps across all nine calls. The drop lands on the whole class, not on a single call.
+
+Serialization delay is the time a frame takes to leave the wire. At 100 Mbps, a 9,000-byte frame takes 0.72 ms, and a 64-byte frame takes 0.00512 ms. At 400 Gbps, the jumbo frame takes 180.0 ns, and the small frame takes 1.28 ns.
+
+Giving 64-byte CNPs on TC6 their own strict-priority queue avoids head-of-line delay behind jumbo packets. On a 400 Gbps link, a newly arriving CNP waits at most one in-flight 180.0 ns jumbo frame. It does not wait behind megabytes of queued 9,000-byte RoCE data payloads.
+
+Before you enable strict scheduling, set its rate cap. An uncapped queue can starve everything else, and your management traffic is usually the first to suffer.
 
 ---
 
@@ -218,9 +262,11 @@ Giving 64-byte CNPs on TC6 a dedicated strict-priority queue avoids head-of-line
 
 ### 4.1 DCBX over LLDP (`EtherType 0x88CC`, `OUI 00:80:C2`, Subtypes 9..12) and the Willing bit
 
-Configuring PFC on Priority 3 and ETS weights on a switch port is useless if the attached ConnectX adapter transmits RoCEv2 traffic on Priority 0 or enables PFC on Priority 4. When host and switch QoS settings diverge after a reboot, jobs suffer silent drops or pause mismatches.
+Setting PFC on Priority 3 and ETS weights on a switch port does nothing if the attached ConnectX adapter sends RoCEv2 on Priority 0 or enables PFC on Priority 4. After a reboot, if host and switch QoS settings diverge, jobs suffer silent drops or pause mismatches.
 
-Data Center Bridging Exchange under IEEE 802.1Qaz is a link-local discovery and capability-exchange protocol carried inside Link Layer Discovery Protocol frames (`EtherType 0x88CC`, destination multicast MAC `01:80:C2:00:00:0E`). It uses Organizationally Specific TLVs with the IEEE 802.1 OUI `00:80:C2`.
+Data Center Bridging Exchange (DCBX) under IEEE 802.1Qaz is a link-local discovery and capability exchange. It rides inside Link Layer Discovery Protocol (LLDP) frames with EtherType `0x88CC`, sent to the destination multicast MAC `01:80:C2:00:00:0E`. It uses Organizationally Specific TLVs under the IEEE 802.1 OUI `00:80:C2`.
+
+Each TLV carries a different part of the QoS contract. The table below shows what each one advertises, and whether the two ends of the link must match.
 
 | DCBX TLV name | IEEE 802.1 OUI | Subtype | Symmetric vs Asymmetric | Key fields carried on the wire | Purpose on a GPU Host $\leftrightarrow$ Leaf Switch link |
 |---|---|---|---|---|---|
@@ -229,7 +275,9 @@ Data Center Bridging Exchange under IEEE 802.1Qaz is a link-local discovery and 
 | **PFC Configuration TLV** | `00:80:C2` | **11 (`0x0B`)** | **Symmetric** (both ends of the link must use the identical PFC bitmask) | Willing (1 bit), MBC (1 bit, MACsec Bypass Capability), PFC Cap (4 bits: max simultaneous lossless classes), **PFC Enable bitmask (8 bits: e.g., `00001000` = `0x08` for Priority 3)** | Ensures both the NIC and leaf switch port enable PFC pause (XOFF/XON) on the exact same priority (Priority 3) |
 | **Application Priority TLV** | `00:80:C2` | **12 (`0x0C`)** | Symmetric application-to-priority binding | List of 3-octet entries: Priority (3 bits), Selector (3 bits: 1=EtherType, 2=TCP/UDP port, 3=UDP/DCCP), Protocol ID (16 bits: **4791** for RoCEv2) | Tells the endpoint to tag RoCEv2 (UDP port 4791) packets with **Priority 3** |
 
-The Willing bit determines which side wins during DCBX negotiation (`evaluate_dcbx_negotiation` in `code/part12/dcb_qos_ai.py`).
+The PFC TLV is symmetric, so both ends of the link must use the identical bitmask. The Application Priority TLV binds RoCEv2 to Priority 3 in the same way.
+
+The Willing bit decides which side wins during DCBX negotiation. The function `evaluate_dcbx_negotiation` in `code/part12/dcb_qos_ai.py` applies that logic.
 
 ```mermaid
 flowchart TB
@@ -243,6 +291,8 @@ flowchart TB
     CHK -->|"No"| ERR["Drift Detected:\nPFC / ETS / Trust Mismatch"]
 ```
 
+Four combinations of the two Willing bits lead to four different outcomes. Two of them are production patterns, and the other two should never reach production.
+
 | Host Willing | Switch Willing | Operational state source | Production behavior and AI fabric recommendation |
 |---|---|---|---|
 | **1 (True)** | **0 (False)** | **`SWITCH_PEER`** | **Classic plug-and-play DCBX:** The leaf switch is authoritative (Willing=0) and the host NIC (`lldpad` / firmware DCBX agent, Willing=1) dynamically adopts the switch PFC bitmask (Priority 3), ETS weights, and UDP 4791 -> Priority 3 Application Priority TLV. |
@@ -252,11 +302,15 @@ flowchart TB
 
 ### 4.2 Switch buffer pool carving across lossless (TC3) and lossy (TC0, TC2, TC4, TC6) classes
 
-Why do NVIDIA Spectrum switches use a Fully Shared Buffer architecture rather than fixed per-port sliced buffers? And why must operators still restrict PFC to one or at most two priorities?
+Why do NVIDIA Spectrum switches use a Fully Shared Buffer architecture instead of fixed per-port slices? And why must operators still limit PFC to one, or at most two, priorities?
 
-In a switch with a sliced or statically partitioned buffer, each port can access only its tiny dedicated slice of memory. If an 800 Gbps incast microburst hits Port 1, Port 1 overflows or triggers PFC even while 95 percent of total switch memory sits empty on idle ports. A shared-buffer ASIC pools internal memory dynamically so a congested port can borrow burst absorption space. However, every lossless PFC-enabled priority on every port still requires a dedicated minimum reservation and flight-time headroom. Lossy queues cannot borrow that reservation. Once XOFF fires, the switch must guarantee space for the bytes already in flight on the cable, such as 49,064 B for a 2 m DAC cable or 298,064 B for a 500 m optical fiber at 400 Gbps with MTU 9,000.
+Take a switch with a sliced buffer. Each port can use only its own small slice of memory. If an 800 Gbps incast microburst hits Port 1, that port overflows or triggers PFC, even while 95 percent of total switch memory sits empty on idle ports. A shared-buffer ASIC pools memory dynamically, so a congested port can borrow burst space.
 
-Using our 262,144-byte port receive buffer profile from `mlnx_qos -i swp12`, each lossless priority reserves 65,536 bytes. That reservation sets XON at 32,768 B or 50 percent, XOFF at 49,152 B or 75 percent, and headroom at 16,384 B or 25 percent. The table below shows what happens as an operator enables PFC on additional classes (`evaluate_buffer_pool_carving` in `code/part12/dcb_qos_ai.py`).
+Pooling does not remove the lossless reservation. Every lossless PFC-enabled priority on every port still needs a dedicated minimum reservation and flight-time headroom. Lossy queues cannot borrow that reservation. Once XOFF fires, the switch must guarantee space for the bytes already in flight on the cable. That is 49,064 B for a 2 m DAC cable, or 298,064 B for a 500 m optical fiber, at 400 Gbps with MTU 9,000.
+
+Take the 262,144-byte port receive buffer from `mlnx_qos -i swp12` as your worked example. Each lossless priority reserves 65,536 bytes. Inside that reservation, XON sits at 32,768 B (50 percent), XOFF at 49,152 B (75 percent), and headroom at 16,384 B (25 percent).
+
+The table shows what happens as you enable PFC on more classes. The function `evaluate_buffer_pool_carving` in `code/part12/dcb_qos_ai.py` produces these verdicts.
 
 | Number of lossless (PFC) priorities enabled | Lossless priorities | Reserved per lossless priority (XON / XOFF / Headroom) | Total port buffer locked in lossless reservations | Remaining shared buffer for lossy TC0, TC2, TC4, TC6 | Lossless % vs Lossy % | Operational verdict |
 |---|---|---|---|---|---|---|
@@ -264,11 +318,15 @@ Using our 262,144-byte port receive buffer profile from `mlnx_qos -i swp12`, eac
 | **2 lossless classes (Maximum practical)** | Priority 3 (RoCE) + Priority 4 (NVMe-o-RDMA) | 65,536 B each | **131,072 B** (128 KiB) | **131,072 B** (128 KiB) | **50.0% vs 50.0%** | **`HEALTHY_BUFFER_CARVING` (Tight):** Acceptable only when NVMe-o-RDMA shares the fabric and requires lossless transport alongside RoCE compute. |
 | **4 lossless classes (Anti-pattern)** | Priorities 1, 2, 3, 4 | 65,536 B each | **262,144 B** (256 KiB) | **0 B** (0 KiB) | **100.0% vs 0.0%** | **`BUFFER_EXHAUSTED_TOO_MANY_LOSSLESS_CLASSES`:** 100% of port buffer is locked in lossless reservations; lossy TCP, BGP, Kubernetes, and CNP queues have 0 B and drop immediately. |
 
+Suppose you enable PFC on four priorities. The reservations then use the whole buffer, and nothing is left for the lossy queues. With one lossless class, by contrast, 75 percent of the port stays available for everything else. Enable PFC on the RoCE class first, and add a second lossless class only when NVMe-o-RDMA really shares the fabric.
+
 ### 4.3 Comparing Ethernet DCB (PFC + ETS + DCQCN) with InfiniBand Virtual Lanes and Storage Fabrics
 
-When architects evaluate AI compute and storage fabrics, they frequently compare how Ethernet DCB and native InfiniBand implement QoS and lossless transport. Misunderstanding which storage protocols require lossless queues leads teams to over-enable PFC on Ethernet switches.
+Architects often compare AI compute and storage fabrics by asking how each one handles QoS and lossless transport. Teams that skip this question tend to over-enable PFC on Ethernet switches. They assume that every storage protocol needs a lossless queue.
 
-Native InfiniBand implements QoS via up to 16 Virtual Lanes and link-level Credit-Based Flow Control exchanged in the Link Layer Header. A sender switch or adapter never transmits on a Virtual Lane unless the downstream port has explicitly returned buffer credits. InfiniBand is therefore natively lossless without reactive XOFF pause frames. Over Ethernet and IP, NVMe-o-TCP on TCP port 8009 and Parallel NFS run cleanly on lossy queues on TC4 without PFC. By contrast, RoCEv2 AI training on UDP port 4791 and NVMe-o-RDMA require a lossless queue with tuned PFC, ECN, and DCQCN thresholds.
+Native InfiniBand has up to 16 Virtual Lanes, and link-level Credit-Based Flow Control runs in the Link Layer Header. A sender switch or adapter never transmits on a Virtual Lane unless the downstream port has returned buffer credits. InfiniBand is therefore lossless without reactive XOFF pause frames.
+
+Over Ethernet and IP, NVMe-o-TCP on TCP port 8009 and Parallel NFS run cleanly on the lossy TC4 queue without PFC. RoCEv2 AI training on UDP port 4791 and NVMe-o-RDMA are different. They need a lossless queue with tuned PFC, ECN, and DCQCN thresholds.
 
 ```text
 Storage & Interconnect Latency, Queueing, and Lossless Comparison (ADC Ch 9 & Table 9-2):
@@ -281,15 +339,19 @@ Storage & Interconnect Latency, Queueing, and Lossless Comparison (ADC Ch 9 & Ta
     * NVMe-o-RDMA & RoCEv2 AI:  Uses UDP 4791; requires lossless queue (PFC + ECN/DCQCN) with workload-specific threshold profiles
 ```
 
+Read the block for the latency gap between Ethernet and InfiniBand, and for the lossless requirement that each protocol carries.
+
+Confirm which storage protocol you run before you enable PFC for it, because NVMe-o-TCP and Parallel NFS do not need a lossless queue.
+
 ---
 
 ## 5. End-to-end consistency, configuration drift detection, and the 6-layer production validation plan
 
 ### 5.1 Hop-by-hop drift analysis: how a single `trust: pcp` port breaks RoCE silently
 
-The fastest way to trigger a multi-hour AI training incident is to allow a single port along a multi-hop path to drift from the approved QoS mapping. Ping and basic TCP checks continue to succeed, so no link-down or routing alarm fires while collective throughput collapses.
+The fastest way to cause a multi-hour AI training incident is to let one port on a multi-hop path drift from the approved QoS mapping. Ping and basic TCP checks keep passing. No link-down or routing alarm fires, while collective throughput collapses.
 
-Consider the three-step diagnostic trace from our production case study (`trace_end_to_end_qos_path` in `code/part12/dcb_qos_ai.py`). First, we verify what the source GPU host puts on the wire at `ens1f0` from `10.20.4.15` to `10.20.8.5`.
+Consider the three-step diagnostic trace from our production case study. The trace uses `trace_end_to_end_qos_path` in `code/part12/dcb_qos_ai.py`. Each step checks one hop, so you can see exactly where the packet changes. First, check what the source GPU host puts on the wire at `ens1f0`, from `10.20.4.15` to `10.20.8.5`.
 
 ```text
 # (untested here)
@@ -297,7 +359,7 @@ $ tcpdump -i eth0 -c1 -v host 10.20.8.5 and udp port 4791
 IP (tos 0xb8, ttl 64, ...) 10.20.4.15.51422 > 10.20.8.5.4791: UDP, length 1200
 ```
 
-Here `tos 0xb8` decodes to DSCP 46 Expedited Forwarding. The source adapter is marking packets as intended. Second, we verify what the source leaf switch `swp4` believes about this marking.
+Here `tos 0xb8` decodes to DSCP 46, Expedited Forwarding. The source adapter marks packets as intended. Second, check what the source leaf switch `swp4` believes about that marking.
 
 ```text
 # (untested here)
@@ -308,7 +370,7 @@ DSCP to priority mapping:
         prio     0     0   ...    3      0      0
 ```
 
-Port `swp4` is in `Priority trust state: dscp` and maps bucket `40-47` to Priority 3, the lossless RoCE class. Third, we inspect the far-side destination leaf switch `swp19` where drift occurred.
+Port `swp4` runs in `Priority trust state: dscp`, and it maps bucket `40-47` to Priority 3, the lossless RoCE class. Third, inspect the far-side destination leaf `swp19`, where the drift happens.
 
 ```text
 # (untested here)
@@ -319,7 +381,7 @@ PCP to priority mapping:
         prio     0   0   0   0   0   0   0   0    <- untagged L3 frames default to priority 0
 ```
 
-Port `swp19` is configured with `Priority trust state: pcp`, and the routed IP packet has no 802.1Q VLAN tag. As a result, `swp19` classifies every arriving RoCEv2 frame into Priority 0 Best Effort. Only when we inspect per-priority queue drop and pause counters on `swp19` does the smoking gun appear.
+Port `swp19` runs `Priority trust state: pcp`, and the routed IP packet has no 802.1Q VLAN tag. So `swp19` puts every arriving RoCEv2 frame into Priority 0 Best Effort. You only see the problem when you check the per-priority drop and pause counters on `swp19`.
 
 ```text
 # (untested here)
@@ -338,6 +400,8 @@ flowchart TB
     DRIFT["Manual Per-Port Exception\n(e.g. swp19 trust: pcp)"] -.->|"Mismatch Detected:\nrx_prio0_discard = 18,420"| E
 ```
 
+The table maps each hop to the state it should have. The last row shows where the drift lands.
+
 | Hop / Role in Source-of-Truth Schema | Ingress Trust State | Expected DSCP -> Priority | Expected Egress TC & TSA | Expected PFC / ECN State | Primary Verification Counter |
 |---|---|---|---|---|---|
 | **GPU Host NIC (`ens1f0` / `mlx5_0`)** | `dscp` | DSCP 26/46 -> Prio 3; DSCP 48 -> Prio 6 | TC3 (`dwrr 50%`), TC6 (`strict`) | PFC ON (Prio 3), DCQCN ON | `tx_prio3_packets`, `np_cnp_sent`, `rp_cnp_handled` |
@@ -345,13 +409,19 @@ flowchart TB
 | **Transit Spine (`spine1_swp1`)** | `dscp` | `24-31` / `40-47` -> Prio 3 | TC3 (`dwrr 50%`), TC6 (`strict`) | ECN ON (PFC per design) | `rx_ecn_marked_prio3`, `tx_prio3_packets` |
 | **Destination Leaf (`leafB_swp19`)** | `dscp` (Drifted: `pcp`) | Expected Prio 3 (Drifted: Prio 0) | Expected TC3 (Drifted: TC0) | Expected PFC ON (Drifted: Lossy) | **`rx_prio0_discard` (18,420 drops) vs `rx_pfc_prio3` (0)** |
 
+Compare the expected and drifted values in the last row. The 18,420 discards on priority 0 sit next to zero pauses on priority 3. That pattern is the signature of this drift.
+
 ### 5.2 The 6-layer production QoS validation plan
 
-A QoS configuration that compiles in a switch template but has never been tested under simultaneous multi-class contention is not a production policy. Validate every AI fabric release across six layers before admitting training jobs.
+A QoS policy that compiles in a switch template but has never been tested under simultaneous multi-class contention is not yet a production policy. Validate every AI fabric release across six layers before you admit training jobs.
 
-First, verify classification by injecting marked test traffic across RoCE, storage, CNP, and best-effort classes. Assert that per-priority counters increment on the exact intended queue at every hop. Second, verify control-plane isolation under RoCE saturation by driving bounded contention on Priority 3. Prove that management traffic on Priority 0 or Priority 2 experiences zero pause frames and flat SSH or BGP latency. Third, verify simultaneous multi-class ETS service behavior. Run concurrent RoCE, storage, and best-effort generators through a shared bottleneck uplink to confirm DWRR minimum shares without strict-priority starvation.
+The first layer checks classification. You inject marked test traffic for RoCE, storage, CNP, and best-effort classes. Then confirm that per-priority counters rise on the intended queue at every hop. The second layer checks isolation. Drive bounded contention on Priority 3, and prove that management traffic on Priority 0 or Priority 2 sees zero pause frames and flat SSH or BGP latency.
 
-Fourth, verify closed-loop congestion feedback by confirming that ECN marks on TC3 generate CNPs on TC6 and that sender adapters throttle cleanly. Fifth, verify failure and reroute persistence by simulating a planned uplink drain. Confirm that alternate paths preserve identical trust, ETS, ECN, and PFC profiles. Sixth, correlate switch queue counters with `nccl-tests` or `ib_write_bw`, and audit host PCIe link width, NUMA locality, and cluster manager interface priorities.
+The third layer checks ETS service. Run concurrent RoCE, storage, and best-effort generators through one shared bottleneck uplink. Confirm that each class gets its DWRR minimum share, and that strict priority does not starve anything. The fourth layer checks feedback. Confirm that ECN marks on TC3 generate CNPs on TC6, and that sender adapters throttle cleanly.
+
+The fifth layer checks failure and reroute. Simulate a planned uplink drain, and confirm that alternate paths keep the same trust, ETS, ECN, and PFC profiles. The sixth layer correlates switch queue counters with `nccl-tests` or `ib_write_bw`. It also audits host PCIe link width, NUMA locality, and cluster manager interface priorities.
+
+The sixth layer is easiest to understand through the production case study. The block below records a baseline, a 60-second contention run, a PCIe downgrade, a BlueField boot failure, and the Base Command Manager precedence rules.
 
 ```text
 Layer 6 Host Topology, PCIe, & Cluster Manager Audit Metrics (V9 Ch 8, Ch 9, Labs 01-04, BCM11 Ch 3):
@@ -368,11 +438,17 @@ Layer 6 Host Topology, PCIe, & Cluster Manager Audit Metrics (V9 Ch 8, Ch 9, Lab
     * Persistent MLX_ extra_values precedence: category.extra_values < node.extra_values < interface.extra_values
 ```
 
+Use these values as the reference for your own counter deltas. Treat a failed layer as a blocker, and fix it before you admit a training job.
+
 ---
 
 ## Commands and configurations that matter
 
+Each block below is marked `(untested here)`, which means these commands were not run on live hardware in this chapter. Read every command before you run it on a production host or switch, because several of them change live configuration.
+
 ### 1. Host NIC (ConnectX) QoS, `iproute2 dcb`, `lldptool`, and `mlxconfig` commands
+
+Start with the host adapter. The first block reads and sets trust, PFC on Priority 3, and the ETS weights on the ConnectX port.
 
 ```bash
 # (untested here) Inspect and configure DSCP trust, PFC on Priority 3, and ETS weights via mlnx_qos
@@ -409,6 +485,8 @@ cmsh -c "category use gpu; set -e MLX_link_type_p1 ETH; commit"
 cmsh -c "device; mlxconfig node001 --desired"
 ```
 
+The second group covers the switch side and the packet captures that prove the markings on the wire. Use the captures to confirm what the first group configured.
+
 ### 2. Switch port (Cumulus Linux / Spectrum / SONiC) and packet-capture verification commands
 
 ```bash
@@ -431,9 +509,13 @@ show queue counters
 show pfcwd stats
 ```
 
+Compare the output with the class table in Section 1.2. Capture the counters with a timestamp, and do not reset them.
+
 ---
 
 ## How it fails
+
+The table below covers six failure modes. For each one, it gives the symptom you see first, the root cause with its counter signature, and the fix.
 
 | # | Failure mode | Production symptom | Root cause & counter signature | Definitive fix & prevention |
 |---|---|---|---|---|
@@ -444,18 +526,21 @@ show pfcwd stats
 | **5** | **Buffer pool exhaustion from enabling PFC on too many priorities** | TCP storage, Prometheus scrapes, and CNP packets suffer heavy tail drops even at moderate link utilization (40–60%). | Enabling PFC on 4 priorities (`4 x 65,536 B = 262,144 B`) locks 100.0% of the port receive buffer in dedicated lossless headroom reservations, leaving 0 B (0.0%) for shared lossy queues (`BUFFER_EXHAUSTED_TOO_MANY_LOSSLESS_CLASSES`). | Restrict PFC to **one** lossless class (Priority 3 for RoCEv2 compute, 25.0% = 65,536 B), leaving 75.0% (196,608 B) in the shared lossy pool (or at most two classes if NVMe-o-RDMA shares the fabric). |
 | **6** | **BlueField DPU boot-policy race or ConnectX PCIe/rail misselection** | Switch port (`swp14`) reports UP 100G/400G with zero errors, yet host interface (`enp1s0f0np0`) stays DOWN/DORMANT, or `ib_write_bw` drops from 392 Gbps (2.1 s) to 156 Gbps (8.2 s, 24 `RETRY_EXC_ERR`s). | On a BlueField DPU in ECPF mode, `openvswitch-policy-load.service` on the Arm subsystem failed during boot. Alternatively, on a dual-rail host (Lab 04), selecting `-d mlx5_1` (`ens1f1`, wrong NUMA/GID) or seating a NIC in a downgraded PCIe Gen4 x8 slot (`16 GB/s < 25 GB/s` for 200 GbE) bottlenecks the host path. | Audit all three DPU layers (switch uplink, Arm policy service, host representor) before admitting jobs, and run preflight checks for `lspci` (`LnkCap == LnkSta`), `nvidia-smi topo -m` (`PIX`), and `rdma link show`. |
 
+Row 1 matches the trace in Section 5.1, where a healthy-looking network hid a trust-mode drift. Start there when your jobs slow down but ping and TCP look fine.
+
 ---
 
 ## Hands-on lab
 
 ### Venue and scope
 
-- **Venue:** Any Linux environment with Python 3.10 or newer. It runs deterministically on a laptop, CPU VM, or Nebius GPU node using the standard library only. No switch hardware is required for the simulator, while hardware CLI commands above are marked `(untested here)`.
-- **Code files:** `code/part12/dcb_qos_ai.py` for the core model and `code/part12/dcb_qos_ai_lab.py` for the 30 automated self-checks.
+You can run the simulator on any Linux environment with Python 3.10 or newer. It runs the same way on a laptop, a CPU VM, or a Nebius GPU node, and it uses only the standard library. No switch hardware is required for the simulator. The hardware CLI commands earlier in the chapter are marked `(untested here)`.
+
+The core model lives in `code/part12/dcb_qos_ai.py`. The file `code/part12/dcb_qos_ai_lab.py` runs the 30 automated self-checks.
 
 ### Step 1 — Run the 30-check DCB and QoS verification suite
 
-Execute `code/part12/dcb_qos_ai_lab.py` to validate IP ToS byte encoding and decoding and the five-class AI fabric QoS model. The script also verifies IEEE 802.1Qaz ETS bandwidth allocation, DCBX TLV negotiation over LLDP, switch port buffer pool carving, and hop-by-hop trust-boundary drift detection.
+Run `code/part12/dcb_qos_ai_lab.py` to check IP ToS byte encoding and decoding, and the five-class AI fabric QoS model. The script also checks IEEE 802.1Qaz ETS bandwidth allocation, DCBX TLV negotiation over LLDP, switch port buffer pool carving, and hop-by-hop trust-boundary drift detection.
 
 ```bash
 python3 -B code/part12/dcb_qos_ai_lab.py
@@ -499,54 +584,52 @@ python3 -B code/part12/dcb_qos_ai_lab.py
 Summary: 30 passed, 0 failed out of 30 checks.
 ```
 
+If the last line reads `Summary: 30 passed, 0 failed out of 30 checks.`, the simulator agrees with the numbers in this chapter.
+
 ---
 
 ## Common first mistakes
 
-1. **Reading `tcpdump` hex `tos` values as decimal DSCP numbers:** Seeing `tos 0xb8` or `tos 0x6a` in `tcpdump -v` and forgetting to right-shift by 2 bits. Always strip the lower 2 ECN bits before looking up the `mlnx_qos` DSCP bucket.
-2. **Leaving switch ports in `Priority trust state: pcp` on a routed Layer 3 fabric:** Routed IP packets carry no 802.1Q VLAN tag. A `trust: pcp` switch port therefore silently maps DSCP 26 or DSCP 46 RoCEv2 packets into lossy Priority 0. That drift causes `rx_prio0_discard` drops while `rx_pfc_prio3` remains zero.
-3. **Scheduling RoCEv2 data on TC3 as `tsa: strict` instead of `tsa: dwrr`:** An unpoliced strict RoCE queue consumes 100 percent of a 400 Gbps link during collective bursts and completely starves DWRR management queues. Reserve strict priority for low-volume, rate-capped CNP feedback on TC6.
-4. **Treating an ETS weight as a hard static reservation or a hard bandwidth ceiling:** ETS under DWRR is work-conserving. An idle class reserves zero bandwidth, and a single active class can legitimately burst to 100 percent of the link when other queues are empty.
-5. **Enabling PFC on three or four priorities "just in case":** Every lossless priority carves out dedicated port buffer and flight-time headroom. Enabling too many lossless classes starves lossy TCP, storage, and control queues of shared burst buffer.
-6. **Resetting live switch or NIC counters during an incident instead of computing timestamped deltas:** Clearing shared counters destroys historical evidence for other operators and monitoring collectors. Always capture UTC timestamps and subtract baseline snapshots.
+1. **Reading `tcpdump` hex `tos` values as decimal DSCP numbers.** You see `tos 0xb8` or `tos 0x6a` in `tcpdump -v` and forget to shift right by 2 bits. Strip the two ECN bits first, and only then look up the `mlnx_qos` DSCP bucket.
+2. **Leaving switch ports in `Priority trust state: pcp` on a routed Layer 3 fabric.** Routed IP packets carry no 802.1Q VLAN tag. A `trust: pcp` port therefore quietly maps DSCP 26 or DSCP 46 RoCEv2 packets into lossy Priority 0. That drift causes `rx_prio0_discard` drops, while `rx_pfc_prio3` stays at zero.
+3. **Scheduling RoCEv2 data on TC3 as `tsa: strict` instead of `tsa: dwrr`.** An unpoliced strict RoCE queue can take 100 percent of a 400 Gbps link during collective bursts, and it starves the DWRR management queues. Keep strict priority for low-volume, rate-capped CNP feedback on TC6.
+4. **Treating an ETS weight as a hard reservation or a hard ceiling.** ETS under DWRR is work-conserving. An idle class reserves no bandwidth, and a single active class can burst to the full link when the other queues are empty. If you read a weight as a ceiling, you will misjudge what the link can carry.
+5. **Enabling PFC on three or four priorities just in case.** Every lossless priority carves out dedicated port buffer and flight-time headroom. Too many lossless classes starve the lossy TCP, storage, and control queues of shared burst buffer.
+6. **Resetting live switch or NIC counters during an incident instead of computing timestamped deltas.** Clearing shared counters destroys evidence that other operators and monitoring collectors rely on. Capture UTC timestamps and subtract baseline snapshots instead.
 
 ---
 
 ## Exercises
 
-1. **IP ToS byte encoding, decoding, and `mlnx_qos` bucket mapping:**
-   Using the bit-shift equation from Section 2.1, calculate the decimal and hexadecimal ToS byte for Storage AF21 with ECT(0). Repeat the calculation for RoCEv2 AF31 with ECT(0) and with CE, RoCEv2 EF with Not-ECT, and a RoCEv2 CNP on CS6 with ECT(1). Then state which `mlnx_qos` 8-value DSCP bucket and 802.1p priority each packet maps to in our five-class model.
+Work through these six exercises in order, and check your answers against the sections they cite. Each one asks you to apply a part of the model from Sections 1 through 5, and the numbers are the same ones used in the chapter.
 
-2. **IEEE 802.1Qaz ETS work-conserving bandwidth allocation and `strict` starvation:**
-   Consider a 400.0 Gbps switch egress port configured with TC6 strict and four DWRR classes: TC0 at 10%, TC2 at 10%, TC3 at 50%, and TC4 at 30%. Compute the exact bandwidth allocated to each class under full five-class contention, two-class contention between TC3 and TC4, and single-class load on TC4. Then explain what happens to `tc: 0` when `tc: 1` is set to `tsa: strict` versus `tsa: dwrr` at a 95:5 weight ratio.
+1. Use the bit-shift equation from Section 2.1 to find the decimal and hexadecimal ToS byte for Storage AF21 with ECT(0). Repeat the calculation for RoCEv2 AF31 with ECT(0), RoCEv2 AF31 with CE, RoCEv2 EF with Not-ECT, and a RoCEv2 CNP on CS6 with ECT(1). Then state which `mlnx_qos` 8-value DSCP bucket and which 802.1p priority each packet maps to in the five-class model.
 
-3. **CBWFQ clock-cycle scheduling, LLQ policing math, and serialization jitter:**
-   On a 1,024 Kbps WAN link with CBWFQ minimums of 256, 128, 128, and 512 Kbps, reduce the bandwidth ratio across 8 clock cycles. Trace which classes transmit on Cycles 2, 4, and 8 when AF41 has 1 packet, AF21 has 0 packets, and unclassified traffic has 3 packets. Next, calculate the LLQ policer drops for 9, 12, 32, and 10 VoIP calls under the 512 Kbps cap. Finally, compute the serialization delay of a 9,000-byte frame versus a 64-byte frame at 100 Mbps and 400 Gbps.
+2. Take a 400.0 Gbps switch egress port with TC6 set to strict and four DWRR classes: TC0 at 10%, TC2 at 10%, TC3 at 50%, and TC4 at 30%. Compute the bandwidth each class gets under full five-class contention, under two-class contention between TC3 and TC4, and under single-class load on TC4. Then explain what happens to `tc: 0` when `tc: 1` is set to `tsa: strict`, compared with `tsa: dwrr` at a 95:5 weight ratio.
 
-4. **IEEE 802.1Qaz DCBX TLV negotiation and Willing bit state machine:**
-   State the LLDP EtherType, destination multicast MAC address, IEEE 802.1 OUI, and the four DCBX TLV subtype numbers. Identify which TLVs are symmetric versus asymmetric. Then determine the operational state source and mismatch list across the four Willing bit combinations in `evaluate_dcbx_negotiation`.
+3. On a 1,024 Kbps WAN link with CBWFQ minimums of 256, 128, 128, and 512 Kbps, reduce the bandwidth ratio across 8 clock cycles. Trace which classes transmit on Cycles 2, 4, and 8 when AF41 has 1 packet, AF21 has 0 packets, and unclassified traffic has 3 packets. Next, calculate the LLQ policer drops for 9, 12, 32, and 10 VoIP calls under the 512 Kbps cap. Finally, compute the serialization delay of a 9,000-byte frame and a 64-byte frame at 100 Mbps and at 400 Gbps.
 
-5. **Switch port buffer pool carving across lossless and lossy classes:**
-   A leaf switch port has 262,144 bytes of port receive buffer, and each lossless priority requires 65,536 bytes. Compute the total lossless bytes reserved, remaining lossy bytes, percentage split, and `evaluate_buffer_pool_carving` verdict for 1, 2, and 4 lossless priorities.
+4. State the LLDP EtherType, the destination multicast MAC address, the IEEE 802.1 OUI, and the four DCBX TLV subtype numbers. Identify which TLVs are symmetric and which are asymmetric. Then determine the operational state source and the mismatch list for each of the four Willing bit combinations in `evaluate_dcbx_negotiation`.
 
-6. **End-to-end hop-by-hop drift diagnosis and the evidence ladder:**
-   Trace an untagged routed RoCEv2 packet across `host_ens1f0`, `leafA_swp4`, `spine1_swp1`, and `leafB_swp19` when `leafB_swp19` is configured with `Priority trust state: pcp` instead of `dscp`. Explain why `ethtool -S swp19` shows 18,420 discards on Priority 0 and 0 pauses on Priority 3. Then contrast Lab 03 bounded contention against Lab 04 rail misselection.
+5. A leaf switch port has 262,144 bytes of port receive buffer, and each lossless priority needs 65,536 bytes. Compute the total lossless bytes reserved, the remaining lossy bytes, the percentage split, and the `evaluate_buffer_pool_carving` verdict for 1, 2, and 4 lossless priorities.
+
+6. Trace an untagged routed RoCEv2 packet across `host_ens1f0`, `leafA_swp4`, `spine1_swp1`, and `leafB_swp19`, where `leafB_swp19` is set to `Priority trust state: pcp` instead of `dscp`. Explain why `ethtool -S swp19` shows 18,420 discards on Priority 0 and 0 pauses on Priority 3. Then contrast Lab 03 bounded contention with Lab 04 rail misselection.
 
 ---
 
 ## Interview angles
 
 1. **"Why can a DSCP value be 100% correct in `tcpdump` at the sending GPU host and still land in a lossy best-effort queue at the far-side leaf switch?"**
-   - *Strong answer:* `tcpdump` at the sender only proves the source adapter marked the IP header. Classification is an end-to-end hop-by-hop contract where every switch ingress port independently decides whether to trust DSCP, trust 802.1p PCP, or rewrite markings to zero. If the destination leaf port `swp19` drifted to `Priority trust state: pcp` on a routed L3 link, frames carry no 802.1Q VLAN tag and have no PCP value. Port `swp19` ignores DSCP and drops the packet into Priority 0 lossy best effort. Consequently, `rx_prio0_discard` climbs while `rx_pfc_prio3` stays zero.
+   - *Strong answer:* The `tcpdump` check at the sender only proves that the source adapter marked the IP header. Classification is a hop-by-hop contract. Each switch ingress port decides on its own whether to trust DSCP, trust 802.1p PCP, or rewrite the marking to zero. Suppose the destination leaf port `swp19` drifted to `Priority trust state: pcp` on a routed Layer 3 link. The frames then carry no 802.1Q VLAN tag and no PCP value. The port ignores DSCP and drops the packet into lossy Priority 0 best effort. As a result, `rx_prio0_discard` climbs while `rx_pfc_prio3` stays at zero.
 
 2. **"What is the exact operational difference between an IEEE 802.1Qaz ETS bandwidth percentage and a hard bandwidth reservation?"**
-   - *Strong answer:* An ETS percentage under TSA 2 DWRR is a work-conserving minimum share objective under contention, not a static partition or rate cap. When multiple classes contend simultaneously, the scheduler divides bandwidth remaining after strict-priority queues in proportion to configured weights. When other classes are idle, a 30 percent storage class can burst to the full 400 Gbps link rate.
+   - *Strong answer:* An ETS percentage under TSA 2 DWRR is a work-conserving minimum share under contention. It is not a static partition or a rate cap. When several classes contend, the scheduler divides what remains after the strict-priority queues in proportion to the weights. When the other classes are idle, a 30 percent storage class can burst to the full 400 Gbps link rate.
 
-3. **"How do you prove empirically—not just by reading config files—that PFC on the RoCE class will not stall cluster management or BGP during a collective burst?"**
-   - *Strong answer:* Run a controlled contention test that deliberately saturates Priority 3 enough to generate sustained ECN marks and PFC pauses. While `rx_pfc_prio3` increments, assert two pieces of evidence simultaneously. First, `rx_pfc_prio0` and `rx_pfc_prio2` must stay at zero, proving PFC is scoped only to Priority 3. Second, management-plane RTT and throughput must remain flat, proving that Priority 3 is scheduled via DWRR rather than `tsa: strict`.
+3. **"How do you prove empirically, not just by reading config files, that PFC on the RoCE class will not stall cluster management or BGP during a collective burst?"**
+   - *Strong answer:* Run a controlled contention test that saturates Priority 3 enough to produce sustained ECN marks and PFC pauses. While `rx_pfc_prio3` increments, you check two things at once. First, `rx_pfc_prio0` and `rx_pfc_prio2` must stay at zero, which shows that PFC applies only to Priority 3. Second, management-plane RTT and throughput must stay flat, which shows that Priority 3 runs under DWRR rather than `tsa: strict`.
 
 4. **"Why is QoS not a substitute for tenant security isolation or fabric capacity planning?"**
-   - *Strong answer:* QoS answers which queue a frame enters and how queues share a congested link. Tenant isolation answers who is authorized to send traffic or reach a peer. An untrusted host can forge DSCP 26 unless an ingress trust boundary or BlueField DPU embedded switch normalizes markings. Capacity planning answers whether there is enough bisection bandwidth for aggregate demand, since QoS cannot manufacture bandwidth on an oversubscribed cut.
+   - *Strong answer:* QoS decides which queue a frame enters and how the queues share a congested link. Tenant isolation decides who may send traffic or reach a peer. An untrusted host can forge DSCP 26 unless an ingress trust boundary or a BlueField DPU embedded switch normalizes the markings. Capacity planning asks whether there is enough bisection bandwidth for the aggregate demand. QoS cannot create bandwidth on an oversubscribed cut.
 
 ---
 
@@ -554,12 +637,12 @@ Summary: 30 passed, 0 failed out of 30 checks.
 
 <details><summary>**1. Why do AI Ethernet fabrics avoid creating eight separate lossless QoS classes even though IEEE 802.1p and IEEE 802.1Qbb support Priorities 0..7?**</summary>
 
-Every lossless PFC-enabled priority requires a dedicated per-port buffer reservation and XOFF flight-time headroom. On a 262,144 B port buffer where each lossless class reserves 65,536 B, enabling PFC on 4 priorities consumes 100.0 percent of the buffer. That leaves 0 B for lossy TCP, storage, control, and CNP queues while multiplying configuration drift and head-of-line blocking risks.
+Every lossless PFC-enabled priority needs its own per-port buffer reservation and XOFF flight-time headroom. Suppose you have a 262,144 B port buffer, where each lossless class reserves 65,536 B. Enable PFC on 4 priorities, and those reservations use 100.0 percent of the buffer. That leaves 0 B for lossy TCP, storage, control, and CNP queues. More lossless classes also multiply configuration drift and head-of-line blocking risks.
 </details>
 
 <details><summary>**2. In `tcpdump -i eth0 -c1 -v`, an IP packet displays `tos 0xb8`. How do you decode the 6-bit DSCP value and 2-bit ECN codepoint, and which `mlnx_qos` bucket does it match?**</summary>
 
-Hexadecimal `0xb8` equals 184 in decimal or `10111000` in binary. Right-shifting by 2 bits gives DSCP 46 for Expedited Forwarding, and masking the low 2 bits gives ECN 0 for Not-ECT. In `mlnx_qos`, DSCP 46 falls in the `40-47` bucket.
+Hexadecimal `0xb8` equals 184 in decimal, or `10111000` in binary. Shift right by 2 bits, and you get DSCP 46, Expedited Forwarding. Mask the low 2 bits, and you get ECN 0, which means Not-ECT. In `mlnx_qos`, DSCP 46 falls in the `40-47` bucket.
 </details>
 
 <details><summary>**3. What hexadecimal ToS byte values appear on the wire for a RoCEv2 data packet marked DSCP 26 with ECT(0), the same packet after a switch marks CE, and a CNP marked DSCP 48 with ECT(1)?**</summary>
@@ -584,10 +667,10 @@ RoCEv2 CNP DSCP 48 + ECT(1): (48 << 2) | 1 = 192 + 1 = 193 = 0xc1 (bucket 48-55)
 
 <details><summary>**5. What are the four IEEE 802.1Qaz Transmission Selection Algorithm (TSA) identifiers?**</summary>
 
-- **0:** Strict Priority (`strict` / LLQ).
-- **1:** Credit-Based Shaper (`cbs`).
-- **2:** Enhanced Transmission Selection (`ets` / `dwrr` / CBWFQ).
-- **255:** Vendor-Specific.
+- **0:** Strict Priority, set with `strict` or LLQ.
+- **1:** Credit-Based Shaper, set with `cbs`.
+- **2:** Enhanced Transmission Selection, set with `ets`, `dwrr`, or CBWFQ.
+- **255:** Vendor-specific scheduling.
 </details>
 
 <details><summary>**6. On a 400.0 Gbps link with TC6 (strict, 10.0 Gbps offered) and DWRR weights TC0 = 10%, TC2 = 10%, TC3 = 50%, TC4 = 30%, how much bandwidth does each class receive under full contention versus two-class contention?**</summary>
@@ -600,12 +683,12 @@ Only TC3 (50%) & TC4 (30%) on:  Unused 20% redistributed in 50:30 = 5:3 ratio ->
 
 <details><summary>**7. Why did cluster management (`tc: 0`, Priority 0) stall during training bursts when `mlnx_qos -i swp4` showed `tc: 1` (Priority 3, RoCE) set to `tsa: strict` and `tc: 0` set to `tsa: dwrr, weight: 5`?**</summary>
 
-In strict-priority scheduling with no rate limit, the scheduler always services `tc: 1` before any DWRR queue. During a sustained 400.0 Gbps RoCE burst, `tc: 1` never empties, starving `tc: 0` at 0.0 Gbps regardless of its DWRR weight. Moving `tc: 1` to DWRR with weight 95 guarantees `tc: 0` with weight 5 at least 20.0 Gbps under contention.
+With strict-priority scheduling and no rate limit, the scheduler always serves `tc: 1` before any DWRR queue. During a sustained 400.0 Gbps RoCE burst, `tc: 1` never empties. So `tc: 0` gets 0.0 Gbps, whatever its DWRR weight. Move `tc: 1` to DWRR with weight 95, and `tc: 0` with weight 5 is guaranteed at least 20.0 Gbps under contention.
 </details>
 
 <details><summary>**8. On a 1,024 Kbps WAN link with an LLQ cap of 512 Kbps, what happens when a 9th or 12th 64 Kbps VoIP call joins under congestion, and when can 10 calls pass with zero drops?**</summary>
 
-Under congestion, the LLQ policer treats the class as one aggregate stream. It drops 64 Kbps when 9 calls offer 576 Kbps and drops 256 Kbps when 12 calls offer 768 Kbps. Switching to a 16 Kbps codec lets 32 calls fit inside 512 Kbps with zero drops. If all other traffic stays at or below the remaining 384 Kbps when 10 calls offer 640 Kbps, the link is uncongested and all 640 Kbps passes without loss.
+Under congestion, the LLQ policer treats the class as one aggregate stream. Nine calls offer 576 Kbps, and the policer drops 64 Kbps. Twelve calls offer 768 Kbps, and it drops 256 Kbps. Switch to a 16 Kbps codec, and 32 calls fit inside 512 Kbps with zero drops. Ten calls offer 640 Kbps. That passes with no loss when all other traffic stays at or below the remaining 384 Kbps, because the link is then uncongested.
 </details>
 
 <details><summary>**9. Compare the wire serialization delay of a 9,000-byte jumbo frame and a 64-byte control/CNP frame at 100 Mbps versus 400 Gbps.**</summary>
@@ -626,7 +709,7 @@ Four DCBX Subtypes:   9 (ETS Configuration, asymmetric), 10 (ETS Recommendation,
 
 <details><summary>**11. How do the Host Willing and Switch Willing bits interact in DCBX, and which two combinations are valid in production AI fabrics?**</summary>
 
-When Host Willing is 1 and Switch Willing is 0 (`SWITCH_PEER`), the host adapter adopts the authoritative switch port settings. When both are 0 (`BOTH_LOCAL_STATIC`), both sides are configured identically from a versioned source of truth and LLDP audits zero drift. Setting Host Willing to 0 with Switch Willing at 1 (`HOST_LOCAL`) or setting both to 1 (`CONFLICT_BOTH_WILLING`) is unsafe in production.
+When Host Willing is 1 and Switch Willing is 0 (`SWITCH_PEER`), the host adapter adopts the authoritative switch port settings. When both are 0 (`BOTH_LOCAL_STATIC`), both sides run the same profile from a versioned source of truth, and LLDP confirms there is no drift. Host Willing 0 with Switch Willing 1 (`HOST_LOCAL`) is unsafe in production. Setting both to 1 (`CONFLICT_BOTH_WILLING`) is unsafe too.
 </details>
 
 <details><summary>**12. On `swp12` (262,144 B total receive buffer, 65,536 B per lossless priority), compare the buffer split for 1, 2, and 4 lossless priorities.**</summary>
@@ -640,12 +723,12 @@ When Host Willing is 1 and Switch Willing is 0 (`SWITCH_PEER`), the host adapter
 
 <details><summary>**13. Why does a Spectrum switch with a Fully Shared Buffer outperform a sliced-buffer switch during AI incast microbursts, and why can't a buffer solve sustained link oversubscription?**</summary>
 
-A Fully Shared Buffer pools internal switch memory dynamically. An overloaded port can borrow burst space from idle ports rather than dropping packets as soon as a fixed per-port slice fills. However, a buffer only absorbs transient arrival-rate mismatches during microbursts. If offered load structurally exceeds egress capacity over milliseconds or seconds, the buffer inevitably fills and triggers ECN, PFC, or drops.
+A Fully Shared Buffer pools switch memory dynamically. An overloaded port can borrow burst space from idle ports, instead of dropping packets as soon as its fixed slice fills. A buffer, however, only absorbs short mismatches between arrival rate and drain rate during microbursts. If the offered load stays above egress capacity for milliseconds or seconds, the buffer fills anyway, and the switch triggers ECN, PFC, or drops.
 </details>
 
 <details><summary>**14. Why did `ethtool -S swp19` show `rx_prio0_discard: 18420` and `rx_pfc_prio3: 0` even though PFC was enabled on Priority 3 on every switch?**</summary>
 
-Running `mlnx_qos -i swp19` revealed `Priority trust state: pcp` while `swp4` used `Priority trust state: dscp`. Because the routed RoCEv2 IP packets had no 802.1Q VLAN tag, `swp19` ignored DSCP 46 and classified every RoCEv2 frame into Priority 0. PFC was disabled on Priority 0, so 18,420 packets were discarded.
+Consider what `mlnx_qos -i swp19` shows. It reports `Priority trust state: pcp`, while `swp4` runs `Priority trust state: dscp`. The routed RoCEv2 packets had no 802.1Q VLAN tag. So `swp19` ignored DSCP 46 and placed every RoCEv2 frame into Priority 0. PFC was disabled on Priority 0, so it discarded 18,420 packets.
 </details>
 
 <details><summary>**15. How do InfiniBand Virtual Lanes and Credit-Based Flow Control differ from Ethernet DCB, and what are the typical switch and PCIe latencies?**</summary>
@@ -659,22 +742,22 @@ Local PCIe:   PCIe Gen5 32 GT/s x16 delivers ~63 GB/s one-way with ~100 ns local
 
 <details><summary>**16. Which AI storage protocols require a lossless Ethernet class (PFC + DCQCN) and which run over a lossy class (TC4)?**</summary>
 
-NVMe-o-RDMA over RoCEv2 on UDP port 4791 requires a lossless queue with PFC, ECN, and DCQCN. NVMe-o-TCP on TCP port 8009 and Parallel NFS use TCP reliability and run over a lossy queue on TC4 with 30 percent ETS and TCP ECN.
+NVMe-o-RDMA over RoCEv2 on UDP port 4791 needs a lossless queue with PFC, ECN, and DCQCN. NVMe-o-TCP on TCP port 8009 and Parallel NFS rely on TCP's own reliability. They run on the lossy TC4 queue, with 30 percent ETS and TCP ECN.
 </details>
 
 <details><summary>**17. What are the six layers of a production AI fabric QoS validation plan?**</summary>
 
-The six validation layers are Classification, Isolation, Service behavior, Feedback, Failure behavior, and Application plus host correlation. Together they verify hop-by-hop queue counters, management isolation under PFC, multi-class ETS shares, ECN-to-CNP sender throttling, failover persistence, and collective throughput.
+The six validation layers are Classification, Isolation, Service behavior, Feedback, Failure behavior, and Application plus host correlation. Together they check hop-by-hop queue counters, management isolation under PFC, multi-class ETS shares, ECN-to-CNP sender throttling, failover persistence, and collective throughput.
 </details>
 
 <details><summary>**18. Why did a 200 GbE ConnectX adapter fail to reach line rate even though the switch fabric had zero ECN marks and zero PFC pauses?**</summary>
 
-Inspecting `lspci -s 41:00.0 -vv` showed `LnkCap: Speed 32GT/s, Width x16` for PCIe Gen5 x16. However, the slot negotiated `LnkSta: Speed 16GT/s (downgraded), Width x8` for PCIe Gen4 x8, topping out around 16 GB/s. Sustaining 200 GbE requires 25 GB/s of PCIe bandwidth, so the host PCIe slot bottlenecked the adapter before packets ever reached the switch.
+`lspci -s 41:00.0 -vv` showed `LnkCap: Speed 32GT/s, Width x16`, which is PCIe Gen5 x16. But the slot negotiated `LnkSta: Speed 16GT/s (downgraded), Width x8`, which is PCIe Gen4 x8. That tops out around 16 GB/s. Sustaining 200 GbE needs 25 GB/s, so the host slot limited the adapter before any packet reached the switch.
 </details>
 
 <details><summary>**19. On a server equipped with a BlueField DPU in ECPF mode, why did the host interface (`enp1s0f0np0`) remain DOWN/DORMANT while the leaf switch port (`swp14`) showed `up 100G full RoCE-compute`?**</summary>
 
-A BlueField DPU introduces three independent layers: the external switch uplink `swp14`, the DPU Arm control plane and embedded switch, and the host-facing function `enp1s0f0np0`. During boot, `openvswitch-policy-load.service` on the BlueField Arm OS exited with `status=1/FAILURE` at `09:14:02 UTC`. That failure left the embedded switch without rules to bring up the host representor despite a healthy physical uplink.
+A BlueField DPU adds three separate layers: the external switch uplink `swp14`, the DPU Arm control plane with its embedded switch, and the host-facing function `enp1s0f0np0`. During boot, `openvswitch-policy-load.service` on the BlueField Arm OS exited with `status=1/FAILURE` at `09:14:02 UTC`. That failure left the embedded switch without the rules it needed to bring up the host representor, even though the physical uplink was healthy.
 </details>
 
 <details><summary>**20. In NVIDIA Base Command Manager (`cmsh`), what is the default `onnetworkpriority` resolution ladder across interface types, and what is the precedence order for persistent `MLX_` `mlxconfig` extra values?**</summary>
@@ -691,7 +774,7 @@ Persistent MLX_ mlxconfig precedence:     category.extra_values < node.extra_val
 
 ### Primary sources read in full for this chapter
 
-All primary Volume 09 notes, labs, and textbook chapters mapped to Chapter 12.5 were read in full and verified against the 30-check lab suite.
+Every Volume 09 note, lab, and textbook chapter mapped to this chapter was read in full. The 30-check lab suite verifies the results.
 
 ```text
 Primary Sources & Mapped Files (brief.py 12.5 & check_coverage.py 12.5):
@@ -727,10 +810,9 @@ Primary Sources & Mapped Files (brief.py 12.5 & check_coverage.py 12.5):
 
 ### Explicitly labelled inferences
 
-- The 400.0 Gbps ETS multi-class allocation numbers apply the standard IEEE 802.1Qaz work-conserving ETS formula in `code/part12/dcb_qos_ai.py` to the class model in Volume 09 Chapter 6 and Chapter 2.19.
-- The four-class buffer exhaustion calculation extrapolates the single-class `mlnx_qos -i swp12` buffer profile of 262,144 B total and 65,536 B per lossless priority from Volume 09 Chapter 4.
+- The 400.0 Gbps ETS multi-class numbers come from applying the standard IEEE 802.1Qaz work-conserving ETS formula in `code/part12/dcb_qos_ai.py` to the class model in Volume 09 Chapter 6 and Chapter 2.19.
+- The four-class buffer exhaustion figure extends the single-class `mlnx_qos -i swp12` buffer profile, which has 262,144 B total and 65,536 B per lossless priority, from Volume 09 Chapter 4.
 
 ### Not verified on live hardware
 
-- All `mlnx_qos` (`swpX`, `BufferMax`, `encode_ip_tos_byte` and `decode_ip_tos_byte`, `VL1`, `NVMe-oF`, `fe80::0c42:a1ff:fec8:d79b/64` and `fe80::0c42:a1ff:fec8:d79d/64`, `42` / `79` / `180.0ns` metrics), `dcb`, `lldptool`, `cma_roce_tos`, `ethtool -S`, `tcpdump`, `lspci`, `nvidia-smi`, `rdma link`, `ibv_devinfo`, `cmsh`, and SONiC or Cumulus CLI commands are marked `(untested here)` and were not executed on live switch or ConnectX and BlueField hardware in this environment.
-
+Nothing in this chapter was run on live switch, ConnectX, or BlueField hardware. The `mlnx_qos` commands (`swpX`, `BufferMax`), `dcb`, `lldptool`, `cma_roce_tos`, `ethtool -S`, `tcpdump`, `lspci`, `nvidia-smi`, `rdma link`, `ibv_devinfo`, `cmsh`, and the SONiC or Cumulus CLI commands are marked `(untested here)`. The helper functions `encode_ip_tos_byte` and `decode_ip_tos_byte` are also on this list. So are `VL1`, `NVMe-oF`, the `fe80::0c42:a1ff:fec8:d79b/64` and `fe80::0c42:a1ff:fec8:d79d/64` addresses, and the `42`, `79`, and `180.0ns` metrics.

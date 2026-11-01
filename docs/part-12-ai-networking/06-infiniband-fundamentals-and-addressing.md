@@ -24,24 +24,24 @@ lab_venue: "Nebius GPU"
 
 ## Why this matters for AI infrastructure
 
-Distributed training jobs synchronize every rank across the network at the end of every step. If even one network link slows down or stalls, the entire cluster waits for that single straggler path to finish. In a large GPU cluster, a minor fabric misconfiguration turns microsecond network delays into hours of wasted GPU compute time.
+Distributed training jobs synchronize every rank across the network at the end of every step. That means one slow link does not hurt only itself. If even one network link slows down or stalls, the entire cluster waits for that single straggler path to finish. In a large GPU cluster, a minor fabric misconfiguration can turn microsecond network delays into hours of wasted GPU compute time.
 
-A newly built cluster can show green physical LEDs on every switch port and pass basic ping tests, yet fail or crawl once a real training job starts. Engineers routinely lose days chasing mysterious collective timeouts that stem from four quiet fabric failure modes.
+Picture a brand-new cluster on the day you hand it to the research team. Every switch port shows a green physical LED, and the basic ping tests pass. Then a real training job starts, and it fails or crawls. You may lose days chasing collective timeouts, and those timeouts often come from four quiet fabric failure modes.
 
-1. **Physical versus logical port state divergence:** A port negotiates electrical link and turns the transceiver LED green. However, it remains logically uninitialized because the Subnet Manager has not assigned a Local Identifier or programmed switch forwarding tables.
-2. **Silent lane-width degradation:** A four-lane cable with one dirty optical fiber negotiates down to a single active lane. The port still reports an active logical state while capping every collective touching that server at one quarter of its design speed.
-3. **Credit backpressure and Virtual Lane contention:** InfiniBand uses link-by-link credit flow control across Virtual Lanes rather than dropping packets when buffers fill. When a slow receiver or shared storage queue stops returning credits, upstream switch ports pause transmission. That pause spreads head-of-line blocking across the fabric with zero packet drops.
-4. **Identity and partition mismatches:** Scripts that treat temporary Local Identifiers as permanent server names break whenever the Subnet Manager sweeps the fabric. Meanwhile, mismatched Partition Keys or shifting Global Identifier table indices silently block Queue Pair connections before training can begin.
+1. The first is physical versus logical port state divergence. A port negotiates its electrical link and turns the transceiver LED green. However, it remains logically uninitialized because the Subnet Manager has not assigned a Local Identifier or programmed switch forwarding tables.
+2. The second is silent lane-width degradation. A four-lane cable with one dirty optical fiber negotiates down to a single active lane. The port still reports an active logical state while capping every collective touching that server at one quarter of its design speed.
+3. The third is credit backpressure and Virtual Lane contention. InfiniBand uses link-by-link credit flow control across Virtual Lanes rather than dropping packets when buffers fill. When a slow receiver or shared storage queue stops returning credits, upstream switch ports pause transmission. That pause spreads head-of-line blocking across the fabric with zero packet drops.
+4. The fourth is identity and partition mismatches. Scripts that treat temporary Local Identifiers as permanent server names break whenever the Subnet Manager sweeps the fabric. Meanwhile, mismatched Partition Keys or shifting Global Identifier table indices silently block Queue Pair connections before training can begin.
 
-This chapter builds the InfiniBand architecture from physical signaling and line encoding to hardware and logical addressing. You will learn how native frames, Virtual Lane credits, IP over InfiniBand, and the OpenFabrics diagnostic tools work together in production.
+This chapter builds the InfiniBand architecture from physical signaling and line encoding up to hardware and logical addressing. Along the way, you will see how native frames, Virtual Lane credits, IP over InfiniBand and the OpenFabrics diagnostic tools work together in production. When a job stalls, start with port state, lane width and error-counter trends before you blame the application.
 
 ## Prerequisites and outcomes
 
-**Prerequisites:** Chapter 12.1 on AI collective traffic patterns, Chapter 12.2 on RDMA verbs and Queue Pairs, and Chapters 12.3 through 12.5 on RoCEv2 and lossless Ethernet.
+**Prerequisites:** Read Chapter 12.1 on AI collective traffic patterns, Chapter 12.2 on RDMA verbs and Queue Pairs, and Chapters 12.3 through 12.5 on RoCEv2 and lossless Ethernet first.
 
-**Outcomes:** After completing this chapter, you will be able to:
-- Calculate raw signaling rates, line-encoding efficiencies, and effective four-lane and twelve-lane bandwidths across every InfiniBand generation from SDR through GDR.
-- Distinguish hardware GUIDs, subnet LIDs, LMC multipath ranges, global GIDs, and pre-LID directed-route Subnet Management Packets.
+**Outcomes:** By the end, you will be able to:
+- Calculate raw signaling rates, line-encoding efficiencies, and effective four-lane and twelve-lane bandwidths for each generation from SDR through GDR.
+- Tell apart hardware GUIDs, subnet LIDs, LMC multipath ranges, global GIDs, and pre-LID directed-route Subnet Management Packets.
 - Evaluate Partition Key membership rules, including full versus limited member bits and asymmetric drops between limited compute nodes.
 - Decode native InfiniBand packet headers and trace per-VL credit-based flow control across data and management Virtual Lanes.
 - Configure IP over InfiniBand in datagram and connected modes, and diagnose live fabrics with standard InfiniBand command-line tools.
@@ -52,9 +52,9 @@ This chapter builds the InfiniBand architecture from physical signaling and line
 
 ### 1.1 Tightly coupled collectives and the separation of data and control planes
 
-Standard enterprise web services handle independent requests that easily tolerate kernel socket copies and millisecond latency spikes. Distributed AI training works very differently because every GPU rank must synchronize at every iteration barrier. The completion time of an AllReduce or AllToAll collective equals the completion time of its single slowest participant. Conventional operating system sockets add system calls, kernel buffer copies, CPU interrupts, and scheduler jitter to every transfer.
+Why does a network that works well for a web service struggle under a training job? A web service sends independent requests. It tolerates a kernel socket copy or a millisecond latency spike without anyone noticing. Distributed AI training is different. Every GPU rank must synchronize at every iteration barrier, so the completion time of an AllReduce or AllToAll collective equals the completion time of its slowest participant. Conventional operating system sockets add system calls, kernel buffer copies, CPU interrupts and scheduler jitter to every transfer.
 
-The InfiniBand Trade Association standardized InfiniBand to eliminate CPU and kernel overhead through a purpose-built fabric architecture. Open-source software stacks such as OFED, MLNX_OFED, and DOCA-OFED expose this hardware directly to training libraries and storage clients. InfiniBand achieves low latency and predictable throughput by strictly separating the hardware data plane from a centralized control plane.
+The InfiniBand Trade Association standardized InfiniBand to remove CPU and kernel overhead from the transfer path. The design is a purpose-built fabric. Open-source software stacks such as OFED, MLNX_OFED and DOCA-OFED expose that hardware directly to training libraries and storage clients. InfiniBand gets low latency and predictable throughput by keeping the hardware data plane strictly separate from a centralized control plane.
 
 ```mermaid
 flowchart TD
@@ -73,6 +73,8 @@ flowchart TD
     SM -.->|"VL15 SMP: Discover and LID"| HCA1
 ```
 
+The fabric has several parts, and each one has a different job. The table shows what each part owns, how you can confirm it is healthy, and what breaks when it fails. Use it as a checklist when you audit a fabric.
+
 | Fabric component / plane | Primary responsibility | Operational evidence of health | What breaks if it fails |
 |---|---|---|---|
 | **Host Channel Adapter (HCA)** | Owns Queue Pairs and Completion Queues, enforces Protection Domains and Memory Region keys (`L_Key` / `R_Key`), executes DMA directly to GPU or host memory, and packetizes payloads. A simplified storage variant called Target Channel Adapter (TCA) was defined by the IBTA but never became widespread. | `ibv_devinfo -v` shows `PORT_ACTIVE (4)`, `LINK_UP (5)`, and `active_mtu: 4096 (5)`, with local PCIe and NUMA affinity to the paired GPU. | Cross-socket UPI or QPI hairpinning occurs if the GPU and HCA sit on different NUMA nodes. Key mismatches trigger `IBV_WC_LOC_PROT_ERR` or `REM_ACCESS_ERR`. |
@@ -80,11 +82,13 @@ flowchart TD
 | **Subnet Manager (SM / OpenSM / UFM)** | Central control plane running on a host HCA or switch. Sweeps topology via directed-route SMPs on VL15, assigns Base LID and LMC, programs switch forwarding tables, enforces P_Key partitions, and configures SHARP in-network reductions via NVIDIA Unified Fabric Manager (UFM). | `sminfo` shows `1` authoritative master (`SMINFO_MASTER`) and `1+` standbys. `ibstat` shows `State: Active` and non-zero `Base lid` and `SM lid`. | Ports stay stuck at `Physical state: LinkUp` and `State: Initializing` (`Base lid: 0`, `SM lid: 0`). This causes the classic green LED, dead port outage. |
 | **InfiniBand Routers** | Interconnect multiple InfiniBand subnets (`<= 49,151` unicast ports per subnet) using `128`-bit GIDs in the `40`-byte Global Routing Header (GRH). | Valid site-local (`0xFEC0::/64`) or global GID prefixes and router path records are present. | Intra-subnet link-local `0xFE80::/64` packets are never forwarded across routers. |
 
+The switch row explains why unprogrammed switches strand data traffic, and the Subnet Manager row explains the classic green-LED outage. Keep both in mind when you read the rest of this chapter.
+
 ### 1.2 Predictability versus peak speed: reading `ib_write_bw` under contention
 
-Engineers often run a quick two-node bandwidth benchmark on an idle cluster, see full line rate, and declare the network healthy. However, peak speed on an empty wire only proves that one Queue Pair can push bytes for a brief moment. Synchronized AI training depends on sustained average bandwidth and tight tail latency when every server transmits at once.
+Picture the common case. You run a quick two-node bandwidth test on an idle cluster, see full line rate, and declare the network healthy. That result proves less than it seems. Peak speed on an empty wire only shows that one Queue Pair can push bytes for a brief moment. Synchronized AI training depends on sustained average bandwidth and tight tail latency when every server transmits at once.
 
-When multiple nodes share an oversubscribed or poorly routed switch path, link-layer credit stalls pause the sending Queue Pair between bursts. A peak bandwidth counter still records the brief moments when credits are available, hiding severe throughput collapse. You must compare peak bandwidth against average bandwidth and message rate in `ib_write_bw` to catch fabric contention.
+When several nodes share an oversubscribed or poorly routed switch path, link-layer credit stalls pause the sending Queue Pair between bursts. The peak counter still records the brief moments when credits are available, so it hides a severe throughput collapse. To catch fabric contention, compare peak bandwidth against average bandwidth and message rate in `ib_write_bw`.
 
 ```text
 # Benchmark parameters:
@@ -102,7 +106,7 @@ When multiple nodes share an oversubscribed or poorly routed switch path, link-l
  2097152 144000       399.71           241.06              0.0144
 ```
 
-On the uncongested path, average throughput tracks peak throughput almost identically across the entire ten-second window. Under upstream switch contention, the peak column still reports full wire speed, so a naive threshold check passes. Meanwhile, average bandwidth drops by nearly forty percent because intermittent credit pauses stall the sender.
+Read the two runs side by side. On the uncongested path, average throughput tracks peak almost exactly across the whole ten-second window. Under upstream switch contention, the peak column still reports full wire speed, so a naive threshold check passes. Average bandwidth, however, drops by nearly forty percent because intermittent credit pauses stall the sender. Judge a fabric by its average bandwidth under load, not by its peak on an idle wire.
 
 ---
 
@@ -110,11 +114,13 @@ On the uncongested path, average throughput tracks peak throughput almost identi
 
 ### 2.1 Link generations, four-lane versus twelve-lane widths, and line encoding
 
-If a server port trains at a slower signaling generation or drops three of its four lanes, every collective using that server slows down proportionally. Operators who confuse raw signaling rates with effective data bandwidth also misread port status tools and miscalculate collective step times. Understanding how parallel lanes and line encoding determine usable throughput prevents both errors.
+What happens when a server port trains at a slower signaling generation or drops three of its four lanes? Every collective that uses that server slows down in proportion. Operators who confuse raw signaling rates with effective data bandwidth misread port status tools and miscalculate collective step times. Understanding how parallel lanes and line encoding set usable throughput prevents both mistakes.
 
-An InfiniBand cable bundles multiple bidirectional serial lanes that transmit in parallel. Most Host Channel Adapter cables and switch links use four parallel lanes. Dense switch backplanes and trunk links often use twelve lanes or two-lane and eight-lane breakouts. Each generation increases the raw bit rate per lane and upgrades the line encoding scheme to reduce bit overhead.
+An InfiniBand cable bundles several bidirectional serial lanes that carry data in parallel. Most Host Channel Adapter cables and switch links use four lanes. Dense switch backplanes and trunk links often use twelve lanes, or two-lane and eight-lane breakouts. Each new generation raises the raw bit rate per lane and upgrades the line encoding to reduce bit overhead.
 
-Line encoding embeds clock recovery information and maintains DC balance on the wire so receivers can detect and correct bit errors. Early generations from SDR to QDR use eight-bit-to-ten-bit encoding, which turns every eight data bits into ten wire bits and costs twenty percent overhead. Middle generations from FDR10 to HDR use sixty-four-to-sixty-six-bit encoding. Modern NDR, XDR, and GDR fabrics use PAM4 modulation with Forward Error Correction and two-hundred-fifty-six-to-two-hundred-fifty-seven-bit blocks.
+Line encoding is the step that helps the bits survive the trip. It embeds clock recovery information and keeps the signal DC balanced, so receivers can detect and correct bit errors. The early generations, SDR to QDR, use eight-bit-to-ten-bit encoding. Every eight data bits become ten wire bits, so you lose twenty percent to overhead. The middle generations, FDR10 to HDR, use sixty-four-to-sixty-six-bit encoding. The modern NDR, XDR and GDR fabrics use PAM4 modulation with Forward Error Correction and two-hundred-fifty-six-to-two-hundred-fifty-seven-bit blocks.
+
+The table is a lookup. Find the generation your port reports, then read the effective columns, because those are the numbers that matter for throughput. As you compare rows, notice that the 4x and 12x columns scale directly from the 1x lane.
 
 | Generation | Raw lane rate (Gbps) | Line encoding | Encoding efficiency | Effective `1x` lane (Gbps) | Raw `4x` rate (Gbps) | Effective `4x` bandwidth (Gbps) | Effective `12x` bandwidth (Gbps) |
 |---|---:|---|---:|---:|---:|---:|---:|
@@ -129,6 +135,8 @@ Line encoding embeds clock recovery information and maintains DC balance on the 
 | **XDR** (eXtended Data Rate) | `200.0` (nominal) | `256b/257b` | `99.61%` | `200.0` | `800.0+` | **`800.0`** | **`2,400.0`** |
 | **GDR** (Giga Data Rate) | `400.0` (nominal) | `256b/257b` | `99.61%` | `400.0` | `1,600.0+` | **`1,600.0`** | **`4,800.0`** |
 
+The raw and effective numbers differ in every row. That gap is the line-encoding cost, and it is why `ibstat` can show `56` for an FDR port while the usable rate is lower. Run the arithmetic yourself when a rate looks wrong, using the block below.
+
 ```text
 # Line-encoding efficiency derivations and FDR / NDR rate checks:
 8b/10b efficiency   = 8 / 10     = 80.0%     (20.0% encoding overhead)
@@ -140,11 +148,13 @@ Line encoding embeds clock recovery information and maintains DC balance on the 
 4x NDR degraded 1x  = 1 * 100.0 Gbps   = 100.0 Gbps (25% of 400.0 Gbps design bandwidth)
 ```
 
+A 4x NDR port that degrades to one lane therefore runs at 100 Gbps, a quarter of its 400 Gbps design speed.
+
 ### 2.2 Physical state versus logical link-layer port state machine
 
-A common operational trap occurs when a technician sees a solid green link LED on a switch port and assumes the server is ready for jobs. On InfiniBand, a green LED only indicates that the physical transceivers have locked onto each other's electrical or optical signal. If the logical link state has not reached the active stage, every application Queue Pair on that port will fail to send data.
+A common trap starts with a solid green link LED. The technician sees it on a switch port and assumes the server is ready for jobs. On InfiniBand, though, a green LED only means the physical transceivers have locked onto each other's electrical or optical signal. If the logical link state has not reached the active stage, every application Queue Pair on that port will fail to send data.
 
-Every InfiniBand port runs two separate state machines that you must check together in `ibstat` and `ibstatus`. The physical state machine governs transceiver lane training on the wire, progressing from polling through configuration to link up. The logical state machine governs Subnet Manager admission, advancing from down to initialize, armed, and finally active.
+Every InfiniBand port runs two separate state machines, and you must check both together in `ibstat` and `ibstatus`. The physical state machine handles lane training on the wire. It moves from polling through configuration to link up. The logical state machine handles Subnet Manager admission. It moves from down to initialize, then armed, and finally active.
 
 | State machine | State name and numeric code | Traffic permitted | Operational transition rule |
 |---|---|---|---|
@@ -158,11 +168,13 @@ Every InfiniBand port runs two separate state machines that you must check toget
 | **Logical (`State`)** | `Armed` (`3`) | VL15 SMPs only | Subnet Manager assigned `Base LID` and P_Key tables, but full forwarding is not yet enabled. |
 | **Logical (`State`)** | `Active` (`4: ACTIVE`) | All data (VL0–VL14) and VL15 | Subnet Manager finished programming switch Linear Forwarding Tables; RDMA verbs and IPoIB can flow. |
 
+As you read the table, remember that application data moves only after the logical state reaches active. Before that point, only VL15 management packets pass. When a port looks healthy, read both state machines before you trust it.
+
 ---
 
 ## 3. Component identification, addressing, and partitioning
 
-InfiniBand uses five distinct identifiers to separate hardware identity, intra-subnet switch forwarding, inter-subnet routing, bootstrap discovery, and multi-tenant isolation. Confusing these identifiers leads to broken inventory databases and silent connection failures.
+InfiniBand uses five distinct identifiers. Each one covers a different job: hardware identity, switch forwarding inside a subnet, routing between subnets, bootstrap discovery, and multi-tenant isolation. Confuse them, and you get broken inventory databases and silent connection failures.
 
 ```mermaid
 flowchart LR
@@ -181,6 +193,8 @@ flowchart LR
     SA -->|"Validated Path Record"| QP
 ```
 
+The table gives each identifier its bit width, its owner, and its role in an AI fabric.
+
 | Identifier / attribute | Bit width | Assigned by | Mutability and scope | Operational role in AI fabrics |
 |---|---:|---|---|---|
 | **NodeGUID / PortGUID / SystemImage GUID** | `64` bits | Hardware manufacturer in firmware | Persistent across reboots and SM sweeps; global hardware identity | Anchor your CMDB and inventory on PortGUID. Every HCA has `1` NodeGUID and `1` PortGUID per port; a switch has `1` NodeGUID and uses the same PortGUID across all switch ports. SystemImage GUID groups elementary switch chips inside one modular chassis, whereas multiple HCAs in one server have distinct SystemImage GUIDs because each runs independent firmware. |
@@ -190,13 +204,13 @@ flowchart LR
 | **Directed Route (SMP)** | Hop list (`hop_count`, `hop_pointer`, `D` bit) | Subnet Manager on VL15 | Bootstrap and diagnostic (`LID = 0xFFFF` permissive) | Lists exact switch egress port numbers before LIDs or forwarding tables exist (`D=0` outbound records `return_path`; `D=1` returns response). |
 | **Partition Key (P_Key)** | `16` bits (`15`-bit ID + `1`-bit membership) | Subnet / Partition Manager | Policy-driven logical isolation across shared fabric | Enforces tenant and job partition membership in hardware (BTH). Bit `15` (`0x8000`) is `1` for Full members (`0xffff`, `0x8021`) and `0` for Limited members (`0x7fff`, `0x0021`). |
 
+The PortGUID is the identifier to anchor on, because it persists across reboots and sweeps. The LID is assigned at sweep time and can change, as the next subsection shows.
+
 ### 3.1 Sixteen-bit LID address space and LMC multipath math
 
-If an operator keys a cluster inventory script on Local Identifiers, a routine Subnet Manager restart or cable swap can renumber ports and send maintenance commands to the wrong servers. In addition, architects designing massive clusters must respect the hard unicast ceiling of a single InfiniBand subnet.
+Suppose an operator keys a cluster inventory script on Local Identifiers. A routine Subnet Manager restart or cable swap can renumber ports, and maintenance commands then reach the wrong servers. Architects designing massive clusters face a related limit, the hard unicast ceiling of a single InfiniBand subnet.
 
-The Local Identifier field in the Local Route Header is sixteen bits wide. The specification divides those sixty-five thousand values into reserved, unicast, multicast, and permissive ranges. Because unicast forwarding uses only the lower three-quarters of that space, a single InfiniBand subnet can address at most forty-nine thousand one hundred fifty-one end ports and switches. Scaling beyond that limit requires InfiniBand routers or independent multi-rail subnets.
-
-When a subnet provides multiple parallel paths between leaves and spines, the Subnet Manager can assign a contiguous block of LIDs to a single HCA port using LID Mask Control. The port's Base LID must have its lowest LMC bits set to zero so the entire block aligns cleanly in binary. The Subnet Manager then programs switch forwarding tables to send each LID in that block across a different spine link.
+The Local Identifier field in the Local Route Header is sixteen bits wide. That gives sixty-five thousand values, and the specification splits them into reserved, unicast, multicast and permissive ranges. Unicast forwarding uses only the lower three-quarters of that space. The arithmetic below shows the result: a single subnet can address at most forty-nine thousand one hundred fifty-one end ports and switches. Scaling beyond that limit requires InfiniBand routers or independent multi-rail subnets.
 
 ```text
 # 16-bit LID address space (2^16 = 65,536 total values):
@@ -217,11 +231,13 @@ HCA examples   :
   Base LID = 13 (0b00001101), LMC = 2 -> 4 LIDs: [13, 14, 15, 16] (lower 2 bits 01, aligned = False)
 ```
 
+Now suppose the subnet has several parallel paths between leaves and spines. The Subnet Manager can give one HCA port a contiguous block of LIDs using LID Mask Control, or LMC. The port's Base LID must have its lowest LMC bits set to zero, so the block lines up cleanly in binary. The Subnet Manager then programs the switch tables so that each LID in the block sends across a different spine link. Use the alignment rule as a check. A Base LID of 13 with an LMC of 2 fails, because its lower two bits are 01, not 00.
+
 ### 3.2 Global Identifiers and why hardcoded GID indices fail
 
-In multi-tenant or containerized GPU clusters, training jobs often fail at startup when an engineer hardcodes a Global Identifier index such as `NCCL_IB_GID_INDEX=3` across all nodes. If one node boots its IP over InfiniBand interface or virtual functions in a slightly different order, index three on that server points to a completely different address family or subnet. The Queue Pair connection then fails during the Ready to Receive transition.
+Suppose you run a containerized GPU cluster where every job starts with `NCCL_IB_GID_INDEX=3` hardcoded on all nodes. Jobs fail at startup. One node booted its IP over InfiniBand interface or virtual functions in a slightly different order. On that server, index three points to a completely different address family or subnet, so the Queue Pair connection fails during the Ready to Receive transition.
 
-A Global Identifier is a standard IPv6 address assigned to every InfiniBand end port. Its lower sixty-four bits hold the persistent hardware PortGUID, while its upper sixty-four bits hold a subnet prefix assigned by the Subnet Manager. Every port always has a mandatory default link-local GID at index zero that never crosses InfiniBand routers. Ports can also hold site-local, global unicast, multicast, or IPv4-mapped entries. Always select GIDs by matching the subnet prefix and address type rather than trusting a blind table index.
+A Global Identifier is a standard IPv6 address assigned to every InfiniBand end port. Its lower sixty-four bits hold the persistent hardware PortGUID. Its upper sixty-four bits hold a subnet prefix that the Subnet Manager assigns. Every port has a mandatory default link-local GID at index zero, and that GID never crosses InfiniBand routers. Ports can also hold site-local, global unicast, multicast or IPv4-mapped entries. Select the GID by matching its subnet prefix and address type, not by trusting a blind table index.
 
 | GID type or `show_gids` entry | Upper `64`-bit prefix / format | Routing scope and RFC reference | Example value from production fabrics |
 |---|---|---|---|
@@ -231,13 +247,17 @@ A Global Identifier is a standard IPv6 address assigned to every InfiniBand end 
 | **Multicast GID** | `0xFF00::/8` (high byte `0xFF`) | InfiniBand multicast groups (`RFC 2373` and `RFC 2375`) | Used for collective and IPoIB multicast groups |
 | **IPv4-mapped GID (`v1`/`v2`)** | `0000:0000:0000:0000:0000:ffff:w.x.y.z` | Dual-mode ConnectX / IPoIB / container namespace entry (`INDEX 0, 1, 2, 3...`) | `0000:0000:0000:0000:0000:ffff:0a01:0203` for IPv4 `10.1.2.3` (`0x0a010203`); never hardcode `-g 3` blindly |
 
+Each row shows the prefix, the distance the address can travel, and an example you may see on a real fabric. Even when one entry matches the address you want, do not hardcode `-g 3` blindly.
+
 ### 3.3 Directed-route Subnet Management Packets
 
-When an InfiniBand cluster powers on from cold boot, every port has a Base LID of zero and every switch forwarding table is completely empty. Normal LID-based packet forwarding cannot work in this uninitialized state. Without a bootstrap mechanism that bypasses forwarding tables, the Subnet Manager could never reach switches to assign LIDs in the first place.
+What does the fabric look like at cold boot? Every port has a Base LID of zero, and every switch forwarding table is empty. Normal LID-based forwarding cannot work in that state. Without a bootstrap mechanism that bypasses the forwarding tables, the Subnet Manager could never reach the switches to assign LIDs.
 
-InfiniBand solves this bootstrap problem with directed-route Subnet Management Packets sent to the permissive LID on management Virtual Lane fifteen. Instead of a destination address, an outbound directed-route packet carries an explicit list of switch egress port numbers. That list tells each switch along the path which physical port to exit. As each switch forwards the request outbound, it records the ingress port where the packet arrived into a return path array.
+InfiniBand solves this bootstrap problem with directed-route Subnet Management Packets, or SMPs. They travel to the permissive LID on management Virtual Lane fifteen. An outbound directed-route packet has no destination address. Instead, it carries an explicit list of switch egress port numbers, and that list tells each switch which physical port to exit. As each switch forwards the request, it records the port where the packet arrived in a return path array.
 
-When the packet reaches the target port, the local Subnet Management Agent processes the request and flips the direction bit from zero to one. Each switch along the return trip reads its recorded port number from the return path array and steps the hop pointer backward until the reply reaches the Subnet Manager. InfiniBand also supports combined directed routing. In that mode, a packet uses normal LID forwarding up to an initialized switch before stepping across an uninitialized link with a hop list.
+When the packet reaches the target port, the local Subnet Management Agent handles the request and flips the direction bit from zero to one. On the return trip, each switch reads its recorded port number from the return path array. It then steps the hop pointer backward until the reply reaches the Subnet Manager. InfiniBand also supports combined directed routing. In that mode, a packet uses normal LID forwarding up to an initialized switch, then crosses an uninitialized link with a hop list.
+
+The trace below follows one three-hop request. Read the outbound steps first, then the return.
 
 ```text
 # Directed-route SMP header fields (VL15, Permissive LID = 0xFFFF):
@@ -260,11 +280,15 @@ return_path  : Array of switch ingress port numbers recorded dynamically on outb
    - hop_pointer decrements 3 -> 2 -> 1 -> 0 until reply reaches the SM (d_bit=1, hop_pointer=0)
 ```
 
+When you trace the way back, watch the hop pointer. It drops from three to zero, and then the reply lands at the Subnet Manager.
+
 ### 3.4 Partition Keys: full versus limited membership
 
-In a shared AI cluster, operators use Partition Keys to isolate tenant jobs and restrict access to management or storage networks. A subtle outage occurs when an administrator updates the partition configuration and accidentally marks compute nodes as limited members instead of full members. Every compute node can still ping the full-member head node and mount shared storage. However, all GPU-to-GPU collective communication between compute nodes silently times out.
+In a shared AI cluster, operators use Partition Keys to isolate tenant jobs and to restrict access to management or storage networks. Here is a subtle outage. An administrator updates the partition configuration and accidentally marks compute nodes as limited members instead of full members. Every compute node can still ping the full-member head node and mount shared storage. Yet all GPU-to-GPU collective communication between compute nodes silently times out.
 
-Each port holds a table of sixteen-bit Partition Keys programmed by the Subnet Manager. The lower fifteen bits identify the partition number, while the highest bit controls whether the port is a full member or a limited member. Switch and HCA hardware enforce a strict rule on every packet. Two ports can communicate only if their fifteen-bit partition numbers match and at least one of the two endpoints is a full member.
+Each port holds a table of sixteen-bit Partition Keys that the Subnet Manager programs. The lower fifteen bits identify the partition number. The highest bit decides whether the port is a full member or a limited member. Switch and HCA hardware apply one strict rule to every packet. Two ports can communicate only when their fifteen-bit partition numbers match and at least one of them is a full member.
+
+The table lists six pairings and the verdict that hardware gives each one.
 
 | Port A `P_Key` | Port B `P_Key` | `15`-bit Partition ID match (`& 0x7FFF`) | Membership pairing (`bit 15 = 0x8000`) | Hardware forwarding verdict |
 |---|---|---|---|---|
@@ -275,15 +299,17 @@ Each port holds a table of sixteen-bit Partition Keys programmed by the Subnet M
 | `0x8021` (`LID 12`) | `0x8035` (`LID 87`) | Mismatch: `0x0021 != 0x0035` | Full $\leftrightarrow$ Full on different partitions | **`PARTITION_ID_MISMATCH`** (dropped) |
 | `0x0000` | `0x8000` | Invalid: `0x0000` is unused | Zero partition ID | **`INVALID_ZERO_PARTITION_ID`** (rejected) |
 
+Two limited members in the same partition are dropped silently. When you see a compute-to-compute path fail, check the membership bit first.
+
 ---
 
 ## 4. InfiniBand frame format, Virtual Lanes, and Credit-Based Flow Control
 
 ### 4.1 Native InfiniBand data frame headers
 
-Ethernet-based RDMA wraps transport headers inside Ethernet, IP, and UDP headers. That extra encapsulation adds framing overhead and requires switches to parse deep packet headers. Native InfiniBand strips away that legacy encapsulation so switches can forward frames in roughly three hundred nanoseconds using a compact eight-byte local header.
+Think about what a switch has to read on every frame. With Ethernet-based RDMA, the transport headers sit inside Ethernet, IP and UDP headers. That wrapping adds framing overhead, and switches must parse deep into each packet. Native InfiniBand drops that legacy encapsulation. Switches can then forward frames in roughly three hundred nanoseconds, using a compact eight-byte local header.
 
-Every native InfiniBand packet begins with a mandatory eight-byte Local Route Header that carries the Virtual Lane, Service Level, and sixteen-bit source and destination LIDs. Packets that remain inside a single subnet omit the forty-byte Global Routing Header entirely. They jump straight to the twelve-byte Base Transport Header and optional sixteen-byte RDMA Extended Transport Header. Two cyclic redundancy checks close the frame: a four-byte end-to-end Invariant CRC and a two-byte link-by-link Variant CRC recomputed at every switch hop.
+Every native InfiniBand packet starts with a mandatory eight-byte Local Route Header. That header carries the Virtual Lane, the Service Level, and the sixteen-bit source and destination LIDs. A packet that stays inside one subnet skips the forty-byte Global Routing Header. It moves straight on to the twelve-byte Base Transport Header and the optional sixteen-byte RDMA Extended Transport Header. Two cyclic redundancy checks close the frame. One is a four-byte end-to-end Invariant CRC. The other is a two-byte link-by-link Variant CRC, recomputed at every switch hop.
 
 ```mermaid
 flowchart LR
@@ -295,6 +321,8 @@ flowchart LR
     ICRC --> VCRC["VCRC: 2B<br/>Link-by-Link CRC"]
 ```
 
+Use the table to see which headers you must expect and which are optional.
+
 | Frame header / trailer | Size | Mandatory? | Key fields and hardware function |
 |---|---:|---|---|
 | **Local Route Header (LRH)** | **`8` bytes** | **Yes** (every native IB packet) | Carries `4`-bit Virtual Lane (VL), `4`-bit Service Level (SL), `16`-bit Destination LID (`D-LID`), `11`-bit Packet Length in `4`-byte dwords up to `4,096` B MTU payload, and `16`-bit Source LID (`S-LID`). Switches forward purely on `D-LID`. |
@@ -304,6 +332,8 @@ flowchart LR
 | **Data Payload** | Up to **`4,096` bytes** (`active_mtu`) | Payload packets | Raw tensor gradient chunk, MPI message, or NVMe-o-RDMA command and response capsule (`SQE`/`CQE` + `SGL` descriptors). |
 | **Invariant CRC (ICRC)** | **`4` bytes** (`32` bits) | **Yes** | End-to-end CRC covering all fields that do not change from source HCA to destination HCA, masking out mutable LRH VL and GRH hop limit fields. |
 | **Variant CRC (VCRC)** | **`2` bytes** (`16` bits) | **Yes** (native IB link layer) | Link-by-link CRC covering the entire packet including mutable LRH fields; recomputed at every switch hop to detect single-link bit errors immediately. |
+
+Only the GRH is optional for intra-subnet traffic. The ETH, RETH or DETH depends on the operation you run. The next block turns these headers into overhead and efficiency numbers. Work the first case by hand: 8 + 12 + 4 + 2 = 26 bytes.
 
 ```text
 # Framing overhead and wire efficiency for a 4,096-byte MTU payload (vs RoCEv2 UDP port 4791):
@@ -315,15 +345,19 @@ flowchart LR
    Overhead = 82 B | Wire frame = 4,178 B | Payload efficiency = 4096 / 4178 = 98.04% (98.0373%)
 ```
 
+Each added header lowers the payload efficiency a little. Even the inter-subnet case keeps about 98 percent of the frame as payload.
+
 ### 4.2 Virtual Lanes, Service Levels, and Credit-Based Flow Control
 
-On lossless Ethernet, a switch reacts to congestion only after its receive queue crosses a threshold. It then sends an IEEE `802.1Qbb` Priority Flow Control pause frame upstream while absorbing in-flight cable data into headroom buffers. InfiniBand prevents buffer overflow proactively at the link layer. However, when a receiver stalls or storage traffic shares a queue with training collectives, upstream switch ports run out of transmit credits and pause without recording a single packet drop.
+How does InfiniBand compare with lossless Ethernet? On lossless Ethernet, a switch reacts only after its receive queue crosses a threshold. It then sends an IEEE 802.1Qbb Priority Flow Control pause frame upstream. While the pause travels, the switch absorbs in-flight cable data into headroom buffers. InfiniBand prevents buffer overflow before it happens, at the link layer. Still, when a receiver stalls or storage traffic shares a queue with training collectives, upstream switch ports run out of transmit credits and pause. They do this without recording a single packet drop.
 
-Every InfiniBand packet header carries a four-bit Service Level that identifies its traffic class, such as collective training, storage, or IP over InfiniBand. At each switch hop, a lookup table maps that Service Level to one of up to sixteen hardware Virtual Lanes. Virtual Lanes zero through fourteen provide independent data buffers and credit pools. Virtual Lane fifteen is strictly reserved for Subnet Management Packets so the Subnet Manager can always reach switches during severe data congestion.
+Each packet header carries a four-bit Service Level. If you trace one packet through a switch, this is the field that picks its lane. The Service Level names the traffic class, such as collective training, storage, or IP over InfiniBand. At every switch hop, a lookup table maps that Service Level to one of up to sixteen hardware Virtual Lanes. Virtual Lanes zero through fourteen each get their own data buffers and credit pools. Virtual Lane fifteen is reserved strictly for Subnet Management Packets, so the Subnet Manager can always reach switches during severe data congestion.
 
-Credit-Based Flow Control operates across every individual link hop and separately for each data Virtual Lane. A downstream receiver measures its free buffer space in sixty-four-byte credit units and continually advertises that credit limit upstream via link-layer Flow Control Packets. An upstream switch port never transmits a frame on a Virtual Lane unless the downstream port has already granted enough sixty-four-byte credits to hold the entire packet.
+Credit-Based Flow Control works on every link hop, and it runs separately for each data Virtual Lane. A downstream receiver measures its free buffer space in sixty-four-byte credit units. It keeps advertising that limit upstream in link-layer Flow Control Packets. An upstream switch port never sends a frame on a Virtual Lane unless the downstream port has already granted enough sixty-four-byte credits to hold the entire packet.
 
-When an incast or slow receiver stops draining a Virtual Lane, downstream credits dry up. The upstream port then increments its `PortXmitWait` counter on every clock tick it waits to send. This backpressure spreads upstream into a congestion tree until the root receiver drains or traffic classes are separated onto different Virtual Lanes. The Ultra Ethernet Consortium later adopted this same link-level credit model into its link layer specification.
+Picture an incast, where many senders converge on one receiver that stops draining a Virtual Lane. Downstream credits then dry up. The upstream port increments its `PortXmitWait` counter on every clock tick it spends waiting to send. This backpressure spreads upstream and forms a congestion tree. The tree lasts until the root receiver drains, or until traffic classes move onto different Virtual Lanes. The Ultra Ethernet Consortium later adopted this same link-level credit model into its link layer specification.
+
+The block below lists the lane and credit parameters, then works one credit calculation. Read the Case A and Case B lines together, since they show the same frame against two different advertised limits.
 
 ```text
 # Virtual Lane (VL) and Credit-Based Flow Control (CBFC) hardware parameters:
@@ -339,15 +373,17 @@ Case B (50 credits  = 3,200 B advertised) : Port halts VL1 transmission and incr
 Telemetry signature        : PortXmitWait = 184,320 ticks on congested port 3 (vs 41 on port 7), SymbolErrorCounter = 0
 ```
 
+In Case B, the port halts VL1 and the `PortXmitWait` counter starts to climb. That rising counter is the telemetry signature to look for.
+
 ---
 
 ## 5. Verbs execution model, IP over InfiniBand, storage transports, and alternatives
 
 ### 5.1 Verbs resource hierarchy and `ibv_devinfo -v`
 
-When an AI framework initializes thousands of Queue Pairs across a cluster without checking adapter limits or path MTU settings, connections fail during startup or crash mid-step with memory protection errors. Deregistering a memory buffer while DMA operations are still in flight also causes immediate Queue Pair faults.
+Picture an AI framework that opens thousands of Queue Pairs across a cluster. If it never checks the adapter limits or the path MTU, connections fail during startup. Or they crash mid-step with memory protection errors. Deregistering a memory buffer while DMA operations are still in flight causes immediate Queue Pair faults too.
 
-As introduced in Chapter 12.2, RDMA applications bypass the operating system kernel by posting Work Requests directly to hardware queues through the `libibverbs` and `rdma-core` API. Before debugging a collective failure, inspect the adapter's exact hardware capabilities and active port MTU using `ibv_devinfo -v -d mlx5_0` `(untested here)`.
+As Chapter 12.2 introduced, RDMA applications bypass the operating system kernel by posting Work Requests straight to hardware queues, through the `libibverbs` and `rdma-core` API. Before you debug a collective failure, inspect the adapter's exact hardware capabilities and active port MTU with `ibv_devinfo -v -d mlx5_0` `(untested here)`.
 
 ```text
 # (untested here)
@@ -375,6 +411,8 @@ hca_id: mlx5_0
             link_layer:         InfiniBand
 ```
 
+The table below sets each limit beside the failure you see when you cross it. Read the limits as a budget for your job.
+
 | Verbs resource or state | Hardware limit on MT4129 (`ConnectX-7`, `vendor_id: 0x02c9 = 713`, `fw_ver: 28.39.2048`) | Operational boundary and failure signature |
 |---|---|---|
 | **Queue Pairs (QP) and Completion Queues (CQ)** | `max_qp: 262144` ($2^`{18}`$), `max_qp_wr: 32768` ($2^`{15}`$ WRs/QP), `max_cq: 16777216` ($2^`{24}`$), `max_cqe: 4194303` ($2^`{22}` - 1$) | Full-mesh `1`-QP-per-peer designs multiply QPs by `processes * peers * rails`. Production libraries share CQs across QPs, use hierarchical or rail topologies, or use Dynamically Connected (DC) transports. |
@@ -384,11 +422,11 @@ hca_id: mlx5_0
 
 ### 5.2 IP over InfiniBand: hardware address, datagram versus connected modes, and BCM provisioning
 
-Although GPU collectives transfer tensors directly over RDMA verbs, distributed job launchers such as Slurm and MPI still need standard TCP/IP addresses to bootstrap connections. Operators who run legacy Ethernet tools like `ifconfig` on an InfiniBand interface see truncated hardware addresses. Furthermore, clusters that pick the wrong IP over InfiniBand transport mode can exhaust Queue Pair memory at scale.
+GPU collectives move tensors over RDMA verbs, but job launchers such as Slurm and MPI still need ordinary TCP/IP addresses to bootstrap connections. If you run a legacy Ethernet tool like `ifconfig` on an InfiniBand interface, the hardware address looks truncated. Clusters that pick the wrong IP over InfiniBand transport mode can also exhaust Queue Pair memory at scale.
 
-The Internet Engineering Task Force standardized IP over InfiniBand to run standard IP stacks over native InfiniBand interfaces such as `ib0` and `ib1`. Unlike Ethernet's six-byte MAC address, an IP over InfiniBand link-layer address is twenty bytes long. It packs capability flags, a twenty-four-bit Queue Pair Number, and a full sixteen-byte Global Identifier. Always inspect `ib0` with `ip addr show ib0` or `ip link` rather than `ifconfig`.
+The Internet Engineering Task Force standardized IP over InfiniBand, so standard IP stacks can run over native InfiniBand interfaces such as `ib0` and `ib1`. An Ethernet MAC address is six bytes. An IP over InfiniBand link-layer address is twenty bytes long instead. It packs capability flags, a twenty-four-bit Queue Pair Number, and a full sixteen-byte Global Identifier. Inspect `ib0` with `ip addr show ib0` or `ip link`, not `ifconfig`.
 
-Administrators can run IP over InfiniBand in either datagram mode or connected mode. Datagram mode uses Unreliable Datagram Queue Pairs with a four-kilobyte MTU ceiling so a single Queue Pair can talk to every peer in the cluster. Connected mode opens a dedicated connected Queue Pair per peer to raise the MTU to sixty-four kilobytes. That mode trades quadratic Queue Pair state for higher single-stream TCP throughput on older adapters.
+You can run IP over InfiniBand in datagram mode or connected mode. Datagram mode uses Unreliable Datagram Queue Pairs with a four-kilobyte MTU ceiling, and one Queue Pair can talk to every peer in the cluster. Connected mode opens a dedicated connected Queue Pair per peer, which raises the MTU to sixty-four kilobytes. That mode trades quadratic Queue Pair state for higher single-stream TCP throughput on older adapters.
 
 ```text
 # IPoIB RFC standards and 20-byte (160-bit) link-layer hardware address layout:
@@ -400,17 +438,23 @@ Example decode : 80:00:01:2a:fe:80:00:00:00:00:00:00:08:c0:eb:03:00:f1:a2:c3
   - Port GID   : fe80::08c0:eb03:00f1:a2c3
 ```
 
+The table compares the two modes and the Base Command Manager provisioning path side by side. Scale is the thing to watch.
+
 | IPoIB aspect | Datagram mode (`UD`, default) | Connected mode (`RC`/`UC`, optional) | NVIDIA Base Command Manager (`bcm11-admin`) `ibnet` provisioning |
 |---|---|---|---|
 | **Transport and MTU limit** | Unreliable Datagram (UD) QP; max IP MTU up to `4 KB` (`4,096` B link MTU, `4,092` B after `4`-byte IPoIB header) | Dedicated Reliable or Unreliable Connected (RC/UC) QP per peer; max IP MTU up to `64 KB` (`65,536` / `65,520` B) | Default `ibnet` network (domain `ib.cluster`, type `internal`, base `10.149.0.0`, netmask `16` bits = `10.149.0.0/16`); head node `basecm11` at `10.149.255.254`, `node001..node150` starting at `10.149.0.1` |
 | **Cluster scaling and driver support** | `O(1)` QP state per node; default in BCM and modern `mlx5` drivers with Enhanced IPoIB hardware offloads | $O(N^2)$ QP memory overhead across large clusters; used on older `mlx4_ib` adapters for single-stream TCP | Post-boot `rdma` service (`rdma-load-modules@rdma` on RHEL / `openibd` on SLES) loads `ib_ipoib`, `rdma_ucm`, `ib_ucm`, `ib_uverbs`, `ib_umad`, `rdma_cm`, `ib_cm`, `iw_cm`, `ib_addr`, `ib_sa`, `ib_mad`, `ib_core` |
 | **Booting over `ib0`** | Set via `echo datagram > /cm/node-installer/scripts/ipoib_mode` | Enabled via `set connectedmode yes` in `cmsh` | Requires `cmsh -c "network; set ibnet nodebooting yes; commit"`, injecting `mlx4_ib`/`mlx5_ib`, `ib_ipoib`, `ib_umad` into `initrd`, and avoiding `BOOTIF=ib0` conflicts in `CMDaemon` (keep `BOOTIF` on `eth0` while setting `provisioninginterface` to `ib0`) |
 
+Choose the mode with scale in mind. Datagram mode keeps Queue Pair state flat per node, while connected mode grows with the square of the node count.
+
 ### 5.3 InfiniBand for AI storage and fabric alternatives
 
-During massive training runs, checkpoint saves and dataset reads can stall GPUs if storage traffic bounces through host CPU memory or competes with TCP retransmission timers. Architects must also weigh native InfiniBand against Ethernet RoCEv2, HPE Slingshot, and emerging Ultra Ethernet fabrics when designing storage and compute networks.
+During a long training run, checkpoint saves and dataset reads can stall your GPUs. That happens when storage traffic bounces through host CPU memory, or when it competes with TCP retransmission timers. When you design storage and compute networks, weigh native InfiniBand against Ethernet RoCEv2, HPE Slingshot and emerging Ultra Ethernet fabrics.
 
-High-performance storage systems such as NVMe over RDMA, Lustre, IBM Storage Scale, BeeGFS, WekaFS, and VAST place storage capsules directly inside RDMA Queue Pair payloads. When combined with NVIDIA GPUDirect Storage, the storage adapter DMAs checkpoints directly between NVMe drives and pinned GPU memory without touching host CPU bounce buffers.
+High-performance storage systems such as NVMe over RDMA, Lustre, IBM Storage Scale, BeeGFS, WekaFS and VAST place storage capsules directly inside RDMA Queue Pair payloads. Combine that with NVIDIA GPUDirect Storage, and the storage adapter moves checkpoints straight between NVMe drives and pinned GPU memory. The host CPU bounce buffers are skipped.
+
+The block below lists the ports and paths that storage traffic uses.
 
 ```text
 # NVMe-o-RDMA protocol constants and GPUDirect Storage (GDS) registration path:
@@ -419,6 +463,10 @@ RoCEv2 ports    : UDP port 4420 (RDMA CM negotiation) and UDP port 4791 (NVMe ca
 Native IB path  : NVMe capsules (SQE/CQE + SGL descriptors mapped 1:1 to RDMA QPs) sit directly inside BTH/RETH payload without IP/UDP headers
 GDS zero-copy   : cudaMalloc + cuFileBufRegister pins GPU HBM memory for direct NIC/HCA DMA
 ```
+
+Notice that the native IB path carries NVMe capsules with no IP or UDP headers at all.
+
+The table compares the options on the characteristics that matter for this decision.
 
 | Characteristic | `(P)NFS` | `NVMe-o-TCP` | `NVMe-o-RDMA` (`RoCEv2`) | Native InfiniBand | HPE Slingshot |
 |---|---|---|---|---|---|
@@ -429,15 +477,17 @@ GDS zero-copy   : cudaMalloc + cuFileBufRegister pins GPU HBM memory for direct 
 | **400G / 800G / 1.6T support** | Yes | Yes | Yes | Yes (NDR `400G`, XDR `800G`, GDR `1.6T`) | `200G` / `400G` Cassini |
 | **Vendor ecosystem and API** | Multi-vendor POSIX | Multi-vendor Ethernet | Multi-vendor Ethernet (`rdma-core` verbs) | Single-vendor (NVIDIA) native IB verbs | Ethernet-compatible; uses `libfabric` (OFI wrapper overhead vs raw IB verbs) |
 
+The scale row sets the limit for a single InfiniBand subnet. Beyond about 48,000 nodes, you need routers. Compare the lossless and scale rows first, since they decide whether one subnet can hold your cluster.
+
 ---
 
 ## Commands and configurations that matter
 
-All commands below are marked `(untested here)` and show the standard production workflow on Linux hosts with `rdma-core` and NVIDIA Base Command Manager.
+Every command in this section is marked `(untested here)`. The commands show a standard production workflow on Linux hosts that run `rdma-core` and NVIDIA Base Command Manager.
 
 ### 1. Local HCA and port state inspection: `ibstat`, `ibstatus`, and `ibdev2netdev` `(untested here)`
 
-When a node drops out of a job, operators often misread LID values because `ibstat` prints Base LID and SM LID in decimal. By contrast, `ibstatus` prints the exact same numbers in hexadecimal. Always check both the physical link state and logical port state. Then run `ibdev2netdev` to see which RDMA adapter maps to `eth0` versus `ib0`, and run `ofed_info -s` to check the installed OFED version.
+When a node drops out of a job, the LID values can mislead you. `ibstat` prints Base LID and SM LID in decimal, while `ibstatus` prints the same numbers in hexadecimal. Check both the physical link state and the logical port state every time. Then run `ibdev2netdev` to see which RDMA adapter maps to `eth0` and which maps to `ib0`. Run `ofed_info -s` to check the installed OFED version.
 
 ```text
 # (untested here) — Decimal vs hexadecimal LID equivalents on dual-port MT4113 (Connect-IB, 56 Gb/sec 4X FDR):
@@ -496,11 +546,15 @@ mlx5_0 port 1 ==> eth0 (Up)
 mlx5_1 port 1 ==> ib0 (Up)
 ```
 
+Compare the two outputs. Port 1 reads 913 in one tool and 0x391 in the other, and both mean the same LID.
+
 ### 2. Node and Subnet Administration queries: `smpquery`, `saquery`, `ibping`, `ibnetdiscover`, and `ibdiagnet` `(untested here)`
 
-When a switch counter alert reports a numeric LID, you need to map that temporary LID back to a server hostname and persistent hardware GUID. You also need to know whether the Subnet Manager's cached database still matches the live hardware on the wire.
+A switch counter alert gives you a numeric LID. You need to map that temporary LID back to a server hostname and a persistent hardware GUID. You also need to know whether the Subnet Manager's cached database still matches the live hardware on the wire.
 
-Run `smpquery` to send a direct management packet on Virtual Lane fifteen to the node itself. Compare its output with `saquery`, which reads the Subnet Manager's Subnet Administration database. If `smpquery` succeeds while `saquery` returns a stale hostname or times out, the Subnet Manager is stalled or out of sync with the fabric.
+Start with `smpquery`. It sends a direct management packet on Virtual Lane fifteen to the node itself. Next, compare its answer with `saquery`, which reads the Subnet Manager's Subnet Administration database. If `smpquery` succeeds while `saquery` returns a stale hostname or times out, the Subnet Manager is stalled or out of sync with the fabric.
+
+The commands below resolve one LID, then test the management layer and the full topology.
 
 ```text
 # (untested here) — Use -C <ca_name> -P <port_num> (ports start at 1) to select local HCA port
@@ -538,11 +592,13 @@ $ ibnetdiscover > /tmp/ibnetdiscover.topology
 $ ibdiagnet -o /tmp/ibdiagnet_out
 ```
 
+Run the discovery commands at the end when you need the full topology, not a single port.
+
 ### 3. Physical counters, `PortXmitWait`, and optical transceiver DOM: `perfquery`, `ibqueryerrors`, and `mlxlink` `(untested here)`
 
-During a live job slowdown, clearing hardware error counters with `perfquery -R` or `ibqueryerrors -k` wipes out the historical baseline. That reset blinds every other engineer investigating the outage. Instead, query cumulative counters non-destructively and inspect optical transceiver diagnostics with `mlxlink`.
+During a live slowdown, it is tempting to clear the error counters with `perfquery -R` or `ibqueryerrors -k`. Don't. That reset wipes out the historical baseline and blinds every other engineer investigating the outage. Query the cumulative counters without resetting them, and inspect optical transceiver diagnostics with `mlxlink`.
 
-Use `perfquery` to read sixty-four-bit port counters from any LID or GUID in the subnet from a single management node. Then run `mlxlink` to inspect per-lane bit error rates, clock and data recovery lock, module temperature, supply voltage, laser bias current, and optical power levels.
+From one management node, `perfquery` reads sixty-four-bit port counters from any LID or GUID in the subnet. Then `mlxlink` shows you per-lane bit error rates, clock and data recovery lock, module temperature, supply voltage, laser bias current and optical power levels.
 
 ```text
 # (untested here)
@@ -605,9 +661,11 @@ Rx Power Current [dBm]          : 0,0,0,0 [-14..6]
 Tx Power Current [dBm]          : 0,0,0,0 [-12..6]
 ```
 
+The `Raw Physical Errors Per Lane` and `Rx Power Current [dBm]` lines are the ones the failure section uses to find a dead lane.
+
 ### 4. NVIDIA Base Command Manager `mlxconfig`, Subnet Manager, and `ib0` setup `(untested here)`
 
-Manual adapter firmware changes or ad-hoc `ib0` IP edits on individual compute nodes get overwritten the next time a cluster image reboots. In NVIDIA Base Command Manager, declare persistent `mlxconfig` parameters, redundant Subnet Manager roles, and `ibnet` interface addresses centrally in `cmsh`.
+If you change adapter firmware by hand, or edit `ib0` IP addresses on individual compute nodes, those edits are overwritten the next time the cluster image reboots. In NVIDIA Base Command Manager, you declare these settings centrally in `cmsh` instead. That covers persistent `mlxconfig` parameters, redundant Subnet Manager roles, and `ibnet` interface addresses.
 
 ```text
 # (untested here) — Inspect and declare persistent mlxconfig policy in BCM cmsh
@@ -631,11 +689,15 @@ commit" | cmsh -x
 [basecm11->device[node001]->interfaces[ib0]]% set connectedmode yes; commit
 ```
 
+The Subnet Manager comment recommends two Subnet Managers per subnet, one active and one passive. Set connected mode only on nodes that need the 64 KB MTU, since it trades Queue Pair memory for throughput.
+
 ---
 
 ## How it fails
 
-When an InfiniBand job hangs or runs slowly, walk the seven-layer bottom-up diagnostic ladder from hardware inventory and physical link state up through Subnet Manager LID assignment, P_Key and GID routing, host verbs, GPU locality, and application collectives. Stop at the first layer that diverges from baseline.
+When an InfiniBand job hangs or runs slowly, start at the bottom and work upward. Walk the seven-layer diagnostic ladder, from hardware inventory and physical link state, through Subnet Manager LID assignment, P_Key and GID routing, and host verbs, to GPU locality and application collectives. Stop at the first layer that diverges from baseline.
+
+The table lists six failure modes. Each row gives the symptom you will see, the root cause, and the fix.
 
 | Failure mode | Exact CLI symptom and telemetry signature | Root cause | Production resolution |
 |---|---|---|---|
@@ -646,13 +708,17 @@ When an InfiniBand job hangs or runs slowly, walk the seven-layer bottom-up diag
 | **5. GID Index Drift and Mutable LID Inventory Corruption** | After a reboot or firmware update, an operations script maps `LID 12` to the wrong server, or a workload hardcoded with `-g 3` (GID index `3`) works on half the cluster and fails with path or RTR errors on the rest. | LIDs are mutable runtime addresses reassigned by the SM; `show_gids` table ordering (`v1`/`v2`, `fe80::` vs IPv4-mapped `::ffff:0a01:0203`) shifts with IPoIB, VFs, or boot order. | Key CMDB inventory strictly on persistent `64`-bit PortGUID, enriching LID dynamically via `saquery` or `smpquery`, and select GIDs by semantic value and subnet policy rather than a blind index. |
 | **6. Queue Pair RTR Rejection and `IBV_WC_WR_FLUSH_ERR` Cascades** | Application logs hundreds of `IBV_WC_WR_FLUSH_ERR` completions (`wr_id=1044..1046`) or fails startup with `Failed to modify QP to RTR`. | `Failed to modify QP to RTR` occurs when requested path MTU (`4096`) exceeds a port's `active_mtu` (`2048`) or PSN/QPN/SL mismatch. Flush errors are secondary noise caused by one primary error (`wr_id=1043` `IBV_WC_RETRY_EXC_ERR`, `vendor_err=0x81`) transitioning the QP to `ERR`. | Always find and diagnose the first non-SUCCESS CQE (`wr_id=1043`: remote process crash, empty receive queue RNR, or broken path) and ignore subsequent `WR_FLUSH_ERR` entries. |
 
+If you see a symptom in the table, match the row before you change any setting. Flush errors look urgent, but they are secondary noise that follows one primary failure. When you see a cascade like row 6, find the first non-SUCCESS completion and check the layer it points to.
+
 ---
 
 ## Hands-on lab
 
-This chapter includes a deterministic, self-checking Python simulation in `code/part12/infiniband_fundamentals.py` and `code/part12/infiniband_fundamentals_lab.py`. It models InfiniBand link generations from SDR to GDR, LID and LMC address ranges, GIDs, directed-route SMPs, P_Key membership rules, twenty-byte IPoIB addresses, native frame overhead, Virtual Lane credit math, and the diagnostic decision tree.
+This chapter ships a deterministic, self-checking Python simulation. You will find it in `code/part12/infiniband_fundamentals.py` and `code/part12/infiniband_fundamentals_lab.py`. The simulation models InfiniBand link generations from SDR to GDR. It also models LID and LMC address ranges, GIDs, directed-route SMPs, P_Key membership rules, twenty-byte IPoIB addresses, native frame overhead, Virtual Lane credit math and the diagnostic decision tree.
 
 ### Run the lab (tested here)
+
+Run the lab with the command below. It prints one line per check, and the last line gives the summary.
 
 ```bash
 python3 -B code/part12/infiniband_fundamentals_lab.py
@@ -692,9 +758,11 @@ python3 -B code/part12/infiniband_fundamentals_lab.py
 Summary: 28 passed, 0 failed (total 28)
 ```
 
+The summary should show zero failures. Any line that does not read `[PASS]` tells you which check to reread.
+
 ### Live cluster workflow on Nebius GPU or InfiniBand hosts `(untested here)`
 
-When running the four operational labs on a live multi-node InfiniBand testbed, follow this sequence:
+On a live multi-node InfiniBand testbed, work through the four operational labs in order. The table lists each lab, the bundle it writes to, and the commands to run.
 
 | Lab module | Target directory / bundle | Commands to execute `(untested here)` |
 |---|---|---|
@@ -703,27 +771,32 @@ When running the four operational labs on a live multi-node InfiniBand testbed, 
 | **Lab 03 — Inspect Subnet Routing and Counters** | `volume08-lab03` | Record `ibroute <switch-lid-or-guid>` forwarding entries and compare `ibqueryerrors` and `perfquery` before and after a controlled load window to correlate `PortXmitWait` with spine path utilization. |
 | **Lab 04 — Troubleshoot a Degraded Path** | `volume08-lab04` | Inject a safe, process-scoped reversible fault such as remote NUMA binding (`numactl --cpunodebind=<remote-node> --membind=<remote-node>`) or nonpreferred rail selection, prove which layer diverges first, restore the binding, and verify baseline recovery. |
 
+Lab 01 captures the inventory, and you can compare it with the other labs later. Lab 04 injects a fault, proves which layer diverges, and checks that the baseline comes back.
+
 ---
 
 ## Common first mistakes
 
-1. **Treating an active port or green cable LED as proof that the link is healthy:** Physical link up only proves electrical symbol lock while the port may still sit in the initializing state with a Base LID of zero. Similarly, an active logical state passes even when a four-lane NDR port silently trains down to one lane at one hundred gigabits per second. Always check physical state, logical state, negotiated rate, lane width, and error-counter trends together.
-2. **Keying inventory or monitoring alerts on LIDs instead of PortGUIDs:** LIDs are runtime forwarding addresses owned by the Subnet Manager. An SM restart, cable swap, or LMC change can renumber LIDs across the subnet, so always anchor inventory on the persistent hardware PortGUID.
-3. **Hardcoding a GID table index across heterogeneous or containerized nodes:** GID table indices depend on IPoIB, SR-IOV virtual functions, and interface bring-up order. Select GIDs by verified address context or subnet prefix rather than a blind integer index.
-4. **Forgetting the high membership bit in sixteen-bit P_Keys:** Configuring two compute nodes as limited members instead of full members lets both nodes talk to a full-member management or storage node. This masks the bug during basic health checks while blocking all compute-to-compute RDMA collectives.
-5. **Clearing fabric counters during an active incident:** Resetting counters with `perfquery -R` destroys the baseline needed to compute rate-of-change deltas. It also blinds other engineers or monitoring collectors investigating the same outage.
-6. **Chasing hundreds of flush completions instead of the first failing CQE:** Once a Queue Pair encounters a single transport failure such as `IBV_WC_RETRY_EXC_ERR`, it transitions to the error state. It then flushes all subsequent queued Work Requests with `IBV_WC_WR_FLUSH_ERR`, so only the first non-success CQE indicates the root cause.
+1. Treating an active port or a green cable LED as proof that the link is healthy is the first trap. A physical link that is up only proves electrical symbol lock. The port may still sit in the initializing state with a Base LID of zero. Similarly, a logical state can read active while a four-lane NDR port silently trains down to one lane at one hundred gigabits per second. Check physical state, logical state, negotiated rate, lane width and error-counter trends together.
+2. Keying inventory or alerts on LIDs instead of PortGUIDs causes trouble after the first renumbering. LIDs are runtime forwarding addresses owned by the Subnet Manager. An SM restart, cable swap or LMC change can renumber LIDs across the subnet. Anchor inventory on the persistent hardware PortGUID instead.
+3. Hardcoding a GID table index across mixed or containerized nodes breaks in ways that are hard to spot. GID table indices depend on IPoIB, SR-IOV virtual functions and interface bring-up order. Select the GID by verified address context or subnet prefix, not by a blind integer index.
+4. Forgetting the high membership bit in a sixteen-bit P_Key is easy to do. Two compute nodes configured as limited members can still reach a full-member management or storage node. That masks the bug during basic health checks, while every compute-to-compute RDMA collective stays blocked.
+5. Clearing fabric counters during an active incident destroys evidence. Resetting with `perfquery -R` removes the baseline you need to compute rate-of-change deltas. It also blinds other engineers and monitoring collectors investigating the same outage.
+6. Chasing hundreds of flush completions instead of the first failing CQE wastes time. Once a Queue Pair hits a single transport failure such as `IBV_WC_RETRY_EXC_ERR`, it moves to the error state. It then flushes every later queued Work Request with `IBV_WC_WR_FLUSH_ERR`. Only the first non-success CQE points to the root cause.
+
+If you see one of these symptoms in production, check the failure table above first. Most of these mistakes show up as one of its failure modes.
 
 ---
 
 ## Exercises
 
-1. **InfiniBand Signaling Generations and Encoding Overhead:**
-   Use `compute_ib_link_bandwidth` and the generation table in Section 2.1 to answer both parts.
+Work through these in order, and use the functions named in each part to check your numbers.
+
+1. Use `compute_ib_link_bandwidth` and the generation table in Section 2.1 to answer both parts.
    - Part A: State the raw lane rate, line encoding scheme, exact encoding efficiency percentage, and effective four-lane and twelve-lane bandwidths for QDR through GDR.
    - Part B: Explain why `ibstat` displays fifty-six gigabits per second on an FDR port when its effective user data rate is lower. Also calculate the effective bandwidth of a four-lane NDR port that degrades to single-lane width.
 
-2. **Sixteen-bit LID Address Space and LMC Multipath Range Calculation:**
+2. Work out the sixteen-bit LID address space and the LMC multipath ranges.
    - Part A: State the exact hexadecimal and decimal boundaries of the four LID regions. Derive why a single InfiniBand subnet is limited to forty-nine thousand one hundred fifty-one unicast ports and switches.
    - Part B: Using `compute_lmc_lid_range`, calculate the number of assigned LIDs, the exact LID list, and whether low-bit alignment holds for the four test cases below.
 
@@ -734,7 +807,7 @@ Case 3 : Base LID = 16,          LMC = 3
 Case 4 : Base LID = 13,          LMC = 2
 ```
 
-3. **Global Identifier Formatting and Directed-Route SMP Traversal:**
+3. Format a Global Identifier and trace a directed-route SMP.
    - Part A: Construct the full GID string and state the routing scope for the two PortGUID and prefix pairs below. Explain how the multicast prefix and IPv4-mapped GID shown below are used.
    - Part B: Trace `simulate_directed_route_smp` across three uninitialized switches on VL15 for the port lists below. Give the direction bit, hop count, hop pointer, initial path, and return path at the target and back at the SM.
 
@@ -744,21 +817,20 @@ Part A inputs : PortGUID 0x08c0eb0300f1a2c3 with 0xFE80::/64 vs PortGUID 0x00123
 Part B inputs : egress_ports=[4, 11, 2], ingress_ports_on_switches=[1, 7, 3]
 ```
 
-4. **Partition Key Membership Matrix and Twenty-Byte IPoIB Addressing:**
+4. Work through the Partition Key membership matrix and decode a twenty-byte IPoIB address.
    - Part A: Using `evaluate_pkey_communication`, determine whether communication is allowed and state the exact hardware reason for each pair in the block below.
-   - Part B: Explain why `ifconfig` fails on `ib0` while `ip addr` succeeds, decode the twenty-byte IPoIB hardware address for the parameters below, and compare datagram mode with connected mode in BCM.
+   - Part B: Explain why `ifconfig` fails on `ib0` while `ip addr` succeeds, decode the twenty-byte IPoIB hardware address for the parameters below, and compare datagram mode with connected mode in Base Command Manager.
 
 ```text
 Part A P_Key pairs : 0xffff <-> 0x7fff | 0x8021 <-> 0x8035 | 0x8021 <-> 0x0021 | 0x0021 <-> 0x0021 | 0x0000 <-> 0x8000
 Part B IPoIB inputs: flags = 0x80, QPN = 0x00012a, GID = fe80::08c0:eb03:00f1:a2c3
 ```
 
-5. **Native InfiniBand Frame Overhead and Virtual Lane Credit Math:**
+5. Work out the native frame overhead and the Virtual Lane credit math.
    - Part A: Using `compute_ib_frame_overhead` for a four-kilobyte payload, compute the framing overhead, total wire bytes, and payload efficiency percentage for an intra-subnet SEND, an intra-subnet RDMA_WRITE, and an inter-subnet routed RDMA_WRITE.
    - Part B: Using `evaluate_cbfc_vl_transmission`, calculate how many credits on VL1 are required to transmit a `4,122`-byte frame. State how many buffer bytes one hundred credits represent, and what happens when advertised credits equal one hundred versus fifty.
 
-6. **Production Telemetry Triage:**
-   Diagnose the exact root cause and next command for each observation in the block below:
+6. Triage the four production observations in the block below. For each one, diagnose the exact root cause and name the next command.
 
 ```text
 Case A: mlx5_2 shows Physical state: LinkUp, Rate: 400, State: Initializing, Base lid: 0, SM lid: 0.
@@ -767,18 +839,22 @@ Case C: smpquery nodedesc 914 returns n51001 HCA-1, whereas saquery 914 returns 
 Case D: ./rc_pingpong -d mlx5_0 -g 0 prints Failed to modify QP to RTR, while another node pair logs wr_id=1042 IBV_WC_SUCCESS, wr_id=1043 IBV_WC_RETRY_EXC_ERR (vendor_err=0x81), and wr_id=1044..1046 IBV_WC_WR_FLUSH_ERR.
 ```
 
+If you are short on time, Exercise 6 ties the chapter's failure modes together.
+
 ---
 
 ## Interview angles
 
+Use these as practice. Each strong answer names the mechanism you should be able to explain.
+
 1. **"A port's physical LED is solid green and `ibstat` shows physical link up at four hundred gigabits per second, yet no RDMA or IPoIB traffic can use it. Why?"**
-   - **Strong answer:** InfiniBand separates electrical lane negotiation from Subnet Manager admission. Immediately after reaching `LinkUp`, the port enters the initializing state with a Base LID and SM LID of zero, where only VL15 Subnet Management Packets are permitted. Until an active Master Subnet Manager discovers the port, assigns a unicast LID, programs switch Linear Forwarding Tables, and transitions the logical state to active, application Queue Pairs cannot transmit.
+   - **Strong answer:** Lane negotiation and Subnet Manager admission are two separate steps. Right after the port reaches `LinkUp`, it sits in the initializing state with a Base LID and SM LID of zero. Only VL15 Subnet Management Packets pass in that state. The port stays there until an active Master Subnet Manager discovers it, assigns a unicast LID, programs the switch Linear Forwarding Tables, and moves the logical state to active. Until then, application Queue Pairs cannot transmit.
 2. **"Why should cluster inventories anchor on GUIDs instead of LIDs, and why can two nodes with the same P_Key partition number still fail to communicate?"**
-   - **Strong answer:** Sixty-four-bit PortGUIDs are persistent hardware identities burned into adapter firmware. By contrast, sixteen-bit LIDs are mutable runtime forwarding addresses that the Subnet Manager can reassign after a sweep or LMC change. In a sixteen-bit P_Key, the lower fifteen bits hold the Partition ID and bit fifteen is the full-membership flag. Two nodes configured as limited members of the same partition can both reach a full member, but hardware silently drops packets sent directly between two limited members.
+   - **Strong answer:** A PortGUID is a sixty-four-bit hardware identity burned into adapter firmware, so it stays put. A LID is a sixteen-bit runtime address. The Subnet Manager can reassign it after a sweep or an LMC change, so it is a poor key for inventory. On a P_Key, the lower fifteen bits hold the Partition ID, and bit fifteen is the full-membership flag. Two limited members of the same partition can both reach a full member. Packets sent directly between those two limited members, however, are silently dropped by hardware.
 3. **"How does InfiniBand's lossless flow control differ from Ethernet's PFC, and how do you prove congestion on a lossless InfiniBand link when packet drops and symbol errors are zero?"**
-   - **Strong answer:** Ethernet PFC is a reactive pause mechanism triggered after a receive buffer crosses a threshold, requiring headroom buffers for in-flight cable data. InfiniBand Credit-Based Flow Control is a proactive link-by-link credit grant system across fifteen data Virtual Lanes where each credit represents sixty-four bytes of downstream receive buffer. Because a port never transmits without credits, congestion appears as rising `PortXmitWait` ticks in `perfquery` and a sharp drop in average bandwidth versus peak bandwidth in `ib_write_bw`.
+   - **Strong answer:** Ethernet PFC is reactive. It pauses traffic after a receive buffer crosses a threshold, and it needs headroom buffers for the data still in flight on the cable. InfiniBand Credit-Based Flow Control is proactive. It grants credits link by link across fifteen data Virtual Lanes, and each credit stands for sixty-four bytes of downstream receive buffer. A port never transmits without credits. So congestion shows up as rising `PortXmitWait` ticks in `perfquery`, and as a sharp gap between average and peak bandwidth in `ib_write_bw`.
 4. **"How does the Subnet Manager configure a brand-new switch fabric when no switch has a forwarding table and every port has a LID of zero?"**
-   - **Strong answer:** The Subnet Manager uses directed-route Subnet Management Packets addressed to the Permissive LID on Virtual Lane fifteen. Outbound requests carry an explicit array of switch egress port numbers and a hop pointer that increments at each hop while switches record the arrival port into a return path array. The target flips the direction bit to one and sends the response back along the recorded return path as each switch decrements the hop pointer down to zero.
+   - **Strong answer:** The Subnet Manager sends directed-route Subnet Management Packets to the Permissive LID on Virtual Lane fifteen. An outbound request carries an explicit array of switch egress port numbers. Its hop pointer increases at each hop, and each switch records the arrival port in a return path array. The target flips the direction bit to one. The reply then follows the recorded return path, and each switch decrements the hop pointer until it reaches zero.
 
 ---
 
@@ -786,10 +862,12 @@ Case D: ./rc_pingpong -d mlx5_0 -g 0 prints Failed to modify QP to RTR, while an
 
 <details><summary>**1. Why does network tail latency and jitter matter more for distributed AI training than average throughput?**</summary>
 
-Distributed AI collectives such as AllReduce, AllGather, and ReduceScatter synchronize all participating ranks at every step barrier. Because no rank can proceed until the slowest transfer finishes, a single delayed path or microsecond credit stall holds back the entire GPU group through synchronization amplification.
+Collectives such as AllReduce, AllGather and ReduceScatter make every rank wait at each step barrier. No rank can move on until the slowest transfer finishes. One delayed path, or one microsecond credit stall, therefore holds back the whole GPU group.
 </details>
 
 <details><summary>**2. What are the raw lane rates, line encodings, and effective 4x/12x bandwidths for SDR, DDR, QDR, FDR10, FDR, EDR, HDR, NDR, XDR, and GDR?**</summary>
+
+Each row gives the raw lane rate first, then the effective 4x and 12x bandwidth. The first group uses 8b/10b encoding.
 
 ```text
 8b/10b (80.0% eff)   : SDR 2.5G raw -> 8G (4x), 24G (12x) | DDR 5.0G raw -> 16G (4x), 48G (12x) | QDR 10.0G raw -> 32G (4x), 96G (12x)
@@ -801,15 +879,17 @@ Distributed AI collectives such as AllReduce, AllGather, and ReduceScatter synch
 
 <details><summary>**3. What is the difference between Physical state LinkUp and logical State Active in ibstat?**</summary>
 
-Physical state `LinkUp` means the physical lanes completed electrical or optical training across polling, configuration, and link up. Logical state `Active` means the Subnet Manager has discovered the port, assigned a Base LID, programmed switch forwarding tables, and enabled application data traffic across down, initialize, armed, and active. In the initialize state, only VL15 SMPs can pass.
+`LinkUp` in physical state means the lanes finished electrical or optical training, passing through polling, configuration and link up. `Active` in logical state means the Subnet Manager has discovered the port, assigned a Base LID, programmed the switch forwarding tables and enabled data traffic. The logical state moves through down, initialize, armed and active on the way. In the initialize state, only VL15 SMPs can pass.
 </details>
 
 <details><summary>**4. How do NodeGUID, PortGUID, and SystemImage GUID differ across HCAs and switches?**</summary>
 
-All three are sixty-four-bit manufacturer-assigned hardware identifiers. Every HCA has one NodeGUID, a distinct PortGUID for each physical port, and a SystemImage GUID per independent adapter firmware instance. An InfiniBand switch has one NodeGUID and uses the same PortGUID across all switch ports managed via virtual Port 0, while all elementary switch chips inside a modular director chassis share a single SystemImage GUID.
+All three are sixty-four-bit identifiers that the manufacturer assigns. Every HCA has one NodeGUID. It also has a distinct PortGUID for each physical port, and a SystemImage GUID for each independent adapter firmware instance. A switch has one NodeGUID and uses the same PortGUID on all its switch ports, managed through virtual Port 0. In a modular director chassis, every elementary switch chip shares one SystemImage GUID.
 </details>
 
 <details><summary>**5. How is the 16-bit LID space partitioned, and why is a single InfiniBand subnet limited to 49,151 unicast devices?**</summary>
+
+The LID space splits into four regions, shown below.
 
 ```text
 0x0000 (0)                  : Reserved
@@ -821,25 +901,27 @@ All three are sixty-four-bit manufacturer-assigned hardware identifiers. Every H
 
 <details><summary>**6. How does LID Mask Control assign multiple LIDs to a single port, and what alignment rule applies to Base LID?**</summary>
 
-With an LMC value from zero to seven, the lower LMC bits of Base LID must be zero. The port receives $2^\{\text`{LMC}`}$ consecutive LIDs from Base LID through $\text`{Base LID}` + 2^\{\text`{LMC}`} - 1$. For example, a Base LID of twelve with an LMC of two assigns four LIDs from twelve through fifteen, enabling multipath routing across parallel switch paths.
+With an LMC value from zero to seven, the lower LMC bits of Base LID must be zero. Here is the count: the port receives $2^\{\text`{LMC}`}$ consecutive LIDs, from Base LID through $\text`{Base LID}` + 2^\{\text`{LMC}`} - 1$. A Base LID of twelve with an LMC of two therefore gives four LIDs, from twelve through fifteen. Those four LIDs enable multipath routing across parallel switch paths.
 </details>
 
 <details><summary>**7. How is a 128-bit GID structured, and what are the scopes of the link-local, site-local, and multicast prefixes?**</summary>
 
-A Global Identifier is formatted as a standard IPv6 address whose lower sixty-four bits hold the PortGUID and upper sixty-four bits hold the GID prefix. Prefix `0xFE80::/64` is the mandatory link-local scope that never crosses routers, `0xFEC0::/64` is the site-local scope routable across InfiniBand routers within a site, and `0xFF00::/8` is the multicast prefix.
+A GID is a standard IPv6 address. Its lower sixty-four bits hold the PortGUID, and its upper sixty-four bits hold the GID prefix. The prefix `0xFE80::/64` is the mandatory link-local scope, and it never crosses routers. The prefix `0xFEC0::/64` is the site-local scope, which routers can carry within a site. The prefix `0xFF00::/8` marks multicast.
 </details>
 
 <details><summary>**8. How does a directed-route Subnet Management Packet traverse switches before LIDs and forwarding tables exist?**</summary>
 
-Sent on VL15 with the Permissive LID, an outbound SMP carries an initial path array of switch egress port numbers, a hop count, and a hop pointer. At each hop, the switch routes out the initial path port at the hop pointer, records the arrival port into the return path array, and increments the hop pointer. The target flips the direction bit to one, and switches route the reply back along the return path while decrementing the hop pointer to zero.
+Sent on VL15 with the Permissive LID, an outbound SMP carries three things: an initial path array of switch egress port numbers, a hop count and a hop pointer. At each hop, the switch sends the packet out the port the initial path names at the hop pointer. It records the arrival port in the return path array, then increments the hop pointer. The target flips the direction bit to one. The switches then send the reply back along the return path, decrementing the hop pointer to zero.
 </details>
 
 <details><summary>**9. How is a 16-bit Partition Key encoded, and why can full and limited members talk while two limited ports cannot communicate?**</summary>
 
-Bits zero through fourteen hold the fifteen-bit Partition ID, and bit fifteen (`0x8000`) is the membership bit where one indicates a Full Member and zero indicates a Limited Member. Hardware requires matching Partition IDs and at least one Full Member. Therefore `0x8021` to `0x0021` is allowed, whereas `0x0021` to `0x0021` is silently dropped.
+Bits zero through fourteen hold the fifteen-bit Partition ID. Bit fifteen, `0x8000`, is the membership bit. A one means Full Member, and a zero means Limited Member. Hardware needs matching Partition IDs and at least one Full Member. So `0x8021` to `0x0021` is allowed. By contrast, `0x0021` to `0x0021` is silently dropped.
 </details>
 
 <details><summary>**10. What are the sections and byte lengths of a native InfiniBand data frame?**</summary>
+
+Think of the frame as a stack, with the mandatory headers first.
 
 ```text
 LRH  (8 B, mandatory) : VL, SL, D-LID, S-LID, packet length
@@ -853,10 +935,12 @@ ICRC (4 B) + VCRC (2 B): 26 B base framing overhead (42 B with RETH, 82 B with G
 
 <details><summary>**11. How many Virtual Lanes does InfiniBand support, what is VL15, and how big is one Credit-Based Flow Control credit?**</summary>
 
-InfiniBand supports sixteen Virtual Lanes from VL0 through VL15. VL0 through VL14 carry user, storage, and AI data traffic mapped from Service Levels, while VL15 is dedicated exclusively to Subnet Management Packets. Each CBFC credit represents sixty-four bytes of downstream per-VL receive buffer space.
+InfiniBand has sixteen Virtual Lanes, numbered VL0 through VL15. VL0 through VL14 carry user, storage and AI traffic, which the Service Levels map onto them. VL15 belongs only to Subnet Management Packets. Each CBFC credit stands for sixty-four bytes of downstream per-VL receive buffer space.
 </details>
 
 <details><summary>**12. How many 64-byte CBFC credits are required to transmit a 4,122-byte intra-subnet InfiniBand packet on VL1?**</summary>
+
+Suppose a 4,122-byte frame needs to cross VL1. Divide the frame size by 64, then round up, and you get 65 credits.
 
 ```text
 Credits Required = ceil(4,122 / 64) = 65 credits (65 * 64 = 4,160 bytes reserved)
@@ -867,35 +951,37 @@ Credits Required = ceil(4,122 / 64) = 65 credits (65 * 64 = 4,160 bytes reserved
 
 <details><summary>**13. Why is an IPoIB link-layer hardware address 20 bytes long, what are its three fields, and why does ifconfig fail on it?**</summary>
 
-An IPoIB hardware address is twenty bytes long because it concatenates one byte of capability flags, three bytes for the twenty-four-bit Queue Pair Number, and sixteen bytes for the Port GID. Legacy `ifconfig` assumes a fixed six-byte Ethernet MAC address and truncates the twenty-byte IPoIB address. Modern `ip addr` and `ip link` commands display all twenty bytes properly.
+An IPoIB hardware address is twenty bytes because it joins three parts: one byte of capability flags, three bytes for the twenty-four-bit Queue Pair Number, and sixteen bytes for the Port GID. Legacy `ifconfig` assumes a six-byte Ethernet MAC address, so it truncates the twenty-byte address. Modern `ip addr` and `ip link` show all twenty bytes.
 </details>
 
 <details><summary>**14. How do IPoIB Datagram Mode and Connected Mode differ in transport type, maximum MTU, and cluster scalability?**</summary>
 
-Datagram mode uses Unreliable Datagram Queue Pairs, supports an MTU up to four kilobytes, and scales with $O(1)$ Queue Pair state because one UD QP communicates with all peers. Connected mode opens dedicated connected Queue Pairs per peer to support an MTU up to sixty-four kilobytes, trading $O(N^2)$ Queue Pair memory overhead for higher single-stream TCP throughput.
+Datagram mode uses Unreliable Datagram Queue Pairs and supports an MTU up to four kilobytes. Its Queue Pair state stays at $O(1)$, because one UD QP talks to all peers. Connected mode opens a dedicated connected Queue Pair per peer and supports an MTU up to sixty-four kilobytes. The price is $O(N^2)$ Queue Pair memory overhead, in exchange for higher single-stream TCP throughput.
 </details>
 
 <details><summary>**15. What are the states in the RDMA Queue Pair state machine, and what causes Failed to modify QP to RTR?**</summary>
 
-The Queue Pair states progress through reset, init, ready to receive, ready to send, send queue drain, and error. The init-to-RTR transition binds remote path attributes including LID or GID, QPN, starting PSN, SL, and path MTU. Requesting a four-kilobyte path MTU when a peer port's `active_mtu` in `ibv_devinfo -v` is two kilobytes causes the kernel verbs provider to reject the RTR transition.
+A Queue Pair moves through reset, init, ready to receive, ready to send, send queue drain and error. The init-to-RTR step binds the remote path attributes: LID or GID, QPN, starting PSN, SL and path MTU. If you request a four-kilobyte path MTU, but the peer port's `active_mtu` in `ibv_devinfo -v` is two kilobytes, the kernel verbs provider rejects the RTR transition.
 </details>
 
 <details><summary>**16. In a Completion Queue poll showing wr_id 1042 SUCCESS, wr_id 1043 RETRY_EXC_ERR, and wr_id 1044..1046 WR_FLUSH_ERR, which entry is the root cause?**</summary>
 
-Work Request `wr_id=1043` (`IBV_WC_RETRY_EXC_ERR`) is the root cause, showing that the HCA exhausted its transport retry limit waiting for an acknowledgment from the remote peer. Once that request fails, the Queue Pair transitions to the error state and automatically flushes every subsequent queued Work Request with `IBV_WC_WR_FLUSH_ERR`.
+The root cause is Work Request `wr_id=1043`, which returned `IBV_WC_RETRY_EXC_ERR`. The HCA used up its transport retry limit while it waited for an acknowledgment from the remote peer. Once that request fails, the Queue Pair moves to the error state. It then flushes every later queued Work Request with `IBV_WC_WR_FLUSH_ERR`.
 </details>
 
 <details><summary>**17. What is the difference between smpquery and saquery, and what does a discrepancy between them prove?**</summary>
 
-`smpquery` sends a direct VL15 Subnet Management Packet to the target node and reads the live answer from the node's own HCA. `saquery` queries the Subnet Manager's cached Subnet Administration database. If `smpquery` succeeds while `saquery` fails or returns different node records, the Subnet Manager is stalled, unreachable, or holding stale sweep data.
+`smpquery` sends a direct VL15 Subnet Management Packet to the target node, so the answer comes live from the node's own HCA. `saquery` reads the cached Subnet Administration database on the Subnet Manager. If `smpquery` succeeds while `saquery` fails or returns different node records, the Subnet Manager is stalled, unreachable or holding stale sweep data.
 </details>
 
 <details><summary>**18. How do you distinguish a physical layer or cable error from lossless credit backpressure using perfquery and mlxlink?**</summary>
 
-A physical or cable fault produces rising symbol error, link down, or link recovery counters in `perfquery`, alongside high raw BER or out-of-spec optical power in `mlxlink`. Lossless credit backpressure shows zero physical symbol errors while `perfquery` reports a large `PortXmitWait` delta, proving the port waited for downstream sixty-four-byte CBFC credits.
+A physical or cable fault shows rising symbol error, link down or link recovery counters in `perfquery`. It also shows high raw BER or out-of-spec optical power in `mlxlink`. Credit backpressure looks different. Symbol errors stay at zero, while `perfquery` reports a large `PortXmitWait` delta. That delta shows the port waited for downstream sixty-four-byte CBFC credits.
 </details>
 
 <details><summary>**19. In ibstat vs ibstatus, why does Port 1 show Base lid 913 and SM lid 43 in ibstat but 0x391 and 0x2b in ibstatus?**</summary>
+
+The two tools print the same numbers in different bases.
 
 ```text
 They are the exact same numbers printed in different bases:
@@ -906,7 +992,7 @@ Port 2 : Base lid 1361 (decimal in ibstat) == 0x551 (hex in ibstatus) | SM lid 6
 
 <details><summary>**20. How does NVMe-o-RDMA discovery identify InfiniBand versus RoCEv2 and iWARP, and how does HPE Slingshot differ from InfiniBand?**</summary>
 
-During NVMe-oF discovery over TCP port `8009`, the controller exchanges `RDMA_PRTYPE` values of `02` for InfiniBand, `04` for RoCEv2, and `05` for iWARP. HPE Slingshot is an HPC interconnect with a centralized Fabric Manager, dragonfly topologies, and Ethernet compatibility, accessed via the `libfabric` abstraction layer rather than raw InfiniBand verbs.
+During NVMe-oF discovery over TCP port `8009`, the controller exchanges `RDMA_PRTYPE` values. The value `02` means InfiniBand, `04` means RoCEv2, and `05` means iWARP. HPE Slingshot is an HPC interconnect. It uses a centralized Fabric Manager and dragonfly topologies, and it stays Ethernet compatible. You reach it through the `libfabric` abstraction layer, not through raw InfiniBand verbs.
 </details>
 
 ---
@@ -936,4 +1022,3 @@ Not verified on live hardware (marked untested here):
 ```
 
 The lab script was executed in this build environment, while all live fabric commands above remain untested on physical switches and adapters.
-
