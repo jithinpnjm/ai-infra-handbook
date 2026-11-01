@@ -22,27 +22,31 @@ lab_venue: "Nebius GPU"
 
 ## Why this matters for AI infrastructure
 
-Across Chapters 6.1 through 6.30, you have examined every subsystem of an AI supercomputer in isolation: MPI collectives and NUMA topology, `slurmctld` and `slurmdbd` scheduling policy, `gres.conf` and `cgroup.conf` v2 device isolation, Pyxis and Enroot rootless containers, NHC prolog/epilog gates, Lustre and WekaFS parallel storage, PXE/iPXE and Warewulf/BCM provisioning, LDAP/SSSD identity and `sacctmgr` TRES quotas, Prometheus exporters and Restic backup pipelines, HPL/IOR/NCCL acceptance benchmarks, and 130 kW liquid-cooled racks.
+Across Chapters 6.1 through 6.30, you have studied each part of an AI supercomputer on its own. You learned MPI collectives and NUMA topology. You learned `slurmctld` and `slurmdbd` scheduling policy, and `gres.conf` and `cgroup.conf` v2 device isolation. You also covered Pyxis and Enroot rootless containers, NHC prolog/epilog gates, Lustre and WekaFS parallel storage, and PXE/iPXE and Warewulf/BCM provisioning. Then came LDAP/SSSD identity with `sacctmgr` TRES quotas, Prometheus exporters with Restic backup pipelines, HPL/IOR/NCCL acceptance benchmarks, and 130 kW liquid-cooled racks.
 
-In production—and in a senior infrastructure architect interview—none of those layers live in separate chapters. When a new pallet of GPU servers arrives on the loading dock, or when an interviewer hands you a marker and asks you to design a 128-node training factory from bare metal to a running `torchrun` job, the decisive skill is **dependency order and single-source-of-truth automation**. Install the scheduler before identity or shared storage is ready, and jobs will launch only to crash immediately with UID mismatches or missing checkpoints. Hand-edit `slurm.conf`, `dnsmasq.conf`, and `/etc/passwd` independently across nodes, and configuration drift will silently strand GPUs within weeks.
+In production, and in a senior infrastructure architect interview, none of those layers live in separate chapters. Suppose a new pallet of GPU servers arrives on the loading dock. Or an interviewer hands you a marker and asks you to design a 128-node training factory, from bare metal to a running `torchrun` job. The skill that matters is **dependency order and single-source-of-truth automation**. Install the scheduler before identity or shared storage is ready, and jobs launch only to crash immediately with UID mismatches or missing checkpoints. Hand-edit `slurm.conf`, `dnsmasq.conf` and `/etc/passwd` independently on each node, and configuration drift quietly strands GPUs within weeks.
 
-This capstone joins every tool built in Part 6 into a single deterministic pipeline driven from four CSV and batch files in `code/part06/capstone_inputs/`, verifies the generated artifacts with `code/part06/capstone_demo_lab.py`, defines the ten-gate acceptance and burn-in protocol required before handing a cluster to researchers, and walks through three realistic senior whiteboard scenarios line by line.
+This capstone joins every tool built in Part 6 into one deterministic pipeline. The pipeline runs from four CSV and batch files in `code/part06/capstone_inputs/`. You will verify the generated artifacts with `code/part06/capstone_demo_lab.py`. Then you will work through the ten-gate acceptance and burn-in protocol that every cluster must pass before it goes to researchers. The chapter ends with three realistic senior whiteboard scenarios, which it walks through line by line.
 
 ## Prerequisites and outcomes
 
-You need Chapters 6.1 through 6.30 (especially 6.8, 6.10, 6.11, 6.14, 6.20, 6.21, 6.22, 6.24, 6.26, 6.28, and 6.30). After completing this chapter, you will be able to:
+You need Chapters 6.1 through 6.30 before you start. Some of them matter more than others for this chapter. Lean hardest on 6.8, 6.10, 6.11, 6.14, 6.20, 6.21, 6.22, 6.24, 6.26, 6.28 and 6.30. When you finish, you will be able to:
 
-- Explain the eight-layer build order of an AI cluster from facility power to Prometheus alerting, and state exactly what breaks when layers are built out of sequence.
-- Run a reproducible ten-stage configuration and verification pipeline (`capstone_demo.sh` and `capstone_demo_lab.py`) that compiles one hardware and user inventory into DHCP/iPXE boot configs, LDAP/Slurm accounting specs, `slurm.conf`/`gres.conf`/`cgroup.conf`, Prometheus metrics, and rack thermal/electrical budgets.
-- Execute a ten-layer cluster acceptance and burn-in test suite that establishes quantitative Day-1 baselines before onboarding users.
-- Lead operations drills for dropped GPUs, silent collective hangs, controller failovers, storage exhaustion, corrupt checkpoints, and bare-metal node rebuilds.
-- Deliver evidence-backed whiteboard answers on DGX SuperPOD H100 architecture (`32`-node SUs, the `127`- vs `128`-node UFM detail, four fabrics, and `10.2 kW` power envelopes), 64-node `ncclras` hang triage, and BCM Auto Scaler (`cm-scale`) Slurm/Kubernetes coexistence.
+- Explain the eight-layer build order of an AI cluster, from facility power to Prometheus alerting. You will also know exactly what breaks when layers are built out of sequence.
+- Run a repeatable ten-stage pipeline with `capstone_demo.sh` and `capstone_demo_lab.py`. It turns one hardware and user inventory into DHCP/iPXE boot configs and LDAP/Slurm accounting specs.
+- Produce `slurm.conf`, `gres.conf` and `cgroup.conf` from that same inventory. The pipeline also yields Prometheus metrics and rack thermal and electrical budgets.
+- Execute a ten-layer cluster acceptance and burn-in test suite. It sets quantitative Day-1 baselines before you onboard users.
+- Lead operations drills for dropped GPUs, silent collective hangs, controller failovers, storage exhaustion, corrupt checkpoints and bare-metal node rebuilds.
+- Give evidence-backed whiteboard answers on DGX SuperPOD H100 architecture. Cover the `32`-node SUs, the `127`- vs `128`-node UFM detail, the four fabrics and the `10.2 kW` power envelopes.
+- Triage a 64-node hang with `ncclras`, and explain how BCM Auto Scaler (`cm-scale`) lets Slurm and Kubernetes coexist.
+
+Keep the ten-stage pipeline in mind as you read the rest of the chapter. Section 3 walks through each of its stages.
 
 ---
 
 ## 1. The whole cluster from bare metal to job
 
-Every AI cluster—whether a six-node lab rack or a 2,048-GPU DGX SuperPOD—consists of six stacked technical planes and a four-phase operational lifecycle (Plan, Build, Prove, Run). Figure 1 maps the lifecycle loop that turns a hardware spreadsheet into a self-monitoring cluster.
+Whether you are building a six-node lab rack or a 2,048-GPU DGX SuperPOD, the cluster is made of the same pieces. It has six stacked technical planes and a four-phase operational lifecycle: Plan, Build, Prove and Run. Figure 1 shows the lifecycle loop that turns a hardware spreadsheet into a self-monitoring cluster.
 
 ```mermaid
 flowchart TB
@@ -74,9 +78,9 @@ flowchart TB
     OPS -. "RMA replacement, new SU, or user onboarding" .-> INV
 ```
 
-Read Figure 1 from top to bottom. You size the physical envelope and record every MAC address and BMC IP in a single inventory, build the software stack strictly bottom-up, prove the hardware under synthetic stress before allowing production jobs onto the queue, and run continuous telemetry and backup loops. The dashed feedback line represents Day-2 reality: every RMA motherboard swap, new rack expansion, or user onboarding feeds back into the same inventory files and triggers the same automated pipeline.
+Read Figure 1 from top to bottom. You start by sizing the physical envelope and recording every MAC address and BMC IP in one inventory. Then you build the software stack strictly bottom-up. Before any production job reaches the queue, you prove the hardware under synthetic stress. Telemetry and backup keep running after that, as continuous loops. The dashed line shows Day-2 reality. Every RMA motherboard swap, new rack expansion or user onboarding feeds back into the same inventory files and triggers the same automated pipeline.
 
-Looking inside the cluster itself, the runtime architecture spans six distinct planes from the rack PDU up to the PyTorch communication collective:
+Now look inside the cluster itself. The runtime architecture spans six distinct planes, from the rack PDU up to the PyTorch communication collective.
 
 ```mermaid
 flowchart TD
@@ -111,32 +115,36 @@ flowchart TD
     L3 --> L4 --> L6
 ```
 
+Plan the inventory first, because every later step reads from it.
+
 ---
 
 ## 2. Build order and dependency chains
 
-Every layer in the build sequence depends on invariants established by the layer immediately below it. Skipping ahead creates subtle, time-consuming failure modes that masquerade as hardware or application bugs.
+Every layer in the build sequence depends on the invariants that the layer below it establishes. If you skip ahead, you get subtle failures that look like hardware or application bugs. Those are the hardest kind to trace, because the cause sits several layers down.
 
-1. **Facility power, cooling, and rack layout (Chapter 6.30):** Before bolting a chassis into a rack, verify the rack power budget, breaker rating, PSU redundancy (`N+N` vs `N+1`), and cooling loop capacity (`kW` air vs direct-to-chip cold plates). If a rack is capped at `30 kW` and each 8-GPU node draws `10.2 kW` peak, placing three nodes (`30.6 kW` before switches) will trip the branch circuit breaker during the first all-GPU burn-in test.
-2. **Out-of-band (OOB) and in-band management networks (Chapters 6.22, 7.1):** Connect BMC ports to the OOB switch (`SN2201` in the H100 SuperPOD reference design) and host management NICs to the in-band switch (`SN4600C`). Verify Redfish reachability, set strong BMC credentials (`13–20` characters with upper, lower, digit, and special character on DGX H100), and verify DHCP relay and VLAN tagging before attempting network boot.
-3. **Bare-metal provisioning and OS image delivery (Chapters 6.22, 6.23):** Configure DHCP/TFTP (`dnsmasq` or BCM's **boot role**) and HTTP/image servers (Warewulf, xCAT, or BCM's **provisioning role**) from `nodes.csv`. Boot every compute node into a golden Linux image containing matched kernel headers, `MLNX_OFED`/`DOCA-Host`, the NVIDIA GPU driver, `nvidia-peermem`, `nvidia-fs`, and MUNGE/PMIx libraries.
-4. **Cluster-wide identity and directory services (Chapter 6.24):** Deploy LDAP/FreeIPA and SSSD across every login and compute node before mounting shared user directories or starting `slurmd`. Every user and service account (`slurm`, `munge`) must resolve to the exact same POSIX `uidNumber` and `gidNumber` on every node. If UID resolution is missing or inconsistent, MUNGE credential verification fails, `slurmd` refuses to launch job steps, and shared filesystem permissions corrupt across nodes.
-5. **High-speed fabrics and parallel storage (Chapters 6.18–6.21):** Bring up the InfiniBand Subnet Manager (`opensm` or UFM), verify link speeds and rail cabling with `ibdiagnet`, and mount the parallel filesystem (Lustre, BeeGFS, WekaFS, or GPFS) on all nodes. Configure directory striping (`lfs setstripe`) and project quotas before users or jobs write a single byte.
-6. **Workload scheduler and cgroup isolation (Chapters 6.7–6.13):** Generate `slurm.conf`, `gres.conf`, and `cgroup.conf` from `hardware.csv`, bootstrap `slurmdbd` accounts and QOS policies from `users.csv`, and start `slurmctld` and `slurmd`. Configure Pyxis and Enroot (`plugstack.conf`) so container jobs bind-mount the parallel filesystem and import PMIx/NCCL environment variables automatically.
-7. **Acceptance gates and multi-day burn-in (Chapters 6.14, 6.28):** Run NHC (`node_health_lab.py`), single-node and multi-node `HPL`, `IOR`/`mdtest`, `osu_bw`/`osu_bibw`, and `all_reduce_perf` across all nodes. Run a 24-to-72-hour thermal and electrical burn-in workload to catch infant-mortality DIMMs, optical transceivers, and GPU voltage regulators under warranty.
-8. **Telemetry, alerting, and backup automation (Chapters 6.26, 6.27):** Enable Prometheus scraping (`slurm_exporter.py`, `node_exporter`, `dcgm-exporter`), validate alert rules (`check_alert_rules.py`), wire automated prolog/epilog drain triggers, and verify Restic/Borg backups of `/etc/slurm`, the `slurmdbd` MySQL/MariaDB database, and LDAP before onboarding users.
+1. **Facility power, cooling, and rack layout (Chapter 6.30):** Before you bolt a chassis into a rack, check the rack power budget, the breaker rating, the PSU redundancy (`N+N` or `N+1`) and the cooling loop capacity (`kW` air or direct-to-chip cold plates). Take a rack capped at `30 kW` where each 8-GPU node draws `10.2 kW` at peak. Three nodes draw `30.6 kW` before switches are counted, so they will trip the branch circuit breaker during the first all-GPU burn-in test.
+2. **Out-of-band (OOB) and in-band management networks (Chapters 6.22, 7.1):** Cable every BMC port to the OOB switch, which is `SN2201` in the H100 SuperPOD reference design. Cable the host management NICs to the in-band switch, `SN4600C`. Verify Redfish reachability next. Set strong BMC credentials as well: on DGX H100 they need `13–20` characters, including an uppercase letter, a lowercase letter, a digit and a special character. Verify DHCP relay and VLAN tagging before you attempt a network boot.
+3. **Bare-metal provisioning and OS image delivery (Chapters 6.22, 6.23):** Configure DHCP and TFTP from `nodes.csv`, using `dnsmasq` or the **boot role** in BCM. Then set up the HTTP and image servers. Warewulf, xCAT, or the **provisioning role** in BCM can fill that job. Every compute node should boot into a golden Linux image. That image holds matched kernel headers, `MLNX_OFED`/`DOCA-Host`, the NVIDIA GPU driver, `nvidia-peermem`, `nvidia-fs`, and MUNGE/PMIx libraries.
+4. **Cluster-wide identity and directory services (Chapter 6.24):** Deploy LDAP or FreeIPA with SSSD on every login and compute node. Do this before you mount shared user directories or start `slurmd`. Every user and service account, including `slurm` and `munge`, must resolve to the same POSIX `uidNumber` and `gidNumber` on every node. When UID resolution is missing or inconsistent, MUNGE credential verification fails. `slurmd` then refuses to launch job steps, and shared filesystem permissions start to corrupt across nodes.
+5. **High-speed fabrics and parallel storage (Chapters 6.18–6.21):** Bring up the InfiniBand Subnet Manager, which is `opensm` or UFM. Check link speeds and rail cabling with `ibdiagnet`. Then mount the parallel filesystem on all nodes. Lustre, BeeGFS, WekaFS and GPFS are all options. Set directory striping with `lfs setstripe` and project quotas before users or jobs write a single byte.
+6. **Workload scheduler and cgroup isolation (Chapters 6.7–6.13):** Generate `slurm.conf`, `gres.conf` and `cgroup.conf` from `hardware.csv`. Create `slurmdbd` accounts and QOS policies from `users.csv`. Then start `slurmctld` and `slurmd`. Last, configure Pyxis and Enroot through `plugstack.conf`. That lets container jobs bind-mount the parallel filesystem and import the PMIx and NCCL environment variables automatically.
+7. **Acceptance gates and multi-day burn-in (Chapters 6.14, 6.28):** Run the acceptance tests on every node. These are NHC (`node_health_lab.py`), single-node and multi-node `HPL`, `IOR` and `mdtest`, `osu_bw` and `osu_bibw`, and `all_reduce_perf`. Then run a 24-to-72-hour thermal and electrical burn-in workload. The burn-in catches infant-mortality parts, such as DIMMs, optical transceivers and GPU voltage regulators, while they are still under warranty.
+8. **Telemetry, alerting, and backup automation (Chapters 6.26, 6.27):** Turn on Prometheus scraping with `slurm_exporter.py`, `node_exporter` and `dcgm-exporter`. Validate the alert rules with `check_alert_rules.py`. Wire up the prolog and epilog drain triggers. Last, verify Restic or Borg backups of `/etc/slurm`, the `slurmdbd` MySQL/MariaDB database and LDAP. Do all of this before you onboard users.
 
-A classic rookie error is installing Slurm on day one because `sinfo` makes the cluster "look alive." Without synchronized UIDs (Layer 4), mounted scratch storage (Layer 5), and cgroup device isolation (Layer 6), `sinfo` reports `idle` nodes while every real multi-node training job immediately crashes or tramples neighboring jobs.
+A common rookie mistake is installing Slurm on day one. The `sinfo` output makes the cluster look alive, so the team feels finished. But Layer 4 gives you synchronized UIDs, Layer 5 gives you mounted scratch storage, and Layer 6 gives you cgroup device isolation. Without them, `sinfo` reports `idle` nodes, and every real multi-node training job crashes or tramples its neighbors.
+
+Build from the bottom up, and check each layer before you move to the next.
 
 ---
 
 ## 3. Single-source-of-truth pipeline lab
 
-Hand-editing configuration files across a cluster guarantees configuration drift: someone replaces a failed node or adds a rack, updates `dnsmasq.conf`, forgets to update `slurm.conf` or `gres.conf`, and leaves `gpu004` either unbootable or invisible to the scheduler. The remedy is **single-source-of-truth generation**: maintain declarative inventory files in Git (`hardware.csv`, `nodes.csv`, `users.csv`) and compile every daemon configuration and validation check from those files.
+Suppose someone replaces a failed node, then updates `dnsmasq.conf` and forgets `slurm.conf` or `gres.conf`. The result is `gpu004` either unbootable or invisible to the scheduler. This is configuration drift, and hand-editing files across a cluster makes it almost certain. The remedy is **single-source-of-truth generation**. You keep declarative inventory files in Git (`hardware.csv`, `nodes.csv`, `users.csv`) and compile every daemon configuration and validation check from those files.
 
 ### 3.1 Inventory inputs in `code/part06/capstone_inputs/`
 
-The capstone toolchain in `code/part06/` takes four input files:
+The capstone toolchain in `code/part06/` takes four input files. Each one drives a different generator, so you can see exactly which file controls which config.
 
 | Input File | Schema & Purpose | Sample Contents |
 |---|---|---|
@@ -147,7 +155,7 @@ The capstone toolchain in `code/part06/` takes four input files:
 
 ### 3.2 Ten-stage pipeline execution (`capstone_demo.sh`)
 
-You can run the shell pipeline directly with `PY=python3 ./code/part06/capstone_demo.sh /tmp/capout` or run the self-checking Python verification harness `python3 code/part06/capstone_demo_lab.py`. Each of the ten stages invokes a tool built in earlier chapters of Part 6:
+You can run the shell pipeline directly with `PY=python3 ./code/part06/capstone_demo.sh /tmp/capout`. Or you can run the self-checking Python harness with `python3 code/part06/capstone_demo_lab.py`. Each of the ten stages calls a tool that you built in earlier chapters of Part 6.
 
 | Stage | Part 6 Tool (`code/part06/`) | Chapter Ref | Artifact Generated / Invariant Checked |
 |---|---|---|---|
@@ -164,7 +172,7 @@ You can run the shell pipeline directly with `PY=python3 ./code/part06/capstone_
 
 ### 3.3 Inspecting the generated scheduler configuration
 
-From the six rows in `capstone_inputs/hardware.csv`, Stage 3 (`gen_slurm_conf.py`) emits `slurm/slurm.conf`:
+From the six rows in `capstone_inputs/hardware.csv`, Stage 3 (`gen_slurm_conf.py`) emits `slurm/slurm.conf`.
 
 ```ini
 ClusterName=capstone
@@ -190,17 +198,17 @@ PartitionName=cpu Nodes=cpu[001-002] MaxTime=2-00:00:00 State=UP
 PartitionName=gpu Nodes=gpu[001-003,005] Default=YES MaxTime=2-00:00:00 DefMemPerGPU=65536 DefCpuPerGPU=8 State=UP
 ```
 
-Five engineering details in this output are worth studying closely:
+Five details in this output are worth studying closely. Each one shows a decision the generator makes for you.
 
-1. **Hostlist range folding with gaps (`gpu[001-003,005]`):** `gen_slurm_conf.py` groups identical hardware signatures and folds contiguous node numbers into compact Slurm hostlist expressions. Notice that `gpu004` is intentionally omitted from `hardware.csv` (for example, out for RMA repair); the generator automatically produces `gpu[001-003,005]`, and when `gpu004` is restored to `hardware.csv`, re-running the pipeline folds the expression cleanly into `gpu[001-005]`.
-2. **`RealMemory` OS headroom deduction (`2001110` vs `2063000 MB`):** In `hardware.csv`, the GPU nodes have `2063000 MB` of physical RAM. If you put `RealMemory=2063000` into `slurm.conf`, the Linux kernel's reserved pages, slab caches, and `tmpfs` overhead leave slightly less memory visible to `slurmd -C`, causing `slurmctld` to mark the node `INVALID_REG` (`Low RealMemory`). The generator multiplies raw memory by `0.97` (`int(2063000 * 0.97) = 2001110 MB`), reserving `3%` (`~61.9 GB` on a `2 TB` host, and `496640 MB` out of `512000 MB` on the CPU hosts) for the OS and kernel page tables (Chapter 6.8).
-3. **Partition-scoped GPU defaults (`DefMemPerGPU=65536 DefCpuPerGPU=8`):** Only partitions whose nodes actually carry GPUs receive `DefMemPerGPU` and `DefCpuPerGPU`. Attaching `DefMemPerGPU` to the `cpu` partition causes `slurmctld` warnings or scheduling failures on CPU-only allocations.
-4. **Default partition selection (`Default=YES`):** The generator assigns `Default=YES` to the first GPU partition (`gpu`) rather than the first partition in alphabetical order (`cpu`), ensuring that GPU jobs submitted without `-p` target the accelerator pool by default.
-5. **Strict cgroup v2 enforcement (`cgroup.conf`):** Alongside `slurm.conf`, the generator writes `ConstrainCores=yes`, `ConstrainRAMSpace=yes`, `ConstrainSwapSpace=yes`, and `ConstrainDevices=yes` so that a 1-GPU job on an 8-GPU node sees only its assigned `/dev/nvidiaX` device inside its cgroup namespace.
+1. **Hostlist range folding with gaps (`gpu[001-003,005]`):** `gen_slurm_conf.py` groups identical hardware signatures and folds contiguous node numbers into compact Slurm hostlist expressions. `gpu004` is left out of `hardware.csv` on purpose, for example while it is out for RMA repair. The generator then produces `gpu[001-003,005]`. When you restore `gpu004` to `hardware.csv` and re-run the pipeline, the expression folds cleanly into `gpu[001-005]`.
+2. **`RealMemory` OS headroom deduction (`2001110` vs `2063000 MB`):** The GPU nodes in `hardware.csv` have `2063000 MB` of physical RAM. Put `RealMemory=2063000` into `slurm.conf`, and the kernel's reserved pages, slab caches and `tmpfs` overhead leave less memory visible to `slurmd -C`. Slurm then marks the node `INVALID_REG` with `Low RealMemory`. The generator multiplies raw memory by `0.97`, which gives `int(2063000 * 0.97) = 2001110 MB`. That reserves `3%` for the OS and kernel page tables. On a `2 TB` host that is about `61.9 GB`, and on the CPU hosts it leaves `496640 MB` out of `512000 MB` (Chapter 6.8).
+3. **Partition-scoped GPU defaults (`DefMemPerGPU=65536 DefCpuPerGPU=8`):** Only partitions whose nodes carry GPUs receive `DefMemPerGPU` and `DefCpuPerGPU`. Attach them to the `cpu` partition, and `slurmctld` warns or fails to schedule CPU-only allocations.
+4. **Default partition selection (`Default=YES`):** The generator sets `Default=YES` on the first GPU partition, `gpu`, not on the first partition alphabetically, which is `cpu`. Jobs submitted without `-p` therefore land on the accelerator pool.
+5. **Strict cgroup v2 enforcement (`cgroup.conf`):** Next to `slurm.conf`, the generator writes `ConstrainCores=yes`, `ConstrainRAMSpace=yes`, `ConstrainSwapSpace=yes` and `ConstrainDevices=yes`. A 1-GPU job on an 8-GPU node then sees only its assigned `/dev/nvidiaX` device inside its cgroup.
 
 ### 3.4 Self-checking verification lab (`code/part06/capstone_demo_lab.py`)
 
-To verify the entire 10-stage pipeline automatically—and test what happens when `gpu004` returns from RMA repair and is added back to `hardware.csv`—run `code/part06/capstone_demo_lab.py`:
+To verify the whole 10-stage pipeline automatically, run `code/part06/capstone_demo_lab.py`. It also tests what happens when `gpu004` returns from RMA repair and goes back into `hardware.csv`.
 
 ```bash
 $ python3 code/part06/capstone_demo_lab.py
@@ -214,7 +222,7 @@ Summary: 3 passed, 0 failed (total 3)
 
 ## 4. Ten-gate acceptance testing and burn-in protocol
 
-"Every node booted to a login prompt" is not an acceptance criterion. Before handing a new cluster—or a newly added scalable unit—over to researchers, run a structured ten-layer acceptance protocol and commit the resulting log files and JSON summaries to a baseline repository so future performance regressions can be proved quantitatively.
+Suppose every node has booted to a login prompt. That tells you the cluster powers on, but it does not tell you the cluster is ready for researchers. Before you hand a new cluster, or a newly added scalable unit, to its users, run a structured ten-layer acceptance protocol. Commit the resulting log files and JSON summaries to a baseline repository. Future performance regressions can then be proved with numbers instead of guesses.
 
 | Gate | Subsystem | Tool / Command | Chapter | Pass Criterion & Baseline Recorded |
 |---|---|---|---|---|
@@ -229,13 +237,15 @@ Summary: 3 passed, 0 failed (total 3)
 | **9** | **Policy & Quota Enforcement** | Submit job exceeding `MaxTRESPerUser` or `GrpTRES` | 6.9, 6.24 | Job remains `PENDING` with `Reason=QOSMaxGRESPerUser` or `AssocGrpGRES`; fair-share priority (`sprio`) orders competing accounts accurately |
 | **10** | **Fault Injection & 72h Burn-In** | Kill a rank, corrupt a checkpoint (`ckpt_atomic.py`), drain a node, run `72h` HPL/NCCL loop | 6.14, 6.21, 6.28 | Epilog drains unhealthy node automatically, training resumes from previous valid `latest.json` checkpoint, and `72`-hour continuous load completes with `0` unrecovered node drops |
 
-Why save the Day-1 baseline numbers in Git? Six months into operations, a researcher will complain that "multi-node training is 30% slower than last month." Without saved per-node `HPL`, `osu_bibw`, `all_reduce_perf`, and `ior` baselines, you are left guessing whether the regression is in their PyTorch DataLoader or your hardware. With Day-1 baselines, a 10-minute binary-search `all_reduce_perf` sweep immediately isolates the degraded leaf switch port or optical transceiver.
+Why save the Day-1 baseline numbers in Git? Six months into operations, a researcher will complain that "multi-node training is 30% slower than last month." Without saved per-node `HPL`, `osu_bibw`, `all_reduce_perf` and `ior` baselines, you are left guessing whether the regression is in their PyTorch DataLoader or in your hardware. With Day-1 baselines, a 10-minute binary-search `all_reduce_perf` sweep isolates the degraded leaf switch port or optical transceiver. The baseline turns a vague complaint into a short, testable search.
+
+Save the Day-1 baselines in Git before any researcher logs in.
 
 ---
 
 ## 5. Day-2 operations drills: practicing the bad day
 
-Run these eight operational drills on the cluster before production cutover so your team executes them from muscle memory during a 03:00 incident:
+It is 03:00, a GPU has dropped off the bus, and the on-call engineer has never seen this fault on your cluster. The time to learn the response is before production cutover, not during the page. So run these eight operational drills on the cluster first. Then your team has the steps in muscle memory when the real incident arrives.
 
 | Drill | Fault Injected | Detection & Recovery Procedure | Primary Chapters |
 |---|---|---|---|
@@ -248,30 +258,32 @@ Run these eight operational drills on the cluster before production cutover so y
 | **7. Facility CDU / chilled-water temperature rise** | Simulate facility supply water rising above `32 °C` | Automated facility webhook sets `scontrol update PartitionName=gpu State=DOWN`, drains idle nodes, and signals running jobs (`scancel --signal=USR1`) to write emergency checkpoints before thermal trip | 6.30 |
 | **8. Bare-metal node rebuild from Git** | Wipe OS disk on `gpu005` (`dd` partition table) | Run `capstone_demo.sh` from Git inventory $\rightarrow$ network-boot `gpu005` via iPXE $\rightarrow$ verify UID, mounts, `slurmd -C`, and Gate 2 health check within `20` minutes | 6.22, 6.31 |
 
+Each drill has a fault to inject and a recovery path to follow. Read the arrows as the order of the steps, and practice them in that order. You can take one drill at a time and check each recovery path before you move on.
+
 ---
 
 ## 6. Senior infrastructure interview lab: three whiteboard scenarios
 
-A senior AI infrastructure interview is not a flashcard quiz. The interviewer is testing two things: whether you can reason across all six planes of the stack in dependency order, and whether you distinguish clearly between **what vendor reference documents specify** and **what you are inferring or measuring for a specific customer**. Confidently stating an unverified folklore number is far worse than saying: *"The NVIDIA H100 SuperPOD reference architecture specifies X; if your facility constraint differs, here is how I calculate Y."*
+A senior AI infrastructure interview is not a flashcard quiz. The interviewer wants to see two things. First, can you reason across all six planes of the stack in dependency order? Second, can you separate what vendor reference documents specify from what you are inferring or measuring for one customer? Consider what happens when you state an unverified folklore number with confidence. That is worse than saying, *"The NVIDIA H100 SuperPOD reference architecture specifies X; if your facility constraint differs, here is how I calculate Y."*
 
-The architecture facts and command patterns in this section are traced directly to the NVIDIA DGX SuperPOD with DGX H100 Reference Architecture, the NVIDIA DGX H100/H200 User Guide and Firmware Update Guide, the NVIDIA Base Command Manager (BCM) 11 Administrator Manual, the NCCL User Guide, and the Kubernetes scheduling documentation (`volume-10/00c-slurm-bcm-interview-lab.md`).
+The architecture facts and command patterns in this section trace back to the NVIDIA DGX SuperPOD with DGX H100 Reference Architecture, the NVIDIA DGX H100/H200 User Guide and Firmware Update Guide, the NVIDIA Base Command Manager (BCM) 11 Administrator Manual, the NCCL User Guide, and the Kubernetes scheduling documentation (`volume-10/00c-slurm-bcm-interview-lab.md`).
 
 ### 6.1 Facts to know cold (and their exact vendor sources)
 
 #### DGX SuperPOD H100 Reference Architecture
 - **Four segregated network fabrics:**
-  1. **Compute InfiniBand fabric** (rail-aligned non-blocking NDR `400 Gb/s` fat-tree for GPU-to-GPU collectives).
-  2. **Storage InfiniBand fabric** (built on Quantum-2 `MQM9700-NS2F` switches, sized so per-node storage I/O exceeds `40 GB/s`; storage appliances connect at a `1:1` port-to-uplink ratio, while DGX H100 storage NIC connections have a slight `4:3` oversubscription ratio).
-  3. **In-band management Ethernet fabric** (built on Spectrum `SN4600C` switches for Slurm, SSH, storage metadata/management, and monitoring).
-  4. **Out-of-band (OOB) management Ethernet fabric** (built on `SN2201` switches connecting every node BMC, switch management port, and rack PDU).
-- **Scalable Units (SUs):** The building block is a **32-node Scalable Unit (`256` H100 GPUs)**. The primary reference architecture details **4 SUs (`128` nodes, `1,024` GPUs)** and describes scaling to more than **64 SUs (`2,000+` DGX H100 nodes)**.
-- **The `127`-node vs `128`-node (`31` vs `32`) detail:** In the full compute-fabric port tables of the H100 SuperPOD Reference Architecture, a `4`-SU deployment lists **`127` DGX nodes (`1,016` GPUs)** and a `1`-SU deployment lists **`31` DGX nodes (`248` GPUs)**. Why? The reference document explicitly notes that it is a `32`-node-per-SU topology in which **one DGX system is removed from the compute fabric to free switch ports for redundant UFM (Unified Fabric Manager) appliance connectivity**. Knowing both numbers (`128` nominal vs `127` with UFM ports allocated) immediately signals that you have actually read the reference tables.
-- **Rail alignment:** Within each `32`-node SU, the $k$-th compute NIC (connected via PCIe switch to the $k$-th H100 GPU) of all `32` nodes plugs into the $k$-th leaf switch (`Rail k`). Consequently, traffic on any given rail between any two nodes in the same SU traverses **one leaf switch hop**, while cross-SU or cross-rail traffic traverses the spine layer.
-- **Rack power envelope:** The reference rack layout exceeds **`40 kW` per rack**, and the guide notes that node density per rack must be adjusted to match local data center power and cooling limits.
+  1. **Compute InfiniBand fabric.** It is a rail-aligned, non-blocking NDR 400 Gb/s fat-tree for GPU-to-GPU collectives.
+  2. **Storage InfiniBand fabric.** It is built on Quantum-2 MQM9700-NS2F switches and sized so per-node storage I/O exceeds 40 GB/s. Storage appliances connect at a 1:1 port-to-uplink ratio. DGX H100 storage NIC connections carry a slight 4:3 oversubscription ratio.
+  3. **In-band management Ethernet fabric.** It is built on Spectrum SN4600C switches and serves Slurm, SSH, storage metadata and management, and monitoring.
+  4. **Out-of-band (OOB) management Ethernet fabric.** It is built on SN2201 switches that connect every node BMC, switch management port and rack PDU.
+- **Scalable Units (SUs):** The building block is a **32-node Scalable Unit (256 H100 GPUs)**. The primary reference architecture details **4 SUs (128 nodes, 1,024 GPUs)** and describes scaling to more than **64 SUs (2,000+ DGX H100 nodes)**.
+- **The 127-node vs 128-node (31 vs 32) detail:** The full compute-fabric port tables of the H100 SuperPOD Reference Architecture list **127 DGX nodes (1,016 GPUs)** for a 4-SU deployment. A 1-SU deployment lists **31 DGX nodes (248 GPUs)**. The reason is that the document describes a 32-node-per-SU topology in which **one DGX system is removed from the compute fabric to free switch ports for redundant UFM (Unified Fabric Manager) appliance connectivity**. Knowing both numbers, 128 nominal and 127 with UFM ports allocated, shows that you have read the reference tables.
+- **Rail alignment:** In each 32-node SU, the $k$-th compute NIC connects to the $k$-th H100 GPU through a PCIe switch. The $k$-th NIC of all 32 nodes plugs into the $k$-th leaf switch, which is `Rail k`. Traffic on any rail between two nodes in the same SU crosses **one leaf switch hop**. Cross-SU or cross-rail traffic goes up to the spine layer.
+- **Rack power envelope:** The reference rack layout exceeds **40 kW per rack**. The guide adds that node density per rack must match the local data center power and cooling limits.
 
 #### DGX H100/H200 User Guide & Firmware Update Guide
-- **System power specification:** A single DGX H100 system is rated at **`10.2 kW` maximum power** with **six `3.3 kW` power supply units (PSUs)**. For example, if a customer states their air-cooled racks are capped at `30 kW`, simple arithmetic (`floor(30 / 10.2) = 2` systems = `20.4 kW` max before top-of-rack switches) dictates at most **2 DGX H100 nodes per rack**.
-- **Documented Redfish API URIs:** Rather than guessing OEM paths, use the exact Redfish URIs documented in the DGX H100/H200 User Guide:
+- **System power specification:** A single DGX H100 is rated at **10.2 kW maximum power** and carries six 3.3 kW power supply units (PSUs). Take a customer whose air-cooled racks are capped at 30 kW. Then `floor(30 / 10.2) = 2` systems, or 20.4 kW before top-of-rack switches, is the limit. That means at most **2 DGX H100 nodes per rack**.
+- **Documented Redfish API URIs:** Do not guess OEM paths. Use the exact Redfish URIs documented in the DGX H100/H200 User Guide:
 
 ```bash
 # 1. Host power control (documented ResetType values: On, GracefulShutdown,
@@ -295,9 +307,11 @@ curl -k -u "<bmc-user>:<password>" \
 ```
 
 - **Operational Redfish notes:**
-  - The `/Managers/BMC/LogServices/SEL/Entries` endpoint returns **75 SEL members per page** and provides a `Members@odata.nextLink` URI for pagination.
-  - BMC password policy requires **13 to 20 characters** containing uppercase, lowercase, digit, and special characters.
-  - Firmware updates use `nvfwupd` or the Redfish `UpdateService`, while `ipmitool` still appears in specific documented recovery procedures such as a cold BMC reset (`ipmitool mc reset cold`).
+  - The `/Managers/BMC/LogServices/SEL/Entries` endpoint returns **75 SEL members per page**. It also provides a `Members@odata.nextLink` URI for pagination.
+  - The BMC password policy requires **13 to 20 characters** with uppercase, lowercase, digit and special characters.
+  - Firmware updates use `nvfwupd` or the Redfish `UpdateService`. The `ipmitool` tool still appears in specific documented recovery procedures, such as a cold BMC reset (`ipmitool mc reset cold`).
+
+For example, the 6.1 section works the `30 kW` rack case, so you can see how the arithmetic is done.
 
 ### 6.2 Scenario A: "Architect a 128-node AI factory plus inference capacity"
 
@@ -305,24 +319,19 @@ curl -k -u "<bmc-user>:<password>" \
 
 **How to structure a senior-level answer:**
 
-1. **Clarify workload and facility constraints, then anchor on the reference architecture:**
-   Start by asking about rack power limits (`kW/rack`), cooling medium (air vs liquid), checkpoint frequency, and the split between multi-node pre-training and online inference. Then state: *"NVIDIA's H100 SuperPOD reference architecture targets this exact scale—four Scalable Units of 32 nodes (`1,024` GPUs, or `127` nodes / `1,016` GPUs when one node slot is allocated for UFM fabric appliances). I start from that validated design and document every deviation forced by the customer's facility."*
-2. **Size racks from the `10.2 kW` node maximum:**
-   Cite the `10.2 kW` maximum rating per DGX H100 (`6 x 3.3 kW` PSUs) and the `> 40 kW` reference rack density. Show how you calculate nodes per rack from their PDU/cooling cap, leaving margin for `MQM9700`, `SN4600C`, and `SN2201` switches.
-3. **Keep the four fabrics physically and logically separate:**
-   - **Compute InfiniBand:** Rail-aligned in `32`-node SUs so same-rail GPU ranks within an SU are one hop apart during ring/tree `AllReduce`, and cross-SU traffic traverses the spine switches without congestion from storage I/O.
-   - **Storage InfiniBand:** Dedicated `MQM9700-NS2F` fabric engineered for `> 40 GB/s` per node (`1:1` uplink ratio on storage targets, `~4:3` on the DGX side) so checkpoint bursts never contend with gradient collectives.
-   - **In-band management (`SN4600C`) and Out-of-band management (`SN2201`):** Isolated because BMC/Redfish traffic has a different security blast radius and must survive when the in-band OS or IB fabric is wedged.
-4. **Bare-metal lifecycle and high availability with BCM 11:**
-   Deploy Base Command Manager (BCM) on an HA head-node pair configured with `cmha-setup` (BMC-based STONITH power fencing, dedicated heartbeat link, node quorum check, and shared NAS storage). To prevent boot storms across `128+` nodes, scale network boot (`TFTP`/`PXE`) with **boot-role** nodes per subnet and scale image transfers (`node-installer`) with **provisioning-role** nodes per rack group.
-5. **Dual-engine orchestration (Slurm + Kubernetes):**
-   Use Slurm (`select/cons_tres`, `gres/gpu`, `cgroup` v2, Pyxis/Enroot) for gang-scheduled multi-node training, and Kubernetes for inference services. Use **BCM Auto Scaler (`cm-scale`)** to dynamically repurpose idle nodes between Slurm and Kubernetes configuration overlays based on pending queue demand, noting the operational trade-off: repurposing happens at job boundaries, not sub-second per-request preemption.
-6. **Close with acceptance gates and ring rollouts:**
-   Require `ibdiagnet`, `dcgmi diag`, multi-node `all_reduce_perf`, GPUDirect Storage (`nvidia-fs`) `ior` checks, and a canary ring rollout policy for driver/firmware changes (`imageupdate` and `nvfwupd`).
+1. **Clarify workload and facility constraints, then anchor on the reference architecture.** Start by asking about rack power limits (`kW/rack`), the cooling medium (air or liquid), checkpoint frequency, and the split between multi-node pre-training and online inference. Then state the anchor: *"NVIDIA's H100 SuperPOD reference architecture targets this exact scale: four Scalable Units of 32 nodes (1,024 GPUs, or 127 nodes / 1,016 GPUs when one node slot is allocated for UFM fabric appliances). I start from that validated design and document every deviation forced by the customer's facility."*
+2. **Size racks from the 10.2 kW node maximum.** Cite the 10.2 kW maximum rating per DGX H100 (6 x 3.3 kW PSUs) and the `> 40 kW` reference rack density. Then show how you calculate nodes per rack from the customer's PDU and cooling cap. Leave margin for the MQM9700, SN4600C and SN2201 switches.
+3. **Keep the four fabrics physically and logically separate.**
+   - **Compute InfiniBand:** It is rail-aligned in 32-node SUs. Same-rail GPU ranks within an SU are one hop apart during ring or tree `AllReduce`, and cross-SU traffic crosses the spine switches without competing with storage I/O.
+   - **Storage InfiniBand:** It is a dedicated MQM9700-NS2F fabric engineered for `> 40 GB/s` per node. It uses a 1:1 uplink ratio on storage targets and about 4:3 on the DGX side, so checkpoint bursts never contend with gradient collectives.
+   - **In-band management (SN4600C) and out-of-band management (SN2201):** They are isolated because BMC and Redfish traffic has a different security blast radius. That traffic must survive even when the in-band OS or IB fabric is wedged.
+4. **Bare-metal lifecycle and high availability with BCM 11.** Deploy Base Command Manager (BCM) on an HA head-node pair configured with `cmha-setup`. That setup uses BMC-based STONITH power fencing, a dedicated heartbeat link, a node quorum check and shared NAS storage. To prevent boot storms across 128+ nodes, scale network boot (TFTP/PXE) with **boot-role** nodes per subnet. Scale image transfers (`node-installer`) with **provisioning-role** nodes per rack group.
+5. **Dual-engine orchestration: Slurm and Kubernetes.** Use Slurm (`select/cons_tres`, `gres/gpu`, `cgroup` v2, Pyxis/Enroot) for gang-scheduled multi-node training. Use Kubernetes for inference services. Then use **BCM Auto Scaler (`cm-scale`)** to repurpose idle nodes between Slurm and Kubernetes configuration overlays as pending queue demand changes. The trade-off is that repurposing happens at job boundaries, not as sub-second per-request preemption.
+6. **Close with acceptance gates and ring rollouts.** Require `ibdiagnet`, `dcgmi diag`, multi-node `all_reduce_perf`, GPUDirect Storage (`nvidia-fs`) `ior` checks, and a canary ring rollout policy for driver and firmware changes (`imageupdate` and `nvfwupd`).
 
 ### 6.3 Scenario B: "A 64-node training job is frozen at a step"
 
-**Interviewer prompt:** *"A 64-node (`512`-GPU) training job has been running for 14 hours. `squeue` still shows `RUNNING`, no processes have exited, GPU utilization across the job is `0%`, and the step timer hasn't advanced in 10 minutes. Walk me through how you triage it."*
+**Interviewer prompt:** *"A 64-node (512-GPU) training job has been running for 14 hours. `squeue` still shows `RUNNING`, no processes have exited, GPU utilization across the job is 0%, and the step timer hasn't advanced in 10 minutes. Walk me through how you triage it."*
 
 ```mermaid
 flowchart TD
@@ -341,20 +350,15 @@ flowchart TD
 
 **A line-by-line defensible triage sequence:**
 
-1. **Preserve the crime scene first:** Do **not** immediately `scancel` or reboot the nodes. Restarting the job destroys the in-memory NCCL communicator state and resets transient port counters.
-2. **Verify allocation integrity and process limits:** Check `squeue` and `scontrol show job <id>` to confirm all `64` nodes are still allocated, then check that all `512` rank processes are alive (`pdsh -w <nodelist> pgrep -c python`) and verify `ulimit -l` (`Max locked memory`) inside `/proc/<pid>/limits` is `unlimited` (a low `memlock` limit causes `ibv_reg_mr` / `ibv_create_qp` RDMA registration failures).
-3. **Query the NCCL 2.24+ RAS (Reliability, Availability, and Serviceability) subsystem (`ncclras`):**
-   Instead of guessing which of the `512` ranks stalled, run the `ncclras` client against the live job **twice, a few seconds apart**:
-   - A **`MISMATCH`** row identifies communicators where collective operation counts differ across ranks and lists which ranks are behind and which nodes they run on. (Running `ncclras` twice distinguishes a normal in-flight collective where the count advances from a true hang where the count is static.)
-   - An **`INCOMPLETE`** row names a specific rank process that failed to respond to the RAS health query—pointing you directly to a wedged node or kernel thread.
-4. **Sweep kernel Xid logs and GPU health in parallel:**
-   Across all `64` nodes, grep `dmesg -T` for `NVRM: Xid` or `SXid`. If a single GPU hits an unrecoverable error (such as `Xid 79` fallen off the bus, `Xid 48` double-bit ECC, or `Xid 119`/`120` GSP timeout), that single rank stops entering the next collective and the other `511` ranks spin-wait or sleep waiting for it.
-5. **Check InfiniBand fabric state and error deltas:**
-   Verify port state (`Active`) and link speed (`400 Gbps` NDR) with `ibstat`, confirm the Subnet Manager is responsive with `sminfo`, and read port error counters (`perfquery` or `/sys/class/infiniband/*/ports/1/counters/*`) **twice a few minutes apart**. A non-zero historical counter from last week is harmless; an actively incrementing `symbol_error_counter` or `port_rcv_remote_physical_errors` during the hang pinpoints a bad cable or transceiver.
-6. **Check parallel storage if the hang coincides with a checkpoint step:**
-   If the step number is a multiple of the checkpoint interval, check `/proc/<rank0_pid>/stack` and `lfs check servers` to see if Rank 0 is blocked in `D` state waiting on an unresponsive Lustre OST or MDS.
-7. **Drain, quarantine, and resume:**
-   Once the offending node is identified, drain it with a structured reason (`scontrol update NodeName=gpu042 State=DRAIN Reason="Xid 79 on GPU 3 [ticket=INC-2088]"`), and requeue the job on `64` healthy nodes resuming from the newest verified atomic checkpoint (`latest.json`).
+1. **Preserve the crime scene first.** Do **not** scancel or reboot the nodes right away. Restarting the job destroys the in-memory NCCL communicator state and resets transient port counters.
+2. **Verify allocation integrity and process limits.** Check `squeue` and `scontrol show job <id>` to confirm all 64 nodes are still allocated. Then check that all 512 rank processes are alive with `pdsh -w <nodelist> pgrep -c python`. Verify that `ulimit -l` (`Max locked memory`) in `/proc/<pid>/limits` is `unlimited`. A low `memlock` limit causes `ibv_reg_mr` and `ibv_create_qp` RDMA registration failures.
+3. **Query the NCCL 2.24+ RAS (Reliability, Availability, and Serviceability) subsystem, `ncclras`.** Do not guess which of the 512 ranks stalled. Run the `ncclras` client against the live job **twice, a few seconds apart**:
+   - A **`MISMATCH`** row identifies communicators where collective operation counts differ across ranks. It lists which ranks are behind and which nodes they run on. Running `ncclras` twice separates a normal in-flight collective, where the count advances, from a true hang, where the count stays static.
+   - An **`INCOMPLETE`** row names a specific rank process that did not respond to the RAS health query. That points you straight to a wedged node or kernel thread.
+4. **Sweep kernel Xid logs and GPU health in parallel.** Across all 64 nodes, grep `dmesg -T` for `NVRM: Xid` or `SXid`. If a single GPU hits an unrecoverable error, such as `Xid 79` for a fallen-off-the-bus GPU, `Xid 48` for double-bit ECC, or `Xid 119`/120 for a GSP timeout, that rank stops entering the next collective. The other 511 ranks then spin-wait or sleep for it.
+5. **Check InfiniBand fabric state and error deltas.** Verify port state (`Active`) and link speed (400 Gbps NDR) with `ibstat`. Confirm the Subnet Manager responds with `sminfo`. Then read port error counters with `perfquery` or `/sys/class/infiniband/*/ports/1/counters/*`, **twice a few minutes apart**. A non-zero counter from last week is harmless. An actively incrementing `symbol_error_counter` or `port_rcv_remote_physical_errors` during the hang points to a bad cable or transceiver.
+6. **Check parallel storage if the hang coincides with a checkpoint step.** If the step number is a multiple of the checkpoint interval, check `/proc/<rank0_pid>/stack` and `lfs check servers`. They show whether Rank 0 is blocked in `D` state, waiting on an unresponsive Lustre OST or MDS.
+7. **Drain, quarantine, and resume.** Once you find the offending node, drain it with a structured reason, such as `scontrol update NodeName=gpu042 State=DRAIN Reason="Xid 79 on GPU 3 [ticket=INC-2088]"`. Then requeue the job on 64 healthy nodes, resuming from the newest verified atomic checkpoint (`latest.json`).
 
 ### 6.4 Scenario C: "Why not run the entire AI factory on Kubernetes?"
 
@@ -369,18 +373,18 @@ flowchart TD
 
 **How to deliver a balanced, evidence-backed answer:**
 
-- **Decide by workload physics, not ideology:** Large synchronous training requires all-or-nothing gang placement across tens or hundreds of rail-aligned nodes: if `511` of `512` GPUs are scheduled and the `512`th pod is pending, the `511` allocated GPUs sit idle burning `80+ kW` of power. Slurm provides gang scheduling, switch-topology placement, and PMIx collective bootstrap natively out of the box.
-- **State the exact upstream status of Kubernetes gang scheduling:** Upstream Kubernetes documents gang scheduling via the `PodGroup` API, but it sits behind feature gates and parts of it (such as hierarchical groups) remain in alpha, meaning production Kubernetes training clusters still rely on third-party batch schedulers (Kueue, Volcano, Coscheduling) or Slurm.
-- **Explain how both coexist on the same physical GPUs:** Customers do not have to partition their hardware permanently into two siloed clusters:
-  1. **BCM Auto Scaler (`cm-scale`):** As documented in the BCM 11 Administrator Manual (§8.1.1–8.1.2), `cm-scale` monitors pending queues in both Slurm and Kubernetes and dynamically repurposes nodes between Slurm and Kubernetes configuration overlays—matching requested CPUs, memory, and `nvidia.com/gpu` extended resources.
-  2. **Slurm on Kubernetes (Slinky and Nebius Soperator, Chapter 6.16):** Run `slurmctld` and `slurmd` as Kubernetes pods managed by an operator so researchers get native `sbatch`/`srun` semantics while platform teams manage a single Kubernetes substrate.
-- **Frame daemon jitter as a measurable test:** If someone claims Kubernetes `kubelet`/`containerd` agents degrade multi-node NCCL latency, don't argue—propose running a 32-node `all_reduce_perf` and `osu_bw` benchmark with and without the node agents and comparing the p99 latency delta.
+- **Decide by workload physics, not ideology.** Large synchronous training needs all-or-nothing gang placement across tens or hundreds of rail-aligned nodes. If 511 of 512 GPUs are scheduled and the 512th pod is pending, the 511 allocated GPUs sit idle while burning 80+ kW of power. Slurm provides gang scheduling, switch-topology placement and PMIx collective bootstrap natively out of the box.
+- **State the exact upstream status of Kubernetes gang scheduling.** Upstream Kubernetes documents gang scheduling through the `PodGroup` API. That API sits behind feature gates, and parts of it, such as hierarchical groups, remain in alpha. So production Kubernetes training clusters still rely on third-party batch schedulers (Kueue, Volcano, Coscheduling) or on Slurm.
+- **Explain how both coexist on the same physical GPUs.** Customers do not have to split their hardware permanently into two siloed clusters.
+  1. **BCM Auto Scaler (`cm-scale`).** The BCM 11 Administrator Manual (§8.1.1–8.1.2) describes how `cm-scale` monitors pending queues in both Slurm and Kubernetes. It repurposes nodes between Slurm and Kubernetes configuration overlays, matching requested CPUs, memory and `nvidia.com/gpu` extended resources.
+  2. **Slurm on Kubernetes (Slinky and Nebius Soperator, Chapter 6.16).** Run `slurmctld` and `slurmd` as Kubernetes pods managed by an operator. Researchers keep native `sbatch` and `srun` semantics, and platform teams manage a single Kubernetes substrate.
+- **Frame daemon jitter as a measurable test.** If someone claims that Kubernetes `kubelet` or `containerd` agents degrade multi-node NCCL latency, do not argue the point. Propose a 32-node `all_reduce_perf` and `osu_bw` benchmark run with and without the node agents, then compare the p99 latency delta.
 
 ---
 
 ## 7. Corrections to common BCM and SuperPOD interview myths
 
-Many candidates repeat outdated or inaccurate folklore about NVIDIA Base Command Manager (BCM), NCCL, and DGX firmware. Use Table 7 to replace common myths with documented facts from the BCM 11 Administrator Manual, NCCL User Guide, and DGX H100 User Guide:
+Many candidates repeat outdated or inaccurate folklore about NVIDIA Base Command Manager (BCM), NCCL and DGX firmware. You can avoid that trap by checking each claim against the source. The table below pairs each common myth with the documented fact from the BCM 11 Administrator Manual, the NCCL User Guide or the DGX H100 User Guide, so you know what to say instead.
 
 | Common Myth (What Loses Points) | Documented Reality (What to Say Instead) | Source Reference |
 |---|---|---|
@@ -391,9 +395,13 @@ Many candidates repeat outdated or inaccurate folklore about NVIDIA Base Command
 | *"Always hardcode `NCCL_IB_GID_INDEX=3` for RoCEv2."* | Modern NCCL releases default to automatic GID selection (`AUTO`). Hardcoding `NCCL_IB_GID_INDEX` is only needed on legacy stacks or non-standard VLAN/RoCEv2 tables verified via `show_gids`. | NCCL User Guide |
 | *"DGX firmware can never be downgraded once flashed."* | The DGX H100/H200 Firmware Update Guide documents a supported force-downgrade procedure (`nvfwupd`), though it must be treated as a rehearsed maintenance change. | DGX H100/H200 Firmware Update Guide |
 
+Each row gives you the myth to recognize and the correction to offer. Use the source reference when an interviewer asks where the answer comes from.
+
 ---
 
 ## 8. Weak versus senior answers at a glance
+
+Interviewers listen for the difference between a quick answer and a structured one. The table below sets a junior reply next to a senior one for five common questions. Read each pair and notice what the senior answer adds: a source of truth, a measurable check, or a named tool.
 
 | Interview Question | Weak / Junior Answer | Senior Systems Architect Answer |
 |---|---|---|
@@ -404,16 +412,18 @@ Many candidates repeat outdated or inaccurate folklore about NVIDIA Base Command
 | **"How do you protect multi-day training from corrupt checkpoints?"** | *"Save checkpoints every hour to NFS."* | *"Write per-rank shards to a parallel filesystem (`> 40 GB/s`/node), `fsync` files and parent directories, record SHA-256 digests in `meta.json`, flip `latest.json` via atomic `os.replace`, and auto-fallback on digest mismatch (`ckpt_atomic.py`)."* |
 | **"How do you share GPUs between batch training and K8s inference?"** | *"Split the cluster 50/50 permanently."* | *"Use BCM Auto Scaler (`cm-scale`) to switch nodes between Slurm and Kubernetes configuration overlays based on pending work, or run Slurm on Kubernetes via Slinky / Soperator."* |
 
+Use the senior column as a model for the shape of your answer. Lead with the check or the source, then name the tool and the number that backs it.
+
 ---
 
 ## Exercises
 
-1. **Hostlist range folding when `gpu004` returns from RMA:** Copy `code/part06/capstone_inputs/hardware.csv` and `nodes.csv` to a temporary directory, add `gpu004` (`2` sockets, `56` cores/socket, `2` threads/core, `2063000 MB` RAM, `8x h100`, partition `gpu`), and run `gen_slurm_conf.py`. Verify that `NodeName=gpu[001-003,005]` folds into `NodeName=gpu[001-005]` with `RealMemory=2001110`, matching the third self-check in `code/part06/capstone_demo_lab.py`.
-2. **Catching `RealMemory` over-declaration (`slurmd -C` vs `slurmconf_lint.py`):** Edit `slurm/slurm.conf` so `RealMemory=2100000` on `gpu[001-003,005]` (higher than the `2063000 MB` physical RAM) and run `slurmconf_lint.py`. Explain why a static syntax linter passes (`no findings`), which command on a live compute node reports actual OS-usable memory (`slurmd -C`), and what state `slurmctld` assigns to the node when `RealMemory` exceeds `slurmd -C` (`DRAIN` / `INVAL`).
-3. **Onboarding a new research group end-to-end:** Add a fourth user (`dave`, `uid=2004`, group `ml-rl`, account `ml-rl`, QOS `normal`, `max_gpus=24`) to `capstone_inputs/users.csv` and re-run `identity_gen.py`. Inspect `users.ldif`, `sacctmgr.sh`, and `mkhomes.sh` and trace the exact order in which those three scripts must be applied across the LDAP server, parallel filesystem, and `slurmdbd`.
-4. **Automating Gate 7 (Parallel storage baseline):** Write a bash wrapper around `code/part06/iomix_lab.py` (or `ior`) that records sequential write bandwidth (`MB/s`), sequential read bandwidth (`MB/s`), and small-file metadata ops/sec (`IOPS`) into a timestamped JSON file, and exits non-zero if any metric drops more than `15%` below a saved Day-1 baseline JSON file.
-5. **Rack power arithmetic under facility limits:** A customer wants to deploy `32` DGX H100 nodes (`1` full SU, `10.2 kW` max per node) plus `2` `MQM9700` compute switches, `1` `MQM9700` storage switch, `1` `SN4600C` in-band switch, and `1` `SN2201` OOB switch (`~2.5 kW` total switch load) into data center racks capped at `25 kW` per rack. Calculate the maximum number of DGX H100 nodes per rack, the minimum number of racks required for the `32`-node SU, and run `code/part06/facility_calc.py` to compute the required chilled-water flow rate (`L/min`) at `80%` liquid heat capture and a `10 °C` $\Delta T$.
-6. **Redfish SEL pagination and 64-node hang runbook:** Write a 15-line shell or Python snippet that queries `https://<bmc-ip>/redfish/v1/Managers/BMC/LogServices/SEL/Entries`, follows `Members@odata.nextLink` across `75`-entry pages, and filters for critical thermal or power events; then combine it with `ncclras` and `dmesg | grep Xid` into a one-page incident runbook for Drill 2.
+1. **Watch the hostlist fold back together when `gpu004` returns from RMA.** You will work on a copy, so the real inventory stays untouched. Copy `code/part06/capstone_inputs/hardware.csv` and `nodes.csv` into a temporary directory. Add `gpu004` with `2` sockets, `56` cores per socket, `2` threads per core, `2063000 MB` of RAM, `8x h100`, and the partition `gpu`. Then run `gen_slurm_conf.py`. You should see `NodeName=gpu[001-003,005]` fold into `NodeName=gpu[001-005]` with `RealMemory=2001110`, which matches the third self-check in `code/part06/capstone_demo_lab.py`.
+2. **Catch a `RealMemory` over-declaration.** Edit `slurm/slurm.conf` so that `RealMemory=2100000` on `gpu[001-003,005]`. That is higher than the `2063000 MB` of physical RAM. Run `slurmconf_lint.py` and explain why it still passes with `no findings`. The command that reports the memory the OS can actually use on a live compute node is `slurmd -C`. Then work out what `slurmctld` does to the node when `RealMemory` is larger than what `slurmd -C` reports. Its state becomes `DRAIN` or `INVAL`.
+3. **Onboard a new research group from start to finish.** Add a fourth user to `capstone_inputs/users.csv`: `dave`, with `uid=2004`, group `ml-rl`, account `ml-rl`, QOS `normal`, and `max_gpus=24`. Re-run `identity_gen.py`. Then inspect `users.ldif`, `sacctmgr.sh` and `mkhomes.sh`, and work through them in that order as you go. Trace the exact order in which those three scripts must be applied across the LDAP server, the parallel filesystem and `slurmdbd`.
+4. **Automate Gate 7, the parallel storage baseline.** Write a bash wrapper around `code/part06/iomix_lab.py`, or around `ior`. It should record sequential write bandwidth (`MB/s`), sequential read bandwidth (`MB/s`), and small-file metadata ops per second (`IOPS`) into a timestamped JSON file. If any metric drops more than `15%` below a saved Day-1 baseline JSON file, the wrapper should exit non-zero.
+5. **Work the rack power arithmetic under facility limits.** A customer wants `32` DGX H100 nodes, which is one full SU at `10.2 kW` maximum per node. The SU also needs `2` `MQM9700` compute switches, `1` `MQM9700` storage switch, `1` `SN4600C` in-band switch and `1` `SN2201` OOB switch. Those switches add about `2.5 kW` in total. The racks are capped at `25 kW` each. Calculate the maximum number of DGX H100 nodes per rack and the minimum number of racks for the `32`-node SU. Then run `code/part06/facility_calc.py` to find the chilled-water flow rate in `L/min`, at `80%` liquid heat capture and a `10 °C` $\Delta T$.
+6. **Turn Redfish SEL paging and the 64-node hang into one runbook.** Write a snippet of about 15 lines, in shell or Python. It queries `https://<bmc-ip>/redfish/v1/Managers/BMC/LogServices/SEL/Entries` and follows `Members@odata.nextLink` across the `75`-entry pages. It filters for critical thermal or power events. Then combine that output with `ncclras` and `dmesg | grep Xid` into a one-page incident runbook for Drill 2.
 
 ---
 
@@ -422,49 +432,49 @@ Many candidates repeat outdated or inaccurate folklore about NVIDIA Base Command
 <details>
 <summary>1. In what exact order should you build these six layers of a new GPU cluster, and why: workload scheduler, bare-metal provisioning, cluster-wide identity, parallel storage, monitoring/alerting, and facility power/cooling?</summary>
 
-**Facility power/cooling $\rightarrow$ Bare-metal provisioning $\rightarrow$ Cluster-wide identity $\rightarrow$ Parallel storage $\rightarrow$ Workload scheduler $\rightarrow$ Monitoring/alerting** (followed by acceptance testing before user cutover). Each layer relies on invariants from the previous one: nodes cannot boot without rack power and DHCP/iPXE provisioning; shared storage and MUNGE/Slurm require identical UIDs/GIDs across every host; `slurmctld` and `slurmd` require resolved users and mounted filesystems; and monitoring must verify the complete stack before user jobs arrive.
+Build facility power and cooling first, then bare-metal provisioning, cluster-wide identity, parallel storage, the workload scheduler, and monitoring and alerting. Run acceptance testing before you cut over to users. Each layer depends on the one below it. Nodes cannot boot without rack power and DHCP/iPXE provisioning. Shared storage and MUNGE/Slurm need identical UIDs and GIDs on every host. `slurmctld` and `slurmd` need resolved users and mounted filesystems. Monitoring has to verify the full stack before user jobs arrive.
 </details>
 
 <details>
 <summary>2. Why must cluster-wide identity (LDAP/SSSD and MUNGE/service UIDs) be established before mounting shared storage and starting Slurm?</summary>
 
-MUNGE authentication requires the `munge` and `slurm` daemons—and every submitted user job—to resolve consistent numeric UIDs and GIDs across the controller and all compute nodes. If a user's UID differs across nodes or does not exist on a compute node when `slurmd` launches a job step, `setuid()` fails immediately and files written to the parallel filesystem have mismatched ownership across ranks.
+MUNGE needs the `munge` and `slurm` daemons, and every submitted user job, to resolve the same numeric UIDs and GIDs on the controller and on every compute node. If a user's UID differs between nodes, or the account is missing on a compute node, `slurmd` fails at the `setuid()` call as soon as it launches a job step. Files written to the parallel filesystem then end up with mismatched ownership across ranks.
 </details>
 
 <details>
 <summary>3. Why is generating `dnsmasq.conf`, `users.ldif`, `slurm.conf`, `gres.conf`, and `cgroup.conf` from a single Git inventory better than editing those files directly?</summary>
 
-Hand-edited files inevitably drift when nodes are RMA'd, added, or decommissioned—leading to mismatches between DHCP MAC tables, `slurm.conf` `NodeName` ranges, and `gres.conf` GPU counts. Compiling all daemon configs deterministically from `hardware.csv`, `nodes.csv`, and `users.csv` guarantees that a single row change updates every subsystem in lockstep.
+Hand-edited files drift as soon as nodes are RMA'd, added or decommissioned. That leaves the DHCP MAC tables, the `NodeName` ranges in `slurm.conf` and the GPU counts in `gres.conf` out of step with each other. When every daemon config is compiled from `hardware.csv`, `nodes.csv` and `users.csv`, a single row change updates every subsystem together.
 </details>
 
 <details>
 <summary>4. In `gen_slurm_conf.py`, why is `RealMemory=2001110` generated for a node with `2063000 MB` of physical RAM (`97%`)?</summary>
 
-The Linux kernel reserves `~2–3%` of physical RAM for kernel slab structures, page tables, crashkernel reservation, and initial ramdisk overhead, so `slurmd -C` always reports less usable memory than the physical DIMM total. If `RealMemory` in `slurm.conf` exceeds what `slurmd -C` reports on the booted node, `slurmctld` marks the node `INVALID_REG` (`Low RealMemory`) and refuses to schedule jobs on it.
+The Linux kernel reserves about `2–3%` of physical RAM for slab structures, page tables, the crashkernel reservation and initial ramdisk overhead. So `slurmd -C` always reports less usable memory than the DIMM total. If `RealMemory` in `slurm.conf` is higher than what `slurmd -C` reports on the booted node, `slurmctld` marks the node `INVALID_REG` with `Low RealMemory`. It then refuses to schedule jobs there.
 </details>
 
 <details>
 <summary>5. Why must `DefMemPerGPU` and `DefCpuPerGPU` only be attached to GPU partitions and never to a CPU-only partition in `slurm.conf`?</summary>
 
-`DefMemPerGPU` and `DefCpuPerGPU` scale default memory and CPU allocations per requested GPU GRES. Placing them on a partition whose nodes have `0` GPUs causes `slurmctld` configuration warnings or allocation calculation errors for CPU-only jobs.
+These two settings scale the default memory and CPU allocation for each requested GPU GRES. On a partition whose nodes have `0` GPUs, there is no GPU to scale from. The result is `slurmctld` configuration warnings or allocation errors for CPU-only jobs.
 </details>
 
 <details>
 <summary>6. What specific isolation guarantee does `ConstrainDevices=yes` in `cgroup.conf` enforce on an 8-GPU node?</summary>
 
-`ConstrainDevices=yes` instructs Slurm's `task/cgroup` plugin to program a Linux cgroup v2 eBPF device controller filter (or v1 `devices.allow`/`devices.deny` list) for each job step so that a job requesting `--gpus=1` can only open its allocated `/dev/nvidiaX` device node and cannot see or allocate memory on the other `7` GPUs on the same host.
+`ConstrainDevices=yes` tells Slurm's `task/cgroup` plugin to set up a device filter for each job step. On cgroup v2 that is an eBPF device controller, and on v1 it is a `devices.allow`/`devices.deny` list. For example, a job that requests `--gpus=1` can then open only its allocated `/dev/nvidiaX` device node. It cannot see or allocate memory on the other `7` GPUs on the same host.
 </details>
 
 <details>
 <summary>7. What is the purpose of a 24-to-72-hour cluster burn-in test after functional acceptance checks pass?</summary>
 
-Functional checks prove that components work for a few minutes, whereas sustained full-power thermal and electrical stress (`HPL` + multi-node `all_reduce_perf` + `IOR`) exposes infant-mortality hardware defects—marginal HBM stacks, optical transceivers that drop links at `65 °C`, loose cold plates, and failing PSUs—while the hardware is still in pre-production and under vendor warranty.
+Functional checks show that components work for a few minutes. A sustained full-power run of `HPL`, multi-node `all_reduce_perf` and `IOR` shows what breaks over time. It exposes infant-mortality defects, such as marginal HBM stacks, optical transceivers that drop links at `65 °C`, loose cold plates and failing PSUs. You want to find these while the hardware is still in pre-production and under vendor warranty.
 </details>
 
 <details>
 <summary>8. Why should you commit Day-1 `HPL`, `osu_bw`, `all_reduce_perf`, and `ior` benchmark outputs to version control before users log in?</summary>
 
-Saved Day-1 baselines turn subjective future complaints (*"training feels slow this week"*) into objective pass/fail comparisons (*"Node `gpu014` NVLink bandwidth is `385 GB/s` matching Day 1, while Rail 3 IB bandwidth between SU 1 and SU 2 dropped from `48 GB/s` to `19 GB/s`"*), isolating hardware degradation in minutes.
+Saved Day-1 baselines let you replace a vague complaint such as "training feels slow this week" with a measured comparison. For example, you can show that node `gpu014` still delivers `385 GB/s` of NVLink bandwidth, as on Day 1, while Rail 3 IB bandwidth between SU 1 and SU 2 fell from `48 GB/s` to `19 GB/s`. That comparison isolates the degraded hardware within minutes.
 </details>
 
 <details>
@@ -479,67 +489,67 @@ Saved Day-1 baselines turn subjective future complaints (*"training feels slow t
 <details>
 <summary>10. Why does the DGX SuperPOD H100 reference architecture show `32` nodes per Scalable Unit (`128` nodes for `4` SUs) in the overview, but `31` nodes (`1` SU) and `127` nodes (`4` SUs, `1,016` GPUs) in the compute-fabric port tables?</summary>
 
-The reference architecture is built on a `32`-node-per-SU design, but in the full compute-fabric port layout **one DGX system slot is removed to free InfiniBand switch ports for UFM (Unified Fabric Manager) appliance connectivity**, leaving `31` compute nodes in a single-SU deployment and `127` compute nodes (`1,016` GPUs) in a four-SU deployment.
+The reference architecture is built on a `32`-node-per-SU design. In the full compute-fabric port layout, however, one DGX system slot is removed to free InfiniBand switch ports for UFM (Unified Fabric Manager) appliance connectivity. That leaves `31` compute nodes in a single-SU deployment and `127` compute nodes (`1,016` GPUs) in a four-SU deployment.
 </details>
 
 <details>
 <summary>11. What is rail alignment in a `32`-node Scalable Unit, and why does it optimize multi-node training collectives?</summary>
 
-In a rail-aligned `32`-node SU, the $k$-th compute NIC (paired with GPU $k$) of every node connects to the $k$-th leaf switch (`Rail k`). During distributed collectives (`AllReduce`), same-numbered GPUs across different nodes within the SU can exchange gradients across a **single leaf-switch hop** without traversing the spine switches, minimizing latency and spine congestion.
+In a rail-aligned `32`-node SU, the $k$-th compute NIC, paired with GPU $k$, on every node connects to the $k$-th leaf switch, which is `Rail k`. During collectives such as `AllReduce`, GPUs with the same number on different nodes in the SU exchange gradients across a **single leaf-switch hop**. That path avoids the spine switches, which keeps latency low and spine congestion down.
 </details>
 
 <details>
 <summary>12. What is the maximum power specification and PSU configuration of a single DGX H100 system, and how many fit in a `30 kW`-capped rack?</summary>
 
-The DGX H100/H200 User Guide specifies **`10.2 kW` maximum power** per system, backed by **six `3.3 kW` power supplies**. In a rack capped at `30 kW`, at most **`2` DGX H100 systems** fit (`2 x 10.2 kW = 20.4 kW` maximum, leaving `9.6 kW` for top-of-rack switches and PDU margin), because `3` systems (`30.6 kW`) would exceed the `30 kW` ceiling.
+The DGX H100/H200 User Guide specifies **`10.2 kW` maximum power** per system, backed by **six `3.3 kW` power supplies**. In a rack capped at `30 kW`, at most **`2` DGX H100 systems** fit. Two systems draw `2 x 10.2 kW = 20.4 kW` at most, which leaves `9.6 kW` for top-of-rack switches and PDU margin. A third system would bring the draw to `30.6 kW`, above the `30 kW` ceiling.
 </details>
 
 <details>
 <summary>13. Which Redfish URI retrieves the System Event Log (SEL) on a DGX H100 BMC, and how many entries does it return per request?</summary>
 
-`https://<bmc-ip>/redfish/v1/Managers/BMC/LogServices/SEL/Entries`. It returns **75 SEL members per page** along with a `Members@odata.nextLink` field for paging through additional entries.
+Use `https://<bmc-ip>/redfish/v1/Managers/BMC/LogServices/SEL/Entries`. It returns **75 SEL members per page**. It also includes a `Members@odata.nextLink` field, which you follow to page through the remaining entries.
 </details>
 
 <details>
 <summary>14. Why can a single unhealthy GPU or degraded InfiniBand link on one node freeze all `512` GPUs of a `64`-node training job?</summary>
 
-Synchronous data-parallel, tensor-parallel, and pipeline-parallel training steps execute collective barriers (`AllReduce`, `AllGather`, `ReduceScatter`) across every rank in the communicator at every optimizer step. Because collectives cannot complete until the slowest rank arrives, a single stalled rank blocks the other `511` GPUs indefinitely.
+Synchronous data-parallel, tensor-parallel and pipeline-parallel training runs collective barriers, such as `AllReduce`, `AllGather` and `ReduceScatter`, across every rank in the communicator at every optimizer step. A collective cannot finish until the slowest rank arrives. A single stalled rank therefore blocks the other `511` GPUs indefinitely.
 </details>
 
 <details>
 <summary>15. How do you use NCCL 2.24+'s `ncclras` tool to diagnose a hung multi-node job, and why should you run it twice a few seconds apart?</summary>
 
-Querying `ncclras` against a live job reports communicator status across all ranks: a **`MISMATCH`** row lists ranks whose collective operation counters are behind (and their hostnames), while an **`INCOMPLETE`** row names a process that is unresponsive to RAS queries. Running `ncclras` twice a few seconds apart distinguishes a healthy, actively progressing collective (where operation counts increment between reads) from a genuinely hung communicator (where counts remain frozen).
+Run `ncclras` against the live job to see communicator status across all ranks. A **`MISMATCH`** row lists the ranks whose collective operation counters are behind, along with their hostnames. An **`INCOMPLETE`** row names a process that does not answer RAS queries. Run it twice, a few seconds apart. A healthy collective shows counts that increase between reads. A truly hung communicator shows counts that stay frozen.
 </details>
 
 <details>
 <summary>16. Why must you check InfiniBand error counter deltas (two reads separated by a few minutes) rather than a single `perfquery` snapshot during a hang?</summary>
 
-Hardware port counters in `/sys/class/infiniband/*/ports/1/counters/` accumulate since the last counter reset or switch reboot. A non-zero counter could have occurred weeks ago during maintenance; reading the counters twice a few minutes apart proves whether symbol errors, link recoveries, or packet drops are **actively incrementing right now**.
+Hardware port counters in `/sys/class/infiniband/*/ports/1/counters/` build up from the last counter reset or switch reboot. A non-zero value could have come from maintenance weeks ago. Reading the counters twice, a few minutes apart, shows whether symbol errors, link recoveries or packet drops are **still increasing right now**.
 </details>
 
 <details>
 <summary>17. How is BCM 11 head-node High Availability actually architected, and which common open-source stack is it NOT based on?</summary>
 
-Per the BCM 11 Administrator Manual (§15), head-node HA is configured with **`cmha-setup`** and uses BMC-based power fencing (STONITH), a dedicated heartbeat network link, a node quorum check across the cluster, and shared NAS storage. Contrary to a common interview myth, it is **not** a Pacemaker + Corosync + DRBD stack.
+According to the BCM 11 Administrator Manual (§15), head-node HA is configured with **`cmha-setup`**. It uses BMC-based power fencing (STONITH), a dedicated heartbeat network link, a node quorum check across the cluster and shared NAS storage. It is **not** a Pacemaker + Corosync + DRBD stack, despite a common interview myth.
 </details>
 
 <details>
 <summary>18. What is the difference between the **boot role** and the **provisioning role** in Base Command Manager (BCM 11), and what is `imageupdate` used for?</summary>
 
-The **boot role** serves network boot protocols (DHCP, TFTP, PXE) to prevent boot storms on a subnet, whereas the **provisioning role** (`node-installer`) transfers the heavy root filesystem software image to nodes across rack groups (§5.1.7, §5.2). **`imageupdate`** (§5.6) syncs changes from a modified software image on the head node directly to **running** compute nodes in place without requiring a full PXE reinstall.
+The **boot role** serves the network boot protocols (DHCP, TFTP and PXE), which prevents boot storms on a subnet. The **provisioning role** (`node-installer`) moves the large root filesystem image to nodes across rack groups (§5.1.7, §5.2). **`imageupdate`** (§5.6) syncs changes from a modified software image on the head node directly onto **running** compute nodes, so they do not need a full PXE reinstall.
 </details>
 
 <details>
 <summary>19. How does BCM Auto Scaler (`cm-scale`) allow Slurm and Kubernetes to share the same physical GPU nodes?</summary>
 
-As documented in BCM 11 Administrator Manual §8.1.1–8.1.2, `cm-scale` polls pending workload queues in both Slurm and Kubernetes (matching CPUs, memory, pods, ephemeral storage, and `nvidia.com/gpu` extended resources) and dynamically repurposes idle nodes between Slurm and Kubernetes **configuration overlays** as demand shifts.
+BCM 11 Administrator Manual §8.1.1–8.1.2 describes how `cm-scale` polls pending work in both Slurm and Kubernetes. It matches CPUs, memory, pods, ephemeral storage and `nvidia.com/gpu` extended resources. When demand shifts, it moves idle nodes between Slurm and Kubernetes **configuration overlays**.
 </details>
 
 <details>
 <summary>20. Which operational drill proves that your single-source-of-truth cluster configuration pipeline works end-to-end?</summary>
 
-**Drill 8 (Bare-metal node rebuild from Git):** Wiping a compute node's disk completely, running `capstone_demo.sh` from the Git inventory (`hardware.csv`, `nodes.csv`, `users.csv`), network-booting the node via iPXE, and having it pass UID resolution, parallel storage mount checks, `slurmd -C` registration, and NHC Gate 2 without a single manual file edit on the node.
+**Drill 8 (Bare-metal node rebuild from Git).** You wipe a compute node's disk completely, run `capstone_demo.sh` from the Git inventory (`hardware.csv`, `nodes.csv`, `users.csv`) and network-boot the node via iPXE. The node then has to pass UID resolution, parallel storage mount checks, `slurmd -C` registration and NHC Gate 2, without a single manual file edit on the node.
 </details>
 
 ---
