@@ -22,20 +22,28 @@ lab_venue: "GCP / GKE"
 
 ## Why this matters for AI infrastructure
 
-Training clusters feel disposable (checkpoints can be regenerated, nodes are reimaged), which tempts teams to skip backups. But a cluster holds irreplaceable things: user code and results, curated datasets and labels, trained models and their lineage, the configuration that makes the cluster work, and the databases that define identity and accounting. Losing the Slurm accounting database, the LDAP directory, the head-node image repository, or a project's only copy of a fine-tuned model costs weeks. Ransomware aimed at research and cloud environments makes immutable, tested backups a security control as much as an operations task. This chapter separates what must be protected from what can be rebuilt, and shows the tools and tests.
+A training cluster can feel disposable. Checkpoints can be regenerated, and nodes can be reimaged, so backups are easy to skip. Skipping them is a mistake. The cluster also holds things you cannot regenerate. These include user code and results, curated datasets and labels, and trained models with their lineage. They also include the configuration that makes the cluster work, and the databases that define identity and accounting.
+
+Think about what happens when one of those is gone. Losing the Slurm accounting database, the LDAP directory, the head-node image repository, or a project's only copy of a fine-tuned model costs weeks of work. Ransomware aimed at research and cloud environments adds a second reason. Immutable, tested backups are a security control as much as an operations task.
+
+This chapter separates what you must protect from what you can rebuild. It also shows the tools and the tests that prove a backup works.
 
 ## Prerequisites and outcomes
 
-Needs 6.18 to 6.24. After this chapter you can:
+You need chapters 6.18 to 6.24 first. By the end of this chapter, you should be able to:
 
-- Classify cluster data by value and reproducibility and set RPO/RTO per class.
-- Apply 3-2-1 and its modern variants (immutability, air gap, offsite).
-- Use tar, rsync (hard-link snapshots), Bacula-style enterprise backup, and deduplicating tools (restic/borg/kopia), and understand the trade-offs.
-- Design backups for parallel file systems and object stores; know why snapshots are not backups.
-- Protect the control-plane state: head node, Slurm, LDAP, Git, Terraform state, secrets, container registries.
-- Test restores and detect silent corruption; monitor backup health.
+- Classify cluster data by value and reproducibility, and set RPO and RTO for each class.
+- Apply 3-2-1 and its modern variants: immutability, an air gap and an offsite copy.
+- Use tar, rsync with hard-link snapshots, Bacula-style enterprise backup, and deduplicating tools such as restic, borg or kopia, and understand their trade-offs.
+- Design backups for parallel file systems and object stores, and explain why snapshots are not backups.
+- Protect the control-plane state: the head node, Slurm, LDAP, Git, Terraform state, secrets and container registries.
+- Test restores, detect silent corruption, and monitor backup health.
+
+If you have not yet sorted your data into classes, start with section 1.
 
 ## 1. What to protect
+
+Not all cluster data deserves the same protection. Some of it can be regenerated, and some of it cannot. The table sorts each class by whether you can reproduce it, and it names the policy that fits.
 
 | Class | Examples | Reproducible? | Policy |
 |---|---|---|---|
@@ -49,9 +57,13 @@ Needs 6.18 to 6.24. After this chapter you can:
 | **Logs and metrics** | Syslog, job logs, accounting history | No (audit value) | Ship offsite; retention per compliance |
 | **Databases for applications** | MLflow, experiment trackers, vector databases | No | Application-consistent dumps |
 
-State **RPO** (recovery point objective: how much data you can lose) and **RTO** (recovery time objective: how long recovery may take) per class. A model-registry database may need RPO of minutes; a home directory 24 hours; scratch none.
+Give each class an RPO and an RTO. The RPO, or recovery point objective, is how much data you can afford to lose. The RTO, or recovery time objective, is how long recovery may take. A model-registry database may need an RPO of minutes, a home directory 24 hours, and scratch none.
+
+Write down an RPO and an RTO for each class before you choose any tools.
 
 ## 2. Principles
+
+Suppose an administrator deletes a project directory by mistake. Whether you can get it back depends on where the other copies live. The principles below are about that question.
 
 ```mermaid
 flowchart LR
@@ -70,22 +82,33 @@ flowchart LR
   WORM -->|"0 Errors: Automated Restore & --read-data"| Verify["Quarterly DR Drill"]
 ```
 
-- **3-2-1(-1-0)**: three copies of the data, on two different media/systems, one offsite, **one immutable or offline**, and zero errors verified by restore testing. The last two additions answer ransomware and silent corruption.
-- **Snapshots are not backups.** File-system snapshots (ZFS, GPFS, Btrfs, array snapshots) protect against accidental deletion quickly but live in the same failure domain as the data (same array, same admin credentials). Use them as the first line and combine with replication or backup to a separate system.
-- **Replication is not backup.** Synchronous or asynchronous mirrors copy deletions and corruption as faithfully as data.
-- **Independent credentials and failure domains**: the backup system's admin account must not be the same identity that can delete production data; ideally append-only credentials for the writer.
-- **Consistency**: for databases and busy file systems take application-consistent copies (`mysqldump --single-transaction`, `pg_basebackup`, LVM/ZFS snapshot then copy, quiesce). Backing up a live Postgres directory with `cp` yields garbage.
-- **Encrypt** backups at rest and in transit; protect the keys separately (losing the key is losing the backups).
-- **Test restores** regularly: a backup you have not restored is a hope. Include full-system recovery drills for the control plane.
-- **Monitor**: job success, age of the newest backup per class, size and duration trends, error counts, repository integrity checks, restore-test results; alert on "no successful backup in N hours".
+Read the diagram from left to right. Primary cluster data is copied to a second medium on site. From there it goes to an offsite copy that is also immutable, and a quarterly disaster-recovery drill checks the restore.
+
+Follow the 3-2-1(-1-0) rule. Keep three copies of the data, on two different media or systems, with one copy offsite. One of those copies must be immutable or offline, and restore testing must show zero errors. The last two additions answer ransomware and silent corruption.
+
+Snapshots are not backups. File-system snapshots from ZFS, GPFS, Btrfs or a storage array protect against accidental deletion quickly. But they live in the same failure domain as the data, which means the same array and the same admin credentials. Use snapshots as the first line of defense, and combine them with replication or a backup to a separate system.
+
+Replication is not backup either. Synchronous and asynchronous mirrors copy deletions and corruption as faithfully as they copy data.
+
+Keep the backup system's credentials independent. The admin account for the backup system must not be the same identity that can delete production data. Ideally, the writer uses append-only credentials.
+
+Take application-consistent copies of databases and busy file systems. You can use `mysqldump --single-transaction`, `pg_basebackup`, an LVM or ZFS snapshot followed by a copy, or quiesce the service first. Backing up a live Postgres directory with `cp` yields garbage.
+
+Encrypt backups at rest and in transit. Protect the keys separately, because losing the key means losing the backups.
+
+Test restores regularly. A backup you have not restored is only a hope. Include full-system recovery drills for the control plane.
+
+Monitor the backup system. Watch job success, the age of the newest backup per class, size and duration trends, error counts, repository integrity checks and restore-test results. Set an alert for "no successful backup in N hours".
+
+The next step is to schedule a restore test, because until one succeeds, the backup is unproven.
 
 ## 3. Classic tools (SCL chapter 20)
 
-The SCL book's backup chapter covers three families: `tar`, **Bacula**, and `rsync` "and others".
+Suppose you need a backup tonight and can only use tools that already ship with the system. The Supercomputers for Linux SysAdmins book, chapter 20, covers three families: `tar`, Bacula, and `rsync` "and others".
 
 ### tar
 
-`tar` archives files (optionally compressed) to a file or tape. Every `tar` invocation requires one of the eight operation modes from Table 20-1 in the book:
+`tar` archives files, optionally compressed, into a single file or onto tape. Every `tar` command needs one of eight operation modes. Table 20-1 of the book lists them, and the table below shows the same modes.
 
 | Key | Meaning |
 |---|---|
@@ -98,7 +121,11 @@ The SCL book's backup chapter covers three families: `tar`, **Bacula**, and `rsy
 | `-u`, `--update` | Append only files newer than the existing copy in the archive |
 | `-x`, `--extract`, `--get` | Extract files from the archive |
 
-Besides `-z` (`gzip`, `.tar.gz` / `.tgz`) and `-j` (`bzip2`, `.tar.bz2` / `.tbz2`), GNU `tar` accepts `-I` to invoke an external compressor that supports `-d`, such as multi-core `pigz` (which compresses across many CPU cores). In `SCL` Chapter 20, basic archive creation, compression, listing, extraction (with `-C` to change target directory), and appending (`-r`, which works only on uncompressed `.tar` archives) use `(untested here)`:
+The modes you will use most in this section are `-c` to create an archive, `-t` to list it, and `-x` to extract it.
+
+GNU `tar` can compress with `-z` (`gzip`, for `.tar.gz` or `.tgz` files) or `-j` (`bzip2`, for `.tar.bz2` or `.tbz2` files). `-I` calls an external compressor instead, as long as it supports `-d`. Multi-core `pigz` is one example, and it compresses across many CPU cores.
+
+In chapter 20 of the book, basic archive creation, compression, listing, and extraction all appear. Extraction uses `-C` to change the target directory. Appending with `-r` works only on uncompressed `.tar` archives. The examples are `(untested here)`:
 
 ```bash
 # (untested here) — SCL Chapter 20 tar examples
@@ -113,14 +140,14 @@ tar rvf project.tar new_file            # append file/folder to uncompressed arc
 tar rvf project.tar new_folder
 ```
 
-Because `tar` preserves ownership, permissions, symbolic links, and special device files more faithfully than plain `cp`, the book uses a standard-output/standard-input pipeline to clone a directory tree locally (or over `ssh`/`netcat`) `(untested here)`:
+`tar` keeps ownership, permissions, symbolic links and special device files more faithfully than plain `cp` does. That is why the book clones a directory tree with a pipeline. One side writes the archive to standard output, and the other reads it from standard input. You can run that locally, or over `ssh` or `netcat` `(untested here)`:
 
 ```bash
 # (untested here)
 tar cf - data01 | (cd /db01; tar xvf -)
 ```
 
-GNU tar supports **incremental backups** with a snapshot (`--listed-incremental`) metadata file (`.snar`) that records what was archived; passing `--level=0` (or deleting the `.snar` file, such as `/var/log/usr.snar` in the book's example) forces a full level-0 archive. Tested with GNU tar 1.35 on a 4 MB directory:
+GNU `tar` supports incremental backups. It keeps a snapshot metadata file, with the `.snar` extension, that records what it has already archived. Pass `--level=0`, or delete the `.snar` file (such as `/var/log/usr.snar` in the book's example), and `tar` writes a full level-0 archive again. The test below used GNU tar 1.35 on a 4 MB directory.
 
 ```bash
 tar --listed-incremental=lvl.snar -czf full.tgz data      # level 0 (the .snar file is created)
@@ -128,11 +155,17 @@ echo more > data/new.txt
 tar --listed-incremental=lvl.snar -czf inc1.tgz data      # only what changed since
 ```
 
-Result: `full.tgz` 4,015,302 bytes; `inc1.tgz` 578 bytes, containing the new directory entries and `data/new.txt`. To restore, extract the full archive then each incremental in order, using `--listed-incremental=/dev/null`. (macOS's default `tar` is bsdtar, which lacks this option; use GNU tar. Two other classic UNIX archivers mentioned in the book are `cpio`, which reads file paths from standard input via `find`, and `pax`, which also writes tape archives.) Limits: no deduplication, no integrity verification beyond the compressor's checksums, no catalog, restore requires the chain, ACLs/xattrs need `--acls --xattrs`, sparse files need `--sparse`. Good for simple, offline, long-term archives and as a building block.
+The full archive, `full.tgz`, came out at 4,015,302 bytes. The incremental, `inc1.tgz`, was only 578 bytes. It held the new directory entries and `data/new.txt`. To restore, extract the full archive first, then each incremental in order, using `--listed-incremental=/dev/null`.
+
+The default `tar` on macOS is bsdtar, which lacks this option, so use GNU tar instead. The book also mentions two other classic UNIX archivers. `cpio` reads file paths from standard input, usually supplied by `find`. `pax` also writes tape archives.
+
+`tar` has real limits. It does no deduplication and keeps no catalog. Its only integrity check is the compressor's checksums. A restore needs the whole chain of archives. ACLs and xattrs need `--acls --xattrs`, and sparse files need `--sparse`. Use `tar` for simple, offline, long-term archives, or as a building block for something larger.
 
 ### rsync, batch updates, and hard-link snapshots
 
-`rsync -a` mirrors a tree efficiently (one-way delta transfer comparing modification times and block checksums, preserving permissions, times, and links). As `SCL` Chapter 20 notes, the disadvantages of plain `rsync` include the absence of built-in incremental or differential archive chains (without `--link-dest` or wrapper tools), the inability to read data directly from standard input (for streaming database dumps), and the inability to work with removable tape drives; nevertheless, for relatively small backup tasks it remains a great tool:
+`rsync -a` mirrors a tree efficiently. It does a one-way delta transfer, comparing modification times and block checksums, and it preserves permissions, times and links. Plain `rsync` has three gaps, though. It has no built-in incremental or differential archive chains, unless you add `--link-dest` or a wrapper tool. It cannot read data from standard input, which rules out streaming database dumps. It also cannot work with removable tape drives. For relatively small backup tasks, it remains a great tool.
+
+The book shows two copy commands. The trailing slash copies the contents of the directory without creating an extra subdirectory. The second command adds an SSH login and a key file `(untested here)`:
 
 ```bash
 # (untested here) — SCL Chapter 20 rsync examples (trailing slash copies contents without creating extra subdir)
@@ -140,7 +173,7 @@ rsync -avz host1:data_dir /backups/host1
 rsync -av -e "ssh -l backuper -i secret_key" host1:/to_backup/ /backups/host1
 ```
 
-The book summarises commonly used `rsync` flags in Table 20-3:
+Table 20-3 of the book summarises the commonly used `rsync` flags:
 
 | Key | Meaning |
 |---|---|
@@ -156,9 +189,11 @@ The book summarises commonly used `rsync` flags in Table 20-3:
 | `--progress` | Show transfer progress |
 | `--daemon` | Run as `rsyncd` daemon (`rsync://host/remote_path` or `host::remote_path`), avoiding SSH encryption CPU overhead on trusted internal networks (protect with `chroot` and a dedicated secrets file) |
 
-When you need to apply the exact same incremental directory update across many nodes or backup targets without recomputing deltas for each host, `rsync --write-batch=update` `(untested here)` records the delta stream into two files—`update` and `update.sh`—instead of modifying a remote host directly. You then distribute `update` and `update.sh` (or mount them over a network file system) and execute `update.sh` (which runs `rsync --read-batch=update` under the hood) on each target machine.
+Use `-n` when you want to preview a run, because it shows what would transfer without copying anything. `--delete` is the flag that removes destination files which no longer exist in the source.
 
-The classic trick for versioned backups without dedup software is `--link-dest`: each new snapshot directory hard-links unchanged files from the previous one. Tested with rsync 3.4.4 (200 files of 20 KB, 4,004 KB total):
+Sometimes you need the same incremental update on many nodes. `rsync --write-batch=update` `(untested here)` helps there, because it avoids recomputing the deltas for each host. Instead of changing a remote host directly, it records the delta stream into two files, `update` and `update.sh`. You distribute those files, or mount them over a network file system, and run `update.sh` on each target. That script runs `rsync --read-batch=update` underneath.
+
+The classic way to keep versioned backups without dedup software is `--link-dest`. Each new snapshot directory hard-links unchanged files from the previous one. The test used rsync 3.4.4 on 200 files of 20 KB each, 4,004 KB in total.
 
 ```bash
 rsync -a data/ snaps/day1/
@@ -166,13 +201,21 @@ rsync -a data/ snaps/day1/
 rsync -a --delete --link-dest=$PWD/snaps/day1 data/ snaps/day2/
 ```
 
-Results: `ls -li` showed the **same inode** for the unchanged `f1.bin` in both snapshots and different inodes for the modified `f7.bin`; `snaps/day1` measured 4,004 KB while `snaps/day2` counted only 24 KB (its own changed files; `du` counts a hard-linked file once per invocation), and both together took 4,028 KB. Each snapshot directory looks like a full copy and can be browsed and restored with plain `cp`. Caveats: the first run copies everything; files modified in place cost a full copy each time (no block-level dedup); permissions and ownership require running as root on the target; hard links do not cross file systems; rotation scripts must prune old snapshots; macOS ships an old `openrsync`, so use a current rsync. `rsync` also moves data between systems (`rsync -aH --delete-after -e ssh`), the usual tool for syncing images and configuration to a standby head node, with `--checksum`, `--partial`, `--bwlimit` and `-z` as needed. For parallel file systems with millions of files use parallel tools (`mpifileutils` `dsync`/`dcp`, `fpsync`, `rclone` with many transfers) because single-threaded rsync walks the tree serially.
+The first snapshot measures 4,004 KB. The second counts only 24 KB, because only its changed files take new space. The `du` command counts a hard-linked file once per run, so the second figure looks small. Together the two take 4,028 KB. That is the first snapshot's 4,004 KB plus the 24 KB of changes.
+
+`ls -li` shows the same inode number for the unchanged `f1.bin` in both snapshots. An inode is the number that identifies a file on disk. The modified `f7.bin` gets a different inode. Each snapshot directory looks like a full copy, and you can browse and restore it with plain `cp`.
+
+The caveats matter. The first run copies everything. A file modified in place costs a full copy each time, because there is no block-level dedup. Permissions and ownership need root on the target. Hard links do not cross file systems, and rotation scripts must prune old snapshots. macOS ships an old `openrsync`, so use a current rsync.
+
+`rsync` also moves data between systems. The command `rsync -aH --delete-after -e ssh` is the usual way to sync images and configuration to a standby head node. Add `--checksum`, `--partial`, `--bwlimit` or `-z` as needed. Parallel file systems with millions of files need parallel tools instead, such as the `mpifileutils` tools `dsync` and `dcp`, `fpsync`, or `rclone` with many transfers. Single-threaded `rsync` walks the tree one step at a time.
 
 ### Bacula
 
-Bacula is an enterprise network backup system (Bacula, forks Bareos). Its components as listed in the book's chapter: **Director** (the scheduler/brain; configuration `/etc/bacula/bacula-dir.conf`, listening on port `9101`), **Storage Daemon** (writes to disk shelves or tape drives such as `/dev/nst0`; configuration `/etc/bacula/bacula-sd.conf`, listening on port `9103`), **File Daemon** (the data-server/client agent on each machine with direct access to the files; configuration `/etc/bacula/bacula-fd.conf`, listening on port `9102`), the **Catalog** (SQLite, MySQL, or PostgreSQL database recording where volumes and files live), and the **console** (`bconsole`, configured via `/etc/bacula/bconsole.conf`) for operators. Configuration objects: **Client**, **FileSet** (what to include/exclude), **Schedule** (when; full/differential/incremental levels), **Pool** (a set of volumes with retention), **Volume** (a single archive file or tape in a pool), **Device** (the physical drive or directory), **Storage**, **Job**, **JobDefs**, **Messages**.
+Bacula is an enterprise network backup system, and Bareos is a fork of it. Bacula has several parts. The Director is the scheduler and the brain. Its configuration is `/etc/bacula/bacula-dir.conf`, and it listens on port `9101`. The Storage Daemon writes to disk shelves or tape drives such as `/dev/nst0`. Its configuration is `/etc/bacula/bacula-sd.conf`, and it listens on port `9103`. The File Daemon is the agent on each machine with direct access to the files. Its configuration is `/etc/bacula/bacula-fd.conf`, and it listens on port `9102`.
 
-In the book's example, the Storage Daemon configuration `/etc/bacula/bacula-sd.conf` on `stor1` defines the `Storage` listener, authorizes the `Director`, and declares a disk `Device` (`Random Access = Yes; RemovableMedia = no;` for disk directories versus `Random Access = No; RemovableMedia = Yes;` and `Archive Device = /dev/nst0` for tape) `(untested here)`:
+The Catalog is an SQLite, MySQL or PostgreSQL database that records where volumes and files live. The console, `bconsole`, is what operators use, and it reads `/etc/bacula/bconsole.conf`. The configuration itself is made of objects. A Client names the machine. A FileSet says what to include and exclude. A Schedule says when to run, and at which level: full, differential or incremental. A Pool is a set of volumes with a retention policy, and a Volume is one archive file or tape in that pool. A Device is the physical drive or directory. Storage, Job, JobDefs and Messages complete the list.
+
+The Storage Daemon configuration is `/etc/bacula/bacula-sd.conf`. On `stor1`, it defines the `Storage` listener, authorises the `Director`, and declares a disk `Device`. A disk device uses `Random Access = Yes;` and `RemovableMedia = no;`. A tape device uses `Random Access = No;` and `RemovableMedia = Yes;`, with `Archive Device = /dev/nst0`. `(untested here)`:
 
 ```text
 # /etc/bacula/bacula-sd.conf (untested here)
@@ -197,7 +240,7 @@ Device {
 }
 ```
 
-On the Director server, `/etc/bacula/bacula-dir.conf` links the `Director`, `Storage`, `Pool`, `FileSet`, `Client`, `Schedule`, and `Job` stanzas `(untested here)`:
+On the Director server, `/etc/bacula/bacula-dir.conf` links the `Director`, `Storage`, `Pool`, `FileSet`, `Client`, `Schedule`, and `Job` stanzas together `(untested here)`:
 
 ```text
 # /etc/bacula/bacula-dir.conf (untested here)
@@ -272,9 +315,9 @@ Job {
 }
 ```
 
-Notice `Write Bootstrap = "/var/spool/bacula/%n.bsr"` (`%n` expands to the job `Name`): this bootstrap file allows emergency data recovery even if the Bacula Catalog database is unavailable.
+Notice the `Write Bootstrap = "/var/spool/bacula/%n.bsr"` line. `%n` expands to the job `Name`, so each job writes its own file. That bootstrap file lets you recover data even when the Bacula Catalog database is unavailable.
 
-On each data server (client), `/etc/bacula/bacula-fd.conf` (or `/etc/bacula/bacula-fd`) specifies the `Director` password and the `FileDaemon` listener matching the Director's `Client` name `(untested here)`:
+Each data server, which acts as a client, needs its own File Daemon configuration. The file is `/etc/bacula/bacula-fd.conf`, and it can also be named `/etc/bacula/bacula-fd`. It holds the Director password and the File Daemon listener, which must match the Director's `Client` name `(untested here)`:
 
 ```text
 # /etc/bacula/bacula-fd.conf (untested here)
@@ -291,7 +334,7 @@ FileDaemon {
 }
 ```
 
-Finally, the operator console `/etc/bacula/bconsole.conf` points to the Director `(untested here)`:
+Finally, the operator console reads `/etc/bacula/bconsole.conf`, which points to the Director `(untested here)`:
 
 ```text
 # /etc/bacula/bconsole.conf (untested here)
@@ -319,13 +362,17 @@ Inside `bconsole`, Table 20-2 of the book lists the essential interactive comman
 | `status` | Show the status of the director, storage servers, client file daemons, or all together |
 | `show` | Display parsed configuration objects (use `show help` or `show tasks` to inspect job definitions) |
 
-Strengths of Bacula: central policy, tape and disk pool management, long retention, mature. Costs: manual configuration across multiple files, catalog dependency (you must back up and be able to restore the catalog or `.bsr` bootstrap files), per-file catalog growth on huge file counts, and scan times on tens of millions of files.
+Bacula gives you central policy, tape and disk pool management, long retention, and a mature design. The costs are real. Configuration is spread across multiple files. The catalog becomes a dependency, so you must back it up and be able to restore it, or keep the `.bsr` bootstrap files. Catalog growth on huge file counts is another cost, and scanning tens of millions of files takes a long time.
+
+Choose the tool by the job. Use `tar` for simple archives, rsync snapshots for smaller trees, and Bacula where central policy and tape matter.
 
 ## 4. Deduplicating repositories: restic, borg, kopia
 
-Modern tools split files into content-defined chunks, deduplicate across all snapshots and hosts, compress and **encrypt** client-side, and store everything in a repository (local directory, SFTP, S3-compatible object store, REST server). Properties: every backup is a full-looking snapshot but costs only changed chunks; integrity checks via content hashes; flexible retention (`forget --keep-daily 7 --keep-weekly 4 ...`); mountable snapshots; fast restores of single files. restic is a single Go binary (the examples below use it); borg (Python/C, strong compression and append-only options) and kopia (Go, with server/UI) are alternatives.
+Modern tools take a different approach. They split files into content-defined chunks and deduplicate those chunks across every snapshot and host. They compress and encrypt on the client, and they store everything in a repository. That repository can be a local directory, SFTP, an S3-compatible object store or a REST server.
 
-Tested with restic 0.19.1 (tiny data set; the point is behaviour, not speed):
+Each backup looks like a full snapshot, but it costs only the chunks that changed. Integrity checks use content hashes. Retention is flexible, so you can write a rule such as `forget --keep-daily 7 --keep-weekly 4 ...`. Snapshots can be mounted, and single files restore quickly. restic is a single Go binary, and the examples below use it. borg is written in Python and C, and it offers strong compression and append-only options. kopia is written in Go, and it comes with a server and a UI.
+
+Here is the test with restic 0.19.1 on a tiny data set. The point is how it behaves, not how fast it runs.
 
 ```text
 restic init -r repo
@@ -340,22 +387,41 @@ restic -r repo check          -> no errors were found
 restic -r repo restore latest --target restore   -> Restored 204 files/dirs
 ```
 
-A second experiment on a 3-file directory: restoring the latest snapshot into a fresh directory and running `diff -r` against the live data printed "identical", while restoring the *first* snapshot differed from the live data in the modified file (`f2`), as it should. Then a pack file in the repository was corrupted by overwriting two bytes: `restic check --read-data` (which reads and verifies every pack) reported "repository contains errors" and suggested repair steps, while the default `restic check` (metadata only) is cheaper but would not read data blobs. The lesson: **schedule periodic `--read-data` (or `--read-data-subset`) checks**, and keep a second repository copy for repair. Finally `restic forget --keep-last 1 --prune` removed old packs, showing retention in action.
+Look at the sizes. Each snapshot shows the full 3.815 MiB, but the repository takes 4000 KB on disk. The second backup added 111.991 KiB to the repository, with 31.248 KiB stored. So two full-looking snapshots take about the space of one. `restic check` reported no errors, and restoring the latest snapshot gave 204 files and directories.
 
-Operational notes: the repository password/key is essential (store it in a secret manager and on paper offsite; the experiments used a throwaway password); use a dedicated service account with **append-only** access to the repository (restic REST server `--append-only`, S3 object lock/versioning) so a compromised client cannot delete history; pin tool versions; test restores of a sample every week; watch memory use on huge trees (index size). In `SCL` Chapter 20, **`borgbackup`** (`https://www.borgbackup.org/`, with helper scripts in `https://github.com/zhum/hpc-book-matherials`) is highlighted alongside `rsync` for storing every backup as internal links to unique deduplicated objects in a special database (so removing an old backup only deletes chunks unique to that backup) with `sshfs` or native remote service transport and encryption. As `SCL` Chapter 20 concludes, all system administrators are divided into *"those who don't yet do backups and those who do now"*—and smart admins who test backups at least two times a year, because backups can fail silently and losing system or commercial software settings on a supercomputer can take weeks or months to rebuild if data volumes are not protected on a separate physical device.
+A second experiment used a three-file directory. Restoring the latest snapshot into a fresh directory, then running `diff -r` against the live data, printed "identical". Restoring the first snapshot differed from the live data in the modified file, `f2`, as it should.
+
+Then a pack file in the repository was corrupted by overwriting two bytes. `restic check --read-data` reads and verifies every pack. It reported "repository contains errors" and suggested repair steps. The default `restic check` checks metadata only. It is cheaper, but it would not read the data blobs. The lesson is to **schedule periodic `--read-data` (or `--read-data-subset`) checks**, and to keep a second repository copy for repair. Finally, `restic forget --keep-last 1 --prune` removed old packs, which shows retention in action.
+
+Some operational points matter here. You need the repository password or key, so store it in a secret manager and on paper offsite. The experiments used a throwaway password. Use a dedicated service account with append-only access. A REST server running `--append-only`, or S3 object lock and versioning, stops a compromised client from deleting history. Pin tool versions, test restores of a sample every week, and watch memory use on huge trees, where the index gets large.
+
+In chapter 20 of the Supercomputers for Linux SysAdmins book, `borgbackup` is highlighted alongside `rsync`. Borg stores each backup as internal links to unique, deduplicated objects in a special database. Removing an old backup therefore deletes only the chunks unique to that backup. It can use `sshfs` or native remote service transport, with encryption. The project is at `https://www.borgbackup.org/`, and the helper scripts are at `https://github.com/zhum/hpc-book-matherials`.
+
+The book closes its backup chapter with a warning. Administrators fall into two groups: "those who don't yet do backups and those who do now". The smart admins test their backups at least two times a year. Backups can fail silently. Losing system or commercial software settings on a supercomputer can take weeks or months to rebuild if the data is not protected on a separate physical device.
+
+Decide how often you will run `--read-data` checks before you rely on the repository.
 
 ## 5. Parallel file systems, object stores and AI-scale data
 
-Backing up petabytes of small and large files is a different problem:
+A parallel file system can hold petabytes of small and large files, and backing it up is a different problem from backing up a home directory. Walking the namespace and moving the data both slow down at this scale, so the methods change.
 
-- **Walking the namespace is the bottleneck**: a full scan of 500 million files takes hours to days. Use change tracking instead of scanning: Lustre **changelogs** (consumed by tools such as Robinhood) and `lfs find` with `--newer`/mtime filters; GPFS **policy engine** (`mmapplypolicy`) and `mmbackup`; WEKA/VAST snapshot-and-diff APIs; object-store versioning and replication; ZFS `send/receive` incrementals.
-- **Parallel data movers**: `mpifileutils`, `dsync`, `fpsync`, `rclone --transfers N`, Globus, vendor tools; spread over multiple data transfer nodes (6.25).
-- **Tiering and HSM**: copy cold data to object storage or tape via HSM (Lustre HSM, GPFS ILM) so that backup and archive coincide.
-- **Datasets and models**: store in a versioned object store (S3 with versioning, object lock) or a data-versioning layer (DVC, lakeFS) with immutable snapshots; record dataset versions in experiment metadata so a training run is reproducible and a lost model can be retrained. Large model checkpoints and weights go to object storage with lifecycle policies; do not stream TB-scale checkpoints through a backup agent.
-- **Home directories** are small enough for the standard tools; enforce quotas (6.24) to keep them so.
-- **What to exclude**: scratch, caches (`~/.cache`, pip/conda caches), job outputs flagged ephemeral, container layers; document exclusions.
+Walking the namespace is the bottleneck you hit first. A full scan of 500 million files takes hours to days, so use change tracking instead of scanning. Lustre changelogs, consumed by tools such as Robinhood, and `lfs find` with `--newer` or mtime filters can identify what changed. GPFS offers its policy engine (`mmapplypolicy`) and `mmbackup`. WEKA and VAST expose snapshot-and-diff APIs. Object-store versioning and replication, along with ZFS `send/receive` incrementals, also avoid the scan.
+
+Parallel data movers copy many files at once. The list includes `mpifileutils`, `dsync`, `fpsync`, `rclone --transfers N`, Globus and vendor tools. You can spread the work across several data transfer nodes, as section 6.25 describes.
+
+Tiering and HSM move cold data to object storage or tape. Lustre HSM and GPFS ILM do this, so backup and archive happen together.
+
+Datasets and models need versioning. Store them in a versioned object store, such as S3 with versioning and object lock. A data-versioning layer such as DVC or lakeFS also works, because it keeps immutable snapshots. Record dataset versions in experiment metadata, so a training run stays reproducible and a lost model can be retrained. Large checkpoints and weights go to object storage with lifecycle policies. Do not stream TB-scale checkpoints through a backup agent.
+
+Home directories are small enough for the standard tools. Enforce quotas (6.24) to keep them that way.
+
+Decide what to exclude. That means scratch, caches such as `~/.cache` and pip or conda caches, job outputs flagged ephemeral, and container layers. Document every exclusion.
+
+Before you point a backup tool at a parallel file system, decide which change-tracking method it will use.
 
 ## 6. Protecting the control plane
+
+The control plane holds the state that makes the cluster run. Each piece needs its own backup method, and the table below lists them.
 
 | Component | How to back up | Notes |
 |---|---|---|
@@ -370,201 +436,214 @@ Backing up petabytes of small and large files is a different problem:
 | Switch/BMC configs | Config export on change, stored in Git | Part 2, 7 |
 | DNS/DHCP | Zone and lease files from the provisioning source of truth (6.22 inventory) | Generated, so back up the source |
 
-Disaster recovery drill: rebuild the head node and one compute node from nothing using only the backups and documentation; time it; record gaps.
+Read the notes column with care. It flags the traps, such as a state directory that is not a long-term backup, or DNS and DHCP files that are generated and so need their source backed up instead.
+
+Finish with a disaster recovery drill. Rebuild the head node and one compute node from nothing, using only the backups and documentation. Time the rebuild, and record every gap you find.
+
+Schedule that drill before you need it, not after the head node fails.
 
 ## 7. Ransomware and insider risk
 
-- **Immutability**: object lock/WORM (S3 Object Lock in compliance mode, immutable ZFS snapshots with holds, tape taken offline), append-only repositories.
-- **Separate trust domain**: backup servers on a management network not reachable from user nodes; credentials not in LDAP groups users can influence; MFA for deletion; "four-eyes" retention changes.
-- **Detect**: backup size anomalies (sudden growth or total change of every file), canary files, monitoring of mass deletions/encryption (entropy), alerts on repository integrity failures.
-- **Recover**: documented order of restoration (identity, DNS, provisioning, storage, scheduler, then users), clean-room rebuild, rotation of all secrets after an incident.
-- **Offsite and offline copy** of the most critical state (control-plane DB dumps, keys, Git mirrors).
+Ransomware can encrypt user homes and the NFS server in one attack, and your backups must survive it.
+
+Make backups immutable. Object lock or WORM storage, such as S3 Object Lock in compliance mode, stops changes to stored copies. Immutable ZFS snapshots and append-only repositories also work.
+
+Keep the backup servers in a separate trust domain, on a management network that user nodes cannot reach. Credentials should not sit in LDAP groups that users can influence. Require MFA for deletion, and four-eyes approval for retention changes.
+
+Watch for signs of attack. Sudden growth in backup size, or a total change of every file, is one. Canary files, monitoring of mass deletions or encryption (by entropy) and alerts on repository integrity failures are others.
+
+Document the order of restoration: identity, DNS, provisioning, storage, scheduler, then users. Plan a clean-room rebuild, and rotate all secrets after an incident. Keep an offsite, offline copy of the most critical state: control-plane database dumps, keys and Git mirrors.
+
+Decide now which state gets an offline copy. You will find that choice hard to make mid-incident.
 
 ## 8. Restore testing and metrics
 
-Test levels: (1) automated daily restore of a random file and checksum compare; (2) weekly restore of a database dump into a scratch instance and a smoke query; (3) quarterly full-system recovery drill. Track: backup success rate, age of newest good backup per class, restore success and time versus RTO, data growth, dedup ratio, repository check status. Report to management as part of risk review.
+A backup you have never restored is untested. The chapter recommends three levels of restore test, and you can start with the first. Level 1 is an automated daily restore of a random file, with a checksum compare. Level 2 is a weekly restore of a database dump into a scratch instance, followed by a smoke query. Level 3 is a quarterly full-system recovery drill.
+
+Track these numbers: backup success rate, the age of the newest good backup per class, restore success and time against the RTO, data growth, dedup ratio and repository check status. Report them to management as part of the risk review.
 
 ## 9. Lab
 
-First, run the self-checking Python lab (`code/part06/backup_protection_lab.py`) locally. It creates a two-day hard-link snapshot tree (`simulate_hardlink_snapshot`) to verify that unchanged files share the exact same inode while modified files receive a new inode (`4,004 KB + 24 KB = 4,028 KB`), simulates a deduplicated pack repository (`verify_pack_repository`) to prove that metadata-only checks miss a 2-byte pack corruption while full `--read-data` SHA-256 verification catches it immediately, and checks Bacula's TCP ports (`9101` Director, `9102` File Daemon, `9103` Storage Daemon) and the `3-2-1-1-0` backup rule:
+Start with the self-checking Python lab, and run it locally before you try the steps below. The script builds a two-day hard-link snapshot tree with `simulate_hardlink_snapshot`. It checks that unchanged files share the same inode while modified files get a new one. The total should match the first snapshot plus the changes, which is `4,004 KB + 24 KB = 4,028 KB`.
+
+Next, `verify_pack_repository` simulates a deduplicated pack repository. It shows that a metadata-only check misses a 2-byte pack corruption. Full `--read-data` SHA-256 verification catches it at once. The script also checks Bacula's TCP ports and the `3-2-1-1-0` backup rule. The Director listens on `9101`, the File Daemon on `9102`, and the Storage Daemon on `9103`.
+
+Run the script with this command:
 
 ```bash
 python3 code/part06/backup_protection_lab.py
 ```
 
-Tested here (install GNU tar, rsync 3 and restic; conda-forge has all three): 1) reproduce the three experiments on a small directory. 2) Delete a file, restore it from each tool. 3) Corrupt a restic pack file and detect it with `check --read-data`; repair the repository by restoring the pack from a second copy (`restic copy` to a second repo beforehand). 4) Script a rotation: 7 daily rsync snapshots with `--link-dest` pruning older ones; confirm disk usage stays near one full copy plus changes. 5) Write the RPO/RTO table for your cluster classes.
+The steps that were tested here need GNU tar, rsync 3 and restic. conda-forge provides all three. Work through these five:
 
-Untested: 6) Bacula/Bareos: director, storage daemon, file daemon on three VMs; back up and restore a directory; back up and restore the catalog. 7) restic to an S3-compatible bucket with object lock and an append-only credential; attempt deletion with the backup credential. 8) ZFS snapshot + `zfs send | receive` incremental replication to a second host. 9) Lustre changelog consumer (Robinhood-style) driving incremental copy. 10) Full DR drill of a test head node.
+1. Reproduce the three experiments on a small directory.
+2. Delete a file, then restore it with each tool.
+3. Corrupt a restic pack file and detect it with `check --read-data`. Then repair the repository by restoring the pack from a second copy, which you make beforehand with `restic copy` into a second repo.
+4. Script a rotation of 7 daily rsync snapshots with `--link-dest`, pruning the older ones. Confirm that disk usage stays near one full copy plus the changes.
+5. Write the RPO and RTO table for your cluster classes.
+
+The next five were not run here, so treat them as a plan:
+
+6. Run Bacula or Bareos with the director, storage daemon and file daemon on three VMs. Back up and restore a directory, then back up and restore the catalog.
+7. Send restic to an S3-compatible bucket with object lock and an append-only credential, then attempt a deletion with the backup credential.
+8. Test ZFS snapshots with `zfs send | receive` incremental replication to a second host.
+9. Drive an incremental copy with a Lustre changelog consumer in the Robinhood style.
+10. Run a full DR drill of a test head node.
+
+Work through the tested steps first, because they need only the three tools above.
 
 ## 10. Interview angles
 
-- Walk through 3-2-1-1-0. Why aren't snapshots and replication backups?
+These questions come up when backups come up in an interview. Each one tests a different part of this chapter.
+
+- Walk through 3-2-1-1-0. Why are snapshots and replication not backups?
 - How would you back up a 5 PB Lustre file system?
-- Design backups for a Slurm cluster's control plane. Which pieces need application-consistent copies?
-- tar vs rsync vs restic vs Bacula: when each?
-- How does `rsync --link-dest` create space-efficient snapshots? Limitations?
-- How do you prove your backups work?
-- A ransomware incident encrypts user homes and your NFS server: what saves you?
-- Should checkpoints be backed up? What is retained, what is not?
-- What are RPO and RTO and how do you choose them for model artefacts?
+- How would you design backups for a Slurm cluster's control plane, and which pieces need application-consistent copies?
+- When would you choose tar, rsync, restic or Bacula?
+- How does `rsync --link-dest` create space-efficient snapshots, and what are its limits?
+- How do you prove that your backups work?
+- A ransomware attack encrypts user homes and your NFS server. What saves you?
+- Should checkpoints be backed up? What do you keep, and what do you not keep?
+- What are RPO and RTO, and how do you choose them for model artefacts?
+
+Start with the ransomware question, since it draws on most of this chapter.
 
 ## Exercises
 
-1. **Verifying Hard-Link Snapshots and Pack Integrity Checks (`code/part06/backup_protection_lab.py`):** Run `python3 code/part06/backup_protection_lab.py`. Trace how `simulate_hardlink_snapshot()` proves that `day1/f1.bin` and `day2/f1.bin` share the same inode (`st_ino`) while modified `f7.bin` gets a new inode, and how `verify_pack_repository()` demonstrates why `restic check --read-data` catches a 2-byte silent bit-rot in a pack file that default metadata-only `restic check` misses.
-2. **GNU `tar` Incremental Archives (`--listed-incremental`) and Streaming Pipes (`SCL` Chapter 20):** Write the GNU `tar` commands to create a level-0 baseline archive (`tar --listed-incremental=/var/log/usr.snar --level=0 -cf archive.0.tar /usr`), a daily incremental archive, a multi-core `pigz` compressed archive (`-I pigz`), and a pipe clone (`tar cf - data01 | (cd /db01; tar xvf -)`). Explain how to restore an incremental `tar` chain cleanly using `--listed-incremental=/dev/null`.
-3. **Configuring a 3-Daemon Bacula Backup Topology (`SCL` Chapter 20):** Write the core sections of `/etc/bacula/bacula-sd.conf` (port `9103`), `/etc/bacula/bacula-dir.conf` (port `9101`, `Pool`, `FileSet`, `Client`, `Schedule`, `Job` with `Write Bootstrap = "/var/spool/bacula/%n.bsr"`), `/etc/bacula/bacula-fd.conf` (port `9102`), and `/etc/bacula/bconsole.conf`. Explain why the `.bsr` bootstrap file is critical if the SQL Catalog database is lost.
-4. **Distributing Identical Updates with `rsync --write-batch` and `--link-dest` (`SCL` Chapter 20):** Compare `rsync -a --delete --link-dest=$PWD/snaps/day1 data/ snaps/day2/` (for rotated hard-link snapshots on a backup server) with `rsync --write-batch=update` (generating `update` and `update.sh` to apply an identical delta across 100 nodes without recomputing checksums 100 times). State the three limitations of plain `rsync` noted in `SCL` Chapter 20.
-5. **Designing Control-Plane and Parallel Filesystem Data Protection for a 1,000-GPU Cluster:** Specify the exact backup tool, command, RPO, RTO, and immutability mechanism for (a) `slurmdbd` MySQL (`mysqldump --single-transaction`), (b) OpenLDAP/FreeIPA (`slapcat` / `ipa-backup`), (c) HashiCorp Vault (`vault operator raft snapshot`), (d) `/home` (50 TB), (e) curated datasets and final model weights on a 5 PB Lustre filesystem (using Lustre changelogs + `mpifileutils` `dsync` to S3 Object Lock), and (f) `/scratch` (excluded by policy).
-6. **Ransomware Recovery Order and Clean-Room Restoration Drill:** An attacker compromises a cluster admin credential and attempts to wipe `/home`, LDAP, and the primary backup server. Explain which two elements of the **3-2-1-1-0** rule prevent total data loss, and state the exact dependency order for restoring the cluster from immutable/offline backups.
+Work through these after the lab. Each one asks you to write, run or explain a specific part of the chapter.
+
+1. Run `python3 code/part06/backup_protection_lab.py`. Trace how `simulate_hardlink_snapshot()` proves that `day1/f1.bin` and `day2/f1.bin` share the same inode (`st_ino`), while the modified `f7.bin` gets a new inode. Then trace how `verify_pack_repository()` shows why `restic check --read-data` catches a 2-byte silent bit-rot in a pack file that the default metadata-only `restic check` misses.
+2. Write the GNU `tar` commands for these steps, which come from chapter 20 of the Supercomputers for Linux SysAdmins book. Create a level-0 baseline archive with `tar --listed-incremental=/var/log/usr.snar --level=0 -cf archive.0.tar /usr`. Create a daily incremental archive. Create a multi-core `pigz` compressed archive with `-I pigz`. Then run the pipe clone `tar cf - data01 | (cd /db01; tar xvf -)`. Finally, explain how to restore an incremental `tar` chain cleanly, using `--listed-incremental=/dev/null`.
+3. Write the core sections of the Bacula configuration. Cover `/etc/bacula/bacula-sd.conf` (port `9103`), `/etc/bacula/bacula-dir.conf` (port `9101`, with `Pool`, `FileSet`, `Client`, `Schedule`, and `Job` containing `Write Bootstrap = "/var/spool/bacula/%n.bsr"`), `/etc/bacula/bacula-fd.conf` (port `9102`), and `/etc/bacula/bconsole.conf`. Then explain why the `.bsr` bootstrap file is critical if you lose the SQL Catalog database.
+4. Compare two ways to keep copies. The first is `rsync -a --delete --link-dest=$PWD/snaps/day1 data/ snaps/day2/`, which makes rotated hard-link snapshots on a backup server. The second is `rsync --write-batch=update`, which generates `update` and `update.sh` to apply one identical delta across 100 nodes without recomputing checksums 100 times. Then state the three limitations of plain `rsync` that chapter 20 notes.
+5. Design the protection for a 1,000-GPU cluster. For each item, specify the exact backup tool, command, RPO, RTO and immutability mechanism. The items are: (a) `slurmdbd` MySQL, using `mysqldump --single-transaction`; (b) OpenLDAP and FreeIPA, using `slapcat` or `ipa-backup`; (c) HashiCorp Vault, using `vault operator raft snapshot`; (d) `/home` at 50 TB; (e) curated datasets and final model weights on a 5 PB Lustre filesystem, using Lustre changelogs and `mpifileutils` `dsync` to S3 Object Lock; and (f) `/scratch`, which is excluded by policy.
+6. An attacker compromises a cluster admin credential and tries to wipe `/home`, LDAP and the primary backup server. Explain which two elements of the **3-2-1-1-0** rule prevent total data loss. Then state the exact dependency order for restoring the cluster from immutable or offline backups.
+
+Start with exercise 1, since it reuses the lab you just ran.
 
 ## Checkpoint
 
 <details>
 <summary>1. Which cluster data classes must be backed up with tight RPO/RTO, and which data class is deliberately **not** backed up?</summary>
 
-- **Must be backed up:** Control-plane databases (`slurmdbd`, LDAP/FreeIPA, BCM/xCAT/Warewulf DB, Vault secrets, Terraform state, Git repos, CA/Munge keys), `/home` directories, and curated datasets/final trained model weights.
-- **Deliberately NOT backed up:** **`/scratch` (and intermediate training checkpoints)**, which are regenerable and multi-petabyte in scale; this non-backup policy and automated purge window must be stated prominently in user onboarding and MOTD.
+The control-plane databases, `/home` directories, and curated datasets with final trained model weights must be backed up. The control-plane databases include `slurmdbd`, LDAP or FreeIPA, the BCM, xCAT or Warewulf database, Vault secrets, Terraform state, Git repos, and the CA and Munge keys. `/scratch` and intermediate training checkpoints are deliberately not backed up. They can be regenerated, and they run to multiple petabytes. The non-backup policy and the automated purge window must be stated in user onboarding and the MOTD.
 </details>
 
 <details>
 <summary>2. Define **RPO**, **RTO**, and the **3-2-1-1-0** backup rule.</summary>
 
-- **RPO (Recovery Point Objective):** Maximum acceptable age of data lost when an incident occurs (determines backup frequency, e.g., 1 hour vs 24 hours).
-- **RTO (Recovery Time Objective):** Maximum acceptable elapsed time to restore service after an incident.
-- **3-2-1-1-0 rule:** Keep at least **3** copies of data, on **2** different storage media/systems, with **1** copy offsite, **1** copy **immutable (WORM) or offline (air-gapped)**, and **0** unverified errors (proven by automated restore testing).
+RPO, the recovery point objective, is the maximum acceptable age of the data you lose when an incident happens. It sets how often you back up, for example every hour or every 24 hours. RTO, the recovery time objective, is the maximum acceptable time to restore service. The 3-2-1-1-0 rule says you keep at least 3 copies of data, on 2 different storage media or systems. One copy must be offsite, and one must be immutable (WORM) or offline (air-gapped). There must be 0 unverified errors, and automated restore testing proves it.
 </details>
 
 <details>
 <summary>3. Why are filesystem **snapshots** and synchronous/asynchronous **replication** not backups?</summary>
 
-- **Snapshots (ZFS, GPFS, storage array):** Reside on the exact same storage array and trust domain as the live data; a storage pool loss, array firmware bug, or compromised storage-admin credential destroys both live files and snapshots together.
-- **Replication (RAID, DRBD, cross-site mirror):** Immediately replicates accidental `rm -rf`, application database corruption, or ransomware encryption to the replica.
+Snapshots from ZFS, GPFS or a storage array sit on the same array and trust domain as the live data. A storage pool loss, an array firmware bug, or a compromised storage-admin credential destroys the live files and the snapshots together. Replication is no better for these failures. It copies an accidental `rm -rf`, application database corruption, or ransomware encryption to the replica straight away. The same goes for RAID, DRBD and cross-site mirrors.
 </details>
 
 <details>
-<summary>4. List the eight primary operation modes of `tar` (`SCL` Chapter 20 `Table 20-1`) and explain why `tar cf - src | (cd /dst; tar xvf -)` is preferred over `cp -r`.</summary>
+<summary>4. List the eight primary operation modes of `tar` (chapter 20 of the Supercomputers for Linux SysAdmins book, `Table 20-1`) and explain why `tar cf - src | (cd /dst; tar xvf -)` is preferred over `cp -r`.</summary>
 
-The eight operation modes are **`-A` (`--catenate`)**, **`-c` (`--create`)**, **`-d` (`--diff`/`--compare`)**, **`--delete`** (disk archives only, not tape), **`-r` (`--append`, uncompressed archives only)**, **`-t` (`--list`)**, **`-u` (`--update`)**, and **`-x` (`--extract`/`--get`)**. Streaming `tar cf - | tar xvf -` preserves ownership, permissions, hard links, symbolic links, device nodes, and directory structures more faithfully than naive `cp`.
+The eight operation modes are `-A` (`--catenate`), `-c` (`--create`), `-d` (`--diff`/`--compare`), `--delete` (disk archives only, not tape), `-r` (`--append`, uncompressed archives only), `-t` (`--list`), `-u` (`--update`), and `-x` (`--extract`/`--get`). A streaming pipe such as `tar cf - | tar xvf -` keeps ownership, permissions, hard links, symbolic links, device nodes and directory structures more faithfully than naive `cp`.
 </details>
 
 <details>
-<summary>5. How does GNU `tar --listed-incremental` work, and how do you force a full Level-0 archive or restore an incremental chain (`SCL` Chapter 20)?</summary>
+<summary>5. How does GNU `tar --listed-incremental` work, and how do you force a full Level-0 archive or restore an incremental chain (chapter 20 of the Supercomputers for Linux SysAdmins book)?</summary>
 
-`tar --listed-incremental=/var/log/usr.snar -cf archive.tar /usr` stores directory and inode timestamp metadata in `/var/log/usr.snar`. If `.snar` does not exist (or if **`--level=0`** is passed), `tar` writes a full Level-0 backup; subsequent runs archive only files created, modified, or renamed since `.snar` was updated. To restore, extract the Level-0 archive followed by each incremental archive in chronological order, passing **`--listed-incremental=/dev/null`** so `tar` accurately removes files that were deleted between increments.
+`tar --listed-incremental=/var/log/usr.snar -cf archive.tar /usr` stores directory and inode timestamp metadata in `/var/log/usr.snar`. If the `.snar` file does not exist, or if `--level=0` is passed, `tar` writes a full Level-0 backup. Later runs archive only files created, modified or renamed since the `.snar` file was updated. To restore, extract the Level-0 archive, then each incremental archive in chronological order, passing `--listed-incremental=/dev/null`. That lets `tar` remove files that were deleted between increments.
 </details>
 
 <details>
 <summary>6. How does `rsync --link-dest` create space-efficient daily snapshots, and what did the 200-file experiment prove?</summary>
 
-`rsync -a --delete --link-dest=$PWD/snaps/day1 data/ snaps/day2/` compares `data/` against `snaps/day1/`: every unchanged file is **hard-linked** into `snaps/day2/` (sharing the exact same disk blocks and inode number `st_ino`), while only modified or new files are written as new inodes. In the experiment (`4,004 KB` across 200 files), `snaps/day2/` added only **`24 KB`** (`4,028 KB` total for two complete, independently browsable directory trees).
+`rsync -a --delete --link-dest=$PWD/snaps/day1 data/ snaps/day2/` compares `data/` with `snaps/day1/`. Every unchanged file is hard-linked into `snaps/day2/`, sharing the same disk blocks and the same inode number (`st_ino`). Only modified or new files are written as new inodes. In the experiment, the 200 files came to `4,004 KB`, and `snaps/day2/` added only `24 KB`. The two snapshots together take `4,028 KB`, and each one is a complete directory tree you can browse.
 </details>
 
 <details>
-<summary>7. What are the three limitations of plain `rsync` noted in `SCL` Chapter 20, and what does `rsync --write-batch=update` do?</summary>
+<summary>7. What are the three limitations of plain `rsync` noted in chapter 20 of the Supercomputers for Linux SysAdmins book, and what does `rsync --write-batch=update` do?</summary>
 
-- **Three limitations:** Plain `rsync` (1) does not build multi-point incremental/differential archive chains by itself (without `--link-dest` or wrapper scripts), (2) cannot read streaming data from `stdin` (such as a piped database dump), and (3) cannot write directly to magnetic tape drives.
-- **`rsync --write-batch=update`:** Computes the delta between source and destination once and writes **`update`** (the binary delta payload) and **`update.sh`** (a replay script running `rsync --read-batch=update`) so the exact same update can be applied across many identical hosts without recomputing checksums.
+Plain `rsync` has three limits. It does not build multi-point incremental or differential archive chains by itself, unless you use `--link-dest` or wrapper scripts. It cannot read streaming data from `stdin`, such as a piped database dump. And it cannot write directly to magnetic tape drives. `rsync --write-batch=update` computes the delta between source and destination once. It writes `update`, the binary delta payload, and `update.sh`, a replay script that runs `rsync --read-batch=update`. The same update can then be applied to many identical hosts without recomputing checksums.
 </details>
 
 <details>
-<summary>8. Name the four core components of **Bacula**, their configuration files, and their default TCP ports (`SCL` Chapter 20).</summary>
+<summary>8. Name the four core components of **Bacula**, their configuration files, and their default TCP ports (chapter 20 of the Supercomputers for Linux SysAdmins book).</summary>
 
-1. **Director (`bacula-dir`):** Central scheduler and policy engine; `/etc/bacula/bacula-dir.conf`, **TCP port `9101`**.
-2. **File Daemon (`bacula-fd`):** Client agent running on each backed-up server; `/etc/bacula/bacula-fd.conf`, **TCP port `9102`**.
-3. **Storage Daemon (`bacula-sd`):** Writes backup streams to disk pools or tape drives (`/dev/nst0`); `/etc/bacula/bacula-sd.conf`, **TCP port `9103`**.
-4. **Console (`bconsole`) & Catalog:** Operator CLI (`/etc/bacula/bconsole.conf` connecting to `9101`) and SQL database (`SQLite`, `MySQL`, or `PostgreSQL`).
+1. The Director (`bacula-dir`) is the central scheduler and policy engine. It is configured in `/etc/bacula/bacula-dir.conf` and listens on TCP port `9101`.
+2. The File Daemon (`bacula-fd`) runs on each backed-up server. It is configured in `/etc/bacula/bacula-fd.conf` and listens on TCP port `9102`.
+3. The Storage Daemon (`bacula-sd`) writes backup streams to disk pools or tape drives such as `/dev/nst0`. It is configured in `/etc/bacula/bacula-sd.conf` and listens on TCP port `9103`.
+4. The console (`bconsole`) and the Catalog. The console is the operator CLI, configured in `/etc/bacula/bconsole.conf` and connecting to `9101`. The Catalog is an SQL database, which can be SQLite, MySQL or PostgreSQL.
 </details>
 
 <details>
-<summary>9. In `/etc/bacula/bacula-dir.conf`, what does `Write Bootstrap = "/var/spool/bacula/%n.bsr"` do, and why is it essential (`SCL` Chapter 20)?</summary>
+<summary>9. In `/etc/bacula/bacula-dir.conf`, what does `Write Bootstrap = "/var/spool/bacula/%n.bsr"` do, and why is it essential (chapter 20 of the Supercomputers for Linux SysAdmins book)?</summary>
 
-It writes a small text **Bootstrap Record (`.bsr`)** file (`%n` = job name) after every backup job listing the exact Volume names, file numbers, and block offsets needed to restore that job's files. If the Bacula SQL Catalog database is destroyed in a disaster, the `.bsr` file allows `bextract` / Bacula to recover the data and catalog directly from the storage volumes without scanning every tape or disk volume from end to end.
+After every backup job, it writes a small text Bootstrap Record file with the `.bsr` extension. `%n` stands for the job name. The record lists the exact Volume names, file numbers and block offsets needed to restore that job's files. If the Bacula SQL Catalog is destroyed in a disaster, the `.bsr` file lets `bextract` or Bacula recover the data and the catalog straight from the storage volumes. You do not have to scan every tape or disk volume from end to end.
 </details>
 
 <details>
-<summary>10. Name eight interactive commands in Bacula's `bconsole` (`SCL` Chapter 20 `Table 20-2`).</summary>
+<summary>10. Name eight interactive commands in Bacula's `bconsole` (chapter 20 of the Supercomputers for Linux SysAdmins book, `Table 20-2`).</summary>
 
-`run` (e.g., `run job=users-backup`), `status` (director, storage, client, or all), `messages`, `list`, `restore`, `cancel`, `disable` / `enable`, `reload`, and `show` (`show help`, `show tasks`).
+The commands are `run` (for example `run job=users-backup`), `status` (for the director, storage, client, or all together), `messages`, `list`, `restore`, `cancel`, `disable` and `enable`, `reload`, and `show` (with `show help` or `show tasks`).
 </details>
 
 <details>
 <summary>11. How do modern deduplicating backup tools (**`restic`**, **`borgbackup`**, **`kopia`**) differ architecturally from `tar` and `rsync --link-dest`?</summary>
 
-They split files into **content-defined variable-length chunks**, hash each chunk with a cryptographic digest (SHA-256 / BLAKE2), **deduplicate chunks globally** across all files, directories, snapshots, and hosts, compress and **encrypt** every pack client-side before transmission, and store them in an content-addressed repository (local disk, SFTP, REST server, or S3 object store). Modifying 4 KB inside a 10 GB file stores only the changed ~4 KB chunk rather than duplicating the entire 10 GB file as `rsync --link-dest` must.
+These tools split files into content-defined, variable-length chunks. Each chunk gets a cryptographic digest, such as SHA-256 or BLAKE2. They deduplicate chunks across all files, directories, snapshots and hosts. They compress and encrypt every pack on the client before it is sent, and they store the packs in a content-addressed repository on local disk, SFTP, a REST server or an S3 object store. If you modify about 4 KB inside a 10 GB file, only that changed chunk is stored. `rsync --link-dest` has to duplicate the whole 10 GB file.
 </details>
 
 <details>
 <summary>12. What is the difference between `restic check` and `restic check --read-data`, and what did the pack-corruption experiment demonstrate?</summary>
 
-- **`restic check` (default):** Verifies repository metadata, snapshot manifests, tree objects, and index consistency, but **does not read and hash the underlying data pack blobs**.
-- **`restic check --read-data` (or `--read-data-subset`):** Reads every data pack from storage and verifies its SHA-256 hash against the repository index—immediately catching the 2-byte pack corruption that default `restic check` missed.
+The default `restic check` verifies repository metadata, snapshot manifests, tree objects and index consistency. It does not read and hash the underlying data pack blobs. `restic check --read-data`, or `--read-data-subset`, reads each data pack and verifies its SHA-256 hash against the repository index. That is how it caught the 2-byte pack corruption that the default check missed.
 </details>
 
 <details>
 <summary>13. Why is backing up a 5 PB parallel filesystem (Lustre or GPFS) with single-threaded `rsync` impossible, and what two mechanisms solve it?</summary>
 
-1. **Metadata change tracking instead of tree-walking:** Walking 500 million inodes via `readdir`/`stat` takes days. Use **Lustre Changelogs** (with a changelog consumer like Robinhood) or **GPFS's ILM policy engine (`mmapplypolicy` / `mmbackup`)** to identify modified files directly from metadata journals without scanning the tree.
-2. **Parallel MPI data movers across DTNs:** Copy files in parallel across multiple Data Transfer Nodes using **`mpifileutils` (`dsync` / `dcp`)**, **`fpsync`**, or multi-stream `rclone` / Globus.
+Walking 500 million inodes through `readdir` and `stat` takes days. Instead, track the changes in metadata. Lustre changelogs, read by a consumer such as Robinhood, or GPFS's ILM policy engine (`mmapplypolicy` or `mmbackup`), can find modified files from the metadata journals without scanning the tree. The second mechanism is parallel MPI data movers that copy files across several Data Transfer Nodes. Those include `mpifileutils` (`dsync` and `dcp`), `fpsync`, and multi-stream `rclone` or Globus.
 </details>
 
 <details>
 <summary>14. How do you take an **application-consistent** backup of `slurmdbd` (MySQL/MariaDB), OpenLDAP/FreeIPA, and HashiCorp Vault?</summary>
 
-Never copy live database files with `cp` or `rsync` while the daemon is writing:
-- **`slurmdbd` (MySQL/MariaDB):** `mysqldump --single-transaction --routines --triggers slurm_acct_db > slurm_acct.sql` (or snapshot a stopped replica).
-- **OpenLDAP / FreeIPA:** `slapcat -l backup.ldif` (OpenLDAP) or `ipa-backup` (FreeIPA, including Dogtag CA and Kerberos keys).
-- **HashiCorp Vault:** `vault operator raft snapshot save vault.snap`.
+Never copy live database files with `cp` or `rsync` while the daemon is writing. For `slurmdbd` on MySQL or MariaDB, run `mysqldump --single-transaction --routines --triggers slurm_acct_db > slurm_acct.sql`, or snapshot a stopped replica. For OpenLDAP, run `slapcat -l backup.ldif`. For FreeIPA, run `ipa-backup`, which includes the Dogtag CA and Kerberos keys. For HashiCorp Vault, run `vault operator raft snapshot save vault.snap`.
 </details>
 
 <details>
 <summary>15. How do **append-only repositories** and **S3 Object Lock (WORM)** protect backups when a cluster root account is compromised by ransomware?</summary>
 
-If a compute/login node or cluster admin account is compromised, an attacker will immediately try to run `restic forget --prune` or `aws s3 rm` using the backup credentials found on the host. Configuring the backup target as **append-only** (`restic-rest-server --append-only` or Borg `command="borg serve --append-only"`) or enabling **S3 Object Lock in Compliance Mode** ensures the backup client credential can write new snapshots but is cryptographically/hardware-blocked from deleting or overwriting existing backup packs until the retention timer expires.
+If a compute or login node, or a cluster admin account, is compromised, an attacker will try `restic forget --prune` or `aws s3 rm` with the backup credentials found on the host. Two settings stop that. One is an append-only target, such as `restic-rest-server --append-only` or Borg's `command="borg serve --append-only"`. The other is S3 Object Lock in Compliance Mode. Either way, the client can write new snapshots, but it is blocked, cryptographically or in hardware, from deleting or overwriting existing backup packs until the retention timer expires.
 </details>
 
 <details>
 <summary>16. What four anomaly signals in backup telemetry provide early warning of a ransomware or mass-corruption event?</summary>
 
-1. **Sudden spike in daily delta size** (e.g., an incremental backup that normally adds `50 GB` suddenly writes `100%` of the dataset because every file was encrypted in place).
-2. **Jump in data entropy / collapse in deduplication and compression ratios** (encrypted ciphertext does not compress or deduplicate).
-3. **Modification or deletion of planted canary files.**
-4. **Unexpected `restic check` / repository integrity failures or failed prune attempts.**
+The first is a sudden spike in the daily delta size. For example, an incremental backup that normally adds `50 GB` suddenly writes `100%` of the dataset, because every file was encrypted in place. The second is a jump in data entropy, with deduplication and compression ratios collapsing, since encrypted ciphertext does not compress or deduplicate. The third is modification or deletion of planted canary files. The fourth is unexpected `restic check` or repository integrity failures, or failed prune attempts.
 </details>
 
 <details>
 <summary>17. In what dependency order must you restore a cluster's control plane during a full disaster-recovery (DR) rebuild?</summary>
 
-1. **Out-of-band & core network:** Switch configs, VLANs, routing, firewall, and NTP/DNS (`named`).
-2. **Secrets & PKI:** Internal CA certificates, Vault, and `/etc/munge/munge.key`.
-3. **Identity directory:** LDAP / FreeIPA (`slapadd` / `ipa-restore`) and SSSD so all UIDs/GIDs resolve.
-4. **Provisioning & cluster manager:** BCM / Warewulf / xCAT database and golden OS node images (`rootfs.squashfs`).
-5. **Storage mounts:** NFS `/home` and parallel filesystem (`/scratch`) mounts.
-6. **Workload manager:** Restore `slurmdbd` MySQL database first, start `slurmdbd`, restore `StateSaveLocation` (if applicable), start `slurmctld`, and boot compute nodes (`slurmd`).
-7. **User access portals:** Open OnDemand and login bastions last, once the cluster is healthy.
+Restore in this order. First, bring up the out-of-band and core network, including switch configs, VLANs, routing, the firewall, and NTP and DNS (`named`). Second, restore secrets and PKI: the internal CA certificates, Vault, and `/etc/munge/munge.key`. Third, restore the identity directory, LDAP or FreeIPA, with `slapadd` or `ipa-restore`, plus SSSD, so that every UID and GID resolves. Fourth, restore provisioning and the cluster manager: the BCM, Warewulf or xCAT database, and the golden OS node images (`rootfs.squashfs`). Fifth, mount storage: NFS `/home` and the parallel filesystem at `/scratch`. Sixth, restore the workload manager. Restore the `slurmdbd` MySQL database first, start `slurmdbd`, restore `StateSaveLocation` if it applies, start `slurmctld`, and boot the compute nodes with `slurmd`. Seventh, open Open OnDemand and the login bastions last, once the cluster is healthy.
 </details>
 
 <details>
 <summary>18. What are the three tiers of **restore testing** that prove a backup system actually works?</summary>
 
-1. **Daily automated file restore:** Restore a random sample of files to a scratch directory and verify SHA-256 checksums against live data (plus periodic `restic check --read-data-subset`).
-2. **Weekly automated database restore:** Import the latest `slurmdbd` MySQL dump and LDAP `slapcat` LDIF into isolated scratch containers and run verification queries (`sacctmgr show assoc`, `ldapsearch`).
-3. **Semi-annual / quarterly full DR drill (`SCL` Chapter 20):** Rebuild a head node and compute node from bare metal in an isolated lab using only off-site backups and runbook documentation, timing the actual RTO.
+The first tier is a daily automated file restore. Restore a random sample of files to a scratch directory, and verify their SHA-256 checksums against the live data. Add periodic `restic check --read-data-subset` runs. The second tier is a weekly automated database restore. Import the latest `slurmdbd` MySQL dump and the LDAP `slapcat` LDIF into isolated scratch containers, then run verification queries such as `sacctmgr show assoc` and `ldapsearch`. The third tier is a semi-annual or quarterly full DR drill, as chapter 20 of the Supercomputers for Linux SysAdmins book describes. Rebuild a head node and a compute node from bare metal in an isolated lab, using only off-site backups and runbook documentation. Time the actual RTO.
 </details>
 
 <details>
 <summary>19. Where must backup encryption keys and root CA / Vault unseal keys be stored?</summary>
 
-In an **independent secret store and offline physical safe (paper/HSM escrow) outside the cluster**—never stored solely inside the cluster's own Vault, LDAP, or `/home` filesystem that you are trying to recover when the cluster is down.
+They belong in an independent secret store and in an offline physical safe, such as paper or HSM escrow, outside the cluster. Never keep them only inside the cluster's own Vault, LDAP or `/home` filesystem, because those are the systems you need to recover when the cluster is down.
 </details>
 
 <details>
 <summary>20. Which five operational metrics should be graphed and alerted on for the backup system itself?</summary>
 
-1. **Time since last successful backup per data class** (page if `age > RPO`, e.g., `> 26 hours` for daily jobs).
-2. **Backup job exit status** (including a dead-man's-switch alert if the cron/systemd timer stops firing).
-3. **Delta bytes added and deduplication/compression ratio** per run (anomaly detection).
-4. **Repository integrity check (`--read-data`) status and age.**
-5. **Automated restore-test pass/fail status and duration (measured RTO).**
+The first is the time since the last successful backup for each data class. It should page you when the age is greater than the RPO, for example 26 hours for daily jobs. The second is the backup job exit status, plus a dead-man's-switch alert if the cron or systemd timer stops firing. The third is the delta bytes added per run and the deduplication and compression ratio, which catch anomalies. The fourth is the status and age of the repository integrity check (`--read-data`). The fifth is the pass or fail result and duration of automated restore tests, which gives you the measured RTO.
 </details>
 
 ## Sources and review notes

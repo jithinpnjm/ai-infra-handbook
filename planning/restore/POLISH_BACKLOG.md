@@ -9,3 +9,4 @@
 
 - 6.10: source says "four" triage commands but lists three (agent avoided the count).
 - 6.15 Exercise 1: "three intermediate hops" conflicts with its arrow path (source issue).
+- 6.29: source says "five" boundary checks but lists four (kept verbatim).

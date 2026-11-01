@@ -60,3 +60,4 @@ Update (Nov 1): 5-hour limit killed 20 agents (6.21-6.31, 7.1-7.9); chapter file
 ORDER (user, Nov 1): finish Part 11 (11.1-11.30) -> then finish Part 6 (6.21-6.31) -> only then start Part 12. Parts 7-10 stay parked until after that unless the user says otherwise.
 
 RULE (user, Nov 1): run at most 3 agents (3 chapters) at a time. 20 in parallel got cut off mid-chapter and wasted tokens. Launch 3, wait, verify, commit, then the next 3. Done so far: 11.1-11.20 committed; 11.22-11.24, 11.27-11.29 joined (uncommitted); 11.21, 11.25, 11.26, 11.30 still running at the time of this note.
+Part 11 COMPLETE (11.1-11.30 committed). Now Part 6: 6.21-6.31, 3 at a time (6.21-6.23 first).
