@@ -24,9 +24,13 @@ lab_venue: "Nebius GPU"
 
 ## Why this matters for AI infrastructure
 
-An optimal collective algorithm still collapses in production if NCCL maps its logical rings or trees onto the wrong physical links. Training engineers see GPU utilization stall while iteration time doubles or triples without any crash or error message. The cause is almost always a silent transport fallback, a cross-socket path mistake, or an aggressive channel setting that starves compute kernels.
+Picture a training run that slowed down after a container update. The GPUs still show work, the job still finishes, and no error appears anywhere. The first sign of trouble is that each iteration takes twice as long, or three times as long, as it did before.
 
-The performance gap between a topology-aligned path and a misconfigured fallback on the exact same server hardware is massive. Moving a gradient slice over NVLink takes less than a millisecond, while routing that same slice across an inter-socket CPU link takes tens of milliseconds. Leaving a debug environment variable enabled or omitting an InfiniBand device mount in a container is equally destructive. Those mistakes force multi-hundred-gigabyte-per-second GPU traffic through host RAM or kernel TCP sockets.
+A well-chosen collective algorithm can still fail in production. That happens when NCCL maps its logical rings or trees onto the wrong physical links. Training engineers often see GPU utilization stall while iteration time doubles or triples. Nothing crashes, and no message points at the cause. The usual suspects are a silent transport fallback, a cross-socket path mistake, or an aggressive channel setting that starves compute kernels.
+
+The gap between a well-mapped path and a misconfigured fallback is large, even on identical hardware. Take a gradient slice of 500 MB. Over NVLink it moves in less than a millisecond. Across an inter-socket CPU link the same slice takes tens of milliseconds. Two small mistakes cause the same damage. A debug environment variable left switched on is one. An InfiniBand device that was never mounted into the container is the other. Both push multi-hundred-gigabyte-per-second GPU traffic through host RAM or kernel TCP sockets.
+
+The block below works through the arithmetic for each case, so you can see what a single mistake costs.
 
 ```text
 Quantitative penalty of topology and transport mistakes:
@@ -43,7 +47,9 @@ Quantitative penalty of topology and transport mistakes:
   CPU-bound Gloo TCP fallback: 200.00 ms (2.0 GB/s, 50x slower)
 ```
 
-This chapter explains how NCCL discovers hardware topology, scores path costs, and partitions collectives across parallel channels. It also covers how the runtime selects transports and responds to environment variables and Kubernetes NUMA policies.
+The naive pairing is the case to watch. It pushes step time up to 100.0 ms, and the topology-aware schedule brings it down to 70.0 ms. The Gloo TCP fallback on an 800 Gb/s link is the slowest path in the list, at 50 times slower than GPUDirect RDMA.
+
+This chapter explains how NCCL discovers hardware topology, scores path costs, and partitions collectives across parallel channels. It also covers how the runtime selects transports and responds to environment variables and Kubernetes NUMA policies. When a job runs slowly, the first question to ask is which physical path its traffic actually takes.
 
 ---
 
@@ -51,11 +57,13 @@ This chapter explains how NCCL discovers hardware topology, scores path costs, a
 
 ### Prerequisites
 
-You should complete Chapter 12.15 on NCCL collectives and algorithms first. That chapter covers Ring and Tree step math, wire protocols, and bus bandwidth conversion factors. You also need familiarity with PCIe root complexes, switches, BAR1 peer-to-peer addressing, `nvidia-peermem`, InfiniBand GIDs, and RoCEv2 from earlier chapters in Part 12. Basic knowledge of Linux sysfs, `numactl`, and Kubernetes device plugins will help you follow the cluster configuration sections.
+Before you start here, read Chapter 12.15 on NCCL collectives and algorithms. That chapter teaches the Ring and Tree step math, the wire protocols, and the conversion factors for bus bandwidth. You should also be comfortable with PCIe root complexes, switches, BAR1 peer-to-peer addressing, `nvidia-peermem`, InfiniBand GIDs, and RoCEv2 from earlier chapters in Part 12. Basic knowledge of Linux sysfs, `numactl`, and Kubernetes device plugins will help when the cluster configuration sections arrive.
 
 ### Outcomes
 
-After completing this chapter, you will be able to trace the three-phase NCCL topology discovery pipeline and read `nvidia-smi topo -m` distance labels. You will know how to author and audit `NCCL_TOPO_DUMP_FILE` and `NCCL_TOPO_FILE` XML overrides for virtualized or multi-root servers. You will calculate channel counts, subring parallelism, Streaming Multiprocessor thread-block occupancy, `NCCL_BUFFSIZE` memory footprints, and zero-copy registration savings. Finally, you will predict exact transport selection across P2P, SHM, NET/IB, NET/Socket, NVLS, and CollNet. You will also apply interface filter grammar and prevent Kubernetes `TopologyAffinityError` pod rejections.
+When you finish this chapter, you will be able to follow NCCL's topology discovery through its three phases. You will also read the distance labels that `nvidia-smi topo -m` prints, which tell you how far apart two GPUs sit. You will know how to write and audit `NCCL_TOPO_DUMP_FILE` and `NCCL_TOPO_FILE` XML overrides for virtualized or multi-root servers. The chapter also works through the arithmetic: channel counts, subring parallelism, thread-block occupancy on each Streaming Multiprocessor, `NCCL_BUFFSIZE` memory footprints, and the savings from zero-copy registration. Finally, you will predict which transport NCCL picks among P2P, SHM, NET/IB, NET/Socket, NVLS, and CollNet, apply the interface filter grammar, and stop Kubernetes pods from being rejected with `TopologyAffinityError`.
+
+If the prerequisites feel shaky, go back to Chapter 12.15 before you start the topology work.
 
 ---
 
@@ -63,9 +71,9 @@ After completing this chapter, you will be able to trace the three-phase NCCL to
 
 ### 1.1 Logical GPU Indices versus Physical Locality
 
-GPU runtimes number accelerators sequentially from zero, but logical device indices do not guarantee physical proximity. Enumeration order can shift across BIOS updates, PCIe bus scans, or motherboard replacements. When a launch script blindly pairs adjacent indices in round-robin order, it can map high-volume collective rings across a slow inter-socket CPU link.
+Picture a launch script that pairs adjacent device indices in round-robin order. On paper the pairing looks tidy. GPU runtimes number accelerators from zero, but that number says nothing about how close two accelerators sit. Enumeration order can shift after a BIOS update, a PCIe bus scan, or a motherboard replacement. When that happens, the script can map high-volume collective rings across a slow inter-socket CPU link.
 
-To make deterministic routing decisions, NCCL inspects seven hardware attributes during `ncclCommInitRank`, which PyTorch invokes once inside `torch.distributed.init_process_group`. First, it queries NVML for each GPU UUID and compute capability. Second, it walks sysfs to map the PCIe bridge tree and check whether PCIe Access Control Services is enabled. Third, it queries NVML for direct NVLink, NVSwitch, and NVLink-C2C connections. Fourth, it inspects sysfs to find network adapter locality and link rates. Fifth, it reads CPU socket and NUMA node core bitmasks. Sixth, it checks whether peer-to-peer BAR1 and GPUDirect RDMA transfers are supported. Finally, it exchanges fabric reachability across ranks over the bootstrap TCP store to build rail-aligned rings and trees.
+NCCL does not trust the numbering. To make routing decisions that do not depend on luck, it inspects seven hardware attributes during `ncclCommInitRank`. PyTorch calls that function once, inside `torch.distributed.init_process_group`. NCCL starts by asking NVML for each GPU's UUID and compute capability. Next it walks sysfs to map the PCIe bridge tree and to check whether PCIe Access Control Services is enabled. It then asks NVML about direct NVLink, NVSwitch, and NVLink-C2C connections. The fourth check reads sysfs for network adapter locality and link rates, and the fifth reads the CPU socket and NUMA node core bitmasks. Sixth, NCCL checks whether peer-to-peer BAR1 and GPUDirect RDMA transfers are supported. Last, it exchanges fabric reachability across ranks over the bootstrap TCP store, and uses that to build rail-aligned rings and trees.
 
 | Hardware Attribute Inspected | Discovery Interface | Key Hardware Values and Capabilities Recorded |
 |---|---|---|
@@ -77,11 +85,15 @@ To make deterministic routing decisions, NCCL inspects seven hardware attributes
 | 6. P2P & GPUDirect RDMA viability | NVIDIA driver + `nvidia-peermem` / DMA-BUF | Sets `gdr="1"` when GPU BAR1 physical pages can map directly to `mlx5_core` |
 | 7. Inter-node fabric reachability | Bootstrap TCP store | Connects rail-aligned rings and trees across multi-node servers |
 
+Each row in the table is one of the seven checks. The last column lists what NCCL records from that check. It is the first place to look when a topology looks wrong.
+
 ### 1.2 The Seven NCCL Topology Path Levels (LOC through SYS)
 
-Without a quantitative distance metric, a collective planner cannot tell whether two devices share a dedicated PCIe switch or sit on opposite CPU sockets. Both `nvidia-smi topo -m` and the internal NCCL graph solver (`ncclTopoGetSystem` and `ncclTopoComputePaths`) solve this problem. They classify every GPU-to-GPU and GPU-to-NIC path into seven ordered distance tiers. NCCL assigns each hop a bandwidth-weighted cost so that graph search always selects lower-cost, higher-bandwidth edges:
+A collective planner needs a way to measure distance. Without one, it cannot tell whether two devices share a dedicated PCIe switch or sit on opposite CPU sockets. Both `nvidia-smi topo -m` and the internal NCCL graph solver (`ncclTopoGetSystem` and `ncclTopoComputePaths`) solve this problem. They sort every GPU-to-GPU and GPU-to-NIC path into seven ordered distance tiers. Each hop gets a bandwidth-weighted cost, so the graph search always prefers edges that are cheap and fast:
 
 $$\text`{Cost}`(\text`{LOC}`) < \text`{Cost}`(\text`{NVL}`) < \text`{Cost}`(\text`{C2C}`) < \text`{Cost}`(\text`{PIX}`) < \text`{Cost}`(\text`{PXB}`) < \text`{Cost}`(\text`{PHB}`) < \text`{Cost}`(\text`{SYS}`)$$
+
+Read that chain from left to right. Each tier costs more than the one before it. The diagram below shows a two-socket server, with its GPUs, NICs, and the links between them.
 
 ```mermaid
 flowchart TB
@@ -111,6 +123,8 @@ flowchart TB
     RC0 <-->|"SYS: UPI / Infinity Fabric (~28 GB/s, 17.86 ms / 500 MB)"| RC1
 ```
 
+The table below lists the tokens you will see for each tier, with typical bandwidth, latency, and whether GPUDirect can be used on that path.
+
 | Path Token (`nvidia-smi` / NCCL) | Rank / Model Cost | Typical Unidirectional BW | Typical Hop Latency | Physical Path Traversal | GPUDirect P2P / RDMA (`GDR`) Viability |
 |---|---|---|---|---|---|
 | `X` / `LOC` | Rank `0` (Cost `0`) | `~3,000 GB/s` (HBM3) | `~0.1 µs` | Self (loopback on the same GPU device) | Native on-device memory |
@@ -121,7 +135,9 @@ flowchart TB
 | `PHB` | Rank `5` (Cost `80`) | `~16–32 GB/s` | `~3.0 µs` | Traverses the CPU PCIe Host Bridge / Root Complex within a single NUMA socket | Hairpins through CPU Root Complex; GDR disabled by default |
 | `SYS` | Rank `6` (Cost `200`) | `~12–28 GB/s` | `~8.0+ µs` | Crosses both PCIe and the inter-socket NUMA link (`Intel UPI` / `AMD Infinity Fabric`) | **Severe bottleneck** (`32.14x` slower than `NVL`); P2P/GDR disabled by default |
 
-Inspecting a real topology matrix makes these seven tiers concrete. Consider the `nvidia-smi topo -m` output from a dual-socket, four-GPU server that has two NV4 pairs and a single high-speed NIC attached to Socket 0:
+The most useful row to know is `PIX`, the gold standard for a GPU and NIC that share one switch. `SYS` is the row to avoid, since it crosses the inter-socket link on every hop.
+
+A real matrix makes the tiers easier to picture. The output below comes from a dual-socket server with four GPUs. It has two NV4 pairs and one high-speed NIC attached to Socket 0.
 
 ```text
 $ nvidia-smi topo -m
@@ -142,13 +158,21 @@ Key timing and utilization takeaways from this 4-GPU matrix:
    and broadcasts back over NVLink. Raises SM busy from 60% to 90% and cuts step time from 100.0 ms to 70.0 ms (30.0% faster).
 ```
 
-If a two-GPU job is scheduled onto GPU 1 and GPU 2, or a four-GPU job forms a flat cross-socket ring, every step is throttled by the slow SYS link. When NCCL detects two fast NVLink islands separated by a slow SYS bridge, its hierarchical algorithm reduces within each local pair first. Only one leader per pair exchanges a reduced shard across the slower inter-group link. That leader then broadcasts the result back over NVLink. In Nsight Systems, this shows up as separate intra-group and inter-group CUDA kernels that keep compute units busy.
+Read the matrix as a map of distances. GPU 0 and GPU 1 share an NV4 link. A 500 MB transfer between them takes 0.56 ms. GPU 0 and GPU 2 sit on opposite sockets and cross SYS. The same 500 MB then takes about 18 ms, which is 32.14 times slower.
+
+That gap changes how a job should be placed. If a two-GPU job lands on GPU 1 and GPU 2, or a four-GPU job forms a flat ring across the sockets, every step waits on the slow SYS link. NCCL responds differently when it detects two fast NVLink islands joined by a slow SYS bridge. Its hierarchical algorithm reduces inside each local pair first. Only one leader per pair then sends a reduced shard across the slower inter-group link, and that leader broadcasts the result back over NVLink. In Nsight Systems, you see this as separate intra-group and inter-group CUDA kernels that keep the compute units busy.
+
+When you audit a slow job, look for `SYS` entries in the matrix before you touch any tuning knob.
 
 ### 1.3 Inspecting and Overriding Topologies with `NCCL_TOPO_DUMP_FILE` and `NCCL_TOPO_FILE`
 
-In virtualized clouds, SR-IOV guests, or complex multi-root OEM HGX servers, hypervisors and broken ACPI tables often expose a flattened or scrambled PCIe tree. When that happens, NCCL misidentifies which NIC sits on the same PCIe switch as a given GPU. It may pair GPU 0 with a remote NIC across the inter-socket UPI link or build rings that hairpin out to a spine switch. That misrouting saturates a bottleneck link and triggers `ProcessGroupNCCL` watchdog timeouts on multi-node InfiniBand runs.
+Virtual machines and complex servers are where this breaks most often. In virtualized clouds, SR-IOV guests, or multi-root OEM HGX servers, the hypervisor or broken ACPI tables can expose a flattened or scrambled PCIe tree. NCCL then misreads which NIC shares a PCIe switch with a given GPU. It may pair GPU 0 with a remote NIC across the inter-socket UPI link. Or it may build rings that hairpin out to a spine switch. That misrouting saturates a bottleneck link, and the saturation triggers `ProcessGroupNCCL` watchdog timeouts on multi-node InfiniBand runs.
 
-NCCL provides two XML topology environment variables to diagnose and fix broken hardware trees. Setting `NCCL_TOPO_DUMP_FILE` instructs NCCL to write the exact XML hardware graph it constructed at the end of topology discovery. Always dump a working node's XML first rather than writing XML from scratch. The parser requires specific CPU, PCIe, GPU, and NIC attributes. Setting `NCCL_TOPO_FILE` forces NCCL to load your corrected XML graph before computing paths. That override anchors each GPU and its local rail NIC under the same PCIe switch so they score as PIX.
+NCCL gives you two XML topology variables to diagnose and fix a broken hardware tree. `NCCL_TOPO_DUMP_FILE` tells NCCL to write out the exact XML graph it built at the end of topology discovery. Dump a working node's XML first instead of writing one from scratch, because the parser expects specific CPU, PCIe, GPU, and NIC attributes.
+
+`NCCL_TOPO_FILE` works in the other direction. It forces NCCL to load your corrected XML graph before it computes any paths. That override anchors each GPU and its local rail NIC under the same PCIe switch, so they score as `PIX`.
+
+The block below lists both variables and the attributes the parser expects.
 
 ```text
 NCCL XML topology environment variables and required schema attributes:
@@ -164,17 +188,23 @@ NCCL XML topology environment variables and required schema attributes:
   <net name="mlx5_0" dev="0" speed="400000" (400G) or "800000" (800G) port="1" gdr="1"/>
 ```
 
+Compare each attribute with what your own node reports before you rely on an override file.
+
 ---
 
 ## 2. NCCL Channels, Subrings, SM Thread Blocks, and `NCCL_BUFFSIZE`
 
 ### 2.1 How Channels Map to Subrings and GPU Streaming Multiprocessors (SMs)
 
-A single CUDA thread block cannot saturate hundreds of gigabytes per second of NVLink bandwidth or drive eight parallel InfiniBand rails at line rate. If NCCL used only one thread block, most physical links would sit idle while training step times dragged on. To drive all physical links concurrently, NCCL partitions each collective tensor across $C$ independent execution pipelines called **channels**.
+A single CUDA thread block cannot saturate hundreds of gigabytes per second of NVLink bandwidth. It cannot drive eight parallel InfiniBand rails at line rate either. If NCCL used only one thread block, most physical links would sit idle while your step times dragged on. So NCCL splits each collective tensor across $C$ independent execution pipelines, called **channels**, so that every link has work to do.
 
-Each active channel corresponds to one parallel subring or subtree and launches **one CUDA thread block per GPU** inside `ncclDevKernel`. Every active channel occupies one Streaming Multiprocessor while the collective kernel runs. Overlapping communication with backward-pass computation therefore trades compute SMs for communication SMs. Suppose PyTorch DDP runs an AllReduce on a background CUDA stream while `cuBLAS` matrix multiplications run on the default compute stream. Allocating too many NCCL channels steals SMs from the matrix math and slows down the step.
+Each active channel maps to one parallel subring or subtree. It launches one CUDA thread block per GPU inside `ncclDevKernel`. That block occupies one Streaming Multiprocessor while the collective kernel runs. Overlapping communication with the backward pass therefore trades compute SMs for communication SMs.
 
-Conversely, registering user buffers persistently on NVSwitch fabrics allows the switch and copy engines to move data directly from the user tensor without SM-driven staging copies. Calling `ncclCommRegister` on memory allocated with `ncclMemAlloc` enables zero-copy NVLS transfers. That optimization cuts the required channel count by three-quarters and returns those SM thread blocks to model computation.
+Here is the trade-off in a concrete setting. Suppose you run PyTorch DDP, and an AllReduce on a background CUDA stream while `cuBLAS` matrix multiplications run on the default compute stream. Each extra NCCL channel takes an SM away from the matrix math. Allocate too many channels and the step slows down.
+
+The reverse is also possible. Registering user buffers persistently on NVSwitch fabrics lets the switch and copy engines move data straight from the user tensor, without SM-driven staging copies. Call `ncclCommRegister` on memory allocated with `ncclMemAlloc`, and you enable zero-copy NVLS transfers. That optimization cuts the required channel count by three-quarters. The SM thread blocks it frees go back to model computation.
+
+The block below works the arithmetic for an H100, which has 132 SMs.
 
 ```text
 Channel-to-SM occupancy breakdown on an NVIDIA H100 (132 total SMs):
@@ -186,19 +216,23 @@ Channel-to-SM occupancy breakdown on an NVIDIA H100 (132 total SMs):
   Drops required channels from 16 down to 4 channels (3.03% of 132 SMs), freeing 12 SM blocks.
 ```
 
+The 32-channel line shows the cost. The collective takes twice as many SMs as the 16-channel setup, and the overlapped GEMMs lose compute. The zero-copy line shows the saving. It drops the count to 4 channels and frees 12 SM blocks.
+
+Treat the channel count as an SM budget you spend carefully. Change it only when a profile shows that your links are underused.
+
 ### 2.2 Controlling Channel Count and Channel Buffer Memory (`NCCL_BUFFSIZE`)
 
-When engineers increase channel counts or buffer sizes blindly across multiple process groups, jobs frequently crash with out-of-memory errors. Three environment variables govern channel parallelism and per-channel staging memory. The variables `NCCL_MIN_NCHANNELS` and `NCCL_MAX_NCHANNELS` clamp the minimum and maximum number of channels that NCCL allocates per communicator:
+When engineers raise channel counts or buffer sizes blindly across several process groups, jobs often crash with out-of-memory errors. Three environment variables control channel parallelism and per-channel staging memory. The variables `NCCL_MIN_NCHANNELS` and `NCCL_MAX_NCHANNELS` clamp how many channels NCCL allocates per communicator:
 
 $$C_\{\text`{active}`} = \max\!\left(\text`{NCCL\_MIN\_NCHANNELS}`,\; \min\!\left(\text`{NCCL\_MAX\_NCHANNELS}`,\; C_\{\text`{auto}`}\right)\right)$$
 
-On NVSwitch systems, NCCL automatically tunes $C_\{\text`{auto}`}$ based on topology and message size. You should leave channel bounds at their defaults unless profiling proves either link under-utilization or compute SM starvation during overlapped execution.
+Read the formula from the inside out. The automatic count is first capped at the maximum. If the result falls below the minimum, it is raised to the minimum. On NVSwitch systems, NCCL tunes $C_\{\text`{auto}`}$ on its own, based on topology and message size. Leave the bounds at their defaults unless a profile shows either under-used links or compute SMs starving during overlapped execution.
 
-The variable `NCCL_BUFFSIZE` sets the size in bytes of the internal FIFO communication buffer allocated in GPU HBM for each peer slot in each channel. For a ring communicator where each channel maintains $P_\{\text`{peers}`} = 2$ peer buffer slots, total channel buffer HBM per communicator is:
+The variable `NCCL_BUFFSIZE` sets the size in bytes of the internal FIFO communication buffer. NCCL allocates that buffer in GPU HBM, once for each peer slot in each channel. A ring communicator gives every channel $P_\{\text`{peers}`} = 2$ peer buffer slots. Those two slots are the send neighbor and the receive neighbor on the ring. The total channel buffer HBM per communicator is therefore:
 
 $$\text`{Memory}`_\{\text`{channels}`} = C_\{\text`{active}`} \times P_\{\text`{peers}`} \times \text`{NCCL\_BUFFSIZE}`$$
 
-Those two peer slots correspond to the send and receive neighbors on the ring.
+The table works this formula for four configurations on an H100. Read across a row: the channel count, times 2 peer slots, times the buffer size gives the HBM each communicator reserves.
 
 | Configuration Scenario | Active Channels ($C_\{\text`{active}`}$) | `NCCL_BUFFSIZE` (Bytes / MiB) | Peer Slots ($P_\{\text`{peers}`}$) | Total Channel HBM per Communicator | H100 (`132` SMs) SM Blocks Used (`%`) |
 |---|---|---|---|---|---|
@@ -207,7 +241,11 @@ Those two peer slots correspond to the send and receive neighbors on the ring.
 | High-Channel 32-Channel Ring (`16 MiB` aggressive) | `32` | `16,777,216 B` (`16.0 MiB`) | `2` | `1,073,741,824 B` (**`1,024.0 MiB` / `1.0 GiB`**) | `32` SMs (**`24.24%`**) |
 | Zero-Copy `ncclCommRegister` + `NVLS` | `4` (`16 -> 4` saved) | `4,194,304 B` (`4.0 MiB`) | `2` | `33,554,432 B` (**`32.0 MiB`**) | `4` SMs (**`3.03%`**, saves `12` SMs) |
 
-When tuning `NCCL_BUFFSIZE` for large bandwidth-bound AllReduce operations, start at the recommended baseline and double it stepwise while monitoring `torch.cuda.memory_reserved()`. Channel buffers are allocated per communicator. Creating separate tensor, pipeline, data, and expert parallel process groups therefore multiplies this HBM tax across every group.
+The 8-channel row reserves the same 128.0 MiB as the default row, because the doubled buffer offsets the halved channel count. The 32-channel row reserves 1.0 GiB, which is eight times the default. The zero-copy row is the cheapest of the four, at 32.0 MiB and only 4 SMs.
+
+For large, bandwidth-bound AllReduce operations, start at the recommended baseline. Double the buffer one step at a time, and watch `torch.cuda.memory_reserved()` after each step. Channel buffers belong to each communicator. Tensor, pipeline, data, and expert parallel groups each carry their own, so the HBM cost multiplies across every group.
+
+The block below states the tuning rule in short form.
 
 ```text
 NCCL_BUFFSIZE tuning rule:
@@ -216,11 +254,15 @@ NCCL_BUFFSIZE tuning rule:
 - Multiply total channel HBM across all active communicators (TP, PP, DP, EP) to avoid OOM evictions.
 ```
 
+Add up the channel HBM across all active communicators before you pick a buffer size. That sum is what can exhaust GPU memory.
+
 ---
 
 ## 3. NCCL Transports: P2P, SHM, NET (IB / RoCE / IBGDA / Socket), NVLS, and CollNet
 
-Once NCCL computes its topology graph and channel rings, it binds every channel link between two ranks to one of six concrete transport engines under `src/transport/`. If a high-speed transport is blocked by a missing kernel module, a BIOS setting, or an environment flag, NCCL silently drops down the fallback ladder rather than failing the job.
+Once NCCL has its topology graph and channel rings, it has to pick a transport for every link between two ranks. There are six transport engines, all under `src/transport/`. Suppose a fast transport is blocked by a missing kernel module, a BIOS setting, or an environment flag. NCCL does not stop the job. It silently drops down the fallback ladder to a slower transport.
+
+The flowchart below follows that choice for one pair of ranks, from the first question to the last fallback.
 
 ```mermaid
 flowchart LR
@@ -240,6 +282,10 @@ flowchart LR
     GDRCheck -->|"No (PHB/SYS or no peermem)"| T_IB_HOST["NET/IB Host-Staged<br/>GPU->Host RAM->NIC RDMA"]
 ```
 
+Read the flowchart as a series of questions, and follow the path your own link takes. Each check either keeps the link on a fast transport or sends it one step down. The table below gives the details for each engine.
+
+The table lists each engine, the signature it prints with `NCCL_DEBUG=INFO`, and the fallback it uses when it is disabled or blocked. The signature column is the one to scan in a log. It shows which engine NCCL actually picked.
+
 | Transport Engine | `NCCL_DEBUG=INFO` Signature | Primary Scope | Data Path & Memory Registration Mechanism | Key Controlling Environment Variables | Fallback Path When Disabled or Blocked |
 |---|---|---|---|---|---|
 | **`P2P`** (Peer-to-Peer) | `P2P/IPC` or `P2P/CUMEM` | Intra-node (and intra-rack MNNVL on `NVL72`) | Direct GPU-to-GPU loads/stores or copy engine DMA over NVLink/NVSwitch or PCIe BAR1 (`CUDA IPC` handles or `cuMem` fabric handles) | `NCCL_P2P_DISABLE`, `NCCL_P2P_LEVEL`, `NCCL_MNNVL_ENABLE` | `SHM/direct` (host `/dev/shm` staging) |
@@ -251,13 +297,21 @@ flowchart LR
 
 ### 3.1 Deep Dive into the Five Critical Transport Mechanisms
 
-Understanding how each transport moves bytes explains why specific misconfigurations cause severe slowdowns. For intra-node Peer-to-Peer transfers, NCCL enables direct P2P across NVL, C2C, PIX, and PXB links by default. It avoids direct P2P across PHB or SYS because CPU root complexes and inter-socket links frequently suffer packet credit stalls on peer BAR1 reads and writes. You can override the cutoff distance with `NCCL_P2P_LEVEL`. Setting `NCCL_P2P_DISABLE=1` disables all direct GPU peer copies and forces intra-node traffic through host memory. On multi-node Grace Blackwell racks, `NCCL_MNNVL_ENABLE=1` activates Multi-Node NVLink. That setting lets P2P and NVLS span all GPUs across the NVLink Switch backplane without touching network adapters.
+Knowing how each transport moves bytes tells you why one wrong setting can slow a job badly. Start with intra-node peer-to-peer (P2P). By default, NCCL uses direct P2P across NVL, C2C, PIX, and PXB links. It avoids direct P2P across PHB or SYS, because CPU root complexes and inter-socket links often stall on peer BAR1 reads and writes. You can move that cutoff with `NCCL_P2P_LEVEL`.
 
-When two GPUs on the same host sit on different sockets or PCIe ACS is enabled in BIOS, they cannot establish direct P2P. NCCL then uses the Shared Memory transport to stage buffers through `/dev/shm`. In Docker and Kubernetes containers, the default `/dev/shm` mount is tiny and triggers `NCCL WARN Call to posix_fallocate failed : No space left on device`. You must mount a multi-gigabyte in-memory volume at `/dev/shm` and never leave `NCCL_SHM_DISABLE=1` set in production.
+Setting `NCCL_P2P_DISABLE=1` turns off every direct GPU peer copy, so intra-node traffic goes through host memory. On multi-node Grace Blackwell racks, `NCCL_MNNVL_ENABLE=1` turns on Multi-Node NVLink. With it, P2P and NVLS can span all GPUs across the NVLink Switch backplane, without touching network adapters.
 
-For inter-node traffic, the traditional non-GDR path requires five separate copy steps through host RAM on both the sender and receiver. GPUDirect RDMA eliminates host RAM staging by pinning GPU BAR1 physical pages in the NVIDIA driver. It passes those pages via `nvidia-peermem` or DMA-BUF to `mlx5_core`. The NIC then DMAs straight from sender GPU HBM over the local PCIe switch and into receiver GPU HBM. The variable `NCCL_NET_GDR_LEVEL` sets the maximum topological distance between a GPU and a NIC at which NCCL allows GPUDirect RDMA. If a GPU and NIC are separated by PHB or SYS, NCCL disables GPUDirect RDMA for that link and falls back to host-staged bounce buffers.
+When two GPUs on the same host sit on different sockets, or PCIe ACS is enabled in the BIOS, they cannot establish direct P2P. NCCL then uses the Shared Memory transport and stages buffers through `/dev/shm`. In Docker and Kubernetes containers, the default `/dev/shm` mount is tiny, and that is what triggers `NCCL WARN Call to posix_fallocate failed : No space left on device`. Mount a multi-gigabyte in-memory volume at `/dev/shm`, and never leave `NCCL_SHM_DISABLE=1` set in production.
 
-On rail-optimized NVSwitch servers, `NCCL_CROSS_NIC` enables PXN, which stands for PCIe across NVLink. Suppose a rank on Node A needs to send to a non-rail-aligned NIC on Node B. PXN routes the packet over fast intra-node NVLink to a proxy GPU on the same node that is PIX-local to the target NIC rail. This avoids cross-socket GPU-to-NIC traffic completely. Finally, even with GPUDirect RDMA on the data plane, a CPU proxy thread traditionally rings the NIC doorbell and polls Completion Queues. With InfiniBand GPUDirect Async, the GPU Streaming Multiprocessors construct RDMA Work Requests and ring the ConnectX NIC doorbell directly over PCIe.
+Inter-node traffic has its own trap. In the traditional path without GPUDirect RDMA, data takes five separate copy steps through host RAM, on both the sender and the receiver. GPUDirect RDMA removes that staging. The NVIDIA driver pins GPU BAR1 physical pages and passes them through `nvidia-peermem` or DMA-BUF to `mlx5_core`. The NIC then DMAs straight from the sender's GPU HBM, over the local PCIe switch, into the receiver's GPU HBM.
+
+Whether GPUDirect RDMA is allowed depends on distance. `NCCL_NET_GDR_LEVEL` sets the maximum topological distance between a GPU and a NIC at which NCCL still allows it. If a GPU and NIC are separated by PHB or SYS, NCCL disables GPUDirect RDMA on that link and uses host-staged bounce buffers instead.
+
+Rail-optimized NVSwitch servers add one more route. There, `NCCL_CROSS_NIC` enables PXN, which stands for PCIe across NVLink. Suppose a rank on Node A must send to a NIC that is not aligned with its rail on Node B. PXN sends the packet over fast intra-node NVLink to a proxy GPU on the same node. That proxy GPU is PIX-local to the target NIC's rail, so this avoids cross-socket GPU-to-NIC traffic completely.
+
+The last step is the CPU. With GPUDirect RDMA the data skips host RAM, but a CPU proxy thread traditionally still rings the NIC doorbell and polls Completion Queues. InfiniBand GPUDirect Async removes that middleman. The GPU Streaming Multiprocessors build the RDMA Work Requests themselves and ring the ConnectX NIC doorbell directly over PCIe.
+
+The block below collects the thresholds and sizes from this section.
 
 ```text
 Transport operational specifications and thresholds:
@@ -274,13 +328,17 @@ Transport operational specifications and thresholds:
   Routes GPU i -> proxy GPU j over 900 GB/s NVLink -> PIX-attached NIC j (Rail j).
 ```
 
+The 5-step line shows how many copies the traditional path makes. GPUDirect RDMA removes four of those five steps for inter-node traffic. If the log shows a fallback where you expected GPUDirect RDMA, start by checking the distance between that GPU and its NIC.
+
 ---
 
 ## 4. Production NCCL Environment Variables Reference and Filter Grammar
 
 ### 4.1 Complete Categorized Environment Variable Matrix
 
-Relying on undocumented defaults in production clusters is dangerous because internal heuristics can shift across minor NCCL releases. An unpinned setting can change your collective algorithm, select a management network interface, or hang indefinitely when a remote rank crashes. You should pin performance-critical and resiliency-critical environment variables explicitly in your job launch manifests.
+Relying on undocumented defaults is risky in production, because internal heuristics can shift across minor NCCL releases. Suppose you leave a setting unpinned. It can change your collective algorithm, select a management network interface, or hang indefinitely when a remote rank crashes. Set the performance-critical and resiliency-critical variables explicitly in your job launch manifests.
+
+Picture this table as your checklist before a launch. It lists the variables that matter most. For each one it gives the valid values, the recommended production value, and what the setting does.
 
 | Environment Variable | Valid Values / Syntax | Default / Recommended Production Value | Subsystem & Operational Impact |
 |---|---|---|---|
@@ -311,11 +369,15 @@ Relying on undocumented defaults in production clusters is dangerous because int
 | `TORCH_NCCL_ASYNC_ERROR_HANDLING` / `NCCL_ASYNC_ERROR_HANDLING` | `0` or `1` (`1` = abort on error/timeout) | **`1`** | Enables asynchronous watchdog abort on rank crash or collective stall instead of infinite hang |
 | `NCCL_PROFILER_PLUGIN` | Shared library name / path | Unset (or Kineto / custom profiler `.so`) | Loads the 5-callback (`init`, `startEvent`, `stopEvent`, `recordEventState`, `finalize`) profiler plugin |
 
+Two settings deserve the most attention. Keep `NCCL_P2P_DISABLE`, `NCCL_SHM_DISABLE`, and `NCCL_IB_DISABLE` at `0` in production, because each one switches off a fast path. Keep `NCCL_DEBUG` at `WARN` for steady-state runs, and reserve `INFO` for validation and triage.
+
 ### 4.2 Prefix and Exact Filter Operators for `NCCL_SOCKET_IFNAME` and `NCCL_IB_HCA`
 
-Multi-homed GPU servers carry loopback interfaces, container bridges, management bonds, storage VLANs, and eight or more RDMA rails. If you write a naive filter string without understanding the NCCL operator grammar, NCCL may bind bootstrap traffic to a dead VLAN sub-interface or include a slow management bond in collective rings. Both `NCCL_SOCKET_IFNAME` and `NCCL_IB_HCA` share the same four-mode prefix and exact filter grammar.
+A multi-homed GPU server has many interfaces: loopback, container bridges, management bonds, storage VLANs, and eight or more RDMA rails. A naive filter string can bind bootstrap traffic to a dead VLAN sub-interface, or pull a slow management bond into the collective rings. Both `NCCL_SOCKET_IFNAME` and `NCCL_IB_HCA` use the same four-mode prefix and exact filter grammar.
 
-In default prefix-include mode, any interface or HCA whose name starts with a listed token is selected. That means an unprefixed `eth0` token is a prefix match that selects both `eth0` and VLAN sub-interface `eth0.100`. Prepending `=` switches to exact-include mode, matching only interfaces whose full name equals one of the tokens. Prepending `^` switches to prefix-exclude mode, dropping any device starting with a listed token and keeping everything else. Finally, prepending `^=` switches to exact-exclude mode, dropping only exact token matches while keeping sub-interfaces and numbered variants.
+Start with the default, prefix-include mode, since that is the one you will meet first. Any interface or HCA whose name starts with a listed token is selected. So a plain `eth0` token also selects the VLAN sub-interface `eth0.100`, and that is the prefix trap. Prepending `=` switches to exact-include mode, which matches only the full name. Prepending `^` switches to prefix-exclude mode, which drops any device that starts with a listed token and keeps the rest. Prepending `^=` gives exact-exclude mode, which drops only exact matches and keeps sub-interfaces and numbered variants.
+
+The block below runs each mode against the same set of interfaces and HCAs, so you can compare the results directly.
 
 ```text
 Filter operator grammar evaluated against host interfaces and RDMA HCAs:
@@ -335,15 +397,19 @@ Host RDMA HCAs:     ["mlx5_0:1", "mlx5_1:1", "mlx5_2:1", "mlx5_3:1", "mlx5_bond_
    - NCCL_SOCKET_IFNAME=^=lo,docker0,eth0 -> excludes exact lo, docker0, eth0; keeps ["eth0.100", "eth1", "ib0", "ib1"]
 ```
 
+Consider the `eth0` line in mode 1, which is the one to watch. A short filter looks harmless, yet it quietly widens the match. Test each filter against your own interface list before it goes into a manifest.
+
 ### 4.3 Multi-NIC Socket Tuning and the 64-Socket Limit
 
-When NCCL runs over InfiniBand or RoCEv2 using NET/IB, multi-rail striping across multiple high-speed NICs is controlled by `NCCL_IB_HCA` and `NCCL_IB_QPS_PER_CONNECTION`. On cloud instances without RDMA, NCCL uses the NET/Socket TCP transport instead. A single kernel TCP stream cannot saturate a high-speed Ethernet link or stripe across multiple NICs. Engineers who leave socket settings at their defaults see severe bandwidth under-utilization, while engineers who crank them too high hit the hard socket ceiling.
+On InfiniBand or RoCEv2 with NET/IB, `NCCL_IB_HCA` and `NCCL_IB_QPS_PER_CONNECTION` control how traffic is striped across multiple high-speed NICs. Cloud instances without RDMA fall back to the NET/Socket TCP transport instead. A single kernel TCP stream cannot saturate a high-speed Ethernet link, and it cannot stripe across several NICs. Engineers who leave the socket settings at their defaults see severe bandwidth under-utilization. Engineers who push them too high hit the hard socket ceiling instead.
 
-For NET/Socket, NCCL spawns `NCCL_SOCKET_NTHREADS` CPU proxy threads per interface and opens `NCCL_NSOCKS_PERTHREAD` parallel TCP sockets per thread. Crucially, NCCL enforces a built-in architectural maximum of **64 total TCP sockets per communicator**:
+For NET/Socket, NCCL starts `NCCL_SOCKET_NTHREADS` CPU proxy threads per interface. Each thread opens `NCCL_NSOCKS_PERTHREAD` parallel TCP sockets. NCCL enforces a built-in maximum of **64 total TCP sockets per communicator**, and the product of the two settings must stay within it:
 
 $$\text`{NCCL\_SOCKET\_NTHREADS}` \times \text`{NCCL\_NSOCKS\_PERTHREAD}` \le 64$$
 
-That product is the total socket count per communicator. Exceeding that ceiling wastes CPU cycles on lock contention and exhausts OS file descriptors without opening additional usable collective streams. You should increase these values stepwise only when NET/Socket is actively carrying collective payloads.
+That product is the total socket count per communicator. Going above the ceiling wastes CPU cycles on lock contention and uses up OS file descriptors. It does not open any extra collective streams. Raise these values one step at a time, and only when NET/Socket is carrying collective payloads.
+
+The block below does the multi-NIC arithmetic and checks each socket product against the 64 limit.
 
 ```text
 Multi-NIC bandwidth aggregation and NET/Socket connection limits:
@@ -357,17 +423,21 @@ Multi-NIC bandwidth aggregation and NET/Socket connection limits:
   Stepwise tuning progression for NET/Socket: 2 -> 4 -> 8
 ```
 
+The two 800 Gbps NICs add up to 1.6 Tbps, and four of them add up to 3.2 Tbps. A socket product of 8 by 8 lands exactly on the 64 ceiling. A product of 16 by 8 reaches 128 sockets and breaks the limit. Keep the product at or below 64, and raise it only after you see real collective traffic on NET/Socket.
+
 ---
 
 ## 5. CPU/GPU NUMA Affinity, Kubernetes Topology Manager, and Rail-Aligned Multi-Tenancy
 
 ### 5.1 `NCCL_IGNORE_CPU_AFFINITY=1` and Dual-Socket NUMA Binding
 
-Even when GPUDirect RDMA moves tensor payloads directly between GPU HBM and ConnectX NICs without touching host RAM, CPU placement still matters. NCCL launches background CPU proxy threads to coordinate bootstrap handshakes, ring RDMA doorbells when IBGDA is not active, poll Completion Queues, and enqueue CUDA kernels. Misplacing those threads across CPU sockets or pinning them to a single core degrades collective latency.
+GPUDirect RDMA moves tensor payloads straight between GPU HBM and ConnectX NICs, without touching host RAM. The CPU still matters, though. NCCL runs background CPU proxy threads. They handle bootstrap handshakes, ring RDMA doorbells when IBGDA is not active, polling of Completion Queues, and enqueuing CUDA kernels. Misplacing those threads across CPU sockets, or pinning them to a single core, degrades collective latency.
 
-On a dual-socket, eight-GPU server, GPUs 0 through 3 and NICs 0 through 3 attach to CPU Socket 0. GPUs 4 through 7 and NICs 4 through 7 attach to CPU Socket 1. Two CPU affinity failure modes occur in production. First, if Rank 0 on NUMA 0 runs its CPU proxy thread or NIC interrupt handler on NUMA 1, every doorbell and completion event crosses the inter-socket UPI link. Second, when job launchers such as `mpirun`, `srun`, or `taskset` pin a rank process to a single CPU core, all background proxy threads inherit that narrow mask and contend on that one core.
+Picture a dual-socket, eight-GPU server. The first four GPUs and the first four NICs attach to CPU Socket 0. GPUs 4 through 7 and NICs 4 through 7 attach to Socket 1. Two affinity failures show up in production. In the first, Rank 0 on NUMA 0 runs its CPU proxy thread or NIC interrupt handler on NUMA 1. Every doorbell and completion event then crosses the inter-socket UPI link. In the second, a job launcher such as `mpirun`, `srun`, or `taskset` pins a rank process to one CPU core. Every background proxy thread inherits that narrow mask and fights for the same core.
 
-The production fix combines NUMA-level binding with `NCCL_IGNORE_CPU_AFFINITY=1`. Bind each rank process to the full CPU core set of its local NUMA domain using `numactl`. Then export `NCCL_IGNORE_CPU_AFFINITY=1` so NCCL ignores any narrow inherited core mask and spreads its worker threads cleanly across cores within the local NUMA node.
+The production fix combines NUMA-level binding with `NCCL_IGNORE_CPU_AFFINITY=1`. Bind each rank process to the full CPU core set of its local NUMA domain with `numactl`. Then export `NCCL_IGNORE_CPU_AFFINITY=1`, so NCCL ignores any narrow inherited mask and spreads its worker threads across the cores of the local NUMA node.
+
+The block below shows the launch binding for each socket.
 
 ```text
 Dual-socket 8-GPU NUMA layout and binding commands:
@@ -378,11 +448,13 @@ Dual-socket 8-GPU NUMA layout and binding commands:
 - Export NCCL_IGNORE_CPU_AFFINITY=1 so NCCL worker threads spread across local NUMA cores.
 ```
 
+Each socket gets its own binding, so each rank's threads stay on the socket that owns its GPU and NICs.
+
 ### 5.2 Kubernetes Topology Manager and the `TopologyAffinityError` Trap
 
-By default, Kubernetes treats a dual-socket server as a flat bag of resources under `--topology-manager-policy=none`. When a pod requests CPU cores, a GPU, and an SR-IOV NIC, the kubelet can easily assign CPU cores from NUMA 0, a GPU from NUMA 1, and a NIC from NUMA 0. That split placement forces every host-to-device and GPU-to-NIC transfer across the slow inter-socket UPI link.
+By default, Kubernetes treats a dual-socket server as a flat pool of resources under `--topology-manager-policy=none`. Suppose a pod requests CPU cores, a GPU, and an SR-IOV NIC. The kubelet can then take the CPU cores from NUMA 0, the GPU from NUMA 1, and the NIC from NUMA 0. That split placement forces every host-to-device and GPU-to-NIC transfer across the slow inter-socket UPI link.
 
-To prevent cross-NUMA placement, the kubelet Topology Manager collects NUMA hints from the CPU Manager, Memory Manager, and Device Manager. It works alongside the NVIDIA GPU Operator and SR-IOV Network Device Plugin on Guaranteed QoS pods with integer CPU requests. Together, they enforce one of four policies:
+To prevent cross-NUMA placement, the kubelet Topology Manager collects NUMA hints from the CPU Manager, Memory Manager, and Device Manager. It works alongside the NVIDIA GPU Operator and SR-IOV Network Device Plugin, on Guaranteed QoS pods with integer CPU requests. Together they enforce one of four policies:
 
 | Kubelet Topology Manager Policy | Admission Behavior | Production Suitability for AI Training / Inference |
 |---|---|---|
@@ -391,7 +463,9 @@ To prevent cross-NUMA placement, the kubelet Topology Manager collects NUMA hint
 | `restricted` | Rejects pods if allocated devices do not align to the minimum possible number of NUMA nodes | Useful for multi-socket pods, but less strict than single-socket isolation |
 | `single-numa-node` (AI Standard) | Strictly requires all requested CPUs, memory, GPUs, and SR-IOV VFs to reside on **one** NUMA node | **Production standard**; rejects misaligned pods with `TopologyAffinityError` |
 
-While `single-numa-node` guarantees local PIX and NVL paths, it creates a classic scheduling trap. Engineers often divide total server CPU cores by total GPUs without accounting for OS and daemon reservations. Suppose system daemons consume just two CPU cores on one socket. The final pod requesting a full one-eighth share of the server's CPUs is rejected with `TopologyAffinityError`, leaving an expensive GPU idle.
+The `single-numa-node` policy guarantees local PIX and NVL paths, but it sets a classic scheduling trap. Engineers often divide total CPU cores by total GPUs, and forget the cores that the OS and system daemons reserve. Suppose those daemons take just two CPU cores on one socket. The last pod, which requests a full one-eighth share of the server's CPUs, is then rejected with `TopologyAffinityError`. That leaves an expensive GPU idle.
+
+The case study below works through the numbers on a 128-core, 8-GPU server, so you can see exactly where the eighth pod fails.
 
 ```text
 Production Case Study: Why the 8th pod fails with TopologyAffinityError on a 128-core, 8-GPU server
@@ -414,13 +488,15 @@ The Fix (do NOT weaken single-numa-node to best-effort):
 - Result: All 8 pods admit cleanly with 100% PIX/NVL locality.
 ```
 
+The fix leaves the policy alone. It right-sizes each request to 12 cores, and all eight pods then admit with 100% PIX/NVL locality. When you size CPU requests, count the cores left on each NUMA node, not the server total.
+
 ---
 
 ## Commands and configurations that matter
 
 ### 1. Host Topology, `nvidia-peermem`, PCIe ACS, and Ephemeral Port Audit (`untested here`)
 
-Before launching a distributed job, verify the GPU-to-NIC topology matrix and confirm that `nvidia-peermem` is loaded. You should also check that PCIe ACS is disabled on switch ports and widen the kernel ephemeral port and socket buffer limits.
+Run this audit before you launch a distributed job. It checks the GPU-to-NIC topology matrix and confirms that `nvidia-peermem` is loaded. It also checks that PCIe ACS is disabled on the switch ports, and it widens the kernel ephemeral port and socket buffer limits.
 
 ```bash
 # (untested here) 1. Inspect full GPU-to-GPU and GPU-to-NIC topology matrix and NVLink status
@@ -437,9 +513,11 @@ sudo sysctl -w net.ipv4.ip_local_port_range="50000 51000"
 sudo sysctl -w net.core.rmem_max=134217728 net.core.wmem_max=134217728
 ```
 
+If you see that `nvidia_peermem` is missing, the `||` branch in the second command loads it with `modprobe`.
+
 ### 2. Production NCCL Launch Profile with Topology Dump and NUMA Binding (`untested here`)
 
-This launch script pins initialization logging, asynchronous error handling, P2P/SHM/IB enables, and GPUDirect RDMA distance cutoffs. It also sets explicit interface and HCA filters, channel buffer sizing, and topology XML dumping.
+This launch script is a complete profile for a four-node job with eight GPUs per node. It pins the initialization logging and the asynchronous error handling. It enables P2P, SHM, and InfiniBand explicitly, and it sets the GPUDirect RDMA distance cutoff. It also sets the interface and HCA filters, the channel buffer size, and the topology XML dump.
 
 ```bash
 # (untested here) Production multi-node NCCL environment configuration
@@ -473,9 +551,11 @@ export NCCL_TOPO_DUMP_FILE=/tmp/nccl_topo_detected.xml
 torchrun --nnodes=4 --nproc_per_node=8 --rdzv_backend=c10d --rdzv_endpoint=$MASTER_ADDR:29500 train.py
 ```
 
+When you read the script, start from the top. The first block turns on diagnostics and error handling, and the second makes the transports explicit. Uncomment the `NCCL_TOPO_FILE` line only on a VM or OEM server with a broken PCIe tree.
+
 ### 3. Schematic `NCCL_TOPO_FILE` (`topology.xml`) Anchoring GPU and NIC under One PCIe Switch (`untested here`)
 
-When a virtual machine or OEM server misreports PCIe bridges, edit the dumped XML so each GPU and its local rail NIC sit under the same PCIe switch node.
+When a virtual machine or OEM server misreports PCIe bridges, edit the dumped XML. Move each GPU and its local rail NIC under the same PCIe switch node, as the schematic below shows.
 
 ```xml
 <!-- (untested here) Schematic topology.xml derived from NCCL_TOPO_DUMP_FILE -->
@@ -494,9 +574,11 @@ When a virtual machine or OEM server misreports PCIe bridges, edit the dumped XM
 </system>
 ```
 
+The comment in the XML marks the key line. GPU 0 and `mlx5_0` sit under switch 0000:01:00.0, which scores as `PIX`.
+
 ### 4. Kubernetes NVIDIA Network Operator, Multus, and SR-IOV Multi-Tenant Manifests (`untested here`)
 
-In multi-tenant Kubernetes clusters, these manifests configure the SR-IOV Network Operator to carve out eight RDMA-capable Virtual Functions per physical NIC port with jumbo frames and hardware VLAN isolation.
+In a multi-tenant cluster, the manifests below ask the SR-IOV Network Operator for eight RDMA-capable Virtual Functions per physical NIC port. They also set jumbo frames and hardware VLAN isolation.
 
 ```yaml
 # (untested here) sriov-policy-and-network.yaml: 8 VFs on enp1s0f0 with MTU 9000 and VLAN 100
@@ -530,11 +612,13 @@ spec:
   ipam: '{"type": "whereabouts", "range": "10.10.100.0/24"}'
 ```
 
+The first manifest creates the Virtual Functions, and the second defines a network on VLAN 100 for `tenant-a`. The `resourceName` field ties the two together, so both must use the same value.
+
 ---
 
 ## How it fails
 
-When a collective transport degrades or a topology check fails, the symptoms appear in initialization logs, `dmesg`, or Kubernetes pod events. Use the table below to map each symptom to its root cause and deterministic fix.
+Picture an on-call page saying that a job got slower overnight. The clues sit in the initialization logs, in `dmesg`, or in Kubernetes pod events. When a transport degrades or a topology check fails, each clue points toward a cause. The table below maps each symptom to its root cause and to a fix you can apply the same way every time.
 
 | Failure Mode | Observable Symptom (`NCCL_DEBUG=INFO` / `dmesg` / Profiler) | Root Cause | Verification & Remediation |
 |---|---|---|---|
@@ -545,15 +629,19 @@ When a collective transport degrades or a topology check fails, the symptoms app
 | **5. `ProcessGroupNCCL` Watchdog Timeout on OEM HGX / VM Topologies** | Multi-node job on `32` OEM HGX `400G` IB nodes halts mid-run with `ProcessGroupNCCL` watchdog timeout or `NCCL WARN Watchdog caught network down!`. | Flattened ACPI/VM PCIe tree caused NCCL to route GPU traffic across UPI (`SYS`) or build rings across the Spine switch, saturating a bottleneck link; or a remote rank died (`OOM` kill). | Check the **first rank to fail** and `dmesg -T \| grep -i oom`; dump topology with `NCCL_TOPO_DUMP_FILE`, fix `<pci>` switch grouping, and inject `NCCL_TOPO_FILE=/etc/nccl/topology.xml`. |
 | **6. SR-IOV Virtual Functions (VFs) Fail to Create or Pods Stick in `TopologyAffinityError`** | `SriovNetworkNodePolicy` creates `0` VFs in `ip link`, or pods 5–8 hang in `TopologyAffinityError` on a 128-core, 8-GPU node under `single-numa-node`. | For SR-IOV: IOMMU (`intel_iommu=on iommu=pt`) is disabled in GRUB/BIOS. For `TopologyAffinityError`: `16` cores/pod $\times 4 = 64$ leaves `0` headroom for `2` OS cores on `NUMA 1` (`14` free cores $< 16$). | Enable `intel_iommu=on iommu=pt` in GRUB for SR-IOV; reduce pod CPU request from `16` to `12` cores (`4 * 12 = 48 <= 62` free cores per NUMA node). |
 
+Find the row that matches your symptom first, then read its root-cause column before you change any setting.
+
 ---
 
 ## Hands-on lab
 
 ### Venue and Scope
 
-This lab runs on Nebius GPU or any local Linux or macOS machine using the Python standard library only. The companion scripts are `code/part12/nccl_topology_channels_env.py` and `code/part12/nccl_topology_channels_env_lab.py`. They execute automated self-checks covering topology path cost ordering, NVLink versus SYS transfer math, and XML topology parsing. They also verify channel and buffer memory sizing, transport selection, filter operator grammar, socket limits, and Kubernetes `TopologyAffinityError` resolution.
+You can run this lab on Nebius GPU or on any local Linux or macOS machine. It needs only the Python standard library, so there is nothing to install. The two companion scripts are `code/part12/nccl_topology_channels_env.py` and `code/part12/nccl_topology_channels_env_lab.py`. The lab runs self-checks on topology path cost ordering, NVLink versus SYS transfer math, and XML topology parsing. It also checks channel and buffer memory sizing, transport selection, filter operator grammar, socket limits, and how a Kubernetes `TopologyAffinityError` gets resolved.
 
 ### Run Command and Verified Output
+
+Run the lab with the one command below. Then compare your output with the verified run that follows, line by line.
 
 ```bash
 python3 -B code/part12/nccl_topology_channels_env_lab.py
@@ -599,26 +687,34 @@ python3 -B code/part12/nccl_topology_channels_env_lab.py
 Summary: 29 passed, 0 failed
 ```
 
+Each line should read PASS or INFO, and the summary should show 29 passed and 0 failed. If a line fails, go back to the section of this chapter that covers it.
+
 ---
 
 ## Common first mistakes
 
-1. **Assuming an unprefixed interface filter is an exact match:** Without the leading `=` operator, NCCL treats `NCCL_SOCKET_IFNAME` tokens as prefix filters and matches both the base interface and VLAN sub-interfaces. Use `=` for exact inclusion, `^` for prefix exclusion, and `^=` for exact exclusion.
-2. **Tuning socket thread variables to speed up InfiniBand RDMA:** The variables `NCCL_NSOCKS_PERTHREAD` and `NCCL_SOCKET_NTHREADS` only affect the NET/Socket TCP transport path and have zero effect when NCCL runs over NET/IB RDMA. Furthermore, setting their product above 64 violates the hard per-communicator socket limit.
-3. **Leaving debug tracing or peer-to-peer disable flags in production manifests:** Setting `NCCL_P2P_DISABLE=1` forces all intra-node NVLink traffic through host shared memory, and `NCCL_DEBUG=TRACE` serializes collective launches behind heavy console I/O. Use `NCCL_DEBUG=INFO` with `NCCL_DEBUG_SUBSYS=INIT,GRAPH,ENV` so logging occurs only once during communicator initialization.
-4. **Writing topology XML files by hand from scratch:** Hand-written minimal XML snippets often omit required CPU architecture or PCIe link attributes, causing NCCL to reject the file. Always capture a real file first with `NCCL_TOPO_DUMP_FILE` and edit the PCIe switch hierarchy from that baseline.
-5. **Re-initializing NCCL communicators inside the training loop:** Calling `init_process_group` and `destroy_process_group` on every step adds 48.0 ms of bootstrap overhead to a 0.5 ms collective. That mistake wastes 98.97% of step time. Creating 32 separate communicators on 32 GPUs can also stall startup for two to three minutes instead of two to three seconds.
+These are the five habits this chapter keeps coming back to. Each one is easy to fix once you can name it.
+
+1. Treating an unprefixed interface filter as an exact match. Without the leading `=`, NCCL reads `NCCL_SOCKET_IFNAME` tokens as prefixes, so it matches the base interface and its VLAN sub-interfaces too. Use `=` for exact inclusion, `^` for prefix exclusion, and `^=` for exact exclusion.
+2. Tuning socket thread variables to speed up InfiniBand RDMA. `NCCL_NSOCKS_PERTHREAD` and `NCCL_SOCKET_NTHREADS` affect only the NET/Socket TCP path, so they have zero effect when NCCL runs over NET/IB RDMA. Setting their product above 64 also breaks the hard per-communicator socket limit.
+3. Leaving debug tracing or a peer-to-peer disable flag in a production manifest. `NCCL_P2P_DISABLE=1` forces all intra-node NVLink traffic through host shared memory. `NCCL_DEBUG=TRACE` serializes collective launches behind heavy console I/O. Use `NCCL_DEBUG=INFO` with `NCCL_DEBUG_SUBSYS=INIT,GRAPH,ENV` instead, so logging happens only once, during communicator initialization.
+4. Writing topology XML by hand from scratch. Minimal snippets often omit the CPU architecture or PCIe link attributes that NCCL requires, and then NCCL rejects the file. Capture a real file first with `NCCL_TOPO_DUMP_FILE`, and edit the PCIe switch hierarchy from that baseline.
+5. Re-creating NCCL communicators inside the training loop. Calling `init_process_group` and `destroy_process_group` on every step adds 48.0 ms of bootstrap overhead to a 0.5 ms collective. That mistake wastes 98.97% of step time. Creating 32 separate communicators on 32 GPUs can also stall startup for two to three minutes instead of two to three seconds.
+
+Read these five against your own manifests, and remove any habit you find in them.
 
 ---
 
 ## Exercises
 
-1. **Exercise 1 — Topology Path Scoring and NVLink vs SYS Step Penalty:** Using the `nvidia-smi topo -m` matrix in Section 1.2 and the parameters below, rank the seven NCCL topology levels from lowest cost to highest cost. Compute the transfer time in milliseconds for a 500 MB tensor over NV4 versus SYS and the slowdown multiplier. Finally, state the SM utilization and iteration time before and after switching to a topology-aware overlapped schedule.
-2. **Exercise 2 — XML Topology Graph Analysis:** Using `parse_nccl_topo_xml` on the dual-socket XML hierarchy specified below, determine the exact NCCL path level for each of the four GPU-to-NIC pairs. State which pairs qualify for GPUDirect RDMA when `NCCL_NET_GDR_LEVEL` is set to PIX versus PXB.
-3. **Exercise 3 — Channel Count, SM Occupancy, and Buffer Memory Math:** Using `evaluate_channels_and_buffers` on the 132-SM H100 configurations below, calculate the CUDA SM thread blocks consumed for the default 16-channel ring. Also compute the percentage of H100 SMs occupied and the total channel buffer memory in MiB. Repeat the calculation for the clamped 8-channel ring and the zero-copy registered NVLS configuration.
-4. **Exercise 4 — Transport Selection Matrix under Environment Overrides:** Using `select_nccl_transport`, state the exact selected transport, log prefix, and GPUDirect RDMA boolean for the five topology and environment scenarios listed below.
-5. **Exercise 5 — Interface and HCA Filter Evaluation and the 64-Socket Rule:** Using `evaluate_nccl_filter` and `evaluate_socket_transport_limits`, write the exact list of matched interfaces and HCAs for the filter expressions below. Compute total sockets and validity against the 64-socket ceiling for the three thread-and-socket pairs. Also calculate the aggregate bandwidth in Tbps for two and four 800 Gbps NICs.
-6. **Exercise 6 — Kubernetes Single-NUMA-Node `TopologyAffinityError` Resolution:** Using `evaluate_k8s_numa_pod_scheduling` on the 128-core, 8-GPU server below, show why 8 pods requesting 16 CPU cores and 1 GPU each hit `TopologyAffinityError`. State the exact remaining free cores and free GPUs per NUMA node. Then give the maximum integer CPU core request per pod that admits all 8 pods and explain why `NCCL_IGNORE_CPU_AFFINITY=1` is needed.
+The six exercises below share one set of parameters, which appears in the block at the end of this section. Each exercise names the lab function to call, so you can check your reasoning against the code.
+
+1. This one covers path scoring and the NVLink versus SYS step penalty. Using the `nvidia-smi topo -m` matrix in Section 1.2 and the parameters below, rank the seven NCCL topology levels from lowest cost to highest cost. Then compute the transfer time in milliseconds for a 500 MB tensor over NV4 and over SYS, along with the slowdown multiplier. Finally, state the SM utilization and iteration time before and after you switch to a topology-aware overlapped schedule.
+2. This one asks you to read an XML topology graph. Using `parse_nccl_topo_xml` on the dual-socket XML hierarchy below, find the exact NCCL path level for each of the four GPU-to-NIC pairs. Then say which pairs qualify for GPUDirect RDMA when `NCCL_NET_GDR_LEVEL` is set to PIX, and which qualify when it is set to PXB.
+3. This one is about channels, SM occupancy, and buffer memory. Using `evaluate_channels_and_buffers` on the 132-SM H100 configurations below, calculate the CUDA SM thread blocks used by the default 16-channel ring. Also compute the percentage of H100 SMs that it occupies, and the total channel buffer memory in MiB. Then repeat the calculation for the clamped 8-channel ring and for the zero-copy registered NVLS configuration.
+4. This one tests transport selection under environment overrides. Using `select_nccl_transport`, state the exact selected transport, the log prefix, and the GPUDirect RDMA boolean for each of the five scenarios below.
+5. This one covers interface and HCA filters and the 64-socket rule. Using `evaluate_nccl_filter` and `evaluate_socket_transport_limits`, write the exact list of matched interfaces and HCAs for each filter expression below. Then compute the total sockets for the three thread-and-socket pairs, and check each one against the 64-socket ceiling. Last, calculate the aggregate bandwidth in Tbps for two and for four 800 Gbps NICs.
+6. This one works through the Kubernetes single-NUMA-node failure. Using `evaluate_k8s_numa_pod_scheduling` on the 128-core, 8-GPU server below, show why 8 pods requesting 16 CPU cores and 1 GPU each hit `TopologyAffinityError`. State the exact free cores and free GPUs that remain on each NUMA node. Then give the maximum integer CPU core request per pod that admits all 8 pods, and explain why `NCCL_IGNORE_CPU_AFFINITY=1` is needed.
 
 ```text
 Exercise Input Parameters and Reference Specifications:
@@ -647,12 +743,14 @@ Exercise Input Parameters and Reference Specifications:
 
 ## Interview angles
 
+These three questions come up when an interviewer wants to know whether you can read NCCL's behaviour in a live job, not just recite its settings. Each answer below starts with the mechanism, then gives the check you would run, so you can explain both in the same breath.
+
 1. **"How does NCCL decide between P2P, SHM, NET/IB, and NET/Socket, and how do you prove in 60 seconds which one your job is actually using?"**
-   Walk through the initialization graph built from the sysfs PCIe tree, NVML NVLink status, and the RDMA device list. Intra-node ranks use NVLS when NVSwitch and `NCCL_NVLS_ENABLE=1` are present. They use P2P when the path cost is at or below `NCCL_P2P_LEVEL` and `NCCL_P2P_DISABLE=0`. Otherwise they fall back to SHM in `/dev/shm`. Inter-node ranks use CollNet/SHARP on Quantum IB or NET/IB with GPUDirect RDMA when `nvidia_peermem` is loaded and GPU-to-NIC distance is within `NCCL_NET_GDR_LEVEL`. If GDR fails they use host-staged NET/IB, and if RDMA verbs fail they fall back to NET/Socket TCP. To prove it in 60 seconds, export `NCCL_DEBUG=INFO` and `NCCL_DEBUG_SUBSYS=INIT,GRAPH,ENV` and inspect the Channel 00 log lines.
+   Start from the graph NCCL builds out of the sysfs PCIe tree, the NVML NVLink status, and the RDMA device list. Intra-node ranks use NVLS when NVSwitch and `NCCL_NVLS_ENABLE=1` are present. They use P2P when the path cost is at or below `NCCL_P2P_LEVEL` and `NCCL_P2P_DISABLE=0`. Otherwise they fall back to SHM in `/dev/shm`. Inter-node ranks use CollNet/SHARP on Quantum IB, or NET/IB with GPUDirect RDMA when `nvidia_peermem` is loaded and the GPU-to-NIC distance is within `NCCL_NET_GDR_LEVEL`. If GDR fails, they use host-staged NET/IB, and if RDMA verbs fail, they fall back to NET/Socket TCP. To prove it in 60 seconds, export `NCCL_DEBUG=INFO` and `NCCL_DEBUG_SUBSYS=INIT,GRAPH,ENV`, then read the Channel 00 log lines. The strong answer is the log check itself, because it shows you looked at the running job instead of guessing from the settings.
 2. **"Why does increasing `NCCL_MAX_NCHANNELS` or `NCCL_BUFFSIZE` sometimes make a distributed training step slower or crash with OOM?"**
-   Every NCCL channel is backed by one CUDA thread block occupying one SM during collective execution, plus peer FIFO buffers in GPU HBM. On a 132-SM H100, raising channels from 16 to 32 increases SM occupancy from 12.12% to 24.24% and steals SMs from overlapped backward-pass GEMM kernels. Raising `NCCL_BUFFSIZE` to 16 MiB at 32 channels also consumes 1,024 MiB of HBM per communicator across every active process group. Conversely, zero-copy buffer registration via `ncclCommRegister` with NVLS cuts channels from 16 to 4. That leaves 3.03% SM occupancy and saves 12 SM blocks for compute.
+   This question tests whether you see that channels cost more than bandwidth. Every channel is backed by one CUDA thread block, which occupies one SM while the collective runs. It also holds peer FIFO buffers in GPU HBM. On a 132-SM H100, moving from 16 channels to 32 raises SM occupancy from 12.12% to 24.24%, and it takes SMs away from overlapped backward-pass GEMM kernels. Raising `NCCL_BUFFSIZE` to 16 MiB at 32 channels also uses 1,024 MiB of HBM per communicator, across every active process group. Zero-copy registration works the other way. Calling `ncclCommRegister` with NVLS cuts channels from 16 to 4, leaves 3.03% SM occupancy, and frees 12 SM blocks for compute. So you tune channels against two budgets at once, the SMs and the HBM.
 3. **"After enabling `--topology-manager-policy=single-numa-node` on 128-core, 8-GPU servers, pods 5–8 fail with `TopologyAffinityError` even though 4 GPUs are idle. Why, and how do you fix it?"**
-   The `single-numa-node` policy requires a pod's CPU cores, GPU, and SR-IOV NIC VF to come from the exact same physical NUMA node. Each socket has 64 cores and 4 GPUs. Requesting 16 cores per pod consumes all 64 cores on NUMA 0 across 4 pods. On NUMA 1, OS and kubelet daemons use 2 cores and leave 62 free cores. Three pods take 48 cores and leave only 14 free cores, which is less than the 16 cores required for the eighth pod. Do not downgrade to `best-effort`, which permits 32.14x slower SYS crossings. Instead, reduce the pod CPU request to 12 cores and set `NCCL_IGNORE_CPU_AFFINITY=1`.
+   Think of this question as a placement problem with a counting trap at the end. The `single-numa-node` policy needs a pod's CPU cores, GPU, and SR-IOV NIC VF to come from the same physical NUMA node. Each socket has 64 cores and 4 GPUs. At 16 cores per pod, four pods use up all 64 cores on NUMA 0. On NUMA 1, OS and kubelet daemons use 2 cores, which leaves 62 free. Three pods take 48 of those, so 14 cores remain, two short of the 16 the eighth pod needs. Do not downgrade to `best-effort`, which permits 32.14x slower SYS crossings. Instead, reduce the pod CPU request to 12 cores and set `NCCL_IGNORE_CPU_AFFINITY=1`. A strong answer names the policy, shows the arithmetic, and gives the fix in that order.
 
 ---
 
@@ -661,7 +759,7 @@ Exercise Input Parameters and Reference Specifications:
 <details>
 <summary>**1. In what exact order does NCCL rank hardware interconnect path costs from fastest to slowest?**</summary>
 
-NCCL ranks path costs from fastest to slowest across seven levels:
+Think of NCCL's seven levels as a ladder, from the cheapest hop to the most expensive one:
 
 ```text
 LOC (X, self, cost 0) < NVL (NV4/NV12/NV18 NVLink/NVSwitch, cost 10) < C2C (NVLink-C2C, cost 15) < PIX (single PCIe switch, cost 30) < PXB (multiple PCIe switches, cost 50) < PHB (PCIe Host Bridge on same NUMA node, cost 80) < SYS (cross-socket UPI / Infinity Fabric, cost 200)
@@ -671,83 +769,85 @@ LOC (X, self, cost 0) < NVL (NV4/NV12/NV18 NVLink/NVSwitch, cost 10) < C2C (NVLi
 <details>
 <summary>**2. How long does a 500 MB (0.5 GB) GPU-to-GPU transfer take over a 900 GB/s NVLink path versus a 28 GB/s SYS path, and what is the slowdown factor?**</summary>
 
-Over NVLink at 900 GB/s, transferring 0.5 GB takes 0.56 ms. Over a cross-socket SYS path at 28 GB/s, transferring 0.5 GB takes 17.86 ms, or roughly 18 ms, which is **32.14x slower** (`> 30x`).
+Over NVLink at 900 GB/s, a 0.5 GB transfer takes 0.56 ms. Over the cross-socket SYS path at 28 GB/s, the same transfer takes 17.86 ms, roughly 18 ms. That makes SYS **32.14x slower** (`> 30x`).
 </details>
 
 <details>
 <summary>**3. What is the difference between PIX, PXB, and PHB in nvidia-smi topo -m and NCCL path scoring?**</summary>
 
-PIX traverses at most a single PCIe switch (`class="0x060400"`). PXB traverses multiple cascaded PCIe switches without reaching the CPU host bridge. PHB traverses the CPU PCIe Host Bridge or Root Complex within a single NUMA socket.
+When you see PIX in the matrix, the path stays within a single PCIe switch (`class="0x060400"`). PXB crosses several cascaded PCIe switches, but it never reaches the CPU host bridge. PHB goes through the CPU PCIe Host Bridge or Root Complex inside one NUMA socket.
 </details>
 
 <details>
 <summary>**4. How does PCIe Access Control Services (ACS) break GPUDirect P2P and GPUDirect RDMA, and how does it appear in nvidia-smi topo -m?**</summary>
 
-When PCIe ACS is enabled in BIOS, PCIe switches cannot route peer-to-peer transactions directly between downstream ports. They must redirect every packet up to the CPU Root Complex and IOMMU. This causes `nvidia-smi topo -m` to report SYS or PHB instead of PIX, disabling GPUDirect RDMA and collapsing throughput.
+When PCIe ACS is enabled in the BIOS, switches cannot route peer-to-peer traffic directly between downstream ports. Every packet has to climb to the CPU Root Complex and IOMMU instead. In `nvidia-smi topo -m`, that shows up as SYS or PHB where you expect PIX. GPUDirect RDMA is disabled, and throughput collapses.
 </details>
 
 <details>
 <summary>**5. How do you capture NCCL's auto-detected hardware graph and inject a corrected topology in a virtualized or OEM HGX environment?**</summary>
 
-Set `NCCL_TOPO_DUMP_FILE=/tmp/topo.xml` on a working run to dump the discovered XML schema. Edit the PCIe switch hierarchy so each GPU and its local rail NIC sit under the same PCIe switch as PIX, and inject it at runtime via `NCCL_TOPO_FILE=/etc/nccl/topology.xml`.
+On a working run, you set `NCCL_TOPO_DUMP_FILE=/tmp/topo.xml` to dump the XML that NCCL discovered. Then edit the PCIe switch hierarchy so each GPU and its local rail NIC sit under the same switch and score as PIX. Finally, load the corrected file at runtime with `NCCL_TOPO_FILE=/etc/nccl/topology.xml`.
 </details>
 
 <details>
 <summary>**6. What is an NCCL channel, and how does the number of active channels affect GPU Streaming Multiprocessor (SM) compute resources?**</summary>
 
-An NCCL channel is an independent parallel subring or subtree pipeline that executes collective communication across hardware links. Each active channel launches **1 CUDA thread block** on 1 GPU SM. For example, 16 channels on a 132-SM H100 occupy 16 SMs or 12.12% of the GPU. That allocation trades compute SMs for communication bandwidth during overlapped execution.
+An NCCL channel is an independent parallel subring or subtree pipeline that runs a collective across the hardware links. Each active channel launches **1 CUDA thread block** on one GPU SM. On a 132-SM H100, 16 channels take 16 SMs, or 12.12% of the GPU. So channels trade compute SMs for communication bandwidth during overlapped execution.
 </details>
 
 <details>
 <summary>**7. How does persistent zero-copy user buffer registration (ncclCommRegister with ncclMemAlloc) change channel and SM usage on NVSwitch systems?**</summary>
 
-By allowing NVLS and NCCL engines to operate directly on registered user tensor memory without SM-staged copies, zero-copy registration cuts the required channel count. It drops the channel count from **16 channels down to 4 channels** (3.03% of 132 H100 SMs) and frees **12 SM thread blocks** per GPU for model computation.
+Zero-copy registration lets NVLS and NCCL work directly on the registered user tensor, so no SM-staged copies are needed. That cuts the channel count from **16 channels down to 4 channels**, which is 3.03% of 132 H100 SMs. It also frees **12 SM thread blocks** per GPU for model computation.
 </details>
 
 <details>
 <summary>**8. What is the recommended starting value for NCCL_BUFFSIZE, and how do you calculate the per-communicator GPU HBM footprint of channel buffers?**</summary>
 
-The default and recommended starting value is **4 MB** (`4 MiB` = `4,194,304` bytes). Total channel buffer memory per communicator is $C_\{\text`{active}`} \times P_\{\text`{peers}`} \times \text`{NCCL\_BUFFSIZE}`$. For 16 channels with 2 peers per channel at 4 MiB, that footprint equals 128.0 MiB.
+The default and recommended starting value is **4 MB** (`4 MiB` = `4,194,304` bytes). To get the per-communicator footprint, multiply the active channels, the peer slots, and the buffer size: $C_\{\text`{active}`} \times P_\{\text`{peers}`} \times \text`{NCCL\_BUFFSIZE}`$. For 16 channels with 2 peers each at 4 MiB, that comes to 128.0 MiB.
 </details>
 
 <details>
 <summary>**9. What happens to intra-node collective performance if NCCL_P2P_DISABLE=1 is left enabled in production?**</summary>
 
-Setting `NCCL_P2P_DISABLE=1` disables direct GPU-to-GPU peer transfers over NVLink and PCIe BAR1. All intra-node traffic is forced to fall back to SHM in `/dev/shm`. This increases latency from a few microseconds to tens of microseconds and drops bandwidth from hundreds of GB/s down to tens of GB/s.
+Setting `NCCL_P2P_DISABLE=1` turns off direct GPU-to-GPU peer transfers over NVLink and PCIe BAR1. If you leave it on, every intra-node transfer falls back to SHM in `/dev/shm`. Latency rises from a few microseconds to tens of microseconds, and bandwidth drops from hundreds of GB/s to tens of GB/s.
 </details>
 
 <details>
 <summary>**10. Why do multi-GPU containers in Docker or Kubernetes sometimes fail with "Call to posix_fallocate failed : No space left on device" during NCCL initialization?**</summary>
 
-When NCCL uses the SHM transport, it allocates shared-memory staging buffers inside `/dev/shm`. Docker and Kubernetes default `/dev/shm` to 64 MiB, which is quickly exhausted. Fix this by passing `--shm-size=16g` in Docker or mounting a 16 to 64 GiB in-memory `emptyDir` volume at `/dev/shm` in Kubernetes.
+When NCCL uses the SHM transport, it stages its buffers inside `/dev/shm`. Docker and Kubernetes default that mount to 64 MiB, and it runs out quickly. Pass `--shm-size=16g` to Docker, or mount a 16 to 64 GiB in-memory `emptyDir` at `/dev/shm` in Kubernetes.
 </details>
 
 <details>
 <summary>**11. What does NCCL_NET_GDR_LEVEL control, and what happens when the GPU-to-NIC path exceeds that level?**</summary>
 
-The variable `NCCL_NET_GDR_LEVEL` sets the maximum topological distance between a GPU and an RDMA NIC at which NCCL permits GPUDirect RDMA, defaulting to PIX or PXB. If the GPU-to-NIC path is PHB or SYS, NCCL disables GPUDirect RDMA for that link and stages RDMA buffers through host CPU RAM.
+`NCCL_NET_GDR_LEVEL` sets the furthest topological distance between a GPU and an RDMA NIC at which NCCL still permits GPUDirect RDMA. The default is PIX or PXB. Past that level, a PHB or SYS path disables GPUDirect RDMA on that link, and RDMA buffers are staged through host CPU RAM.
 </details>
 
 <details>
 <summary>**12. How does PXN (controlled by NCCL_CROSS_NIC=2) avoid cross-socket SYS traffic on multi-rail NVSwitch servers?**</summary>
 
-Suppose a GPU on NUMA 0 needs to transmit through a NIC rail attached to NUMA 1. PXN routes the payload first over intra-node NVLink or NVSwitch at 900 to 1,800 GB/s to a proxy GPU on NUMA 1 that is PIX-local to the target NIC. That proxy GPU then performs GPUDirect RDMA over its local PCIe switch without ever crossing the CPU UPI link.
+Suppose a GPU on NUMA 0 must send through a NIC rail attached to NUMA 1. PXN first moves the payload over NVLink or NVSwitch, at 900 to 1,800 GB/s, to a proxy GPU on NUMA 1 that sits PIX-local to the target NIC. That proxy then does GPUDirect RDMA through its local PCIe switch, so the traffic never crosses the CPU UPI link.
 </details>
 
 <details>
 <summary>**13. What is the difference between standard GPUDirect RDMA and InfiniBand GPUDirect Async (IBGDA)?**</summary>
 
-Standard GPUDirect RDMA bypasses host RAM on the data path between the NIC and GPU BAR1. However, it still relies on a CPU proxy thread on the control path to post RDMA Work Requests and poll Completion Queues. With IBGDA, the control path moves onto the GPU as well, allowing GPU SMs to post work descriptors and ring the NIC doorbell directly.
+Standard GPUDirect RDMA skips host RAM on the data path between the NIC and GPU BAR1. Its control path still depends on a CPU proxy thread, which posts RDMA Work Requests and polls Completion Queues. With IBGDA, the control path moves to the GPU too. GPU SMs post the work descriptors and ring the NIC doorbell themselves.
 </details>
 
 <details>
 <summary>**14. Which environment variables control Multi-Node NVLink (MNNVL), NVSwitch SHARP (NVLS), and InfiniBand SHARP (CollNet)?**</summary>
 
-The variable `NCCL_MNNVL_ENABLE=1` enables Multi-Node NVLink across GB200 and GB300 NVL72 rack domains. `NCCL_NVLS_ENABLE=1` controls NVLink SHARP in-switch reduction and multicast on NVSwitch. `NCCL_COLLNET_ENABLE=1` enables InfiniBand CollNet/SHARP switch reduction, and `NCCL_SHARP_DISABLE=1` explicitly disables SHARP for A/B testing or troubleshooting.
+`NCCL_MNNVL_ENABLE=1` turns on Multi-Node NVLink across GB200 and GB300 NVL72 rack domains. `NCCL_NVLS_ENABLE=1` controls NVLink SHARP, which does in-switch reduction and multicast on NVSwitch. `NCCL_COLLNET_ENABLE=1` enables InfiniBand CollNet and SHARP switch reduction. `NCCL_SHARP_DISABLE=1` turns SHARP off, which is useful for A/B testing or troubleshooting.
 </details>
 
 <details>
 <summary>**15. Given interfaces ["lo", "docker0", "eth0", "eth0.100", "eth1", "ib0"], what is the difference between NCCL_SOCKET_IFNAME=eth0, =eth0, ^docker,lo,eth, and ^=lo,docker0,eth0?**</summary>
+
+Each line shows what one filter matches against that interface list.
 
 ```text
 - eth0 (prefix include):          matches ["eth0", "eth0.100"]
@@ -760,31 +860,31 @@ The variable `NCCL_MNNVL_ENABLE=1` enables Multi-Node NVLink across GB200 and GB
 <details>
 <summary>**16. What is the hard upper limit on NCCL_NSOCKS_PERTHREAD * NCCL_SOCKET_NTHREADS, and which transport do those variables affect?**</summary>
 
-Their product must not exceed **64** ($\text`{NCCL\_SOCKET\_NTHREADS}` \times \text`{NCCL\_NSOCKS\_PERTHREAD}` \le 64$). That ceiling is the built-in per-communicator TCP socket limit in NCCL. They tune **only** the NET/Socket TCP transport and do not tune NET/IB RDMA data paths.
+The product must stay at or below **64**: $\text`{NCCL\_SOCKET\_NTHREADS}` \times \text`{NCCL\_NSOCKS\_PERTHREAD}` \le 64$. That is NCCL's built-in per-communicator TCP socket limit. These two variables tune **only** the NET/Socket TCP transport. They do not touch NET/IB RDMA data paths.
 </details>
 
 <details>
 <summary>**17. Why should you set NCCL_IGNORE_CPU_AFFINITY=1 when launching multi-GPU jobs with taskset, Slurm, or MPI?**</summary>
 
-If a process inherits a narrow CPU affinity mask such as a single core, background NCCL proxy threads are forced onto that single core and contend with one another. Setting `NCCL_IGNORE_CPU_AFFINITY=1` while binding the process at the NUMA domain level lets NCCL spread its worker threads across all CPU cores in the local NUMA node.
+If a process inherits a narrow mask, such as a single core, NCCL's background proxy threads are forced onto that one core and compete with each other. Bind the process to its NUMA domain and set `NCCL_IGNORE_CPU_AFFINITY=1`. NCCL can then spread its worker threads across all the cores of the local NUMA node.
 </details>
 
 <details>
 <summary>**18. Why does a routine node reboot sometimes drop 8-GPU AllReduce busbw from ~800 GB/s to ~90 GB/s without crashing the training job?**</summary>
 
-If `nvidia-fabricmanager` fails to start after reboot or an NVLink link fails initialization, NCCL silently falls back from NVLink at 800 to 900 GB/s to PCIe at roughly 90 GB/s across pairs. It logs `NCCL INFO Using PCIe interface` instead of crashing the job.
+If `nvidia-fabricmanager` fails to start after a reboot, or an NVLink fails to initialize, NCCL falls back quietly. NVLink at 800 to 900 GB/s gives way to PCIe at roughly 90 GB/s across the pairs. The log shows `NCCL INFO Using PCIe interface`, and the job keeps running rather than crashing.
 </details>
 
 <details>
 <summary>**19. Compare the four Kubernetes kubelet Topology Manager policies: none, best-effort, restricted, and single-numa-node.**</summary>
 
-The `none` policy ignores NUMA locality completely. The `best-effort` policy prefers NUMA alignment but admits split-NUMA pods when local capacity is full. The `restricted` policy rejects pods that cannot align to the minimum theoretical number of NUMA nodes. The `single-numa-node` policy strictly requires all CPUs, memory, GPUs, and SR-IOV NICs to reside on a single NUMA node. Otherwise, the kubelet rejects the pod with `TopologyAffinityError`.
+`none` ignores NUMA locality altogether. `best-effort` tries for NUMA alignment, but it admits split pods when local capacity runs out. `restricted` rejects pods that cannot line up with the minimum theoretical number of NUMA nodes. `single-numa-node` demands that CPUs, memory, GPUs, and SR-IOV NICs all sit on one NUMA node, and the kubelet rejects the pod with `TopologyAffinityError` if they do not.
 </details>
 
 <details>
 <summary>**20. How does the NVIDIA Network Operator provide hardware-isolated GPUDirect RDMA in a multi-tenant Kubernetes cluster?**</summary>
 
-The NVIDIA Network Operator deploys the MOFED or DOCA driver, `nvidia-peermem`, Multus CNI, and the SR-IOV Network Operator. Using `SriovNetworkNodePolicy` and `SriovNetwork`, it passes dedicated PCIe Virtual Functions with hardware VLAN tags and NUMA topology hints directly into tenant pods.
+The NVIDIA Network Operator deploys the MOFED or DOCA driver, `nvidia-peermem`, Multus CNI, and the SR-IOV Network Operator. Through `SriovNetworkNodePolicy` and `SriovNetwork`, it hands dedicated PCIe Virtual Functions, with hardware VLAN tags and NUMA topology hints, to tenant pods.
 </details>
 
 ---
@@ -835,4 +935,3 @@ Primary Sources Read in Full and Cited:
      nvidia-smi topo -m 4-GPU NV4 vs SYS matrix, 500 MB (0.5 GB) transfer over NVLink (900 GB/s = 0.56 ms) vs SYS (28 GB/s = 17.86 ms /
      ~18 ms, 32.14x / > 30x slower), and post-reboot nvidia-fabricmanager failure (950 -> 310 tokens/sec, 800 GB/s -> 90 GB/s PCIe fallback).
 ```
-
