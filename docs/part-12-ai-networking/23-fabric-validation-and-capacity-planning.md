@@ -24,9 +24,15 @@ lab_venue: "Nebius GPU"
 
 ## Why this matters for AI infrastructure
 
-The first deployment mistake in AI infrastructure is accepting a new GPU cluster simply because every switch port reports `LinkUp` or `Active` and `ping` replies. The second mistake is planning fabric capacity by summing port speeds on a datasheet without identifying the specific bottleneck cut separating active senders from destinations. On a multi-rack InfiniBand cluster, initial commissioning passed because every host was reachable, every port showed `State: Active`, and isolated point-to-point RDMA tests succeeded. Once distributed training started, however, step time varied by more than twenty percent due to three compounding defects. A group of links negotiated at narrow lane width. A cable replacement, adaptive routing was not balancing flows across spines, and several ranks bound across NUMA sockets.
+The first deployment mistake is accepting a new GPU cluster because every port reports `LinkUp` or `Active` and `ping` gets a reply. The second mistake is sizing fabric capacity by adding up port speeds on a datasheet. That sum ignores the bottleneck cut, the set of links that separates the senders from their receivers.
 
-An identical trap occurs on RoCEv2 Ethernet fabrics when a newly commissioned GPU rack passes optical checks, ICMP `ping`, and a two-node bandwidth test in isolation. One week after joining shared production, multi-rank AllReduce and AllToAll jobs stall with heavy ECN marking, Priority Flow Control pauses, and hardware tail drops. An isolated single-pair test never stressed the oversubscribed leaf-to-spine uplink cut or its degraded single-link maintenance state. Production acceptance requires an evidence-gated validation ladder from physical optics through multi-hour burn-in paired with a deterministic Bill of Materials and bottleneck-cut capacity model.
+Picture a multi-rack InfiniBand cluster that passes commissioning. Every host is reachable, every port shows `State: Active`, and isolated point-to-point RDMA tests succeed. Once distributed training starts, however, step time varies by more than twenty percent. Three defects were stacked on top of each other. A replacement cable had trained at narrow lane width. Adaptive routing was not balancing flows across spines. Several ranks were bound across NUMA sockets.
+
+The same trap appears on RoCEv2 Ethernet. A new GPU rack passes optical checks, an ICMP `ping`, and a two-node bandwidth test. One week after it joins shared production, multi-rank AllReduce and AllToAll jobs stall. The switches show heavy ECN marking, which is a signal that queues are filling, along with Priority Flow Control pauses and hardware tail drops.
+
+The isolated test never loaded the oversubscribed leaf-to-spine uplink cut. It also never ran in the degraded state where one link is down for maintenance. Production acceptance needs an evidence-gated validation ladder that starts at physical optics and ends in multi-hour burn-in. Pair that ladder with a deterministic Bill of Materials and a bottleneck-cut capacity model.
+
+Both cases are summarised below from production records. Notice that each one passed the cheap checks you would run first, so you would have seen green on day one.
 
 ```text
 Commissioning Traps Captured from Production InfiniBand and RoCEv2 Fabrics:
@@ -43,6 +49,8 @@ Commissioning Traps Captured from Production InfiniBand and RoCEv2 Fabrics:
    - Bottleneck cut: 16 nodes x (2 x 400 Gb/s = 800 Gb/s) = 12,800 Gb/s downlink demand into 8 x 400 Gb/s = 3,200 Gb/s uplinks (4:1 / 4.00:1 normal; 7 x 400 Gb/s = 2,800 Gb/s or 4.57:1 under N-1 uplink maintenance)
 ```
 
+Decide up front what evidence a cluster must produce before anyone signs for it.
+
 ## Prerequisites and outcomes
 
 **Prerequisites:**
@@ -50,18 +58,20 @@ Commissioning Traps Captured from Production InfiniBand and RoCEv2 Fabrics:
 - Review fabric topology and oversubscription design in Chapter 12.13, plus `nccl-tests` and fabric benchmarking in Chapter 12.17.
 
 **Expected learning outcomes:**
-- Execute a five-stage acceptance gating pipeline from L1 physical optics and BER through L5 multi-hour burn-in and N-1 link drains.
-- Reconcile physical cabling against the Point-to-Point BOM using `ibnetdiscover`, `iblinkinfo`, `lldpctl`, `netq`, and NVIDIA Base Command Manager Topograph.
+- Run a five-stage acceptance ladder, from L1 physical optics and BER through L5 multi-hour burn-in and N-1 link drains.
+- Check physical cabling against the Point-to-Point BOM with `ibnetdiscover`, `iblinkinfo`, `lldpctl`, `netq`, and NVIDIA Base Command Manager Topograph.
 - Calculate switch, transceiver, and cable BOMs with field spares and cable-reach derating for two-tier and three-tier Clos fabrics and SuperPODs.
-- Model bottleneck cuts under normal and N-1 degraded states, quantify collective step-time and inference tail-latency impacts, and apply the seven-input architecture decision framework.
+- Model bottleneck cuts in normal and N-1 degraded states, measure their effect on collective step time and inference tail latency, and apply the seven-input architecture decision framework.
+
+Start with the acceptance ladder, because the capacity model assumes its evidence is already sound. If you skip the ladder, every later number inherits the gap.
 
 ---
 
 ## 1. The multi-stage cluster acceptance gating ladder
 
-In traditional enterprise networking, a passing `ping` command or a green switch LED is treated as proof of readiness. In an AI fabric, `ping` is a liar because it only tests whether the host CPU can send a tiny ICMP packet over the default kernel route. It proves nothing about RDMA Verbs Queue Pairs, RoCEv2 UDP encapsulation, lossless Priority 3 queues, GPUDirect RDMA locality, or thousand-GPU collective synchronization across spine cuts.
+On a typical enterprise network, a passing `ping` or a green switch LED is good enough to call a link ready. An AI fabric needs more. A `ping` only shows that the host CPU can send one small ICMP packet over the default kernel route. It says nothing about RDMA Verbs Queue Pairs, RoCEv2 encapsulation, the lossless Priority 3 queues, GPUDirect RDMA locality, or whether a thousand GPUs can synchronize across the spine cuts.
 
-Cluster commissioning must therefore follow a strict bottom-up acceptance gating ladder from Stage L1 through Stage L5. Crucially, a passing later stage can never retroactively validate a skipped or failed earlier stage. If `all_reduce_perf` passes at Stage L4 while a transceiver has rising uncorrected FEC blocks at Stage L1, the cluster must be rejected and quarantined. Every lower gate must retain passing raw evidence before acceptance is signed.
+Commissioning has to climb the ladder from the bottom: Stage L1 first, then L2, all the way to L5. A later stage cannot make up for an earlier one. If you skip ahead, you have no proof for the lower layers. Suppose `all_reduce_perf` passes at Stage L4, but a transceiver shows rising uncorrected FEC blocks at Stage L1. Forward error correction (FEC) is the error correction built into the link. The cluster must still be rejected and quarantined. Each lower gate has to keep its raw passing evidence before anyone signs. Keep the output of every gate, because you will need it at sign-off.
 
 ```mermaid
 flowchart TD
@@ -74,6 +84,8 @@ flowchart TD
     GATE -->|"No (any stage skipped/failed)"| REJ["REJECT / QUARANTINE<br/>Fix first failed layer & re-run"]
 ```
 
+The table lists each gate with its tools, its pass criteria, and the action to take when it fails.
+
 | Acceptance Gate | Layer & Scope | Primary Tools | Quantitative Pass Criteria | Failure Signature & Action |
 |---|---|---|---|---|
 | **Stage L1: Physical, Optics (`DOM`), `BER`/`FEC`, Cable Matrix** | Layer 1 optics, SerDes lanes, MPO/AOC/DAC cables, wiring topology | `mlxlink -d mlx5_0 -m -c -e`, `ibdiagnet`, `ibnetdiscover`, `iblinkinfo`, `ethtool -m/-S`, `lldpctl`, `Topograph` | `LinkUp`, full width (`4x`) & speed (`400G`/`800G`); Rx `>= -6.0 dBm`, Tx `>= -4.0 dBm`, temp `<= 70.0 °C`; pre-FEC `BER <= 1e-5`, post-FEC `<= 1e-15`; `0` `fec_uncorrected_blocks` & `SymbolErrorCounter` delta; `0` BOM diffs | `Rx < -8 dBm` (`-8.4 dBm`), `2x` width downtrain, or rail port swap `\rightarrow` replace optic/cable or re-patch before `L2` |
@@ -82,11 +94,13 @@ flowchart TD
 | **Stage L4: Full-Scale Collectives (`nccl-tests`)** | Multi-node synchronous `AllReduce`, `ReduceScatter`, `AllGather`, `AllToAll` | `mpirun` / `srun` `all_reduce_perf`, `alltoall_perf`, `reduce_scatter_perf`, `all_gather_perf` (`-b 8M -e 8G -f 2 -g 1 -c 1 -n 100`) | `#wrong = 0`; `1 GiB+` `all_reduce_perf` `busbw >= 340–361+ GB/s` (`361.36 GB/s`, `85%–90%+` of `8 x 50 = 400 GB/s`); `alltoall_perf` clean without `PFC` storms or `WJH` drops | `2`-node passes but `64–128`-node stalls or logs `rx_pfc_prio3: 61,200` `\rightarrow` check `AR`/`DCQCN`/`SHARP` and rails |
 | **Stage L5: Multi-Hour Burn-In & `N-1` Drills** | `24–72` h stress (`HPL`/`NeMo` + storage I/O) and planned `N-1` link/spine drain | Canary harness, `UFM`/`NetQ`, `WJH`, `perfquery`/`ethtool -S` series, `fio`/`gdsio` checkpoints | `0` link flaps, `0` `WJH` drops, `0` `Xid`/`SXid`/`CQE` timeouts over `12–72 h`; `p99` step within `<= 5%`; `N-1` drain matches `4.00:1 -> 4.57:1` model | Idle had `0` drops, but shared burn-in logs `38,210` tail drops or `> 20%` step variance `\rightarrow` adjust admission, QoS, or cut capacity |
 
+Each failure signature points to one layer to fix first. That is why the ladder runs from the bottom up.
+
 ### Stage L1: Physical layer, DOM optical budgets, FEC/BER, and inventory truth
 
-If a cable is plugged into the wrong leaf switch or a dirty optical ferrule drops codewords, collective benchmarks will waste days of triage. Stage L1 verifies that every physical link exists, matches the point-to-point cable matrix, and meets optical and Forward Error Correction margins. An InfiniBand `Base lid` can change whenever OpenSM re-sweeps the subnet. Durable inventory records must therefore always key on the immutable `Port GUID` rather than the mutable LID.
+Picture a cable plugged into the wrong leaf switch, or a dirty optical ferrule that drops codewords. Collective benchmarks on that cluster waste days of triage before anyone finds the fault. Stage L1 checks that every physical link exists, matches the cable matrix, and has enough optical and Forward Error Correction margin. Inventory needs care too. An InfiniBand `Base lid` can change whenever OpenSM re-sweeps the subnet. Inventory records should therefore key on the immutable `Port GUID` rather than the LID.
 
-On RoCEv2 nodes, Stage L1 confirms that every Ethernet interface maps to its expected RDMA device at full line rate with a jumbo MTU. It also verifies local PCIe switch locality between each GPU and its paired rail NIC. At high-speed PAM4 signaling with RS-FEC, a non-zero corrected FEC codeword count is normal. However, any uncorrected FEC block delta or low optical receive power must be fixed before moving to Stage L2.
+On RoCEv2 nodes, the same stage checks the Ethernet side. Each interface must map to its expected RDMA device at full line rate with a jumbo MTU. Stage L1 also confirms PCIe switch locality, meaning the path between each GPU and its paired rail NIC. Corrected FEC codewords are normal on high-speed PAM4 links with RS-FEC, which use a four-level signal. A non-zero corrected count alone is not a failure. An uncorrected FEC block delta or low optical receive power is, and you must fix it before Stage L2.
 
 ```text
 Stage L1 Baseline Inventory & Optical/FEC Reference Values (V8 Lab 01 & V9 Labs 01–02):
@@ -104,11 +118,13 @@ Stage L1 Baseline Inventory & Optical/FEC Reference Values (V8 Lab 01 & V9 Labs 
    - Thresholds: Rx >= -6.0 dBm (fail example: -7.5 dBm or -8.4 dBm with 12 uncorrected FEC blocks), Tx >= -4.0 dBm, lane skew < 2.0 dB, temp <= 70.0 °C, pre-FEC BER <= 1e-5, post-FEC <= 1e-15
 ```
 
+Record these baseline values while the links are known to be good, so you can spot later drift.
+
 ### Stage L2: Subnet/IP routing, QoS queue verification, and point-to-point RDMA
 
-A link that passes Stage L1 optical checks can still fail. An RDMA process selects the wrong GID index, crosses NUMA sockets, or lands in a lossy queue. Stage L2 validates control-plane addressing, lossless QoS queue mapping, and single-pair RDMA bandwidth and latency across host DRAM and GPU HBM. On InfiniBand, `sminfo` must confirm a single master Subnet Manager and `smpquery pkeys` must match partition policy. On RoCEv2, `ip route get` must resolve to the intended rail interface and source IP.
+A link can pass every Stage L1 optical check and still fail in use. An RDMA process might select the wrong GID index, cross NUMA sockets, or land in a lossy queue. Stage L2 checks the addressing and queue mapping first. Then it tests one pair of nodes for bandwidth and latency across host DRAM and GPU HBM. On InfiniBand, `sminfo` must show a single master Subnet Manager, and `smpquery pkeys` must match the partition policy. On RoCEv2, `ip route get` must resolve to the intended rail interface and source IP.
 
-Operators then run NUMA-pinned `ib_write_lat` and `ib_write_bw` with and without `--use_cuda` to verify host and GPUDirect RDMA paths. If a benchmark process binds to a misaligned RoCE device or secondary GID while Layers 1 and 2 remain clean, throughput collapses and RDMA retries surge. Finally, Stage L2 runs a bounded two-sender contention test to prove that RoCEv2 packets enter lossless Priority 3 and pace cleanly via DCQCN with zero drops.
+Next, operators run NUMA-pinned `ib_write_lat` and `ib_write_bw`, first without and then with `--use_cuda`. Those two runs check the host path and the GPUDirect RDMA path. Here is the failure to watch for. A benchmark bound to a misaligned RoCE device or secondary GID can collapse in throughput while Layers 1 and 2 still look clean, and RDMA retries surge. The last test is a bounded two-sender contention run. It shows that RoCEv2 packets enter the lossless Priority 3 queue and slow down smoothly through DCQCN, with zero drops.
 
 ```text
 Stage L2 Routing, Process-Scoped Fault Isolation, and 60s QoS Contention Evidence (V9 Labs 01–04):
@@ -126,11 +142,13 @@ Stage L2 Routing, Process-Scoped Fault Isolation, and 60s QoS Contention Evidenc
    - Result: Sender A (89.2 Gb/s) + Sender B (87.1 Gb/s) = 176.3 Gb/s combined throughput with 0 packet drops
 ```
 
+Compare the two single-pair runs. The switches are the same and only the device differs. The fix belongs in device, NUMA, and route selection, not in switch PFC or ECN settings.
+
 ### Stages L3, L4, and L5: From pairwise rings and bisection cuts to full-scale burn-in
 
-A single-pair `ib_write_bw` test at Stage L2 only exercises one link at a time and cannot detect spine oversubscription or static routing polarization. Stage L3 runs an all-node ring sweep per rail to test every host NIC and cable. It then runs a simultaneous half-bisection test where half the cluster sends across the spine to the other half. Comparing same-leaf bandwidth against cross-rack bandwidth and inspecting switch uplink `PortXmitData` counters immediately exposes undersized leaf uplinks or static route pinning.
+A single-pair `ib_write_bw` test at Stage L2 exercises one link at a time. It cannot reveal spine oversubscription or static routing polarization, which only appear when many pairs talk at once. Stage L3 runs an all-node ring sweep for each rail, so every host NIC and cable gets tested. Then it runs a half-bisection test, where half the cluster sends across the spine to the other half. When you compare same-leaf bandwidth with cross-rack bandwidth, check the switch uplink `PortXmitData` counters. Undersized leaf uplinks or static route pinning show up quickly in that comparison.
 
-Stage L4 executes full-scale multi-node `nccl-tests` collectives across all ranks and rails, verifying zero data corruption errors and full bus bandwidth parity. Finally, Stage L5 runs a multi-hour burn-in combining distributed training with concurrent storage checkpoint I/O. During Stage L5, operators intentionally drain one uplink or spine switch to verify N-1 degraded behavior.
+Stage L4 runs full-scale `nccl-tests` collectives across every rank and rail. The pass condition is zero data corruption errors and full bus bandwidth parity. Stage L5 is the long test. It runs a multi-hour burn-in that combines distributed training with concurrent storage checkpoint I/O. During that burn-in, operators deliberately drain one uplink or one spine switch, which shows how the cluster behaves in the N-1 state.
 
 ```text
 Stages L3, L4, and L5 Quantitative Gate Benchmarks (V8 Ch. 6 & V9 Ch. 10):
@@ -145,11 +163,15 @@ Stages L3, L4, and L5 Quantitative Gate Benchmarks (V8 Ch. 6 & V9 Ch. 10):
   - 0 link flaps, 0 WJH tail drops (vs 38,210 drops on unvalidated 4:1 rack), 0 Xid/SXid/CQE timeouts over 12–72 h, p99 step within <= 5%, N-1 drain verified (4.00:1 -> 4.57:1)
 ```
 
+Treat each number above as a gate, not a goal. When you miss one, you go back to the layer it names. A run that misses one of them goes back to the layer named in the table.
+
+Do not sign a cluster until you have raw evidence for every stage on file.
+
 ---
 
 ## 2. Automated cable matrix validation
 
-On a thousand-GPU cluster with thousands of point-to-point cables and optical transceivers, manual visual inspection always misses human wiring errors. During installation, technicians can cross-patch a cable between rails, swap two ports on the same leaf switch, or leave a connector partially unlatched. In a Rail-Optimized Design, plugging a Rail 0 NIC into a Rail 1 leaf forces single-hop intra-rail traffic across two spine hops or blackholes the subnet.
+Picture a thousand-GPU cluster with thousands of point-to-point cables. Manual visual inspection misses human wiring errors. During installation, a technician can cross-patch a cable between rails, swap two ports on the same leaf switch, or leave a connector partly unlatched. In a Rail-Optimized Design, a Rail 0 NIC plugged into a Rail 1 leaf pushes traffic that should stay one hop inside the rail across two spine hops. It can also blackhole the subnet.
 
 ```mermaid
 flowchart LR
@@ -159,6 +181,8 @@ flowchart LR
     DIFF -->|"0 Discrepancies"| TOPO["BCM 11 Topograph (Port 49021)<br/>Generates Slurm topology.conf"]
     DIFF -->|"Discrepancy Found"| ERR["Work Order: MISSING_LINK,<br/>RAIL_SWITCH_MISMATCH, PORT_SWAP,<br/>SPEED_OR_WIDTH_DOWNTRAIN"]
 ```
+
+The table lists the discovery tools and what each one checks against the BOM.
 
 | Discovery / Validation Tool | Fabric Type | Primary CLI / API Interface | What It Verifies Against the Point-to-Point Cable BOM |
 |---|---|---|---|
@@ -170,11 +194,14 @@ flowchart LR
 
 ### Reconciling discovered links against the Point-to-Point BOM
 
-Automated physical commissioning compares the expected Point-to-Point Cable BOM against live `ibnetdiscover`, `iblinkinfo`, or `lldpctl` output. It classifies every wiring error into one of four actionable work-order categories.
-- A `MISSING_LINK` discrepancy means the expected host port is absent or down, requiring technicians to check dust caps, MPO polarity, latches, or optics.
-- A `RAIL_SWITCH_MISMATCH` discrepancy means a host NIC is plugged into a leaf switch belonging to the wrong rail and must be re-patched.
-- A `PORT_SWAP` discrepancy means the cable lands on the right leaf switch but the wrong port number, which breaks static LFTs and runbook labels.
-- A `SPEED_OR_WIDTH_DOWNTRAIN` discrepancy means the cable is on the right switch and port but trained at half width due to a dirty ferrule or damaged lane.
+Automated commissioning compares the expected Point-to-Point Cable BOM with live output from `ibnetdiscover`, `iblinkinfo`, or `lldpctl`. Every wiring error lands in one of four work-order categories, and each one has its own fix.
+
+- `MISSING_LINK`: the expected host port is absent or down. Technicians check dust caps, MPO polarity, latches, and optics.
+- `RAIL_SWITCH_MISMATCH`: a host NIC sits on a leaf switch from the wrong rail, so it must be re-patched.
+- `PORT_SWAP`: the cable reaches the right leaf switch but the wrong port number, which breaks static LFTs and runbook labels.
+- `SPEED_OR_WIDTH_DOWNTRAIN`: the cable is on the right switch and port but trained at half width, because of a dirty ferrule or a damaged lane.
+
+The worked example below runs the diff engine on four links. Each line of its output maps to one of the four categories above.
 
 ```text
 Cable Matrix Diff Worked Example (validate_cable_matrix_diff):
@@ -190,9 +217,9 @@ Cable Matrix Diff Worked Example (validate_cable_matrix_diff):
 
 ### NVIDIA Base Command Manager switch discovery and Topograph integration
 
-Even when physical cables are wired properly, Slurm will schedule jobs across distant switches if its static `topology.conf` file drifts out of sync. In NVIDIA Base Command Manager clusters, `cmsh` provides direct MAC-to-switch-port discovery and integrates with Topograph to generate Slurm tree and block topologies automatically. Operators can query host MAC locations, map breakout ports, preview switch MAC assignments, and rotate factory default switch passwords directly from `cmsh`.
+Good cabling is not enough by itself. If Slurm's static `topology.conf` file drifts out of sync, Slurm places jobs across switches that are far apart. In NVIDIA Base Command Manager clusters, `cmsh` can discover MAC addresses and map them to switch ports. It also works with Topograph to generate Slurm tree and block topologies automatically. From `cmsh`, operators can look up host MAC locations, map breakout ports, preview switch MAC assignments, and rotate factory default switch passwords.
 
-For automated Slurm topology synthesis, BCM runs `topograph` or `topograph4` on the head node, listening on HTTPS and exporting Prometheus metrics. When triggered, Topograph queries InfiniBand, Ethernet, or cloud instance topology APIs and writes the updated `topology.conf` file. It then invokes `scontrol reconfigure` without restarting running jobs.
+For automatic Slurm topology, BCM runs `topograph` or `topograph4` on the head node. The service listens on HTTPS and exports Prometheus metrics. When it is triggered, Topograph queries the InfiniBand, Ethernet, or cloud topology APIs and writes a new `topology.conf`. Then it runs `scontrol reconfigure`, so running jobs are not restarted.
 
 ```text
 BCM 11 Switch Discovery & Topograph Service Reference (bcm11-admin §3.9 & §7.5):
@@ -218,27 +245,33 @@ BCM 11 Switch Discovery & Topograph Service Reference (bcm11-admin §3.9 & §7.5
    - Healthcheck retention: set drainreasonpolicy APPEND (or drain --reason="+...") preserves historical failure reasons during Stage L5 burn-in
 ```
 
+Check the generated file against the cable matrix before you trust it. A topology file that disagrees with the wiring sends jobs to the wrong switches.
+
 ---
 
 ## 3. Switch, transceiver, and cable BOM sizing
 
-Under-ordering optical transceivers or overlooking the jump from two-tier to three-tier Clos cabling can stall a cluster build on the data center floor for weeks. Capacity planning translates a target GPU count and oversubscription ratio into an exact Bill of Materials. That BOM covers switches, point-to-point cables, standalone optical transceivers, rack power budgets, and field spares.
+Order too few optical transceivers, or miss the jump from two-tier to three-tier Clos cabling, and the build can stall on the data center floor for weeks. Capacity planning turns a target GPU count and oversubscription ratio into an exact Bill of Materials. That BOM covers switches, point-to-point cables, standalone optical transceivers, rack power budgets, and field spares.
 
 ### General 2-tier and 3-tier Clos BOM equations
 
-For `G` total GPUs at `g` GPUs per node using switches of radix `R`. A two-tier folded Clos fabric scales up to `G_{\max} = R^2 / 2` endpoints. At leaf oversubscription `k_{\text{leaf}} : 1`, each leaf allocates `d_{\text{leaf}} = \text{round}(R \cdot k_{\text{leaf}} / (k_{\text{leaf}} + 1))` downlinks and `u_{\text{leaf}} = R - d_{\text{leaf}}` uplinks.
+Start with the notation, because you will need it for every formula below. `G` is the total number of GPUs, `g` is the number of GPUs per node, and `R` is the switch radix, meaning the number of ports on each switch. A two-tier folded Clos fabric can reach `G_{\max} = R^2 / 2` endpoints. At leaf oversubscription `k_{\text{leaf}} : 1`, each leaf gets `d_{\text{leaf}} = \text{round}(R \cdot k_{\text{leaf}} / (k_{\text{leaf}} + 1))` downlinks and `u_{\text{leaf}} = R - d_{\text{leaf}}` uplinks.
 
 ```text
 N_{\text{leaf}} = \left\lceil \frac{G}{d_{\text{leaf}}} \right\rceil, \qquad C_{\text{host}\to\text{leaf}} = G, \qquad C_{\text{leaf}\to\text{spine}} = N_{\text{leaf}} \cdot u_{\text{leaf}}, \qquad N_{\text{spine}} = \left\lceil \frac{C_{\text{leaf}\to\text{spine}}}{R} \right\rceil
 ```
 
-When the cluster grows beyond `R^2 / 2` GPUs, pods of leaves and spines connect through a third tier of Super-Spines. With spine downlinks `d_{\text{spine}} = R/2` and uplinks `u_{\text{spine}} = \text{round}(d_{\text{spine}} / k_{\text{spine}})`, the three-tier switch and cable counts are.
+Those splits give the leaf, spine, and cable counts for a two-tier fabric, and you can work them through by hand.
+
+Once the cluster grows past `R^2 / 2` GPUs, a two-tier fabric is no longer enough. Pods of leaves and spines then connect through a third tier of Super-Spines. The spine downlinks are `d_{\text{spine}} = R/2`, and the uplinks are `u_{\text{spine}} = \text{round}(d_{\text{spine}} / k_{\text{spine}})`. Those values give the three-tier switch and cable counts below.
 
 ```text
 N_{\text{spine}} = \left\lceil \frac{C_{\text{leaf}\to\text{spine}}}{R/2} \right\rceil, \qquad C_{\text{spine}\to\text{ss}} = N_{\text{spine}} \cdot u_{\text{spine}}, \qquad N_{\text{ss}} = \left\lceil \frac{C_{\text{spine}\to\text{ss}}}{R} \right\rceil
 ```
 
-At a non-blocking ratio, a two-tier fabric requires `2G` cables and `4G` discrete optical transceivers, whereas a three-tier fabric requires `3G` cables and `6G` transceivers. A two-to-one spine-to-super-spine ratio halves the Super-Spine switches and upper-tier cables to `2.5G` cables and `5G` optics. Bonded Active Optical Cables or Direct Attach Copper cables require zero standalone transceivers. Production builds add field spares with spare cables pre-pulled in overhead trays. Enforce PSU redundancy on DGX nodes, and keep all cable runs under ninety percent of maximum reach.
+Take the non-blocking case first. A two-tier fabric needs `2G` cables and `4G` discrete optical transceivers. A three-tier fabric needs `3G` cables and `6G` transceivers. Now change the spine-to-super-spine ratio to two to one. That halves the Super-Spine switches and the upper-tier cables, which brings the count to `2.5G` cables and `5G` optics. Bonded Active Optical Cables and Direct Attach Copper cables need no standalone transceivers at all. Real builds also order field spares and pre-pull spare cables into the overhead trays. Build in power supply redundancy on DGX nodes, and keep every cable run under ninety percent of its maximum reach.
+
+The table compares five cluster designs on 64-port switches, with and without a 5% spare allowance.
 
 | Cluster Design (`R = 64` ports, `g = 8` GPUs/node, `5%` Spares) | Active Leaves | Active Spines | Active Super-Spines | Total Switches (Active / w/ `5%` Spares) | Host-Leaf + ISL Cables (Active / w/ `5%` Spares) | Standalone Optics (`2`/cable: Active / w/ `5%` Spares) |
 |---|---|---|---|---|---|---|
@@ -248,11 +281,13 @@ At a non-blocking ratio, a two-tier fabric requires `2G` cables and `4G` discret
 | **3-Tier `2:1` Super-Spine (`4,096` GPUs, `512` nodes)** | `128` | `128` | `32` | `288` / **`303`** | `4,096 + 4,096 + 2,048 = 10,240` / **`10,752`** | `20,480` / **`21,504`** |
 | **3-Tier `1:1` (`8,192` GPUs, `1,024` nodes)** | `256` | `256` | `128` | `640` / **`672`** | `8,192 + 8,192 + 8,192 = 24,576` / **`25,805`** | `49,152` / **`51,610`** |
 
+When you read the table, treat the bold columns as order quantities and the plain columns as the working count.
+
 ### Reference BOMs: NVIDIA DGX B200 and DGX GB300 SuperPODs
 
-Real-world SuperPOD builds must size multiple parallel fabrics: compute InfiniBand, storage and in-band management Ethernet, and out-of-band management. They must also respect strict rack power and cable distance rules. In a DGX B200 SuperPOD, each Scalable Unit contains 31 nodes. 8 rail leaves with 4 UFM links, and all cables stay under ninety percent of rated reach.
+Real SuperPOD builds must size several parallel fabrics: compute InfiniBand, storage and in-band management Ethernet, and out-of-band management. They must also respect strict rack power and cable distance rules. Each Scalable Unit in a DGX B200 SuperPOD holds 31 nodes. The unit uses 8 rail leaves with 4 UFM links, and all of its cables stay under ninety percent of rated reach.
 
-In a DGX GB300 SuperPOD, eight NVL72 liquid-cooled racks form one Scalable Unit. Because the compute fabric uses high-radix Quantum-X800 `Q3400-RD` switches, it scales all the way to 16 Scalable Units in a two-tier topology without super-spines. Meanwhile, the storage and management fabric uses `SN5600D` Ethernet switches to deliver Standard or Enhanced read and write storage throughput targets.
+In a DGX GB300 SuperPOD, eight NVL72 liquid-cooled racks form one Scalable Unit. The compute fabric uses high-radix Quantum-X800 `Q3400-RD` switches. Because of that radix, the fabric scales to 16 Scalable Units in a two-tier topology, with no super-spines. The storage and management fabric is separate. It uses `SN5600D` Ethernet switches to meet either the Standard or the Enhanced storage throughput targets.
 
 ```text
 SuperPOD DGX B200 and DGX GB300 Hardware, Power, Distance & Storage Specifications:
@@ -273,6 +308,8 @@ SuperPOD DGX B200 and DGX GB300 Hardware, Power, Distance & Storage Specificatio
    - 4 SUs (2,304 GPUs): 360 GB/s Read / 180 GB/s Write (Standard) vs 1,120 GB/s Read / 560 GB/s Write (Enhanced)
 ```
 
+The GB300 table below scales the design from 2 to 16 Scalable Units. Find your unit count in the first column, then read across for the switch and storage counts to order.
+
 | Scale (`# SUs`) | Total `# GPUs` (`Racks`) | IB Leaves (`Q3400-RD`: Per SU / Total) | IB Spines (`Q3400-RD` Total) | Ethernet Spines (`SN5600D`) | Ethernet Compute Leaves (`1:3`) | Ethernet Storage Leaves (`1:1`) | Max Storage BW (`400GbE` Links) | Mgmt Leaves + OOB Spines |
 |---|---|---|---|---|---|---|---|---|
 | **`2` SUs** | **`1,152`** (`16` racks) | `8` / **`16`** | **`8`** | **`4`** | **`8`** | **`2`** | **`64 x 400GbE`** | **`2 + 2`** |
@@ -280,21 +317,25 @@ SuperPOD DGX B200 and DGX GB300 Hardware, Power, Distance & Storage Specificatio
 | **`8` SUs** | **`4,608`** (`64` racks) | `8` / **`64`** | **`36`** | **`12`** | **`32`** | **`4`** | **`256 x 400GbE`** | **`2 + 2`** |
 | **`16` SUs** | **`9,216`** (`128` racks) | `8` / **`128`** | **`72`** | **`24`** | **`64`** | **`8`** | **`1,024 x 400GbE`** | **`2 + 2`** |
 
+Decide the oversubscription ratio before you order, because that single choice sets the transceiver count.
+
 ---
 
 ## 4. Capacity modeling at the bottleneck cut and N-1 failure analysis
 
-Operators who size a fabric by summing all switch port speeds on a datasheet inevitably build bottlenecks that stall synchronous collective jobs. A rigorous capacity model identifies the specific bottleneck traffic cut: the exact set of links separating active senders from their receivers. It then computes the ratio of offered demand crossing that cut to usable link capacity. Because production clusters must survive planned maintenance and single-hardware faults, every cut must be evaluated in both its normal operating state and its N-1 degraded state.
+Size a fabric by summing switch port speeds and you will build bottlenecks that stall the synchronous collective jobs running on it. A rigorous capacity model starts by finding the bottleneck cut. That is the exact set of links separating the active senders from their receivers. It then divides the demand crossing that cut by the usable link capacity. Production clusters must survive planned maintenance and single hardware faults. So you evaluate every cut twice: in its normal state and in its N-1 state, where one link or spine is out of service.
 
 ### Worked cut-capacity and collective step-time calculations
 
-When GPU nodes in a RoCEv2 rack each inject two high-speed rails into a leaf switch with limited spine uplinks. Worst-case cross-rack demand exceeds uplink capacity by four to one. Draining a single uplink for maintenance worsens that ratio further. By contrast, topology-aware job placement that keeps half of the traffic rack-local cuts cross-spine demand in half.
+Picture a RoCEv2 rack where every GPU node injects two high-speed rails into one leaf switch. That leaf has limited spine uplinks. In the worst case, cross-rack demand exceeds the uplink capacity by four to one. Draining one uplink for maintenance makes the ratio worse. Topology-aware job placement works the other way. If half the traffic stays inside the rack, cross-spine demand is cut in half.
 
 ```text
 \text{Oversubscription}_{\text{normal}} = \frac{\text{Downlink Demand}}{\text{Normal Uplink Capacity}}, \qquad \text{Oversubscription}_{\text{N-1}} = \frac{\text{Downlink Demand}}{\text{Degraded Uplink Capacity}}
 ```
 
-The same bottleneck-cut math governs InfiniBand leaf radix selection and AllReduce step time. If a cluster uses a constrained leaf with half as many uplinks as downlinks instead of a non-blocking leaf, cross-rack bandwidth per node drops in half. A large AllReduce transfer then takes twice as long. If that two-spine fabric loses one spine switch during a job, per-node bandwidth drops to a quarter of line rate and AllReduce duration quadruples.
+Only the denominator changes between the normal and degraded states. Keep both ratios in your capacity review, not just the healthy one.
+
+The same cut math also decides InfiniBand leaf radix and AllReduce step time. Take a constrained leaf with half as many uplinks as downlinks, instead of a non-blocking leaf. Cross-rack bandwidth per node drops in half, so a large AllReduce transfer takes twice as long. Now suppose that two-spine fabric loses one spine during a job. Per-node bandwidth falls to a quarter of line rate, and the AllReduce takes four times as long.
 
 ```text
 Worked Bottleneck Cut and N-1 Failure Derivations (V9 Ch. 10 & V8 Ch. 6 / Ch. 11):
@@ -314,20 +355,25 @@ Worked Bottleneck Cut and N-1 Failure Derivations (V9 Ch. 10 & V8 Ch. 6 / Ch. 11
    - True N-1 spine resilience rule: size surviving N-1 spines to carry 100% of required workload bandwidth X
 ```
 
+The failure case is the one to size for. Size the surviving spines to carry 100% of the required workload bandwidth.
+
 ---
 
 ## 5. Production architecture decision framework and 10 enterprise design scenarios
 
-Designing an AI fabric from vendor marketing slides or guesswork leads to expensive mid-project recabling, tail-latency SLA breaches, or unrecoverable spine failures. Every production architecture decision must be anchored on seven mandatory evidence inputs before hardware is ordered.
-- **Business and Service Objectives:** Contracted availability SLAs, target time-to-market, and the funded multi-year expansion horizon.
-- **Workload Communication Pattern:** Fraction of step time spent in AllReduce, AllToAll, or point-to-point stages alongside checkpoint burst frequency.
-- **Scale and Growth:** Initial GPU count versus funded expansion increments across nodes, racks, or Scalable Units.
-- **Performance Target:** Multi-node collective scaling efficiency targets and real-time inference p99 tail-latency constraints.
-- **Reliability and Failure Domains:** Tolerable blast radius for a failed cable, NIC, leaf switch, spine switch under N-1, or Subnet Manager.
-- **Operations and Skills:** Available engineering headcount and expertise across InfiniBand OpenSM and UFM versus Ethernet BGP, EVPN, and NetQ.
-- **Cost and Constraints:** Capital budget trade-offs between non-blocking and oversubscribed tiers, rack power limits, and overhead cable tray capacity.
+Design an AI fabric from marketing slides or guesswork, and you will pay for it later. The usual costs are recabling in the middle of the project, tail-latency SLA breaches, or spine failures you cannot recover from. Before any hardware is ordered, each architecture decision should rest on seven evidence inputs.
 
-If any of these seven inputs is an unverified guess, architects must pause and run discovery or a proof-of-concept benchmark before locking in switch radix or cabling.
+- Start with the business and service objectives: the availability SLAs in your contracts, the time-to-market target, and the funded multi-year expansion horizon.
+- Next comes the workload communication pattern: how much of each step goes to AllReduce, AllToAll, or point-to-point stages, and how often checkpoints burst.
+- Scale and growth compares the initial GPU count with the funded expansion steps across nodes, racks, or Scalable Units.
+- The performance target sets the scaling efficiency goal for multi-node collectives and the p99 tail-latency limit for real-time inference.
+- Reliability and failure domains define the blast radius you can tolerate from a failed cable, NIC, leaf switch, spine switch under N-1, or Subnet Manager.
+- Operations and skills ask what engineering headcount and expertise you have, in InfiniBand OpenSM and UFM versus Ethernet BGP, EVPN, and NetQ.
+- Cost and constraints cover the capital trade-offs between non-blocking and oversubscribed tiers, the rack power limits, and the overhead cable tray capacity.
+
+If any of these seven inputs is still a guess, run discovery or a proof-of-concept benchmark before you lock in switch radix or cabling.
+
+The ten scenarios below show how the seven inputs play out in real designs. Scan the risk column first, since it names what goes wrong when a design skips a check.
 
 | Enterprise Design Scenario | Customer Constraint & Goal | Primary Architectural Risk | Recommended Design & Validation Control |
 |---|---|---|---|
@@ -344,17 +390,21 @@ If any of these seven inputs is an unverified guess, architects must pause and r
 
 ### Production release management and canary promotion gates
 
-Treating cluster acceptance as a one-time commissioning event leaves the fabric vulnerable whenever a new node batch. NIC firmware update, switch OS upgrade, or DPU image rolls out. An acceptance baseline must be maintained as a versioned release artifact containing five mandatory fields. Those fields are design identity, release identity, workload specification, baseline measurements, and the signed acceptance decision with rollback artifacts.
+If you treat acceptance as a one-time event, the fabric is exposed each time something changes. That includes a new node batch, a NIC firmware update, a switch OS upgrade, or a DPU image rollout. Keep the acceptance baseline as a versioned release artifact with five required fields. They are design identity, release identity, workload specification, baseline measurements, and the signed acceptance decision with rollback artifacts.
 
-Before promoting any hardware or software change—such as ConnectX firmware `28.39.2048`, Cumulus Linux or NVOS updates, or BlueField image `dpu-image-24.10-prod-3`—operators execute a five-step canary workflow. They first diff inventory and configuration against the design, and then run Stages L1 through L4. Next, they execute Stage L5 concurrent load with an N-1 link drain, compare step times and QoS counters against the baseline, and promote after owner sign-off.
+Before you promote any change, such as ConnectX firmware `28.39.2048`, a Cumulus Linux or NVOS update, or BlueField image `dpu-image-24.10-prod-3`, run the five-step canary workflow. First, diff inventory and configuration against the design. Then run Stages L1 through L4. Next, run Stage L5 concurrent load with an N-1 link drain. Compare step times and QoS counters against the baseline, and promote only after the owner signs off.
+
+Treat the baseline file as a release gate, not a record you file away.
 
 ---
 
 ## Commands and configurations that matter
 
-Hardware-facing CLI commands below are marked `(untested here)` because this workspace has no physical switches or HCAs attached. The deterministic Python lab (`code/part12/fabric_validation_capacity_lab.py`) is executed and verified locally.
+The commands below are marked `(untested here)`, because this workspace has no physical switches or HCAs attached. Only the deterministic Python lab, `code/part12/fabric_validation_capacity_lab.py`, was run and checked locally.
 
 ### 1. Stage L1 & L2 InfiniBand inventory, routing, and counter baseline (untested here)
+
+Start by building the evidence folder, so you always know where each output went. Then check the HCAs, the Subnet Manager, and the counters.
 
 ```bash
 # (untested here) V8 Lab 01/03: Create timestamped acceptance evidence bundle
@@ -397,6 +447,8 @@ tar -czf acceptance-ib-evidence.tar.gz acceptance-ib
 
 ### 2. Stage L1–L4 RoCEv2 Ethernet path inventory, QoS under load, and collectives (untested here)
 
+These checks confirm the RoCEv2 endpoint identity, and then capture the counters before and after load so you can compare them. The last two commands run the full-scale collectives.
+
 ```bash
 # (untested here) V9 Labs 01-04: RoCEv2 endpoint identity, MTU 9000, DOM/FEC, and prio3 ECN/PFC deltas
 ip -br link show dev ens1f0
@@ -431,6 +483,8 @@ srun --nodes=16 --ntasks-per-node=8 --mpi=pmix \
 ```
 
 ### 3. NVIDIA Base Command Manager switch port mapping and Topograph configuration (untested here)
+
+This block maps node MACs to switch ports, then upgrades Topograph and turns on Prometheus scraping. Run it in order, because each step depends on the one before.
 
 ```bash
 # (untested here) 1. Map all node MACs to switch ports via cmsh showport & finddevicebyswitchport
@@ -485,6 +539,8 @@ EOF
 
 ## How it fails
 
+Six failure modes come up again and again. The table pairs each symptom with its root cause and the gate that catches it. If you have seen one of these before, the table tells you where to look.
+
 | Failure Mode | Observable Symptom | Root-Cause Diagnosis | Remediation & Verification Gate |
 |---|---|---|---|
 | **1. Pairwise `ib_write_bw` passes (`392.11 Gb/s`), `16`-rank collectives stall** | Two-node `ib_write_bw` hits line rate; collectives show tail skew & `rx_pfc_prio3: 61,200` | Single-pair tests never load a shared leaf-to-spine cut (`4:1` or `2:1`) or trigger ECMP/static-route collisions | Check `ethtool -S swp9` (`rx_ecn_marked_prio3: 288,400`, `rx_pfc_prio3: 61,200`) and `PortXmitData`; enable AR/dynamic load balancing and run `L3` half-bisection |
@@ -494,11 +550,13 @@ EOF
 | **5. Shared Training and Inference `SL`/`VL` head-of-line blocking** | Inference `p99` jumps **`7.89x`** (`1.8 -> 14.2 ms`) when training starts | Training elephant flows saturate shared switch buffer credits (`VL0`/`prio3`) | Map training and inference to dedicated SLs/VLs (recovering `p99` to `3.1 ms`) or isolate onto separate physical planes |
 | **6. Unverified `N-1` spine resilience or `topograph4` package conflict** | Losing `1` of `2` spines halves BW (`2:1 -> 4:1`, `AllReduce` `80 -> 160 ms`); or `topograph` fails | Spines sized for `N` instead of `N-1`; or `topograph4` installed without `version4 = true` / removing `topograph` | Size each spine for full load under `N-1` and test by draining a link in `L5`; remove `topograph` before `topograph4` and set `version4 = true` |
 
+The pattern is the same across all six. The symptom shows up in the application, but the fix usually lives in a lower layer. You will save time if you check that lower layer first.
+
 ---
 
 ## Hands-on lab
 
-The deterministic Python lab (`code/part12/fabric_validation_capacity.py` and `code/part12/fabric_validation_capacity_lab.py`) runs locally with the Python standard library on a workstation or Nebius GPU node. It executes 26 self-checks covering acceptance gating, Clos and SuperPOD BOMs, bottleneck cut models, and Topograph cable-matrix diff validation.
+You can run the lab on your own workstation or on a Nebius GPU node. It needs only the Python standard library, and it uses two files, `code/part12/fabric_validation_capacity.py` and `code/part12/fabric_validation_capacity_lab.py`. The run performs 26 self-checks. They cover acceptance gating, Clos and SuperPOD BOMs, bottleneck cut models, and Topograph cable-matrix diff validation.
 
 ```bash
 python3 -B code/part12/fabric_validation_capacity_lab.py
@@ -516,26 +574,32 @@ Expected output verified locally.
 Summary: 26 passed, 0 failed
 ```
 
+If your summary line matches the one above, the lab agrees with the numbers in this chapter.
+
 ---
 
 ## Common first mistakes
 
-- **Treating `ping`, `State: Active`, or a passing `all_reduce_perf` run. This applies to a substitute for lower-layer evidence:** An empty collective can pass even with a marginal optical transceiver, a cross-patched rail cable, or unverified PFC and ECN counters. Always gate acceptance on all five stages.
-- **Summing port speeds instead of modeling the bottleneck traffic cut and its N-1 state:** Aggregate switch bandwidth hides an oversubscribed leaf-to-spine uplink cut. Always calculate both normal and N-1 degraded cut ratios.
-- **Keying inventory on mutable InfiniBand LIDs. Assuming uniform numeric RoCE GID indices:** OpenSM can reassign a port's `Base lid` on any sweep and `rdma-core` assigns GID indices dynamically. Anchor inventory on `Port GUID` and verify RoCE GIDs with `show_gids` and `ip route get`.
-- **Resetting shared hardware counters with `perfquery -R` during live troubleshooting:** Clearing cumulative counters blinds UFM, NetQ, and Prometheus collectors. Always capture snapshots and compute deltas instead.
-- **Forgetting optical transceiver fan-out, spare factors. And cable reach derating:** Scaling from a two-tier to a three-tier non-blocking Clos increases cables per GPU from two to three. Always include two standalone optics per patch fiber cable, add field spares, and keep cable runs within ninety percent of rated distance.
+- **Trusting `ping`, `State: Active`, or a passing `all_reduce_perf` run.** An empty collective can pass even with a marginal optical transceiver, a cross-patched rail cable, or unverified PFC and ECN counters. Gate acceptance on all five stages every time.
+- **Summing port speeds instead of modeling the bottleneck traffic cut and its N-1 state.** Aggregate switch bandwidth hides an oversubscribed leaf-to-spine uplink cut. Calculate both the normal and the N-1 degraded cut ratios, because you need both to see the risk.
+- **Keying inventory on mutable InfiniBand LIDs, and assuming uniform numeric RoCE GID indices.** OpenSM can reassign a port's Base lid on any sweep, and rdma-core assigns GID indices dynamically. Anchor inventory on the Port GUID, and verify RoCE GIDs with `show_gids` and `ip route get`.
+- **Resetting shared hardware counters with `perfquery -R` during live troubleshooting.** Clearing cumulative counters blinds UFM, NetQ, and Prometheus collectors. Capture snapshots and compute deltas instead.
+- **Forgetting optical transceiver fan-out, spare factors, and cable reach derating.** Moving from a two-tier to a three-tier non-blocking Clos raises the cables per GPU from two to three. Include two standalone optics per patch fiber cable, add field spares, and keep cable runs within ninety percent of rated distance.
+
+Keep these five mistakes in mind during every acceptance review.
 
 ---
 
 ## Exercises
 
-1. **Exercise 1 — Bottleneck Cut and N-1 Oversubscription Math:** Using `model_bottleneck_cut`. The rack and cluster parameters below, compute worst-case downlink demand, normal uplink capacity and oversubscription, and N-1 capacity and oversubscription. Then compute the ratios with rack-local placement and the AllReduce transfer times across the three leaf and spine states.
-2. **Exercise 2 — 2-Tier vs. 3-Tier Clos Switch, Cable, and Transceiver BOM:** Using `calculate_clos_bom` on the switch. Cluster sizes below, compute active and spare-inclusive leaves, spines, super-spines, cables, and optics for the two-tier fabrics. Then compute the same BOM for the three-tier fabrics at non-blocking and two-to-one super-spine oversubscription.
-3. **Exercise 3 — SuperPOD DGX B200 and DGX GB300 Reference Architecture Sizing:** Using the reference tables in Section 3. State the DGX B200 SuperPOD node, GPU, leaf, spine, and cable counts across 1 to 4 Scalable Units. Then state the DGX GB300 InfiniBand and Ethernet switch counts and Standard versus Enhanced storage targets.
-4. **Exercise 4 — Multi-Stage Acceptance Gate Diagnosis:** Using `evaluate_acceptance_ladder` on the five commissioning failure signatures below. Identify the first failed stage and remediation when the full-scale collective benchmark appears to pass.
-5. **Exercise 5 — Cable Matrix Diff & BCM 11 Topograph Validation:** Using `validate_cable_matrix_diff` on the expected and discovered links below, classify all four wiring discrepancies. Then write the three-line Slurm `topology.conf` generated by BCM Topograph for `switch03` and its six child nodes.
-6. **Exercise 6 — Shared Training, Inference, and Storage Contention:** Using the contention parameters below. Compute the Priority 3 packet deltas and combined throughput over the two-sender RoCEv2 test. Then quantify the inference tail-latency spike on a shared Virtual Lane versus separated Virtual Lanes and explain why `P_Key` partitions do not isolate bandwidth.
+Work through these exercises with the lab functions open, so you can check each answer against code.
+
+1. **Exercise 1 — Bottleneck Cut and N-1 Oversubscription Math:** Use `model_bottleneck_cut` with the rack and cluster parameters below. Compute the worst-case downlink demand, the normal uplink capacity and oversubscription, and the N-1 capacity and oversubscription. Then repeat the ratios with rack-local placement, and work out the AllReduce transfer times across the three leaf and spine states.
+2. **Exercise 2 — 2-Tier vs. 3-Tier Clos Switch, Cable, and Transceiver BOM:** Use `calculate_clos_bom` to do the arithmetic. For the cluster sizes below, compute the active and spare-inclusive leaves, spines, super-spines, cables, and optics for the two-tier fabrics. Then compute the same BOM for the three-tier fabrics at non-blocking and two-to-one super-spine oversubscription.
+3. **Exercise 3 — SuperPOD DGX B200 and DGX GB300 Reference Architecture Sizing:** Use the reference tables above. For the DGX B200 SuperPOD, state the node, GPU, leaf, spine, and cable counts for one to four Scalable Units. For the DGX GB300 SuperPOD, state the InfiniBand and Ethernet switch counts, along with the Standard and Enhanced storage targets.
+4. **Exercise 4 — Multi-Stage Acceptance Gate Diagnosis:** Run `evaluate_acceptance_ladder` against the five commissioning failure signatures below. For each one, find the first stage that fails and the fix, even when the full-scale collective benchmark looks like it passed.
+5. **Exercise 5 — Cable Matrix Diff & BCM 11 Topograph Validation:** Feed the expected and discovered links below into `validate_cable_matrix_diff`, and classify all four wiring discrepancies. Then write the three-line Slurm `topology.conf` that BCM Topograph generates for `switch03` and its six child nodes.
+6. **Exercise 6 — Shared Training, Inference, and Storage Contention:** Use the contention parameters below. Work out the Priority 3 packet deltas and the combined throughput from the two-sender RoCEv2 test. Then measure the inference tail-latency spike on a shared Virtual Lane, compare it with separated Virtual Lanes, and explain why `P_Key` partitions do not isolate bandwidth.
 
 ```text
 Exercise Input Parameters and Reference Evidence:
@@ -554,57 +618,63 @@ Exercise Input Parameters and Reference Evidence:
                        (b) Shared VL inference p99: 1.8 ms -> 14.2 ms (7.89x) vs separated VL: 3.1 ms (1.3 ms wire gap); P_Key 0x8021 vs 0x8035
 ```
 
+Check your answers against the lab before you trust a capacity number in a design review.
+
 ---
 
 ## Interview angles
 
 1. **"Why does a port-speed inventory or a clean pairwise `ib_write_bw` test not constitute fabric acceptance or a capacity model?"**.
-   - *Model answer:* Pairwise `ib_write_bw` tests one source, destination, and path in isolation, ignoring concurrent demand across a shared leaf-to-spine cut or static route collisions. Sixteen nodes injecting two rails each generate four times more downlink demand than an eight-uplink leaf can carry. And draining one uplink for maintenance worsens that ratio further. Pairwise tests pass at line rate while a multi-rank collective triggers hundreds of thousands of ECN marks, PFC pauses, and hardware tail drops. Acceptance therefore requires the full five-stage ladder with retained evidence at every stage.
+   - *Model answer:* Pairwise `ib_write_bw` tests one source, one destination, and one path in isolation. It ignores concurrent demand on a shared leaf-to-spine cut and static route collisions. Sixteen nodes that each inject two rails generate four times more downlink demand than an eight-uplink leaf can carry. Draining one uplink makes that ratio worse. A pairwise test can pass at line rate while a multi-rank collective triggers hundreds of thousands of ECN marks, PFC pauses, and hardware tail drops. So acceptance requires the full five-stage ladder, with retained evidence at every stage.
 
 2. **"How do you design and verify a multi-rack fabric for one-switch N-1 failure tolerance without endangering production?"**.
-   - *Model answer:* Size spine uplinks so the required bisection bandwidth remains available across the surviving N-1 spines rather than all N spines. Otherwise, losing one of two spines halves bandwidth and doubles AllReduce transfer time. Place the standby Subnet Manager in an independent power and out-of-band management domain. Validate resilience in a maintenance window at Stage L5 by draining an actual uplink. Spine, re-running the collective matrix, and confirming tail latency and queue counters match the degraded baseline.
+   - *Model answer:* Size the spine uplinks so the required bisection bandwidth still fits on the N-1 surviving spines, not on all N spines. Otherwise, losing one of two spines halves bandwidth and doubles AllReduce transfer time. Put the standby Subnet Manager in its own power and out-of-band management domain. Validate resilience during a maintenance window at Stage L5 by draining a real uplink or spine. Then rerun the collective matrix, and confirm that tail latency and queue counters match the degraded baseline.
 
 3. **"Walk through how you size the switch and optics BOM when scaling from 1,024 GPUs to 4,096 or 9,216 GPUs."**.
-   - *Model answer:* On 64-port switches, a two-tier non-blocking Clos supports 1,024 GPUs with 48 active switches and maxes out at 2,048 GPUs with 96 active switches. Reaching 4,096 GPUs on 64-port switches requires a three-tier Clos with super-spines, which increases cables per GPU from two to three. Alternatively, using 144-port `Q3400-RD` switches in a DGX GB300 SuperPOD scales all the way to 9,216 GPUs across 16 Scalable Units in just two tiers without super-spines.
+   - *Model answer:* On 64-port switches, a two-tier non-blocking Clos supports 1,024 GPUs with 48 active switches. It maxes out at 2,048 GPUs with 96 active switches. To reach 4,096 GPUs on 64-port switches, you need a three-tier Clos with super-spines. That raises cables per GPU from two to three. Alternatively, 144-port `Q3400-RD` switches in a DGX GB300 SuperPOD scale to 9,216 GPUs across 16 Scalable Units in just two tiers, with no super-spines.
+
+Use the model answers as a checklist, and make sure you can derive each number yourself.
 
 ---
 
 ## Checkpoint questions (20)
 
+Use these questions to check the chapter. Each answer repeats the key number or term, so you can test yourself.
+
 <details>
 <summary>**1. Why is `ping` insufficient for AI fabric acceptance, and what five properties of GPU communication does it fail to test?**</summary>
 
-`ping` only verifies that the host CPU can send a small ICMP packet over the default kernel IP route. It fails to test RDMA Verbs hardware offload bypassing the CPU, RoCEv2 UDP encapsulation, and lossless QoS queue classification with ECN or PFC feedback. It also fails to test GPUDirect RDMA BAR1 DMA locality and multi-node collective concurrency across shared leaf-to-spine cuts.
+`ping` only shows that the host CPU can send a small ICMP packet over the default kernel IP route. It does not test RDMA Verbs hardware offload, which bypasses the CPU. It does not test RoCEv2 UDP encapsulation, or lossless QoS queue classification with ECN or PFC feedback. It also misses GPUDirect RDMA BAR1 DMA locality, and multi-node collective concurrency across shared leaf-to-spine cuts.
 </details>
 
 <details>
 <summary>**2. In the five-stage acceptance ladder, why must a cluster be rejected if Stage L4 passes but Stage L1 or Stage L2 was skipped or failed?**</summary>
 
-A short collective run on an empty cluster can mask a marginal optical transceiver, a cross-wired rail port, or misconfigured QoS queues. Those defects only collapse under sustained thermal drift or multi-job contention. Every stage from L1 through L5 tests a distinct failure boundary and requires its own retained raw evidence.
+Suppose you run a short collective on an empty cluster. It can hide a marginal optical transceiver, a cross-wired rail port, or bad QoS queues. Those defects often surface only under sustained thermal drift or multi-job contention. Each stage from L1 through L5 tests a different failure boundary, so each one needs its own raw evidence.
 </details>
 
 <details>
 <summary>**3. What quantitative optical DOM, BER, and FEC thresholds gate Stage L1 physical link acceptance on 400G and 800G links?**</summary>
 
-Every port must negotiate full design rate and lane width with optical Rx power at least `-6.0 dBm`. Tx power at least `-4.0 dBm`, lane skew under `2.0 dB`, and module temperature at most `70.0 °C`. In addition, pre-FEC BER must stay at most `1e-5`, post-FEC BER at most `1e-15`, and both `fec_uncorrected_blocks` and `SymbolErrorCounter` deltas must equal zero.
+Every port must negotiate the full design rate and lane width. Its optical Rx power must be at least `-6.0 dBm`, and its Tx power at least `-4.0 dBm`. Lane skew must stay under `2.0 dB`, and module temperature must stay at most `70.0 °C`. Pre-FEC BER must be at most `1e-5`, and post-FEC BER at most `1e-15`. Both the `fec_uncorrected_blocks` and `SymbolErrorCounter` deltas must be zero.
 </details>
 
 <details>
 <summary>**4. What do `ibv_devinfo -v -d mlx5_0` and `ibstat` report for a healthy ConnectX-7 NDR400 port, and why must inventory anchor on GUID rather than LID?**</summary>
 
-`ibv_devinfo` reports part ID `MT4129`, firmware `28.39.2048`, node GUID, and Queue Pair limits. Meanwhile, `ibstat` reports `State: Active`, `Physical state: LinkUp`, `Rate: 400`, `Base lid: 12`, `SM lid: 1`, and the immutable `Port GUID`. Inventory must key on `Port GUID` because `Base lid` can change whenever OpenSM re-sweeps the subnet.
+`ibv_devinfo` reports part ID `MT4129`, firmware `28.39.2048`, node GUID, and Queue Pair limits. `ibstat` reports `State: Active`, `Physical state: LinkUp`, `Rate: 400`, `Base lid: 12`, `SM lid: 1`, and the immutable `Port GUID`. Inventory must key on `Port GUID`, because `Base lid` can change whenever OpenSM re-sweeps the subnet.
 </details>
 
 <details>
 <summary>**5. What host commands verify RoCEv2 interface-to-RDMA mapping, path MTU, and GPU-NIC locality before running `ib_write_bw`?**</summary>
 
-Operators run `ip -br link show`, `ip -br addr show`, `rdma link show`, `ip route get`, `ethtool`, `nvidia-smi topo -m`, and `ethtool -S`. Together these commands confirm `ACTIVE` and `LINK_UP` state. A jumbo MTU, full link speed, local `PIX` PCIe switch affinity between each GPU and its rail NIC, and zero uncorrected FEC errors.
+Operators run `ip -br link show`, `ip -br addr show`, `rdma link show`, `ip route get`, `ethtool`, `nvidia-smi topo -m`, and `ethtool -S`. Together these confirm the `ACTIVE` and `LINK_UP` state. They also check for a jumbo MTU, full link speed, and local `PIX` PCIe switch affinity between each GPU and its rail NIC, along with zero uncorrected FEC errors.
 </details>
 
 <details>
 <summary>**6. What counter deltas occur during a 60-second bounded two-sender RoCEv2 contention test, and what do they prove?**</summary>
 
-Over the bounded two-sender contention window, `rx_prio3_packets` and `tx_prio3_packets` increment by tens of millions of packets while `rx_ecn_marked_prio3` and `rx_pfc_prio3` rise cleanly. Both senders throttle smoothly with zero packet drops, proving DSCP to Priority 3 mapping and closed-loop DCQCN and PFC congestion control.
+Across the bounded two-sender window, `rx_prio3_packets` and `tx_prio3_packets` rise by tens of millions of packets. At the same time, `rx_ecn_marked_prio3` and `rx_pfc_prio3` rise cleanly. Both senders throttle smoothly with zero packet drops. That proves two things: the DSCP to Priority 3 mapping works, and the DCQCN and PFC congestion control loop works.
 
 ```text
 60s Two-Sender RoCEv2 Priority 3 Contention Deltas (V9 Lab 03):
@@ -618,28 +688,28 @@ Over the bounded two-sender contention window, `rx_prio3_packets` and `tx_prio3_
 <details>
 <summary>**7. Why does switching `ib_write_bw` from `mlx5_0` to a misaligned `mlx5_1` port drop bandwidth from 392 Gb/s to 156 Gb/s with 24 `RETRY_EXC_ERR` completions?**</summary>
 
-Both interfaces are healthy at Layers 1 and 2, so the fault lies at Layer 3 endpoint and NUMA selection. Binding to `mlx5_1` forces traffic out the secondary rail interface and GID across sockets. That misalignment triggers ECN marks and RDMA transport retries that vanish as soon as the process is bound back to `mlx5_0`.
+Picture the benchmark bound to the wrong device. Both interfaces are healthy at Layers 1 and 2, so the fault lies at Layer 3, in endpoint and NUMA selection. Binding to `mlx5_1` sends traffic out the secondary rail interface and GID, across sockets. That misalignment triggers ECN marks and RDMA transport retries. Both disappear once the process binds back to `mlx5_0`.
 </details>
 
 <details>
 <summary>**8. How does Stage L3 catch fabric defects that Stage L2 single-pair testing misses?**</summary>
 
-A single-pair Stage L2 test only loads one link at a time. Stage L3 runs an all-node ring sweep across every rail followed by a simultaneous cross-spine half-bisection test. That concurrent load saturates the leaf-to-spine cut and exposes uplink oversubscription or static routing polarization.
+A single-pair Stage L2 test loads only one link at a time. Stage L3 runs an all-node ring sweep across every rail, then a simultaneous cross-spine half-bisection test. That concurrent load saturates the leaf-to-spine cut, and it exposes uplink oversubscription or static routing polarization.
 </details>
 
 <details>
 <summary>**9. What four categories of cabling discrepancies does `validate_cable_matrix_diff()` detect when comparing live discovery output against the Point-to-Point BOM?**</summary>
 
 - `MISSING_LINK`: The expected host port is absent or down.
-- `RAIL_SWITCH_MISMATCH`: A Rail `k` NIC is plugged into a leaf switch belonging to a different rail.
-- `PORT_SWAP`: The cable lands on the right leaf switch but the wrong port number.
-- `SPEED_OR_WIDTH_DOWNTRAIN`: The link is on the right switch and port but trained below design speed or lane width.
+- `RAIL_SWITCH_MISMATCH`: A Rail `k` NIC is plugged into a leaf switch that belongs to a different rail.
+- `PORT_SWAP`: The cable lands on the right leaf switch, but on the wrong port number.
+- `SPEED_OR_WIDTH_DOWNTRAIN`: The link sits on the right switch and port, but trained below design speed or lane width.
 </details>
 
 <details>
 <summary>**10. How does NVIDIA Base Command Manager Topograph discover cluster topology and update Slurm, and what are its service parameters?**</summary>
 
-Topograph listens on HTTPS port 49021 and exports Prometheus measurables while querying InfiniBand, Ethernet, or cloud topology APIs. It writes `/cm/shared/apps/slurm/etc/<cluster>/topology.conf` for tree or block plugins and triggers `scontrol reconfigure`.
+Topograph listens on HTTPS port 49021 and exports Prometheus measurables. It queries InfiniBand, Ethernet, or cloud topology APIs, then writes `/cm/shared/apps/slurm/etc/<cluster>/topology.conf` for the tree or block plugin. Finally, it triggers `scontrol reconfigure`.
 
 ```text
 BCM 11 Topograph Service Parameters (bcm11-admin §7.5):
@@ -652,12 +722,13 @@ BCM 11 Topograph Service Parameters (bcm11-admin §7.5):
 <details>
 <summary>**11. What are the two mandatory steps to upgrade from Topograph 3.x to Topograph 4 in BCM 11.34+, and what happens if only one is performed?**</summary>
 
-- Remove the `topograph` package, install `topograph4` on all Topograph nodes, and run `systemctl daemon-reload`.
-- Enable `set -e version4 true` under `topographsettings` in `cmsh` and commit the change; performing only one of these two steps causes the service to fail.
+The first step is to remove the `topograph` package, install `topograph4` on all Topograph nodes, and run `systemctl daemon-reload`. The second step is to enable `set -e version4 true` under `topographsettings` in `cmsh` and commit the change. Doing only one of the two steps makes the service fail.
 </details>
 
 <details>
 <summary>**12. How many switches, cables, and standalone optical transceivers are required for a 1,024-GPU and a 2,048-GPU 2-tier 1:1 Clos fabric using 64-port switches?**</summary>
+
+Both sizes use 64-port switches and the 5% spare allowance. The counts are in the block below.
 
 ```text
 2-Tier 1:1 Clos BOM (R = 64 ports, 5% Spares):
@@ -669,6 +740,8 @@ BCM 11 Topograph Service Parameters (bcm11-admin §7.5):
 <details>
 <summary>**13. How does the BOM change when scaling to 4,096 GPUs on 64-port switches in a 3-tier Clos at 1:1 versus 2:1 spine-to-super-spine oversubscription?**</summary>
 
+The two options share the same leaves and spines, and the super-spine count is what changes. The block shows both.
+
 ```text
 3-Tier Clos BOM for 4,096 GPUs (512 nodes, R = 64 ports, 5% Spares):
 - 3-Tier 1:1 Non-Blocking: 128 leaves + 128 spines + 64 super-spines = 320 active switches (336 w/ spares), 12,288 cables (12,903 w/ spares), 24,576 optics (25,805 w/ spares)
@@ -679,7 +752,7 @@ BCM 11 Topograph Service Parameters (bcm11-admin §7.5):
 <details>
 <summary>**14. For a DGX B200 SuperPOD, what are the switch and cable counts for 1 to 4 SUs, and what are the distance limits for Passive DAC and AOC cables?**</summary>
 
-Passive DAC reaches 5 m at 100G and 3 m at 400G. AOC reaches 30 m, and all cable runs must stay under ninety percent of maximum media distance. The switch and cable counts across 1 to 4 Scalable Units are.
+Passive DAC reaches 5 m at 100G and 3 m at 400G. AOC reaches 30 m. All cable runs must stay under ninety percent of maximum media distance. The switch and cable counts for 1 to 4 Scalable Units follow.
 
 ```text
 DGX B200 SuperPOD BOM (superpod-b200-dc):
@@ -693,7 +766,7 @@ DGX B200 SuperPOD BOM (superpod-b200-dc):
 <details>
 <summary>**15. How does the DGX GB300 SuperPOD scale to 9,216 GPUs in a 2-layer compute fabric, and what are its switch counts across 2, 4, 8, and 16 SUs?**</summary>
 
-Each 576-GPU DGX GB300 Scalable Unit uses 144-port 800G `Q3400-RD` InfiniBand switches and 64-port 800G `SN5600D` Ethernet switches.
+Each Scalable Unit holds 576 GPUs and uses 144-port 800G `Q3400-RD` InfiniBand switches with 64-port 800G `SN5600D` Ethernet switches. The counts for each size follow.
 
 ```text
 DGX GB300 SuperPOD Multi-Fabric Switch Counts (superpod-gb300-ra Tables 3 & 4):
@@ -707,6 +780,8 @@ DGX GB300 SuperPOD Multi-Fabric Switch Counts (superpod-gb300-ra Tables 3 & 4):
 <details>
 <summary>**16. What are the Standard and Enhanced aggregate storage read/write throughput requirements for a 1-SU and a 4-SU DGX GB300 SuperPOD?**</summary>
 
+The block lists both tiers, Standard and Enhanced, for each size.
+
 ```text
 DGX GB300 Storage Throughput Requirements (superpod-gb300-ra Table 5):
 - 1 SU (576 GPUs):   Standard =  90 GB/s Read /  45 GB/s Write | Enhanced =   280 GB/s Read / 140 GB/s Write
@@ -717,25 +792,25 @@ DGX GB300 Storage Throughput Requirements (superpod-gb300-ra Table 5):
 <details>
 <summary>**17. A 16-node rack with 2 x 400G rails per node connects to a leaf with 8 x 400G uplinks. What are the normal and N-1 oversubscription ratios?**</summary>
 
-Worst-case downlink demand is 12,800 Gb/s against 3,200 Gb/s of normal uplink capacity, yielding a 4.00:1 normal oversubscription ratio. With one uplink drained for N-1 maintenance, uplink capacity drops to 2,800 Gb/s, yielding a 4.57:1 degraded oversubscription ratio.
+Worst-case downlink demand is 12,800 Gb/s. Normal uplink capacity is 3,200 Gb/s, which gives 4.00:1. When one uplink is drained for N-1 maintenance, uplink capacity falls to 2,800 Gb/s, and the ratio rises to 4.57:1.
 </details>
 
 <details>
 <summary>**18. What happens to inference p99 latency when training shares the same default Virtual Lane, and how much does SL/VL separation recover?**</summary>
 
-Isolated inference p99 latency is 1.8 ms, which spikes to 14.2 ms when sharing a default Virtual Lane with training bursts. Mapping training and inference onto separate Service Levels. Virtual Lanes recovers inference p99 latency to 3.1 ms, leaving only a 1.3 ms gap from shared physical wire contention.
+Isolated inference p99 latency is 1.8 ms. It spikes to 14.2 ms when training bursts share the default Virtual Lane. Mapping training and inference to separate Service Levels and Virtual Lanes brings inference p99 back to 3.1 ms. The remaining 1.3 ms gap comes from shared physical wire contention.
 </details>
 
 <details>
 <summary>**19. Why do InfiniBand P_Key partitions fail to provide tenant performance isolation on their own?**</summary>
 
-InfiniBand `P_Key` partitions enforce logical packet membership boundaries rather than bandwidth guarantees. Two tenants in separate `P_Key` partitions still contend for the same physical spine uplinks. Switch buffer credits unless paired with topology-aware scheduling, per-tenant Service Level QoS, or physical plane separation.
+InfiniBand `P_Key` partitions enforce logical membership boundaries, not bandwidth guarantees. Two tenants in separate partitions still contend for the same physical spine uplinks and switch buffer credits. Pair partitions with topology-aware scheduling, per-tenant Service Level QoS, or physical plane separation. If you rely on partitions alone, the tenants still compete for bandwidth.
 </details>
 
 <details>
 <summary>**20. What five fields belong in a production cluster acceptance record, and what are the five steps of the canary release promotion process?**</summary>
 
-An acceptance record captures design identity, release identity, workload specification, baseline measurements, and the signed acceptance decision with rollback artifacts. The five-step canary workflow diffs inventory. Config against design, runs Stages L1 through L4. Runs Stage L5 concurrent load with an N-1 drain, compares tail latency and counter deltas against the baseline, and promotes after owner sign-off.
+An acceptance record captures design identity, release identity, workload specification, baseline measurements, and the signed acceptance decision with rollback artifacts. The five-step canary workflow diffs inventory and configuration against the design. It then runs Stages L1 through L4, followed by Stage L5 concurrent load with an N-1 drain. Finally, it compares tail latency and counter deltas against the baseline, and promotes after owner sign-off.
 </details>
 
 ---
@@ -768,4 +843,3 @@ Primary sources cited:
    - Hardware CLI commands (ibstat, sminfo, iblinkinfo, ibnetdiscover, ibroute, ibqueryerrors, ib_write_lat, ib_write_bw, ethtool, nv, netq, srun, cmsh) are marked (untested here) because no physical switches or GPUs are attached here.
    - All L1–L5 gates, 2-tier/3-tier BOMs, DGX B200/GB300 tables, normal/N-1 cut models, and Topograph/cable-matrix diffs are verified by python3 -B code/part12/fabric_validation_capacity_lab.py (26 passed, 0 failed).
 ```
-
