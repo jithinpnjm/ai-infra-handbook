@@ -22,20 +22,22 @@ lab_venue: "GCP / GKE"
 
 ## Why this matters for AI infrastructure
 
-A GPU cluster is a multi-user, multi-team system holding valuable data and compute. Every node must agree on who a user is (same numeric UID and GID everywhere, or file permissions on shared storage are meaningless), users must be added and removed quickly and auditably, resources must be charged to the right project, and none of it can slow login or job launch at thousands of nodes. Identity mistakes cause incidents ranging from "permission denied on my own files" to unauthorised access after an employee leaves. Containers, Kubernetes and Slurm add further identity layers that must stay consistent.
+Picture a Monday morning on a GPU cluster. A researcher cannot open files she wrote last week, and a new student cannot submit a job at all. Both problems start with identity, which means knowing who each user is on every machine. A GPU cluster is a multi-user, multi-team system that holds valuable data and compute. Every node has to agree on who a user is. The same numeric UID and GID must appear everywhere, or file permissions on shared storage stop meaning anything. Users must also be added and removed quickly, in a way you can audit. Resources have to be charged to the right project. None of this can slow a login or a job launch when you run thousands of nodes. Identity mistakes cause incidents that range from "permission denied on my own files" to unauthorised access after an employee leaves. Containers, Kubernetes and Slurm add further identity layers, and all of them must stay consistent.
 
 ## Prerequisites and outcomes
 
-Needs Part 1 (users, permissions, PAM, nsswitch), Part 2 (DNS, TLS basics), 6.9 (Slurm accounts), 6.18 and 6.19 (quotas). After this chapter you can:
+You should already know Part 1 (users, permissions, PAM and nsswitch) and Part 2 (DNS and TLS basics). You also need 6.9 for Slurm accounts and 6.18 and 6.19 for quotas. When you finish this chapter, you will be able to:
 
-- Explain account synchronisation options (NIS/NIS+, LDAP, FreeIPA/AD, file push) and why a single directory plus SSSD is the modern default.
-- Design a UID/GID scheme and an LDAP tree for a cluster; read an LDIF entry for `posixAccount`.
-- Configure (conceptually) SSSD, `nsswitch.conf`, PAM and SSH so that logins, `getent` and file ownership agree on every node.
+- Explain the account synchronisation options (NIS/NIS+, LDAP, FreeIPA/AD, file push), and why a single directory plus SSSD is the modern default.
+- Design a UID/GID scheme and an LDAP tree for a cluster, and read an LDIF entry for `posixAccount`.
+- Configure, at the concept level, SSSD, `nsswitch.conf`, PAM and SSH so that logins, `getent` and file ownership agree on every node.
 - Provision homes and storage quotas, and keep Slurm accounting in step with the directory.
-- Plan onboarding, offboarding, group/project access, service accounts, and audit.
+- Plan onboarding, offboarding, group and project access, service accounts, and audit.
 - Diagnose slow logins, missing users, UID mismatches, and cache problems.
 
 ## 1. Account synchronisation: the problem and the options
+
+The diagram below shows the flow this chapter builds. One validated user inventory feeds three places: the LDAP or FreeIPA directory, the Slurm accounting database, and the shared storage server. From the directory, every login and compute node reads the same identities.
 
 ```mermaid
 flowchart LR
@@ -45,7 +47,9 @@ flowchart LR
   LDAP -->|"LDAPS + SSSD Cache (5400s)"| Nodes["Login & Compute Nodes<br/>NSS, PAM, sss_ssh_authorizedkeys"]
 ```
 
-The SCL book (chapter 11) states the issue: "account management becomes a challenge in a supercomputer environment", and the most important requirement is account synchronisation between all nodes, achieved either with a **single data source over the network** (LDAP or NIS+) or by **periodic or event-driven synchronisation of static information**. Basic data (uid, gid, home directory, shell) must match everywhere; quotas, access limits and similar information can be stored and synchronised separately and may legitimately differ by node type. The book gives a pointed example: CPU time limits should not apply on compute nodes but may on login nodes, and users generally should not log in to service nodes (backup servers), although the service nodes still need to know the users' identities for file ownership.
+The Supercomputers for Linux Sysadmins book (chapter 11) states the issue plainly: "account management becomes a challenge in a supercomputer environment." Its most important requirement is account synchronisation between all nodes. You can meet that requirement in one of two ways. You can use a single data source over the network, such as LDAP or NIS+. Or you can run periodic or event-driven synchronisation of static information.
+
+Basic data, such as uid, gid, home directory and shell, must match everywhere. Quotas, access limits and similar information can be stored and synchronised separately, and they may legitimately differ by node type. The book gives a pointed example. CPU time limits should not apply on compute nodes, but they may apply on login nodes. Users generally should not log in to service nodes, such as backup servers. Those service nodes still need to know who the users are, because file ownership depends on it.
 
 | Method | How | Status and notes |
 |---|---|---|
@@ -56,11 +60,11 @@ The SCL book (chapter 11) states the issue: "account management becomes a challe
 | **Active Directory / Entra ID** (via SSSD `ad` provider, Samba/winbind) | Corporate directory as identity source | Common when the company mandates it; mapping UID/GID from AD attributes (RFC2307 attributes) or algorithmically (SSSD `ldap_id_mapping`) |
 | **SSO via OIDC/SAML for web portals** | Open OnDemand, JupyterHub, Kubernetes dashboards | Complements POSIX identity; the portal still maps to a POSIX user (6.25) |
 
-Mixed approach in practice: corporate directory or IdP is authoritative for people; the cluster has its own LDAP/IPA tree (or SSSD mapping) giving POSIX attributes and groups; local system and service accounts stay in local files with UIDs below a reserved range.
+The table compares the options side by side. In practice, teams mix these approaches. The corporate identity provider (IdP) stays the authority for people. The cluster keeps its own LDAP or IPA tree, or uses SSSD mapping, to supply POSIX attributes and groups. Local system and service accounts stay in local files, with UIDs below a reserved range.
 
 ### Pull-based file synchronization and timeout wrappers
 
-When synchronising `/etc/passwd`, `/etc/shadow`, and `/etc/group` directly instead of running a network directory, the book recommends a pull model rather than pushing blindly from the master node. Each compute node runs a local script at boot—and on demand when triggered from the master—so that a replaced or temporarily offline node automatically catches up when it boots. In the book's example, `/usr/sbin/master-sync` on each node pulls the three files over `rsync` and SSH `(untested here)`:
+Suppose you sync `/etc/passwd`, `/etc/shadow` and `/etc/group` directly, without running a network directory. The book recommends a pull model rather than pushing blindly from the master node. Each compute node runs a local script at boot, and it runs the same script on demand when the master triggers it. A node that was replaced or offline therefore catches up as soon as it boots. In the book's example, `/usr/sbin/master-sync` on each node pulls the three files over `rsync` and SSH (untested here):
 
 ```bash
 #!/usr/bin/env bash
@@ -72,7 +76,7 @@ $SYNC $SRC_ADDR:/etc/shadow /etc/shadow
 $SYNC $SRC_ADDR:/etc/group /etc/group
 ```
 
-To trigger `/usr/sbin/master-sync` across the cluster from the master after batch account edits without overloading the network or hanging indefinitely on a dead node, the book uses a wrapper script with a `0.1`- to `0.5`-second delay between nodes (or `pdsh`/`clush`) and a self-targeted `ALRM` signal timer `(untested here)`:
+After a batch of account edits, the master must trigger `/usr/sbin/master-sync` across the cluster. The trigger must not overload the network, and it must not hang indefinitely on a dead node. The book's wrapper spaces the nodes out by `0.1` to `0.5` seconds, or you can use `pdsh` or `clush` instead. It also sets a self-targeted `ALRM` timer (untested here):
 
 ```bash
 #!/usr/bin/env bash
@@ -92,38 +96,40 @@ done
 echo
 ```
 
-Here `connecttimeout=3` avoids waiting on unreachable hosts, while the background subshell sends `SIGALRM` to the script's own PID (`$$`) after `600` seconds so the `trap 'exit' ALRM` handler terminates the entire run if stuck.
+The `connecttimeout=3` option keeps SSH from waiting on unreachable hosts. The background subshell is the safety net. After `600` seconds it sends `SIGALRM` to the script's own PID (`$$`), and the `trap 'exit' ALRM` handler then ends the whole run.
 
 ### Legacy NIS / NIS+ architecture and setup
 
-NIS (Network Information System, originally Sun Yellow Pages, hence the `yp` prefix on its commands) and its successor NIS+ (which is protocol-incompatible with original NIS despite sharing utility names) distribute account and host tables over RPC. The book notes that a single NIS server begins to struggle when serving more than `30–40` clients because of concurrent RPC load, and NIS/NIS+ lack modern security. You may still encounter them on older small clusters. Three server daemons run on the master:
+NIS, the Network Information System, began as Sun Yellow Pages, which is why its commands start with `yp`. Its successor, NIS+, is protocol-incompatible with the original NIS, even though the utility names match. Both distribute account and host tables over RPC. A single NIS server starts to struggle once it serves more than `30–40` clients, because of concurrent RPC load. NIS and NIS+ also lack modern security. You may still meet them on older, small clusters.
 
-- `ypserv` — the main NIS/NIS+ query server.
-- `yppasswdd` — the daemon that processes user password updates.
-- `ypxfrd` — the daemon that transfers updated database maps to secondary (slave) servers.
-- `ypbind` — the client daemon that binds a node to a server in the NIS domain.
+Three server daemons run on the master. A fourth, `ypbind`, is the client daemon:
 
-In the book's 8-step setup and Chapter 28 recipe `(untested here)`:
+- `ypserv` is the main NIS and NIS+ query server.
+- `yppasswdd` processes user password updates.
+- `ypxfrd` transfers updated database maps to secondary (slave) servers.
+- `ypbind` binds a node to a server in the NIS domain.
+
+The book's 8-step setup, which matches the Chapter 28 recipe, goes like this (untested here):
 
 1. Configure `rpcbind` (or `portmap`), `ypserv`, `yppasswdd`, and `ypxfrd` to start at boot (`systemctl enable rpcbind ypserv yppasswdd ypxfrd`).
 2. Open the firewall for `rpcbind`, `portmap`, `ypserv`, `yppasswdd`, and `ypxfrd`.
 3. Set the NIS domain name (`NISDOMAIN="MYCLUSTER"` in `/etc/sysconfig/network` on Red Hat systems, `NISSERVER=master` in `/etc/default/nis` on Debian systems, and `MYCLUSTER` in `/etc/defaultdomain` on both server and clients).
 4. Configure `/etc/ypserv.conf` and `/etc/sysconfig/ypserv` with the database directory (`/var/yp`) and client subnet rules.
-5. Create the `/var/yp/Makefile` and restrict allowed client subnets in `/etc/ypserv.securenets` (for example `255.255.255.0 192.168.123.0` and `host 192.168.111.222`), then initialise the master database with `/usr/lib/yp/ypinit -m` `(untested here)`.
+5. Create the `/var/yp/Makefile` and restrict allowed client subnets in `/etc/ypserv.securenets` (for example `255.255.255.0 192.168.123.0` and `host 192.168.111.222`). Then initialise the master database with `/usr/lib/yp/ypinit -m` (untested here).
 6. On each client, set the domain in `/etc/defaultdomain` and point `/etc/yp.conf` to the server (`domain MYCLUSTER my-nis-server-ip-address`).
-7. Start `ypbind` on the clients (and on the master node if it also resolves cluster users via NIS).
-8. Add `nis` or `nis+` to `/etc/nsswitch.conf` (`passwd: compat nis`, `group: compat nis`, `shadow: compat nis`, `hosts: files dns nis`). Whenever `/etc/passwd`, `/etc/shadow`, or `/etc/group` changes on the master, run `cd /var/yp; make` `(untested here)` to rebuild and push the maps.
+7. Start `ypbind` on the clients, and on the master node if it also resolves cluster users via NIS.
+8. Add `nis` or `nis+` to `/etc/nsswitch.conf` (`passwd: compat nis`, `group: compat nis`, `shadow: compat nis`, `hosts: files dns nis`). Whenever `/etc/passwd`, `/etc/shadow` or `/etc/group` changes on the master, run `cd /var/yp; make` (untested here) to rebuild and push the maps.
 
 ### NIS start-up commands and access rules
 
-The NIS master must run four daemons, and each must start again after a reboot. The book gives several command sets, one for each family of init system. On a systemd host, start the daemons and enable them in one pass `(untested here)`:
+The NIS master must run four daemons, and each one must start again after a reboot. The book gives several command sets, one for each family of init system. On a systemd host, you start the daemons and enable them in one pass (untested here):
 
 ```bash
 systemctl start rpcbind ypserv yppasswdd ypxfrd
 systemctl enable rpcbind ypserv yppasswdd ypxfrd
 ```
 
-On older SysV-style hosts, the book starts the services with `service` and enables them with `chkconfig` `(untested here)`:
+On older SysV-style hosts, the book starts the services with `service` and enables them with `chkconfig` (untested here):
 
 ```bash
 service nis start
@@ -133,7 +139,7 @@ chkconfig yppasswdd on
 chkconfig ypxfrd on
 ```
 
-On Debian-like hosts, the book uses `update-rc.d nis enable` instead. Access control comes from `/etc/ypserv.securenets`. The book starts by removing access from everywhere, then adds only the internal network and any single hosts that must connect:
+On Debian-like hosts, the book uses `update-rc.d nis enable` instead. Access control comes from `/etc/ypserv.securenets`. The book starts by removing access from everywhere. Then it adds only the internal network and any single hosts that must connect:
 
 ```text
 255.255.255.0 192.168.123.0  # format: MASK SUBNET
@@ -144,15 +150,23 @@ Before you test a new client, confirm that its subnet is in this file. Then buil
 
 ## 2. UID/GID design
 
-- **Consistency is the contract.** File ownership on shared storage is numeric. If `alice` is 10001 on login nodes and 10005 on compute nodes, her files appear to belong to someone else. A mismatch also breaks Kubernetes volume ownership and container user mapping.
-- **Reserved ranges**: system accounts below 1000 (distribution-defined), local service accounts 1000 to 9999 (for example `slurm`, `munge` must have the **same numeric id on every node**, a classic cause of munge failures), people from 10000 upward (this chapter's generator enforces a site minimum), groups for projects from a separate range (the generator starts at 20000). Never reuse a UID after offboarding: reuse lets a new user inherit a leaver's old files.
-- **Primary group**: choose user-private groups (UID=GID per user) or a project/team primary group. Private groups plus project groups for sharing (with set-gid directories) is flexible.
-- **Stability of generated IDs**: IDs must not depend on file ordering. (The generator assigns group GIDs in order of first appearance, which is fine for a demo but would change numbers if the CSV is reordered; real systems store allocated IDs in the directory and allocate from a counter.)
-- **AD/IdP mapping**: if SSSD generates IDs algorithmically from SIDs, ensure the same SSSD ID-mapping configuration on every node, or the IDs differ.
+Consistency is the contract. File ownership on shared storage is numeric. If `alice` is 10001 on login nodes and 10005 on compute nodes, her files look as if someone else owns them. A mismatch like that also breaks Kubernetes volume ownership and container user mapping.
+
+Ranges keep different kinds of account from colliding. System accounts below 1000 are defined by the distribution. Local service accounts use 1000 to 9999. Service accounts such as `slurm` and `munge` must have the same numeric id on every node, and a mismatch there is a classic cause of munge failures. People start at 10000 upward, and this chapter's generator enforces a site minimum. Groups for projects come from a separate range, and the generator starts them at 20000. Never reuse a UID after offboarding. Reuse lets a new user inherit a leaver's old files.
+
+For the primary group, you can use a user-private group, where UID equals GID for each user. You can also use a project or team primary group. Private groups plus project groups for sharing, with set-gid directories, give you flexibility.
+
+Generated IDs must not depend on file ordering. The generator assigns group GIDs in order of first appearance. That is fine for a demo, but if the CSV is reordered, the numbers change. Real systems store allocated IDs in the directory and allocate new ones from a counter.
+
+If SSSD generates IDs algorithmically from SIDs, the same SSSD ID-mapping configuration must be on every node. Otherwise the IDs differ between nodes.
+
+Decide your ranges and your ID allocation method before you create the first account, and store the allocated IDs in the directory.
 
 ## 3. LDAP in practice
 
 ### Directory layout
+
+A directory is a tree. The layout below shows where people and groups sit in this chapter's example.
 
 ```text
 dc=cluster,dc=example,dc=org
@@ -163,7 +177,9 @@ dc=cluster,dc=example,dc=org
 
 ### An entry and the generator
 
-LDIF (LDAP Data Interchange Format) is the text form used to load entries (`ldapadd -x -D cn=admin,... -W -f users.ldif`). `code/part06/identity_gen.py` takes a user list CSV (`user,uid,fullname,group,project,shell,quota_gb,sshkey`), **validates** it, and generates three artefacts from the same source of truth: `users.ldif`, `slurm_accounts.sh` and `homes.sh`. Validation rules: user-name pattern, no duplicates, numeric UID at or above the site minimum, unique UIDs, absolute shell path, integer quota. Output for three users (excerpt):
+Entries are loaded from LDIF (LDAP Data Interchange Format), a plain text form. You load an LDIF file with a command such as `ldapadd -x -D cn=admin,... -W -f users.ldif`. The script `code/part06/identity_gen.py` keeps this manageable. You give it a user list CSV with the fields `user,uid,fullname,group,project,shell,quota_gb,sshkey`. It validates the list first. Then it generates three artefacts from that one source of truth: `users.ldif`, `slurm_accounts.sh` and `homes.sh`. The validation rules check the user-name pattern, reject duplicates, require a numeric UID at or above the site minimum, require unique UIDs, require an absolute shell path, and require an integer quota.
+
+Here is an excerpt of the output for three users:
 
 ```text
 dn: cn=research,ou=Groups,dc=cluster,dc=example,dc=org
@@ -183,7 +199,7 @@ cn: Alice Nguyen
 ...
 ```
 
-and `slurm_accounts.sh`:
+The same run writes `slurm_accounts.sh`, which tells Slurm about the same people:
 
 ```text
 sacctmgr -i add account infra Description='infra' Organization='infra' || true
@@ -192,7 +208,7 @@ sacctmgr -i add user alice account=llm-pretrain defaultaccount=llm-pretrain || t
 ...
 ```
 
-A broken list (UID 500, relative shell path, non-integer quota, duplicate user) was rejected with five errors and no output written:
+Bad input never reaches these files. A broken list, with UID 500, a relative shell path, a non-integer quota and a duplicate user, was rejected with five errors. The generator wrote no output.
 
 ```text
 ERROR root2: uid 500 below site minimum 10000 (collides with system/local ranges)
@@ -202,11 +218,11 @@ ERROR bob: duplicate user
 ERROR bob: uid 10002 already used by bob
 ```
 
-Real directories need more: password/credential policy (or Kerberos/SSO instead of passwords), `memberOf` overlays, indexes on `uid`, `uidNumber`, `gidNumber`, `memberUid`, `cn`, access control lists, replication (multi-master or provider-consumer), backups (`slapcat`), TLS (LDAPS or StartTLS with a private CA), audit logging. The book's chapter 28 lists the OpenLDAP install steps for Red Hat family systems in "do one, two, three" style. Use the vendor/distribution documentation for current commands; many sites use 389 Directory Server or FreeIPA instead of hand-built OpenLDAP.
+Real directories need more than this. You need a password or credential policy, or Kerberos or SSO instead of passwords. You also need `memberOf` overlays, and indexes on `uid`, `uidNumber`, `gidNumber`, `memberUid`, `cn`. Add access control lists, replication (multi-master or provider-consumer), backups (`slapcat`), TLS (LDAPS or StartTLS with a private CA), and audit logging. The book's chapter 28 lists the OpenLDAP install steps for Red Hat family systems in a "do one, two, three" style. Use the vendor or distribution documentation for current commands. Many sites use 389 Directory Server or FreeIPA instead of hand-built OpenLDAP.
 
 ### OpenLDAP setup and flat-file migration recipe
 
-In the book's Chapter 28 recipe for Red Hat-based systems (`openldap-servers`, `openldap-clients`, `nss_ldap`), you first generate an administrator password hash with `slappasswd` `(untested here)`:
+The chapter 28 recipe for Red Hat-based systems installs `openldap-servers`, `openldap-clients` and `nss_ldap`. You start by generating an administrator password hash with `slappasswd` (untested here):
 
 ```bash
 # (untested here)
@@ -214,7 +230,7 @@ slappasswd
 # >>> {SSHA}ABCDEF1234567890
 ```
 
-In the book's example, `/etc/openldap/slapd.conf` configures the database backend (`bdb`), directory suffix, administrator DN (`rootdn`), password hash (`rootpw`), and schema files `(untested here)`:
+The book's example `/etc/openldap/slapd.conf` sets the database backend (`bdb`), the directory suffix, the administrator DN (`rootdn`), the password hash (`rootpw`) and the schema files (untested here):
 
 ```text
 database bdb
@@ -231,9 +247,9 @@ include /etc/openldap/schema/openldap.schema
 include /etc/openldap/schema/misc.schema
 ```
 
-Next, copy `/etc/openldap/DB_CONFIG.example` to `/var/lib/ldap/DB_CONFIG` (owned by `ldap:ldap`, mode `600`), set `BASE dc=ldap, dc=server, dc=org` in `/etc/openldap/ldap.conf`, start the daemon, and load the base entry and `Manager` role from `/etc/openldap/ldap-init.ldif` using `/usr/bin/ldapadd -a -x -D 'cn=Manager,dc=ldap,dc=server,dc=org' -W -f ldap-init.ldif` `(untested here)` (verifying with `ldapsearch -h 127.0.0.1 -x -b "dc=ldap,dc=server,dc=org"`).
+Next, copy `/etc/openldap/DB_CONFIG.example` to `/var/lib/ldap/DB_CONFIG`, owned by `ldap:ldap` with mode `600`. Set `BASE dc=ldap, dc=server, dc=org` in `/etc/openldap/ldap.conf`, and start the daemon. Then load the base entry and the `Manager` role from `/etc/openldap/ldap-init.ldif` with `/usr/bin/ldapadd -a -x -D 'cn=Manager,dc=ldap,dc=server,dc=org' -W -f ldap-init.ldif` (untested here). Verify the result with `ldapsearch -h 127.0.0.1 -x -b "dc=ldap,dc=server,dc=org"`.
 
-To migrate existing `/etc/passwd` and `/etc/group` entries into OpenLDAP, edit `/usr/share/migrationtools/migrate_common.ph` (`$DEFAULT_MAIL_DOMAIN = "ldap.server.org";` and `$DEFAULT_BASE = "dc=ldap,dc=server,dc=org";`) and run the migration Perl scripts `(untested here)`:
+To move existing `/etc/passwd` and `/etc/group` entries into OpenLDAP, edit `/usr/share/migrationtools/migrate_common.ph` first. Set `$DEFAULT_MAIL_DOMAIN = "ldap.server.org";` and `$DEFAULT_BASE = "dc=ldap,dc=server,dc=org";` there. Then run the two migration scripts and load their output (untested here):
 
 ```bash
 # (untested here)
@@ -244,11 +260,11 @@ ldapadd -x -W -D "cn=Manager,dc=ldap,dc=server,dc=org" -f people.ldif
 ldapadd -x -W -D "cn=Manager,dc=ldap,dc=server,dc=org" -f group.ldif
 ```
 
-On legacy `nss_ldap`/`pam_ldap` clients (before SSSD), the book's recipe configures `/etc/openldap/ldap.conf` (`base`, `rootbinddn`, `port 389`, `scope sub`, `pam_filter objectclass=posixAccount`, `pam_login_attribute uid`, `nss_base_passwd`, `nss_base_shadow`, `nss_base_group`, `pam_password SSHA`), stores the bind secret in `/etc/ldap.secret` (`chmod 600`, `chown root:root`), sets `files ldap` in `/etc/nsswitch.conf`, and appends `pam_ldap.so` lines (`auth sufficient /lib/security/pam_ldap.so use_first_pass`, `account sufficient`, `password sufficient ... use_authtok`, `session optional`) to `/etc/pam.d/system-auth` without removing the local Unix PAM entries so `root` can still log in during network outages.
+Older `nss_ldap` and `pam_ldap` clients, which predate SSSD, need their own setup. The book's recipe configures `/etc/openldap/ldap.conf` with `base`, `rootbinddn`, `port 389`, `scope sub`, `pam_filter objectclass=posixAccount`, `pam_login_attribute uid`, `nss_base_passwd`, `nss_base_shadow`, `nss_base_group` and `pam_password SSHA`. It stores the bind secret in `/etc/ldap.secret`, with `chmod 600` and `chown root:root`. It sets `files ldap` in `/etc/nsswitch.conf`. Then it appends `pam_ldap.so` lines to `/etc/pam.d/system-auth`: `auth sufficient /lib/security/pam_ldap.so use_first_pass`, `account sufficient`, `password sufficient ... use_authtok` and `session optional`. The local Unix PAM entries stay in place, so `root` can still log in during network outages.
 
 ### Loading the base entries and checking the directory
 
-A new OpenLDAP server is running but empty. The book fills it with an LDIF file, `/etc/openldap/ldap-init.ldif`, that creates the base entry and the `Manager` role. The `dc` values and the `Manager` name must match the `suffix` and `rootdn` you set earlier. The directory name does not have to match the server's DNS name.
+A new OpenLDAP server is running, but it is empty. The book fills it with an LDIF file, `/etc/openldap/ldap-init.ldif`, that creates the base entry and the `Manager` role. The `dc` values and the `Manager` name must match the `suffix` and `rootdn` you set earlier. The directory name does not have to match the server's DNS name.
 
 ```text
 dn: dc=ldap,dc=server,dc=org
@@ -262,7 +278,7 @@ objectclass: organizationalRole
 cn: Manager
 ```
 
-Load the file with `ldapadd`, which asks for the password you hashed with `slappasswd`. The book's command is:
+Load the file with `ldapadd`. It asks for the password you hashed with `slappasswd`. The book's command is:
 
 ```bash
 /usr/bin/ldapadd -a -x \
@@ -285,11 +301,11 @@ BASE  dc=ldap, dc=server, dc=org
 URI   ldaps://ldap.server.ru:636/
 ```
 
-The book turns encryption off on clients with `ssl no` in the client file. It calls this a shortcut. Turn encryption on later, once you have certificates and matching settings. The `pam_password` value must use the same hash method that `slappasswd` produced.
+The book turns encryption off on clients with `ssl no` in the client file, and it calls this a shortcut. Turn encryption on later, once you have certificates and matching settings. The `pam_password` value must use the same hash method that `slappasswd` produced.
 
 ## 4. SSSD, nsswitch and PAM on the nodes
 
-**SSSD** (System Security Services Daemon) is the standard client: it talks to LDAP/IPA/AD, **caches** identities and credentials (so logins survive a directory outage and the directory is not queried for every `ls -l`), and exposes them through NSS and PAM. Key files (general knowledge):
+Logins and `ls -l` on a large cluster depend on the identity layer. **SSSD** (System Security Services Daemon) is the standard client for that job. It talks to LDAP, IPA or AD. It caches identities and credentials, so logins survive a directory outage and the directory is not queried for every `ls -l`. It exposes the results through NSS and PAM. The key files below come from general knowledge:
 
 ```ini
 # /etc/sssd/sssd.conf  (mode 600)
@@ -320,57 +336,79 @@ group:  files sss
 shadow: files sss
 ```
 
-PAM (`system-auth`/`password-auth` via `authselect` on RHEL, `pam-auth-update` on Debian) uses `pam_sss.so`. Also relevant: `pam_mkhomedir` or `oddjob-mkhomedir` to create home directories on first login (avoid on compute nodes with shared homes; create homes at onboarding), `pam_slurm_adopt` (SSH to a node only while the user has a job there; 6.8), and `pam_limits`.
+PAM is configured through `system-auth` or `password-auth`. On RHEL, `authselect` manages those files, and on Debian, `pam-auth-update` does. Either way, the module is `pam_sss.so`. Three other modules matter here. `pam_mkhomedir` or `oddjob-mkhomedir` creates home directories on first login. Avoid them on compute nodes with shared homes, and create homes at onboarding instead. `pam_slurm_adopt` lets SSH reach a node only while the user has a job there (see 6.8). `pam_limits` applies resource limits.
 
-Important settings and why:
+These settings matter most, and each one has a reason. `enumerate = false` stops SSSD from listing every user on each lookup. Enumeration hurts at tens of thousands of users. With it off, `getent passwd` shows only the users already cached.
 
-- `enumerate = false`: do not list all users on every lookup; enumeration at tens of thousands of users hurts; `getent passwd` shows only cached users.
-- **Cache timeouts** and `sss_cache -E` to invalidate; stale caches explain "I was added to the group an hour ago".
-- **`access_provider`** or host-based access control: restrict who can log in where (people to login nodes; no direct login on compute nodes except via a job).
-- **SSH keys from the directory**: `sshd_config`: `AuthorizedKeysCommand /usr/bin/sss_ssh_authorizedkeys` and `AuthorizedKeysCommandUser nobody`; or FreeIPA's key distribution. Disable password SSH login where possible (keys or Kerberos/certificates plus MFA, Part 18).
-- **Time**: Kerberos and LDAP TLS depend on clocks (6.18).
-- Multiple LDAP URIs for failover; `ldap_network_timeout`, `ldap_opt_timeout` tuned so that a dead server does not stall logins for minutes.
+Cache timeouts control how long an entry stays valid. Use `sss_cache -E` to invalidate the cache by hand. Stale caches explain why a user says "I was added to the group an hour ago" and still gets no access.
 
-Test on every node type: `id alice`, `getent passwd alice`, `getent group research`, `su - alice -c id`, `ssh alice@node`, `sssctl domain-status cluster`, `sssctl user-checks alice`, logs in `/var/log/sssd/`.
+`access_provider`, or host-based access control, decides who can log in where. Put people on login nodes, and block direct login on compute nodes, except through a job.
+
+SSH keys can come from the directory. In `/etc/ssh/sshd_config`, set `AuthorizedKeysCommand /usr/bin/sss_ssh_authorizedkeys` and `AuthorizedKeysCommandUser nobody`. Alternatively, FreeIPA handles key distribution. Disable password SSH login where you can, and use keys, or Kerberos or certificates plus MFA (Part 18).
+
+Time matters too. Kerberos and LDAP TLS depend on clocks (6.18).
+
+Give SSSD more than one LDAP URI so it can fail over. Tune `ldap_network_timeout` and `ldap_opt_timeout` so that a dead server does not stall logins for minutes.
+
+Test every node type with `id alice`, `getent passwd alice`, `getent group research`, `su - alice -c id`, `ssh alice@node`, `sssctl domain-status cluster` and `sssctl user-checks alice`. Logs live in `/var/log/sssd/`.
 
 ### Compute nodes
 
-Stateless nodes (6.22) should come up with SSSD configured in the image and the host key/identity injected; ensure the first job does not wait on directory lookups. Consider a **local cached subset**: for Slurm, `slurmd`/`slurmstepd` calls `getpwnam` when launching tasks; slow LDAP means slow job starts, and a directory outage can fail launches (Slurm also offers an option to cache user information: `LaunchParameters=enable_nss_slurm` makes `slurmstepd` provide passwd/group data from information sent by the controller; verify support and semantics on your version). Alternatively push a generated passwd/group subset to compute nodes via the provisioning system (the "static synchronisation" approach).
+Stateless nodes (6.22) should come up with SSSD already configured in the image, and with the host key and identity injected. Make sure the first job does not wait on directory lookups. Consider keeping a local cached subset. For Slurm, `slurmd` and `slurmstepd` call `getpwnam` when they launch tasks. Slow LDAP therefore means slow job starts, and a directory outage can make launches fail. Slurm also offers a way to cache user information. `LaunchParameters=enable_nss_slurm` makes `slurmstepd` provide passwd and group data from information the controller sends. Verify support and semantics on your version. Alternatively, you can push a generated passwd and group subset to compute nodes through the provisioning system. That is the static synchronisation approach.
 
 ### Restricting and blocking user access
 
-When you need to block a user from logging in or restrict access during maintenance (Chapter 12 of the book), four host-level mechanisms are commonly used alongside SSSD `access_provider` and scheduler-level blocks:
+When you need to block a user, or restrict access during maintenance (chapter 12 of the book), four host-level mechanisms are common. Use them alongside SSSD `access_provider` and scheduler-level blocks.
 
-1. **OpenSSH `DenyUsers` / `AllowUsers`**: in `/etc/ssh/sshd_config`, add `DenyUsers user1,user2` (or `AllowUsers` during maintenance windows) and reload `sshd` `(untested here)`. Existing sessions stay open until terminated. Do not mix `AllowUsers` and `DenyUsers` in the same scope because only one of them will take effect.
-2. **PAM `pam_access.so`**: insert `account required pam_access.so` at the top of `/etc/pam.d/sshd` or `/etc/pam.d/system-auth`, then define sequential rules in `/etc/security/access.conf` using the format `permission:users/groups:origins` (`+` to allow, `-` to deny, `@group` for groups, `EXCEPT` for exclusions, and `ALL`, `LOCAL`, IP/subnet, or TTY names for origins). The book recommends placing administrator access first and a catch-all deny last `(untested here)`:
+1. OpenSSH `DenyUsers` or `AllowUsers`. Add `DenyUsers user1,user2` to `/etc/ssh/sshd_config`, or use `AllowUsers` during maintenance windows, then reload `sshd` (untested here). Existing sessions stay open until terminated. Do not mix `AllowUsers` and `DenyUsers` in the same scope, because only one of them takes effect.
+2. PAM `pam_access.so`. Insert `account required pam_access.so` at the top of `/etc/pam.d/sshd` or `/etc/pam.d/system-auth`. Then define sequential rules in `/etc/security/access.conf`, using the format `permission:users/groups:origins`. A `+` allows, a `-` denies, `@group` names a group, `EXCEPT` handles exclusions, and `ALL`, `LOCAL`, an IP or subnet, or a TTY name are origins. The book recommends placing administrator access first and a catch-all deny last (untested here):
    ```text
    +:@admins:ALL
    # ... other access rules
    -:ALL:ALL
    ```
-3. **Login shell replacement (`chsh`)**: change the user's shell to a non-interactive binary such as `/sbin/nologin` or `/bin/false` (for example `chsh -s /bin/false user1` `(untested here)`, ensuring `/bin/false` is listed in `/etc/shells`). Because SSH executes remote commands through the user's login shell, this blocks both interactive logins and `ssh remotehost command`.
-4. **File-transfer-only shell (`scponly`)**: when a user must copy files via `scp` or `sftp` without interactive shell access, install the `scponly` package and set the user's shell to `/usr/bin/scponly` `(untested here)`.
+3. Login shell replacement with `chsh`. Change the user's shell to a non-interactive binary such as `/sbin/nologin` or `/bin/false`. For example, `chsh -s /bin/false user1` (untested here), with `/bin/false` listed in `/etc/shells`. SSH runs remote commands through the user's login shell, so this blocks both interactive logins and `ssh remotehost command`.
+4. A file-transfer-only shell, `scponly`. When a user must copy files with `scp` or `sftp` but never needs a shell, install the `scponly` package and set the user's shell to `/usr/bin/scponly` (untested here).
+
+Before you trust the setup, run the `getent` and `id` checks on every node type.
 
 ## 5. Homes, storage quotas and CPU limits
 
-- **Home directories**: created at onboarding by a script on the file server (`install -d -m 0700 -o UID -g GID /home/user`, as emitted by `homes.sh`), populated from `/etc/skel`, with ACL/ownership right; avoid per-login creation on compute nodes.
-- **Storage quotas**: user and project quotas on the file systems that matter. Lustre: `lfs setquota -u USER -b SOFT -B HARD -i ISOFT -I IHARD /lustre` and project quotas for directories (6.19); GPFS fileset quotas; XFS project quotas on NFS servers (`xfs_quota -x -c 'limit -p bhard=1t projname'`); ZFS dataset quotas; object-store bucket quotas. The generator's `homes.sh` emits the `lfs setquota` line as a comment: soft limit at 90 percent of hard in this example. On traditional local ext3/ext4 file systems (and NFS servers running `rpc.rquotad`), the book outlines mounting with `usrquota`/`grpquota` in `/etc/fstab`, building the quota database in read-only or single-user mode (`quotacheck -vugc /dev/sda6` or `quotacheck -a -M`), enabling enforcement (`quotaon -va`), and managing block/inode soft and hard limits and grace periods with `setquota`, `edquota`, `setquota -p foo -u bar -a` (to copy user `foo`'s quota to `bar`), and `repquota -s` `(untested here)`.
-- **Inode quotas** matter as much as bytes (millions of tiny files, 6.18).
-- **CPU/memory limits on login nodes (`ulimit -a` and `/etc/security/limits.conf`, `SCL` Chapter 12)**: `pam_limits`/`/etc/security/limits.conf` (`nproc`, `cpu`, `as`, `memlock`, `nofile`, `stack`, `maxlogins`), systemd `user-.slice` resource controls (`UserTasksMax`, `CPUQuota`, `MemoryMax` in `user-*.slice.d/`) so one user cannot saturate a shared login node (6.2); different from compute nodes where Slurm cgroups apply (6.8) and where `nofile` (open file descriptors for SSH/MPI sockets) and `memlock` (locked RAM for RDMA buffers) must be raised. In `SCL` Chapter 12 (`ulimit -a`), default shell limits often look like `core file size (blocks, -c) 0`, `data seg size (kbytes, -d) unlimited`, `scheduling priority (-e) 0`, `file size (blocks, -f) unlimited`, `pending signals (-i) 63616`, `max locked memory (kbytes, -l) 64`, `max memory size (kbytes, -m) unlimited`, and `open files (-n) 1024`—where `max locked memory (kbytes, -l) 64` is far too small for InfiniBand/RDMA on compute nodes (must be `unlimited`) and `open files (-n) 1024` is too small for large multi-rank jobs. In the book's login-node example, limiting ordinary users to `50` to `100` processes (`max user processes`, `-u`) prevents fork bombs, and setting a `cpu` time limit (for example `100` seconds of processor time) stops accidental calculation runs on the head node. However, the book warns that setting the hard `cpu` time limit too small in `/etc/security/limits.conf` on login nodes will kill large `scp` or `sftp` file transfers mid-copy once the SSH/sftp process accumulates that much CPU time encrypting and checksumming data.
-- **Group data areas**: project directories with set-gid bit and default ACLs (`setfacl -d`, `setfacl -m u:user1:rw mydir`, `getfacl`) so files inherit the group or per-user access list.
-- **Reporting**: `lfs quota`, `repquota`, nightly usage reports per user/project, alert at 80 percent, purge policy for scratch (document it).
+Home directories are created at onboarding. A script on the file server runs `install -d -m 0700 -o UID -g GID /home/user`, as emitted by `homes.sh`. The directory is populated from `/etc/skel`, with ownership and ACLs set correctly. Avoid creating homes at each login on compute nodes.
+
+Storage quotas apply per user and per project, on each file system that matters. For Lustre, use `lfs setquota -u USER -b SOFT -B HARD -i ISOFT -I IHARD /lustre`, and use project quotas for directories (6.19). Other systems have their own tools: GPFS fileset quotas, XFS project quotas on NFS servers (`xfs_quota -x -c 'limit -p bhard=1t projname'`), ZFS dataset quotas, and object-store bucket quotas. The generator's `homes.sh` emits the `lfs setquota` line as a comment. In this example, the soft limit sits at 90 percent of the hard limit.
+
+If you run traditional local ext3 or ext4 file systems, or NFS servers running `rpc.rquotad`, the book outlines a longer path. Mount with `usrquota` and `grpquota` in `/etc/fstab`. Build the quota database in read-only or single-user mode, with `quotacheck -vugc /dev/sda6` or `quotacheck -a -M`. Enable enforcement with `quotaon -va`. Then manage block and inode soft and hard limits, and grace periods, with `setquota`, `edquota`, and `setquota -p foo -u bar -a`, which copies user `foo`'s quota to `bar`. Report with `repquota -s` (untested here).
+
+Inode quotas matter as much as byte quotas, especially with millions of tiny files (6.18).
+
+CPU and memory limits on login nodes work differently. `pam_limits` reads `/etc/security/limits.conf`, which can set `nproc`, `cpu`, `as`, `memlock`, `nofile`, `stack` and `maxlogins`. systemd `user-.slice` resource controls (`UserTasksMax`, `CPUQuota`, `MemoryMax` in `user-*.slice.d/`) do a similar job, so one user cannot saturate a shared login node (6.2). Compute nodes are different. Slurm cgroups apply there (6.8), and `nofile` (open file descriptors for SSH and MPI sockets) and `memlock` (locked RAM for RDMA buffers) must be raised.
+
+Chapter 12 of the Supercomputers for Linux Sysadmins book shows the default shell limits from `ulimit -a`. They often look like this: core file size (blocks, -c) 0, data seg size (kbytes, -d) unlimited, scheduling priority (-e) 0, file size (blocks, -f) unlimited, pending signals (-i) 63616, max locked memory (kbytes, -l) 64, max memory size (kbytes, -m) unlimited, and open files (-n) 1024. Two of these are badly wrong for GPU work. A `max locked memory` of `64` KB is far too small for InfiniBand or RDMA on compute nodes, which need `unlimited`. An `open files` limit of `1024` is too small for a large multi-rank job.
+
+On login nodes, the book's example limits ordinary users to `50` to `100` processes. That stops a fork bomb from taking the node down. It also sets a `cpu` time limit, such as `100` seconds of processor time, which stops accidental calculations on the head node.
+
+Watch the `cpu` limit closely. If the hard `cpu` limit in `/etc/security/limits.conf` is set too small on login nodes, large `scp` or `sftp` transfers die mid-copy. The SSH and sftp process uses CPU time while it encrypts and checksums the data. Once that process accumulates the limit's worth of CPU time, the transfer is killed.
+
+For shared project work, set up project directories with the set-gid bit and default ACLs. Commands such as `setfacl -d`, `setfacl -m u:user1:rw mydir` and `getfacl` let files inherit the group or the per-user access list.
+
+Report usage with `lfs quota`, `repquota`, and nightly usage reports per user and per project. Alert at 80 percent, and document your purge policy for scratch. Decide your soft and hard limits, and your purge policy, before users start writing data.
 
 ## 6. Slurm accounting alignment
 
-Slurm users and accounts (6.9) are separate from POSIX users: `sacctmgr add user` is keyed by user name and must match the name the system resolves. Keep them aligned:
+Slurm users and accounts (6.9) are separate from POSIX users. `sacctmgr add user` is keyed by user name, and that name must match the name the system resolves. You keep the two aligned with these steps, so that a name that works in one place works in the other.
 
-1. The same inventory source feeds LDAP and `sacctmgr` (the generator shows how).
-2. Slurm needs the user to exist on the controller and compute nodes (`getpwnam`) to submit and run; a user created in `sacctmgr` but missing in LDAP fails at launch with "invalid user".
-3. Map **projects/teams** to Slurm accounts (fair-share and limits) and to POSIX groups (file access); these two tree structures are related but not identical.
-4. On offboarding: disable LDAP login first, then `sacctmgr modify user ... set` limits to zero or remove associations (accounting history is kept), reassign or archive files, remove SSH keys, revoke tokens (API keys, container registry, object store, Slurm REST JWT), disable cloud and Kubernetes access.
-5. Reconciliation job: nightly diff of LDAP users vs Slurm associations vs home directories vs quotas; report orphans.
+1. You feed LDAP and `sacctmgr` from the same inventory source. The generator shows how.
+2. Slurm needs the user to exist on the controller and on the compute nodes (`getpwnam`) before it can submit and run jobs. A user created in `sacctmgr` but missing in LDAP fails at launch with "invalid user".
+3. Map projects and teams to Slurm accounts, for fair-share and limits, and to POSIX groups, for file access. These two tree structures are related, but they are not identical.
+4. When someone leaves, disable LDAP login first. Then set `sacctmgr modify user ... set` limits to zero, or remove the associations, which keeps the accounting history. Reassign or archive their files. Remove SSH keys and revoke tokens, such as API keys, container registry tokens, object store keys and Slurm REST JWTs. Finally, disable cloud and Kubernetes access.
+5. You run a nightly reconciliation job. It diffs LDAP users against Slurm associations, home directories and quotas, and it reports orphans.
+
+When someone leaves, work through step 4 in order, starting with disabling LDAP login.
 
 ## 7. Lifecycle: onboarding and offboarding
+
+Every person who joins or leaves a cluster touches several systems. The table lists what each step involves, so you can see what a joiner or a leaver needs from you.
 
 | Step | Onboarding | Offboarding |
 |---|---|---|
@@ -381,13 +419,15 @@ Slurm users and accounts (6.9) are separate from POSIX users: `sacctmgr add user
 | Audit | Log who approved | Verify no remaining keys, tokens, cron/at jobs |
 | Training | Cluster etiquette, support channel | Exit checklist |
 
-Automate with a workflow tool (ticket to Ansible/AWX or an internal API), keep the inventory under review, and run periodic recertification (do these people still need access?).
+Use the left column when someone joins, and the right column when someone leaves. Automate the workflow with a ticket tool that calls Ansible or AWX, or an internal API. Keep the inventory under review, and run periodic recertification to ask whether people still need access.
 
 ## 8. Scale, security and troubleshooting
 
-**Scale**: tens of thousands of nodes asking for `getpwnam` at job start can hammer LDAP: use SSSD caching, read replicas, local `nscd`/`sssd` memory caches, indexes, connection pooling, rate-limit enumeration, and `enable_nss_slurm`-style approaches; monitor LDAP latency and connection counts. Pre-warm or push static data for jobs starting on thousands of nodes.
+Scale is the first worry. Tens of thousands of nodes can each call `getpwnam` at job start, and that can hammer LDAP. You can reduce the load in several ways. Use SSSD caching, read replicas, local `nscd` or `sssd` memory caches, indexes, and connection pooling. Rate-limit enumeration, and consider `enable_nss_slurm`-style approaches. Monitor LDAP latency and connection counts. For jobs that start on thousands of nodes, pre-warm the caches or push static data ahead of time.
 
-**Security**: LDAPS/StartTLS only; read-only bind account for clients with minimal ACLs; protect `sssd.conf` (mode 600); no anonymous binds; password hashes (use SSHA512/PBKDF2 or avoid local passwords via Kerberos/SSO); MFA for logins to bastions; audit logging of admin changes; rotate bind passwords; segment the directory network; backup and tested restore. Service accounts: no interactive shell, key-only, minimal scope; tokens with expiry.
+Security comes next. Use LDAPS or StartTLS only, and give clients a read-only bind account with minimal ACLs. Protect `sssd.conf` with mode 600, and allow no anonymous binds. For password hashes, use SSHA512 or PBKDF2, or avoid local passwords by using Kerberos or SSO. Require MFA for logins to bastions, and audit admin changes. Rotate bind passwords, segment the directory network, and back up the directory with a tested restore. Service accounts get no interactive shell, key-only access and minimal scope, and their tokens expire.
+
+When something breaks, start with the symptom. The table maps each one to its likely cause and the check that confirms it.
 
 | Symptom | Likely cause | Check |
 |---|---|---|
@@ -400,105 +440,113 @@ Automate with a workflow tool (ticket to Ansible/AWX or an internal API), keep t
 | Munge failures | `munge` UID/GID differs across nodes, time skew | `id munge` on all nodes (6.7) |
 | Jobs fail to start on all nodes after directory outage | `slurmstepd` cannot resolve user | cache settings, `enable_nss_slurm`, restore directory |
 
+Start from the symptom you see, and check its likely cause before you change anything else.
+
 ## 9. Containers and Kubernetes note
 
-Containers run with the invoking user's numeric UID (enroot/pyxis, Apptainer), so host identity must be consistent (6.13); user namespaces can remap IDs, which breaks assumptions about file ownership on shared mounts. In Kubernetes, pod `runAsUser`/`fsGroup` interplay with volume ownership (5.12 and 5.21); give training pods the user's UID/GID explicitly, or use a service identity with a project group. Do not run jobs as root to "avoid permission problems".
+Containers run under the invoking user's numeric UID. That holds for enroot/pyxis and Apptainer. So host identity must be consistent across nodes (6.13). User namespaces can remap IDs, and that breaks the assumptions you make about file ownership on shared mounts. In Kubernetes, a pod's `runAsUser` and `fsGroup` settings interact with volume ownership (5.12 and 5.21). Give training pods the user's UID and GID explicitly, or use a service identity with a project group. Do not run jobs as root to avoid permission problems.
 
 ## 10. Lab
 
-First, run the self-checking Python lab (`code/part06/identity_gen_lab.py`) locally. It verifies `validate()`, `ldif()`, `slurm()`, and `homes()` in `code/part06/identity_gen.py` on a valid 3-user list (checking `gidNumber: 20000`, `posixAccount` / `ldapPublicKey` LDIF records, `sacctmgr` account/user creation commands, and `0700` home directory creation with `90%` soft / `100%` hard Lustre quota lines), verifies that a broken user list is rejected with all 5 expected errors (`uid < 10000`, relative shell path, non-integer quota, duplicate user, duplicate UID), and checks the `SCL` Chapter 11/12 parameters (`30–40` NIS client limit, `ulimit -l 64` KB default `memlock`, `-n 1024` `nofile`, `-i 63616` `pending signals`, and `5400` s SSSD cache timeout):
+Start with the self-checking Python lab, which you run locally. It checks `validate()`, `ldif()`, `slurm()` and `homes()` in `code/part06/identity_gen.py` against a valid 3-user list. It checks for `gidNumber: 20000`, the `posixAccount` and `ldapPublicKey` LDIF records, the `sacctmgr` account and user commands, and home directories created with `0700`, plus the `90%` soft and `100%` hard Lustre quota lines. It also rejects a broken list with all 5 expected errors: `uid < 10000`, a relative shell path, a non-integer quota, a duplicate user and a duplicate UID. Finally, it checks the Chapter 11 and 12 parameters of the Supercomputers for Linux Sysadmins book: the `30–40` NIS client limit, `ulimit -l 64` KB for `memlock`, `-n 1024` for `nofile`, `-i 63616` for `pending signals`, and the `5400` s SSSD cache timeout.
 
 ```bash
 python3 code/part06/identity_gen_lab.py
 ```
 
-Tested: 1) run `identity_gen.py` on a ten-user list with two projects; read the three outputs. 2) Break the list in each rule and confirm the error message. 3) Extend the script to read an existing UID allocation file so UIDs/GIDs are stable.
+The tested steps come next, and you can run them today. 1) Run `identity_gen.py` on a ten-user list with two projects, and read the three outputs. 2) Break the list in each rule, and confirm the error message. 3) Extend the script to read an existing UID allocation file, so that UIDs and GIDs stay stable.
 
-Untested (VMs): 4) install OpenLDAP or 389-ds, load `users.ldif`, query with `ldapsearch`. 5) Configure an SSSD client, verify `id`, `getent`, SSH login with a key from LDAP. 6) Stop the LDAP server and observe cached logins; set short/long cache timeouts. 7) Run `slurm_accounts.sh` on a test Slurm; verify `sacctmgr show assoc`. 8) Create project quotas on an XFS or Lustre test file system. 9) Measure login time with `enumerate = true` versus false and with a dead primary LDAP URI.
+The untested steps need VMs. 4) Install OpenLDAP or 389-ds, load `users.ldif`, and query it with `ldapsearch`. 5) Configure an SSSD client, then verify `id`, `getent`, and SSH login with a key from LDAP. 6) Stop the LDAP server and observe the cached logins, then set short and long cache timeouts. 7) Run `slurm_accounts.sh` on a test Slurm system, and verify the result with `sacctmgr show assoc`. 8) Create project quotas on an XFS or Lustre test file system. 9) Measure login time with `enumerate = true` and with `enumerate = false`, and again with a dead primary LDAP URI.
 
 ## 11. Interview angles
 
-- Why must UIDs be identical on every node and how do you guarantee it?
-- LDAP versus FreeIPA versus AD-integrated SSSD for a new GPU cluster?
-- What does SSSD cache and what happens if the directory is down?
-- How do you onboard 200 students quickly and securely? How do you offboard one?
-- A user's job fails with "invalid user" on one partition. What do you check?
+Use these questions to test what you now know. Answer each one in a few sentences, out loud if you can.
+
+- Why must UIDs be identical on every node, and how do you guarantee that?
+- For a new GPU cluster, how do you choose between LDAP, FreeIPA and AD-integrated SSSD?
+- What does SSSD cache, and what happens if the directory goes down?
+- How would you onboard 200 students quickly and securely, and how would you offboard one of them?
+- A user's job fails with "invalid user" on one partition. What do you check first?
 - How do you keep Slurm accounts and Unix users in sync?
-- How would you protect SSH access to login nodes?
-- Why can LDAP become a bottleneck at job start and how do you mitigate it?
-- What quotas do you set and where are they enforced?
+- How would you protect SSH access to the login nodes?
+- Why can LDAP become a bottleneck at job start, and how do you mitigate that?
+- Which quotas do you set, and where are they enforced?
 
 ## Exercises
 
-1. **Generating Unified LDIF, Slurm Associations, and Home Quotas (`code/part06/identity_gen.py` & `identity_gen_lab.py`):** Run `python3 code/part06/identity_gen_lab.py`. Explain the five validation checks enforced by `validate()` (`uid >= 10000`, unique username, unique UID, absolute shell path, integer `quota_gb`), and verify how `identity_gen.py` derives `users.ldif` (`posixGroup` at `gidNumber: 20000` and `posixAccount`/`ldapPublicKey`), `slurm_accounts.sh` (`sacctmgr -i add account` and `add user`), and `homes.sh` (`install -d -m 0700` and `90%` soft / `100%` hard `lfs setquota`).
-2. **Pull-Based Static Account Sync with `SIGALRM` Timeout Protection (`SCL` Chapter 11):** Write the `/usr/sbin/master-sync` pull script (`rsync -e 'ssh -i /root/secret_key'`) and the master trigger wrapper using `trap 'exit' ALRM` and `(sleep 600 && kill -ALRM "$$") &` with `ssh -o connecttimeout=3` and `sleep 0.1`. Explain why pull-based sync is superior to blind master push when compute nodes are rebooting or being replaced.
-3. **Configuring SSSD, `nsswitch.conf`, and LDAP SSH Key Lookup:** Write `/etc/sssd/sssd.conf` (mode `0600`) for an `ldaps://` pair (`ldap1`, `ldap2`) with `cache_credentials = true`, `enumerate = false`, `entry_cache_timeout = 5400`, `ldap_user_ssh_public_key = sshPublicKey`, and `access_provider = simple` (`simple_allow_groups = research, platform`), plus the `/etc/ssh/sshd_config` lines (`AuthorizedKeysCommand /usr/bin/sss_ssh_authorizedkeys` and `AuthorizedKeysCommandUser nobody`).
-4. **Migrating Flat Files to OpenLDAP and Legacy NIS+ (`SCL` Chapters 11 & 28):** Compare the 8-step NIS/NIS+ setup (`ypserv`, `yppasswdd`, `ypxfrd`, `ypbind`, `/etc/ypserv.securenets`, `/usr/lib/yp/ypinit -m`, `cd /var/yp; make`, and why NIS struggles above `30–40` clients) with the OpenLDAP migration workflow (`slappasswd`, `/etc/openldap/slapd.conf`, `ldap-init.ldif`, `migrate_passwd.pl`, `migrate_group.pl`).
-5. **Tuning Login-Node vs Compute-Node `ulimit`s and Blocking Access (`SCL` Chapter 12):** Compare `/etc/security/limits.conf` settings on a shared login node (`nproc` `50–100`, `cpu` time limit—and why an overly small `cpu` limit kills large `scp`/`sftp` transfers) versus a GPU compute node (`memlock unlimited` instead of the default `64` KB, `nofile 65536` instead of `1024`). Compare the four user-blocking methods in `SCL` Chapter 12 (`DenyUsers`, `pam_access.so` `/etc/security/access.conf`, `chsh -s /bin/false`, and `scponly`).
-6. **Designing an Automated Onboarding, Offboarding, and Nightly Reconciliation Workflow:** Write the exact sequence of actions for offboarding a departing researcher without breaking shared project files or historical Slurm accounting (`slurmdbd`), and specify what a nightly reconciliation script checks across LDAP, `sacctmgr`, `/home`, and Lustre project quotas.
+Work through these in order. You will need a test environment for the steps that touch live services, and you can do the others on your own machine.
+
+1. **Generate the unified LDIF, Slurm associations and home quotas (`code/part06/identity_gen.py` and `identity_gen_lab.py`).** Run `python3 code/part06/identity_gen_lab.py`. Then explain the five checks that `validate()` enforces: `uid >= 10000`, a unique username, a unique UID, an absolute shell path, and an integer `quota_gb`. Finally, confirm how `identity_gen.py` derives each output. `users.ldif` gets a `posixGroup` at `gidNumber: 20000` and `posixAccount` and `ldapPublicKey` entries. `slurm_accounts.sh` uses `sacctmgr -i add account` and `add user`. `homes.sh` uses `install -d -m 0700` and sets the `lfs setquota` at `90%` soft and `100%` hard.
+2. **Write a pull-based static account sync with a `SIGALRM` timeout.** Write the `/usr/sbin/master-sync` pull script, which uses `rsync -e 'ssh -i /root/secret_key'`. Then write the master trigger wrapper. It should use `trap 'exit' ALRM`, the background timer `(sleep 600 && kill -ALRM "$$") &`, `ssh -o connecttimeout=3` and `sleep 0.1`. Explain why a pull-based sync beats a blind push from the master when compute nodes are rebooting or being replaced.
+3. **Configure SSSD, `nsswitch.conf` and LDAP SSH key lookup.** Write `/etc/sssd/sssd.conf` with mode `0600` for an `ldaps://` pair, `ldap1` and `ldap2`. Set `cache_credentials = true`, `enumerate = false`, `entry_cache_timeout = 5400`, `ldap_user_ssh_public_key = sshPublicKey`, and `access_provider = simple`, with `simple_allow_groups = research, platform`. Then add the two `/etc/ssh/sshd_config` lines, `AuthorizedKeysCommand /usr/bin/sss_ssh_authorizedkeys` and `AuthorizedKeysCommandUser nobody`.
+4. **Compare legacy NIS+ with the OpenLDAP migration.** Put the 8-step NIS and NIS+ setup side by side with the OpenLDAP workflow. For NIS, cover the daemons `ypserv`, `yppasswdd`, `ypxfrd` and `ypbind`, the file `/etc/ypserv.securenets`, the command `/usr/lib/yp/ypinit -m`, and `cd /var/yp; make`. Also explain why NIS struggles above `30–40` clients. For OpenLDAP, cover `slappasswd`, `/etc/openldap/slapd.conf`, `ldap-init.ldif`, `migrate_passwd.pl` and `migrate_group.pl`. Note that the NIS steps come from Chapters 11 and 28 of the Supercomputers for Linux Sysadmins book.
+5. **Tune `ulimit` on login nodes and compute nodes, and block access.** Compare `/etc/security/limits.conf` on a shared login node with the same file on a GPU compute node. The login node gets `nproc` set to `50–100`, and a `cpu` time limit. Be ready to explain why a small `cpu` limit kills large `scp` and `sftp` transfers. The compute node needs `memlock unlimited` instead of the default `64` KB, and `nofile 65536` instead of `1024`. Then compare the four user-blocking methods from Chapter 12: `DenyUsers`, `pam_access.so` with `/etc/security/access.conf`, `chsh -s /bin/false`, and `scponly`.
+6. **Design an automated onboarding, offboarding and nightly reconciliation workflow.** Write the exact steps for offboarding a departing researcher. The steps must not break shared project files or the historical Slurm accounting in `slurmdbd`. Then specify what a nightly reconciliation script checks across LDAP, `sacctmgr`, `/home` and the Lustre project quotas.
 
 ## Checkpoint
 
 <details>
-<summary>1. Why must every user and service account have the exact same numeric `UID` and `GID` across all login, compute, storage, and service nodes (`SCL` Chapter 11)?</summary>
+<summary>1. Why must every user and service account have the exact same numeric `UID` and `GID` across all login, compute, storage, and service nodes (Supercomputers for Linux Sysadmins, chapter 11)?</summary>
 
-POSIX filesystems (NFS, Lustre, GPFS) and container runtimes store file ownership and check permissions using **numeric UIDs and GIDs**, not usernames. If `alice` is UID `10001` on login nodes and `10005` on compute nodes, jobs cannot read or write her files on shared storage; similarly, if `munge` or `slurm` has different UIDs across nodes, Munge credential verification and Slurm job launches fail.
+POSIX filesystems such as NFS, Lustre and GPFS check file ownership with **numeric UIDs and GIDs**, not usernames. Suppose you check `alice` and find UID `10001` on the login nodes and `10005` on the compute nodes. Jobs then cannot read or write her files on shared storage. The same problem hits `munge` and `slurm`. If their UIDs differ across nodes, Munge credential verification and Slurm job launches fail.
 </details>
 
 <details>
 <summary>2. What UID/GID ranges should be reserved for OS system accounts, cluster service accounts, human users, and project groups, and why must UIDs never be reused?</summary>
 
-- **`0–999`:** OS distribution system accounts.
-- **`1000–9999`:** Cluster service accounts (`munge`, `slurm`, `sssd`, `prometheus`) pinned to fixed numeric IDs in configuration management.
-- **`10000+`:** Human user accounts (`--min-uid 10000` in `identity_gen.py`).
-- **`20000+`:** Shared project/team groups.
-**Never reuse a UID** after a user leaves, or the new user will automatically inherit ownership of any archived or leftover files owned by that numeric UID.
+- `0–999`: OS distribution system accounts.
+- `1000–9999`: cluster service accounts (`munge`, `slurm`, `sssd`, `prometheus`) pinned to fixed numeric IDs in configuration management.
+- `10000+`: human user accounts (`--min-uid 10000` in `identity_gen.py`).
+- `20000+`: shared project and team groups.
+
+Never reuse a UID after a user leaves. Otherwise the new user inherits ownership of any archived or leftover files owned by that numeric UID.
 </details>
 
 <details>
-<summary>3. In `SCL` Chapter 11's static file-synchronization pattern (`/usr/sbin/master-sync`), why do compute nodes pull `/etc/passwd`, `/etc/shadow`, and `/etc/group` at boot, and how does the master trigger script avoid hanging?</summary>
+<summary>3. In Chapter 11 of the Supercomputers for Linux Sysadmins book, the static file-synchronization pattern (`/usr/sbin/master-sync`): why do compute nodes pull `/etc/passwd`, `/etc/shadow`, and `/etc/group` at boot, and how does the master trigger script avoid hanging?</summary>
 
-Pulling at boot via `/usr/sbin/master-sync` ensures that any node that was powered off, under repair, or freshly provisioned automatically synchronizes its account files as soon as it boots. When the master triggers `/usr/sbin/master-sync` across `/etc/nodes`, it passes `ssh -o connecttimeout=3`, staggers nodes with `sleep 0.1`, and arms a background timer `(sleep 600 && kill -ALRM "$$") &` with `trap 'exit' ALRM` so a wedged SSH session can never hang the sync script past 600 seconds.
+Each compute node pulls the files at boot through `/usr/sbin/master-sync`, so you never have to push to a node that is offline. A node that was powered off, under repair, or freshly provisioned therefore syncs its account files as soon as it boots. The master triggers the same script across `/etc/nodes` with `ssh -o connecttimeout=3`, and it staggers the nodes with `sleep 0.1`. It also arms a background timer, `(sleep 600 && kill -ALRM "$$") &`, together with `trap 'exit' ALRM`. A wedged SSH session therefore cannot hang the sync script past 600 seconds.
 </details>
 
 <details>
-<summary>4. Name the four NIS/NIS+ daemons and explain why `SCL` Chapter 11 advises against NIS for clusters larger than `30–40` nodes.</summary>
+<summary>4. Name the four NIS/NIS+ daemons and explain why Chapter 11 of the Supercomputers for Linux Sysadmins book advises against NIS for clusters larger than `30–40` nodes.</summary>
 
-- **`ypserv`:** Main NIS query server daemon.
-- **`yppasswdd`:** Password update daemon.
-- **`ypxfrd`:** Map transfer daemon for secondary servers.
-- **`ypbind`:** Client binding daemon.
-A single NIS server struggles above **`30–40` clients** due to uncached synchronous RPC load (especially during parallel job startup) and lacks modern encryption/authentication.
+- `ypserv`: the main NIS query server daemon.
+- `yppasswdd`: the password update daemon.
+- `ypxfrd`: the map transfer daemon for secondary servers.
+- `ypbind`: the client binding daemon.
+
+A single NIS server struggles above `30–40` clients. The cause is uncached, synchronous RPC load, especially during parallel job startup. NIS also lacks modern encryption and authentication.
 </details>
 
 <details>
 <summary>5. Which LDAP object classes represent a cluster user with POSIX attributes and an SSH public key (`code/part06/identity_gen.py`)?</summary>
 
-`inetOrgPerson`, **`posixAccount`** (`uid`, `uidNumber`, `gidNumber`, `homeDirectory`, `loginShell`), **`shadowAccount`**, and **`ldapPublicKey`** (`sshPublicKey`), while groups use **`posixGroup`** (`cn`, `gidNumber`, `memberUid`).
+If you want a cluster user with POSIX attributes and an SSH key, you build it from `inetOrgPerson`, `posixAccount` (`uid`, `uidNumber`, `gidNumber`, `homeDirectory`, `loginShell`), `shadowAccount`, and `ldapPublicKey` (`sshPublicKey`). Groups use `posixGroup` (`cn`, `gidNumber`, `memberUid`).
 </details>
 
 <details>
-<summary>6. How do you migrate existing `/etc/passwd` and `/etc/group` files into OpenLDAP (`SCL` Chapter 28)?</summary>
+<summary>6. How do you migrate existing `/etc/passwd` and `/etc/group` files into OpenLDAP (Supercomputers for Linux Sysadmins, chapter 28)?</summary>
 
-Configure `$DEFAULT_MAIL_DOMAIN` and `$DEFAULT_BASE` in `/usr/share/migrationtools/migrate_common.ph`, run **`/usr/share/migrationtools/migrate_passwd.pl /etc/passwd people.ldif`** and **`migrate_group.pl /etc/group group.ldif`**, and load both LDIF files with `ldapadd -x -W -D "cn=Manager,..." -f ...`.
+Set `$DEFAULT_MAIL_DOMAIN` and `$DEFAULT_BASE` in `/usr/share/migrationtools/migrate_common.ph`. Then run `/usr/share/migrationtools/migrate_passwd.pl /etc/passwd people.ldif` and `migrate_group.pl /etc/group group.ldif`. Last, load both LDIF files with `ldapadd -x -W -D "cn=Manager,..." -f ...`.
 </details>
 
 <details>
 <summary>7. What advantages does **SSSD** provide over legacy `nss_ldap` / `pam_ldap` on compute and login nodes?</summary>
 
-SSSD maintains a persistent **on-disk and in-memory cache** of user/group lookups and (`cache_credentials = true`) hashed credentials, multiplexes LDAP connections over persistent LDAPS sockets, supports multi-server failover, and serves SSH keys via `sss_ssh_authorizedkeys`—so `ls -l` and `getpwnam()` do not flood the LDAP server and nodes continue functioning during a brief directory outage.
+SSSD keeps a persistent cache of user and group lookups, both on disk and in memory. With `cache_credentials = true`, it also keeps hashed credentials. It multiplexes LDAP connections over persistent LDAPS sockets, and it supports failover across several servers. It serves SSH keys through `sss_ssh_authorizedkeys`. As a result, `ls -l` and `getpwnam()` do not flood the LDAP server, and nodes keep working through a brief directory outage.
 </details>
 
 <details>
 <summary>8. Why must `enumerate = false` be set in `/etc/sssd/sssd.conf`, and how do you flush a stale SSSD cache entry?</summary>
 
-With `enumerate = true`, SSSD periodically downloads the entire `ou=People` and `ou=Groups` trees from LDAP, which overloads both the directory server and node CPU on large directories (with `enumerate = false`, on-demand lookups `id alice` and `getent passwd alice` still work and cache normally). Flush stale cached entries with **`sss_cache -E`** (or `sss_cache -u alice`).
+With `enumerate = true`, SSSD periodically downloads the whole `ou=People` and `ou=Groups` trees from LDAP. On a large directory, that overloads both the server and the node CPU. With `enumerate = false`, on-demand lookups such as `id alice` and `getent passwd alice` still work and still cache. To flush a stale entry, you run **`sss_cache -E`** or `sss_cache -u alice`.
 </details>
 
 <details>
 <summary>9. How do you configure OpenSSH (`sshd_config`) to authenticate users against SSH public keys stored in LDAP via SSSD?</summary>
 
-Enable the `ssh` service in `/etc/sssd/sssd.conf` (`services = nss, pam, ssh` and `ldap_user_ssh_public_key = sshPublicKey`), and set in `/etc/ssh/sshd_config`:
+You enable the `ssh` service in `/etc/sssd/sssd.conf` by setting `services = nss, pam, ssh` and `ldap_user_ssh_public_key = sshPublicKey`. Then set these two lines in `/etc/ssh/sshd_config`:
 - `AuthorizedKeysCommand /usr/bin/sss_ssh_authorizedkeys`
 - `AuthorizedKeysCommandUser nobody`
 </details>
@@ -506,82 +554,82 @@ Enable the `ssh` service in `/etc/sssd/sssd.conf` (`services = nss, pam, ssh` an
 <details>
 <summary>10. Why can launching a 2,000-node MPI/PyTorch job cause an **LDAP lookup storm**, and how does Slurm's `LaunchParameters=enable_nss_slurm` prevent it?</summary>
 
-When `slurmstepd` spawns tasks simultaneously on 2,000 nodes, every node calls `getpwnam()` and `initgroups()` to resolve the user's UID and supplementary GIDs—generating thousands of simultaneous LDAP queries. With **`LaunchParameters=enable_nss_slurm`** (and `nss_slurm` in `/etc/nsswitch.conf`), `slurmctld` resolves the user once and packs the UID/GID list into the job launch credential so `slurmstepd` resolves the user locally with zero network directory traffic.
+When `slurmstepd` starts tasks on 2,000 nodes at once, every node calls `getpwnam()` and `initgroups()` to resolve the user's UID and supplementary GIDs. That creates thousands of LDAP queries at the same moment. With **`LaunchParameters=enable_nss_slurm`** and `nss_slurm` in `/etc/nsswitch.conf`, `slurmctld` resolves the user once. It packs the UID and GID list into the job launch credential, so `slurmstepd` resolves the user locally, with zero network directory traffic.
 </details>
 
 <details>
-<summary>11. Compare the four host-level user access restriction mechanisms in `SCL` Chapter 12 (`DenyUsers`/`AllowUsers`, `pam_access.so`, `chsh -s /bin/false`, and `scponly`).</summary>
+<summary>11. Compare the four host-level user access restriction mechanisms in Chapter 12 of the Supercomputers for Linux Sysadmins book (`DenyUsers`/`AllowUsers`, `pam_access.so`, `chsh -s /bin/false`, and `scponly`).</summary>
 
-1. **`DenyUsers` / `AllowUsers` in `/etc/ssh/sshd_config`:** Blocks or whitelists SSH logins for specified users (do not mix both in the same scope).
-2. **`pam_access.so` + `/etc/security/access.conf`:** Evaluates `permission:users/groups:origins` rules in order (e.g., `+:@admins:ALL` then `-:ALL:ALL`).
-3. **`chsh -s /bin/false user1` (or `/sbin/nologin`):** Replaces the user's login shell so both interactive SSH and `ssh host command` fail immediately.
-4. **`/usr/bin/scponly`:** Allows the user to transfer files via `scp`/`sftp` while blocking interactive shell commands.
+1. `DenyUsers` or `AllowUsers` in `/etc/ssh/sshd_config` blocks or whitelists SSH logins for the named users. Do not mix both in the same scope.
+2. `pam_access.so` with `/etc/security/access.conf` evaluates `permission:users/groups:origins` rules in order, for example `+:@admins:ALL` followed by `-:ALL:ALL`.
+3. `chsh -s /bin/false user1`, or `/sbin/nologin`, replaces the login shell, so both interactive SSH and `ssh host command` fail at once.
+4. `/usr/bin/scponly` lets the user transfer files with `scp` or `sftp`, and it blocks interactive shell commands.
 </details>
 
 <details>
 <summary>12. Why should home directories (`/home/user`) be created centrally at onboarding rather than via `pam_mkhomedir` on compute nodes?</summary>
 
-If `pam_mkhomedir` is enabled on compute nodes and `/home` is mounted with `root_squash` (or experiences a transient automount delay), 100 parallel job tasks starting on a new user's first run will race or fail with `EACCES` trying to create `/home/user`. Creating `/home/user` (`install -d -m 0700 -o UID -g GID`) on the storage server during onboarding guarantees it exists before the user's first login or job.
+If `pam_mkhomedir` is enabled on compute nodes, and `/home` is mounted with `root_squash` or suffers a transient automount delay, then 100 parallel tasks on a new user's first run can race or fail with `EACCES` while they create `/home/user`. Creating the directory on the storage server at onboarding, with `install -d -m 0700 -o UID -g GID`, makes sure it exists before the first login or job.
 </details>
 
 <details>
-<summary>13. What is the 6-step workflow for enabling and managing traditional Linux filesystem quotas (`SCL` Chapter 12)?</summary>
+<summary>13. What is the 6-step workflow for enabling and managing traditional Linux filesystem quotas (Supercomputers for Linux Sysadmins, chapter 12)?</summary>
 
-1. Add **`usrquota,grpquota`** to the filesystem's options in `/etc/fstab` and remount.
-2. Build the quota database files (`aquota.user`, `aquota.group`) with **`quotacheck -vugc /dev/sdX`** (or `quotacheck -a -M`).
-3. Enable enforcement with **`quotaon -va`**.
-4. Set block and inode soft/hard limits with **`edquota -u user`** or **`setquota -u user bsoft bhard isoft ihard /mount`**.
-5. Clone a template user's quota with **`setquota -p foo -u bar -a`**.
-6. Audit usage across users with **`repquota -va`** / **`repquota -s`** (and run `rpc.rquotad` on NFS servers).
+1. Add `usrquota,grpquota` to the filesystem's options in `/etc/fstab`, and remount.
+2. Build the quota database files, `aquota.user` and `aquota.group`, with `quotacheck -vugc /dev/sdX` or `quotacheck -a -M`.
+3. Enable enforcement with `quotaon -va`.
+4. Set block and inode soft and hard limits with `edquota -u user`, or with `setquota -u user bsoft bhard isoft ihard /mount`.
+5. Clone a template user's quota with `setquota -p foo -u bar -a`.
+6. Audit usage across users with `repquota -va` or `repquota -s`, and run `rpc.rquotad` on NFS servers.
 </details>
 
 <details>
-<summary>14. Why must `/etc/security/limits.conf` (`ulimit`) differ between login nodes and GPU compute nodes (`SCL` Chapter 12)?</summary>
+<summary>14. Why must `/etc/security/limits.conf` (`ulimit`) differ between login nodes and GPU compute nodes (Supercomputers for Linux Sysadmins, chapter 12)?</summary>
 
-- **On login nodes:** Restrict `nproc` (`50–100` processes) and memory/CPU via `pam_limits` or `systemd` `user-.slice` so one user's compile or script cannot starve other users.
-- **On GPU compute nodes:** Default limits (`max locked memory -l 64` KB, `open files -n 1024` in `SCL` Chapter 12) break InfiniBand RDMA verbs (`ibv_reg_mr` requires **`memlock unlimited`**) and multi-rank PyTorch/NCCL sockets (requires **`nofile 65536+`**), while CPU/RAM isolation is handled per job by Slurm cgroups.
+- On login nodes, restrict `nproc` to `50–100` processes, and limit memory and CPU through `pam_limits` or the systemd `user-.slice`. That way one user's compile or script cannot starve the others.
+- On GPU compute nodes, the default limits break things. `max locked memory` of `64` KB and `open files` of `1024` are the defaults in Chapter 12. InfiniBand RDMA verbs such as `ibv_reg_mr` need **`memlock unlimited`**, and multi-rank PyTorch or NCCL sockets need **`nofile 65536+`**. CPU and RAM isolation is handled per job by Slurm cgroups.
 </details>
 
 <details>
-<summary>15. Why does `SCL` Chapter 12 warn against setting a very small hard `cpu` time limit in `/etc/security/limits.conf` on login or data-transfer nodes?</summary>
+<summary>15. Why does Chapter 12 of the Supercomputers for Linux Sysadmins book warn against setting a very small hard `cpu` time limit in `/etc/security/limits.conf` on login or data-transfer nodes?</summary>
 
-Because `scp`, `sftp`, and `rsync`-over-SSH encrypt and checksum every byte on the CPU. If a login node sets a low hard `cpu` limit (e.g., `100` CPU seconds), the kernel sends `SIGKILL` to the user's `sshd`/`sftp-server` process partway through transferring a multi-gigabyte dataset or checkpoint.
+`scp`, `sftp` and `rsync` over SSH encrypt and checksum every byte on the CPU. If a login node sets a low hard `cpu` limit, such as `100` CPU seconds, the kernel sends `SIGKILL` to the user's `sshd` or `sftp-server` process partway through a large transfer. A multi-gigabyte dataset or checkpoint is one example.
 </details>
 
 <details>
-<summary>16. How do POSIX **set-gid directories (`chmod 2770`)** and **default ACLs (`setfacl -d`)** simplify shared project directories (`SCL` Chapter 12)?</summary>
+<summary>16. How do POSIX **set-gid directories (`chmod 2770`)** and **default ACLs (`setfacl -d`)** simplify shared project directories (Supercomputers for Linux Sysadmins, chapter 12)?</summary>
 
-Setting the `setgid` bit (`chmod g+s` / `2770`) on `/scratch/proj_llm` ensures that every new file or subdirectory created inside it automatically inherits the directory's project group (`proj_llm`) rather than the creator's primary group. Adding default POSIX ACLs (`setfacl -d -m g:proj_llm:rwx /scratch/proj_llm`) ensures newly created files remain group-writable regardless of a user's restrictive `umask`.
+Setting the setgid bit, with `chmod g+s` or mode `2770`, on `/scratch/proj_llm` makes every new file and subdirectory inherit the project group, `proj_llm`, instead of the creator's primary group. Default POSIX ACLs, set with `setfacl -d -m g:proj_llm:rwx /scratch/proj_llm`, keep new files group-writable even when a user's `umask` is restrictive.
 </details>
 
 <details>
 <summary>17. How do POSIX users/groups and Slurm accounting (`sacctmgr`) interact, and what happens if a user is added to `sacctmgr` but missing from LDAP?</summary>
 
-Slurm's accounting database (`slurmdbd`) tracks authorizations and Fair Tree shares by username string (`sacctmgr add user alice account=llm-pretrain`), while `slurmctld` and `slurmd` use NSS (`getpwnam("alice")`) to look up numeric UID/GID at job submission and task launch. If `alice` is in `sacctmgr` but not resolvable via NSS on compute nodes, job launch fails immediately with `Invalid user id` / `User not found on host`.
+Slurm's accounting database, `slurmdbd`, tracks authorizations and Fair Tree shares by username string, as in `sacctmgr add user alice account=llm-pretrain`. Meanwhile `slurmctld` and `slurmd` use NSS, with `getpwnam("alice")`, to look up the numeric UID and GID at job submission and at task launch. If `alice` is in `sacctmgr` but NSS cannot resolve her on the compute nodes, the launch fails at once with `Invalid user id` or `User not found on host`.
 </details>
 
 <details>
 <summary>18. Walk through the safe offboarding sequence when an engineer leaves the organization.</summary>
 
-1. **Lock/disable the LDAP/IdP account** and remove `sshPublicKey` entries (and flush SSSD caches with `sss_cache -E`).
-2. **Cancel running/pending Slurm jobs** (`scancel -u <user>`) and remove or zero-limit their `sacctmgr` associations (never delete historical job records in `slurmdbd`).
-3. **Revoke active tokens and certificates** (Slurm JWTs, NGC/registry tokens, S3 keys, Kubernetes RBAC, VPN/bastion sessions) and terminate open `sshd`/`tmux` processes on login nodes.
-4. **Reassign shared project files** to the project lead (`chown -R`) and archive/purge `/home/<user>` per retention policy while **keeping the numeric UID permanently retired**.
+1. **Lock or disable the LDAP or IdP account.** Remove the `sshPublicKey` entries, then flush the SSSD caches with `sss_cache -E`.
+2. **Cancel running and pending Slurm jobs** with `scancel -u <user>`. Then remove the `sacctmgr` associations, or set their limits to zero. Never delete historical job records in `slurmdbd`.
+3. **Revoke active tokens and certificates.** These include Slurm JWTs, NGC or registry tokens, S3 keys, Kubernetes RBAC, and VPN or bastion sessions. Terminate open `sshd` and `tmux` processes on login nodes.
+4. **Reassign shared project files** to the project lead with `chown -R`. Archive or purge `/home/<user>` according to the retention policy, and keep the numeric UID permanently retired.
 </details>
 
 <details>
 <summary>19. How do host UIDs interact with **Enroot/Pyxis**, **Apptainer**, and **Kubernetes pods** on shared storage?</summary>
 
-Enroot/Pyxis and Apptainer run container processes under the **invoking user's host UID/GID**, so shared Lustre/NFS mounts work seamlessly as long as host UIDs match across nodes. In Kubernetes, if a training pod defaults to running as `root` (`UID 0`) inside the container without matching `securityContext.runAsUser` / `runAsGroup` / `fsGroup`, files written to shared storage will be owned by `root` (or blocked by `root_squash`)—always pass the user's or project's numeric `runAsUser`/`fsGroup`.
+Enroot, Pyxis and Apptainer run container processes under the invoking user's host UID and GID. Shared Lustre or NFS mounts therefore work, as long as host UIDs match across nodes. In Kubernetes, a training pod that runs as `root` (UID `0`) without matching `securityContext.runAsUser`, `runAsGroup` and `fsGroup` writes files owned by `root` to shared storage, or gets blocked by `root_squash`. You should always pass the user's or project's numeric `runAsUser` and `fsGroup`.
 </details>
 
 <details>
 <summary>20. What four checks belong in a nightly cluster identity and quota reconciliation job?</summary>
 
-1. **LDAP vs `sacctmgr` diff:** Flag active Slurm associations whose user no longer exists (or is locked) in LDAP, and LDAP users in cluster groups missing Slurm associations.
-2. **UID/GID consistency check:** Verify `id munge`, `id slurm`, and sample user UIDs across all node classes.
-3. **Orphaned file & `/home` audit:** Detect `/home` directories or `/scratch` trees owned by unmapped numeric UIDs.
-4. **Quota threshold alerting:** Parse `lfs quota` / `repquota` and alert users/projects exceeding `80–90%` of block or inode quotas before training jobs hit `EDQUOT`.
+1. **LDAP against `sacctmgr`.** You flag active Slurm associations whose user no longer exists in LDAP, or is locked there. Also flag LDAP users in cluster groups that have no Slurm associations.
+2. **UID and GID consistency.** Verify `id munge`, `id slurm`, and sample user UIDs across all node classes.
+3. **Orphaned files and `/home`.** Detect `/home` directories, or `/scratch` trees, owned by unmapped numeric UIDs.
+4. **Quota thresholds.** Parse `lfs quota` and `repquota`, and alert users and projects that exceed `80–90%` of their block or inode quotas before training jobs hit `EDQUOT`.
 </details>
 
 ## Sources and review notes
