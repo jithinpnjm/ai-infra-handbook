@@ -24,12 +24,13 @@ lab_venue: "Nebius GPU"
 
 ## Why this matters for AI infrastructure
 
-An AI data center network does not exist to pass `ping` checks or show green port icons on a legacy SNMP dashboard. Its primary job is to minimize Job Completion Time and time-to-train for distributed training runs. At the same time, the fabric must enforce strict tail-latency targets for real-time inference. Synchronous collectives such as AllReduce, AllGather, ReduceScatter, and AllToAll lock every GPU to the slowest participating rank on each step. A brief microburst or a single degraded optical lane on one rail therefore throttles the entire cluster.
+Suppose a multi-day training run is getting slower each day, and nothing on the status dashboards is red. Every port says it is up. An AI data center network does not exist to pass `ping` checks or show green port icons on a legacy SNMP dashboard. Its main job is to minimize Job Completion Time and time-to-train for distributed training runs. It must also keep tail latency tight enough for real-time inference.
 
-Three recurring production failure patterns show why traditional monitoring fails on InfiniBand and RoCEv2 fabrics.
-- A switch port can degrade slowly over several days while every link still reports `Active` and `LinkUp`. Its symbol error rate accelerates dramatically across consecutive windows and steadily erodes training throughput.
-- A multi-rack training job can suffer severe step-time variance even when every port shows `Active`. A replacement cable may have trained down to a single lane, adaptive routing may miss the active Service Level, or ranks may bind across NUMA sockets.
-- Synchronized elephant flows can fill switch buffers in microseconds. Legacy SNMP polling averages out these microbursts and hides why Priority Flow Control pauses or credit stalls inflated Job Completion Time.
+Synchronous collectives such as AllReduce, AllGather, ReduceScatter, and AllToAll lock every GPU to the slowest participating rank on each step. A single slow link therefore sets the pace for the whole cluster. One brief microburst, or one degraded optical lane on one rail, can throttle every GPU in the job.
+
+Three recurring failure patterns show why traditional monitoring fails on InfiniBand and RoCEv2 fabrics. A switch port can degrade slowly over several days while every link still reports `Active` and `LinkUp`. Its symbol error rate accelerates across consecutive windows and steadily erodes training throughput. A multi-rack training job can also show severe step-time variance even when every port reports `Active`. The cause might be a replacement cable that trained down to a single lane, adaptive routing that misses the active Service Level, or ranks bound across NUMA sockets. Finally, synchronized elephant flows can fill switch buffers in microseconds. Legacy SNMP polling averages out these microbursts, so it hides why Priority Flow Control pauses or credit stalls inflated Job Completion Time.
+
+The block below lists the three production signatures this chapter investigates, with the figures from each case.
 
 ```text
 Production failure signatures captured in this chapter:
@@ -45,20 +46,25 @@ Production failure signatures captured in this chapter:
    - 1,024-GPU job (100,000 steps): 3.0x collective tail stall (30.0 -> 90.0 ms on 120.0 ms compute) inflates step time 150.0 -> 210.0 ms (+40.0%), comm fraction 20.0% -> 42.86%, and JCT 4.1667 -> 5.8333 hours (1.40x slowdown, wasting 1,706.67 GPU-hours)
 ```
 
-This chapter connects two essential disciplines of AI fabric performance engineering.
-- We first define standardized AI data center KPIs and the MLCommons and MLPerf benchmarking lifecycle across training, inference, and storage.
-- We then build a high-resolution telemetry architecture using streaming gNMI, In-Band Flow Analyzer packet cloning, Mirror-on-Drop, counter correlation, and closed-loop corrective actions.
+Notice the first signature. Every port still reads `Active` and `LinkUp`, yet the error counter climbs from one day to the next. A status check alone would never flag it.
+
+This chapter connects two disciplines of AI fabric performance engineering. First, it defines the standard AI data center KPIs and the MLCommons and MLPerf benchmarking lifecycle across training, inference, and storage. Second, it builds a high-resolution telemetry architecture from streaming gNMI, In-Band Flow Analyzer packet cloning, Mirror-on-Drop, counter correlation, and closed-loop corrective actions.
+
+Before you change any threshold, decide which of these three signatures your current dashboards could miss.
+
+---
 
 ## Prerequisites and outcomes
 
-**Prerequisites:** Review the Prometheus and Grafana monitoring stack in Chapter 2.31 and AI collective traffic patterns in Chapter 12.1. You should also know RoCEv2 congestion control from Chapters 12.3 through 12.5, InfiniBand diagnostics from Chapters 12.6 through 12.9, and `nccl-tests` from Chapter 12.17.
+Before you start, review the Prometheus and Grafana monitoring stack in Chapter 2.31. Then review the AI collective traffic patterns in Chapter 12.1. You should also know the RoCEv2 congestion control from Chapters 12.3 through 12.5. Know the InfiniBand diagnostics from Chapters 12.6 through 12.9, and the `nccl-tests` material from Chapter 12.17.
 
-**Outcomes:** After completing this chapter, you will be able to.
-- Compute the six core AI data center KPIs including Job Completion Time, throughput, tail latency, accuracy, Power Usage Effectiveness, FLOPS per watt, and scaling efficiency.
-- Execute the five-step MLCommons and MLPerf benchmarking lifecycle across Training, Inference LoadGen Offline and Poisson Server scenarios, and Storage in Closed and Open divisions.
-- Compare all nine network monitoring mechanisms across multi-week trend forecasting and microsecond real-time congestion analysis.
-- Decode and size In-Band Flow Analyzer headers and per-hop metadata stacks across three-stage and five-stage Clos fabrics to isolate nanosecond switch residence times.
-- Correlate InfiniBand and RoCEv2 switch and host counters to separate historical scar tissue from active physical decay, pause relay hops, and broken congestion loops.
+By the end of this chapter, you will be able to do the following.
+- Compute the six core AI data center KPIs: Job Completion Time, throughput, tail latency, accuracy, Power Usage Effectiveness, FLOPS per watt, and scaling efficiency.
+- Run the five-step MLCommons and MLPerf benchmarking lifecycle for Training, Inference (LoadGen Offline and Poisson Server scenarios), and Storage, in both the Closed and Open divisions.
+- Compare all nine network monitoring mechanisms, from multi-week trend forecasting to microsecond congestion analysis.
+- Decode and size In-Band Flow Analyzer headers and per-hop metadata stacks across three-stage and five-stage Clos fabrics, and use them to find nanosecond switch residence times.
+- Correlate InfiniBand and RoCEv2 switch and host counters. This lets you tell old counter history apart from active physical decay.
+- Spot pause relay hops and broken congestion loops from the same counter data.
 
 ---
 
@@ -66,13 +72,13 @@ This chapter connects two essential disciplines of AI fabric performance enginee
 
 ### 1.1 Evolution of benchmarking and the model-plus-data KPI duality
 
-Without standardized benchmarks, infrastructure teams cannot tell whether a faster training run came from a better switch fabric, lower numeric precision, or an easier dataset. Just as transportation evolved from walking and pack animals to stone wheels, wooden wheels, outer bands, and alloy rims, AI fabrics evolve across hardware generations. Each interconnect jump from 100G to 400G, 800G, and 1.6T moves larger parameter volumes with less friction. Repeatable Key Performance Indicators let operators separate genuine architectural gains from workload noise.
+Suppose one team tells you its new training run finished faster than last month. Was the switch fabric the reason? Or did the team lower numeric precision, or pick an easier dataset? Without standardized benchmarks, you cannot tell. Transportation went from walking, to stone wheels, to wooden wheels, to outer bands, to alloy rims. AI fabrics are on a similar path. Each interconnect jump, such as 100G to 400G, 800G, and 1.6T, moves larger parameter volumes with less friction. Repeatable Key Performance Indicators, or KPIs, let you separate real architectural gains from workload noise.
 
-The wheel story makes the point clearly. People first walked and carried goods themselves. Animals carried loads farther, but the weight and distance stayed limited. The first wheels were made of stone, and pulling carts on them took a lot of effort with little gain in speed. Wooden wheels were lighter, needed less effort to pull, and covered greater distance.
+The wheel story makes the point clearly. People first walked and carried goods themselves. Animals carried heavier loads farther, but the weight and the distance stayed limited. Stone wheels were the first wheels, and pulling a cart on them took a lot of effort for little gain in speed.
 
-Wooden wheels wore out quickly and gave a rough ride, so engineers added an outer band to absorb shock. That band began as leather, then changed to metal, then to rubber. It reduced the force needed to move, increased the distance covered, and improved the ride. Rims later moved from wood to metal to alloy, and rubber kept improving. AI fabrics follow the same pattern, so benchmarking each generation against the last one with the same yardstick is the only way to see real progress.
+Wooden wheels were lighter, took less effort to pull, and covered more ground. They wore out quickly and gave a rough ride, so engineers added an outer band to absorb shock. That band began as leather, then changed to metal, then to rubber. Each change reduced the force needed to move, increased the distance covered, and improved the ride. Rims later moved from wood to metal to alloy, and rubber kept improving. AI fabrics follow the same pattern, so the only way to see real progress is to benchmark each generation against the last with the same yardstick.
 
-In an AI data center, tracking basic server uptime and facility power is never enough. Every AI system combines two tightly coupled halves: the model and the data. Each half stresses the network fabric in a distinct way.
+In an AI data center, tracking server uptime and facility power is never enough. Every AI system combines two tightly coupled halves: the model and the data. Each half stresses the network fabric in a different way.
 
 | Component / KPI Dimension | Specific Indicators & Units | How Precision, Scale & Network Fabrics Interact |
 |---|---|---|
@@ -82,11 +88,15 @@ In an AI data center, tracking basic server uptime and facility power is never e
 | **Data — Data Efficiency** | Dataset quality, low redundancy, and scenario diversity | High-variety, low-redundancy datasets improve model robustness and reduce wasted training epochs over petabyte-scale storage fabrics. |
 | **Data — Training Time (`Time to Train` & `JCT`)** | End-to-end wall-clock time from data loading to target model quality (`minutes`, `hours`, `days`) | The single most important KPI for AI training fabrics; for example, OpenAI trained ChatGPT (`GPT-3` class) across `1,023` NVIDIA A100 GPUs over approximately `34` days. |
 
+Read the table as two halves that both load the same network. The model rows set how many bytes each step must move. The data rows set how long the whole run takes.
+
 ### 1.2 The six core AI data center KPIs and Job Completion Time math
 
-When operators evaluate a cluster only by peak TFLOPS, they miss tail-latency stalls, power waste, and multi-node scaling collapse. A complete infrastructure evaluation tracks six canonical KPIs across node, rack, cluster, and data-center boundaries. Throughput measures completed operations per second, while latency tracks both typical per-operation time and the p99 or p99.9 tail. Accuracy ensures those fast operations actually converge to usable model quality.
+If you judge a cluster only by peak TFLOPS, you will miss tail-latency stalls, power waste, and scaling collapse. A complete evaluation tracks six core KPIs across the node, rack, cluster, and data center boundaries. Throughput counts completed operations per second. Latency tracks both the typical time per operation and the p99 or p99.9 tail. Accuracy confirms that those fast operations actually reach usable model quality.
 
-Power consumption and efficiency connect those compute results to physical electrical limits at the rack and facility level. Power Usage Effectiveness divides total facility power by IT equipment power. Efficiency divides achieved throughput, FLOPS, or queries per second by electrical watts. Finally, scalability measures how well the fabric preserves speedup as the cluster grows under either fixed total work or fixed work per GPU.
+Power and efficiency tie compute results to electrical limits at the rack and facility level. Power Usage Effectiveness, or PUE, divides total facility power by IT equipment power. Efficiency divides achieved throughput, FLOPS, or queries per second by electrical watts. Scalability asks how well speedup holds as the cluster grows, either for fixed total work or for fixed work per GPU. If you compare two clusters, make sure you compare the same scaling type.
+
+The first block defines PUE and the efficiency measures. The second defines the scaling measures.
 
 ```text
 \text{PUE} = \frac{\text{Total Facility Power}}{\text{IT Equipment Power}}, \qquad \text{FPW}_{\text{IT}} = \frac{\text{Achieved FLOPS}}{P_{\text{IT}}}, \qquad \text{FPW}_{\text{facility}} = \frac{\text{FPW}_{\text{IT}}}{\text{PUE}}
@@ -96,11 +106,13 @@ Power consumption and efficiency connect those compute results to physical elect
 S_{\text{strong}}(k) = \frac{T_{\text{strong}}(N_0)}{T_{\text{strong}}(N)}, \qquad E_{\text{strong}}(k) = \frac{S_{\text{strong}}(k)}{k}, \qquad E_{\text{weak}}(k) = \frac{T_{\text{weak}}(N_0)}{T_{\text{weak}}(N)}
 ```
 
-In distributed training over synchronous iterations, each step's wall-clock duration equals GPU compute time plus the exposed collective communication time. Every rank waits at the collective barrier for the slowest rail or microburst tail across the cluster. A tail-latency multiplier therefore directly inflates total Job Completion Time.
+In distributed training, each step lasts as long as the GPU compute plus the collective communication that cannot be hidden. Every rank waits at the collective barrier for the slowest rail or the worst microburst. A tail-latency multiplier therefore pushes total Job Completion Time up directly.
 
 ```text
 \text{JCT} = N_{\text{steps}} \times \left(T_{\text{comp}} + \alpha_{\text{exposed}} \cdot T_{\text{comm,base}} \cdot \gamma_{\text{tail}}\right)
 ```
+
+The worked block below shows the arithmetic. Start with the first example. The facility draws 549.6 kW and the IT equipment draws 458.0 kW, so 549.6 divided by 458.0 gives a PUE of 1.20.
 
 ```text
 Worked KPI, Scaling, and JCT Derivations (ADC Ch. 10 & App. A):
@@ -119,9 +131,11 @@ Worked KPI, Scaling, and JCT Derivations (ADC Ch. 10 & App. A):
    - Exercise 1 variant (512 GPUs, 50,000 steps, 160.0 ms compute, 40.0 -> 100.0 ms 2.50x tail stall): step 200.0 -> 260.0 ms, comm fraction 20.0% -> 38.46%, JCT 2.7778 -> 3.6111 hours (1.30x slowdown, 426.67 wasted GPU-hours)
 ```
 
+The tail example shows the same idea in larger numbers. A 3.0x stall lifts the step from 150.0 ms to 210.0 ms, and the job runs 1.40 times longer. That gap is why you measure the tail, not only the average.
+
 ### 1.3 MLCommons, MLPerf suites, LoadGen, and the 5-step benchmarking procedure
 
-Before industry-wide benchmark rules existed, hardware vendors published cherry-picked hero runs. Those runs often altered batch sizes, skipped storage data loading, or relaxed target accuracy. To solve this comparability crisis, industry and academic leaders founded MLCommons in 2020 around five core goals. It enables fair system comparison with room for innovation, advances progress through rigorous measurement, and enforces strict reproducibility. It also serves both commercial and academic communities while keeping benchmarking costs affordable.
+Before industry-wide rules existed, hardware vendors published hero runs. Those runs could change batch sizes, skip storage data loading, or relax the target accuracy, so the numbers could not be compared. To fix this, industry and academic leaders founded MLCommons in 2020. Its goals are fair comparison with room for innovation, progress through rigorous measurement, strict reproducibility, service to both commercial and academic communities, and benchmarking costs that stay affordable.
 
 ```mermaid
 flowchart LR
@@ -144,7 +158,7 @@ flowchart LR
     Initiatives --> Tripod --> Flow
 ```
 
-Every MLPerf benchmark rests on the AI model tripod: a specific model, a standard dataset, and explicit modification and metric rules. Submissions follow a five-step verification lifecycle.
+Every MLPerf benchmark rests on the AI model tripod: a specific model, a standard dataset, and explicit modification and metric rules. A submission then passes through a five-step verification lifecycle. The table below walks through each step and shows why a network engineer should care about it.
 
 | MLCommons Component / Step | Technical Scope & Rules | Network & Telemetry Significance |
 |---|---|---|
@@ -157,7 +171,7 @@ Every MLPerf benchmark rests on the AI model tripod: a specific model, a standar
 
 MLPerf gives the industry one set of rules for training, inference, and storage. It defines reference models, data sets, accuracy targets, and test harnesses. Those rules let teams compare hardware, software, and cloud services on equal terms. Peer review and public publication then add transparency to every result.
 
-The two divisions serve different readers. The closed division fixes the model, the data set, and the reference implementation, so a vendor comparison stays direct. The open division lets a team try a new model or training method, but the system must still reach the same quality target. Reproducibility holds both divisions together. Public code, fixed data sets, and checked accuracy let an outside team rerun a test and reach the same answer.
+Think of the two divisions as serving two different readers. When you read a benchmark result, check the division first. The Closed division fixes the model, the data set, and the reference implementation, so a vendor comparison stays direct. The Open division lets a team try a new model or training method, as long as the system still reaches the same quality target. Public code, fixed data sets, and checked accuracy let an outside team rerun a test and reach the same answer.
 
 ---
 
@@ -165,9 +179,9 @@ The two divisions serve different readers. The closed division fixes the model, 
 
 ### 2.1 Why microsecond AI congestion breaks legacy polling
 
-When a thousand GPUs enter an AllReduce or AllToAll step simultaneously, switch egress queues fill and drain in microseconds or nanoseconds. If an operator relies on legacy SNMP polling, the switch averages a fifty-microsecond queue spike across minutes of idle time. The dashboard reports under one percent link utilization while endpoints suffer Priority Flow Control pauses and RDMA timeout retries.
+Picture a thousand GPUs entering an AllReduce or AllToAll step at the same moment. Switch egress queues fill and drain in microseconds or nanoseconds. If you rely on legacy SNMP polling, the switch averages a fifty-microsecond queue spike across minutes of idle time. Your dashboard then reports under one percent link utilization. Meanwhile, the endpoints suffer Priority Flow Control pauses and RDMA timeout retries.
 
-To catch sub-millisecond contention without losing long-term capacity visibility, AI data centers combine facility sensors with nine complementary network telemetry mechanisms. Each mechanism trades off collection overhead, timescale granularity, and packet-path fidelity.
+Catching sub-millisecond contention without losing long-term capacity visibility takes more than one tool. AI data centers therefore combine facility sensors with nine complementary network telemetry mechanisms. Each mechanism trades collection overhead against timescale granularity and packet-path fidelity.
 
 | Monitoring Mechanism | How It Works in an AI Fabric | Typical Granularity | Key Strengths | Limitations in AI/ML Fabrics |
 |---|---|---|---|---|
@@ -181,11 +195,15 @@ To catch sub-millisecond contention without losing long-term capacity visibility
 | **8. Packet Mirroring (`On-Demand` & `Mirror-on-Drop`)** | **Mirror-on-Demand (`SPAN`/`ERSPAN`)** clones live flows for payload inspection; **Mirror-on-Drop** (`What Just Happened`, `WJH`) clones packets the switch ASIC discards along with the hardware drop reason | Per dropped or matched packet | Separates congestion tail drops from defensive/security drops (ASIC DDoS/CoPP dropping excessive `ARP` floods or malformed packets) | Requires collector capture capacity; not every packet drop is a fabric fault |
 | **9. In-Band Flow Analyzer (`IFA` / `INT`)** | Switch ASICs stamp per-hop nanosecond residence time, queue ID, port IDs, and ECN congestion bits directly into live packets or cloned data-plane probes, exported as `IPFIX` at the egress leaf | **Per-packet / nanosecond** | Traverses the exact ECMP/DLB path and queue as the live GPU flow; pinpoints microsecond hop latency | Requires switch ASIC support, `9000`-byte jumbo MTU headroom (`104–168` B overhead), and homogeneous timestamp clocks |
 
+Use the table to pick the right tool for each question. Polling answers how capacity trends over weeks. Only the per-packet methods show what happened to one flow during one microburst.
+
 ### 2.2 Historical trend forecasting versus real-time telemetry correlation
 
-Operators who only watch real-time dashboards get surprised by gradual uplink exhaustion. Conversely, operators who only review weekly capacity reports cannot stop a sub-second pause storm. Production AI fabrics therefore pair multi-week historical trend forecasting with sub-second real-time correlation. Historical databases store weeks of utilization, buffer watermarks, and optical error rates to predict saturation before jobs fail. They also tag recurring telemetry signatures with past remediations to train AI operational assistants.
+If you watch only real-time dashboards, gradual uplink exhaustion will catch you by surprise. If you review only weekly capacity reports, you cannot stop a sub-second pause storm. Production AI fabrics therefore pair multi-week trend forecasting with sub-second correlation. Historical databases keep weeks of utilization, buffer watermarks, and optical error rates. That history lets them predict saturation before jobs fail. The same databases tag recurring telemetry signatures with past remediations, which helps train AI operational assistants.
 
-Real-time monitoring uses streaming gNMI, In-Band Flow Analyzer probes, and Mirror-on-Drop to track flow tail latency and per-queue drops. It also tracks elephant-flow collisions and flow entropy scores alongside switch ASIC memory and CPU headroom. Crucially, real-time monitoring must correlate switch counters with GPU server telemetry from DCGM, `node_exporter`, `ethtool -S`, and NCCL logs. Frame loss, queue occupancy, and latency behave differently at spine aggregation points than at leaf edge ports. Correlating both sides is the only way to tell a degraded host optic from a spine incast tree.
+Real-time monitoring uses streaming gNMI, In-Band Flow Analyzer probes, and Mirror-on-Drop to track flow tail latency and per-queue drops. It also watches elephant-flow collisions and flow entropy scores, along with switch ASIC memory and CPU headroom. Real-time monitoring must also correlate switch counters with GPU server telemetry from DCGM, `node_exporter`, `ethtool -S`, and NCCL logs. Frame loss, queue occupancy, and latency behave differently at a spine aggregation point than at a leaf edge port. Correlating both sides is the only reliable way to tell a degraded host optic from a spine incast tree.
+
+Here is the forecast as a worked example, using the numbers in the block.
 
 ```text
 Historical Trend Forecasting Worked Example (ADC Ch. 11 & PromQL predict_linear):
@@ -196,15 +214,17 @@ Historical Trend Forecasting Worked Example (ADC Ch. 11 & PromQL predict_linear)
 - Time to cross 85.0% threshold = (85.0% - 65.0%) / (10.0% / 2 weeks) = 4.0 weeks (2 biweekly intervals)
 ```
 
+The uplink reaches the 85.0 percent threshold in four weeks, so the capacity team has about that long to act. Plan capacity from the trend, and use the real-time signals to decide what to isolate today.
+
 ---
 
 ## 3. In-Band Flow Analyzer: architecture, packet headers, and nanosecond residence time
 
 ### 3.1 Why synthetic probes miss elephant-flow congestion—and how IFA solves it
 
-Active agent probes such as TWAMP or `ping` inject synthetic UDP, TCP, or ICMP packets with artificial payloads and 5-tuple headers. An AI fabric hashes packets across Equal-Cost Multi-Path or Dynamic Load Balancing links using L3, L4, and RoCEv2 Queue Pair fields. A synthetic probe therefore frequently hashes onto an idle spine link. Meanwhile, a 400 Gbps RoCEv2 collective elephant flow on UDP port 4791 stalls behind a congested queue on a neighboring link.
+Active agent probes such as TWAMP or `ping` send synthetic UDP, TCP, or ICMP packets. Those packets have artificial payloads and their own 5-tuple headers. An AI fabric spreads packets across Equal-Cost Multi-Path links, or Dynamic Load Balancing links, by hashing on L3, L4, and RoCEv2 Queue Pair fields. A synthetic probe therefore often hashes onto an idle spine link. Meanwhile, a 400 Gbps RoCEv2 collective elephant flow on UDP port 4791 can stall behind a congested queue on a neighboring link.
 
-In-Band Flow Analyzer (`draft-kumar-ippm-ifa-08`) eliminates this blind spot by attaching telemetry metadata directly to the user flow. In standard production deployments, the ingress leaf clones a sampled packet from the live GPU flow. That cloned probe carries the exact same forwarding headers and traverses the exact same switch queues as the original packet.
+In-Band Flow Analyzer, specified in `draft-kumar-ippm-ifa-08`, removes this blind spot. Instead of sending a separate probe, it attaches telemetry metadata directly to the user flow. In standard production deployments, the ingress leaf clones a sampled packet from the live GPU flow. That clone carries the same forwarding headers and crosses the same switch queues as the original packet.
 
 ```mermaid
 flowchart LR
@@ -217,15 +237,19 @@ flowchart LR
     Term -->|"3b. Drops Cloned Probe &<br/>Exports Stack via IPFIX"| Coll["IFA Telemetry Collector<br/>(IPFIX Latency & Queue Analyzer)"]
 ```
 
+Follow the diagram from left to right, as you would follow a packet through the fabric. The original flow arrives at the destination untouched. The clone collects a record at each hop, and the terminating node sends that record to the collector.
+
 | IFA Node Role | Typical Fabric Device | Packet & Metadata Operations (`draft-kumar-ippm-ifa-08` & `ADC` Ch. 11) |
 |---|---|---|
 | **1. `Initiator` Node** | Ingress Leaf Switch (Stage `1`) | Samples the live GPU flow of interest (`flow1`) and either tags the original packet or clones it into an IFA probe packet. Pushes the `4`-byte IFA Header, the `4`-byte IFA Metadata Header, and Hop `1`'s `32`-byte IFA Metadata Stack entry. |
 | **2. `Transit` Node(s)** | Spine (`3`-stage Clos: `1` transit hop) or Spine + Super-Spine + Spine (`5`-stage Clos: `3` transit hops) | Inspects the IFA Metadata Header, decrements the hop limit, and pushes a new `32`-byte local metadata entry onto the IFA Metadata Stack recording `Device ID`, ingress/egress ports, `Queue ID`, `RX Timestamp`, Residence Time in nanoseconds, and `Congestion` bits. |
 | **3. `Termination` Node** | Egress Leaf or Border-Leaf Switch (Stage `3` or Stage `5`) | Drops the cloned data payload so the destination NIC never receives duplicate packets, extracts the complete multi-hop IFA Metadata Stack, and exports the telemetry record in `IPFIX` format to the central collector. |
 
+Each row in the table is one role in the path. Read it as the job each device does for the probe, from the first clone to the final export.
+
 ### 3.2 IFA packet encapsulation, 32-bit header, and 256-bit per-hop metadata stack
 
-When an Initiator leaf encapsulates a packet for In-Band Flow Analyzer, it must preserve the original L3 and L4 forwarding headers. That way, transit spines hash the cloned probe onto the identical ECMP or DLB path as the live collective flow. The switch inserts the 4-byte IFA Header right after the L3 IP header and leaves the L4 transport header intact. It then places the 4-byte IFA Metadata Header and the per-hop IFA Metadata Stack immediately before the payload.
+When an Initiator leaf encapsulates a packet for In-Band Flow Analyzer, it must keep the original L3 and L4 forwarding headers. If it does, the transit spines hash the clone onto the same ECMP or DLB path as the live collective flow. The switch inserts the 4-byte IFA Header right after the L3 IP header, and it leaves the L4 transport header alone. It then places the 4-byte IFA Metadata Header and the per-hop IFA Metadata Stack just before the payload.
 
 ```mermaid
 flowchart LR
@@ -237,7 +261,7 @@ flowchart LR
     H6 --> H7["7. Original Payload<br/>(RDMA / Collective Data)"]
 ```
 
-Every bit field of the 32-bit IFA Header and the 256-bit per-hop IFA Metadata Stack is structured to fit hardware ASIC timestampers at line rate.
+Read the layers from top to bottom. The IFA fields sit between the IP header, the transport header, and the payload, so they travel with every packet. Every bit field in the 32-bit IFA Header and the 256-bit per-hop metadata stack is laid out so that hardware timestampers can fill it at line rate.
 
 | Header / Stack Row | Bit Width (`Total`) | Exact Bit Fields & Widths (`draft-kumar-ippm-ifa-08`) | Operational Meaning in AI Fabrics |
 |---|---|---|---|
@@ -252,9 +276,11 @@ Every bit field of the 32-bit IFA Header and the 256-bit per-hop IFA Metadata St
 | **Stack Row 7** | `32` bits (`4` B) | `Opaque Data 2 High (Reserved)` (`16` bits) \| `Opaque Data 2 Low (Reserved)` (`16` bits) | Vendor/deployment-extensible telemetry word `2`. |
 | **Stack Row 8** | `32` bits (`4` B) | `Opaque Data 3 (Reserved)` (`32` bits) | Vendor/deployment-extensible telemetry word `3`. |
 
+Scan the table to see what each row lets you learn. Rows 1 through 3 identify the device, the queue, and the ports. Rows 4 and 5 hold the timing you need for latency work.
+
 ### 3.3 IFA MTU budget, residence-time math, and architectural constraints
 
-If an operator enables In-Band Flow Analyzer on a fabric that already sends frames near the 9,000-byte limit, the added stack can exceed the switch MTU. Every IFA packet adds 8 fixed bytes plus 32 bytes per fabric hop. Each hop records its exact nanosecond residence time as egress timestamp minus ingress timestamp.
+Suppose you turn on In-Band Flow Analyzer on a fabric that already sends frames near the 9,000-byte limit. The added stack can push frames past the switch MTU. Every IFA packet adds 8 fixed bytes, plus 32 bytes for each fabric hop. Each hop also records its own residence time, which is the egress timestamp minus the ingress timestamp.
 
 ```text
 \text{Overhead}_{\text{IFA}}(H) = 4\text{ B} + 4\text{ B} + 32\text{ B} \times H = 8 + 32H\text{ bytes}
@@ -263,6 +289,8 @@ If an operator enables In-Band Flow Analyzer on a fabric that already sends fram
 ```text
 \text{ResidenceTime}_i = t_{\text{tx},i} - t_{\text{rx},i}, \qquad \text{HopLatency}_i = \text{ResidenceTime}_i + t_{\text{wire},i}
 ```
+
+The first formula gives the overhead. The second gives the time spent at each hop. The worked block applies both to a three-stage and a five-stage fabric.
 
 ```text
 IFA Byte Overhead and Per-Hop Residence Time Calculations (ADC Ch. 11):
@@ -279,10 +307,9 @@ IFA Byte Overhead and Per-Hop Residence Time Calculations (ADC Ch. 11):
    - An 8,900-byte storage jumbo frame grows to 8,900 + 168 = 9,068 bytes (> 9,000-byte MTU!), requiring switch ports >= 9,216-byte MTU
 ```
 
-Three architectural rules govern every production IFA deployment.
-- Explicit Congestion Notification must be enabled on egress ports because a switch only populates the two-bit Congestion field in Row 2 when ECN marking is active.
-- Switches within the same leaf or spine tier must share homogeneous hardware timestamp precision so nanosecond residence times remain directly comparable across hops.
-- While IFA multicast handling remains limited in general enterprise networks, AI backend fabrics rely overwhelmingly on unicast RDMA Queue Pairs, making IFA ideal for training collectives.
+Suppose you are sizing this for a real fabric, and you want to know whether your switches can carry it. Work through the three-stage example first. The overhead is 104 bytes, and the middle spine accounts for almost all of the delay, at 14,400 ns out of 15,750 ns of residence. The five-stage example shows the other side of the budget: its 168 bytes push a jumbo frame over 9,000.
+
+Three rules govern every production IFA deployment. Explicit Congestion Notification must be enabled on egress ports, because a switch fills the two-bit Congestion field only when ECN marking is active. Switches in the same tier must share homogeneous hardware timestamp precision, so their residence times stay directly comparable across hops. IFA multicast handling is still limited in general enterprise networks. AI backend fabrics rely mostly on unicast RDMA Queue Pairs, which makes IFA a good fit for training collectives.
 
 ---
 
@@ -290,7 +317,9 @@ Three architectural rules govern every production IFA deployment.
 
 ### 4.1 InfiniBand counter semantics: state, cumulative totals, rates, and PortXmitWait
 
-During a training slowdown, operators often replace a healthy optical cable. A cumulative error counter is non-zero, or ignore a dying link because its state reads `Active`. Effective InfiniBand telemetry covers five metric families: port health, capacity, congestion, subnet management, and application correlation. It strictly distinguishes instantaneous state, cumulative counters since boot, and counter rates or deltas over a measurement window.
+Suppose you are on call during a training slowdown, for example when a job that ran fine last week now crawls. It is tempting to swap a cable that looks suspicious. You may see a non-zero error counter and assume the link is dying. Or you may ignore a failing link because its state reads `Active`. Both reactions are common, and both can waste a shift. Good InfiniBand telemetry covers five metric families: port health, capacity, congestion, subnet management, and application correlation.
+
+Keep three kinds of reading apart. The instantaneous state tells you what the port is doing now. The cumulative counters tell you the totals since boot. The rates or deltas over a measurement window tell you how fast something is changing. Keep those three apart, and most misdiagnoses disappear.
 
 | InfiniBand Signal / Scenario | Counter Evidence (`perfquery` / `iblinkinfo` / `ib_write_lat`) | Rate / Ratio Calculation | Operational Classification & Action |
 |---|---|---|---|
@@ -302,9 +331,11 @@ During a training slowdown, operators often replace a healthy optical cable. A c
 | **6. Static Spine Uplink Imbalance** (`V8` Ch. 6 & Lab 03, `ports 5–6` vs `7–8`) | `PortXmitData` `4`-octet word deltas over `10 s`: `5,368,709,120` words (`21,474,836,480` B) on `port 5` vs `268,435,456` words (`1,073,741,824` B) on `port 7` | Multiply words by `4` bytes: `171.7987 Gbps` on `port 5` vs `8.5899 Gbps` on `port 7` = **`20.0:1` (`20.0x`) imbalance** | Static destination-based LFT pinning elephant flows onto `ports 5–6`; enable Adaptive Routing (`AR`) and verify `ar_sl_mask`. |
 | **7. Oversubscribed Leaf Cut & Tail Latency** (`V8` Ch. 6, 10, 11, 12 & Lab 02) | `16 x 400G = 6,400G` down vs `8 x 400G = 3,200G` up (`2:1` cut vs `32`-port `16+16` nonblocking leaf for `512` GPUs); `ib_write_lat` `2` B `1,000` iters; HCA `MT4129` `FW 28.39.2048` `node_guid 08c0:eb03:00f1:a2c3` `max_qp 262144` `max_qp_wr 32768` `max_sge 30` `Base lid: 12` `SM lid: 1` `Rate: 400` | Cross-rack `ib_write_bw` drops `397.62 -> 201.18 Gbps` (`1.9764x`), doubling `2 GB` AllReduce `40 -> 80 ms` (`40.0 -> 80.0 ms`); `ib_write_lat` typical `1.58 vs 1.55 us` (`1.0194x`), `p99` `2.90 vs 1.71 us` (`1.6959x`), `p99.9` **`5.77 vs 1.98 us` (`2.9141x`)**; shared VL inference `p99` jumps **`1.8 ms -> 14.2 ms` (`7.8889x`)** vs **`3.1 ms`** on isolated SL/VL | Median latency (`1.58 vs 1.55 us`) hides tail stalls; always gate acceptance on `p99`/`p99.9` latency, `1:1` nonblocking leaf radix, and separated training/storage/inference Virtual Lanes. |
 
+Read each row as one question. Is the counter moving now, is it moving fast, or is it simply old history? The last column gives the action that the evidence supports.
+
 ### 4.2 RoCEv2 ECN, CNP, PFC pause trees, FEC corruption, and multi-rail skew
 
-On lossless RoCEv2 Ethernet fabrics, operators frequently misdiagnose a downstream receiver bottleneck or a degraded copper cable as a switch congestion-control bug. When an upstream switch port shows high Priority Flow Control pause counts or rising ECN marks, blindly tuning switch WRED thresholds makes the outage worse. Correlating switch `gNMI` and `ethtool -S` counters with host `mlx5` hardware counters cleanly separates six operational states.
+On a lossless RoCEv2 Ethernet fabric, a downstream receiver bottleneck or a degraded copper cable can look like a switch congestion-control bug. When an upstream switch port shows high Priority Flow Control pause counts or rising ECN marks, the instinct is to tune the switch WRED thresholds. Blind tuning often makes the outage worse. Correlating switch `gNMI` and `ethtool -S` counters with host `mlx5` hardware counters separates six operational states cleanly.
 
 | RoCEv2 / Host Telemetry Signature | Counter Delta Evidence (`ethtool -S` / `gNMI` / `mlx5`) | Diagnostic Classification | Required Operational Action |
 |---|---|---|---|
@@ -315,9 +346,11 @@ On lossless RoCEv2 Ethernet fabrics, operators frequently misdiagnose a downstre
 | **5. Physical `FEC` / `CRC` Corruption** | `swp17` (`60 s`): `fec_corrected_blocks = 41,200`, **`fec_uncorrected_blocks = 3`**, and **`rx_crc_errors = 3`** alongside secondary `rx_ecn_marked_prio3 = 1,850` (ranks `48–55`, `DAC-2m` serial `ABC123`) | **`PHYSICAL_FEC_CRC_CORRUPTION` (`PAGE`)** | `3` uncorrectable FEC codewords produced `3` exact CRC frame drops, triggering RDMA retries (`RETRY_EXC_ERR`) that inflate ECN secondarily. Replace cable/optic (`ABC123`) first. |
 | **6. Lossless Queue Drops & Rail Skew** | `swp19` WJH `Tail drop (queue full) = 18,402` (`trust pcp` instead of `trust dscp` dumping `DSCP 46` into lossy `prio 0`); or `8`-rail node with `1` rail at `98.0 Gbps` (`1x` lane fallback) vs `7` rails at `392.0 Gbps` (**`max/min = 4.00x` skew**, vs `1.026x` balanced or `1.3754x` warn `> 1.30`); or `Lab 04` wrong rail `-d mlx5_1` (`156.0 Gbps` in `8.2 s`, `24` `RETRY_EXC_ERR`s, `rx_ecn_marked_prio3 = 142` vs `392.0 Gbps` in `2.1 s` on `mlx5_0`, `2.5128x` slower, `3.9048x` duration) | **`LOSSLESS_QUEUE_BUFFER_DROP` / `CRITICAL_RAIL_SKEW` (`PAGE`)** | Fix `DSCP -> TC3` QoS trust, reseat/replace the `1x`-degraded cable when `max/min > 1.30` (warn) or `> 1.50` (page/ticket with active load `>= 40.0 Gbps` / `5e9 B/s`), and bind ranks to local `PIX` `mlx5` rails. |
 
+As you work down the table, you move from a healthy loop to a physical fault. The last row bundles two different problems, so read it with care.
+
 ### 4.3 Streaming telemetry ingestion scale and Prometheus cardinality control
 
-High-resolution switch telemetry can crash a time-series database in minutes if an engineer attaches per-flow 5-tuple labels to Prometheus metrics. Every unique combination of metric name and label values creates a persistent time series in memory. Prometheus labels must remain strictly bounded to topological inventory dimensions such as device, interface, queue, role, rack, rail, and tenant. Per-flow 5-tuple records belong in dedicated columnar `sFlow` or `IPFIX` stores.
+High-resolution switch telemetry can overwhelm a time-series database within minutes. That happens when someone attaches per-flow 5-tuple labels to Prometheus metrics. Every unique combination of metric name and label values creates a persistent time series in memory. Keep Prometheus labels to topology inventory dimensions such as device, interface, queue, role, rack, rail, and tenant. Store per-flow 5-tuple records in a columnar `sFlow` or `IPFIX` store instead.
 
 ```text
 Streaming Telemetry Scale and Cardinality Calculation (1,000-Switch Fabric):
@@ -332,13 +365,15 @@ Streaming Telemetry Scale and Cardinality Calculation (1,000-Switch Fabric):
   6,400,000 x 500.0 = 3,200,000,000 (3.2 billion / 3.2B) active series -> TSDB Out-Of-Memory (OOM) fault
 ```
 
+The block shows the cost. Adding 500 flow labels per port turns 6,400,000 series into 3,200,000,000 series, which is enough to run the database out of memory. Before you add any label to a metric, count how many distinct values it can take.
+
 ---
 
 ## 5. Closed-loop correlation, corrective actions, and autonomous AI fabrics
 
 ### 5.1 Four-tier decision hierarchy and worst-case operational mitigations
 
-Collecting terabytes of streaming gNMI, In-Band Flow Analyzer, sFlow, IPFIX, UFM, and DCGM telemetry never lowers Job Completion Time on its own. The platform must translate those signals into timely corrective actions. Congestion in an AI fabric unfolds in nanoseconds to microseconds, whereas cluster job orchestration operates across seconds to hours. Production corrective decisions are therefore stratified across four control loops.
+Collecting terabytes of streaming gNMI, In-Band Flow Analyzer, sFlow, IPFIX, UFM, and DCGM telemetry does not lower Job Completion Time on its own. Telemetry helps only when the platform turns those signals into timely corrective actions. Congestion in an AI fabric unfolds over nanoseconds to microseconds. Job orchestration, by contrast, works on seconds to hours. Corrective decisions are therefore split across four control loops.
 
 ```mermaid
 flowchart TB
@@ -352,6 +387,8 @@ flowchart TB
     Slow -->|"Updates QoS/AR Policy, Routing<br/>Planes & Job Placement"| Fast
 ```
 
+Each loop has its own speed and its own decision maker. The fast loops act on their own, and the slower loops change the policy that the fast loops follow.
+
 | Control Loop Tier | Timescale | Decision Maker | Concrete Corrective Actions (`ADC` Ch. 11 & `V8` Ch. 9) |
 |---|---|---|---|
 | **1. Individual Switch Hop** | Nanoseconds to microseconds | Switch ASIC (`Spectrum-4`, `Tomahawk 5`, `Quantum-2/X800`) | Marks IP ECN bits (`11` `CE`), emits hop-local PFC `XOFF`/`XON` (`0x8808`), re-steers flowlets or packets across DLB/GLB/AR (`SHIELD` on link down), or trims payloads (UEC packet trimming / SFC). |
@@ -359,15 +396,17 @@ flowchart TB
 | **3. Monitoring & AI/LLM Platform** | Seconds to minutes | Fabric controller (`UFM`, `NetQ`, `Prometheus` + `Alertmanager` webhook, LLM pattern engine) | Correlates stored historical telemetry patterns with tagged past remediations and their effectiveness; predicts recurring congestion or optic failure (`+10%` biweekly growth or `45.5x` BER acceleration); triggers allow-listed runbooks such as BGP-DPF traffic shifts or cordoning a degraded rail. |
 | **4. Worst-Case Escalation (Human / Scheduler)** | Minutes to hours | On-call SRE / Cluster Scheduler (`Slurm` / `Kubernetes`) | When real-time telemetry reports severe fabric-wide frame loss, PFC `XOFF` storms across all spine/leaf queues, elevated latency, and rising ECN marks that stall GPU training: **(a) Shut down or fence the server/port at the origin of the congestion**; **(b) Cordon the faulty node and restart the training job from the latest checkpoint at the scheduler level**; or **(c) Evacuate the workload to a secondary data center / pod with healthy network capacity and restart the jobs there.** |
 
+As you read the table from top to bottom, notice where your own fabric would fall. The top rows react in nanoseconds, and the bottom row is a human decision that can take hours. The worst-case row lists three escalation options, so you know what to reach for when the fast loops cannot contain the damage.
+
 ### 5.2 Why telemetry cannot rescue a broken capacity design
 
-Operators often hope that tighter ECN watermarks or faster streaming telemetry intervals will cure chronic collective stalls on an under-provisioned cluster. Telemetry and minor runtime traffic engineering can never compensate for a fundamentally flawed network capacity plan. If a fabric was built with an undersized leaf-to-spine uplink ratio, static 5-tuple ECMP hashing, or sub-grade optics, telemetry only confirms the pain.
+Operators often hope that tighter ECN watermarks or faster telemetry intervals will cure chronic collective stalls. On an under-provisioned cluster, they will not. Telemetry and small runtime traffic changes cannot make up for a flawed capacity plan. If the design has an undersized leaf-to-spine ratio, static 5-tuple ECMP hashing, or sub-grade optics, telemetry only confirms the pain.
 
-When a 512-GPU pod uses a 2:1 oversubscribed leaf cut instead of a 32-port nonblocking leaf, cross-rack bandwidth drops nearly in half. AllReduce step time then doubles across the cluster. Similarly, static routing that pins elephant flows at a twenty-to-one uplink imbalance or failing optics will trigger constant ECN marks and pause storms. No threshold adjustment will eliminate those stalls until physical bisection bandwidth, load-balancing mode, and optical links are fixed.
+Take the 512-GPU example. A pod built on a 2:1 oversubscribed leaf cut, instead of a 32-port nonblocking leaf, sees cross-rack bandwidth drop by nearly half. AllReduce step time then doubles across the cluster. Static routing that pins elephant flows at a twenty-to-one uplink imbalance has the same effect, and so do failing optics. No threshold change removes those stalls until you fix the physical bisection bandwidth, the load-balancing mode, and the optical links.
 
-Benchmarking results also guide architecture and operations. They expose bottlenecks such as network congestion or storage latency. They show whether a design choice worked as planned. They also show where a hardware or software upgrade will pay off.
+Benchmarking results also guide architecture and operations. They expose bottlenecks such as network congestion or storage latency. They show whether a design choice worked as planned, and they show where a hardware or software upgrade will pay off.
 
-Continuous benchmarking turns these results into routine decisions about scaling and tuning. Start with one benchmark that you can repeat, then compare every change against it.
+Continuous benchmarking turns those results into routine decisions about scaling and tuning. Start with one benchmark you can repeat, and then compare every change against it. You will know quickly whether a change helped.
 
 ---
 
@@ -477,6 +516,8 @@ groups:
 
 ## How it fails
 
+Most of the failures in this chapter look harmless on a status page. Each row below starts from a symptom you might see on a dashboard and works back to the cause. Read the symptom first, then check the counter evidence before you change anything.
+
 | Failure Mode | Observable Symptom | Root-Cause Diagnosis (`Telemetry` & Counter Evidence) | Production Remediation |
 |---|---|---|---|
 | **1. "The Fabric Failed Slowly" (`45.5x` Symbol Error Acceleration)** | Multi-day training JCT degrades while every port stays `State: Active` and `LinkUp` on status dashboards | `perfquery <switch-lid> 12` shows `SymbolErrorCounter` climbing `Day 1: 4 -> Day 4: 890 (+886, 295.33/day) -> Day 7: 41,200 (+40,310, 13,436.67/day, 45.50x acceleration)` with `LinkDownedCounter: 0 -> 3 -> 11` | Alert on counter rate and acceleration rather than static `Active` state; inspect `mlxlink -c -m`, fence the port (`ibportstate <lid> 12 disable`), and replace the transceiver/cable. |
@@ -486,15 +527,21 @@ groups:
 | **5. Uncorrectable Physical `FEC`/`CRC` Errors Masked as `ECN` Congestion** | Rank `48–55` collective stalls and `rx_ecn_marked_prio3` rises by `+1,850` on leaf port `swp17` | `ethtool -S swp17` shows `fec_corrected_blocks = 41,200`, **`fec_uncorrected_blocks = 3`**, and **`rx_crc_errors = 3`**; `3` corrupted frames triggered RDMA retries that inflated ECN secondarily | Join `swp17` to cable inventory (`DAC-2m` serial `ABC123`) and replace the cable before touching switch ECN/PFC thresholds. |
 | **6. Multi-Rail Bandwidth Skew (`4.00x`) or `5`-Tuple Cardinality Explosion** | Either `1` rail runs at `98.0 Gbps` (`1x` lane fallback) while `7` rails run at `392.0 Gbps` (`max/min = 4.00x`), or Prometheus OOM-crashes after enabling flow telemetry | `evaluate_rail_bandwidth_skew` catches `max/min = 4.00x > 1.50` (`CRITICAL_RAIL_SKEW`); `estimate_telemetry_scale_and_cardinality` shows adding `500` 5-tuples/port multiplies `6,400,000` series by `500x` to `3,200,000,000` series | Alert on `max/min > 1.30` (warn) / `> 1.50` (page when max rate `>= 40 Gbps`) to reseat degraded `1x` cables; strip 5-tuple labels from Prometheus and send flow records to `IPFIX`/`sFlow` stores. |
 
+Notice how several rows warn you to hold off on a fix, so you can avoid the trap yourself. Check the counter evidence first, because the wrong fix here can make the outage longer.
+
 ---
 
 ## Hands-on lab
 
-This chapter's deterministic verification lab (`code/part12/ai_network_telemetry_kpis.py` and `code/part12/ai_network_telemetry_kpis_lab.py`) runs locally using the Python standard library on a Nebius GPU node or workstation. It executes 31 self-checks validating every KPI equation, MLPerf rule, IFA header and stack layout, InfiniBand `perfquery` delta classification, RoCEv2 correlation, and telemetry cardinality calculation.
+This chapter includes a lab that checks its own math. The lab lives in `code/part12/ai_network_telemetry_kpis.py` and `code/part12/ai_network_telemetry_kpis_lab.py`, so you can read the code next to the results. It runs locally on a Nebius GPU node or a workstation, and it uses only the Python standard library. The 31 self-checks cover every KPI equation, the MLPerf rules, the IFA header and stack layouts, the `perfquery` delta classification, RoCEv2 correlation, and the telemetry cardinality math.
+
+Run the lab with the command below.
 
 ```bash
 python3 -B code/part12/ai_network_telemetry_kpis_lab.py
 ```
+
+A passing run looks like the output below. Every line should say PASS, and the summary should report zero failures.
 
 ```text
 === Chapter 12.22 Lab: AI Network Telemetry and KPIs ===
@@ -533,27 +580,35 @@ python3 -B code/part12/ai_network_telemetry_kpis_lab.py
 Summary: 31 passed, 0 failed
 ```
 
+If any line says FAIL, do not trust the numbers in this chapter until you find the mismatch.
+
 ---
 
 ## Common first mistakes
 
-- **Relying on slow SNMP polling or median latency to certify an AI fabric:** Collective microbursts occur in microseconds. Operators must stream per-queue gNMI watermarks, deploy IFA nanosecond probes, and gate RDMA verification on p99 and p99.9 tail latency plus bandwidth spread.
-- **Alerting on raw cumulative counter values. Running `perfquery -R` during an incident:** A static non-zero counter over active traffic is historical scar tissue. Whereas a low counter accelerating across consecutive windows indicates a dying link. Resetting shared counters destroys multi-operator incident evidence.
-- **Replacing optical cables when `PortXmitWait`. `rx_pfc_prio3` is high but physical error deltas are zero:** Clean symbol error and uncorrected FEC deltas prove the physical layer is intact. The port is merely experiencing lossless credit or pause backpressure from a downstream bottleneck.
-- **Assuming IFA congestion bits work without ECN. Ignoring IFA byte overhead near the 9,000-byte MTU:** The two-bit Congestion field in Row 2 of the IFA metadata stack requires ECN enabled on the egress port. A five-stage Clos IFA trace adds 168 bytes that can push jumbo frames over 9,000 bytes.
-- **Attaching per-flow 5-tuple labels to Prometheus metrics:** Multiplying millions of switch-port. Queue series by hundreds of active flows per port creates billions of time series that crash Prometheus. Flow tuples belong in sFlow or IPFIX stores.
-- **Using telemetry tuning as a substitute for proper capacity planning:** No amount of ECN. DCQCN threshold tuning will fix a two-to-one oversubscribed leaf when cross-rack AllReduce demands nonblocking bisection bandwidth.
+These are the errors that come up most often on AI fabrics. Each one looks reasonable at first glance, which is why it keeps happening.
+
+- You rely on slow SNMP polling or median latency to certify an AI fabric. Collective microbursts last microseconds. You need per-queue gNMI watermarks, IFA nanosecond probes, and acceptance gates on p99 and p99.9 tail latency plus bandwidth spread.
+- You alert on raw cumulative counter values, or you run `perfquery -R` during an incident. A static non-zero counter over active traffic is historical scar tissue. A low counter that accelerates across consecutive windows points to a dying link. Resetting shared counters also destroys evidence that other operators may need.
+- You replace optical cables when `PortXmitWait` or `rx_pfc_prio3` is high but the physical error deltas are zero. Clean symbol error and uncorrected FEC deltas show the physical layer is intact. The port is experiencing lossless credit or pause backpressure from a downstream bottleneck.
+- You assume IFA congestion bits work without ECN, or you ignore IFA byte overhead near the 9,000-byte MTU. The two-bit Congestion field in Row 2 needs ECN enabled on the egress port. A five-stage Clos IFA trace adds 168 bytes, which can push jumbo frames past 9,000 bytes.
+- You attach per-flow 5-tuple labels to Prometheus metrics. Multiplying millions of switch-port queue series by hundreds of active flows per port creates billions of series that can crash Prometheus. Keep flow tuples in sFlow or IPFIX stores.
+- You use telemetry tuning as a substitute for capacity planning. No amount of ECN or DCQCN threshold tuning fixes a two-to-one oversubscribed leaf when cross-rack AllReduce needs nonblocking bisection bandwidth.
+
+If you fix only one habit from this list, start with the counter rule. Measure deltas over an active window before you touch the hardware.
 
 ---
 
 ## Exercises
 
-1. **Exercise 1 — JCT Communication Fraction & Collective Tail-Latency Amplification:** Using `compute_jct_and_tail_latency_impact`. The input parameters below, calculate the ideal step time, communication fraction, and total Job Completion Time in hours. Then compute the degraded step time, communication fraction, degraded JCT, slowdown ratio, and wasted GPU-hours under the spine microburst.
-2. **Exercise 2 — Strong vs Weak Scaling Efficiency & PUE / FLOPS/Watt:** Using `compute_strong_and_weak_scaling`. `compute_power_and_efficiency_kpis` on the parameters below, compute the strong speedup, strong efficiency, and weak efficiency. Then calculate PUE, GFLOPS per watt, TPW, and QPW for the Scalable Unit.
-3. **Exercise 3 — In-Band Flow Analyzer Byte Overhead & Per-Hop Residence Time:** Using `analyze_ifa_flow_trace` on the three-stage trace below. Compute the fixed IFA header bytes, metadata stack bytes, total overhead, and tagged packet size. Then compute each hop's residence time, total residence time, wire time, end-to-end latency, bottleneck device ID, and export protocol.
-4. **Exercise 4 — InfiniBand `perfquery` Counter Delta Triage:** Using `evaluate_infiniband_port_telemetry` and `evaluate_symbol_error_acceleration`, classify the health state, alert severity, and remediation for the four switch ports below. Then compute the daily symbol error rate across both three-day windows and the acceleration factor for switch port 12.
-5. **Exercise 5 — RoCEv2 ECN / CNP / PFC Storm & Physical FEC Correlation:** Using `evaluate_rocev2_congestion_and_fec`. Classify the operational state and required fix for the five RoCEv2 interfaces specified in the input block below.
-6. **Exercise 6 — Multi-Rail Bandwidth Skew & Streaming Telemetry Cardinality:** Using `evaluate_rail_bandwidth_skew`. `estimate_telemetry_scale_and_cardinality` on the parameters below, compute the `max/min` rail skew ratio and explain the `> 5e9` bytes/s PromQL floor clause. Then calculate the active time-series count and sample ingestion rate with and without 5-tuple flow labels.
+Work the exercises in order, because later ones reuse ideas from earlier ones. You will need your own notes for each answer. Each one names the function to use from the chapter's code. The inputs for all six are collected in the block at the end of this section, so use them exactly as written.
+
+1. Exercise 1 asks how a tail stall inflates Job Completion Time. Use `compute_jct_and_tail_latency_impact` with the inputs below. First calculate the ideal step time, the communication fraction, and the total Job Completion Time in hours. Then compute the degraded step time, the communication fraction, the degraded JCT, the slowdown ratio, and the wasted GPU-hours under the spine microburst.
+2. Exercise 2 compares scaling efficiency with power efficiency. Use `compute_strong_and_weak_scaling` and `compute_power_and_efficiency_kpis` with the parameters below. Find the strong speedup, the strong efficiency, and the weak efficiency. Then calculate PUE, GFLOPS per watt, TPW, and QPW for the Scalable Unit.
+3. Exercise 3 traces one packet through a three-stage fabric. Use `analyze_ifa_flow_trace` on the trace below. Compute the fixed IFA header bytes, the metadata stack bytes, the total overhead, and the tagged packet size. Then find each hop's residence time, the total residence time, the wire time, the end-to-end latency, the bottleneck device ID, and the export protocol.
+4. Exercise 4 triages four InfiniBand switch ports. Use `evaluate_infiniband_port_telemetry` and `evaluate_symbol_error_acceleration` to classify the health state, alert severity, and remediation for each port below. Then compute the daily symbol error rate across both three-day windows, and the acceleration factor for switch port 12.
+5. Exercise 5 triages five RoCEv2 interfaces. Use `evaluate_rocev2_congestion_and_fec`, and classify the operational state and required fix for each interface in the input block.
+6. Exercise 6 looks at rail skew and telemetry cardinality, the kind of check you would run before you turn on flow labels. Use `evaluate_rail_bandwidth_skew` and `estimate_telemetry_scale_and_cardinality` with the parameters below. Compute the max/min rail skew ratio and explain the `> 5e9` bytes/s PromQL floor clause. Then calculate the active time-series count and the sample ingestion rate, with and without the 5-tuple flow labels.
 
 ```text
 Exercise Input Parameters and Telemetry Evidence Reference:
@@ -572,14 +627,16 @@ Exercise Input Parameters and Telemetry Evidence Reference:
 
 ## Interview angles
 
-1. **"How do you benchmark an AI data center fairly. Training, inference, and storage, and why is JCT the master KPI for training while tail latency governs inference?"**.
-   - *Strong answer:* Use MLCommons MLPerf suites—MLPerf Training, MLPerf Inference, and MLPerf Storage—packaged with MLCube. Submit in the Closed division for direct hardware comparisons or the Open division for algorithmic innovation. For training, end-to-end time-to-train or Job Completion Time is the master KPI because synchronous barriers lock all GPUs to the slowest rank at the p99.9 tail. For data center inference, LoadGen tests both the Offline batch scenario and the Poisson Server scenario under a strict p99 latency SLA. Always pair these results with PUE, FLOPS per watt, and strong or weak scaling efficiency.
+These questions come up when people talk about AI network performance. Each one is followed by a strong answer you could say out loud.
 
-2. **"Why is traditional SNMP polling inadequate for AI fabrics, and how does In-Band Flow Analyzer isolate a microsecond spine queue stall?"**.
-   - *Strong answer:* Collective microbursts fill switch buffers in microseconds or nanoseconds, which multi-minute SNMP polling averages to zero. Synthetic TWAMP or `ping` probes also hash onto different ECMP paths than live RoCEv2 elephant flows. Combine gNMI streaming telemetry and Mirror-on-Drop with In-Band Flow Analyzer. In IFA, the ingress Initiator leaf clones a live packet. Inserts a 4-byte IFA Header after L3 plus a 4-byte Metadata Header and a 32-byte per-hop Metadata Stack after L4. Each Transit spine stamps its Device ID, Queue ID, ECN congestion mark, and nanosecond residence time before the Terminator leaf exports the stack via IPFIX.
+1. **"How do you benchmark an AI data center fairly? Training, inference, and storage, and why is JCT the master KPI for training while tail latency governs inference?"**
+   - *Strong answer:* Start with the MLPerf suites for Training, Inference, and Storage, packaged with MLCube. Submit to the Closed division for direct hardware comparisons, or to the Open division to show algorithmic innovation. For training, time-to-train, or Job Completion Time, is the master KPI, because synchronous barriers lock every GPU to the slowest rank at the p99.9 tail. For data center inference, LoadGen tests both the Offline batch scenario and the Poisson Server scenario under a strict p99 latency SLA. Always pair these results with PUE, FLOPS per watt, and scaling efficiency.
 
-3. **"During a training slowdown, one engineer points to `SymbolErrorCounter = 12,034` on InfiniBand switch port 9. While another points to `PortXmitWait = 998,432` on port 3 and high RX and TX PFC counters on RoCE switch port `swp3`. Walk through your diagnosis."**.
-   - *Strong answer:* Always separate state, cumulative counters, and counter deltas over an active traffic window. On InfiniBand port 9, a static `SymbolErrorCounter` delta of zero over active traffic is historical scar tissue, so do not replace the cable and never run `perfquery -R`. On InfiniBand port 3, high `PortXmitWait` with zero symbol errors proves pure lossless credit backpressure from downstream. Similarly, on RoCE `swp3`, simultaneous RX and TX PFC increments prove `swp3` is a middle pause relay hop rather than the downstream receiver root.
+2. **"Why is traditional SNMP polling inadequate for AI fabrics, and how does In-Band Flow Analyzer isolate a microsecond spine queue stall?"**
+   - *Strong answer:* Collective microbursts fill switch buffers in microseconds or nanoseconds. Multi-minute SNMP polling averages them away, so the spike never shows up. Synthetic TWAMP or `ping` probes also hash onto different ECMP paths than live RoCEv2 elephant flows. Combine gNMI streaming telemetry and Mirror-on-Drop with In-Band Flow Analyzer. The ingress Initiator leaf clones a live packet. It adds a 4-byte IFA Header after L3, and a 4-byte Metadata Header plus a 32-byte per-hop Metadata Stack after L4. Each Transit spine stamps its Device ID, Queue ID, ECN congestion mark, and nanosecond residence time. The Terminator leaf then exports the stack over IPFIX.
+
+3. **"During a training slowdown, one engineer points to `SymbolErrorCounter = 12,034` on InfiniBand switch port 9. Another points to `PortXmitWait = 998,432` on port 3 and high RX and TX PFC counters on RoCE switch port `swp3`. Walk through your diagnosis."**
+   - *Strong answer:* Always separate state, cumulative counters, and deltas over an active traffic window. On InfiniBand port 9, a `SymbolErrorCounter` delta of zero over active traffic is historical scar tissue. So do not replace the cable, and never run `perfquery -R`. On port 3, high `PortXmitWait` with zero symbol errors points to pure lossless credit backpressure from downstream. On RoCE `swp3`, RX and TX PFC counters rising together show that `swp3` is a middle pause relay hop, not the receiver root.
 
 ---
 
@@ -587,13 +644,13 @@ Exercise Input Parameters and Telemetry Evidence Reference:
 
 <details><summary>**1. Why is Job Completion Time the primary KPI for AI training fabrics, and what factors govern it?**</summary>
 
-Job Completion Time measures the total end-to-end wall-clock time required to train a model from initial data loading to target accuracy. It is governed by GPU compute throughput, network collective bandwidth and tail latency, storage ingestion throughput, parallelism efficiency, and numeric precision byte width. Because synchronous collectives lock all ranks to the slowest rail, a tail stall on a single link inflates step time across every GPU in the job.
+Job Completion Time is the total wall-clock time to train a model, from the first data load to the target accuracy. GPU compute throughput, network collective bandwidth and tail latency, storage ingestion throughput, parallelism efficiency, and numeric precision all shape it. Synchronous collectives lock every rank to the slowest rail. So if you see a tail stall on one link, expect the step time to stretch for every GPU in the job. For example, a 3.0x stall on a 1,024-GPU run stretches each step.
 </details>
 
 <details><summary>**2. How do the six core AI data center KPIs differ between training and inference workloads?**</summary>
 
-- Training prioritizes sustained throughput, strong and weak multi-node scalability, collective tail latency, convergence accuracy, and energy efficiency in FLOPS per watt and PUE.
-- Inference prioritizes per-query and p99 tail latency alongside query throughput and queries per second per watt while meeting strict model accuracy targets.
+- Training cares most about sustained throughput, strong and weak multi-node scalability, collective tail latency, convergence accuracy, and energy efficiency in FLOPS per watt and PUE.
+- Inference cares most about per-query and p99 tail latency, query throughput, and queries per second per watt, while it still meets strict model accuracy targets.
 </details>
 
 <details><summary>**3. Define Power Usage Effectiveness and FLOPS/Watt, and state their values for the 549.6 kW facility / 458.0 kW IT example.**</summary>
@@ -609,106 +666,108 @@ Job Completion Time measures the total end-to-end wall-clock time required to tr
 
 <details><summary>**4. What is the difference between strong scaling and weak scaling in AI cluster benchmarking?**</summary>
 
-- Strong scaling keeps the total problem size constant as GPU count increases by scale factor `k`. Measuring speedup `S_{\text{strong}} = T(N_0) / T(N)` and efficiency `E_{\text{strong}} = S_{\text{strong}} / k`.
-- Weak scaling keeps the problem size per GPU constant as total work and GPU count both grow by `k`, measuring efficiency `E_{\text{weak}} = T_{\text{weak}}(N_0) / T_{\text{weak}}(N)`.
+- Strong scaling keeps the total problem size constant as GPU count increases by scale factor `k`. You measure speedup `S_{\text{strong}} = T(N_0) / T(N)` and efficiency `E_{\text{strong}} = S_{\text{strong}} / k`.
+- Weak scaling keeps the problem size per GPU constant as total work and GPU count both grow by `k`. You measure efficiency `E_{\text{weak}} = T_{\text{weak}}(N_0) / T_{\text{weak}}(N)`.
 </details>
 
 <details><summary>**5. What are the three main initiatives of MLCommons and the three MLPerf benchmarking suites?**</summary>
 
-- Initiatives: MLPerf for standardized benchmarks, MLCube for portable container-based execution across platforms, and PAIR for academic and nonprofit access to data and compute.
-- Benchmarking suites: MLPerf Training for AI. HPC time-to-train, MLPerf Inference across Data Center, Edge, Mobile, and Tiny domains, and MLPerf Storage for training data ingest bandwidth.
+- Initiatives: MLPerf for standardized benchmarks, MLCube for portable container-based execution, and PAIR for academic and nonprofit access to data and compute.
+- Benchmarking suites: MLPerf Training for AI and HPC time-to-train, MLPerf Inference across Data Center, Edge, Mobile, and Tiny domains, and MLPerf Storage for training data ingest bandwidth.
 </details>
 
 <details><summary>**6. What is the MLCommons AI model tripod, and how do the Closed and Open divisions differ?**</summary>
 
-The AI model tripod consists of the specific AI model, the standard dataset, and the modification rules and evaluation metrics.
-- Closed division: Requires the exact same model, dataset, and reference-equivalent implementation for apples-to-apples hardware and fabric comparisons.
-- Open division: Allows different model architectures or training methods to showcase algorithmic innovation while reaching the same target quality metric.
+Imagine a benchmark result you need to trust. The AI model tripod is the specific AI model, the standard dataset, and the modification rules and evaluation metrics.
+- Closed division: Requires the same model, dataset, and reference-equivalent implementation, so hardware and fabric comparisons stay fair.
+- Open division: Allows different model architectures or training methods to show algorithmic innovation, as long as the system reaches the same target quality metric.
 </details>
 
 <details><summary>**7. How does the MLPerf Inference LoadGen utility evaluate Data Center systems across the Offline and Server scenarios?**</summary>
 
 - Offline scenario: Delivers all queries to the System Under Test at once to measure maximum batch throughput.
-- Server scenario: Streams queries following a Poisson arrival distribution to measure maximum sustainable QPS under a strict p99 tail-latency constraint. Paired with a mandatory accuracy validation test.
+- Server scenario: Streams queries on a Poisson arrival distribution to measure maximum sustainable QPS under a strict p99 tail-latency constraint. It is paired with a mandatory accuracy validation test.
 </details>
 
 <details><summary>**8. Why does legacy SNMP polling fail to detect AI network congestion, and how do gNMI sample and on_change modes improve upon it?**</summary>
 
-Synchronized collective microbursts fill and drain switch buffers in microseconds or nanoseconds, which multi-minute SNMP polling averages away while taxing the switch CPU. Streaming gNMI uses a push model directly from the forwarding engine in two modes. The `sample` mode exports periodic sub-ten-second queue counters, while `on_change` sends immediate state transitions without redundant polling.
+Synchronized collective microbursts fill and drain switch buffers in microseconds or nanoseconds. Multi-minute SNMP polling averages them away, and it adds load to the switch CPU. Streaming gNMI pushes data from the forwarding engine instead, in two modes. The `sample` mode sends periodic sub-ten-second queue counters. The `on_change` mode sends a state transition as soon as it happens, without polling.
 </details>
 
 <details><summary>**9. How do historical network monitoring and real-time network monitoring complement each other in an AI data center?**</summary>
 
-- Historical monitoring tracks multi-week utilization trends to predict uplink breaches weeks in advance and tags past remediations to train AI operational models.
-- Real-time monitoring streams sub-second flow tail latency, per-queue drops, elephant-flow collisions, and flow entropy scores to trigger immediate traffic steering or fault isolation.
+- Historical monitoring tracks multi-week utilization trends, so it can predict uplink breaches weeks in advance. It also tags past remediations to train AI operational models.
+- Real-time monitoring streams sub-second flow tail latency, per-queue drops, elephant-flow collisions, and flow entropy scores, so it can trigger immediate traffic steering or fault isolation.
 </details>
 
 <details><summary>**10. What is the difference between Mirror-on-Demand and Mirror-on-Drop, and why are not all packet drops bad?**</summary>
 
-- Mirror-on-Demand clones selected live user flows to an analyzer for protocol inspection.
-- Mirror-on-Drop clones packets at the moment the switch ASIC discards them along with the hardware drop reason. It separates benign defensive drops—such as ASIC CoPP dropping excessive ARP floods—from lossless queue tail drops.
+- Mirror-on-Demand clones selected live user flows to an analyzer, so you can inspect their protocols.
+- Mirror-on-Drop clones packets at the moment the switch ASIC discards them, along with the hardware drop reason. That separates benign defensive drops, such as ASIC CoPP dropping excessive ARP floods, from lossless queue tail drops.
 </details>
 
 <details><summary>**11. What are the three node roles in an In-Band Flow Analyzer deployment, and why does IFA beat synthetic TWAMP probes for elephant flows?**</summary>
 
-- Initiator leaf: Clones a sampled packet from the live GPU flow. It preserves the exact L2, L3, and L4 headers and takes the identical ECMP or DLB path, then pushes the IFA headers and Hop 1 metadata.
-- Transit spine: Appends a 32-byte per-hop metadata entry recording Device ID, port numbers, Queue ID, RX timestamp, nanosecond residence time, and ECN congestion bits.
-- Terminator leaf: Drops the cloned probe payload and exports the multi-hop metadata stack via IPFIX to the collector.
+- Initiator leaf: Clones a sampled packet from the live GPU flow, keeps the exact L2, L3, and L4 headers, and follows the same ECMP or DLB path. It then pushes the IFA headers and the Hop 1 metadata.
+- Transit spine: Adds a 32-byte per-hop metadata entry that records the Device ID, port numbers, Queue ID, RX timestamp, nanosecond residence time, and ECN congestion bits.
+- Terminator leaf: Drops the cloned probe payload and exports the multi-hop metadata stack through IPFIX to the collector.
+
+Section 3.1 explains the reason for the second part. The clone follows the live flow's path, while a synthetic probe may hash onto an idle link.
 </details>
 
 <details><summary>**12. What is the exact header sequence of an IFA-encapsulated packet, and what are the bit fields of the 32-bit IFA Header?**</summary>
 
-- Packet sequence: L2 Header, L3 Header, 4-byte IFA Header, L4 Header, 4-byte IFA Metadata Header, 32-byte-per-hop IFA Metadata Stack, and Original Payload.
+- Packet sequence: L2 Header, L3 Header, 4-byte IFA Header, L4 Header, 4-byte IFA Metadata Header, a 32-byte-per-hop IFA Metadata Stack, and the original payload.
 - IFA Header bit fields: 4-bit IFA Version, 4-bit Global Namespace, 8-bit Protocol Type, 8-bit Flags, and 8-bit Max Length.
 </details>
 
 <details><summary>**13. What are the 8 rows of the 256-bit IFA Metadata Stack, and how much byte overhead does IFA add in a 3-stage vs 5-stage Clos fabric?**</summary>
 
-The eight 32-bit rows per hop record Local Namespace. Device ID, and IP TTL in Row 1; Egress Port Speed. Congestion, Queue ID, and RX Timestamp Seconds in Row 2. Egress and Ingress Port Numbers in Row 3; RX Timestamp Nanoseconds in Row 4. Residence Time Nanoseconds in Row 5; and Opaque Data words in Rows 6 through 8. Total byte overhead is `8 + 32H` bytes, which equals 104 bytes for a 3-stage Clos and 168 bytes for a 5-stage Clos.
+Each hop's eight 32-bit rows hold the following. Row 1 holds Local Namespace, Device ID, and IP TTL. Row 2 holds Egress Port Speed, Congestion, Queue ID, and RX Timestamp Seconds. Row 3 holds the Egress and Ingress Port Numbers. Row 4 holds RX Timestamp Nanoseconds, and Row 5 holds Residence Time Nanoseconds. Rows 6 through 8 hold the Opaque Data words. Total byte overhead is `8 + 32H` bytes, which equals 104 bytes for a 3-stage Clos and 168 bytes for a 5-stage Clos.
 </details>
 
 <details><summary>**14. In IFA, how is per-hop residence time calculated, and what two hardware prerequisites are required for accurate analysis?**</summary>
 
 - Calculation: Per-hop residence time is `\text{ResidenceTime}_i = t_{\text{tx},i} - t_{\text{rx},i}` in nanoseconds, and total hop latency adds wire propagation time.
-- Prerequisites: Explicit Congestion Notification must be enabled on the egress port to populate the two-bit Congestion field. And switches in the same tier must share homogeneous hardware timestamp precision.
+- Prerequisites: Explicit Congestion Notification must be enabled on the egress port, so the two-bit Congestion field gets populated. Switches in the same tier must also share homogeneous hardware timestamp precision.
 </details>
 
 <details><summary>**15. How do you distinguish state, cumulative counters, and rates/deltas in InfiniBand telemetry?**</summary>
 
-- State: Instantaneous condition such as `State: Active`, `Physical state: LinkUp`, lane width, link rate, Base LID, and SM LID.
-- Cumulative counters: Monotonic totals since boot or reset such as `SymbolErrorCounter`, `PortXmitWait`, and `PortXmitData` in 4-octet words.
+- State: The instantaneous condition, such as `State: Active`, `Physical state: LinkUp`, lane width, link rate, Base LID, and SM LID.
+- Cumulative counters: Monotonic totals since boot or reset, such as `SymbolErrorCounter`, `PortXmitWait`, and `PortXmitData` in 4-octet words.
 - Rates and deltas: The change over an observation window divided by elapsed time, plus rate acceleration across consecutive windows.
 </details>
 
 <details><summary>**16. On an InfiniBand switch, port 3 shows high PortXmitWait while SymbolErrorCounter and LinkDownedCounter are zero. What is happening and what should you do?**</summary>
 
-The physical cable and transceiver on port 3 are healthy because symbol errors and link-down deltas are zero. High `PortXmitWait` means the port had packets ready to send but zero downstream 64-byte CBFC Virtual Lane credits. Operators must not replace the cable and should instead trace the `PortXmitWait` gradient downstream to the congestion root.
+The cable and transceiver on port 3 are healthy, since symbol errors and link-down deltas are zero. High `PortXmitWait` means the port had packets ready to send but no downstream 64-byte CBFC Virtual Lane credits. Do not replace the cable. Instead, follow the `PortXmitWait` gradient downstream to find the congestion root.
 </details>
 
 <details><summary>**17. Why must you multiply perfquery PortXmitData and PortRcvData deltas by 4, and what did the port 5 vs port 7 word counts prove?**</summary>
 
-InfiniBand `PortXmitData` and `PortRcvData` counters increment in 4-octet words rather than single bytes. Multiplying by 4 converts the word deltas into byte totals, proving a twenty-to-one spine uplink imbalance between port 5 and port 7 caused by static LFT routing.
+InfiniBand `PortXmitData` and `PortRcvData` count in 4-octet words, not single bytes. Multiply the deltas by 4 to get byte totals. Doing so shows a twenty-to-one imbalance between port 5 and port 7, caused by static LFT routing.
 </details>
 
 <details><summary>**18. How do you distinguish a healthy DCQCN closed loop, a PFC pause relay hop, a broken CNP feedback loop, and a weak RP response in RoCEv2 telemetry?**</summary>
 
-- Healthy `PROACTIVE_ECN_CONTAINED`: Switch ECN marks rise alongside matching NIC CNP counters with zero or minimal PFC pauses and zero drops.
-- `PFC_PAUSE_RELAY_HOP`: Both `rx_pfc_prio3` and `tx_pfc_prio3` climb together on a middle switch hop, requiring operators to trace downstream in the `rx_pfc` direction until `tx_pfc == 0`.
+- Healthy `PROACTIVE_ECN_CONTAINED`: Switch ECN marks rise alongside matching NIC CNP counters, with zero or minimal PFC pauses and zero drops.
+- `PFC_PAUSE_RELAY_HOP`: Both `rx_pfc_prio3` and `tx_pfc_prio3` climb together on a middle switch hop. Trace downstream in the `rx_pfc` direction until `tx_pfc == 0`.
 - `BROKEN_DCQCN_CNP_LOOP`: Switch ECN marks climb while NIC `np_cnp_handled` stays zero.
-- `WEAK_RP_OR_PFC_STORM`: High ECN marks and matching CNPs occur, yet sender rate stays near line rate and RX PFC pauses surge.
+- `WEAK_RP_OR_PFC_STORM`: High ECN marks and matching CNPs occur, yet the sender rate stays near line rate and RX PFC pauses surge.
 </details>
 
 <details><summary>**19. Why does the PromQL RailBandwidthSkew alert combine max/min > 1.5 with max > 5e9, and how many series does a 1,000-switch fabric export with vs without 500 5-tuple flow labels per port?**</summary>
 
-- Rail skew floor: Idle nodes carrying small background traffic can easily exceed the skew ratio without any fault. So gating on `max > 5e9` bytes/s ensures the alert fires only during active collective load.
-- Cardinality math: 1,000 switches with 64 ports. 100 counters per port export 6,400,000 active series, which explodes 500x to 3,200,000,000 series if 500 per-flow 5-tuple labels per port are attached.
+- Rail skew floor: Idle nodes carrying small background traffic can exceed the skew ratio without any fault. Gating on `max > 5e9` bytes/s means the alert fires only during active collective load.
+- Cardinality math: 1,000 switches with 64 ports and 100 counters per port export 6,400,000 active series. That explodes 500x to 3,200,000,000 series if 500 per-flow 5-tuple labels per port are attached.
 </details>
 
 <details><summary>**20. What are the three worst-case real-time corrective decisions when an AI fabric suffers severe uncontained congestion?**</summary>
 
-- Shut down or fence the server or switch port at the origin of the congestion using switch telemetry.
+- Shut down or fence the server or switch port at the origin of the congestion, using switch telemetry.
 - Cordon the faulty node and restart the training process from the latest checkpoint at the cluster scheduler level.
-- Evacuate the workload to another data center or pod with healthy network capacity and restart the jobs there.
+- Evacuate the workload to another data center or pod with healthy network capacity, and restart the jobs there.
 </details>
 
 ---
@@ -740,4 +799,3 @@ The primary book chapters (`PFLOPS`, `Samples/Watt` / `samples/s/Watt` / `QPS/Wa
 3. Verification notes:
    - Hardware CLI commands and YAML configs are marked (untested here); all mathematical models and 31 self-checks are verified by python3 -B code/part12/ai_network_telemetry_kpis_lab.py.
 ```
-
