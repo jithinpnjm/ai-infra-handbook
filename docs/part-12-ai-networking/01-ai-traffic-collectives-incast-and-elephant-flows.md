@@ -24,9 +24,9 @@ lab_venue: "Nebius GPU"
 
 ## Why this matters for AI infrastructure
 
-An expensive GPU cluster can sit idle for over ninety-six percent of wall-clock time if the network delays gradient synchronization. Platform engineers feel this pain when a massive training run crawls at single-digit efficiency while burning millions of dollars in compute budget. Every GPU in a synchronous job must wait at a barrier until the slowest peer finishes exchanging tensors across the fabric. Therefore, the wires, switches, and network protocols govern the effective utilization of every accelerator in the data center.
+Picture an expensive GPU cluster that sits idle. The training run crawls at single-digit efficiency while burning millions of dollars in compute budget. An expensive GPU cluster can sit idle for over ninety-six percent of wall-clock time if the network delays gradient synchronization. Every GPU in a synchronous job waits at a barrier until the slowest peer finishes exchanging tensors across the fabric. The wires, switches, and network protocols therefore govern the effective utilization of every accelerator in the data center.
 
-Traditional cloud networks are built for millions of independent web requests that tolerate occasional packet drops and millisecond queueing delays. Distributed AI training behaves like a single giant supercomputer where thousands of GPUs burst at line rate at the exact same microsecond. If a single packet from one GPU hits a congested switch buffer or drops on the wire, every other GPU halts. Understanding collective traffic, elephant flows, and incast is the foundation for every hardware and protocol choice in Part 12.
+Traditional cloud networks are built for millions of independent web requests. Those requests tolerate occasional packet drops and millisecond queueing delays. Distributed AI training works more like a single giant supercomputer. Thousands of GPUs burst at line rate at the same microsecond. If one packet from one GPU hits a congested switch buffer or drops on the wire, every other GPU halts. Understanding collective traffic, elephant flows, and incast is the foundation for every hardware and protocol choice in Part 12.
 
 | Failure Pattern | Cluster Scenario | Mathematical Breakdown | Operational Consequence |
 |---|---|---|---|
@@ -34,13 +34,12 @@ Traditional cloud networks are built for millions of independent web requests th
 | **Tail Latency Amplification** | `100`-thread or `10`-task parallel job where `99%` finish in `1 ms` (`0.001 s`) and `1` straggler `taskX` takes `1,000 ms` (`1.0 s`) | Fast GPUs wait `999 ms` at the barrier; parallel `JCT` is `1,000 ms` vs `1 ms` ideal | Parallel step Job Completion Time inflates by `1,000x` due to a single congested flow |
 | **Low-Entropy Elephant Flows & Incast** | Synchronized east-west `RoCEv2` flows sharing `UDP` destination port `4791` | Static 5-tuple `ECMP` (`SLB`) hashes multiple `400 Gbps` or `800 Gbps` flows onto one spine link | Triggers switch buffer exhaustion, synchronous incast, and `ProcessGroupNCCL` watchdog timeouts |
 
+Start with the Compute-to-Sync Trap row, because it shows how a small compute share turns into idle GPUs. When you read the other rows, ask yourself which of them your own job could trigger.
+
 :::tip In one minute
 Data Parallelism synchronizes gradients across the scale-out fabric via AllReduce or AllGather and ReduceScatter. Pipeline Parallelism passes activations and gradients across stages using point-to-point Send and Recv operations. Tensor Parallelism splits layers vertically inside a node or rack and requires high-bandwidth NVLink and NVSwitch links.
 
-In a parallel training step, Job Completion Time is governed by the slowest single worker. A single straggler flow stretches the wait time for every healthy GPU in the job. Ring collectives scale linearly in hop count, whereas Tree collectives scale logarithmically and SHARP or NVLS switches aggregate vectors in silicon.
-
-RoCEv2 encapsulates the InfiniBand Base Transport Header inside UDP port 4791, creating low-entropy elephant flows and flowlets. Modern AI Ethernet fabrics combine a four-tier load-balancing pyramid with reactive DCQCN congestion control and non-blocking fat-tree topologies.
-:::
+Read the callout as the summary of this chapter. Each of its three claims is developed in the sections below.
 
 ```text
 Chapter 12.1 Key Reference Numbers at a Glance:
@@ -58,17 +57,20 @@ Chapter 12.1 Key Reference Numbers at a Glance:
       1:1 non-blocking fat-tree: 32 Leaf + 16 Spine 64-port switches for 128 servers / 1,024 GPUs
 ```
 
+When you check this block, look for the three numbers that matter most. They are the parallelism bandwidth, the tail latency, and the fat-tree sizing.
+
 ---
 
 ## Prerequisites and outcomes
 
-**Prerequisites:** You should understand data center BGP, leaf-spine Clos topologies, and basic RDMA transport concepts from Part 2. You should also be familiar with multi-GPU server designs and SuperPOD compute and storage fabrics from Part 9. Finally, review intra-node PCIe, NVLink, NVSwitch, and hardware benchmark workflows from Part 10.
+Before you start, make sure the groundwork from earlier parts is in place. You should understand data center BGP, leaf-spine Clos topologies, and basic RDMA transport concepts from Part 2. Familiarity with multi-GPU server designs and SuperPOD compute and storage fabrics from Part 9 helps too. Finally, review intra-node PCIe, NVLink, NVSwitch, and hardware benchmark workflows from Part 10.
 
-**Outcomes:** After completing this chapter, you will be able to:
+When you finish this chapter, you will be able to do four things:
+
 1. Map Data Parallelism, Pipeline Parallelism, Tensor Parallelism, and disaggregated inference to their collective primitives and point-to-point transfer engines.
-2. Calculate Job Completion Time, tail-latency amplification, and synchronous cluster efficiency with and without compute-communication overlap.
-3. Compute per-GPU byte volumes and step counts for Ring, Tree, CollNet, PAT, and SHARP or NVLS collectives. You will also diagnose multi-node communication pitfalls.
-4. Explain RDMA queue mechanics and RoCEv2 packet headers, and diagnose elephant flows and incast. You will also compare the four-tier load-balancing pyramid and DCQCN, and size a non-blocking fat-tree fabric.
+2. Calculate Job Completion Time, tail-latency amplification, and synchronous cluster efficiency, with and without compute-communication overlap.
+3. Compute per-GPU byte volumes and step counts for Ring, Tree, CollNet, PAT, and SHARP or NVLS collectives. You will also learn to diagnose multi-node communication pitfalls.
+4. Explain RDMA queue mechanics and RoCEv2 packet headers, and diagnose elephant flows and incast. You will also compare the four-tier load-balancing pyramid with DCQCN, and size a non-blocking fat-tree fabric.
 
 ```text
 Chapter Cross-Reference Map and Benchmark Targets:
@@ -78,19 +80,21 @@ Chapter Cross-Reference Map and Benchmark Targets:
   - Fabric sizing target: 2-tier 1:1 non-blocking rail-optimized fat-tree for 128 servers / 1,024 GPUs
 ```
 
+Use the cross-reference map as your guide. It tells you which earlier chapters to revisit before a section that depends on them.
+
 ---
 
 ## 1. AI Workloads, 3D Parallelism, Job Completion Time (JCT), and Tail Latency
 
 ### 1.1 The AI model lifecycle and the training iteration loop
 
-When engineers design a network for web services, they optimize for independent client requests flowing north-south between users and servers. Applying that same mental model to an AI cluster causes immediate congestion when petabyte-scale training pipelines start running. Infrastructure teams feel this mismatch when storage ingest stalls or east-west collective synchronization saturates spine switches. A generative AI factory operates as a continuous five-stage lifecycle. It moves massive datasets through preprocessing, training, deployment, retrieval, and retraining.
+Suppose you design a network the way you would for a web service. Users send independent requests north-south, between clients and servers, and that model works well. Carry the same design onto an AI cluster, though, and congestion appears as soon as petabyte-scale training pipelines start running. Storage ingest stalls, or east-west collective synchronization saturates the spine switches. To see why, look at the whole lifecycle. A generative AI factory runs as a continuous five-stage cycle that moves massive datasets through preprocessing, training, deployment, retrieval, and retraining.
 
-During the first stage, raw text, image, audio, and video datasets are collected, deduplicated, cleaned, labeled, and tokenized at petabyte scale. The second stage runs iterative model training across batches of tokens using supervised, unsupervised, or reinforcement learning. Once trained, the third stage deploys the model for live inference, measured by Time to First Token and inter-token latency. At inference time, the fourth stage uses Retrieval-Augmented Generation and the Model Context Protocol to fetch live context. Finally, the fifth stage monitors production accuracy and drift, feeding new data back into training.
+Each stage hands its output to the next. In the first stage, raw text, image, audio, and video datasets are collected, deduplicated, cleaned, labeled, and tokenized at petabyte scale. The second stage trains the model over batches of tokens, using supervised, unsupervised, or reinforcement learning. Once the model is trained, the third stage serves it for live inference, which you measure with Time to First Token and inter-token latency. During inference, the fourth stage uses Retrieval-Augmented Generation and the Model Context Protocol to fetch live context. The fifth stage watches production accuracy and drift, and it feeds new data back into training.
 
-Inside the model training stage, every single iteration executes a strict seven-step loop. First, the dataset is partitioned into mini-batches across the participating GPUs. Second, forward propagation multiplies inputs by layer weights, adds biases, and applies activation functions to generate predictions. Third, the loss function calculates the error between the predicted output and the ground-truth target. Fourth, backward propagation uses the chain rule to propagate errors backward through the network layers.
+Inside the training stage, each iteration runs the same seven-step loop. First, the dataset is split into mini-batches across the participating GPUs. Second, forward propagation multiplies inputs by layer weights, adds biases, and applies activation functions to produce predictions. Third, the loss function measures the error between the prediction and the ground-truth target. Fourth, backward propagation uses the chain rule to push that error back through the network layers.
 
-Fifth, each GPU computes local gradient tensors that represent the weight updates for its local mini-batch. Sixth, before weights update, all GPUs synchronize gradients over the network using a collective library like NCCL, RCCL, Gloo, or UCC. Seventh, every GPU applies the synchronized gradients through its optimizer. That step updates model parameters identically and starts the next iteration.
+The last three steps are where the network enters the picture. Fifth, each GPU computes local gradient tensors, which are the weight updates for its own mini-batch. Sixth, before any weight changes, all GPUs synchronize their gradients over the network using a collective library such as NCCL, RCCL, Gloo, or UCC. Seventh, every GPU applies the synchronized gradients through its optimizer, so the model parameters update identically and the next iteration begins.
 
 ```mermaid
 flowchart TB
@@ -103,6 +107,10 @@ flowchart TB
   M --> D
 ```
 
+The diagram shows the same loop at a higher level. The collective sync box sits between two training steps, so every iteration pays for it.
+
+The table below lists each stage with the network and compute load it creates. Read it as a map of where traffic and stress come from.
+
 | Stage | Primary Operation | Network & Compute Impact |
 |---|---|---|
 | **1. Data Gathering & Preprocessing** | Collect, deduplicate, label, and tokenize petabyte-scale datasets | High storage ingest throughput from object/file stores |
@@ -112,13 +120,17 @@ flowchart TB
 | **5. `RAG` / `MCP` Context** | Retrieve up-to-date facts from vector/relational stores at inference time | Low-latency frontend/storage queries prior to prompt prefill |
 | **6. Monitoring & Retraining** | Track production accuracy and feed new data back into training | Closes the continuous AI factory feedback loop |
 
+Notice stage 3 in particular. It is the stage where the network decides how fast training runs, because tail latency directly governs JCT.
+
 ### 1.2 3D Parallelism: Data, Pipeline, and Tensor Parallelism traffic profiles
 
-A frontier model with hundreds of billions of parameters cannot fit into the memory of a single GPU. If an engineer places the wrong parallelism dimension across slow inter-node links, communication overhead stalls every forward and backward pass. Training teams experience this mistake when scaling a job from one server to two servers cuts per-GPU throughput ten-fold. Modern clusters combine Data Parallelism, Pipeline Parallelism, and Tensor Parallelism into 3D Parallelism. Each dimension demands a specific interconnect tier.
+Picture a training team that scales a job from one server to two and watches per-GPU throughput fall ten-fold. Often the cause is a parallelism dimension placed across the wrong link. A frontier model with hundreds of billions of parameters cannot fit into a single GPU's memory, so the model has to be split. If the wrong dimension crosses slow inter-node links, communication overhead stalls every forward and backward pass. Modern clusters therefore combine Data Parallelism, Pipeline Parallelism, and Tensor Parallelism into 3D Parallelism. Each dimension needs its own tier of interconnect.
 
-Data Parallelism splits the training dataset into mini-batches across GPUs that hold full replicas under DDP or shards under FSDP. During or after backward propagation, Data Parallelism fires periodic, high-bandwidth AllReduce or AllGather and ReduceScatter bursts across the scale-out fabric. Pipeline Parallelism slices neural network layers horizontally across sequential GPUs or nodes. It sends activations forward and gradients backward using point-to-point Send and Recv operations. This sequential handoff makes it sensitive to pipeline bubble latency.
+Data Parallelism comes first. It splits the training dataset into mini-batches across GPUs that hold full replicas of the model under DDP, or shards of it under FSDP. During or after backward propagation, those GPUs fire periodic, high-bandwidth bursts of AllReduce or AllGather and ReduceScatter across the scale-out fabric. Pipeline Parallelism works differently. It slices the layers horizontally across sequential GPUs or nodes, then sends activations forward and gradients backward with point-to-point Send and Recv operations. Because each stage waits for the one before it, the handoff is sensitive to pipeline bubble latency.
 
-Tensor Parallelism slices individual weight matrices vertically across GPUs so they compute every layer together. It runs AllReduce, AllGather, and ReduceScatter inside every single transformer layer during both forward and backward passes. Therefore, it requires sub-microsecond latency and massive bandwidth. It must stay inside the scale-up NVLink and NVSwitch domain, because running it across PCIe or scale-out Ethernet creates a severe bottleneck. At ultrascale, clusters also add Expert Parallelism and Context Parallelism to partition mixture-of-experts layers and long token sequences.
+Tensor Parallelism slices individual weight matrices vertically, so every GPU computes a piece of every layer. It runs AllReduce, AllGather, and ReduceScatter inside every transformer layer, during both the forward and the backward pass. That frequency is why it needs sub-microsecond latency and massive bandwidth, and why it has to stay inside the scale-up NVLink and NVSwitch domain. Run it across PCIe or scale-out Ethernet and it becomes a severe bottleneck. At ultrascale, clusters add Expert Parallelism and Context Parallelism as well, to partition mixture-of-experts layers and long token sequences.
+
+The table compares the three dimensions side by side. Use it as a lookup when you decide where each one should run.
 
 | Parallelism Dimension | What Is Partitioned | Primary Collective / Transfer Primitive | Target Interconnect Domain | Network Traffic Signature & Bottleneck |
 |---|---|---|---|---|
@@ -126,15 +138,19 @@ Tensor Parallelism slices individual weight matrices vertically across GPUs so t
 | **Pipeline Parallelism (`PP`)** | Neural network layers sliced **horizontally** across sequential GPUs or nodes (e.g., Layers `1–10` on GPU 1, `11–20` on GPU 2) | Point-to-point `Send` / `Recv` (or `NIXL` / `UCX` stage transfers; book also notes ring-style layer passing) | Scale-out fabric across nodes or intra-rack NVLink | Sequential activation handoffs forward (`GPU k -> GPU k+1`) and gradient handoffs in reverse; sensitive to pipeline bubble latency |
 | **Tensor Parallelism (`TP`)** | Individual layer weight matrices sliced **vertically** across GPUs within a server or rack | `AllReduce`, `AllGather`, and `ReduceScatter` inside **every** transformer layer (forward and backward) | Scale-up **`NVLink` / `NVSwitch`** (`900 GB/s` `H100`, `1,800 GB/s` `B200` / `NVL72`) | Ultra-frequent, sub-microsecond transfers; **catastrophically bottlenecks on `32–64 GB/s` `PCIe`** if run across non-NVLink PCIe cards (`L40S`) or across standard scale-out Ethernet |
 
+Look at the last column for Tensor Parallelism. On PCIe it becomes a catastrophic bottleneck, so it belongs on NVLink.
+
 ### 1.3 Job Completion Time (JCT), tail latency, and synchronous efficiency math
 
-In a traditional web service, a single slow database query affects only the one user waiting on that page load. In a synchronous AI training job, a single slow network packet halts every GPU in the cluster at the collective barrier. Cluster operators feel this pain directly because the North Star metric for AI infrastructure is Job Completion Time. Job Completion Time equals job end time minus job start time. Average network latency is almost irrelevant when every step is gated by the slowest rank.
+Consider a slow database query on a web page. It delays one user, and only that user waits. Now consider a slow network packet in a synchronous training job. It halts every GPU in the cluster at the collective barrier. Cluster operators feel this directly, because the North Star metric for AI infrastructure is Job Completion Time. Job Completion Time equals job end time minus job start time. When every step waits for the slowest rank, average network latency hardly matters.
 
-Tail latency measures the completion time of the slowest one percent, or one in a million, of flows. If ninety-nine percent of requests finish in under 100 milliseconds while one percent take seconds, tail latency is measured in seconds. Suppose a system experiences a slow stall only once in a million tasks. A distributed job that executes one million parallel tasks across a cluster will hit that stall on every single iteration.
+Tail latency measures how long the slowest one percent, or one in a million, of flows take to finish. Suppose ninety-nine percent of requests finish in under 100 milliseconds, while the remaining one percent take seconds. The tail is then measured in seconds. Now suppose a stall happens only once in a million tasks. A distributed job that runs one million parallel tasks across a cluster will hit that stall on every single iteration.
 
-Consider a job modeled in `compute_tail_latency_jct()` in `code/part12/ai_traffic_collectives.py` with ten tasks. Nine normal tasks take 1 millisecond each, and one straggler task takes 1 second. In serial execution, the ten tasks run one after another, so the straggler adds roughly 1 second to the total time. In parallel execution across ten or a hundred GPUs, all tasks launch simultaneously at time zero. Every healthy GPU finishes at 1 millisecond and then sits idle for 999 milliseconds waiting for the straggler.
+Here is the worked example. The job is modeled in `compute_tail_latency_jct()` in `code/part12/ai_traffic_collectives.py`, and it has ten tasks. Nine take 1 millisecond each, and one straggler takes 1 second. Run the tasks one after another, and the straggler adds roughly 1 second to the total. Launch all ten in parallel across ten or a hundred GPUs instead, and they all start at time zero. Each healthy GPU finishes at 1 millisecond, then sits idle for 999 milliseconds while it waits for the straggler.
 
-This barrier physics also explains why deep-buffer enterprise Ethernet switches fail in AI training clusters. Enterprise core switches use deep packet buffers to absorb bursty web traffic without dropping TCP connections. Those deep queues routinely delay packets by 10 milliseconds under load. If one GPU's collective packet sits in a deep switch buffer for 10 milliseconds, all ten thousand GPUs halt for 10 milliseconds. Trying to save money by running AI traffic on a shared enterprise VLAN with QoS queues still exposes collectives to microburst jitter.
+The same barrier explains why deep-buffer enterprise Ethernet switches cause trouble for AI training. Enterprise core switches use deep buffers so they can absorb bursty web traffic without dropping TCP connections. Under load, those deep queues routinely delay packets by 10 milliseconds. Now suppose one GPU's collective packet sits in such a buffer for 10 milliseconds. All ten thousand GPUs then halt for those 10 milliseconds. It is tempting to save money by running AI traffic on a shared enterprise VLAN with QoS queues. Even so, collectives stay exposed to microburst jitter.
+
+In symbols, the job completion time is the end time minus the start time.
 
 $$\text`{JCT}` = t_\{\text`{job\_end}`} - t_\{\text`{job\_start}`}$$
 
@@ -154,9 +170,11 @@ Tail Latency and Synchronous Cluster Efficiency Math (compute_tail_latency_jct &
      - Saving $2 Million on 500 H100 servers via a shared 400G enterprise VLAN with QoS fails under microburst jitter
 ```
 
+Read the first case as the serial run and the second as the parallel run. In the parallel run, the straggler alone sets the JCT.
+
 ### 1.4 Three ways a model learns, and the training loop in review
 
-Not every model learns the same way. The learning style decides what data the team must prepare before training starts. Three styles appear most often, and each one trains on a different kind of input.
+Models do not all learn the same way, and the style you pick decides what data you must prepare before training starts. Three styles come up most often, and each one trains on a different kind of input.
 
 | Learning style | What the model trains on | How it learns |
 |---|---|---|
@@ -164,7 +182,9 @@ Not every model learns the same way. The learning style decides what data the te
 | **Reinforcement** | Trial and error, with feedback in the form of rewards or penalties | Learns actions that maximize success |
 | **Unsupervised** | Unlabeled data | Must find hidden patterns in the data on its own |
 
-The training loop from section 1.1 is the same for all three styles. Training runs the data through the model in a forward pass to make predictions. It then compares those predictions with the expected outputs. Backward propagation uses the gradients to adjust the model's parameters. The team repeats this over many iterations, sometimes called epochs, and across large batches of data. The model gets more accurate a little on each pass.
+Whichever style you choose, the training loop from section 1.1 stays the same. The data runs through the model in a forward pass to produce predictions. Those predictions are then compared with the expected outputs. Backward propagation uses the gradients to adjust the model's parameters. You repeat this over many iterations, sometimes called epochs, and across large batches of data. The model gets a little more accurate on each pass.
+
+Before you size the network for a job, decide which parallelism dimensions it uses, because each one sets a different traffic pattern.
 
 ---
 
@@ -172,13 +192,15 @@ The training loop from section 1.1 is the same for all three styles. Training ru
 
 ### 2.1 Host TCP/IP vs RDMA and transport headers
 
-If you run distributed training over the standard Linux kernel TCP/IP stack, host CPU cores saturate long before links reach line rate. Infrastructure engineers see this bottleneck when a hundred-node cluster on 100 Gigabit Ethernet cards plateaus at 30 Gbps. Meanwhile, CPU interrupt queues peg at one hundred percent. Every kernel TCP message copies data into kernel socket buffers, computes software checksums, fires OS interrupts, and copies data across PCIe. At 400 or 800 Gbps, the host operating system simply cannot copy bytes fast enough.
+Imagine a hundred-node cluster with 100 Gigabit Ethernet cards that plateaus at 30 Gbps. The CPU interrupt queues sit at one hundred percent, and the links are nowhere near full. If you run distributed training over the standard Linux kernel TCP/IP stack, the host CPU cores saturate long before the links reach line rate. Every kernel TCP message copies data into kernel socket buffers, computes software checksums, fires OS interrupts, and copies data across PCIe. At 400 or 800 Gbps, the host operating system simply cannot copy bytes fast enough.
 
-Remote Direct Memory Access solves this bottleneck by bypassing the OS kernel and host CPU on both sender and receiver. With RDMA and GPUDirect RDMA, the NIC reads and writes application memory or GPU HBM directly across PCIe via `nvidia-peermem`. The application posts a Work Queue Element containing a virtual memory address, byte length, and memory keys. That descriptor goes through the Verbs API directly to the NIC hardware.
+Remote Direct Memory Access, or RDMA, solves this by bypassing the OS kernel and the host CPU on both the sender and the receiver. With RDMA and GPUDirect RDMA, the NIC reads and writes application memory or GPU HBM directly across PCIe, through `nvidia-peermem`. The application posts a Work Queue Element that holds a virtual memory address, a byte length, and memory keys. That descriptor goes through the Verbs API straight to the NIC hardware.
 
-The RDMA driver manages three hardware-backed queues on the network adapter. The Send Queue holds outbound work requests, and the Receive Queue holds pre-posted buffers for inbound messages. Together, a Send Queue and a Receive Queue form a Queue Pair. When the NIC hardware finishes transferring a request, it writes an entry to the Completion Queue. RDMA Read, RDMA Write, and Atomic operations are unidirectional one-sided verbs, whereas Send and Receive are bidirectional two-sided verbs.
+The RDMA driver manages three hardware-backed queues on the adapter. The Send Queue holds outbound work requests, and the Receive Queue holds pre-posted buffers for inbound messages. Together, a Send Queue and a Receive Queue form a Queue Pair. When the NIC finishes a request, it writes an entry to the Completion Queue. RDMA Read, RDMA Write, and Atomic operations are unidirectional, one-sided verbs. Send and Receive are bidirectional, two-sided verbs.
 
-Four transport protocols carry RDMA semantics across data center links. Native InfiniBand runs over a dedicated lossless fabric that uses link-layer credit flow control so switches never drop packets from buffer exhaustion. RoCEv1 encapsulates InfiniBand transport headers directly inside Ethernet Layer 2 frames, restricting it to a single broadcast domain. RoCEv2 wraps the InfiniBand Base Transport Header inside standard IP and UDP packets using destination port 4791. That UDP encapsulation makes it routable across Layer 3 spine-leaf networks. Finally, iWARP layers RDMA over TCP, which avoids lossless Ethernet requirements but adds latency and NIC complexity.
+Four transport protocols carry RDMA across data center links, and they make different trade-offs. Native InfiniBand runs on a dedicated lossless fabric that uses link-layer credit flow control, so switches never drop packets because a buffer is full. RoCEv1 places InfiniBand transport headers directly inside Ethernet Layer 2 frames, which limits it to a single broadcast domain. RoCEv2 wraps the InfiniBand Base Transport Header inside standard IP and UDP packets, using destination port 4791. That UDP wrapping makes it routable across Layer 3 spine-leaf networks. iWARP layers RDMA over TCP. It avoids the need for lossless Ethernet, but it adds latency and NIC complexity.
+
+The table compares each transport on its header stack and its operational properties. Read the RoCEv2 row closely, because it is the transport this chapter focuses on.
 
 | RDMA Dimension | Mechanism or Header Stack | Key Operational Properties |
 |---|---|---|
@@ -191,13 +213,13 @@ Four transport protocols carry RDMA semantics across data center links. Native I
 
 ### 2.2 Inside the RoCEv2 packet and the 11/13-step RDMA state machines
 
-When a network engineer captures traffic on a RoCEv2 fabric without a protocol dissector, every flow looks like opaque UDP traffic on port 4791. That outer encapsulation hides the queue pair identifiers, memory addresses, and sequence numbers that control reliability and congestion. To debug dropped packets, out-of-order delivery, or selective dynamic load balancing, you must inspect the InfiniBand headers behind the UDP header.
+When you capture traffic on a RoCEv2 fabric without a protocol dissector, every flow looks like opaque UDP traffic on port 4791. That outer wrapper hides the queue pair identifiers, memory addresses, and sequence numbers that control reliability and congestion. To debug dropped packets, out-of-order delivery, or selective dynamic load balancing, you must look inside the InfiniBand headers behind the UDP header.
 
-Every RoCEv2 frame sets its outer UDP destination port to 4791. That port tells the receiving NIC to parse the next bytes as an InfiniBand Base Transport Header. Meanwhile, the sender hashes the Queue Pair number into the outer UDP source port. Inside the Base Transport Header, the Opcode field identifies the exact RDMA operation, such as an RDMA Read request, response, or acknowledgement. The header also carries the Partition Key, the Destination Queue Pair number, an Acknowledge Request flag, and a 24-bit Packet Sequence Number. The receiving NIC uses that sequence number to detect missing or out-of-order packets over connectionless UDP.
+Every RoCEv2 frame sets its outer UDP destination port to 4791. That tells the receiving NIC to read the next bytes as an InfiniBand Base Transport Header. The sender hashes the Queue Pair number into the outer UDP source port. Inside the Base Transport Header, the Opcode field names the exact RDMA operation, such as an RDMA Read request, a response, or an acknowledgement. The header also carries the Partition Key, the Destination Queue Pair number, an Acknowledge Request flag, and a 24-bit Packet Sequence Number. The receiving NIC uses that sequence number to detect missing or out-of-order packets over connectionless UDP.
 
 Read a RoCEv2 frame from the outside in. The outermost layer is Ethernet, followed by IP and then UDP. A UDP destination port of 4791 tells the receiver that the next header is the InfiniBand Base Transport Header. That header carries the opcode, the destination queue pair, the packet sequence number, and the partition key. The partition key maps to a Layer 2 VLAN ID. The payload comes next, then a 32-bit end-to-end ICRC, and the Ethernet frame check sequence closes the frame.
 
-On RDMA Read and Write requests, an RDMA Extended Transport Header immediately follows the Base Transport Header. This extended header supplies the 64-bit remote Virtual Address, the Remote Key that authorizes memory access, and the DMA byte length. On acknowledgement frames, an ACK Extended Transport Header follows the Base Transport Header instead. It carries a Syndrome field that indicates an ACK or NACK alongside credit counts and the Message Sequence Number. Before any data frames cross the wire, the RDMA Connection Manager completes a three-step setup handshake and later closes with a four-step disconnect.
+On RDMA Read and Write requests, an RDMA Extended Transport Header follows the Base Transport Header. It supplies the 64-bit remote Virtual Address, the Remote Key that authorizes memory access, and the DMA byte length. Acknowledgement frames carry an ACK Extended Transport Header instead. Its Syndrome field indicates an ACK or a NACK, alongside credit counts and the Message Sequence Number. Before any data frames cross the wire, the RDMA Connection Manager completes a three-step setup handshake, and it closes the connection with a four-step disconnect.
 
 ```text
 RoCEv2 Inner Header Fields and Connection Manager State Machines (ADC Ch 1 Figs 1-11 to 1-16):
@@ -219,13 +241,13 @@ RoCEv2 Inner Header Fields and Connection Manager State Machines (ADC Ch 1 Figs 
 
 ### 2.3 Why AI traffic breaks traditional Ethernet: low entropy, elephant flows, flowlets, and incast
 
-In a traditional enterprise data center, thousands of servers talk to thousands of clients over short TCP connections with randomized source ports. Standard Equal-Cost Multi-Path routing hashes the five-tuple of each packet and spreads traffic evenly across all spine links. When you run a RoCEv2 GPU collective over that same static ECMP fabric, half of your spine links sit idle. Meanwhile, the other half suffer severe congestion and packet drops. Network operators see this failure as sudden latency spikes, PFC pause storms, and hung training jobs.
+In a traditional enterprise data center, thousands of servers talk to thousands of clients over short TCP connections with randomized source ports. Standard Equal-Cost Multi-Path routing hashes the five-tuple of each packet and spreads traffic evenly across the spine links. Now run a RoCEv2 GPU collective over that same static ECMP fabric. Half of the spine links sit idle, while the other half suffer severe congestion and packet drops. Network operators see this as sudden latency spikes, PFC pause storms, and hung training jobs.
 
-This breakdown happens because AI training traffic combines five adversarial properties on the Ethernet fabric. First, it has low entropy at Layer 3 because each GPU communicates repeatedly with a fixed peer in a ring or small subgroup. Second, it has low entropy at Layer 4 because every RoCEv2 packet uses UDP destination port 4791 and reuses long-lived source ports. A traditional switch hashing on the outer five-tuple sees only a handful of distinct combinations.
+The breakdown happens because AI training traffic combines five properties that work against the Ethernet fabric. First, it has low entropy at Layer 3, because each GPU talks repeatedly to a fixed peer in a ring or a small subgroup. Second, it has low entropy at Layer 4, because every RoCEv2 packet uses UDP destination port 4791 and reuses long-lived source ports. A traditional switch that hashes on the outer five-tuple sees only a handful of distinct combinations.
 
-Third, because standard switches do not inspect the inner InfiniBand Base Transport Header, distinct RDMA transfers collapse into the same hash bucket as flowlets. Simultaneous flowlets occur when concurrent Queue Pair transfers between the same two GPUs differ only inside the inner BTH fields. A traditional switch pins all of them onto the same physical uplink. Sequential flowlets occur when one job finishes between two GPUs and a second job immediately starts between the same pair. Identical outer headers trick the switch into pinning both jobs onto the same path.
+Third, standard switches do not inspect the inner InfiniBand Base Transport Header, so distinct RDMA transfers collapse into the same hash bucket as flowlets. Simultaneous flowlets appear when concurrent Queue Pair transfers between the same two GPUs differ only inside the inner BTH fields. A traditional switch pins all of them onto the same physical uplink. Sequential flowlets appear when one job finishes between two GPUs and a second job starts between the same pair right away. Identical outer headers then trick the switch into pinning both jobs onto one path.
 
-Fourth, every GPU NIC drives massive line-rate elephant flows at 400 Gbps or 800 Gbps for megabytes or gigabytes per step. Fifth, all ranks fire their collectives or storage checkpoints at the exact same microsecond. When multiple senders drive line-rate elephant flows toward a single egress switch port simultaneously, the arrival rate exceeds the port speed. That collision creates many-to-one incast that rapidly overflows shallow switch buffers.
+Consider what you would see on one congested port. Fourth, every GPU NIC drives massive line-rate elephant flows at 400 Gbps or 800 Gbps, for megabytes or gigabytes per step. Fifth, all ranks fire their collectives or storage checkpoints at the same microsecond. When several senders drive line-rate elephant flows toward a single egress switch port at once, the arrival rate exceeds the port speed. That collision creates many-to-one incast, which quickly overflows shallow switch buffers.
 
 ```mermaid
 flowchart TB
@@ -246,9 +268,11 @@ flowchart TB
 | **5. Reactive Defense** | **`DCQCN`** (`ECN = 11` + `CNP` with `IP ECN = 01` + link-level `PFC` pause) | Throttles offending sender NICs per-flow and pauses queues before any packet drops |
 | **6. Physical Topology** | `1:1` non-blocking rail-optimized fat-tree + isolated storage fabric | Eliminates bandwidth oversubscription and storage checkpoint buffer collisions |
 
+Each stage in the table feeds the next. Stage 3 is where the damage starts, and stages 4 to 6 are the defenses.
+
 ### 2.4 InfiniBand versus Ethernet for AI fabrics
 
-Teams often ask whether an AI cluster should use InfiniBand or Ethernet. The answer depends on what matters most: speed, latency, cost, power, or how many vendors you must mix. The table compares the two on the points that come up most often.
+Suppose you are asked to pick the fabric for a new cluster. Teams often ask whether an AI cluster should use InfiniBand or Ethernet. The answer depends on what matters most to you: speed, latency, cost, power, or how many vendors you need to mix. The table compares the two on the points that come up most often.
 
 | Characteristic | InfiniBand | Ethernet |
 |---|---|---|
@@ -261,9 +285,11 @@ Teams often ask whether an AI cluster should use InfiniBand or Ethernet. The ans
 | **Cost** | Higher cost and longer lead times | Lower cost and shorter lead times |
 | **Versatility** | Suited to certain fabrics, such as storage, HPC, and AI/ML | The most widely deployed technology. It runs in any environment if the right protocols are enabled. |
 
-The table shows the trade-off in plain terms. InfiniBand gives lower latency and lossless behavior, but it costs more and grows less easily. Ethernet is cheaper, open, and scales well, but it needs extra work to behave like a lossless fabric.
+The table shows the trade-off in plain terms. InfiniBand gives you lower latency and lossless behavior, but it costs more and grows less easily. Ethernet is cheaper, open, and scales well, but it needs extra work to behave like a lossless fabric.
 
 The three RDMA transports from section 1.2 can be compared the same way. InfiniBand offers low latency and lossless transport, but it is less scalable and more expensive. RoCEv2 runs RDMA over Ethernet using UDP and IP. It scales and fits existing Ethernet gear, but it needs careful congestion management. iWARP runs RDMA over TCP/IP. It is less popular, with higher latency and less adoption in AI and ML clusters.
+
+Before you choose a fabric, decide which of these trade-offs you can live with, because each one shapes the rest of the design.
 
 ---
 
@@ -271,13 +297,15 @@ The three RDMA transports from section 1.2 can be compared the same way. InfiniB
 
 ### 3.1 The four-tier load-balancing pyramid (SLB, DLB, GLB, sDLB)
 
-When two 400 Gbps elephant flows collide on a single leaf uplink under static hashing, the switch buffer fills in microseconds while neighboring uplinks sit empty. Waiting for reactive congestion control to throttle the senders still sacrifices half of your bisection bandwidth. To prevent hash collisions proactively before buffers fill, AI Ethernet switches progress up a four-tier load-balancing pyramid. That hierarchy is modeled in `LOAD_BALANCING_PYRAMID` in `code/part12/ai_traffic_collectives.py`.
+Picture two 400 Gbps elephant flows landing on the same leaf uplink under static hashing. The switch buffer fills in microseconds, while the neighboring uplinks sit empty. If you wait for reactive congestion control to throttle the senders, you still give up half of your bisection bandwidth. To prevent collisions before buffers fill, AI Ethernet switches climb a four-tier load-balancing pyramid. The hierarchy is modeled in `LOAD_BALANCING_PYRAMID` in `code/part12/ai_traffic_collectives.py`.
 
-At Level 1 of the pyramid, Static Load Balancing hashes only the outer five-tuple and is completely blind to link utilization. While static hashing guarantees zero packet reordering, low RoCEv2 entropy causes severe collisions that leave parallel links idle. At Level 2, Dynamic Load Balancing monitors real-time local member-link bandwidth and local egress queue depth on the leaf switch. It assigns new flows and reassigns existing flowlets when local link quality shifts, resolving leaf-uplink imbalance with minimal reordering.
+At Level 1, Static Load Balancing hashes only the outer five-tuple and is blind to link utilization. Static hashing guarantees zero packet reordering. Low RoCEv2 entropy, however, causes severe collisions that leave parallel links idle. At Level 2, Dynamic Load Balancing watches the real-time bandwidth of local member links and the local egress queue depth on the leaf switch. It assigns new flows and reassigns existing flowlets when local link quality shifts. That resolves leaf-uplink imbalance with minimal reordering.
 
-However, a leaf switch running local Dynamic Load Balancing cannot see congestion one hop downstream on a spine-to-leaf link. At Level 3, Global Load Balancing solves this blind spot by having spine switches advertise Next-to-Next-Hop downstream path quality back to upstream leaves. That visibility lets the upstream leaf route around downstream spine-to-leaf hotspots across the entire Clos fabric.
+A leaf switch running local Dynamic Load Balancing still cannot see congestion one hop downstream, on a spine-to-leaf link. Level 3, Global Load Balancing, closes that blind spot. Spine switches advertise Next-to-Next-Hop downstream path quality back to the upstream leaves. The upstream leaf can then route around downstream spine-to-leaf hotspots across the whole Clos fabric.
 
-At Level 4, the apex of the pyramid, Selective Dynamic Load Balancing performs deep packet inspection on the inner RoCEv2 InfiniBand Base Transport Header. By inspecting BTH Read and Write opcodes, the switch distinguishes control messages from massive RDMA elephant flows and sprays packets across all available paths. Because spraying packets across paths causes out-of-order arrivals, Level 4 relies on modern NICs such as ConnectX-7, ConnectX-8, and BlueField-3 to reorder sequence numbers in hardware. Switches can also apply round-robin flow pinning across outgoing interfaces so concurrent GPU rails never collide on the same uplink.
+Level 4, the apex, is Selective Dynamic Load Balancing. It inspects the inner RoCEv2 InfiniBand Base Transport Header and reads the Read and Write opcodes. That lets the switch tell control messages apart from massive RDMA elephant flows, and it sprays packets across every available path. Spraying causes out-of-order arrivals, so Level 4 relies on NICs such as ConnectX-7, ConnectX-8, and BlueField-3 to reorder sequence numbers in hardware. Switches can also apply round-robin flow pinning across outgoing interfaces, so concurrent GPU rails never collide on the same uplink.
+
+The table lists each level, what it looks at, and how suitable it is for AI training fabrics.
 
 | Pyramid Level | Code & Name | Path Selection Inputs | Reordering & Hardware Requirements | Suitability for AI Training Fabrics |
 |---:|---|---|---|---|
@@ -286,13 +314,15 @@ At Level 4, the apex of the pyramid, Selective Dynamic Load Balancing performs d
 | **3** | **`GLB`** — Global Load Balancing | Local link/buffer state **plus Next-to-Next-Hop (`NNH`) downstream path quality** advertised by spine switches | Low reordering; upstream leaf avoids downstream spine-to-leaf congestion hotspots | **High:** End-to-end congestion avoidance across multi-stage leaf-spine Clos fabrics |
 | **Level 4 (Apex)** | **`sDLB`** — Selective Dynamic Load Balancing | Deep inspection of **`RoCEv2` `IB BTH` Read/Write opcodes** to detect RDMA elephant flows and enable **per-packet spraying** | Requires destination NIC out-of-order **`PSN`** handling (supported on `ConnectX-6/7/8` and `BlueField-3`) | **Highest:** Near-`100%` bisection utilization for massive RDMA Read/Write elephant collectives |
 
+Level 1 is the one to avoid on RoCEv2 traffic, and Level 4 is the one that approaches full bisection use.
+
 ### 3.2 Reactive congestion management: DCQCN (ECN, CNP, and PFC)
 
-Even with perfect load balancing, synchronized AllReduce bursts or many-to-one incast can momentarily exceed an egress port's drain rate. Standard RDMA network adapters treat a single dropped packet as a fatal sequence error that triggers costly go-back-N retransmissions or timeouts. Therefore, a RoCEv2 fabric must pair proactive load balancing with reactive lossless congestion management to slow senders down and pause links before buffers overflow.
+Even with perfect load balancing, a synchronized AllReduce burst or a many-to-one incast can briefly exceed an egress port's drain rate. Standard RDMA network adapters treat one dropped packet as a fatal sequence error. That triggers costly go-back-N retransmissions or timeouts. A RoCEv2 fabric therefore has to pair proactive load balancing with reactive, lossless congestion management. That pairing slows senders down and pauses links before buffers overflow.
 
-Data Center Quantized Congestion Notification combines end-to-end Explicit Congestion Notification rate control with hop-by-hop Priority Flow Control pause frames. When an egress queue on a spine switch crosses its Random Early Detection marking threshold, the switch does not drop the packet. Instead, it sets the two ECN bits in the IP header to binary 11, indicating Congestion Experienced, and forwards the frame to the destination server.
+Data Center Quantized Congestion Notification, or DCQCN, combines end-to-end Explicit Congestion Notification rate control with hop-by-hop Priority Flow Control pause frames. When an egress queue on a spine switch crosses its Random Early Detection marking threshold, the switch does not drop the packet. It sets the two ECN bits in the IP header to binary 11, which means Congestion Experienced, and forwards the frame to the destination server.
 
-When the destination RDMA NIC receives a RoCEv2 packet marked with ECN 11, it immediately generates a Congestion Notification Packet. That notification packet sets the IP ECN bits to 01 and travels back toward the source server. Once the source RDMA NIC receives that notification, it cuts the hardware transmission rate of the specific offending Queue Pair. If a sudden microburst fills the switch headroom buffer faster than ECN can react, the switch fires an IEEE 802.1Qbb Priority Flow Control pause frame upstream. That pause frame carries a pause quanta timer for the specific lossless priority queue, halting upstream transmission before a single packet is dropped.
+When the destination RDMA NIC receives a RoCEv2 packet marked with ECN 11, it immediately generates a Congestion Notification Packet. That packet sets the IP ECN bits to 01 and travels back toward the source server. When the source RDMA NIC receives it, the NIC cuts the hardware transmission rate of the offending Queue Pair. Now suppose a sudden microburst fills the switch headroom buffer faster than ECN can react. The switch then sends an IEEE 802.1Qbb Priority Flow Control pause frame upstream. That frame carries a pause quanta timer for the lossless priority queue, which halts upstream transmission before a single packet is dropped.
 
 ```text
 Reactive DCQCN Loop and PFC Safety Net (ADC Ch 2 Figs 2-4 & 2-5, Chapter 12.4):
@@ -306,13 +336,15 @@ Reactive DCQCN Loop and PFC Safety Net (ADC Ch 2 Figs 2-4 & 2-5, Chapter 12.4):
      - Action: Spine B sends PFC pause frame with pause quanta upstream to Spine A -> Leaf A before ingress/headroom buffers overflow
 ```
 
+Read the loop from top to bottom. ECN slows the sender first, and PFC is the safety net that catches what ECN cannot.
+
 ### 3.3 Sizing a 1:1 non-blocking rail-optimized fat-tree and isolating storage planes
 
-No load-balancing algorithm or congestion control loop can rescue a fabric that lacks physical spine bandwidth or mixes bulk storage onto compute switches. If a network architect applies traditional 2:1 leaf-to-spine oversubscription to save switch ports, multi-node AllReduce jobs saturate the uplinks and stall at half speed. Even worse, sharing compute switches with parallel file system storage injects massive latency jitter into collective barriers whenever a job writes a checkpoint.
+No load-balancing algorithm or congestion loop can rescue a fabric that lacks physical spine bandwidth, or one that mixes bulk storage onto compute switches. Suppose an architect applies traditional 2:1 leaf-to-spine oversubscription to save switch ports. Multi-node AllReduce jobs then saturate the uplinks and stall at half speed. Sharing compute switches with parallel file system storage is worse. It injects massive latency jitter into collective barriers whenever a job writes a checkpoint.
 
-To eliminate bandwidth bottlenecks, production GPU clusters use a 1:1 non-blocking rail-optimized fat-tree topology, as modeled in `size_two_tier_nonblocking_fattree()` in `code/part12/ai_traffic_collectives.py`. On a 64-port switch, 32 ports connect down to server NICs and 32 ports connect up to spine switches. That split matches downlink and uplink capacity one-to-one. Under a Rail-Optimized Design, NIC 0 of 32 servers connects to Leaf 0, NIC 1 connects to Leaf 1, and so on across eight leaves per Leaf Group.
+To remove those bottlenecks, production GPU clusters use a 1:1 non-blocking rail-optimized fat-tree. The sizing logic is modeled in `size_two_tier_nonblocking_fattree()` in `code/part12/ai_traffic_collectives.py`. On a 64-port switch, 32 ports connect down to server NICs and 32 connect up to spine switches, so downlink and uplink capacity match one-to-one. In a Rail-Optimized Design, NIC 0 of 32 servers connects to Leaf 0, NIC 1 connects to Leaf 1, and so on across eight leaves in each Leaf Group.
 
-Even if a cluster is split between two separate departments, 2:1 spine oversubscription fails because a single multi-rack job bursts across all GPUs simultaneously. In rare shallow-buffer Ethernet designs, architects even use undersubscription by provisioning more uplinks to spines than downlinks to servers. That extra uplink capacity provides additional spine egress buffer and packet-spraying headroom. Finally, production designs isolate storage onto a dedicated Storage Fabric using BlueField-3 DPUs so bulk checkpoint writes never queue ahead of collective packets.
+Splitting a cluster across two departments does not make 2:1 oversubscription safe. A single multi-rack job still bursts across all of its GPUs at once. Some shallow-buffer Ethernet designs even use undersubscription, with more uplinks to the spines than downlinks to the servers. That extra uplink capacity adds spine egress buffer and packet-spraying headroom. Finally, production designs isolate storage on a dedicated Storage Fabric built on BlueField-3 DPUs, so bulk checkpoint writes never queue ahead of collective packets.
 
 ```text
 Worked 1,024-GPU Non-Blocking Fat-Tree Sizing & Isolation Rules (size_two_tier_nonblocking_fattree):
@@ -326,11 +358,15 @@ Worked 1,024-GPU Non-Blocking Fat-Tree Sizing & Isolation Rules (size_two_tier_n
   7. Why Storage Must Be Isolated: Writing a 100 GB model checkpoint over compute switches packs lossless queues (IB credits / PFC) and stalls AllReduce
 ```
 
+Work through the sizing rules in order. Each one turns a server count into a switch count, and the last rule explains why storage cannot share the compute switches.
+
 ### 3.4 Key requirements for an AI data center fabric
 
-Sections 1 to 3 cover the traffic and the defenses. The fabric itself has to meet a short list of requirements. An AI data center fabric must be lossless. It must also deliver high throughput and low latency, provide dynamic load balancing, and handle large-scale parallelism.
+Sections 1 to 3 cover the traffic and the defenses. The fabric itself has to meet a short list of requirements. It must be lossless. It also has to deliver high throughput and low latency, provide dynamic load balancing, and handle large-scale parallelism.
 
-High-radix 400 Gbps and 800 Gbps Ethernet switches help meet those needs. So do RoCEv2 support and advanced congestion management such as DCQCN, which works with PFC and ECN. The design also has to leave room to grow. As the number of AI workloads rises over time, the fabric may need to move from a three-stage topology to a five-stage one.
+High-radix 400 Gbps and 800 Gbps Ethernet switches help meet those needs. So do RoCEv2 support and advanced congestion management such as DCQCN, which works with PFC and ECN. The design also has to leave room to grow. As AI workloads multiply, the fabric may need to move from a three-stage topology to a five-stage one.
+
+Before you commit to a topology, check that its spine bandwidth can carry your largest synchronous job, because that job sets the worst case.
 
 ---
 
@@ -338,11 +374,13 @@ High-radix 400 Gbps and 800 Gbps Ethernet switches help meet those needs. So do 
 
 ### 4.1 Hiding network latency: CUDA streams, DDP bucketing, gradient accumulation, and DP vs DDP
 
-Even on a non-blocking 400G or 800G fabric, waiting until the backward pass finishes before starting gradient synchronization wastes valuable GPU compute cycles. During that communication window, every Streaming Multiprocessor sits idle waiting for network transfers to complete. Engineers solve this inefficiency by pipelining communication on a dedicated background CUDA stream while backpropagation is still computing earlier layers.
+Picture a training step on a non-blocking 400G or 800G fabric. If the backward pass finishes before gradient synchronization starts, the GPUs wait. During that communication window, every Streaming Multiprocessor sits idle until the network transfers complete. Engineers avoid this by overlapping communication with computation. They pipeline the communication on a dedicated background CUDA stream while backpropagation is still computing earlier layers.
 
-This technique, known as Wait-Free Backpropagation and implemented in PyTorch DistributedDataParallel, groups layer gradients into fixed-size buckets. As backward propagation walks from the output layer toward the input layer, gradients fill these buckets. As soon as a bucket fills up, PyTorch launches an asynchronous NCCL AllReduce kernel on a background communication stream. Meanwhile, the compute stream continues calculating gradients for earlier layers. Ideally, total step time drops from the sum of compute and communication time down to whichever of the two is larger.
+The technique is called Wait-Free Backpropagation, and PyTorch DistributedDataParallel implements it. DDP groups layer gradients into fixed-size buckets. As backward propagation walks from the output layer toward the input layer, gradients fill those buckets. When a bucket is full, PyTorch launches an asynchronous NCCL AllReduce kernel on a background communication stream. Meanwhile, the compute stream keeps calculating gradients for the earlier layers. In the ideal case, the step time drops from the sum of compute and communication down to whichever of the two is larger.
 
-However, bucket size tuning and Python code hygiene strongly affect real-world overlap. If a model has thousands of tiny layers that trigger small collective calls, handshake latency dominates even when raw network benchmarks pass at line rate. Increasing the DDP bucket cap coalesces those small transfers into bandwidth-efficient chunks. Conversely, calling `.item()`, `.cpu()`, `print(tensor)`, or `torch.cuda.synchronize()` inside the training loop forces a host synchronization barrier that destroys stream overlap. Finally, teams must always use multi-process DistributedDataParallel rather than single-process DataParallel, which contends on the Python Global Interpreter Lock and bottlenecks on GPU 0.
+Real jobs do not always reach that ideal, because bucket size and Python code hygiene both matter. Imagine a model with thousands of tiny layers that trigger many small collective calls. Handshake latency then dominates, even when raw network benchmarks pass at line rate. Raising the DDP bucket cap merges those small transfers into bandwidth-efficient chunks. Calling `.item()`, `.cpu()`, `print(tensor)`, or `torch.cuda.synchronize()` inside the training loop does the opposite. It forces a host synchronization barrier that destroys stream overlap. Finally, use multi-process DistributedDataParallel rather than single-process DataParallel. DataParallel contends on the Python Global Interpreter Lock and bottlenecks on GPU 0.
+
+The two formulas below describe the serial case and the ideal overlapped case.
 
 $$t_\{\text`{serial}`} = t_\{\text`{compute}`} + t_\{\text`{comm}`}, \qquad t_\{\text`{ideal\_overlap}`} = \max(t_\{\text`{compute}`}, t_\{\text`{comm}`})$$
 
@@ -363,17 +401,21 @@ Compute-Communication Overlap, Bucketing, and DP vs DDP Benchmarks (ASP Ch 4 & V
      - DDP step time: 30.00 ms (30 ms; 33.33% reduction = 1.5x speedup)
 ```
 
+Read the first block as the baseline and the second as the best case that overlap can deliver. The difference between them is the time you can recover.
+
 ### 4.2 NCCL collective algorithms (Ring, Tree, CollNet, PAT) and SHARP / NVLS in-network math
 
-When a collective runs across a thousand GPUs, choosing the wrong communication algorithm can turn a bandwidth-optimal job into a latency-bound crawl. A ring algorithm maximizes link utilization on eight GPUs, but on a thousand GPUs every chunk must hop through more than two thousand sequential steps. Engineers need to know how NCCL selects between Ring, Tree, CollNet, Parallel Aggregated Tree, and switch-assisted SHARP or NVLS algorithms based on tensor size and cluster scale.
+Choosing the wrong communication algorithm can turn a bandwidth-optimal job into a latency-bound crawl, and the risk grows with scale. A ring algorithm keeps links busy on eight GPUs. On a thousand GPUs, though, every chunk must hop through more than two thousand sequential steps. When you tune a job, you need to know how NCCL chooses between Ring, Tree, CollNet, Parallel Aggregated Tree, and switch-assisted SHARP or NVLS algorithms, based on tensor size and cluster scale.
 
-In a standard Ring AllReduce across $n$ GPUs, the tensor of size $B$ bytes is sliced into $n$ chunks of size $B / n$. During the first phase, ReduceScatter passes chunks around the logical ring over $n - 1$ steps so every GPU holds one fully summed shard. During the second phase, AllGather circulates those completed shards around the ring over another $n - 1$ steps. While Ring AllReduce is bandwidth-optimal for large payloads, its total latency grows linearly with the number of GPUs.
+In a standard Ring AllReduce across $n$ GPUs, the tensor of $B$ bytes is sliced into $n$ chunks of size $B / n$. In the first phase, ReduceScatter passes chunks around the logical ring over $n - 1$ steps, so each GPU ends up holding one fully summed shard. In the second phase, AllGather circulates those finished shards around the ring for another $n - 1$ steps. Ring AllReduce is bandwidth-optimal for large payloads, but its total latency grows linearly with the number of GPUs.
 
-To avoid linear hop latency on large node counts or small messages, NCCL switches to a binary Tree algorithm whose step count grows logarithmically with rank count. On InfiniBand fabrics with switch aggregation, CollNet combines intra-node rings or trees with an inter-node leader tree. Furthermore, the Parallel Aggregated Tree algorithm interleaves chunked tree reductions in round-robin order, preserving near-Ring bandwidth while bounding startup latency logarithmically.
+For large node counts or small messages, NCCL switches to a binary Tree algorithm, whose step count grows logarithmically with the number of ranks. On InfiniBand fabrics with switch aggregation, CollNet combines intra-node rings or trees with an inter-node leader tree. The Parallel Aggregated Tree algorithm interleaves chunked tree reductions in round-robin order. That keeps bandwidth close to Ring while bounding the startup latency logarithmically.
 
-Switch-assisted in-network computing changes the math entirely by moving arithmetic into the switch silicon. Quantum InfiniBand switches implement SHARP via the SHARP Aggregation Manager, while third- and fourth-generation NVSwitch domains implement NVLink SHARP. Instead of passing chunks peer-to-peer around a ring, every GPU sends its data into the switch fabric once. The switch ASIC sums the vectors in hardware and returns the result.
+Switch-assisted in-network computing changes the math by moving the arithmetic into the switch silicon. Quantum InfiniBand switches implement SHARP through the SHARP Aggregation Manager, and third- and fourth-generation NVSwitch domains implement NVLink SHARP. Instead of passing chunks peer-to-peer around a ring, every GPU sends its data into the switch fabric once. The switch ASIC sums the vectors in hardware and returns the result.
 
-Similarly, during an AllGather, NVLS hardware multicast lets each GPU transmit its shard once while the switch replicates the data to all peers simultaneously. When an NVLS multicast AllGather is overlapped with an in-network ReduceScatter, the wall time of a sharded exchange drops by roughly half. Furthermore, registering persistent user buffers via `ncclCommRegister()` and `ncclCommDeregister()` allows zero-copy NVLS and SHARP execution without internal staging buffers.
+During an AllGather, NVLS hardware multicast works the same way in reverse. Each GPU transmits its shard once, and the switch replicates the data to all peers at the same time. When an NVLS multicast AllGather overlaps with an in-network ReduceScatter, the wall time of a sharded exchange drops by roughly half. Registering persistent user buffers with `ncclCommRegister()` and `ncclCommDeregister()` also allows zero-copy NVLS and SHARP execution, without internal staging buffers.
+
+The table compares the algorithms on step count, bytes per GPU, latency scaling, and the regimes where each one fits.
 
 | Algorithm (`NCCL_ALGO`) | Step Count (`AllReduce`) | Per-GPU Bytes Transferred | Latency vs Bandwidth Scaling | Ideal Regime & Hardware Support |
 |---|---:|---:|---|---|
@@ -384,21 +426,25 @@ Similarly, during an AllGather, NVLS hardware multicast lets each GPU transmit i
 | **`PAT`** (Parallel Aggregated Tree) | Interleaved round-robin chunked trees | Near-Ring bandwidth (`2B(n-1)/n`) | Bounds per-segment startup latency to **$O(\log N)$** while keeping links saturated | Medium-to-large messages across multi-node topologies (up to `~7.6x` small/medium speedup with symmetric memory) |
 | **`SHARP` / `NVLS` (`NVLSTree`)** | Switch-assisted in-network reduction + multicast | **`ReduceScatter` receive: $B / n$** (`12.5 MB` at $n=8$)<br/>**Volume ratio: $\frac`{1}``{n - 1}`$** (`1/7` at $n=8$; `1/1,023` at $n=1,024$) | Cuts endpoint traffic by $1/(n-1)$, drops overlapped `RS`+`AG` phase time by **`~1/2`**, and yields **`2x–5x` `AllReduce` speedup** | Intra-rack `NVSwitch` (`NVLS`, `72`-GPU `NVL72` at `~130 TB/s`) and `Quantum` InfiniBand switches (`SHARP`) |
 
+Use the table as a lookup. Tree wins on latency-bound messages, while Ring and the in-network options win when bandwidth dominates.
+
+Before you tune a collective, decide whether your messages are small and latency-bound or large and bandwidth-bound, because the answer picks the algorithm.
+
 ---
 
 ## 5. Multi-Node Pitfalls, NCCL Lifecycle Gotchas, and Disaggregated Inference (NIXL)
 
 ### 5.1 Six multi-node pitfalls, six NCCL lifecycle gotchas, and Meta's 54-day Llama 3 405B failure data
 
-A distributed training script that runs cleanly on a single eight-GPU server can fail or run fifty times slower when launched across a hundred nodes. Engineers encounter mysterious socket timeouts, silent fallbacks to CPU bounce buffers, out-of-memory errors in the RDMA registration pool, or multi-minute startup hangs. These failures stem from six common multi-node communication pitfalls and six NCCL communicator lifecycle mistakes cataloged in `evaluate_multinode_pitfalls()` in `code/part12/ai_traffic_collectives.py`.
+Imagine a training script that runs cleanly on a single eight-GPU server and then runs fifty times slower across a hundred nodes. You see socket timeouts, silent fallbacks to CPU bounce buffers, out-of-memory errors in the RDMA registration pool, or startup hangs that last minutes. Most of these failures come from six common multi-node communication pitfalls and six NCCL communicator lifecycle mistakes. The benchmark for each one is in `evaluate_multinode_pitfalls()` in `code/part12/ai_traffic_collectives.py`.
 
-First, accidentally initializing PyTorch distributed with the CPU-bound Gloo backend instead of NCCL stages tensors through host RAM and TCP sockets, slowing collectives by fifty-fold. You must also set `NCCL_SOCKET_IFNAME` to the high-speed interface so bootstrap handshakes do not traverse a slow management network. Second, mixing PyTorch's bundled NCCL with an incompatible system library causes silent transport fallbacks or hangs. Third, large jobs can exhaust ephemeral TCP ports during bootstrap unless the host port range is widened.
+Start with the first pitfall. If PyTorch distributed initializes with the CPU-bound Gloo backend instead of NCCL, tensors pass through host RAM and TCP sockets, and collectives slow down fifty-fold. Set `NCCL_SOCKET_IFNAME` to the high-speed interface, so bootstrap handshakes do not cross a slow management network. The second pitfall is version mismatch. Mixing PyTorch's bundled NCCL with an incompatible system library causes silent transport fallbacks or hangs. The third is port exhaustion. Large jobs can run out of ephemeral TCP ports during bootstrap unless the host port range is widened.
 
-Fourth, multi-rail servers require proper channel tuning or GPU-initiated InfiniBand GPUDirect Async to saturate multiple NICs, and socket transport configurations must never exceed the 64-connection ceiling per communicator. Fifth, hardware stragglers must be isolated with DCGM, `ibstat`, and monitored barriers. Sixth, PyTorch's caching allocator retains freed temporary blocks inside reserved memory, which can starve UCX RDMA memory registration pools even when allocated tensor memory appears low.
+The fourth pitfall involves multi-rail servers. They need proper channel tuning, or GPU-initiated InfiniBand GPUDirect Async, to saturate multiple NICs. Socket transport settings must never exceed the 64-connection ceiling per communicator. The fifth is a hardware straggler, which you isolate with DCGM, `ibstat`, and monitored barriers. The sixth is memory fragmentation. PyTorch's caching allocator keeps freed temporary blocks inside reserved memory, and that can starve the UCX RDMA memory registration pools, even when allocated tensor memory looks low.
 
-Equally destructive are communicator lifecycle mistakes inside the training script. Creating and destroying an NCCL process group inside the training loop adds tens of milliseconds of all-to-all handshake overhead to every single step. Instead, initialize communicators once outside the loop and batch sub-communicator creation inside `ncclGroupStart()` and `ncclGroupEnd()`. Never leave troubleshooting overrides like `NCCL_P2P_DISABLE=1`, `NCCL_SHM_DISABLE=1`, or verbose debug logging enabled in production, and set `NCCL_IGNORE_CPU_AFFINITY=1` so proxy threads do not collapse onto a single CPU core.
+Communicator lifecycle mistakes inside the training script do just as much damage. Creating and destroying an NCCL process group inside the training loop adds tens of milliseconds of all-to-all handshake overhead to every step. Initialize communicators once, outside the loop, and batch sub-communicator creation inside `ncclGroupStart()` and `ncclGroupEnd()`. Never leave troubleshooting overrides such as `NCCL_P2P_DISABLE=1`, `NCCL_SHM_DISABLE=1`, or verbose debug logging enabled in production. Set `NCCL_IGNORE_CPU_AFFINITY=1`, so proxy threads do not collapse onto a single CPU core.
 
-Finally, production clusters at scale experience constant hardware faults, as shown by Meta's 54-day pretraining run of Llama 3 405B in `summarize_llama3_405b_interruptions()`. Across 419 unexpected interruptions, faulty GPUs and HBM3 memory were the largest single categories, while network switches, cables, NICs, and NCCL watchdog timeouts together accounted for 49 interruptions. Production jobs must enable `TORCH_NCCL_ASYNC_ERROR_HANDLING=1` and attach the NCCL Profiler Plugin API to identify the exact rank and link where a collective stalls.
+Hardware faults are constant at scale. Meta's 54-day pretraining run of Llama 3 405B is summarized in `summarize_llama3_405b_interruptions()`. Across 419 unexpected interruptions, faulty GPUs and HBM3 memory were the largest categories. Network switches, cables, NICs, and NCCL watchdog timeouts together accounted for 49 interruptions. Production jobs should set `TORCH_NCCL_ASYNC_ERROR_HANDLING=1` and attach the NCCL Profiler Plugin API, so you can find the exact rank and link where a collective stalls.
 
 ```text
 Six Multi-Node Pitfalls, Six NCCL Lifecycle Gotchas, and Llama 3 405B Interruptions (ASP Ch 4, Chapters 2.24 & 6.12):
@@ -429,13 +475,15 @@ Six Multi-Node Pitfalls, Six NCCL Lifecycle Gotchas, and Llama 3 405B Interrupti
         - Always set TORCH_NCCL_ASYNC_ERROR_HANDLING=1 and use NCCL_PROFILER_PLUGIN (32-bit event mask, 5 callbacks: init, startEvent, stopEvent, recordEventState, finalize)
 ```
 
+The block above lists each pitfall with its measured numbers, and the Llama 3 405B breakdown sits at the end of it. Use it as the checklist for a new cluster.
+
 ### 5.2 Disaggregated inference and NIXL (Prefill vs Decode KV cache routing)
 
-While distributed training is dominated by barrier-synchronized collectives, running large language model inference on a single monolithic GPU pool creates a severe resource mismatch. Transformer inference splits into two phases with opposite hardware requirements: a compute-bound Prefill phase that processes the input prompt in parallel. A memory-bandwidth-bound Decode phase that generates output tokens one by one. Running both phases on the same GPUs causes long prompt prefills to stall ongoing token decoding and inflates inter-token latency.
+Distributed training is dominated by barrier-synchronized collectives. Suppose you are serving a chat model, and users complain that replies stall mid-sentence. Large language model inference has a different problem. Running it on one monolithic GPU pool creates a severe resource mismatch. Inference splits into two phases with opposite hardware needs. Prefill is compute-bound, and it processes the input prompt in parallel. Decode is memory-bandwidth-bound, and it generates output tokens one by one. If both phases share the same GPUs, a long prompt prefill stalls ongoing token decoding and inflates inter-token latency.
 
-To solve this interference, modern inference frameworks such as NVIDIA Dynamo, vLLM, SGLang, and TensorRT-LLM disaggregate Prefill workers and Decode workers onto separate GPU pools. However, disaggregation introduces a new networking challenge. As soon as a Prefill worker finishes ingesting a long prompt. It must transfer gigabytes of attention Key-Value cache state to a Decode worker. Offload inactive caches to host DRAM, local NVMe drives, or network storage without blocking token generation.
+To solve that interference, frameworks such as NVIDIA Dynamo, vLLM, SGLang, and TensorRT-LLM split Prefill workers and Decode workers onto separate GPU pools. Disaggregation brings a new networking problem. As soon as a Prefill worker finishes ingesting a long prompt, it must transfer gigabytes of attention Key-Value cache state to a Decode worker. Inactive caches can also be offloaded to host DRAM, local NVMe drives, or network storage, without blocking token generation.
 
-Group collective libraries like NCCL are poorly suited for this workload because they require synchronous participation from a fixed group of GPU ranks. Instead, NVIDIA introduced the NVIDIA Inference Xfer Library as the point-to-point data movement engine inside NVIDIA Dynamo. NIXL provides a non-blocking, one-sided C++ and Python agent API that routes KV cache blocks asynchronously. GPU HBM, CPU DRAM over NVLink-C2C, local NVMe SSDs via GPUDirect Storage. Remote object storage over UCX, GPUDirect RDMA, and IBGDA.
+Group collective libraries such as NCCL fit this workload poorly. They need synchronous participation from a fixed group of GPU ranks. NVIDIA therefore built the NVIDIA Inference Xfer Library, or NIXL, as the point-to-point data movement engine inside NVIDIA Dynamo. NIXL provides a non-blocking, one-sided C++ and Python agent API that routes KV cache blocks asynchronously. It moves blocks between GPU HBM, CPU DRAM over NVLink-C2C, local NVMe SSDs through GPUDirect Storage, and remote object storage through UCX, GPUDirect RDMA, and IBGDA.
 
 | Dimension | `NCCL` (Collective Communication) | `NIXL` (Point-to-Point Inference Transfer, Released Early `2025`) |
 |---|---|---|
@@ -444,15 +492,19 @@ Group collective libraries like NCCL are poorly suited for this workload because
 | **Interconnect & Memory Tiers** | `NVLink`, `NVSwitch`, `PCIe`, `InfiniBand` / `RoCEv2` (`GPUDirect RDMA`), TCP sockets across GPU memory | Unified routing across **`GPU HBM` (`VRAM_SEG`)**, **`CPU DRAM` (`900 GB/s NVLink-C2C` on Grace Hopper/Blackwell)**, **`NVMe SSD` (`GDS`)**, and **Object Store (`S3`)** via `UCX`, `GPUDirect RDMA`, and **`IBGDA`** |
 | **Measured Impact** | `100 GB/s` (`4.00 ms` for `400 MB`) on `800G` IB; `2x–5x` speedup with `SHARP` | **`14x` `TTFT` speedup** offloading KV cache on `x86 + H100` vs recomputing; **`2x` faster `TTFT`** on `Grace Hopper` (`900 GB/s NVLink-C2C`) vs `x86 H100`; up to **`30x` higher inference throughput** with NVIDIA Dynamo on a `~680B` LLM across a `72`-GPU `Blackwell NVL72` rack |
 
+Compare the two columns on execution semantics first. NCCL needs every rank at the barrier, while NIXL lets a single initiator move data on its own.
+
+Before you route KV cache traffic, decide whether the transfer is a group collective or a point-to-point handoff, because that choice decides which library fits.
+
 ---
 
 ## Commands and configurations that matter
 
-When a multi-node training job runs slower than expected, guessing at NCCL environment variables wastes hours of cluster time. You need a disciplined, bottom-up command sequence that verifies intra-node topology, kernel-bypass drivers, raw wire throughput, collective scaling, and cluster-wide cable health in order. All multi-node InfiniBand, RoCEv2, and Base Command Manager commands below are marked as untested here when referencing cluster hardware not attached to this build environment.
+When a multi-node training job runs slower than expected, guessing at NCCL environment variables wastes hours of cluster time. A disciplined sequence works better. Verify the intra-node topology first, then the kernel-bypass drivers, then the raw wire throughput, then collective scaling, and finally cluster-wide cable health. All multi-node InfiniBand, RoCEv2, and Base Command Manager commands below are marked as untested here, because the cluster hardware they target was not attached to this build environment.
 
 ### 1. Inspecting GPU/NIC topology, RoCEv2 / InfiniBand state, and kernel bypass (untested here)
 
-Before launching any distributed job, verify that every GPU shares a local PCIe switch with its paired network adapter and that the GPUDirect RDMA kernel module is loaded. You should also inspect the InfiniBand or RoCEv2 port state and hardware error counters on every node.
+Before you launch any distributed job, check that every GPU shares a local PCIe switch with its paired network adapter. Confirm that the GPUDirect RDMA kernel module is loaded. Then inspect the InfiniBand or RoCEv2 port state and the hardware error counters on every node.
 
 ```bash
 # (untested here) 1. Verify intra-node NVLink/NVSwitch & GPU-to-NIC PCIe switch locality (PIX vs SYS)
@@ -471,9 +523,11 @@ sudo sysctl -w net.ipv4.ip_local_port_range="50000 51000"
 ip link show dev eth0
 ```
 
+Read the first two commands as the topology check, and the last two as the link and tuning check. Fix anything they report before you move on.
+
 ### 2. Running the 3-step hardware isolation hierarchy (nvbandwidth -> ib_write_bw -> nccl-tests) (untested here)
 
-Never debug a slow PyTorch job before isolating the hardware layer by layer. First, run `nvbandwidth` to confirm local PCIe Gen5 x16 host-to-device bandwidth and rule out an x8 link downtrain. Second, run `ib_write_bw` with GPUDirect RDMA enabled to verify raw 400G wire and optics throughput without using `iperf3`. Third, run `all_reduce_perf` from `nccl-tests` across nodes to validate collective scaling.
+Never debug a slow PyTorch job before you have isolated the hardware, one layer at a time. Start with `nvbandwidth`, which confirms local PCIe Gen5 x16 host-to-device bandwidth and rules out an x8 link downtrain. Next, run `ib_write_bw` with GPUDirect RDMA enabled. It verifies raw 400G wire and optics throughput, and you should use it instead of `iperf3`. Finally, run `all_reduce_perf` from `nccl-tests` across nodes to validate collective scaling.
 
 ```bash
 # (untested here) Step 1: Intra-node PCIe Gen5 x16 check (expect ~50-60 GB/s; ~25-30 GB/s indicates x8 downtrain)
@@ -496,9 +550,11 @@ mpirun -np 16 -H node01:8,node02:8 \
   all_reduce_perf -b 8M -e 1G -f 2 -g 1
 ```
 
+Each command isolates one layer, so a failure at step 1 tells you to stop before running step 2.
+
 ### 3. Base Command Manager (bcm11-admin) fabric health checks (ibnetdiscover, ibdiagnet, cablecheck) (untested here)
 
-In NVIDIA Base Command Manager 11, administrators validate cluster-wide InfiniBand and RoCEv2 cable wiring and run automated pre-job node checks directly from the head node and `cmsh`.
+In NVIDIA Base Command Manager 11, administrators check cluster-wide InfiniBand and RoCEv2 cable wiring. They also run automated pre-job node checks from the head node and from `cmsh`.
 
 ```text
 # (untested here) Run BCM cluster-wide cable verification and InfiniBand fabric diagnostics (bcm11-admin Sections 3.6, 3.12, 5.3.3)
@@ -511,11 +567,15 @@ In NVIDIA Base Command Manager 11, administrators validate cluster-wide InfiniBa
 [headnode->device]% foreach -n node001..node128 (check)
 ```
 
+Run the cable and fabric checks from the head node, and use `cmsh` when you need the pre-job checks on the compute nodes.
+
+Before you trust a multi-node run, confirm that the fabric checks pass at the cable level, because a wiring fault looks like a software problem.
+
 ---
 
 ## How it fails
 
-Even well-designed fabrics fail in production when container mounts drop `/dev/infiniband`, switches revert to static hashing, or user code introduces per-step synchronizations. The table below maps the five most common operational failure modes to their observable symptoms, root causes, and exact remediation steps.
+Even well-designed fabrics fail in production. The usual causes are a container that loses its `/dev/infiniband` mount, a switch that quietly reverts to static hashing, or user code that adds a synchronization on every step. You will recognize these faults by their symptoms. The table maps the five most common failure modes to the symptom you see, the root cause, and the exact fix to apply.
 
 | Failure Mode | Observable Symptom | Root Cause | Diagnostic Command & Remediation |
 |---|---|---|---|
@@ -525,19 +585,25 @@ Even well-designed fabrics fail in production when container mounts drop `/dev/i
 | **4. `40%` slow PyTorch `DDP` job despite `~390 Gbps` `ib_write_bw` and healthy `nccl-tests`** | `nvbandwidth` (`50–60 GB/s`), `ib_write_bw` (`~390 Gbps`), and `nccl-tests` (`1 GB` buffers) all pass at line rate, yet real PyTorch training is `40%` slower than expected | Model has thousands of small layers generating `256 KB` latency-bound `AllReduce` calls, or `nn.DataParallel` (`45 ms`) / accidental `.item()` host syncs prevent overlap | Profile with Nsight Systems; switch from `DP` to `DDP` (`30 ms`, `33.33%` faster), remove in-loop `.item()`/`torch.cuda.synchronize()`, and raise `DDP` `bucket_cap_mb` from `25 MB` to `50 MB`. |
 | **5. `2:1` spine oversubscription or `100 GB` storage checkpoint buffer collision** | Multi-node scaling efficiency collapses whenever two jobs run or whenever a job writes a `100 GB` checkpoint to parallel storage | `2:1` leaf-to-spine uplink oversubscription (`16` uplinks for `32` servers) or routing storage traffic over compute switches fills switch buffers and delays synchronous `AllReduce` packets | Enforce a **`1:1` non-blocking fat-tree** (`32` downlinks / `32` uplinks on `64`-port switches) and physically isolate storage onto a dedicated Storage Fabric (`BlueField-3` DPUs). |
 
+Read each row as a chain. The symptom points to the cause, and the cause tells you which fix comes first.
+
+Before you change a production fabric, match your symptom to one row, because each row needs a different fix.
+
 ---
 
 ## Hands-on lab
 
-This verification lab runs locally on any CPU or GPU machine, including Nebius GPU instances, using the self-contained model in `code/part12/ai_traffic_collectives.py` and `code/part12/ai_traffic_collectives_lab.py`. It validates all twenty-seven mathematical claims, collective byte and step formulas, multi-node pitfall benchmarks, and non-blocking fat-tree port calculations covered in this chapter.
+You can run this verification lab on any CPU or GPU machine, including Nebius GPU instances. It uses the self-contained model in `code/part12/ai_traffic_collectives.py` and `code/part12/ai_traffic_collectives_lab.py`. The lab checks all twenty-seven mathematical claims in this chapter. It covers the collective byte and step formulas, the multi-node pitfall benchmarks, and the non-blocking fat-tree port calculations.
 
 ### Run the Chapter 12.1 verification lab (tested here)
+
+Start the lab with one command.
 
 ```bash
 python3 code/part12/ai_traffic_collectives_lab.py
 ```
 
-Expected output:
+If the output matches the block below, every check in the chapter has passed on your machine.
 
 ```text
 === Chapter 12.1 Lab: AI Traffic, Collectives, Incast, and Elephant Flows ===
@@ -581,26 +647,36 @@ Expected output:
 Summary: 27 passed, 0 failed (total 27)
 ```
 
+Look for the summary line at the bottom. It should read 27 passed and 0 failed.
+
 ---
 
 ## Common first mistakes
 
-1. **Benchmarking a high-speed InfiniBand or RoCEv2 link with `iperf3`:** The `iperf3` utility tests the Linux kernel TCP/IP socket path. Saturates a single CPU core around 20 to 30 Gbps and completely bypasses RDMA Verbs. Always benchmark raw fabric links with `ib_write_bw` and `ib_write_lat`, and pass `--use_cuda` to verify GPUDirect RDMA from GPU memory.
-2. **Assuming static 5-tuple ECMP balances RoCEv2 traffic. Spine links:** Because RoCEv2 uses UDP destination port 4791 on every packet. Keeps long-lived Queue Pairs between fixed GPU IP pairs, static hashing pins multiple elephant flows onto one uplink. Production AI Ethernet fabrics require DLB, GLB, or sDLB packet spraying.
-3. **Leaving debug overrides in production job manifests:** Troubleshooting variables such as `NCCL_P2P_DISABLE=1`. `NCCL_SHM_DISABLE=1`, and `NCCL_DEBUG=DEBUG` silently disable NVLink peer-to-peer and shared memory, forcing intra-node traffic through slow CPU bounce buffers.
-4. **Calling `.item()` or `print(loss_tensor)` on every training step:** Copying a scalar loss from GPU HBM to host CPU memory mid-step forces an implicit stream synchronization barrier that destroys DistributedDataParallel compute-communication overlap.
-5. **Oversubscribing leaf-to-spine uplinks or sharing compute switches with parallel storage:** Synchronous AllReduce collectives and bulk storage checkpoints burst across all nodes simultaneously. Any spine oversubscription or shared storage buffer queue translates directly into tail-latency jitter.
+Most of the mistakes below look harmless at first. Each one is easy to make, and each one quietly hurts your fabric's throughput.
+
+1. **Benchmarking a high-speed InfiniBand or RoCEv2 link with `iperf3`:** You might reach for `iperf3` because it is familiar. It tests the Linux kernel TCP/IP socket path, though. It saturates a single CPU core at around 20 to 30 Gbps, and it bypasses RDMA Verbs entirely. Benchmark raw fabric links with `ib_write_bw` and `ib_write_lat` instead, and pass `--use_cuda` to verify GPUDirect RDMA from GPU memory.
+2. **Assuming static 5-tuple ECMP balances RoCEv2 traffic:** Every RoCEv2 packet uses UDP destination port 4791, and long-lived Queue Pairs stay between fixed GPU IP pairs. Static hashing therefore pins multiple elephant flows onto one uplink. Production AI Ethernet fabrics need DLB, GLB, or sDLB packet spraying.
+3. **Leaving debug overrides in production job manifests:** Troubleshooting variables such as `NCCL_P2P_DISABLE=1`, `NCCL_SHM_DISABLE=1`, and `NCCL_DEBUG=DEBUG` silently disable NVLink peer-to-peer and shared memory. Intra-node traffic then has to go through slow CPU bounce buffers.
+4. **Calling `.item()` or `print(loss_tensor)` on every training step:** Copying a scalar loss from GPU HBM to host CPU memory in the middle of a step forces an implicit stream synchronization barrier. That barrier destroys the compute-communication overlap that DistributedDataParallel depends on.
+5. **Oversubscribing leaf-to-spine uplinks or sharing compute switches with parallel storage:** Synchronous AllReduce collectives and bulk storage checkpoints burst across all nodes at once. Any spine oversubscription or shared storage buffer turns directly into tail-latency jitter.
+
+Before you ship a job manifest, search it for every debug variable, because one leftover flag can silently disable NVLink peer-to-peer.
 
 ---
 
 ## Exercises
 
-1. **Exercise 1 — Serial vs Parallel Tail-Latency & JCT Math:** Use `compute_tail_latency_jct()` and `compute_synchronous_efficiency()` to evaluate a ten-task job with one straggler and a ten-thousand-GPU synchronous training step. Calculate the serial JCT under both the book formula and the strict task sum, the parallel fast-GPU wait time and slowdown factor, and the compute-to-sync efficiency.
-2. **Exercise 2 — Compute-Communication Overlap & DP vs DDP Math:** Calculate the serial. Ideal overlapped step times for a manual training loop. The new step time and SM utilization when half of communication is overlapped under DDP, and the percentage speedup of DDP over single-process DataParallel.
-3. **Exercise 3 — Ring, Tree, and SHARP / NVLS Collective Byte & Step Scaling:** Use `compute_collective_bytes_and_steps()` to compute the per-GPU byte volumes. Step counts for Ring ReduceScatter, Ring AllReduce, Tree AllReduce, and SHARP or NVLS in-network reduction at eight GPUs and at one thousand twenty-four GPUs.
-4. **Exercise 4 — Multi-Node Pitfalls & Meta's Llama 3 405B Interruption Audit:** Use `evaluate_multinode_pitfalls()`. `summarize_llama3_405b_interruptions()` to compare Gloo versus NCCL throughput, quantify the penalty of calling `init_process_group` inside the training loop, check the 64-socket connection limit, and summarize Meta's 54-day interruption dataset.
-5. **Exercise 5 — RoCEv2 Packet Headers, the 4-Tier Load-Balancing Pyramid. DCQCN:** Explain why static five-tuple SLB fails on RoCEv2 traffic, compare SLB, DLB, GLB, and sDLB, and trace the five-step DCQCN rate-control loop alongside hop-by-hop PFC pause frames.
-6. **Exercise 6 — 1,024-GPU Non-Blocking Rail-Optimized Fat-Tree Sizing:** Use `size_two_tier_nonblocking_fattree(128. 8, 64)` to calculate the downlinks, uplinks, servers per Leaf Group, total Leaf Groups, total Leaf switches, and total Spine switches required for a non-blocking 1,024-GPU cluster.
+Work through these six exercises in order. Each one reuses the functions from the chapter, so you check your own arithmetic against the code.
+
+1. In the first exercise, you compare serial and parallel tail latency. Use `compute_tail_latency_jct()` and `compute_synchronous_efficiency()` on a ten-task job with one straggler, and on a ten-thousand-GPU synchronous training step. Calculate the serial JCT under both the book formula and the strict task sum. Then work out the parallel fast-GPU wait time, the slowdown factor, and the compute-to-sync efficiency.
+2. The second exercise covers overlap. Calculate the serial and ideal overlapped step times for a manual training loop. Then find the new step time and SM utilization when half of the communication overlaps under DDP. Finish with the percentage speedup of DDP over single-process DataParallel.
+3. The third exercise covers collective scaling. Use `compute_collective_bytes_and_steps()` to compute the per-GPU byte volumes and step counts for Ring ReduceScatter, Ring AllReduce, Tree AllReduce, and SHARP or NVLS in-network reduction. Do this at eight GPUs and again at one thousand twenty-four GPUs.
+4. The fourth exercise audits the multi-node numbers. Use `evaluate_multinode_pitfalls()` and `summarize_llama3_405b_interruptions()`. Compare Gloo and NCCL throughput, and quantify the cost of calling `init_process_group` inside the training loop. Then check the 64-socket connection limit and summarize Meta's 54-day interruption dataset.
+5. The fifth exercise covers RoCEv2 defenses. Explain why static five-tuple SLB fails on RoCEv2 traffic, and compare SLB, DLB, GLB, and sDLB. Then trace the five-step DCQCN rate-control loop alongside the hop-by-hop PFC pause frames.
+6. The last exercise sizes the fabric. Use `size_two_tier_nonblocking_fattree(128. 8, 64)` to calculate the downlinks, the uplinks, the servers per Leaf Group, the total Leaf Groups, the total Leaf switches, and the total Spine switches for a non-blocking 1,024-GPU cluster.
+
+The block below lists the input parameters and the target values to check your answers against.
 
 ```text
 Exercise Input Parameters and Verification Targets:
@@ -612,28 +688,36 @@ Exercise Input Parameters and Verification Targets:
   - Ex 6: 128 DGX H100 servers (8 NICs/server = 1,024 GPUs) on 64-port Quantum-2 NDR switches -> 32 downlinks / 32 uplinks per Leaf, 32 servers (256 GPUs) per 8-Leaf Group, 4 Leaf Groups = 32 Leaf switches (1,024 downlinks, 1,024 uplinks) + 16 Spine switches (1:1 non-blocking)
 ```
 
+If your numbers differ from these targets, trace the discrepancy to a single step before you change anything else.
+
 ---
 
 ## Interview angles
 
-1. **Why is switch buffer jitter much more destructive to a ten-thousand-GPU training job than to a web microservice?** Distributed training relies on barrier-synchronized collectives such as AllReduce, AllGather, and ReduceScatter. If nine thousand nine hundred ninety-nine GPUs finish their local step in a few milliseconds. A single GPU's packet sits delayed inside a deep switch buffer, every healthy GPU in the cluster stalls at the barrier waiting for that slowest flow.
-2. **Why does traditional five-tuple ECMP fail on RoCEv2 AI training traffic. How do DLB, GLB, and sDLB fix it?** RoCEv2 encapsulates the InfiniBand Base Transport Header inside UDP destination port 4791 between a small set of fixed GPU IP pairs. Creating low-entropy elephant flows and flowlets that collide onto the same uplink under static hashing. DLB rebalances flows using local link utilization and queue depth, GLB adds downstream Next-to-Next-Hop spine path quality. SDLB inspects inner BTH Read and Write opcodes to spray elephant flow packets across all paths while the destination NIC reorders Packet Sequence Numbers in hardware.
-3. **When should an architect use NCCL versus NIXL?** Use NCCL for synchronous many-to-many group collectives in training and intra-stage tensor parallelism where all ranks participate at a barrier. Use NIXL for asynchronous point-to-point transfers in disaggregated inference. `nixlAgent` moves massive attention KV caches between Prefill. Decode GPU pools or offloads them across GPU HBM, CPU DRAM over NVLink-C2C, NVMe SSDs via GPUDirect Storage, and object storage.
+These three questions come up often, and each one tests whether you understand the mechanism rather than the vocabulary.
+
+1. **Why is switch buffer jitter much more destructive to a ten-thousand-GPU training job than to a web microservice?** Distributed training relies on barrier-synchronized collectives such as AllReduce, AllGather, and ReduceScatter. Suppose nine thousand nine hundred ninety-nine GPUs finish their local step in a few milliseconds. If one GPU's packet sits delayed inside a deep switch buffer, every healthy GPU in the cluster stalls at the barrier, waiting for that slowest flow.
+2. **Why does traditional five-tuple ECMP fail on RoCEv2 AI training traffic? How do DLB, GLB, and sDLB fix it?** RoCEv2 encapsulates the InfiniBand Base Transport Header inside UDP destination port 4791, between a small set of fixed GPU IP pairs. That creates low-entropy elephant flows and flowlets. Under static hashing, they collide onto the same uplink. DLB rebalances flows using local link utilization and queue depth. GLB adds downstream Next-to-Next-Hop spine path quality. sDLB inspects the inner BTH Read and Write opcodes and sprays elephant flow packets across all paths. The destination NIC then reorders the Packet Sequence Numbers in hardware.
+3. **When should an architect use NCCL versus NIXL?** Use NCCL for synchronous, many-to-many group collectives in training, and for tensor parallelism inside a stage, where all ranks join a barrier. Use NIXL for asynchronous point-to-point transfers in disaggregated inference. A `nixlAgent` moves large attention KV caches between Prefill and Decode GPU pools. It can also offload them to GPU HBM, CPU DRAM over NVLink-C2C, NVMe SSDs through GPUDirect Storage, and object storage.
+
+For each question, state the mechanism first and the named product second. An interviewer can tell very quickly whether you understand the mechanism.
 
 ---
 
 ## Checkpoint questions (20)
 
+Use these questions to check yourself. Answer each one before you open it, and then compare your answer with the one here. If you miss a number, go back to the section it came from.
+
 <details>
 <summary>**1. Name the five lifecycle stages of an AI workload and the seven iterative steps inside the model training stage.**</summary>
 
-The five AI lifecycle stages are data gathering and preprocessing, model training across supervised, unsupervised. Reinforcement paradigms, inference deployment, Retrieval-Augmented Generation or Model Context Protocol context lookup, and continuous monitoring and retraining. Inside the training stage, each iteration executes seven steps: batching data. Forward propagation, error or loss calculation, backward propagation. Local gradient calculation, collective communication via xCCL libraries such as NCCL, RCCL, Gloo, or UCC, and parameter updates for the next iteration.
+There are five lifecycle stages. They are data gathering and preprocessing, model training across supervised, unsupervised, and reinforcement paradigms, inference deployment, Retrieval-Augmented Generation or Model Context Protocol context lookup, and continuous monitoring and retraining. Inside training, each iteration runs seven steps. You batch the data, run forward propagation, compute the error or loss, run backward propagation, compute the local gradients, sync them through xCCL libraries such as NCCL, RCCL, Gloo, or UCC, and then update the parameters for the next iteration.
 </details>
 
 <details>
 <summary>**2. Compare Data Parallelism, Pipeline Parallelism, and Tensor Parallelism in terms of what is split, which communication primitives run, and which interconnect domain each requires.**</summary>
 
-Data Parallelism splits the training dataset into batches. GPUs holding model replicas under DDP or shards under FSDP, synchronizing gradients via AllReduce or AllGather and ReduceScatter across the scale-out InfiniBand or RoCEv2 fabric. Pipeline Parallelism slices neural network layers horizontally across sequential GPUs and passes activations forward and gradients backward via point-to-point Send and Recv calls. Tensor Parallelism slices individual layer weight matrices vertically across GPUs inside a node or rack, running collectives inside every single layer over high-speed NVLink and NVSwitch links.
+If you are asked to compare the three, start with what each one splits. Data Parallelism splits the training dataset into batches. Each GPU holds a model replica under DDP or a shard under FSDP, and the GPUs sync gradients with AllReduce, or with AllGather and ReduceScatter, across the scale-out InfiniBand or RoCEv2 fabric. Pipeline Parallelism slices the layers horizontally across sequential GPUs. It passes activations forward and gradients backward with point-to-point Send and Recv calls. Tensor Parallelism slices each layer's weight matrices vertically across GPUs inside a node or rack. It runs collectives inside every layer over high-speed NVLink and NVSwitch links.
 </details>
 
 <details>
@@ -662,19 +746,19 @@ Serial vs Parallel JCT (n = 10 tasks, t_normal = 1 ms = 0.001 s, straggler taskX
 <details>
 <summary>**5. Why is a standard enterprise Ethernet switch with deep buffers and VLAN QoS unsuitable for synchronous GPU training?**</summary>
 
-Enterprise core switches use deep packet buffers to absorb bursty web traffic without dropping TCP sessions, which introduces millisecond-scale queueing jitter such as a 10 ms delay. Because distributed training collectives are barrier-synchronized, a 10 ms buffer delay on a single GPU's packet stalls all four thousand GPUs across five hundred H100 servers. Without dedicated lossless RDMA transport using RoCEv2, PFC, and ECN rate control, microburst packet drops trigger costly retransmissions and watchdog timeouts.
+If you see a 10 ms stall in a training log, suspect the switch first. Enterprise core switches use deep packet buffers so they can absorb bursty web traffic without dropping TCP sessions. That creates millisecond-scale queueing jitter, such as a 10 ms delay. Distributed training collectives are barrier-synchronized, so a 10 ms buffer delay on one GPU's packet stalls all four thousand GPUs across five hundred H100 servers. Without dedicated lossless RDMA transport, meaning RoCEv2 with PFC and ECN rate control, microburst packet drops trigger costly retransmissions and watchdog timeouts.
 </details>
 
 <details>
 <summary>**6. What three queues does the RDMA driver manage on an RNIC, what is a WQE, and which RDMA operations are unidirectional versus bidirectional?**</summary>
 
-A Work Queue Element is a request descriptor containing a virtual address pointer, byte length, and memory keys posted via the Verbs API. The RDMA driver manages three hardware queues on the NIC: the Send Queue for outbound work requests, the Receive Queue for inbound buffers. Together form a Queue Pair, and the Completion Queue where completed requests are reported. RDMA Read, RDMA Write, and Atomic operations are unidirectional one-sided operations that bypass the remote CPU completely after setup, whereas RDMA Send and Receive are bidirectional two-sided operations.
+A Work Queue Element, or WQE, is a request descriptor. It holds a virtual address pointer, a byte length, and memory keys, and you post it through the Verbs API. The RDMA driver manages three hardware queues on the NIC. The Send Queue holds outbound work requests, and the Receive Queue holds inbound buffers. Together they form a Queue Pair. The Completion Queue reports finished requests. RDMA Read, RDMA Write, and Atomic are unidirectional, one-sided operations that bypass the remote CPU after setup. RDMA Send and Receive are bidirectional, two-sided operations.
 </details>
 
 <details>
 <summary>**7. Compare InfiniBand, RoCEv1, RoCEv2, and iWARP header stacks, and state the UDP destination port used by RoCEv2.**</summary>
 
-Native InfiniBand uses a lossless channel stack consisting of the Local Routing Header, Global Routing Header, Base Transport Header, payload, and CRC fields. RoCEv1 places the InfiniBand Global Routing Header and Base Transport Header directly inside an Ethernet Layer 2 frame, making it non-routable across IP subnets. RoCEv2 encapsulates the InfiniBand Base Transport Header and payload inside standard Ethernet, IP, and UDP headers using UDP destination port 4791. Finally, iWARP runs RDMA over TCP/IP, avoiding lossless Ethernet requirements at the cost of higher latency and NIC complexity.
+Native InfiniBand uses a lossless channel stack made of the Local Routing Header, the Global Routing Header, the Base Transport Header, the payload, and the CRC fields. RoCEv1 places the Global Routing Header and the Base Transport Header directly inside an Ethernet Layer 2 frame, so it cannot route across IP subnets. RoCEv2 wraps the Base Transport Header and payload in standard Ethernet, IP, and UDP headers, using UDP destination port 4791. iWARP runs RDMA over TCP/IP. It avoids the lossless Ethernet requirement, but it costs more latency and NIC complexity.
 </details>
 
 <details>
@@ -693,13 +777,13 @@ RoCEv2 Inner Headers and RDMA State Machines:
 <details>
 <summary>**9. Why do RoCEv2 AI collectives suffer from low entropy at both Layer 3 and Layer 4, and what are the two types of flowlets that result?**</summary>
 
-At Layer 3, east-west GPU collectives communicate repeatedly between fixed one-to-one or small-group GPU IP addresses. At Layer 4, every RoCEv2 packet uses UDP destination port 4791. Hiding the real Queue Pair and Packet Sequence Number entropy inside the inner InfiniBand Base Transport Header. This produces simultaneous flowlets when concurrent QP transfers between the same GPU pair get hashed onto the same link. Sequential flowlets when a new job's transfer between the same GPU pair immediately follows a completed job and gets pinned to the same path.
+Consider a pair of GPUs in a collective. At Layer 3, east-west GPU collectives talk repeatedly between fixed one-to-one or small-group GPU IP addresses. At Layer 4, every RoCEv2 packet uses UDP destination port 4791. The real Queue Pair and Packet Sequence Number entropy sits hidden inside the inner InfiniBand Base Transport Header. That produces two kinds of flowlets. Simultaneous flowlets appear when concurrent Queue Pair transfers between the same GPU pair hash onto the same link. Sequential flowlets appear when a new job's transfer between that pair follows a completed job and gets pinned to the same path.
 </details>
 
 <details>
 <summary>**10. Compare the four levels of the AI fabric load-balancing pyramid (SLB, DLB, GLB, sDLB).**</summary>
 
-Level 1 Static Load Balancing hashes only the outer five-tuple, preserving packet order but suffering severe elephant-flow collisions on RoCEv2. Level 2 Dynamic Load Balancing selects paths and reassigns flowlets using local member-link bandwidth and local queue buffer depth on the leaf switch. Level 3 Global Load Balancing adds Next-to-Next-Hop downstream path quality advertised by spine switches so leaves avoid downstream spine-to-leaf congestion. Level 4 Selective Dynamic Load Balancing inspects inner RoCEv2 BTH Read. Write opcodes to detect RDMA elephant flows and spray packets across all links, relying on destination NIC out-of-order PSN reassembly.
+When you walk through the pyramid, start at the bottom. Level 1, Static Load Balancing, hashes only the outer five-tuple. That keeps packets in order, but it suffers severe elephant-flow collisions on RoCEv2. Level 2, Dynamic Load Balancing, selects paths and reassigns flowlets using local member-link bandwidth and local queue buffer depth on the leaf switch. Level 3, Global Load Balancing, adds the Next-to-Next-Hop downstream path quality that spine switches advertise, so leaves can avoid downstream spine-to-leaf congestion. Level 4, Selective Dynamic Load Balancing, inspects the inner RoCEv2 BTH Read and Write opcodes. It detects RDMA elephant flows and sprays packets across all links, and it relies on the destination NIC to reassemble out-of-order PSNs.
 </details>
 
 <details>
@@ -750,13 +834,13 @@ Collective Byte Volume and Step Scaling (B = 100 MB, n = 8 GPUs and n = 1,024 GP
 <details>
 <summary>**15. How do CollNet, PAT, and SHARP or NVLS improve collective performance, and what is the SHARP or NVLS endpoint volume reduction formula?**</summary>
 
-CollNet combines intra-node NVLink ring or tree aggregation with an inter-node leader tree that offloads reductions to switch-level SHARP. Parallel Aggregated Tree splits large tensors into chunks and pipelines staggered tree reductions in round-robin order, achieving near-Ring bandwidth with logarithmic startup latency. With SHARP or NVLS in-network reduction, switch silicon sums vectors in hardware. Returns only $B / n$ bytes instead of $B(n - 1)/n$. Cutting endpoint receive traffic to $1 / (n - 1)$, halving overlapped ReduceScatter and multicast AllGather time, and delivering two-fold to five-fold AllReduce speedups.
+CollNet combines intra-node NVLink ring or tree aggregation with an inter-node leader tree, and it offloads reductions to switch-level SHARP. Parallel Aggregated Tree splits large tensors into chunks and pipelines staggered tree reductions in round-robin order. It reaches near-Ring bandwidth with logarithmic startup latency. With SHARP or NVLS in-network reduction, the switch silicon sums the vectors in hardware. Each endpoint then receives only $B / n$ bytes instead of $B(n - 1)/n$. That cuts endpoint receive traffic to $1 / (n - 1)$, halves the overlapped ReduceScatter and multicast AllGather time, and delivers two-fold to five-fold AllReduce speedups.
 </details>
 
 <details>
 <summary>**16. Why is PyTorch DistributedDataParallel faster than single-process DataParallel on multi-GPU training?**</summary>
 
-Single-process `nn.DataParallel` uses multi-threading inside one Python interpreter. Serializes kernel launches behind the Python Global Interpreter Lock, gathers all outputs and gradients onto GPU 0, and executes synchronous non-overlapped reductions. By contrast, `DistributedDataParallel` spawns one independent process per GPU to eliminate GIL contention, overlaps bucketed NCCL AllReduce kernels on a background CUDA stream during backward propagation. Balances reduction work symmetrically across all GPUs, cutting a 45.00 ms step down to 30.00 ms for a 33.33 percent reduction.
+If you are choosing between the two, the difference is in the process model. Single-process `nn.DataParallel` uses multi-threading inside one Python interpreter. It serializes kernel launches behind the Python Global Interpreter Lock, gathers all outputs and gradients onto GPU 0, and runs synchronous, non-overlapped reductions. `DistributedDataParallel` instead starts one independent process per GPU, which removes the GIL contention. It overlaps bucketed NCCL AllReduce kernels on a background CUDA stream during backward propagation, and it balances the reduction work across all GPUs. That cuts a 45.00 ms step down to 30.00 ms, a 33.33 percent reduction.
 </details>
 
 <details>
@@ -772,7 +856,7 @@ Gloo vs NCCL and Repeated Communicator Init Benchmarks (ASP Ch 4):
 <details>
 <summary>**18. What is the maximum allowed product of NCCL_SOCKET_NTHREADS and NCCL_NSOCKS_PERTHREAD, and why should NCCL_IGNORE_CPU_AFFINITY=1 be set?**</summary>
 
-The product of `NCCL_SOCKET_NTHREADS` and `NCCL_NSOCKS_PERTHREAD` must never exceed 64 TCP connections per communicator. Two threads with two sockets each is valid at 4 connections whereas sixteen threads with eight sockets each violates the ceiling at 128 connections. Setting `NCCL_IGNORE_CPU_AFFINITY=1` prevents NCCL background proxy and polling threads from collapsing onto a single inherited CPU core when processes are pinned with `numactl` or `taskset`. Them to spread cleanly across the local NUMA node.
+If you tune the socket settings, check this first. The product of `NCCL_SOCKET_NTHREADS` and `NCCL_NSOCKS_PERTHREAD` must never exceed 64 TCP connections per communicator. Two threads with two sockets each is valid at 4 connections. Sixteen threads with eight sockets each violates the ceiling at 128 connections. Setting `NCCL_IGNORE_CPU_AFFINITY=1` stops NCCL background proxy and polling threads from collapsing onto a single inherited CPU core, which can happen when processes are pinned with `numactl` or `taskset`. The threads can then spread across the local NUMA node.
 </details>
 
 <details>
@@ -789,7 +873,7 @@ Meta 54-Day Llama 3 405B Interruption Summary (ASP Ch 4 Table 4-4):
 <details>
 <summary>**20. How does NIXL accelerate disaggregated LLM inference in NVIDIA Dynamo, what are its six core C++ API calls on nixlAgent, and what speedups were measured?**</summary>
 
-In disaggregated serving, NIXL asynchronously transfers attention KV cache blocks between Prefill GPUs, Decode GPUs, CPU DRAM, NVMe SSDs via GPUDirect Storage. Object storage using UCX, GPUDirect RDMA, and IBGDA. Two `nixlAgent` endpoints execute six core calls in sequence: `registerMem`, `trim`, `prepXfer`, `postXfer`, non-blocking poll `checkXfer`, and `releaseReqH` or `deregisterMem`. Offloading KV cache with NIXL yields a 14x Time to First Token speedup on x86 H100 servers over recomputation. A 2x faster TTFT on Grace Hopper over x86 H100 via 900 GB/s NVLink-C2C. Up to 30x higher inference throughput with NVIDIA Dynamo on a 680B model across a 72-GPU Blackwell NVL72 rack.
+Suppose you run disaggregated serving. In that setup, NIXL asynchronously moves attention KV cache blocks between Prefill GPUs, Decode GPUs, CPU DRAM, and NVMe SSDs through GPUDirect Storage. It also reaches object storage through UCX, GPUDirect RDMA, and IBGDA. Two `nixlAgent` endpoints run six core calls in sequence: `registerMem`, `trim`, `prepXfer`, `postXfer`, a non-blocking poll with `checkXfer`, and then `releaseReqH` or `deregisterMem`. Offloading KV cache with NIXL gives a 14x Time to First Token speedup on x86 H100 servers over recomputation. On Grace Hopper, which connects over 900 GB/s NVLink-C2C, TTFT is 2x faster than on x86 H100. NVIDIA Dynamo with NIXL also reaches up to 30x higher inference throughput on a 680B model across a 72-GPU Blackwell NVL72 rack.
 </details>
 
 ---
@@ -856,4 +940,3 @@ Primary Sources Read in Full for Chapter 12.1:
 ### Not verified on live hardware
 
 - Multi-node InfiniBand and RoCEv2 switches were not attached during this build, so all `ibstat`, `nvbandwidth`, `ib_write_bw`, `all_reduce_perf`, and `cmsh` commands (`NCCL_NVLS_ENABLE=1`, `NCCL_SHARP_DISABLE=1`, `NVSM`, `cudaStreamSynchronize`, `compute_ms` and `comm_sync_ms`, `srcAgent` and `dstAgent` in NIXL, and `1.0s`, `2.0ms`, `10.0ms`, `12.0ms`, `22.0ms`, `52.0ms` timing examples) in `Commands and configurations that matter` are marked `(untested here)`.
-
