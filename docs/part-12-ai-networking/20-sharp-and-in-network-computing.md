@@ -24,10 +24,12 @@ lab_venue: "Nebius GPU"
 
 ## Why this matters for AI infrastructure
 
-In a classical distributed training cluster, the network switch acts as a passive byte pipe. GPUs compute partial gradients in High-Bandwidth Memory and pass intermediate shards around a logical Ring or Tree. They also execute every floating-point addition inside GPU Streaming Multiprocessors. This endpoint-driven approach wastes network bandwidth and steals compute cores from matrix multiplication as clusters grow to thousands of GPUs.
+When a training job grows from one server to thousands of GPUs, the network stops being a detail. In a classical distributed training cluster, the network switch acts as a passive byte pipe. The GPUs compute partial gradients in High-Bandwidth Memory and pass intermediate shards around a logical Ring or Tree. They also run every floating-point addition inside the GPU Streaming Multiprocessors. As clusters grow, this endpoint-driven approach wastes network bandwidth and takes compute cores away from matrix multiplication.
 
-1. **Redundant Data Movement Across Endpoints:** In a standard Ring ReduceScatter across $N$ GPUs, each rank receives $N - 1$ chunks over $N - 1$ sequential steps. In a full Ring AllReduce, each rank transmits and receives almost twice the full tensor size across $2(N - 1)$ steps. When the switch fabric contains arithmetic reduction units and hardware multicast engines, the switch sums incoming shards in silicon. It returns only the final shard to each GPU, collapsing per-endpoint receive traffic to a fraction of the ring volume.
-2. **SM Occupancy and Collective Latency at Scale:** When GPUs execute Ring or host-driven Tree reductions, 16 to 32 GPU Streaming Multiprocessor thread blocks stay busy copying and summing network buffers. Offloading the reduction into switch silicon frees those GPU cores and drops communication channels down to 4 when paired with `ncclCommRegister`. It also collapses multi-node hop complexity from linear to logarithmic. Overlapped shard exchange time drops in half, and large-scale AllReduce operations run 2x to 5x faster.
+1. **Redundant Data Movement Across Endpoints:** In a standard Ring ReduceScatter across $N$ GPUs, each rank receives $N - 1$ chunks over $N - 1$ sequential steps. A full Ring AllReduce makes each rank transmit and receive almost twice the full tensor size, over $2(N - 1)$ steps. When the switch fabric has arithmetic reduction units and hardware multicast engines, the switch can sum the incoming shards in silicon. It returns only the final shard to each GPU, so per-endpoint receive traffic drops to a fraction of the ring volume.
+2. **SM Occupancy and Collective Latency at Scale:** During Ring or host-driven Tree reductions, 16 to 32 GPU Streaming Multiprocessor thread blocks stay busy copying and summing network buffers. Offloading the reduction frees those GPU cores. When it is paired with `ncclCommRegister`, communication channels drop to 4. The switch also collapses multi-node hop complexity from linear to logarithmic. Overlapped shard exchange time drops in half, and large-scale AllReduce operations run 2x to 5x faster.
+
+The reference block below puts the Ring numbers and the switch numbers side by side.
 
 ```text
 Endpoint Ring vs In-Network SHARP and NVLS Reference Numbers:
@@ -44,24 +46,31 @@ Endpoint Ring vs In-Network SHARP and NVLS Reference Numbers:
 - Chapter prerequisite references: Chapters 12.2, 12.6, 12.7, 12.9, 12.15, 12.16, and 12.19
 ```
 
-NVIDIA implements in-network computing across two switch domains within the Magnum IO stack:
-- **NVLink SHARP:** Switch-resident reduction and hardware multicast engines are built into NVSwitch Gen 3 and NVSwitch Gen 4 fabrics. This path is enabled via `NCCL_NVLS_ENABLE=1`.
-- **InfiniBand SHARP:** Switch-resident Scalable Hierarchical Aggregation and Reduction Protocol engines run inside Quantum InfiniBand switches. This path is enabled via `NCCL_COLLNET_ENABLE=1` and managed by `sharp_am`, OpenSM or UFM, and host `sharp_daemons`.
+Read each ratio in the block as the saving. The ratios grow with the GPU count, because the Ring cost keeps climbing while the switch cost per rank shrinks.
+
+Within the Magnum IO stack, NVIDIA runs in-network computing in two switch domains. They are easy to mix up, so keep them apart:
+- **NVLink SHARP:** Switch-resident reduction and hardware multicast engines are built into NVSwitch Gen 3 and NVSwitch Gen 4 fabrics. You turn this path on with `NCCL_NVLS_ENABLE=1`.
+- **InfiniBand SHARP:** Scalable Hierarchical Aggregation and Reduction Protocol engines run inside Quantum InfiniBand switches. You turn this path on with `NCCL_COLLNET_ENABLE=1`. It also depends on `sharp_am`, OpenSM or UFM, and host `sharp_daemons`.
+
+Decide which domain your job needs before you change any environment variable.
+
+---
 
 ## Prerequisites and outcomes
 
 ### Prerequisites
-- Working mastery of RDMA Queue Pairs, Memory Regions, and GPUDirect RDMA with `nvidia-peermem` and `dma-buf` from earlier chapters in this part.
-- Familiarity with the InfiniBand Subnet Manager OpenSM, UFM, LIDs and GIDs, and 64-byte Credit-Based Flow Control from earlier chapters.
-- Understanding of NCCL collective operations, Ring, Tree, and PAT algorithms, and LL, LL128, and Simple wire protocols from earlier chapters.
+Before you start, you should already know the following from earlier chapters in this part.
+- RDMA Queue Pairs, Memory Regions, and GPUDirect RDMA with `nvidia-peermem` and `dma-buf`.
+- The InfiniBand Subnet Manager OpenSM and UFM, LIDs and GIDs, and 64-byte Credit-Based Flow Control.
+- NCCL collective operations, the Ring, Tree, and PAT algorithms, and the LL, LL128, and Simple wire protocols.
 
 ### Outcomes
-After completing this chapter, you will be able to:
-1. Derive the exact byte volume and step complexity of Ring collectives versus InfiniBand SHARP and NVSwitch NVLS. You will also calculate the wall-time savings from overlapping multicast AllGather with in-network ReduceScatter.
+The outcomes below build on each other, so read them in order. After completing this chapter, you will be able to:
+1. Derive the exact byte volume and step complexity of Ring collectives, and compare them with InfiniBand SHARP and NVSwitch NVLS. You will also calculate the wall-time savings from overlapping multicast AllGather with in-network ReduceScatter.
 2. Architect two-level hierarchical collectives that combine intra-node or intra-rack NVSwitch NVLS with inter-rack CollNetDirect and CollNetChain.
 3. Trace the SHARP control plane and data plane across UFM, OpenSM, `sharp_am`, `sharp_daemons`, switch Aggregation Nodes, and Operand State Tables.
-4. Distinguish SHARPv1, SHARPv2, SHARPv3, SHARPv4, and NVLS hardware capabilities, supported floating-point precisions, and IEEE-754 floating-point determinism.
-5. Configure and troubleshoot NCCL with `NCCL_COLLNET_ENABLE=1`, `NCCL_NVLS_ENABLE=1`, `NCCL_SHARP_DISABLE=0`, and `ncclCommRegister`. You will also configure OpenMPI HCOLL with `HCOLL_ENABLE_SHARP=1` and compare InfiniBand SHARP against Spectrum-X Ethernet and UEC INC.
+4. Tell apart the hardware capabilities of SHARPv1, SHARPv2, SHARPv3, SHARPv4, and NVLS. You will also know which floating-point precisions each one supports, and what IEEE-754 floating-point determinism means for your results.
+5. Configure and troubleshoot NCCL with `NCCL_COLLNET_ENABLE=1`, `NCCL_NVLS_ENABLE=1`, `NCCL_SHARP_DISABLE=0`, and `ncclCommRegister`. You will also configure OpenMPI HCOLL with `HCOLL_ENABLE_SHARP=1`, and compare InfiniBand SHARP with Spectrum-X Ethernet and UEC INC.
 
 ---
 
@@ -69,31 +78,33 @@ After completing this chapter, you will be able to:
 
 ### 1.1 Why Host-Driven Ring Collectives Multiply Traffic by (N - 1)
 
-When training a large model across $N$ GPUs or $N$ compute nodes, every rank holds a local gradient tensor of $B$ bytes. That tensor must be globally summed across all ranks before the optimizer step can proceed. If the network switches only forward packets from port to port, the GPUs must circulate slices of that tensor among themselves. Every extra hop adds serialization latency and consumes link bandwidth that could otherwise serve other collectives.
+Picture training a large model across $N$ GPUs or $N$ compute nodes. Every rank holds a local gradient tensor of $B$ bytes. Those tensors must be summed across all ranks before the optimizer step can proceed. If the network switches only forward packets from port to port, the GPUs have to pass slices of that tensor among themselves. Each extra hop adds serialization latency, and it uses link bandwidth that other collectives could have used.
 
-In a standard Ring ReduceScatter, the tensor of size $B$ is divided into $N$ equal chunks of size $\frac\{B\}\{N\}$. Over $N - 1$ pipelined steps, every rank sends one chunk to its downstream neighbor and receives one chunk from its upstream neighbor. Each rank adds the incoming data into its local accumulator. During ReduceScatter alone, every GPU sends and receives the following byte volume:
+In a standard Ring ReduceScatter, the tensor of size $B$ is cut into $N$ equal chunks of size $\frac\{B\}\{N\}$. Over $N - 1$ pipelined steps, every rank sends one chunk to its downstream neighbor and receives one chunk from its upstream neighbor. Each rank adds the incoming data into its local accumulator. For ReduceScatter alone, every GPU sends and receives this byte volume:
 
 $$V_\{\text\{Ring, RS\}} = (N - 1) \times \frac\{B\}\{N\} = B\frac\{N - 1\}\{N\}\text\{ bytes\}$$
 
-In a standard Ring AllGather, each GPU starts with its reduced $\frac\{B\}\{N\}$ shard. It then circulates shards around the ring for another $N - 1$ steps without arithmetic addition. Combining both phases into a Ring AllReduce requires $2(N - 1)$ sequential steps. It forces every rank to transmit and receive almost $2B$ bytes per direction:
+Ring AllGather starts from a different place. Each GPU begins with its reduced $\frac\{B\}\{N\}$ shard, and the shards circulate around the ring for another $N - 1$ steps. No arithmetic happens in this phase. Put the two phases together and you get a Ring AllReduce. It needs $2(N - 1)$ sequential steps, and it forces every rank to transmit and receive almost $2B$ bytes per direction:
 
 $$V_\{\text\{Ring, AR (unidirectional per rank)\}} = 2\frac\{N - 1\}\{N\}B\text\{ bytes\}, \qquad \text\{Steps\}_\{\text\{Ring, AR\}} = 2(N - 1)$$
 
-As the cluster size $N$ grows from 8 to 1,024 ranks, the factor $\frac\{N - 1\}\{N\}$ approaches 1. Every GPU transmits nearly $2B$ bytes and receives nearly $2B$ bytes for $4B$ total bidirectional traffic. At the same time, every rank waits through $2(N - 1)$ serial hop latencies.
+Watch what happens as the cluster grows from 8 to 1,024 ranks. The factor $\frac\{N - 1\}\{N\}$ climbs toward 1. Each GPU then transmits nearly $2B$ bytes and receives nearly $2B$ bytes, which is $4B$ bytes of bidirectional traffic. Meanwhile, every rank waits through $2(N - 1)$ serial hop latencies.
 
 ### 1.2 In-Network Reduction (NVLS and SHARP) and the 1 / (N - 1) Traffic Collapse
 
-When the switch ASIC contains arithmetic reduction units called Aggregation Nodes and hardware multicast engines, partial sums no longer circulate from GPU to GPU. The switch performs the additions as packets pass through the fabric. It delivers only the final result to each endpoint. This shift eliminates redundant endpoint traffic across four key collective patterns:
+Now move the arithmetic into the switch. When the switch ASIC has arithmetic reduction units, called Aggregation Nodes, and hardware multicast engines, partial sums stop bouncing from GPU to GPU. The switch does the additions as packets pass through the fabric, and it delivers only the final result to each endpoint. That removes redundant endpoint traffic in four collective patterns:
 
-1. **In-Network ReduceScatter:** With NVLink SHARP or InfiniBand SHARP, the switch aggregates incoming contributions from all $N$ endpoints inside switch silicon. It writes only the final reduced $\frac\{B\}\{N\}$ shard back to each target GPU. Instead of receiving $B\frac\{N - 1\}\{N\}$ bytes across $N - 1$ hops, each GPU receives only $\frac\{B\}\{N\}$ bytes:
+1. **In-Network ReduceScatter:** With NVLink SHARP or InfiniBand SHARP, the switch adds the contributions from all $N$ endpoints inside switch silicon. It writes only the final reduced $\frac\{B\}\{N\}$ shard to each target GPU. A GPU no longer has to receive $B\frac\{N - 1\}\{N\}$ bytes over $N - 1$ hops. It receives only $\frac\{B\}\{N\}$ bytes:
 
 $$\frac\{V_\{\text\{SHARP/NVLS, RS (rx)\}}\}\{V_\{\text\{Ring, RS (rx)\}}\} = \frac\{B / N\}\{B(N - 1) / N\} = \frac\{1\}\{N - 1\}$$
 
-2. **Hardware Multicast AllGather:** AllGather performs no arithmetic reduction, so NVLS accelerates it via hardware multicast inside the NVSwitch fabric. Each GPU sends its $\frac\{B\}\{N\}$ shard once into the switch. The switch replicates that shard to all $N - 1$ peers in one hop. Each sender transmits only $\frac\{B\}\{N\}$ bytes, cutting sender volume to $\frac\{1\}\{N - 1\}$ of the ring volume.
-3. **Inter-Node SHARP AllReduce:** In an inter-node InfiniBand SHARP AllReduce on tensor size $B$, each node streams $1 \times B$ bytes up into its leaf switch. The switch hierarchy reduces all nodes' tensors in flight as packets climb to the root switch. The root switch then multicasts the $1 \times B$ reduced result back down. Each node experiences only 2 fabric traversals instead of $2\frac\{N - 1\}\{N\}B$ bytes per direction in a Ring AllReduce.
-4. **Overlapping Multicast AllGather with In-Network ReduceScatter:** In Fully Sharded Data Parallelism or ZeRO-3 training, parameter AllGather and gradient ReduceScatter contend for endpoint bandwidth when run serially in a ring. With NVLS, hardware multicast replication and in-network arithmetic reduction run concurrently inside the switch fabric. Overlapping a multicast AllGather of duration $T_\{\text\{AG\}}$ with an in-network ReduceScatter of duration $T_\{\text\{RS\}}$ cuts the combined phase wall time:
+2. **Hardware Multicast AllGather:** AllGather does no arithmetic, so NVLS speeds it up in another way, with hardware multicast inside the NVSwitch fabric. Each GPU sends its $\frac\{B\}\{N\}$ shard into the switch once. The switch copies that shard to all $N - 1$ peers in one hop. Each sender transmits only $\frac\{B\}\{N\}$ bytes, so its volume falls to $\frac\{1\}\{N - 1\}$ of the ring volume.
+3. **Inter-Node SHARP AllReduce:** Take an inter-node InfiniBand SHARP AllReduce on a tensor of size $B$. Each node streams $1 \times B$ bytes up into its leaf switch. The switch hierarchy reduces all the tensors in flight as packets climb toward the root switch. The root switch then multicasts the $1 \times B$ reduced result back down. Each node sees only 2 fabric traversals, instead of the $2\frac\{N - 1\}\{N\}B$ bytes per direction that a Ring AllReduce needs.
+4. **Overlapping Multicast AllGather with In-Network ReduceScatter:** Consider Fully Sharded Data Parallelism or ZeRO-3 training. The parameter AllGather and the gradient ReduceScatter compete for endpoint bandwidth when they run one after the other in a ring. With NVLS, hardware multicast replication and in-network arithmetic reduction run at the same time inside the switch fabric. Overlap a multicast AllGather of duration $T_\{\text\{AG\}}$ with an in-network ReduceScatter of duration $T_\{\text\{RS\}}$, and the combined phase wall time shrinks:
 
 $$T_\{\text\{overlapped, NVLS\}} = \max(T_\{\text\{AG\}}, T_\{\text\{RS\}})$$
+
+The breakdown below applies these formulas to three systems. Each line gives the Ring figure first and the switch figure second, and the ratio after the arrow is the saving.
 
 ```text
 Quantitative Breakdown of Ring vs NVLS and SHARP Traffic Collapse:
@@ -109,6 +120,10 @@ Quantitative Breakdown of Ring vs NVLS and SHARP Traffic Collapse:
 - Overlapped NVLS AllGather (T_AG = 8.0 ms) + ReduceScatter (T_RS = 8.0 ms):
   Serial Ring time = 8.0 ms + 8.0 ms = 16.0 ms vs Overlapped NVLS time = max(8.0, 8.0) = 8.0 ms -> 50.0% (~1/2) wall-time reduction
 ```
+
+The savings grow with the GPU count, from 7x at 8 GPUs to 71x at 72 GPUs. You can check each line yourself by plugging in the tensor size. The overlap case halves the phase time you see on the clock.
+
+The diagram puts the two paths side by side. On the left, each GPU passes partial sums to its neighbors. On the right, every endpoint exchanges data with the switch.
 
 ```mermaid
 flowchart LR
@@ -128,6 +143,8 @@ flowchart LR
     end
 ```
 
+The table compares the three paths on the metrics that matter for planning. Use it as a lookup when you need one number.
+
 | Collective Metric | Host-Driven Ring (`NCCL_ALGO=Ring`) | Host-Driven Tree (`NCCL_ALGO=Tree`) | In-Network NVLS / CollNet (SHARP) |
 |---|---|---|---|
 | ReduceScatter per-rank receive volume | $B\frac\{N - 1\}\{N\}$ (700 MB on 8 GPUs; 710 MB on 72 GPUs) | N/A; Tree executes Reduce + Broadcast | **$B / N$** (100 MB on 8 GPUs; 10 MB on 72 GPUs = **1 / (N - 1)** of Ring) |
@@ -137,15 +154,19 @@ flowchart LR
 | Where arithmetic reduction executes | GPU SMs (16–32 CUDA channel blocks) | GPU SMs on interior tree nodes | **Switch ASIC silicon** (NVSwitch NVLS ALU or Quantum SHARP AN) |
 | Overlapped AllGather + ReduceScatter time | $T_\{\text\{AG\}} + T_\{\text\{RS\}}$ (16.0 ms serial bandwidth contention) | $T_\{\text\{AG\}} + T_\{\text\{RS\}}$ | **$\max(T_\{\text\{AG\}}, T_\{\text\{RS\}})$** (8.0 ms, **~1/2 wall time**) |
 
+Notice the last row, because it is the one you will feel in your job. The wall-time saving comes from overlapping the two phases, so the volume figures alone do not show it. When you estimate collective traffic, first decide which path it takes, because the two paths differ by roughly a factor of $N - 1$.
+
 ---
 
 ## 2. Two Domains of In-Network Computing: NVLink SHARP (NVLS) vs InfiniBand SHARP (CollNet)
 
-During cluster bring-up and production debugging, engineers frequently confuse NVLink SHARP with InfiniBand SHARP. When a multi-node job runs slower than expected, enabling the wrong environment variable leaves inter-node traffic on a host-driven ring while appearing to succeed. Both technologies belong to the NVIDIA Magnum IO in-network compute pillar and use switch-resident reduction units. However, they operate on different physical fabrics and use separate control planes.
+Say a multi-node job runs slower than you expected, yet it appears to succeed. The cause may be an environment variable you enabled for the wrong path. That leaves inter-node traffic on a host-driven ring. During cluster bring-up and production debugging, engineers mix up NVLink SHARP and InfiniBand SHARP all the time. Both belong to the NVIDIA Magnum IO in-network compute pillar, and both use switch-resident reduction units. They still run on different physical fabrics, and they use separate control planes.
 
 ### 2.1 Intra-Node and Intra-Rack NVLink SHARP (NVLS and NVLSTree)
 
-NVLink SHARP offloads reductions and multicast replication inside an NVSwitch domain, either within an 8-GPU server or across a 72-GPU rack. Every GPU connects directly to the NVSwitch crossbar at terabyte-per-second speeds. Moving reductions into the NVSwitch ASIC eliminates peer-to-peer GPU relay hops and frees GPU memory bandwidth for compute kernels.
+NVLink SHARP runs reductions and multicast replication inside one NVSwitch domain. That domain is either an 8-GPU server or a 72-GPU rack. Every GPU connects directly to the NVSwitch crossbar at terabyte-per-second speeds. Once the NVSwitch ASIC does the reduction, GPUs stop relaying data peer to peer. More GPU memory bandwidth stays free for compute kernels.
+
+Check the hardware you have before you enable this path. The two generations differ, as the block below shows.
 
 ```text
 NVSwitch Gen 3 and Gen 4 Hardware Specifications:
@@ -160,13 +181,17 @@ NVSwitch Gen 3 and Gen 4 Hardware Specifications:
   Enabled by default on Hopper/Blackwell NVSwitch systems + CUDA 12.1+
 ```
 
-1. **Enabling NVLS in NCCL:** NVLS is controlled by `NCCL_NVLS_ENABLE=1` and is enabled by default on Hopper and Blackwell NVSwitch systems. You can also select it explicitly via `NCCL_ALGO=NVLS,NVLSTree`.
-2. **Fabric Multicast Memory Handles:** NCCL allocates shared NVSwitch fabric addresses using CUDA multicast driver APIs such as `cuMemCreate` and `cuMulticastCreate`. When a GPU issues a multicast store or reduction instruction to that fabric address, the NVSwitch ASICs execute the arithmetic reduction or 1-hop broadcast replication in switch hardware.
-3. **Rack-Level NVSwitch Management:** On DGX GB200 and GB300 NVL72 racks, the NVLink switch trays run NVOS on their COMe processors. They are managed by NVIDIA Network Manager eXperience rather than InfiniBand OpenSM.
+Gen 4 keeps 18 links per GPU, but those links are NVLink 5 instead of NVLink 4.
+
+1. **Enabling NVLS in NCCL:** You control NVLS with `NCCL_NVLS_ENABLE=1`. It is on by default on Hopper and Blackwell NVSwitch systems. If you want to choose it by name, use `NCCL_ALGO=NVLS,NVLSTree`.
+2. **Fabric Multicast Memory Handles:** NCCL gets shared NVSwitch fabric addresses through CUDA multicast driver APIs, such as `cuMemCreate` and `cuMulticastCreate`. A GPU then issues a multicast store or reduction to that fabric address. The NVSwitch ASICs carry out the arithmetic reduction or the one-hop broadcast in hardware.
+3. **Rack-Level NVSwitch Management:** On DGX GB200 and GB300 NVL72 racks, the NVLink switch trays run NVOS on their COMe processors. NVIDIA Network Manager eXperience manages them, not InfiniBand OpenSM.
 
 ### 2.2 Inter-Node and Inter-Rack InfiniBand SHARP (CollNetDirect and CollNetChain)
 
-When a training job spans multiple 8-GPU HGX servers or multiple 72-GPU NVL72 racks, gradients must leave the NVSwitch domain and cross the scale-out InfiniBand fabric. Without switch offload on the scale-out fabric, inter-node reductions still suffer from multi-hop ring latency across the fat-tree.
+Once a job spans several 8-GPU HGX servers or several 72-GPU NVL72 racks, gradients must leave the NVSwitch domain. They then cross the scale-out InfiniBand fabric. Without switch offload on that fabric, inter-node reductions still pay multi-hop ring latency across the fat-tree.
+
+The scale-out NIC counts below set how much bandwidth each node can inject into the fabric.
 
 ```text
 Scale-Out HCA Injection and SuperPOD Sizing:
@@ -175,17 +200,22 @@ Scale-Out HCA Injection and SuperPOD Sizing:
 - DGX GB300 SuperPOD scale: up to 8 racks = 576 GPUs per Scalable Unit (SU), or 16 SUs = 128 racks = 9,216 GPUs
 ```
 
-InfiniBand SHARP performs in-network reductions inside the Quantum switch silicon via the NCCL CollNet collective path:
-1. **CollNetDirect:** This mode is optimized for dense intra-node connectivity such as NVSwitch systems. All local GPUs communicate directly in parallel with the designated rail leader GPUs that inject into the InfiniBand SHARP switch tree.
-2. **CollNetChain:** This mode organizes local GPUs into an ordered sequence. It performs a forward local reduction along the chain toward the NIC leader and distributes the globally reduced SHARP result back in the reverse direction.
+The last line shows how far one SuperPOD can scale. InfiniBand SHARP performs the in-network reductions inside the Quantum switch silicon, and NCCL reaches it through the CollNet collective path. Two modes do this work:
+
+- **CollNetDirect:** This mode suits dense intra-node connectivity, such as NVSwitch systems. Every local GPU talks in parallel to the designated rail leader GPUs that inject traffic into the InfiniBand SHARP switch tree.
+- **CollNetChain:** This mode lines the local GPUs up in an ordered sequence. The reduction moves forward along the chain toward the NIC leader. The globally reduced SHARP result then travels back along the chain in the reverse direction.
+
+Know which of the two your topology matches before you read the NCCL logs.
 
 ### 2.3 Two-Level Hierarchical NVLS + InfiniBand SHARP Execution Pipeline
 
-On a multi-node HGX cluster or multi-rack NVL72 SuperPOD with both `NCCL_NVLS_ENABLE=1` and `NCCL_COLLNET_ENABLE=1`, a flat collective across all GPUs would overwhelm the scale-out NICs. Instead, NCCL coordinates a three-stage hierarchical collective across $D$ domains. Each domain contains $G$ GPUs for $N = D \times G$ total GPUs:
+Turn on both `NCCL_NVLS_ENABLE=1` and `NCCL_COLLNET_ENABLE=1` on a multi-node HGX cluster or multi-rack NVL72 SuperPOD, and NCCL builds a hierarchy. A flat collective across all GPUs would overwhelm the scale-out NICs. So NCCL runs three stages across $D$ domains. Each domain holds $G$ GPUs, so the job has $N = D \times G$ GPUs in total:
 
-1. **Stage 1 — Intra-Domain NVLS ReduceScatter:** Inside each node or rack, the NVSwitch ASICs aggregate the $G$ GPUs' local tensors of size $S$. Each rail-aligned GPU leader receives a reduced $\frac\{S\}\{G\}$ shard over NVLink.
-2. **Stage 2 — Inter-Domain InfiniBand SHARP AllReduce:** Each rail-aligned GPU leader injects its $\frac\{S\}\{G\}$ shard via GPUDirect RDMA into its rail's Quantum leaf switch. Across all rails, each domain transmits a total of $1.0 \times S$ bytes up into the InfiniBand SHARP tree. A hierarchical Ring would instead send $2\frac\{D - 1\}\{D\}S$ bytes. The Quantum leaf and spine switches sum the shards across all $D$ domains in switch silicon. They then multicast the globally reduced $\frac\{S\}\{G\}$ shard back down each rail.
-3. **Stage 3 — Intra-Domain NVLS Hardware Multicast AllGather:** Each rail leader writes its globally reduced $\frac\{S\}\{G\}$ shard into the local NVSwitch multicast address. The NVSwitch fabric replicates the full reduced tensor $S$ across all $G$ GPUs in a single hop.
+1. **Stage 1 — Intra-Domain NVLS ReduceScatter:** Inside each node or rack, the NVSwitch ASICs add up the local tensors of size $S$ from all $G$ GPUs. Each rail-aligned GPU leader receives a reduced $\frac\{S\}\{G\}$ shard over NVLink.
+2. **Stage 2 — Inter-Domain InfiniBand SHARP AllReduce:** Each rail leader sends its $\frac\{S\}\{G\}$ shard through GPUDirect RDMA into its rail's Quantum leaf switch. Across all rails, each domain pushes a total of $1.0 \times S$ bytes up the InfiniBand SHARP tree. A hierarchical Ring would send $2\frac\{D - 1\}\{D\}S$ bytes instead. The Quantum leaf and spine switches add the shards from all $D$ domains in silicon, then multicast the reduced $\frac\{S\}\{G\}$ shard back down each rail.
+3. **Stage 3 — Intra-Domain NVLS Hardware Multicast AllGather:** Each rail leader writes its globally reduced $\frac\{S\}\{G\}$ shard into the local NVSwitch multicast address. The fabric then copies the full reduced tensor $S$ to all $G$ GPUs in a single hop.
+
+Two worked examples show the arithmetic. The first is a 256-GPU HGX cluster, and the second is a 1,152-GPU SuperPOD.
 
 ```text
 Hierarchical NVLS + InfiniBand SHARP Traffic Examples:
@@ -197,13 +227,17 @@ Hierarchical NVLS + InfiniBand SHARP Traffic Examples:
   Stage 2 inter-rack InfiniBand SHARP sends 720.0 MB per rack across the Quantum-X800 fabric vs 1,350.0 MB per rack in an inter-rack Ring -> 1.875x inter-rack bandwidth savings
 ```
 
+In both examples, the inter-domain stage is the one that crosses the scale-out fabric, so that is the number to watch. Before you enable both variables, decide which layer each communicator spans, because the two paths serve different layers.
+
 ---
 
 ## 3. InfiniBand SHARP Architecture: sharp_am, sharp_daemons, Aggregation Nodes, and Trees
 
-Unlike standard RDMA Reliable Connected Queue Pairs that two host NICs negotiate directly with each other, InfiniBand SHARP requires active state inside the switch silicon, the fabric control plane, and every compute host. If any one of those three planes loses synchronization, SHARP tree allocation fails. The job then silently drops back to host-driven Ring or Tree algorithms.
+With standard RDMA, two host NICs negotiate a Reliable Connected Queue Pair directly with each other. InfiniBand SHARP needs more. It keeps live state in three places: the switch silicon, the fabric control plane, and every compute host. If one of those planes loses synchronization, SHARP tree allocation fails. The job then drops back to host-driven Ring or Tree algorithms without telling you.
 
 ### 3.1 The Four Architectural Components of InfiniBand SHARP
+
+The diagram splits the system into three planes. Read it from top to bottom: the control plane builds the trees, the switch plane does the arithmetic, and the host plane feeds the GPUs.
 
 ```mermaid
 flowchart TB
@@ -231,6 +265,8 @@ flowchart TB
     AM <-->|"Out-of-Band / IB Control"| SD
 ```
 
+The table gives you each component's binary or silicon block, where it runs, and what it does. When a SHARP job falls back, you can check each row in turn, because each one is a process or a silicon block you can inspect.
+
 | Component | Binary / Process / Silicon Block | Where It Runs | Exact Operational Role |
 |---|---|---|---|
 | **Subnet Manager & UFM** | `opensm` / `ufm-enterprise` | Dedicated Management Node or BlueField DPU | Discovers physical topology, assigns 16-bit LIDs (1..49,151), computes deadlock-free LFT/MFT tables, and exports topology graph to `sharp_am` |
@@ -241,18 +277,24 @@ flowchart TB
 
 ### 3.2 Step-by-Step Lifecycle of a SHARP Collective
 
-1. **Fabric Discovery and Physical Tree Construction:** OpenSM or NVIDIA UFM sweeps the InfiniBand subnet using `ibnetdiscover` and directed-route packets. It writes the fabric topology file `opensm-subnet.lst`. The `sharp_am` daemon reads this topology and identifies every Quantum switch whose firmware supports SHARP. It then builds up to 64 physical SHARP spanning trees with leaf switches as Child ANs and spine switches as Root ANs.
-2. **Job Initialization and Communicator Reservation:** When PyTorch initializes `ProcessGroupNCCL` with `NCCL_COLLNET_ENABLE=1`, the SHARP plugin connects over a local Unix socket to the host `sharp_d` daemon. The leader rank's `sharp_d` contacts `sharp_am` to request a SHARP Job context and a logical Aggregation Group. If `sharp_am` has free tree quota and switch buffer space, it programs the participating Leaf and Spine ANs. It allocates Operand State Table entries and returns the AN Queue Pair parameters to the hosts.
-3. **In-Flight Switch Reduction and Streaming Aggregation:** During `ncclAllReduce`, each node's rail-aligned GPU leader posts a GPUDirect RDMA send directly to its Leaf Switch AN Queue Pair. As packets arrive from the $k$ child ports attached to that Leaf AN, the switch Operand State Table tracks which ports have contributed. It accumulates the running sum in on-switch SRAM using the switch's IEEE-754 floating-point ALU. A switch AN never forwards $k$ separate packets upstream. It waits until all $k$ expected child operands arrive in the OST, emits one combined packet upstream to the Spine AN, and clears the OST slot for the next chunk under the Streaming Aggregation Protocol. Once the Root Spine AN sums the partial results from all Leaf ANs, it multicasts the final reduced packet back down the tree into GPU HBM.
-4. **Teardown and Quota Reclamation:** When the job finishes and calls `ncclCommDestroy`, `sharp_am` tears down the logical Aggregation Group. The same cleanup runs if a rank crashes and `sharp_d` detects process termination. It flushes any in-flight OST entries on the switches and returns the SHARP tree quota to the cluster pool.
+Follow one collective through its four stages. Each stage depends on the one before it.
+
+1. **Fabric Discovery and Physical Tree Construction:** First, OpenSM or NVIDIA UFM sweeps the InfiniBand subnet with `ibnetdiscover` and directed-route packets. It writes the topology to `opensm-subnet.lst`. Then `sharp_am` reads that file and finds every Quantum switch whose firmware supports SHARP. It builds up to 64 physical SHARP spanning trees, with leaf switches acting as Child ANs and spine switches as Root ANs.
+2. **Job Initialization and Communicator Reservation:** When PyTorch initializes `ProcessGroupNCCL` with `NCCL_COLLNET_ENABLE=1`, the SHARP plugin connects to the host `sharp_d` daemon over a local Unix socket. The leader rank's `sharp_d` then asks `sharp_am` for a SHARP Job context and a logical Aggregation Group. If `sharp_am` has free tree quota and switch buffer space, it programs the participating Leaf and Spine ANs. It allocates Operand State Table entries and returns the AN Queue Pair parameters to the hosts.
+3. **In-Flight Switch Reduction and Streaming Aggregation:** During `ncclAllReduce`, each node's rail-aligned GPU leader posts a GPUDirect RDMA send straight to its Leaf Switch AN Queue Pair. As packets arrive from the $k$ child ports attached to that Leaf AN, the Operand State Table tracks which ports have contributed. The switch keeps the running sum in on-switch SRAM, using its IEEE-754 floating-point ALU. A switch AN never sends $k$ separate packets upstream. It waits until all $k$ expected operands arrive, then sends one combined packet to the Spine AN, and it clears the OST slot for the next chunk under the Streaming Aggregation Protocol. Once the Root Spine AN has the partial results from all Leaf ANs, it multicasts the final packet back down the tree into GPU HBM.
+4. **Teardown and Quota Reclamation:** When the job finishes and calls `ncclCommDestroy`, `sharp_am` tears down the logical Aggregation Group. A crashed rank triggers the same cleanup once `sharp_d` detects that the process has ended. The switches flush any in-flight OST entries, and the SHARP tree quota goes back to the cluster pool.
+
+When a SHARP job hangs, you should find out which of these four stages it reached before you change any variable.
 
 ---
 
 ## 4. Hardware Generations (SHARPv1–SHARPv4, NVLS), Data Types, and Floating-Point Determinism
 
+The first InfiniBand SHARP ran on 100 Gbps EDR Switch-IB 2 switches. Those switches served CPU-based HPC work, such as barriers and small 64-bit reductions. They had no 16-bit AI floating-point formats, and they could not stream gradient tensors of several hundred megabytes at line rate. Modern AI factories rely on SHARPv2, SHARPv3, SHARPv4, and NVSwitch NVLS to handle deep learning precisions at full wire speed.
+
 ### 4.1 Evolution from SHARPv1 (EDR) to SHARPv4 (Quantum-X800) and NVLS Gen 4
 
-Early InfiniBand SHARP on 100 Gbps EDR Switch-IB 2 switches was built for CPU-based HPC workloads such as barriers and small 64-bit reductions. It lacked 16-bit AI floating-point formats and could not stream multi-hundred-megabyte gradient tensors at line rate. Modern AI factories rely on SHARPv2, SHARPv3, SHARPv4, and NVSwitch NVLS to process deep learning precisions at full wire speed.
+Use the table as a lookup. Each row gives one generation's ports, the reduction data types it supports, and its key capability.
 
 | Hardware Generation | Switch Platform & ASIC | Port Speed & Radix | Supported Reduction Data Types | Key Architectural Capabilities |
 |---|---|---|---|---|
@@ -263,9 +305,13 @@ Early InfiniBand SHARP on 100 Gbps EDR Switch-IB 2 switches was built for CPU-ba
 | **NVLS Gen 3** | NVSwitch 3.0 (HGX H100 / H200) | 900 GB/s bidir (3,600 Gbps unidir) / GPU, 64 ports | FP8, FP16, BF16, FP32, INT32, INT64 | Intra-node (8 GPUs) & NVL256 in-switch reduction + hardware multicast (`NCCL_NVLS_ENABLE=1`) |
 | **NVLS Gen 4** | NVSwitch 4.0 (DGX GB200 / GB300 NVL72) | 1.8 TB/s bidir (7,200 Gbps unidir) / GPU, **144 ports/tray** | FP4 (NVFP4), FP8, FP16, BF16, FP32, INT32, INT64 | **72-GPU** single-rack NVLink domain (18 compute trays, 9 switch trays / 18 NVSwitch chips, **130 TB/s** bisection) |
 
+If you plan a new cluster, the newest rows matter most. They add lower-precision formats, such as FP8 and FP4, along with a larger rack domain.
+
 ### 4.2 DGX GB300 SuperPOD Scale-Out with Quantum-X800 Q3400-RD (144-Port) Switches
 
-On older 64-port NDR switches, scaling past a couple thousand GPUs required a three-tier fat-tree with super-spine switches. Adding a third switch tier introduces an extra SHARP Aggregation Node hop and doubles the optical transceivers required across the cluster. Because the Quantum-X800 Q3400-RD switch provides 144 ports at 800 Gbps, a DGX GB300 SuperPOD scales up to 16 Scalable Units or 9,216 B300 GPUs in a non-blocking 2-layer leaf-spine compute fabric.
+On older 64-port NDR switches, growing past a couple thousand GPUs meant a three-tier fat-tree with super-spine switches. A third tier adds an extra SHARP Aggregation Node hop. It also doubles the optical transceivers across the cluster. The Quantum-X800 Q3400-RD switch has 144 ports at 800 Gbps, so a DGX GB300 SuperPOD reaches 16 Scalable Units, or 9,216 B300 GPUs, on a non-blocking 2-layer leaf-spine compute fabric.
+
+The breakdown below shows how one Scalable Unit is built.
 
 ```text
 DGX GB300 SuperPOD Scalable Unit (SU) Architecture Breakdown:
@@ -276,6 +322,8 @@ DGX GB300 SuperPOD Scalable Unit (SU) Architecture Breakdown:
 - Storage and management switches: Spectrum-4 SN5600D (64-port 800 Gbps) Ethernet switches (400 Gbps dedicated to RoCEv2 High-Performance Storage at 90 GB/s read / 45 GB/s write Standard or 280 GB/s read / 140 GB/s write Enhanced per SU, and >= 200 Gbps dedicated to In-Band Management) + SN2201 (48 x 1 Gbps) Out-of-Band switches
 ```
 
+Each SU holds 8 racks, which is 576 GPUs. Scale the fabric with the table. The leaf count per SU stays fixed at 8, and the spine count grows with the number of SUs.
+
 | DGX GB300 SuperPOD Scale (# SUs) | # Compute Racks (NVL72) | # GPUs (B300) | IB Leaf Switches per SU (Q3400-RD) | Total IB Leaf Switches (Q3400-RD) | Total IB Spine Switches (Q3400-RD) | Storage & In-Band SN5600D Spines / Compute Leaves / Storage Leaves |
 |---|---|---|---|---|---|---|
 | **2 SUs** | 16 racks | **1,152 GPUs** | 8 (4 rails $\times$ 2) | **16** | **8** | 4 spines / 8 compute leaves / 2 storage leaves (64x400GbE) |
@@ -283,11 +331,13 @@ DGX GB300 SuperPOD Scalable Unit (SU) Architecture Breakdown:
 | **8 SUs** | 64 racks | **4,608 GPUs** | 8 (4 rails $\times$ 2) | **64** | **36** | 12 spines / 32 compute leaves / 4 storage leaves (256x400GbE) |
 | **16 SUs** | 128 racks | **9,216 GPUs** | 8 (4 rails $\times$ 2) | **128** | **72** | 24 spines / 64 compute leaves / 8 storage leaves (1024x400GbE) |
 
+Pick the row that matches your planned SU count before you order switches. You will save yourself a re-order that way.
+
 ### 4.3 IEEE-754 Floating-Point Non-Associativity and Deterministic SHARP Tree Reductions
 
-When engineers turn on SHARP for the first time, they often notice tiny numerical differences in training loss compared to a baseline Ring run. In exact real arithmetic, addition is associative: $(a + b) + c = a + (b + c)$. In IEEE-754 floating-point arithmetic, addition is not associative because every intermediate sum rounds to a finite mantissa.
+In exact real arithmetic, addition is associative: $(a + b) + c = a + (b + c)$. Floating-point arithmetic does not share that property. Every intermediate sum rounds to a finite mantissa, so the order of the additions can change the result.
 
-Consider summing 8 FP32 values across 8 ranks whose exact mathematical sum is 1.875:
+Take 8 FP32 values, one on each of 8 ranks. Their exact sum is 1.875. Watch how the answer depends on the order of the additions:
 
 ```text
 IEEE-754 Mantissa Precision and FP32 Ring vs SHARP Summation Breakdown:
@@ -304,7 +354,11 @@ IEEE-754 Mantissa Precision and FP32 Ring vs SHARP Summation Breakdown:
   Level 2 & Root: (0.0 + 1.25) + (0.0 + 0.625) = 1.875 (sharp_tree_repeatable = True)
 ```
 
-Inside a SHARP Aggregation Node, operands are not summed in random packet arrival order unless unordered reductions are requested. Instead, the switch Operand State Table waits for the fixed set of child port operands. It reduces them according to a deterministic binary tree parenthesization indexed by switch port. Because Ring and SHARP use different summation trees, switching from `NCCL_SHARP_DISABLE=1` to `NCCL_COLLNET_ENABLE=1` changes the least-significant mantissa bits. Within a fixed SHARP tree topology and rank placement, repeated runs are 100% bit-repeatable. Every rank receives the exact same bit-identical tensor from the Root AN broadcast.
+Ring gives several different answers depending on its starting rank. The fixed binary tree gives 1.875 every time.
+
+A SHARP Aggregation Node does not add packets in whatever order they arrive, unless you ask for unordered reductions. The Operand State Table waits for the fixed set of child port operands. Then it reduces them in a deterministic binary tree, shaped by switch port. Ring and SHARP use different summation trees, so switching from `NCCL_SHARP_DISABLE=1` to `NCCL_COLLNET_ENABLE=1` changes the least-significant mantissa bits.
+
+With a fixed SHARP tree topology and rank placement, repeated runs are 100% bit-repeatable. Every rank also receives the exact same bit-identical tensor from the Root AN broadcast. When you compare a SHARP run with a Ring run, compare run-to-run variation within each path, not bit identity across the two.
 
 ---
 
@@ -312,18 +366,22 @@ Inside a SHARP Aggregation Node, operands are not summed in random packet arriva
 
 ### 5.1 Enabling InfiniBand SHARP (CollNet) and NVSwitch NVLS in NCCL
 
-Setting an environment variable alone will not activate InfiniBand SHARP if the host plugin or fabric daemons are missing. When any prerequisite is absent, NCCL quietly falls back to standard RDMA Ring or Tree collectives without failing the job. You must verify five prerequisites and two buffer registration rules to get zero-copy in-network reductions:
+An environment variable on its own will not turn on InfiniBand SHARP. If the host plugin or the fabric daemons are missing, NCCL quietly falls back to standard RDMA Ring or Tree collectives, and the job keeps running. To get zero-copy in-network reductions, you need to verify five prerequisites and two buffer registration rules. The list below covers them.
 
-1. **Quantum Switch Firmware:** Quantum, Quantum-2 QM9700, or Quantum-X800 Q3400-RD switches must run SHARP-enabled firmware for SHARPv2, SHARPv3, or SHARPv4.
-2. **Active `sharp_am` and Subnet Manager:** OpenSM or NVIDIA UFM (`ufm-enterprise`) must run with an active `sharp_am` process. That process discovers the fabric and builds SHARP trees.
-3. **Compute Host `sharp_daemons` and GPUDirect RDMA:** Each GPU host must run the `sharp_daemons` (`sharp_d`) service. It must also load the GPUDirect RDMA kernel module `nvidia_peermem` or `dma-buf`.
-4. **NCCL RDMA SHARP Plugin:** The external network plugin `libnccl-net.so` from `nccl-rdma-sharp-plugins` or HPC-X must be on `LD_LIBRARY_PATH`. That allows NCCL to initialize `NET/IB` with SHARP CollNet support.
-5. **NCCL Environment Variables:** Export `NCCL_COLLNET_ENABLE=1` for InfiniBand SHARP, `NCCL_NVLS_ENABLE=1` for NVLink SHARP, and `NCCL_SHARP_DISABLE=0`. You can also override `NCCL_ALGO=NVLS,NVLSTree,CollNetDirect,CollNetChain,Tree,Ring,PAT` before calling `ncclCommInitRank()`.
-6. **Persistent Zero-Copy User Buffers:** Registering persistent buffers with `ncclCommRegister` and `ncclCommDeregister` cuts GPU SM channel blocks from 16 down to 4. If any rank passes a registered buffer, every rank in that communicator must pass a registered buffer. The byte offset `tensor_ptr - base_registered_ptr` must also match across all ranks, or NCCL falls back to `NCCL_BUFFSIZE` staging copies.
+1. **Quantum Switch Firmware:** Your Quantum, Quantum-2 QM9700, or Quantum-X800 Q3400-RD switches must run SHARP-enabled firmware. That means SHARPv2, SHARPv3, or SHARPv4.
+2. **Active `sharp_am` and Subnet Manager:** OpenSM or NVIDIA UFM (`ufm-enterprise`) must run alongside an active `sharp_am` process. That process discovers the fabric and builds the SHARP trees.
+3. **Compute Host `sharp_daemons` and GPUDirect RDMA:** Each GPU host must run the `sharp_daemons` service, also called `sharp_d`. It must also load the GPUDirect RDMA kernel module `nvidia_peermem`, or use `dma-buf`.
+4. **NCCL RDMA SHARP Plugin:** The external network plugin `libnccl-net.so` must be on `LD_LIBRARY_PATH`. It comes from `nccl-rdma-sharp-plugins` or HPC-X. With it, NCCL can initialize `NET/IB` with SHARP CollNet support.
+5. **NCCL Environment Variables:** Export `NCCL_COLLNET_ENABLE=1` for InfiniBand SHARP and `NCCL_NVLS_ENABLE=1` for NVLink SHARP. Also set `NCCL_SHARP_DISABLE=0`. If you want to pick the algorithm yourself, override `NCCL_ALGO=NVLS,NVLSTree,CollNetDirect,CollNetChain,Tree,Ring,PAT` before calling `ncclCommInitRank()`.
+6. **Persistent Zero-Copy User Buffers:** Register persistent buffers with `ncclCommRegister` and `ncclCommDeregister`, and the GPU SM channel blocks drop from 16 to 4. The rule is all or nothing. If one rank passes a registered buffer, every rank in that communicator must do the same. The byte offset `tensor_ptr - base_registered_ptr` must also match on every rank. Otherwise NCCL falls back to `NCCL_BUFFSIZE` staging copies.
+
+Verify the list in order before you blame the switches. A missing plugin or daemon can look just like a healthy Ring run.
 
 ### 5.2 Enabling SHARP in OpenMPI and HPC-X via HCOLL (`HCOLL_ENABLE_SHARP=1`)
 
-In traditional HPC and hybrid MPI plus PyTorch clusters launched with Slurm PMIx and OpenMPI, MPI collectives bypass NCCL. They use the OpenMPI Modular Component Architecture instead. Without explicit configuration, `MPI_Allreduce` runs on host CPUs over standard point-to-point RDMA. NVIDIA accelerates MPI collectives through the Hierarchical Collectives library (`coll_hcoll`).
+On a traditional HPC cluster, or a hybrid MPI plus PyTorch cluster launched with Slurm PMIx and OpenMPI, MPI collectives skip NCCL. They go through the OpenMPI Modular Component Architecture instead. Without explicit configuration, `MPI_Allreduce` runs on host CPUs over standard point-to-point RDMA. NVIDIA speeds up MPI collectives with the Hierarchical Collectives library, `coll_hcoll`.
+
+Read the precedence list in the block below before you change any MCA setting. Later items override earlier ones.
 
 ```text
 OpenMPI MCA Parameter Precedence (Lowest to Highest Priority, Inspect via ompi_info -a) and Kernel Requirements:
@@ -336,15 +394,19 @@ OpenMPI MCA Parameter Precedence (Lowest to Highest Priority, Inspect via ompi_i
   5. Command-line flags: mpiexec -mca <param> <value>
 ```
 
-- **Enabling HCOLL and SHARP in OpenMPI:** Pass `-mca coll_hcoll_enable 1` or `export OMPI_MCA_coll_hcoll_enable=1` when launching via `srun --mpi=pmix`. Bind the primary HCA with `-x HCOLL_MAIN_IB=mlx5_0:1`, enable non-blocking collectives with `-x HCOLL_ENABLE_NBC=1`, and activate in-switch SHARP reductions with `-x HCOLL_ENABLE_SHARP=1`.
-- **Disabling HCOLL for Triage:** If HCOLL misbehaves on a legacy transport, disable it cleanly with `mpiexec -mca coll_hcoll_enable 0` or `export OMPI_MCA_coll_hcoll_enable=0`.
+Check the kernel and rdma-core versions at the top of the block before you rely on the dma-buf path.
+
+- **Enabling HCOLL and SHARP in OpenMPI:** Turn on HCOLL with `-mca coll_hcoll_enable 1`, or with `export OMPI_MCA_coll_hcoll_enable=1` when launching via `srun --mpi=pmix`. Next, bind the primary HCA with `-x HCOLL_MAIN_IB=mlx5_0:1`. Enable non-blocking collectives with `-x HCOLL_ENABLE_NBC=1`, and turn on in-switch SHARP reductions with `-x HCOLL_ENABLE_SHARP=1`.
+- **Disabling HCOLL for Triage:** If HCOLL misbehaves on a legacy transport, turn it off with `mpiexec -mca coll_hcoll_enable 0`. You can also use `export OMPI_MCA_coll_hcoll_enable=0`.
 
 ### 5.3 Ethernet Fabrics: Spectrum-X vs UEC In-Network Collectives (INC and xCCL)
 
-Many teams deploying RoCEv2 or Ultra Ethernet clusters ask whether they can turn on `NCCL_COLLNET_ENABLE=1` to get switch-resident reductions over Ethernet. Understanding what current Ethernet switches do today versus what the Ultra Ethernet Consortium specifies prevents wasted tuning cycles.
+Many teams running RoCEv2 or Ultra Ethernet ask the same question: can `NCCL_COLLNET_ENABLE=1` give them switch-resident reductions over Ethernet? The answer depends on two things. One is what Ethernet switches do today. The other is what the Ultra Ethernet Consortium specifies. Knowing both saves you from wasted tuning cycles.
 
-1. **NVIDIA Spectrum-X Ethernet:** Spectrum-X switches such as the Spectrum-4 SN5600 and Spectrum-X800 accelerate NCCL AllReduce and AllToAll over RoCEv2. They use adaptive packet spraying, hardware congestion telemetry, and BlueField-3 SuperNIC packet reordering. However, production Spectrum-X Ethernet switches do not expose switch-resident arithmetic reduction engines analogous to InfiniBand SHARP. Setting `NCCL_COLLNET_ENABLE=1` on a Spectrum-X RoCEv2 cluster will not offload floating-point additions into the SN5600 switch ASIC. NCCL will use NVSwitch NVLS inside the rack and standard RDMA Ring, Tree, or PAT across racks.
-2. **Ultra Ethernet Consortium In-Network Collectives:** Released on June 11, 2025, the Ultra Ethernet Specification v1.0 standardizes the Ethernet link and transport layers. It also defines an architectural framework for In-Network Collectives bridging Libfabric (`fi_collective` and `fi_mr` APIs) and xCCL libraries.
+1. **NVIDIA Spectrum-X Ethernet:** Switches such as the Spectrum-4 SN5600 and Spectrum-X800 speed up NCCL AllReduce and AllToAll over RoCEv2. They do this with adaptive packet spraying, hardware congestion telemetry, and BlueField-3 SuperNIC packet reordering. Production Spectrum-X switches, however, do not have switch-resident arithmetic reduction engines like InfiniBand SHARP. So setting `NCCL_COLLNET_ENABLE=1` on a Spectrum-X RoCEv2 cluster does not move floating-point additions into the SN5600 switch ASIC. NCCL uses NVSwitch NVLS inside the rack, and standard RDMA Ring, Tree, or PAT across racks.
+2. **Ultra Ethernet Consortium In-Network Collectives:** The Ultra Ethernet Specification v1.0 was released on June 11, 2025. It standardizes the Ethernet link and transport layers. It also defines an architecture for In-Network Collectives that bridges Libfabric, through its `fi_collective` and `fi_mr` APIs, and the xCCL libraries.
+
+The block below lists the specification details. The three core INC components are the part to remember.
 
 ```text
 UEC Specification v1.0 Transport and In-Network Collectives (INC) Parameters:
@@ -355,6 +417,8 @@ UEC Specification v1.0 Transport and In-Network Collectives (INC) Parameters:
   2. INC Manager (IM) communicating over the out-of-band (OOB) network via gRPC to organize collective groups (Collectives-gr1, Collectives-gr2) and elect Spine switches as tree roots (Root of tree1 spine1, Root of tree2 spine2) above Leaf INC agents (INC agent leaf1, INC agent leaf2)
   3. Libfabric (fi_collective and fi_mr APIs) connecting PyTorch -> OpenMPI (xMPI) / NCCL / RCCL -> Libfabric -> SES/PDS and the INC Manager
 ```
+
+The table sets INC against the xCCL libraries, which is the comparison most teams need. Notice that INC runs inside the switches, while the xCCL libraries run on the hosts.
 
 | Feature Dimension | INC (In-Network Collectives) | xCCLs (NCCL, RCCL, MPI Collectives) |
 |---|---|---|
@@ -367,9 +431,13 @@ UEC Specification v1.0 Transport and In-Network Collectives (INC) Parameters:
 | **Required Infrastructure** | INC-capable switches (sFEPs), **INC Manager (IM via gRPC OOB)**, and Libfabric | Standard RDMA NICs and the MPI / xCCL software stack |
 | **Target Implementations** | UEC fabrics with INC switches + IM (and InfiniBand SHARP + `sharp_am`) | PyTorch DDP/FSDP, TensorFlow, and OpenMPI / MPICH collectives |
 
+On a RoCEv2 cluster today, expect host-driven collectives unless your switches expose INC, which current Spectrum-X hardware does not. Before you rely on any in-network path over Ethernet, confirm that your switches expose INC, since setting a variable will not add it.
+
 ---
 
 ## Commands and configurations that matter
+
+Work through these checks from the bottom of the stack up. Each group covers one layer: the HCA, the subnet manager, the host daemon, and then the whole fabric.
 
 ### 1. Verifying InfiniBand Fabric, UFM / OpenSM, sharp_am, and sharp_daemons (untested here)
 
@@ -394,6 +462,8 @@ grep -i "sharp" /var/tmp/ibdiagnet2/ibdiagnet2.log
 ```
 
 ### 2. Launching NCCL (nccl-tests / PyTorch) with CollNet (SHARP) and NVLS (untested here)
+
+The first block exports the production environment. The next two run the same AllReduce sweep twice, once with InfiniBand SHARP on and once with it off, so you can compare the results side by side.
 
 ```bash
 # (untested here) Production NCCL environment for hierarchical NVLS (intra-node/rack) + IB SHARP (inter-rack)
@@ -427,6 +497,8 @@ mpirun -np 256 -N 8 \
 
 ### 3. Launching OpenMPI (HPC-X) with HCOLL and SHARP (untested here)
 
+Use the first block to turn HCOLL and SHARP on. Use the second block to turn HCOLL off when a broken SHARP tree or legacy transport is the suspect.
+
 ```bash
 # (untested here) Enable HCOLL non-blocking collectives and SHARP in OpenMPI / Slurm PMIx
 mpirun -np 64 \
@@ -443,11 +515,13 @@ export OMPI_MCA_coll_hcoll_enable=0
 srun --mpi=pmix -N 8 --ntasks-per-node=8 ./mpi_allreduce_bench
 ```
 
+Run the A/B pair on the same nodes. The difference between those two runs is your evidence that SHARP is doing any work.
+
 ---
 
 ## How it fails
 
-In production AI clusters, SHARP and NVLS failures rarely crash the job outright with a clean stack trace. Instead, they either silently fall back to slower host-based Ring or Tree algorithms with a 2x to 5x collective slowdown, or stall during communicator initialization when switch AN quotas leak.
+SHARP and NVLS failures seldom crash a job with a clean stack trace. Instead, the job slows down, falling back to host-based Ring or Tree algorithms with a 2x to 5x collective slowdown. Or it stalls during communicator initialization, when switch AN quotas leak. The table is a symptom-to-fix lookup. Each row names what you see, the cause behind it, and the fix.
 
 | # | Failure Mode | Production Symptom (`NCCL_DEBUG=INFO` / Switch Telemetry) | Root Cause | Exact Diagnosis & Remediation |
 |---|---|---|---|---|
@@ -458,17 +532,19 @@ In production AI clusters, SHARP and NVLS failures rarely crash the job outright
 | **5** | **Asymmetric `ncclCommRegister` User Buffers Disable Zero-Copy NVLS / SHARP** | Developer registers user buffers via `ncclCommRegister` to cut SM channels from 16 to 4, but Nsight Systems still shows 16 SM channel blocks and internal `NCCL_BUFFSIZE` staging copies. | Either one rank in the communicator passed an unregistered tensor buffer, or ranks passed slices at different byte offsets from the head of their registered allocation. | Enforce the two `ncclCommRegister` invariants across all ranks: every rank must register its buffer, and `(uintptr_t)user_ptr - (uintptr_t)reg_base_ptr` must be identical across all ranks. |
 | **6** | **Bitwise Loss Divergence When Comparing Ring vs SHARP Checkpoints** | Regression test comparing Ring (`NCCL_SHARP_DISABLE=1`) against SHARP (`NCCL_COLLNET_ENABLE=1`) shows 1e-6 to 1e-5 gradient differences on step 1, growing over 1,000 steps. | IEEE-754 floating-point addition (FP16/BF16/FP32) is non-associative: Ring reduces sequentially, whereas SHARP ANs reduce pairwise in a hardware switch tree. | Do not require bitwise identity between Ring and SHARP. Validate that repeated runs within SHARP on the same tree topology are bitwise identical, and verify that SHARP uses FP32 internal accumulation. |
 
+Several rows begin with a log line, so search the `NCCL_DEBUG=INFO` output first. Only then should you touch the fabric or the switch telemetry. When you see one of these symptoms, start with the row that matches your logs, and work down its remediation steps in order. Keep the table open while you read the logs, because you will move between rows quickly.
+
 ---
 
 ## Hands-on lab
 
 ### Venue and Scope
-- **Local Verification Lab:** Run `code/part12/sharp_in_network_computing_lab.py` anywhere using the Python 3 standard library. It is backed by `code/part12/sharp_in_network_computing.py`.
-- **Cluster Target Venue:** Nebius GPU or a multi-node InfiniBand plus NVSwitch cluster for live `NCCL_COLLNET_ENABLE=1` and `NCCL_NVLS_ENABLE=1` `nccl-tests` profiling.
+- **Local Verification Lab:** You can run `code/part12/sharp_in_network_computing_lab.py` on any machine with Python 3. It needs only the standard library, and it is backed by `code/part12/sharp_in_network_computing.py`.
+- **Cluster Target Venue:** For live profiling, use a Nebius GPU or a multi-node InfiniBand plus NVSwitch cluster. There you can run `nccl-tests` with `NCCL_COLLNET_ENABLE=1` and `NCCL_NVLS_ENABLE=1`.
 
 ### Part 1: Run the Self-Checking Python Verification Lab (26/26 Checks)
 
-Run the standalone verification lab to verify all Ring versus SHARP and NVLS volume ratios and overlapped AllGather and ReduceScatter wall-time savings. The script also checks hierarchical NVLS plus InfiniBand SHARP byte reductions, SHARPv1 through SHARPv4 and DGX GB300 SuperPOD scale-out tables, and `sharp_am` tree quota fallbacks. Finally, it validates IEEE-754 FP32 tree determinism and NCCL, HCOLL, and UEC INC configurations:
+Run the standalone verification lab first. The script checks every Ring versus SHARP and NVLS volume ratio in this chapter, plus the wall-time saving from overlapping AllGather with ReduceScatter. It also covers the hierarchical NVLS plus InfiniBand SHARP byte counts, the SHARPv1 through SHARPv4 and DGX GB300 SuperPOD scale tables, and the `sharp_am` tree quota fallbacks. Last, it tests IEEE-754 FP32 tree determinism and the NCCL, HCOLL, and UEC INC configurations. Run it like this:
 
 ```bash
 python3 -B code/part12/sharp_in_network_computing_lab.py
@@ -508,19 +584,25 @@ Expected output:
 Summary: 26 passed, 0 failed
 ```
 
+A clean run ends with `Summary: 26 passed, 0 failed`. If any line shows `[FAIL]`, compare that check with the matching section of this chapter before you change the configuration.
+
 ---
 
 ## Common first mistakes
 
-1. **Confusing NVLS with InfiniBand SHARP:** Engineers often assume `NCCL_NVLS_ENABLE=1` offloads reductions into Quantum InfiniBand switches across nodes. Others assume `NCCL_COLLNET_ENABLE=1` is needed for intra-node NVSwitch reductions. Keep the boundary clear: `NCCL_NVLS_ENABLE=1` controls NVSwitch in-network reduction. By contrast, `NCCL_COLLNET_ENABLE=1` plus the SHARP plugin, `sharp_am`, and `sharp_daemons` controls inter-node Quantum InfiniBand SHARP.
-2. **Expecting Spectrum-X Ethernet Switches to Execute SHARP Reductions Today:** Setting `NCCL_COLLNET_ENABLE=1` on a Spectrum-X SN5600 RoCEv2 fabric will not trigger switch-resident floating-point reduction. Spectrum-X optimizes AllReduce via adaptive packet spraying and congestion telemetry. Switch-resident reduction units remain an InfiniBand Quantum, NVSwitch, and future UEC INC sFEP capability.
-3. **Leaving `NCCL_COLLNET_ENABLE=1` Global Across Every Sub-Communicator:** Allowing Tensor Parallel, Pipeline Parallel, and Data Parallel process groups to all request hardware SHARP trees quickly exhausts switch resources. Because a Quantum switch fabric supports a bounded pool of 64 concurrent SHARP trees, reserve InfiniBand SHARP for the cross-node Data Parallel or FSDP communicator.
-4. **Assuming AllGather Uses Arithmetic Reduction in SHARP or NVLS:** AllGather performs zero arithmetic additions. NVLS accelerates AllGather using hardware multicast where each GPU sends its $\frac\{B\}\{N\}$ shard once and the NVSwitch replicates it to all $N - 1$ peers. This yields a smaller standalone speedup than AllReduce unless overlapped with an in-network ReduceScatter to cut phase wall time in half.
-5. **Forgetting to Re-Enable SHARP or P2P After Debugging:** Temporarily setting `NCCL_SHARP_DISABLE=1` or `NCCL_P2P_DISABLE=1` during a triage session and baking that override into the production container image is a common mistake. It silently sacrifices 2x to 5x inter-node collective speedups or forces intra-node NVLink traffic through host CPU memory.
+1. **Confusing NVLS with InfiniBand SHARP:** Many engineers think `NCCL_NVLS_ENABLE=1` pushes reductions into Quantum InfiniBand switches across nodes. Others think `NCCL_COLLNET_ENABLE=1` is needed for reductions inside one NVSwitch node. Both are wrong. `NCCL_NVLS_ENABLE=1` controls the in-network reduction inside NVSwitch. `NCCL_COLLNET_ENABLE=1`, together with the SHARP plugin, `sharp_am`, and `sharp_daemons`, controls inter-node Quantum InfiniBand SHARP.
+2. **Expecting Spectrum-X Ethernet Switches to Execute SHARP Reductions Today:** Setting `NCCL_COLLNET_ENABLE=1` on a Spectrum-X SN5600 RoCEv2 fabric will not trigger switch-resident floating-point reduction. Spectrum-X speeds up AllReduce with adaptive packet spraying and congestion telemetry instead. Switch-resident reduction units are still a capability of InfiniBand Quantum, NVSwitch, and future UEC INC sFEP hardware.
+3. **Leaving `NCCL_COLLNET_ENABLE=1` Global Across Every Sub-Communicator:** If every process group can request a hardware SHARP tree, switch resources run out quickly. That includes the Tensor Parallel, Pipeline Parallel, and Data Parallel groups. A Quantum switch fabric supports a bounded pool of 64 concurrent SHARP trees. So reserve InfiniBand SHARP for the cross-node Data Parallel or FSDP communicator.
+4. **Assuming AllGather Uses Arithmetic Reduction in SHARP or NVLS:** AllGather performs zero arithmetic additions. NVLS speeds it up with hardware multicast. Each GPU sends its $\frac\{B\}\{N\}$ shard once, and the NVSwitch copies it to all $N - 1$ peers. On its own, that gives a smaller speedup than AllReduce. The bigger win comes when you overlap the AllGather with an in-network ReduceScatter, which cuts phase wall time in half.
+5. **Forgetting to Re-Enable SHARP or P2P After Debugging:** Engineers often set `NCCL_SHARP_DISABLE=1` or `NCCL_P2P_DISABLE=1` during a triage session. The override then gets baked into the production container image. That quietly gives up the 2x to 5x inter-node collective speedups, and it forces intra-node NVLink traffic through host CPU memory.
+
+Before you ship a container, remove every override you set while debugging.
 
 ---
 
 ## Exercises
+
+Treat these exercises as a rehearsal for the decisions you will make on a real cluster. Each exercise below uses the inputs in this block. Read the block first. Then work through the six exercises, and write down your arithmetic as you go, so you can check it against the answer.
 
 ```text
 Exercise Input Parameters Reference:
@@ -532,93 +614,99 @@ Exercise Input Parameters Reference:
 - Exercise 6: (d) Rank 0 user buffer at offset 0 vs Rank 1 user buffer at offset 4096 without nvidia-peermem
 ```
 
-1. **Exact ReduceScatter, AllGather, and AllReduce Volume Math:** Using the tensor sizes and GPU counts in the table above, calculate the per-GPU received byte volume in a Ring ReduceScatter versus an NVLS or SHARP ReduceScatter. Then compute the volume reduction factor and the unidirectional bytes transferred per rank in a Ring AllReduce versus SHARP.
-2. **Overlapped NVLS Multicast AllGather + In-Network ReduceScatter Timing:** Compute the total communication phase wall time when an FSDP shard AllGather and gradient ReduceScatter run serially in a Ring. Compare that against overlapping them via NVLS hardware multicast AllGather and in-network ReduceScatter, and state the percentage wall-time reduction.
-3. **Two-Level Hierarchical NVLS + InfiniBand SHARP Sizing:** For the 256-GPU HGX cluster and the 1,152-GPU DGX GB300 SuperPOD, compute the Stage 1 intra-domain NVLS ReduceScatter receive volume per GPU. Compare the Stage 2 inter-domain unidirectional bytes under InfiniBand SHARP versus a hierarchical Ring, and list the Q3400-RD switches at 2 SUs and 16 SUs.
-4. **sharp_am Tree Quota & Switch Buffer Fallback Triage:** Trace the `sharp_am` tree allocator across Jobs 101 through 105. Determine which jobs receive `SHARP_COLLNET`, which jobs fall back to `HOST_RING_TREE_FALLBACK`, and how many free trees remain after Job 105 allocates.
-5. **IEEE-754 FP32 Non-Associativity:** Explain why a rank-rotated Ring reduction starting at Rank 2 rounds the 8-element FP32 sum to 2.0 instead of the exact 1.875. Then explain why a binary SHARP Aggregation Node tree produces the exact 1.875 repeatably on every run.
-6. **Production NCCL, OpenMPI HCOLL, and UEC INC Configuration Audit:** Determine the active intra-node path, active inter-node path, and configuration warnings for each scenario in the reference block. Cover the properly configured InfiniBand cluster, the A/B test with `NCCL_SHARP_DISABLE=1`, the Spectrum-X Ethernet cluster, and the asymmetric user-buffer job.
+1. Work out the volume math for each case in the reference block. Using the tensor sizes and GPU counts above, calculate the per-GPU received byte volume in a Ring ReduceScatter and in an NVLS or SHARP ReduceScatter. Then compute the volume reduction factor, and the unidirectional bytes each rank transfers in a Ring AllReduce versus SHARP.
+2. Time the overlap. An FSDP shard AllGather and a gradient ReduceScatter run serially in a Ring. Compute the total communication phase wall time for that serial case. Then compare it with overlapping the two through NVLS hardware multicast AllGather and in-network ReduceScatter, and state the percentage wall-time reduction.
+3. Size the hierarchy. For the 256-GPU HGX cluster and the 1,152-GPU DGX GB300 SuperPOD, compute the Stage 1 intra-domain NVLS ReduceScatter receive volume per GPU. Compare the Stage 2 inter-domain unidirectional bytes under InfiniBand SHARP with a hierarchical Ring, and list the Q3400-RD switches at 2 SUs and 16 SUs.
+4. Triage the tree quota. Trace the `sharp_am` tree allocator across Jobs 101 through 105. Work out which jobs receive `SHARP_COLLNET`, which fall back to `HOST_RING_TREE_FALLBACK`, and how many trees stay free after Job 105 allocates.
+5. Explain the IEEE-754 rounding. Explain why a rank-rotated Ring reduction that starts at Rank 2 rounds the 8-element FP32 sum to 2.0, not the exact 1.875. Then explain why a binary SHARP Aggregation Node tree gives the exact 1.875 on every run.
+6. Audit the configurations. For each scenario in the reference block, determine the active intra-node path, the active inter-node path, and any configuration warnings. Cover the properly configured InfiniBand cluster, the A/B test with `NCCL_SHARP_DISABLE=1`, the Spectrum-X Ethernet cluster, and the asymmetric user-buffer job.
+
+Work each exercise on paper first, then check the arithmetic a second time before you move on. Write one sentence of conclusion under each answer, so the result has a meaning for your cluster.
 
 ---
 
 ## Interview angles
 
+Interviewers listen for two things: the mechanism, and the trade-off you can name. Each answer below gives both. Say your answer in your own words first, then check it against the target answer. Keep it short and direct, and name the trade-off before you stop talking.
+
 1. **"Walk me through the exact math of why SHARP and NVLS reduce endpoint traffic by (N - 1) in ReduceScatter and AllGather, and by ~2x in inter-node AllReduce."**
-   - *Target answer:* In a Ring ReduceScatter on $B$ bytes across $N$ ranks, each rank receives $N - 1$ chunks of size $\frac\{B\}\{N\}$, totaling $B\frac\{N - 1\}\{N\}$ bytes. With NVLS or InfiniBand SHARP, the switch silicon sums the incoming operands and writes only the final reduced $\frac\{B\}\{N\}$ shard to each GPU, cutting receive volume by $\frac\{1\}\{N - 1\}$. For AllGather, NVLS uses hardware multicast so each GPU sends its $\frac\{B\}\{N\}$ shard once. Overlapping multicast AllGather with in-network ReduceScatter cuts phase wall time from $T_\{\text\{AG\}} + T_\{\text\{RS\}}$ to $\max(T_\{\text\{AG\}}, T_\{\text\{RS\}})$. For inter-node AllReduce of size $S$, a host-driven Ring sends $2\frac\{N - 1\}\{N\}S$ bytes per direction across $2(N - 1)$ steps. An InfiniBand SHARP tree sends $1.0 \times S$ bytes up and receives $1.0 \times S$ bytes down in $O(\log N)$ switch hops, yielding 2x to 5x speedups on large clusters.
-
+   - *Target answer:* Start with the Ring. In a ReduceScatter of $B$ bytes across $N$ ranks, each rank receives $N - 1$ chunks of size $\frac\{B\}\{N\}$, which totals $B\frac\{N - 1\}\{N\}$ bytes. With NVLS or InfiniBand SHARP, the switch silicon adds the incoming operands and writes only the final reduced $\frac\{B\}\{N\}$ shard to each GPU. That cuts the receive volume by $\frac\{1\}\{N - 1\}$. AllGather works differently. NVLS uses hardware multicast, so each GPU sends its $\frac\{B\}\{N\}$ shard once. Overlapping a multicast AllGather with an in-network ReduceScatter cuts the phase wall time from $T_\{\text\{AG\}} + T_\{\text\{RS\}}$ to $\max(T_\{\text\{AG\}}, T_\{\text\{RS\}})$. For an inter-node AllReduce of size $S$, a host-driven Ring sends $2\frac\{N - 1\}\{N\}S$ bytes per direction across $2(N - 1)$ steps. An InfiniBand SHARP tree sends $1.0 \times S$ bytes up and receives $1.0 \times S$ bytes down in $O(\log N)$ switch hops. That yields 2x to 5x speedups on large clusters.
 2. **"What is the difference between NVLS and InfiniBand SHARP, and how do they work together on a DGX GB200 / GB300 SuperPOD?"**
-   - *Target answer:* NVLS (`NCCL_NVLS_ENABLE=1`) runs inside the 18 NVSwitch ASICs across 9 switch trays in a 72-GPU NVL72 rack. It provides 1.8 TB/s bidirectional NVLink 5 per GPU and 130 TB/s rack bisection managed by NMX-M. InfiniBand SHARP (`NCCL_COLLNET_ENABLE=1`) runs inside Quantum-X800 Q3400-RD 144-port 800 Gbps switches scaling up to 16 SUs or 9,216 GPUs in a 2-layer fat-tree. It is orchestrated by `sharp_am` on UFM or OpenSM plus `sharp_daemons` on compute trays. In a multi-rack AllReduce, NCCL runs a 3-stage hierarchy: Stage 1 intra-rack NVLS ReduceScatter across the 72 GPUs, Stage 2 inter-rack InfiniBand SHARP AllReduce across the 4 ConnectX-8 rails, and Stage 3 intra-rack NVLS hardware multicast AllGather.
-
+   - *Target answer:* NVLS (`NCCL_NVLS_ENABLE=1`) runs inside the 18 NVSwitch ASICs across 9 switch trays in a 72-GPU NVL72 rack. It provides 1.8 TB/s bidirectional NVLink 5 per GPU and 130 TB/s of rack bisection, managed by NMX-M. InfiniBand SHARP (`NCCL_COLLNET_ENABLE=1`) runs inside Quantum-X800 Q3400-RD 144-port 800 Gbps switches. It scales to 16 SUs, or 9,216 GPUs, in a 2-layer fat-tree. `sharp_am` on UFM or OpenSM, plus `sharp_daemons` on the compute trays, orchestrates it. In a multi-rack AllReduce, NCCL runs a three-stage hierarchy. Stage 1 is an intra-rack NVLS ReduceScatter across the 72 GPUs. Stage 2 is an inter-rack InfiniBand SHARP AllReduce across the 4 ConnectX-8 rails. Stage 3 is an intra-rack NVLS hardware multicast AllGather.
 3. **"A user sets `NCCL_COLLNET_ENABLE=1` on a 64-node InfiniBand cluster, or their job suddenly slows down by 3x mid-week without code changes. How do you triage whether SHARP is actually running?"**
-   - *Target answer:* Check the dependencies in order. First, inspect `NCCL_DEBUG=INFO` logs to confirm `NET/IB` loaded the SHARP plugin (`libnccl-net.so`) and selected CollNetDirect or CollNetChain without a fallback warning. Second, check `systemctl status sharp_daemons` on the compute nodes and `lsmod | grep nvidia_peermem` for GPUDirect RDMA. Third, check `sharp_am` and UFM or OpenSM on the fabric management node for exhausted switch SHARP tree quotas or collectives exceeding the switch AN buffer limit. Fourth, run `ibdiagnet` and `ibqueryerrors` to verify no flapping link (`LinkDownedCounter > 0`) is forcing OpenSM heavy sweeps and tearing down active SHARP spanning trees.
+   - *Target answer:* Work through the dependencies in order. Start with the `NCCL_DEBUG=INFO` logs. Confirm that `NET/IB` loaded the SHARP plugin, `libnccl-net.so`, and selected CollNetDirect or CollNetChain, with no fallback warning. Next, check `systemctl status sharp_daemons` on the compute nodes and `lsmod | grep nvidia_peermem` for GPUDirect RDMA. Then check `sharp_am` and UFM or OpenSM on the fabric management node. Look for exhausted switch SHARP tree quotas, or collectives larger than the switch AN buffer limit. Last, run `ibdiagnet` and `ibqueryerrors` to rule out a flapping link. A link with `LinkDownedCounter > 0` forces OpenSM into heavy sweeps, and those sweeps tear down active SHARP spanning trees.
+
+If your answer runs long, cut the figures that do not change the decision, and keep the path and the failure mode. A listener can follow the reasoning far better than a list of values.
 
 ---
 
 ## Checkpoint questions (20)
 
+Suppose a job runs slower after someone changes an environment variable. You should be able to explain what changed and where to look. Picture an on-call engineer whose job slowed down mid-week. Use these questions to check yourself. Answer each one in your own words, then compare it with the answer under it. If you can answer them without looking, you are ready for the lab.
+
 <details>
 <summary>**1. What does SHARP stand for, and what fundamental shift does it introduce in distributed collective communication?**</summary>
 
-Scalable Hierarchical Aggregation and Reduction Protocol. Instead of treating network switches as passive packet forwarders while GPUs circulate and sum intermediate tensor shards, SHARP moves collective reduction arithmetic and broadcast replication directly into the switch ASIC Aggregation Nodes.
+SHARP stands for Scalable Hierarchical Aggregation and Reduction Protocol. Normally a switch only forwards packets, while the GPUs circulate and sum the intermediate tensor shards. SHARP moves that reduction arithmetic, and the broadcast replication, into the switch ASIC Aggregation Nodes.
 </details>
 
 <details>
 <summary>**2. In a Ring ReduceScatter of a tensor of size B across N GPUs, how many bytes does each GPU receive, and how does in-network reduction (NVLS or SHARP) change that volume?**</summary>
 
-In a Ring ReduceScatter, each GPU receives $B\frac\{N - 1\}\{N\}$ bytes across $N - 1$ sequential hops. With in-network reduction via NVLS or SHARP, the switch aggregates all $N$ contributions in hardware and returns only $\frac\{B\}\{N\}$ bytes to each GPU. This reduces per-endpoint receive traffic to $\frac\{1\}\{N - 1\}$ of the ring volume.
+In a Ring ReduceScatter, each GPU receives $B\frac\{N - 1\}\{N\}$ bytes over $N - 1$ sequential hops. With in-network reduction through NVLS or SHARP, the switch adds all $N$ contributions in hardware and sends back only $\frac\{B\}\{N\}$ bytes to each GPU. That cuts the per-GPU receive traffic to $\frac\{1\}\{N - 1\}$ of the ring volume.
 </details>
 
 <details>
 <summary>**3. Since AllGather performs no arithmetic addition, how does NVLink SHARP (NVLS) accelerate AllGather, and what happens when you overlap an NVLS AllGather with an NVLS ReduceScatter?**</summary>
 
-NVLS accelerates AllGather using hardware multicast inside the NVSwitch ASIC. Each GPU sends its $\frac\{B\}\{N\}$ shard once into the switch, and the switch replicates it to all $N - 1$ peers in one hop, cutting sender volume by $\frac\{1\}\{N - 1\}$. When you overlap a multicast AllGather of duration $T_\{\text\{AG\}}$ with an in-network ReduceScatter of duration $T_\{\text\{RS\}}$, the network performs both concurrently. This reduces phase wall time from $T_\{\text\{AG\}} + T_\{\text\{RS\}}$ to $\max(T_\{\text\{AG\}}, T_\{\text\{RS\}})$ and cuts phase time in half.
+AllGather has no addition step, so NVLS speeds it up with hardware multicast inside the NVSwitch ASIC. Each GPU sends its $\frac\{B\}\{N\}$ shard into the switch once. The switch copies it to all $N - 1$ peers in one hop, which cuts the sender volume by $\frac\{1\}\{N - 1\}$. When you overlap a multicast AllGather of duration $T_\{\text\{AG\}}$ with an in-network ReduceScatter of duration $T_\{\text\{RS\}}$, both run at the same time. The phase wall time falls from $T_\{\text\{AG\}} + T_\{\text\{RS\}}$ to $\max(T_\{\text\{AG\}}, T_\{\text\{RS\}})$, which cuts the phase time in half in the chapter's example.
 </details>
 
 <details>
 <summary>**4. Compare the unidirectional per-node network traffic and step count of a host-driven Ring AllReduce versus an InfiniBand SHARP AllReduce across N = 32 nodes for a 1,024 MB tensor.**</summary>
 
 - **Host-driven Ring AllReduce:** Each node sends and receives $1,984.0\text\{ MB\}$ per direction across 62 sequential steps.
-- **InfiniBand SHARP AllReduce:** Each node sends $1,024.0\text\{ MB\}$ up into its leaf switch once and receives $1,024.0\text\{ MB\}$ of globally reduced data back down once across 10 tree steps.
+- **InfiniBand SHARP AllReduce:** Each node sends $1,024.0\text\{ MB\}$ up into its leaf switch once, and receives $1,024.0\text\{ MB\}$ of globally reduced data back down once, across 10 tree steps.
 </details>
 
 <details>
 <summary>**5. What is the architectural difference between InfiniBand SHARP (CollNet) and NVLink SHARP (NVLS)?**</summary>
 
-- **InfiniBand SHARP (`NCCL_COLLNET_ENABLE=1`):** Executes inter-node and inter-rack reductions inside Quantum-series InfiniBand switches. It requires the external NCCL RDMA SHARP plugin, compute-node `sharp_daemons`, and the fabric-wide `sharp_am` running with OpenSM or UFM.
-- **NVLink SHARP (`NCCL_NVLS_ENABLE=1`):** Executes intra-node or intra-rack reductions and hardware multicasts inside NVSwitch Gen 3 and Gen 4 ASICs over NVLink memory-mapped multicast addresses. On NVL72 racks, it is managed by NMX-M.
+- **InfiniBand SHARP (`NCCL_COLLNET_ENABLE=1`):** It runs inter-node and inter-rack reductions inside Quantum-series InfiniBand switches. You need the external NCCL RDMA SHARP plugin, `sharp_daemons` on the compute nodes, and `sharp_am` running with OpenSM or UFM.
+- **NVLink SHARP (`NCCL_NVLS_ENABLE=1`):** It runs intra-node or intra-rack reductions and multicasts inside NVSwitch Gen 3 and Gen 4 ASICs, over NVLink memory-mapped multicast addresses. On NVL72 racks, NMX-M manages it.
 </details>
 
 <details>
 <summary>**6. What is the difference between NCCL's CollNetDirect and CollNetChain algorithms?**</summary>
 
-Both are hierarchical CollNet algorithms that combine intra-node aggregation with inter-node InfiniBand SHARP tree reduction:
-- **CollNetDirect:** Designed for dense all-to-all local topologies such as NVSwitch nodes. All intra-node GPUs communicate directly with the designated rail leader GPUs in parallel.
-- **CollNetChain:** Organizes intra-node GPUs into a linear chain. It performs the local reduction in the forward direction toward the NIC leader and distributes the SHARP-reduced result in the reverse direction.
+Both combine intra-node aggregation with inter-node InfiniBand SHARP tree reduction. They differ in how the local GPUs are arranged.
+- **CollNetDirect:** It fits dense, all-to-all local topologies such as NVSwitch nodes. Every intra-node GPU talks to the designated rail leader GPUs in parallel.
+- **CollNetChain:** It arranges the intra-node GPUs in a linear chain. The local reduction runs forward toward the NIC leader, and the SHARP-reduced result comes back in the reverse direction.
 </details>
 
 <details>
 <summary>**7. What are the roles of OpenSM/UFM, sharp_am, sharp_daemons (sharp_d), and switch Aggregation Nodes (ANs) in an InfiniBand SHARP fabric?**</summary>
 
-1. **OpenSM / UFM:** Discovers the physical InfiniBand topology, assigns LIDs, programs switch LFT and MFT routing tables, and exports the topology to `sharp_am`.
-2. **sharp_am:** Computes physical SHARP spanning trees across Quantum switches, configures switch ANs via InfiniBand MADs, and manages per-job tree and buffer quotas.
-3. **sharp_daemons:** Runs on each compute node to broker tree allocation requests between local NCCL or MPI ranks and `sharp_am`.
-4. **Switch AN + OST:** Hardware unit in the Quantum switch ASIC that synchronizes arriving child operands in the Operand State Table. It sums them in the switch ALU and forwards a single reduced packet upstream or broadcasts downstream.
+1. **OpenSM / UFM:** It discovers the physical InfiniBand topology, assigns LIDs, and programs the switch LFT and MFT routing tables. It also exports the topology to `sharp_am`.
+2. **sharp_am:** It computes the physical SHARP spanning trees across Quantum switches and configures the switch ANs through InfiniBand MADs. It also manages the per-job tree and buffer quotas.
+3. **sharp_daemons:** It runs on each compute node and brokers tree allocation requests between the local NCCL or MPI ranks and `sharp_am`.
+4. **Switch AN + OST:** This hardware unit in the Quantum switch ASIC tracks arriving child operands in the Operand State Table. It sums them in the switch ALU, then forwards one reduced packet upstream or broadcasts downstream.
 </details>
 
 <details>
 <summary>**8. How did floating-point data type support evolve across SHARPv1, SHARPv2, SHARPv3, SHARPv4, and NVSwitch NVLS Gen 4?**</summary>
 
-- **SHARPv1:** Supported only INT32, INT64, FP32, and FP64 on 100G EDR Switch-IB 2 switches.
-- **SHARPv2:** Added FP16 and BF16 plus line-rate Streaming Aggregation on 200G HDR Quantum-1 switches.
-- **SHARPv3:** Kept FP16, BF16, FP32, FP64, and INT on 400G NDR Quantum-2 switches while scaling to 64 concurrent SHARP trees.
-- **SHARPv4:** Added FP8 support across a 144-port 800G switch radix on XDR Quantum-X800 Q3400-RD switches.
-- **NVLS Gen 4:** Supports FP4, FP8, FP16, BF16, FP32, INT32, and INT64 at 1.8 TB/s bidirectional per GPU on NVSwitch 4.0.
+- **SHARPv1:** It supported only INT32, INT64, FP32, and FP64, on 100G EDR Switch-IB 2 switches.
+- **SHARPv2:** It added FP16 and BF16, plus line-rate Streaming Aggregation, on 200G HDR Quantum-1 switches.
+- **SHARPv3:** It kept FP16, BF16, FP32, FP64, and INT on 400G NDR Quantum-2 switches, and scaled to 64 concurrent SHARP trees.
+- **SHARPv4:** It added FP8 support on the 144-port 800G radix of XDR Quantum-X800 Q3400-RD switches.
+- **NVLS Gen 4:** It supports FP4, FP8, FP16, BF16, FP32, INT32, and INT64, at 1.8 TB/s bidirectional per GPU on NVSwitch 4.0.
 </details>
 
 <details>
 <summary>**9. Why can a DGX GB300 SuperPOD scale up to 16 Scalable Units (9,216 GPUs) in a 2-layer InfiniBand fabric, and how many Q3400-RD leaf and spine switches does it use?**</summary>
 
-Because the Quantum-X800 Q3400-RD switch provides 144 ports at 800 Gbps. Each SU of 8 DGX GB300 NVL72 racks uses 8 leaf switches across 4 rails:
+The Quantum-X800 Q3400-RD switch provides 144 ports at 800 Gbps, and that is what makes a 2-layer fabric enough. Each SU of 8 DGX GB300 NVL72 racks uses 8 leaf switches across 4 rails. The totals are:
 - **2 SUs:** 16 leaf switches and 8 spine switches for 1,152 GPUs.
 - **4 SUs:** 32 leaf switches and 18 spine switches for 2,304 GPUs.
 - **8 SUs:** 64 leaf switches and 36 spine switches for 4,608 GPUs.
@@ -628,23 +716,21 @@ Because the Quantum-X800 Q3400-RD switch provides 144 ports at 800 Gbps. Each SU
 <details>
 <summary>**10. Why does switching from Ring AllReduce to SHARP CollNet slightly change floating-point gradient values, yet SHARP remains deterministic across repeated runs?**</summary>
 
-IEEE-754 floating-point addition is non-associative due to rounding after each addition. Ring accumulates sequentially rotated by rank, whereas a SHARP Aggregation Node reduces operands in a fixed binary tree parenthesization indexed by switch port. Because the SHARP tree topology is fixed and the Root AN multicasts a single reduced tensor down to all ranks, every rank receives a bit-identical tensor. Repeated runs on the same tree are therefore bit-repeatable.
+IEEE-754 addition is non-associative, because each addition rounds its result. Ring accumulates sequentially, with the starting point rotated by rank. A SHARP Aggregation Node reduces operands in a fixed binary tree, indexed by switch port. The SHARP tree topology is fixed, and the Root AN multicasts one reduced tensor down to every rank. So every rank receives a bit-identical tensor, and repeated runs on the same tree are bit-repeatable.
 </details>
 
 <details>
 <summary>**11. Which NCCL environment variables enable InfiniBand SHARP, enable NVLink SHARP (NVLS), and disable SHARP for A/B testing?**</summary>
 
-- `NCCL_COLLNET_ENABLE=1`: Enables InfiniBand SHARP via CollNet (CollNetDirect and CollNetChain).
-- `NCCL_NVLS_ENABLE=1`: Enables NVSwitch NVLink SHARP (NVLS and NVLSTree).
-- `NCCL_SHARP_DISABLE=1`: Explicitly disables InfiniBand SHARP offload for A/B benchmarking or troubleshooting, while `NCCL_SHARP_DISABLE=0` keeps it enabled.
+- `NCCL_COLLNET_ENABLE=1`: Turns on InfiniBand SHARP through CollNet, which covers CollNetDirect and CollNetChain.
+- `NCCL_NVLS_ENABLE=1`: Turns on NVSwitch NVLink SHARP, which covers NVLS and NVLSTree.
+- `NCCL_SHARP_DISABLE=1`: Turns off InfiniBand SHARP offload for A/B benchmarking or troubleshooting. `NCCL_SHARP_DISABLE=0` keeps it enabled.
 </details>
 
 <details>
 <summary>**12. How do persistent user buffers (ncclCommRegister) improve SHARP and NVLS performance, and what two invariants must hold across all ranks?**</summary>
 
-Registering user buffers via `ncclCommRegister()` allows NCCL to perform zero-copy SHARP and NVLS collectives directly on the application's tensor memory. It avoids copying through internal `NCCL_BUFFSIZE` channel staging buffers and reduces GPU SM channel blocks from 16 down to 4. The two mandatory invariants are:
-1. If any rank in a communicator uses a registered buffer for a collective, all ranks must use registered buffers.
-2. The byte offset from the registered buffer head must match across all ranks.
+Registering user buffers with `ncclCommRegister()` lets NCCL run zero-copy SHARP and NVLS collectives directly on your tensor memory. It skips the copies through internal `NCCL_BUFFSIZE` channel staging buffers, and it drops the GPU SM channel blocks from 16 to 4. Two invariants must hold. First, if any rank in a communicator uses a registered buffer for a collective, all ranks must. Second, the byte offset from the registered buffer head must match across all ranks.
 </details>
 
 <details>
@@ -652,54 +738,54 @@ Registering user buffers via `ncclCommRegister()` allows NCCL to perform zero-co
 
 Enable HCOLL and SHARP with:
 `mpiexec -mca coll_hcoll_enable 1 -x HCOLL_MAIN_IB=mlx5_0:1 -x HCOLL_ENABLE_NBC=1 -x HCOLL_ENABLE_SHARP=1 ./myprog`
-To disable HCOLL when troubleshooting, pass `mpiexec -mca coll_hcoll_enable 0` or `export OMPI_MCA_coll_hcoll_enable=0` before `srun --mpi=pmix`.
+To disable HCOLL while you troubleshoot, pass `mpiexec -mca coll_hcoll_enable 0`, or run `export OMPI_MCA_coll_hcoll_enable=0` before `srun --mpi=pmix`.
 </details>
 
 <details>
 <summary>**14. Does NVIDIA Spectrum-X Ethernet support switch-resident SHARP reduction engines today?**</summary>
 
-No. In current production hardware such as the Spectrum-4 SN5600 and Spectrum-X800, Spectrum-X accelerates NCCL AllReduce via adaptive packet spraying, hardware telemetry, and congestion control over RoCEv2. It does not expose switch-resident arithmetic reduction engines analogous to InfiniBand SHARP.
+No. Current production hardware, such as the Spectrum-4 SN5600 and Spectrum-X800, speeds up NCCL AllReduce over RoCEv2 with adaptive packet spraying, hardware telemetry, and congestion control. It does not expose switch-resident arithmetic reduction engines like InfiniBand SHARP.
 </details>
 
 <details>
 <summary>**15. In the Ultra Ethernet Consortium (UEC) architecture, what are sFEPs, the INC Manager (IM), and Libfabric's fi_collective API?**</summary>
 
-- **sFEPs:** UEC-capable Ethernet switches equipped with an In-Network Collectives silicon or microkernel engine and a local INC switch agent.
-- **INC Manager:** Centralized control plane that communicates with switch INC agents over the Out-of-Band network via gRPC to construct collective trees and elect Spine switches as tree roots.
-- **Libfabric (`fi_collective`):** User-space API layer that translates collective requests from PyTorch, OpenMPI, NCCL, or RCCL into UET SES and PDS semantics and coordinates with the INC Manager.
+- **sFEPs:** These are the UEC-capable Ethernet switches. Each one has an In-Network Collectives silicon or microkernel engine, plus a local INC switch agent.
+- **INC Manager:** This is the central control plane. It talks to the switch INC agents over the out-of-band network using gRPC, builds the collective trees, and elects Spine switches as tree roots.
+- **Libfabric (`fi_collective`):** This is the user-space API. It turns collective requests from PyTorch, OpenMPI, NCCL, or RCCL into UET SES and PDS semantics, and it coordinates with the INC Manager.
 </details>
 
 <details>
 <summary>**16. Why can very large collectives (hundreds of MBs or multiple GBs) or multi-job clusters silently fall back from SHARP to standard Ring/Tree?**</summary>
 
-Quantum switches have a finite pool of 64 hardware SHARP trees on SHARPv3 and SHARPv4 and finite on-switch SRAM reduction buffer memory. If concurrent jobs or multiple per-job communicators exhaust the 64 trees, NCCL logs a warning and falls back to non-SHARP host-driven Ring or Tree aggregation. The same fallback occurs if an unbucketed collective exceeds the switch SHARP buffer allocation.
+Quantum switches have a finite pool of 64 hardware SHARP trees on SHARPv3 and SHARPv4, and finite on-switch SRAM for reduction buffers. When concurrent jobs, or several communicators per job, use up the 64 trees, NCCL logs a warning and falls back to non-SHARP host-driven Ring or Tree aggregation. An unbucketed collective that is larger than the switch SHARP buffer allocation triggers the same fallback.
 </details>
 
 <details>
 <summary>**17. On what cluster sizes does InfiniBand SHARP provide the largest speedup, and what speedup range does NVIDIA report?**</summary>
 
-On a small 2-node to 4-node cluster, inter-node latency is tiny and SHARP gains are modest. On large-scale clusters of 32 or more nodes where network hops and bisection bandwidth dominate collective time, InfiniBand SHARP cuts collective latency and traffic to deliver 2x to 5x AllReduce speedups.
+On a small 2-node to 4-node cluster, inter-node latency is tiny, so SHARP gains are modest. The gains grow on clusters of 32 or more nodes, where network hops and bisection bandwidth dominate collective time. There, InfiniBand SHARP cuts both the latency and the traffic, and NVIDIA reports 2x to 5x AllReduce speedups.
 </details>
 
 <details>
 <summary>**18. Why is GPUDirect RDMA (nvidia-peermem or dma-buf) a mandatory prerequisite for InfiniBand SHARP in NCCL?**</summary>
 
-Because the NCCL RDMA SHARP plugin streams tensor shards directly from GPU HBM through the ConnectX HCA into the Leaf Switch AN Queue Pair. It also receives reduced shards directly back into GPU HBM. Without GPUDirect RDMA via `nvidia-peermem` or `dma-buf`, SHARP cannot register GPU BAR1 memory regions on the CollNet Queue Pairs.
+The NCCL RDMA SHARP plugin streams tensor shards straight from GPU HBM, through the ConnectX HCA, into the Leaf Switch AN Queue Pair. Reduced shards come back straight into GPU HBM too. Without GPUDirect RDMA through `nvidia-peermem` or `dma-buf`, SHARP cannot register GPU BAR1 memory regions on the CollNet Queue Pairs.
 </details>
 
 <details>
 <summary>**19. Inside a single DGX GB200 / GB300 NVL72 rack, how many compute trays, NVSwitch trays, NVSwitch chips, and NVLink 5 links per GPU form the NVLS domain?**</summary>
 
-An NVL72 rack contains 18 compute trays and 9 NVLink switch trays, with 2 NVSwitch chips per switch tray for 18 NVSwitch chips total. Each GPU uses its 18 NVLink 5 links at 100 GB/s bidirectional each (1.8 TB/s per GPU) to connect 1 link to each of the 18 NVSwitch chips. This forms a 1-hop crossbar with 130 TB/s aggregate rack bisection bandwidth.
+An NVL72 rack has 18 compute trays and 9 NVLink switch trays, with 2 NVSwitch chips per switch tray, for 18 NVSwitch chips in total. Each GPU has 18 NVLink 5 links, at 100 GB/s bidirectional each, which gives 1.8 TB/s per GPU. Each GPU connects one link to each of the 18 NVSwitch chips. Together, these form a 1-hop crossbar with 130 TB/s of aggregate rack bisection bandwidth.
 </details>
 
 <details>
 <summary>**20. Which diagnostic commands verify that the InfiniBand subnet, UFM / OpenSM, and SHARP trees are healthy across the fabric?**</summary>
 
-1. Run `ibstat`, `ibstatus`, and `ibv_devinfo -v` on compute nodes to verify `State: Active`, `Physical state: LinkUp`, and `SM lid`.
-2. Run `sminfo` and `systemctl status opensm ufm-enterprise sharp_am` on the management or UFM node.
-3. Run `systemctl status sharp_daemons` and `lsmod | grep nvidia_peermem` on compute nodes.
-4. Run `ibdiagnet -o /var/tmp/ibdiagnet2 --ber_test --pm_pause_time 30` and inspect `ibdiagnet2.log`, `ibdiagnet2.sm`, `ibdiagnet2.fdbs`, and `ibdiagnet2.pm` for SHARP AN errors, duplicate GUIDs, or flapping links.
+1. On the compute nodes, run `ibstat`, `ibstatus`, and `ibv_devinfo -v`. Look for `State: Active`, `Physical state: LinkUp`, and `SM lid`.
+2. On the management or UFM node, run `sminfo` and `systemctl status opensm ufm-enterprise sharp_am`.
+3. On the compute nodes, run `systemctl status sharp_daemons` and `lsmod | grep nvidia_peermem`.
+4. Run `ibdiagnet -o /var/tmp/ibdiagnet2 --ber_test --pm_pause_time 30`, then read `ibdiagnet2.log`, `ibdiagnet2.sm`, `ibdiagnet2.fdbs`, and `ibdiagnet2.pm`. Look for SHARP AN errors, duplicate GUIDs, or flapping links.
 </details>
 
 ---
@@ -736,4 +822,3 @@ Primary Corpus Books, Reference Architectures, and Notes Cited in Chapter 12.20:
    - nvidia-zero-to-hero/volume-07/chapter-09-multi-node-collectives-and-nccl.md (Ring vs Tree vs SHARP switch ASIC reduction overview)
    - computer-networking-problems-and-solutions, hands-on-llm-serving-and-optimization, learning-python-6th-edition, llmops, ai-factory, fluent-python-2nd-edition (recorded as read, nothing new in planning/ledgers/12-20.md)
 ```
-
