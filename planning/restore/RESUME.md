@@ -63,3 +63,4 @@ RULE (user, Nov 1): run at most 3 agents (3 chapters) at a time. 20 in parallel 
 Part 11 COMPLETE (11.1-11.30 committed). Now Part 6: 6.21-6.31, 3 at a time (6.21-6.23 first).
 Part 6 COMPLETE (6.1-6.31). Next: Part 12, 3 chapters at a time (then 7-10, 13-15).
 Update (Nov 2): Part 12 voice pass COMPLETE (12.1-12.24). Next: Part 13 (13.6-13.9 left), Part 14 (all), Part 15, then Parts 7-10. Agents died on weekly limit Nov 1; re-run prep_voice.py before relaunch.
+Update (Nov 2): Part 13 voice pass COMPLETE (13.1-13.9). Next: Part 14 (14.1-14.x, none done), Part 15, then Parts 7-10.
