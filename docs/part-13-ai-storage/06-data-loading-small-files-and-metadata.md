@@ -256,6 +256,10 @@ Establish a single-GPU throughput baseline before you scale to eight GPUs or to 
 
 Set the single-GPU baseline first, and only then add nodes. That way you know which step lost the efficiency.
 
+Watch the storage cluster while the job trains. On Lustre, a tool such as `lmt` shows the I/O load on each storage node. Vendor tools do the same for other filesystems. If a few nodes run hot while the rest sit idle, look for a sharding problem, where far more reads and writes land on a small number of nodes. On Lustre, `lfs setstripe` spreads a large dataset across 4 or 8 OSTs so that their bandwidth adds up.
+
+Two more levers remove network reads or shrink them. The first is brute force: copy the whole dataset onto every compute node. You see the win immediately, and you pay for it in extra local storage, so first check that each node has the space. The second is to store data compressed, such as JPEG images or Arrow and Parquet files, and decompress it on the fly. That saves I/O bandwidth and costs some CPU or GPU cycles. If I/O is the bottleneck and your processors sit idle, it is a good trade. Check the compression ratio at every step of the pipeline, and make sure decompression does not become the new bottleneck.
+
 ---
 
 ## 4. Multimodal GPU Preprocessing with NVIDIA DALI and Hardware Decompression
