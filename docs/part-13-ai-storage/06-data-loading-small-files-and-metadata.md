@@ -24,9 +24,13 @@ lab_venue: "GCP / GKE"
 
 ## Why this matters for AI infrastructure
 
-Datasets containing millions of independent small files can consume over 80 percent of training wall-clock time on I/O and metadata overhead. Even when the parallel filesystem fabric and GPU Tensor Cores have massive unused bandwidth, tiny file operations starve the compute loop. Every extra millisecond spent opening and closing files leaves expensive accelerators waiting for their next batch.
+Suppose your training job looks healthy on the dashboard, yet the GPUs keep waiting for data. The cause is often not the GPUs at all. It is a dataset made of millions of tiny files, and the storage system spends its time opening them. Datasets with millions of independent small files can consume over 80 percent of training wall-clock time on I/O and metadata overhead.
 
-Consider a classic ImageNet training run over 1,200,000 small JPEG images averaging 85 KB each. For every single image, the storage client and CPU data loader must execute four metadata and file system calls before running CPU image decode and augmentation. Those steps add up to 19.0 ms per file. Across eight parallel workers assembling a batch, each batch takes 608 ms instead of the ideal 10.88 ms wire transfer time. That 597 ms per-batch overhead wastes nearly 47 minutes of GPU time on every single epoch.
+The storage system and the GPU Tensor Cores may have plenty of unused bandwidth. Tiny file operations still starve the compute loop. Every extra millisecond spent opening and closing files leaves expensive accelerators waiting for their next batch.
+
+Consider a classic ImageNet training run over 1,200,000 small JPEG images, averaging 85 KB each. For every image, the storage client and the CPU data loader must run four metadata and file system calls before the CPU can decode and augment it. Those steps add up to 19.0 ms per file. With eight parallel workers assembling a batch, each batch takes 608 ms, when the ideal wire transfer takes only 10.88 ms. That 597 ms of overhead per batch wastes nearly 47 minutes of GPU time in every epoch.
+
+The block below shows the arithmetic behind those numbers, from per-sample cost down to the waste in one epoch.
 
 ```text
 ImageNet 1.2M Small-File Stall vs Cluster Metadata Storm Envelope:
@@ -39,24 +43,26 @@ ImageNet 1.2M Small-File Stall vs Cluster Metadata Storm Envelope:
       MDS collapse:    125,000 opens/sec (267,500 openat calls in 2.140 s) exceeds 50,000-100,000 ops/sec MDS limit; 400 GB/s array drops to 5 GB/s (1.25% util); GPU SM drops from 95% to 30%
 ```
 
-At cluster scale, the failure mode is even more dramatic. When a multi-node job launches a PyTorch DataLoader over fourteen million small PNG files, kernel profiling shows that 99.19 percent of system I/O time goes to metadata RPCs rather than payload reads. The Metadata Server hits 100 percent CPU utilization. Parallel filesystem throughput collapses to 1.25 percent of rated bandwidth, and GPU SM activity drops from 95 percent down to 30 percent.
+Now scale the problem up. A multi-node job starts a PyTorch DataLoader over fourteen million small PNG files. Kernel profiling shows that 99.19 percent of system I/O time goes to metadata remote procedure calls (RPCs), which are the network requests a client sends to a server, not to reading the payload. The Metadata Server (MDS), the machine that answers those requests, hits 100 percent CPU utilization. Throughput falls to 1.25 percent of rated bandwidth. GPU SM activity, the share of the GPU's streaming multiprocessors that are busy, drops from 95 percent to 30 percent.
 
-Eliminating this bottleneck requires co-designing four layers of the data pipeline. First, repackage millions of tiny files into large sequential shards such as tar archives, WebDataset shards, chunked HDF5 files, or columnar Parquet and TFRecord datasets. Pair that layout with a 4 MiB kernel block read-ahead window. Second, tune PyTorch DataLoader worker concurrency, prefetch depth, pinned memory, and `/dev/shm` shared memory sizing so Host-to-Device DMA overlaps cleanly with GPU compute.
+Fixing this takes four changes that work together, and you should plan all four before you start. The first one is the biggest. Repackage millions of tiny files into large sequential shards, such as tar archives, WebDataset shards, chunked HDF5 files, or columnar Parquet and TFRecord datasets. A shard is one large file the reader can stream from start to finish. Pair that layout with a 4 MiB kernel block read-ahead window, so the kernel fetches data before the reader asks for it.
 
-Third, isolate Python transform overhead from PCIe copy stalls and offload heavy image or video decoding to NVIDIA DALI and hardware decompression engines. Fourth, shift LLM text cleansing, deduplication, and tokenization offline with NVIDIA NeMo Curator. That step compiles raw text into memory-mapped `.bin` and `.idx` token shards that support constant-time sequence slicing.
+The second change is to tune the PyTorch DataLoader. That means worker concurrency, prefetch depth, pinned memory, and `/dev/shm` shared memory sizing. The goal is to let the Host-to-Device DMA transfer, the direct copy of batches from host memory into GPU memory, overlap cleanly with GPU compute. The third change separates Python transform overhead from PCIe copy stalls. Heavy image or video decoding can move to NVIDIA DALI and to hardware decompression engines.
+
+The fourth change moves LLM text cleansing, deduplication, and tokenization offline, using NVIDIA NeMo Curator. Its output is memory-mapped `.bin` and `.idx` token shards, which let a loader slice any sequence in constant time. Plan all four layers together rather than one at a time, because each fix depends on the others.
 
 ## Prerequisites and outcomes
 
 ### Prerequisites
-- Familiarity with Linux NVMe block queues, OS page cache behavior, and `O_DIRECT` from the earlier chapters in this part.
-- Understanding of parallel filesystems, Metadata Servers, Object Storage Targets, and GPUDirect Storage from the previous two chapters.
-- Basic working knowledge of PyTorch training loops, datasets, samplers, and CUDA streams.
+- You should know Linux NVMe block queues, the OS page cache, and `O_DIRECT` from the earlier chapters in this part.
+- You should understand parallel filesystems, Metadata Servers, Object Storage Targets, and GPUDirect Storage from the previous two chapters.
+- You should be comfortable with PyTorch training loops, datasets, samplers, and CUDA streams.
 
 ### Outcomes
-After completing this chapter, you will be able to:
-1. Quantify small-file metadata amplification using `strace -c`, Lustre client stats, and per-batch wait timers. You will also explain why warm-to-cold page-cache decay causes open rates and read throughput to collapse mid-epoch.
-2. Repackage millions of small files into sequential shards using tar archives, WebDataset, chunked HDF5, or Parquet. You will also calculate the resulting reduction in MDS RPCs, batch wait latency, and read syscalls.
-3. Tune PyTorch DataLoader workers, prefetch factors, persistent workers, and pinned memory with a dedicated CUDA copy stream. You will also size container `/dev/shm` volumes across multi-GPU nodes and cut GPU I/O wait from 30 percent down to 5 percent.
+By the end of this chapter, you will be able to do the following:
+1. Measure the cost of small-file metadata with `strace -c`, Lustre client stats, and per-batch wait timers. You will also explain why open rates and read throughput collapse in the middle of an epoch, as the page cache goes from warm to cold.
+2. Repackage millions of small files into sequential shards, using tar archives, WebDataset, chunked HDF5, or Parquet. You will also calculate the drop in MDS RPCs, batch wait latency, and read syscalls that the repackaging buys you.
+3. Tune PyTorch DataLoader workers, prefetch factors, persistent workers, and pinned memory, with a dedicated CUDA copy stream. You will also size the container `/dev/shm` volume across multi-GPU nodes, and cut GPU I/O wait from 30 percent down to 5 percent.
 4. Design fused GPU data pipelines with NVIDIA DALI that avoid Host-Device-Host bounce copies. You will also build memory-mapped `.bin` and `.idx` LLM token datasets with NVIDIA NeMo Curator.
 
 ---
@@ -65,9 +71,9 @@ After completing this chapter, you will be able to:
 
 ### 1.1 The Library Catalog Analogy and Per-File Syscall Anatomy
 
-Imagine reading ten thousand single pages from ten thousand separate books scattered across a massive library. Every page requires walking to the front desk to ask the librarian for the call number. You then walk to a shelf to read one page and return the book before requesting the next one. Nearly all of your time is spent walking to the front desk. Packing those ten thousand pages into a single sequential binder ahead of time reduces ten thousand catalog lookups to one lookup followed by continuous reading.
+Picture reading ten thousand single pages, each one from a different book scattered across a huge library. Every page means walking to the front desk for its call number. Then you walk to a shelf, read one page, and return the book before you can ask for the next. Most of your time goes to walking, not reading. If someone packs those ten thousand pages into one binder ahead of time, you need one lookup and then read straight through.
 
-In a distributed filesystem like Lustre, BeeGFS, NFS, or CephFS, opening and reading a tiny file incurs that exact catalog penalty. Every sample requires `stat`, `open`, `read`, and `close` round-trips across the network before a single pixel or token is decoded on the CPU.
+In a distributed filesystem such as Lustre, BeeGFS, NFS, or CephFS, opening and reading a tiny file carries that same penalty. Each sample needs `stat`, `open`, `read`, and `close` calls, and each call is a round trip across the network. A round trip is one request and its reply. The sample has to make all of those trips before a single pixel or token reaches the CPU for decoding.
 
 ```mermaid
 flowchart LR
@@ -83,6 +89,8 @@ flowchart LR
     end
 ```
 
+The table compares four ways to lay out the same 1.2 million samples. Each row changes how many opens the loader has to make, and that number drives everything else in the row.
+
 | Pipeline Regime | Files / Shards per Epoch (`1.2M` samples) | Per-Sample Cost Breakdown | Batch Assembly Latency (`B=256`, `8` workers) | Epoch I/O Overhead (`4,688` batches) | `MDS` Load & GPU Utilization Impact |
 |---|---|---|---|---|---|
 | **Raw Small Files (`85 KB` JPEGs)** | `1,200,000` files (`1.2M` `stat` + `open` + `close`) | `stat` `2.0 ms` + `open` `1.0 ms` + `read` `0.5 ms` + `close` `0.5 ms` (`4.0 ms` I/O) + decode `5.0 ms` + augment `10.0 ms` (`15.0 ms` CPU) = **`19.0 ms`** | `4,864 ms` serial (`1` worker); **`608 ms`** across `8` workers (vs **`10.88 ms`** / `~11 ms` ideal at `2 GB/s`) | **`597 ms`/batch** overhead = **`2,798.74 s`** (`~2,800 s` / **`46.65–47 min`**) wasted per epoch | `125,000` opens/sec saturates `50K–100K` `MDS`; GPU waits `600 ms` for `100 ms` work (**`85.71%` / `~86%` GPU idle**) |
@@ -90,7 +98,11 @@ flowchart LR
 | **`WebDataset` Shards (`1,000` files/shard)** | **`1,200` `.tar` shards** (`1,000x` fewer opens) | Streaming `.tar` iterator (`wds.WebDataset`) with shard-level shuffle and parallel worker decode | **`20 ms`** per batch on a `256`-GPU cluster (down from **`30,000 ms` / `30 s`**, a **`1,500x` gain**) | Fully hidden behind GPU forward/backward pass (`prefetch_queue` `5–20` batches deep) | GPU utilization jumps from **`30%` to `85%+`** across `256` GPUs |
 | **Large `WebDataset` (`50,000 x 20 KB` PNGs)** | **`280` `1 GB` shards** for `14,000,000` PNGs (`50,000x` fewer `stat` calls) | Eliminates `85.12%` `stat` + `10.05%` `openat` + `4.02%` `close` (`99.19%` metadata syscall waste) | Sequential `2 MiB` block streaming saturating parallel storage targets | Eliminates `100%` `MDS` CPU bottleneck and `5 GB/s` (`1.25%` of `400 GB/s`) throughput cap | GPU SM activity recovers from **`30%` back to `95%`** |
 
-When GPU compute takes 100 ms per batch while the data loader stalls for roughly 600 ms, the data loader is six times slower than the GPU. Every training step stretches to 700 ms. That gap leaves the GPU active for barely 14 percent of the step and idle for nearly 86 percent of wall-clock time.
+Read the table one row at a time. The first row shows what raw files cost, and the rows below it show what each shard layout buys back.
+
+When GPU compute takes 100 ms per batch, but the data loader stalls for roughly 600 ms, the loader is six times slower than the GPU. Every training step then stretches to 700 ms. The GPU is active for barely 14 percent of that step and sits idle for nearly 86 percent of the wall-clock time.
+
+The arithmetic below repeats the calculation step by step, so you can check each figure yourself.
 
 ```text
 ImageNet 1.2M Small-File Arithmetic Verification:
@@ -104,9 +116,9 @@ ImageNet 1.2M Small-File Arithmetic Verification:
 
 ### 1.2 Diagnosing Metadata Saturation: `strace -c`, Cache Decay, and `mdtest`
 
-When a training team blames slow storage bandwidth for a stalled job, three diagnostic checks prove immediately that metadata IOPS are the real culprit.
+When a training team blames slow storage bandwidth for a stalled job, three checks show quickly whether metadata operations per second, or IOPS, are the real problem.
 
-First, attach `strace` briefly to a data-loader worker process to measure the file-open rate and the percentage of kernel time spent in metadata syscalls. In the ImageNet trace, 267,500 `openat` calls in 2.140 seconds equal 125,000 opens/sec. That single-node rate is 2.5 times higher than a 50,000 ops/sec MDS threshold. In the fourteen-million PNG incident, `strace -c` shows that metadata calls consume 99.19 percent of kernel I/O time while payload reads take less than 1 percent.
+First, attach `strace` for a short time to one data-loader worker. It reports how many file opens happen per second and how much kernel time goes to metadata calls. In the ImageNet trace, 267,500 `openat` calls in 2.140 seconds equal 125,000 opens per second. That single-node rate is 2.5 times higher than the 50,000 ops/sec MDS threshold. In the fourteen-million PNG incident, `strace -c` shows that metadata calls take 99.19 percent of kernel I/O time, while payload reads take less than 1 percent.
 
 | Syscall | `% time` | `seconds` | `usecs/call` | `calls` | Role in Data Pipeline |
 |---|---|---|---|---|---|
@@ -116,7 +128,7 @@ First, attach `strace` briefly to a data-loader worker process to measure the fi
 | `read` | **`0.81%`** | `0.043000` | `8` | `5,000` | Actual `20 KB` payload transfer from storage target (`OST`/`OSS`) |
 | **Total Metadata (`stat`+`openat`+`close`)** | **`99.19%`** | `5.268000` | — | `20,000` | Pure metadata overhead starving the `400 GB/s` array at `5 GB/s` (`1.25%`) |
 
-Second, watch out for the warm-cache microbenchmark trap. Testing only the first thousand samples hits warm Linux dentry and inode caches in host RAM. That shortcut masks the collapse that happens once the working set exceeds memory. Tracking open rate and throughput across sample indices shows performance dropping nearly threefold by sample 50,000.
+Second, watch out for the warm-cache trap. A benchmark that reads only the first thousand samples runs against caches that are already warm. Linux keeps directory entries and inodes, the per-file metadata records, in RAM, so those reads are fast. That shortcut hides the collapse that arrives once the working set no longer fits in memory. The table below tracks one run across sample indices. Watch the cache regime column change as the index grows.
 
 | Sample Index (`Idx`) | Measured File-Open Rate (`opens/sec`) | Achieved Read Throughput (`MB/s`) | Cache Regime & Diagnostic Interpretation |
 |---|---|---|---|
@@ -126,7 +138,11 @@ Second, watch out for the warm-cache microbenchmark trap. Testing only the first
 | `Idx 10000` | `1,850 opens/sec` | `154.3 MB/s` | Cache warmth begins dropping (`-23.2%` open rate vs peak) |
 | `Idx 50000` | **`820 opens/sec`** | **`68.7 MB/s`** | Cold cache: open rate drops **`2.94x`** (`2,410 / 820`) and throughput drops **`2.75x`** (`189.1 / 68.7`) |
 
-Third, stress-test metadata server capacity before production using `mdtest` from the IOR suite. Running `mdtest` across 128 MPI ranks with leaf-only file placement creates a thousand leaf directories and a hundred million metadata items per iteration.
+The last row is the one that matters for a long epoch. Throughput there is a fraction of what the warm start suggested.
+
+Third, stress-test the metadata server before production, using `mdtest` from the IOR suite. Run it across 128 MPI ranks, which are parallel processes launched with MPI, using leaf-only file placement. Each iteration creates a thousand leaf directories and a hundred million metadata items.
+
+The summary below gathers the numbers from all three checks.
 
 ```text
 strace & mdtest Diagnostic Summary:
@@ -135,13 +151,17 @@ strace & mdtest Diagnostic Summary:
   - mdtest (-np 128 -i 5 -b 10 -z 3 -L -I 100000 -y -u -t): 10^3 = 1,000 leaf directories x 100,000 files = 100,000,000 (100M) metadata items per iteration
 ```
 
+Use the three checks together. Suppose you ran only the first one. You would learn the open rate, but you would miss the warm-cache trap, and you would never stress the metadata server itself.
+
 ---
 
 ## 2. Dataset Repackaging and Sequential Storage Layouts
 
 ### 2.1 Tar Archives, WebDataset, HDF5, and Columnar Shards
 
-Because small-file stalls come from per-file metadata RPCs and random disk seeks, the mandatory production fix is dataset repackaging. By packing thousands of samples into contiguous shard files between 100 MB and 10 GB each, the storage client issues one file open followed by large 1 MiB to 2 MiB sequential reads.
+Small-file stalls come from per-file metadata calls and from random disk seeks, which means the drive jumping to a new position for each small read. The fix that production teams treat as mandatory is dataset repackaging. You pack thousands of samples into one contiguous shard file, each between 100 MB and 10 GB. The storage client then opens a single file and issues large sequential reads of 1 MiB to 2 MiB.
+
+The table lists five formats. Each one trades shard size, access pattern, and operational effort in its own way.
 
 | Format | Optimal Shard / Chunk Sizing | Open-Call Reduction (`1.2M` files) | Random vs Sequential Access | Strengths & Operational Trade-Offs |
 |---|---|---|---|---|
@@ -151,13 +171,17 @@ Because small-file stalls come from per-file metadata RPCs and random disk seeks
 | **`Parquet` / `Arrow` / `TFRecord`** | `128 MB–1 GB` row-group / shard files striped across `4–8` `OST`s | `1,000x–50,000x` reduction | Sequential row-group streaming + column projection | Ideal for tabular, text (`JSONL` replacement), and multimodal metadata; supports `LZ4`/`Snappy`/`Zstd` compression. Striping across `4` `OST`s at `500 MB/s` each yields `2.0 GB/s` per file. |
 | **Megatron / NeMo `.bin` + `.idx`** | Multi-GB contiguous `.bin` token array + `.idx` offset/length table | `1` `.bin` + `1` `.idx` open per shard | `O(1)` random document/sequence slice via `np.memmap` | Zero runtime tokenization or JSON parsing; `1B` `uint16` tokens = `2.0 GB` `.bin` + `6.0 MB` `.idx` (`0.3%` index overhead). |
 
+Match the format to your data. Streaming shards suit images, chunked files suit random access, and `.bin` and `.idx` suit token sequences. Read the trade-off column before you commit to one.
+
 ### 2.2 Sequential vs Random Read Math and Kernel Read-Ahead Tuning
 
-Even after repackaging into large shards, storage throughput depends on the block size issued to the Linux kernel and underlying drives. Reading 1 GiB of training data in 4 KB random chunks requires 262,144 read syscalls. Reading that same data in 1 MiB sequential blocks requires only 1,024 read syscalls, a 256-fold reduction in syscall overhead.
+Even after repackaging into large shards, storage throughput depends on the block size the kernel and the drives see. A system call, or syscall, is the request a program makes to the kernel to read data. Reading 1 GiB of training data in 4 KB random chunks needs 262,144 read syscalls. Reading the same data in 1 MiB sequential blocks needs only 1,024. That is a 256-fold cut in syscall overhead.
 
-By default, Linux sets `/sys/block/<device>/queue/read_ahead_kb` to 128 KB. When streaming multi-gigabyte WebDataset, Parquet, or `.bin` shards sequentially, raise read-ahead to 4,096 KB with `blockdev --setra 8192 /dev/nvme0n1`. That change pipelines block fetches 32 times further ahead of the Python worker thread. Always mount local XFS scratch and network NFS volumes with `noatime` so reads do not generate hidden inode timestamp writes.
+By default, Linux sets `/sys/block/<device>/queue/read_ahead_kb` to 128 KB. When you stream multi-gigabyte WebDataset, Parquet, or `.bin` shards in order, raise read-ahead to 4,096 KB with `blockdev --setra 8192 /dev/nvme0n1`. That change pipelines block fetches 32 times further ahead of the Python worker thread. Always mount local XFS scratch and network NFS volumes with `noatime`, so reads do not trigger hidden inode timestamp writes.
 
-When a workload genuinely requires random reads, such as RAG vector retrieval or cold random sequence sampling, large OS read-ahead wastes bandwidth by fetching unused adjacent blocks. Instead, issue concurrent positional reads with `pread` across worker threads. For even higher concurrency, submit batched asynchronous rings using Linux `io_uring` with pre-registered buffers and `O_DIRECT`.
+Random reads need different handling, and you should not reuse the sequential settings for them. For retrieval-augmented generation (RAG) vector lookups, or for cold random sequence sampling, large read-ahead wastes bandwidth. It fetches neighbouring blocks that nobody uses. Issue concurrent positional reads with `pread` across worker threads instead. For even higher concurrency, submit batched asynchronous rings with Linux `io_uring`, using pre-registered buffers and `O_DIRECT`.
+
+The math behind the read-ahead numbers is short enough to check by hand.
 
 ```text
 Sequential Block Read & Kernel Read-Ahead Math:
@@ -166,13 +190,15 @@ Sequential Block Read & Kernel Read-Ahead Math:
   - Raising Linux block read_ahead_kb from 128 KB (256 sectors) to 4,096 KB (4 MiB / 8,192 sectors): 32x read-ahead multiplier
 ```
 
+The 32x multiplier is simply 4,096 KB divided by 128 KB. If your dataset is still a directory of loose files, repackaging it is the first change to make.
+
 ---
 
 ## 3. PyTorch DataLoader Architecture, Memory Pinning, and `/dev/shm` Sizing
 
 ### 3.1 Multi-Process Prefetching, Pinned Memory, and Dedicated Copy Streams
 
-Once storage delivers bytes rapidly, the bottleneck shifts to the host CPU and the PCIe or NVLink-C2C transfer path into GPU memory. Because Python's Global Interpreter Lock serializes bytecode inside a single process, PyTorch's DataLoader spawns `num_workers` separate OS processes. Each worker reads a shard, decodes and augments samples, and collates a batch tensor. The worker then places that batch into a POSIX shared-memory queue in `/dev/shm`.
+Once storage delivers bytes quickly, the bottleneck moves to the host CPU and to the transfer path into GPU memory, which runs over PCIe or NVLink-C2C. Python's Global Interpreter Lock (GIL) lets only one thread run Python bytecode inside a process at a time. So PyTorch's DataLoader starts `num_workers` separate operating-system processes instead. Each worker reads a shard, decodes and augments samples, and collates a batch tensor. It then places that batch in a POSIX shared-memory queue in `/dev/shm`.
 
 ```mermaid
 flowchart LR
@@ -187,6 +213,8 @@ flowchart LR
     PinMem ===>|"PCIe / NVLink-C2C DMA<br/>Batch N+1 Staged"| CopyStm
 ```
 
+The table lists five settings that decide whether the loader keeps the GPU fed. Each row pairs a setting with the symptom you will see when it is wrong.
+
 | `DataLoader` / CUDA Mechanism | Recommended Setting | Architectural Role | Failure Mode if Misconfigured |
 |---|---|---|---|
 | **`num_workers`** | `4–8` per GPU (up to `8–16` on `72`-core Grace CPU) | Spawns independent processes to bypass the Python `GIL` for file reads, decompression, and transforms | `num_workers=0` runs synchronously on the main loop thread; too many workers (`> CPU cores`) cause context-switch and disk thrashing |
@@ -195,7 +223,9 @@ flowchart LR
 | **`pin_memory`** | **`True`** (paired with high `ulimit -l` / `memlock`) | Copies collated batches into page-locked (pinned) host memory so the GPU DMA engine can transfer directly without an extra pageable-to-pinned CPU copy | Pageable memory forces synchronous driver staging copies; insufficient container `memlock` causes `cudaErrorMemoryAllocation` |
 | **Dedicated `copy_stream`** | `torch.cuda.Stream()` + `.to(device, non_blocking=True)` | Overlaps `Batch N+1` `H2D` DMA transfer on `copy_stream` while `compute_stream` executes `Batch N` kernels (`compute_stream.wait_stream(copy_stream)`) | Calling `.to(device)` on the default stream or without `pin_memory=True` serializes `H2D` copies in front of compute kernels |
 
-Sizing `/dev/shm` is critical when raising `num_workers` and `prefetch_factor`. With eight workers and a prefetch factor of four, each GPU rank queues 32 batches in shared memory. That queue totals 588.0 MiB per rank, or 4.59375 GiB across an eight-GPU node. Because Docker defaults `/dev/shm` to 64 MiB, workers crash immediately with a bus error unless you mount a large in-memory `emptyDir` volume in Kubernetes.
+Sizing `/dev/shm` matters as soon as you raise `num_workers` and `prefetch_factor`. With eight workers and a prefetch factor of four, each GPU rank queues 32 batches in shared memory. That queue totals 588.0 MiB per rank, or 4.59375 GiB across an eight-GPU node. Docker defaults `/dev/shm` to 64 MiB, so workers crash right away with a bus error unless you mount a large in-memory `emptyDir` volume in Kubernetes.
+
+The block below sizes the queue for both prefetch settings, so you can see how much the factor alone changes the footprint.
 
 ```text
 PyTorch DataLoader In-Flight Queue & /dev/shm Sizing Math:
@@ -206,21 +236,25 @@ PyTorch DataLoader In-Flight Queue & /dev/shm Sizing Math:
   - 8-GPU node total (/dev/shm footprint at pf = 4):    8 x 588.0 MiB = 4,704.0 MiB = 4.59375 GiB (fits easily in 400 GiB K8s emptyDir: Memory)
 ```
 
+Batch size and worker count stay the same across those two rows, so the prefetch factor is the only change. Doubling it doubles the shared-memory footprint.
+
 ### 3.2 Isolating Python DataLoader Cost vs H2D Copy Cost
 
-When `next(data_iterator)` stalls the training loop, that elapsed time mixes background storage reads, Python worker transforms, shared-memory collation, and Host-to-Device memory copies. You can isolate the exact culprit in three steps.
+When `next(data_iterator)` stalls the training loop, that wait mixes four things: background storage reads, Python worker transforms, shared-memory collation, and Host-to-Device memory copies. You can separate them in three steps.
 
-First, benchmark the DataLoader over a hundred batches with the model forward and backward pass disabled. Keep in mind that disabling GPU kernels also removes CPU-side CUDA launch overhead. Isolated loader throughput can therefore appear slightly faster than during live training.
+First, benchmark the DataLoader alone over a hundred batches, with the model's forward and backward pass turned off. Turning off the GPU work also removes the CPU cost of launching CUDA kernels. So the loader can look slightly faster in isolation than it does during live training.
 
-Second, set `num_workers=0` temporarily to time synchronous `__getitem__` and `collate_fn` execution on a single thread without multiprocessing overhead. If per-sample latency is high here, replace pure-Python text loops with vectorized C++ or Rust bindings such as Hugging Face tokenizers.
+Second, set `num_workers=0` for a moment. The loader then runs `__getitem__` and `collate_fn` synchronously on one thread, with no multiprocessing overhead, so you see the raw per-sample cost. If that cost is high, swap pure-Python text loops for vectorized C++ or Rust bindings, such as Hugging Face tokenizers.
 
-Third, wrap `.to(device, non_blocking=True)` in `torch.cuda.Event` timers or inspect the copy stream lane in Nsight Systems. If Host-to-Device transfers stall compute, enable `pin_memory=True` with a dedicated `copy_stream` or switch to GPUDirect Storage. Cutting GPU I/O wait from 30 percent down to 5 percent reduces the stall fraction sixfold, recovers 25 percentage points of GPU utilization, and speeds up I/O-bound step rates sixfold.
+Third, time the copy itself. Wrap `.to(device, non_blocking=True)` in `torch.cuda.Event` timers, or look at the copy lane in Nsight Systems. If the copies stall compute, turn on `pin_memory=True` with a dedicated `copy_stream`, or consider GPUDirect Storage. Take the example of GPU I/O wait falling from 30 percent to 5 percent. That is a sixfold cut in the stall fraction. It recovers 25 percentage points of GPU utilization and speeds up I/O-bound step rates sixfold.
 
 ### 3.3 Scaling Out Workers and Shards as You Scale Out GPUs
 
-Scaling compute without scaling the ingestion pipeline shifts the bottleneck straight onto storage and CPU workers. At 200 MB/s per GPU, an eight-GPU node requires 1.6 GB/s and a 72-GPU Grace Blackwell NVL72 rack requires 14.4 GB/s. On high-core-count hosts like the 72-core NVIDIA Grace CPU, you can assign more DataLoader workers per rank to keep storage links near full utilization.
+Scaling compute without scaling ingestion moves the bottleneck onto storage and CPU workers. At 200 MB/s per GPU, an eight-GPU node needs 1.6 GB/s. A 72-GPU Grace Blackwell NVL72 rack needs 14.4 GB/s. On high-core-count hosts such as the 72-core NVIDIA Grace CPU, you can give each rank more DataLoader workers, so the storage links stay near full utilization.
 
-Always establish a single-GPU throughput baseline before scaling to eight GPUs and multi-node clusters. If eight GPUs deliver only a fivefold speedup over one GPU instead of eightfold, the node is running at 62.5 percent scaling efficiency due to an I/O or communication bottleneck. To prevent redundant network reads on multi-node jobs, presplit a 100 TB dataset across ten nodes. Each node then caches a unique 10 TB shard on local NVMe RAID-0 and coordinates rank slicing via `DistributedSampler`.
+Establish a single-GPU throughput baseline before you scale to eight GPUs or to several nodes. Suppose eight GPUs deliver only a fivefold speedup over one GPU, instead of eightfold. The node then runs at 62.5 percent scaling efficiency, because of an I/O or communication bottleneck. On multi-node jobs, redundant network reads waste bandwidth. One fix is to presplit a 100 TB dataset across ten nodes. Each node caches its own unique 10 TB shard on local NVMe RAID-0, and `DistributedSampler` hands each rank its slice.
+
+Set the single-GPU baseline first, and only then add nodes. That way you know which step lost the efficiency.
 
 ---
 
@@ -228,17 +262,19 @@ Always establish a single-GPU throughput baseline before scaling to eight GPUs a
 
 ### 4.1 Offloading Decode and Augmentations to the GPU
 
-In computer vision, video, and multimodal training, even after repackaging millions of files into WebDataset tar shards, CPU image decoding and augmentations saturate every host CPU core. In a representative object-detection pipeline reading images and video, `top` shows host CPU utilization pegged at 800 percent across eight full CPU cores. Meanwhile, the GPU still suffers periodic starvation gaps.
+Repacking millions of files into WebDataset tar shards solves the storage side. The CPU can still become the limit. In computer vision, video, and multimodal training, CPU image decoding and augmentation can saturate every host core. In one representative object-detection pipeline that reads images and video, `top` shows host CPU use pinned at 800 percent, which is eight full cores. The GPU still shows periodic starvation gaps.
 
-NVIDIA Data Loading Library, or DALI, removes this CPU bottleneck. It executes the data pipeline as a C++-backed computation graph that offloads decoding and augmentations onto GPU hardware media engines and CUDA cores. Moving JPEG and video decoding plus augmentations to DALI drops host CPU utilization from 800 percent down to 200 percent. That fourfold reduction saves 75 percent of host CPU capacity and leaves two cores solely responsible for reading sequential shard bytes from storage.
+NVIDIA Data Loading Library (DALI) removes this CPU bottleneck. It runs the data pipeline as a C++-backed computation graph, and it moves decoding and augmentation onto GPU hardware media engines and CUDA cores. Moving JPEG and video decoding, plus augmentation, to DALI drops host CPU utilization from 800 percent to 200 percent. That fourfold reduction frees 75 percent of host CPU capacity. Two cores are left to read sequential shard bytes from storage.
 
-On NVIDIA Grace Blackwell systems, hardware acceleration goes even further. Blackwell GPUs include an on-die Decompression Engine that unpacks LZ4, Snappy, and Deflate compressed batches in hardware without using Streaming Multiprocessor compute cycles. Those streams arrive over the 900 GB/s bidirectional Grace-to-Blackwell NVLink-C2C interconnect.
+On NVIDIA Grace Blackwell systems, the hardware goes further. Blackwell GPUs include an on-die Decompression Engine. It unpacks LZ4, Snappy, and Deflate compressed batches without using Streaming Multiprocessor cycles. Those compressed streams arrive over the 900 GB/s bidirectional Grace-to-Blackwell NVLink-C2C interconnect.
 
 ### 4.2 Avoiding the DALI Host-Device-Host Ping-Pong Anti-Pattern
 
-Where you place operators inside a DALI pipeline determines whether you achieve a tenfold speedup or a disappointing regression. Some teams use DALI only to decode compressed JPEGs on the GPU and then copy the uncompressed pixel tensors back to host RAM. Running legacy CPU augmentations on those pixels before copying them back to the GPU ruins performance with PCIe bounce traffic.
+Where you place operators inside a DALI pipeline decides whether you get a tenfold speedup or a disappointing result. Some teams use DALI only to decode compressed JPEGs on the GPU. They then copy the uncompressed pixels back to host RAM. If they run legacy CPU augmentations on those pixels and copy the result to the GPU again, the PCIe bounce traffic ruins performance.
 
-Keep the decoded tensor on `device="gpu"` inside DALI so resize, crop, mirror, and normalization run directly in GPU memory after `nvJPEG` decode. That fused pipeline completes the entire batch in 8.0 ms. It is 11.5 times faster than the 92.0 ms CPU-only pipeline and 8.44 times faster than the 67.5 ms ping-pong anti-pattern.
+Keep the decoded tensor on `device="gpu"` inside DALI. Resize, crop, mirror, and normalization then run in GPU memory right after the `nvJPEG` decode. That fused pipeline finishes the whole batch in 8.0 ms. It is 11.5 times faster than the 92.0 ms CPU-only pipeline, and 8.44 times faster than the 67.5 ms ping-pong version.
+
+The three pipelines below differ only in where each step runs. Compare the totals at the end of each line.
 
 ```text
 NVIDIA DALI CPU Offload & Fused GPU Graph Latency Breakdown:
@@ -250,17 +286,21 @@ NVIDIA DALI CPU Offload & Fused GPU Graph Latency Breakdown:
       3. Fused GPU DALI graph:       1.5 ms compressed H2D + 4.0 ms GPU nvJPEG decode + 2.5 ms fused GPU augment = 8.0 ms/batch (11.5x faster than CPU-only; 8.44x faster than ping-pong)
 ```
 
+The fused version makes one compressed copy to the GPU and never copies the pixels back. If your pipeline decodes on the GPU, check that every augmentation after the decode stays there too.
+
 ---
 
 ## 5. Offline LLM Dataset Curation with NVIDIA NeMo Curator and Continuous Profiling
 
 ### 5.1 From Raw JSONL and Parquet to Memory-Mapped `.bin` and `.idx` Shards
 
-In Large Language Model pretraining, feeding raw text files or unindexed JSONL blobs into an online training loop wastes massive CPU capacity. On-the-fly string cleaning, Unicode normalization, and regex or BPE tokenization burn host cores. Those steps also produce variable-length sequences that cause padding waste and straggler ranks.
+Large language model pretraining has a similar problem. If raw text or unindexed JSONL files feed the online training loop, the CPU burns capacity on string cleaning, Unicode normalization, and regex or BPE tokenization. BPE, byte-pair encoding, is a common tokenizer method. These steps also produce sequences of different lengths, which causes padding waste and straggler ranks, meaning ranks that finish late and hold the others up.
 
-NVIDIA NeMo Curator shifts all heavy text and multimodal curation offline ahead of the training run. It distributes text extraction, heuristic quality filtering, exact and fuzzy MinHash deduplication, PII redaction, and tokenization across multi-node clusters. Workers read and write sharded JSONL or Parquet files via `DocumentDataset`.
+NVIDIA NeMo Curator moves that heavy text and multimodal curation offline, ahead of the training run. It spreads text extraction, heuristic quality filtering, exact and fuzzy MinHash deduplication, PII redaction, and tokenization across multi-node clusters. Workers read and write sharded JSONL or Parquet files through `DocumentDataset`.
 
-Downstream dataset builders then compile the tokenized shards into pairs of contiguous binary files used by Megatron-LM and NeMo. The `.bin` file stores packed `uint16` or `int32` token IDs back-to-back with zero delimiters. Meanwhile, the `.idx` file stores a compact lookup table of byte offsets and token lengths per document.
+Next, the tokenized shards are compiled into a pair of contiguous binary files, which Megatron-LM and NeMo read. The `.bin` file stores packed `uint16` or `int32` token IDs back to back, with no delimiters between documents. The `.idx` file stores a compact table of byte offsets and token lengths for each document. A memory-mapped file is one the process maps into its address space, so reads look like ordinary memory access.
+
+The worked example below uses three small documents, then a billion-token dataset, to show the arithmetic.
 
 ```text
 NeMo Curator Memory-Mapped .bin + .idx Offset & Pre-Shuffling Math:
@@ -274,23 +314,29 @@ NeMo Curator Memory-Mapped .bin + .idx Offset & Pre-Shuffling Math:
       4 pre-shuffled copies: 4 x 2.006 GB = 8.024 GB on disk (converts multi-epoch random shuffle into pure sequential streaming)
 ```
 
-When a DataLoader worker requests the third document, it reads that entry from the memory-mapped `.idx` array and slices `bin_mmap[22:38]` in constant time without scanning earlier documents. To eliminate random-shuffle disk seeks across multiple epochs, teams with sufficient scratch space store four offline pre-shuffled copies of the dataset on disk. Note that the standard `.bin` and `.idx` reader uses CPU `mmap` unless paired with GPUDirect Storage.
+Notice how small the index is. It is 6.0 MB against 2.0 GB of tokens.
+
+When a DataLoader worker requests the third document, it reads that entry from the memory-mapped `.idx` array and slices `bin_mmap[22:38]` in constant time. It never scans the earlier documents. To avoid random-shuffle disk seeks across several epochs, teams with enough scratch space keep four offline pre-shuffled copies of the dataset on disk. Keep in mind that the standard `.bin` and `.idx` reader uses CPU `mmap`, unless you pair it with GPUDirect Storage.
 
 ### 5.2 Continuous Profiling and Diagnosing Compute vs Communication vs I/O
 
-Hardware, driver, NCCL, and PyTorch updates shift pipeline balance over time, so production teams run an iterative Run, Measure, and Tune workflow. Start by comparing single-GPU, eight-GPU, and multi-node throughput baselines. Next, capture a system timeline with `nsys profile --trace=cuda,nvtx,osrt,gds` to inspect GPU compute lanes, copy lanes, `cuFile` traces, and NCCL collective gaps.
+Hardware, driver, NCCL, and PyTorch updates shift the balance of a pipeline over time. NCCL is NVIDIA's library for collective communication between GPUs. Production teams therefore run a loop of run, measure, and tune. Start by comparing single-GPU, eight-GPU, and multi-node throughput baselines. Then capture a system timeline with `nsys profile --trace=cuda,nvtx,osrt,gds`. The timeline shows GPU compute lanes, copy lanes, `cuFile` traces, and NCCL collective gaps.
 
-Gaps at the start of every step point to DataLoader starvation, while gaps during backward `AllReduce` point to network bottlenecks. If kernels run without gaps yet execute slowly, use Nsight Compute (`ncu`) to inspect SM utilization and memory stalls. For example, an NCCL kernel running at 60 percent SM utilization with high memory stalls over PCIe jumps to 90 percent SM busy once routed over NVLink.
+The location of a gap tells you the cause. Gaps at the start of every step point to DataLoader starvation. Gaps during the backward `AllReduce` point to network bottlenecks. If kernels run with no gaps but still run slowly, use Nsight Compute (`ncu`) to inspect SM utilization and memory stalls. For example, an NCCL kernel at 60 percent SM utilization, with high memory stalls over PCIe, jumps to 90 percent SM busy once it is routed over NVLink.
 
-To prove whether a 60 GB/s gradient `AllReduce` on a 100 GB/s NIC is communication-bound or compute-bound, halve the batch size. Because gradient `AllReduce` byte volume depends on model parameter count rather than batch size, halving the batch size cuts compute in half while keeping communication volume constant. If achieved NIC bandwidth stays pegged at 60 GB/s, the job is communication-bound. If NIC bandwidth drops to 40 GB/s, the GPUs were not finishing compute fast enough to feed the NIC, proving the job is compute-bound.
+Suppose you need to know whether a 60 GB/s gradient `AllReduce` on a 100 GB/s NIC is communication-bound or compute-bound. Halve the batch size. Gradient `AllReduce` volume depends on the parameter count, not on the batch size. So halving the batch cuts compute in half, while the communication volume stays the same. If the NIC bandwidth stays pegged at 60 GB/s, the job is communication-bound. If the NIC bandwidth drops to 40 GB/s, the GPUs were not finishing compute fast enough to keep the NIC fed, so the job is compute-bound.
+
+Profile before you buy hardware or rewrite the loader. The timeline tells you which of the three bottlenecks you actually have.
 
 ---
 
 ## Commands and configurations that matter
 
-Every command below that queries or modifies live cluster filesystems, block devices, or running training processes (`strace`, `lctl`, `blockdev`, `fio`, `mdtest`, `tar`) is marked `untested here`.
+Some of these commands touch live cluster filesystems, block devices, or running training processes, so be careful where you run them. This chapter did not run any of them on a live cluster. Each command that falls into that group is marked `untested here`. The group includes `strace`, `lctl`, `blockdev`, `fio`, `mdtest`, and `tar`.
 
 ### 1. Diagnosing Small-File Open Rates, Batch Wait, and Lustre Metadata Stats
+
+Start by measuring the open rate. You can do it on a whole training script or on a live worker.
 
 ```bash
 # 1. Count file-open rate and syscall breakdown on a running training script (untested here)
@@ -308,7 +354,11 @@ cat /sys/block/nvme0n1/queue/read_ahead_kb
 sudo blockdev --setra 8192 /dev/nvme0n1
 ```
 
+The second half of that block changes the device, so run it only on a machine where you can revert the setting.
+
 ### 2. Benchmarking Sequential Reads with `fio` and Metadata Stress with `mdtest`
+
+Next, measure what the storage can do under load. The `fio` job below mimics 32 data-loader workers reading in 2 MiB blocks. The working set is large on purpose, so the test reads from storage rather than from the page cache.
 
 ```bash
 # 1. Simulate 32 PyTorch DataLoader workers streaming 2 MiB blocks with O_DIRECT (untested here)
@@ -333,7 +383,11 @@ mpirun -np 128 mdtest \
     -y -u -t
 ```
 
+The `mdtest` run is the heavier of the two. It creates a large number of metadata items on purpose, so run it on a test directory only.
+
 ### 3. Repackaging into Tar Shards, WebDataset, and Chunked HDF5
+
+Repackaging is where the reduction in opens actually happens. The shell commands below build tar shards from loose JPEG files, and the Python block shows the WebDataset and HDF5 versions.
 
 ```bash
 # 1. Repackage 10,000 small JPEG files into a single sequential .tar shard (10,000x fewer open() calls) (untested here)
@@ -344,6 +398,8 @@ for shard in $(seq 0 99); do
     seq $((shard*100+1)) $((shard*100+100)) | xargs -I{} echo "images/img-{}.bin" | tar -cf "images-${shard}.tar" -T -
 done
 ```
+
+The Python block below builds the WebDataset shards and the chunked HDF5 file, then runs an overlapped DataLoader loop over them.
 
 ```python
 # 3. Build and stream 1,000-sample WebDataset shards + chunked HDF5 + tuned PyTorch DataLoader (untested here)
@@ -404,6 +460,8 @@ def run_overlapped_dataloader_loop(dataset, model: torch.nn.Module, device: str 
 
 ### 4. Kubernetes Pod Specification with 400Gi `/dev/shm` and GPUDirect Storage
 
+The Kubernetes manifest below ties the pieces together. It mounts the dataset, a local NVMe cache, a 400 GiB memory-backed `/dev/shm`, and the GPUDirect Storage configuration into one pod.
+
 ```yaml
 # k8s-dataloader-gds-pod.yaml (untested here)
 apiVersion: v1
@@ -452,7 +510,7 @@ spec:
 
 ## How it fails
 
-Small-file metadata storms, `/dev/shm` exhaustion, and wedged storage RPCs rarely print a clear storage traceback in Python. Instead, they show up as low GPU SM utilization, sudden worker `SIGBUS` crashes, or unkillable kernel processes in `D` state.
+Storage problems rarely announce themselves in Python, so you have to read the symptoms carefully. A small-file storm, a full `/dev/shm`, or a stuck storage call usually shows up in one of three ways. The GPU utilization drops, a data-loader worker dies with a `SIGBUS` crash, or a process sits in `D` state, the uninterruptible sleep where the kernel holds it, and ignores `kill -9`.
 
 | Failure Mode | Observable Symptom | Root-Cause Diagnosis | Production Fix |
 |---|---|---|---|
@@ -463,23 +521,27 @@ Small-file metadata storms, `/dev/shm` exhaustion, and wedged storage RPCs rarel
 | **5. Cascading Uninterruptible Sleep (`D`-State) Storage Hang** | `4` nodes in a `64`-node DDP job drop off; `top` shows load average `500+` with `0%` CPU; `htop` shows hundreds of `python3` processes in `D` state that ignore `kill -9`. | `dmesg` shows `task python3:12345 blocked for more than 120 seconds` in `rpc_wait_bit_killable [sunrpc]` and `ibstat`/`ibv_devinfo` shows a downed link or `symbol_error_counter > 1000` on the storage fabric. | Hard-reset wedged nodes (`ipmitool chassis power reset`), replace the faulty AOC cable, and mount read-only dataset volumes with bounded/soft RPC timeouts so network partitions fail fast instead of locking kernel threads in `D` state. |
 | **6. NUMA / PCIe Locality Skew Across Multi-GPU Workers** | Ranks `0–3` assemble batches in `10 ms` while Ranks `4–7` on the same node take `500 ms`, throttling synchronous `DDP` `AllReduce` to the slowest rank. | `DataLoader` workers for Ranks `4–7` are scheduled on the wrong CPU socket/NUMA domain, crossing the inter-socket UPI/Infinity Fabric link to reach the storage NIC and GPU PCIe root complex. | Bind each rank's process and `DataLoader` worker affinity to the GPU's local NUMA node (`numactl --cpunodebind=... --membind=...` or `torchrun` NUMA binding) and verify NIC-to-GPU topology via `nvidia-smi topo -m`. |
 
+Find the row that matches your symptom, then read its diagnosis column before you change any setting. The fixes differ a lot, and you can make the job worse by applying the wrong one.
+
 ---
 
 ## Hands-on lab
 
 ### Venue and Scope
 
-This lab runs in the local Python verification script `code/part13/data_loading_small_files_lab.py`, which uses only the Python standard library and runs in under one second. It pairs with the GCP or GKE Lab 04 synthetic benchmark workflow.
+This lab runs in the local Python verification script `code/part13/data_loading_small_files_lab.py`. The script uses only the Python standard library, and it finishes in under one second. It pairs with the GCP or GKE Lab 04 synthetic benchmark workflow.
 
-The script deterministically verifies all 26 quantitative models in `code/part13/data_loading_small_files.py`. Those checks cover ImageNet small-file stall math, `strace` open rates, and warm-to-cold cache decay. They also verify dataset repackaging into tar archives, WebDataset, and chunked HDF5, PyTorch DataLoader `/dev/shm` sizing, NVIDIA DALI GPU offload, and NeMo Curator `.bin` and `.idx` offset slicing.
+You can open the script and read the arithmetic behind each check. The script checks all 26 quantitative models in `code/part13/data_loading_small_files.py`, and it gives the same answer on every run. The checks cover the ImageNet small-file stall math, `strace` open rates, and the warm-to-cold cache decay. They also verify repackaging into tar archives, WebDataset, and chunked HDF5. Finally, they cover PyTorch DataLoader `/dev/shm` sizing, NVIDIA DALI GPU offload, and NeMo Curator `.bin` and `.idx` offset slicing.
 
 ### Step 1: Run the Local Verification Lab
+
+Run the script with the command below. A clean run prints 26 lines marked PASS, followed by a summary.
 
 ```bash
 python3 -B code/part13/data_loading_small_files_lab.py
 ```
 
-Expected output:
+The output should look like this:
 
 ```text
 [PASS] 1. ImageNet 1.2M small-file per-sample cost is 4.0 ms metadata/syscall + 15.0 ms CPU decode/augment = 19.0 ms total
@@ -512,22 +574,24 @@ Expected output:
 Summary: 26 passed, 0 failed (out of 26 checks)
 ```
 
+If you see a FAIL line, the summary will count it. Treat the numbers in this chapter as unverified until the run reports 26 passed and 0 failed.
+
 ---
 
 ## Common first mistakes
 
-1. **Benchmarking only a thousand samples on a warm OS page cache:** Running a quick ten-batch smoke test hits warm Linux dentry and page caches at 2,410 opens/sec and 189.1 MB/s. That test hides the threefold open-rate collapse to 820 opens/sec and 68.7 MB/s that strikes once the job advances past sample 50,000 on cold storage.
-2. **Raising `num_workers` on a metadata-bound raw small-file dataset:** Increasing `num_workers` from four to thirty-two across 256 GPUs when reading 1.2 million raw JPEGs simply multiplies the `openat` and `stat` storm against the Metadata Server. That change worsens tail latency instead of fixing the underlying file-count problem.
-3. **Increasing `prefetch_factor` without expanding `/dev/shm`:** Raising `prefetch_factor` to four or eight with eight workers across eight GPUs allocates more than 4.59 GiB of shared-memory tensors. That allocation crashes immediately inside Docker's default 64 MiB `/dev/shm` unless a memory-backed `emptyDir` volume is mounted.
-4. **Opening an `h5py.File` handle inside `Dataset.__init__` before worker `fork`:** HDF5 file handles are not fork-safe across multiple DataLoader worker processes. Always open `h5py.File` lazily inside `__getitem__` or `worker_init_fn` per worker process.
-5. **Using DALI only for GPU JPEG decode and bouncing raw pixels back to the CPU:** Returning decoded tensors to host memory for CPU augmentations wastes 24.0 ms per batch on PCIe bounce copies. Keep all downstream augmentations fused on the GPU so the batch finishes in 8.0 ms instead of 67.5 ms.
-6. **Tokenizing raw JSONL strings inside the online LLM training loop:** Running Python regex and BPE tokenization per sample during training starves GPUs and creates uneven sequence lengths. Always pre-tokenize offline with NeMo Curator into memory-mapped `.bin` and `.idx` shards.
+1. **Benchmarking only a thousand samples on a warm OS page cache.** If you run a quick ten-batch smoke test, you hit warm Linux dentry and page caches. It reports 2,410 opens/sec and 189.1 MB/s, which hides the threefold open-rate collapse. Once the job moves past sample 50,000 on cold storage, the rate falls to 820 opens/sec and throughput to 68.7 MB/s.
+2. **Raising `num_workers` on a metadata-bound raw small-file dataset.** Going from four workers to thirty-two across 256 GPUs, while reading 1.2 million raw JPEGs, multiplies the `openat` and `stat` storm against the Metadata Server. That change worsens tail latency. It does not fix the underlying file-count problem.
+3. **Increasing `prefetch_factor` without expanding `/dev/shm`.** Raising `prefetch_factor` to four or eight, with eight workers on eight GPUs, allocates more than 4.59 GiB of shared-memory tensors. Unless a memory-backed `emptyDir` volume is mounted, that allocation crashes immediately inside Docker's default 64 MiB `/dev/shm`.
+4. **Opening an `h5py.File` handle inside `Dataset.__init__` before the worker fork.** HDF5 file handles are not fork-safe across multiple DataLoader worker processes. Always open the `h5py.File` lazily, inside `__getitem__` or `worker_init_fn`, so each worker process opens its own handle.
+5. **Using DALI only for GPU JPEG decode and bouncing raw pixels back to the CPU.** Returning decoded tensors to host memory for CPU augmentations wastes 24.0 ms per batch on PCIe bounce copies. Keep the downstream augmentations fused on the GPU, and the batch finishes in 8.0 ms instead of 67.5 ms.
+6. **Tokenizing raw JSONL strings inside the online LLM training loop.** Running Python regex and BPE tokenization for each sample during training starves the GPUs and creates uneven sequence lengths. If you are building the LLM pipeline, tokenize offline with NeMo Curator first, and write memory-mapped `.bin` and `.idx` shards.
 
 ---
 
 ## Exercises
 
-Use the parameters and expected verification targets in the block below to complete the six quantitative exercises.
+The block below holds the inputs and the expected results for all six exercises. Work each exercise by hand, then compare your answer with the target in the block. If your number differs, you will find the mistake faster by checking one step at a time.
 
 ```text
 Exercise Input Parameters & Expected Verification Targets (code/part13/data_loading_small_files_lab.py):
@@ -556,25 +620,25 @@ Exercise Input Parameters & Expected Verification Targets (code/part13/data_load
       (b) 1,000,000,000 (1B) uint16 tokens, 500,000 docs (12 B/doc): .bin = 2.0 GB, .idx = 6.0 MB (0.3% overhead, 2.006 GB/copy), 4 pre-shuffled copies = 8.024 GB.
 ```
 
-1. **Small-File Batch Wait and Epoch Overhead Math:** Using the ImageNet parameters in Ex 1, calculate the per-file metadata time, CPU time, total per-file time, serial batch time, eight-worker parallel batch time, and ideal wire batch time. Then compute the per-batch overhead, total wasted epoch time, loader slowdown factor, and GPU idle percentage.
-2. **Syscall Profiling and Metadata Stress Sizing:** Using the `strace` captures in Ex 2, calculate the file-open rate, average microseconds per call, and MDS overload ratio. Then compute the percentage of kernel time spent in metadata syscalls versus `read`, the number of WebDataset shards required, and the metadata items created per `mdtest` iteration.
-3. **Dataset Repackaging and Block Read-Ahead Math:** Using the dataset specs in Ex 3, compare the open counts, reduction factors, and batch latency speedups for tar shards versus WebDataset shards. Then compute the total image size, chunk size, and label size for the HDF5 dataset, the read syscall reduction factor, and the read-ahead multiplier.
-4. **PyTorch DataLoader Queue Footprint and `/dev/shm` Sizing:** Using the tensor dimensions and worker counts in Ex 4, calculate the bytes per sample, MiB per batch, queued batches per rank, and node-wide shared memory footprint for both prefetch factors. Verify whether the queue fits inside Docker's default `/dev/shm` and Kubernetes's `emptyDir` volume.
-5. **Isolating GPU I/O Wait, Scaling Efficiency, and NVIDIA DALI Graph Fusion:** Using the profiling numbers in Ex 5, calculate the I/O wait reduction factor, recovered GPU percentage points, step-rate speedup, eight-GPU scaling efficiency, and required cluster read bandwidth. Then compute the CPU core savings from DALI and compare batch latency across the three pipelines.
-6. **NeMo Curator Memory-Mapped Offset and Pre-Shuffling Math:** Using the token counts in Ex 6, calculate the total `.bin` byte size and the exact byte offset and token length stored in `.idx` for the third document. Then compute the `.bin` size, `.idx` size, index overhead percentage, single-copy size, and four-copy pre-shuffled disk footprint.
+1. Start with the ImageNet numbers in Ex 1. Work out the per-file metadata time, the per-file CPU time, and the total per-file time. Then find the serial batch time, the eight-worker batch time, and the ideal wire batch time. Finish with the per-batch overhead, the total wasted epoch time, the loader slowdown factor, and the GPU idle percentage.
+2. Take the `strace` captures in Ex 2 next. Calculate the file-open rate, the average microseconds per call, and the MDS overload ratio. Then work out what share of kernel time goes to metadata syscalls compared with `read`. Finish with the number of WebDataset shards required and the metadata items created per `mdtest` iteration.
+3. Use the dataset specs in Ex 3 to compare the open counts, the reduction factors, and the batch latency speedups for tar shards against WebDataset shards. Then compute the total image size, chunk size, and label size for the HDF5 dataset. Finish with the read syscall reduction factor and the read-ahead multiplier.
+4. Use the tensor dimensions and worker counts in Ex 4 to calculate the bytes per sample, the MiB per batch, the queued batches per rank, and the node-wide shared-memory footprint for both prefetch factors. Then check whether each queue fits inside Docker's default `/dev/shm` and inside a Kubernetes `emptyDir` volume.
+5. Use the profiling numbers in Ex 5 to calculate the I/O wait reduction factor, the recovered GPU percentage points, and the step-rate speedup. Then work out the eight-GPU scaling efficiency and the cluster read bandwidth the job needs. Finish with the CPU core savings from DALI. Then compare batch latency across the three pipelines, and say which one you would ship.
+6. Use the token counts in Ex 6 to calculate the total `.bin` byte size. Then find the exact byte offset and token length that `.idx` stores for the third document. Finish with the `.idx` size, the index overhead percentage, the single-copy size, and the four-copy pre-shuffled disk footprint.
 
 ---
 
 ## Interview angles
 
 1. **The 256-GPU ImageNet Stall with Idle Network and 30% GPU Utilization:**
-   Proposing a faster network fabric or adding more storage capacity targets when the storage network already has 40 percent unused bandwidth misses the bottleneck completely. Diagnose small-file metadata saturation where 1.2 million small JPEGs across 256 GPUs generate over 100,000 `openat` and `stat` RPCs per second. That rate overwhelms a 50,000 ops/sec MDS. Mandate repackaging into 1,200 WebDataset tar shards of a thousand images each. That change cuts opens a thousandfold, drops batch wait from 30 seconds to 20 ms, and raises GPU utilization from 30 percent to over 85 percent.
+   When the storage network already has 40 percent unused bandwidth, proposing a faster fabric or more storage capacity misses the bottleneck entirely. Look at the small files instead. 1.2 million small JPEGs across 256 GPUs can generate over 100,000 `openat` and `stat` RPCs per second, and that rate overwhelms a 50,000 ops/sec MDS. The fix is to repackage the data into 1,200 WebDataset tar shards of a thousand images each. That cuts opens a thousandfold, drops batch wait from 30 seconds to 20 ms, and lifts GPU utilization from 30 percent to over 85 percent.
 2. **When Switching from HDF5 to WebDataset Does Not Improve Throughput:**
-   Treating WebDataset as a silver bullet that always speeds up training regardless of queue depth is a common mistake. Suppose a job training on chunked HDF5 already achieves over 80 percent GPU utilization and the DataLoader prefetch queue depth stays between five and twenty batches. In that case, the GPU is compute-bound rather than I/O-bound. Switching to WebDataset simplifies multi-node streaming and avoids HDF5 file-locking issues, but it will not make a compute-bound GPU run faster unless the prefetch queue drops to zero.
+   Many engineers treat WebDataset as a silver bullet that speeds up training no matter what. It is not. Suppose a job on chunked HDF5 already reaches over 80 percent GPU utilization, and its DataLoader prefetch queue holds between five and twenty batches. Then the GPU is compute-bound, not I/O-bound. WebDataset still simplifies multi-node streaming and avoids HDF5 file-locking issues. It will not make a compute-bound GPU run faster, though, unless the prefetch queue drops to zero.
 3. **Why Increasing `num_workers` and `prefetch_factor` Crashes Kubernetes Pods with a Bus Error:**
-   Blaming GPU HBM Out-Of-Memory when a PyTorch worker dies with `SIGBUS` wastes hours of debugging. PyTorch DataLoader workers pass collated tensor batches to the main process via POSIX shared memory in `/dev/shm`. Each rank queues `num_workers * prefetch_factor` batches, totaling 4.59 GiB across eight GPUs. Because container runtimes default `/dev/shm` to 64 MiB, workers hit `SIGBUS` when shared memory pages run out. Fix this by mounting a 400 GiB memory-backed `emptyDir` at `/dev/shm`.
+   Suppose a PyTorch worker dies with `SIGBUS`. The tempting guess is GPU HBM out-of-memory, the GPU's own memory running out, and chasing that guess can waste hours. DataLoader workers pass collated tensor batches to the main process through POSIX shared memory in `/dev/shm`. Each rank queues `num_workers * prefetch_factor` batches, which totals 4.59 GiB across eight GPUs. Container runtimes default `/dev/shm` to 64 MiB, so workers hit `SIGBUS` once the shared memory pages run out. Mount a 400 GiB memory-backed `emptyDir` at `/dev/shm` to fix it.
 4. **Why Naive DALI Integration Can Fail to Speed Up Vision Training:**
-   Using DALI only as a drop-in replacement for PIL JPEG decoding and returning CPU tensors to legacy CPU transforms introduces a severe PCIe bounce penalty. Copying uncompressed pixels from GPU to CPU and back wastes 24.0 ms per batch and leaves total batch time at 67.5 ms instead of 8.0 ms. All downstream resize, crop, flip, and normalization operators must remain on `device="gpu"` until the tensor enters the model's forward pass.
+   Using DALI as a drop-in replacement for PIL JPEG decoding sounds harmless. It is not, if you then return the tensors to CPU transforms, because that creates a severe PCIe bounce penalty. Copying uncompressed pixels from GPU to CPU and back wastes 24.0 ms per batch, which leaves the batch at 67.5 ms instead of 8.0 ms. Keep every resize, crop, flip, and normalization operator on `device="gpu"` until the tensor reaches the model's forward pass.
 
 ---
 
@@ -583,121 +647,121 @@ Exercise Input Parameters & Expected Verification Targets (code/part13/data_load
 <details>
 <summary>**1. In the 1.2M-file ImageNet benchmark, how does the 19.0 ms per-file cost break down between storage metadata syscalls and CPU preprocessing?**</summary>
 
-Storage metadata and syscalls take 4.0 ms per file across `stat`, `open`, `read`, and `close`. CPU preprocessing takes 15.0 ms per file across PIL decode and augmentation, totaling 19.0 ms per file.
+Storage metadata and syscalls take 4.0 ms per file. Those cover `stat`, `open`, `read`, and `close`. CPU preprocessing takes the other 15.0 ms, split between PIL decode and augmentation. Together they make 19.0 ms per file, so you can see that CPU work dominates.
 </details>
 
 <details>
 <summary>**2. For batch_size=256 across 1,200,000 files, why does an 8-worker DataLoader still waste 47 minutes per epoch on a 2 GB/s storage link?**</summary>
 
-A single serial worker takes 4,864 ms per batch, and eight parallel workers take 608 ms per batch. Streaming a 21.76 MB batch over a 2 GB/s link takes an ideal 10.88 ms, leaving 597 ms of overhead per batch. Across 4,688 batches, that overhead wastes 2,798.74 seconds, or nearly 47 minutes per epoch.
+One worker needs 4,864 ms per batch, and eight workers bring that down to 608 ms. A 21.76 MB batch over a 2 GB/s link takes an ideal 10.88 ms, so 597 ms per batch is overhead. Across 4,688 batches, that overhead adds up to 2,798.74 seconds, close to 47 minutes, every epoch. You can see why the loader, not the GPU, sets the pace.
 </details>
 
 <details>
 <summary>**3. What `openat` rate did `strace` record during the ImageNet small-file stall, and why does that break a parallel filesystem Metadata Server?**</summary>
 
-The trace recorded 267,500 `openat` calls in 2.140 seconds, which equals 125,000 opens/sec at 8 microseconds per call. That rate exceeds a typical parallel filesystem MDS capacity of 50,000 to 100,000 ops/sec by up to 2.5x from a single client workload.
+The trace recorded 267,500 `openat` calls in 2.140 seconds. That works out to 125,000 opens per second, at 8 microseconds per call. A typical parallel filesystem MDS handles 50,000 to 100,000 ops per second, so one client's workload can exceed that capacity by up to 2.5x.
 </details>
 
 <details>
 <summary>**4. In the Volume 06 14M PNG incident, what percentage of syscall time was spent in `stat`, `openat`, `close`, and `read`?**</summary>
 
-Out of 5.311 seconds traced by `strace -c`, 85.12 percent was spent in `stat` and 10.05 percent in `openat`. Another 4.02 percent went to `close`, while only 0.81 percent went to `read`. In total, 99.19 percent of kernel I/O time went to metadata overhead, throttling a 400 GB/s storage array down to 5 GB/s.
+In the 5.311-second trace, `stat` took 85.12 percent and `openat` took 10.05 percent. `close` took 4.02 percent, and `read` took only 0.81 percent. Metadata calls therefore account for 99.19 percent of kernel I/O time, which starves a 400 GB/s array down to 5 GB/s.
 </details>
 
 <details>
 <summary>**5. How does warm-to-cold page and dentry cache decay affect file-open rate and throughput between sample 1000 and sample 50000?**</summary>
 
-At sample 1000 on a warm cache, the loader achieves 2,410 opens/sec and 189.1 MB/s. By sample 50000, once the working set exceeds cached RAM entries, performance drops to 820 opens/sec and 68.7 MB/s. That decay represents a 2.94x drop in open rate and a 2.75x drop in throughput.
+At sample 1000, with a warm cache, the loader reaches 2,410 opens per second and 189.1 MB/s. Once the working set outgrows the cached entries, the rate falls by sample 50000 to 820 opens per second, and throughput falls to 68.7 MB/s. That decay is a 2.94x drop in open rate and a 2.75x drop in throughput.
 </details>
 
 <details>
 <summary>**6. If each training batch waits 600 ms for the DataLoader while GPU forward and backward compute takes 100 ms, what is the GPU idle percentage?**</summary>
 
-Total step time is 600 ms plus 100 ms, or 700 ms per step. The loader is six times slower than GPU compute, leaving the GPU active for 14.29 percent of the step and idle for 85.71 percent of wall-clock time.
+Each step takes 600 ms of waiting plus 100 ms of compute, so 700 ms in total. The loader is six times slower than the GPU. That leaves the GPU active for 14.29 percent of the step and idle for 85.71 percent of the wall-clock time. If you are reading a profile, this is the gap you should look for.
 </details>
 
 <details>
 <summary>**7. How much do 10,000-file `.tar` shards and 1,000-file WebDataset shards reduce `open()` calls on a 1,200,000-file dataset, and what batch latencies do they achieve?**</summary>
 
-Packing ten thousand files per tar shard reduces 1.2 million opens to 120 opens and cuts batch wait from 600 ms to 50 ms. Packing a thousand files per WebDataset shard reduces opens to 1,200 and cuts 256-GPU cluster batch stalls from 30,000 ms down to 20 ms, a 1,500x speedup.
+Suppose you pack ten thousand files into each tar shard. That cuts 1.2 million opens to 120, and it drops batch wait from 600 ms to 50 ms. Packing a thousand files into each WebDataset shard cuts opens to 1,200. On the 256-GPU cluster, it also cuts batch stalls from 30,000 ms to 20 ms, a 1,500x speedup.
 </details>
 
 <details>
 <summary>**8. What are the storage dimensions and chunk size of the HDF5 ImageNet dataset in Chapter 13.6, and what concurrency rule applies to `h5py` in PyTorch DataLoaders?**</summary>
 
-The uncompressed `uint8` image array of 1.2 million images occupies 180.63 GB with 64-image chunks of 9.63 MB each, while the `int32` label array occupies 4.80 MB. Because `h5py` file handles are not fork-safe, you must open `h5py.File` lazily inside each worker's `__getitem__` or `worker_init_fn` rather than in `__init__`.
+The uncompressed `uint8` image array for 1.2 million images takes 180.63 GB. It is stored in 64-image chunks of 9.63 MB each. The `int32` label array takes 4.80 MB. Because `h5py` file handles are not fork-safe, open `h5py.File` lazily inside each worker's `__getitem__` or `worker_init_fn`, never in `__init__`.
 </details>
 
 <details>
 <summary>**9. By what factor do read syscalls drop when reading 1 GiB in 1 MiB sequential blocks instead of 4 KB random blocks, and how do you tune NVMe read-ahead on Linux?**</summary>
 
-Reading 1 GiB in 1 MiB blocks requires 1,024 syscalls compared to 262,144 syscalls for 4 KB blocks, a 256-fold reduction. You raise NVMe sequential read-ahead from the 128 KB default to 4,096 KB, a 32x increase, by running `sudo blockdev --setra 8192 /dev/nvme0n1`.
+Reading 1 GiB in 1 MiB blocks takes 1,024 syscalls, against 262,144 syscalls for 4 KB blocks. That is a 256-fold reduction. To tune NVMe read-ahead, raise it from the 128 KB default to 4,096 KB, a 32x increase, with `sudo blockdev --setra 8192 /dev/nvme0n1`.
 </details>
 
 <details>
 <summary>**10. When random reads cannot be avoided, why should you disable large OS read-ahead and use `pread()` or Linux `io_uring`?**</summary>
 
-On purely random reads, large OS read-ahead wastes storage bandwidth and pollutes the page cache by fetching adjacent blocks that will never be used. Issuing concurrent positional reads with `pread()` or batched asynchronous `io_uring` requests with pre-registered buffers and `O_DIRECT` minimizes syscall overhead and hides random NVMe latency.
+Large OS read-ahead wastes bandwidth on purely random reads. It also fills the page cache with adjacent blocks that never get used. Concurrent positional reads with `pread()`, or batched asynchronous `io_uring` requests with pre-registered buffers and `O_DIRECT`, cut syscall overhead and hide random NVMe latency.
 </details>
 
 <details>
 <summary>**11. How many batches does a PyTorch DataLoader keep queued per rank when `num_workers=8` and `prefetch_factor=4`, and how much `/dev/shm` memory does that require across an 8-GPU node?**</summary>
 
-Each rank queues `num_workers * prefetch_factor`, which equals 32 batches per rank. At 18.375 MiB per 32-image batch, 32 batches require 588.0 MiB per rank and 4,704.0 MiB, or 4.59375 GiB, across all eight GPUs on the node.
+Each rank queues `num_workers * prefetch_factor` batches. With `num_workers=8` and `prefetch_factor=4`, that is 32 batches per rank. At 18.375 MiB per 32-image batch, the queue needs 588.0 MiB per rank. Across all eight GPUs on the node, the total is 4,704.0 MiB, or 4.59375 GiB.
 </details>
 
 <details>
 <summary>**12. How do `pin_memory=True`, `persistent_workers=True`, and a separate CUDA `copy_stream` work together to hide Host-to-Device transfer latency?**</summary>
 
-Setting `pin_memory=True` stages collated batches in page-locked host RAM. The GPU DMA engine can then run asynchronous `.to(device, non_blocking=True)` transfers on a dedicated `copy_stream` while the compute stream runs forward and backward kernels. Setting `persistent_workers=True` keeps worker processes and open shard handles alive across epochs so queues do not drain at epoch boundaries.
+Setting `pin_memory=True` stages collated batches in page-locked host RAM. The GPU's DMA engine can then run asynchronous `.to(device, non_blocking=True)` copies on a dedicated `copy_stream`, while the compute stream runs forward and backward kernels. Setting `persistent_workers=True` keeps worker processes and open shard handles alive across epochs, so the queues do not drain at epoch boundaries.
 </details>
 
 <details>
 <summary>**13. How do you experimentally isolate pure Python DataLoader transform overhead from Host-to-Device `memcpy` stalls?**</summary>
 
-First, set `num_workers=0` and time the iterator pull with GPU compute disabled. That test measures synchronous Python `__getitem__` and `collate_fn` cost without worker scheduling. Second, measure Host-to-Device transfer time separately using `torch.cuda.Event` timers around `.to("cuda")` or by inspecting the copy stream lane in Nsight Systems.
+First, set `num_workers=0` and time the iterator with GPU compute turned off. That measures the synchronous Python `__getitem__` and `collate_fn` cost, with no worker scheduling. Second, time the Host-to-Device transfer separately, using `torch.cuda.Event` timers around `.to("cuda")`, or check the copy stream lane in Nsight Systems. You can then tell which of the two costs dominates.
 </details>
 
 <details>
 <summary>**14. If profiling shows GPUs spend 30% of their time waiting on data I/O and tuning reduces that wait to 5%, what is the reduction in I/O wait and the step-rate speedup on an I/O-bound pipeline?**</summary>
 
-Reducing GPU I/O wait from 30 percent to 5 percent cuts I/O stall time sixfold and recovers 25 percentage points of active GPU compute utilization. On an I/O-bound pipeline where step rate is gated by data wait, cutting wait time sixfold increases training steps per second by up to 6.0x.
+Suppose the GPUs wait for data 30 percent of the time. Cutting that wait to 5 percent cuts the stall time sixfold. It also recovers 25 percentage points of active GPU compute. On an I/O-bound pipeline, where data wait sets the step rate, a sixfold cut in wait can raise training steps per second by up to 6.0x.
 </details>
 
 <details>
 <summary>**15. At 200 MB/s of training data per GPU, how much aggregate read bandwidth do an 8-GPU node and a 72-GPU Grace Blackwell GB200/GB300 NVL72 rack require?**</summary>
 
-An eight-GPU node requires 1.6 GB/s of sustained read bandwidth. A 72-GPU GB200 or GB300 NVL72 rack requires 14.4 GB/s, which sits inside a 14 to 20 GB/s practical envelope.
+An eight-GPU node needs 1.6 GB/s of sustained read bandwidth at 200 MB/s per GPU. A 72-GPU GB200 or GB300 NVL72 rack needs 14.4 GB/s. That falls inside the 14 to 20 GB/s practical range.
 </details>
 
 <details>
 <summary>**16. How much did NVIDIA DALI reduce host CPU utilization in the multimodal object-detection pipeline, and what hardware engines accelerate decoding and decompression on Blackwell?**</summary>
 
-DALI reduced host CPU utilization from 800 percent across eight full cores down to 200 percent across two cores. That fourfold reduction saves 75.0 percent of host CPU capacity. It uses hardware `nvJPEG` and `NVDEC` media engines, the 900 GB/s bidirectional Grace-to-Blackwell NVLink-C2C link, and Blackwell's hardware Decompression Engine for LZ4, Snappy, and Deflate streams.
+DALI cut host CPU utilization from 800 percent across eight full cores to 200 percent across two cores. That fourfold reduction frees 75.0 percent of host CPU capacity. The hardware behind it includes the `nvJPEG` and `NVDEC` media engines, the 900 GB/s bidirectional Grace-to-Blackwell NVLink-C2C link, and the Blackwell Decompression Engine for LZ4, Snappy, and Deflate streams.
 </details>
 
 <details>
 <summary>**17. Why does a fused GPU DALI graph at 8.0 ms per batch outperform a decode-only DALI pipeline that returns images to the CPU for augmentations at 67.5 ms per batch?**</summary>
 
-Decoding on the GPU and copying uncompressed pixels back to the CPU for CPU augmentations before copying them back to the GPU wastes 24.0 ms on PCIe bounce copies and 38.0 ms on CPU transforms. Keeping resize, crop, and normalization fused on the GPU takes just 2.5 ms after decode, finishing the whole batch in 8.0 ms.
+Decoding on the GPU, then copying uncompressed pixels back to the CPU for augmentation, wastes 24.0 ms on PCIe bounce copies. It also spends 38.0 ms on CPU transforms. Keep resize, crop, and normalization fused on the GPU, and the work after decode takes only 2.5 ms. The whole batch then finishes in 8.0 ms.
 </details>
 
 <details>
 <summary>**18. How does NVIDIA NeMo Curator structure preprocessed LLM datasets for Megatron-LM and NeMo training, and how does `.bin` and `.idx` achieve O(1) document lookup?**</summary>
 
-NeMo Curator cleanses, deduplicates, and tokenizes raw text offline via `DocumentDataset` on sharded JSONL or Parquet files. It then compiles tokens into a contiguous `.bin` data file paired with a memory-mapped `.idx` index file. A worker looks up a document's byte offset and token length in `.idx` in constant time and slices the `.bin` memory map directly via pointer arithmetic.
+NeMo Curator cleans, deduplicates, and tokenizes raw text offline, using `DocumentDataset` over sharded JSONL or Parquet files. It then compiles the tokens into a contiguous `.bin` data file, paired with a memory-mapped `.idx` index file. A worker looks up a document's byte offset and token length in `.idx` in constant time. It then slices the `.bin` memory map directly through pointer arithmetic.
 </details>
 
 <details>
 <summary>**19. In Lab 04, what numeric thresholds in the diagnostic script flag a DATA LOADING bottleneck versus a CHECKPOINT WRITE bottleneck?**</summary>
 
-An average or per-batch wait time above 500 ms, or 0.5 seconds, flags a data-loading bottleneck. A checkpoint save duration above 10 seconds flags a checkpoint-write bottleneck, while any checkpoint save above 1 second indicates visible GPU idle time.
+A wait time above 500 ms, or 0.5 seconds, flags a data-loading bottleneck. A checkpoint save that takes longer than 10 seconds flags a checkpoint-write bottleneck. Any checkpoint save longer than 1 second means the GPUs sit idle for visible time.
 </details>
 
 <details>
 <summary>**20. How do you use the batch-size perturbation test to prove whether a 60 GB/s AllReduce on a 100 GB/s NIC is communication-bound or compute-bound?**</summary>
 
-Halve the batch size to cut backward compute in half while keeping gradient `AllReduce` byte volume constant. If achieved NIC bandwidth stays at 60 GB/s, the network is the bottleneck and the job is communication-bound. If NIC bandwidth drops to 40 GB/s, the GPUs were not finishing compute fast enough to keep the NIC fed and the job is compute-bound.
+Halve the batch size. That cuts backward compute in half, but the gradient `AllReduce` byte volume stays the same. If the achieved NIC bandwidth holds at 60 GB/s, the job is communication-bound. If it drops to 40 GB/s, the GPUs were not finishing compute fast enough to keep the NIC fed, so the job is compute-bound. You can run this test on your own job by changing only the batch size.
 </details>
 
 ---
@@ -719,4 +783,3 @@ Source Map & Key Migrated Facts:
 ### Inferences and Unverified Claims Note
 - All cluster CLI commands (`strace`, `lctl`, `blockdev` `blk-mq` `mq-deadline`, `fio`, `mdtest`, `tar`, `WekaFS` and `3FS` over `RDMA`, `cuFileReadAsync`, `libjpeg-turbo` and `torchvision.transforms.v2` `RandomResizedCrop` vs DALI `8.0ms` batches, `MMapIndexedDataset` `doc_id` lookups, cross-referenced with Chapters `13.1`, `13.3`, `13.4`, and `13.5`) and distributed multi-GPU scripts are illustrative operational patterns from the cited sources. They have **not been executed on live multi-node storage hardware in this build environment** (`untested here`).
 - All 26 small-file metadata, repackaging, `/dev/shm` sizing, NVIDIA DALI, and NeMo Curator `.bin` and `.idx` calculations are deterministically verified by `code/part13/data_loading_small_files_lab.py` (`26 passed, 0 failed`).
-
