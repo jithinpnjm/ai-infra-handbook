@@ -24,15 +24,17 @@ lab_venue: "GCP / GKE"
 
 ## Why this matters for AI infrastructure
 
-In distributed training across thousands of GPUs, hardware failures are not an edge case. Over a thirty-day pretraining campaign on a thousand or two thousand GPUs, at least one component will fail. An HBM3 memory stack can develop an uncorrectable double-bit ECC error. A GPU can fall off the PCIe bus, an optical transceiver can flap, a power supply can trip, or the Linux kernel out-of-memory killer can terminate a worker.
+Picture a thirty-day pretraining run on a thousand or two thousand GPUs. Something in that cluster will break before the run ends. At this scale, hardware failure is the normal state of the job, not a rare event.
 
-Collective operations in NCCL such as All-Reduce, All-Gather, Reduce-Scatter, and All-to-All are synchronous across every rank in the communicator. A single failed rank blocks the entire job until the collective watchdog times out. Without a durable and validated checkpoint, one node failure wipes out days or weeks of GPU compute time worth millions of dollars.
+An HBM3 memory stack can develop an uncorrectable double-bit ECC error. A GPU can fall off the PCIe bus, an optical transceiver can flap, a power supply can trip, or the Linux kernel out-of-memory killer can terminate a worker. Over a campaign like this, at least one component will fail.
 
-Yet saving the checkpoint can easily become the single largest bottleneck in the cluster. Two failure modes show up repeatedly when teams deploy naive checkpoint pipelines in production.
+Collective operations in NCCL, such as All-Reduce, All-Gather, Reduce-Scatter, and All-to-All, are synchronous across every rank in the communicator. That means one failed rank blocks the entire job until the collective watchdog times out. Without a durable and validated checkpoint, one node failure wipes out days or weeks of GPU compute time, which is worth millions of dollars.
 
-First is the checkpoint pause. When a training run writes a large checkpoint every thirty to sixty minutes over a congested shared filesystem, synchronous writes stall the entire cluster for eight minutes per save. Saving every thirty minutes with a five-minute pause leaves GPUs completely idle for over sixteen percent of the day. Across a thousand checkpoints, an eight-minute stall burns over a hundred and thirty-three hours of cluster compute waiting on disk writes.
+Saving the checkpoint can easily become the largest bottleneck in the cluster. Teams that deploy naive checkpoint pipelines in production tend to run into two failure modes.
 
-Second is storage capacity bloat and silent corruption. Saving a hundred gigabytes every thirty minutes for a month generates a hundred and forty-four terabytes of files. Worse, recovery breaks if a worker dies during `torch.save`. Recovery also breaks if a script saves model weights while omitting AdamW momentum buffers, learning-rate state, or random number generator state. The resumed job either crashes with a tensor size mismatch or continues running while its training loss spikes and diverges silently.
+The first is the checkpoint pause. Suppose a training run writes a large checkpoint every thirty to sixty minutes over a congested shared filesystem. Synchronous writes then stall the entire cluster for eight minutes per save. Saving every thirty minutes with a five-minute pause leaves the GPUs completely idle for over sixteen percent of the day. Across a thousand checkpoints, that eight-minute stall burns over a hundred and thirty-three hours of cluster compute while the GPUs wait on disk writes.
+
+The second is storage bloat and silent corruption. Saving a hundred gigabytes every thirty minutes for a month generates a hundred and forty-four terabytes of files. Recovery also breaks if a worker dies during `torch.save`. It breaks too if the script saves the model weights but leaves out the AdamW momentum buffers, the learning-rate state, or the random number generator state. The resumed job then does one of two things. It either crashes with a tensor size mismatch, or it keeps running while its training loss spikes and diverges silently.
 
 ```text
 Naive vs Production Checkpoint Economics (V15 Ch. 08 & V13 Ch. 09):
@@ -44,33 +46,38 @@ Naive vs Production Checkpoint Economics (V15 Ch. 08 & V13 Ch. 09):
   - Unpruned capacity bloat: 100 GB x 48/day x 30 days = 144 TB/month; 1,000 x 500 GB checkpoints = 500 TB
 ```
 
-Modern AI storage and platform engineers solve these challenges with a five-part checkpoint architecture:
-- **Sharded parallel writes:** Using FSDP sharded state dicts, DeepSpeed universal checkpoints, or PyTorch Distributed Checkpoint, every rank writes its own shard in parallel. That takes under three seconds instead of gathering over a terabyte onto Rank 0.
-- **Principled interval scheduling:** Using the Young-Daly formula, teams calibrate save intervals to measured cluster Mean Time Between Failures and actual blocking write duration.
-- **Two-stage asynchronous checkpointing:** Workers copy GPU HBM shards to pinned host DRAM in under two seconds or to local NVMe scratch in under five seconds. The GPUs immediately resume training while background CPU threads flush shards to Lustre, BeeGFS, WekaFS, VAST, or object storage.
-- **Topology-agnostic dynamic resharding and atomic manifests:** When Slurm or Kubernetes drains a failed node and restarts a job on fewer GPUs, `torch.distributed.checkpoint` recomputes shard boundaries from global tensor metadata.
-- **In-memory and transparent driver-level checkpointing:** NVIDIA Mission Control on DGX SuperPOD GB300 and the `cuda-checkpoint` utility with CRIU provide sub-minute fault tolerance and live job migration.
+The block above puts the two failure modes side by side with their arithmetic. The rest of this chapter explains each line.
+
+Modern AI storage and platform engineers answer these problems with a five-part checkpoint architecture:
+
+- Sharded parallel writes: with FSDP sharded state dicts, DeepSpeed universal checkpoints, or PyTorch Distributed Checkpoint, every rank writes its own shard at the same time. The write finishes in under three seconds, instead of gathering over a terabyte onto Rank 0.
+- Principled interval scheduling: the Young-Daly formula lets teams set the save interval from two measurements, the cluster Mean Time Between Failures and the actual blocking write duration.
+- Two-stage asynchronous checkpointing: workers copy GPU HBM shards to pinned host DRAM in under two seconds, or to local NVMe scratch in under five seconds. The GPUs then resume training right away, while background CPU threads flush the shards to Lustre, BeeGFS, WekaFS, VAST, or object storage.
+- Topology-agnostic dynamic resharding and atomic manifests: suppose Slurm or Kubernetes drains a failed node and restarts the job on fewer GPUs. Then `torch.distributed.checkpoint` recomputes the shard boundaries from global tensor metadata.
+- In-memory and transparent driver-level checkpointing: NVIDIA Mission Control on DGX SuperPOD GB300, and the `cuda-checkpoint` utility with CRIU, give you sub-minute fault tolerance and live job migration.
+
+Start with the byte math, because every other decision in this chapter depends on how big the checkpoint is.
 
 ## Prerequisites and outcomes
 
-**Prerequisites:**
-- Understanding of local NVMe RAID 0 staging, GPUDirect Storage, and parallel filesystems such as Lustre, BeeGFS, WekaFS, and VAST from earlier chapters in Part 13.
-- Familiarity with dataset serialization and metadata bottlenecks from the preceding chapter.
-- Working knowledge of PyTorch distributed training with `torchrun`, DDP, FSDP, ZeRO stages, and NCCL collectives from Part 9.
+Before you start, you need a few ideas from earlier in the book. Without them, the byte counts and the sharding diagrams will feel like magic.
 
-**Outcomes:** After completing this chapter, you will be able to:
-1. Calculate the exact byte footprint of a model's active training state versus its persistent mixed-precision AdamW checkpoint state across foundation model scales.
-2. Instrument the three synchronous checkpoint phases, isolate straggler ranks via `dist.all_gather`, and compute optimal checkpoint intervals using Young's approximation and Daly's correction.
-3. Architect a two-stage asynchronous checkpoint pipeline from GPU HBM to pinned host DRAM, local NVMe, and shared storage with OOM guards and atomic directory publication.
-4. Execute topology-agnostic checkpoint resharding across changing GPU world sizes using `torch.distributed.checkpoint`, and contrast framework checkpoints against transparent driver-level snapshots using `cuda-checkpoint` and CRIU.
+From earlier chapters in Part 13, you should know local NVMe RAID 0 staging, GPUDirect Storage, and parallel filesystems such as Lustre, BeeGFS, WekaFS, and VAST. From the chapter before this one, you should know dataset serialization and metadata bottlenecks. From Part 9, you should be comfortable with PyTorch distributed training using `torchrun`, DDP, FSDP, ZeRO stages, and NCCL collectives.
+
+When you finish this chapter, you will be able to:
+
+1. Calculate the exact byte footprint of a model's active training state, and compare it with the persistent mixed-precision AdamW checkpoint state across foundation model scales.
+2. Instrument the three synchronous checkpoint phases, find straggler ranks with `dist.all_gather`, and compute optimal checkpoint intervals with Young's approximation and Daly's correction.
+3. Design a two-stage asynchronous checkpoint pipeline that moves data from GPU HBM to pinned host DRAM, then to local NVMe and shared storage, with OOM guards and atomic directory publication.
+4. Reshard a checkpoint across changing GPU world sizes with `torch.distributed.checkpoint`, and compare framework checkpoints with transparent driver-level snapshots taken through `cuda-checkpoint` and CRIU.
 
 ---
 
 ## 1. Anatomy of a Training Checkpoint and Byte Footprint Math
 
-Why does distributed checkpointing exist in the first place? While single-GPU HBM capacity has grown linearly to eighty gigabytes on an A100 or H100, foundation model parameter counts have grown exponentially. A single 175-billion-parameter GPT-3 model stored in full precision requires seven hundred gigabytes of memory for weights alone.
+Why do we need distributed checkpointing at all? HBM capacity on a single GPU has grown steadily to eighty gigabytes on an A100 or H100. Foundation model parameter counts have grown exponentially, though. Take a 175-billion-parameter GPT-3 model stored in full precision. Its weights alone need seven hundred gigabytes of memory.
 
-That weight tensor exceeds a single H100 GPU by nearly nine times before allocating a single byte for gradients, optimizer states, or activations. Compute scaling imposes an equally hard wall. A single training step on that model takes seventy-eight minutes on one A100 GPU. Spreading the step across 128 A100 GPUs drops step time to thirty-seven seconds.
+That weight tensor is nearly nine times larger than one H100 GPU, and we have not yet allocated a single byte for gradients, optimizer states, or activations. Compute creates an equally hard wall. One training step on that model takes seventy-eight minutes on a single A100 GPU. Spread the same step across 128 A100 GPUs, and the step time drops to thirty-seven seconds.
 
 ```text
 Single-GPU Memory and Compute Wall (V13 Ch. 01):
@@ -80,9 +87,11 @@ Single-GPU Memory and Compute Wall (V13 Ch. 01):
   - 128x A100 GPUs:          4,679.49 s / 128 = 36.56 seconds (~37 seconds per step)
 ```
 
+The same 1.46 x 10^18 FLOPs gets divided across the 128 GPUs in the last two lines. That division is why adding GPUs shortens the step.
+
 ### 1.1 The Five Mandatory Components of a Deterministic Checkpoint
 
-A production training checkpoint is much more than a dump of neural network weights. When a multi-GPU job crashes at a given step and resumes, the next step must produce the exact same training loss as an uninterrupted control run. Achieving bit-for-bit determinism requires capturing five distinct state domains on every rank.
+A production training checkpoint holds much more than a dump of neural network weights. Suppose a multi-GPU job crashes at some step and then resumes. The next step must produce exactly the same training loss as an uninterrupted control run. Getting that bit-for-bit determinism means saving five distinct state domains on every rank.
 
 | Component | State Dict / API Key | What It Stores | What Breaks If Omitted |
 |---|---|---|---|
@@ -92,13 +101,15 @@ A production training checkpoint is much more than a dump of neural network weig
 | **4. RNG State** | `rng_state` (`torch.get_rng_state()`, `torch.cuda.get_rng_state_all()`) | Per-rank CPU, CUDA, NumPy, and Python pseudorandom generator states | Dropout masks and stochastic shuffling differ after resume, causing silent trajectory divergence without throwing an error |
 | **5. Data Loader & Step Metadata** | `dataloader_state` (`StatefulDataLoader`), `epoch`, `global_step` | Exact dataset shard cursor, sample offset, and `DistributedSampler` epoch seed | Training replays already-seen batches and overfits, or skips unseen data shards |
 
+Read the last column first. Each row names the symptom you will see if that state is left out of the checkpoint.
+
 ### 1.2 Active Training Memory vs Persistent Checkpoint State
 
-Platform engineers must distinguish between active per-step training memory residing in GPU HBM and persistent checkpoint state written to disk. Active training requires holding gradients during the backward pass. Checkpoints, by contrast, are saved at the step boundary after the optimizer updates the weights and clears the gradients.
+Platform engineers need to keep two memory pictures apart. One is the active, per-step training memory that lives in GPU HBM. The other is the persistent checkpoint state written to disk. Active training holds gradients during the backward pass. Checkpoints are saved at the step boundary instead, after the optimizer has updated the weights and cleared the gradients.
 
-In classic FP32 or mixed-precision AdamW accounting, active training state consumes sixteen bytes per parameter. In mixed precision, that comprises two bytes for BF16 working weights, two bytes for BF16 gradients, four bytes for FP32 master weights, and eight bytes for FP32 AdamW momentum and variance. Adding activations and NCCL communication buffers pushes a seven-billion-parameter model to nearly 190 GB of active VRAM. That causes an immediate out-of-memory crash on a single eighty-gigabyte GPU.
+Under classic FP32 or mixed-precision AdamW accounting, active training state costs sixteen bytes per parameter. In mixed precision, those sixteen bytes split into two bytes for BF16 working weights, two bytes for BF16 gradients, four bytes for FP32 master weights, and eight bytes for FP32 AdamW momentum and variance. Add activations and NCCL communication buffers, and a seven-billion-parameter model needs nearly 190 GB of active VRAM. That is an immediate out-of-memory crash on a single eighty-gigabyte GPU.
 
-Persistent checkpoints omit transient gradients because `optimizer.step()` and `optimizer.zero_grad()` have already completed. Saving both the two-byte BF16 working weights and the twelve-byte FP32 optimizer state produces a standard mixed-precision checkpoint of fourteen bytes per parameter. If the framework saves only the four-byte FP32 master weights alongside the eight-byte FP32 moments and casts BF16 working weights on load, the checkpoint shrinks to twelve bytes per parameter.
+Persistent checkpoints leave out the transient gradients, because `optimizer.step()` and `optimizer.zero_grad()` have already completed. Saving the two-byte BF16 working weights together with the twelve-byte FP32 optimizer state gives a standard mixed-precision checkpoint of fourteen bytes per parameter. If the framework saves only the four-byte FP32 master weights with the eight-byte FP32 moments, and casts the BF16 working weights on load, the checkpoint shrinks to twelve bytes per parameter.
 
 ```text
 Per-Parameter Byte Accounting (V13 Ch. 01 & Ch. 09):
@@ -111,6 +122,10 @@ Per-Parameter Byte Accounting (V13 Ch. 01 & Ch. 09):
                                              throwing RuntimeError: CUDA out of memory. Tried to allocate 2.45 GiB)
 ```
 
+The last lines of this block show what the 7B out-of-memory crash looks like on screen. The 14 and 12 byte lines are the ones you will use when you size a checkpoint.
+
+The table below scales that arithmetic to several model sizes, with the per-GPU shard for an FSDP job. Each row shows the total in gigabytes, and the last two columns show what one GPU writes.
+
 | Model Scale | FP32 Weights Only (`4 B/p`) | Minimal Checkpoint (`12 B/p`) | Standard Mixed-Precision Checkpoint (`14 B/p`) | Full Active State Payload (`16 B/p`) | Target FSDP World Size | Per-GPU Shard at `14 B/p` | Per-GPU Shard at `16 B/p` |
 |---|---|---|---|---|---|---|---|
 | **7B** | 28.0 GB | 84.0 GB | **98.0 GB** | **112.0 GB** | 4 GPUs | 24.50 GB | 28.00 GB |
@@ -118,19 +133,21 @@ Per-Parameter Byte Accounting (V13 Ch. 01 & Ch. 09):
 | **175B (GPT-3)** | 700.0 GB (8.75x 80 GB) | 2,100.0 GB | **2,450.0 GB** (2.45 TB) | **2,800.0 GB** (2.80 TB) | 128 GPUs | 19.14063 GB | 21.87500 GB |
 | **400B** | 1,600.0 GB | 4,800.0 GB | **5,600.0 GB** (5.60 TB) | **6,400.0 GB** (6.40 TB) | 2,048 GPUs | **2.73438 GB** (2.73 GB) | **3.12500 GB** (3.125 GB) |
 
+Divide a row's total by its GPU count to get the shard that each rank writes. Then check the 14 and 16 byte columns against the setup you actually run.
+
 ---
 
 ## 2. The Checkpoint Lifecycle: Gather-to-Rank-0 vs Sharded Writes and Stragglers
 
-When training with FSDP in `FULL_SHARD` mode, ZeRO-3, or 3D parallelism in Megatron-LM, no single GPU holds the entire model or optimizer state at rest. Each GPU maintains only its local shard and reconstructs layer weights temporarily via All-Gather during forward and backward passes. How you serialize that distributed state determines whether a checkpoint takes three seconds or five minutes.
+Picture an FSDP job in `FULL_SHARD` mode, a ZeRO-3 job, or a 3D parallel job in Megatron-LM. No single GPU holds the whole model or the whole optimizer state at rest. Each GPU keeps only its local shard, and it rebuilds layer weights for a moment through All-Gather during the forward and backward passes. How you serialize that distributed state decides whether a checkpoint takes three seconds or five minutes.
 
 ### 2.1 Why Gather-to-Rank-0 Collapses at Scale
 
-In FSDP, selecting `StateDictType.FULL_STATE_DICT` forces every rank in the cluster to send its parameter and optimizer shards to Rank 0 so that Rank 0 can write a single monolithic file. Even if you enable CPU offloading with `offload_to_cpu=True` and `rank0_only=True` to avoid an immediate GPU HBM out-of-memory crash, Rank 0 becomes a severe network and storage bottleneck.
+With FSDP, choosing `StateDictType.FULL_STATE_DICT` forces every rank to send its parameter and optimizer shards to Rank 0. Rank 0 then writes one monolithic file. You might enable CPU offloading with `offload_to_cpu=True` and `rank0_only=True` to avoid an immediate GPU HBM out-of-memory crash. Even so, Rank 0 becomes a severe network and storage bottleneck.
 
-Consider a 70B model with a 1,120 GB state payload training across 128 H100 GPUs. Gathering that payload into Rank 0 over a 25 GB/s inbound network link takes nearly forty-five seconds. Writing the payload from a single host to storage at 5 GB/s takes another 224 seconds. All 128 H100 GPUs sit idle for nearly four and a half minutes.
+Consider a 70B model with a 1,120 GB state payload, training across 128 H100 GPUs. Gathering that payload into Rank 0 over a 25 GB/s inbound link takes nearly forty-five seconds. Writing the payload from one host to storage at 5 GB/s takes another 224 seconds. During that time, all 128 H100 GPUs sit idle for nearly four and a half minutes.
 
-With distributed sharded writes using `SHARDED_STATE_DICT` or PyTorch Distributed Checkpoint, every GPU writes only its local 8.75 GB shard in parallel. Even when the shared parallel filesystem caps aggregate cluster write throughput at 400 GB/s across all 128 writers, every shard finishes writing in 2.8 seconds. Sharded parallel writing is ninety-six times faster than gathering to Rank 0.
+Now compare the sharded path. With `SHARDED_STATE_DICT` or PyTorch Distributed Checkpoint, each GPU writes only its own 8.75 GB shard, all at once. Even when the shared parallel filesystem caps total cluster write throughput at 400 GB/s across all 128 writers, each shard finishes in 2.8 seconds. That makes the sharded write ninety-six times faster than gathering to Rank 0.
 
 ```text
 70B Model (1,120 GB Payload) on 128 H100 GPUs — Gather-to-Rank-0 vs Sharded Write (V13 Ch. 09):
@@ -145,7 +162,11 @@ With distributed sharded writes using `SHARDED_STATE_DICT` or PyTorch Distribute
      - Realistic sharded time:  8.75 GB / 3.125 GB/s = 2.8 seconds (96.0x faster than 268.8 s)
 ```
 
+The block works both paths with the same payload. Notice that the sharded path is limited by the filesystem ceiling, not by the single writer.
+
 ### 2.2 The Three Checkpoint Phases and Straggler Amplification
+
+A checkpoint has phases, and each phase can stall the whole cluster. The diagram shows the loop from training to a published checkpoint.
 
 ```mermaid
 flowchart TD
@@ -159,6 +180,8 @@ flowchart TD
     Loop --> Trig --> Ser --> Bar --> Write --> Pub --> Loop
 ```
 
+The table compares each phase with its healthy target and with the degraded trace from Volume 15. You can use it as a checklist when a checkpoint suddenly takes longer.
+
 | Phase | Operation | Healthy Target | Degraded Field Trace (`V15 Ch. 08`) | Root Cause of Degradation |
 |---|---|---|---|---|
 | **Phase 1: Serialization** | Pack model, optimizer, scheduler, and RNG tensors into byte buffers | **< 5.0 s** (`3.1 s` for `8.25 GB`) | `3.1 s` (`8.25 GB` shard) | Single-threaded Python pickling or unpinned host memory allocation |
@@ -167,19 +190,21 @@ flowchart TD
 | **Phase 4: Publication** | Write `manifest.json` and mark checkpoint complete | **< 0.5 s** (atomic `os.replace`) | Torn or partial `.pt` file on crash | In-place overwrite without `.tmp` staging directory or `fsync` |
 | **Total GPU Idle Pause** | Sum of blocking phases (Phase 1 + Phase 2 + Phase 3) | **< 5–10 s** | **481.6 s** (`481.5 s` reported = `8+ min`) | Straggler wait (`28.3 s`) plus synchronous slow shared-storage write (`450.2 s`) |
 
-Notice how the synchronization barrier in Phase 2 turns any single compute or dataloader straggler into a cluster-wide stall. Before entering the barrier, every rank should aggregate its average per-batch step time via `dist.all_gather`. Rank 0 can then flag any worker that runs more than fifteen percent slower than the fastest rank. Once identified, engineers can inspect `numactl` socket binding, check thermal clock throttling via `nvidia-smi -q -d PERFORMANCE`, or verify NVLink versus PCIe fallback in `nvidia-smi topo -m`.
+The total idle pause in the last row is the number that costs you money. It is the sum of the three blocking phases, and in the degraded trace one phase dominates it.
+
+The synchronization barrier in Phase 2 turns a single slow rank into a cluster-wide stall. Before the barrier, every rank should average its per-batch step time with `dist.all_gather`. Rank 0 can then flag any worker that runs more than fifteen percent slower than the fastest rank. Once you have the name of that rank, check the `numactl` socket binding, look at thermal clock throttling with `nvidia-smi -q -d PERFORMANCE`, or confirm NVLink versus PCIe fallback with `nvidia-smi topo -m`.
 
 ---
 
 ## 3. Optimal Checkpoint Frequency: The Young-Daly Equation
 
-How often should a cluster save a checkpoint? Saving every five minutes wastes massive GPU compute time on write overhead, while saving once a day risks losing twenty-four hours of thousand-GPU progress when a node fails. Platform engineers solve this trade-off analytically using the Young-Daly equation.
+How often should a cluster save a checkpoint? Save too often, and the write overhead eats your GPU time. Save once a day, and a node failure can cost you twenty-four hours of progress on a thousand GPUs. Platform engineers settle this trade-off with the Young-Daly equation instead of guessing.
 
 ### 3.1 Cluster MTBF Scaling
 
-If a single GPU server experiences a job-interrupting hardware or software fault once every $M_\{\text`{node}`}$ hours, a synchronous training job spanning $N$ nodes will fail whenever any single node fails. The cluster's effective Mean Time Between Failures $M$ therefore scales inversely with the node count $N$.
+Suppose a single GPU server hits a job-interrupting hardware or software fault once every $M_\{\text`{node}`}$ hours. A synchronous training job that spans $N$ nodes fails whenever any one of those nodes fails. So the cluster's effective Mean Time Between Failures $M$ shrinks as the node count $N$ grows.
 
-A single eight-GPU node might run reliably for 8,192 hours, or roughly eleven months, between faults. Across a 1,024-node cluster, those independent failure rates add up, dropping the cluster MTBF to just eight hours.
+A single eight-GPU node might run reliably for 8,192 hours, or roughly eleven months, between faults. Across a 1,024-node cluster, those independent failure rates add up. The cluster MTBF drops to just eight hours.
 
 ```text
 Cluster MTBF Scaling & Young-Daly Equations (V13 Ch. 09):
@@ -191,15 +216,17 @@ Cluster MTBF Scaling & Young-Daly Equations (V13 Ch. 09):
   - Higher-order Daly interval:  tau_Daly  = sqrt(2 * T_write * M) - T_write
 ```
 
+The block gives the scaling rule and both worked cases. Notice that the MTBF falls by the same factor as the node count.
+
 ### 3.2 Deriving Young's Formula and Daly's Higher-Order Correction
 
-Let $\tau$ be the compute interval between checkpoints, $T_\{\text`{write}`}$ be the blocking time required to write a checkpoint, and $M$ be the cluster MTBF. In each cycle, the fraction of time spent writing checkpoints is approximately $T_\{\text`{write}`} / \tau$.
+Let $\tau$ be the compute interval between checkpoints. Let $T_\{\text`{write}`}$ be the blocking time needed to write one checkpoint, and let $M$ be the cluster MTBF. In each cycle, the fraction of time spent writing checkpoints is roughly $T_\{\text`{write}`} / \tau$.
 
-Failures arrive at rate $1 / M$. Because a crash strikes on average halfway through an interval, the expected compute work lost per crash is half of $\tau$. Differentiating the total wasted time fraction with respect to $\tau$ and setting the derivative to zero yields Young's first-order formula. Accounting for the probability that a failure strikes during the checkpoint write itself gives John T. Daly's higher-order correction, which subtracts $T_\{\text`{write}`}$.
+Failures arrive at a rate of $1 / M$. A crash strikes, on average, halfway through an interval, so the expected compute work lost per crash is half of $\tau$. If you differentiate the total wasted time fraction with respect to $\tau$ and set the result to zero, you get Young's first-order formula. Daly's higher-order correction adds the chance that a failure strikes during the checkpoint write itself. That correction subtracts $T_\{\text`{write}`}$.
 
 ### 3.3 Worked Production Examples
 
-The table below applies both formulas to three production cluster configurations verified in our chapter lab.
+The table below applies both formulas to three production cluster configurations, all verified in the chapter lab. Read the Daly column for the interval and the last column for the target you would actually set.
 
 | Scenario | Cluster Scale | Cluster MTBF ($M$) | Blocking Write Cost ($T_\{\text`{write}`}$) | Young Interval ($\tau_\{\text`{Young}`}$) | Daly Interval ($\tau_\{\text`{Daly}`}$) | Steady-State Write Overhead | Expected Lost Rework ($\tau_\{\text`{Daly}`} / 2$) | Practical Operational Target |
 |---|---|---|---|---|---|---|---|---|
@@ -207,15 +234,19 @@ The table below applies both formulas to three production cluster configurations
 | **Case B: 400B on 2,048 GPUs (`V13 Ch. 09`)** | 2,048 GPUs | `6.0 h` (`21,600 s`) | `240.0 s` (`4.0 min`) | **3,219.94 s** (`~3,220 s` = `53.67 min`) | **2,979.94 s** (`~2,980 s` = **49.67 min**) | **7.45%** | `~25 min` | Round down to **30–40 minutes** for failure clustering |
 | **Case C: Async Local NVMe (`V15 Ch. 08`)** | 1,024 GPUs | `8.0 h` (`28,800 s`) | **5.0 s** (`0.083 min`) | **536.66 s** (`8.94 min`) | **531.66 s** (**8.86 min**) | **0.93%** | `265.83 s` (`4.43 min`) | Save every **9–15 minutes** (bounded by background drain) |
 
-Compare Case A against Case C. When a synchronous write blocks the cluster for three minutes, you can only afford to checkpoint every fifty-one minutes. That still burns over five percent of cluster compute in write pauses and loses twenty-five minutes of work on an average crash. Reducing the blocking pause to five seconds via asynchronous staging lets you checkpoint every nine minutes while cutting steady-state write overhead sixfold to under one percent.
+Compare Case A with Case C to see what the blocking pause really costs. A synchronous write that blocks the cluster for three minutes pushes the safe interval out to about fifty-one minutes. At that interval you still burn over five percent of cluster compute in write pauses, and you lose twenty-five minutes of work on an average crash. Cut the blocking pause to five seconds with asynchronous staging, and you can checkpoint every nine minutes. Steady-state write overhead falls sixfold, to under one percent.
+
+Choose your interval from the Daly column, then round it to the operational target that matches your cluster.
 
 ---
 
 ## 4. Two-Stage Asynchronous Checkpointing and Storage Bandwidth Tiers
 
-How do we shrink the blocking GPU pause of a multi-terabyte checkpoint from several minutes down to under two seconds? We decouple the critical-path snapshot from the durable storage flush. The snapshot must freeze the GPUs briefly so weights and optimizer states are not mutated mid-copy. The storage flush can then stream in the background while GPUs compute subsequent training batches.
+How do you shrink the blocking GPU pause of a multi-terabyte checkpoint from several minutes down to under two seconds? You split the work in two. The snapshot stays on the critical path, and the durable flush to storage moves off it. The snapshot has to freeze the GPUs briefly, so that weights and optimizer states are not changed mid-copy. The flush can then stream in the background while the GPUs compute the next training batches.
 
 ### 4.1 The Two-Stage Asynchronous Pipeline
+
+The diagram shows the data path. Each arrow is one hop, and the numbers on the arrows are the bandwidths for one node.
 
 ```mermaid
 flowchart LR
@@ -229,6 +260,8 @@ flowchart LR
     NVMe -.->|"3. Background RDMA Drain (2 GB/s/node)"| PFS
 ```
 
+The table gives each stage's bandwidth and duration for one node's 70 GB payload. It also says whether the stage blocks the GPU math.
+
 | Pipeline Stage | Source to Destination | Representative Bandwidth (Per 8-GPU Node) | Duration for `70 GB` Node Payload (`8 x 8.75 GB`) | Does It Block GPU Math? | Failure / Protection Domain |
 |---|---|---|---|---|---|
 | **Synchronous Baseline** | GPU HBM to Host to Shared PFS | `2.0 GB/s` per node (congested shared storage) | **35.0 s** (`450.2 s` at `18.33 MB/s` per rank) | **YES (100% blocking)** | Immediate multi-node durability, but severe GPU idle waste |
@@ -236,11 +269,13 @@ flowchart LR
 | **Async Stage 1b (Local NVMe Staging)** | Pinned Host DRAM to Local NVMe (`/raid` or `/local-nvme`) | **20.0 GB/s** (`4–8` striped NVMe drives) | **3.50 s** (`3–5 s`) | **NO** (or `3–5 s` if written directly from `torch.save`) | Survives process restart and OOM on the same node; lost if physical node is drained or replaced |
 | **Async Stage 2 (Durable PFS Drain)** | Local NVMe / Host DRAM to Shared PFS (`/shared-storage`) | **2.0 GB/s** per node (background thread or process) | **35.0 s** (`70–500 s` depending on PFS load) | **NO (0 s GPU stall)** | Survives full node hardware failure and Slurm or Kubernetes rescheduling onto a replacement node |
 
+Notice that Stage 1a is the only stage that always blocks the GPU math. The other two stages can run while training continues, and Stage 1b only blocks if you write directly from `torch.save`.
+
 ### 4.2 Guarding Against the Asynchronous Host-RAM OOM Killer
 
-While asynchronous checkpointing eliminates GPU idle stalls, it introduces a CPU-side failure mode that synchronous checkpointing never hits: host DRAM exhaustion. Because the first stage copies GPU shards into pinned host memory, overlapping background flushes can quickly exhaust system RAM and trigger the Linux kernel out-of-memory killer.
+Asynchronous checkpointing removes the GPU idle stalls, but it adds a CPU-side failure that synchronous checkpointing never hits. Host DRAM can run out. The first stage copies GPU shards into pinned host memory. If background flushes overlap, those copies can fill system RAM and wake the Linux kernel out-of-memory killer.
 
-Consider an eight-GPU node with 512 GB of host RAM where worker processes and dataloader queues already consume 180 GB of resident memory. A single in-flight 70 GB checkpoint snapshot raises host memory to 250 GB, which is completely safe. However, if shared storage slows down during an OST rebuild and the training script fires five overlapping asynchronous checkpoints without waiting, those five queued snapshots consume 350 GB of pinned RAM. That pushes total demand to 530 GB and crashes the job.
+Here is the arithmetic for one node. It has 512 GB of host RAM, and its worker processes and dataloader queues already use 180 GB. One in-flight 70 GB snapshot raises host memory to 250 GB, which is safe. Now suppose shared storage slows during an OST rebuild, and the training script fires five overlapping asynchronous checkpoints without waiting. Those five snapshots hold 350 GB of pinned RAM. Add the 180 GB baseline, and demand reaches 530 GB, which is more than the node has. The job crashes.
 
 ```text
 Host DRAM Out-of-Memory Boundary During Async Checkpointing (V13 Ch. 09):
@@ -252,28 +287,30 @@ Host DRAM Out-of-Memory Boundary During Async Checkpointing (V13 Ch. 09):
                                     [Node 3] dmesg: Out of memory: Killed process 1234 (python))
 ```
 
-Production asynchronous checkpointers prevent this crash with three rules. First, enforce a single-in-flight semaphore by calling `ckpt_future.result()` or joining the prior flush thread before allocating a new snapshot buffer. Second, pre-allocate a reusable pinned staging buffer pool at job startup. Third, delete local staging files immediately after the shared storage flush completes.
+Production asynchronous checkpointers prevent this with three rules. First, allow only one snapshot in flight. Call `ckpt_future.result()` or join the prior flush thread before you allocate a new snapshot buffer. Second, allocate a reusable pinned staging buffer pool when the job starts. Third, delete the local staging files as soon as the shared storage flush completes. Add the single-in-flight check before you turn on asynchronous saves, so the buffers can never stack.
 
 ### 4.3 NVIDIA DGX SuperPOD GB300 Storage Bandwidth Guidelines and Autonomous Recovery
 
-When sizing the shared parallel filesystem that absorbs background checkpoint flushes and serves recovery reads for an NVIDIA DGX SuperPOD with DGX GB300 systems, architects use two official High-Performance Storage tiers. The Standard tier targets single-modality LLM training where working sets fit in local memory cache. The Enhanced tier targets large multimodal and multi-billion or trillion-parameter models requiring frequent high-bandwidth checkpointing.
+When you size the shared parallel filesystem, you must absorb the background checkpoint flushes and still serve recovery reads. For an NVIDIA DGX SuperPOD with DGX GB300 systems, architects use two official High-Performance Storage tiers. The Standard tier targets single-modality LLM training, where the working set fits in local memory cache. The Enhanced tier targets large multimodal and multi-billion or trillion-parameter models that need frequent high-bandwidth checkpointing.
 
 | DGX SuperPOD GB300 Scale | Standard Tier Aggregate Read | Standard Tier Aggregate Write | Enhanced Tier Aggregate Read | Enhanced Tier Aggregate Write |
 |---|---|---|---|---|
 | **Single Scalable Unit (`1 SU`)** | **90 GB/s** | **45 GB/s** | **280 GB/s** | **140 GB/s** |
 | **Four Scalable Units (`4 SU`)** | **360 GB/s** | **180 GB/s** | **1,120 GB/s** (`1.12 TB/s`) | **560 GB/s** |
 
-Above the physical RDMA storage fabric, NVIDIA Mission Control on the DGX GB300 SuperPOD integrates Base Command Manager and NVIDIA Run:ai for Slurm and Kubernetes orchestration. It also includes Network Manager eXperience for NVLink Switch trays and an autonomous recovery engine. Using built-in in-memory checkpointing, Mission Control detects transient rank failures, restarts processes directly from memory or staged snapshots, and migrates workloads onto healthy nodes.
+Above the physical RDMA storage fabric sits NVIDIA Mission Control. On the DGX GB300 SuperPOD, it brings together Base Command Manager and NVIDIA Run:ai for Slurm and Kubernetes orchestration. It also includes Network Manager eXperience for NVLink Switch trays, and an autonomous recovery engine. The engine uses built-in in-memory checkpointing to detect transient rank failures. It restarts processes from memory or staged snapshots, and it moves workloads onto healthy nodes.
+
+Pick the storage tier that matches your model before you size the filesystem. The Enhanced tier is the one built for frequent high-bandwidth checkpointing.
 
 ---
 
 ## 5. Topology-Agnostic Resharding, Atomic Commits, and Retention
 
-What happens after a hardware fault actually takes down a node? Suppose a 64-GPU FSDP training job running across eight nodes hits an uncorrectable double-bit ECC error on one GPU. The Slurm health epilog drains the faulty node and restarts the job on the remaining forty-eight healthy GPUs across six nodes. Or conversely, an elastic four-GPU job scales out to eight GPUs when spare cluster capacity opens up.
+What happens after a hardware fault takes down a node? Suppose a 64-GPU FSDP job runs across eight nodes, and one GPU hits an uncorrectable double-bit ECC error. The Slurm health epilog drains that node and restarts the job on the remaining 48 healthy GPUs across six nodes. The reverse can happen too. An elastic four-GPU job can scale out to eight GPUs when spare capacity opens up. Either way, the checkpoint has to load onto a different number of GPUs.
 
 ### 5.1 Why Legacy Per-Rank Shards Fail on Cluster Resize
 
-If the job saved its checkpoint by having each rank call `torch.save` on its local shard without global layout metadata, those sixty-four files are hard-coded to a 64-rank world size. When the 48-GPU replacement job tries to load the checkpoint, it immediately fails with a shard-count mismatch or silently drops the last sixteen shards, losing a quarter of the model's parameters.
+Suppose the job saved its checkpoint by having each rank call `torch.save` on its local shard, with no global layout metadata. Those 64 files are then hard-coded to a 64-rank world size. When the 48-GPU replacement job tries to load them, it fails at once with a shard-count mismatch. Worse, it might silently drop the last sixteen shards and lose a quarter of the model's parameters.
 
 ```text
 Legacy Per-Rank Failure vs PyTorch DCP Interval Resharding (V13 Ch. 09 & V13 Lab 03):
@@ -294,18 +331,23 @@ Legacy Per-Rank Failure vs PyTorch DCP Interval Resharding (V13 Ch. 09 & V13 Lab
       Each of the 8 new ranks reads an exact 100-element half-slice (8 copy slices total).
 ```
 
+The block shows the failure message you would see, then the arithmetic that fixes it. Scenario 1 is the drain case, and Scenario 2 is the scale-out case.
+
 ### 5.2 PyTorch Distributed Checkpoint Dynamic Resharding
 
-Modern frameworks such as PyTorch Distributed Checkpoint (`torch.distributed.checkpoint` with `DTensor`) and DeepSpeed Universal Checkpointing decouple the physical storage shards written at save time from the logical tensor topology requested at load time. Alongside the binary shard files, DCP writes a global `.metadata` file recording every tensor's global shape, data type, and exact global index offsets.
+Modern frameworks decouple two things. One is the physical shard layout written at save time. The other is the logical tensor layout that the job asks for at load time. PyTorch Distributed Checkpoint, which works with `torch.distributed.checkpoint` and `DTensor`, does this, and so does DeepSpeed Universal Checkpointing. Alongside the binary shard files, DCP writes a global `.metadata` file. That file records every tensor's global shape, its data type, and its exact global index offsets.
 
-When resuming a 1D-sharded tensor saved across sixty-four source ranks onto forty-eight destination ranks, the DCP `LoadPlanner` intersects each destination rank's target index range with the saved source intervals. Destination Rank 0 reads all three hundred elements from the first source shard plus the first hundred elements from the second source shard. Across all forty-eight destination ranks, the planner executes ninety-six slice reads and reconstructs every parameter with zero data loss.
+Take a 1D-sharded tensor saved across 64 source ranks, and resume it onto 48 destination ranks. The DCP `LoadPlanner` intersects each destination rank's index range with the saved source intervals. Destination Rank 0 reads all 300 elements from the first source shard, plus the first 100 elements from the second. Across all 48 destination ranks, the planner runs 96 slice reads, and every parameter comes back with zero data loss.
 
 ### 5.3 Atomic Publication, SHA-256 Manifests, Parallel Restore, and Retention
 
-To prevent a crash mid-write from leaving a half-written directory that breaks automated recovery, production checkpointers enforce three storage invariants:
-- **Two-phase atomic directory rename:** Ranks never write directly into the final checkpoint directory. Instead, all ranks write their shards into `/shared-storage/.ckpt-step-1000.tmp/`, call `os.fsync()`, and wait at `dist.barrier()`. Rank 0 then writes `manifest.json` containing per-shard SHA-256 digests and `"completed": true`, and executes an atomic POSIX `os.replace()` to publish `/shared-storage/ckpt-step-1000/`.
-- **Parallel collective restore:** During recovery, reading a 500 GB checkpoint through an unstriped single-OST file at 2.0 GB/s takes 250 seconds of read time. Striping the directory across eight Lustre OSTs with `lfs setstripe -c -1` and GPUDirect Storage delivers 16.0 GB/s of aggregate read bandwidth. That cuts read time eightfold to 31.25 seconds and total Recovery Time Objective to 46.25 seconds.
-- **Tiered checkpoint retention:** To prevent a thousand checkpoints from consuming half a petabyte, an automated cleanup hook runs after every validated commit. It retains a rolling window of the last five checkpoints for crash recovery plus periodic milestones every hundred epochs or steps for downstream evaluation.
+A crash in the middle of a write must never leave a half-written directory that breaks automated recovery. Production checkpointers enforce three storage rules to prevent that.
+
+The first rule is a two-phase atomic directory rename. Ranks never write straight into the final checkpoint directory. Each rank writes its shards into `/shared-storage/.ckpt-step-1000.tmp/`, calls `os.fsync()`, and waits at `dist.barrier()`. Rank 0 then writes `manifest.json` with per-shard SHA-256 digests and `"completed": true`. It finishes with an atomic POSIX `os.replace()` that publishes `/shared-storage/ckpt-step-1000/`.
+
+The second rule is parallel collective restore. Suppose you read a 500 GB checkpoint through one unstriped OST at 2.0 GB/s. The read alone takes 250 seconds. If you stripe the directory across eight Lustre OSTs with `lfs setstripe -c -1`, and read it with GPUDirect Storage, you get 16.0 GB/s of aggregate bandwidth. The read drops eightfold, to 31.25 seconds, and the total Recovery Time Objective falls to 46.25 seconds.
+
+The third rule is tiered checkpoint retention. Without cleanup, a thousand checkpoints would consume half a petabyte. So an automated hook runs after every validated commit. It keeps a rolling window of the last five checkpoints for crash recovery, plus a periodic milestone every hundred epochs or steps for downstream evaluation.
 
 ```text
 Parallel Restore RTO & Tiered Retention Math (V15 Ch. 08):
@@ -317,13 +359,17 @@ Parallel Restore RTO & Tiered Retention Math (V15 Ch. 08):
       Keep rolling window keep_recent = 5 plus milestones (step % 100 == 0: 100, 200, 300, ...).
 ```
 
+The block compares the single-OST and eight-OST restores side by side, then gives the retention rule. The total RTO is what your on-call engineer waits for.
+
+Set the stripe width on the checkpoint directory before the first save, and keep the retention hook running, so that the restore path and the storage footprint both stay under control.
+
 ---
 
 ## 6. Transparent Driver-Level GPU Checkpointing: `cuda-checkpoint` and CRIU
 
-Framework checkpoints with `torch.save` and PyTorch DCP are portable across world sizes and model code changes, but they require cooperation from the Python training script at step boundaries. What if a cluster scheduler like Slurm or Kubernetes needs to preempt, live-migrate, or snapshot a running CUDA process transparently without modifying application code?
+Framework checkpoints, written with `torch.save` or PyTorch DCP, are portable across world sizes and across model code changes. They do need the training script to cooperate at each step boundary. Now picture a scheduler such as Slurm or Kubernetes that needs to preempt a running job, move it to another node, or snapshot it. It cannot wait for the script to reach a step boundary, and it should not require a code change. Driver-level checkpointing handles that case.
 
-On Linux, NVIDIA provides the `cuda-checkpoint` utility and CUDA Driver API hooks that integrate with CRIU, or Checkpoint/Restore in Userspace, to snapshot and restore the complete CPU and GPU state of a running process.
+On Linux, NVIDIA provides the `cuda-checkpoint` utility and CUDA Driver API hooks. They work together with CRIU, which stands for Checkpoint/Restore in Userspace. Together they snapshot and restore the full CPU and GPU state of a running process.
 
 ```mermaid
 flowchart LR
@@ -338,6 +384,10 @@ flowchart LR
     Lock2 -->|"4. cuCheckpointProcessUnlock"| Run
 ```
 
+The diagram shows the four states a process moves through. Each arrow is one Driver API call, and the process only runs again after the last one.
+
+The table lists the four calls in order. Each row says what the driver does, and what you must have in place for it to work.
+
 | CUDA Driver API Call | Process Transition | Exact Driver & Hardware Mechanics | Operational Requirement / Constraint |
 |---|---|---|---|
 | `cuCheckpointProcessLock` | RUNNING to LOCKED | Locks all CUDA driver entry points inside the target process and drains all outstanding GPU kernel and stream work to completion | Profile lock wait time with Nsight Systems markers |
@@ -345,9 +395,13 @@ flowchart LR
 | `cuCheckpointProcessRestore` | CHECKPOINTED to LOCKED | Reacquires physical GPUs of the same chip architecture, maps device memory back to its original virtual addresses, and restores CUDA contexts | Requires GPU Persistence Mode enabled (`nvidia-smi -pm 1`) or `cuInit` |
 | `cuCheckpointProcessUnlock` | LOCKED to RUNNING | Unlocks CUDA driver entry points and allows application threads and kernels to resume execution | Orthogonal to PyTorch DCP; complements framework checkpoints for fast preemption and live node migration |
 
+The suspend time is the number to watch. With 64 GB of active HBM and a 50 GB/s host link, the copy takes 1.28 seconds. Use framework checkpoints for durable, elastic saves, and use this path when a scheduler needs to move a live job. When you choose between them, ask whether you need a durable checkpoint or a fast move of a running job.
+
 ---
 
 ## Commands and configurations that matter
+
+The snippets in this section are the ones you will copy into a real job. The first one puts the straggler check and the two-stage async save together. It is written to be read top to bottom, and it has not been run on a multi-GPU cluster here.
 
 ### 1. Instrumenting Checkpoint Phases, Straggler Detection, and Two-Stage Async Staging
 
@@ -456,7 +510,11 @@ def save_checkpoint_two_stage_async(model, optimizer, scheduler, dataloader, epo
     _active_flush_thread.start()
 ```
 
+The function reads in the same order as the flow in this chapter. It checks for a straggler, captures the state, waits at the barrier, writes to local NVMe, and then drains in the background. The final rename is the step that makes the checkpoint visible.
+
 ### 2. PyTorch Distributed Checkpoint Asynchronous Save and Dynamic Load
+
+The next pattern uses DCP to save asynchronously and to load onto a different world size. It is untested here, and it needs PyTorch 2.3 or later with a multi-GPU process group.
 
 ```python
 # Topology-agnostic sharded checkpointing with torch.distributed.checkpoint (DCP)
@@ -483,6 +541,10 @@ def load_dcp_resharded(model, optimizer, step_dir: str):
     set_state_dict(model, optimizer, model_state_dict=state["model"], optim_state_dict=state["optimizer"])
 ```
 
+The save function waits on the previous future before it allocates new pinned memory. The load function does not need to know the old world size. That is the point of the metadata from Section 5.
+
+The shell commands below inspect a checkpoint, set the Lustre stripe width, and check the GPUs and the Slurm node. All of them are untested here, and you should read each one before you run it on a live cluster.
+
 ```bash
 # Inspect DCP checkpoint global tensor metadata and shard offsets from the CLI (untested here)
 python3 -c "from torch.distributed.checkpoint import FileSystemReader; \
@@ -501,9 +563,13 @@ nvidia-smi topo -m
 systemctl status nvidia-fabricmanager
 ```
 
+Run the metadata command first, because it tells you what the checkpoint actually contains. Run the stripe command before the first save, as the common mistakes section explains.
+
 ---
 
 ## How it fails
+
+Checkpoint problems rarely announce themselves clearly. The job either crashes with a cryptic error, or it runs on with a quietly wrong model. The table pairs each failure with the evidence to collect and the fix that has worked in production.
 
 | Failure Mode & Symptom | Diagnostic Commands & Evidence (untested here) | Root Cause | Production Resolution |
 |---|---|---|---|
@@ -513,19 +579,29 @@ systemctl status nvidia-fabricmanager
 | **4. Silent Loss Spike or Trajectory Divergence After Resume:** Job resumes at epoch 4 without crashing, but loss spikes sharply or diverges from the uninterrupted control run | Diff `optimizer_state_dict`, `scheduler_state_dict`, and `rng_state` keys in `torch.load(path, map_location="cpu")`; verify checkpoint was saved after `optimizer.step()` | Script saved only `model.state_dict()` and omitted AdamW moments (`optimizer.state_dict()`), LR scheduler step, or CPU/CUDA RNG states (`torch.cuda.get_rng_state_all()`), or lacked `dist.barrier()` | Enforce schema validation requiring all 6 state domains (`model`, `optimizer`, `scheduler`, `rng`, `dataloader`, `step_metadata`) and gate saves behind `dist.barrier()` |
 | **5. Checkpoint Write Time Jumps `8x–30x` (`90 s -> 12 min` or `10 s -> 300 s`):** GPU idle time during checkpointing climbs steadily or spikes suddenly without model changes | Check per-rank write throughput (`GB/s`), filesystem fill (`df -h`, `df -i`), Lustre/BeeGFS target health, and per-rank batch times (`dist.all_gather`) | Shared parallel filesystem OST degraded or contended by noisy neighbors; storage `> 90%` full because retention cleanup is missing; or compute/NUMA straggler on Rank 7 delaying `dist.barrier()` by `28.3 s` | Stripe checkpoint directory across all healthy OSTs (`lfs setstripe -c -1`), stage Stage 1 to local NVMe, automate tiered cleanup (`keep_recent=5` + `100`-epoch milestones), and bind straggler ranks with `numactl` |
 
+If your job crashes or runs on with a bad model after a save, you can start here. Find the row that matches your symptom, then collect the evidence in the second column before you change anything. Most of the fixes come down to two habits: write to a staging directory first, and make every rank reach the same barrier.
+
 ---
 
 ## Hands-on lab
 
+You can run this lab without any GPU hardware. It checks the arithmetic and the state machines from this chapter, so you can confirm the numbers before you trust them in a planning meeting.
+
 ### Venue and Scope
-- **Venue:** Local Python 3 standard-library verification lab (`code/part13/checkpoint_architecture_lab.py` importing `code/part13/checkpoint_architecture.py`), runnable on any laptop or GCP / GKE VM without GPU hardware.
-- **What it validates:** All twenty-six quantitative models and state machines covered in this chapter. The lab checks AdamW byte footprints, gather-to-rank-0 versus sharded parallel writes, phase and straggler stall math, and Young-Daly intervals. It also verifies two-stage async staging with host-RAM OOM detection, DGX SuperPOD GB300 storage tiers, parallel restore RTO, PyTorch DCP resharding, atomic SHA-256 manifest verification, and the `cuda-checkpoint` Driver API state machine.
+
+Run it on a laptop or on a GCP / GKE VM. It uses only the Python 3 standard library. The driver script is `code/part13/checkpoint_architecture_lab.py`, and it imports `code/part13/checkpoint_architecture.py`.
+
+The lab covers all twenty-six quantitative models and state machines in this chapter. It checks the AdamW byte footprints, gather-to-rank-0 against sharded parallel writes, the phase and straggler stall math, and the Young-Daly intervals. It also verifies the two-stage async staging with host-RAM OOM detection, the DGX SuperPOD GB300 storage tiers, and the parallel restore RTO. Finally, it covers PyTorch DCP resharding, atomic SHA-256 manifest verification, and the `cuda-checkpoint` Driver API state machine.
 
 ### Run the Verification Lab
+
+Run the script from the repository root. The `-B` flag stops Python from writing bytecode files into the tree.
 
 ```bash
 python3 -B code/part13/checkpoint_architecture_lab.py
 ```
+
+A clean run prints one `[PASS]` line per check, and it ends with a summary. The output you should expect looks like this.
 
 ```text
   [PASS] 1. 7B model FP32/Adam breakdown equals 28 GB weights + 28 GB gradients + 56 GB Adam states = 112 GB static (98 GB at 14 B/param, 180-190 GB step total)
@@ -558,26 +634,34 @@ python3 -B code/part13/checkpoint_architecture_lab.py
 Summary: 26 passed, 0 failed
 ```
 
+If any line prints `[FAIL]`, the arithmetic or the state machine in the code has drifted from the chapter. Fix that before you use the numbers anywhere else.
+
 ---
 
 ## Common first mistakes
 
-1. **Saving only model weights and celebrating when resume runs without throwing an exception:** Omitting `optimizer.state_dict()`, `scheduler.state_dict()`, `rng_state`, or the dataloader cursor is the most common checkpoint bug. The job restarts without an error, but AdamW resets to zero moments on mid-training weights. That causes an immediate loss spike and silent trajectory divergence.
-2. **Using gather-to-rank-0 on a large FSDP model:** Setting `FULL_STATE_DICT` on a large model stalls the cluster for minutes. It also routinely triggers a GPU or host RAM out-of-memory crash on Rank 0 even when sharded training fits inside HBM3.
-3. **Firing asynchronous checkpoints on a timer without waiting for the prior background flush to finish:** When shared storage slows down, overlapping asynchronous snapshots stack buffers in pinned host DRAM. Eventually the Linux OOM killer terminates the training processes. Always block on the previous flush future before starting a new snapshot.
-4. **Writing checkpoint files in-place without a temporary directory and collective barrier:** If one rank crashes during `torch.save` or writes without `dist.barrier()`, the directory contains mixed or truncated shards. Always write to a `.tmp` directory, call `fsync`, verify SHA-256 hashes, and atomically `os.replace()` into place.
-5. **Forgetting to set parallel filesystem striping on the checkpoint directory before the run starts:** Writing or restoring a large checkpoint through a default single-OST stripe takes over four minutes of pure I/O time instead of thirty-one seconds across eight OSTs.
+Most checkpoint bugs are quiet. The job restarts, prints no error, and the team moves on. These five mistakes account for most of the trouble. If you recognise your own pipeline in one of them, fix it before your next long run.
+
+1. Saving only the model weights and assuming the resume worked. The job restarts without an exception, but the most common checkpoint bug is leaving out `optimizer.state_dict()`, `scheduler.state_dict()`, `rng_state`, or the dataloader cursor. AdamW then restarts with zero moments on mid-training weights. The result is an immediate loss spike and a silent trajectory divergence.
+2. Gathering a large FSDP model onto Rank 0. Setting `FULL_STATE_DICT` on a large model stalls the cluster for minutes. It also often causes a GPU or host RAM out-of-memory crash on Rank 0, even when the sharded training fits inside HBM3.
+3. Firing asynchronous checkpoints on a timer without waiting for the last background flush. When shared storage slows down, overlapping snapshots stack their buffers in pinned host DRAM. Eventually the Linux OOM killer terminates the training processes. Always block on the previous flush future before you start a new snapshot.
+4. Writing checkpoint files in place, with no temporary directory and no collective barrier. If one rank crashes during `torch.save`, or ranks write without `dist.barrier()`, the directory holds mixed or truncated shards. Write to a `.tmp` directory, call `fsync`, verify the SHA-256 hashes, and then atomically `os.replace()` the directory into place.
+5. Forgetting to set parallel filesystem striping on the checkpoint directory before the run starts. Writing or restoring a large checkpoint through a default single-OST stripe takes over four minutes of pure I/O time. Across eight OSTs, the same work takes thirty-one seconds.
 
 ---
 
 ## Exercises
 
-1. **Mixed-Precision AdamW Checkpoint Sizing:** For a 70B model on 128 H100 GPUs and a 400B model on 2,048 GPUs, compute total cluster footprint and per-GPU shard size. Evaluate footprints at twelve, fourteen, and sixteen bytes per parameter, and verify by what factor 175B GPT-3 FP32 weights exceed a single H100 GPU.
-2. **Gather-to-Rank-0 vs Sharded Write and Straggler Stall Math:** Calculate the total checkpoint time for a 70B model on 128 GPUs using gather-to-rank-0 versus a 400 GB/s capped sharded write. Then compute the effective write rate and thousand-checkpoint stall reduction in the Volume 15 trace.
-3. **Young-Daly Optimal Checkpoint Scheduling:** Compute cluster MTBF, Young's interval, Daly's interval, and steady-state write overhead for the synchronous, large-scale, and asynchronous local NVMe staging cases.
-4. **Two-Stage Asynchronous Checkpointing and Host-RAM OOM Boundary:** Calculate Stage 1a, Stage 1b, and Stage 2 durations for a 70 GB node payload. Then evaluate host RAM usage for one versus five in-flight snapshots on a 512 GB node with 180 GB baseline RSS.
-5. **PyTorch DCP Dynamic Resharding:** Compute the source and destination shard sizes and exact slice copy mappings when resharding a 1D parameter tensor from 64 to 48 GPUs and from 4 to 8 GPUs.
-6. **Parallel OST Recovery Time Objective and `cuda-checkpoint` Suspend Time:** Calculate the read time and total RTO when restoring a 500 GB checkpoint across one versus eight OSTs. List the DGX SuperPOD GB300 storage tiers, and calculate the `cuda-checkpoint` suspend copy duration for 64 GB of active HBM at 50 GB/s.
+Work these on paper or in a notebook first, then check your numbers against the targets below the list. Each exercise reuses the models from the sections above.
+
+1. Size the mixed-precision AdamW checkpoints. Take the 70B model on one hundred twenty-eight H100 GPUs, and the 400B model on two thousand forty-eight GPUs. Compute the total cluster footprint and the per-GPU shard size for each. Evaluate both at twelve, fourteen, and sixteen bytes per parameter. Then work out by what factor 175B GPT-3 FP32 weights exceed a single H100 GPU.
+2. Compare gather-to-rank-0 with a sharded write. For the 70B model on one hundred twenty-eight GPUs, calculate the total checkpoint time twice. Do it once with gather-to-rank-0, and once with a sharded write capped at the filesystem ceiling. Then compute the effective write rate, and the stall reduction over a thousand checkpoints, from the Volume 15 trace.
+3. Schedule the checkpoints with Young-Daly. For the synchronous, large-scale, and asynchronous local NVMe staging cases, compute the cluster MTBF, Young's interval, Daly's interval, and the steady-state write overhead.
+4. Work out the two-stage async timing and the host-RAM boundary. Calculate the Stage 1a, Stage 1b, and Stage 2 durations for a 70 GB node payload. Then evaluate host RAM use with one snapshot in flight and with five, on a node with 512 GB of RAM and a baseline of 180 GB.
+5. Reshard with PyTorch DCP. Compute the source and destination shard sizes, and the exact slice copy mappings, for a 1D parameter tensor that goes from sixty-four to forty-eight GPUs, and from four to eight GPUs.
+6. Compare the restore RTO and the `cuda-checkpoint` suspend time. Calculate the read time and total RTO for restoring a 500 GB checkpoint across one OST, and then across eight. List the DGX SuperPOD GB300 storage tiers, and calculate the `cuda-checkpoint` suspend copy for sixty-four GB of active HBM at fifty GB/s.
+
+Check your work against these expected values from `code/part13/checkpoint_architecture_lab.py`.
 
 ```text
 Exercise Input Parameters & Expected Verification Targets (code/part13/checkpoint_architecture_lab.py):
@@ -596,21 +680,25 @@ Exercise Input Parameters & Expected Verification Targets (code/part13/checkpoin
                          SuperPOD GB300: 1 SU Std 90/45 GB/s, Enh 280/140 GB/s; 4 SU Std 360/180 GB/s, Enh 1,120/560 GB/s. cuda-checkpoint: 64.0 GB / 50.0 GB/s = 1.28 s.
 ```
 
+If your Exercise 3 Case B answer differs from 49.67 minutes, recheck the write cost you used. The lab uses 240 seconds.
+
 ---
 
 ## Interview angles
 
+These four questions come up often in infrastructure interviews. Each answer is a short story you can tell out loud, with the numbers you need to back it up.
+
 1. **"Your training job checkpoints 500 GB every hour and blocks training for 8 minutes per checkpoint across 1,000 planned checkpoints. How much GPU time is lost, and how do you re-architect it?"**
-   A thousand checkpoints at eight minutes each burn eight thousand minutes, or 133.33 hours, of pure GPU cluster stall time. First, instrument the three phases. Serialization takes 3.1 seconds, barrier synchronization takes 28.3 seconds due to a straggler on the seventh rank, and synchronous shared-storage write takes 450.2 seconds. Second, deploy two-stage asynchronous checkpointing by copying shards to pinned host DRAM or local NVMe in under five seconds. Release the GPUs immediately to compute the next batch, and drain shards to shared storage in a background thread with an atomic manifest commit. That cuts the stall ninety-six-fold to 1.39 hours across the run.
+   A thousand checkpoints at eight minutes each add up to eight thousand minutes, or 133.33 hours, of pure cluster stall. Start by instrumenting the three phases. Serialization takes 3.1 seconds, the barrier takes 28.3 seconds because of a straggler on the seventh rank, and the synchronous shared-storage write takes 450.2 seconds. Then move to two-stage asynchronous checkpointing. Copy the shards to pinned host DRAM or local NVMe in under five seconds, and release the GPUs right away. Drain the shards to shared storage in a background thread, and commit with an atomic manifest. That cuts the stall ninety-six-fold, to 1.39 hours across the run.
 
 2. **"Design a checkpointing strategy for a 400B model training on 2,048 GPUs where observed cluster MTBF is 6 hours and a distributed checkpoint write takes 4 minutes."**
-   Apply the Young-Daly equation using the six-hour MTBF and four-minute write duration, which gives a Daly interval of roughly fifty minutes. Because real hardware failures cluster in time rather than following a memoryless exponential curve, round down to a thirty to forty minute operational target. Never gather the model onto Rank 0. Instead, have all ranks write their local shards via PyTorch DCP `async_save` so the write overlaps with compute and supports automatic resharding if nodes are drained on restart.
+   Apply the Young-Daly equation with the six-hour MTBF and the four-minute write. That gives a Daly interval of roughly fifty minutes. Real hardware failures cluster in time instead of following a memoryless exponential curve, so round down to a thirty to forty minute target. Never gather the model onto Rank 0. Have every rank write its local shard through PyTorch DCP `async_save`. The write then overlaps with compute, and the checkpoint can reshard automatically if nodes are drained on restart.
 
 3. **"Why does asynchronous checkpointing introduce a failure mode that synchronous checkpointing never hits, and how do you prevent it?"**
-   Asynchronous checkpointing stages GPU HBM tensors into pinned host DRAM before background threads flush them to storage. If shared storage slows down and new checkpoints trigger before prior background flushes finish, stacked buffers plus worker RSS exceed physical host RAM. That triggers the Linux OOM killer. Prevent this by enforcing a single-in-flight semaphore with `ckpt_future.result()`, pre-allocating a fixed-size reusable pinned host buffer at startup, and spilling the first stage onto local NVMe scratch.
+   Asynchronous checkpointing copies GPU HBM tensors into pinned host DRAM before background threads flush them to storage. If shared storage slows down, and new checkpoints fire before the earlier flushes finish, the stacked buffers plus worker RSS can exceed physical host RAM. The Linux OOM killer then steps in. Prevent it with a single-in-flight semaphore built on `ckpt_future.result()`. Pre-allocate a fixed-size reusable pinned host buffer at startup, and spill the first stage onto local NVMe scratch.
 
 4. **"How does NVIDIA `cuda-checkpoint` with CRIU differ from PyTorch DCP, and when would you use each?"**
-   PyTorch DCP operates at the framework level at step boundaries, serializing logical tensors with global metadata so checkpoints can reshard across changing GPU world sizes. By contrast, `cuda-checkpoint` with CRIU operates transparently at the CUDA Driver and Linux process level via `cuCheckpointProcessLock`, `cuCheckpointProcessCheckpoint`, `cuCheckpointProcessRestore`, and `cuCheckpointProcessUnlock`. It drains active streams, copies raw GPU HBM into driver-managed host memory, releases GPU handles for CRIU, and restores onto replacement GPUs of the same architecture. Use `cuda-checkpoint` for fast scheduler preemption and live node migration, and use DCP for durable, topology-elastic training checkpoints.
+   PyTorch DCP works at the framework level, at step boundaries. It serializes logical tensors with global metadata, so a checkpoint can reshard across a changing GPU world size. `cuda-checkpoint` with CRIU works transparently, at the CUDA Driver and Linux process level. It goes through `cuCheckpointProcessLock`, `cuCheckpointProcessCheckpoint`, `cuCheckpointProcessRestore`, and `cuCheckpointProcessUnlock`. It drains the active streams, copies raw GPU HBM into driver-managed host memory, and releases the GPU handles so CRIU can dump the process. The process then restores onto replacement GPUs of the same architecture. Use `cuda-checkpoint` for fast scheduler preemption and live node migration. Use DCP for durable, topology-elastic training checkpoints.
 
 ---
 
@@ -619,43 +707,43 @@ Exercise Input Parameters & Expected Verification Targets (code/part13/checkpoin
 <details>
 <summary>**1. Why cannot a single 80 GB H100 GPU hold a 7B or 175B parameter training step, and what is the exact byte breakdown for each?**</summary>
 
-A seven-billion-parameter model in full precision with Adam requires twenty-eight gigabytes of weights, twenty-eight gigabytes of gradients, and fifty-six gigabytes of optimizer states for 112 GB of static state. Adding activations and communication buffers brings the step total to 180 to 190 GB, which is more than twice an eighty-gigabyte H100. A 175B GPT-3 model requires 700 GB for FP32 weights alone, exceeding a single H100 by nearly nine times before gradients, optimizer states, or activations.
+Take a seven-billion-parameter model in full precision with Adam. It needs twenty-eight gigabytes for weights, twenty-eight for gradients, and fifty-six for optimizer states, which is 112 GB of static state. Activations and communication buffers push the full step to 180 to 190 GB, more than twice what an 80 GB H100 holds. The 175B GPT-3 model is a bigger problem. Its FP32 weights alone take 700 GB, nearly nine times one H100, before you count gradients, optimizer states, or activations.
 </details>
 
 <details>
 <summary>**2. Why does a persistent mixed-precision AdamW checkpoint require 14 bytes per parameter (or 12 bytes per parameter) while active training requires 16 bytes per parameter?**</summary>
 
-During active mixed-precision training, each parameter requires two bytes for BF16 working weights, two bytes for BF16 gradients, four bytes for FP32 master weights, and eight bytes for FP32 Adam moments. That totals sixteen bytes per parameter. Because checkpoints are saved at step boundaries after `optimizer.step()`, transient two-byte gradients are discarded, leaving fourteen bytes per parameter. If BF16 working weights are cast from FP32 master weights on restore, the checkpoint requires twelve bytes per parameter.
+Active mixed-precision training uses sixteen bytes per parameter. Those bytes are two for BF16 working weights, two for BF16 gradients, four for FP32 master weights, and eight for FP32 Adam moments. A checkpoint is saved after `optimizer.step()`, when the transient two-byte gradients have already been thrown away. That leaves fourteen bytes per parameter. If the BF16 working weights are rebuilt from the FP32 master weights on restore, the checkpoint needs only twelve bytes per parameter.
 </details>
 
 <details>
 <summary>**3. What are the five mandatory state domains required in a checkpoint to guarantee a bit-for-bit deterministic training resume?**</summary>
 
-The checkpoint must save model parameters via `model.state_dict()` and optimizer moments via `optimizer.state_dict()`. It must also capture the learning rate scheduler step via `scheduler.state_dict()` and pseudorandom generator states via `torch.get_rng_state()` and `torch.cuda.get_rng_state_all()`. Finally, it must record the dataloader shard cursor and global step metadata.
+Save the model parameters with `model.state_dict()`, and the optimizer moments with `optimizer.state_dict()`. Add the learning rate scheduler step through `scheduler.state_dict()`, and the random number generator states through `torch.get_rng_state()` and `torch.cuda.get_rng_state_all()`. Last, record the dataloader shard cursor and the global step metadata.
 </details>
 
 <details>
 <summary>**4. What happens after resume if a checkpoint saves model weights but omits optimizer state versus omitting RNG state?**</summary>
 
-Omitting `optimizer.state_dict()` forces AdamW to restart cold with zero momentum and variance on mid-training weights. That causes an immediate training loss spike on the first resumed steps. Omitting `rng_state` allows the job to run without crashing or spiking immediately, but batch shuffling order and dropout masks differ, causing silent trajectory divergence from the uninterrupted control run.
+If `optimizer.state_dict()` is missing, AdamW restarts cold, with zero momentum and variance on weights that were already mid-training. The loss spikes right away on the first resumed steps. If only the RNG state is missing, the job runs without a crash or an immediate spike. But the batch shuffle order and the dropout masks differ, so the trajectory drifts away from the uninterrupted control run without any error.
 </details>
 
 <details>
 <summary>**5. For a 70B model (1,120 GB payload at 16 B/param) on 128 H100 GPUs, why is a sharded parallel write 96x faster than gathering to Rank 0?**</summary>
 
-Naive gather-to-rank-0 (`FULL_STATE_DICT`) takes 44.8 seconds to move the payload into Rank 0 over the network plus 224.0 seconds to write it from a single node, totaling 268.8 seconds. With distributed sharded writes (`SHARDED_STATE_DICT` or DCP), each GPU writes only its 8.75 GB shard in parallel. Even when capped by a 400 GB/s parallel filesystem ceiling, the write finishes in 2.8 seconds, which is ninety-six times faster.
+Gathering to Rank 0 with `FULL_STATE_DICT` takes 44.8 seconds to move the payload over the network. Writing it from one node takes another 224.0 seconds, for a total of 268.8 seconds. With a sharded write, through `SHARDED_STATE_DICT` or DCP, each GPU writes only its own 8.75 GB shard, all in parallel. Even at the 400 GB/s filesystem ceiling, the write finishes in 2.8 seconds, which is ninety-six times faster.
 </details>
 
 <details>
 <summary>**6. In the Volume 15 checkpoint trace (3.1 s serialize, 28.3 s barrier sync, 450.2 s write = 481.5 s), what do the 28.3 s and 450.2 s numbers prove?**</summary>
 
-The 28.3 seconds spent at `dist.barrier()` proves a compute or dataloader straggler on the seventh rank, which arrived late and forced all other ranks to wait idle. The 450.2 seconds spent writing the shard proves a synchronous storage bottleneck delivering only 18.33 MB/s per rank to slow or unstriped shared storage.
+The 28.3 seconds at `dist.barrier()` point to a compute or dataloader straggler on the seventh rank. That rank arrived late, and every other rank sat idle while it caught up. The 450.2 seconds of shard writing point to a synchronous storage bottleneck. Each rank got only 18.33 MB/s from slow or unstriped shared storage.
 </details>
 
 <details>
 <summary>**7. How do you programmatically identify which rank is causing a pre-checkpoint barrier stall?**</summary>
 
-Record per-batch iteration times on every rank during the training interval, compute the local mean, and call `dist.all_gather` before the checkpoint barrier. Any rank whose average batch time exceeds the fastest rank by more than fifteen percent is flagged as the straggler for NUMA binding, thermal throttling, or PCIe fallback inspection.
+On every rank, record the batch times during the training interval and compute the local mean. Then call `dist.all_gather` before the checkpoint barrier. Any rank whose average batch time is more than fifteen percent above the fastest rank is the straggler. Inspect it for NUMA binding, thermal throttling, or PCIe fallback.
 </details>
 
 <details>
@@ -680,67 +768,67 @@ Steady-state write overhead = 180 / (3,039.94 + 180) = 5.59%
 <details>
 <summary>**10. How does reducing the blocking checkpoint pause from 180 s to 5 s via asynchronous staging change the Young-Daly schedule on that same 8-hour MTBF cluster?**</summary>
 
-With a five-second blocking pause on the eight-hour MTBF cluster, the Young interval drops to 536.66 seconds and the Daly interval drops to 531.66 seconds, or 8.86 minutes. Steady-state write overhead falls sixfold from 5.59 percent down to 0.93 percent.
+Cut the blocking pause to five seconds on the same eight-hour MTBF cluster. The Young interval then drops to 536.66 seconds, and the Daly interval drops to 531.66 seconds, which is 8.86 minutes. Steady-state write overhead falls sixfold, from 5.59 percent to 0.93 percent.
 </details>
 
 <details>
 <summary>**11. Walk through the exact data path of a two-stage asynchronous checkpoint from GPU HBM3 to a shared parallel filesystem.**</summary>
 
-At `dist.barrier()`, the first stage copies each GPU's shard from HBM3 into pinned host DRAM, pausing the node's GPUs for 1.4 seconds on a 70 GB payload before compute immediately resumes. Background CPU threads then flush the pinned DRAM buffer to node-local NVMe in 3.5 seconds. Finally, background workers copy the shard over RDMA to a `.tmp` directory on the shared parallel filesystem and atomically publish `manifest.json`.
+At `dist.barrier()`, the first stage copies each GPU's shard from HBM3 into pinned host DRAM. The node's GPUs pause for 1.4 seconds on a 70 GB payload, and then compute resumes. Background CPU threads flush the pinned DRAM buffer to node-local NVMe in 3.5 seconds. Finally, background workers copy the shard over RDMA into a `.tmp` directory on the shared parallel filesystem, and they atomically publish `manifest.json`.
 </details>
 
 <details>
 <summary>**12. What causes a Linux out-of-memory kill during asynchronous checkpointing, and how do you fix it?**</summary>
 
-Asynchronous checkpointing buffers GPU shards inside pinned host DRAM. If five unflushed 70 GB snapshots stack up alongside 180 GB of worker RSS, total host memory reaches 530 GB on a 512 GB node and triggers the Linux OOM killer. Fix this by enforcing a single-in-flight semaphore with `ckpt_future.result()`, pre-allocating a fixed reusable pinned memory pool, or staging directly to `/local-nvme` with emergency swap configured.
+Asynchronous checkpointing holds GPU shards in pinned host DRAM. If five unflushed 70 GB snapshots stack up next to 180 GB of worker RSS, host memory reaches 530 GB on a 512 GB node. The Linux OOM killer then fires. To fix it, enforce a single-in-flight semaphore with `ckpt_future.result()`, or pre-allocate a fixed, reusable pinned memory pool. You can also stage directly to `/local-nvme`, with emergency swap configured.
 </details>
 
 <details>
 <summary>**13. How does PyTorch Distributed Checkpoint reshard a 64-GPU FSDP checkpoint onto 48 GPUs after a node failure drains 16 GPUs?**</summary>
 
-DCP stores global tensor shapes and per-chunk global offsets in `.metadata`. When loading onto forty-eight ranks, each destination rank requests a four-hundred-element slice of the parameter tensor. The DCP planner intersects destination and source intervals, generating ninety-six exact slice copies with zero missing or duplicated parameters.
+DCP stores the global tensor shapes and the per-chunk global offsets in `.metadata`. When the checkpoint loads onto forty-eight ranks, each destination rank asks for a slice of four hundred elements. The DCP planner intersects the destination and source intervals. That produces ninety-six exact slice copies, with no parameters missing or duplicated.
 </details>
 
 <details>
 <summary>**14. Why must checkpoint publication use a temporary staging directory and `os.replace()` rather than writing directly to the final directory?**</summary>
 
-If a rank or node crashes halfway through writing directly into `/shared-storage/ckpt-step-1000/`, the directory contains truncated `.pt` files or inconsistent shards across ranks. Writing to `/shared-storage/.ckpt-step-1000.tmp/`, calling `fsync()`, verifying SHA-256 hashes, and calling atomic `os.replace()` guarantees that recovery automation only ever sees a complete checkpoint.
+Suppose a rank or node crashes halfway through writing directly into `/shared-storage/ckpt-step-1000/`. The directory then holds truncated `.pt` files, or shards that do not match across ranks. Write to `/shared-storage/.ckpt-step-1000.tmp/` instead. Then call `fsync()`, verify the SHA-256 hashes, and call the atomic `os.replace()`. Recovery automation then only ever sees a complete checkpoint, and you never have to guess which half-written directory to trust.
 </details>
 
 <details>
 <summary>**15. During checkpoint recovery of a 500 GB model across 128 GPUs, how do you reduce storage read time from 250 seconds to 31.25 seconds?**</summary>
 
-Instead of reading an unstriped file from a single OST at 2.0 GB/s, configure wide striping across eight OSTs with `lfs setstripe -c -1` and GPUDirect Storage. All eight OSTs deliver 2.0 GB/s in parallel for 16.0 GB/s aggregate throughput, cutting read time eightfold to 31.25 seconds and total RTO to 46.25 seconds.
+Suppose you read an unstriped file from a single OST at 2.0 GB/s. That is the slow path. Instead, stripe the checkpoint across eight OSTs with `lfs setstripe -c -1`, and read it with GPUDirect Storage. All eight OSTs deliver 2.0 GB/s in parallel, which gives 16.0 GB/s aggregate. The read time drops eightfold, to 31.25 seconds, and the total RTO falls to 46.25 seconds.
 </details>
 
 <details>
 <summary>**16. How does a tiered checkpoint retention policy prevent 500 TB of storage exhaustion over 1,000 checkpoints while preserving both crash recovery and ablation history?**</summary>
 
-After each validated checkpoint commit, the retention hook keeps a rolling window of the most recent five checkpoints for crash recovery. It also preserves periodic milestone checkpoints where `epoch % 100 == 0` for evaluation and ablation, while immediately unlinking all older intermediate checkpoints.
+After each validated commit, the retention hook keeps a rolling window of the five most recent checkpoints for crash recovery. It also keeps periodic milestone checkpoints, where `epoch % 100 == 0`, for evaluation and ablation. Every older intermediate checkpoint is unlinked straight away.
 </details>
 
 <details>
 <summary>**17. What are the official NVIDIA DGX SuperPOD GB300 storage read and write bandwidth guidelines for 1 SU and 4 SU in both Standard and Enhanced tiers?**</summary>
 
-For a single Scalable Unit, the Standard tier specifies 90 GB/s read and 45 GB/s write, while the Enhanced tier specifies 280 GB/s read and 140 GB/s write. For four Scalable Units, the Standard tier specifies 360 GB/s read and 180 GB/s write, while the Enhanced tier specifies 1,120 GB/s read and 560 GB/s write.
+For one Scalable Unit, the Standard tier specifies 90 GB/s for reads and 45 GB/s for writes. The Enhanced tier specifies 280 GB/s for reads and 140 GB/s for writes. For four Scalable Units, the Standard tier specifies 360 GB/s for reads and 180 GB/s for writes. The Enhanced tier specifies 1,120 GB/s for reads and 560 GB/s for writes.
 </details>
 
 <details>
 <summary>**18. How does NVIDIA Mission Control on DGX SuperPOD GB300 accelerate training fault recovery?**</summary>
 
-NVIDIA Mission Control combines Base Command Manager, NVIDIA Run:ai for Slurm and Kubernetes orchestration, Network Manager eXperience for NVLink Switch trays, and unified diagnostics. Its autonomous recovery engine uses In-Memory Checkpointing to detect failed ranks, migrate workloads to healthy nodes, and restart processes from the latest in-memory snapshot without manual intervention.
+NVIDIA Mission Control brings together Base Command Manager, NVIDIA Run:ai for Slurm and Kubernetes orchestration, Network Manager eXperience for NVLink Switch trays, and unified diagnostics. Its autonomous recovery engine uses In-Memory Checkpointing to detect failed ranks. It then moves the workloads to healthy nodes and restarts the processes from the latest in-memory snapshot, with no manual step.
 </details>
 
 <details>
 <summary>**19. What are the four CUDA Driver API calls used by `cuda-checkpoint`, and in what exact state order must they be invoked?**</summary>
 
-First, `cuCheckpointProcessLock` transitions the process from RUNNING to LOCKED and drains active GPU streams. Second, `cuCheckpointProcessCheckpoint` transitions from LOCKED to CHECKPOINTED, copying GPU HBM to driver-managed host memory and releasing GPU resources for CRIU. Third, `cuCheckpointProcessRestore` transitions from CHECKPOINTED to LOCKED, reacquiring GPUs and mapping device memory to its original virtual addresses. Fourth, `cuCheckpointProcessUnlock` transitions from LOCKED to RUNNING so execution can resume.
+The first call is `cuCheckpointProcessLock`. It moves the process from RUNNING to LOCKED, and it drains the active GPU streams. The second is `cuCheckpointProcessCheckpoint`, which moves the process from LOCKED to CHECKPOINTED. It copies GPU HBM into driver-managed host memory and releases the GPU resources for CRIU. The third is `cuCheckpointProcessRestore`. It moves the process from CHECKPOINTED to LOCKED, reacquires the GPUs, and maps device memory back to its original virtual addresses. The fourth is `cuCheckpointProcessUnlock`, which moves the process from LOCKED to RUNNING so execution can resume.
 </details>
 
 <details>
 <summary>**20. Does `cuda-checkpoint` use GPUDirect Storage to DMA GPU memory directly to disk during process suspend?**</summary>
 
-No. Unlike training data ingestion with GPUDirect Storage, `cuda-checkpoint` does not DMA directly from GPU HBM to storage during `cuCheckpointProcessCheckpoint`. Instead, the CUDA driver copies the GPU device memory image into driver-managed host memory at host-link speed, taking 1.28 seconds for 64 GB at 50 GB/s. It then releases the GPU and lets CRIU persist the process memory image to storage.
+No. You might expect GPUDirect Storage to handle this, since training data ingestion can use it, but `cuda-checkpoint` does not DMA from GPU HBM straight to storage during `cuCheckpointProcessCheckpoint`. The CUDA driver copies the GPU memory image into driver-managed host memory at host-link speed. For 64 GB at 50 GB/s, that takes 1.28 seconds. Then the GPU is released, and CRIU writes the process memory image to storage.
 </details>
 
 ---
@@ -771,4 +859,3 @@ Source Inventory & Migrated Facts Map:
 ### Inferences and Unverified Claims Note
 - All multi-node cluster commands (`torchrun` with `DistributedDataParallel` or `FullyShardedDataParallel` and `auto_wrap_policy`, `PyTorchJob` and `MPIJob`, `lfs setstripe` / `--numtargets=8`, `.ckpt-step-N.tmp` and `verify_checkpoint_manifest_and_completeness`, `scontrol`, `nvidia-smi`, `systemctl`, `all_reduce_perf`, `4.4` / `5.7` / `6.0h` / `47` / `85` / `219.94` / `519.97` / `979.94` / `039.94s` (`3,039.94`) / `8250` / `10000` / `288000` metrics, from `chapter-01-why-distributed-training-exists.md`, `chapter-08-checkpoint-architecture-and-recovery.md`, `chapter-08-nccl-collectives-and-communication-paths.md`, `chapter-09-checkpointing-and-recovery.md`, `chapter-12-volume-13-summary.md`, and `labs/lab-01..04`, cross-referenced with Chapters `13.1`, `13.5`, and `13.6`) are production operational patterns from the cited sources. They are marked untested here where not executed on live multi-GPU cluster hardware in this build environment.
 - The deterministic checkpoint sizing, gather-vs-sharded throughput, Young-Daly scheduling, and two-stage asynchronous staging models are verified locally. The PyTorch DCP resharding, atomic SHA-256 manifest validation, and `cuda-checkpoint` state-machine models in `code/part13/checkpoint_architecture.py` and `code/part13/checkpoint_architecture_lab.py` also pass all checks.
-
