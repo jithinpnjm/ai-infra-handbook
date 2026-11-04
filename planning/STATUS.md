@@ -190,14 +190,14 @@ Legacy pilot drafts (superseded, kept as reference for the rewrite): `planning/p
 | 16.14 | Platform design: multi-tenant AI factory, quotas and chargeback | drafted | 6135 | Tier 1. Validator: 12/12 PASS. Lab: pipeline_lab.py (158/0). Ledger: planning/ledgers/16-14.md. Coverage: planning/coverage/chapters/16-14.md. Lab untested. |
 | 16.15 | Lab: end-to-end MLOps on GKE | drafted | 5408 | Tier 1 (capstone). Validator: 12/12 PASS. Lab: pipeline_lab.py (158/0). Ledger: planning/ledgers/16-15.md. Coverage: planning/coverage/chapters/16-15.md. Lab untested. |
 | 17.9 | The AI systems performance checklist (master) | drafted | 6409 | Tier 1 (master reference). Validator: 12/12 PASS. Lab: operations_lab.py (168/0). Ledger: planning/ledgers/17-09.md. Coverage: planning/coverage/chapters/17-09.md. Lab untested. |
-| 19.1 | Capstone: a Slurm GPU cluster | scaffold |  |  |
-| 19.2 | Capstone: a Kubernetes GPU platform with KAI and Kueue | scaffold |  |  |
-| 19.3 | Capstone: inference on GKE with vLLM, Triton, TensorRT-LLM, NIM and KServe | scaffold |  |  |
-| 19.4 | Capstone: multi-node training with fault tolerance | scaffold |  |  |
-| 19.5 | Capstone: an nccl-tests fabric lab | scaffold |  |  |
-| 19.6 | Capstone: node-health automation with DCGM and an operator | scaffold |  |  |
-| 19.14 | Interview question bank by topic | scaffold |  |  |
-| 19.15 | Interview cheat sheet | scaffold |  |  |
+| 19.1 | Capstone: a Slurm GPU cluster | drafted | 3296 | Tier 1 (capstone). Validator: 12/12 PASS. Lab: capstone_lab.py (151/0). Ledger: planning/ledgers/19-01.md. Coverage: planning/coverage/chapters/19-01.md. Lab untested. |
+| 19.2 | Capstone: a Kubernetes GPU platform with KAI and Kueue | drafted | 3358 | Tier 1 (capstone). Validator: 12/12 PASS. Lab: capstone_lab.py (151/0). Ledger: planning/ledgers/19-02.md. Coverage: planning/coverage/chapters/19-02.md. Lab untested. |
+| 19.3 | Capstone: inference on GKE with vLLM, Triton, TensorRT-LLM, NIM and KServe | drafted | 3171 | Tier 1 (capstone). Validator: 12/12 PASS. Lab: capstone_lab.py (151/0). Ledger: planning/ledgers/19-03.md. Coverage: planning/coverage/chapters/19-03.md. Lab untested. |
+| 19.4 | Capstone: multi-node training with fault tolerance | drafted | 3180 | Tier 1 (capstone). Validator: 12/12 PASS. Lab: capstone_lab.py (151/0). Ledger: planning/ledgers/19-04.md. Coverage: planning/coverage/chapters/19-04.md. Lab untested. |
+| 19.5 | Capstone: an nccl-tests fabric lab | drafted | 2974 | Tier 1 (capstone). Validator: 12/12 PASS. Lab: capstone_lab.py (151/0). Ledger: planning/ledgers/19-05.md. Coverage: planning/coverage/chapters/19-05.md. Lab untested. |
+| 19.6 | Capstone: node-health automation with DCGM and an operator | drafted | 3317 | Tier 1 (capstone). Validator: 12/12 PASS. Lab: capstone_lab.py (151/0). Ledger: planning/ledgers/19-06.md. Coverage: planning/coverage/chapters/19-06.md. Lab untested. |
+| 19.14 | Interview question bank by topic | drafted | 4049 | Tier 1 (interview). Validator: 12/12 PASS. Lab: capstone_lab.py (151/0). Ledger: planning/ledgers/19-14.md. Coverage: planning/coverage/chapters/19-14.md. Lab untested. |
+| 19.15 | Interview cheat sheet | drafted | 2888 | Tier 1 (interview). Validator: 12/12 PASS. Lab: capstone_lab.py (151/0). Ledger: planning/ledgers/19-15.md. Coverage: planning/coverage/chapters/19-15.md. Lab untested. |
 
 ## Tier 1b: NVIDIA platform operations: 47 chapters
 
@@ -396,12 +396,12 @@ Legacy pilot drafts (superseded, kept as reference for the rewrite): `planning/p
 | 18.5 | GPU sharing security, DMA, IOMMU and SR-IOV | drafted | 4739 | Tier 2. Validator: 12/12 PASS. Lab: security_lab.py (73/0). Ledger: planning/ledgers/18-05.md. Coverage: planning/coverage/chapters/18-05.md. Lab untested. |
 | 18.6 | BlueField, DOCA and confidential computing | drafted | 4544 | Tier 2. Validator: 12/12 PASS. Lab: security_lab.py (73/0). Ledger: planning/ledgers/18-06.md. Coverage: planning/coverage/chapters/18-06.md. Lab untested. |
 | 18.7 | Data and model protection, audit and compliance | drafted | 4686 | Tier 2. Validator: 12/12 PASS. Lab: security_lab.py (73/0). Ledger: planning/ledgers/18-07.md. Coverage: planning/coverage/chapters/18-07.md. Lab untested. |
-| 19.7 | Capstone: an observability platform | scaffold |  |  |
-| 19.8 | Capstone: MIG multi-tenancy | scaffold |  |  |
-| 19.9 | Capstone: capacity planning | scaffold |  |  |
-| 19.11 | System design: a training cluster | scaffold |  |  |
-| 19.12 | System design: inference serving | scaffold |  |  |
-| 19.13 | System design: research infrastructure | scaffold |  |  |
+| 19.7 | Capstone: an observability platform | drafted | 2875 | Tier 2 (capstone). Validator: 12/12 PASS. Lab: capstone_lab.py (151/0). Ledger: planning/ledgers/19-07.md. Coverage: planning/coverage/chapters/19-07.md. Lab untested. |
+| 19.8 | Capstone: MIG multi-tenancy | drafted | 2835 | Tier 2 (capstone). Validator: 12/12 PASS. Lab: capstone_lab.py (151/0). Ledger: planning/ledgers/19-08.md. Coverage: planning/coverage/chapters/19-08.md. Lab untested. |
+| 19.9 | Capstone: capacity planning | drafted | 2677 | Tier 2 (capstone). Validator: 12/12 PASS. Lab: capstone_lab.py (151/0). Ledger: planning/ledgers/19-09.md. Coverage: planning/coverage/chapters/19-09.md. Lab untested. |
+| 19.11 | System design: a training cluster | drafted | 3435 | Tier 2 (system design). Validator: 12/12 PASS. Lab: capstone_lab.py (151/0). Ledger: planning/ledgers/19-11.md. Coverage: planning/coverage/chapters/19-11.md. Lab untested. |
+| 19.12 | System design: inference serving | drafted | 3210 | Tier 2 (system design). Validator: 12/12 PASS. Lab: capstone_lab.py (151/0). Ledger: planning/ledgers/19-12.md. Coverage: planning/coverage/chapters/19-12.md. Lab untested. |
+| 19.13 | System design: research infrastructure | drafted | 2742 | Tier 2 (system design). Validator: 12/12 PASS. Lab: capstone_lab.py (151/0). Ledger: planning/ledgers/19-13.md. Coverage: planning/coverage/chapters/19-13.md. Lab untested. |
 
 ## Tier 3: breadth: 8 chapters
 
@@ -414,4 +414,4 @@ Legacy pilot drafts (superseded, kept as reference for the rewrite): `planning/p
 | 6.17 | Other schedulers: PBS, Torque, LSF and Flux | reviewed | 5211 | `pbs2slurm_lab.py` (3/3 pass), `loss_check.py` PASS, `SCL 14` |
 | 6.25 | Remote access, bastions, Open OnDemand and user environments | reviewed | 5859 | `sshd_audit_lab.py` (3/3 pass), `SCL 18`, `SCL 27` |
 | 6.27 | Backup and data protection | reviewed | 5986 | `backup_protection_lab.py` (3/3 pass), `SCL 20` (0% missing) |
-| 19.10 | Customer workshops and the consulting method | scaffold |  |  |
+| 19.10 | Customer workshops and the consulting method | drafted | 3234 | Tier 3 (consulting). Validator: 12/12 PASS. Lab: capstone_lab.py (151/0). Ledger: planning/ledgers/19-10.md. Coverage: planning/coverage/chapters/19-10.md. Lab untested. |
