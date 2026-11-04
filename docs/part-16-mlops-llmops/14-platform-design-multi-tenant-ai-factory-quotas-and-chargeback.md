@@ -373,7 +373,7 @@ The error budget is the team's SLO translated into a budget. If the team's infer
 
 ```text
 Error budget per month (V21 ch 1):
-- SLO: p99 latency <= 200 ms
+- SLO: p99 latency &lt;= 200 ms
 - Availability: 99.9% monthly
 - Error budget: 43.2 minutes of downtime per month
 - Burn rate: requests exceeding the SLO / total requests
@@ -648,7 +648,7 @@ Namespace provision latency < 5 minutes; GPU quota request latency < 1 hour; Inf
 </details>
 
 <details><summary>6. What is the error budget?</summary>
-The team's SLO translated into a budget. If the SLO is p99 latency <= 200 ms with 99.9% availability, the error budget is 43.2 minutes of downtime per month. The team can spend the budget on canary deployments, shadow mode, chaos engineering. When the budget is exhausted, the team pauses new deployments until the next billing cycle.
+The team's SLO translated into a budget. If the SLO is p99 latency &lt;= 200 ms with 99.9% availability, the error budget is 43.2 minutes of downtime per month. The team can spend the budget on canary deployments, shadow mode, chaos engineering. When the budget is exhausted, the team pauses new deployments until the next billing cycle.
 </details>
 
 <details><summary>7. What is the per-team primitive for the GPU pool?</summary>
@@ -666,7 +666,6 @@ Because the dashboard shows the per-team cost in real time; the dashboard's aler
 <details><summary>10. What is the role of the borrowing queue?</summary>
 A shared "burst" ClusterQueue that teams can borrow from when their quota is exhausted. The borrowing queue is consumed first-come-first-served; the borrowing team pays back the borrow in the next billing cycle. The pattern prevents a team's burst workload from blocking other teams' steady workloads.
 </details>
-
 <details><summary>11. What is the per-team primitive for network isolation?</summary>
 A NetworkPolicy per namespace that allows ingress from the cluster's ingress namespace only and egress to the cluster's DNS service only. The team's pods cannot reach each other across namespaces; the team's pods cannot reach the public internet.
 </details>

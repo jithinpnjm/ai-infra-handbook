@@ -535,8 +535,8 @@ The SLO/SLA/KPI framework from *LLMOps* Chapter 2 is how the four goals become c
 
 | Concept | Audience | What it says | Example for an LLM serving system |
 |---|---|---|---|
-| **SLO** (Service Level Objective) | Internal, engineering | What the team aims to achieve | p95 TTFT <= 300 ms; monthly availability >= 99.9% |
-| **SLA** (Service Level Agreement) | External, customer | What the team commits to, with consequences for breach | p95 TTFT <= 500 ms; if breached, customer receives 10% credit |
+| **SLO** (Service Level Objective) | Internal, engineering | What the team aims to achieve | p95 TTFT &lt;= 300 ms; monthly availability >= 99.9% |
+| **SLA** (Service Level Agreement) | External, customer | What the team commits to, with consequences for breach | p95 TTFT &lt;= 500 ms; if breached, customer receives 10% credit |
 | **KPI** (Key Performance Indicator) | Business, executive | Whether the system is delivering the value the business is paying for | CSAT >= 90; cost per million tokens below target; revenue impact |
 
 The relationship between the three is the relationship between ambition, commitment, and outcome. The SLO is the engineering target. The SLA is what the customer sees. The KPI is what the business sees. The platform team owns the SLOs; the SLOs define the alert rules; the alert rules feed the runbook; the runbook names the rollback path.
