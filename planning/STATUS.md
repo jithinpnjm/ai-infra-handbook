@@ -389,13 +389,13 @@ Legacy pilot drafts (superseded, kept as reference for the rewrite): `planning/p
 | 17.14 | Disaster recovery and data resilience | drafted | 4914 | Tier 2. Validator: 12/12 PASS. Lab: operations_lab.py (168/0). Ledger: planning/ledgers/17-14.md. Coverage: planning/coverage/chapters/17-14.md. Lab untested. |
 | 17.15 | On-call runbooks | drafted | 5040 | Tier 2. Validator: 12/12 PASS. Lab: operations_lab.py (168/0). Ledger: planning/ledgers/17-15.md. Coverage: planning/coverage/chapters/17-15.md. Lab untested. |
 | 17.16 | AI-assisted operations and scaling toward very large clusters | drafted | 5180 | Tier 2. Validator: 12/12 PASS. Lab: operations_lab.py (168/0). Ledger: planning/ledgers/17-16.md. Coverage: planning/coverage/chapters/17-16.md. Lab untested. |
-| 18.1 | Threat modeling for AI infrastructure | scaffold |  |  |
-| 18.2 | Hardware and firmware trust | scaffold |  |  |
-| 18.3 | Containers and the software supply chain | scaffold |  |  |
-| 18.4 | Kubernetes access control and pod security | scaffold |  |  |
-| 18.5 | GPU sharing security, DMA, IOMMU and SR-IOV | scaffold |  |  |
-| 18.6 | BlueField, DOCA and confidential computing | scaffold |  |  |
-| 18.7 | Data and model protection, audit and compliance | scaffold |  |  |
+| 18.1 | Threat modeling for AI infrastructure | drafted | 5756 | Tier 2. Validator: 12/12 PASS. Lab: security_lab.py (73/0). Ledger: planning/ledgers/18-01.md. Coverage: planning/coverage/chapters/18-01.md. Lab untested. |
+| 18.2 | Hardware and firmware trust | drafted | 4962 | Tier 2. Validator: 12/12 PASS. Lab: security_lab.py (73/0). Ledger: planning/ledgers/18-02.md. Coverage: planning/coverage/chapters/18-02.md. Lab untested. |
+| 18.3 | Containers and the software supply chain | drafted | 4523 | Tier 2. Validator: 12/12 PASS. Lab: security_lab.py (73/0). Ledger: planning/ledgers/18-03.md. Coverage: planning/coverage/chapters/18-03.md. Lab untested. |
+| 18.4 | Kubernetes access control and pod security | drafted | 4520 | Tier 2. Validator: 12/12 PASS. Lab: security_lab.py (73/0). Ledger: planning/ledgers/18-04.md. Coverage: planning/coverage/chapters/18-04.md. Lab untested. |
+| 18.5 | GPU sharing security, DMA, IOMMU and SR-IOV | drafted | 4739 | Tier 2. Validator: 12/12 PASS. Lab: security_lab.py (73/0). Ledger: planning/ledgers/18-05.md. Coverage: planning/coverage/chapters/18-05.md. Lab untested. |
+| 18.6 | BlueField, DOCA and confidential computing | drafted | 4544 | Tier 2. Validator: 12/12 PASS. Lab: security_lab.py (73/0). Ledger: planning/ledgers/18-06.md. Coverage: planning/coverage/chapters/18-06.md. Lab untested. |
+| 18.7 | Data and model protection, audit and compliance | drafted | 4686 | Tier 2. Validator: 12/12 PASS. Lab: security_lab.py (73/0). Ledger: planning/ledgers/18-07.md. Coverage: planning/coverage/chapters/18-07.md. Lab untested. |
 | 19.7 | Capstone: an observability platform | scaffold |  |  |
 | 19.8 | Capstone: MIG multi-tenancy | scaffold |  |  |
 | 19.9 | Capstone: capacity planning | scaffold |  |  |
