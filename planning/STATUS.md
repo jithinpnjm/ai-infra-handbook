@@ -189,7 +189,7 @@ Legacy pilot drafts (superseded, kept as reference for the rewrite): `planning/p
 | 16.10 | Monitoring, drift and continual learning | drafted | 6449 | Validator: 12/12 PASS. Lab: pipeline_lab.py (158/0). Ledger: planning/ledgers/16-10.md. Coverage: planning/coverage/chapters/16-10.md. Lab untested. |
 | 16.14 | Platform design: multi-tenant AI factory, quotas and chargeback | drafted | 6135 | Tier 1. Validator: 12/12 PASS. Lab: pipeline_lab.py (158/0). Ledger: planning/ledgers/16-14.md. Coverage: planning/coverage/chapters/16-14.md. Lab untested. |
 | 16.15 | Lab: end-to-end MLOps on GKE | drafted | 5408 | Tier 1 (capstone). Validator: 12/12 PASS. Lab: pipeline_lab.py (158/0). Ledger: planning/ledgers/16-15.md. Coverage: planning/coverage/chapters/16-15.md. Lab untested. |
-| 17.9 | The AI systems performance checklist (master) | scaffold |  |  |
+| 17.9 | The AI systems performance checklist (master) | drafted | 6409 | Tier 1 (master reference). Validator: 12/12 PASS. Lab: operations_lab.py (168/0). Ledger: planning/ledgers/17-09.md. Coverage: planning/coverage/chapters/17-09.md. Lab untested. |
 | 19.1 | Capstone: a Slurm GPU cluster | scaffold |  |  |
 | 19.2 | Capstone: a Kubernetes GPU platform with KAI and Kueue | scaffold |  |  |
 | 19.3 | Capstone: inference on GKE with vLLM, Triton, TensorRT-LLM, NIM and KServe | scaffold |  |  |
@@ -374,21 +374,21 @@ Legacy pilot drafts (superseded, kept as reference for the rewrite): `planning/p
 | 15.18 | Inference cost, capacity and cost per token | drafted | 14117 |  |
 | 16.11 | Cloud MLOps platforms: Vertex AI, SageMaker and Azure ML | drafted | 5819 | Tier 2. Validator: 12/12 PASS. Lab: pipeline_lab.py (158/0). Ledger: planning/ledgers/16-11.md. Coverage: planning/coverage/chapters/16-11.md. Lab untested. |
 | 16.13 | Governance, privacy and compliance for ML platforms | drafted | 6226 | Tier 2. Validator: 12/12 PASS. Lab: pipeline_lab.py (158/0). Ledger: planning/ledgers/16-13.md. Coverage: planning/coverage/chapters/16-13.md. Lab untested. |
-| 17.1 | Observability foundations: metrics, logs and traces | scaffold |  |  |
-| 17.2 | Prometheus and Grafana | scaffold |  |  |
-| 17.3 | Logging with Loki and tracing with OpenTelemetry | scaffold |  |  |
-| 17.4 | DCGM exporter and interpreting GPU metrics | scaffold |  |  |
-| 17.5 | Distributed observability and profiling | scaffold |  |  |
-| 17.6 | Alerting, SLOs and health checks for GPU clusters | scaffold |  |  |
-| 17.7 | Failure modes and detection | scaffold |  |  |
-| 17.8 | Performance engineering methodology and decision trees | scaffold |  |  |
-| 17.10 | Cluster lifecycle, upgrades and change management | scaffold |  |  |
-| 17.11 | Incident response and game days | scaffold |  |  |
-| 17.12 | Capacity planning and cost optimisation | scaffold |  |  |
-| 17.13 | Reliability engineering for AI infrastructure | scaffold |  |  |
-| 17.14 | Disaster recovery and data resilience | scaffold |  |  |
-| 17.15 | On-call runbooks | scaffold |  |  |
-| 17.16 | AI-assisted operations and scaling toward very large clusters | scaffold |  |  |
+| 17.1 | Observability foundations: metrics, logs and traces | drafted | 5851 | Tier 2. Validator: 12/12 PASS. Lab: operations_lab.py (168/0). Ledger: planning/ledgers/17-01.md. Coverage: planning/coverage/chapters/17-01.md. Lab untested. |
+| 17.2 | Prometheus and Grafana | drafted | 5033 | Tier 2. Validator: 12/12 PASS. Lab: operations_lab.py (168/0). Ledger: planning/ledgers/17-02.md. Coverage: planning/coverage/chapters/17-02.md. Lab untested. |
+| 17.3 | Logging with Loki and tracing with OpenTelemetry | drafted | 4991 | Tier 2. Validator: 12/12 PASS. Lab: operations_lab.py (168/0). Ledger: planning/ledgers/17-03.md. Coverage: planning/coverage/chapters/17-03.md. Lab untested. |
+| 17.4 | DCGM exporter and interpreting GPU metrics | drafted | 4961 | Tier 2. Validator: 12/12 PASS. Lab: operations_lab.py (168/0). Ledger: planning/ledgers/17-04.md. Coverage: planning/coverage/chapters/17-04.md. Lab untested. |
+| 17.5 | Distributed observability and profiling | drafted | 5293 | Tier 2. Validator: 12/12 PASS. Lab: operations_lab.py (168/0). Ledger: planning/ledgers/17-05.md. Coverage: planning/coverage/chapters/17-05.md. Lab untested. |
+| 17.6 | Alerting, SLOs and health checks for GPU clusters | drafted | 5220 | Tier 2. Validator: 12/12 PASS. Lab: operations_lab.py (168/0). Ledger: planning/ledgers/17-06.md. Coverage: planning/coverage/chapters/17-06.md. Lab untested. |
+| 17.7 | Failure modes and detection | drafted | 6211 | Tier 2. Validator: 12/12 PASS. Lab: operations_lab.py (168/0). Ledger: planning/ledgers/17-07.md. Coverage: planning/coverage/chapters/17-07.md. Lab untested. |
+| 17.8 | Performance engineering methodology and decision trees | drafted | 5663 | Tier 2. Validator: 12/12 PASS. Lab: operations_lab.py (168/0). Ledger: planning/ledgers/17-08.md. Coverage: planning/coverage/chapters/17-08.md. Lab untested. |
+| 17.10 | Cluster lifecycle, upgrades and change management | drafted | 5399 | Tier 2. Validator: 12/12 PASS. Lab: operations_lab.py (168/0). Ledger: planning/ledgers/17-10.md. Coverage: planning/coverage/chapters/17-10.md. Lab untested. |
+| 17.11 | Incident response and game days | drafted | 5711 | Tier 2. Validator: 12/12 PASS. Lab: operations_lab.py (168/0). Ledger: planning/ledgers/17-11.md. Coverage: planning/coverage/chapters/17-11.md. Lab untested. |
+| 17.12 | Capacity planning and cost optimisation | drafted | 4772 | Tier 2. Validator: 12/12 PASS. Lab: operations_lab.py (168/0). Ledger: planning/ledgers/17-12.md. Coverage: planning/coverage/chapters/17-12.md. Lab untested. |
+| 17.13 | Reliability engineering for AI infrastructure | drafted | 4684 | Tier 2. Validator: 12/12 PASS. Lab: operations_lab.py (168/0). Ledger: planning/ledgers/17-13.md. Coverage: planning/coverage/chapters/17-13.md. Lab untested. |
+| 17.14 | Disaster recovery and data resilience | drafted | 4914 | Tier 2. Validator: 12/12 PASS. Lab: operations_lab.py (168/0). Ledger: planning/ledgers/17-14.md. Coverage: planning/coverage/chapters/17-14.md. Lab untested. |
+| 17.15 | On-call runbooks | drafted | 5040 | Tier 2. Validator: 12/12 PASS. Lab: operations_lab.py (168/0). Ledger: planning/ledgers/17-15.md. Coverage: planning/coverage/chapters/17-15.md. Lab untested. |
+| 17.16 | AI-assisted operations and scaling toward very large clusters | drafted | 5180 | Tier 2. Validator: 12/12 PASS. Lab: operations_lab.py (168/0). Ledger: planning/ledgers/17-16.md. Coverage: planning/coverage/chapters/17-16.md. Lab untested. |
 | 18.1 | Threat modeling for AI infrastructure | scaffold |  |  |
 | 18.2 | Hardware and firmware trust | scaffold |  |  |
 | 18.3 | Containers and the software supply chain | scaffold |  |  |
