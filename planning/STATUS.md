@@ -177,18 +177,18 @@ Legacy pilot drafts (superseded, kept as reference for the rewrite): `planning/p
 | 15.15 | Autoscaling inference: HPA, KEDA and scale-to-zero | drafted | 10507 |  |
 | 15.16 | Production serving stack and reliability | drafted | 13403 |  |
 | 15.17 | Lab: serve and benchmark on GKE and Nebius | drafted | 9440 |  |
-| 16.1 | MLOps foundations and lifecycle | scaffold |  |  |
-| 16.2 | Data versioning and experiment tracking: DVC, MLflow, Weights and Biases | scaffold |  |  |
-| 16.3 | Data pipelines and feature stores | scaffold |  |  |
-| 16.4 | Pipeline orchestration: Kubeflow Pipelines, Argo, Flyte, Airflow | scaffold |  |  |
-| 16.5 | Distributed compute for ML: Ray, KubeRay, Training Operator and Katib | scaffold |  |  |
-| 16.6 | Model registry, CI/CD and GitOps for models | scaffold |  |  |
-| 16.7 | Model serving platforms: KServe, Seldon and BentoML | scaffold |  |  |
-| 16.8 | LLMOps: RAG, vector databases and agents | scaffold |  |  |
-| 16.9 | LLM evaluation and guardrails | scaffold |  |  |
-| 16.10 | Monitoring, drift and continual learning | scaffold |  |  |
-| 16.14 | Platform design: multi-tenant AI factory, quotas and chargeback | scaffold |  |  |
-| 16.15 | Lab: end-to-end MLOps on GKE | scaffold |  |  |
+| 16.1 | MLOps foundations and lifecycle | drafted | 12470 | Tier 1 (job- and interview-critical). Validator: 12/12 PASS. Lab: pipeline_lab.py (158/0). Ledger: planning/ledgers/16-01.md. Coverage: planning/coverage/chapters/16-01.md. Lab untested. |
+| 16.2 | Data versioning and experiment tracking: DVC, MLflow, Weights and Biases | drafted | 8641 | Validator: 12/12 PASS. Lab: pipeline_lab.py (158/0). Ledger: planning/ledgers/16-02.md. Coverage: planning/coverage/chapters/16-02.md. Lab untested. |
+| 16.3 | Data pipelines and feature stores | drafted | 9993 | Validator: 12/12 PASS. Lab: pipeline_lab.py (158/0). Ledger: planning/ledgers/16-03.md. Coverage: planning/coverage/chapters/16-03.md. Lab untested. |
+| 16.4 | Pipeline orchestration: Kubeflow Pipelines, Argo, Flyte, Airflow | drafted | 7063 | Validator: 12/12 PASS. Lab: pipeline_lab.py (158/0). Ledger: planning/ledgers/16-04.md. Coverage: planning/coverage/chapters/16-04.md. Lab untested. |
+| 16.5 | Distributed compute for ML: Ray, KubeRay, Training Operator and Katib | drafted | 6513 | Validator: 12/12 PASS. Lab: pipeline_lab.py (158/0). Ledger: planning/ledgers/16-05.md. Coverage: planning/coverage/chapters/16-05.md. Lab untested. |
+| 16.6 | Model registry, CI/CD and GitOps for models | drafted | 7645 | Tier 1. Validator: 12/12 PASS. Lab: pipeline_lab.py (158/0). Ledger: planning/ledgers/16-06.md. Coverage: planning/coverage/chapters/16-06.md. Lab untested. |
+| 16.7 | Model serving platforms: KServe, Seldon and BentoML | drafted | 6359 | Tier 1. Validator: 12/12 PASS. Lab: pipeline_lab.py (158/0). Ledger: planning/ledgers/16-07.md. Coverage: planning/coverage/chapters/16-07.md. Lab untested. |
+| 16.8 | LLMOps: RAG, vector databases and agents | drafted | 5975 | Tier 1. Validator: 12/12 PASS. Lab: pipeline_lab.py (158/0). Ledger: planning/ledgers/16-08.md. Coverage: planning/coverage/chapters/16-08.md. Lab untested. |
+| 16.9 | LLM evaluation and guardrails | drafted | 6581 | Tier 1. Validator: 12/12 PASS. Lab: pipeline_lab.py (158/0). Ledger: planning/ledgers/16-09.md. Coverage: planning/coverage/chapters/16-09.md. Lab untested. |
+| 16.10 | Monitoring, drift and continual learning | drafted | 6449 | Validator: 12/12 PASS. Lab: pipeline_lab.py (158/0). Ledger: planning/ledgers/16-10.md. Coverage: planning/coverage/chapters/16-10.md. Lab untested. |
+| 16.14 | Platform design: multi-tenant AI factory, quotas and chargeback | drafted | 6135 | Tier 1. Validator: 12/12 PASS. Lab: pipeline_lab.py (158/0). Ledger: planning/ledgers/16-14.md. Coverage: planning/coverage/chapters/16-14.md. Lab untested. |
+| 16.15 | Lab: end-to-end MLOps on GKE | drafted | 5408 | Tier 1 (capstone). Validator: 12/12 PASS. Lab: pipeline_lab.py (158/0). Ledger: planning/ledgers/16-15.md. Coverage: planning/coverage/chapters/16-15.md. Lab untested. |
 | 17.9 | The AI systems performance checklist (master) | scaffold |  |  |
 | 19.1 | Capstone: a Slurm GPU cluster | scaffold |  |  |
 | 19.2 | Capstone: a Kubernetes GPU platform with KAI and Kueue | scaffold |  |  |
@@ -249,7 +249,7 @@ Legacy pilot drafts (superseded, kept as reference for the rewrite): `planning/p
 | 9.12 | Software stack and management in an AI factory | drafted | 6626 |  |
 | 9.13 | Sizing and capacity-planning exercises | drafted | 6854 |  |
 | 9.14 | Cloud GPU platforms: DGX Cloud, CoreWeave, Nebius and GCP A3 and A4 | drafted | 6372 |  |
-| 16.12 | NVIDIA enterprise stack: AI Enterprise, NGC and licensing | scaffold |  |  |
+| 16.12 | NVIDIA enterprise stack: AI Enterprise, NGC and licensing | drafted | 5381 | Tier 1b (NVIDIA-specific). Validator: 12/12 PASS. Lab: pipeline_lab.py (158/0). Ledger: planning/ledgers/16-12.md. Coverage: planning/coverage/chapters/16-12.md. Lab untested. |
 
 ## Tier 2: senior-loop depth: 146 chapters
 
@@ -372,8 +372,8 @@ Legacy pilot drafts (superseded, kept as reference for the rewrite): `planning/p
 | 14.12 | Training performance engineering and troubleshooting | drafted | 10771 |  |
 | 14.16 | NeMo framework and customisation | drafted | 9151 |  |
 | 15.18 | Inference cost, capacity and cost per token | drafted | 14117 |  |
-| 16.11 | Cloud MLOps platforms: Vertex AI, SageMaker and Azure ML | scaffold |  |  |
-| 16.13 | Governance, privacy and compliance for ML platforms | scaffold |  |  |
+| 16.11 | Cloud MLOps platforms: Vertex AI, SageMaker and Azure ML | drafted | 5819 | Tier 2. Validator: 12/12 PASS. Lab: pipeline_lab.py (158/0). Ledger: planning/ledgers/16-11.md. Coverage: planning/coverage/chapters/16-11.md. Lab untested. |
+| 16.13 | Governance, privacy and compliance for ML platforms | drafted | 6226 | Tier 2. Validator: 12/12 PASS. Lab: pipeline_lab.py (158/0). Ledger: planning/ledgers/16-13.md. Coverage: planning/coverage/chapters/16-13.md. Lab untested. |
 | 17.1 | Observability foundations: metrics, logs and traces | scaffold |  |  |
 | 17.2 | Prometheus and Grafana | scaffold |  |  |
 | 17.3 | Logging with Loki and tracing with OpenTelemetry | scaffold |  |  |
