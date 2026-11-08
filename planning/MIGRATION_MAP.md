@@ -501,18 +501,18 @@ Files: 452; words: 1,222,448; migrated so far: 670,147 words (54.8%). Unmapped f
 
 | File | Words | Title | Handbook chapters | Migrated |
 |---|---|---|---|---|
-| nvidia-zero-to-hero/volume-24/chapter-01-cuda-kernel-optimization.md | 3271 | Project 1: CUDA Kernel Optimization | 19.1 |  |
-| nvidia-zero-to-hero/volume-24/chapter-02-allreduce-algorithm-design.md | 3272 | Project 2: AllReduce Algorithm Design | 19.1 |  |
-| nvidia-zero-to-hero/volume-24/chapter-03-distributed-training-fault-tolerance.md | 2692 | Project 3: Distributed Training with Fault Tolerance | 19.1 |  |
-| nvidia-zero-to-hero/volume-24/chapter-04-observability-system-design.md | 2868 | Project 4: Observability System Design | 19.1 |  |
-| nvidia-zero-to-hero/volume-24/chapter-05-troubleshooting-incident-response.md | 2794 | Project 5: Troubleshooting Incident Response | 19.1 |  |
-| nvidia-zero-to-hero/volume-24/chapter-06-mig-configuration-multi-tenant.md | 3131 | Project 6: MIG Configuration for Multi-Tenant Workloads | 19.1 | yes |
-| nvidia-zero-to-hero/volume-24/chapter-07-kubernetes-gpu-scheduling.md | 2273 | Project 7: Kubernetes GPU Scheduling | 19.1 | yes |
-| nvidia-zero-to-hero/volume-24/chapter-08-security-architecture-audit.md | 2710 | Project 8: Security Architecture Audit | 19.1 |  |
-| nvidia-zero-to-hero/volume-24/chapter-09-capacity-planning-forecast.md | 2900 | Project 9: Capacity Planning Forecast | 19.1 |  |
-| nvidia-zero-to-hero/volume-24/chapter-10-training-cluster-design.md | 3734 | Project 10: Training Cluster Design | 19.1 | yes |
-| nvidia-zero-to-hero/volume-24/chapter-11-inference-serving-design.md | 2659 | Project 11: Inference Serving Design | 19.1 |  |
-| nvidia-zero-to-hero/volume-24/chapter-12-research-infrastructure-design.md | 2741 | Project 12: Research Infrastructure Design | 19.1 | yes |
+| nvidia-zero-to-hero/volume-24/chapter-01-cuda-kernel-optimization.md | 3271 | Project 1: CUDA Kernel Optimization | 10.15 |  |
+| nvidia-zero-to-hero/volume-24/chapter-02-allreduce-algorithm-design.md | 3272 | Project 2: AllReduce Algorithm Design | 19.5 |  |
+| nvidia-zero-to-hero/volume-24/chapter-03-distributed-training-fault-tolerance.md | 2692 | Project 3: Distributed Training with Fault Tolerance | 19.4 |  |
+| nvidia-zero-to-hero/volume-24/chapter-04-observability-system-design.md | 2868 | Project 4: Observability System Design | 19.7, 19.1 |  |
+| nvidia-zero-to-hero/volume-24/chapter-05-troubleshooting-incident-response.md | 2794 | Project 5: Troubleshooting Incident Response | 19.6, 19.1 |  |
+| nvidia-zero-to-hero/volume-24/chapter-06-mig-configuration-multi-tenant.md | 3131 | Project 6: MIG Configuration for Multi-Tenant Workloads | 19.8, 19.1 |  |
+| nvidia-zero-to-hero/volume-24/chapter-07-kubernetes-gpu-scheduling.md | 2273 | Project 7: Kubernetes GPU Scheduling | 19.2 |  |
+| nvidia-zero-to-hero/volume-24/chapter-08-security-architecture-audit.md | 2710 | Project 8: Security Architecture Audit | 18.1 |  |
+| nvidia-zero-to-hero/volume-24/chapter-09-capacity-planning-forecast.md | 2900 | Project 9: Capacity Planning Forecast | 19.9, 19.1 |  |
+| nvidia-zero-to-hero/volume-24/chapter-10-training-cluster-design.md | 3734 | Project 10: Training Cluster Design | 19.11 |  |
+| nvidia-zero-to-hero/volume-24/chapter-11-inference-serving-design.md | 2659 | Project 11: Inference Serving Design | 19.3 |  |
+| nvidia-zero-to-hero/volume-24/chapter-12-research-infrastructure-design.md | 2741 | Project 12: Research Infrastructure Design | 19.13 |  |
 | nvidia-zero-to-hero/volume-24/index.md | 609 | Volume 24 — Capstone Projects: Building Real GPU Systems | 19.1 | yes |
 
 ## V25: 17 files, 31,289 words (2,541 migrated)

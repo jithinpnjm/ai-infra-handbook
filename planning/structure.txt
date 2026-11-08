@@ -412,7 +412,7 @@
 07 | Data and model protection, audit and compliance | A | V18 ch10,11; EAS 9,10; VL8 ch3
 
 @PART 19 | capstones-interview | Part 19: Capstones, design and interview readiness | 2 | N
-01 | Capstone: a Slurm GPU cluster | A | V24; Part 6 | N | 1
+01 | Capstone: a Slurm GPU cluster | A | SCL 15; V19 2,3,9,12; V24 4,5,6,9; V16 1; V20 2; Part 6 | N | 1
 02 | Capstone: a Kubernetes GPU platform with KAI and Kueue | A | V24 P7 | G | 1
 03 | Capstone: inference on GKE with vLLM, Triton, TensorRT-LLM, NIM and KServe | A | V24 P11 | G | 1
 04 | Capstone: multi-node training with fault tolerance | A | V24 P3 | N | 1
