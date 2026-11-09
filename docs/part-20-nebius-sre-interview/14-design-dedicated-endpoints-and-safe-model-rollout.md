@@ -59,7 +59,7 @@ The validator rejects a GPU type outside the four public choices, a region outsi
 
 A customer asks for a 70 billion parameter model. You need the numbers before you pick hardware. Chapter 20.12 gives the full toolkit, so here is only the shape.
 
-Weights take parameters times bytes per parameter. At FP16 that is 70 x 2 = 140 GB. Hands-On LLM Serving and Optimization, chapter 5, gives this rule. One H100 has 80 GB, so 140 GB cannot fit on one GPU, and you need at least two for the weights alone. Add KV cache and activation headroom and the honest answer is four, or fewer if you quantise. The GPU memory figure is from the NVIDIA datasheet for the H100, which this chapter did not re-fetch, so check it before you quote it.
+Weights take parameters times bytes per parameter. At FP16 that is 70 x 2 = 140 GB. Hands-On LLM Serving and Optimization, chapter 5, gives this rule. One H100 SXM has 80 GB, according to the NVIDIA H100 page fetched on 2026-11-09, so 140 GB cannot fit on one GPU, and you need at least two for the weights alone. Add KV cache and activation headroom and the honest answer is four, or fewer if you quantise. The GPU memory figure is from the NVIDIA datasheet for the H100, which this chapter did not re-fetch, so check it before you quote it.
 
 GPUs per replica is therefore a memory question first and a latency question second. More GPUs per replica via tensor parallelism cuts latency but costs interconnect traffic and makes each replica a bigger unit to lose and to reload. Replicas count is the capacity and availability question. The minimum is your floor for the SLA. The maximum is your cost ceiling and, as section 6 shows, also your rollout budget.
 
@@ -512,7 +512,7 @@ Explicitly labelled inferences:
 Not verified:
 
 - No real cluster or GPU was used. The rolling update is a simulation of the controller's rules and not a real controller trace. The Deployment was checked by client-side dry run only.
-- The H100 memory size comes from general knowledge of the datasheet and was not fetched.
+- The H100 SXM memory size of 80 GB was checked against the NVIDIA H100 page on 2026-11-09.
 - I did not check Nebius Token Factory documentation for custom-weights features, rollout behaviour or scale-to-zero. The plan records none.
 - The statement that a health route reports a crash and not a stall is inherited from chapter 20.18, where it is an inference from the source.
 - Docker was not running and the host is macOS, so no Linux command was run.

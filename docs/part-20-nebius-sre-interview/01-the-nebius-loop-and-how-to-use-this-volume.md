@@ -164,7 +164,7 @@ This table maps each stage to chapters. Part B is the console round. Part C is c
 | Public architecture map | 20.30 to 20.33 | [vendor] and [official] |
 | Schedule | 20.29 | volume plan |
 
-The volume plan also lists a chapter 20.17, a design drill sheet with twelve prompts. It was not written when this chapter was drafted, so there is no link to it. Use 20.13 to 20.16 for design practice until it appears.
+Chapter [20.17 System design drill sheet](17-system-design-drill-sheet-twelve-prompts.md) holds twelve timed design prompts. Read 20.13 to 20.16 first for the depth, then use 20.17 as the timed practice.
 
 If your interview is close, the plan in the volume's research notes gives a priority order. Start with the Linux console chapters in Part B and the system design chapters in Part D, because both appear in every report. Then read Part E and Part G. Take Part C and Part F after that. Chapter 20.29 turns this into an eight-week schedule.
 

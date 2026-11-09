@@ -114,7 +114,7 @@ Xid errors are kernel-driver messages about GPU faults, visible in `dmesg`. The 
 | 31 | GPU memory page fault | Mostly application bugs, sometimes driver or hardware | Restart app, debug with Compute Sanitizer |
 | 48 | Double Bit ECC Error | Uncorrectable memory error | Reset GPU or reboot node |
 | 74 | NVLink Error | Link problem, may be reported by the healthy peer | Reset, then contact vendor |
-| 79 | GPU has fallen off the bus | PCIe link lost or failing hardware | Contact vendor |
+| 79 | GPU has fallen off the bus | PCIe link lost or failing hardware | Restart the bare metal node, then contact support (NVIDIA Xid catalog, fetched 2026-11-09) |
 | 94 and 95 | Contained and uncontained memory error | 94 hits one application, 95 needs a GPU reset | Restart app, or reset GPU |
 
 Mitigate now. Capture logs and a stack dump, drain the replica from the pool and restart it. Cordon the node for hardware Xid codes. Fix later with NCCL timeouts, a watchdog on token rate, and automated cordon on fatal Xid codes. The handbook chapter 15.13 covers the profiling side of NCCL tail latency.
