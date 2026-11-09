@@ -1,0 +1,9 @@
+root:x:0:0:root:/root:/bin/bash
+daemon:x:1:1:daemon:/usr/sbin:/usr/sbin/nologin
+alice:x:1000:1000:Alice:/home/alice:/bin/bash
+bob:x:1001:1001:Bob:/home/bob:/bin/bash
+carol:x:1002:1002:Carol:/home/carol:/usr/sbin/nologin
+dave:x:1003:1003:Dave:/home/dave:/bin/zsh
+toor:x:0:0:backup root:/root:/bin/bash
+svc-metrics:x:998:998::/var/lib/metrics:/usr/sbin/nologin
+erin:x:1004:1004:Erin:/home/erin:/bin/bash

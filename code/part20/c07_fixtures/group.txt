@@ -1,0 +1,6 @@
+root:x:0:
+sudo:x:27:alice,carol,erin
+wheel:x:10:dave,svc-metrics
+docker:x:999:bob,alice
+alice:x:1000:
+bob:x:1001:

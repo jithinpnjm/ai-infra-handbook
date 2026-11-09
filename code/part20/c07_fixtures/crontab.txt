@@ -1,0 +1,12 @@
+# synthetic crontab of user deploy
+SHELL=/bin/bash
+MAILTO=ops@example.invalid
+
+*/5 * * * * /usr/local/bin/push_metrics.sh
+0 2 * * * tar czf /backup/models-$(date +%Y%m%d).tgz /models
+30 2 * * * tar czf /backup/models-$(date +\%Y\%m\%d).tgz /models
+15 3 * * 1 /usr/local/bin/rotate_keys.sh >> /var/log/rotate.log 2>&1
+@daily /usr/local/bin/cleanup.sh --keep 7%
+45 4 * * * echo "done $(date +%H:%M)" >> /var/log/done.log
+# 0 5 * * * echo disabled %
+0 6 * * * /usr/bin/printf 'ok\n' > /dev/null
