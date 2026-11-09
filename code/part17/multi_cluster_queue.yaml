@@ -1,0 +1,23 @@
+apiVersion: kueue.x-k8s.io/v1beta1
+kind: ClusterQueue
+metadata:
+  name: cluster-queue-multi-region
+spec:
+  cohort: multi-region
+  flavorQuotas:
+    - name: h100-sxm5-80gb-us-central1
+      resources:
+        - name: cpu
+          nominalQuota: 800
+        - name: memory
+          nominalQuota: 4Ti
+        - name: nvidia.com/gpu
+          nominalQuota: 64
+    - name: h100-sxm5-80gb-europe-west1
+      resources:
+        - name: cpu
+          nominalQuota: 800
+        - name: memory
+          nominalQuota: 4Ti
+        - name: nvidia.com/gpu
+          nominalQuota: 64

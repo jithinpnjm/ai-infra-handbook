@@ -1,0 +1,40 @@
+apiVersion: batch/v1
+kind: CronJob
+metadata:
+  name: etcd-snapshot
+  namespace: kube-system
+spec:
+  schedule: "0 */6 * * *"
+  concurrencyPolicy: Forbid
+  jobTemplate:
+    spec:
+      template:
+        spec:
+          restartPolicy: OnFailure
+          hostNetwork: true
+          nodeSelector:
+            node-role.kubernetes.io/control-plane: ""
+          tolerations:
+            - key: node-role.kubernetes.io/control-plane
+              operator: Exists
+              effect: NoSchedule
+          containers:
+            - name: snapshot
+              image: registry.k8s.io/etcd:3.5.15-0
+              command:
+                - /bin/sh
+                - -c
+                - >
+                  etcdctl --endpoints=https://127.0.0.1:2379
+                  --cacert=/etc/kubernetes/pki/etcd/ca.crt
+                  --cert=/etc/kubernetes/pki/etcd/server.crt
+                  --key=/etc/kubernetes/pki/etcd/server.key
+                  snapshot save /backup/etcd-$(date +%Y%m%d%H%M).db
+              volumeMounts:
+                - {name: etcd-certs, mountPath: /etc/kubernetes/pki/etcd, readOnly: true}
+                - {name: backup, mountPath: /backup}
+          volumes:
+            - name: etcd-certs
+              hostPath: {path: /etc/kubernetes/pki/etcd, type: Directory}
+            - name: backup
+              hostPath: {path: /var/backups/etcd, type: DirectoryOrCreate}

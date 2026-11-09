@@ -1,0 +1,18 @@
+apiVersion: kueue.x-k8s.io/v1beta1
+kind: LocalQueue
+metadata:
+  name: team-data-science-queue
+  namespace: team-data-science
+spec:
+  clusterQueue: cluster-queue-standard
+---
+apiVersion: v1
+kind: ResourceQuota
+metadata:
+  name: team-data-science-quota
+  namespace: team-data-science
+spec:
+  hard:
+    cpu: "200"
+    memory: 1Ti
+    nvidia.com/gpu: "4"

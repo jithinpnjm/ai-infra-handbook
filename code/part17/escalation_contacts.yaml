@@ -1,0 +1,17 @@
+escalation:
+  - level: 1
+    contact: secondary-oncall
+    pagerduty_schedule: secondary-oncall-rotation
+    response_time: 15 minutes
+  - level: 2
+    contact: incident-commander
+    pagerduty_schedule: ic-rotation
+    response_time: 30 minutes
+  - level: 3
+    contact: vp-engineering
+    pagerduty_schedule: vp-engineering-rotation
+    response_time: 1 hour
+  - level: 4
+    contact: ceo
+    pagerduty_schedule: executive-rotation
+    response_time: 2 hours

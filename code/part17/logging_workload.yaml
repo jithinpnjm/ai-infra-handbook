@@ -1,0 +1,22 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: logging-demo
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: logging-demo
+  template:
+    metadata:
+      labels:
+        app: logging-demo
+    spec:
+      containers:
+        - name: app
+          image: my-app:v1
+          env:
+            - name: LOG_FORMAT
+              value: json
+            - name: OTEL_EXPORTER_OTLP_ENDPOINT
+              value: http://otel-collector.monitoring:4317

@@ -1,0 +1,11 @@
+{
+  "dashboard": {
+    "title": "Grafana dashboard",
+    "panels": [
+      {"title": "Inference request rate", "type": "timeseries", "targets": [{"expr": "rate(inference_request_total[5m])"}]},
+      {"title": "Inference latency p99", "type": "timeseries", "targets": [{"expr": "histogram_quantile(0.99, rate(inference_request_duration_seconds_bucket[5m]))"}]},
+      {"title": "Error logs", "type": "logs", "targets": [{"expr": "{severity=\"ERROR\"}"}]},
+      {"title": "Trace latency", "type": "traces", "targets": [{"query": "inference-svc"}]}
+    ]
+  }
+}

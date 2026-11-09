@@ -1,0 +1,25 @@
+stages:
+  - name: lint
+    image: my-lint:v1
+    command: [python, lint.py]
+    args: ["--change-request", "change_request.md"]
+
+  - name: unit-tests
+    image: my-tests:v1
+    command: [python, -m, pytest]
+    args: ["--test-path", "tests/"]
+
+  - name: integration-tests
+    image: my-tests:v1
+    command: [python, -m, pytest]
+    args: ["--test-path", "tests/integration/", "--env", "staging"]
+
+  - name: benchmark
+    image: my-benchmarks:v1
+    command: [python, benchmark.py]
+    args: ["--workload", "nccl-tests", "--threshold", "0.05"]
+
+  - name: rollback-test
+    image: my-tests:v1
+    command: [python, rollback_test.py]
+    args: ["--change-request", "change_request.md"]

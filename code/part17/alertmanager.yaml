@@ -1,0 +1,38 @@
+route:
+  receiver: 'default-receiver'
+  group_by: ['alertname', 'cluster', 'service']
+  group_wait: 30s
+  group_interval: 5m
+  repeat_interval: 4h
+  routes:
+    - matchers:
+        - severity="critical"
+      receiver: 'pagerduty-critical'
+      group_wait: 10s
+      repeat_interval: 1h
+    - matchers:
+        - severity="warning"
+      receiver: 'slack-warnings'
+      repeat_interval: 12h
+    - matchers:
+        - severity="info"
+      receiver: 'email-info'
+      repeat_interval: 24h
+
+receivers:
+  - name: 'default-receiver'
+    webhook_configs:
+      - url: 'http://alertmanager-webhook/health'
+  - name: 'pagerduty-critical'
+    pagerduty_configs:
+      - service_key: 'REPLACE_WITH_PAGERDUTY_INTEGRATION_KEY'
+        description: '{{ .CommonAnnotations.summary }}'
+  - name: 'slack-warnings'
+    slack_configs:
+      - api_url: 'https://hooks.slack.com/services/REPLACE/WITH/WEBHOOK'
+        channel: '#ai-factory-warnings'
+  - name: 'email-info'
+    email_configs:
+      - to: 'platform-team@example.com'
+        from: 'alertmanager@example.com'
+        smarthost: 'smtp.example.com:587'

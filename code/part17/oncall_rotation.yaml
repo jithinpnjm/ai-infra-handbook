@@ -1,0 +1,10 @@
+rotation:
+  - week: 2024-04-01
+    primary: alice
+    secondary: bob
+  - week: 2024-04-08
+    primary: bob
+    secondary: carol
+  - week: 2024-04-15
+    primary: carol
+    secondary: alice

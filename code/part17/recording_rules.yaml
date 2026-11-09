@@ -1,0 +1,26 @@
+groups:
+  - name: gpu_pool
+    interval: 30s
+    rules:
+      - record: gpu_pool:utilization:avg5m
+        expr: avg by (gpu_product) (gpu_utilization_ratio)
+      - record: gpu_pool:memory_pressure:avg5m
+        expr: avg by (gpu_product) (gpu_memory_used_bytes / gpu_memory_total_bytes)
+      - record: gpu_pool:count:by_product
+        expr: count by (gpu_product) (gpu_utilization_ratio)
+
+  - name: inference
+    interval: 30s
+    rules:
+      - record: inference:latency:p99:5m
+        expr: histogram_quantile(0.99, rate(inference_request_duration_seconds_bucket[5m]))
+      - record: inference:error_rate:5m
+        expr: sum by (model) (rate(inference_request_total{status=~"5.."}[5m])) / sum by (model) (rate(inference_request_total[5m]))
+      - record: inference:throughput:5m
+        expr: sum by (model) (rate(inference_request_total[5m]))
+
+  - name: cost
+    interval: 5m
+    rules:
+      - record: cost:team:monthly
+        expr: sum by (team) (kubecost_team_cost)

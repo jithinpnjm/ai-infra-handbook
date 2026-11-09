@@ -1,0 +1,42 @@
+scrape_configs:
+  - job_name: 'dcgm-exporter'
+    scrape_interval: 15s
+    kubernetes_sd_configs:
+      - role: endpoints
+    relabel_configs:
+      - source_labels: [__meta_kubernetes_pod_label_nvidia_com_gpu_product]
+        target_label: gpu_product
+      - source_labels: [__meta_kubernetes_pod_node_name]
+        target_label: node
+      - source_labels: [__address__, __meta_kubernetes_pod_annotation_prometheus_io_port]
+        regex: ([^:]+)(?::\d+)?
+        target_label: __address__
+        replacement: ${1}:9400
+
+  - job_name: 'cadvisor'
+    scrape_interval: 15s
+    kubernetes_sd_configs:
+      - role: node
+
+  - job_name: 'kubelet'
+    scrape_interval: 15s
+    kubernetes_sd_configs:
+      - role: node
+    relabel_configs:
+      - target_label: __address__
+        replacement: kubernetes.default.svc:443
+      - source_labels: [__meta_kubernetes_node_name]
+        regex: (.+)
+        target_label: __metrics_path__
+        replacement: /api/v1/nodes/${1}/proxy/metrics
+
+  - job_name: 'app-exporter'
+    scrape_interval: 10s
+    kubernetes_sd_configs:
+      - role: endpoints
+    relabel_configs:
+      - source_labels: [__meta_kubernetes_service_annotation_prometheus_io_scrape]
+        action: drop
+        regex: false
+      - source_labels: [__meta_kubernetes_service_label_app]
+        target_label: job

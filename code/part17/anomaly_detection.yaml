@@ -1,0 +1,21 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: anomaly-detection
+spec:
+  selector:
+    matchLabels:
+      app: anomaly-detection
+  template:
+    metadata:
+      labels:
+        app: anomaly-detection
+    spec:
+      containers:
+        - name: anomaly-detection
+          image: my-anomaly-detection:v1
+          env:
+            - name: PROMETHEUS_URL
+              value: http://prometheus.monitoring:9090
+            - name: MODEL_TRAINING_SCHEDULE
+              value: "0 2 * * *"

@@ -1,0 +1,21 @@
+apiVersion: batch.volcano.sh/v1alpha1
+kind: Job
+metadata:
+  name: profiling-demo
+spec:
+  tasks:
+    - replicas: 1
+      template:
+        spec:
+          containers:
+            - name: train
+              image: my-train:v1
+              command: [python, train_with_profiler.py]
+              args: ["--profile-dir", "/profiles"]
+              volumeMounts:
+                - name: profiles
+                  mountPath: /profiles
+          volumes:
+            - name: profiles
+              persistentVolumeClaim:
+                claimName: profiles-pvc

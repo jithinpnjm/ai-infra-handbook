@@ -1,0 +1,11 @@
+inhibit_rules:
+  - source_matchers:
+      - alertname="ClusterDown"
+    target_matchers:
+      - severity!="critical"
+    equal: ['cluster']
+  - source_matchers:
+      - alertname="GPUNodeDown"
+    target_matchers:
+      - alertname="GPUXidError"
+    equal: ['gpu', 'node']
