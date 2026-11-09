@@ -618,26 +618,46 @@ Run these in `code/part20` on a Mac or Linux box. No Docker is needed. I ran ste
 
 ## Drill questions
 
-1. What are the four incident roles in the Google SRE book, and which one may change the system?
-<details><summary>Answer</summary>Incident command, operations, communication and planning. Only operations should modify the system. The commander holds any role not delegated.</details>
-2. State three conditions for declaring an incident.
-<details><summary>Answer</summary>A second team is needed, the outage is customer-visible, or the problem is unsolved after an hour of focused analysis.</details>
-3. What is the handover line, and what must the outgoing commander do after saying it?
-<details><summary>Answer</summary>"You're now the incident commander, okay?" They stay on the call until the successor firmly acknowledges, then tell everyone else who is in charge.</details>
-4. Name three things that should trigger a post-mortem.
-<details><summary>Answer</summary>User-visible downtime beyond a threshold, any data loss, an on-call intervention such as a rollback, a long resolution time, or a monitoring failure. Any three.</details>
-5. What are the three action types in this chapter and why must one be prevent?
-<details><summary>Answer</summary>Prevent, detect and mitigate. Without a prevent item you have only described how to live with the failure.</details>
-6. Rewrite "Improve monitoring" as a good action.
-<details><summary>Answer</summary>"Add a per-group TTFT p99 alert with a 2 minute window", one named owner, a due date, and a measure such as detection of a synthetic fault under 5 minutes.</details>
-7. What is toil, and what is the Google goal for it?
-<details><summary>Answer</summary>Manual, repetitive, automatable, tactical work with no enduring value that scales with the service. The goal is to keep it below half of each SRE's time.</details>
-8. A fix costs 120 hours and each page costs 4 hours. When does it pay off?
-<details><summary>Answer</summary>After about 30 pages, since 120 divided by 4 is 30. This is the workbook's example.</details>
-9. What on-call limits does the Google SRE book give?
-<details><summary>Answer</summary>No more than 25 percent of time on-call, at least 50 percent on engineering, at most two incidents per 12-hour shift, and 8 engineers for a single-site rotation.</details>
-10. A 99.9 percent monthly SLO has how many minutes of budget in 30 days?
-<details><summary>Answer</summary>0.1 percent of 43,200 minutes, which is 43.2 minutes.</details>
+<details><summary>1. What are the four incident roles in the Google SRE book, and which one may change the system?</summary>
+Incident command, operations, communication and planning. Only operations should modify the system. The commander holds any role not delegated.
+</details>
+
+<details><summary>2. State three conditions for declaring an incident.</summary>
+A second team is needed, the outage is customer-visible, or the problem is unsolved after an hour of focused analysis.
+</details>
+
+<details><summary>3. What is the handover line, and what must the outgoing commander do after saying it?</summary>
+"You're now the incident commander, okay?" They stay on the call until the successor firmly acknowledges, then tell everyone else who is in charge.
+</details>
+
+<details><summary>4. Name three things that should trigger a post-mortem.</summary>
+User-visible downtime beyond a threshold, any data loss, an on-call intervention such as a rollback, a long resolution time, or a monitoring failure. Any three.
+</details>
+
+<details><summary>5. What are the three action types in this chapter and why must one be prevent?</summary>
+Prevent, detect and mitigate. Without a prevent item you have only described how to live with the failure.
+</details>
+
+<details><summary>6. Rewrite "Improve monitoring" as a good action.</summary>
+"Add a per-group TTFT p99 alert with a 2 minute window", one named owner, a due date, and a measure such as detection of a synthetic fault under 5 minutes.
+</details>
+
+<details><summary>7. What is toil, and what is the Google goal for it?</summary>
+Manual, repetitive, automatable, tactical work with no enduring value that scales with the service. The goal is to keep it below half of each SRE's time.
+</details>
+
+<details><summary>8. A fix costs 120 hours and each page costs 4 hours. When does it pay off?</summary>
+After about 30 pages, since 120 divided by 4 is 30. This is the workbook's example.
+</details>
+
+<details><summary>9. What on-call limits does the Google SRE book give?</summary>
+No more than 25 percent of time on-call, at least 50 percent on engineering, at most two incidents per 12-hour shift, and 8 engineers for a single-site rotation.
+</details>
+
+<details><summary>10. A 99.9 percent monthly SLO has how many minutes of budget in 30 days?</summary>
+0.1 percent of 43,200 minutes, which is 43.2 minutes.
+</details>
+
 
 ## Common mistakes and weak answers
 
