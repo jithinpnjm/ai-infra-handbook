@@ -109,3 +109,6 @@ Size target: about 4-6k words per chapter for design/knowledge chapters, shorter
 - Interview date and which stages the recruiter has already confirmed?
 - Preferred coding language: Python or Go?
 - Do you want a separate fast track (a 2-week cram document) built first from existing chapters, while the full volume is written?
+
+## 6. Status (2026-11-09 evening)
+All chapters 20.1 to 20.29 are drafted (gates: 648 tests, 289 code files clean, site build passes). 20.30 to 20.33 (Nebius public architecture series) were added by another session and are kept. Not yet done: human read of every chapter, fact-check pass over claims marked unverified or "my reasoning", running Linux scenarios on a real Linux host, and a trim of 20.26 (about 9,900 words, mostly drill tables). Part 19 rebuild has not started.
