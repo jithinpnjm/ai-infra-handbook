@@ -1,0 +1,38 @@
+# code/part20/c16_gpu_health_rules_test.yml
+rule_files:
+  - c16_gpu_health_rules.yml
+evaluation_interval: 1m
+tests:
+  - interval: 1m
+    input_series:
+      - series: 'DCGM_FI_DEV_XID_ERROR{instance="n1",gpu="3"}'
+        values: '0 0 79 79 79 79'
+      - series: 'DCGM_FI_DEV_XID_ERROR{instance="n2",gpu="0"}'
+        values: '0 0 0 13 13 13'
+      - series: 'kube_node_spec_unschedulable{node="a"}'
+        values: '1+0x1500'
+      - series: 'kube_node_spec_unschedulable{node="b"}'
+        values: '0+0x1500'
+    alert_rule_test:
+      - eval_time: 4m
+        alertname: GpuFallenOffBus
+        exp_alerts:
+          - exp_labels: {severity: page, action: drain, instance: n1, gpu: "3"}
+            exp_annotations:
+              summary: "Xid 79: a GPU is inaccessible over PCIe on n1"
+              note: "DCGM_FI_DEV_XID_ERROR holds the last Xid seen, so it stays at 79 until another Xid or an exporter restart."
+      - eval_time: 5m
+        alertname: GpuXidDrainClass
+        exp_alerts: []
+      - eval_time: 1500m
+        alertname: NodeCordonedTooLong
+        exp_alerts:
+          - exp_labels: {severity: ticket, node: a}
+            exp_annotations:
+              summary: "a cordoned for 24 hours: silent capacity loss"
+      - eval_time: 30m
+        alertname: FleetCordonedBudgetExceeded
+        exp_alerts:
+          - exp_labels: {severity: page}
+            exp_annotations:
+              summary: "More than 5 percent of nodes are cordoned. Automation should have stopped before this."

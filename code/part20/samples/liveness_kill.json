@@ -1,0 +1,5 @@
+{"current": {"sig:restart_reason": "liveness", "sig:probe_restarts_1h": 6,
+  "vllm:generation_tokens@rate": 2400, "sig:xid_codes": [],
+  "sig:nccl_error_in_log": false, "sig:ready_replicas": 5, "sig:desired_replicas": 8,
+  "sig:alerts_firing": 0, "vllm:num_requests_waiting": 30},
+ "baseline": {}}

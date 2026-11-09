@@ -1,0 +1,19 @@
+# INTENTIONALLY BAD. Valid PromQL that the linter and the tests flag. Do not deploy.
+groups:
+  - name: c25_bad
+    rules:
+      - record: errors_ratio
+        expr: avg(rate(gateway_errors_total[5m]) / rate(gateway_requests_total[5m]))
+      - alert: QueueDeepNoFor
+        expr: gateway_queue_depth > 500
+        labels: {severity: page}
+      - alert: ErrorsLostLabels
+        expr: sum(rate(gateway_errors_total[5m])) > 1
+        for: 5m
+        labels: {severity: page}
+        annotations:
+          summary: "{{ $labels.model }} is erroring"
+      - alert: ErrorsIrate
+        expr: irate(gateway_errors_total[1m]) > 1
+        for: 5m
+        labels: {severity: page}

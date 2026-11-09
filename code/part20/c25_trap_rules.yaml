@@ -1,0 +1,59 @@
+# Rules that avoid the traps in chapter 20.25. Metric names gateway_* and req_seconds_*
+# are this chapter's own design. vllm:* names are from the vLLM metrics design doc.
+# Assumes a 30 s scrape interval, so every range is at least 4 scrapes (2m).
+groups:
+  - name: c25_recording
+    interval: 30s
+    rules:
+      # level:metric:operations. Rate first, then sum. Numerator and denominator
+      # are summed separately and then divided.
+      - record: model:gateway_requests:rate5m
+        expr: sum by (model) (rate(gateway_requests_total[5m]))
+      - record: model:gateway_errors:rate5m
+        expr: sum by (model) (rate(gateway_errors_total[5m]))
+      - record: model:gateway_errors:ratio_rate5m
+        expr: model:gateway_errors:rate5m / model:gateway_requests:rate5m
+      # Keep le when summing buckets, or histogram_quantile has nothing to read.
+      - record: model_le:req_seconds_bucket:rate5m
+        expr: sum by (model, le) (rate(req_seconds_bucket[5m]))
+      - record: model:req_seconds:p99
+        expr: histogram_quantile(0.99, model_le:req_seconds_bucket:rate5m)
+      # Saturation: the worst pod, not the average.
+      - record: model_name:vllm_kv_cache_usage_perc:max
+        expr: max by (model_name) (vllm:kv_cache_usage_perc)
+  - name: c25_alerts
+    rules:
+      - alert: QueueDeep
+        expr: gateway_queue_depth > 500
+        for: 5m
+        keep_firing_for: 3m
+        labels: {severity: ticket}
+        annotations:
+          summary: "{{ $labels.model }} queue deeper than 500 for 5m"
+      - alert: ErrorRatioHigh
+        expr: model:gateway_errors:ratio_rate5m > 0.05
+        for: 5m
+        labels: {severity: page}
+        annotations:
+          summary: "{{ $labels.model }} error ratio above 5%"
+      - alert: VllmTargetsMissing
+        expr: absent(up{job="vllm"})
+        for: 5m
+        labels: {severity: page}
+        annotations:
+          summary: "no vllm targets are being scraped"
+      - alert: VllmPodDown
+        expr: up{job="vllm"} == 0
+        for: 2m
+        labels: {severity: ticket}
+        annotations:
+          summary: "{{ $labels.pod }} is not scrapable"
+      - alert: KVCacheSaturated
+        expr: |
+          model_name:vllm_kv_cache_usage_perc:max > 0.95
+          and on (model_name)
+          sum by (model_name) (vllm:num_requests_waiting) > 0
+        for: 10m
+        labels: {severity: page}
+        annotations:
+          summary: "{{ $labels.model_name }} KV cache full and requests are queueing"

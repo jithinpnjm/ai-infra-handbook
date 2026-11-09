@@ -1,0 +1,104 @@
+# Run: promtool test rules slo_rules_test_availability.yaml
+rule_files:
+  - slo_recording_rules.yaml
+  - slo_engine_rules.yaml
+  - slo_burn_alerts_availability.yaml
+  - slo_burn_alerts_ttft.yaml
+  - slo_cause_alerts.yaml
+evaluation_interval: 1m
+tests:
+  - name: two percent errors pages fast and medium
+    interval: 1m
+    input_series:
+      - series: 'gateway_requests_total{tenant="a",model="m1",code="200"}'
+        values: '0+5880x70'
+      - series: 'gateway_requests_total{tenant="a",model="m1",code="500"}'
+        values: '0+120x70'
+    alert_rule_test:
+      - eval_time: 65m
+        alertname: GatewayAvailabilityBurnFast
+        exp_alerts:
+          - exp_labels: {model: m1, severity: page, slo: availability}
+            exp_annotations:
+              summary: "m1 burns 2% of the 30 day budget per hour"
+              runbook: "runbooks/gateway-availability.md"
+      - eval_time: 65m
+        alertname: GatewayAvailabilityBurnSlow
+        exp_alerts:
+          - exp_labels: {model: m1, severity: page, slo: availability}
+            exp_annotations:
+              summary: "m1 burns 5% of the budget in 6 hours"
+              runbook: "runbooks/gateway-availability.md"
+  - name: one percent errors does not page fast but does page slow
+    interval: 1m
+    input_series:
+      - series: 'gateway_requests_total{tenant="a",model="m1",code="200"}'
+        values: '0+5940x70'
+      - series: 'gateway_requests_total{tenant="a",model="m1",code="500"}'
+        values: '0+60x70'
+    alert_rule_test:
+      - eval_time: 65m
+        alertname: GatewayAvailabilityBurnFast
+        exp_alerts: []
+      - eval_time: 65m
+        alertname: GatewayAvailabilityBurnSlow
+        exp_alerts:
+          - exp_labels: {model: m1, severity: page, slo: availability}
+            exp_annotations:
+              summary: "m1 burns 5% of the budget in 6 hours"
+              runbook: "runbooks/gateway-availability.md"
+  - name: five minute blip fires while it lasts and stops when it ends
+    interval: 1m
+    input_series:
+      - series: 'gateway_requests_total{tenant="a",model="m1",code="200"}'
+        values: '0x5 6000+6000x55'
+      - series: 'gateway_requests_total{tenant="a",model="m1",code="500"}'
+        values: '0+6000x5 30000+0x55'
+    alert_rule_test:
+      - eval_time: 5m
+        alertname: GatewayAvailabilityBurnFast
+        exp_alerts:
+          - exp_labels: {model: m1, severity: page, slo: availability}
+            exp_annotations:
+              summary: "m1 burns 2% of the 30 day budget per hour"
+              runbook: "runbooks/gateway-availability.md"
+      - eval_time: 60m
+        alertname: GatewayAvailabilityBurnFast
+        exp_alerts: []
+    promql_expr_test:
+      - expr: model:gateway_error_ratio:rate1h{model="m1"} > bool 0.0144
+        eval_time: 60m
+        exp_samples:
+          - labels: '{model="m1"}'
+            value: 1
+  - name: no 5xx series yet gives ratio zero not an empty result
+    interval: 1m
+    input_series:
+      - series: 'gateway_requests_total{tenant="a",model="m1",code="200"}'
+        values: '0+6000x20'
+    promql_expr_test:
+      - expr: model:gateway_error_ratio:rate5m{model="m1"}
+        eval_time: 10m
+        exp_samples:
+          - labels: 'model:gateway_error_ratio:rate5m{model="m1"}'
+            value: 0
+  - name: tenant ticket needs traffic and ignores a tiny noisy tenant
+    interval: 1m
+    input_series:
+      - series: 'gateway_requests_total{tenant="a",model="m1",code="200"}'
+        values: '0+5988x4400'
+      - series: 'gateway_requests_total{tenant="a",model="m1",code="500"}'
+        values: '0+12x4400'
+      - series: 'gateway_requests_total{tenant="b",model="m1",code="500"}'
+        values: '0+3x4400'
+    alert_rule_test:
+      - eval_time: 4400m
+        alertname: TenantAvailabilityBudgetDrain
+        exp_alerts:
+          - exp_labels: {tenant: a, model: m1, severity: ticket, slo: availability}
+            exp_annotations:
+              summary: "a on m1 spends budget at 1x"
+              runbook: "runbooks/tenant-error-budget.md"
+      - eval_time: 4400m
+        alertname: GatewayAvailabilityBurnFast
+        exp_alerts: []

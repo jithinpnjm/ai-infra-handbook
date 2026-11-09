@@ -1,0 +1,32 @@
+# Multiwindow multi-burn-rate alerts, SRE Workbook Table 5-8.
+# SLO 99.9 percent, budget 0.001, so thresholds are 14.4 x 0.001 = 0.0144,
+# 6 x 0.001 = 0.006 and 1 x 0.001 = 0.001.
+groups:
+  - name: slo_availability_burn
+    rules:
+      - alert: GatewayAvailabilityBurnFast
+        expr: |
+          model:gateway_error_ratio:rate1h > 0.0144
+          and model:gateway_error_ratio:rate5m > 0.0144
+        labels: {severity: page, slo: availability}
+        annotations:
+          summary: "{{ $labels.model }} burns 2% of the 30 day budget per hour"
+          runbook: "runbooks/gateway-availability.md"
+      - alert: GatewayAvailabilityBurnSlow
+        expr: |
+          model:gateway_error_ratio:rate6h > 0.006
+          and model:gateway_error_ratio:rate30m > 0.006
+        labels: {severity: page, slo: availability}
+        annotations:
+          summary: "{{ $labels.model }} burns 5% of the budget in 6 hours"
+          runbook: "runbooks/gateway-availability.md"
+      - alert: TenantAvailabilityBudgetDrain
+        expr: |
+          tenant_model:gateway_error_ratio:rate3d > 0.001
+          and tenant_model:gateway_error_ratio:rate6h > 0.001
+          and on (tenant, model)
+            sum by (tenant, model) (rate(gateway_requests_total[3d])) > 0.1
+        labels: {severity: ticket, slo: availability}
+        annotations:
+          summary: "{{ $labels.tenant }} on {{ $labels.model }} spends budget at 1x"
+          runbook: "runbooks/tenant-error-budget.md"

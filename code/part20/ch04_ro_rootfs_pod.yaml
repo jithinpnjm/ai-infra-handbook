@@ -1,0 +1,29 @@
+# Companion to scenario 7: a read-only root filesystem in Kubernetes.
+# The container can write only to the two emptyDir mounts. Writing anywhere else
+# fails with "Read-only file system" (EROFS).
+apiVersion: v1
+kind: Pod
+metadata:
+  name: ro-rootfs-demo
+spec:
+  containers:
+    - name: app
+      image: busybox:1.36
+      command: ["sh", "-c", "touch /tmp/ok && echo tmp-ok; touch /etc/nope; echo etc-exit=$?; sleep 3600"]
+      securityContext:
+        readOnlyRootFilesystem: true
+        allowPrivilegeEscalation: false
+        runAsNonRoot: true
+        runAsUser: 10001
+        capabilities:
+          drop: ["ALL"]
+      volumeMounts:
+        - name: tmp
+          mountPath: /tmp
+        - name: cache
+          mountPath: /var/cache/app
+  volumes:
+    - name: tmp
+      emptyDir: {}
+    - name: cache
+      emptyDir: {}

@@ -1,0 +1,52 @@
+# code/part20/c15_obs_recording_rules.yaml
+# Roll-ups for an inference platform. Names follow level:metric:operations.
+# Each rule drops the per-pod labels so dashboards, alerts and any remote
+# write or federation read a few series instead of thousands.
+# Label names model_name and engine come from vLLM v0.32.0 (see chapter 20.19).
+groups:
+  - name: c15_engine_rollups
+    interval: 30s
+    rules:
+      - record: model_name:vllm_num_requests_waiting:sum
+        expr: sum without (instance, pod, engine) (vllm:num_requests_waiting)
+      - record: model_name:vllm_kv_cache_usage_perc:max
+        expr: max without (instance, pod, engine) (vllm:kv_cache_usage_perc)
+      # Keep le so histogram_quantile still works on the rolled-up series.
+      - record: model_name:vllm_time_to_first_token_seconds_bucket:rate5m
+        expr: |
+          sum without (instance, pod, engine)
+            (rate(vllm:time_to_first_token_seconds_bucket[5m]))
+
+  - name: c15_gateway_and_tenant_rollups
+    interval: 30s
+    rules:
+      - record: model_code:gateway_requests:rate5m
+        expr: sum without (instance, pod, route) (rate(gateway_requests_total[5m]))
+      # Numerator and denominator are aggregated first, then divided.
+      # The "or 0 *" term keeps the ratio at zero when no 5xx series exists yet.
+      - record: model:gateway_requests_5xx_per_requests:ratio_rate5m
+        expr: |
+          (sum without (instance, pod, route, code)
+             (rate(gateway_requests_total{code=~"5.."}[5m]))
+            or 0 * sum without (instance, pod, route, code)
+                     (rate(gateway_requests_total[5m])))
+          / sum without (instance, pod, route, code)
+              (rate(gateway_requests_total[5m]))
+      # Operational view of tenant usage. Billing does not read this series.
+      - record: tenant_model:tenant_tokens:rate5m
+        expr: sum without (instance, pod) (rate(tenant_tokens_total[5m]))
+      - record: tenant:tenant_tokens:increase1h
+        expr: |
+          sum without (instance, pod, model, direction)
+            (increase(tenant_tokens_total[1h]))
+
+  - name: c15_pipeline_self_rollups
+    interval: 30s
+    rules:
+      - record: job:scrape_samples_post_metric_relabeling:sum
+        expr: sum without (instance) (scrape_samples_post_metric_relabeling)
+      # Series churn: new series created by each scrape, summed over 5 minutes.
+      - record: job:scrape_series_added:sum_over_time5m
+        expr: sum without (instance) (sum_over_time(scrape_series_added[5m]))
+      - record: job:up:avg
+        expr: avg without (instance) (up)

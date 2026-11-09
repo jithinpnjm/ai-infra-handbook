@@ -1,0 +1,35 @@
+{
+ "format_version": "1.2",
+ "terraform_version": "1.10.4",
+ "resource_changes": [
+  {
+   "address": "nebius_mk8s_v1_cluster.this",
+   "mode": "managed",
+   "type": "nebius_mk8s_v1_cluster",
+   "name": "this",
+   "provider_name": "registry.terraform.io/nebius/nebius",
+   "change": {
+    "actions": [
+     "create",
+     "delete"
+    ],
+    "before": {
+     "id": "mk8scluster-e00demo",
+     "name": "demo",
+     "parent_id": "project-e00demo"
+    },
+    "after": {
+     "id": "mk8scluster-e00demo",
+     "name": "demo2",
+     "parent_id": "project-e00demo"
+    },
+    "after_unknown": {},
+    "before_sensitive": {},
+    "after_sensitive": {}
+   }
+  }
+ ],
+ "applyable": true,
+ "complete": true,
+ "errored": false
+}

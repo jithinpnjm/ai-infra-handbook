@@ -1,0 +1,37 @@
+# code/part20/c20_gpu_overprovision.yaml
+# Placeholder pods that hold one whole 8-GPU node. A real pod preempts them at once. The evicted
+# placeholder goes Pending and makes the cluster autoscaler add a node to refill the spare.
+# Pattern from Production Kubernetes, Chapter 13, and the Cluster Autoscaler FAQ.
+apiVersion: scheduling.k8s.io/v1
+kind: PriorityClass
+metadata:
+  name: gpu-overprovisioning
+value: -10
+globalDefault: false
+description: "Placeholder pods. Lower than the default of 0, so any real pod evicts them."
+---
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: gpu-overprovisioning
+  namespace: llm
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: gpu-overprovisioning
+  template:
+    metadata:
+      labels:
+        app: gpu-overprovisioning
+    spec:
+      priorityClassName: gpu-overprovisioning
+      terminationGracePeriodSeconds: 0
+      containers:
+        - name: pause
+          image: registry.k8s.io/pause:3.10
+          resources:
+            requests:
+              nvidia.com/gpu: 8
+            limits:
+              nvidia.com/gpu: 8

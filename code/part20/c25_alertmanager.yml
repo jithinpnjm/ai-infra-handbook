@@ -1,0 +1,32 @@
+# Alertmanager config for chapter 20.25. Check: amtool check-config c25_alertmanager.yml
+# The webhook URLs are placeholders. Replace them with your real receivers.
+route:
+  receiver: ticket
+  # One notification per model and cluster, however many alertnames fire for it.
+  group_by: [cluster, model]
+  group_wait: 30s
+  group_interval: 5m
+  repeat_interval: 12h
+  routes:
+    - matchers: ['severity="page"']
+      receiver: pager
+      repeat_interval: 4h
+    - matchers: ['severity="ticket"']
+      receiver: ticket
+inhibit_rules:
+  # Scrape failure on the whole job explains the symptom alerts. Source and target
+  # alertnames are disjoint so no alert can inhibit itself.
+  - source_matchers: ['alertname="VllmTargetsMissing"']
+    target_matchers: ['alertname=~"ErrorRatioHigh|KVCacheSaturated|QueueDeep"']
+    equal: [cluster]
+  # A page for a model silences tickets for the same model.
+  - source_matchers: ['severity="page"']
+    target_matchers: ['severity="ticket"']
+    equal: [cluster, model]
+receivers:
+  - name: pager
+    webhook_configs:
+      - url: http://pager-bridge.example.invalid/hook
+  - name: ticket
+    webhook_configs:
+      - url: http://ticket-bridge.example.invalid/hook

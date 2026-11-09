@@ -1,0 +1,37 @@
+# Cause signals from vLLM v0.32.0. All are tickets, none page.
+# The page is the burn alert. These tell you where to look.
+groups:
+  - name: slo_causes
+    rules:
+      - alert: Watchdog
+        expr: vector(1)
+        labels: {severity: none}
+        annotations: {summary: "Always firing. Route to a dead man's switch."}
+      - alert: EngineMetricsMissing
+        expr: absent(vllm:num_requests_running)
+        for: 10m
+        labels: {severity: ticket}
+        annotations: {summary: "No vLLM metrics scraped for 10 minutes"}
+      - alert: KVCacheNearFull
+        expr: max by (model_name) (vllm:kv_cache_usage_perc) > 0.95
+        for: 15m
+        labels: {severity: ticket}
+        annotations: {summary: "KV cache above 95% on {{ $labels.model_name }}"}
+      - alert: PreemptionsSustained
+        expr: sum by (model_name) (rate(vllm:num_preemptions_total[10m])) > 0
+        for: 15m
+        labels: {severity: ticket}
+        annotations: {summary: "Requests are being preempted on {{ $labels.model_name }}"}
+      - alert: RequestQueueBacklog
+        expr: sum by (model_name) (vllm:num_requests_waiting) > 0
+        for: 10m
+        labels: {severity: ticket}
+        annotations: {summary: "Requests waiting for 10 minutes on {{ $labels.model_name }}"}
+      - alert: FinishReasonLengthDrift
+        expr: |
+          model_name:vllm_finish_length_ratio:rate1h > 0.05
+          and model_name:vllm_finish_length_ratio:rate1h
+            > 2 * (model_name:vllm_finish_length_ratio:rate1h offset 1d)
+        for: 30m
+        labels: {severity: ticket}
+        annotations: {summary: "More outputs hit max_tokens than yesterday"}

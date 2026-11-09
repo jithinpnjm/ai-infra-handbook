@@ -1,0 +1,8 @@
+# Fictional incident notes: slow chat endpoint after a config change
+2026-03-14 09:12 UTC - Rollout of config v42 to replica group B begins [started]
+2026-03-14 09:31 UTC - Pager fires: TTFT p99 above 4 s for 5 minutes [detected]
+2026-03-14 09:35 UTC - On-call declares SEV2, takes commander role
+2026-03-14 09:44 UTC - Preemption counter rising only on group B pods
+2026-03-14 09:52 UTC - Group B set to weight 0 at the gateway, p99 recovers [mitigated]
+2026-03-14 10:40 UTC - Config v41 restored on group B, traffic ramped back
+2026-03-14 11:05 UTC - SLO burn back to normal, incident closed [resolved]

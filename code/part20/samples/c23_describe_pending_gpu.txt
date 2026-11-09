@@ -1,0 +1,15 @@
+Name:           my-llama-job-plgb5
+Namespace:      default
+Status:         Pending
+Node:           <none>
+Containers:
+  llama:
+    Image:      registry.example/llama:v1
+    State:      Waiting
+      Reason:   Pending
+    Limits:
+      nvidia.com/gpu:  1
+Events:
+  Type     Reason            Age    From               Message
+  ----     ------            ----   ----               -------
+  Warning  FailedScheduling  101s   default-scheduler  0/2 nodes are available: 2 Insufficient nvidia.com/gpu. preemption: 0/2 nodes are available: 2 No preemption victims found for incoming pod

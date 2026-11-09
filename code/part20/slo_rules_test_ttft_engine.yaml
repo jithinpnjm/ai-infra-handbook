@@ -1,0 +1,87 @@
+# Run: promtool test rules slo_rules_test_ttft_engine.yaml
+rule_files:
+  - slo_recording_rules.yaml
+  - slo_engine_rules.yaml
+  - slo_burn_alerts_availability.yaml
+  - slo_burn_alerts_ttft.yaml
+  - slo_cause_alerts.yaml
+evaluation_interval: 1m
+tests:
+  - name: ttft burn at 16 percent slow pages fast
+    interval: 1m
+    input_series:
+      - series: 'gateway_ttft_seconds_bucket{model="m1",le="1.0"}'
+        values: '0+5000x70'
+      - series: 'gateway_ttft_seconds_count{model="m1"}'
+        values: '0+6000x70'
+    alert_rule_test:
+      - eval_time: 65m
+        alertname: GatewayTTFTBurnFast
+        exp_alerts:
+          - exp_labels: {model: m1, severity: page, slo: ttft}
+            exp_annotations:
+              summary: "m1 TTFT burns 2% of budget per hour"
+              runbook: "runbooks/ttft.md"
+  - name: ttft at 10 percent slow pages slow only
+    interval: 1m
+    input_series:
+      - series: 'gateway_ttft_seconds_bucket{model="m1",le="1.0"}'
+        values: '0+5400x70'
+      - series: 'gateway_ttft_seconds_count{model="m1"}'
+        values: '0+6000x70'
+    alert_rule_test:
+      - eval_time: 65m
+        alertname: GatewayTTFTBurnFast
+        exp_alerts: []
+      - eval_time: 65m
+        alertname: GatewayTTFTBurnSlow
+        exp_alerts:
+          - exp_labels: {model: m1, severity: page, slo: ttft}
+            exp_annotations:
+              summary: "m1 TTFT burns 5% of budget in 6 hours"
+              runbook: "runbooks/ttft.md"
+  - name: p99 TTFT is capped at the last finite bucket
+    interval: 1m
+    input_series:
+      - series: 'gateway_ttft_seconds_bucket{model="m1",le="0.5"}'
+        values: '0+3000x20'
+      - series: 'gateway_ttft_seconds_bucket{model="m1",le="1.0"}'
+        values: '0+5000x20'
+      - series: 'gateway_ttft_seconds_bucket{model="m1",le="2.5"}'
+        values: '0+5900x20'
+      - series: 'gateway_ttft_seconds_bucket{model="m1",le="+Inf"}'
+        values: '0+6000x20'
+    promql_expr_test:
+      - expr: model:gateway_ttft_seconds:p99_5m{model="m1"}
+        eval_time: 10m
+        exp_samples:
+          - labels: 'model:gateway_ttft_seconds:p99_5m{model="m1"}'
+            value: 2.5
+  - name: engine signals
+    interval: 1m
+    input_series:
+      - series: 'vllm:kv_cache_usage_perc{model_name="m1",engine="0"}'
+        values: '0.97x40'
+      - series: 'vllm:inter_token_latency_seconds_bucket{model_name="m1",engine="0",le="0.1"}'
+        values: '0+900x20'
+      - series: 'vllm:inter_token_latency_seconds_count{model_name="m1",engine="0"}'
+        values: '0+1000x20'
+    alert_rule_test:
+      - eval_time: 20m
+        alertname: KVCacheNearFull
+        exp_alerts:
+          - exp_labels: {model_name: m1, severity: ticket}
+            exp_annotations:
+              summary: "KV cache above 95% on m1"
+      - eval_time: 20m
+        alertname: EngineMetricsMissing
+        exp_alerts:
+          - exp_labels: {severity: ticket}
+            exp_annotations:
+              summary: "No vLLM metrics scraped for 10 minutes"
+    promql_expr_test:
+      - expr: round(model_name:vllm_itl_slow_ratio:rate5m{model_name="m1"}, 0.01)
+        eval_time: 10m
+        exp_samples:
+          - labels: '{model_name="m1"}'
+            value: 0.1

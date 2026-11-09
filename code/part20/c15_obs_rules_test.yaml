@@ -1,0 +1,159 @@
+# Run with: promtool test rules c15_obs_rules_test.yaml (from code/part20)
+rule_files:
+  - c15_obs_recording_rules.yaml
+  - c15_obs_pipeline_alerts.yaml
+evaluation_interval: 30s
+
+tests:
+  - interval: 30s
+    input_series:
+      - series: 'vllm:num_requests_waiting{model_name="m1", instance="a", pod="p1", engine="0"}'
+        values: '3 3 3 3'
+      - series: 'vllm:num_requests_waiting{model_name="m1", instance="b", pod="p2", engine="0"}'
+        values: '4 4 4 4'
+      - series: 'vllm:num_requests_waiting{model_name="m2", instance="c", pod="p3", engine="0"}'
+        values: '1 1 1 1'
+      - series: 'vllm:kv_cache_usage_perc{model_name="m1", instance="a", pod="p1", engine="0"}'
+        values: '0.5 0.5 0.5 0.5'
+      - series: 'vllm:kv_cache_usage_perc{model_name="m1", instance="b", pod="p2", engine="0"}'
+        values: '0.9 0.9 0.9 0.9'
+      - series: 'vllm:time_to_first_token_seconds_bucket{model_name="m1", instance="a", pod="p1", engine="0", le="0.5"}'
+        values: '0+15x10'
+      - series: 'vllm:time_to_first_token_seconds_bucket{model_name="m1", instance="b", pod="p2", engine="0", le="0.5"}'
+        values: '0+30x10'
+      - series: 'gateway_requests_total{model="m1", code="200", route="chat", instance="g1", pod="g1"}'
+        values: '0+90x10'
+      - series: 'gateway_requests_total{model="m1", code="503", route="chat", instance="g1", pod="g1"}'
+        values: '0+10x10'
+      - series: 'gateway_requests_total{model="m2", code="200", route="chat", instance="g1", pod="g1"}'
+        values: '0+30x10'
+      - series: 'tenant_tokens_total{tenant="acme", model="m1", direction="out", instance="g1", pod="g1"}'
+        values: '0+300x130'
+      - series: 'tenant_tokens_total{tenant="acme", model="m1", direction="out", instance="g2", pod="g2"}'
+        values: '0+300x130'
+      - series: 'scrape_series_added{job="vllm", instance="a"}'
+        values: '100 100 100 100 100 100 100 100 100 100 100'
+      - series: 'scrape_series_added{job="vllm", instance="b"}'
+        values: '200 200 200 200 200 200 200 200 200 200 200'
+      - series: 'up{job="vllm", instance="a"}'
+        values: '1 1 1 1'
+      - series: 'up{job="vllm", instance="b"}'
+        values: '0 0 0 0'
+    promql_expr_test:
+      - expr: model_name:vllm_num_requests_waiting:sum
+        eval_time: 1m
+        exp_samples:
+          - labels: 'model_name:vllm_num_requests_waiting:sum{model_name="m1"}'
+            value: 7
+          - labels: 'model_name:vllm_num_requests_waiting:sum{model_name="m2"}'
+            value: 1
+      - expr: model_name:vllm_kv_cache_usage_perc:max
+        eval_time: 1m
+        exp_samples:
+          - labels: 'model_name:vllm_kv_cache_usage_perc:max{model_name="m1"}'
+            value: 0.9
+      # (15 + 30) per 30 s = 1.5 per second across both pods.
+      - expr: model_name:vllm_time_to_first_token_seconds_bucket:rate5m
+        eval_time: 5m
+        exp_samples:
+          - labels: 'model_name:vllm_time_to_first_token_seconds_bucket:rate5m{model_name="m1", le="0.5"}'
+            value: 1.5
+      # 5xx share for m1 is 10 / (90 + 10) = 0.1. Model m2 has no 5xx series, so its ratio is 0.
+      - expr: model:gateway_requests_5xx_per_requests:ratio_rate5m
+        eval_time: 5m
+        exp_samples:
+          - labels: 'model:gateway_requests_5xx_per_requests:ratio_rate5m{model="m1"}'
+            value: 0.1
+          - labels: 'model:gateway_requests_5xx_per_requests:ratio_rate5m{model="m2"}'
+            value: 0
+      # Two gateway pods, 300 tokens per 30 s each: 20 tokens per second in total.
+      - expr: tenant_model:tenant_tokens:rate5m
+        eval_time: 10m
+        exp_samples:
+          - labels: 'tenant_model:tenant_tokens:rate5m{tenant="acme", model="m1", direction="out"}'
+            value: 20
+      - expr: tenant:tenant_tokens:increase1h
+        eval_time: 1h
+        exp_samples:
+          - labels: 'tenant:tenant_tokens:increase1h{tenant="acme"}'
+            value: 72000
+      # Pod b is down, pod a is up, so half the targets are healthy.
+      - expr: job:up:avg
+        eval_time: 1m
+        exp_samples:
+          - labels: 'job:up:avg{job="vllm"}'
+            value: 0.5
+    alert_rule_test:
+      - eval_time: 1m
+        alertname: Watchdog
+        exp_alerts:
+          - exp_labels:
+              severity: none
+            exp_annotations:
+              summary: Always firing. Page when this alert stops reaching the receiver.
+      - eval_time: 2m
+        alertname: ScrapeTargetDown
+        exp_alerts: []
+
+  - interval: 1m
+    name: collector_queue_and_refusals
+    input_series:
+      - series: 'otelcol_exporter_queue_size{job="otelcol", exporter="otlp"}'
+        values: '10 50 90 90 90 90 90 90 90'
+      - series: 'otelcol_exporter_queue_capacity{job="otelcol", exporter="otlp"}'
+        values: '100 100 100 100 100 100 100 100 100'
+      - series: 'otelcol_receiver_refused_spans{job="otelcol"}'
+        values: '0+60x8'
+      - series: 'otelcol_exporter_enqueue_failed_spans{job="otelcol"}'
+        values: '0x8'
+    alert_rule_test:
+      - eval_time: 3m
+        alertname: OtelExporterQueueNearlyFull
+        exp_alerts: []
+      - eval_time: 8m
+        alertname: OtelExporterQueueNearlyFull
+        exp_alerts:
+          - exp_labels:
+              severity: page
+              job: otelcol
+              exporter: otlp
+            exp_annotations:
+              summary: Exporter queue above 80 percent. Next step is dropped data.
+      - eval_time: 8m
+        alertname: OtelReceiverRefusingData
+        exp_alerts:
+          - exp_labels:
+              severity: page
+              job: otelcol
+            exp_annotations:
+              summary: Collector is refusing spans. Senders may be dropping data.
+      - eval_time: 8m
+        alertname: OtelExporterEnqueueFailing
+        exp_alerts: []
+
+  - interval: 1m
+    name: churn_and_remote_write
+    input_series:
+      - series: 'scrape_series_added{job="vllm", instance="a"}'
+        values: '5000x20'
+      - series: 'scrape_series_added{job="vllm", instance="b"}'
+        values: '5000x20'
+      - series: 'prometheus_remote_storage_samples_pending{url="x"}'
+        values: '0+1000x30'
+    alert_rule_test:
+      - eval_time: 20m
+        alertname: SeriesChurnHigh
+        exp_alerts:
+          - exp_labels:
+              severity: ticket
+              job: vllm
+            exp_annotations:
+              summary: A job is creating many new series. Look for a new unbounded label.
+      - eval_time: 25m
+        alertname: RemoteWriteFallingBehind
+        exp_alerts:
+          - exp_labels:
+              severity: page
+              url: x
+            exp_annotations:
+              summary: Remote write backlog keeps growing. Data older than 2 hours is lost after WAL compaction.

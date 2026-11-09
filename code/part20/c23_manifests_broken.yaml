@@ -1,0 +1,155 @@
+# Chapter 20.23: the broken states behind the drills. Every object is schema-valid.
+# The faults are in the meaning, so kubeconform passes them and the cluster does not.
+# Drill 1: the GPU node pool is tainted, the pod has no toleration, so it stays Pending.
+apiVersion: v1
+kind: Pod
+metadata:
+  name: llama-gpu
+  namespace: serving
+spec:
+  containers:
+    - name: llama
+      image: registry.example/llama:v1
+      resources:
+        limits:
+          nvidia.com/gpu: 1
+---
+# Drills 3, 8, 9: liveness with no startup probe, a Service selector that matches nothing,
+# and an HPA that targets CPU utilisation on containers that request no CPU.
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: llm-server
+  namespace: serving
+spec:
+  replicas: 3
+  selector:
+    matchLabels:
+      app: llm-server
+  template:
+    metadata:
+      labels:
+        app: llm-server
+    spec:
+      tolerations:
+        - key: nvidia.com/gpu
+          operator: Exists
+          effect: NoSchedule
+      containers:
+        - name: server
+          image: registry.example/llm-server:v3
+          ports:
+            - name: http
+              containerPort: 8000
+          resources:
+            limits:
+              memory: 8Gi
+              nvidia.com/gpu: 1
+          livenessProbe:
+            httpGet:
+              path: /health
+              port: http
+            initialDelaySeconds: 5
+            periodSeconds: 10
+            failureThreshold: 1
+          readinessProbe:
+            httpGet:
+              path: /health
+              port: http
+            periodSeconds: 5
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: llm-server
+  namespace: serving
+spec:
+  selector:
+    app: llm-serv
+  ports:
+    - port: 80
+      targetPort: http
+---
+apiVersion: autoscaling/v2
+kind: HorizontalPodAutoscaler
+metadata:
+  name: llm-server
+  namespace: serving
+spec:
+  scaleTargetRef:
+    apiVersion: apps/v1
+    kind: Deployment
+    name: llm-server
+  minReplicas: 3
+  maxReplicas: 12
+  metrics:
+    - type: Resource
+      resource:
+        name: cpu
+        target:
+          type: Utilization
+          averageUtilization: 70
+---
+# Drill 6: minAvailable equals replicas, so no voluntary eviction is ever allowed.
+apiVersion: policy/v1
+kind: PodDisruptionBudget
+metadata:
+  name: llm-server
+  namespace: serving
+spec:
+  minAvailable: 3
+  selector:
+    matchLabels:
+      app: llm-server
+---
+# Drill 10: the device plugin DaemonSet does not tolerate the GPU taint.
+apiVersion: apps/v1
+kind: DaemonSet
+metadata:
+  name: gpu-device-plugin
+  namespace: kube-system
+spec:
+  selector:
+    matchLabels:
+      name: gpu-device-plugin
+  template:
+    metadata:
+      labels:
+        name: gpu-device-plugin
+    spec:
+      containers:
+        - name: plugin
+          image: registry.example/gpu-device-plugin:v1
+          volumeMounts:
+            - name: device-plugins
+              mountPath: /var/lib/kubelet/device-plugins
+      volumes:
+        - name: device-plugins
+          hostPath:
+            path: /var/lib/kubelet/device-plugins
+---
+# Drill 12: a mutating webhook that fails closed, matches every namespace, and so also
+# matches the Pods of its own Deployment and of kube-system.
+apiVersion: admissionregistration.k8s.io/v1
+kind: MutatingWebhookConfiguration
+metadata:
+  name: policy-defaults
+webhooks:
+  - name: defaults.policy.example.com
+    rules:
+      - apiGroups: [""]
+        apiVersions: ["v1"]
+        operations: ["CREATE"]
+        resources: ["pods"]
+        scope: "Namespaced"
+    clientConfig:
+      service:
+        namespace: policy-system
+        name: policy-webhook
+        path: /mutate
+        port: 8443
+      caBundle: Q0FfUExBQ0VIT0xERVI=
+    admissionReviewVersions: ["v1"]
+    sideEffects: None
+    timeoutSeconds: 30
+    failurePolicy: Fail

@@ -1,0 +1,60 @@
+# code/part20/c20_vllm_drain.yaml
+# Settings that make scale-down safe for streaming responses. The image tag is a placeholder.
+# Check the shutdown flag of your vLLM version with: vllm serve --help
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: vllm-llama
+  namespace: llm
+spec:
+  replicas: 3
+  selector:
+    matchLabels:
+      app: vllm-llama
+  template:
+    metadata:
+      labels:
+        app: vllm-llama
+    spec:
+      terminationGracePeriodSeconds: 180
+      containers:
+        - name: vllm
+          image: vllm/vllm-openai:REPLACE_WITH_PINNED_TAG
+          ports:
+            - containerPort: 8000
+          resources:
+            limits:
+              nvidia.com/gpu: 1
+          lifecycle:
+            preStop:
+              sleep:
+                seconds: 15
+          startupProbe:
+            httpGet:
+              path: /health
+              port: 8000
+            periodSeconds: 10
+            failureThreshold: 60
+          readinessProbe:
+            httpGet:
+              path: /health
+              port: 8000
+            periodSeconds: 5
+            failureThreshold: 2
+          livenessProbe:
+            httpGet:
+              path: /health
+              port: 8000
+            periodSeconds: 30
+            failureThreshold: 6
+---
+apiVersion: policy/v1
+kind: PodDisruptionBudget
+metadata:
+  name: vllm-llama
+  namespace: llm
+spec:
+  maxUnavailable: 1
+  selector:
+    matchLabels:
+      app: vllm-llama

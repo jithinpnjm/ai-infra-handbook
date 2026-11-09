@@ -1,0 +1,7 @@
+{"current": {"vllm:num_requests_waiting": 40, "vllm:num_requests_running": 128,
+  "vllm:kv_cache_usage_perc": 0.99, "vllm:num_preemptions@rate": 3.2,
+  "vllm:inter_token_latency_seconds@p99": 0.35,
+  "vllm:time_to_first_token_seconds@p99": 6.0, "vllm:generation_tokens@rate": 1800,
+  "sig:max_num_seqs": 128},
+ "baseline": {"vllm:inter_token_latency_seconds@p99": 0.04,
+  "vllm:time_to_first_token_seconds@p99": 0.8}}

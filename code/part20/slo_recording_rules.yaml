@@ -1,0 +1,65 @@
+# Gateway SLIs. Metric names gateway_requests_total and gateway_ttft_seconds
+# are this chapter's own design, not vLLM or Nebius names.
+# Bad availability = 5xx. Bad TTFT = slower than the 1.0 s bucket.
+# "or ... * 0" keeps the ratio at 0 when no 5xx series exists yet.
+groups:
+  - name: slo_gateway_availability
+    interval: 30s
+    rules:
+      - record: model:gateway_error_ratio:rate5m
+        expr: |
+          (sum by (model) (rate(gateway_requests_total{code=~"5.."}[5m]))
+            or 0 * sum by (model) (rate(gateway_requests_total[5m])))
+          / sum by (model) (rate(gateway_requests_total[5m]))
+      - record: model:gateway_error_ratio:rate30m
+        expr: |
+          (sum by (model) (rate(gateway_requests_total{code=~"5.."}[30m]))
+            or 0 * sum by (model) (rate(gateway_requests_total[30m])))
+          / sum by (model) (rate(gateway_requests_total[30m]))
+      - record: model:gateway_error_ratio:rate1h
+        expr: |
+          (sum by (model) (rate(gateway_requests_total{code=~"5.."}[1h]))
+            or 0 * sum by (model) (rate(gateway_requests_total[1h])))
+          / sum by (model) (rate(gateway_requests_total[1h]))
+      - record: model:gateway_error_ratio:rate6h
+        expr: |
+          (sum by (model) (rate(gateway_requests_total{code=~"5.."}[6h]))
+            or 0 * sum by (model) (rate(gateway_requests_total[6h])))
+          / sum by (model) (rate(gateway_requests_total[6h]))
+      - record: tenant_model:gateway_error_ratio:rate6h
+        expr: |
+          (sum by (tenant, model) (rate(gateway_requests_total{code=~"5.."}[6h]))
+            or 0 * sum by (tenant, model) (rate(gateway_requests_total[6h])))
+          / sum by (tenant, model) (rate(gateway_requests_total[6h]))
+      - record: tenant_model:gateway_error_ratio:rate3d
+        expr: |
+          (sum by (tenant, model) (rate(gateway_requests_total{code=~"5.."}[3d]))
+            or 0 * sum by (tenant, model) (rate(gateway_requests_total[3d])))
+          / sum by (tenant, model) (rate(gateway_requests_total[3d]))
+  - name: slo_gateway_ttft
+    interval: 30s
+    rules:
+      - record: model:gateway_ttft_slow_ratio:rate5m
+        expr: |
+          1 - sum by (model) (rate(gateway_ttft_seconds_bucket{le="1.0"}[5m]))
+          / sum by (model) (rate(gateway_ttft_seconds_count[5m]))
+      - record: model:gateway_ttft_slow_ratio:rate30m
+        expr: |
+          1 - sum by (model) (rate(gateway_ttft_seconds_bucket{le="1.0"}[30m]))
+          / sum by (model) (rate(gateway_ttft_seconds_count[30m]))
+      - record: model:gateway_ttft_slow_ratio:rate1h
+        expr: |
+          1 - sum by (model) (rate(gateway_ttft_seconds_bucket{le="1.0"}[1h]))
+          / sum by (model) (rate(gateway_ttft_seconds_count[1h]))
+      - record: model:gateway_ttft_slow_ratio:rate6h
+        expr: |
+          1 - sum by (model) (rate(gateway_ttft_seconds_bucket{le="1.0"}[6h]))
+          / sum by (model) (rate(gateway_ttft_seconds_count[6h]))
+      - record: model:gateway_ttft_slow_ratio:rate3d
+        expr: |
+          1 - sum by (model) (rate(gateway_ttft_seconds_bucket{le="1.0"}[3d]))
+          / sum by (model) (rate(gateway_ttft_seconds_count[3d]))
+      - record: model:gateway_ttft_seconds:p99_5m
+        expr: |
+          histogram_quantile(0.99,
+            sum by (model, le) (rate(gateway_ttft_seconds_bucket[5m])))

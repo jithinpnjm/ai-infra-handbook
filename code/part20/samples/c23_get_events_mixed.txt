@@ -1,0 +1,5 @@
+LAST SEEN   TYPE      REASON             OBJECT                    MESSAGE
+2m          Warning   FailedScheduling   pod/frontend              0/42 nodes available: insufficient cpu
+90s         Warning   Evicted            pod/batch-7c5d            The node was low on resource: memory. 
+60s         Warning   FailedCreate       replicaset/api-5d8        Error creating: Internal error occurred: failed calling webhook "policy.example.com": Post "https://policy.kube-system.svc:443/validate": dial tcp 10.0.0.7:443: connect: connection refused
+30s         Normal    NodeNotReady       node/kube-worker-1        Node kube-worker-1 status is now: NodeNotReady

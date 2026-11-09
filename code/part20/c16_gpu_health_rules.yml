@@ -1,0 +1,111 @@
+# code/part20/c16_gpu_health_rules.yml
+# Metric names: dcgm-exporter 4.9.0 etc/default-counters.csv and kube-state-metrics
+# node-metrics docs. In that file the ECC, throttle and NVLink counters are
+# commented out. Enable them in your counters CSV before the matching alert can fire.
+# Thresholds are starting values for this chapter, not vendor figures.
+groups:
+  - name: gpu-node-health
+    rules:
+      - alert: GpuFallenOffBus
+        expr: max_over_time(DCGM_FI_DEV_XID_ERROR[5m]) == 79
+        labels: {severity: page, action: drain}
+        annotations:
+          summary: "Xid 79: a GPU is inaccessible over PCIe on {{ $labels.instance }}"
+          note: "DCGM_FI_DEV_XID_ERROR holds the last Xid seen, so it stays at 79 until another Xid or an exporter restart."
+
+      - alert: GpuXidDrainClass
+        expr: |
+          (max_over_time(DCGM_FI_DEV_XID_ERROR[5m]) == 48)
+          or (max_over_time(DCGM_FI_DEV_XID_ERROR[5m]) == 64)
+          or (max_over_time(DCGM_FI_DEV_XID_ERROR[5m]) == 74)
+          or (max_over_time(DCGM_FI_DEV_XID_ERROR[5m]) == 95)
+          or (max_over_time(DCGM_FI_DEV_XID_ERROR[5m]) == 119)
+          or (max_over_time(DCGM_FI_DEV_XID_ERROR[5m]) == 120)
+        labels: {severity: ticket, action: drain}
+        annotations:
+          summary: "Xid needing a GPU reset or reboot on {{ $labels.instance }}"
+
+      - alert: GpuMissingFromExporter
+        expr: count by (instance) (DCGM_FI_DEV_GPU_TEMP_CELSIUS) < 8
+        for: 5m
+        labels: {severity: page, action: drain}
+        annotations:
+          summary: "{{ $labels.instance }} reports fewer than 8 GPUs"
+          note: "The 8 is the GPU count of the assumed node type. Change it per pool."
+
+      - alert: GpuExporterDown
+        expr: up{job="dcgm-exporter"} == 0
+        for: 5m
+        labels: {severity: ticket}
+        annotations:
+          summary: "No GPU telemetry from {{ $labels.instance }}"
+
+      - alert: GpuPcieReplays
+        expr: increase(DCGM_FI_DEV_PCIE_REPLAY_TOTAL[1h]) > 10
+        labels: {severity: ticket, action: suspect}
+        annotations:
+          summary: "PCIe replays climbing on {{ $labels.instance }}"
+
+      - alert: GpuRowRemapFailed
+        expr: DCGM_FI_DEV_ROW_REMAP_FAILED == 1
+        labels: {severity: page, action: drain}
+        annotations:
+          summary: "GPU row remapping failed on {{ $labels.instance }}"
+
+      - alert: GpuEccDoubleBit
+        expr: increase(DCGM_FI_DEV_ECC_DBE_VOL_TOTAL[1h]) > 0
+        labels: {severity: page, action: drain}
+        annotations:
+          summary: "Double-bit ECC error on {{ $labels.instance }}"
+
+      - alert: GpuThermalThrottle
+        expr: rate(DCGM_FI_DEV_GPU_THERMAL_THROTTLE_SECONDS_TOTAL[10m]) > 0.1
+        for: 10m
+        labels: {severity: ticket, action: suspect}
+        annotations:
+          summary: "GPU below application clocks for thermal reasons on {{ $labels.instance }}"
+
+      - alert: GpuTemperatureHigh
+        expr: DCGM_FI_DEV_GPU_TEMP_CELSIUS > 85
+        for: 10m
+        labels: {severity: ticket, action: suspect}
+        annotations:
+          summary: "GPU above 85 C for 10 minutes on {{ $labels.instance }}"
+
+      - alert: GpuNvlinkCrcErrors
+        expr: increase(DCGM_FI_DEV_NVLINK_CRC_ERROR_TOTAL[1h]) > 0
+        labels: {severity: ticket, action: suspect}
+        annotations:
+          summary: "NVLink CRC errors on {{ $labels.instance }} (Hopper counter)"
+
+      - alert: FleetWideXid79
+        expr: count(max_over_time(DCGM_FI_DEV_XID_ERROR[10m]) == 79) >= 3
+        labels: {severity: page, action: freeze-automation}
+        annotations:
+          summary: "Three or more GPUs report Xid 79 at once. Suspect a shared cause, not three bad GPUs."
+
+  - name: gpu-fleet-capacity
+    rules:
+      - record: fleet:nodes_cordoned:ratio
+        expr: sum(kube_node_spec_unschedulable) / count(kube_node_spec_unschedulable)
+
+      - alert: FleetCordonedBudgetExceeded
+        expr: fleet:nodes_cordoned:ratio > 0.05
+        for: 15m
+        labels: {severity: page}
+        annotations:
+          summary: "More than 5 percent of nodes are cordoned. Automation should have stopped before this."
+
+      - alert: NodeCordonedTooLong
+        expr: kube_node_spec_unschedulable == 1
+        for: 24h
+        labels: {severity: ticket}
+        annotations:
+          summary: "{{ $labels.node }} cordoned for 24 hours: silent capacity loss"
+
+      - alert: NodeNotReadyTooLong
+        expr: kube_node_status_condition{condition="Ready",status="true"} == 0
+        for: 30m
+        labels: {severity: ticket}
+        annotations:
+          summary: "{{ $labels.node }} not Ready for 30 minutes"

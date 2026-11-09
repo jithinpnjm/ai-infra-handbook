@@ -1,0 +1,129 @@
+# Run: promtool test rules c25_trap_rules_test.yaml
+rule_files:
+  - c25_trap_rules.yaml
+  - c25_bad_rules.yaml
+evaluation_interval: 1m
+tests:
+  - name: queue spikes flap the bad alert but not the fixed one
+    interval: 1m
+    input_series:
+      - series: 'gateway_queue_depth{model="m1"}'
+        values: '0 0 600 0 0 700 0 0 0 0 800x12 0x10'
+    alert_rule_test:
+      - eval_time: 2m
+        alertname: QueueDeepNoFor
+        exp_alerts:
+          - exp_labels: {model: m1, severity: page}
+      - eval_time: 2m
+        alertname: QueueDeep
+        exp_alerts: []
+      - eval_time: 16m
+        alertname: QueueDeep
+        exp_alerts:
+          - exp_labels: {model: m1, severity: ticket}
+            exp_annotations:
+              summary: "m1 queue deeper than 500 for 5m"
+      # Queue back to 0 at 22m. keep_firing_for holds the alert for 3 more minutes.
+      - eval_time: 24m
+        alertname: QueueDeep
+        exp_alerts:
+          - exp_labels: {model: m1, severity: ticket}
+            exp_annotations:
+              summary: "m1 queue deeper than 500 for 5m"
+      - eval_time: 27m
+        alertname: QueueDeep
+        exp_alerts: []
+  - name: summing without by loses the model label
+    interval: 1m
+    input_series:
+      - series: 'gateway_errors_total{model="m1"}'
+        values: '0+300x20'
+    alert_rule_test:
+      - eval_time: 12m
+        alertname: ErrorsLostLabels
+        exp_alerts:
+          - exp_labels: {severity: page}
+            exp_annotations:
+              summary: " is erroring"
+  - name: error ratio alert keeps the model label and waits five minutes
+    interval: 1m
+    input_series:
+      - series: 'gateway_requests_total{model="m1",pod="a"}'
+        values: '0+100x30'
+      - series: 'gateway_requests_total{model="m1",pod="b"}'
+        values: '0+100x30'
+      - series: 'gateway_errors_total{model="m1",pod="a"}'
+        values: '0+20x30'
+      - series: 'gateway_errors_total{model="m1",pod="b"}'
+        values: '0+0x30'
+    alert_rule_test:
+      - eval_time: 3m
+        alertname: ErrorRatioHigh
+        exp_alerts: []
+      - eval_time: 15m
+        alertname: ErrorRatioHigh
+        exp_alerts:
+          - exp_labels: {model: m1, severity: page}
+            exp_annotations:
+              summary: "m1 error ratio above 5%"
+    promql_expr_test:
+      - expr: round(model:gateway_errors:ratio_rate5m, 0.001)
+        eval_time: 15m
+        exp_samples:
+          - labels: '{model="m1"}'
+            value: 0.1
+  - name: recorded p99 comes from summed buckets
+    interval: 1m
+    input_series:
+      - series: 'req_seconds_bucket{model="m1",pod="a",le="0.5"}'
+        values: '0+900x30'
+      - series: 'req_seconds_bucket{model="m1",pod="a",le="1"}'
+        values: '0+1000x30'
+      - series: 'req_seconds_bucket{model="m1",pod="a",le="2"}'
+        values: '0+1000x30'
+      - series: 'req_seconds_bucket{model="m1",pod="a",le="+Inf"}'
+        values: '0+1000x30'
+      - series: 'req_seconds_bucket{model="m1",pod="b",le="0.5"}'
+        values: '0+0x30'
+      - series: 'req_seconds_bucket{model="m1",pod="b",le="1"}'
+        values: '0+2x30'
+      - series: 'req_seconds_bucket{model="m1",pod="b",le="2"}'
+        values: '0+10x30'
+      - series: 'req_seconds_bucket{model="m1",pod="b",le="+Inf"}'
+        values: '0+10x30'
+    promql_expr_test:
+      - expr: round(model:req_seconds:p99, 0.001)
+        eval_time: 20m
+        exp_samples:
+          - labels: '{model="m1"}'
+            value: 0.99
+  - name: missing targets and a full cache with a queue
+    interval: 1m
+    input_series:
+      - series: 'up{job="vllm",pod="a"}'
+        values: '1x5 0x20'
+      - series: 'vllm:kv_cache_usage_perc{model_name="m1",pod="a"}'
+        values: '0.4x20 0.99x20'
+      - series: 'vllm:kv_cache_usage_perc{model_name="m1",pod="b"}'
+        values: '0.2x40'
+      - series: 'vllm:num_requests_waiting{model_name="m1",pod="a"}'
+        values: '0x20 12x20'
+    alert_rule_test:
+      - eval_time: 10m
+        alertname: VllmPodDown
+        exp_alerts:
+          - exp_labels: {job: vllm, pod: a, severity: ticket}
+            exp_annotations:
+              summary: "a is not scrapable"
+      - eval_time: 10m
+        alertname: VllmTargetsMissing
+        exp_alerts: []
+      - eval_time: 25m
+        alertname: KVCacheSaturated
+        exp_alerts: []
+      - eval_time: 35m
+        alertname: KVCacheSaturated
+        exp_alerts:
+          - exp_labels: {model_name: m1, severity: page}
+            exp_annotations:
+              summary: "m1 KV cache full and requests are queueing"

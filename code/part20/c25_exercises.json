@@ -1,0 +1,15 @@
+{"scrape_interval": "30s", "exercises": [
+ {"id": "E1", "bad": "rate(gateway_requests_total[30s])", "fix": "rate(gateway_requests_total[2m])", "lint": "P001"},
+ {"id": "E2", "bad": "irate(gateway_errors_total[5m]) > 1", "fix": "rate(gateway_errors_total[5m]) > 1", "lint": "P005", "kind": "alert"},
+ {"id": "E3", "bad": "queue_processed_total - queue_processed_total offset 10m", "fix": "increase(queue_processed_total[10m])", "lint": null},
+ {"id": "E4", "bad": "rate(sum(queue_processed_total)[5m:1m])", "fix": "sum(rate(queue_processed_total[5m]))", "lint": "P004"},
+ {"id": "E5", "bad": "histogram_quantile(0.99, sum by (pod) (rate(req_seconds_bucket[5m])))", "fix": "histogram_quantile(0.99, sum by (le) (rate(req_seconds_bucket[5m])))", "lint": "P002"},
+ {"id": "E6", "bad": "avg(histogram_quantile(0.99, sum by (pod, le) (rate(req_seconds_bucket[5m]))))", "fix": "histogram_quantile(0.99, sum by (le) (rate(req_seconds_bucket[5m])))", "lint": "P003"},
+ {"id": "E7", "bad": "absent(up{job=\"vllm\"})", "fix": "count(up{job=\"vllm\"}) < 2", "lint": null},
+ {"id": "E9", "bad": "vllm:num_requests_waiting * on (pod) kube_pod_info", "fix": "vllm:num_requests_waiting * on (pod) group_left (node) kube_pod_info", "lint": null},
+ {"id": "E11", "bad": "increase(gateway_restarts_total[10m]) == 1", "fix": "increase(gateway_restarts_total[10m]) > 0", "lint": null},
+ {"id": "E12", "bad": "rate(gateway_requests_total[5m]) offset 1h", "fix": "rate(gateway_requests_total[5m] offset 1h)", "lint": null},
+ {"id": "E13", "bad": "rate(vllm:num_requests_waiting[5m])", "fix": "avg_over_time(vllm:num_requests_waiting[5m])", "lint": "P006"},
+ {"id": "E14", "bad": "avg(vllm:kv_cache_usage_perc)", "fix": "max(vllm:kv_cache_usage_perc)", "lint": null},
+ {"id": "E15", "bad": "avg(rate(gateway_errors_total[5m]) / rate(gateway_requests_total[5m]))", "fix": "sum(rate(gateway_errors_total[5m])) / sum(rate(gateway_requests_total[5m]))", "lint": "P007"}
+]}

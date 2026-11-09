@@ -1,0 +1,51 @@
+# code/part20/c20_keda_vllm_scaledobject.yaml
+# KEDA ScaledObject with two Prometheus triggers. KEDA creates and owns the HPA, and the HPA takes
+# the largest replica count that any trigger asks for. Label selectors are examples.
+apiVersion: keda.sh/v1alpha1
+kind: ScaledObject
+metadata:
+  name: vllm-llama
+  namespace: llm
+spec:
+  scaleTargetRef:
+    name: vllm-llama
+  pollingInterval: 15
+  minReplicaCount: 3
+  maxReplicaCount: 16
+  fallback:
+    failureThreshold: 3
+    replicas: 6
+    behavior: currentReplicas
+  advanced:
+    horizontalPodAutoscalerConfig:
+      behavior:
+        scaleUp:
+          stabilizationWindowSeconds: 0
+          policies:
+            - type: Percent
+              value: 100
+              periodSeconds: 60
+        scaleDown:
+          stabilizationWindowSeconds: 900
+          selectPolicy: Min
+          policies:
+            - type: Pods
+              value: 1
+              periodSeconds: 180
+  triggers:
+    - type: prometheus
+      name: inflight
+      metricType: AverageValue
+      metadata:
+        serverAddress: http://prometheus.monitoring.svc:9090
+        query: sum(vllm:num_requests_running{namespace="llm",pod=~"vllm-llama-.*"}) + sum(vllm:num_requests_waiting{namespace="llm",pod=~"vllm-llama-.*"})
+        threshold: "11"
+        ignoreNullValues: "false"
+    - type: prometheus
+      name: kv_cache
+      metricType: Value
+      metadata:
+        serverAddress: http://prometheus.monitoring.svc:9090
+        query: avg(vllm:kv_cache_usage_perc{namespace="llm",pod=~"vllm-llama-.*"})
+        threshold: "0.8"
+        ignoreNullValues: "false"

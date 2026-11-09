@@ -1,0 +1,2 @@
+{"base":   {"requests": 5000, "ttft_p99_s": 0.8, "itl_p99_s": 0.04, "error_rate": 0.001, "length_share": 0.05, "quality": 0.90, "tokens_per_s": 4000},
+ "canary": {"requests": 400,  "ttft_p99_s": 0.8, "itl_p99_s": 0.04, "error_rate": 0.001, "length_share": 0.22, "quality": 0.84, "tokens_per_s": 3900}}

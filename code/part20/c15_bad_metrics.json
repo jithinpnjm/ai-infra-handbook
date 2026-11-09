@@ -1,0 +1,10 @@
+{
+  "families": [
+    {"name": "gateway_requests_total", "type": "counter",
+     "labels": {"tenant": 1000, "model": 20, "request_id": 5000000}, "targets": 12},
+    {"name": "gateway_latency_ms", "type": "histogram", "buckets": 30,
+     "labels": {"prompt_hash": 0}, "targets": 12},
+    {"name": "queue_depth_total", "type": "gauge", "labels": {"user_agent": 0}},
+    {"name": "jobs_done", "type": "counter", "labels": {"le": 3}}
+  ]
+}

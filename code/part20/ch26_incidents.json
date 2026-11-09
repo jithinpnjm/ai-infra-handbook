@@ -1,0 +1,314 @@
+{
+  "incidents": [
+    {
+      "id": "ttft-after-deploy", "number": 1, "kind": "inference",
+      "title": "TTFT spike after a deploy",
+      "opening": "At 14:05 the p99 time-to-first-token alert fired for the chat endpoint in eu-north. Users say the model 'thinks' for several seconds before it starts to answer. You are on call. Go.",
+      "questions": [
+        {"key": "impact", "keywords": ["impact", "affected", "customers", "users", "scope", "how many"], "answer": "All tenants on the eu-north chat endpoint. No errors, only slow first tokens. p99 TTFT is 4.1 s against a normal 0.6 s. p50 is 0.9 s against 0.5 s. Support has six tickets."},
+        {"key": "dashboard", "keywords": ["dashboard", "graph", "grafana", "overview", "golden"], "answer": "Request rate is flat. Error rate is 0.1%. TTFT is up and end-to-end latency is up. Inter-token latency is flat at about 25 ms. The waiting queue per replica rose from about 2 to about 30 at 13:55."},
+        {"key": "change", "keywords": ["change", "deploy", "release", "rollout", "recent", "push"], "answer": "A deploy finished at 13:50. It moved the router and the engine image together to all 12 replicas in ten minutes. There was no canary stage. The values file was also rewritten."},
+        {"key": "queue", "keywords": ["queue", "waiting", "num_requests_waiting", "backlog"], "answer": "vllm:num_requests_waiting is about 30 per replica. Running requests sit at the batch cap."},
+        {"key": "kv", "keywords": ["kv", "kv_cache", "cache usage", "memory"], "answer": "vllm:kv_cache_usage_perc is about 0.45. No preemption lines in the engine logs. No out-of-memory events."},
+        {"key": "prefix", "keywords": ["prefix", "hit rate", "cache hit", "prefix_cache"], "answer": "vllm:prefix_cache_hits divided by vllm:prefix_cache_queries fell from about 0.55 to about 0.03 at 13:52. The chat product sends the same 3,000-token system prompt on every request."},
+        {"key": "gpu", "keywords": ["gpu util", "utilization", "utilisation", "dcgm", "compute"], "answer": "GPU utilisation rose from about 70% to about 95%. The extra work is prefill."},
+        {"key": "prompts", "keywords": ["prompt length", "input length", "token count", "long prompt", "traffic mix"], "answer": "The input and output length distributions are unchanged from yesterday."},
+        {"key": "replicas", "keywords": ["per replica", "one replica", "all replicas", "uniform", "breakdown", "single pod"], "answer": "All 12 replicas look the same. It is not one bad pod."},
+        {"key": "errors", "keywords": ["error", "status code", "5xx", "429", "logs", "restart"], "answer": "No errors and no restarts. The logs show only normal request lines."},
+        {"key": "diff", "keywords": ["diff", "values", "config", "affinity", "routing", "router"], "answer": "The new router config lost the prefix-hash routing setting. Requests with the same prompt prefix are now spread across all replicas by round robin."}
+      ],
+      "must_ask": ["impact", "dashboard", "change", "queue", "prefix"],
+      "likely_first": ["deploy", "change", "release", "rollout", "config", "values"],
+      "root_cause": "The deploy removed prefix-aware routing. The prefix cache hit rate collapsed, every request redoes the 3,000-token prefill, and the queue grows.",
+      "root_cause_keywords": ["prefix", "cache", "routing", "affinity", "hit rate"],
+      "mitigations": [
+        {"key": "rollback", "points": 14, "any": ["rollback", "roll back", "rollout undo", "revert", "previous version", "previous revision"]},
+        {"key": "verify", "points": 6, "any": ["verify", "confirm it recovered", "watch ttft", "check ttft", "hit rate recover", "watch the hit rate"]}
+      ],
+      "destructive": [
+        {"any": ["restart all", "delete all pods", "kill all pods", "scale to zero"], "why": "restarting every replica at once empties every KV and prefix cache at the same moment, so TTFT gets worse"}
+      ],
+      "ideal_mitigation": "Roll back the deploy now with kubectl rollout undo, then watch TTFT and the prefix cache hit rate recover. Diff the values file afterwards.",
+      "scoring_notes": ["Strong answers ask what changed before touching anything.", "Scaling out is not a fix. New replicas start with an empty prefix cache."]
+    },
+    {
+      "id": "pool-shrinks-silently", "number": 2, "kind": "inference",
+      "title": "GPU pool shrinking silently",
+      "opening": "No alert fired. A customer on a dedicated endpoint says latency has crept up for three days and one request in fifty now times out. Your Kubernetes dashboard says everything is healthy. Go.",
+      "questions": [
+        {"key": "impact", "keywords": ["impact", "affected", "customers", "users", "scope", "how many"], "answer": "One dedicated endpoint, eight replicas of one model, one tenant. p99 latency rose from 2.0 s to 6.5 s over three days. About 2% of requests time out at peak."},
+        {"key": "dashboard", "keywords": ["dashboard", "graph", "grafana", "overview", "golden"], "answer": "Kubernetes view: desired 8, ready 8, no alerts. The per-replica request view shows only five replicas receiving traffic. Three show zero. The five run at 95% of their batch cap."},
+        {"key": "change", "keywords": ["change", "deploy", "release", "rollout", "recent", "push", "maintenance"], "answer": "No deploy for two weeks. A node pool maintenance event three days ago drained and replaced two GPU nodes."},
+        {"key": "pods", "keywords": ["pod", "restart", "get pods", "restarts"], "answer": "kubectl get pods shows all eight Running and Ready. Three pods show 38, 41 and 44 restarts since the maintenance event. The other five show 0."},
+        {"key": "probe", "keywords": ["liveness", "probe", "describe", "events"], "answer": "Events on the restarting pods say the liveness probe failed and the container will be restarted. The probe is an HTTP check with a 1 s timeout and a failure threshold of 1. During a large prefill the engine answers slowly."},
+        {"key": "router", "keywords": ["router", "pool", "membership", "registered", "discovery", "registration"], "answer": "The router admin view lists five registered workers. The three missing are the three restarting pods. Router logs say worker registration failed, upstream not ready, and no retry. Workers register once at startup."},
+        {"key": "readiness", "keywords": ["readiness", "ready"], "answer": "Readiness passes on all eight pods after warm-up. Kubernetes counts them as ready even though the router does not know about three of them."},
+        {"key": "gpu", "keywords": ["gpu", "dcgm", "utilization", "utilisation"], "answer": "Five GPUs busy at about 90%. Three idle after the first minute following each restart."},
+        {"key": "alerts", "keywords": ["alert", "why no alert", "monitoring", "monitor"], "answer": "Existing alerts watch pod readiness and the error rate. Nothing compares router pool size with desired replicas."},
+        {"key": "capacity", "keywords": ["spare", "headroom", "scale", "x+1", "capacity", "autoscal"], "answer": "The endpoint is set to min 8 and max 8 replicas. There is no spare."}
+      ],
+      "must_ask": ["impact", "dashboard", "pods", "probe", "router"],
+      "likely_first": ["capacity", "replica", "pool", "restart", "node", "maintenance"],
+      "root_cause": "An aggressive liveness probe restarts healthy workers during long prefills. After each restart the worker registers with the router once, fails, and never rejoins. Kubernetes says 8 of 8 while the router serves from 5.",
+      "root_cause_keywords": ["liveness", "registration", "router", "pool", "probe"],
+      "mitigations": [
+        {"key": "reregister", "points": 10, "any": ["re-register", "reregister", "reconcile", "rejoin", "re-add", "add the workers back", "refresh the pool"]},
+        {"key": "relax_probe", "points": 6, "any": ["relax liveness", "loosen liveness", "raise the probe timeout", "increase the timeout", "startup probe", "liveness timeout"]},
+        {"key": "alert", "points": 4, "any": ["alert on pool", "alert on router", "pool size alert", "add an alert", "pool-size"]}
+      ],
+      "destructive": [
+        {"any": ["restart all", "delete the deployment", "delete all pods", "disable all probes", "remove readiness"], "why": "restarting or deleting the whole pool removes the five workers that are still serving"}
+      ],
+      "ideal_mitigation": "Get the three workers back into the router one at a time, loosen the liveness probe so it stops killing busy workers, and add an alert on router pool size against desired replicas.",
+      "scoring_notes": ["Strong answers notice that ready in Kubernetes and registered in the router are two different facts.", "Do not remove the probes. Loosen the liveness probe and keep readiness."]
+    },
+    {
+      "id": "kv-pressure-429-storm", "number": 3, "kind": "inference",
+      "title": "KV-cache pressure and a 429 storm",
+      "opening": "The 429 rate on a dedicated endpoint is 22% and rising, and p99 latency has tripled. Traffic is 35% above the usual peak. Product asks whether to raise the rate limits. Go.",
+      "questions": [
+        {"key": "impact", "keywords": ["impact", "affected", "customers", "users", "scope", "how many"], "answer": "One dedicated endpoint, one model, three tenants. 22% of requests return 429. Tenants B and C are complaining. Tenant A is not."},
+        {"key": "dashboard", "keywords": ["dashboard", "graph", "grafana", "overview", "golden"], "answer": "Request rate is up 35%. 429 is 22%. Waiting queue per replica is about 70. KV cache usage is 98 to 100% on all six replicas. Pool output tokens per second fell 40% while requests rose."},
+        {"key": "change", "keywords": ["change", "deploy", "release", "rollout", "recent", "push", "new tenant", "traffic source"], "answer": "No deploy. Tenant A went live with a document-summarisation feature at 10:40."},
+        {"key": "source429", "keywords": ["429", "who returns", "gateway", "router", "rate limiter", "shed", "source"], "answer": "The gateway per-tenant limits are not hit and the remaining-quota headers look healthy. The 429s come from the router, which sheds load when every worker's queue is over its depth limit."},
+        {"key": "kv", "keywords": ["kv", "kv_cache", "cache usage", "preempt", "memory"], "answer": "KV usage is pinned at 98 to 100%. Engine logs show many preemptions. Preempted requests go back to the waiting queue and prefill again."},
+        {"key": "prompts", "keywords": ["prompt size", "input length", "traffic by prompt", "token", "long context", "context"], "answer": "Tenant A sends prompts of about 28,000 tokens at about 5 requests per second. Other tenants send about 1,000 tokens. The model allows 32,000."},
+        {"key": "throughput", "keywords": ["throughput", "tokens per second", "goodput", "gpu"], "answer": "Output tokens per second are down 40%. GPU utilisation is high. The GPUs are redoing work after preemptions."},
+        {"key": "retries", "keywords": ["retry", "retries", "client", "sdk"], "answer": "SDK clients retry a 429 up to three times and ignore Retry-After. Retries are about 30% of arrivals."},
+        {"key": "limits", "keywords": ["rpm", "tpm", "limit", "quota"], "answer": "Tenant A limit is 600 requests per minute and 10,000,000 tokens per minute. They use about 300 RPM and 8.4 million TPM, so they are inside both."},
+        {"key": "capacity", "keywords": ["scale", "replica", "add", "autoscal", "spare"], "answer": "Max replicas is 10 and six are running. A new replica takes about 12 minutes to become ready."}
+      ],
+      "must_ask": ["impact", "dashboard", "source429", "kv", "prompts"],
+      "likely_first": ["traffic", "load", "kv", "cache", "tenant", "capacity", "429"],
+      "root_cause": "One tenant's 28,000-token prompts exhaust the KV cache. The engine preempts and recomputes, throughput collapses, the queues fill, and the router sheds load. Client retries add to the storm.",
+      "root_cause_keywords": ["kv", "long", "context", "preempt", "tenant a", "prompt"],
+      "mitigations": [
+        {"key": "limit_tenant", "points": 9, "any": ["limit tenant a", "cap tenant a", "throttle tenant a", "token limit", "lower tpm", "cap long", "limit long prompts", "per-tenant"]},
+        {"key": "scale", "points": 5, "any": ["scale up", "add replicas", "raise max replicas", "add capacity"]},
+        {"key": "retry", "points": 3, "any": ["backoff", "retry-after", "retry budget", "tell clients"]},
+        {"key": "tenant_comms", "points": 3, "any": ["contact tenant", "tell tenant a", "notify tenant a", "talk to tenant a"]}
+      ],
+      "destructive": [
+        {"any": ["remove all rate limits", "disable rate limits", "disable shedding", "raise the queue limit", "increase queue depth limit"], "why": "the router shedding is protecting the pool, and removing it turns 429s into timeouts and out-of-memory kills"},
+        {"any": ["restart all", "delete all pods"], "why": "a restart empties all in-flight work and makes the 429s worse"}
+      ],
+      "ideal_mitigation": "Cap the long-prompt tenant by tokens per minute or concurrent long requests, start scaling out knowing it takes 12 minutes, ask clients to honour Retry-After, and tell tenant A what you did.",
+      "scoring_notes": ["Strong answers separate who returns the 429 from why. A request-per-minute limit cannot see a long prompt. A token limit can.", "Saying 'raise the limits' is the wrong instinct. The pool is full."]
+    },
+    {
+      "id": "regional-partial-outage-retries", "number": 4, "kind": "inference",
+      "title": "Regional partial outage with retry amplification",
+      "opening": "Error rate on the eu-west regional endpoint is 15% and climbing. User traffic is flat. Gateways are at three times their normal CPU. Upstream request rate is four times the user request rate. Go.",
+      "questions": [
+        {"key": "impact", "keywords": ["impact", "affected", "customers", "users", "scope", "how many"], "answer": "eu-west only, all tenants. 15% of requests fail with 503 or time out. eu-north is fine. These tenants are bound to EU data residency."},
+        {"key": "dashboard", "keywords": ["dashboard", "graph", "grafana", "overview", "golden"], "answer": "Three zones, a, b and c. Zone b workers show errors and timeouts. Zones a and c are healthy but their queues are growing. User traffic is 1,000 requests per second. Gateway-to-router attempts are 4,000 per second."},
+        {"key": "change", "keywords": ["change", "deploy", "release", "rollout", "recent", "push", "provider"], "answer": "No deploys. The cloud provider status page shows a degraded network in zone b that started ten minutes ago."},
+        {"key": "retries", "keywords": ["retry", "retries", "attempt", "amplif", "budget"], "answer": "The SDK retries up to three times. The gateway retries failed upstream calls up to three times. The router retries on another worker up to three times. There is no retry budget. Backoff is a fixed 100 ms with no jitter."},
+        {"key": "zones", "keywords": ["zone", "az", "which", "isolate", "worker"], "answer": "Zone b holds 4 of 12 workers, all failing health checks intermittently on the network. Zones a and c hold 8 workers at 92% KV usage because they absorb the retries."},
+        {"key": "capacity", "keywords": ["capacity", "headroom", "x+1", "n+1", "spare"], "answer": "Zones a and c can carry the real user load at about 85% of capacity if the retries stop. They cannot carry user load plus four times the attempts."},
+        {"key": "failover", "keywords": ["failover", "other region", "us region", "eu-north", "region"], "answer": "eu-north has 15% headroom. A teammate proposes sending the overflow to the US region, which is idle. The affected tenants are bound to EU residency."},
+        {"key": "health", "keywords": ["health check", "probe", "liveness", "restart"], "answer": "Liveness probes on zone b workers flap. Kubernetes restarts some, and they come back and fail again."},
+        {"key": "lb", "keywords": ["load balancer", "drain", "weight", "traffic shift"], "answer": "You can set the zone b weight to zero at the load balancer with one command."},
+        {"key": "timeouts", "keywords": ["latency", "timeout", "deadline"], "answer": "Client, gateway and router timeouts are all 60 seconds."}
+      ],
+      "must_ask": ["impact", "dashboard", "change", "retries", "zones"],
+      "likely_first": ["zone", "network", "provider", "retry", "amplif"],
+      "root_cause": "A degraded zone b network started the failures. Unbudgeted retries at three layers multiplied the load, up to 4 x 4 x 4 = 64 attempts per user request, so the healthy zones saturated and a partial outage became a regional one.",
+      "root_cause_keywords": ["retry", "retries", "amplif", "zone"],
+      "mitigations": [
+        {"key": "stop_retries", "points": 8, "any": ["disable retries", "turn off retries", "retry budget", "cap retries", "reduce retries", "stop retries", "limit retries"]},
+        {"key": "drain_zone", "points": 8, "any": ["drain zone b", "weight zero", "remove zone b", "shift traffic away", "isolate zone b", "take zone b out"]},
+        {"key": "shed", "points": 4, "any": ["load shed", "shed load", "backpressure", "rate limit", "fail fast"]}
+      ],
+      "destructive": [
+        {"any": ["fail over to us", "send traffic to us", "us region", "us-east"], "why": "moving EU-resident traffic to the US region breaks the data residency promise"},
+        {"any": ["restart the gateways", "restart all gateways", "scale up the gateways"], "why": "restarting or adding gateways adds more retry load and drops in-flight work"}
+      ],
+      "ideal_mitigation": "Stop the amplification first by cutting or budgeting retries at the gateway and router. Drain zone b at the load balancer. Shed load early if zones a and c still saturate. Keep traffic inside the EU.",
+      "scoring_notes": ["Strong answers name the multiplication across layers and say which layer to cut first.", "Data residency is a hard constraint. Name it before anyone suggests a US failover."]
+    },
+    {
+      "id": "weights-download-cold-start", "number": 5, "kind": "inference",
+      "title": "Model weights download stuck at cold start",
+      "opening": "The autoscaler added four replicas of a 70B model 25 minutes ago because the existing four are saturated. None is Ready. The new pods show 0/1 and a rising restart count. Go.",
+      "questions": [
+        {"key": "impact", "keywords": ["impact", "affected", "customers", "users", "scope", "how many"], "answer": "One dedicated endpoint. Four ready replicas at 97% KV usage. p99 latency is up 2x and 5% of requests return 429. Traffic is a morning peak, 40% over yesterday."},
+        {"key": "dashboard", "keywords": ["dashboard", "graph", "grafana", "overview", "golden"], "answer": "Desired 8, ready 4. Waiting queue about 40 per ready replica. New pods are Running 0/1 with two or three restarts each."},
+        {"key": "change", "keywords": ["change", "deploy", "release", "rollout", "recent", "push", "node"], "answer": "No deploy. The autoscaler fired on queue depth. The four new pods landed on two GPU nodes that joined the pool 30 minutes ago."},
+        {"key": "logs", "keywords": ["log", "logs", "kubectl logs", "output"], "answer": "Pod logs say downloading shard 12 of 30. Then nothing for minutes. Then the container is killed and the log starts again at shard 1."},
+        {"key": "events", "keywords": ["event", "describe", "probe", "kill", "restart reason", "why restart"], "answer": "Events say the startup probe failed and the container will be restarted. The startup probe allows 10 minutes in total. The last termination reason is not out of memory."},
+        {"key": "speed", "keywords": ["download speed", "throughput", "bandwidth", "network", "egress", "rate"], "answer": "Each pod pulls at about 20 MB per second. The model is about 140 GB in 30 shards."},
+        {"key": "store", "keywords": ["object store", "bucket", "storage", "throttl", "503"], "answer": "The object store sends occasional throttle responses. The downloader backs off for a long time after each one."},
+        {"key": "cache", "keywords": ["cache", "volume", "pvc", "local ssd", "shared", "pre-pull", "warm"], "answer": "Weights are fetched from the object store at every container start into the container's own writable layer. There is no node-local cache and no shared volume. The new nodes have nothing warm."},
+        {"key": "history", "keywords": ["before", "last time", "previous scale", "how long did", "last week"], "answer": "Last week's scale-out used a node image with the weights pre-pulled and took about 6 minutes. The new nodes use the plain image."}
+      ],
+      "must_ask": ["impact", "dashboard", "logs", "events", "cache"],
+      "likely_first": ["download", "weights", "startup", "probe", "storage", "network", "image"],
+      "root_cause": "The new nodes have no local copy of the weights. A pod needs about 140,000 MB at 20 MB per second, which is 7,000 seconds or about two hours. The startup probe kills it at ten minutes and the download restarts from shard 1.",
+      "root_cause_keywords": ["download", "startup probe", "weights", "cold", "restart loop"],
+      "mitigations": [
+        {"key": "stop_loop", "points": 7, "any": ["raise the startup probe", "increase the startup probe", "extend the startup", "startup probe", "failure threshold", "stop the restart", "stop the loop"]},
+        {"key": "protect", "points": 7, "any": ["load shed", "shed", "rate limit", "per-tenant limit", "protect the existing", "prioritise", "prioritize"]},
+        {"key": "warm_cache", "points": 6, "any": ["pre-pull", "prepull", "shared volume", "local ssd", "node cache", "persistent volume", "mount the weights", "copy the weights"]}
+      ],
+      "destructive": [
+        {"any": ["delete the pods", "kubectl delete pod", "delete pods", "scale up more", "double the replicas"], "why": "deleting a pod restarts the download from shard 1, and more pods share the same slow object store path"}
+      ],
+      "ideal_mitigation": "Stop the restart loop by giving the startup probe enough time, protect the four ready replicas with load shedding or per-tenant limits, and fix the cold start with a pre-pulled or shared weights volume.",
+      "scoring_notes": ["Strong answers do the arithmetic: 140 GB at 20 MB per second is about two hours, far past a ten-minute probe.", "Adding more replicas makes it worse. Say why."]
+    },
+    {
+      "id": "disk-full-node", "number": 6, "kind": "general",
+      "title": "Disk full on a GPU node",
+      "opening": "Alert: DiskPressure on GPU node gpu-17. Two pods were evicted. A vLLM replica on it restarted and now crashes at start with 'No space left on device'. Get the node healthy. Go.",
+      "questions": [
+        {"key": "impact", "keywords": ["impact", "affected", "customers", "users", "scope", "how many"], "answer": "One node of a 40-node pool. One of 8 replicas of a dedicated endpoint is down. The endpoint serves on 7 of 8 with latency up 15%."},
+        {"key": "dashboard", "keywords": ["dashboard", "graph", "grafana", "overview", "golden"], "answer": "Node view: root filesystem 100% used. CPU and memory normal. Other nodes under 60% disk."},
+        {"key": "change", "keywords": ["change", "deploy", "release", "rollout", "recent", "push"], "answer": "Last night an engineer set VLLM_LOGGING_LEVEL=DEBUG on that replica to chase a stall. The Deployment was patched at 22:00."},
+        {"key": "df", "keywords": ["df", "space", "disk usage", "filesystem", "inode"], "answer": "df -h: 100G size, 100G used, 0 available, 100%. df -i: 12% of inodes used."},
+        {"key": "du", "keywords": ["du", "what is using", "largest", "biggest", "directory"], "answer": "du -xh --max-depth=2 /var shows /var/log/pods 18 GB and /var/lib/containerd 22 GB. That is about 40 GB, far less than the 100 GB that df reports as used."},
+        {"key": "deleted", "keywords": ["deleted", "lsof", "open file", "held", "link count"], "answer": "lsof +L1 shows the engine process holding /var/log/vllm/engine.log (deleted), 58 GB. A cleanup cron removed the file at 02:00. The process still writes to it."},
+        {"key": "node", "keywords": ["describe node", "conditions", "evict", "kubelet"], "answer": "describe node shows the DiskPressure condition true. The kubelet evicted two low-priority batch pods."},
+        {"key": "images", "keywords": ["weights", "model cache", "images", "containerd"], "answer": "/var/lib/containerd holds images and a 22 GB model cache that running replicas on the node use right now."},
+        {"key": "others", "keywords": ["other replicas", "drain", "cordon", "other pods", "schedul"], "answer": "Other pods on the node serve traffic. You may cordon the node."}
+      ],
+      "must_ask": ["impact", "dashboard", "df", "du", "deleted"],
+      "likely_first": ["disk", "log", "inode", "space", "deleted", "full"],
+      "root_cause": "Debug logging wrote 58 GB to a file that a cleanup job then deleted. The process still holds it open, so the space is not freed. du cannot see the file. df can.",
+      "root_cause_keywords": ["deleted", "open file", "lsof", "debug", "log"],
+      "mitigations": [
+        {"key": "cordon", "points": 4, "any": ["cordon"]},
+        {"key": "free_space", "points": 9, "any": ["truncate", "free the space", "/proc/", "close the file", "restart the process", "restart the replica", "release the file", "kill the holder"]},
+        {"key": "debug_off", "points": 4, "any": ["turn off debug", "disable debug", "info level", "revert the debug", "remove vllm_logging_level", "logging level"]},
+        {"key": "follow_up", "points": 3, "any": ["alert", "logrotate", "log rotation", "disk alert", "cleanup job"]}
+      ],
+      "destructive": [
+        {"any": ["rm -rf /var", "rm -rf /var/lib/containerd", "docker system prune", "crictl rmi", "prune all images", "rm -rf /var/log"], "why": "wiping images and the model cache slows recovery and does not free the file that is held open"}
+      ],
+      "ideal_mitigation": "Cordon the node, free the held file by restarting its holder or truncating through /proc, turn debug logging off, then add a disk alert and fix the cleanup job.",
+      "scoring_notes": ["Strong answers use the du versus df gap as the clue and say why it points to a deleted but open file.", "Check inodes too. Here they are fine, which rules out inode exhaustion."]
+    },
+    {
+      "id": "certificate-expiry", "number": 7, "kind": "general",
+      "title": "Certificate expiry",
+      "opening": "At 09:00 UTC the support queue fills with 'certificate has expired' from clients calling the public API. Your internal dashboards load fine. Go.",
+      "questions": [
+        {"key": "impact", "keywords": ["impact", "affected", "customers", "users", "scope", "how many"], "answer": "All external clients of api.example.test in every region fail. Internal traffic is fine. Clients that skip verification still work."},
+        {"key": "dashboard", "keywords": ["dashboard", "graph", "grafana", "overview", "golden"], "answer": "Request rate from strict clients fell to near zero at 09:00:00. Backend error rate is 0 because requests never arrive. The edge shows TLS handshake failures."},
+        {"key": "change", "keywords": ["change", "deploy", "release", "rollout", "recent", "push"], "answer": "No deploy. Nothing changed at 09:00 except the clock."},
+        {"key": "cert", "keywords": ["cert", "certificate", "openssl", "notafter", "expiry", "expire", "dates"], "answer": "openssl x509 -noout -enddate on the served certificate gives notAfter=Nov 9 08:59:59 2026 GMT. It was issued 90 days ago by an ACME CA through cert-manager."},
+        {"key": "renew", "keywords": ["renew", "cert-manager", "describe certificate", "challenge", "order"], "answer": "kubectl describe certificate shows Ready False. Renewal attempts have failed for 30 days. The order fails at the DNS-01 challenge with an authentication error from the DNS provider API."},
+        {"key": "why", "keywords": ["why", "credential", "dns provider", "token", "service account"], "answer": "The DNS provider API token used by the solver was rotated 31 days ago in the secrets manager. The cluster secret still holds the old token."},
+        {"key": "alert", "keywords": ["alert", "monitor", "days-to-expiry", "expiry alert"], "answer": "No alert on days to expiry. cert-manager failures were not routed to anyone."},
+        {"key": "others", "keywords": ["other certs", "internal", "kubeadm", "check-expiration", "inventory"], "answer": "kubeadm certs check-expiration shows the control plane certificates with over 200 days left. A wildcard certificate for the console expires in 6 days and uses the same renewal path."},
+        {"key": "workaround", "keywords": ["manual", "issue a cert", "emergency", "secret", "install"], "answer": "With a working token you can request a certificate manually and load it into the TLS Secret. The ingress controller reloads Secret changes."}
+      ],
+      "must_ask": ["impact", "dashboard", "cert", "renew", "why"],
+      "likely_first": ["certificate", "cert", "expire", "expiry", "tls"],
+      "root_cause": "The renewal has failed for 30 days because a rotated DNS provider token was never updated in the cluster. Nothing alerted on days to expiry.",
+      "root_cause_keywords": ["token", "renew", "dns", "credential", "cert-manager"],
+      "mitigations": [
+        {"key": "fix_and_renew", "points": 10, "any": ["fix the token", "update the token", "new token", "update the secret", "cmctl renew", "force renew", "trigger renewal", "renew the certificate"]},
+        {"key": "manual_cert", "points": 4, "any": ["manual cert", "emergency cert", "issue manually", "manually issue", "load the cert"]},
+        {"key": "verify", "points": 3, "any": ["verify", "openssl s_client", "s_client", "check from outside", "curl"]},
+        {"key": "others", "points": 3, "any": ["other cert", "console cert", "alert on expiry", "inventory", "6 days", "days-to-expiry"]}
+      ],
+      "destructive": [
+        {"any": ["disable tls verification", "insecure", "curl -k", "turn off tls", "http only", "skip verification"], "why": "telling clients to skip verification removes the protection the certificate gives and trains them to ignore it"},
+        {"any": ["delete the secret", "delete the certificate"], "why": "deleting the Secret makes the ingress fall back to a default certificate and the cert-manager docs do not recommend it for rotation"}
+      ],
+      "ideal_mitigation": "Update the DNS provider token, force a renewal with cmctl renew, verify from outside with openssl s_client, install an emergency manual certificate if renewal is slow, then fix the six-day certificate and add an expiry alert.",
+      "scoring_notes": ["Strong answers check the second certificate that expires in six days.", "Never tell customers to turn verification off."]
+    },
+    {
+      "id": "dns-intermittent-failures", "number": 8, "kind": "general",
+      "title": "DNS: intermittent resolution failures",
+      "opening": "Gateway pods log 'Temporary failure in name resolution' on about one request in twenty. It began 20 minutes ago. Overall traffic is normal. Go.",
+      "questions": [
+        {"key": "impact", "keywords": ["impact", "affected", "customers", "users", "scope", "how many"], "answer": "The gateway in one cluster. About 5% of requests fail with 502 because the token validation call cannot resolve its host. The inference path itself works."},
+        {"key": "dashboard", "keywords": ["dashboard", "graph", "grafana", "overview", "golden"], "answer": "Gateway errors 5%. CoreDNS has two replicas with CPU at the limit and throttled. Query rate is 12,000 per second, up from 3,000. DNS latency p99 is up to 2 s and some queries time out."},
+        {"key": "change", "keywords": ["change", "deploy", "release", "rollout", "recent", "push"], "answer": "A gateway release at 10:05 added a per-request call to an external identity provider, idp.example.test."},
+        {"key": "resolv", "keywords": ["resolv", "ndots", "search", "dnsconfig"], "answer": "The pod's /etc/resolv.conf has nameserver 10.0.0.10, three search domains and options ndots:5."},
+        {"key": "queries", "keywords": ["queries", "tcpdump", "coredns log", "what is being asked", "corefile"], "answer": "With the CoreDNS log plugin briefly on: for each lookup of idp.example.test the pod first asks for the name with each search suffix. Those return NXDOMAIN. Then the real name is asked."},
+        {"key": "coredns", "keywords": ["coredns pods", "replicas", "dns pods", "limits", "throttl"], "answer": "kubectl get pods -n kube-system -l k8s-app=kube-dns shows two Running. The CPU limit is 200m and the pods are throttled."},
+        {"key": "cache", "keywords": ["nodelocal", "cache", "node-local"], "answer": "There is no NodeLocal DNSCache."},
+        {"key": "upstream", "keywords": ["upstream", "forward", "external resolver"], "answer": "The upstream resolver is healthy. Queried directly from a node it answers in 5 ms."},
+        {"key": "test", "keywords": ["nslookup", "dig", "dnsutils", "test from"], "answer": "From a dnsutils pod, nslookup kubernetes.default works but sometimes takes 1.5 s. An external name alone sometimes times out."}
+      ],
+      "must_ask": ["impact", "dashboard", "change", "resolv", "queries"],
+      "likely_first": ["dns", "coredns", "resolver", "release", "change", "ndots"],
+      "root_cause": "The new per-request lookup of an external name, with ndots 5, multiplies each lookup into several queries. Throttled CoreDNS replicas cannot keep up, so some queries time out.",
+      "root_cause_keywords": ["ndots", "coredns", "search", "query", "queries", "throttl"],
+      "mitigations": [
+        {"key": "rollback_or_flag", "points": 6, "any": ["roll back", "rollback", "feature flag", "flag off", "disable the idp call"]},
+        {"key": "scale_coredns", "points": 6, "any": ["scale coredns", "more coredns", "add coredns", "coredns replicas", "raise the cpu limit", "cpu limit"]},
+        {"key": "fewer_queries", "points": 6, "any": ["trailing dot", "fqdn", "fully qualified", "ndots", "dnsconfig", "cache the lookup"]},
+        {"key": "nodelocal", "points": 2, "any": ["nodelocal", "node-local", "node local"]}
+      ],
+      "destructive": [
+        {"any": ["delete the coredns pods", "restart all coredns", "kubectl delete deployment coredns", "hardcode", "/etc/hosts"], "why": "removing every CoreDNS pod at once breaks DNS for the whole cluster, and hard-coded hosts entries go stale"}
+      ],
+      "ideal_mitigation": "Reduce the load: roll back or flag off the new lookup, scale CoreDNS and lift its CPU limit, and use a fully qualified name with a trailing dot or a lower ndots through dnsConfig. Plan NodeLocal DNSCache afterwards.",
+      "scoring_notes": ["Strong answers explain why one lookup becomes several queries.", "Test from a pod, not from your laptop. Pod DNS has its own resolver settings."]
+    },
+    {
+      "id": "etcd-latency", "number": 9, "kind": "general",
+      "title": "etcd latency",
+      "opening": "kubectl get takes eight seconds. Rollouts and the autoscaler are stalling. The API server logs 'etcdserver: request timed out'. Inference traffic is still being served. Go.",
+      "questions": [
+        {"key": "impact", "keywords": ["impact", "affected", "customers", "users", "scope", "how many"], "answer": "The control plane is degraded. Running pods keep serving. New pods are not created, autoscaling decisions are late and node status updates lag. If traffic spikes, the cluster cannot add capacity."},
+        {"key": "dashboard", "keywords": ["dashboard", "graph", "grafana", "overview", "golden"], "answer": "API server p99 request latency is 8 s. etcd had 6 leader changes in 30 minutes. wal_fsync_duration_seconds p99 is 180 ms on member 2 and about 6 ms on the others. Member 2 is the leader most of the time."},
+        {"key": "change", "keywords": ["change", "deploy", "release", "rollout", "recent", "push", "job", "cron"], "answer": "No deploys. A nightly backup job started at 02:00. The incident began at 02:05."},
+        {"key": "logs", "keywords": ["etcd log", "logs", "warning", "heartbeat", "apply"], "answer": "etcd logs on member 2 say failed to send out heartbeat on time and apply entries took too long. Leader elections follow."},
+        {"key": "disk", "keywords": ["disk", "iostat", "io", "fsync", "await", "util"], "answer": "iostat on member 2 shows the device at 100% utilisation with high write await. Member 2 shares that disk with API server logs, and the backup job writes a 40 GB copy to the same device."},
+        {"key": "db", "keywords": ["db size", "quota", "nospace", "alarm", "defrag"], "answer": "Database size is 3.1 GB against an 8 GB quota. etcdctl alarm list shows no alarms."},
+        {"key": "members", "keywords": ["members", "cluster health", "endpoint status", "quorum"], "answer": "Three members, all healthy, quorum intact. Only member 2 is slow."},
+        {"key": "layout", "keywords": ["colocated", "dedicated", "topology", "where does etcd run"], "answer": "etcd runs colocated with the API server on three control-plane VMs."},
+        {"key": "network", "keywords": ["network", "latency between", "rtt", "packet"], "answer": "Round trip between members is under 1 ms with no packet loss."}
+      ],
+      "must_ask": ["impact", "dashboard", "change", "logs", "disk"],
+      "likely_first": ["disk", "fsync", "backup", "job", "io", "etcd"],
+      "root_cause": "The nightly backup writes 40 GB to the same disk as the etcd leader's write-ahead log. Fsync latency is 180 ms against the 10 ms the etcd FAQ asks for, so heartbeats are missed and leadership flaps.",
+      "root_cause_keywords": ["backup", "disk", "fsync", "io", "job"],
+      "mitigations": [
+        {"key": "stop_job", "points": 10, "any": ["stop the backup", "kill the backup", "pause the backup", "cancel the backup", "stop the job", "suspend the cronjob", "suspend the job"]},
+        {"key": "verify", "points": 4, "any": ["verify", "fsync", "watch the fsync", "leader changes stop"]},
+        {"key": "follow_up", "points": 6, "any": ["dedicated disk", "move the backup", "separate disk", "reschedule the backup", "throttle the backup", "ionice", "dedicated etcd"]}
+      ],
+      "destructive": [
+        {"any": ["defrag", "restart etcd", "delete the member", "remove the member", "restart all etcd", "member remove", "rm -rf /var/lib/etcd"], "why": "defragmenting a live member blocks reads and writes, and restarting or removing members forces more elections"}
+      ],
+      "ideal_mitigation": "Stop the backup job competing for the leader's disk, confirm fsync p99 and leader changes settle, then move the backup to its own disk or throttle it. Do not defragment or restart members during the incident.",
+      "scoring_notes": ["Strong answers say that running pods keep serving but nothing can change, and what that means for autoscaling.", "Defragmentation is the classic wrong move. It blocks the member."]
+    },
+    {
+      "id": "bad-config-push", "number": 10, "kind": "general",
+      "title": "Bad config push",
+      "opening": "It is 11:44. The 5xx rate at the API gateway is 100% in eu-north and climbing in eu-west. A config sync from the GitOps automation finished at 11:42. You are on call. Go.",
+      "questions": [
+        {"key": "impact", "keywords": ["impact", "affected", "customers", "users", "scope", "how many"], "answer": "All tenants in eu-north see 100% 503. eu-west is at 30% and rising. The US regions are not affected yet."},
+        {"key": "dashboard", "keywords": ["dashboard", "graph", "grafana", "overview", "golden"], "answer": "The gateway returns 503 with no healthy upstream for every model. Workers are healthy and idle. The request rate reaching workers in eu-north dropped to zero."},
+        {"key": "change", "keywords": ["change", "deploy", "release", "rollout", "recent", "push", "sync"], "answer": "Yes. A config sync at 11:42 changed the routing table. It rolled to eu-north, then eu-west at 11:44, and the US regions are scheduled for 11:50. There is no canary stage. A bot account merged it from a generator."},
+        {"key": "diff", "keywords": ["diff", "commit", "what changed", "git", "pr", "routing table"], "answer": "The generated routing file has an empty upstreams list for every model. The generator read an empty service-discovery export and treated it as no workers. Validation passed because an empty list is valid."},
+        {"key": "pipeline", "keywords": ["pipeline", "automation", "sync", "schedule", "stop", "pause"], "answer": "The sync can be paused with one click in the GitOps controller. The next region is scheduled in six minutes."},
+        {"key": "lastgood", "keywords": ["last known good", "previous commit", "revert", "rollback available"], "answer": "The previous commit is known good and was deployed three days ago."},
+        {"key": "access", "keywords": ["access", "out-of-band", "kubectl", "break glass"], "answer": "You have cluster access and the GitOps UI is up."},
+        {"key": "workers", "keywords": ["workers", "backends", "engine"], "answer": "Workers are healthy and ready with no restarts."}
+      ],
+      "must_ask": ["impact", "dashboard", "change", "diff", "pipeline"],
+      "likely_first": ["config", "sync", "push", "change", "routing"],
+      "root_cause": "A generator turned an empty service-discovery export into a routing table with no upstreams. The pipeline had no canary, so the empty list reached every region in minutes.",
+      "root_cause_keywords": ["empty", "generator", "routing", "upstream", "config", "canary"],
+      "mitigations": [
+        {"key": "pause", "points": 8, "any": ["pause the sync", "stop the rollout", "pause the pipeline", "freeze", "halt the rollout", "suspend the sync", "stop the sync"]},
+        {"key": "revert", "points": 9, "any": ["revert", "roll back", "rollback", "previous commit", "last known good"]},
+        {"key": "verify", "points": 3, "any": ["verify", "confirm 200", "check the gateway", "watch the error rate"]}
+      ],
+      "destructive": [
+        {"any": ["edit the live config", "edit the configmap", "patch the live", "kubectl edit", "delete the gateway", "force push", "delete the deployment"], "why": "editing live config fights the GitOps controller, which will overwrite it, and deleting the gateway removes the last working pieces"}
+      ],
+      "ideal_mitigation": "Pause the sync before the next region, revert to the last known good commit through the same pipeline, verify the 503 rate falls in each region, then add validation and a canary stage.",
+      "scoring_notes": ["Stopping the spread comes before the revert. Strong answers say both in that order.", "Fix forward is wrong under pressure. Revert."]
+    }
+  ]
+}

@@ -1,0 +1,16 @@
+10|/sev 2
+15|/roles I am incident commander, Sam is ops, Lee posts comms
+25|what is the impact
+35|show me the dashboard
+50|what changed, any deploy
+60|/hyp the deploy changed something
+70|what is the prefix cache hit rate
+80|show the waiting queue
+90|/hyp prefix cache hit rate collapsed after the router change
+100|/do roll back the deploy with kubectl rollout undo
+110|/status impact is slow first token, rolling back now
+400|/status rollback done, TTFT recovering
+700|/do verify the hit rate recovers
+900|/status recovered, writing the post-mortem
+1000|/cause the router lost prefix routing
+1100|/done

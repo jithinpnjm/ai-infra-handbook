@@ -1,0 +1,207 @@
+# Run: promtool test rules c25_exercises_test.yaml
+# Each group feeds a few synthetic series, then asserts the WRONG query and the FIXED query.
+# Series use 1m steps unless the group says 30s.
+evaluation_interval: 1m
+tests:
+  - name: E1 window shorter than two scrapes returns nothing
+    interval: 30s
+    input_series:
+      - series: 'gateway_requests_total{model="m1"}'
+        values: '0+30x40'
+    promql_expr_test:
+      - expr: rate(gateway_requests_total{model="m1"}[30s])
+        eval_time: 10m
+        exp_samples: []
+      - expr: round(rate(gateway_requests_total{model="m1"}[2m]), 0.01)
+        eval_time: 10m
+        exp_samples:
+          - labels: '{model="m1"}'
+            value: 1
+      - expr: round(rate(gateway_requests_total{model="m1"}[2m] offset 5m), 0.01)
+        eval_time: 10m
+        exp_samples:
+          - labels: '{model="m1"}'
+            value: 1
+  - name: E2 irate misses a burst that rate still sees
+    interval: 1m
+    input_series:
+      - series: 'gateway_errors_total{model="m1"}'
+        values: '0x20 100x20'
+    promql_expr_test:
+      - expr: irate(gateway_errors_total{model="m1"}[5m])
+        eval_time: 24m
+        exp_samples:
+          - labels: '{model="m1"}'
+            value: 0
+      - expr: round(rate(gateway_errors_total{model="m1"}[5m]), 0.01)
+        eval_time: 24m
+        exp_samples:
+          - labels: '{model="m1"}'
+            value: 0.33
+  - name: E3 subtracting a counter breaks on a restart
+    interval: 1m
+    input_series:
+      - series: 'queue_processed_total{pod="a"}'
+        values: '0+10x10 0+10x10'
+    promql_expr_test:
+      - expr: queue_processed_total{pod="a"} - queue_processed_total{pod="a"} offset 10m
+        eval_time: 15m
+        exp_samples:
+          - labels: '{pod="a"}'
+            value: -10
+      - expr: increase(queue_processed_total{pod="a"}[10m])
+        eval_time: 15m
+        exp_samples:
+          - labels: '{pod="a"}'
+            value: 88.88888888888889
+  - name: E4 a subquery over a sum hides one pod's restart
+    interval: 1m
+    input_series:
+      - series: 'queue_processed_total{pod="a"}'
+        values: '0+10x10 0+10x10'
+      - series: 'queue_processed_total{pod="b"}'
+        values: '0+100x21'
+    promql_expr_test:
+      - expr: round(rate(sum(queue_processed_total)[5m:1m]), 0.01)
+        eval_time: 12m
+        exp_samples:
+          - value: 1.38
+      - expr: round(sum(rate(queue_processed_total[5m])), 0.01)
+        eval_time: 12m
+        exp_samples:
+          - value: 1.79
+  - name: E5 and E6 histogram_quantile needs le, and percentiles do not average
+    interval: 1m
+    input_series:
+      - series: 'req_seconds_bucket{pod="a",le="0.5"}'
+        values: '0+900x30'
+      - series: 'req_seconds_bucket{pod="a",le="1"}'
+        values: '0+1000x30'
+      - series: 'req_seconds_bucket{pod="a",le="2"}'
+        values: '0+1000x30'
+      - series: 'req_seconds_bucket{pod="a",le="+Inf"}'
+        values: '0+1000x30'
+      - series: 'req_seconds_bucket{pod="b",le="0.5"}'
+        values: '0+0x30'
+      - series: 'req_seconds_bucket{pod="b",le="1"}'
+        values: '0+2x30'
+      - series: 'req_seconds_bucket{pod="b",le="2"}'
+        values: '0+10x30'
+      - series: 'req_seconds_bucket{pod="b",le="+Inf"}'
+        values: '0+10x30'
+    promql_expr_test:
+      - expr: histogram_quantile(0.99, sum(rate(req_seconds_bucket[5m])))
+        eval_time: 20m
+        exp_samples: []
+      - expr: histogram_quantile(0.99, sum by (pod) (rate(req_seconds_bucket[5m])))
+        eval_time: 20m
+        exp_samples: []
+      - expr: round(histogram_quantile(0.99, sum by (le) (rate(req_seconds_bucket[5m]))), 0.001)
+        eval_time: 20m
+        exp_samples:
+          - value: 0.99
+      - expr: avg(histogram_quantile(0.99, sum by (pod, le) (rate(req_seconds_bucket[5m]))))
+        eval_time: 20m
+        exp_samples:
+          - value: 1.46875
+  - name: E7 absent only fires when the whole selector is empty
+    interval: 1m
+    input_series:
+      - series: 'up{job="vllm",pod="a"}'
+        values: '1x30'
+      - series: 'up{job="vllm",pod="b"}'
+        values: '1x10 stale'
+    promql_expr_test:
+      - expr: absent(up{job="vllm"})
+        eval_time: 20m
+        exp_samples: []
+      - expr: count(up{job="vllm"}) < 2
+        eval_time: 20m
+        exp_samples:
+          - value: 1
+      - expr: absent(up{job="nope"})
+        eval_time: 20m
+        exp_samples:
+          - labels: '{job="nope"}'
+            value: 1
+  - name: E9 many-to-one join needs group_left
+    interval: 1m
+    input_series:
+      - series: 'vllm:num_requests_waiting{pod="a",engine="0"}'
+        values: '3x30'
+      - series: 'vllm:num_requests_waiting{pod="a",engine="1"}'
+        values: '5x30'
+      - series: 'kube_pod_info{pod="a",node="n1"}'
+        values: '1x30'
+    promql_expr_test:
+      - expr: vllm:num_requests_waiting * on (pod) group_left (node) kube_pod_info
+        eval_time: 10m
+        exp_samples:
+          - labels: '{pod="a",engine="0",node="n1"}'
+            value: 3
+          - labels: '{pod="a",engine="1",node="n1"}'
+            value: 5
+  - name: E11 increase is extrapolated and not an integer
+    interval: 1m
+    input_series:
+      - series: 'gateway_restarts_total{pod="a"}'
+        values: '10x5 11x25'
+    promql_expr_test:
+      - expr: increase(gateway_restarts_total[10m]) == 1
+        eval_time: 12m
+        exp_samples: []
+      - expr: round(increase(gateway_restarts_total[10m]), 0.01) > 0
+        eval_time: 12m
+        exp_samples:
+          - labels: '{pod="a"}'
+            value: 1.11
+  - name: E13 and E14 a gauge needs a gauge function and max shows saturation
+    interval: 1m
+    input_series:
+      - series: 'vllm:num_requests_waiting{pod="a"}'
+        values: '7x30'
+      - series: 'vllm:kv_cache_usage_perc{pod="a"}'
+        values: '0.3x30'
+      - series: 'vllm:kv_cache_usage_perc{pod="b"}'
+        values: '0.3x30'
+      - series: 'vllm:kv_cache_usage_perc{pod="c"}'
+        values: '1x30'
+    promql_expr_test:
+      - expr: rate(vllm:num_requests_waiting[5m])
+        eval_time: 10m
+        exp_samples:
+          - labels: '{pod="a"}'
+            value: 0
+      - expr: avg_over_time(vllm:num_requests_waiting[5m])
+        eval_time: 10m
+        exp_samples:
+          - labels: '{pod="a"}'
+            value: 7
+      - expr: avg(vllm:kv_cache_usage_perc)
+        eval_time: 10m
+        exp_samples:
+          - value: 0.5333333333333333
+      - expr: max(vllm:kv_cache_usage_perc)
+        eval_time: 10m
+        exp_samples:
+          - value: 1
+  - name: E15 never average a ratio
+    interval: 1m
+    input_series:
+      - series: 'gateway_requests_total{pod="a"}'
+        values: '0+2x30'
+      - series: 'gateway_errors_total{pod="a"}'
+        values: '0+1x30'
+      - series: 'gateway_requests_total{pod="b"}'
+        values: '0+998x30'
+      - series: 'gateway_errors_total{pod="b"}'
+        values: '0+1x30'
+    promql_expr_test:
+      - expr: avg(rate(gateway_errors_total[5m]) / rate(gateway_requests_total[5m]))
+        eval_time: 20m
+        exp_samples:
+          - value: 0.250501002004008
+      - expr: sum(rate(gateway_errors_total[5m])) / sum(rate(gateway_requests_total[5m]))
+        eval_time: 20m
+        exp_samples:
+          - value: 0.002

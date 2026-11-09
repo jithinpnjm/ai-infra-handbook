@@ -1,0 +1,17 @@
+Name:         model-server-7d9f
+Namespace:    default
+Status:       Pending
+Node:         gpu-node-3/10.0.0.9
+Containers:
+  server:
+    Image:      registry.example/llm-server:v3
+    State:      Waiting
+      Reason:   ImagePullBackOff
+    Ready:      False
+    Restart Count:  0
+Events:
+  Type     Reason   Age   From     Message
+  ----     ------   ----  ----     -------
+  Normal   Pulling  4m    kubelet  Pulling image "registry.example/llm-server:v3"
+  Warning  Failed   2m    kubelet  Error: ErrImagePull
+  Normal   BackOff  1m    kubelet  Back-off pulling image "registry.example/llm-server:v3"

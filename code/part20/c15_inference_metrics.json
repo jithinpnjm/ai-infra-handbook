@@ -1,0 +1,21 @@
+{
+  "scrape_interval_s": 30,
+  "retention_s": 1296000,
+  "limits": {"total_budget": 2000000},
+  "families": [
+    {"name": "vllm:time_to_first_token_seconds", "type": "histogram", "buckets": 22,
+     "labels": {"model_name": 1, "engine": 1}, "targets": 400},
+    {"name": "vllm:num_requests_waiting", "type": "gauge",
+     "labels": {"model_name": 1, "engine": 1}, "targets": 400},
+    {"name": "vllm:request_success_total", "type": "counter",
+     "labels": {"model_name": 1, "engine": 1, "finished_reason": 4}, "targets": 400},
+    {"name": "gateway_requests_total", "type": "counter",
+     "labels": {"model": 20, "code": 8, "route": 5}, "targets": 12},
+    {"name": "gateway_request_duration_seconds", "type": "histogram", "buckets": 14,
+     "labels": {"model": 20, "route": 5}, "targets": 12},
+    {"name": "DCGM_FI_DEV_GPU_UTIL", "type": "gauge",
+     "labels": {"gpu": 8, "modelName": 1, "pod": 1}, "targets": 400},
+    {"name": "tenant_tokens_total", "type": "counter",
+     "labels": {"tenant": 1000, "model": 20, "direction": 2}, "fill": 0.1, "targets": 1}
+  ]
+}

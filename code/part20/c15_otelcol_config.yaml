@@ -1,0 +1,77 @@
+# code/part20/c15_otelcol_config.yaml
+# Two collector tiers in one file for reading. Field names come from the
+# OpenTelemetry Collector contrib READMEs for load balancing exporter,
+# tail sampling processor, memory limiter and batch processor.
+# Not run against a collector binary. Check with your collector version.
+
+# Tier 1: edge agents. Receive OTLP, protect memory, batch, then route by trace ID.
+---
+receivers:
+  otlp:
+    protocols:
+      grpc:
+        endpoint: 0.0.0.0:4317
+processors:
+  memory_limiter:            # first in every pipeline so backpressure reaches senders
+    check_interval: 1s
+    limit_mib: 1500
+    spike_limit_mib: 300
+  batch:
+    send_batch_size: 8192
+    timeout: 200ms
+exporters:
+  load_balancing:
+    routing_key: traceID     # every span of a trace goes to the same tier-2 pod
+    protocol:
+      otlp:
+        timeout: 5s
+    resolver:
+      dns:
+        hostname: otelcol-sampler-headless.observability.svc.cluster.local
+service:
+  pipelines:
+    traces:
+      receivers: [otlp]
+      processors: [memory_limiter, batch]
+      exporters: [load_balancing]
+
+# Tier 2: samplers. Hold whole traces in memory until a decision is made.
+---
+receivers:
+  otlp:
+    protocols:
+      grpc:
+        endpoint: 0.0.0.0:4317
+processors:
+  memory_limiter:
+    check_interval: 1s
+    limit_mib: 6000
+    spike_limit_mib: 1200
+  tail_sampling:
+    decision_wait: 30s
+    num_traces: 200000
+    expected_new_traces_per_sec: 5000
+    policies:
+      - name: keep-errors
+        type: status_code
+        status_code: {status_codes: [ERROR]}
+      - name: keep-slow
+        type: latency
+        latency: {threshold_ms: 5000}
+      - name: keep-some-healthy
+        type: probabilistic
+        probabilistic: {sampling_percentage: 1}
+  batch:
+    send_batch_size: 8192
+    timeout: 200ms
+exporters:
+  otlp:
+    endpoint: tempo-distributor.observability.svc.cluster.local:4317
+    sending_queue:
+      enabled: true
+service:
+  pipelines:
+    traces:
+      receivers: [otlp]
+      processors: [memory_limiter, tail_sampling, batch]
+      exporters: [otlp]

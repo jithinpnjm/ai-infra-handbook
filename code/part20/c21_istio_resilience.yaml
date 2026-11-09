@@ -1,0 +1,43 @@
+# Example retry, timeout and ejection settings for a vLLM-style inference Service.
+# Numbers are illustrative starting points from chapter 20.21, not Nebius settings.
+# Istio has no retry budget field. maxRetries below caps concurrent retries only.
+apiVersion: networking.istio.io/v1
+kind: VirtualService
+metadata:
+  name: llm-chat
+  namespace: inference
+spec:
+  hosts:
+    - llm-chat.inference.svc.cluster.local
+  http:
+    - route:
+        - destination:
+            host: llm-chat.inference.svc.cluster.local
+      # Whole-request limit, retries included. Streams must fit inside it.
+      timeout: 300s
+      retries:
+        attempts: 1             # one retry, so at most 2 tries
+        perTryTimeout: 20s      # time to first byte, before any output is sent
+        retryOn: connect-failure,refused-stream,reset-before-request,503
+        backoff: 100ms          # minimum wait, the base of exponential backoff
+---
+apiVersion: networking.istio.io/v1
+kind: DestinationRule
+metadata:
+  name: llm-chat
+  namespace: inference
+spec:
+  host: llm-chat.inference.svc.cluster.local
+  trafficPolicy:
+    loadBalancer:
+      simple: LEAST_REQUEST
+    connectionPool:
+      http:
+        http1MaxPendingRequests: 64
+        http2MaxRequests: 512
+        maxRetries: 3
+    outlierDetection:
+      consecutive5xxErrors: 5
+      interval: 10s
+      baseEjectionTime: 30s
+      maxEjectionPercent: 25

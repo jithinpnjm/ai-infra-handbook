@@ -1,0 +1,29 @@
+# TTFT SLO: 99 percent of requests start streaming within 1.0 s.
+# Budget 0.01, so thresholds are 14.4 x 0.01 = 0.144, 6 x 0.01 = 0.06, 0.01.
+groups:
+  - name: slo_ttft_burn
+    rules:
+      - alert: GatewayTTFTBurnFast
+        expr: |
+          model:gateway_ttft_slow_ratio:rate1h > 0.144
+          and model:gateway_ttft_slow_ratio:rate5m > 0.144
+        labels: {severity: page, slo: ttft}
+        annotations:
+          summary: "{{ $labels.model }} TTFT burns 2% of budget per hour"
+          runbook: "runbooks/ttft.md"
+      - alert: GatewayTTFTBurnSlow
+        expr: |
+          model:gateway_ttft_slow_ratio:rate6h > 0.06
+          and model:gateway_ttft_slow_ratio:rate30m > 0.06
+        labels: {severity: page, slo: ttft}
+        annotations:
+          summary: "{{ $labels.model }} TTFT burns 5% of budget in 6 hours"
+          runbook: "runbooks/ttft.md"
+      - alert: GatewayTTFTBudgetDrain
+        expr: |
+          model:gateway_ttft_slow_ratio:rate3d > 0.01
+          and model:gateway_ttft_slow_ratio:rate6h > 0.01
+        labels: {severity: ticket, slo: ttft}
+        annotations:
+          summary: "{{ $labels.model }} TTFT spends budget at 1x"
+          runbook: "runbooks/ttft.md"

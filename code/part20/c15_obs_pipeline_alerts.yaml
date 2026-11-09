@@ -1,0 +1,58 @@
+# code/part20/c15_obs_pipeline_alerts.yaml
+# Alerts on the monitoring pipeline itself. Metric names come from the
+# OpenTelemetry Collector internal telemetry page and the Prometheus
+# remote write page. Thresholds are starting points, not measured values.
+groups:
+  - name: c15_pipeline_health
+    rules:
+      # Dead man's switch: always firing. If it stops arriving, the alerting path is broken.
+      - alert: Watchdog
+        expr: vector(1)
+        labels:
+          severity: none
+        annotations:
+          summary: Always firing. Page when this alert stops reaching the receiver.
+      - alert: OtelReceiverRefusingData
+        expr: sum by (job) (rate(otelcol_receiver_refused_spans[5m])) > 0
+        for: 5m
+        labels:
+          severity: page
+        annotations:
+          summary: Collector is refusing spans. Senders may be dropping data.
+      - alert: OtelExporterQueueNearlyFull
+        expr: |
+          max by (job, exporter)
+            (otelcol_exporter_queue_size / otelcol_exporter_queue_capacity) > 0.8
+        for: 5m
+        labels:
+          severity: page
+        annotations:
+          summary: Exporter queue above 80 percent. Next step is dropped data.
+      - alert: OtelExporterEnqueueFailing
+        expr: sum by (job) (rate(otelcol_exporter_enqueue_failed_spans[5m])) > 0
+        for: 2m
+        labels:
+          severity: page
+        annotations:
+          summary: Spans are being dropped because the sending queue is full.
+      - alert: RemoteWriteFallingBehind
+        expr: deriv(prometheus_remote_storage_samples_pending[15m]) > 0
+        for: 15m
+        labels:
+          severity: page
+        annotations:
+          summary: Remote write backlog keeps growing. Data older than 2 hours is lost after WAL compaction.
+      - alert: SeriesChurnHigh
+        expr: job:scrape_series_added:sum_over_time5m > 20000
+        for: 10m
+        labels:
+          severity: ticket
+        annotations:
+          summary: A job is creating many new series. Look for a new unbounded label.
+      - alert: ScrapeTargetDown
+        expr: job:up:avg < 0.9
+        for: 10m
+        labels:
+          severity: ticket
+        annotations:
+          summary: More than 10 percent of a job's targets are not being scraped.

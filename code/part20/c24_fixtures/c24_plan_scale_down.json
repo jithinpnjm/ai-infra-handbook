@@ -1,0 +1,39 @@
+{
+ "format_version": "1.2",
+ "terraform_version": "1.10.4",
+ "resource_changes": [
+  {
+   "address": "nebius_mk8s_v1_node_group.pool[\"gpu\"]",
+   "mode": "managed",
+   "type": "nebius_mk8s_v1_node_group",
+   "name": "pool",
+   "index": "gpu",
+   "provider_name": "registry.terraform.io/nebius/nebius",
+   "change": {
+    "actions": [
+     "update"
+    ],
+    "before": {
+     "id": "mk8snodegroup-e00demo",
+     "name": "demo-gpu",
+     "parent_id": "mk8scluster-e00demo",
+     "version": "1.31",
+     "fixed_node_count": 6
+    },
+    "after": {
+     "id": "mk8snodegroup-e00demo",
+     "name": "demo-gpu",
+     "parent_id": "mk8scluster-e00demo",
+     "version": "1.31",
+     "fixed_node_count": 2
+    },
+    "after_unknown": {},
+    "before_sensitive": {},
+    "after_sensitive": {}
+   }
+  }
+ ],
+ "applyable": true,
+ "complete": true,
+ "errored": false
+}
