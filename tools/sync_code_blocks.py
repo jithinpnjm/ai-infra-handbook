@@ -4,13 +4,13 @@ Run after editing code files. Blocks are rewritten as: first line '# code/partNN
 Files that cannot be shown whole (> 120 lines) are left alone and reported."""
 import re,glob,os,sys
 n=0
-for f in sorted(glob.glob('docs/part-1[6-9]-*/*.md')):
+for f in sorted(glob.glob('docs/part-1[6-9]-*/*.md')+glob.glob('docs/part-20-*/*.md')):
     s=open(f).read()
     def fix(m):
         global n
         lang,body=m.group(1),m.group(2)
         first=body.split('\n',1)[0]
-        p=re.match(r'\s*(?:#|//|--)\s*(code/part1[6-9]/[\w./-]+)',first)
+        p=re.match(r'\s*(?:#|//|--)\s*(code/part(?:1[6-9]|20)/[\w./-]+)',first)
         if not p or not os.path.exists(p[1]): return m.group(0)
         src=open(p[1]).read()
         if src.count('\n')>120: print('long, not synced:',p[1]); return m.group(0)
