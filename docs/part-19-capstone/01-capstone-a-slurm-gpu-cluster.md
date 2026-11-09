@@ -25,7 +25,7 @@ lab_venue: "On-prem"
 
 ## Why this matters for AI infrastructure
 
-It is 2 a.m. A 24-hour training run has just died, and the on-call engineer is staring at a cluster that, by every individual check, looks healthy. `slurmd` reports every node idle. The dashboards show GPU allocation near saturation. But fairshare never fired, so one team's 500-job hyperparameter sweep quietly consumed the entire cluster. And two co-scheduled jobs on the same node just corrupted each other's results, because neither was pinned to its own GPUs. Nothing is broken. The pieces are simply not integrated.
+It is 2 a.m. A 24-hour training run has just died, and the on-call engineer is staring at a cluster that, by every individual check, looks healthy. `sinfo` shows every node healthy. The dashboards show GPU allocation near saturation. But fairshare never fired, so one team's 500-job hyperparameter sweep quietly consumed the entire cluster. And two co-scheduled jobs on the same node just corrupted each other's results, because neither was pinned to its own GPUs. Nothing is broken. The pieces are simply not integrated.
 
 Every piece in that story has its own chapter. The installation lives in 6.7, the configuration in 6.8, the accounting policy in 6.9, and the GPU scheduling in 6.10. The job scripts are 6.11, the day-2 operations are 6.14 and 6.15, the GPU metrics are 17.4, and the incident response is 17.11. A team that has read all of them can describe each piece in isolation. The capstone exists to answer the harder question, which is what holds the pieces together.
 
@@ -125,12 +125,15 @@ sudo mysql -e "GRANT ALL ON slurm_acct_db.* TO 'slurm'@'localhost';"
 # /etc/slurm/slurmdbd.conf (key parts)
 cat > /etc/slurm/slurmdbd.conf <<'EOF'
 AuthType=auth/munge
+DbdHost=controller-1
+SlurmUser=slurm
 StorageType=accounting_storage/mysql
 StorageLoc=slurm_acct_db
 StorageHost=localhost
 StorageUser=slurm
 StoragePass=<strong-password>
 EOF
+sudo chown slurm:slurm /etc/slurm/slurmdbd.conf
 sudo chmod 600 /etc/slurm/slurmdbd.conf
 ```
 
@@ -167,40 +170,46 @@ SlurmdSpoolDir=/var/spool/slurm/d
 SlurmctldPort=6817
 SlurmdPort=6818
 
-# Containment: cgroup v2, jobs get real limits
+# Containment: put every job step in a cgroup (limits are set in cgroup.conf below)
 ProctrackType=proctrack/cgroup
 TaskPlugin=task/cgroup,task/none
-CgroupPlugin=cgroup/v2
-ConstrainCores=yes
-ConstrainRAMSpace=yes
-ConstrainDevices=yes
 
 # Accounting (see Section 2 for the slurmdbd side)
 AccountingStorageType=accounting_storage/slurmdbd
 AccountingStorageHost=controller-1
+JobAcctGatherType=jobacct_gather/cgroup
 JobAcctGatherFrequency=30
 
 # GPU inventory
-GresTypes=gpu,shard
+GresTypes=gpu
 NodeName=compute-[001-003] CPUs=128 RealMemory=756000 Gres=gpu:h100:8 \
     Sockets=2 CoresPerSocket=32 ThreadsPerCore=2 State=UNKNOWN
 
 # Partitions (policy in Section 4)
-PartitionName=cpu Nodes=compute-001 Default=YES MaxTime=INFINITE State=UP
-PartitionName=gpu Nodes=compute-[002-003] MaxTime=72:00:00 State=UP
+PartitionName=gpu Nodes=compute-[001-003] Default=YES MaxTime=72:00:00 State=UP
+```
+
+Containment limits live in a second file, `/etc/slurm/cgroup.conf`, which every compute node needs. Putting these lines in `slurm.conf` is a common mistake, and Slurm will not read them from there.
+
+```ini
+# /etc/slurm/cgroup.conf
+CgroupPlugin=cgroup/v2
+ConstrainCores=yes
+ConstrainRAMSpace=yes
+ConstrainDevices=yes
 ```
 
 Walk the groups. Identity: `ClusterName` must be unique across your site, `SlurmctldHost` names the controller, and `AuthType=auth/munge` is the default, which is why Munge runs on every node from Section 1. State: `StateSaveLocation` holds controller state and must be writable by `SlurmUser`; `SlurmdSpoolDir` is the per-node spool. The default ports are 6817 for the controller and 6818 for the daemons, so explicit port lines are documentation more than configuration.
 
-Containment: `ProctrackType=proctrack/cgroup` and `TaskPlugin=task/cgroup,task/none` put every job step inside a cgroup, and `CgroupPlugin=cgroup/v2` selects the unified hierarchy. The three `Constrain*` parameters are where the copy-paste incident from the opening gets fixed. All three default to `no`, which means a job is not actually limited to what it asked for unless you say otherwise. A job requesting 80 GB can wander into its neighbour's memory and pull both down with it. In a shared GPU cluster all three are `yes`, and Chapter 6.8 gives the full reasoning on cgroup containment and Chapter 6.10 on GPU device pinning.
+Containment: `ProctrackType=proctrack/cgroup` and `TaskPlugin=task/cgroup,task/none` put every job step inside a cgroup, and the matching `cgroup.conf` selects the unified hierarchy with `CgroupPlugin=cgroup/v2`. The three `Constrain*` parameters in that file are where the copy-paste incident from the opening gets fixed. All three default to `no` in `cgroup.conf`, which means a job is not actually limited to what it asked for unless you say otherwise. A job requesting 80 GB can wander into its neighbour's memory and pull both down with it. In a shared GPU cluster all three are `yes`, and Chapter 6.8 gives the full reasoning on cgroup containment and Chapter 6.10 on GPU device pinning.
 
-Accounting: the `AccountingStorage*` lines connect to the plane built in Section 2, and `JobAcctGatherFrequency=30` sets the task sampling interval to 30 seconds. That sampling is what makes per-job CPU and memory reports meaningful, so a cluster that wants fairshare decisions it can trust leaves it on.
+Accounting: the `AccountingStorage*` lines connect to the plane built in Section 2, and `JobAcctGatherType=jobacct_gather/cgroup` turns on usage collection. `JobAcctGatherFrequency=30` sets the task sampling interval to 30 seconds. The frequency setting does nothing without the type. That sampling is what makes per-job CPU and memory reports meaningful, so a cluster that wants fairshare decisions it can trust leaves it on.
 
-Inventory: the `NodeName` line is the hardware declaration. `CPUs` is the total logical cores, `RealMemory` is the memory in MB that the scheduler will actually commit, and the `Gres=gpu:h100:8` tail declares the GPUs as generic resources of type `h100`. `Sockets`, `CoresPerSocket`, and `ThreadsPerCore` describe the topology, and they feed NUMA-aware placement. Use `RealMemory`, not the older `Memory` field, and set it a few percent below physical RAM so the kernel is never starved. Verify it against the actual node with `free` before you trust it.
+Inventory: the `NodeName` line is the hardware declaration. `CPUs` is the total logical cores, `RealMemory` is the memory in MB that the scheduler will actually commit, and the `Gres=gpu:h100:8` tail declares the GPUs as generic resources of type `h100`. `Sockets`, `CoresPerSocket`, and `ThreadsPerCore` describe the topology, and they feed NUMA-aware placement. Set `RealMemory` a few percent below physical RAM so the kernel is never starved. Verify it against the actual node with `free` before you trust it.
 
 **Decision rule:** treat `slurm.conf` as the contract between hardware reality and the scheduler; when a node generation changes, re-derive the `NodeName` line from the new hardware instead of copying it.
 
-**In one minute:** `slurm.conf` has five groups. Identity and state come first, then cgroup v2 containment with all three `Constrain*` flags set to `yes`. Accounting is wired to `slurmdbd`, the GPU GRES inventory lives in the `NodeName` lines, and the partition definitions close the file. Defaults that bite are `Constrain* = no` and no accounting backend, so both must be set explicitly on a shared cluster.
+**In one minute:** `slurm.conf` has five groups. Identity and state come first, then process tracking in cgroups, with the three `Constrain*` limits set to `yes` in the separate `cgroup.conf`. Accounting is wired to `slurmdbd`, the GPU GRES inventory lives in the `NodeName` lines, and the partition definitions close the file. Defaults that bite are `Constrain* = no` and no accounting backend, so both must be set explicitly on a shared cluster.
 
 ---
 
@@ -212,7 +221,7 @@ A research team launches a 500-job hyperparameter sweep on a Tuesday morning. Ea
 
 ### Partitions: the hard boundaries
 
-Partitions are the hard grouping of nodes, and this capstone uses two: a `cpu` partition for the controller-adjacent node and a `gpu` partition for the compute fleet. The partition attributes you set are `Nodes`, `Default`, `MaxTime`, and `State`. A `MaxTime` of 72 hours on the GPU partition is a policy choice, documented as such in the ledger, that protects the fleet from a forgotten 30-day job.
+Partitions are the hard grouping of nodes, and this capstone uses two: a single `gpu` partition that holds all three compute nodes. A cluster with CPU-only nodes would add a second partition for them. The partition attributes you set are `Nodes`, `Default`, `MaxTime`, and `State`. A `MaxTime` of 72 hours on the GPU partition is a policy choice, documented as such in the ledger, that protects the fleet from a forgotten 30-day job.
 
 The states are where the subtlety lives, and they matter in an incident. `UP` is normal. `DOWN` still accepts job submissions but starts nothing, which is wrong for a dead node because you want the queue honest about what will run. `DRAIN` is the working state for a suspect node: it rejects new submissions while letting already-queued jobs run on other nodes. Chapter 6.14 uses these states in its operations chapter. Here they are part of the cluster's policy vocabulary, and the on-call engineer must know which one means "I can still submit to this partition."
 
@@ -256,7 +265,7 @@ Two teams submit single-GPU jobs to the same 8-GPU node on the same afternoon. B
 
 ### GRES with NVML autodetect
 
-GPUs are generic resources, declared per node in the `Gres=` tail of the `NodeName` line, as `Gres=gpu:h100:8` in Section 3. Chapter 6.10 builds this up in detail; the capstone keeps two settings from that chapter that are easy to lose. The first is `AutoDetect=nvml` on the compute nodes, which makes `slurmd` enumerate the GPUs it actually has instead of trusting a number that drifts. The second is `ConstrainDevices=yes`, which puts the allocated devices into the job's cgroup so the runtime can only see what was given to it. With both set, the corruption scenario from the opening cannot happen: the job's cgroup exposes exactly the devices Slurm allocated.
+GPUs are generic resources, declared per node in the `Gres=` tail of the `NodeName` line, as `Gres=gpu:h100:8` in Section 3. Chapter 6.10 builds this up in detail; the capstone keeps two settings from that chapter that are easy to lose. The first is `AutoDetect=nvml` on the compute nodes, which makes `slurmd` enumerate the GPUs it actually has instead of trusting a number that drifts. The second is `ConstrainDevices=yes` in `cgroup.conf`, which puts the allocated devices into the job's cgroup so the runtime can only see what was given to it. With both set, the corruption scenario from the opening cannot happen: the job's cgroup exposes exactly the devices Slurm allocated.
 
 A job requests GPUs with `--gres`:
 
@@ -287,11 +296,11 @@ Batch arrays cap out the same way as everywhere else in Slurm: `--array=0-31%8` 
 
 ### MIG: the same GRES machinery, smaller slices
 
-Multi-Instance Partitioning splits one physical GPU into isolated instances with their own memory and compute, and Slurm exposes those instances through the same GRES mechanism. Chapter 6.10 introduces the syntax; the capstone adds the operational constraints. An H100 with 80 GB of memory supports the instance profiles `1g.10gb`, `1g.20gb`, `2g.20gb`, `3g.40gb`, `4g.40gb`, and `7g.80gb`, and the cluster declares whichever mix it wants per node. With MIG on, the node line gains the shard type:
+Multi-Instance Partitioning splits one physical GPU into isolated instances with their own memory and compute, and Slurm exposes those instances through the same GRES mechanism. Chapter 6.10 introduces the syntax; the capstone adds the operational constraints. An H100 with 80 GB of memory supports the instance profiles `1g.10gb`, `1g.20gb`, `2g.20gb`, `3g.40gb`, `4g.40gb`, and `7g.80gb`, and the cluster declares whichever mix it wants per node. With MIG on, the node line lists each instance profile as its own GPU type:
 
 ```ini
 # Compute node with two 1g.10gb MIG instances reserved for small jobs
-GresTypes=gpu,shard
+GresTypes=gpu
 NodeName=compute-002 CPUs=128 RealMemory=756000 \
     Gres=gpu:h100:6,gpu:h100_1g.10gb:2 Sockets=2 CoresPerSocket=32 \
     ThreadsPerCore=2 State=UNKNOWN
@@ -511,7 +520,7 @@ If any of them takes longer, the cluster is not yet an operating service; go bac
 1. **Build the fairshare tree.** Create two accounts, `team-data-science` and `team-product`, each with a fairshare weight, and verify with `sacctmgr show account` that both are visible. *Solution sketch:* `sacctmgr add account name=team-product`, `sacctmgr modify account team-product set fairshare=80`, then `sacctmgr show account`.
 2. **Reserve nodes for a critical run.** Create a reservation named `launch-window` for two nodes starting tomorrow at 08:00 with a 6-hour duration, restricted to one user, and submit a job into it with `--reservation`. *Solution sketch:* `scontrol create reservation name=launch-window StartTime=2026-11-09T08:00:00 Duration=6:00:00 Users=alice NodeCnt=2`, then `sbatch --reservation=launch-window -N 2 job.sh`.
 3. **Cap a sweep.** Submit a 32-task array that never runs more than 8 tasks concurrently, and confirm the cap with `squeue -a`. *Solution sketch:* `#SBATCH --array=0-31%8`; the `%8` suffix is the concurrency cap.
-4. **Declare MIG on a node.** Extend a compute node's `Gres` line to expose two `1g.10gb` H100 instances alongside six whole GPUs, and submit a job that requests one instance. *Solution sketch:* `Gres=gpu:h100:6,gpu:h100_1g.10gb:2` with `GresTypes=gpu,shard`; create the instances on the node before restarting `slurmd`, then `sbatch --gres=gpu:h100_1g.10gb:1`.
+4. **Declare MIG on a node.** Extend a compute node's `Gres` line to expose two `1g.10gb` H100 instances alongside six whole GPUs, and submit a job that requests one instance. *Solution sketch:* `Gres=gpu:h100:6,gpu:h100_1g.10gb:2` with `GresTypes=gpu`; create the instances on the node before restarting `slurmd`, then `sbatch --gres=gpu:h100_1g.10gb:1`.
 5. **Harden the health check.** Extend the Section 6 script so it also drains a node whose DCGM exporter has been silent for more than 10 minutes, using a `curl` probe of the local exporter endpoint. *Solution sketch:* add a `curl -s --max-time 5 http://localhost:9400/health` check that drains with `Reason="DCGM exporter silent"`.
 6. **Run one upgrade wave.** Perform the full drain-upgrade-restart-resume cycle on a single compute node, with the `StateSaveLocation` backup first and the three-part smoke test after. *Solution sketch:* `scontrol update NodeName=compute-002 State=drain Reason="upgrade"`, wait for active jobs, upgrade the `slurmd` package, restart the daemon, `scontrol update NodeName=compute-002 State=resume`, then run the smoke job, array, and accounting query.
 
@@ -544,7 +553,7 @@ RealMemory is the memory in MB the scheduler will actually commit to jobs. Setti
 </details>
 
 <details><summary>7. What do ConstrainCores, ConstrainRAMSpace, and ConstrainDevices do, and what is their default?</summary>
-They put a job inside its declared limits for cores, memory, and devices. All three default to no, which means a job is not limited to what it asked for unless you say otherwise, so a shared cluster sets all three to yes.
+They put a job inside its declared limits for cores, memory, and devices. All three default to no in `cgroup.conf`, which means a job is not limited to what it asked for unless you say otherwise, so a shared cluster sets all three to yes.
 </details>
 
 <details><summary>8. What is the difference between the DOWN and DRAIN partition or node states?</summary>

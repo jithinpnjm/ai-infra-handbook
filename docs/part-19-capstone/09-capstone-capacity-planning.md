@@ -36,7 +36,7 @@ flowchart LR
     subgraph Forecast["Forecast"]
         F1[Growth rate]
         F2[Buffer]
-        F3[Forecast = hist * (1+growth) * (1+buffer)]
+        F3["Forecast = hist * (1+growth) * (1+buffer)"]
     end
 
     subgraph Output["Procurement order"]

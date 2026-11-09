@@ -136,19 +136,19 @@ The pattern is: every exporter has a clear scope; every exporter feeds the appro
 The on-call dashboard is the single most important dashboard in the observability stack. The dashboard has the SLO panels, the error budget panels, the recent alerts, and the recent incidents.
 
 ```yaml
-# code/part17/on_call_dashboard.json (shape only)
+# code/part17/on_call_dashboard.json
 {
   "dashboard": {
     "title": "AI Factory - On-Call",
     "panels": [
-      {"title": "SLO compliance per service", "type": "table", "targets": [{"expr": "slo_compliance"}]},
-      {"title": "Error budget remaining", "type": "stat", "targets": [{"expr": "error_budget_remaining"}]},
-      {"title": "Recent critical alerts", "type": "table", "targets": [{"expr": "alertmanager_alerts_state{severity=\"critical\"}"}]},
-      {"title": "Recent incidents", "type": "table", "targets": [{"expr": "incidents"}]},
-      {"title": "Active escalations", "type": "stat", "targets": [{"expr": "active_escalations"}]},
-      {"title": "GPU utilisation", "type": "timeseries", "targets": [{"expr": "DCGM_FI_DEV_GPU_UTIL"}]},
-      {"title": "Inference latency p99", "type": "stat", "targets": [{"expr": "histogram_quantile(0.99, rate(inference_request_duration_seconds_bucket[5m]))"}]},
-      {"title": "Error rate", "type": "stat", "targets": [{"expr": "sum(rate(inference_request_total{status=~\"5..\"}[5m])) / sum(rate(inference_request_total[5m]))"}]}
+      {"title": "Cluster p99 inference latency", "type": "timeseries", "targets": [{"expr": "inference:latency:p99:5m"}]},
+      {"title": "Inference error rate per model", "type": "timeseries", "targets": [{"expr": "inference:error_rate:5m"}]},
+      {"title": "GPU pool utilisation", "type": "stat", "targets": [{"expr": "gpu_pool:utilization:avg5m"}]},
+      {"title": "GPU memory pressure", "type": "timeseries", "targets": [{"expr": "gpu_pool:memory_pressure:avg5m"}]},
+      {"title": "Recent error logs", "type": "logs", "targets": [{"expr": "{severity=\"ERROR\"}"}]},
+      {"title": "Open incidents", "type": "stat", "targets": [{"expr": "alertmanager_alerts_state{state=\"active\"}"}]},
+      {"title": "Cost per team this month", "type": "bargauge", "targets": [{"expr": "cost:team:monthly"}]},
+      {"title": "Model quality signals", "type": "stat", "targets": [{"expr": "model_quality_score"}]}
     ]
   }
 }
@@ -186,7 +186,7 @@ The pattern is: the dashboard shows the current state; the dashboard drives the 
 The FinOps dashboard shows the per-team, per-model, per-month cost. The dashboard is the CFO's view of the cluster's economics.
 
 ```yaml
-# code/part17/finops_dashboard.json (shape only)
+# code/part17/finops_dashboard.json
 {
   "dashboard": {
     "title": "AI Factory - FinOps",
@@ -195,7 +195,7 @@ The FinOps dashboard shows the per-team, per-model, per-month cost. The dashboar
       {"title": "Cost per model this month", "type": "bargauge", "targets": [{"expr": "sum by (model) (kubecost_model_cost_monthly)"}]},
       {"title": "GPU hours per team this month", "type": "stat", "targets": [{"expr": "sum by (team) (kubecost_team_gpu_hours_monthly)"}]},
       {"title": "Cost trend over the last 90 days", "type": "timeseries", "targets": [{"expr": "sum(kubecost_team_cost_daily)"}]},
-      {"title": "Cost vs latency trade-off", "type": "table", "targets": [{"expr": "..."}]}
+      {"title": "Cost vs latency trade-off", "type": "table", "targets": [{"expr": "sum by (model) (kubecost_model_cost_monthly)", "refId": "A"}, {"expr": "histogram_quantile(0.99, sum by (model, le) (rate(inference_request_duration_seconds_bucket[5m])))", "refId": "B"}]}
     ]
   }
 }
