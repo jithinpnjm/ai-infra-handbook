@@ -25,12 +25,12 @@ lab_venue: "GCP / GKE"
 
 ## Why this matters for AI infrastructure
 
-Chapter 16.1 named the four pillars and the lifecycle gates. This chapter opens two of them. Data versioning is the mechanism that makes a dataset an artifact with a permanent address. Experiment tracking is the mechanism that makes a training run a record you can compare against the next run, the next data snapshot, and the next code commit. Together they are the audit trail that turns "the model in production" from a sentence into a citation.
+It is 2 a.m., and a model that worked last week now gives poor predictions. The on-call engineer has one question first. What is different between this run and last week's run? Chapter 16.1 named the four pillars of MLOps and the gates a model must pass. This chapter opens two of them. Data versioning gives a dataset a permanent address. Experiment tracking turns each training run into a record you can compare with the next one.
 
-If you only adopt one tool after reading Chapter 16.1, adopt these two. The cluster you built in Parts 1 through 15 is the surface where bad data and bad experiments surface as outages. An on-call engineer gets paged at 2 a.m. because a model silently regressed. The first question they ask is "what is different between this run and last week's?" If the tracking server cannot answer in five seconds, the on-call engineer is reading notebooks. If the data versioning layer cannot point to the exact bytes that trained the live model, they cannot roll back. The MLOps platform is what stops the on-call engineer from reading notebooks.
+The on-call engineer can answer that question only if the tracking server responds in seconds. If the data layer cannot point to the exact bytes that trained the live model, rolling back is guesswork. These two tools are the audit trail that lets you prove where a production model came from.
 
 ```text
-The "what is different" problem (Practical MLOps Ch 1; MLPE Ch 1):
+The "what is different" problem (background reading: Practical MLOps; Machine Learning Platform Engineering; the figures below are examples, not quotations):
 - A busy team runs hundreds of training runs per week. The number of unique
   combinations of (code commit, data snapshot, seed, env, hyperparameter set) grows
   combinatorially. The share of runs that are ever promoted is single-digit percent
@@ -40,31 +40,39 @@ The "what is different" problem (Practical MLOps Ch 1; MLPE Ch 1):
   always, even failed ones (Designing Machine Learning Systems Ch 2).
 ```
 
-Two operational realities drive why the platform team, not just the data science team, owns these tools:
+If you adopt only two things from Chapter 16.1, adopt these two. The cluster you built in Parts 1 through 15 is where bad data and bad experiments show up as outages.
 
-1. **The tracking server and the registry are stateful services that the platform runs.** The data scientist consumes them; the platform team operates them. The shape of the data they store, the backup policy, the IAM model, and the SLOs are platform-team decisions.
-2. **The cluster you wired in earlier chapters is where the runs execute.** Every experiment record is bound to a training job that consumed GPU-hours, wrote checkpoints to a distributed filesystem, and read a dataset from object storage. The tracking layer and the GPU layer have to agree on identity (which run is this job) and on storage (where do the artifacts live).
+Two realities explain why the platform team, and not only the data scientists, should own these tools.
 
-**Before you let a data scientist start a training job in your cluster, make sure the job has a run id, a data hash and a registry endpoint wired into its entrypoint. A training run that does not log is a training run that the platform team cannot debug.**
+1. **The tracking server and the registry are stateful services that the platform runs.** Data scientists consume them. The platform team operates them, so it decides the data shape, the backup policy, the access model and the service targets.
+2. **The runs execute on the cluster you wired in earlier chapters.** Each run uses GPU hours, writes checkpoints to a distributed filesystem and reads its dataset from object storage. The tracking layer and the GPU layer must agree on which run is which job, and where the artifacts live.
+
+**Before a data scientist starts a training job, check that the job has a run id, a data hash and a registry endpoint.**
+
+A training run that does not log is one the platform team cannot debug.
+
+---
 
 ## Prerequisites and outcomes
 
+Use this section to check that you have the background before you start. The chapter assumes you can already work with the tools below.
+
 ### Prerequisites
 
-- Chapter 16.1 (the lifecycle, the four pillars, the promotion gate function).
-- Part 3 (Python) for the experiment record's code shape; Part 5 (Kubernetes) for the runtime primitives the tracker relies on; Part 10 (GPU and CUDA) for the artifact types a training job produces; Chapter 13 (AI storage) for the object storage and distributed filesystem choices.
-- Familiarity with Git for the data versioning mechanisms that sit on top of it.
+- Chapter 16.1, which covers the lifecycle, the four pillars and the promotion gate function.
+- Part 3 for the Python shape of the experiment record. Part 5 covers the Kubernetes primitives the tracker relies on. Part 10 covers the GPU and CUDA artifacts a training job produces. Chapter 13 covers the object storage and distributed filesystem choices.
+- Some familiarity with Git, because the data versioning tools are built on top of it.
 
 ### Outcomes
 
-After completing this chapter you will be able to:
+When you finish this chapter, you should be able to do the following.
 
-1. Explain why data versioning needs content-addressed storage and a metadata layer, and how DVC, lakeFS, Pachyderm and Delta Lake each provide that layer.
-2. Run a training job that opens an experiment run as its first action and writes the run record, the data hash, the commit hash and the artifact before it prints a metric.
-3. Compare multiple runs on a single metric, on a slice of metrics, on a per-segment metric, and on a parallel-coordinates plot.
-4. Hand a run off to a model registry, sign the artifact and refuse unsigned artifacts at the cluster boundary.
-5. Choose between DVC, MLflow and Weights and Biases for a given team and explain when to combine them.
-6. Operate the tracking server and the artifact store on GKE with a backup policy, an SLO and an IAM model that survives a turnover.
+1. Explain why data versioning needs content-addressed storage and a metadata layer. Show how DVC, lakeFS, Pachyderm and Delta Lake each supply that layer.
+2. Run a training job that opens an experiment run as its first action. The job writes the run record, the data hash, the commit hash and the artifact before it prints a metric.
+3. Compare runs on one metric, on a group of metrics, on a per-segment metric and on a parallel-coordinates plot.
+4. Hand a run to a model registry, sign the artifact, and refuse unsigned artifacts at the cluster boundary.
+5. Choose among DVC, MLflow and Weights and Biases for a given team, and know when to combine them.
+6. Operate the tracking server and the artifact store on GKE, with a backup policy, an SLO and an access model that survives a change of staff.
 
 ---
 
@@ -72,16 +80,16 @@ After completing this chapter you will be able to:
 
 ### 1.1 The three properties that make dataset versioning hard
 
-*Practical MLOps* Chapter 1 walks through the four failure shapes and concludes that the data pillar is the hardest because of three properties that classical version control does not handle.
+Picture a team that retrains a churn model every week. On Monday the training script reads `customers.parquet`. By Friday someone has appended rows, re-partitioned the folder and deleted last month's file. Now nobody can say which bytes trained the model in production. Practical MLOps, chapter 1, names three properties that make data hard to version. Classical version control handles none of them well.
 
-- **Size.** A 200 GB parquet cannot be checked into Git. Even Git LFS, which stores large files in a content-addressed store, has throughput and concurrency limits that break for the multi-terabyte datasets used in foundation-model training.
-- **Mutability.** Datasets get appended, cleaned and re-partitioned. A model that was trained on a partition that no longer exists is unreproducible.
-- **Partial sharing.** Two models that share 80 percent of their features inherit each other's data bugs. Without lineage you cannot find the dependents.
+- **Size.** A 200 GB parquet file cannot go into Git. Git LFS stores large files in a content-addressed store, but its throughput and concurrency limits break at the multi-terabyte scale of foundation-model training.
+- **Mutability.** Datasets get appended, cleaned and re-partitioned. A model trained on a partition that no longer exists cannot be reproduced.
+- **Partial sharing.** Two models that share 80 percent of their features also share each other's data bugs. Without lineage, you cannot find every model that a bad feature affects.
 
-The fix is to keep the metadata in Git and the bytes in object storage. The metadata is small; the bytes are large; both need version semantics.
+The fix is to split the problem. Keep the small metadata in Git and the large bytes in object storage. Both still need version rules.
 
 ```text
-Minimum data versioning contract (Practical MLOps Ch 1; MLPE Ch 3):
+Minimum data versioning contract (background reading: Practical MLOps; Machine Learning Platform Engineering; the figures below are examples, not quotations):
 - dataset_id (string, unique within the project's metadata DB)
 - content_hash (sha256 of the dataset's primary file or directory)
 - source_system (where the data came from; "s3://prod-warehouse/customers")
@@ -93,11 +101,11 @@ Minimum data versioning contract (Practical MLOps Ch 1; MLPE Ch 3):
 - retention_until (soft-delete deadline; data is never overwritten)
 ```
 
-The dataset_id is the address. The content_hash is the proof that the bytes at the address are the bytes that the training script actually saw. A training script that takes a dataset_id and resolves it through the metadata DB can never silently drift; a training script that reads from a path can.
+The `dataset_id` is the address. The `content_hash` is the proof that the bytes at that address are the bytes the training script saw. A script that resolves a `dataset_id` through the metadata database cannot drift silently. A script that reads a raw path can.
 
 ### 1.2 DVC: Git for data and models
 
-DVC is the most widely adopted open-source implementation of the contract above. It works by storing large files in any S3-compatible object store and keeping `.dvc` files in Git that hold content hashes. The Git repository stays small; the object store carries the bytes.
+DVC is the most widely used open-source version of the contract above. It stores large files in any S3-compatible object store. It keeps small `.dvc` files in Git, and those files hold the content hashes. Git stays small, and the object store carries the bytes.
 
 ```bash
 # Initialise DVC against an existing S3/GCS/MinIO bucket
@@ -118,7 +126,7 @@ dvc repro
 # expected: stages re-run only if inputs (code, data, params) changed
 ```
 
-*Practical MLOps* Chapter 1 and *Designing Machine Learning Systems* Chapter 3 both walk through DVC's pipeline stages (`.dvc` files are produced by `dvc stage add` and `dvc run`). The pipeline is a DAG of stages, each with named inputs and outputs that are content-hashed. A stage re-runs only when its inputs have changed.
+The `dvc push` step copies the bytes to the remote. Your commit then records the hash, so anyone with that commit can pull the exact bytes back. Practical MLOps chapter 1 and Designing Machine Learning Systems chapter 3 both describe DVC pipeline stages. A pipeline is a graph of stages. Each stage has named inputs and outputs, and each one is content-hashed. A stage reruns only when one of its inputs changes.
 
 ```mermaid
 flowchart LR
@@ -159,11 +167,11 @@ flowchart LR
     O1 -.rehydrate.-> S2
 ```
 
-The mental model is that Git stores the recipe and the object store stores the ingredients. The recipe (`dvc.yaml` plus `.dvc` files plus `params.yaml`) is reviewable in a pull request. The ingredients are content-addressed, immutable, and recoverable from any team member's checkout.
+Think of Git as the recipe and the object store as the ingredients. The recipe, made of `dvc.yaml`, the `.dvc` files and `params.yaml`, is something a reviewer can read in a pull request. The ingredients are content-addressed and immutable. Any team member's checkout can recover them.
 
 ### 1.3 lakeFS, Pachyderm, Delta Lake, and DVC compared
 
-DVC is the right default for tabular and small-to-medium datasets. For larger, multi-petabyte data lakes, three alternatives exist with stronger consistency or branch-and-merge semantics.
+DVC is a good default for tabular data and for small-to-medium datasets. A multi-petabyte data lake may need something stronger. Three alternatives offer stronger consistency or branch-and-merge behavior.
 
 | Tool | Storage model | Branching model | Best fit |
 |---|---|---|---|
@@ -172,14 +180,14 @@ DVC is the right default for tabular and small-to-medium datasets. For larger, m
 | **Pachyderm** | Object storage with a content-addressed version per datum | Pachyderm branches with provenance | Strong reproducibility; data lineage at the row level |
 | **Delta Lake** | Parquet files in object storage + transaction log | Time travel; OPTIMIZE; VACUUM | Spark-native data engineering; ACID on the lake |
 
-The four are interchangeable on the contract from Section 1.1. They differ in the operational model (lakeFS adds a metadata database; Pachyderm adds a control plane; Delta Lake adds a transaction log) and in the ecosystem (Spark users prefer Delta; Git-first teams prefer DVC). *Practical MLOps* Chapter 1 walks through DVC in detail; *Designing Machine Learning Systems* Chapter 3 introduces lakeFS and Delta as the data-lake alternatives.
+All four meet the contract from Section 1.1. They differ in what you have to run. lakeFS adds a metadata database. Pachyderm adds a control plane. Delta Lake adds a transaction log. The ecosystem matters too. Spark users tend to prefer Delta, and Git-first teams tend to prefer DVC. Practical MLOps chapter 1 covers DVC in detail. Designing Machine Learning Systems chapter 3 introduces lakeFS and Delta as data-lake alternatives.
 
 ### 1.4 The data versioning interface a training script should expose
 
-A training script that uses the contract above has a stable shape regardless of which tool sits beneath.
+Imagine you inherit a training script that reads a file from a shared drive. Nobody knows which version of the file it used. A script that follows the contract avoids that problem, whichever tool sits underneath. Its shape stays the same.
 
 ```python
-# code/part16/data_resolver.py (shape only)
+# code/part16/data_resolver.py
 import argparse, hashlib, json, os
 from pathlib import Path
 
@@ -215,7 +223,9 @@ if __name__ == "__main__":
     print(f"verified {args.local_path} as {record['content_hash'][:12]}")
 ```
 
-The shape matters more than the implementation. The training script takes a `dataset_id`; it never reads a hard-coded path; it verifies the bytes against the hash before reading. If the hash does not match, the script refuses to run. The failure surfaces immediately, not three months later when the model is in production.
+The shape matters more than the implementation. The script takes a `dataset_id`, never a hard-coded path. It checks the bytes against the hash before it reads them. If the hash does not match, the script stops. You learn about the problem right away, not months later when the model is serving traffic.
+
+**Before you approve a training job, check that it takes a dataset id and verifies a hash, not a file path.**
 
 ---
 
@@ -223,20 +233,18 @@ The shape matters more than the implementation. The training script takes a `dat
 
 ### 2.1 The experiment record contract
 
-A training run is the smallest unit of decision in MLOps. The record of that run has to answer seven questions:
+Picture the morning after a good run. Someone asks which code, data and settings produced the good AUC on the dashboard. If the answer lives in one engineer's notebook, you do not have a record. A training run is the smallest unit of decision in MLOps, so its record has to answer five questions.
 
-1. **What code produced it?** A commit hash and a container image digest.
-2. **What data produced it?** A dataset_id from Section 1.
-3. **What environment produced it?** A CUDA version, a cuDNN version, a Python version, the cluster topology.
-4. **What was the random seed?** A pin.
-5. **What were the hyperparameters?** A parameter dict.
-6. **What was the outcome?** A metric dict, per segment.
-7. **What was the artifact?** A model file or checkpoint with a content hash.
+1. **Code.** Which commit hash and container image digest produced the run?
+2. **Data.** Which `dataset_id` from Section 1 did it read?
+3. **Environment.** Which CUDA version, cuDNN version, Python version and cluster topology did it use?
+4. **Configuration.** Which random seed and which hyperparameters did it use?
+5. **Outcome.** Which metrics, broken down by segment, and which artifact, with a content hash, did it produce?
 
-If the answer to any of those seven is missing, the run is unreproducible. The platform team's job is to make every field mandatory. The cheapest way to do that is to make the training script's first action the call that opens a run record, and to make the call fail if any required field is empty.
+If any answer is missing, the run cannot be reproduced. The platform team's job is to make every field mandatory. The cheapest way is to make the training script's first action open the run record, and to make that call fail when a required field is empty.
 
 ```text
-Minimum run record (Practical MLOps Ch 1; MLPE Ch 2; DMLS Ch 2):
+Minimum run record (background reading: Practical MLOps; Machine Learning Platform Engineering; Designing Machine Learning Systems; the figures below are examples, not quotations):
 - run_id (tracker primary key)
 - experiment_name (human-readable grouping, e.g. "churn-v3")
 - status (RUNNING | FINISHED | FAILED | KILLED)
@@ -249,25 +257,25 @@ Minimum run record (Practical MLOps Ch 1; MLPE Ch 2; DMLS Ch 2):
 - inputs (dataset_ids, feature_table_ids, baseline_run_id)
 ```
 
-*Practical MLOps* Chapter 2 is explicit that the run record is the audit trail, not the printed metric. The metric is a number that may be wrong; the run record is the proof that the number came from a specific code/data/env combination.
+Practical MLOps chapter 2 makes a point worth repeating. The run record is the audit trail, and the printed metric is not. A metric can be wrong. The run record shows which code, data and environment produced it.
 
 ### 2.1.1 Regulatory compliance and reproducibility as a legal requirement
 
-*Machine Learning Platform Engineering* Chapter 2 makes a sharper point: in regulated industries (banking, healthcare, insurance, pharma), experiment reproducibility is not a nice-to-have. It is a legal requirement. A model that decides whether a loan is approved, whether a claim is paid, or whether a patient is eligible for a treatment is subject to model-risk-management regulations that require the bank or hospital to answer, on demand, the question "which data, which code, which environment, and which version produced the decision the customer is disputing?". A run record that cannot answer the question is a regulatory finding.
+Consider a bank that denies a loan. The customer disputes the decision, and the bank has to reproduce it. Machine Learning Platform Engineering chapter 2 argues that in regulated fields such as banking, healthcare, insurance and pharma, reproducibility is a legal requirement. Model-risk rules require a firm to answer, on demand, which data, code, environment and version produced a disputed decision. A run record that cannot answer that question is a regulatory finding.
 
-The implication for the platform team is that experiment tracking is not optional, not best-effort, and not "we'll add it when we have time". It is a critical control that the auditor will inspect. The tracker must be backed up, the run records must be retained for the regulatory window (commonly seven years for financial-services models), and the audit log must be tamper-evident (write-only to object storage with object-lock, or written to an immutable ledger like a hash-chained log).
+That makes experiment tracking a critical control, not a best-effort habit. The auditor will inspect it. The tracker needs backups. Run records must be kept for the regulatory window, which the chapter gives as commonly seven years for financial-services models. The audit log must be tamper-evident, for example through object storage with object lock, or through a hash-chained log.
 
-A useful discipline: every run record also records **who had read access to the data at training time**, the **consent basis** (if the data includes personal information), and the **fairness audit result**. These three fields turn the run record from a debugging artefact into a regulatory artefact.
+Add three fields to every run record. Record who had read access to the data at training time, the consent basis for any personal information, and the fairness audit result. These fields turn a debugging note into a regulatory record. Before you approve a regulated model, confirm that all three fields are present.
 
 ### 2.2 MLflow Tracking in practice
 
-MLflow is the most widely adopted open-source experiment tracker. It has four components: Tracking (the run records), Models (a packaging format), Registry (stages and lineage), and Projects (a packaging format for reproducible runs). For this chapter we use Tracking; the Registry is in Chapter 16.6 and Projects are in Chapter 16.4.
+MLflow is the most widely used open-source experiment tracker. It has four parts. Tracking stores the run records. Models is a packaging format. Registry manages stages and lineage. Projects packages reproducible runs. This chapter uses Tracking. Chapter 16.6 covers the Registry, and Chapter 16.4 covers Projects.
 
-A training script that opens a run as its first action:
+A good training script opens its run first, as shown below.
 
 ```python
-# code/part16/train_with_mlflow.py (shape only)
-import argparse, hashlib, subprocess, mlflow, mlflow.sklearn
+# code/part16/train_with_mlflow.py
+import argparse, hashlib, os, subprocess, mlflow, mlflow.sklearn
 import pandas as pd
 from sklearn.ensemble import GradientBoostingClassifier
 from sklearn.metrics import roc_auc_score
@@ -306,14 +314,14 @@ with mlflow.start_run(run_name=f"churn-{data_hash[:8]}-{args.seed}") as run:
 # expected: a run with run_id, all required tags set, an AUC value, and a model artifact
 ```
 
-Two patterns to notice. First, the tags are set unconditionally, not in a try/except. A run that fails before logging is still a run; the failure itself is a record. Second, the run name embeds the data hash so two runs with the same code but different data are visually distinct in the UI.
+Notice two patterns. First, the tags are set without a try/except. A run that fails before it logs is still a run, and the failure itself becomes a record. Second, the run name includes the data hash. Two runs with the same code and different data look different in the UI, so nobody mixes them up.
 
 ### 2.3 Weights and Biases in practice
 
-Weights and Biases (W&B) is the cloud-hosted tracker that competes with MLflow. The contract is similar; the surface is different. W&B has stronger hyperparameter-sweep orchestration and a richer UI; MLflow is open source and self-hostable. *Practical MLOps* Chapter 6 walks through both.
+Weights and Biases (W&B) is the cloud-hosted tracker that competes with MLflow. The contract is similar, but the interface is different. W&B offers stronger hyperparameter sweeps and a richer interface. MLflow is open source, and you can host it yourself. Practical MLOps chapter 6 covers both tools.
 
 ```python
-# code/part16/train_with_wandb.py (shape only)
+# code/part16/snippets/train_with_wandb.py
 import wandb
 
 wandb.init(
@@ -333,13 +341,11 @@ wandb.log({"auc": auc})
 wandb.log_model(path="model.pkl", name="churn-model")
 ```
 
-The same contract applies. The differences are in the API and the backend; the on-disk shape of the run record is similar enough that a team can switch between them with a thin adapter layer.
+The snippet assumes that `args`, `data_hash` and `commit` come from the training script above, and that `auc` comes from the evaluation step. The same contract applies. Only the API and the backend differ. The run records look similar enough that a thin adapter layer lets a team switch between the two.
 
 ### 2.4 Comparing runs: the killer feature
 
-Tracking is not about a single run. It is about the relationship between runs. The platform engineer who gets paged at 2 a.m. opens the tracker and asks "is this run consistent with last week's?". The data scientist who wants to publish a paper opens the tracker and asks "which hyperparameters beat the baseline?". The promotion gate from Chapter 16.1 Section 4.3 opens the tracker and asks "did the candidate beat the registered baseline on the primary metric?".
-
-Three query shapes cover most of these questions.
+Tracking matters because of the relationships between runs, not because of any single run. A platform engineer paged at 2 a.m. asks whether this run looks like last week's. A data scientist preparing a write-up asks which settings beat the baseline. The promotion gate from Chapter 16.1, Section 4.3, asks whether the candidate beat the registered baseline on the main metric. Three query shapes cover most of these questions.
 
 ```text
 Query shape 1: "Did the candidate beat the baseline?"
@@ -359,19 +365,21 @@ Query shape 3: "Where is the AUC sensitive to seed?"
   - High std => the result is not seed-stable; refuse promotion.
 ```
 
-The third query is the one that catches the "magic seed" failure from Chapter 16.1. *Designing Machine Learning Systems* Chapter 2 walks through why seed-stability is a property of the experiment record, not of the model. A model that wins on one seed and loses on another is a model that does not exist; it is a draw from a distribution.
+The third query catches the magic-seed failure from Chapter 16.1. Designing Machine Learning Systems chapter 2 explains that seed stability is a property of the experiment record, not of the model. A model that wins on one seed and loses on another is one draw from a distribution. Before you promote a model, run the seed query and refuse the model if its results swing widely.
 
 ### 2.5 What the platform team owns
 
-The platform team owns the tracker as a service. That means four things:
+The platform team runs the tracker as a service. That means four things.
 
-1. **The backing store.** MLflow needs a metadata database (Postgres) and an artifact store (S3, GCS, MinIO). Both are backed up; both have SLOs; both have IAM policies that separate who can write artifacts from who can read them.
-2. **The IAM model.** Service accounts for training jobs have `write` on the experiment. Data scientists have `read` on their own experiments and `read` on shared experiments. The promotion pipeline has `write` on the registry. Auditors have `read` on everything.
-3. **The retention policy.** Run records are kept indefinitely; artifacts are kept for a configurable window (commonly 90 days for failed runs, indefinite for promoted runs). Soft-delete only; an artifact is never overwritten.
-4. **The SLO.** The tracker is on the hot path of every training job. A tracker that takes 30 seconds to open a run times out the training job. Target tracker SLO: open-run latency p99 < 200 ms; log-metric latency p99 < 500 ms; artifact-put latency p99 < 5 s.
+1. **The backing store.** MLflow needs a metadata database, which this chapter takes to be Postgres, and an artifact store such as S3, GCS or MinIO. Both get backups and SLOs. Both get access policies that separate the people who write artifacts from the people who read them.
+2. **The access model.** Training service accounts can write to an experiment. Data scientists can read their own experiments and the shared ones. The promotion pipeline can write to the registry, and auditors can read everything.
+3. **The retention policy.** Run records are kept indefinitely. Artifacts are kept for a set window. Section 5.3 gives one example policy. Failed runs are kept for 30 days, and promoted runs are kept indefinitely. Artifacts are soft-deleted, never overwritten.
+4. **The SLO.** The tracker sits on the hot path of every training job, so a slow tracker can time out the job itself. The chapter's example targets are a p99 under 200 ms to open a run, under 500 ms to log a metric, and under 5 s to put an artifact. These are example values. Measure your own baseline before you commit to any target.
+
+The reference layout below shows one way to set this up on GKE. It keeps the tracking server stateless, so artifact uploads go straight to the bucket.
 
 ```text
-Reference MLflow deployment on GKE (Practical MMOps Ch 1; MLPE Appendix A):
+Reference MLflow deployment on GKE (background reading: Practical MMOps; Machine Learning Platform Engineering; the figures below are examples, not quotations):
 - Postgres backend store on Cloud SQL with automated backups and a 7-day PITR
 - Artifact store on GCS with object versioning enabled and a 90-day lifecycle rule
   for the failed-runs prefix, indefinite retention on the promoted-runs prefix
@@ -382,7 +390,7 @@ Reference MLflow deployment on GKE (Practical MMOps Ch 1; MLPE Appendix A):
   roles/mlflow.reader; the promotion pipeline has roles/mlflow.promoter
 ```
 
-**A tracker that is slow, unreliable, or wiped on a cluster rebuild is a tracker that data scientists will bypass. Operate the tracker as a production service, with SLOs, IAM, backups, and on-call.**
+**A tracker that is slow, unreliable or lost on a cluster rebuild gets bypassed. Run it as a production service, with SLOs, access control, backups and an on-call rota.**
 
 ---
 
@@ -390,10 +398,10 @@ Reference MLflow deployment on GKE (Practical MMOps Ch 1; MLPE Appendix A):
 
 ### 3.1 From run record to registered model
 
-The experiment record is a scientist's notebook. The registry entry is a deployment manifest. The handoff between them is the promotion gate from Chapter 16.1 Section 4.3. It is worth restating in the context of this chapter.
+The experiment record is the scientist's notebook. The registry entry is closer to a deployment manifest. The promotion gate from Chapter 16.1, Section 4.3, sits between the two. Here is that gate applied to this chapter's run record.
 
 ```python
-# code/part16/promote_to_registry.py (shape only)
+# code/part16/promote_to_registry.py
 import argparse, mlflow
 from mlflow.tracking import MlflowClient
 
@@ -430,14 +438,16 @@ client.transition_model_version_stage(
 print(f"PROMOTED {args.model_name} v{mv.version} to Staging")
 ```
 
-The handoff writes the run_id into the registry entry as the lineage record. The cluster then reads the registry entry, not the run record. The two systems agree because the registry entry is signed by the training image that produced the run.
+The script runs three steps in order. It checks that the required tags exist. It compares the candidate with the baseline when you pass one. Then it registers the model in the Staging stage. If a check fails, the script exits with a reason, and nothing reaches the registry.
+
+The handoff writes the run_id into the registry entry as the lineage record. The cluster reads the registry entry, not the run record. The two systems agree because the registry entry is signed by the training image that produced the run.
 
 ### 3.2 Signing the artifact at the cluster boundary
 
-*Practical MLOps* Chapter 2 makes the point that a registry entry without a signed artifact is an unsigned deployment. The signing happens at the boundary between the training pipeline and the cluster's admission control.
+Imagine someone swaps a model file on the registry after it was approved. Without a check at the boundary, the serving system loads the swapped file without question. Practical MLOps chapter 2 makes the point that a registry entry without a signed artifact is an unsigned deployment. The signing happens between the training pipeline and the cluster's admission control.
 
 ```text
-Cluster boundary signing flow (Practical MLOps Ch 2; SIG store / cosign docs):
+Cluster boundary signing flow (background reading: Practical MLOps; SIG store / cosign docs; the figures below are examples, not quotations):
 1. The training pipeline builds the model artifact (weights, tokenizer, config).
 2. The pipeline computes the artifact's sha256 and produces a cosign signature
    against an OIDC identity (for example, the GitHub Actions workflow that ran
@@ -449,9 +459,15 @@ Cluster boundary signing flow (Practical MLOps Ch 2; SIG store / cosign docs):
    only then loads the weights into HBM.
 ```
 
-The boundary is small: a signing step in the pipeline and a verification step in the admission controller. The cost is a few seconds per promotion; the benefit is that a poisoned model artifact cannot reach the GPU.
+The boundary is small. It has one signing step in the pipeline and one verification step in the admission controller. Signing adds a step to each promotion. In return, a poisoned model artifact cannot reach the GPU through this path.
+
+The admission check sits in the request path. If the webhook is unavailable, the API server either admits or rejects the request, depending on whether the webhook fails open or closed. Production Kubernetes, chapter 8, warns that a security check that fails closed must be built for high availability. Otherwise it becomes a bottleneck for the whole cluster.
+
+Signing is still uncommon in practice. Production Kubernetes, chapter 15, explains that teams hesitated because the older Notary system adds servers and databases to run. Key rotation after a breach is also hard. Before you turn the check on, decide who holds the signing keys and how you will rotate them.
 
 ### 3.3 The Mermaid: tracking and registry together
+
+The diagram shows the full path. Training stages write runs to the tracker. The promotion gate reads those runs and writes to the registry. The cluster boundary then checks the signature before serving pulls a model.
 
 ```mermaid
 flowchart LR
@@ -495,9 +511,9 @@ flowchart LR
     B2 -->|signature ok| S1 --> S2
 ```
 
-The double-arrow on the right is the new piece: the serving system verifies the signature that the registry created. There is no path from the registry to the cluster that does not pass the boundary.
+The double arrow on the right is the new piece. The serving system verifies the signature that the registry created. No path from the registry to the cluster skips the boundary.
 
-**The promotion gate decides whether a run becomes a registry entry. The cluster boundary decides whether a registry entry becomes a live model. Both gates must be mechanical, neither must be human.**
+**The promotion gate decides whether a run becomes a registry entry. The cluster boundary decides whether that entry goes live.** Both should run as code, not as a person's sign-off.
 
 ---
 
@@ -505,7 +521,7 @@ The double-arrow on the right is the new piece: the serving system verifies the 
 
 ### 4.1 When to use what
 
-The three tools overlap but are not interchangeable. The overlap is intentional; the specialisations matter.
+Your team may feel pressure to pick one tool for everything. That rarely works. The three tools overlap, and the overlap is intentional. The differences matter when you choose the tool that fits your team.
 
 | Concern | DVC | MLflow | W&B |
 |---|---|---|---|
@@ -518,14 +534,14 @@ The three tools overlap but are not interchangeable. The overlap is intentional;
 | **Cost at scale** | Free; storage and compute are your cost | Free; Postgres + artifact store are your cost | Per-seat or per-run, depending on plan |
 | **Best fit** | Tabular datasets, Git-first teams | Open-source default, Kubernetes-native | Research-heavy teams, sweeps, rich UI |
 
-The most common production pairing is DVC for data versioning and MLflow for tracking and registry. W&B replaces MLflow for teams that want the richer UI and built-in sweeps. DVC is rarely replaced; lakeFS, Pachyderm or Delta Lake replace it when the data scale outgrows DVC's design.
+The most common production pairing is DVC for data and MLflow for tracking and the registry. Teams that want a richer interface and built-in sweeps often pick W&B in place of MLflow. DVC is rarely replaced. You move to lakeFS, Pachyderm or Delta Lake only when your data outgrows what DVC was designed for.
 
 ### 4.2 Combining DVC and MLflow
 
-The two tools are complementary. A typical workflow uses DVC to drive the pipeline stages and MLflow to log each stage's run. DVC's `.dvc` files carry the data hash; MLflow's run record carries the data hash as a tag; both records point to the same content hash.
+DVC and MLflow work well together. DVC drives the pipeline stages, and MLflow logs what each stage did. The `.dvc` files carry the data hash. The MLflow run carries the same hash as a tag, so both records point to the same content.
 
 ```text
-Combined DVC + MLflow workflow (Practical MLOps Ch 1; MLPE Ch 3):
+Combined DVC + MLflow workflow (background reading: Practical MLOps; Machine Learning Platform Engineering; the figures below are examples, not quotations):
 1. dvc stage add -n prepare -p prep.params -d data/raw.parquet -o data/clean.parquet \
      python prepare.py --input data/raw.parquet --output data/clean.parquet
 2. dvc stage add -n train -p train.params -d data/clean.parquet -d code/train.py \
@@ -536,11 +552,11 @@ Combined DVC + MLflow workflow (Practical MLOps Ch 1; MLPE Ch 3):
 5. The registry handoff reads the MLflow run record and registers the model.
 ```
 
-The advantage is that the pipeline is reproducible from Git (`dvc repro`) and the runs are queryable from MLflow. A failure in any stage is recorded in both. A successful run produces an audit trail in both.
+The result is a pipeline you can reproduce from Git with `dvc repro`, and runs you can query in MLflow. A failure in any stage shows up in both places. A successful run leaves an audit trail in both places as well.
 
 ### 4.3 A worked comparison: tabular classification on a synthetic dataset
 
-The pattern below is concrete enough to reuse. It compares three configurations of the same training job: with no tracking, with MLflow, and with W&B. The numbers are illustrative; the operationally interesting part is the difference in what is queryable afterwards.
+Consider the same training job run three ways. The numbers below are illustrative. The useful part is what you can query afterwards, not the numbers themselves.
 
 ```text
 Run configuration:
@@ -567,7 +583,7 @@ Run C: Weights and Biases
   - Reproducibility: 15/15, plus a human-readable comparison
 ```
 
-The point is not "use W&B". The point is that **the tracking tool is the difference between "we ran a model" and "we have a record"**. Any tool that produces the run record from Section 2.1 is acceptable; the choice between them is a UI and cost decision.
+The point is not that W&B is better. The tracking tool is what separates "we ran a model" from "we have a record." Any tool that produces the run record from Section 2.1 works. The choice between them comes down to interface and cost.
 
 ---
 
@@ -575,7 +591,7 @@ The point is not "use W&B". The point is that **the tracking tool is the differe
 
 ### 5.1 The components and where they live
 
-The components in this chapter decompose cleanly across a GKE cluster.
+Each component in this chapter has a place in the cluster, a backing store, a backup plan and a target. The table below sets them out side by side. If you are building this on GKE, start here.
 
 | Component | Where it runs | Backing store | Backup | SLO |
 |---|---|---|---|---|
@@ -585,11 +601,11 @@ The components in this chapter decompose cleanly across a GKE cluster.
 | DVC remote | Direct from data scientist laptops and CI runners | GCS bucket | Object versioning, 1-year retention | Throughput bound by GCS |
 | LakeFS (alternative to DVC) | Kubernetes Deployment | Postgres + GCS | Same as MLflow | p99 commit < 1 s |
 
-The split between the tracking server and the artifact store is intentional. The tracking server holds small, hot metadata; the artifact store holds large, cold bytes. Putting them in the same place forces one to compromise on the other.
+Keep the tracking server and the artifact store apart on purpose. The tracking server holds small, hot metadata that gets read all the time. The artifact store holds large, cold bytes. If you put them in one place, one of them will suffer.
 
 ### 5.2 Authentication and IAM
 
-The IAM model has four roles.
+The access model has four roles.
 
 | Role | Who | What they can do |
 |---|---|---|
@@ -598,11 +614,11 @@ The IAM model has four roles.
 | `registry.promoter` | The promotion pipeline | Transition stages, write registry entries |
 | `registry.reader` | The serving system, data scientists | Read registry entries, pull artifacts |
 
-The split matters. A data scientist who can both write runs and transition registry stages can promote their own model without a gate. A training job that can both write runs and transition stages can bypass the gate. The gate's job is to be the only path to the registry.
+The split between roles matters. A data scientist who can write runs and move registry stages can promote their own model without the gate. A training job that can write runs and move stages can skip the gate as well. The gate only works if it is the one path into the registry.
 
 ### 5.3 Backup and retention
 
-Run records are kept forever. Artifacts follow a tiered policy:
+Run records are kept forever. Artifacts follow a tiered policy, shown in the table below.
 
 | Artifact class | Retention | Why |
 |---|---|---|
@@ -611,11 +627,11 @@ Run records are kept forever. Artifacts follow a tiered policy:
 | Promoted runs | Indefinite | Audit trail; required for reproducibility |
 | Retired runs | 1 year, then cold storage | Required for some regulatory regimes |
 
-Soft-delete only. An artifact is never overwritten in place. A run record is never deleted. The reason is that an incident in year three may require reproducing a model from year one, and the only artifact that survives is the one that was never overwritten.
+Artifacts are soft-deleted only. An artifact is never overwritten in place, and a run record is never deleted. An incident in year three may require reproducing a model from year one. Only an artifact that was never overwritten can do that. The windows in the table are a starting point. Your regulator and your storage budget set the final values.
 
 ### 5.4 Observability of the tracker itself
 
-The tracker is a service. It has its own metrics, logs and alerts.
+The tracker is a service, so it needs its own metrics, logs and alerts. Watch the signals in the table below. The alert thresholds in the table are examples. Pick your own after you measure a normal week.
 
 | Metric | Why it matters | Alert |
 |---|---|---|
@@ -626,77 +642,83 @@ The tracker is a service. It has its own metrics, logs and alerts.
 | Failed runs / minute | Cluster health signal | > 0 for 5 minutes |
 | Postgres connection pool utilisation | Postgres bottleneck | > 80 percent |
 
-The last metric catches the most common failure: a Postgres connection pool that is too small for a busy week. The symptom is a tracker that is slow but not down; the cause is a pool that is sized for the average week, not the peak.
+The last row catches the most common failure. The tracker is slow, but not down. The Postgres connection pool was sized for an average week, not a peak one.
 
-**Run the tracker as a production service. Back it up. Give it an SLO. Page someone when it falls behind.**
+Alert on metrics, not on log text. Production Kubernetes, chapter 9, points out that a small change to a log message can quietly break an alert built on it. If you can express the signal as a metric, alert on the metric. Keep the alerts few, so on-call engineers do not learn to ignore them.
+
+Also watch the watcher. Set an alert that fires on a schedule under normal conditions. If that alert stops arriving, page someone, because the metrics or alerting path has failed. Production Kubernetes, chapter 9, calls this a dead man's switch.
+
+**Run the tracker as a production service, and page someone when it falls behind.**
 
 ---
 
 ## 6. How it fails
 
-Six failure modes recur. Each has a name, a symptom, a diagnosis and a fix that lives in this chapter.
+Six failure modes come up again and again. Each one has a name, a symptom, a diagnosis and a fix that this chapter already covers. When one of them shows up in your own cluster, match the symptom first and then work back to the cause.
 
 ### 6.1 "The data scientist is using DVC on a laptop and the GCS bucket is gone"
 
-**Symptom:** A new team member runs `dvc pull` and gets an HTTP 403 from GCS. The bucket was deleted during a cleanup sprint because it was not in the team's "production" inventory.
+A new team member runs `dvc pull` and gets an HTTP 403 from GCS. The bucket was deleted in a cleanup sprint because nobody listed it as production.
 
-**Diagnosis:** The DVC remote was configured as a personal bucket, not a project bucket. There is no infrastructure-as-code declaration for the bucket.
+**Diagnosis:** The DVC remote was a personal bucket, not a project bucket. No infrastructure-as-code declares it.
 
-**Fix:** Move the bucket declaration to Terraform or Pulumi, alongside the rest of the team's data infrastructure. Tag the bucket as `lifecycle=production`. Add a `dvc remote add` line in the team's setup script that points to the project bucket.
+**Fix:** Move the bucket declaration into Terraform or Pulumi, next to the rest of the team's data infrastructure. Tag the bucket `lifecycle=production`. Add a `dvc remote add` line to the team's setup script that points at the project bucket.
 
 ### 6.2 "The tracking server's Postgres ran out of connections"
 
-**Symptom:** Training jobs start failing with `OperationalError: too many connections` from MLflow. The error rate climbs during a sweep or a parallel training burst.
+Training jobs fail with `OperationalError: too many connections` from MLflow. The error rate climbs during a sweep or a burst of parallel training.
 
-**Diagnosis:** The Postgres instance is sized for the average day, not the peak. Connection pooling is not configured, or the pool size is smaller than the number of concurrent jobs.
+**Diagnosis:** Postgres was sized for the average day, not the peak. Either connection pooling is not configured, or the pool is smaller than the number of jobs that run at once.
 
-**Fix:** Add a connection pooler (PgBouncer) in front of Postgres. Raise the Postgres `max_connections` to match the worst-case pool size. Add the alert from Section 5.4 to catch the next instance before it pages the on-call.
+**Fix:** Put a connection pooler, such as PgBouncer, in front of Postgres. Raise `max_connections` to cover the worst-case pool size. Add the alert from Section 5.4, so you hear about the next case before the on-call engineer does.
 
 ### 6.3 "The candidate AUC looks fine but the production model is broken"
 
-**Symptom:** The candidate beat the baseline in MLflow. The promotion gate passed. The new model is in production and 5xx errors are climbing. The on-call opens the registry and finds the new version.
+The candidate beat the baseline in MLflow, and the promotion gate passed. The model is in production, and 5xx errors are climbing. The on-call engineer finds the new version in the registry.
 
-**Diagnosis:** The promotion gate checked the overall AUC but not a per-segment metric. The model regressed badly on a slice that the gate did not see.
+**Diagnosis:** The gate checked overall AUC but not a per-segment metric. The model regressed badly on one slice that the gate never looked at.
 
-**Fix:** Extend the gate to require every per-segment metric to beat a floor. The MLflow run record carries per-segment metrics; the gate queries them. Refuse promotion if any segment regresses by more than 5 percentage points.
+**Fix:** Make the gate check every per-segment metric against a floor. The MLflow run already carries per-segment metrics, so the gate can query them. Refuse promotion when any segment falls too far. The chapter's example limit is a drop of more than 5 percentage points. Choose your own limit after you look at your segments.
 
 ### 6.4 "The artifact URI is correct but the bytes are wrong"
 
-**Symptom:** A training job successfully registered a model version. When the serving system pulls the artifact, it loads weights that produce different outputs from the offline evaluation. The on-call is staring at a model that is mathematically not the model that was approved.
+A training job registered a model version. When serving pulls the artifact, the weights produce different outputs from the offline evaluation. The model in production is not the model that was approved.
 
-**Diagnosis:** The artifact store returned a different object than the one that was logged. The likely cause is a write-after-read race in the artifact store, a misconfigured CDN, or a re-upload that overwrote the bytes (DVC's default is to overwrite on `dvc push --force`; GCS is not vulnerable to this by default but versioning may be disabled).
+**Diagnosis:** The artifact store returned a different object from the one that was logged. The likely causes are a write-after-read race, a misconfigured CDN, or a re-upload that overwrote the bytes. DVC's default is to overwrite on `dvc push --force`. GCS is not exposed to this by default, but only while object versioning stays enabled.
 
-**Fix:** Enable object versioning on the artifact bucket. Refuse to overwrite an object whose version is already in the registry. Add a content-hash check at pull time that the serving system runs before loading the weights into HBM.
+**Fix:** Turn on object versioning for the artifact bucket. Refuse to overwrite any object whose version is already in the registry. Add a content-hash check at pull time, and run it before the weights reach GPU memory.
 
 ### 6.5 "The artifact is signed but the admission controller does not check"
 
-**Symptom:** The training pipeline signs every artifact with cosign. A bad actor pushes an unsigned image to the registry. The serving system runs it.
+The pipeline signs every artifact with cosign. Someone pushes an unsigned image to the registry, and the serving system runs it.
 
-**Diagnosis:** The admission controller policy is not enabled for the namespace where the serving pods run. The signature is created but never verified.
+**Diagnosis:** The admission policy is not enabled for the namespace where the serving pods run. Signatures are created, but nothing checks them.
 
-**Fix:** Deploy Kyverno or OPA Gatekeeper with a policy that requires `cosign.sigstore.dev` on every image. Test the policy by trying to deploy an unsigned image and confirming it is rejected. Run the policy in `audit` mode for a week before enforcing it, so the team sees what would have been blocked.
+**Fix:** Deploy Kyverno or OPA Gatekeeper with a policy that requires `cosign.sigstore.dev` on every image. Test it by deploying an unsigned image and confirming that it is rejected. Run the policy in audit mode for a period your team chooses, so you see what it would block before it blocks anything. Production Kubernetes, chapter 8, notes that Gatekeeper's audit function re-checks existing resources on a schedule. It also covers the stale-cache risk that audit is meant to catch. Switch on enforcement once the audit results look right.
 
 ### 6.6 "The W&B run is in the cloud but the artifact is in the company's S3"
 
-**Symptom:** A data scientist moves from W&B Cloud to a self-hosted W&B Server. The runs are migrated; the artifacts are not. The new server cannot find the artifacts.
+A data scientist moves from W&B Cloud to a self-hosted W&B Server. The runs arrive, but the artifacts do not, and the new server cannot find them.
 
-**Diagnosis:** W&B Cloud stored artifacts in its own S3 bucket. The migration moved the metadata but not the bytes. The data scientist assumed the migration was complete because the run records appeared.
+**Diagnosis:** W&B Cloud kept artifacts in its own bucket. The migration moved the metadata but not the bytes. The data scientist assumed the migration was complete because the run records appeared.
 
-**Fix:** Use W&B's artifact-transfer tooling, or write a script that iterates over the run records and copies the artifacts to the new bucket. Verify the content hashes after the transfer; do not trust the success message.
+**Fix:** Use W&B's artifact-transfer tooling, or write a script that walks the run records and copies each artifact to the new bucket. Verify the content hashes afterwards. Do not trust the success message alone.
 
 ---
 
 ## 7. Hands-on lab
 
-This lab extends Chapter 16.1's lab by adding DVC for data versioning and the comparison query from Section 2.4. It runs on GCP / GKE. The lab is **untested** in this repository; commands and YAML are a working template.
+This lab extends the Chapter 16.1 lab by adding DVC for data versioning and the comparison query from Section 2.4. It runs on GCP / GKE. The lab has not been tested in this repository, so treat the commands and YAML as a working template and expect to fix small things.
 
 ### 7.1 Prerequisites
 
-- The Chapter 16.1 lab completed (MLflow deployed in `mlops` namespace, Postgres backend, GCS artifact bucket).
-- `dvc` installed (`pip install 'dvc[gcs]'`).
+- The Chapter 16.1 lab, completed. MLflow should run in the `mlops` namespace, with a Postgres backend and a GCS artifact bucket.
+- `dvc` installed with the GCS extra: `pip install 'dvc[gcs]'`.
 - A second GCS bucket for DVC remote storage.
 
 ### 7.2 Step 1: wire DVC to the project's GCS bucket
+
+Start by pointing DVC at the bucket your project uses. The commands below create a fresh repository and set the bucket as the default remote.
 
 ```bash
 mkdir churn-mlflow && cd churn-mlflow
@@ -709,6 +731,8 @@ dvc remote modify project url gs://${PROJECT_ID}-dvc
 
 ### 7.3 Step 2: version a v2 dataset and compare against v1
 
+Create the second version of the churn dataset and track it with DVC. Then log its AUC and compare it with the first version.
+
 ```bash
 python -c "import pandas as pd; \
   pd.DataFrame({'user_id': range(1500), 'tier': ['gold']*750+['silver']*750, \
@@ -719,15 +743,17 @@ git commit -m "v2 of churn dataset (1500 rows)"
 dvc push
 # expected: data/churn_v2.csv.dvc has a sha256; gs://.../sha256 uploaded
 
-# Compare metrics across v1 and v2
-dvc metrics add -f json -p train.params auc_v2 0.91
-echo '{"auc_v2": 0.91}' >> metrics.json
+# Record the v2 metrics as a file that Git tracks, then compare with dvc
+echo '{"auc": 0.91}' > metrics.json
 git add metrics.json && git commit -m "log v2 AUC"
+dvc metrics diff
 dvc metrics diff --target metrics.json:v1 metrics.json:v2
 # expected: a JSON diff showing auc_v1 -> auc_v2
 ```
 
 ### 7.4 Step 3: run the training script from Chapter 16.1 with two seeds
+
+Run the training script once per seed. Each run should show up in MLflow with its data hash, commit and image tags.
 
 ```bash
 for seed in 42 1337; do
@@ -739,6 +765,8 @@ done
 
 ### 7.5 Step 4: query the comparison from the MLflow REST API
 
+Ask MLflow for every run that used the v2 data hash. The query returns each run's AUC and seed.
+
 ```bash
 curl -s -X POST http://localhost:5000/api/2.0/mlflow/runs/search \
   -H "Content-Type: application/json" \
@@ -748,6 +776,8 @@ curl -s -X POST http://localhost:5000/api/2.0/mlflow/runs/search \
 ```
 
 ### 7.6 Step 5: promote the higher-AUC run, sign the artifact
+
+Promote the stronger run through the gate, then sign its model file.
 
 ```bash
 # Promote
@@ -759,12 +789,14 @@ python code/part16/promote_to_registry.py \
 
 # Sign the artifact
 mlflow artifacts download-path runs:/<best-run-id>/model ./artifacts
-cosign sign --key cosign.key ./artifacts/model.pkl
+cosign sign-blob --key cosign.key --output-signature ./artifacts/model.pkl.sig ./artifacts/model.pkl
 # expected: signature in registry/rekor; the artifact in MLflow now carries a
 # signed digest
 ```
 
 ### 7.7 Step 6: verify the signature is checked at the cluster boundary
+
+Deploy a pod that mounts an unsigned artifact. The admission controller should reject it.
 
 ```bash
 # Deploy a pod that mounts an unsigned artifact; expect rejection
@@ -775,7 +807,7 @@ kubectl apply -f code/part16/pod_unsigned.yaml
 
 ### 7.8 What to record
 
-After the lab, you should be able to answer five questions in five seconds each:
+After the lab, you should be able to answer these five questions quickly, without searching.
 
 1. What is the dataset_id of the data that trained the live model?
 2. What is the run_id of the training run that produced the live weights?
@@ -783,101 +815,103 @@ After the lab, you should be able to answer five questions in five seconds each:
 4. Which two seeds did the comparison query cover?
 5. Is the live artifact signed? When was the signature last verified?
 
-If any of these five takes more than 30 seconds to answer, the data and tracking pillars are still missing. The lab is **untested** against a live GKE cluster in this repository.
+If any answer takes you a long search, the data or tracking pillar is still missing. Fill that gap before you move on. **The lab is untested against a live GKE cluster in this repository.**
 
 ---
 
 ## Exercises
 
-1. **Wire a per-segment promotion gate.** Extend `promote_to_registry.py` to query `auc_segment_<name>` from the candidate and the baseline; refuse promotion if any segment regresses by more than `rules["max_segment_drop"]`. *Solution sketch:* a loop over segment names returned by `client.get_metric_history`; a hard fail with the segment name printed in the reason.
-2. **Add a sweep on top of MLflow.** Use `mlflow.projects.run` with a `params.yaml` containing 12 hyperparameter combinations; let MLflow orchestrate the sweep; pick the best by AUC. *Solution sketch:* an MLflow Project with a `MLproject` file and a `conda.yaml`; `mlflow.run(".", parameters=...)` from a driver script.
-3. **Move from DVC to lakeFS.** Stand up a lakeFS instance on GKE, branch the data lake, run the same training pipeline against a lakeFS branch. Compare reproducibility and CI cost. *Solution sketch:* the lakeFS Helm chart with a Postgres backend; `lakectl branch create`; mount the branch as a path the training script reads from.
-4. **Add a content-hash check at pull time.** Have the serving system re-hash the artifact before loading it into HBM; refuse to load if the hash does not match the registry entry. *Solution sketch:* a sidecar that runs `sha256sum` on the artifact and compares against the value in MLflow; on mismatch, the sidecar fails the readiness probe.
-5. **Sign and verify a registry image with cosign and Kyverno.** Sign the training image with cosign; write a Kyverno policy that requires the signature; test by deploying an unsigned image. *Solution sketch:* `cosign sign --key cosign.key $IMAGE`; a Kyverno ClusterPolicy with `verifyImages`; deploy unsigned and expect rejection.
-6. **Compare runs across seeds programmatically.** Write a script that picks all runs sharing the same code commit and dataset id; computes the standard deviation of AUC across seeds; flags runs whose std > 0.01 as "not seed-stable". *Solution sketch:* the MLflow search API with `filter_string="tags.code_commit = '<hash>' and tags.dataset_id = '<id>'"`; compute std across the returned runs; tag the unstable runs with `seed_stability=fail`.
+Try these after the lab. Each one extends something you have already built.
+
+1. **Wire a per-segment promotion gate.** Extend `promote_to_registry.py` so it reads `auc_segment_<name>` from both the candidate and the baseline. It should refuse promotion when a segment drops by more than `rules["max_segment_drop"]`. *Solution sketch:* loop over the segment names returned by `client.get_metric_history`. Fail hard, and print the segment name in the reason.
+2. **Add a sweep on top of MLflow.** Use `mlflow.projects.run` with a params.yaml file that lists 12 hyperparameter combinations. Let MLflow run the sweep, and pick the best run by AUC. *Solution sketch:* an MLflow Project with an MLproject file and a conda.yaml file, plus a `mlflow.run(".", parameters=...)` call from a driver script.
+3. **Move from DVC to lakeFS.** Stand up lakeFS on GKE, create a branch of your data lake, and run the same pipeline against that branch. Then compare reproducibility and CI cost. *Solution sketch:* the lakeFS Helm chart with a Postgres backend, `lakectl branch create`, and a branch mounted as a path the training script reads.
+4. **Add a content-hash check at pull time.** Have the serving system re-hash the artifact before it loads into HBM. Refuse to load on a mismatch with the registry entry. *Solution sketch:* a sidecar that runs `sha256sum` and compares the result with the value in MLflow. On a mismatch, the sidecar fails the readiness probe.
+5. **Sign and verify a registry image with cosign and Kyverno.** Sign the training image, write a Kyverno policy that requires the signature, and test it with an unsigned image. *Solution sketch:* `cosign sign --key cosign.key $IMAGE`, a Kyverno ClusterPolicy with `verifyImages`, and a deploy of an unsigned image that you expect to be rejected.
+6. **Compare runs across seeds programmatically.** Write a script that selects all runs with the same code commit and dataset id. Compute the standard deviation of AUC across seeds, and flag runs above a threshold as not seed-stable. The chapter's example threshold is 0.01, and you should choose your own. *Solution sketch:* the MLflow search API with a `filter_string` on the code_commit and dataset_id tags. Compute the spread, and tag unstable runs with `seed_stability=fail`.
 
 ---
 
 ## Checkpoint questions
 
 <details><summary>1. What three properties of ML data make it harder to version than code?</summary>
-Size (hundreds of GB to TB; Git cannot hold it), mutability (datasets are appended and re-partitioned; paths lie), and partial sharing (multiple models share subsets of features; a change in a shared feature has dependents). The fix is content-addressed storage plus a metadata layer (DVC, lakeFS, Pachyderm, Delta Lake) that records hashes outside Git.
+The three properties are size, mutability and partial sharing. Datasets run to hundreds of gigabytes or terabytes, which Git cannot hold. They also change through appends and re-partitioning, and models that share features inherit each other's data bugs. The fix is content-addressed storage plus a metadata layer, such as DVC, lakeFS, Pachyderm or Delta Lake, that keeps the hashes outside Git.
 </details>
 
 <details><summary>2. What is the minimum data versioning contract?</summary>
-Dataset id, content hash, source system, snapshot time, row count, schema hash, object-storage path, optional parents (lineage), and a retention-until date. The dataset id is the address; the content hash is the proof; the path is convenience. A training script takes the id, not the path.
+The contract has these fields: dataset id, content hash, source system, snapshot time, row count, schema hash, object-storage path, optional parents for lineage, and a retention-until date. The dataset id is the address, and the content hash is the proof. The path is only a convenience, so when you write the script, pass the id, not the path.
 </details>
 
 <details><summary>3. Why does the training script take a dataset id and never a hard-coded path?</summary>
-Because a path can move, can be overwritten, and can change contents without notice. A dataset id, resolved through a metadata database, is permanent. If the bytes at the address do not match the recorded hash, the script refuses to run; the failure is immediate, not three months later in production.
+A path can move, be overwritten, or change its contents without notice. A dataset id, resolved through a metadata database, stays fixed. If the bytes at that address do not match the recorded hash, the script refuses to run. You see the failure at once, not three months later in production.
 </details>
 
 <details><summary>4. How does DVC store large files?</summary>
-DVC stores the bytes in any S3-compatible object store and keeps `.dvc` files in Git that hold content hashes. The Git repository stays small; the object store carries the bytes. A `dvc pull` retrieves the bytes that match a given Git commit.
+DVC keeps the bytes in an S3-compatible object store and keeps `.dvc` files in Git that hold the content hashes. Git stays small because the object store carries the large files. Running `dvc pull` brings back the bytes that match a given Git commit.
 </details>
 
 <details><summary>5. What seven questions must a run record answer?</summary>
-What code produced it (commit hash, image digest), what data produced it (dataset id), what environment produced it (CUDA, cuDNN, Python, cluster topology), what was the seed (pin), what were the hyperparameters (parameter dict), what was the outcome (metric dict, per segment), and what was the artifact (file with content hash). A run record missing any of these is unreproducible.
+The seven answers are: the code (commit hash and image digest), the data (dataset id), the environment (CUDA, cuDNN, Python and cluster topology), the seed, the hyperparameters, the outcome per segment, and the artifact with its content hash. A run record that misses any one of them cannot be reproduced.
 </details>
 
 <details><summary>6. Why is the run record an audit trail rather than a metric?</summary>
-Because the metric is a number that may be wrong; the run record is the proof that the number came from a specific code/data/env combination. An audit can verify the metric by re-running with the recorded inputs; it cannot verify the metric from a printed number alone.
+A metric is a number, and the number may be wrong. The run record proves that the number came from one specific combination of code, data and environment. If you are the auditor, you can check the metric by re-running with the recorded inputs, but not from a printed number alone.
 </details>
 
 <details><summary>7. What does "seed stability" mean and why does it matter?</summary>
-A model that wins on one seed and loses on another is a draw from a distribution, not a real result. Seed stability means the metric is reproducible across seeds within a tolerance. The tracker exposes this as the standard deviation of a metric across runs that share code and data but vary the seed.
+A model that wins on one seed and loses on another is one draw from a distribution, not a real result. Seed stability means the metric reproduces across seeds within a tolerance. The tracker shows it as the standard deviation of a metric across runs that share code and data but differ by seed, so you can spot an unstable model.
 </details>
 
 <details><summary>8. What is the handoff between the experiment tracker and the model registry?</summary>
-The promotion gate function reads the run record, compares against the baseline, and either advances the registry stage or blocks with a printed reason. The run record's id becomes the registry entry's lineage record. The two systems agree because the gate is the only path between them.
+The promotion gate reads the run record, compares it with the baseline, and either advances the registry stage or blocks with a printed reason. The run id becomes the lineage record on the registry entry. The gate is the only path between the two systems, so they stay in agreement.
 </details>
 
 <details><summary>9. What does the cluster boundary add on top of the registry?</summary>
-A signature. The training pipeline signs the model artifact with cosign against an OIDC identity. The cluster's admission controller (OPA Gatekeeper or Kyverno) refuses pods that mount an unsigned artifact. The serving system verifies the signature on pull. There is no path from the registry to the cluster that bypasses the signature check.
+It adds a signature. The training pipeline signs the model artifact with cosign against an OIDC identity. The admission controller, either OPA Gatekeeper or Kyverno, refuses pods that mount an unsigned artifact, and the serving system verifies the signature on pull. No path from the registry to the cluster skips that check.
 </details>
 
 <details><summary>10. Why is DVC not a replacement for MLflow and vice versa?</summary>
-DVC's primary use is data and pipeline versioning. MLflow's primary use is experiment tracking and model registry. They overlap on artifact storage but not on data versioning. A team that uses DVC for data and MLflow for runs gets the strengths of both with minimal duplication; the run record carries the data hash that DVC recorded.
+DVC's main job is data and pipeline versioning. MLflow's main job is experiment tracking and the model registry. The two overlap on artifact storage but not on data versioning. A team that uses DVC for data and MLflow for runs gets both strengths with little duplication, because the run record carries the data hash that DVC recorded.
 </details>
 
 <details><summary>11. What are the four IAM roles in a tracking and registry deployment?</summary>
-Tracker writer (training service accounts and the orchestrator), tracker reader (data scientists and the platform team), registry promoter (the promotion pipeline only), and registry reader (the serving system and data scientists). The split between writer and promoter is the structural enforcement of the promotion gate.
+The four roles are tracker writer, tracker reader, registry promoter and registry reader. Writers are the training service accounts and the orchestrator. Readers are data scientists and the platform team. Only the promotion pipeline is a promoter, while the serving system and data scientists are registry readers. Keeping writer and promoter apart is what enforces the gate.
 </details>
 
 <details><summary>12. What is the retention policy for run records and artifacts?</summary>
-Run records are kept indefinitely; they are the audit trail. Artifacts follow a tiered policy: failed runs are kept for 30 days, staging runs for 90 days, promoted runs indefinitely, retired runs for one year then cold storage. Soft-delete only; an artifact is never overwritten in place.
+Run records are kept indefinitely, because they form the audit trail. Artifacts follow a tiered policy. Failed runs are kept for 30 days, staging runs for 90 days, and promoted runs indefinitely. Retired runs are kept for one year and then moved to cold storage. Artifacts are soft-deleted and never overwritten in place.
 </details>
 
 <details><summary>13. What is the SLO for an experiment tracking server?</summary>
-Open-run latency p99 < 200 ms; log-metric latency p99 < 500 ms; log-artifact latency p99 < 5 s. The tracker is on the hot path of every training job; a slow tracker times out the training job and forces the data scientist to work around it.
+The chapter gives example targets: open-run latency p99 under 200 ms, log-metric latency p99 under 500 ms, and log-artifact latency p99 under 5 s. These are starting values, so measure your own baseline before you set targets. The tracker sits on the hot path of every job, and a slow tracker can time out your job.
 </details>
 
 <details><summary>14. What metric catches a tracker Postgres bottleneck?</summary>
-Postgres connection pool utilisation. A tracker that is slow but not down is almost always a Postgres connection pool sized for the average day rather than the peak. The alert is pool utilisation > 80 percent for more than five minutes.
+Postgres connection pool utilisation is the metric to watch. A tracker that is slow but not down usually has a pool sized for an average day, not the peak. The example alert in Section 5.4 fires above 80 percent utilisation.
 </details>
 
 <details><summary>15. How does the promotion gate catch a per-segment regression that overall AUC misses?</summary>
-The gate queries per-segment metrics from the run record and refuses promotion if any segment regresses by more than the configured threshold. The overall metric can stay flat while one slice falls off a cliff; the per-segment check is what prevents the silent regression.
+The gate queries per-segment metrics from the run record and refuses promotion if any segment falls by more than the configured limit. The overall metric can stay flat while one slice drops sharply. The per-segment check is what protects you from that silent regression.
 </details>
 
 <details><summary>16. What is the difference between MLflow Tracking and MLflow Registry?</summary>
-Tracking records training runs (params, metrics, tags, artifacts). Registry records model versions (the artifacts of promoted runs) with stages (Staging, Production, Archived) and lineage (run_id, dataset_id, commit). A run becomes a registered model only after passing the promotion gate.
+Tracking records training runs, with their parameters, metrics, tags and artifacts. The registry records model versions, which are artifacts from promoted runs, with stages such as Staging, Production and Archived. It also records lineage through the run id, dataset id and commit. A run becomes a registered model only after it passes the promotion gate.
 </details>
 
 <details><summary>17. Why is object versioning important on the artifact bucket?</summary>
-Because without versioning, a re-upload can overwrite the bytes that the registry points to. The model that the registry says is in production is no longer the model that was promoted. Object versioning preserves the previous bytes; the content-hash check at pull time catches any drift.
+Without versioning, a re-upload can overwrite the bytes the registry points to. The model the registry calls production is then not the model that was promoted. Object versioning keeps the old bytes, and the content-hash check at pull time catches any drift.
 </details>
 
 <details><summary>18. Why is W&B not always the right choice over MLflow?</summary>
-W&B is cloud-hosted by default; self-hosted W&B Server requires operational work. MLflow is open source and self-hostable as a Kubernetes Deployment. For teams with strict data-residency requirements, MLflow is the lower-friction default. For teams that want the richer UI and built-in sweeps, W&B wins.
+W&B is cloud-hosted by default, and running W&B Server yourself takes real operational work. MLflow is open source and runs as a Kubernetes Deployment that you control. For teams with strict data-residency rules, MLflow is usually the lower-friction default. For teams that want a richer interface and built-in sweeps, W&B is often the better fit.
 </details>
 
 <details><summary>19. What is the difference between data versioning and dataset cataloguing?</summary>
-Data versioning tracks the bytes (content hashes, immutable snapshots). Dataset cataloguing tracks the metadata (descriptions, owners, tags, lineage, freshness). The two are complementary; a versioned dataset needs a catalogue entry so that data scientists can find it, and a catalogue entry needs a versioning layer so that the entry's content is reproducible.
+Data versioning tracks the bytes, with content hashes and immutable snapshots. Dataset cataloguing tracks metadata such as descriptions, owners, tags, lineage and freshness. The two work together. A versioned dataset needs a catalogue entry so people can find it, and the entry needs versioning so its content can be reproduced.
 </details>
 
 <details><summary>20. Why is the "compare runs" query more important than the "log run" call?</summary>
-Because the goal of tracking is decision support, not bookkeeping. The comparison query is what the promotion gate runs; the comparison query is what the data scientist opens when debugging a regression; the comparison query is what the audit log shows when the regulator asks. The log call is necessary but not sufficient.
+Tracking exists to support decisions, not just record-keeping. The comparison query is what the promotion gate runs, what a data scientist opens when debugging a regression, and what an auditor looks at. Logging a run is necessary, but on its own it is not enough.
 </details>
 
 ---

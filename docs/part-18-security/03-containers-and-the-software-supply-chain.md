@@ -25,12 +25,14 @@ lab_venue: "GCP / GKE"
 
 ## Why this matters for AI infrastructure
 
-Chapter 18.2 verified the firmware. This chapter verifies the software that runs on top of the firmware. A model serving workload is a container image; the container image was built from a Dockerfile; the Dockerfile was based on a base image; the base image was downloaded from a registry. Every link in the chain is a potential attack surface; every link is a potential control point. The team's job is to verify every link before the workload runs, and to keep verifying it continuously.
+Imagine a model-serving team that ships a new image on a Friday afternoon. The image runs fine in staging, and nobody checks where its base layer came from or which libraries it bundles. On Monday, a scanner flags a serious flaw in one of those libraries, and nobody can say which running pods contain it. This chapter closes that gap.
 
-The software supply chain is the most attacked surface in modern infrastructure. A compromised base image, a compromised dependency, a compromised build script — each is a way for an attacker to insert malicious code into the workload. The supply chain attack is what the SolarWinds incident was; the supply chain attack is what the 3CX incident was; the supply chain attack is what every CVE in the last decade has been. The team's job is to make the supply chain auditable.
+Chapter 18.2 verified the firmware. This chapter verifies the software that runs on top of it. A model-serving workload is a container image. That image was built from a Dockerfile, the Dockerfile started from a base image, and the base image came from a registry. Each link can be attacked, and each link can also be checked before the workload runs. Your job is to check them, and to keep checking after deployment.
+
+The software supply chain is one of the most common attack surfaces in modern infrastructure. A compromised base image, dependency, or build script can insert malicious code into a workload that otherwise looks correct. The SolarWinds and 3CX incidents both worked this way. The code you wrote is not the only code that runs.
 
 ```text
-Why the software supply chain is on the critical path (V18 ch3; PK Ch 15):
+Why the software supply chain is on the critical path (background reading: NVIDIA Zero-to-Hero volume 18; Production Kubernetes; the figures below are examples, not quotations):
 - A typical AI workload has 100-1000 transitive dependencies. Each dependency
   is a potential attack surface. The supply chain attack is the most common
   attack pattern in modern infrastructure.
@@ -42,13 +44,13 @@ Why the software supply chain is on the critical path (V18 ch3; PK Ch 15):
   supply chain must be auditable.
 ```
 
-Three operational realities make this chapter a platform-team concern rather than a data-science-only concern:
+The 100 to 1,000 dependency range in that block is an example, chosen to show the scale of the risk. It is not a measured figure for your workload. Count the transitive dependencies in your own image before you plan around any number.
 
-1. **The container image is the platform team's artefact.** The platform team owns the image build; the platform team owns the image signing; the platform team owns the image verification. The image is the platform team's responsibility.
-2. **The software supply chain is the platform team's discipline.** Every link in the chain is verified by the platform team; every link is auditable by the platform team. The supply chain integrity is the platform team's discipline.
-3. **The admission controller is the cluster's gatekeeper.** The admission controller verifies the image signature; the admission controller verifies the SBOM; the admission controller refuses to start pods with unverified images. The admission controller is the platform team's gatekeeper.
+Three operational realities make this a platform-team concern, not only a data-science concern. The first is ownership. The platform team builds the image, signs it, and verifies it, so the image is the platform team's artifact. The second is that supply chain discipline runs continuously. Every link needs a check, and each check must leave a record that an auditor can follow later. The third is the admission controller. It sits at the cluster door and checks each image before its pod starts, which makes it the one place where a policy can actually be enforced.
 
-**Before a team can claim their AI factory is secure, the team must have verified every link in the software supply chain. The base image must be signed; the dependencies must be scanned; the build must be reproducible. A team that has not verified the supply chain is a team that has not verified the foundation.**
+A Kubernetes platform is a means to an end, not the goal itself. Companies exist to deliver a core business, such as an ecommerce site, a monitoring product, or an insurance website. The platform helps only when it moves code to customers faster and more safely. This chapter follows that path from developer code to a running workload. It treats each stage as a clean handoff point, so you can improve one stage without rebuilding the whole pipeline.
+
+**Before you call an AI factory secure, check every link in its supply chain. Confirm that the base image is signed, that the dependencies are scanned, and that the build can be reproduced.**
 
 ## Prerequisites and outcomes
 
@@ -61,14 +63,13 @@ Three operational realities make this chapter a platform-team concern rather tha
 
 ### Outcomes
 
-After completing this chapter you will be able to:
+By the end of this chapter, you should be able to do five things:
 
-1. Implement cosign image signing on every CI/CD pipeline; verify the signature before deploy.
-2. Implement OPA Gatekeeper or Kyverno admission control; refuse to start pods with unsigned images.
-3. Generate the SBOM for every container image; track the SBOM over time.
-4. Implement vulnerability scanning (Trivy, Grype) on every image; refuse to deploy images with HIGH or CRITICAL CVEs.
-5. Implement dependency confusion defence; pin every dependency; verify the dependency hash.
-6. Operate the supply chain integrity on GKE with continuous verification, SBOM tracking, and incident response.
+- Sign every image in your pipeline with cosign, and verify the signature before anything deploys it.
+- Add an admission policy that refuses pods with unsigned images, and prove that it refuses them.
+- Generate an SBOM for every image, scan it, and refuse to deploy images with HIGH or CRITICAL CVEs.
+- Pin every dependency and verify its hash at install time.
+- Run the supply chain on GKE with continuous verification, SBOM tracking, and a path for incident response.
 
 ---
 
@@ -76,7 +77,9 @@ After completing this chapter you will be able to:
 
 ### 1.1 cosign
 
-cosign is the Sigstore tool for signing and verifying container images. cosign signs the image; cosign verifies the signature; cosign stores the signature in the registry alongside the image.
+A tag such as `v1` can be overwritten after your review, and the cluster would never notice. A signature lets a verifier check that an image came from a known key holder and has not changed since.
+
+cosign is the Sigstore tool for signing and checking images. The private key signs, and the public key verifies. Keep the private key in your CI secret store, never in the repository.
 
 ```bash
 # Sign a container image
@@ -88,23 +91,21 @@ cosign verify --key cosign.pub myregistry/myimage:v1
 # expected: the signature is valid; the image is unmodified
 ```
 
-The pattern is: every image is signed at build time; every image is verified before deploy; the signature is stored in the registry.
+The signature is stored in the registry next to the image, so the image and its proof travel together. Signing and verifying both need the key files on the machine that runs the command.
 
 ### 1.2 Keyless signing with cosign
 
-Keyless signing uses the Sigstore public good (fulcio) for certificate transparency. The signature is tied to the builder's OIDC identity; the verifier checks the OIDC identity.
+A key file must be stored, rotated, and protected. Keyless signing removes the file and ties the signature to the builder's OIDC identity instead. Check that your CI runners can reach the signing service before you depend on it.
 
 ```bash
-# Sign with keyless mode
-cosign sign --fulcio --rekor https://rekor.sigstore.dev myregistry/myimage:v1
-# expected: the image is signed with the keyless certificate; the certificate is in Rekor
+# Sign with keyless mode (the default in cosign 2.x; it opens an OIDC login or uses the CI identity token)
+cosign sign myregistry/myimage:v1
+# expected: a short-lived certificate is issued by Fulcio and the signature is recorded in the Rekor transparency log
 ```
-
-The pattern is: keyless signing does not require a private key; keyless signing uses the OIDC identity; keyless signing is auditable via Rekor.
 
 ### 1.3 The signature in the registry
 
-The signature is stored in the registry alongside the image. The registry is OCI-compliant; the signature is in the same OCI distribution spec as the image.
+Use the command below to see what signature data the registry holds for an image.
 
 ```bash
 # List the signatures for an image
@@ -112,7 +113,7 @@ cosign triangulate myregistry/myimage:v1
 # expected: the signatures are listed; the signature count is reported
 ```
 
-The pattern is: every image has a signature; the signature is in the registry; the signature can be retrieved.
+Before you let a pipeline deploy an image, confirm that a verify step runs against that exact image reference.
 
 ---
 
@@ -120,10 +121,12 @@ The pattern is: every image has a signature; the signature is in the registry; t
 
 ### 2.1 OPA Gatekeeper
 
-OPA Gatekeeper is the Open Policy Agent admission controller for Kubernetes. Gatekeeper verifies the image signature; Gatekeeper verifies the SBOM; Gatekeeper refuses to start pods with unverified images.
+A signature helps only if the cluster refuses unsigned images. An admission controller sits in the API server request path and checks each new pod before it is stored. Gatekeeper is the Open Policy Agent controller that does this.
+
+The policy below is a skeleton, so read it as one. Its rule calls `cosign_verify`, but the snippet never defines that function. The file shows the shape of a policy, not a working signature check.
 
 ```yaml
-# code/part18/gatekeeper_policy.yaml (shape only)
+# code/part18/gatekeeper_policy.yaml
 apiVersion: templates.gatekeeper.sh/v1
 kind: ConstraintTemplate
 metadata:
@@ -149,14 +152,12 @@ spec:
         }
 ```
 
-The pattern is: the policy is defined as code; the policy is enforced at admission time; the policy is auditable.
-
 ### 2.2 Kyverno
 
-Kyverno is the Kubernetes-native policy engine. Kyverno can verify the image signature; Kyverno can verify the SBOM; Kyverno can refuse to start pods with unverified images.
+Kyverno is a Kubernetes-native policy engine. The rule below shows the same gap. It checks for a label named `cosign.sigstore.dev/signed` on each Pod. Nothing in this chapter sets that label, so the rule checks a label and never checks a signature. Replace it with a rule that verifies the signature itself before you count on it.
 
 ```yaml
-# code/part18/kyverno_policy.yaml (shape only)
+# code/part18/kyverno_policy.yaml
 apiVersion: kyverno.io/v1
 kind: ClusterPolicy
 metadata:
@@ -177,11 +178,9 @@ spec:
               cosign.sigstore.dev/signed: "true"
 ```
 
-The pattern is: the policy is defined as code; the policy is enforced at admission time; the policy is auditable.
-
 ### 2.3 The admission controller in production
 
-The admission controller is deployed as a Kubernetes Deployment. The controller intercepts every pod creation; the controller verifies the image; the controller allows or denies the pod.
+In production, the admission controller runs as a Deployment inside the cluster. It intercepts each pod creation, checks the image, and then allows or denies the pod. A denial appears as a Kubernetes event, so the developer sees the reason in the output of the failed apply.
 
 ```mermaid
 flowchart LR
@@ -192,7 +191,7 @@ flowchart LR
     Deny --> Event[Kubernetes event:<br/>image not signed]
 ```
 
-The pattern is: the admission controller is the gatekeeper; the admission controller verifies every image; the admission controller refuses unsigned images.
+Test the denial path on purpose. Apply an unsigned test image to a non-production namespace, and confirm the pod is refused before you trust the policy.
 
 ---
 
@@ -200,7 +199,9 @@ The pattern is: the admission controller is the gatekeeper; the admission contro
 
 ### 3.1 What the SBOM contains
 
-The Software Bill of Materials (SBOM) is the inventory of every component in the container image. The SBOM has the package name, the version, the license, the supplier, and the dependency relationship.
+Suppose a new vulnerability is announced for a logging library. You need to know quickly whether any of your images ship that library. You can answer only if you kept a list of every component in each image. That list is the Software Bill of Materials, or SBOM.
+
+The SBOM records each package with its name, version, license, supplier, and dependency relationships. The scanner adds vulnerability data to it later, so the same SBOM can be checked again when new CVEs appear.
 
 ```text
 SBOM schema (CycloneDX):
@@ -211,11 +212,9 @@ SBOM schema (CycloneDX):
 - metadata: timestamp, author, version
 ```
 
-The pattern is: every package is in the SBOM; every dependency is in the SBOM; every vulnerability is in the SBOM.
-
 ### 3.2 Generating the SBOM with Syft
 
-Syft is the Anchore tool for generating SBOMs from container images. Syft reads the image; Syft produces the SBOM in CycloneDX or SPDX format.
+Syft is the Anchore tool that reads a container image and writes its SBOM. It can write CycloneDX or SPDX, and this chapter uses CycloneDX. Generate the SBOM at build time, from the same image reference you pushed, so the inventory matches what runs.
 
 ```bash
 # Generate the SBOM for an image
@@ -223,19 +222,17 @@ syft myregistry/myimage:v1 -o cyclonedx-json > sbom.json
 # expected: the SBOM is generated; the SBOM is in CycloneDX format
 ```
 
-The pattern is: the SBOM is generated at build time; the SBOM is stored alongside the image; the SBOM is auditable.
-
 ### 3.3 The SBOM in production
 
-The SBOM is uploaded to the vulnerability database; the SBOM is scanned for vulnerabilities; the SBOM is correlated with the CVE feeds.
+A clean scan on the day you built an image does not stay clean. New CVEs are published every week, so scan the stored SBOM on a schedule, not only once. The command below scans the SBOM against vulnerability data and writes the findings as SARIF, a format many CI systems can read.
 
 ```bash
-# Upload the SBOM to the vulnerability database
+# Scan the SBOM for known vulnerabilities (grype reads the SBOM; it does not upload it)
 grype sbom:./sbom.json -o sarif > vulns.sarif
 # expected: the vulnerabilities are listed in SARIF format
 ```
 
-The pattern is: the SBOM is uploaded to the vulnerability database; the SBOM is scanned for vulnerabilities; the SBOM is correlated with the CVE feeds.
+Store each SBOM beside its image so responders need not rebuild it during an incident.
 
 ---
 
@@ -243,7 +240,7 @@ The pattern is: the SBOM is uploaded to the vulnerability database; the SBOM is 
 
 ### 4.1 Trivy
 
-Trivy is the Aqua Security vulnerability scanner. Trivy scans container images for CVEs; Trivy scans the SBOM for vulnerabilities; Trivy scans the dependencies for known issues.
+A scanner compares the packages in an image with a database of known vulnerabilities. Trivy is the Aqua Security scanner, and it can scan an image directly. Read the output by severity first, then check whether your application actually loads each flagged package.
 
 ```bash
 # Scan a container image for vulnerabilities
@@ -251,11 +248,9 @@ trivy image myregistry/myimage:v1
 # expected: the vulnerabilities are listed; the severity is reported
 ```
 
-The pattern is: the scan is automated; the scan is continuous; the scan produces a structured report.
-
 ### 4.2 Grype
 
-Grype is the Anchore vulnerability scanner. Grype scans the SBOM for vulnerabilities; Grype uses the vulnerability database; Grype reports the vulnerabilities.
+Grype is the Anchore scanner, and it reads an SBOM directly. That means you can check an image's inventory without pulling the image again. Either Trivy or Grype does the job, so choose the one your team can run and maintain.
 
 ```bash
 # Scan an SBOM for vulnerabilities
@@ -263,27 +258,29 @@ grype sbom:./sbom.json
 # expected: the vulnerabilities are listed; the severity is reported
 ```
 
-The pattern is: Grype is the alternative to Trivy; the team's choice depends on the team's preference.
-
 ### 4.3 The scan in CI/CD
 
-The scan is integrated into the CI/CD pipeline. The pipeline builds the image; the pipeline generates the SBOM; the pipeline scans the SBOM; the pipeline fails the build if the scan finds HIGH or CRITICAL CVEs.
+A scan that nobody runs protects nothing. Put it in the pipeline so every build creates an SBOM and then scans it. The job below fails when the scan finds HIGH or CRITICAL issues, so the build stops before the image is promoted.
 
 ```yaml
-# code/part18/cicd_scan.yaml (shape only)
-stages:
-  - name: build
-    image: my-builder:v1
-    command: [docker, build, -t, myregistry/myimage:v1, .]
-  - name: sbom
-    image: anchore/syft:v1
-    command: [syft, myregistry/myimage:v1, -o, cyclonedx-json, >, sbom.json]
-  - name: scan
-    image: aquasec/trivy:v1
-    command: [trivy, image, --input, sbom.json, --severity, HIGH,CRITICAL, --exit-code, 1, myregistry/myimage:v1]
+# code/part18/cicd_scan.yaml
+# GitHub Actions workflow: build, generate an SBOM, scan it, fail on HIGH or CRITICAL.
+name: image-scan
+on: [push]
+jobs:
+  build-scan:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: Build image
+        run: docker build -t myregistry/myimage:${{ github.sha }} .
+      - name: Generate SBOM (CycloneDX)
+        run: syft myregistry/myimage:${{ github.sha }} -o cyclonedx-json > sbom.json
+      - name: Scan the SBOM
+        run: trivy sbom --severity HIGH,CRITICAL --exit-code 1 sbom.json
 ```
 
-The pattern is: the pipeline builds; the pipeline scans; the pipeline fails the build if the scan finds vulnerabilities.
+A hard fail on every finding can block a deploy that a team has already reviewed. Production Kubernetes, chapter 15, describes two controls that help here. An allowlist lets a team accept a CVE that has no fix yet or does not apply to its setup, with the reason written down. Blocking image pulls for a high-severity CVE also carries a risk, because a pod that reschedules onto a new node may not be able to pull its image at all. Weigh the security gain against that availability cost, and record the decision.
 
 ---
 
@@ -291,7 +288,7 @@ The pattern is: the pipeline builds; the pipeline scans; the pipeline fails the 
 
 ### 5.1 What is dependency confusion
 
-Dependency confusion is the attack where a malicious package with the same name as a legitimate package is uploaded to a public registry. The build system pulls the malicious package instead of the legitimate package.
+Picture a build that installs a package named `myorg-common-lib`. Your company publishes that package on a private index. An attacker publishes a package with the same name on the public index. If the build looks at the public index too, it may pick up the attacker's copy. The build does not warn you, and the malicious code runs inside your build.
 
 ```text
 Dependency confusion attack:
@@ -302,11 +299,9 @@ Dependency confusion attack:
 - Result: the malicious code runs in the build; the build is compromised
 ```
 
-The pattern is: the attacker uploads a package with the same name as a private package; the build system pulls the wrong package.
-
 ### 5.2 The defence: dependency pinning
 
-The defence is dependency pinning. The build system uses a lockfile (pip's `requirements.txt` with hashes, npm's `package-lock.json`, go's `go.sum`); the build system verifies the hash of every dependency.
+Pinning is the first defence. A lockfile records the exact version and a hash for every package. The install step checks each downloaded file against its hash, so a swapped package fails the build. Use the lockfile your language already produces: pip's requirements file with hashes, npm's `package-lock.json`, or Go's `go.sum`.
 
 ```bash
 # Verify the dependency hashes
@@ -314,26 +309,28 @@ pip install --require-hashes -r requirements.txt
 # expected: pip verifies the hash of every package; the install fails if any hash is wrong
 ```
 
-The pattern is: every dependency has a hash; the build system verifies the hash; the build fails if any hash is wrong.
+Pin the operating system packages too. Production Kubernetes, chapter 15, makes the same point for packages installed with `apk`, `yum`, or `apt`. Without a pinned version, two builds of the same Dockerfile can end up with different packages.
 
 ### 5.3 The defence: private registry
 
-The defence is a private registry. The build system pulls from a private registry; the private registry has a curated set of packages; the build system cannot pull from a public registry.
+The build system pulls from a private registry, which holds a curated set of packages. The build system cannot pull from a public registry. The configuration below sets that up for pip.
 
 ```yaml
-# code/part18/pip_conf.yaml (shape only)
+# code/part18/pip.conf
 [global]
+# Only the private registry. A second public index (extra-index-url) is exactly what dependency confusion exploits.
 index-url = https://my-private-registry.example.com/pypi/
-extra-index-url = https://pypi.org/simple/
 ```
 
-The pattern is: the build system uses the private registry as the primary index; the public registry is the fallback; the build system prefers the private registry.
+Before you trust a build, check which index each package name resolves from. A private registry helps only when the build never falls back to the public index for a name your company owns.
 
 ---
 
 ## 6. Operating the software supply chain on GKE
 
 ### 6.1 The components
+
+Every control needs an owner and a target. The targets in the last column are example values, so choose your own.
 
 | Component | Where it runs | Backing store | SLO |
 |---|---|---|---|
@@ -343,19 +340,23 @@ The pattern is: the build system uses the private registry as the primary index;
 | Vulnerability scanner | CI/CD pipeline | Vulnerability database | Scan latency p99 < 5 minutes |
 | Dependency pinning | CI/CD pipeline | Lockfile | 100% of dependencies pinned |
 
+Production Kubernetes, chapter 15, suggests tagging each image with its git commit hash, then adding readable version tags as it moves through environments. Immutable tags stop anyone from overwriting an approved tag.
+
 ### 6.2 IAM and the supply chain integrity
 
-The supply chain integrity has its own IAM. The pattern is:
+Anyone who can sign an image can vouch for it, so signing rights need the same care as deploy rights. The table separates three roles: readers, writers who sign and update, and an admin who approves policy.
 
 | Role | Who | What they can do |
 |---|---|---|
-| `supplychain.reader` | The platform team; the security team | Read the SBOM; read the vulnerability report |
+| `supplychain.reader` | The platform team. The security team | Read the SBOM; read the vulnerability report |
 | `supplychain.writer` | The platform team | Sign the image; update the SBOM; update the lockfile |
 | `supplychain.admin` | The platform team lead | Approve the image signing policy; approve the SBOM policy |
 
-The supply chain integrity is the platform team's discipline. The discipline is documented; the discipline is enforced; the discipline is reviewed quarterly.
+Production Kubernetes, chapter 15, also suggests keeping deployment configuration in a separate repository from application code. The two repositories then carry different permissions and audit rules. The role names above are a pattern to adapt, not a standard. A quarterly review of role holders is one reasonable cadence.
 
 ### 6.3 Observability
+
+Metrics tell you whether the controls still work, so watch them as you would any other production signal. Each row below names a control, why it matters, and the alert you would set. The alert values are examples, so set thresholds your team can act on.
 
 | Metric | Why it matters | Alert |
 |---|---|---|
@@ -365,67 +366,43 @@ The supply chain integrity is the platform team's discipline. The discipline is 
 | Vulnerability count (HIGH/CRITICAL) | Vulnerability exposure | > 0 |
 | Dependency pinning rate | Dependency confusion defence | < 100% |
 
-The vulnerability count alert is the most important. Any HIGH or CRITICAL vulnerability is a security exposure that the team must address immediately.
+Of these, the HIGH or CRITICAL count matters most. Every such finding is an exposure, and it needs an owner and a fix date.
 
 ---
 
 ## 7. How it fails
 
-Six failure modes recur.
+Six failure modes come back again and again in supply chain incidents. Each subsection gives the symptom you see first, the likely cause, and the fix. Start from the symptom, because that is where the on-call engineer begins.
 
 ### 7.1 "The image is not signed"
 
-**Symptom:** A workload tries to deploy; the admission controller refuses the pod; the workload cannot run.
-
-**Diagnosis:** The CI/CD pipeline does not sign the image; the image is unsigned.
-
-**Fix:** Add cosign signing to the CI/CD pipeline; verify the signature is present; redeploy.
+Symptom: a deploy fails because the admission controller refuses the pod. Diagnosis: the pipeline pushed the image without a signing step, so no signature exists. Fix: add the signing step to the pipeline, confirm the signature now exists in the registry, and redeploy.
 
 ### 7.2 "The signature is invalid"
 
-**Symptom:** A workload tries to deploy; the admission controller refuses the pod; the signature verification fails.
-
-**Diagnosis:** The image was modified after signing; the signing key was compromised; the signature is wrong.
-
-**Fix:** Re-sign the image; rotate the signing key if compromised; investigate the source of the invalid signature.
+Symptom: the admission controller refuses the pod because verification fails. Diagnosis: the image changed after signing, the signing key was compromised, or the signature was made with the wrong key. Fix: sign again from a trusted build, rotate the key if you suspect compromise, and find out how the image changed before you trust the next one.
 
 ### 7.3 "The admission controller is bypassed"
 
-**Symptom:** A pod with an unsigned image starts in the cluster. The admission controller did not enforce the policy.
-
-**Diagnosis:** The admission controller is misconfigured; the policy is set to warn instead of enforce; the namespace is excluded.
-
-**Fix:** Set the policy to enforce; verify the controller is running; verify the namespace is included.
+Symptom: a pod with an unsigned image starts anyway. Diagnosis: the policy is set to warn instead of enforce, the namespace is excluded, or the controller is not running. Fix: set the policy to enforce, confirm the controller is running, and include the namespace. Then test again with an unsigned image, because a policy you never tested is a policy you cannot vouch for.
 
 ### 7.4 "The SBOM is missing"
 
-**Symptom:** A vulnerability is reported; the SBOM is not available; the team cannot determine the affected components.
-
-**Diagnosis:** The SBOM was not generated; the SBOM was not uploaded; the SBOM was deleted.
-
-**Fix:** Re-generate the SBOM; upload to the vulnerability database; verify the SBOM is auditable.
+Symptom: a vulnerability is announced, but no SBOM exists for the image, so the team cannot tell which components are affected. Diagnosis: the SBOM was never generated, was never stored, or was deleted. Fix: regenerate the SBOM from the image reference, store it next to the image, and confirm you can retrieve it before the next incident.
 
 ### 7.5 "The vulnerability is not patched"
 
-**Symptom:** A HIGH or CRITICAL vulnerability is reported; the image is not patched; the workload continues to run with the vulnerability.
-
-**Diagnosis:** The patch is not available; the patch breaks compatibility; the team has not prioritised the patch.
-
-**Fix:** Patch the base image; rebuild the workload image; redeploy; verify the vulnerability is resolved.
+Symptom: a HIGH or CRITICAL finding is open, and the workload keeps running the vulnerable image. Diagnosis: no patch is available yet, the patch breaks compatibility, or nobody has prioritised the fix. Fix: patch the base image, rebuild the workload image, redeploy, and confirm the finding is gone. Production Kubernetes, chapter 15, warns against automatic patching that skips your change process, because a new image can break the running application. Send the patch through the same pipeline and tests as any other change.
 
 ### 7.6 "The dependency is confused"
 
-**Symptom:** A malicious package is pulled into the build; the build is compromised; the workload runs with the malicious code.
-
-**Diagnosis:** The dependency pinning is missing; the private registry is not configured; the build system pulls from the public registry.
-
-**Fix:** Pin every dependency; configure the private registry; verify the build system uses the private registry.
+Symptom: a malicious package appears in the build, and the workload runs its code. Diagnosis: dependencies are not pinned, the private registry is not configured, or the build still pulls from the public index. Fix: pin every dependency, configure the private registry, and confirm the build resolves names from the registry you intended.
 
 ---
 
 ## 8. Hands-on lab
 
-This lab walks through verifying the supply chain integrity on GKE: the cosign signing, the admission controller, the SBOM generation, the vulnerability scanning, and the dependency pinning. The lab is **untested** in this repository.
+This lab walks you through the full chain on GKE: sign the image, admit it, generate its SBOM, scan the SBOM, and pin the dependencies. The lab is **untested** in this repository, so treat each expected result as something to check, not something already proven.
 
 ### 8.1 Prerequisites
 
@@ -435,6 +412,8 @@ This lab walks through verifying the supply chain integrity on GKE: the cosign s
 
 ### 8.2 Step 1: sign a container image with cosign
 
+Start by signing the image your pipeline built. The admission controller checks this signature later, so the image must carry it before you deploy.
+
 ```bash
 # Sign the image
 cosign sign --key cosign.key gcr.io/${PROJECT_ID}/myimage:v1
@@ -442,6 +421,8 @@ cosign sign --key cosign.key gcr.io/${PROJECT_ID}/myimage:v1
 ```
 
 ### 8.3 Step 2: deploy the admission controller
+
+Install Gatekeeper, then apply the policy file. The policy only proves something once it checks a real signature, as section 2.1 explains.
 
 ```bash
 helm install gatekeeper gatekeeper/gatekeeper \
@@ -453,6 +434,8 @@ kubectl apply -f code/part18/gatekeeper_policy.yaml
 
 ### 8.4 Step 3: generate the SBOM
 
+Generate the SBOM from the same image reference you signed. That keeps the signature and the inventory pointing at one artifact.
+
 ```bash
 # Generate the SBOM for the image
 syft gcr.io/${PROJECT_ID}/myimage:v1 -o cyclonedx-json > sbom.json
@@ -460,6 +443,8 @@ syft gcr.io/${PROJECT_ID}/myimage:v1 -o cyclonedx-json > sbom.json
 ```
 
 ### 8.5 Step 4: scan for vulnerabilities
+
+Scan the SBOM and read the severity counts. This is the same check the CI job in section 4.3 runs on every build.
 
 ```bash
 # Scan the SBOM for vulnerabilities
@@ -469,6 +454,8 @@ trivy sbom sbom.json
 
 ### 8.6 Step 5: pin the dependencies
 
+Compile the requirements file with hashes, then commit the output. The next build installs the same bytes, not whatever the index happens to serve that day.
+
 ```bash
 # Pin the Python dependencies
 pip-compile requirements.in --generate-hashes --output-file requirements.txt
@@ -477,6 +464,8 @@ pip-compile requirements.in --generate-hashes --output-file requirements.txt
 
 ### 8.7 Step 6: deploy the signed image
 
+Apply the workload manifest and watch the admission result. A pod that starts here shows that the signed image passed the policy.
+
 ```bash
 kubectl apply -f code/part18/workload.yaml
 # expected: the admission controller verifies the signature; the pod is created
@@ -484,7 +473,7 @@ kubectl apply -f code/part18/workload.yaml
 
 ### 8.8 What to record
 
-After the lab, you should be able to answer five questions in five seconds each:
+After the lab, you should be able to answer five questions from your dashboard, without digging through logs:
 
 1. What is the current image signing rate?
 2. What is the current image verification rate?
@@ -492,25 +481,151 @@ After the lab, you should be able to answer five questions in five seconds each:
 4. What is the current vulnerability count (HIGH/CRITICAL)?
 5. What is the current dependency pinning rate?
 
-If any takes more than 30 seconds, the software supply chain integrity is not yet a production service. The lab is **untested** against a live GKE cluster.
+If you cannot answer one of these quickly, the supply chain is not yet running as a production service. How quickly counts as quick is your team's call. This lab has not been run against a live GKE cluster in this repository.
+
+---
+
+## 9. Building images and delivering them
+
+Sections 1 to 8 assume that an image already exists and that you trust it. This section covers how the image is built, stored, and rolled out. Each stage has a clean handoff point, so you can choose the best approach for each stage and improve it without replacing the rest.
+
+### 9.1 The image is the deployable asset
+
+Before containers, teams deployed a binary, a compressed archive, or raw source code onto a server. They then made sure the server had the right dependencies and configuration. A container image packs those pieces into one artifact. It holds the application, the execution environment, and the dependencies together.
+
+The image is a set of compressed filesystem layers with some metadata. It follows the Open Container Initiative (OCI) image specification, an agreed standard in the cloud native community. Because the standard is shared, many build tools can produce images, and any compliant container runtime can run them.
+
+### 9.2 Gold images are an antipattern
+
+In a pre-container environment, security teams often approved one gold base image, such as a preconfigured CentOS image. Every application had to be built on it. When teams moved to containers, many copied that habit. They took useful upstream images from third parties and vendors, then rebased their applications and configuration onto internal copies.
+
+This causes three problems. The conversion from the upstream image to an internal image costs extra work. The platform team must store and maintain every internal copy. Because the set of images sprawls, updates happen rarely, if at all, and the security posture often gets worse.
+
+Start by asking the security team what each gold image is for. The reason is usually one or more of these requirements.
+
+- Specific agents or software must be installed.
+- No vulnerable libraries may be present.
+- User accounts must have the correct permissions.
+
+Once you know the reason, encode it as a check in the pipeline. The check rejects or alerts on a non-compliant image. Teams can then keep reusing upstream images and the work that went into them, while the pipeline holds the security line.
+
+Teams often want a fixed base operating system so that the organization keeps troubleshooting knowledge. This benefit is smaller than it looks. You should rarely need to exec into a container to troubleshoot. Even then, the differences between Linux distributions matter little for most support work. More applications now ship as scratch or distroless images, which carry less overhead inside the container.
+
+Do not try to move every upstream or vendor image onto your own base. The costs described above make that a poor use of effort. A curated set of internal base images is still a good idea, though. Those bases make a solid foundation for your own applications.
+
+### 9.3 Build images and runtime images
+
+Containers can also run the build. A build image holds the compiler, the test tools, and the libraries that compile the code. A runtime image holds only the application and what it needs to run. For a Java application, the build image might hold the JDK, Gradle or Maven, and the test tooling. The runtime image might hold only a Java runtime and the application.
+
+The runtime image should not carry build tools, because the application does not need them when it runs. A leaner image is faster to distribute and has a tighter attack surface. Docker's multistage build feature separates the two images in one Dockerfile. The example below builds a Go binary in one stage, then copies only that binary into a distroless runtime stage.
+
+```
+# Build stage
+FROM golang:1.12.7 as build
+WORKDIR /my-app
+COPY go.mod .
+RUN go mod download
+COPY main.go .
+ENV CGO_ENABLED=0
+RUN go build -o my-app
+# Deploy stage
+FROM gcr.io/distroless/base
+USER nonroot:nonroot
+COPY --from=build --chown=nonroot:nonroot /my-app/my-app /my-app
+CMD ["/my-app"]
+```
+
+Four details in this file matter.
+
+- The `golang` image holds the Go toolchain, which the running application does not need.
+- Copying `go.mod` and downloading modules first lets Docker reuse that layer when only the code changes.
+- The distroless base gives a minimal image with no extra dependencies.
+- Only the compiled `my-app` binary is copied into the deploy stage.
+
+### 9.4 Runtime user
+
+Containers share the Linux kernel with the host, so the runtime user has real consequences. When the user is not set, the process usually runs as root. That raises the attack surface. If an attacker compromises the application and escapes the container, they could gain root access on the host. Decide whether the application needs root, and whether it depends on `/etc/passwd`. If it does not need root, add a nonroot user to the image.
+
+Set the user in the image itself, not only in the Kubernetes manifest. In a Dockerfile, the `USER` directive does this. The example below runs the `my-app` binary as the nonroot user and group, which the distroless images create by default.
+
+```
+FROM gcr.io/distroless/base
+USER nonroot:nonroot
+COPY ./my-app /my-app
+CMD ["./my-app", "serve"]
+```
+
+An image that names its user documents itself. Developers also get the same user and group ID on their own machines.
+
+Containers usually run a single process with no init system. Your application must therefore handle signals correctly. It must also reap orphaned processes that get reparented to it. Minimal init programs can handle both jobs, and they can act as a bootstrap for your application.
+
+### 9.5 Buildpacks for platform teams
+
+Dockerfiles are not the only way to build an image. Cloud Native Buildpacks analyze the source code and run the buildpacks that match it. A Go buildpack runs when Go files are present. A Maven buildpack runs when a `pom.xml` file is found. Developers start the process with a CLI named `pack`, and they never write a Dockerfile.
+
+Platform teams can also write custom buildpacks. Those buildpacks enforce policy, meet compliance rules, and standardize the images that run on the platform. The value grows with the size of the organization. Development teams want to build value into the application, not learn how to containerize it.
+
+### 9.6 Scanning images after deployment
+
+Scanning at pull time is a start, but it shows only today's findings. New vulnerabilities appear in images that already run. Schedule scans of the images in use, and plan how you will update them. Automatic remediation is tempting, but a new image can break the running application. Automated update systems can also act outside your change process, which makes them hard to audit.
+
+Blocking pulls has a cost too. Suppose a core application's image gets a new CVE, and pulls of that image are blocked. If its pods move to a new node, they may not be able to pull the image. The application then loses availability. Security and availability pull in opposite directions here, so record the trade-off you choose.
+
+A more common model is to alert on scan results and send them to operations and security teams. Some registries call a webhook when a scan finishes, and the payload lists the vulnerable images and CVEs. Other registries expose metrics that standard alerting tools can scrape. This takes more manual work, but it gives you control over when and how you patch. Run each patch through the normal deployment pipeline, so every change is tested and auditable.
+
+Static scanning is one layer of defense in depth. An image can download malicious content after it is deployed. A running container can also be hijacked. Runtime scanning addresses those risks. A simple form scans the filesystem of running containers on a schedule. A stronger form limits the actions and behaviors a container can perform, so you do not chase each new CVE. Look at Falco and the Aqua Security suite, and plan time to study runtime scanning on its own.
+
+### 9.7 Rollout patterns
+
+When you deploy a new version, you also need to watch its health. You must decide whether to fix the issue or roll back. Rollout patterns support that decision. They also separate deploying an application from releasing it to users. You can turn on new behavior when you are ready, which reduces the risk of each change.
+
+A canary release sends a new version into the cluster and routes a small share of traffic to it. The share can depend on metadata, on users, or on another attribute. You watch the canary for errors and for behavior that differs from the old version. If confidence grows, you increase its share over time.
+
+Blue/green is similar to a canary, but it cuts traffic over all at once. The old version is blue and the new version is green. Green can run in the same cluster or in a second cluster. You can test green in a setting that users do not see before the cutover. If errors rise after the cutover, you move traffic back to blue. Applications that hold state or sessions need extra care for this to work.
+
+A/B testing is also close to a canary. You roll out a version with different behavior to a subset of consumers. You then collect metrics on how people use it. Those results guide whether you roll back, roll forward, or expand the experiment.
+
+Most of these patterns use network traffic shifting. Kubernetes provides networking primitives that make this practical. Flagger is an open source tool that automates the patterns on top of a service mesh. It runs as a controller in the cluster and watches the `image` field of `Deployment` resources. It configures the mesh to shift traffic and checks the health of the new version. It then either continues the rollout or halts it and reverts.
+
+Flagger and similar tools usually belong in a second or third phase of a Kubernetes journey. Most patterns need a service mesh, and the mesh adds complexity of its own.
+
+### 9.8 GitOps trade-offs
+
+Push-based pipelines change the cluster from the outside, one command at a time. GitOps reverses that. A controller keeps reconciling the cluster with the contents of a git repository, much as Kubernetes itself reconciles resources. ArgoCD and Flux are the two main tools in this space, and their teams are building a shared engine underneath both.
+
+GitOps is declarative. If the tooling goes down or someone deletes a deployment, the controller tries to restore the declared state. Git becomes the single source of truth, and a pull request workflow becomes the gate for cluster changes. You also get an audit log by default.
+
+GitOps has costs. If git is the single source of truth, secret data must live in version control. Bitnami's Sealed Secrets is the best-known answer. It lets you commit encrypted Secrets, and the cluster decrypts them when they are applied.
+
+A failed push shows up as a failed pipeline. A declarative system can stay diverged without any failure. Alert when the observed state in the cluster and the declared state in git stay different for too long.
+
+Few applications deploy cleanly as a flat set of YAML resources. You may need ordering and some scripting while you move to GitOps. Watch for tools that create resources at runtime. A controller that watches a custom resource and creates other objects through the Kubernetes API is one example. In strict mode, GitOps tooling may delete those objects, because git does not list them. That deletion is often what you want, but changes made outside git can break the model, so plan a workaround for those cases.
+
+### 9.9 Summary of the delivery path
+
+This section followed code from a container into a Kubernetes cluster. Build, test, continuous integration, and continuous delivery still apply in a container environment, but with different tools. GitOps builds on Kubernetes primitives to improve reliability and security in existing deployment patterns.
+
+Decide how much of the pipeline each group should see. Some development teams know Kubernetes well and can write the build and deployment artifacts. Other organizations hide the details from developers to scale and standardize. That choice moves work to the platform team, which must put the foundations and automation in place.
 
 ---
 
 ## Exercises
 
-1. **Add a cosign signing step to the CI/CD pipeline.** Sign every image at build time; verify the signature before deploy. *Solution sketch:* the CI/CD YAML in Section 6.1; the cosign sign and verify commands.
-2. **Add an admission controller policy.** Refuse to start pods with unsigned images. *Solution sketch:* the OPA Gatekeeper policy in Section 2.1; the Kyverno policy in Section 2.2.
-3. **Add an SBOM generation step to the CI/CD pipeline.** Generate the SBOM for every image; upload to the vulnerability database. *Solution sketch:* the syft command in Section 3.2; the upload command in Section 3.3.
-4. **Add a vulnerability scanning step to the CI/CD pipeline.** Scan every image for CVEs; refuse to deploy images with HIGH or CRITICAL CVEs. *Solution sketch:* the CI/CD YAML in Section 4.3; the trivy scan command.
-5. **Add a dependency pinning step to the CI/CD pipeline.** Pin every dependency with a hash; verify the hash on install. *Solution sketch:* the pip-compile command in Section 5.2; the requirements.txt with hashes.
-6. **Add a supply chain dashboard.** Build a Grafana dashboard that shows the image signing rate, the vulnerability count, and the SBOM freshness. *Solution sketch:* the dashboard JSON; the panels; the data sources.
+Work through these in order, because each one assumes the earlier ones are in place. Each exercise asks you to add one control to your own pipeline.
+
+1. **Add a cosign signing step to the CI/CD pipeline.** Sign every image at build time, and verify the signature before deploy. *Solution sketch:* the cosign sign and verify commands in Section 1.1, placed in the job from Section 4.3.
+2. **Add an admission controller policy.** Refuse to start pods with unsigned images. *Solution sketch:* the OPA Gatekeeper policy in Section 2.1, or the Kyverno policy in Section 2.2, with the signature check replaced by a real verification rule.
+3. **Add an SBOM generation step to the CI/CD pipeline.** Generate an SBOM for every image, and store it with the image. *Solution sketch:* the syft command in Section 3.2 and the scan command in Section 3.3.
+4. **Add a vulnerability scanning step to the CI/CD pipeline.** Scan every image for CVEs, and refuse to deploy images with HIGH or CRITICAL CVEs. *Solution sketch:* the CI/CD YAML in Section 4.3, and the trivy scan command in Section 4.1.
+5. **Add a dependency pinning step to the CI/CD pipeline.** Pin every dependency with a hash, and verify the hash on install. *Solution sketch:* the pip-compile command in Section 8.6, and the `--require-hashes` install in Section 5.2.
+6. **Add a supply chain dashboard.** Build a Grafana dashboard that shows the image signing rate, the vulnerability count, and the SBOM freshness. *Solution sketch:* the metrics table in Section 6.3, with one panel for each row.
 
 ---
 
 ## Checkpoint questions
 
 <details><summary>1. What is cosign?</summary>
-The Sigstore tool for signing and verifying container images. cosign signs the image at build time; cosign verifies the signature at deploy time; cosign stores the signature in the registry alongside the image. Every image is signed; every image is verified.
+The Sigstore tool for signing and verifying container images. cosign signs the image at build time; cosign verifies the signature at deploy time; cosign stores the signature in the registry alongside the image. Every image is signed. Every image is verified.
 </details>
 
 <details><summary>2. What is the OPA Gatekeeper?</summary>
@@ -526,7 +641,7 @@ The attack where a malicious package with the same name as a legitimate package 
 </details>
 
 <details><summary>5. What is the most common supply chain failure?</summary>
-The image is not signed. A workload tries to deploy; the admission controller refuses the pod; the workload cannot run. The diagnosis is that the CI/CD pipeline does not sign the image. The fix is to add cosign signing to the CI/CD pipeline.
+The image is not signed. A workload tries to deploy. The admission controller refuses the pod. The workload cannot run. The diagnosis is that the CI/CD pipeline does not sign the image. The fix is to add cosign signing to the CI/CD pipeline.
 </details>
 
 <details><summary>6. What is the most dangerous supply chain failure?</summary>
@@ -534,27 +649,27 @@ The admission controller is bypassed. A pod with an unsigned image starts in the
 </details>
 
 <details><summary>7. What is the most common SBOM failure?</summary>
-The SBOM is missing. A vulnerability is reported; the SBOM is not available; the team cannot determine the affected components. The fix is to re-generate the SBOM; upload to the vulnerability database; verify the SBOM is auditable.
+The SBOM is missing. A vulnerability is reported. The SBOM is not available. The team cannot determine the affected components. The fix is to re-generate the SBOM; upload to the vulnerability database; verify the SBOM is auditable.
 </details>
 
 <details><summary>8. What is the most common vulnerability failure?</summary>
-The vulnerability is not patched. A HIGH or CRITICAL vulnerability is reported; the image is not patched; the workload continues to run with the vulnerability. The fix is to patch the base image; rebuild the workload image; redeploy.
+The vulnerability is not patched. A HIGH or CRITICAL vulnerability is reported. The image is not patched. The workload continues to run with the vulnerability. The fix is to patch the base image; rebuild the workload image; redeploy.
 </details>
 
 <details><summary>9. What is the most common dependency confusion failure?</summary>
-The dependency is confused. A malicious package is pulled into the build; the build is compromised. The fix is to pin every dependency; configure the private registry; verify the build system uses the private registry.
+The dependency is confused. A malicious package is pulled into the build. The build is compromised. The fix is to pin every dependency; configure the private registry; verify the build system uses the private registry.
 </details>
 
 <details><summary>10. What is the relationship between cosign and the admission controller?</summary>
-cosign signs the image; the admission controller verifies the signature. Together, they form the signature chain: cosign produces the signature; the admission controller consumes the signature. The signature chain is the foundation of the supply chain trust.
+cosign signs the image. The admission controller verifies the signature. Together, they form the signature chain: cosign produces the signature. The admission controller consumes the signature. The signature chain is the foundation of the supply chain trust.
 </details>
 
 <details><summary>11. What is the relationship between the SBOM and the vulnerability scanner?</summary>
-The SBOM is the inventory; the vulnerability scanner is the auditor. The scanner reads the SBOM; the scanner correlates with the CVE feeds; the scanner reports the vulnerabilities. The SBOM is the input; the scanner is the output.
+The SBOM is the inventory. The vulnerability scanner is the auditor. The scanner reads the SBOM. The scanner correlates with the CVE feeds. The scanner reports the vulnerabilities. The SBOM is the input. The scanner is the output.
 </details>
 
 <details><summary>12. What is the relationship between the lockfile and the dependency confusion defence?</summary>
-The lockfile pins every dependency with a hash; the build system verifies the hash. The lockfile is the input; the verification is the output. The lockfile is what makes the build reproducible; the verification is what makes the build safe.
+The lockfile pins every dependency with a hash. The build system verifies the hash. The lockfile is the input. The verification is the output. The lockfile is what makes the build reproducible. The verification is what makes the build safe.
 </details>
 
 <details><summary>13. What is the difference between Trivy and Grype?</summary>
@@ -566,7 +681,7 @@ The vulnerability count (HIGH/CRITICAL). The metric tells the team which images 
 </details>
 
 <details><summary>15. What is the difference between keyful and keyless signing?</summary>
-Keyful signing uses a private key stored locally. Keyless signing uses the Sigstore public good (fulcio) for certificate transparency; the signature is tied to the builder's OIDC identity. Keyless signing is auditable via Rekor; keyful signing does not require a third party.
+Keyful signing uses a private key stored locally. Keyless signing uses the Sigstore public-good Fulcio certificate authority to issue a short-lived certificate tied to the builder's OIDC identity, and records the signature in the Rekor transparency log. Keyless signing is auditable via Rekor; keyful signing does not require a third party.
 </details>
 
 <details><summary>16. What is the relationship between cosign and Rekor?</summary>
@@ -574,15 +689,15 @@ cosign signs the image; Rekor stores the signature. Rekor is the transparency lo
 </details>
 
 <details><summary>17. What is the difference between SBOM and CVE?</summary>
-The SBOM is the inventory of every component in the image. The CVE is the known vulnerability for a specific component. The SBOM is the input; the CVE is the output. The scanner reads the SBOM; the scanner correlates with the CVE feeds; the scanner reports the vulnerabilities.
+The SBOM is the inventory of every component in the image. The CVE is the known vulnerability for a specific component. The SBOM is the input. The CVE is the output. The scanner reads the SBOM. The scanner correlates with the CVE feeds. The scanner reports the vulnerabilities.
 </details>
 
 <details><summary>18. Why is containers and supply chain a Tier 2 chapter?</summary>
-Because the supply chain integrity is the foundation of the workload's trust. Without the supply chain integrity, every other control is compromised. The supply chain integrity is what the platform team owns; the supply chain integrity is what the regulator sees; the supply chain integrity is what the auditor inspects.
+Because the supply chain integrity is the foundation of the workload's trust. Without the supply chain integrity, every other control is compromised. The supply chain integrity is what the platform team owns. The supply chain integrity is what the regulator sees. The supply chain integrity is what the auditor inspects.
 </details>
 
 <details><summary>19. What is the difference between an image and an artefact?</summary>
-An image is a container image; an image is what runs in the cluster. An artefact is anything that is built and stored; an artefact includes images, models, datasets, and SBOMs. The supply chain integrity covers all artefacts.
+An image is a container image. An image is what runs in the cluster. An artefact is anything that is built and stored. An artefact includes images, models, datasets, and SBOMs. The supply chain integrity covers all artefacts.
 </details>
 
 <details><summary>20. What five questions should the supply chain lab let you answer in five seconds each?</summary>
@@ -594,7 +709,7 @@ What is the current image signing rate. What is the current image verification r
 ## Sources and review notes
 
 - NVIDIA Zero-to-Hero Volume 18 (`chapter-03-containers-and-the-software-supply-chain.md`). Source for the cosign signing, the admission controller, the SBOM generation, and the vulnerability scanning patterns. The wording has been rewritten in the handbook's voice.
-- *Production Kubernetes* (`production-kubernetes`, Chapter 15). Source for the supply chain patterns and the admission control patterns.
+- *Production Kubernetes* (`production-kubernetes`, Chapter 15, "Software Supply Chain"). Source for the supply chain patterns and the admission control patterns, and for the image build, base image, rollout, and GitOps material in section 9.
 
 ### Cross-references to other handbook chapters
 

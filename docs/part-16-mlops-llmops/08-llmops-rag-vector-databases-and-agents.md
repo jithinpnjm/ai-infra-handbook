@@ -25,12 +25,14 @@ lab_venue: "GCP / GKE"
 
 ## Why this matters for AI infrastructure
 
-The MLOps foundations from Chapter 16.1, the data pipelines from Chapter 16.3, and the serving platforms from Chapter 16.7 are the substrate. The LLMOps applications that sit on top of that substrate are the product. RAG is the pattern that lets a model answer questions about a private corpus. Vector databases are the system that gives the model fast lookup against millions of embeddings. Agents are the pattern that lets the model call tools and chain reasoning. Each of the three is a production system with its own failure modes, its own observability, and its own cost curve.
+Picture a team that already runs a GPU cluster for training and serving models. Now the product team wants a chatbot that answers questions from the company's private documents. That chatbot is an LLM application, and it sits on top of the foundations from Chapter 16.1, the data pipelines from Chapter 16.3, and the serving platforms from Chapter 16.7. Three patterns make up most of this work. Retrieval-Augmented Generation, or RAG, lets a model answer from a private corpus. Vector databases give the model fast lookup across millions of embeddings. Agents let the model call tools and chain its reasoning steps together.
 
-If you operate a GPU cluster for AI, you operate an LLM application. The application is what pays for the cluster. The application's quality is what the user sees. The application's cost is what the CFO sees. The platform team's job is to make the application fast, accurate, observable, and rollback-ready.
+If you run a GPU cluster for AI, you also run an LLM application. The application is what pays for the cluster, and its quality is the part the user sees. Its cost is the part the CFO sees. Your job as the platform team is to make the application fast, accurate, observable, and easy to roll back.
+
+The box below lists example ranges for planning. These are not measurements from any one system, so measure your own workload before you set a budget.
 
 ```text
-Why LLMOps is on the critical path (LLO Ch 3; AIE Ch 6; GAK Ch 8):
+Why LLMOps is on the critical path (background reading: LLMOps; AI Engineering; Generative AI on Kubernetes; the figures below are examples, not quotations):
 - A typical RAG application serves 100-10,000 QPS in production. Each request costs
   10-100 ms of GPU time for the LLM and 50-200 ms of CPU time for the retriever.
   A misconfigured chunking policy or vector index doubles the cost.
@@ -42,15 +44,21 @@ Why LLMOps is on the critical path (LLO Ch 3; AIE Ch 6; GAK Ch 8):
   silent regression that no one notices until the customer does.
 ```
 
-Three operational realities make this chapter a platform-team concern rather than a data-science-only concern:
+Small settings change the bill a lot. A misconfigured chunking policy or vector index can double the cost, and a runaway agent loop can cost far more.
 
-1. **Vector databases are databases.** They run on the cluster; they have IAM; they have backup; they have SLOs. The platform team owns the operational story even when the data scientist owns the schema.
-2. **Agents are pipelines.** They run as Kubernetes pods; they call external services; they produce traces. The agent runtime is a platform service with retries, timeouts, and rate limits.
-3. **LLM cost is a per-request number.** Every token is a dollar. The platform team's cost attribution, rate limiting, and autoscaling decisions are what keep the bill under control.
+Three operational realities make this a platform-team concern, not only a data-science concern:
 
-**Before an LLM application can serve customers, the RAG pipeline, the vector index, and the agent runtime must be production services with SLOs and rollback paths. A notebook demo is a pilot; an InferenceService with a signed index is a platform.**
+1. Treat a vector database as a database. It runs on your cluster, needs access control and backups, and has SLOs. The platform team owns the operations, even when a data scientist owns the schema.
+2. Treat agents as pipelines. They run as Kubernetes pods, call outside services, and produce traces. The agent runtime needs the same retries, timeouts, and rate limits as any other platform service.
+3. Count LLM cost per request. Every token has a price. Cost attribution, rate limits, and autoscaling decide whether the bill stays under control.
+
+**Before an LLM application can serve customers, its RAG pipeline, vector index, and agent runtime must be production services with SLOs and rollback paths.**
+
+A notebook demo is a pilot. An InferenceService with a signed index is a platform.
 
 ## Prerequisites and outcomes
+
+What does a team need to know before it builds a RAG chatbot? An LLM application touches retrieval, storage, agents, and cost all at once. The prerequisites below give you the vocabulary for those topics, and the later sections assume them.
 
 ### Prerequisites
 
@@ -62,14 +70,14 @@ Three operational realities make this chapter a platform-team concern rather tha
 
 ### Outcomes
 
-After completing this chapter you will be able to:
+After completing this chapter, you will be able to:
 
-1. Specify a RAG architecture: corpus, chunking, embedding model, vector index, retriever, prompt assembly, generator.
-2. Choose a vector database: Milvus, Qdrant, pgvector, Pinecone, Weaviate, on the dimensions of recall, latency, scale, and operational fit.
-3. Wire an agent loop: tool calling, retry policy, iteration cap, cost cap, trace emission.
-4. Operate a prompt-engineering discipline: versioned prompt templates, eval suites, regression tests.
-5. Implement cost control: token budgets per request, per tenant, per model.
-6. Operate the LLMOps stack on GKE with vector databases, embedding pipelines, agent runtimes, and observability that ties back to the SLO.
+1. Specify a RAG architecture with its corpus, chunking, embedding model, vector index, retriever, prompt assembly, and generator.
+2. Choose a vector database among Milvus, Qdrant, pgvector, Pinecone, and Weaviate, by comparing recall, latency, scale, and operational fit.
+3. Wire an agent loop with tool calling, a retry policy, an iteration cap, a cost cap, and trace emission.
+4. Run a prompt-engineering discipline with versioned templates, eval suites, and regression tests.
+5. Implement cost control with token budgets per request, per tenant, and per model.
+6. Operate the LLMOps stack on GKE, with vector databases, embedding pipelines, agent runtimes, and observability that ties back to the SLO.
 
 ---
 
@@ -77,7 +85,7 @@ After completing this chapter you will be able to:
 
 ### 1.1 The five components
 
-*AI Engineering* Chapter 6 walks through the RAG pattern. The architecture has five components: the corpus, the chunker, the embedding model, the vector index, and the retriever-generator pipeline. Each is a production system with its own lifecycle.
+Suppose a user asks, "What changed in our refund policy last month?" A model that has never read your policy will guess. RAG fixes this by fetching the right text first, then asking the model to answer from it. *AI Engineering* Chapter 6 walks through the pattern. A RAG system has five components: the corpus, the chunker, the embedding model, the vector index, and the retriever-generator pipeline. Each one is a production system with its own lifecycle.
 
 ```mermaid
 flowchart LR
@@ -94,7 +102,7 @@ flowchart LR
     subgraph Serving["RAG serving (InferenceService)"]
         R[Retriever<br/>vector search]
         PA[Prompt assembler<br/>template + context]
-        G[Generator (LLM)<br/>InferenceService]
+        G["Generator (LLM)<br/>InferenceService"]
     end
 
     C --> CH --> EM --> IDX
@@ -104,7 +112,7 @@ flowchart LR
     R --> PA --> G
 ```
 
-The five components produce four artifacts that are versioned together:
+Those five components produce four artifacts, and you version them together. Each artifact records a hash or the settings of the inputs that produced it, so you can trace it back.
 
 | Artifact | Where it lives | Versioning |
 |---|---|---|
@@ -113,25 +121,27 @@ The five components produce four artifacts that are versioned together:
 | Embedding table | Object store or vector store | chunk id, vector, embedding model id, hash of model |
 | Index snapshot | Vector store | snapshot id bound to (corpus hash, embedding model id, chunking policy version) |
 
-The index snapshot id is the equivalent of the dataset id from Chapter 16.1. Every artifact in the RAG pipeline has an id; every artifact has a hash; every id is bound to the ids of its inputs.
+The index snapshot id plays the same role as the dataset id from Chapter 16.1. Every artifact has an id and a hash, and each id is bound to the ids of the inputs that produced it. When an answer goes wrong, that chain shows you which input to check first.
 
 ### 1.2 The retriever
 
-*Generative AI on Kubernetes* Chapter 8 walks through the retriever. The retriever takes a query, encodes it with the same embedding model used to embed the corpus, searches the vector index for the top-K nearest neighbours, and returns the chunks. The retriever is the component that determines recall; the generator is the component that determines precision.
+The retriever is the first part of the system a question meets at request time. *Generative AI on Kubernetes* Chapter 8 walks through it. The retriever encodes the query with the same embedding model that embedded the corpus. It then searches the vector index for the top-K nearest neighbours and returns those chunks.
 
-The two metrics to track on the retriever are:
+The retriever sets recall, which tells you whether the right context reaches the model at all. The generator sets precision, which tells you whether the answer uses that context correctly.
 
-- **Recall@K.** For a held-out set of (query, relevant chunk) pairs, what fraction of queries return the relevant chunk in the top-K results?
-- **Latency p99.** How long does the vector search take at peak QPS?
+Track two numbers on the retriever:
 
-A retriever with low recall is a retriever that misses the right context; the generator hallucinates. A retriever with high latency is a retriever that dominates the end-to-end latency budget. The platform team's tuning goal is recall > 0.9 at K=10 and latency p99 < 50 ms.
+- Recall@K. For a held-out set of (query, relevant chunk) pairs, what fraction of queries return the relevant chunk in the top-K results?
+- Latency p99. How long does the vector search take at peak QPS?
+
+A retriever with low recall misses the right context, and the generator then has to guess. A retriever with high latency dominates the end-to-end latency budget. Teams often start from targets such as recall above 0.9 at K=10 and p99 latency under 50 ms. Treat those as example values, and set your own from your use case.
 
 ### 1.3 The prompt assembler and the generator
 
-*AI Engineering* Chapter 6 introduces the prompt assembler. The assembler takes the user's query, the retrieved chunks, and the prompt template, and produces the prompt that the generator sees.
+Between the retriever and the model sits the prompt assembler. *AI Engineering* Chapter 6 introduces it. It takes the user's question, the retrieved chunks, and the prompt template, and builds the exact prompt the generator will see.
 
 ```python
-# code/part16/prompt_assembler.py (shape only)
+# code/part16/prompt_assembler.py
 import json
 
 PROMPT_TEMPLATE = """You are a documentation assistant. Answer the question
@@ -150,9 +160,9 @@ def assemble(question: str, chunks: list[str]) -> str:
     return PROMPT_TEMPLATE.format(context=context, question=question)
 ```
 
-The prompt template is the artifact from Chapter 16.1 Section 5.2. The template is versioned in Git; the eval suite from Chapter 16.9 verifies that a template change does not regress accuracy.
+Treat the prompt template as an artifact, as Chapter 16.1 Section 5.2 describes. Keep it in Git, so every change has an author and a diff. The eval suite from Chapter 16.9 then checks that a template change does not lower accuracy.
 
-The generator is an LLM InferenceService. The LLM is the most expensive component in the RAG pipeline; the platform team's autoscaler and cost controls live here.
+The generator is an LLM served as an InferenceService. It is usually the most expensive part of the pipeline, so the autoscaler and cost controls live here. Log the index snapshot id and the template version with every answer, so you can trace a bad answer back to its inputs.
 
 ---
 
@@ -160,7 +170,7 @@ The generator is an LLM InferenceService. The LLM is the most expensive componen
 
 ### 2.1 The four production choices
 
-*LLMOps* Chapter 3 and *Generative AI on Kubernetes* Chapter 8 walk through the vector database landscape. Four implementations are in production today; each is interchangeable on the contract from Section 1.1, and each differs on the operational model.
+Your team has to pick a vector database, and the product pages all sound alike. The real differences are operational. *LLMOps* Chapter 3 and *Generative AI on Kubernetes* Chapter 8 compare the options. Four implementations are in common use. Each can meet the contract from Section 1.1, but each asks something different of the team that runs it.
 
 | Tool | Open source | Index type | Best fit |
 |---|---|---|---|
@@ -169,34 +179,34 @@ The generator is an LLM InferenceService. The LLM is the most expensive componen
 | **pgvector** | Yes (Postgres extension) | HNSW, IVF | Teams already on Postgres; want one database for everything |
 | **Pinecone** | No (managed) | Proprietary | Serverless; zero ops; pay per query |
 
-*LLMOps* Chapter 3 introduces Milvus as the open-source default for production-scale deployments. *Generative AI on Kubernetes* Chapter 8 adds the observation that pgvector is the right choice for small-to-medium deployments where the team already runs Postgres.
+*LLMOps* Chapter 3 names Milvus as the open-source default for production-scale deployments. *Generative AI on Kubernetes* Chapter 8 makes a different point. If your team already runs Postgres, pgvector often fits small and medium deployments well.
 
 ### 2.2 Milvus architecture
 
-Milvus separates storage and compute. The architecture has four layers:
+Milvus splits storage from compute, so each layer can scale on its own. The design has four layers.
 
 ```mermaid
 flowchart TB
     P[Proxy<br/>stateless, load balancer]
     C[Coordinator<br/>root, data, query, index]
     W[Worker node<br/>query, data, index]
-    S[Storage<br/>etcd (meta), MinIO/S3 (segments), Pulsar/Kafka (logs)]
+    S["Storage<br/>etcd (meta), MinIO/S3 (segments), Pulsar/Kafka (logs)"]
     P --> C
     C --> W
     W --> S
     C --> S
 ```
 
-The proxy is the load balancer; the coordinator assigns work; the workers do the work; the storage holds the segments. A Milvus deployment is a Kubernetes StatefulSet with multiple components; the platform team owns the Helm chart, the storage backend, the resource requests, and the SLOs.
+The proxy receives requests and balances them. The coordinator decides which worker handles which job. The workers run the queries and the index work, and the storage layer keeps the segments. A Milvus install is several Kubernetes workloads, not one. The platform team owns the Helm chart, the storage backend, the resource requests, and the SLOs.
 
-Milvus supports three index types. IVF (Inverted File) is the default; HNSW (Hierarchical Navigable Small World) is the most accurate; DiskANN is the disk-backed variant for very large indices.
+Milvus offers three index types, and the type changes how much memory the index needs. IVF (Inverted File) is the default. HNSW (Hierarchical Navigable Small World) is the most accurate. DiskANN is the disk-backed variant for very large indices.
 
 ### 2.3 Index snapshot and freshness
 
-The index snapshot from Chapter 16.3 Section 5 is the contract that ties the retriever to the corpus.
+The index snapshot from Chapter 16.3 Section 5 is the contract between the retriever and the corpus. The Python function below makes the id reproducible. The same three inputs always produce the same id.
 
 ```python
-# code/part16/index_snapshot.py (shape only)
+# code/part16/index_snapshot.py
 import hashlib, json
 
 def index_snapshot_id(corpus_hash: str, embedding_model_id: str,
@@ -210,13 +220,13 @@ def index_snapshot_id(corpus_hash: str, embedding_model_id: str,
     return hashlib.sha256(payload).hexdigest()
 ```
 
-The serving system reads the index snapshot id at request time; the audit log shows the corpus hash and the embedding model id that produced it; a regression in answer quality points to one of the three inputs.
+The serving system reads the index snapshot id on every request. The audit log records the corpus hash and the embedding model id behind that snapshot. When answer quality drops, check those three inputs first.
 
-The freshness SLO from Chapter 16.3 Section 5.3 governs how often the index is rebuilt. A static knowledge base (documentation) needs daily or weekly rebuilds. A frequently updated corpus (news, products) needs event-driven rebuilds on the changed partition.
+The freshness SLO from Chapter 16.3 Section 5.3 sets how often the index must be rebuilt. A static knowledge base, such as product documentation, needs daily or weekly rebuilds. A corpus that changes often, such as news or product listings, needs rebuilds triggered by changes to the affected partition.
 
 ### 2.4 pgvector for small-to-medium deployments
 
-*LLMOps* Chapter 3 introduces pgvector as the right choice for small-to-medium deployments. The pattern is to add the pgvector extension to an existing Postgres; the extension adds the `vector` type and the `<=>` cosine-distance operator.
+*LLMOps* Chapter 3 presents pgvector as a good fit for small and medium deployments. You add it to a Postgres server you already run. The extension gives you a `vector` type and the `<=>` cosine-distance operator, so the queries look like ordinary SQL.
 
 ```sql
 -- Add the extension
@@ -236,7 +246,7 @@ CREATE INDEX chunks_embedding_hnsw ON chunks
 USING hnsw (embedding vector_cosine_ops);
 ```
 
-pgvector is Postgres; the platform team's existing Postgres operational knowledge applies. The trade-off is scale: pgvector scales to millions of vectors per table; beyond that, Milvus or Qdrant is the better choice.
+pgvector is still Postgres, so your existing backup, monitoring, and upgrade habits apply. The trade-off is scale, and any fixed size limit deserves caution. When the table outgrows that server, Milvus or Qdrant is the better choice. Before you choose pgvector, measure your table size and query rate on the Postgres server you plan to use.
 
 ---
 
@@ -244,7 +254,7 @@ pgvector is Postgres; the platform team's existing Postgres operational knowledg
 
 ### 3.1 The ReAct loop
 
-*AI Engineering* Chapter 6 walks through the ReAct (Reason + Act) loop that most agents implement. The loop has four steps: reason about the next action, call a tool, observe the result, repeat.
+An agent that can call tools can also call them forever, so its loop needs a clear shape and firm limits. *AI Engineering* Chapter 6 walks through the ReAct (Reason + Act) loop that most agents implement. The loop has four steps: reason about the next action, call a tool, observe the result, and repeat. Picture a support agent that looks up an order, checks a shipping status, and then writes the reply.
 
 ```mermaid
 flowchart LR
@@ -255,11 +265,11 @@ flowchart LR
     O -->|done| A[Answer<br/>final response]
 ```
 
-The agent loop is a pipeline. The pipeline is bounded by an iteration cap (the maximum number of tool calls per request) and a cost cap (the maximum number of tokens burned per request). Both caps are structural; the agent runtime refuses to exceed them.
+Treat the loop as a pipeline with two brakes. The iteration cap is the maximum number of tool calls per request. The cost cap is the maximum number of tokens one request may burn. Both caps are structural, which means the agent runtime refuses to go past either one.
 
 ### 3.2 Function calling and tool schemas
 
-*LLMOps* Chapter 6 introduces function calling. The LLM is given a schema describing the tools it can call; the LLM produces a JSON response that names the tool and the arguments; the runtime executes the tool and feeds the result back to the LLM.
+*LLMOps* Chapter 6 introduces function calling. You describe each tool with a schema. The model then replies with JSON that names a tool and its arguments, and the runtime runs the tool and sends the result back to the model.
 
 ```json
 {
@@ -276,11 +286,11 @@ The agent loop is a pipeline. The pipeline is bounded by an iteration cap (the m
 }
 ```
 
-The tool schema is an artifact. The schema is versioned; the eval suite verifies that a schema change does not break the agent's accuracy. The runtime enforces the schema; the runtime rejects malformed tool calls before they reach the tool implementation.
+Treat the tool schema as an artifact with its own version. A schema change can break the agent, so the eval suite should check accuracy after every change. The runtime also enforces the schema. It rejects malformed tool calls before they reach the tool implementation.
 
 ### 3.3 Multi-agent orchestration
 
-*Generative AI on Kubernetes* Chapter 9 walks through multi-agent orchestration. The pattern is a coordinator agent that delegates to specialist agents; each specialist has its own tool set and its own system prompt.
+One agent is often not enough for a complex task, so you may run several. *Generative AI on Kubernetes* Chapter 9 walks through multi-agent orchestration. A coordinator agent hands work to specialist agents. Each specialist has its own tool set and its own system prompt.
 
 ```mermaid
 flowchart LR
@@ -294,14 +304,16 @@ flowchart LR
     C --> F[Final answer]
 ```
 
-The coordinator's loop is more expensive than a single-agent loop (every delegation is a round-trip; every round-trip is a token cost). The platform team's pattern is to enforce per-agent iteration caps and per-request cost caps; the coordinator's loop is a hard-bounded DAG, not an unbounded chain.
+The coordinator costs more than a single-agent loop. Every delegation is a round trip, and every round trip costs tokens. The platform team's pattern is to set an iteration cap for each agent and a cost cap for each request. Treat the coordinator's plan as a fixed, bounded graph, not an open-ended chain.
 
 ### 3.4 Agent observability
 
-*Generative AI on Kubernetes* Chapter 9 names observability as the first operational concern for agents. The agent runtime must emit a trace for every tool call; the trace is consumed by an observability backend (Langfuse, LangSmith, OpenTelemetry-compatible backends).
+When an agent misbehaves, the first question is what it did, step by step. *Generative AI on Kubernetes* Chapter 9 names observability as the first operational concern for agents. The runtime must emit a trace for every tool call. An observability backend, such as Langfuse, LangSmith, or another OpenTelemetry-compatible tool, stores and shows those traces.
+
+Production Kubernetes, chapter 9, explains that a distributed trace is built from spans, one for each service that handles a request. Your application has to emit those spans itself, and it has to pass the trace headers from one call to the next. An agent that calls a retriever and then a tool is a chain of spans, and the headers must survive every hop.
 
 ```text
-Agent trace fields (GAK Ch 9; AIE Ch 6):
+Agent trace fields (background reading: Generative AI on Kubernetes; AI Engineering; the figures below are examples, not quotations):
 - trace_id (uniquely identifies the request)
 - parent_id (the coordinator's trace that delegated to this agent)
 - agent_id (which specialist agent ran)
@@ -313,7 +325,7 @@ Agent trace fields (GAK Ch 9; AIE Ch 6):
 - status (success, retry, error, abort)
 ```
 
-The trace is the audit trail. The platform team's pattern is to write every trace to an immutable log; the audit log feeds the eval suite (Chapter 16.9), the cost attribution (Chapter 16.14), and the incident response (when an agent loops, the trace shows where).
+The trace is your audit trail. Write every trace to an immutable log, so no one can change history after an incident. That log feeds the eval suite in Chapter 16.9, the cost attribution in Chapter 16.14, and incident response. When an agent loops, the trace shows you where.
 
 ---
 
@@ -321,28 +333,30 @@ The trace is the audit trail. The platform team's pattern is to write every trac
 
 ### 4.1 The prompt template is an artifact
 
-*AI Engineering* Chapter 5 walks through prompt engineering as a discipline. The prompt template is a versioned artifact in Git; the template is part of the registry entry (Chapter 16.1 Section 5.2); the eval suite verifies that a template change does not regress accuracy.
+A one-line edit to a prompt can change every answer the product gives. Prompt engineering becomes reliable only when you treat it like code. *AI Engineering* Chapter 5 presents it as a discipline. Keep the template in Git, and record its version in the registry entry from Chapter 16.1 Section 5.2. The eval suite then checks that a template change does not lower accuracy.
 
-The pattern is:
+A safe path for a template change has four steps:
 
-1. Write the prompt template as a Jinja file in the prompt repo.
-2. The prompt repo is a Git repo with branch protection; PRs require review.
-3. The CI runs the eval suite against the new template; the PR fails if accuracy regresses.
-4. The merged PR becomes a new template version; the registry carries the version.
+1. Write the template as a Jinja file in the prompt repository.
+2. Protect the main branch, so every change goes through a pull request and a review.
+3. Let CI run the eval suite against the new template. A drop in accuracy fails the pull request.
+4. When the change merges, it becomes a new template version, and the registry records it.
 
-The template is the cheapest versioned artifact in the LLMOps stack. A template change is a 5-line diff; an embedding model change is a multi-GB artefact swap. The platform team's job is to make the template's lifecycle as rigorous as the model's.
+You will notice that a template change is usually a small diff. An embedding model swap moves gigabytes of artifacts. That makes the template the cheapest versioned artifact in the LLMOps stack, and it still deserves the same rigor as the model.
 
 ### 4.2 Few-shot examples and prompt regression
 
-*AI Engineering* Chapter 5 introduces few-shot prompting: the template includes 2-5 examples that the LLM uses as references for the desired output format. The examples are an artifact; changing the examples is changing the prompt.
+*AI Engineering* Chapter 5 introduces few-shot prompting. The template includes 2-5 examples, and the model copies their output format. Those examples are part of the artifact, so changing an example changes the prompt.
 
-The failure mode is prompt regression: a small change to the template degrades accuracy on a slice of users without changing the overall metric. The eval suite catches this by holding out a regression set of inputs and verifying that the new template produces the expected outputs.
+The failure to watch for is prompt regression. If you see accuracy drop for only one kind of request, suspect a regression first. A small template edit can hurt one group of users while the overall score stays flat. The eval suite catches this by keeping a regression set of inputs and checking that the new template still produces the expected outputs.
 
 ### 4.3 Cost control on the prompt
 
-The prompt's token count is the prompt's dollar cost. A prompt that includes 2,000 tokens of retrieved context costs $0.006 per request at GPT-4 pricing ($3 per million input tokens); a prompt that includes 20,000 tokens costs $0.06 per request. At 1,000 QPS, the difference is $5,400/hour.
+A prompt's token count is a direct cost, and every extra chunk adds to it. Take an example price of $3 per million input tokens. A prompt with 2,000 tokens of retrieved context costs about $0.006 per request, and one with 20,000 tokens costs about $0.06. That gap is about $0.054 per request.
 
-The platform team's pattern is to enforce a per-request input token budget. The retriever returns the top-K chunks; the assembler truncates to fit the budget; the eval suite verifies that accuracy holds at the budget's truncation point.
+At 1,000 requests per second, the same gap adds up to about $194,400 per hour. Context size is therefore a budget decision as much as a quality decision.
+
+Enforce a per-request input budget, so one request cannot grow without limit. The retriever returns the top-K chunks, and the assembler truncates them to fit. The eval suite then checks that accuracy holds at that truncation point. Before you raise K, measure what the extra context costs and whether accuracy improves.
 
 ---
 
@@ -350,7 +364,7 @@ The platform team's pattern is to enforce a per-request input token budget. The 
 
 ### 5.1 The cost model
 
-*LLMOps* Chapter 6 walks through the cost model. The cost per request has three components:
+Every LLM request costs money, and the bill arrives at the end of the month. To control that bill, you first need to see which parts of a request cost what. *LLMOps* Chapter 6 walks through the cost model. Several parts add up to the cost of one request.
 
 ```text
 Cost per LLM request = (input_tokens * input_price_per_token)
@@ -360,11 +374,11 @@ Cost per LLM request = (input_tokens * input_price_per_token)
                      + (agent_tool_costs)
 ```
 
-The prices vary by model (a 7B open-source model on owned GPUs costs less than GPT-4 per token; the cost shows up as GPU-hours rather than dollars-per-token). The platform team's cost attribution has to handle both modes.
+Prices differ by model. A self-hosted open model shows up as GPU-hours, not as a price per token. Your cost attribution has to handle both kinds of cost.
 
 ### 5.2 Per-request budgets
 
-The platform team enforces per-request budgets:
+A single request should never be able to spend without limit. The platform team sets a budget for each limit in the table below, and the system enforces each one.
 
 | Budget | What it caps | What happens on exceed |
 |---|---|---|
@@ -375,14 +389,14 @@ The platform team enforces per-request budgets:
 | Iteration cap | The number of agent steps | Abort the agent loop; return the partial answer |
 | Latency budget | The wall-clock duration | Same as iteration cap, but in time |
 
-The budgets are enforced in the prompt assembler, the agent runtime, and the InferenceService. The budgets are visible in the trace; the platform team's dashboard shows the budget-exceedance rate per model and per tenant.
+Each layer enforces its own budgets: the prompt assembler, the agent runtime, and the InferenceService. The trace records every budget decision. The dashboard then shows how often each budget is exceeded, per model and per tenant.
 
 ### 5.3 Observability
 
-The observability backend must capture every LLM call, every tool call, every retrieval, and every budget decision. The backend is typically Langfuse or LangSmith; the trace is consumed by the eval suite (Chapter 16.9), the cost dashboard (Chapter 16.14), and the incident response.
+When costs rise or answers slow down, you need to see the cause quickly. The observability backend has to record every LLM call, tool call, retrieval, and budget decision. Teams often use Langfuse or LangSmith for this. The same traces then feed the eval suite in Chapter 16.9, the cost dashboard in Chapter 16.14, and incident response.
 
 ```text
-Observability metrics for LLM applications (GAK Ch 8; LLO Ch 6):
+Observability metrics for LLM applications (background reading: Generative AI on Kubernetes; LLMOps; the figures below are examples, not quotations):
 - Request rate (RPS) per model, per tenant
 - Token throughput (TPS) per model, per tenant
 - Cost per request (p50, p95, p99)
@@ -393,75 +407,81 @@ Observability metrics for LLM applications (GAK Ch 8; LLO Ch 6):
 - Agent loop iteration distribution (mean, p99)
 ```
 
-The observability stack is a platform service. The platform team owns the metrics, the alerts, and the dashboards; the data scientist consumes the dashboards.
+Treat observability as a platform service. The platform team owns the metrics, the alerts, and the dashboards, and data scientists read them. Production Kubernetes, chapter 9, warns that too many labels can make Prometheus servers too expensive to run. A tenant label, for example, multiplies the number of series, so count the series a label creates before you add it.
+
+Production Kubernetes, chapter 13, makes a related point about scaling. If CPU stays flat while load grows, scale on a metric that tracks load, such as the request count, and expose it through a custom metrics adapter.
 
 ---
 
 ## 6. How it fails
 
-Six failure modes recur.
+Six failure modes come back again and again. Each one below gives the symptom you see first, the likely cause, and the fix.
 
 ### 6.1 "The retrieval index is stale"
 
-**Symptom:** A RAG application returns answers based on documentation that has been edited in the source system. The source-of-truth timestamp shows the documents are 12 hours old. The answers reference content that was deleted last week.
+Symptom: Answers cite documentation that was deleted in the source system last week. In one example, the source documents were 12 hours old, but the answers still quoted content that no longer exists.
 
-**Diagnosis:** The retrieval index has no freshness signal. The pipeline that rebuilds the index is on a weekly schedule.
+Diagnosis: The index has no freshness signal, so nothing tells you it has fallen behind. In this case, the rebuild job runs on a weekly schedule.
 
-**Fix:** Tie the index snapshot id to the corpus snapshot id. Alert when the index age exceeds the freshness SLO. Add a freshness check in the retrieval pipeline that refuses to serve if the index is older than the policy window. The fix is the same as Chapter 16.3 Section 7.5.
+Fix: Tie the index snapshot id to the corpus snapshot id, so each answer shows how old its index is. Alert when the index age passes the freshness SLO. Add a check in the retrieval pipeline that refuses to serve when the index is older than the policy window. This is the same fix as Chapter 16.3 Section 7.5.
 
 ### 6.2 "The agent loop ran away"
 
-**Symptom:** An agent-based application generated 800 LLM calls for a single user request. The cost guardrail fired at 700; the system kept running until it hit the hard limit. The user's request returned a half-formed answer.
+Symptom: Suppose an agent makes 800 LLM calls for one user request. The cost guardrail fired at call 700, but the system kept running until it hit the hard limit. The user got a half-formed answer.
 
-**Diagnosis:** The agent runtime had a soft cap, not a hard cap. The runtime kept generating after the cap fired.
+Diagnosis: The runtime had a soft cap, which only warns. It kept calling the model after the cap fired.
 
-**Fix:** Hard caps on iteration count and cost. The runtime refuses to call the LLM after the cap is reached; the runtime returns a 429 with a "cost exceeded" message; the response is not partial.
+Fix: Use hard caps on iteration count and cost. Once a cap is reached, the runtime refuses to call the model again. It returns a 429 response with a "cost exceeded" message, and it does not return a partial answer.
 
 ### 6.3 "The prompt change degraded accuracy"
 
-**Symptom:** A small change to the prompt template shipped. The eval suite passed. The accuracy dropped 8 percentage points on the customer-facing traffic. The on-call rolled back.
+Symptom: A small template change shipped, and the eval suite passed. In one example, accuracy on live customer traffic fell 8 percentage points, so the on-call engineer rolled back.
 
-**Diagnosis:** The eval suite did not cover the failure mode that the customer traffic hit. The eval suite is a sample; the customer traffic is the population.
+Diagnosis: The eval suite did not cover the case that live traffic hit. The suite is a sample, and live traffic is the whole population.
 
-**Fix:** Expand the eval suite. Add customer-traffic-representative samples. Add a shadow mode (Chapter 16.6 Section 7.3) that runs the new template at 100% traffic in shadow for 24 hours before promotion.
+Fix: Expand the eval suite with samples that look like real customer traffic. Then run the new template in shadow mode, as Chapter 16.6 Section 7.3 describes, before you promote it. Shadow mode runs the new template alongside the live one. The example uses 24 hours, but choose a window that covers your daily traffic pattern.
 
 ### 6.4 "The vector database is OOM"
 
-**Symptom:** The vector database returns "out of memory" errors at peak QPS. The cluster has free memory; the vector database is on a separate node pool.
+Symptom: At peak load, the vector database returns out-of-memory errors. The cluster as a whole has free memory, but the database sits on its own node pool, so that memory is out of reach.
 
-**Diagnosis:** The vector database is sized for average QPS, not peak. The HNSW index is in memory; the in-memory footprint scales with the number of vectors.
+Diagnosis: The database was sized for average load instead of peak. An HNSW index lives in memory, and its footprint grows with the number of vectors.
 
-**Fix:** Right-size the vector database for peak. Use IVF (which can spill to disk) instead of HNSW (which is in-memory only) for indices that exceed memory. The platform team owns the sizing decision.
+Fix: Size the database for peak load. For indices too big for memory, consider IVF, which can spill to disk, instead of HNSW, which stays in memory. The platform team owns this sizing decision.
 
 ### 6.5 "The cost exploded overnight"
 
-**Symptom:** The cost dashboard shows $50,000 spent yesterday, up from $5,000/day. The team investigates.
+Symptom: In one example, the cost dashboard shows $50,000 spent yesterday, up from $5,000 a day. The team starts an investigation.
 
-**Diagnosis:** A new prompt template was deployed; the template includes 10x the context it used to; the cost per request went up 10x; the customer traffic was the same.
+Diagnosis: A new prompt template shipped. It carried ten times the context of the old one, so each request cost about ten times more. Customer traffic stayed the same.
 
-**Fix:** Cost budgets per request and per tenant. A template change that exceeds the budget fails the CI. The platform team's audit log shows the template change that caused the spike.
+Fix: Set cost budgets per request and per tenant. A template change that breaks the budget should fail CI. The audit log then shows exactly which change caused the spike.
 
 ### 6.6 "The agent hallucinated a tool call"
 
-**Symptom:** The agent's tool call included a parameter that the tool schema did not allow. The runtime executed the tool with the parameter anyway. The tool returned an error; the agent loop continued with the error; the user got a broken answer.
+Symptom: The agent sent a tool call with a parameter that the schema does not allow. The runtime ran the tool anyway. The tool returned an error, the loop kept going with that error, and the user received a broken answer.
 
-**Diagnosis:** The runtime did not validate the tool call against the schema. The runtime trusted the LLM.
+Diagnosis: The runtime never checked the call against the schema. It trusted the model.
 
-**Fix:** Strict schema validation. The runtime rejects any tool call that does not match the schema; the runtime reports the rejection to the LLM; the LLM retries with a corrected call. The platform team's pattern is "trust the LLM to suggest, never to execute".
+Fix: Validate every tool call strictly against its schema. Reject any call that does not match, and tell the model why. The model can then retry with a corrected call. The rule to remember is to trust the model to suggest actions, never to execute them unchecked.
 
 ---
 
 ## 7. Hands-on lab
 
-This lab stands up a RAG pipeline (Milvus + vLLM + LangChain) on GKE, indexes a small corpus, and verifies the end-to-end RAG serving. The lab is **untested** in this repository.
+Suppose you need to prove that a RAG system works end to end, not only in a notebook. This lab builds the full path on GKE: a vector store, a generator, an indexed corpus, a serving endpoint, and an agent run. The lab is untested in this repository, so treat each expected output as a target to check.
 
 ### 7.1 Prerequisites
 
+Have these three items ready before you start.
+
 - A GKE Autopilot or Standard cluster (1.27+).
-- A model artefact in GCS (the artefact from Chapter 16.6).
+- A model artifact in GCS (the artifact from Chapter 16.6).
 - Helm for installing Milvus and LangChain.
 
 ### 7.2 Step 1: install Milvus
+
+Install the vector store first, because every later step reads from it or writes to it.
 
 ```bash
 helm repo add milvus https://milvus-io.github.io/milvus-helm
@@ -473,7 +493,11 @@ helm install milvus milvus/milvus \
 # expected: milvus proxy, coordinators, workers, etcd, minio all running
 ```
 
+Check that the proxy, coordinators, workers, etcd, and MinIO are all running before you go on.
+
 ### 7.3 Step 2: install vLLM as the generator
+
+Next, install vLLM to serve the model that writes the final answer.
 
 ```bash
 helm install vllm vllm/vllm \
@@ -483,7 +507,11 @@ helm install vllm vllm/vllm \
 # expected: the vLLM pod is running; the InferenceService URL is printed
 ```
 
+When the vLLM pod is running, note the InferenceService URL the command prints.
+
 ### 7.4 Step 3: index a small corpus
+
+This step reads the corpus, embeds each chunk, and writes the vectors into Milvus. Write down the index snapshot id the script prints, because you need it in Section 7.8.
 
 ```bash
 python code/part16/index_corpus.py \
@@ -495,6 +523,8 @@ python code/part16/index_corpus.py \
 
 ### 7.5 Step 4: serve a RAG endpoint
 
+Apply the RAG service definition, then wait for it to report ready.
+
 ```bash
 kubectl apply -f code/part16/rag_inference_service.yaml
 kubectl get inferenceservice rag-assistant -n rag -w
@@ -502,6 +532,8 @@ kubectl get inferenceservice rag-assistant -n rag -w
 ```
 
 ### 7.6 Step 5: query the RAG endpoint
+
+Send one question to the endpoint. The response should include the answer, the chunks it used, and the token count.
 
 ```bash
 URL=$(kubectl get inferenceservice rag-assistant -n rag -o jsonpath='{.status.url}')
@@ -513,6 +545,8 @@ curl -X POST $URL/v1/rag \
 
 ### 7.7 Step 6: run the agent loop
 
+Run the agent with a limit of five iterations and a cost cap of $0.10. The trace should list each tool call and the total cost.
+
 ```bash
 python code/part16/run_agent.py \
   --query "What is the MLOps lifecycle and what are its failure modes?" \
@@ -523,7 +557,7 @@ python code/part16/run_agent.py \
 
 ### 7.8 What to record
 
-After the lab, you should be able to answer five questions in five seconds each:
+After the lab, you should be able to answer these five questions quickly. Five seconds each is a useful target.
 
 1. What is the index snapshot id, and what corpus hash is it bound to?
 2. What is the retriever's recall@10 on the held-out set?
@@ -531,101 +565,103 @@ After the lab, you should be able to answer five questions in five seconds each:
 4. What is the agent's iteration cap, and what is the actual iteration distribution?
 5. What is the prompt template version, and what is the eval suite pass rate for that version?
 
-If any takes more than 30 seconds, the LLMOps stack is not yet a production service. The lab is **untested** against a live GKE cluster.
+Both time limits are example targets, not standards. If any answer takes more than 30 seconds to find, treat that as a sign the stack is not yet production-ready. The lab has not been run against a live GKE cluster.
 
 ---
 
 ## Exercises
 
-1. **Add a freshness check.** Implement a check that refuses to serve if the index age exceeds the freshness SLO. Verify the check fires. *Solution sketch:* a middleware that reads the index metadata and rejects requests when the index is stale.
-2. **Add a hard iteration cap.** Implement a hard cap on the agent loop's iteration count and cost. Verify the cap fires. *Solution sketch:* a counter in the agent runtime that increments on every tool call; an exception raised when the counter exceeds the cap.
-3. **Add a vector-database load test.** Generate 1M vectors; measure the recall@10 and the latency p99. *Solution sketch:* a script that inserts the vectors; a benchmark script that queries with held-out ground truth.
-4. **Add a prompt regression test.** Add 50 customer-traffic-representative samples to the eval suite. Verify the eval suite catches a small template change. *Solution sketch:* a JSON file of inputs and expected outputs; the CI runs the new template and compares.
-5. **Add a cost budget per tenant.** Enforce a per-tenant token budget. Verify the budget fires. *Solution sketch:* a counter per tenant; the InferenceService rejects requests when the tenant's budget is exceeded.
-6. **Add a vector index rebuild pipeline.** Wire an Argo Workflow that rebuilds the index from the corpus on a schedule. *Solution sketch:* an Argo DAG with stages for chunking, embedding, and indexing; a Cron schedule that triggers the workflow daily.
+Work through these after the lab. Each exercise turns one rule from this chapter into code you can test. If you are short on time, start with exercises 1 and 2, because they guard against the most expensive failures you will meet.
+
+1. Add a freshness check. Implement a check that refuses to serve if the index age exceeds the freshness SLO, then verify that the check fires. *Solution sketch:* a middleware that reads the index metadata and rejects requests when the index is stale.
+2. Add a hard iteration cap. Implement a hard cap on the agent loop's iteration count and cost, then verify that the cap fires. *Solution sketch:* a counter in the agent runtime that goes up on every tool call, and an exception raised when it passes the cap.
+3. Add a vector-database load test. Generate 1M vectors, then measure recall@10 and p99 latency. *Solution sketch:* a script that inserts the vectors, plus a benchmark that queries with held-out ground truth.
+4. Add a prompt regression test. Add 50 customer-traffic-representative samples to the eval suite, then check that the suite catches a small template change. *Solution sketch:* a JSON file of inputs and expected outputs, and a CI job that runs the new template and compares the results.
+5. Add a cost budget per tenant. Enforce a token budget for each tenant, then verify that it fires. *Solution sketch:* a counter per tenant, with the InferenceService rejecting requests once that tenant's budget runs out.
+6. Add a vector index rebuild pipeline. Wire an Argo Workflow that rebuilds the index from the corpus on a schedule. *Solution sketch:* an Argo DAG with stages for chunking, embedding, and indexing, and a cron schedule that starts the workflow daily.
 
 ---
 
 ## Checkpoint questions
 
 <details><summary>1. What five components does a RAG pipeline have?</summary>
-The corpus (object store), the chunker (policy version), the embedding model (model version), the vector index (snapshot id), and the retriever-generator pipeline. Each is a production system with its own lifecycle; the index snapshot id is bound to the corpus hash, the embedding model id, and the chunking policy version.
+A RAG pipeline has five components: the corpus in an object store, the chunker with its policy version, the embedding model with its version, the vector index with its snapshot id, and the retriever-generator pipeline. Each is a production system with its own lifecycle, and the index snapshot id is bound to the corpus hash, the embedding model id, and the chunking policy version.
 </details>
 
 <details><summary>2. What is the difference between Milvus, Qdrant, pgvector, and Pinecone?</summary>
-Milvus is open source with petabyte scale and GPU acceleration; Qdrant is open source with rich filtering and Rust performance; pgvector is a Postgres extension for small-to-medium deployments; Pinecone is managed serverless for zero-ops. The choice is operational and ecosystem-driven.
+Milvus is open source, with petabyte scale and GPU acceleration. Qdrant is open source, with rich filtering and Rust performance. pgvector is a Postgres extension for small and medium deployments, and Pinecone is a managed serverless service with zero ops. Your choice depends on operations and ecosystem fit.
 </details>
 
 <details><summary>3. What is the ReAct loop?</summary>
-The pattern most agents implement: reason about the next action, call a tool, observe the result, repeat. The loop is bounded by an iteration cap and a cost cap; the runtime refuses to exceed them.
+Most agents follow this pattern. They reason about the next action, call a tool, observe the result, and repeat. An iteration cap and a cost cap bound the loop, and the runtime refuses to go past either one.
 </details>
 
 <details><summary>4. What is a tool schema?</summary>
-The JSON schema that describes the tools the agent can call: the tool name, the description, the parameters (with types and required fields). The schema is an artifact; changing the schema is changing the agent's contract with the runtime. The runtime validates every tool call against the schema; the runtime rejects malformed calls.
+A tool schema is the JSON description of a tool the agent can call. It holds the tool name, a description, and the parameters with their types and required fields. Because the schema is an artifact, changing it changes the agent's contract with the runtime. The runtime checks every tool call against the schema and rejects any malformed call.
 </details>
 
 <details><summary>5. What is the cost model for an LLM request?</summary>
-Input tokens * input price + output tokens * output price + embedding tokens * embedding price + vector search cost + agent tool costs. The platform team enforces per-request budgets on input, output, total tokens, dollar cost, iteration count, and latency. Budgets are visible in the trace.
+The cost of a request is the input tokens times their price, plus the output tokens times their price, plus embedding tokens, vector search, and agent tool costs. The platform team enforces per-request budgets on input tokens, output tokens, total tokens, dollar cost, iteration count, and latency. Every budget decision shows up in the trace.
 </details>
 
 <details><summary>6. Why is the prompt template versioned in Git?</summary>
-Because the template is an artifact. Changing the template is changing the model's behaviour. The template repo has branch protection; PRs require review; the CI runs the eval suite against the new template; the PR fails if accuracy regresses.
+The template is an artifact, and changing it changes how the model behaves. The template repository uses branch protection, so every pull request needs a review. CI runs the eval suite against the new template, and the pull request fails if accuracy drops.
 </details>
 
 <details><summary>7. What is the freshness SLO for a vector index?</summary>
-The maximum age of the index relative to the corpus. Static knowledge bases tolerate days; frequently updated corpora tolerate hours; streaming corpora tolerate seconds. The freshness SLO is the alert threshold; the rebuild frequency is the budget.
+The freshness SLO is the maximum age the index may reach compared with the corpus. As examples, a static knowledge base might tolerate days of lag, a frequently updated corpus hours, and a streaming corpus seconds. The SLO is the alert threshold, and the rebuild frequency is the budget you spend to meet it.
 </details>
 
 <details><summary>8. Why are hard caps better than soft caps for agent loops?</summary>
-Because soft caps fire informatively; the loop continues; the cost grows unbounded. Hard caps are structural; the runtime refuses to call the LLM after the cap is reached; the runtime returns a 429 with a "cost exceeded" message. Hard caps are the difference between a $5,000/month bill and a $5,000/day bill.
+A soft cap only warns, so the loop keeps running and the cost grows without limit. A hard cap is structural. The runtime refuses to call the model after the cap, and it returns a 429 with a "cost exceeded" message. The difference between the two can decide whether a runaway agent costs a month of budget or a single day of it.
 </details>
 
 <details><summary>9. What is the difference between a single-agent and a multi-agent loop?</summary>
-A single-agent loop has one LLM reasoning and acting. A multi-agent loop has a coordinator that delegates to specialist agents; each specialist has its own tool set and system prompt. Multi-agent loops are more expensive (every delegation is a round-trip) but more capable. The platform team's pattern is to enforce per-agent caps.
+A single-agent loop has one model that reasons and acts. A multi-agent loop has a coordinator that hands work to specialist agents, each with its own tools and system prompt. Multi-agent loops cost more, because every delegation is a round trip, but they can handle harder tasks. The platform team therefore enforces caps on each agent.
 </details>
 
 <details><summary>10. What is the agent trace?</summary>
-The per-request record emitted by the agent runtime: trace id, parent id, agent id, tool call, tool response, token count, cost, duration, status. The trace is the audit trail for the eval suite, the cost dashboard, and the incident response. The trace is written to an immutable log.
+The trace is the per-request record that the agent runtime emits. It holds the trace id, parent id, agent id, tool call, tool response, token count, cost, duration, and status. The eval suite, the cost dashboard, and incident response all read from it as an audit trail. Each trace is written to an immutable log.
 </details>
 
 <details><summary>11. What is the difference between recall and precision in a RAG application?</summary>
-Recall is the retriever's job: what fraction of queries return the relevant context in the top-K. Precision is the generator's job: what fraction of retrieved context produces a correct answer. The platform team's tuning goal is recall > 0.9 at K=10 and p99 latency < 50 ms.
+Recall belongs to the retriever. It measures the share of queries whose top-K results include the relevant context. Precision belongs to the generator, and it measures how often the retrieved context leads to a correct answer. Example targets are recall above 0.9 at K=10 and p99 latency under 50 ms, but set your own for your use case.
 </details>
 
 <details><summary>12. Why is schema validation on tool calls necessary?</summary>
-Because the LLM hallucinates tool calls. A tool call with a parameter that the schema does not allow is a broken call; the runtime must reject it; the runtime must report the rejection to the LLM; the LLM retries with a corrected call. "Trust the LLM to suggest, never to execute".
+The model sometimes invents tool calls. A call with a parameter the schema does not allow is broken, so the runtime must reject it. The runtime must also tell the model about the rejection, so the model can retry with a corrected call. Keep the rule in mind: trust the model to suggest, never to execute.
 </details>
 
 <details><summary>13. What is the right context size for a RAG prompt?</summary>
-Whatever fits the per-request input token budget at the truncation point where the eval suite's accuracy stops improving. The platform team measures accuracy vs context size; the budget is the smallest context size that hits the accuracy target.
+Choose the context size that fits your per-request input budget and stops improving accuracy. The platform team measures accuracy against context size. The budget is the smallest size that still reaches the accuracy target.
 </details>
 
 <details><summary>14. What is the difference between pgvector and a dedicated vector database?</summary>
-pgvector is a Postgres extension; it adds the `vector` type and the cosine-distance operator. The trade-off is scale: pgvector scales to millions of vectors per table; beyond that, Milvus or Qdrant is the better choice. For teams already on Postgres, pgvector is the lowest-ops path.
+pgvector is a Postgres extension that adds the `vector` type and the cosine-distance operator. The trade-off is scale, and the limit depends on your table and hardware, so measure it. Once the table outgrows that limit, Milvus or Qdrant is the better choice. For teams already on Postgres, pgvector is the lowest-operations path.
 </details>
 
 <details><summary>15. What is the right granularity for an agent's cost budget?</summary>
-Per-request. A per-day budget lets one runaway agent burn the entire budget; a per-request budget catches the runaway agent before it burns anything. The per-request budget is enforced in the agent runtime; the per-day budget is the alert threshold for the cost dashboard.
+Set the budget per request. A per-day budget lets one runaway agent use up the whole day, while a per-request budget stops that agent early. The agent runtime enforces the per-request budget, and the per-day figure serves as the alert threshold on the cost dashboard.
 </details>
 
 <details><summary>16. What is the difference between an agent's iteration cap and its cost cap?</summary>
-The iteration cap is the maximum number of tool calls; the cost cap is the maximum dollar or token cost. An agent that calls cheap tools may stay under the cost cap but exceed the iteration cap. An agent that calls expensive tools may stay under the iteration cap but exceed the cost cap. Both caps are structural; the runtime refuses to exceed either.
+The iteration cap limits the number of tool calls, and the cost cap limits dollars or tokens. An agent that calls cheap tools can stay under the cost cap and still break the iteration cap. An agent that calls expensive tools can do the reverse. The runtime enforces both caps as hard limits.
 </details>
 
 <details><summary>17. What is the right shape for an agent trace?</summary>
-A tree. The coordinator's trace is the root; each delegation to a specialist is a child; each tool call is a leaf. The tree shows the cost at every level; the eval suite measures accuracy at every level; the cost dashboard attributes cost to every level.
+A tree. The coordinator's trace is the root, each delegation to a specialist is a child, and each tool call is a leaf. That shape lets you read cost at every level. The eval suite can measure accuracy at every level too, and the cost dashboard can attribute spend the same way.
 </details>
 
 <details><summary>18. Why does the LLM application need a per-tenant budget?</summary>
-Because one tenant's runaway cost is the platform's bill. Without per-tenant budgets, a single misconfigured application can burn the entire monthly GPU budget. Per-tenant budgets are enforced in the InferenceService; the cost dashboard shows the budget-exceedance rate per tenant.
+One tenant's runaway cost becomes the platform's bill. Without per-tenant budgets, a single misconfigured application can use up the whole monthly GPU budget. The InferenceService enforces these budgets, and the cost dashboard shows how often each tenant exceeds its budget.
 </details>
 
 <details><summary>19. What is the difference between HNSW and IVF for vector indices?</summary>
-HNSW (Hierarchical Navigable Small World) is in-memory; the index footprint scales with the number of vectors. IVF (Inverted File) is disk-backed; the index can spill to disk for very large indices. HNSW is the right choice for small-to-medium indices with low latency requirements; IVF is the right choice for very large indices where memory is the bottleneck.
+HNSW, short for Hierarchical Navigable Small World, lives in memory, so its footprint grows with the number of vectors. IVF, short for Inverted File, can be disk-backed and spill to disk for very large indices. Choose HNSW for small and medium indices with tight latency needs. Choose IVF when memory is the bottleneck in a very large index.
 </details>
 
 <details><summary>20. What five questions should the LLMOps lab let you answer in five seconds each?</summary>
-What is the index snapshot id and what corpus hash is it bound to. What is the retriever's recall@10. What is the cost per request broken down by retriever and generator. What is the agent's iteration cap and actual distribution. What is the prompt template version and eval pass rate. If any takes more than 30 seconds, the LLMOps stack is not yet a production service.
+You should be able to answer five questions quickly. What is the index snapshot id, and which corpus hash does it bind to? What is the retriever's recall@10? What does one request cost, broken down by retriever and generator? What is the agent's iteration cap, and what is its actual distribution? What is the prompt template version, and what is its eval pass rate? If any answer takes more than 30 seconds to find, treat the stack as not yet production-ready, and remember that the five-second and 30-second limits are example targets.
 </details>
 
 ---

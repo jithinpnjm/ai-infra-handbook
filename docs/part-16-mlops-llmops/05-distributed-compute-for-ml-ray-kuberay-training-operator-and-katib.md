@@ -25,9 +25,9 @@ lab_venue: "GCP / GKE"
 
 ## Why this matters for AI infrastructure
 
-A single training job that fits on one GPU is rare in modern AI infrastructure. A foundation model fine-tune spans multiple nodes and dozens of GPUs. A hyperparameter sweep spins up hundreds of trials. A reinforcement learning run uses an actor-learner architecture that needs elastic scaling mid-run. The cluster primitives from Parts 1 through 15 are what run these jobs; the distributed compute frameworks in this chapter are what make them programmable.
+Imagine a fine-tune of a large language model that must run for days. One machine cannot hold the job, so it spreads across several nodes and dozens of GPUs. Other AI work looks similar. A hyperparameter sweep launches hundreds of trials, and a reinforcement learning run adds and removes workers as it goes. The cluster primitives from Parts 1 through 15 can run these jobs. The frameworks in this chapter are what let your team write them as code.
 
-If you operate a GPU cluster for AI, you operate a distributed compute layer. The layer is what schedules a PyTorchJob across 64 GPUs with NCCL all-reduce. The layer is what runs a Ray Tune sweep across 200 trials and gathers the metrics. The layer is what makes a training job elastic: when a node fails, the job continues on the survivors without losing progress. The cluster primitives alone (Kubernetes, GPU operator, scheduler) are necessary but not sufficient; the distributed compute layer is the API the data scientist writes against.
+If you run a GPU cluster for AI, you also run a distributed compute layer, whether you name it or not. That layer schedules a PyTorch job across 64 GPUs with NCCL all-reduce, for example. It can also run a Ray Tune sweep across 200 trials and gather their metrics. Its most important job is elasticity. When one node fails, the job should continue on the surviving nodes instead of starting over. Kubernetes and the GPU operator are necessary, but the data scientist writes against this layer, not against them.
 
 ```text
 Why distributed compute is the API of modern ML (Ray docs; Kubeflow Training
@@ -41,30 +41,32 @@ Operator docs; MLPE Ch 5):
   cluster scales elastically as the actor pool grows.
 ```
 
-Three operational realities make this chapter a platform-team concern rather than a data-science-only concern:
+Three operational realities make this chapter a platform team's concern, not only a data scientist's.
 
-1. **The distributed compute layer owns the GPU quota.** Every Ray actor and every Training Operator job is a Kubernetes pod that requests GPU resources. The layer's scheduler must gang-schedule the multi-GPU jobs (Chapter 11.16) and queue the rest against the team's quota.
-2. **The distributed compute layer is the fault boundary.** When a pod dies, the layer decides whether to restart it on a new node, fail the whole job, or fall back to a checkpoint. The platform team owns the policy.
-3. **The distributed compute layer is the audit trail.** Every Ray task and every Training Operator job produces a run record; the record carries the data hash, the commit hash, and the seed. The platform team owns the integration with the tracker and the registry.
+1. The GPU quota belongs to the layer. Every Ray actor and every Training Operator job is a Kubernetes pod that asks for GPUs. The scheduler must start multi-GPU jobs as a group, as Chapter 11.16 explains, and queue the rest against each team's quota.
+2. The layer is also the fault boundary. When a pod dies, the layer decides whether to restart it on a new node, fail the whole job, or fall back to a checkpoint. The platform team owns that policy.
+3. The layer is the audit trail. Every Ray task and every Training Operator job leaves a run record with the data hash, the commit hash and the seed. The platform team owns the link from those records to the tracker and the registry.
 
-**Before a multi-node training job runs on your cluster, the distributed compute framework that schedules it must be a production service with an SLO. A framework that is best-effort is a framework that loses a 14-day training run when a single node dies.**
+**Before a multi-node job runs on your cluster, treat its scheduling framework as a production service with a service-level objective. A framework that is best-effort can lose a 14-day training run when one node dies.**
 
 ## Prerequisites and outcomes
 
 ### Prerequisites
 
-- Chapter 14 (Distributed training) for the parallelism patterns (DDP, FSDP, DeepSpeed, Megatron).
-- Chapter 12.15 (NCCL collectives) for the network behaviour the distributed compute layer depends on.
-- Chapter 11 (GPU Kubernetes) for the device plugin, GPU Operator, and gang scheduler.
-- Chapter 16.4 (Pipeline orchestration) for the DAG that runs the distributed compute jobs.
+Work through these first. If one of them is new to you, pause and read it before you continue, because the later sections assume you already know it.
+
+- Chapter 14 covers the parallelism patterns this chapter depends on: DDP, FSDP, DeepSpeed and Megatron.
+- Chapter 12.15 explains the NCCL collectives that the layer relies on over the network.
+- Chapter 11 covers the device plugin, the GPU Operator and the gang scheduler.
+- Chapter 16.4 covers the pipeline DAG that runs these distributed jobs.
 
 ### Outcomes
 
 After completing this chapter you will be able to:
 
-1. Choose between Ray, KubeRay, Kubeflow Training Operator and Kubeflow Katib for a given workload and explain when to combine them.
+1. Choose between Ray, KubeRay, Kubeflow Training Operator and Kubeflow Katib for a given workload, and explain when to combine them.
 2. Build a Ray cluster on Kubernetes with KubeRay that runs a distributed training job, a hyperparameter sweep, or an RL actor-learner setup.
-3. Deploy a Kubeflow Training Operator job (PyTorchJob, TFJob, MPIJob, XGBoostJob) on GKE with the right gang scheduler and the right GPU pool binding.
+3. Deploy a Training Operator job (PyTorchJob, TFJob, MPIJob or XGBoostJob) on GKE with the right gang scheduler and GPU pool binding.
 4. Run a Katib hyperparameter sweep with early stopping and per-trial artefacts.
 5. Wire the distributed compute layer into the orchestrator from Chapter 16.4 and the tracker from Chapter 16.2.
 6. Operate the layer on GKE with autoscaling, fault tolerance, observability, and a clear policy for what to do when a node dies mid-job.
@@ -75,7 +77,9 @@ After completing this chapter you will be able to:
 
 ### 1.1 Ray: general-purpose distributed Python
 
-Ray is a distributed computing framework that exposes a small set of primitives (tasks, actors, objects) and lets the user write Python that scales from one laptop to thousands of nodes. Ray Train, Ray Tune, Ray Serve and Ray Data are libraries that sit on top of the core; each addresses a specific ML workload.
+Suppose your feature code runs fine on a laptop, but the dataset no longer fits there. You want the same Python to run on many machines without a rewrite. That is the problem Ray is built for. Ray gives you a small set of primitives: tasks, actors and objects. Libraries sit on top of those primitives, and each one targets a specific ML job.
+
+Ray Train, Ray Tune, Ray Serve and Ray Data are those libraries. The table shows what each one is for.
 
 | Ray library | What it does | Typical use case |
 |---|---|---|
@@ -86,14 +90,16 @@ Ray is a distributed computing framework that exposes a small set of primitives 
 | Ray Data | Distributed data loading | Streaming dataset pipelines |
 | Ray RLlib | Reinforcement learning | Actor-learner setups, multi-agent RL |
 
-The strength of Ray is that the same Python script that runs on one machine runs on a cluster of thousands of nodes. The weakness is that Ray has its own scheduler, its own object store, and its own placement group logic; on Kubernetes, Ray runs as a set of pods with a head node and worker nodes.
+Ray's strength is that one script can run on a single machine or on a cluster of thousands of nodes. The cost is that Ray brings its own scheduler, object store and placement group logic. On Kubernetes, Ray therefore runs as a set of pods: one head pod and a group of workers.
 
 ### 1.2 KubeRay: the Kubernetes operator for Ray
 
-KubeRay is the Kubernetes operator that manages Ray clusters. It exposes a `RayCluster` custom resource; the operator reconciles the resource by creating a head pod and a configurable number of worker pods. KubeRay supports autoscaling (workers added on demand), gang scheduling (via Volcano or KAI), and integration with the GPU device plugin.
+A Ray cluster on Kubernetes needs something to create and maintain its pods. KubeRay does that job. It is the Kubernetes operator that manages Ray clusters. You describe a cluster with a `RayCluster` resource, and the operator creates a head pod and the worker pods that go with it.
+
+KubeRay adds autoscaling, which adds workers on demand. It also supports gang scheduling through Volcano or KAI, and it works with the GPU device plugin.
 
 ```yaml
-# code/part16/raycluster.yaml (shape only)
+# code/part16/raycluster.yaml
 apiVersion: ray.io/v1
 kind: RayCluster
 metadata:
@@ -133,11 +139,11 @@ spec:
                   nvidia.com/gpu: "1"
 ```
 
-The shape of the resource is the contract with the cluster. The head pod has one GPU and runs the scheduler; the worker pods have one GPU each and run the Ray tasks. The autoscaler adds worker pods when the queue depth exceeds a threshold.
+Read the resource as a contract with the cluster. The head pod asks for one GPU and runs Ray's control services, including the GCS on port 6379 and the dashboard on port 8265. Each worker pod also asks for one GPU and runs Ray tasks. When the work queue grows past the autoscaler's threshold, the autoscaler adds worker pods.
 
 ### 1.3 Kubeflow Training Operator: TFJob, PyTorchJob, MPIJob, XGBoostJob
 
-Kubeflow Training Operator is a Kubernetes operator that manages training jobs as custom resources. Each job type has its own CRD; the operator reconciles the resource by creating a pod per replica with the right environment variables and the right startup script.
+Some jobs have a fixed shape. A fine-tune with one master and seven workers keeps that shape for its whole run. The Kubeflow Training Operator is built for jobs like this. Each framework gets its own custom resource, and the operator creates one pod per replica, with the environment variables and startup script that framework expects.
 
 | CRD | Framework | Topology |
 |---|---|---|
@@ -148,10 +154,10 @@ Kubeflow Training Operator is a Kubernetes operator that manages training jobs a
 | `PaddleJob` | PaddlePaddle | PaddlePaddle Fleet |
 | ` JaxJob` | JAX | JAX distributed |
 
-The Training Operator is the right fit for jobs that fit a fixed topology and run for a known duration. The operator does not autoscale mid-job; the topology is declared at submit time. The operator does gang-schedule through Volcano or KAI; the operator does retry through the standard pod retry policy.
+The Training Operator fits jobs with a fixed topology and a known run time. You declare the topology at submit time, so the operator does not autoscale mid-job. It gang-schedules through Volcano or KAI, and it retries through the standard pod retry policy.
 
 ```yaml
-# code/part16/pytorchjob.yaml (shape only)
+# code/part16/pytorchjob.yaml
 apiVersion: kubeflow.org/v1
 kind: PyTorchJob
 metadata:
@@ -193,14 +199,14 @@ spec:
                   nvidia.com/gpu: "8"
 ```
 
-The shape is the same for `TFJob` and `MPIJob`. The CRD encodes the topology (master + workers), the resource request per replica, and the restart policy. The operator handles the env vars and the startup coordination.
+The same shape applies to `TFJob` and `MPIJob`. Each resource records the topology, which means the master and the workers. It also records the resources each replica requests and the restart policy. The operator then handles the environment variables and the startup coordination.
 
 ### 1.4 Kubeflow Katib: hyperparameter tuning and NAS
 
-Katib is a Kubernetes-native hyperparameter tuning framework. It runs a sweep as a Kubernetes custom resource (`Experiment`); the experiment spawns trials as pods; the trials produce metrics; the metrics feed the search algorithm; the search algorithm picks the next set of hyperparameters.
+A sweep is a loop. You pick settings, train, score the result, and pick again. Katib runs that loop on Kubernetes. You declare an `Experiment`, and Katib starts trials as pods. Each trial reports a metric, and the search algorithm uses those metrics to choose the next settings.
 
 ```yaml
-# code/part16/katib_experiment.yaml (shape only)
+# code/part16/katib_experiment.yaml
 apiVersion: kubeflow.org/v1beta1
 kind: Experiment
 metadata:
@@ -238,9 +244,11 @@ spec:
               nvidia.com/gpu: "1"
 ```
 
-Katib is the right fit for sweeps that fit the "trial = one pod" pattern. It supports Bayesian optimisation, hyperband, early stopping, and a small set of neural architecture search algorithms. It does not run multi-GPU trials natively; for multi-GPU sweeps, the trial template can declare a `PyTorchJob` and Katib will spawn one PyTorchJob per trial.
+Katib fits sweeps where one trial is one pod. It supports Bayesian optimisation, hyperband, early stopping and a small set of neural architecture search algorithms. It does not run multi-GPU trials on its own. For a multi-GPU sweep, the trial template can declare a `PyTorchJob`, and Katib starts one `PyTorchJob` per trial.
 
 ### 1.5 Comparison
+
+The three tools answer different questions. Ray asks how you write distributed Python. The Training Operator asks how you run a fixed multi-GPU job. Katib asks which settings give the best result.
 
 | Dimension | Ray / KubeRay | Training Operator | Katib |
 |---|---|---|---|
@@ -251,7 +259,7 @@ Katib is the right fit for sweeps that fit the "trial = one pod" pattern. It sup
 | Fault tolerance | Ray actor restart; line of work lost on worker death | Pod restart; job continues if Master is alive | Trial restart; sweep continues |
 | Best fit | Custom distributed Python; RL; elastic workloads | Fixed-topology multi-GPU training | Hyperparameter sweeps with search |
 
-The four tools are not interchangeable. They are complementary. A team that runs multi-node fine-tunes uses Training Operator for the training job, Katib for the sweep, and Ray for the data loading and the serving. A team that runs RL uses Ray end-to-end and KubeRay for the cluster.
+The tools complement each other rather than compete. A team that runs multi-node fine-tunes uses the Training Operator for the training job, Katib for the sweep, and Ray for data loading and serving. A team that runs reinforcement learning uses Ray from end to end, with KubeRay running the cluster.
 
 ---
 
@@ -259,9 +267,9 @@ The four tools are not interchangeable. They are complementary. A team that runs
 
 ### 2.1 The contract is the resource request
 
-A `PyTorchJob` with one Master and seven Workers asks for eight GPUs at once. The default Kubernetes scheduler allocates pods one at a time; the result is the classic "Master got a GPU, six workers got GPUs, one worker is pending, the job is wedged".
+Picture a `PyTorchJob` with one master and seven workers. The job needs all eight GPUs at the same moment. The default scheduler places pods one at a time, so it can give the master a GPU and six workers GPUs while the seventh worker waits. The job is now wedged. It holds seven GPUs and cannot start.
 
-The fix is a gang scheduler that the Training Operator, KubeRay, and Katib all integrate with.
+A gang scheduler solves this by treating the whole job as one unit. The Training Operator, KubeRay and Katib each integrate with one.
 
 | Layer | Gang scheduler integration |
 |---|---|
@@ -269,10 +277,10 @@ The fix is a gang scheduler that the Training Operator, KubeRay, and Katib all i
 | Training Operator | Volcano PodGroup with `minMember: master + workers`; KAI Scheduler PodGroup |
 | Katib | Volcano PodGroup per trial or per sweep |
 
-The pattern in production is:
+In production, the pattern looks like this.
 
 ```yaml
-# code/part16/pytorchjob_with_volcano.yaml (shape only)
+# code/part16/pytorchjob_with_volcano.yaml
 apiVersion: kubeflow.org/v1
 kind: PyTorchJob
 metadata:
@@ -298,33 +306,29 @@ spec:
         spec: { ... }
 ```
 
-The annotations tell Volcano to treat all eight pods as a gang. The scheduler holds the pods until the group can be satisfied; the pods start together; they fail together if any pod fails.
+The annotations tell Volcano to treat all eight pods as one gang. The scheduler holds every pod until the group can be satisfied, and then starts them together. The pods also fail together when any one of them fails.
 
 ### 2.2 KAI Scheduler integration
 
-KAI Scheduler (Chapter 11.16) is the NVIDIA-native alternative. The integration shape is similar; the configuration is in a `PodGroup` resource that the operator creates on submit.
+KAI Scheduler, covered in Chapter 11.16, is NVIDIA's native alternative. The integration looks much the same. The difference is that the operator creates a `PodGroup` resource when the job is submitted.
 
 ```yaml
-# code/part16/kai_podgroup.yaml (shape only)
-apiVersion: scheduling.run.ai/v2
+# code/part16/kai_podgroup.yaml
+apiVersion: scheduling.run.ai/v2alpha2
 kind: PodGroup
 metadata:
-  name: churn-distributed
+  name: train-gang
 spec:
   minMember: 8
-  resources:
-    gpu:
-      count: 8
-      type: h100-sxm5-80gb
   queue: gpu-pool
-  priority: 100
+  priorityClassName: high
 ```
 
-The choice between Volcano and KAI is operational; both are correct. KAI has richer GPU topology and MIG support; Volcano is more mature and broadly adopted.
+Choosing between Volcano and KAI is an operational decision, and both are valid. This chapter's view is that KAI offers richer GPU topology and MIG support, while Volcano is more mature and widely adopted.
 
 ### 2.3 Topology binding
 
-A multi-GPU job that needs NVLink between GPUs needs topology binding. The pattern is to declare a node affinity that lands all pods on the same NVLink domain.
+Some jobs need fast links between their GPUs. If one job spans two NVLink domains, its high-bandwidth collectives may not finish inside the NCCL timeout. Topology binding prevents that. A node affinity rule pins all the pods to one NVLink domain.
 
 ```yaml
 # Node affinity for NVLink domain (shape only)
@@ -339,7 +343,7 @@ spec:
                 values: ["nvlink-domain-7"]
 ```
 
-The pattern is supported by both Volcano and KAI; the scheduler handles the placement automatically.
+Both Volcano and KAI support this pattern. Once the rule is in place, the scheduler handles the placement for you.
 
 ---
 
@@ -347,56 +351,69 @@ The pattern is supported by both Volcano and KAI; the scheduler handles the plac
 
 ### 3.1 What happens when a node dies
 
-A 14-day training run on 64 GPUs loses an average of 2-4 nodes over its lifetime (from disk failures, ECC errors, network blips, and scheduled maintenance). The naive response is "restart the job". The cost of a naive restart is the full 14-day run, lost.
+Suppose a 14-day run on 64 GPUs loses a few nodes over its life. The causes include disk failures, ECC errors, network blips and scheduled maintenance. The naive response is to restart the job. The cost of that restart is the full 14-day run, lost.
 
-The mature response is elastic training: when a node dies, the surviving nodes continue, and the new node joins when it comes back. Three patterns implement this.
+The mature response is elastic training. When a node dies, the surviving nodes keep working, and a replacement joins when it comes back. Three patterns make this possible, and each one trades simplicity against efficiency.
 
 | Pattern | What it does | Where it is supported |
 |---|---|---|
-| **Checkpoint-restart** | Periodically save a checkpoint; on failure, restart from the latest checkpoint | PyTorch (`torch.distributed.elastic`), DeepSpeed, Megatron |
-| **Elastic membership** | The job's worker set changes mid-run; the framework rebalances | Ray Train with elastic worker set; PyTorch Elastic |
-| **Reactive failover** | The orchestrator restarts the failed pod; the framework rejoins | Kubeflow Training Operator with `restartPolicy: OnFailure` |
+| **Checkpoint-restart** | Periodically save a checkpoint. On failure, restart from the latest checkpoint | PyTorch (`torch.distributed.elastic`), DeepSpeed, Megatron |
+| **Elastic membership** | The job's worker set changes mid-run. The framework rebalances it | Ray Train with elastic worker set; PyTorch Elastic |
+| **Reactive failover** | The orchestrator restarts the failed pod. The framework then rejoins it | Kubeflow Training Operator with `restartPolicy: OnFailure` |
 
-*Designing Machine Learning Systems* Chapter 10 walks through the trade-off. Checkpoint-restart is the most universal; reactive failover is the simplest; elastic membership is the most efficient.
+*Designing Machine Learning Systems*, Chapter 10, walks through this trade-off. Checkpoint-restart is the most widely supported pattern. Reactive failover is the simplest to set up. Elastic membership is the most efficient, if your framework supports it.
 
 ### 3.2 A checkpoint-restart pattern with PyTorch Elastic
 
+A checkpoint is your safety net. The job saves its model and optimiser state every so often, so a crash costs only the steps since the last save. The script below saves every 100 steps. It writes to a temporary file and then renames it, so a crash during a write never leaves a broken checkpoint behind.
+
 ```python
-# code/part16/train_elastic.py (shape only)
-import torch, torch.distributed as dist
-from torch.distributed.elastic import agent
-from torch.distributed.elastic.multiprocessing import defaults
+# code/part16/snippets/train_elastic.py
+# Run with:  torchrun --nnodes=1:4 --nproc-per-node=8 --max-restarts=3 --rdzv-backend=c10d --rdzv-endpoint=$HEAD:29400 train_elastic.py
+# torchrun is the elastic launcher; the training script itself only initialises the process group and resumes from a checkpoint.
+# (An earlier draft called torch.distributed.elastic.agent.run(...), which is not how a training script is launched.)
+import os, torch, torch.distributed as dist
+
+MAX_STEPS = 10_000
+
+def build_model(): return torch.nn.Linear(16, 1)
+def build_optimiser(m): return torch.optim.SGD(m.parameters(), lr=0.01)
+
+def load_latest_checkpoint(path="ckpt.pt"):
+    return torch.load(path, map_location="cpu") if os.path.exists(path) else None
+
+def save_checkpoint(state, path="ckpt.pt"):
+    if dist.get_rank() == 0:
+        torch.save(state, path + ".tmp"); os.replace(path + ".tmp", path)   # atomic: a crash never leaves a half file
+    dist.barrier()
 
 def train():
-    dist.init_process_group(backend="nccl")
-    model = build_model()
-    optimiser = build_optimiser(model)
+    dist.init_process_group(backend="nccl" if torch.cuda.is_available() else "gloo")
+    model, opt = build_model(), build_optimiser(build_model())
+    opt = build_optimiser(model)
     state = load_latest_checkpoint()
+    start = 0
     if state:
-        model.load_state_dict(state["model"])
-        optimiser.load_state_dict(state["optimiser"])
-        start_step = state["step"]
-    else:
-        start_step = 0
-    for step in range(start_step, MAX_STEPS):
-        loss = train_step(model, optimiser)
+        model.load_state_dict(state["model"]); opt.load_state_dict(state["optimiser"]); start = state["step"] + 1
+    for step in range(start, MAX_STEPS):
+        loss = model(torch.randn(8, 16)).pow(2).mean(); opt.zero_grad(); loss.backward(); opt.step()
         if step % 100 == 0:
-            save_checkpoint({
-                "model": model.state_dict(),
-                "optimiser": optimiser.state_dict(),
-                "step": step,
-            })
+            save_checkpoint({"model": model.state_dict(), "optimiser": opt.state_dict(), "step": step})
 
 if __name__ == "__main__":
-    agent.run(defaults.elastic_agent_args())
+    train()
 ```
 
-The `elastic_agent_args()` call is what makes the job elastic. When a worker dies, the agent rejoins the world on a new node; when a new node joins, the agent adds it to the world. The cost is a small amount of overhead per step (a few percent) and the requirement that the framework's collective calls tolerate changing world size.
+Launch the script with `torchrun`, the elastic launcher, rather than running it directly. The launcher is what makes the job elastic. When a worker dies, the agent rejoins the world on a new node. When a new node arrives, the agent adds it to the world.
+
+Elastic training has a cost. Each step carries a small overhead, and the framework's collective calls must tolerate a world size that changes. Measure that overhead on your own job before you rely on it.
 
 ### 3.3 A checkpoint-restart pattern with DeepSpeed
 
+DeepSpeed follows the same idea for very large models.
+
 ```python
-# code/part16/train_deepspeed.py (shape only)
+# code/part16/snippets/train_deepspeed.py
 import deepspeed
 
 model, optimizer, _, _ = deepspeed.initialize(
@@ -410,14 +427,14 @@ for step in range(MAX_STEPS):
         model.save_checkpoint(save_dir, tag=f"step-{step}")
 ```
 
-DeepSpeed's ZeRO-3 with checkpoint-restart is the standard pattern for multi-billion-parameter fine-tunes. The checkpoint includes the sharded optimiser state, the sharded model state, and the step number. On restart, the framework reads the checkpoint and resumes from the step.
+DeepSpeed's ZeRO-3 with checkpoint-restart is the standard pattern for multi-billion-parameter fine-tunes. Each checkpoint holds the sharded optimiser state, the sharded model state and the step number. On restart, the framework reads the checkpoint and resumes from that step.
 
 ### 3.4 Kueue for quota and preemption
 
-When multiple teams share a GPU cluster, the Training Operator and Katib jobs must respect a quota. Kueue is the Kubernetes-native queue manager that does this. The pattern is:
+When several teams share one GPU cluster, one team's job can take every GPU. Kueue is the Kubernetes-native queue manager that stops this by enforcing quotas across teams.
 
 ```yaml
-# code/part16/local_queue.yaml (shape only)
+# code/part16/local_queue.yaml
 apiVersion: kueue.x-k8s.io/v1beta1
 kind: LocalQueue
 metadata:
@@ -427,9 +444,9 @@ spec:
   clusterQueue: cluster-queue-data-science
 ```
 
-The LocalQueue binds the team's namespace to a cluster queue. The cluster queue has a quota (for example, 32 H100s and 64 A100s). When a job is submitted, Kueue holds it until the quota allows; when the quota is exhausted, the job is queued.
+A `LocalQueue` binds a team's namespace to a cluster queue. The cluster queue carries the quota, for example 32 H100s and 64 A100s. A job waits while the quota is full, and it starts once the quota has room.
 
-The preemption pattern is: when a higher-priority job needs GPUs, Kueue preempts the lowest-priority running job; the preempted job's pods are deleted; the job's checkpoint is preserved; the job resumes on the next available quota.
+Preemption works like this. When a higher-priority job needs GPUs, Kueue stops the lowest-priority running job. It deletes that job's pods, the job's checkpoint survives, and the job resumes when quota frees up. Before you enable preemption, check that every preemptible job saves checkpoints.
 
 ---
 
@@ -437,7 +454,7 @@ The preemption pattern is: when a higher-priority job needs GPUs, Kueue preempts
 
 ### 4.1 The DAG that runs a distributed training job
 
-A typical ML pipeline from Chapter 16.4 ends with a training stage that submits a distributed job. The shape is:
+A pipeline from Chapter 16.4 eventually has to train a model. Its training stage submits a distributed job, waits for it to finish, and records the result. The diagram shows where each part runs. The orchestrator submits and waits, the framework does the training, and the tracker keeps the run record.
 
 ```mermaid
 flowchart LR
@@ -478,14 +495,14 @@ flowchart LR
     S6 --> R
 ```
 
-The orchestrator's job is to submit the distributed job, wait for its completion, and feed the tracker. The distributed compute framework's job is to run the training. The two are decoupled by the CRD submission API.
+Keep the two sides separate. The orchestrator submits the job, waits for it, and feeds the tracker. The distributed framework does the training. The only contract between them is the custom resource submission.
 
 ### 4.2 The tracker integration
 
-Every distributed job produces a run record. The pattern is to set the `MLFLOW_TRACKING_URI` environment variable on every pod in the job; the first thing each rank does is open an MLflow run with the rank id as a suffix.
+A single record for a whole multi-node job hides what each rank did. The better pattern gives every rank its own run. Set `MLFLOW_TRACKING_URI` on every pod in the job. The first thing each rank does is open an MLflow run with its rank number in the name.
 
 ```python
-# code/part16/train_with_mlflow_rank.py (shape only)
+# code/part16/train_with_mlflow_rank.py
 import os, mlflow
 rank = int(os.environ["RANK"])
 world_size = int(os.environ["WORLD_SIZE"])
@@ -499,14 +516,14 @@ with mlflow.start_run(run_name=f"churn-rank-{rank}-of-{world_size}") as run:
     # ... train ...
 ```
 
-The pattern produces N run records for an N-rank job. The comparison query from Chapter 16.2 joins them on `tags.code_commit` and `tags.data_hash` to see the cross-rank metrics.
+The pattern produces one run record per rank. The comparison query from Chapter 16.2 joins those records on `tags.code_commit` and `tags.data_hash`. That lets you compare the ranks side by side.
 
 ### 4.3 The registry integration
 
-When the training job completes, the orchestrator submits a register stage. The register stage reads the run record from the tracker, calls the promotion gate, and writes to the registry.
+A finished run is not yet a model you can ship. The orchestrator submits a register stage, which reads the run, checks the promotion gate and writes a version to the registry.
 
 ```python
-# code/part16/register_from_operator.py (shape only)
+# code/part16/register_from_operator.py
 import os, mlflow
 from mlflow.tracking import MlflowClient
 
@@ -528,13 +545,15 @@ client.transition_model_version_stage("churn-model", mv.version, stage="Staging"
 print(f"PROMOTED churn-model v{mv.version}")
 ```
 
-The integration is the same regardless of whether the training job ran on KubeRay, Training Operator, or a single GPU. The tracker and the registry are the abstractions; the distributed compute framework is the runtime.
+The register stage works the same way whether the run came from KubeRay, the Training Operator or a single GPU. The tracker and the registry are the abstractions here. The distributed framework is only the runtime.
 
 ---
 
 ## 5. Operating the layer on GKE
 
 ### 5.1 The components
+
+Each component below runs as a Kubernetes deployment with its own backing store. The SLO column lists latency targets. This chapter does not source or measure those figures, so treat them as example values and set your own from your own measurements.
 
 | Component | Where it runs | Backing store | SLO |
 |---|---|---|---|
@@ -545,12 +564,14 @@ The integration is the same regardless of whether the training job ran on KubeRa
 | KAI Scheduler | Kubernetes Deployment | etcd | PodGroup ready p99 < 5 s |
 | Kueue controller | Kubernetes Deployment | Postgres | Queue admission p99 < 1 s |
 
+A controller without a measured target is not yet a production service. Start by measuring how long each one takes from submit to ready.
+
 ### 5.2 IAM and multi-tenancy
 
-The pattern is the same as Chapter 16.4: one namespace per team, one service account per pipeline. The Training Operator and Katib jobs run with the team's service account; the service account's IAM bindings determine what the job can read and write.
+Chapter 16.4 uses one namespace per team and one service account per pipeline, and the distributed layer follows the same pattern. The Training Operator and Katib jobs run under the team's service account. The IAM bindings on that account decide what a job can read and write.
 
 ```yaml
-# code/part16/service_account.yaml (shape only)
+# code/part16/service_account.yaml
 apiVersion: v1
 kind: ServiceAccount
 metadata:
@@ -560,7 +581,7 @@ metadata:
 
 ### 5.3 Observability
 
-The distributed compute layer is a production service. It has metrics, logs and alerts.
+The distributed compute layer is a production service, so it needs metrics, logs and alerts. The table lists the signals. Its alert column holds example thresholds to start from, not values this chapter sources. Tune each threshold against your own workloads before you page anyone on it.
 
 | Metric | Why it matters | Alert |
 |---|---|---|
@@ -571,69 +592,71 @@ The distributed compute layer is a production service. It has metrics, logs and 
 | Stuck job duration | Catch a job that is not progressing | > 2x expected duration |
 | Checkpoint save rate | Catch a missing checkpoint loop | 0 in last hour |
 
-The GPU utilisation metric is the most important. A job that has reserved 64 GPUs but is using 20 percent is a job that is I/O bound, misconfigured, or stalled. The alert pages the on-call to investigate.
+GPU utilisation matters most. A job that reserves 64 GPUs but uses 20 percent of them is I/O bound, misconfigured or stalled. Under the example alert in the table, that job pages the on-call engineer to investigate.
 
-**Run the distributed compute layer as a production service. Page on stuck jobs. Treat the GPU utilisation metric as a first-class signal. A job that has reserved GPUs but is not using them is a job that is wasting the cluster.**
+**A job that holds GPUs without using them is wasting the cluster, so watch utilisation as closely as you watch failures.**
 
 ---
 
 ## 6. How it fails
 
-Six failure modes recur. Each has a name, a symptom, a diagnosis and a fix.
+Six failure patterns come up often enough to learn by name. Each one below gives you a symptom you can spot, a likely cause, and a fix.
 
 ### 6.1 "The job is stuck waiting for a worker"
 
 **Symptom:** A `PyTorchJob` is in `Running` state. The Master pod is scheduled and running. Seven Worker pods are pending. The job has been in this state for an hour.
 
-**Diagnosis:** The default Kubernetes scheduler scheduled the Master greedily. The workers cannot find nodes with free GPUs.
+**Diagnosis:** The default Kubernetes scheduler placed the Master first. The workers then could not find nodes with free GPUs.
 
-**Fix:** Adopt a gang scheduler (Volcano or KAI). Add the PodGroup annotation to the job. The scheduler holds all pods until the group can be satisfied.
+**Fix:** Adopt a gang scheduler, such as Volcano or KAI, and add the PodGroup annotation to the job. The scheduler then holds every pod until the group can be satisfied.
 
 ### 6.2 "The job failed because of an NCCL timeout"
 
 **Symptom:** A `PyTorchJob` failed in the first 30 seconds with `RuntimeError: NCCL timeout`. The error log names the rank and the collective op.
 
-**Diagnosis:** The job's pods are on different NVLink domains. NCCL collectives that need high bandwidth cannot complete within the timeout.
+**Diagnosis:** The job's pods landed on different NVLink domains. Collectives that need high bandwidth cannot finish inside the timeout.
 
-**Fix:** Add node affinity that lands all pods on the same NVLink domain. Increase the NCCL timeout if the topology is correct but the network is slow. Verify with `nccl-tests` (Chapter 12.17) before submitting the job.
+**Fix:** Add node affinity so all pods land in the same NVLink domain. Raise the NCCL timeout only if the topology is right and the network is simply slow. Run `nccl-tests` (Chapter 12.17) before you submit the job.
 
 ### 6.3 "The job lost a worker and restarted from scratch"
 
 **Symptom:** A 6-day training run failed at hour 36 when one pod died. The job restarted from the beginning. The cluster lost 36 node-hours of GPU time.
 
-**Diagnosis:** The job did not save checkpoints frequently enough, or the framework did not support checkpoint-restart. The restart is from step 0.
+**Diagnosis:** The job either did not save checkpoints often enough, or its framework could not restart from one. The restart began again at step 0.
 
-**Fix:** Add a checkpoint loop with a configurable save interval (every 100 to 1000 steps). Use a framework that supports checkpoint-restart (PyTorch Elastic, DeepSpeed, Megatron). Verify the checkpoint load path with a unit test.
+**Fix:** Add a checkpoint loop with a save interval you choose. Every 100 to 1000 steps is a starting point, not a rule. Use a framework that supports checkpoint-restart, such as PyTorch Elastic, DeepSpeed or Megatron. Then test the checkpoint load path with a unit test.
 
 ### 6.4 "The sweep submitted 500 trials and the cluster ran out of GPUs"
 
 **Symptom:** A Katib sweep submitted 500 trials. The cluster queue admitted 32. The rest are queued. The team expected parallelism, not queuing.
 
-**Diagnosis:** The sweep did not declare a max-parallel setting. Katib submitted all 500 trials at once.
+**Diagnosis:** The sweep did not set a parallel limit, so Katib submitted all 500 trials at once.
 
-**Fix:** Add `maxTrialCount` and `parallelTrialCount` to the Katib experiment. The sweep submits `parallelTrialCount` trials at a time; the rest are queued. The sweep also declares `maxFailedTrialCount` to fail-fast on a misconfigured trial.
+**Fix:** Set `maxTrialCount` and `parallelTrialCount` on the Katib experiment. The sweep then submits `parallelTrialCount` trials at a time, and the rest wait. Also set `maxFailedTrialCount`, so a misconfigured trial fails the sweep early.
 
 ### 6.5 "The Ray cluster autoscaler added 100 worker pods"
 
 **Symptom:** A Ray job requested more workers than the cluster had. The autoscaler added 100 worker pods. The cluster's other workloads could not find free GPUs.
 
-**Diagnosis:** The Ray cluster's `maxReplicas` was set too high. The autoscaler honoured the request; the cluster's quota was overwhelmed.
+**Diagnosis:** The Ray cluster's `maxReplicas` was set too high. The autoscaler did what it was told, and the cluster's quota was overwhelmed. Autoscaling also adds complexity, and you will need to revisit its settings as load changes. If demand is predictable, a fixed size can be the simpler choice. Production Kubernetes, chapter 13, makes this point.
 
-**Fix:** Set `maxReplicas` to a value that respects the team's quota. Add a `ClusterQueue` with a quota that the autoscaler cannot exceed. Monitor the autoscaler's decisions with Prometheus alerts.
+**Fix:** Set `maxReplicas` to a value your team's quota can support. Add a `ClusterQueue` with a quota the autoscaler cannot exceed. Watch the autoscaler's decisions with Prometheus alerts.
 
 ### 6.6 "The Training Operator job did not respect the resource quota"
 
-**Symptom:** A team submitted a `PyTorchJob` that requested 64 GPUs. The team had a 32-GPU quota. The job was admitted; the cluster was oversubscribed.
+**Symptom:** A team submitted a `PyTorchJob` that requested 64 GPUs. The team had a 32-GPU quota. The job was admitted, and the cluster was oversubscribed.
 
-**Diagnosis:** The Training Operator does not check Kueue or other queue managers. The admission is by Kubernetes alone.
+**Diagnosis:** The Training Operator does not check Kueue or any other queue manager. Admission depends on Kubernetes alone. A plain ResourceQuota is set per namespace and blocks any object that would exceed it, so a quota that spans several namespaces needs extra automation. Production Kubernetes, chapter 12, covers this.
 
-**Fix:** Adopt Kueue. Bind the team's namespace to a `LocalQueue`. The Kueue admission controller rejects the job if the quota is exceeded. The job is queued, not admitted.
+**Fix:** Adopt Kueue, and bind the team's namespace to a `LocalQueue`. Kueue holds a job that would exceed the quota in a queue, rather than admitting it.
+
+Start with the symptom, then decide which of these six patterns it matches.
 
 ---
 
 ## 7. Hands-on lab
 
-This lab stands up KubeRay, Kubeflow Training Operator, and Kubeflow Katib on GKE, runs a distributed training job, and runs a hyperparameter sweep. The lab is **untested** in this repository; commands and YAML are a working template.
+This lab installs KubeRay, the Kubeflow Training Operator and Katib on GKE. It then runs a distributed training job and a hyperparameter sweep. The lab is **untested** in this repository, so treat the commands and YAML as a working template. You run each step in order, and each step names the output you should expect.
 
 ### 7.1 Prerequisites
 
@@ -642,6 +665,8 @@ This lab stands up KubeRay, Kubeflow Training Operator, and Kubeflow Katib on GK
 - A GPU node pool with at least 8 H100 or A100 GPUs.
 
 ### 7.2 Step 1: install the operators
+
+Install the three operators with Helm. Each one runs in its own namespace.
 
 ```bash
 # Kubeflow Training Operator
@@ -703,7 +728,7 @@ curl -s http://localhost:8080/metrics | grep kuberay_cluster
 
 ### 7.8 What to record
 
-After the lab, you should be able to answer five questions in five seconds each:
+After the lab, answer these five questions without looking anything up:
 
 1. Which operator is the cluster running (KubeRay, Training Operator, Katib)?
 2. What is the namespace and service account for the team's jobs?
@@ -711,101 +736,103 @@ After the lab, you should be able to answer five questions in five seconds each:
 4. What is the Kueue queue and what is the team's quota?
 5. What is the GPU utilisation metric and what is its alert threshold?
 
-If any of these takes more than 30 seconds to answer, the distributed compute layer is not yet a production service. The lab is **untested** against a live GKE cluster.
+If any answer takes you more than a moment, the distributed compute layer is not yet ready to run as a production service. The lab is **untested** against a live GKE cluster.
 
 ---
 
 ## Exercises
 
-1. **Add a checkpoint-restart loop to a PyTorch Elastic job.** Configure the job to save a checkpoint every 100 steps; verify that a forced kill and restart resumes from the latest checkpoint. *Solution sketch:* the script from Section 3.2 with `save_checkpoint` called every 100 steps; a sidecar that kills one pod; the operator restarts it; the agent resumes from the checkpoint.
-2. **Add a Katib sweep with early stopping.** Configure an Experiment with `earlyStopping: {algorithmName: medianstop}`; verify that the worst-performing trials are stopped early. *Solution sketch:* the Katib CRD with the early stopping spec; observe the trial statuses in the Katib UI.
-3. **Add a Kueue quota for a team.** Declare a `ClusterQueue` with a 32-GPU quota; bind the team's namespace to a `LocalQueue`; verify that a job exceeding the quota is queued, not admitted. *Solution sketch:* the Kueue CRDs from Section 3.4; submit a 64-GPU job and observe it queued.
-4. **Add a Ray cluster autoscaler.** Configure the `RayCluster` with `minReplicas: 4` and `maxReplicas: 16`; submit a Ray job that requests 12 workers; verify that the autoscaler scales up to 12. *Solution sketch:* the `RayCluster` from Section 1.2; observe the worker count in the Ray dashboard.
-5. **Wire a Training Operator job into an Argo DAG.** Add a stage to the DAG from Chapter 16.4 that submits a `PyTorchJob`; wait for the job to complete; feed the run record to MLflow. *Solution sketch:* an Argo `Resource` template that submits the `PyTorchJob`; an Argo `Suspend` template that waits for completion; the run record is read by the next stage.
-6. **Add a topology-binding node affinity.** Configure a `PyTorchJob` to land on a specific NVLink domain; verify that all pods are on the same domain. *Solution sketch:* the node affinity from Section 2.3; `kubectl get pods -o wide` to verify placement.
+Work through these in order. Each one asks you to build something and then check it.
+
+1. Add a checkpoint-restart loop to a PyTorch Elastic job. You save a checkpoint every 100 steps, then force-kill one pod. Check that the job resumes from the latest checkpoint. *Solution sketch:* the script from Section 3.2 calls `save_checkpoint` every 100 steps. A sidecar kills one pod. The operator restarts it, and the agent resumes from the checkpoint.
+2. Add a Katib sweep with early stopping. Set `earlyStopping` to `medianstop` in the Experiment. Then check that the weakest trials stop early. *Solution sketch:* write the Katib resource with the early stopping spec, then watch the trial statuses in the Katib UI.
+3. Add a Kueue quota for a team. Declare a ClusterQueue with a 32-GPU quota, and bind the team's namespace to a LocalQueue. Check that a job over the quota waits rather than starts. *Solution sketch:* use the Kueue CRDs from Section 3.4. Submit a 64-GPU job and observe that it stays queued.
+4. Add a Ray cluster autoscaler. Configure the RayCluster with `minReplicas: 4` and `maxReplicas: 16`. Then submit a Ray job that requests 12 workers, and check that the autoscaler scales up to 12. *Solution sketch:* use the RayCluster from Section 1.2. Watch the worker count in the Ray dashboard.
+5. Wire a Training Operator job into an Argo DAG. Add a stage to the DAG from Chapter 16.4 that submits a PyTorchJob. The stage waits for the job to finish, then sends the run record to MLflow. *Solution sketch:* an Argo Resource template submits the PyTorchJob. An Argo Suspend template waits for completion. The next stage reads the run record.
+6. Add a topology-binding node affinity. Configure a PyTorchJob to land on one NVLink domain. Then check that every pod is in that domain. *Solution sketch:* use the node affinity from Section 2.3. Run `kubectl get pods -o wide` to verify placement.
 
 ---
 
 ## Checkpoint questions
 
 <details><summary>1. What four tools cover the distributed compute layer?</summary>
-Ray and KubeRay for general-purpose distributed Python; Kubeflow Training Operator for TFJob, PyTorchJob, MPIJob, and XGBoostJob; Kubeflow Katib for hyperparameter sweeps. The four are complementary; a team that runs multi-node fine-tunes uses Training Operator for the job, Katib for the sweep, and Ray for data loading and serving.
+Ray and KubeRay handle general-purpose distributed Python. The Kubeflow Training Operator runs TFJob, PyTorchJob, MPIJob, and XGBoostJob, and Kubeflow Katib runs hyperparameter sweeps. The tools complement each other rather than compete. A team with multi-node fine-tunes uses the Training Operator for the job, Katib for the sweep, and Ray for data loading and serving.
 </details>
 
 <details><summary>2. What is the difference between Ray and KubeRay?</summary>
-Ray is the distributed computing framework; KubeRay is the Kubernetes operator that manages Ray clusters. The operator exposes a `RayCluster` CRD; the operator reconciles the resource by creating a head pod and worker pods. KubeRay supports autoscaling, gang scheduling, and GPU device plugin integration.
+Ray is the distributed computing framework. KubeRay is the Kubernetes operator that manages Ray clusters. It watches the `RayCluster` resource and creates a head pod and worker pods to match it, and it also supports autoscaling, gang scheduling, and GPU device plugin integration.
 </details>
 
 <details><summary>3. What is the difference between Training Operator and Ray Train?</summary>
-Training Operator manages jobs with a fixed topology declared in YAML; Ray Train manages jobs with a dynamic worker set that the autoscaler grows and shrinks. Training Operator is the right fit for fixed-topology multi-GPU training; Ray Train is the right fit for elastic workloads and custom distributed Python.
+The Training Operator runs jobs with a fixed topology that you declare in YAML. Ray Train runs jobs with a worker set that the autoscaler can grow and shrink. Use the Training Operator for fixed-topology multi-GPU training, and use Ray Train for elastic workloads and custom distributed Python.
 </details>
 
 <details><summary>4. What does Katib do?</summary>
-Katib runs hyperparameter sweeps as Kubernetes custom resources. An `Experiment` spawns trials as pods; the trials produce metrics; the metrics feed the search algorithm; the search algorithm picks the next hyperparameters. Katib supports Bayesian optimisation, hyperband, early stopping, and neural architecture search.
+Katib runs hyperparameter sweeps as Kubernetes custom resources. An `Experiment` starts trials as pods, the trials report metrics, and the search algorithm uses those metrics to pick the next hyperparameters. Katib supports Bayesian optimisation, hyperband, early stopping, and neural architecture search.
 </details>
 
 <details><summary>5. What is gang scheduling and why does the default scheduler not provide it?</summary>
-Gang scheduling means all pods of a multi-pod job start together. The default Kubernetes scheduler allocates pods one at a time and does not know that a multi-pod job is a single unit. The result is the "Master got a GPU, Workers are pending" failure. The fix is a gang scheduler (Volcano, KAI, Kueue) that wraps the pods in a PodGroup.
+Gang scheduling starts all the pods of a multi-pod job together. The default Kubernetes scheduler places pods one at a time and does not know that they belong to one job. That is how the "Master got a GPU, Workers are pending" failure happens. The fix is a gang scheduler, such as Volcano, KAI, or Kueue, that wraps the pods in a PodGroup.
 </details>
 
 <details><summary>6. What is the contract that a resource request makes with the scheduler?</summary>
-A pod that asks for eight GPUs is making a contract that says "I need all eight GPUs in the same NUMA domain, with NVLink between them, all at once". The gang scheduler's job is to honour that contract; the default scheduler cannot. The pattern in production is to declare the resource request, the scheduler name, and the PodGroup annotation.
+A pod that asks for eight GPUs makes a promise. All eight must be available at once, in the same NUMA domain, with NVLink between them. The gang scheduler's job is to honour that promise, and the default scheduler cannot. The production pattern is to declare the resource request, the scheduler name, and the PodGroup annotation.
 </details>
 
 <details><summary>7. What is the difference between checkpoint-restart, elastic membership, and reactive failover?</summary>
-Checkpoint-restart saves a checkpoint periodically; on failure, the job restarts from the latest checkpoint. Elastic membership changes the worker set mid-run; the framework rebalances. Reactive failover restarts failed pods; the framework rejoins. Checkpoint-restart is the most universal; reactive failover is the simplest; elastic membership is the most efficient.
+Checkpoint-restart saves a checkpoint periodically, and on failure the job restarts from the latest one. Elastic membership changes the worker set mid-run, and the framework rebalances. Reactive failover restarts a failed pod, and the framework rejoins it. Checkpoint-restart is the most widely supported, reactive failover is the simplest, and elastic membership is the most efficient.
 </details>
 
 <details><summary>8. What is the cost of a naive restart of a 14-day training run?</summary>
-The full 14-day run, lost. A 64-GPU run that fails at hour 36 wastes 36 node-hours of GPU time and all the trained weights. Checkpoint-restart reduces the loss to the time between the last checkpoint and the failure.
+The full 14-day run is lost. A 64-GPU run that fails at hour 36 wastes 36 node-hours of GPU time and all the trained weights. Checkpoint-restart reduces the loss to the time between the last checkpoint and the failure.
 </details>
 
 <details><summary>9. What is Kueue and what does it do?</summary>
-Kueue is a Kubernetes-native queue manager that enforces resource quotas across teams. It exposes `ClusterQueue` and `LocalQueue` CRDs; a `LocalQueue` binds a team's namespace to a `ClusterQueue`; the `ClusterQueue` has a quota; Kueue's admission controller rejects jobs that exceed the quota.
+Kueue is a Kubernetes-native queue manager that enforces resource quotas across teams. It exposes `ClusterQueue` and `LocalQueue` CRDs. A `LocalQueue` binds a team's namespace to a `ClusterQueue`, which holds the quota, and Kueue's admission controller rejects jobs that exceed it.
 </details>
 
 <details><summary>10. Why is the GPU utilisation metric a first-class signal?</summary>
-Because a job that has reserved GPUs but is not using them is a job that is wasting the cluster. The metric catches I/O-bound, misconfigured, or stalled jobs. The alert is < 30 percent for 30 minutes; the on-call investigates the job.
+A job that has reserved GPUs but is not using them is wasting the cluster. The metric catches jobs that are I/O bound, misconfigured, or stalled. The example alert fires below 30 percent utilisation for 30 minutes, and the on-call engineer investigates. You should set your own threshold from your workload mix.
 </details>
 
 <details><summary>11. What is the integration pattern with the tracker?</summary>
-Every distributed job produces a run record. The pattern is to set `MLFLOW_TRACKING_URI` on every pod; the first thing each rank does is open an MLflow run with the rank id as a suffix. The comparison query joins the run records on `code_commit` and `data_hash`.
+Every distributed job produces a run record. Set `MLFLOW_TRACKING_URI` on every pod, and the first thing each rank does is open an MLflow run with its rank number as a suffix. The comparison query joins the run records on `code_commit` and `data_hash`.
 </details>
 
 <details><summary>12. What is the integration pattern with the registry?</summary>
-When the training job completes, the orchestrator submits a register stage. The register stage reads the run record from the tracker, calls the promotion gate, and writes to the registry. The integration is the same regardless of whether the training job ran on KubeRay, Training Operator, or a single GPU.
+When the training job completes, the orchestrator submits a register stage. That stage reads the run record from the tracker, calls the promotion gate, and writes to the registry. The integration is the same whether the job ran on KubeRay, the Training Operator, or a single GPU.
 </details>
 
 <details><summary>13. What is the difference between Ray Serve and KServe?</summary>
-Ray Serve is Ray's model serving framework; it runs inside a Ray cluster and uses Ray's autoscaler. KServe is a Kubernetes-native model serving framework that uses Knative and Istio for autoscaling and traffic management. Ray Serve is the right fit for teams already on Ray; KServe is the right fit for Kubernetes-native teams.
+Ray Serve is Ray's model serving framework. It runs inside a Ray cluster and uses Ray's autoscaler. KServe is a Kubernetes-native serving framework that uses Knative and Istio for autoscaling and traffic management. Teams already on Ray should pick Ray Serve, and Kubernetes-native teams should pick KServe.
 </details>
 
 <details><summary>14. What is the right fit for RL workloads?</summary>
-Ray, end-to-end. Ray RLlib provides actor-learner setups with elastic actor pools; the learner trains on a single node; the actors generate rollouts on many nodes. Ray's autoscaler adds actors as the rollout pool grows; the learner keeps training.
+If you run reinforcement learning, use Ray from end to end. Ray RLlib gives you actor-learner setups with elastic actor pools. The learner trains on one node, while the actors generate rollouts on many nodes. Ray's autoscaler adds actors as the rollout pool grows, and the learner keeps training.
 </details>
 
 <details><summary>15. What is the cost of running a sweep without parallel limits?</summary>
-The sweep submits every trial at once; the cluster queue admits as many as the quota allows; the rest are queued. A 500-trial sweep without `parallelTrialCount` overwhelms the queue; the team expects parallelism but gets queuing. The fix is to set `maxTrialCount` and `parallelTrialCount` explicitly.
+The sweep submits every trial at once, and the cluster queue admits only as many as the quota allows. The rest wait in the queue. A 500-trial sweep without `parallelTrialCount` overwhelms the queue, so the team expects parallelism and gets queuing. Set `maxTrialCount` and `parallelTrialCount` explicitly.
 </details>
 
 <details><summary>16. What is the difference between Ray Train and PyTorch Elastic?</summary>
-Ray Train runs inside a Ray cluster; the worker set is managed by the Ray autoscaler. PyTorch Elastic runs inside a Kubernetes-native job; the worker set is managed by the operator. Both support checkpoint-restart; Ray Train has richer integration with Ray Data and Ray Tune.
+Ray Train runs inside a Ray cluster, and the Ray autoscaler manages its worker set. PyTorch Elastic runs inside a Kubernetes-native job, and the operator manages its worker set. Both support checkpoint-restart. Ray Train has richer integration with Ray Data and Ray Tune.
 </details>
 
 <details><summary>17. What is the difference between Training Operator and MPI Operator?</summary>
-Training Operator manages TFJob, PyTorchJob, MPIJob and XGBoostJob. MPI Operator is the original Kubernetes operator for MPI jobs; it is now part of Kubeflow Training Operator. The patterns are similar; the Training Operator has richer restart and cleanup policies.
+The Training Operator manages TFJob, PyTorchJob, MPIJob, and XGBoostJob. The MPI Operator was the original Kubernetes operator for MPI jobs, and it is now part of the Kubeflow Training Operator. The patterns are similar, but the Training Operator has richer restart and cleanup policies.
 </details>
 
 <details><summary>18. What is the cost of elastic training?</summary>
-A small amount of overhead per step (a few percent) and the requirement that the framework's collective calls tolerate changing world size. The benefit is the ability to lose nodes without losing progress. The trade-off is worth it for jobs that run longer than a day.
+Elastic training adds a small overhead to each step, and the framework's collective calls must tolerate a world size that changes. In return, you can lose nodes without losing progress. Measure the overhead on your own job. For long runs, that trade-off usually pays off.
 </details>
 
 <details><summary>19. What is the difference between Ray's object store and the cluster's distributed filesystem?</summary>
-Ray's object store is an in-memory key-value store that lives inside the Ray cluster; it is fast but ephemeral. The cluster's distributed filesystem (Lustre, Weka, BeeGFS) is persistent and slower. Use the object store for ephemeral data (model weights, intermediate tensors); use the filesystem for persistent data (datasets, checkpoints).
+Ray's object store is an in-memory key-value store inside the Ray cluster. It is fast but ephemeral. The cluster's distributed filesystem, such as Lustre, Weka or BeeGFS, is persistent and slower. Use the object store for ephemeral data like model weights and intermediate tensors, and use the filesystem for datasets and checkpoints.
 </details>
 
 <details><summary>20. Why is the distributed compute layer a platform-team concern?</summary>
-Because the layer owns the GPU quota, the fault tolerance policy, and the audit trail. Every distributed job is a Kubernetes pod that requests GPUs; the layer's scheduler respects or violates the team's quota. When a node dies, the layer's policy decides whether to restart, fail, or fall back. The platform team owns the policy.
+The layer owns the GPU quota, the fault tolerance policy, and the audit trail. Every distributed job is a Kubernetes pod that requests GPUs, and the layer's scheduler either respects the team's quota or violates it. When a node dies, the layer's policy decides whether to restart, fail, or fall back. The platform team owns that policy.
 </details>
 
 ---

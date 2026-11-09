@@ -47,16 +47,18 @@ flowchart LR
     RS --> ORD
 ```
 
-The capacity planning and FinOps views meet in the procurement order.
+Read the diagram as two views that meet at the procurement order. The capacity plan and the reserved-instance commitments look forward. The FinOps dashboard and right-sizing look back at what you already spent, and right-sizing feeds the order too.
 
 ## Why this matters for AI infrastructure
 
-Every chapter in Part 17 so far has been about operating the cluster. This chapter is about the cost of the cluster. The cost is what the CFO sees; the cost is what the procurement team negotiates; the cost is what the platform team optimises. An AI factory without capacity planning is an AI factory that pays for GPUs it does not need. An AI factory with capacity planning is an AI factory that pays for the GPUs it needs and no more.
+Picture a platform team that has just bought a rack of GPUs. A few months later, finance asks why the GPU bill keeps rising, and nobody can explain it. Part 17 so far has taught you to keep the cluster running. This chapter teaches you to pay for it on purpose.
 
-Capacity planning and cost optimisation are the same problem viewed from two sides. Capacity planning is the forward-looking view: how many GPUs will the team need in Q+1. Cost optimisation is the backward-looking view: how many GPUs did the team use in Q, and at what cost. The two views meet in the FinOps dashboard; the FinOps dashboard is the platform team's view of the cluster's economics.
+Capacity planning and cost optimisation are two views of one problem. Capacity planning looks forward and asks how many GPUs the team will need next quarter. Cost optimisation looks back and asks how many GPUs the team used, and what they cost. Both views meet in the FinOps dashboard, which is the platform team's picture of the cluster's economics.
+
+The block below shows the stakes with example values. Replace them with your own figures before you put any of them in a budget.
 
 ```text
-Why capacity planning and cost optimisation are on the critical path (V19 ch3, ch6; AF Ch 8; SKI Ch 2; V8 ch2):
+Why capacity planning and cost optimisation are on the critical path (background reading: NVIDIA Zero-to-Hero volume 19; AI Factory; Scalable Kubernetes Infrastructure for AI Platforms; NVIDIA Zero-to-Hero volume 8; the figures below are examples, not quotations):
 - A typical mature AI platform spends millions of dollars per year on GPUs.
   A 10% capacity planning error is hundreds of thousands of dollars per year.
   The cost of being wrong is significant.
@@ -68,32 +70,36 @@ Why capacity planning and cost optimisation are on the critical path (V19 ch3, c
   capacity planning and the cost optimisation.
 ```
 
-Three operational realities make this chapter a platform-team concern rather than a data-science-only concern:
+Production-scale teams also measure goodput, which is useful work completed per unit of time, rather than raw busy time. AI Systems Performance Engineering, chapter 1, uses Meta's "Revisiting Reliability" paper as its case. A cluster that looked fully utilised still lost 70 to 75 percent of its compute to communication delays, slow data supply, and failure recovery.
 
-1. **The GPU bill is the platform team's responsibility.** The team that does not track the bill is the team that over-provisions. The platform team owns the FinOps dashboard; the platform team owns the capacity planning.
-2. **The right-sizing is the platform team's discipline.** The team that does not right-size is the team that wastes GPUs. The platform team owns the right-sizing exercise; the platform team owns the cost optimisation.
-3. **The reserved-instance strategy is the platform team's decision.** Reserved instances save 30-60% over on-demand; the platform team picks the commitment. The procurement team signs the contract; the platform team owns the trade-off.
+Three habits make this a platform-team job rather than a data-science job.
 
-**Before a team can run an AI workload on a GPU cluster, the team must have a capacity planning model and a FinOps dashboard. Capacity planning is the forward-looking view; FinOps is the backward-looking view. The two views meet in the procurement order; the procurement order is what the CFO signs.**
+1. The platform team owns the GPU bill. A team that cannot see its own cost has little reason to give GPUs back.
+2. Right-sizing is a platform discipline too. Without it, a workload keeps the GPUs it was given long after it needs them.
+3. Reserved commitments are a platform decision. The procurement team signs the contract, but the platform team owns the trade-off between flexibility and discount.
+
+**Before a team runs its first workload, make sure it has both a capacity model and a FinOps dashboard.** Capacity planning tells you what to order, and FinOps tells you what you actually spent. The procurement order is where the two meet.
 
 ## Prerequisites and outcomes
 
 ### Prerequisites
 
+Before you start, review the chapters below. Chapter 16.14 gives you the cost attribution model that this chapter reuses.
+
 - Chapter 16.14 (Platform design: FinOps) for the FinOps dashboard and the cost attribution model.
-- Chapter 17.8 (Performance engineering methodology) for the cost-vs-latency trade-off.
+- Chapter 17.8 (Performance engineering methodology) for the cost-versus-latency trade-off.
 - Chapter 17.11 (Incident response) for the change management context.
 - Chapter 11 (GPU Kubernetes) for the GPU pool management.
 
 ### Outcomes
 
-After completing this chapter you will be able to:
+By the end of this chapter, you will be able to:
 
-1. Build the capacity planning model: the forecasting model, the buffer calculation, the procurement order.
-2. Build the FinOps dashboard: the per-team cost, the per-model cost, the cost-vs-latency trade-off.
-3. Run the right-sizing exercise: identify over-provisioned workloads; reduce the GPU count; measure the savings.
-4. Implement the reserved-instance strategy: the commitment level, the utilisation target, the renewal calendar.
-5. Operate the capacity planning and cost optimisation process on GKE with reliable forecasts, transparent costs, and predictable procurement.
+- Build a capacity planning model with a forecast, a buffer, and a procurement order.
+- Build a FinOps dashboard that shows cost per team, cost per model, and the cost-versus-latency trade-off.
+- Run a right-sizing exercise that finds over-provisioned workloads, cuts their GPU count, and measures the savings.
+- Set up a reserved-instance strategy with a commitment level, a utilisation target, and a renewal calendar.
+- Run the whole process on GKE, so forecasts, costs, and procurement stay predictable.
 
 ---
 
@@ -101,7 +107,9 @@ After completing this chapter you will be able to:
 
 ### 1.1 The forecasting model
 
-The capacity planning model forecasts the team's GPU needs for the next quarter. The model is: historical usage + growth rate + buffer = forecast.
+Imagine your team runs 100 GPUs today, and its GPU count grew by 20 percent over the last quarter. How many GPUs should you order for next quarter? The capacity planning model answers that. It starts from the current GPU count, applies the growth rate and a buffer for spikes, and produces a forecast.
+
+The block below lists the inputs, including historical utilisation. The forecast formula itself uses only the current count, the growth rate, and the buffer. Historical utilisation is a check you run before you trust the number, not a term in the formula.
 
 ```text
 Capacity planning model:
@@ -111,25 +119,25 @@ Capacity planning model:
 - Forecast: current GPU count * (1 + growth rate) * (1 + buffer)
 ```
 
-The pattern is: forecast the growth; add the buffer; order the GPUs. The model is simple; the model is defensible; the model is auditable.
+Work the arithmetic by hand once: 100 × 1.20 × 1.30 = 156. The 30 percent buffer is an example value, so choose your own after you study the workload's spikes.
 
 ### 1.2 The buffer calculation
 
-The buffer is the safety margin between the forecast and the actual need. The buffer is the trade-off between over-provisioning (waste) and under-provisioning (SLO breach).
+The buffer is the room you keep above the forecast, so a spike does not leave the service short. A buffer that is too small risks missing service targets. A buffer that is too large means paying for GPUs that sit idle. The table shows how that trade-off moves, using example values rather than measured ones.
 
 | Buffer | Trade-off |
 |---|---|
 | 10% | Low waste; high SLO breach risk |
 | 20% | Moderate waste; moderate SLO breach risk |
-| 30% | Balanced; the platform team's default |
+| 30% | Balanced, and the platform team's default |
 | 50% | High waste; low SLO breach risk |
 | 100% | Doubled GPU spend; no SLO breach risk |
 
-The pattern is: 30% is the default; the buffer is tuned based on the workload's spike pattern; the buffer is reviewed quarterly.
+This chapter starts at 30 percent, and that is only a starting point. Review the buffer each quarter against the workload's spike pattern.
 
 ### 1.3 The procurement order
 
-The procurement order is the output of the capacity planning model. The order is the number of GPUs the team needs for the next quarter.
+The procurement order is what the model produces: the GPU count to request for next quarter. The script below writes that count to a file. A person should read the script and its output before anyone signs the order.
 
 ```bash
 # Compute the Q+1 GPU order
@@ -141,7 +149,7 @@ python code/part17/capacity_plan.py \
 # expected: the Q+1 GPU order is 156 GPUs (rounded up)
 ```
 
-The pattern is: the order is a script's output; the script is reviewed; the script's output is the CFO's signature.
+Before you trust the output, check the current GPU count you fed in. A wrong input produces a confident, wrong order.
 
 ---
 
@@ -149,24 +157,24 @@ The pattern is: the order is a script's output; the script is reviewed; the scri
 
 ### 2.1 The cost model
 
-The cost model has three components: GPU compute, storage, and network.
+A GPU workload has four cost lines: compute, storage, network egress, and licensing. Each line works the same way. You multiply how much you used by what it costs, so the model is only as good as the usage numbers and prices you feed it. Use the prices you actually pay, because they differ by GPU class.
 
 ```text
-Cost model (V19 ch6; AF Ch 8):
+Cost model (background reading: NVIDIA Zero-to-Hero volume 19; AI Factory; the figures below are examples, not quotations):
 - GPU compute: GPU-hours * GPU price per hour (varies by GPU class)
 - Storage: GB-month * storage price per GB-month
 - Network egress: GB * network egress price per GB
 - Licensing (NVAIE): GPU-hours * license price per GPU-hour
 ```
 
-The pattern is: the cost model is per-team, per-model, per-month; the cost model is the source of the FinOps dashboard.
+Keep this model per team, per model, and per month. The dashboard in the next section reads from it.
 
 ### 2.2 The FinOps dashboard
 
-The FinOps dashboard shows the cost per team, the cost per model, and the cost trend.
+A team can only act on a cost it can see, so start the dashboard with cost per team. The JSON below defines five panels: cost per team, cost per model, GPU hours per team, a 90-day cost trend, and a table that sets cost beside p99 latency for each model.
 
 ```yaml
-# code/part17/finops_dashboard.json (shape only)
+# code/part17/finops_dashboard.json
 {
   "dashboard": {
     "title": "AI Factory - FinOps",
@@ -175,20 +183,20 @@ The FinOps dashboard shows the cost per team, the cost per model, and the cost t
       {"title": "Cost per model this month", "type": "bargauge", "targets": [{"expr": "sum by (model) (kubecost_model_cost_monthly)"}]},
       {"title": "GPU hours per team this month", "type": "stat", "targets": [{"expr": "sum by (team) (kubecost_team_gpu_hours_monthly)"}]},
       {"title": "Cost trend over the last 90 days", "type": "timeseries", "targets": [{"expr": "sum(kubecost_team_cost_daily)"}]},
-      {"title": "Cost vs latency trade-off", "type": "table", "targets": [{"expr": "..."}]}
+      {"title": "Cost vs latency trade-off", "type": "table", "targets": [{"expr": "sum by (model) (kubecost_model_cost_monthly)", "refId": "A"}, {"expr": "histogram_quantile(0.99, sum by (model, le) (rate(inference_request_duration_seconds_bucket[5m])))", "refId": "B"}]}
     ]
   }
 }
 ```
 
-The pattern is: the dashboard shows the cost per team; the dashboard shows the cost per model; the dashboard shows the trend; the dashboard shows the trade-off.
-
 ### 2.3 The chargeback integration
 
-The chargeback integration feeds the business's billing system. The integration is a SQL query that aggregates the cost data by team; the query feeds the ERP.
+Chargeback moves these costs into the business's billing system. The SQL query below sums each team's cost by month, and the finance system reads the result. Check one month's totals by hand before you trust the chargeback.
+
+AI Systems Performance Engineering, chapter 2, describes a model where internal teams pay per GPU-hour from their own budgets. The book argues that such a charge also covers electricity and depreciation, and that it makes people value the hardware.
 
 ```sql
--- code/part17/chargeback_query.sql (shape only)
+-- code/part17/chargeback_query.sql
 SELECT
     team,
     DATE_TRUNC('month', timestamp) AS month,
@@ -201,15 +209,15 @@ FROM cost_metrics
 GROUP BY team, month
 ```
 
-The pattern is: the chargeback is automated; the chargeback feeds the ERP; the chargeback is auditable.
-
 ---
 
 ## 3. Right-sizing
 
 ### 3.1 The right-sizing exercise
 
-The right-sizing exercise identifies over-provisioned workloads; the exercise reduces the GPU count; the exercise measures the savings.
+Picture a cluster with three workloads. Workload A holds 8 GPUs and uses 60 percent of them. Workload B holds 16 GPUs and stays busy. Workload C holds 4 GPUs and uses 40 percent. Right-sizing asks whether A and C can give GPUs back without slowing down.
+
+The block below works the example through. The $3.20 price is an assumed rate for illustration, not a quote from any provider.
 
 ```text
 Right-sizing exercise:
@@ -220,11 +228,11 @@ Right-sizing exercise:
 - Cost savings: 3600 * $3.20 = $11,520 per month
 ```
 
-The pattern is: identify over-provisioned workloads; reduce the GPU count; measure the savings; track the savings on the FinOps dashboard.
+Workloads A and C free up 5 GPUs, or 3,600 GPU-hours over 30 days. Recompute the dollar figure with your own rate.
 
 ### 3.2 The right-sizing metrics
 
-The right-sizing metrics are the metrics that identify over-provisioned workloads.
+Read these four metrics together. Low GPU use with full memory can still mean a workload needs its GPUs. The targets in the table are examples, so choose your own once you see how your workloads behave.
 
 | Metric | What it measures | Target |
 |---|---|---|
@@ -233,11 +241,9 @@ The right-sizing metrics are the metrics that identify over-provisioned workload
 | GPU hours per request | The GPU hours consumed per request | As low as possible |
 | Cost per inference | The dollar cost per inference | As low as possible |
 
-The pattern is: the metrics are tracked per workload; the metrics are reviewed quarterly; the right-sizing exercise identifies the workloads that are below the target.
-
 ### 3.3 The right-sizing recommendations
 
-The right-sizing recommendations are the actions that reduce the GPU count.
+Run the script below against your production cluster. It lists each workload with its GPU count, its utilisation, and a recommended count. Review each recommendation before you act, because a low average can hide a workload that peaks at certain hours.
 
 ```bash
 # Generate the right-sizing recommendations
@@ -246,16 +252,13 @@ python code/part17/right_size.py \
   --output right_sizing_recommendations.md
 # expected: a list of workloads with their GPU count, utilisation, and recommended GPU count
 ```
-
-The pattern is: the recommendations are generated by a script; the recommendations are reviewed; the recommendations are applied; the savings are tracked.
-
 ---
 
 ## 4. Reserved instances
 
 ### 4.1 The reserved-instance strategy
 
-The reserved-instance strategy commits to a certain number of GPUs for a certain period in exchange for a discount. The strategy is the trade-off between flexibility and cost.
+A commitment trades flexibility for a lower price. You agree to pay for a set number of GPUs over a set period, whether or not you use them all. The table lists four options. The discounts are example ranges, so check them against your provider's price list before you decide.
 
 | Commitment | Discount | Use case |
 |---|---|---|
@@ -264,11 +267,11 @@ The reserved-instance strategy commits to a certain number of GPUs for a certain
 | 3-year reserved | 50-60% | Long-term workloads |
 | Spot | 50-70% | Preemptible workloads; training jobs |
 
-The pattern is: 1-year reserved for steady-state workloads; 3-year reserved for long-term workloads; spot for training jobs; on-demand for spikes.
-
 ### 4.2 The utilisation target
 
-The utilisation target is the minimum utilisation that justifies the reserved-instance commitment.
+A commitment only pays off if you use it. The utilisation target is the lowest use that justifies a commitment. Work out the break-even point first. If the discount is 30 percent, you pay 70 percent of the on-demand price for every committed hour, so you must use 70 percent of those hours to break even.
+
+The block below sets example targets. Replace them with figures from your own price sheet.
 
 ```text
 Reserved-instance utilisation target:
@@ -277,11 +280,9 @@ Reserved-instance utilisation target:
 - Spot: minimum 0% utilisation (spot can be preempted at any time)
 ```
 
-The pattern is: if the utilisation drops below the target, the reserved instance is wasted; the team should switch to on-demand or spot.
-
 ### 4.3 The renewal calendar
 
-The renewal calendar is the schedule for renewing the reserved-instance commitments. The calendar is published quarterly; the calendar includes the commitment level, the expiry date, and the renewal decision.
+A commitment that expires without notice either renews by default or lapses, and both can cost you. A renewal calendar lists each commitment, its expiry date, and the decision that is due. The script below builds that calendar. Many teams review it once a quarter, but choose the cadence that fits your contracts.
 
 ```bash
 # Schedule the renewal calendar
@@ -291,13 +292,13 @@ python code/part17/renewal_calendar.py \
 # expected: a calendar of upcoming renewals with the commitment level and the expiry date
 ```
 
-The pattern is: the renewal calendar is published in advance; the renewal decision is made before the expiry date; the renewal decision is documented.
-
 ---
 
 ## 5. Operating capacity planning and cost optimisation on GKE
 
 ### 5.1 The components
+
+Four components make up the stack. Kubecost or OpenCost collects the cost data, Grafana draws the dashboards, and BigQuery answers the chargeback query. The table lists where each one runs and the latency target it should meet. The targets are examples, so measure your own system first and then set targets that match what your team needs.
 
 | Component | Where it runs | Backing store | SLO |
 |---|---|---|---|
@@ -306,9 +307,11 @@ The pattern is: the renewal calendar is published in advance; the renewal decisi
 | FinOps dashboard | Grafana | Prometheus + Kubecost | Dashboard load p99 < 5 s |
 | Chargeback query | BigQuery | (BigQuery) | Query latency p99 < 30 s |
 
+Cost also depends on how traffic enters the cluster. Production Kubernetes, chapter 6, explains that a LoadBalancer Service in a cloud cluster gets its own external load balancer, and that this adds up. An Ingress controller routes many services through one entry point, which keeps that cost down.
+
 ### 5.2 IAM and the cost optimisation
 
-The cost optimisation stack has its own IAM. The pattern is:
+Cost data is sensitive, so the stack gets its own access roles. The table shows one way to split them, and you should adjust it to match your organisation. Teams can read the dashboard. The platform team can change the model and the dashboard. Only the CFO's office approves orders and chargebacks.
 
 | Role | Who | What they can do |
 |---|---|---|
@@ -316,9 +319,11 @@ The cost optimisation stack has its own IAM. The pattern is:
 | `finops.writer` | The platform team | Update the cost model; update the FinOps dashboard |
 | `finops.admin` | The CFO's office | Approve the procurement order; approve the chargeback |
 
-The cost attribution is the platform team's discipline. Every GPU is tagged with the team, the model, and the cost centre; the tags feed the Kubecost allocation; the allocation feeds the FinOps dashboard.
+Cost attribution is the platform team's discipline. Tag every GPU with its team, model, and cost centre. The Kubecost allocation and the FinOps dashboard both read those tags, so an untagged GPU is a cost that nobody owns.
 
 ### 5.3 Observability
+
+Five signals show whether the process is working. The table pairs each one with the alert it should trigger. The thresholds are examples, so set them from your own budgets and your own history.
 
 | Metric | Why it matters | Alert |
 |---|---|---|
@@ -328,75 +333,79 @@ The cost attribution is the platform team's discipline. Every GPU is tagged with
 | Reserved-instance utilisation | Reserved-instance ROI | < target for 30 days |
 | Right-sizing savings | Right-sizing effectiveness | < 10% per quarter |
 
-The right-sizing savings alert is the most important. A low savings rate means the team is not optimising; a low savings rate means the GPU bill is growing without bound.
+The right-sizing savings alert matters most. A low savings rate suggests the team has stopped looking for waste, and the bill is growing without a check.
 
 ---
 
 ## 6. How it fails
 
-Six failure modes recur.
+Six failure modes come up again and again. Each one below gives you a symptom to look for, a likely cause, and a fix. The numbers in these examples are illustrations, not measured data.
 
 ### 6.1 "The forecast is wrong"
 
-**Symptom:** The forecast says 156 GPUs; the actual usage is 100 GPUs; the team over-provisioned by 56 GPUs.
+**Symptom:** The forecast asked for 156 GPUs, but the team used 100. That leaves 56 GPUs bought and idle, using the chapter's example numbers.
 
-**Diagnosis:** The forecast model is wrong; the growth rate is wrong; the buffer is wrong; the historical data is wrong.
+**Diagnosis:** The forecast model is off. The growth rate, the buffer, or the history the model learned from may be wrong.
 
-**Fix:** Tune the forecast model; review the historical data; add a confidence interval; review the forecast quarterly.
+**Fix:** Tune the model and check its history. Add a confidence range to the forecast, and review it each quarter.
 
 ### 6.2 "The right-sizing exercise finds nothing"
 
-**Symptom:** The right-sizing exercise is run quarterly; the exercise finds no over-provisioned workloads; the GPU bill grows without bound.
+**Symptom:** The team runs the right-sizing exercise every quarter. It finds nothing, and the GPU bill keeps climbing.
 
-**Diagnosis:** The right-sizing metrics are wrong; the right-sizing exercise is too narrow; the team is not looking at all workloads.
+**Diagnosis:** The metrics may be wrong, the exercise may cover too few workloads, or the team may not be looking at all of them.
 
-**Fix:** Add the right-sizing metrics; expand the right-sizing exercise to all workloads; train the team on the right-sizing methodology.
+**Fix:** Add the right metrics, widen the exercise to every workload, and train people on the method.
 
 ### 6.3 "The reserved-instance commitment is wasted"
 
-**Symptom:** The reserved-instance commitment is 80% utilised; the cost is higher than on-demand; the team is overpaying.
+**Symptom:** The commitment looks well used, but the bill is higher than on-demand would have been.
 
-**Diagnosis:** The forecast was too optimistic; the workload's spike pattern does not match the commitment; the team did not adjust the commitment.
+**Diagnosis:** Check how utilisation is measured first. At a 30 percent discount, a commitment only breaks even at about 70 percent use, so a figure of 80 percent should save money. If it does not, the forecast was too optimistic, the spike pattern does not match the commitment, or the team did not adjust it.
 
-**Fix:** Adjust the commitment level; switch to on-demand or spot; sell the reserved-instance commitment if possible.
+**Fix:** Adjust the commitment level, move spiky work to on-demand or spot, and sell the commitment if your provider allows it.
 
 ### 6.4 "The chargeback is wrong"
 
-**Symptom:** The chargeback shows team A owes more than team B; the teams dispute the chargeback; the CFO escalates.
+**Symptom:** Team A's chargeback is larger than team B's. The teams dispute it, and the CFO's office escalates.
 
-**Diagnosis:** The cost attribution is wrong; the cost model is wrong; the chargeback query is wrong.
+**Diagnosis:** The cost attribution, the cost model, or the chargeback query is wrong.
 
-**Fix:** Verify the cost attribution; verify the cost model; verify the chargeback query; automate the chargeback audit.
+**Fix:** Check the attribution and the model. Test the query against spend you already know, and automate a chargeback audit.
 
 ### 6.5 "The GPU bill grows without bound"
 
-**Symptom:** The GPU bill grows 20% per quarter; the forecast is not updated; the procurement is not capped.
+**Symptom:** The GPU bill rises each quarter. Nobody updates the forecast, and nobody caps the orders.
 
-**Diagnosis:** The forecast is not updated; the procurement is not capped; the right-sizing is not run.
+**Diagnosis:** The forecast is stale, the orders have no cap, and right-sizing is not running.
 
-**Fix:** Update the forecast quarterly; cap the procurement; run the right-sizing exercise quarterly.
+**Fix:** Update the forecast each quarter, cap the orders, and run right-sizing every quarter.
 
 ### 6.6 "The cost optimisation is ad-hoc"
 
-**Symptom:** The team optimises costs ad-hoc; the team does not follow the right-sizing methodology; the team does not use the FinOps dashboard.
+**Symptom:** Teams cut costs on their own. They skip the right-sizing method and ignore the FinOps dashboard.
 
-**Diagnosis:** The cost optimisation process is documented but not enforced; the team is not trained on the process.
+**Diagnosis:** The process is written down, but nobody enforces it, and the team has not been trained on it.
 
-**Fix:** Train the team on the cost optimisation process; enforce the process in code review; add the process to the team's quarterly OKRs.
+**Fix:** Train the team, check the process in code review, and add it to the team's quarterly goals.
 
 ---
 
 ## 7. Hands-on lab
 
-This lab walks through the capacity planning model, the FinOps dashboard, the right-sizing exercise, and the reserved-instance strategy. The lab is **untested** in this repository.
+This lab takes you through the capacity model, the FinOps dashboard, the right-sizing exercise, and the reserved-instance strategy, in that order. The lab is **untested** in this repository, so treat each step as a plan to verify on your own cluster.
 
 ### 7.1 Prerequisites
+
+Check three things before you start.
 
 - Kubecost (or OpenCost) installed.
 - The observability stack from earlier chapters.
 - A GKE Autopilot or Standard cluster with at least 4 H100 GPUs.
 
 ### 7.2 Step 1: deploy Kubecost
+
+Start by installing Kubecost into its own namespace. Wait until its pods are running before you move on.
 
 ```bash
 helm repo add kubecost https://kubecost.github.io/cost-analyzer
@@ -407,6 +416,8 @@ helm install kubecost kubecost/cost-analyzer \
 ```
 
 ### 7.3 Step 2: build the FinOps dashboard
+
+Next, load the dashboard into Grafana. The import command below uses Grafana's default admin credentials, so change that password first and never run the command against a shared Grafana.
 
 ```bash
 kubectl -n monitoring create configmap finops-dashboard \
@@ -420,16 +431,20 @@ curl -X POST http://admin:admin@localhost:3000/api/dashboards/import \
 
 ### 7.4 Step 3: run the capacity planning model
 
+Run the model with your current GPU count. Check the printed number against your own arithmetic before you trust it. Four GPUs, with 20 percent growth and a 30 percent buffer, give 6.24 before any rounding.
+
 ```bash
 python code/part17/capacity_plan.py \
   --current-gpu-count 4 \
   --growth-rate 0.20 \
   --buffer 0.30 \
   --output procurement_order.md
-# expected: the Q+1 GPU order is 6 GPUs (rounded up)
+# expected: the Q+1 target fleet is 7 GPUs (6.24 rounded up)
 ```
 
 ### 7.5 Step 4: run the right-sizing exercise
+
+Run the right-sizing script against the cluster, then open the recommendations file. Start with the workloads that show the lowest utilisation.
 
 ```bash
 python code/part17/right_size.py \
@@ -439,6 +454,8 @@ python code/part17/right_size.py \
 ```
 
 ### 7.6 Step 5: query the chargeback
+
+Finally, query the chargeback table in BigQuery. The query returns up to 12 rows, newest first, so you can see each team's recent months.
 
 ```bash
 bq query --use_legacy_sql=false \
@@ -450,7 +467,7 @@ bq query --use_legacy_sql=false \
 
 ### 7.7 What to record
 
-After the lab, you should be able to answer five questions in five seconds each:
+Answer these five questions from the dashboards alone, and time yourself. The 30-second limit is an example, so set the limit your team actually needs.
 
 1. What is the current cost per team this month?
 2. What is the Q+1 GPU order per the capacity planning model?
@@ -458,101 +475,101 @@ After the lab, you should be able to answer five questions in five seconds each:
 4. What is the current reserved-instance utilisation?
 5. What is the next reserved-instance renewal date?
 
-If any takes more than 30 seconds, the capacity planning and cost optimisation stack is not yet a production service. The lab is **untested** against a live GKE cluster.
+If any answer takes longer than your limit, the stack is not yet a production service. The lab has not been tested against a live GKE cluster.
 
 ---
 
 ## Exercises
 
-1. **Add a per-model cost dashboard.** Build a Grafana dashboard that shows the cost per model; the dashboard is the model's economics view. *Solution sketch:* a Grafana dashboard with the model's cost, the model's GPU hours, the model's inference count; the dashboard feeds the model's FinOps.
-2. **Add a right-sizing recommendation script.** Build a script that takes the current GPU usage and recommends the right-sized GPU count. *Solution sketch:* a Python script that reads the metrics; computes the right-sized count; outputs the recommendation.
-3. **Add a reserved-instance tracking dashboard.** Build a Grafana dashboard that shows the reserved-instance utilisation; the dashboard is the reserved-instance ROI view. *Solution sketch:* a Grafana dashboard with the reserved-instance utilisation; the dashboard feeds the cost optimisation.
-4. **Add a FinOps alert per team.** Configure an alert that fires when a team's monthly cost exceeds its budget. *Solution sketch:* a Prometheus alert on the per-team cost; the alert pages the team's lead.
-5. **Add a capacity planning review process.** Schedule a quarterly capacity planning review; the review produces a procurement order; the procurement order is reviewed by the CFO. *Solution sketch:* a calendar event; the review script; the procurement order.
-6. **Add a chargeback audit.** Run a monthly chargeback audit; the audit verifies the per-team cost; the audit flags anomalies. *Solution sketch:* a Python script that reads the chargeback; the script verifies the per-team cost; the script flags anomalies.
+1. **Add a per-model cost dashboard.** Build a Grafana dashboard that shows what each model costs to run. It should combine the model's cost, its GPU hours, and its inference count. *Solution sketch:* a Grafana dashboard that reads the per-model cost, GPU hours, and inference count from the same data sources the FinOps dashboard uses.
+2. **Add a right-sizing recommendation script.** Build a script that reads the current GPU usage and recommends a smaller count where the GPUs sit idle. *Solution sketch:* a Python script that reads the metrics, computes the right-sized count, and writes the recommendation to a file.
+3. **Add a reserved-instance tracking dashboard.** Build a Grafana dashboard that shows how much of each commitment is used. It is the view you use to judge whether a commitment is paying off. *Solution sketch:* a Grafana dashboard that plots reserved-instance utilisation against the target you set in section 4.
+4. **Add a FinOps alert per team.** Configure an alert that fires when a team's monthly cost exceeds its budget. *Solution sketch:* a Prometheus alert on the per-team cost that notifies the team's lead.
+5. **Add a capacity planning review process.** Schedule a quarterly review that produces a procurement order and sends it to the CFO's office for approval. *Solution sketch:* a calendar event, a review script, and a signed procurement order.
+6. **Add a chargeback audit.** Run a monthly audit that checks each team's chargeback and flags anomalies. *Solution sketch:* a Python script that reads the chargeback table, recomputes each team's total, and flags any difference.
 
 ---
 
 ## Checkpoint questions
 
 <details><summary>1. What is the capacity planning model?</summary>
-A model that forecasts the team's GPU needs for the next quarter. The model is: historical usage + growth rate + buffer = forecast. The model is simple; the model is defensible; the model is auditable. The default buffer is 30%; the buffer is tuned based on the workload's spike pattern.
+It is a model that forecasts the GPUs your team needs for the next quarter. It combines historical usage, a growth rate, and a buffer into one number. The chapter's default buffer is 30 percent, and you should tune it to the workload's spike pattern.
 </details>
 
 <details><summary>2. What is the FinOps dashboard?</summary>
-A Grafana dashboard that shows the per-team, per-model, per-month cost. The dashboard is the platform team's view of the cluster's economics. The dashboard feeds the chargeback; the dashboard drives the capacity planning and the cost optimisation.
+It is a Grafana dashboard that shows cost per team, cost per model, and cost per month. The platform team uses it to see how the cluster's money is spent. The chargeback reads from it, and it guides both capacity planning and cost work.
 </details>
 
 <details><summary>3. What is the right-sizing exercise?</summary>
-An exercise that identifies over-provisioned workloads; the exercise reduces the GPU count; the exercise measures the savings. The pattern is: identify over-provisioned workloads; reduce the GPU count; measure the savings; track the savings on the FinOps dashboard.
+It is an exercise that finds over-provisioned workloads, cuts their GPU count, and measures what that saved. The steps run in order: identify the workloads, reduce their GPU count, measure the savings, and track them on the FinOps dashboard.
 </details>
 
 <details><summary>4. What is the reserved-instance strategy?</summary>
-The strategy that commits to a certain number of GPUs for a certain period in exchange for a discount. 1-year reserved saves 30-40%; 3-year reserved saves 50-60%; spot saves 50-70%. The pattern is: 1-year reserved for steady-state workloads; 3-year reserved for long-term workloads; spot for training jobs; on-demand for spikes.
+It is a plan to commit to a set number of GPUs for a set period in return for a discount. The chapter's example discounts are 30 to 40 percent for one year, 50 to 60 percent for three years, and 50 to 70 percent for spot, so check them against your provider. Use one-year reserved capacity for steady work, three-year for long-term work, spot for training jobs, and on-demand for spikes.
 </details>
 
 <details><summary>5. What is the most common capacity planning failure?</summary>
-The forecast is wrong. The forecast says 156 GPUs; the actual usage is 100 GPUs; the team over-provisioned by 56 GPUs. The diagnosis is that the forecast model is wrong; the growth rate is wrong; the buffer is wrong. The fix is to tune the forecast model; review the historical data; add a confidence interval.
+The forecast is wrong. In the chapter's example, the forecast says 156 GPUs, but usage is 100, so 56 GPUs were over-provisioned. The likely causes are a wrong growth rate, a wrong buffer, or bad history. The fix is to tune the model, check the history, and add a confidence range.
 </details>
 
 <details><summary>6. What is the most common right-sizing failure?</summary>
-The right-sizing exercise finds nothing. The exercise is run quarterly; the exercise finds no over-provisioned workloads; the GPU bill grows without bound. The diagnosis is that the right-sizing metrics are wrong; the right-sizing exercise is too narrow. The fix is to add the right-sizing metrics; expand the exercise to all workloads.
+The right-sizing exercise finds nothing. It runs every quarter, flags no workloads, and the bill keeps growing. The usual cause is weak metrics or a scope that is too narrow. Add better metrics, and widen the exercise to every workload.
 </details>
 
 <details><summary>7. What is the most common reserved-instance failure?</summary>
-The reserved-instance commitment is wasted. The commitment is 80% utilised; the cost is higher than on-demand; the team is overpaying. The diagnosis is that the forecast was too optimistic; the workload's spike pattern does not match the commitment. The fix is to adjust the commitment level; switch to on-demand or spot.
+The commitment goes unused, or it costs more than on-demand would have. The forecast may have been too optimistic, or the spikes may not match the commitment. Adjust the commitment level, or move the work to on-demand or spot.
 </details>
 
 <details><summary>8. What is the most common chargeback failure?</summary>
-The chargeback is wrong. The chargeback shows team A owes more than team B; the teams dispute the chargeback; the CFO escalates. The diagnosis is that the cost attribution is wrong; the cost model is wrong; the chargeback query is wrong. The fix is to verify the cost attribution; verify the cost model; automate the chargeback audit.
+The chargeback is wrong. Teams dispute the bill, and the CFO has to step in. Check the attribution, the cost model, and the query. Then automate an audit, so mistakes show up early.
 </details>
 
 <details><summary>9. What is the most common GPU bill growth failure?</summary>
-The GPU bill grows without bound. The bill grows 20% per quarter; the forecast is not updated; the procurement is not capped. The diagnosis is that the forecast is not updated; the procurement is not capped; the right-sizing is not run. The fix is to update the forecast quarterly; cap the procurement; run the right-sizing exercise.
+The GPU bill grows without limit. The forecast is stale, the orders are uncapped, and right-sizing is not running. Update the forecast each quarter, cap the orders, and run right-sizing every quarter.
 </details>
 
 <details><summary>10. What is the most common cost optimisation failure?</summary>
-The cost optimisation is ad-hoc. The team optimises costs ad-hoc; the team does not follow the right-sizing methodology; the team does not use the FinOps dashboard. The diagnosis is that the cost optimisation process is documented but not enforced. The fix is to train the team on the process; enforce the process in code review.
+Cost work happens in ad-hoc bursts. People skip the right-sizing method and ignore the FinOps dashboard. The process exists on paper, but nobody enforces it. Train the team, and check the process during code review.
 </details>
 
 <details><summary>11. What is the difference between the capacity planning model and the FinOps dashboard?</summary>
-The capacity planning model is the forward-looking view: how many GPUs will the team need in Q+1. The FinOps dashboard is the backward-looking view: how many GPUs did the team use in Q, and at what cost. The capacity planning model is the forecast; the FinOps dashboard is the actual.
+The capacity planning model looks forward. It estimates how many GPUs the team will need next quarter. The FinOps dashboard looks back at what the team used and what it cost. One is the forecast, and the other is the actual.
 </details>
 
 <details><summary>12. What is the difference between the right-sizing exercise and the cost optimisation?</summary>
-The right-sizing exercise is the specific activity of identifying over-provisioned workloads and reducing the GPU count. The cost optimisation is the broader discipline of reducing the cluster's overall cost. The right-sizing is one tool in the cost optimisation toolbox.
+Right-sizing is one specific activity. It finds over-provisioned workloads and cuts their GPU count. Cost optimisation is the wider goal of lowering the cluster's total cost, and right-sizing is one tool toward it.
 </details>
 
 <details><summary>13. What is the difference between reserved-instance and spot-instance?</summary>
-Reserved-instance is a commitment to a certain number of GPUs for a certain period in exchange for a discount. Spot-instance is a preemptible instance that can be taken away at any time; spot is cheaper but less reliable. The pattern is: reserved for steady-state workloads; spot for training jobs.
+A reserved instance is a commitment to a set number of GPUs for a set time, in return for a discount. A spot instance can be taken back at any time. It is cheaper but less reliable. Reserve steady work, and use spot for training jobs that can handle interruption.
 </details>
 
 <details><summary>14. What is the difference between the capacity planning buffer and the error budget?</summary>
-The capacity planning buffer is the safety margin for the GPU count; the buffer is the trade-off between over-provisioning and under-provisioning. The error budget is the safety margin for the SLO; the budget is the trade-off between reliability and velocity. The capacity planning buffer is for the cluster; the error budget is for the service.
+The capacity planning buffer is extra GPU room that guards against running short. It trades wasted capacity against shortage. The error budget is the amount of unreliability a service may spend. It trades reliability against release speed. The buffer belongs to the cluster, and the error budget belongs to the service.
 </details>
 
 <details><summary>15. What is the relationship between the FinOps dashboard and the chargeback?</summary>
-The FinOps dashboard is the source of truth for the cost; the dashboard shows the per-team, per-model, per-month cost. The chargeback is the integration that feeds the business's billing system; the chargeback aggregates the cost data by team. The FinOps dashboard is the source; the chargeback is the consumer.
+The FinOps dashboard is the source of cost truth. It shows cost by team, model, and month. The chargeback reads that data, sums the cost by team, and sends it to billing. The dashboard supplies the data, and the chargeback consumes it.
 </details>
 
 <details><summary>16. What is the difference between on-demand and reserved-instance cost?</summary>
-On-demand is the pay-as-you-go price; the price is the highest. Reserved-instance is the discounted price; the discount is 30-60% depending on the commitment. The reserved-instance commitment is for a certain number of GPUs for a certain period; the on-demand is for spikes.
+On-demand is pay-as-you-go, and it has the highest price per hour. A reserved instance has a lower price in return for a commitment. The chapter's example discounts run from 30 to 60 percent, depending on the term. Use on-demand for spikes, and reserve the capacity you know you will use.
 </details>
 
 <details><summary>17. What is the most important cost metric?</summary>
-Cost per team per month. The metric is the per-team cost; the metric feeds the chargeback; the metric drives the budget alerts. The team that tracks the metric can optimise; the team that does not track the metric cannot optimise.
+The chapter treats cost per team per month as the most important cost metric. It feeds the chargeback and the budget alerts. A team that can see this number can act on it. A team that cannot see it cannot optimise.
 </details>
 
 <details><summary>18. What is the difference between the FinOps dashboard and the cost-vs-latency trade-off?</summary>
-The FinOps dashboard is the backward-looking view: how much the team spent in Q. The cost-vs-latency trade-off is the forward-looking view: how much the team should spend in Q+1 to meet the SLO. The FinOps dashboard is the actual; the cost-vs-latency trade-off is the forecast.
+The FinOps dashboard shows what the team spent. The cost-vs-latency trade-off asks what the team should spend next quarter to meet its latency target. The dashboard holds the actual numbers, and the trade-off gives the forecast.
 </details>
 
 <details><summary>19. Why is capacity planning a Tier 2 chapter?</summary>
-Because the capacity planning process is what keeps the GPU bill predictable. The process is what the platform team owns; the process is what the CFO sees; the process is what the procurement team negotiates. A team that does not have the capacity planning process is a team that overpays for GPUs.
+Capacity planning keeps the GPU bill predictable. The platform team owns the process, the CFO sees its results, and the procurement team negotiates from it. Without it, a team is likely to overpay for GPUs.
 </details>
 
 <details><summary>20. What five questions should the capacity planning lab let you answer in five seconds each?</summary>
-What is the current cost per team this month. What is the Q+1 GPU order per the capacity planning model. What is the current right-sizing savings rate. What is the current reserved-instance utilisation. What is the next reserved-instance renewal date. If any takes more than 30 seconds, the capacity planning and cost optimisation stack is not yet a production service.
+The lab should let you answer five questions quickly. They are the current cost per team this month, the next quarter's GPU order, the current right-sizing savings rate, the current reserved-instance utilisation, and the next renewal date. The five-second target is an example. If any answer takes longer than your own limit, the stack is not yet a production service.
 </details>
 
 ---
@@ -560,7 +577,7 @@ What is the current cost per team this month. What is the Q+1 GPU order per the 
 ## Sources and review notes
 
 - NVIDIA Zero-to-Hero Volume 19 (`chapter-03-capacity-planning.md`, `chapter-06-cost-optimisation.md`). Source for the capacity planning model, the FinOps dashboard, and the cost optimisation patterns. The wording has been rewritten in the handbook's voice.
-- *AI Factory* (`ai-factory`, Chapter 8). Source for the AI factory lifecycle and the cost economics.
+- *AI Factory* (`ai-factory`, Chapter 8, on software engineering). Background on the lifecycle only; it has no GPU cost material.
 - NVIDIA Zero-to-Hero Volume 21 (AI factory overview). Source for the multi-tenant AI factory economics.
 - *Scalable Kubernetes Infrastructure for AI Platforms* (`scalable-kubernetes-infrastructure-for-ai-platforms`, Chapter 2). Source for the Kubernetes cost optimisation patterns.
 - NVIDIA Zero-to-Hero Volume 8 (`chapter-02-cost-optimisation.md`). Source for the GPU-specific cost optimisation patterns.

@@ -25,12 +25,12 @@ lab_venue: "GCP / GKE"
 
 ## Why this matters for AI infrastructure
 
-Chapter 17.1 named the three pillars. Chapter 17.2 walked through the first one in detail. This chapter walks through the other two: logs and traces. Loki is the de facto standard for log aggregation on Kubernetes; OpenTelemetry is the de facto standard for distributed tracing. The combination is what makes an AI workload debuggable end-to-end.
+It is 3 a.m., and a model endpoint has started returning errors. The on-call engineer needs three answers fast: what broke, what the system was doing at that moment, and where the time went. Chapter 17.1 named the three pillars, and Chapter 17.2 covered metrics, which answer the first question. This chapter covers the other two, logs and traces, using Loki and OpenTelemetry.
 
-The on-call engineer's first action during an incident is to find the symptom. The metrics tell the engineer *that* something is wrong; the logs tell the engineer *what* the system was doing at the time; the traces tell the engineer *where* the time went. A team without Loki is a team that grep-ssh into pods; a team without traces is a team that cannot decompose a 500 ms latency into the 100 ms that is the problem.
+Without logs, an engineer has to open a shell in each pod and read text by hand. Without traces, an engineer who sees 500 ms of latency cannot tell which step is slow, such as a 100 ms feature fetch hiding inside it.
 
 ```text
-Why Loki + OpenTelemetry is on the critical path (V16 ch6, 7; PK Ch 9):
+Why Loki + OpenTelemetry is on the critical path (background reading: NVIDIA Zero-to-Hero volume 16; Production Kubernetes; the figures below are examples, not quotations):
 - A typical AI workload emits 10-100 MB of logs per pod per hour. A 100-pod cluster
   produces 1-10 GB of logs per hour. Without Loki, the team greps into pods; the
   team cannot search; the team cannot correlate.
@@ -42,31 +42,38 @@ Why Loki + OpenTelemetry is on the critical path (V16 ch6, 7; PK Ch 9):
   the propagation makes the AI workload observable.
 ```
 
-Three operational realities make this chapter a platform-team concern rather than a data-science-only concern:
+The numbers in that block are example values, not measurements from a real system. Measure your own workload before you size storage or pick a sampling rate.
 
-1. **Loki's label cardinality is a platform-team decision.** Every label the team adds to a log stream increases Loki's index size; the platform team's choice of labels determines whether Loki can store the logs and whether the queries are fast.
-2. **The OpenTelemetry Collector is the cluster's trace pipeline.** The collector receives spans from every workload; the collector batches and exports the spans to the backend; the collector is the on-call's trace search entry point.
-3. **The tail-sampling policy is a platform-team decision.** Tracing every span is expensive; the platform team decides which spans to keep. The decision affects the on-call's ability to debug.
+Trace context travels from one service to the next in HTTP headers. Each service must read the header to continue the trace.
 
-**Before a team can debug an AI workload, the workload's logs must be searchable by structured fields and the workload's traces must propagate from the HTTP handler to the GPU kernel. A workload without logs and traces is a workload that the on-call cannot debug.**
+Three decisions make this a platform concern rather than only a data-science concern.
+
+1. Loki's label set is a platform decision. Every label adds to Loki's index, so the platform team decides which labels are allowed.
+2. The OpenTelemetry Collector is the cluster's trace pipeline. It receives spans from every workload, batches them, and exports them to the backend.
+3. Tail sampling is a platform decision too. Tracing every span costs too much, so the platform team decides which spans to keep.
+
+**A workload whose logs lack structured fields is one the on-call cannot debug.** Its traces must also propagate from the HTTP handler through every service call to the inference engine, or the trail goes cold.
+
+Check both before you call a workload production-ready.
 
 ## Prerequisites and outcomes
 
 ### Prerequisites
 
-- Chapter 17.1 (Observability foundations) for the three pillars and the data shape.
-- Chapter 17.2 (Prometheus and Grafana) for the data source integration.
+Read Chapter 17.1 first. It explains the three pillars and the shape of the data each one stores. Then read Chapter 17.2, which shows how Prometheus and Grafana connect to a data source. The rest of this chapter assumes both.
 
 ### Outcomes
 
-After completing this chapter you will be able to:
+By the end of this chapter, you will be able to do six things.
 
-1. Configure Loki as the cluster's log aggregation system with structured log labels.
-2. Configure the OpenTelemetry Collector as the cluster's trace pipeline with W3C Trace Context propagation.
-3. Write LogQL queries for AI workload failures: per-model error rates, per-run trace correlation, per-feature drift events.
+1. Set up Loki as the cluster's log store, with structured log labels.
+2. Set up the OpenTelemetry Collector as the trace pipeline, with W3C Trace Context propagation.
+3. Write LogQL queries for AI workload failures, such as error rates per model, trace correlation per training run, and drift events per feature.
 4. Apply a tail-sampling policy that keeps the interesting spans and drops the rest.
-5. Integrate Loki and Tempo with Grafana for unified observability.
-6. Operate Loki and OpenTelemetry on GKE with SLOs, observability, and a runbook.
+5. Connect Loki and Tempo to Grafana in one dashboard.
+6. Run Loki and OpenTelemetry on GKE with SLOs, observability, and a runbook.
+
+If you have not read Chapter 17.2, read it before you touch Grafana in this chapter.
 
 ---
 
@@ -74,7 +81,11 @@ After completing this chapter you will be able to:
 
 ### 1.1 The Loki architecture
 
-*Production Kubernetes* Chapter 9 walks through the Loki architecture. Loki is a log aggregation system designed for Kubernetes; Loki indexes logs by label; Loki stores log chunks in object storage; Loki queries log streams via LogQL.
+Suppose one pod out of a hundred fails overnight. You need its last few minutes of logs without logging into the node. Loki stores those logs, but first they must reach it.
+
+Production Kubernetes, chapter 9, describes three ways logs leave a pod. The application can send its logs straight to the backend. A sidecar container can process them, or a node agent can collect the output of every pod on the node. Promtail or Alloy is the node agent in the diagram below.
+
+Loki indexes logs by label, stores the log chunks in object storage, and answers queries written in LogQL.
 
 ```mermaid
 flowchart LR
@@ -99,11 +110,11 @@ flowchart LR
     Q --> G
 ```
 
-The pattern is: Promtail (or Grafana Alloy) runs as a DaemonSet on every node; Promtail tails the logs; Promtail adds labels (job, namespace, pod); Promtail ships the logs to Loki; Loki indexes the labels; Loki stores the chunks in object storage; Grafana queries Loki.
+Before you add a new log source, decide which agent will ship its lines to Loki.
 
 ### 1.2 The Loki labels
 
-The Loki labels are the labels that Loki indexes. A label is a key-value pair that Loki uses to filter and aggregate logs.
+A label is a key-value pair that Loki indexes and uses to filter and aggregate logs. The labels you choose decide what Loki can find quickly. The table lists the labels a typical AI platform uses, with a rough sense of how many distinct values each one takes.
 
 | Label | Cardinality | Source |
 |---|---|---|
@@ -116,11 +127,17 @@ The Loki labels are the labels that Loki indexes. A label is a key-value pair th
 | `run_id` | High | From the training script |
 | `customer_id` | Very high | From the application |
 
-The cardinality budget applies to Loki labels too. A label with high cardinality (customer id, request id) increases the Loki index size; the platform team's pattern is to keep the Loki labels low cardinality and put the high-cardinality fields in the log message as structured fields.
+Cardinality is the number of distinct values a label can take. Each distinct combination of labels forms its own log stream, so a label with a new value for every customer makes the index grow with your customer count. Production Kubernetes, chapter 9, gives the same warning about Prometheus labels: overusing them can make the server's resource use untenable.
+
+Keep customer IDs and request IDs out of the labels. Write them into the JSON log message as fields instead, where they stay searchable without growing the index.
+
+Before you add a label, count how many values it can take in a month.
 
 ### 1.3 LogQL for AI workloads
 
-LogQL is the query language for Loki. The basic shape is `{labels} |= "text"` for log line filtering, with aggregations and transformations.
+Suppose the error rate of one model climbs right after a deploy. You want the answer in one query, not a scroll through pods. LogQL is the language for that. A query starts with a label selector in braces, optionally adds a text filter, and then aggregates the result.
+
+The basic shape is `{labels} |= "text"`. The braces pick the streams, and `|=` keeps only the lines that contain the text.
 
 ```logql
 # The error rate per model over the last 5 minutes
@@ -143,14 +160,18 @@ sum by (model) (
 {namespace="audit", user="alice"}
 ```
 
-The pattern is: filter by labels; filter by text; aggregate by labels; compute rates and counts. The queries feed the on-call dashboard; the queries are the on-call's first action during an incident.
+The first query counts errors per model over five minutes, which is the first thing to run when a deploy goes wrong. The second pulls every error from one training run by its run ID. The last three follow throughput, latency warnings, and audit entries.
+
+A query returns nothing when a label is misspelled, and it raises no error. Test each query against a known failure first.
+
+Turn the queries your on-call runs most often into dashboard panels.
 
 ### 1.4 Structured logging
 
-Structured logs are the foundation of Loki's query power. A structured log carries the timestamp, the severity, the message, and a set of structured fields.
+A plain-text line about a failed request is hard to count. A JSON line with separate model, request ID, and duration fields can be filtered, counted, and graphed.
 
 ```python
-# code/part17/structured_log.py (shape only)
+# code/part17/structured_log.py
 import logging
 import json
 from pythonjsonlogger import jsonlogger
@@ -169,7 +190,133 @@ def log_request(model: str, request_id: str, duration_ms: float, status: str):
     )
 ```
 
-The structured fields are the labels that Loki can extract from the JSON. The pattern is: every log line is JSON; every JSON has a schema; the schema is documented; the platform team enforces the schema in CI.
+Loki can extract these fields from the JSON at query time. Every log line is JSON, every JSON line follows a documented schema, and CI checks that schema. A change that breaks a field name then fails the build before it reaches the cluster.
+
+Before you accept a new service, check that its logs parse as JSON and carry the fields your queries need.
+
+### 1.5 Getting container logs off the node
+
+Logging in a Kubernetes-based platform covers how logs are captured, processed, and forwarded. The logs come from platform components and tenant workloads, and they travel to a storage backend. Writing logs to standard out and standard error became the prevalent best practice for service-oriented software, even before containers were common. Cloud native ecosystems add more workloads and instances, but those instances are ephemeral, and often nothing persists their logs on disk.
+
+Applications used to write logs to a file on disk. Collecting them was simple, because there were fewer workloads and fewer instances. Containers changed that habit. Applications now write to standard out and standard error, the same way a command-line tool does. Those workloads are ephemeral, and often no disk keeps their logs, so collection and storage became harder.
+
+Replicas make the problem worse. A workload with dozens of replicas is almost impossible to analyze without a central collection point. That point lets you search log entries across every replica at once.
+
+There are three ways to process logs from containerized workloads:
+
+- **Application forwarding:** the application sends its logs directly to the backend. Developers must build and maintain that code, and a backend change can force an application update. This approach is rare in production. It only makes sense for a legacy application that already integrates with a log backend and is being moved to the platform.
+- **Sidecar processing:** the application writes log files to storage shared within the Pod, and a sidecar container reads and processes them. The sidecar either forwards the logs to the backend or writes them to standard out and standard error. Forwarding is a workaround for platforms with no log aggregation system. Writing to standard streams is useful only for an application that cannot write to them directly.
+- **Node agent forwarding:** a log workload runs on every node. It reads the log files that the container runtime writes for each container, and it forwards them to the backend.
+
+Node agent forwarding is the model to use, and it is by far the most common. It has several advantages. There is one integration point with the backend, instead of one per application or sidecar. Filtering, metadata, and forwarding to several backends are configured in one place. The kubelet or the container runtime handles log rotation. An application that writes log files inside its container needs its own rotation, or a sidecar that does it.
+
+Fluentd and Fluent Bit are the usual tools for node agent forwarding. Fluentd came first. It is written mainly in Ruby and has a large plug-in ecosystem. Fluent Bit came from the need for a lighter tool for environments such as embedded Linux. It is written in C, uses far less memory, and has fewer plug-ins.
+
+Use Fluent Bit unless a Fluentd plug-in offers a feature you need. If you do need one, run Fluent Bit as the node agent, deployed as a DaemonSet. Then run Fluentd as a cluster-wide aggregator, deployed as a Deployment or a StatefulSet. Fluent Bit sends logs to Fluentd, and Fluentd adds tags and routes the logs to the backends that developers use.
+
+Centralizing log collection creates a single point of failure for each node, or for the whole cluster if you use a cluster-wide aggregator. A node agent that is overloaded by one noisy workload can stop collecting logs for every other workload on that node. A Fluentd aggregator that runs as a Deployment buffers logs in the ephemeral storage of its Pod. If the Pod is killed before it flushes the buffer, those logs are lost. Running the aggregator as a StatefulSet keeps the buffered logs safe when the Pod goes down.
+
+### 1.6 Kubernetes audit logs
+
+Audit logs record who did what in the cluster. Turn them on in production, so you can find the root cause when something goes wrong. Some compliance requirements also demand them.
+
+The API server writes audit logs when you enable them with flags. It can record every stage of every request, including request and response bodies. Few teams want that much data, because the API server handles a very large number of calls. An audit policy selects which requests and stages to log. Without an audit policy, the API server writes no audit logs at all. Point the API server at the policy file on the control plane node with the `--audit-policy-file` flag.
+
+The policy below limits the log volume without losing the important data.
+
+```yaml
+apiVersion: audit.k8s.io/v1
+kind: Policy
+rules:
+- level: None
+  users: ["system:kube-proxy"]
+  verbs: ["watch"]
+  resources:
+  - group: "" # core
+    resources: ["endpoints", "services", "services/status"]
+- level: Metadata
+  resources:
+  - group: ""
+    resources: ["secrets", "configmaps"]
+  - group: authentication.k8s.io
+    resources: ["tokenreviews"]
+  omitStages:
+  - "RequestReceived"
+- level: Request
+  verbs: ["get", "list", "watch"]
+  resources:
+  - group: ""
+  - group: "apps"
+  - group: "batch"
+  omitStages:
+  - "RequestReceived"
+- level: RequestResponse
+  resources:
+  - group: ""
+  - group: "apps"
+  - group: "batch"
+  omitStages:
+  - "RequestReceived"
+# Default level for all other requests.
+- level: Metadata
+  omitStages:
+  - "RequestReceived"
+```
+
+Each level records a different amount of detail. The `None` level tells the API server to skip matching events. In this policy, a watch by the `system:kube-proxy` user on endpoints and services is never logged.
+
+The `Metadata` level records only request metadata. That covers which user made which kind of request for which resource. It leaves out the request and response bodies. The `RequestReceived` stage is omitted, so the API server writes no entry when a request first arrives. It still writes entries when a long-running watch starts, when a response completes, and when a panic occurs.
+
+The `Request` level adds the request body, but not the response body. For `get`, `list`, and `watch` requests, the response can be very large, so leaving it out saves space. The `RequestResponse` level logs the most. It records the request metadata, the request body, and the response body. In this policy, it applies to every other request in the listed groups, so it is the effective default for those groups.
+
+Resources that no earlier rule matches fall through to the final rule. That rule records metadata only, and it skips the `RequestReceived` entry.
+
+Forward audit logs to a backend the same way you forward other logs. With application forwarding, the API server sends logs straight to a webhook backend. A flag points to a config file that holds the address and credentials, in kubeconfig format. You must tune the buffering and batching settings, or events can be lost. For example, a buffer size for the number of events that is too small will overflow, and the overflow drops events.
+
+With node agent forwarding, the API server writes log files to the control plane node's file system. Flags control the file path, the maximum retention period, the maximum number of files, and the maximum file size. Fluent Bit and Fluentd can then aggregate and forward those files. This is a good pattern if your team already uses those tools for node agent forwarding.
+
+### 1.7 Kubernetes Events
+
+Events are a native Kubernetes resource. Platform components use them to report what happened to an object, so they work as a kind of platform log. Unlike other logs, Events usually stay out of the logging backend. They are stored in etcd and kept for one hour by default. Operators most often read them when they want to know what actions were taken against an object.
+
+`kubectl describe` shows the Events for one Pod. The output below is from a newly created Pod.
+
+```
+$ kubectl describe pod nginx-6db489d4b7-q8ppw
+Name:         nginx-6db489d4b7-q8ppw
+Namespace:    default
+...
+Events:
+  Type    Reason     Age        From                                Message
+  ----    ------     ----       ----                                -------
+  Normal  Scheduled  <unknown>  default-scheduler                   Successfully assigned default/nginx-6db489d4b7-q8ppw
+  Normal  Pulling    34s        kubelet, ip-10-0-0-229.us-east-2.compute.internal   Pulling image "nginx"
+  Normal  Pulled     30s        kubelet, ip-10-0-0-229.us-east-2.compute.internal   Successfully pulled image "nginx"
+  Normal  Created    30s        kubelet, ip-10-0-0-229.us-east-2.compute.internal   Created container nginx
+  Normal  Started    30s        kubelet, ip-10-0-0-229.us-east-2.compute.internal   Started container nginx
+```
+
+To see Events for a whole namespace, run `kubectl get events -n default`. This view also includes Events for the ReplicaSet and the Deployment, not only for the Pod.
+
+```
+$ kubectl get events -n default
+LAST SEEN   TYPE     REASON               OBJECT                              MESSAGE
+2m5s        Normal   Scheduled            pod/nginx-6db489d4b7-q8ppw          Successfully assigned default/nginx-6db489d4b7-q8ppw
+2m5s        Normal   Pulling              pod/nginx-6db489d4b7-q8ppw          Pulling image "nginx"
+2m1s        Normal   Pulled               pod/nginx-6db489d4b7-q8ppw          Successfully pulled image "nginx"
+2m1s        Normal   Created              pod/nginx-6db489d4b7-q8ppw          Created container nginx
+2m1s        Normal   Started              pod/nginx-6db489d4b7-q8ppw          Started container nginx
+2m6s        Normal   SuccessfulCreate     replicaset/nginx-6db489d4b7         Created pod: nginx-6db489d4b7-q8ppw
+2m6s        Normal   ScalingReplicaSet    deployment/nginx                    Scaled up replica set nginx-6db489d4b7 to 1
+```
+
+The Kubernetes API exposes Events, so you could write automation that watches for specific Events and reacts to them. In practice, few teams do this. Another option is an Event exporter, which turns Events into metrics. The exporters section of the Prometheus material explains how those metrics are scraped.
+
+### 1.8 Alerting on logs and log access
+
+Application logs describe how your software behaves. They matter most when an unexpected failure needs investigation. Patterns in the logs often reveal what comes before a problem. If you want an alert based on a logged event, consider metrics first. Expose a metric that represents the behavior, then write the alerting rule against that metric. Log messages change more often than metrics do, and a small edit to the text can silently break an alert.
+
+Think about access to the logs in your backend, too. You may not want production API server audit logs visible to everyone. Some systems hold information that only privileged users should see. Restricting access can change how you tag logs, and it may require several backends. That changes the forwarding configuration.
 
 ---
 
@@ -177,7 +324,11 @@ The structured fields are the labels that Loki can extract from the JSON. The pa
 
 ### 2.1 The OpenTelemetry architecture
 
-OpenTelemetry (OTel) is the standard for distributed tracing. OTel defines the data model (spans, traces, metrics, logs); OTel defines the API for instrumenting applications; OTel defines the protocol (OTLP) for exporting telemetry.
+A slow request crosses several services, such as an HTTP handler, an inference engine, and a feature store. A trace is the record of that one request across all of them. OpenTelemetry (OTel) is the standard for producing that record. It defines the data model, which covers spans, traces, metrics, and logs. It also defines the API that applications use to create spans, and the OTLP protocol that carries them.
+
+Production Kubernetes, chapter 9, uses the same model. A trace is made of spans, with one span for each service that handles the request. Tags are the searchable metadata attached to each span.
+
+The diagram shows how the pieces connect.
 
 ```mermaid
 flowchart LR
@@ -198,14 +349,14 @@ flowchart LR
     B --> G
 ```
 
-The pattern is: every workload instruments with the OTel SDK; the SDK creates spans with the W3C Trace Context; the SDK exports spans to the Collector via OTLP; the Collector batches and exports to Tempo; Grafana queries Tempo.
+Each workload uses the OTel SDK, which creates spans and attaches the W3C Trace Context. The SDK sends the spans to the Collector over OTLP. The Collector batches them and exports them to Tempo, and Grafana reads them from there.
 
 ### 2.2 The OpenTelemetry Collector
 
-The OpenTelemetry Collector is a vendor-agnostic process that receives, processes, and exports telemetry. The Collector runs as a DaemonSet on every node (for low-latency collection) or as a Deployment (for centralised processing).
+The Collector sits between your applications and the trace backend. You can run it as a DaemonSet, with one copy per node, for low-latency collection. You can also run it as a Deployment for central processing.
 
 ```yaml
-# code/part17/otel_collector.yaml (shape only)
+# code/part17/otel_collector.yaml
 receivers:
   otlp:
     protocols:
@@ -257,11 +408,13 @@ service:
       exporters: [otlp/tempo]
 ```
 
-The pattern is: receive OTLP from every workload; batch the spans; apply the tail-sampling policy; export to Tempo. The Collector's resource limits are tuned to avoid OOM; the tail-sampling policy keeps the interesting spans and drops the rest.
+The pipeline reads from top to bottom. It receives OTLP from every workload, applies the memory limit, makes the sampling decision, batches the spans, and exports them to Tempo. Set the memory limit before you tune the sampling policy, because an out-of-memory restart drops spans.
+
+The numbers in this file are example values. Set the batch size, memory limit, and sampling rate for your own traffic.
 
 ### 2.3 Tail sampling
 
-Tail sampling decides which spans to keep after they have been collected. The decision is based on the span's attributes and the trace's overall health.
+Tail sampling waits until a trace is complete before it decides what to keep. That lets the decision use the whole trace, so a failed or slow request can be kept every time. Head sampling would have to decide at the start, before anyone knows how the request will end.
 
 | Policy | What it does |
 |---|---|
@@ -270,17 +423,19 @@ Tail sampling decides which spans to keep after they have been collected. The de
 | `probabilistic` | Keep a random sample of traces |
 | `composite` | Combine multiple policies |
 
-The platform team's pattern is: keep 100% of error traces; keep 100% of slow traces (latency > 500 ms); keep 10% of healthy traces as a baseline. The policy keeps the interesting traces; the policy drops the uninteresting traces; the policy is the storage budget.
+This chapter's example policy keeps 100 percent of error traces, keeps every trace slower than 500 ms, and keeps 10 percent of healthy traces as a baseline. Those thresholds are examples. Choose your own from your latency targets and your storage budget. The policy also sets the storage cost, because every kept trace takes disk space.
+
+Before you tune the sampling rate, decide how many traces a month you can afford to store.
 
 ### 2.4 Trace context propagation
 
-The W3C Trace Context is the standard for propagating trace context across services. The `traceparent` header carries the trace id and the parent span id from the client through the server through the database through the inference engine.
+A trace breaks at the first service that forgets to pass it on. The W3C Trace Context standard prevents that with the `traceparent` header. The header carries the trace ID and the parent span ID from the client, through the server and the database, to the inference engine.
 
 ```python
-# code/part17/trace_propagation.py (shape only)
+# code/part17/snippets/trace_propagation.py
 import requests
 from opentelemetry import trace
-from opentelemetry.propagate.tracecontext import TraceContextTextMapPropagator
+from opentelemetry.trace.propagation.tracecontext import TraceContextTextMapPropagator
 
 tracer = trace.get_tracer(__name__)
 
@@ -297,15 +452,55 @@ def handle_request(request):
     return response.json()
 ```
 
-The pattern is: the OTel SDK's propagator injects the `traceparent` header into every outgoing request; the downstream service reads the header and creates a child span. The trace is end-to-end; the on-call can follow the trace from the HTTP handler to the inference engine to the GPU kernel.
+The SDK's propagator writes the header into every outgoing request. The downstream service reads it and starts a child span, so the trace stays whole. The on-call can follow the trace from the HTTP handler to the inference engine. Trace context travels in HTTP headers between services; it does not reach inside a GPU kernel, so kernel-level detail comes from a profiler.
+
+Production Kubernetes, chapter 9, adds that a service mesh does not remove the need for instrumentation. Request headers still have to pass from one service to the next.
+
+Before you call a service instrumented, send one request through it and check that the trace shows a child span.
+
+### 2.5 Traces, spans and tags
+
+Distributed tracing follows one request as it moves across services. OpenTracing is an open source specification for distributed tracing. Its goal is to help the ecosystem agree on common standards for implementations. The specification is built around three concepts.
+
+- **Trace:** when an end user makes a request, that request traverses several distinct services. Each one participates in satisfying it. The trace represents that whole transaction, and it is what you analyze. A trace is made of spans.
+- **Span:** each distinct service that processes a request represents a span. The operations occurring inside one workload's boundaries constitute a single span that belongs to the trace.
+- **Tag:** tags are metadata attached to spans. They contextualize each span within its trace, and they provide searchable indexes.
+
+When traces are visualized, you see each one and the components that are impacting performance the most. The same view shows where errors occur and how they are affecting other components of the application.
+
+OpenTracing merged with OpenCensus to form OpenTelemetry. *Production Kubernetes*, chapter 9, notes that OpenTelemetry support in Jaeger was still experimental when it was written. It also expects OpenTelemetry to become the de facto standard. The rest of this chapter follows that direction.
+
+### 2.6 Tracing components on the platform
+
+A platform that offers tracing needs several components. The patterns below apply to open source projects such as Zipkin and Jaeger. Commercial products that implement the OpenTracing standards often follow the same models.
+
+- **Agent:** a server that applications send their spans to. On Kubernetes, it usually runs as a node agent on every machine and receives the spans of every workload on that node. It forwards batched spans to a central collector.
+- **Collector:** processes the spans and stores them in the backend database. It validates, indexes, and transforms spans before it writes them to storage.
+- **Storage:** Cassandra and Elasticsearch are the usual choices. Even with sampling, tracing produces very large volumes of data. The database must search that data quickly enough to make the analysis useful.
+- **API:** exposes the stored traces and spans to other workloads and to visualization layers.
+- **User interface:** the layer that application developers use. It queries the API and shows charts that help engineers analyze their distributed applications.
+
+Section 2.2 describes the OpenTelemetry Collector, which fills a similar role in the stack covered here. Run the Collector close to the workloads for low latency, or centrally for heavier processing.
+
+### 2.7 Instrumentation and service meshes
+
+Spans become traces only when applications send them. A tracing platform cannot correlate data that applications never report. Get buy-in from application teams before you build the service. The best tracing platform is useless if the applications do not deliver the raw data it needs.
+
+Compatibility matters more for tracing than for logs and metrics. Logs need no special handling as long as the application writes to standard out and standard error. CPU and memory can be collected without special instrumentation. Tracing is different. If an application uses a client library that the platform's tracing system does not support, tracing will not work at all. Platform and application teams must work closely together for this reason.
+
+If you use a service mesh, include the mesh data in your traces. Mesh proxies sit on the requests going to and from your workloads. Timing spans from those proxies show how the mesh affects performance. Applications still need their own instrumentation, because the request headers must pass from one service to the next.
+
+Before you roll out tracing, confirm that each application's tracing library works with the platform's tracing system.
 
 ---
 
 ## 3. Integration with Grafana
 
+A metric spike tells you that something changed, but not why. Grafana can show that spike next to the logs and traces from the same minute, which narrows down the why.
+
 ### 3.1 The unified Grafana data sources
 
-Grafana reads from the three pillars: Prometheus (metrics), Loki (logs), Tempo (traces). The on-call dashboard integrates the three.
+Grafana reads from three sources. Prometheus holds the metrics, Loki holds the logs, and Tempo holds the traces. One on-call dashboard can combine all three.
 
 ```mermaid
 flowchart LR
@@ -320,14 +515,16 @@ flowchart LR
     G -->|on-call dashboard| U[On-call engineer]
 ```
 
-The pattern is: every panel in the on-call dashboard links the metric to the logs to the traces. The on-call engineer clicks on a metric spike; the dashboard shows the logs at the time of the spike; the dashboard shows the traces at the time of the spike. The integration is what makes the dashboard debuggable.
+Each panel should link to the other two pillars. When an engineer clicks a metric spike, the dashboard opens the logs and traces from that moment.
+
+AI Systems Performance Engineering, chapter 16, makes the same point. APM tools and OpenTelemetry can correlate logs and traces with metrics, which gives you one timeline across the whole system.
 
 ### 3.2 The trace-to-logs link
 
-The trace id is the link between traces and logs. Every log line that is part of a trace carries the trace id; the trace id is the join key between Tempo and Loki.
+The trace ID is the join key between traces and logs. If a log line carries the trace ID, you can paste that ID into Loki and see every line from that request.
 
 ```python
-# code/part17/trace_log_link.py (shape only)
+# code/part17/trace_log_link.py
 import logging
 from opentelemetry import trace
 
@@ -345,24 +542,30 @@ def handle_inference(prompt: str):
     )
 ```
 
-The pattern is: every log line carries the trace id; Loki can be queried by trace id; the trace id is the join key. The on-call engineer finds a trace in Tempo; the on-call engineer pastes the trace id into Loki; Loki shows the logs for that trace.
+The function above stamps the trace ID onto a log line at the start of each request. That stamp is what lets you join the line to its trace later.
 
 ### 3.3 The exemplar-to-trace link
 
-Prometheus exemplars link a metric to the trace that produced the metric. The exemplar is a reference from a metric sample to a trace id.
+A metric value alone does not name the request behind it. An exemplar attaches a trace ID to a metric sample, so the dashboard can link a bucket of slow requests to one trace that landed in it.
 
 ```promql
 # A metric query that returns exemplars
 inference_request_duration_seconds_bucket{le="0.5"} with Exemplars
 ```
 
-The pattern is: the application emits the trace id as an exemplar alongside the metric; Prometheus stores the exemplar with the metric sample; Grafana renders the exemplar as a link to the trace. The on-call engineer clicks on the metric spike; the dashboard shows the trace that produced the spike.
+The application emits the trace ID with the metric. Prometheus stores it alongside the sample, and Grafana draws it as a link. Clicking a spike then opens a trace that produced it.
+
+Before you rely on the spike link, click it once during a test and confirm it opens a real trace.
 
 ---
 
 ## 4. Operating Loki and OpenTelemetry on GKE
 
+Logging and tracing are only useful while they keep running, so the stack needs its own operating rules. Each component runs in a different place and has its own latency target.
+
 ### 4.1 The components
+
+The table lists where each component runs and the latency target this chapter uses as an example.
 
 | Component | Where it runs | Backing store | SLO |
 |---|---|---|---|
@@ -371,9 +574,11 @@ The pattern is: the application emits the trace id as an exemplar alongside the 
 | OpenTelemetry Collector | DaemonSet + Deployment | (forwards to backend) | Export latency p99 < 5 s |
 | Tempo | Kubernetes Deployment | Object storage for traces | Query latency p99 < 5 s |
 
+These latency figures are example values, not targets taken from a source. Measure the stack under real load, then pick targets your team can defend.
+
 ### 4.2 IAM and the label cardinality
 
-The Loki + OpenTelemetry stack has its own IAM. The pattern is:
+Each role should get only the access it needs. The table pairs each role with what it can do. The role names are a pattern to map onto your own identity system.
 
 | Role | Who | What they can do |
 |---|---|---|
@@ -382,9 +587,11 @@ The Loki + OpenTelemetry stack has its own IAM. The pattern is:
 | `otel.reader` | Every team's data scientists | Query Tempo; view traces |
 | `otel.writer` | The OpenTelemetry SDK | Write spans to the Collector |
 
-The label cardinality is the platform team's discipline. Every label the team adds to a log stream increases Loki's index size; the platform team's pattern is to keep the Loki labels low cardinality and put the high-cardinality fields in the log message as structured fields.
+Label discipline is still the platform team's job. Keep Loki labels low cardinality, and move high-cardinality fields into the log message.
 
 ### 4.3 Observability
+
+The stack needs its own dashboards and alerts, so you learn when logging or tracing itself starts to degrade. The table lists five metrics and an example alert for each one. The alert thresholds are examples too.
 
 | Metric | Why it matters | Alert |
 |---|---|---|
@@ -394,67 +601,70 @@ The label cardinality is the platform team's discipline. Every label the team ad
 | Tempo query latency p99 | Hot path for trace queries | > 10 s |
 | Trace context propagation rate | Catches broken propagation | < 100% for 1 hour |
 
-The trace context propagation rate is the most important. A broken trace context means the trace is incomplete; the on-call cannot follow the trace end-to-end. The alert catches the case where a new workload is not propagating the trace context.
+The trace context propagation rate matters most. A broken rate leaves traces incomplete, so the on-call cannot follow a request from end to end. The alert catches a new workload that has stopped passing the trace context.
+
+Before you launch a new workload, check that the propagation rate holds at its baseline.
 
 ---
 
 ## 5. How it fails
 
-Six failure modes recur.
-
+You will meet six failure modes again and again. Each one gives you a symptom to spot first, a likely cause, and a fix.
 ### 5.1 "Loki is running out of disk"
 
-**Symptom:** Loki's ingest fails; the logs stop flowing; the on-call cannot query the logs.
+**Symptom:** Loki's ingest fails. Logs stop flowing, and the on-call cannot query them.
 
-**Diagnosis:** The object storage bucket is full; the chunk lifecycle is not pruning; the retention period is too long.
+**Diagnosis:** The object storage bucket is full. Usually the chunk lifecycle is not pruning old data, or the retention period is longer than the bucket can hold.
 
-**Fix:** Verify the object storage bucket size; verify the chunk lifecycle policy; reduce the retention period; add a storage usage alert.
+**Fix:** Check the bucket size and the chunk lifecycle policy first. Then shorten the retention period, and add an alert on storage use.
 
 ### 5.2 "The trace context is broken"
 
-**Symptom:** The on-call sees a trace that stops at the HTTP handler; the LLM inference's child spans are missing.
+**Symptom:** A trace stops at the HTTP handler. The inference engine's child spans are missing.
 
-**Diagnosis:** The trace context is not propagating from the HTTP handler into the LLM inference; the LLM inference is creating a new trace instead of child spans.
+**Diagnosis:** The header is not reaching the inference service. The engine starts a new trace instead of a child span.
 
-**Fix:** Verify the W3C Trace Context header is set on every outgoing request from the HTTP handler; verify the LLM inference reads the header and creates child spans; add an integration test that asserts the trace propagates end-to-end.
+**Fix:** Confirm the handler sets the W3C Trace Context header (`traceparent`) on every outgoing request, and that the engine reads it. Then add an integration test that checks a trace crosses both services.
 
 ### 5.3 "The tail-sampling policy is dropping the interesting traces"
 
-**Symptom:** The on-call cannot find the trace for the incident; the trace was dropped by the tail-sampling policy.
+**Symptom:** The on-call cannot find the trace for the incident, because the sampler dropped it.
 
-**Diagnosis:** The tail-sampling policy is too aggressive; the policy is dropping traces that are interesting.
+**Diagnosis:** The policy is too aggressive, so it removes traces you need.
 
-**Fix:** Adjust the tail-sampling policy; keep 100% of error traces; keep 100% of slow traces; keep a higher percentage of healthy traces.
+**Fix:** Keep 100 percent of error traces and 100 percent of slow traces. Then raise the share of healthy traces you keep, so the baseline stays useful.
 
 ### 5.4 "The structured logs are missing the schema"
 
-**Symptom:** The on-call cannot query the logs by the structured fields; the structured fields are not in the log message.
+**Symptom:** The on-call cannot filter by field, because the fields are not in the message.
 
-**Diagnosis:** The application is emitting unstructured logs; the schema is missing; the team cannot query.
+**Diagnosis:** The application writes unstructured text, so there is no schema to query against.
 
-**Fix:** Standardise on the OpenTelemetry log SDK; declare the schema; enforce the schema in CI; verify the schema in production.
+**Fix:** Standardise on the OpenTelemetry log SDK, declare the schema, and enforce it in CI. Then check the schema on production logs too.
 
 ### 5.5 "The Collector is OOM"
 
-**Symptom:** The Collector restarts; the spans are dropped; the traces are incomplete.
+**Symptom:** The Collector restarts, spans are dropped, and traces are incomplete.
 
-**Diagnosis:** The Collector's memory limit is too low; the batch size is too large; the trace context propagation is creating too many spans.
+**Diagnosis:** The memory limit is too low for the batch size, or the propagation creates more spans than the Collector can hold.
 
-**Fix:** Increase the Collector's memory limit; reduce the batch size; add a memory limiter processor; verify the trace context propagation rate.
+**Fix:** Raise the memory limit or lower the batch size, and add a memory limiter processor. Then check the trace context propagation rate.
 
 ### 5.6 "The exemplar is missing"
 
-**Symptom:** The on-call clicks on a metric spike; the dashboard does not show the trace.
+**Symptom:** The on-call clicks a metric spike, and the dashboard shows no trace.
 
-**Diagnosis:** The application is not emitting exemplars; the link between the metric and the trace is missing.
+**Diagnosis:** The application does not emit exemplars, so nothing links the metric to a trace.
 
-**Fix:** Wire the OTel SDK to emit exemplars; verify the exemplar is emitted on every metric sample; add an integration test that asserts the exemplar is emitted.
+**Fix:** Wire the OTel SDK to emit exemplars, and test that every metric sample carries one. Add an integration test for it.
+
+When you see one of these symptoms, start with it and check the layer that owns it.
 
 ---
 
 ## 6. Hands-on lab
 
-This lab stands up Loki and the OpenTelemetry Collector on GKE, configures structured logging and trace context propagation, and verifies the integration with Grafana. The lab is **untested** in this repository.
+This lab sets up Loki and the OpenTelemetry Collector on GKE. It then configures structured logs and trace propagation, and checks the result in Grafana. The lab has not been tested in this repository, so treat each expected output as something to verify.
 
 ### 6.1 Prerequisites
 
@@ -463,6 +673,8 @@ This lab stands up Loki and the OpenTelemetry Collector on GKE, configures struc
 - A workload that emits logs and traces (a Python application with the OTel SDK).
 
 ### 6.2 Step 1: install Loki
+
+Install Loki first, so Grafana has a log store to query.
 
 ```bash
 helm repo add grafana https://grafana.github.io/helm-charts
@@ -474,6 +686,8 @@ helm install loki grafana/loki-stack \
 
 ### 6.3 Step 2: install the OpenTelemetry Collector
 
+Install the Collector as a DaemonSet, so each node runs one copy. Point its exporter at Tempo.
+
 ```bash
 helm install otel-collector open-telemetry/opentelemetry-collector \
   --namespace monitoring \
@@ -484,6 +698,8 @@ helm install otel-collector open-telemetry/opentelemetry-collector \
 
 ### 6.4 Step 3: install Tempo
 
+Install Tempo next, with its OTLP receiver listening on port 4317.
+
 ```bash
 helm install tempo grafana/tempo \
   --namespace monitoring \
@@ -492,6 +708,8 @@ helm install tempo grafana/tempo \
 ```
 
 ### 6.5 Step 4: deploy a workload with structured logging
+
+Deploy a small workload that writes JSON logs. Each line carries a model name and a step number, which the next query filters on.
 
 ```python
 # code/part17/structured_logging_demo.py
@@ -520,6 +738,8 @@ kubectl logs -n mlops -l app=logging-demo
 
 ### 6.6 Step 5: query the logs by structured fields
 
+Ask Loki's API for the lines labelled with the model. The output should contain only the churn-model lines.
+
 ```bash
 curl -G http://loki.monitoring:3100/loki/api/v1/query \
   --data-urlencode 'query={model="churn-model"}' | jq .
@@ -528,8 +748,10 @@ curl -G http://loki.monitoring:3100/loki/api/v1/query \
 
 ### 6.7 Step 6: instrument a workload with OTel
 
+The demo below sends spans to the Collector through a batch processor. It creates one outer span and one inner span, so you can see the parent and child relationship in Tempo.
+
 ```python
-# code/part17/otel_instrumentation_demo.py
+# code/part17/snippets/otel_instrumentation_demo.py
 from opentelemetry import trace
 from opentelemetry.sdk.trace import TracerProvider
 from opentelemetry.sdk.trace.export import BatchSpanProcessor
@@ -548,6 +770,8 @@ with tracer.start_as_current_span("demo-request"):
 
 ### 6.8 Step 7: query the traces
 
+Search Tempo for traces from the demo service. The command returns trace IDs that you can open in Grafana.
+
 ```bash
 curl -s http://tempo.monitoring:3100/api/search?tags=service.name=demo | jq .
 # expected: the trace IDs for the demo service
@@ -555,7 +779,7 @@ curl -s http://tempo.monitoring:3100/api/search?tags=service.name=demo | jq .
 
 ### 6.9 What to record
 
-After the lab, you should be able to answer five questions in five seconds each:
+After the lab, you should be able to answer five questions quickly. This chapter uses five seconds per answer as an example target. It treats an answer slower than 30 seconds as a sign the stack is not yet ready for production. Set your own bar with your team.
 
 1. What is the current Loki query latency p99?
 2. What is the current Collector export latency p99?
@@ -563,101 +787,103 @@ After the lab, you should be able to answer five questions in five seconds each:
 4. What is the most recent trace ID?
 5. What is the current trace context propagation rate?
 
-If any takes more than 30 seconds, the logs and traces stack is not yet a production service. The lab is **untested** against a live GKE cluster.
+The lab has not been run against a live GKE cluster. Run it once end to end before you rely on any of these commands.
 
 ---
 
 ## Exercises
 
-1. **Add a structured log schema.** Define a JSON schema for the application logs; emit the schema from the application; enforce the schema in CI. *Solution sketch:* a Pydantic model in Python that emits structured JSON; a CI step that validates the log output against the schema.
-2. **Add a tail-sampling policy.** Configure a tail-sampling policy that keeps 100% of error traces and 10% of healthy traces. *Solution sketch:* the tail_sampling processor in the Collector config from Section 2.2; the policy's expected_new_traces_per_sec; the policy's num_traces.
-3. **Add a trace-to-logs link.** Add the trace id to every log line; verify the trace id can be used to query the logs in Loki. *Solution sketch:* the OTel SDK's span context in the log message; Loki's label extraction from JSON.
+1. **Add a structured log schema.** Define a JSON schema for the application logs, emit it from the application, and check it in CI. *Solution sketch:* a Pydantic model that emits structured JSON, and a CI step that validates the log output against the schema.
+2. **Add a tail-sampling policy.** Keep 100% of error traces and 10% of healthy traces. *Solution sketch:* the tail_sampling processor from Section 2.2, with its expected_new_traces_per_sec and num_traces settings.
+3. **Add a trace-to-logs link.** Put the trace ID in every log line, then check that you can query Loki with it. *Solution sketch:* the OTel SDK's span context written into the log message, and Loki's label extraction from JSON.
 4. **Add a Loki cardinality alert.** Alert when any log stream's label cardinality exceeds 1000. *Solution sketch:* a Prometheus alert on Loki's internal metrics.
 5. **Add a Tempo cardinality alert.** Alert when any trace's span count exceeds 10000. *Solution sketch:* a Prometheus alert on Tempo's internal metrics.
-6. **Add a unified Grafana dashboard.** Build a Grafana dashboard that links metrics to logs to traces for a single request. *Solution sketch:* a Grafana data source for Prometheus, Loki, and Tempo; the dashboard's panels; the trace-to-logs link.
+6. **Add a unified Grafana dashboard.** Build a dashboard that links metrics, logs, and traces for a single request. *Solution sketch:* a Grafana data source for each of Prometheus, Loki, and Tempo, the dashboard's panels, and the trace-to-logs link.
+
+The thresholds in these exercises are starting points. Tune them to your own cluster before you rely on them.
 
 ---
 
 ## Checkpoint questions
 
 <details><summary>1. What is Loki?</summary>
-A log aggregation system designed for Kubernetes. Loki indexes logs by label; Loki stores log chunks in object storage; Loki queries log streams via LogQL. The pattern is: Promtail (or Alloy) tails the logs; Promtail adds labels; Promtail ships the logs to Loki; Grafana queries Loki.
+Loki is a log aggregation system designed for Kubernetes. It indexes logs by label, stores the log chunks in object storage, and answers queries written in LogQL. Promtail or Alloy tails the logs, adds labels, and ships them to Loki, and Grafana then queries Loki.
 </details>
 
 <details><summary>2. What is LogQL?</summary>
-The query language for Loki. The basic shape is `{labels} |= "text"` for log line filtering, with aggregations and transformations. The platform team's LogQL queries are the queries the on-call engineer runs during an incident.
+LogQL is the query language for Loki. You start with a label selector in braces, optionally add a text filter such as `|= "text"`, and then aggregate. The queries the on-call engineer runs during an incident are LogQL queries.
 </details>
 
 <details><summary>3. What is the OpenTelemetry Collector?</summary>
-A vendor-agnostic process that receives, processes, and exports telemetry. The Collector runs as a DaemonSet on every node; the Collector batches spans; the Collector applies the tail-sampling policy; the Collector exports to the backend (Tempo, Jaeger, or a vendor).
+The Collector is a vendor-neutral process that receives, processes, and exports telemetry. It runs as a DaemonSet on every node, batches spans, and applies tail sampling. It exports to a backend such as Tempo, Jaeger, or a vendor's system.
 </details>
 
 <details><summary>4. What is the W3C Trace Context?</summary>
-The standard for propagating trace context across services. The `traceparent` header carries the trace id and the parent span id from the client through the server through the database through the inference engine. The propagation makes the trace end-to-end.
+It is the standard for passing trace context from one service to the next. The `traceparent` header carries the trace ID and the parent span ID, from the client through the server and the database to the inference engine. Because each hop passes the header on, the trace stays end to end.
 </details>
 
 <details><summary>5. What is tail sampling?</summary>
-A sampling policy that decides which spans to keep after they have been collected. The decision is based on the span's attributes and the trace's overall health. The platform team's pattern is: keep 100% of error traces; keep 100% of slow traces; keep 10% of healthy traces.
+Tail sampling decides which spans to keep after they have been collected. The decision uses the span's attributes and the trace's overall health. This chapter's example policy keeps 100% of error traces, keeps 100% of slow traces, and keeps 10% of healthy traces.
 </details>
 
 <details><summary>6. What is the trace-to-logs link?</summary>
-The trace id is the join key between Tempo and Loki. Every log line that is part of a trace carries the trace id; the trace id is the join key between the two systems. The on-call engineer finds a trace in Tempo; the on-call engineer pastes the trace id into Loki; Loki shows the logs for that trace.
+The trace ID is the join key between Tempo and Loki. Every log line that belongs to a trace carries the trace ID. To use it, find a trace in Tempo, paste its trace ID into Loki, and Loki shows that trace's log lines.
 </details>
 
 <details><summary>7. What is the exemplar-to-trace link?</summary>
-Prometheus exemplars link a metric sample to a trace id. The application emits the trace id as an exemplar alongside the metric; Prometheus stores the exemplar; Grafana renders the exemplar as a link to the trace. The on-call engineer clicks on the metric spike; the dashboard shows the trace that produced the spike.
+A Prometheus exemplar links a metric sample to a trace ID. The application emits the trace ID with the metric, Prometheus stores it, and Grafana draws it as a link. Clicking a metric spike opens the trace that produced it.
 </details>
 
 <details><summary>8. What is the difference between Loki and Prometheus?</summary>
-Loki is for logs (discrete events with structured fields); Prometheus is for metrics (numeric time series with labels). The two are complementary; the platform team's pattern is to use both. Loki indexes log lines by label; Prometheus indexes metric samples by label.
+Loki is for logs, which are discrete events with structured fields. Prometheus is for metrics, which are numeric time series with labels. The two complement each other, so this chapter's pattern uses both. Loki indexes only the labels of each log stream, not the text of the lines, and Prometheus indexes metric samples by label.
 </details>
 
 <details><summary>9. What is the difference between Loki and Elasticsearch?</summary>
-Loki is designed for Kubernetes; Loki indexes logs by label; Loki stores log chunks in object storage. Elasticsearch is designed for full-text search; Elasticsearch indexes the entire log message; Elasticsearch stores logs on local disk (or shared storage). Loki is cheaper to run; Elasticsearch is more powerful for full-text search.
+Loki is designed for Kubernetes, indexes logs by label, and stores log chunks in object storage. Elasticsearch is designed for full-text search, indexes the entire log message, and stores logs on local disk or shared storage. Loki is cheaper to run, and Elasticsearch is more powerful for full-text search.
 </details>
 
 <details><summary>10. What is the most common Loki failure mode?</summary>
-Running out of disk. Loki's object storage bucket fills up; the chunk lifecycle is not pruning; the retention period is too long. The fix is to verify the object storage bucket size; verify the chunk lifecycle policy; reduce the retention period; add a storage usage alert.
+Running out of disk. The object storage bucket fills up, the chunk lifecycle is not pruning, or the retention period is too long. The fix is to check the bucket size and the lifecycle policy, shorten the retention period, and add a storage usage alert.
 </details>
 
 <details><summary>11. What is the most common OpenTelemetry failure mode?</summary>
-The trace context is broken. The trace context is not propagating from the HTTP handler into the LLM inference; the LLM inference is creating a new trace instead of child spans. The fix is to verify the W3C Trace Context header is set on every outgoing request; verify the LLM inference reads the header; add an integration test.
+A broken trace context. The header does not reach the LLM inference service, which then starts a new trace instead of child spans. The fix is to confirm the W3C header is set on every outgoing request, confirm the inference service reads it, and add an integration test.
 </details>
 
 <details><summary>12. What is the most common tail-sampling failure mode?</summary>
-Dropping the interesting traces. The tail-sampling policy is too aggressive; the policy is dropping traces that are interesting. The fix is to keep 100% of error traces; keep 100% of slow traces; keep a higher percentage of healthy traces.
+Dropping the traces you need. The policy is too aggressive and removes interesting traces. The fix is to keep 100% of error traces, keep 100% of slow traces, and keep a larger share of healthy traces.
 </details>
 
 <details><summary>13. What is the structured log schema?</summary>
-The schema that every log line follows. The schema is JSON; the schema is parseable; the schema is queryable. The platform team's pattern is: every log line is JSON; every JSON has a schema; the schema is documented; the schema is enforced in CI.
+The schema that every log line follows. Every line is JSON, every JSON line has a schema, and the schema is documented. CI enforces the schema, so the queries keep working.
 </details>
 
 <details><summary>14. What is the difference between span and trace?</summary>
-A trace is a directed acyclic graph of spans. A trace represents a single request's journey through the system. A span is a single operation within the trace. The trace is the end-to-end view; the span is the single-step view.
+A trace is a directed acyclic graph of spans, and it shows one request's path through the system. A span is one operation inside that trace. The trace gives you the end-to-end view, and the span gives you the single-step view.
 </details>
 
 <details><summary>15. What is the difference between the OTel SDK and the OTel Collector?</summary>
-The OTel SDK is the application-side library that creates spans and metrics; the SDK exports to the Collector via OTLP. The OTel Collector is the infrastructure-side process that receives, processes, and exports telemetry; the Collector batches spans; the Collector applies tail-sampling. The SDK is per-workload; the Collector is per-cluster.
+The OTel SDK is the application-side library that creates spans and metrics, and it sends them to the Collector over OTLP. The Collector is the infrastructure-side process that receives and processes telemetry. It batches spans and applies tail sampling. The SDK runs per workload, and the Collector runs per cluster.
 </details>
 
 <details><summary>16. What is the difference between tail sampling and head sampling?</summary>
-Head sampling decides whether to keep a span when the span is created; tail sampling decides whether to keep a span after the entire trace is collected. Tail sampling is more accurate (the decision is based on the trace's overall health) but more expensive (the Collector must wait for the trace to complete). The platform team's pattern is tail sampling for accuracy.
+Head sampling decides whether to keep a span when the span is created. Tail sampling decides after the entire trace is collected. Tail sampling is more accurate, because it sees the trace's overall health, but it costs more, because the Collector must wait for the trace to finish. This chapter's pattern uses tail sampling for accuracy.
 </details>
 
 <details><summary>17. Why is the trace context propagation rate the most important alert?</summary>
-Because a broken trace context means the trace is incomplete; the on-call cannot follow the trace end-to-end. The alert catches the case where a new workload is not propagating the trace context. The alert is the platform team's defence against the most common trace failure mode.
+A broken trace context leaves the trace incomplete, so the on-call cannot follow it end to end. The alert catches a new workload that stops passing the context. It is the platform team's main defense against the most common trace failure.
 </details>
 
 <details><summary>18. What is the difference between Loki's labels and the log message?</summary>
-Loki's labels are indexed; the labels are the join keys for LogQL queries. The log message is stored as a chunk; the message is searchable by text but not indexed. The platform team's pattern is: keep the labels low cardinality; put the high-cardinality fields in the message as structured fields.
+Loki's labels are indexed, and LogQL uses them as the join keys for queries. The log message is stored as a chunk. You can search its text, but the text is not indexed. Keep the labels low cardinality, and put high-cardinality fields in the message as structured fields.
 </details>
 
 <details><summary>19. What is the difference between the OTel Collector and Fluent Bit?</summary>
-The OTel Collector is for traces (and metrics and logs); Fluent Bit is for logs. The OTel Collector supports the OTLP protocol; Fluent Bit supports syslog, journald, and tail. The platform team's pattern is: use Fluent Bit for logs; use the OTel Collector for traces.
+The OTel Collector handles traces, metrics, and logs, and it supports the OTLP protocol. Fluent Bit handles logs, and it supports syslog, journald, and tail inputs. This chapter's pattern uses Fluent Bit for logs and the Collector for traces.
 </details>
 
 <details><summary>20. What five questions should the logs and traces lab let you answer in five seconds each?</summary>
-What is the current Loki query latency p99. What is the current Collector export latency p99. What is the most recent error log. What is the most recent trace ID. What is the current trace context propagation rate. If any takes more than 30 seconds, the logs and traces stack is not yet a production service.
+The five questions are the current Loki query latency p99, the current Collector export latency p99, the most recent error log, the most recent trace ID, and the current trace context propagation rate. This chapter sets five seconds as the target for each answer. An answer that takes more than 30 seconds means the stack is not yet a production service, though your team should set its own bar.
 </details>
 
 ---

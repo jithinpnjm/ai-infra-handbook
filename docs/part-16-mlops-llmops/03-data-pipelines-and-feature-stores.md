@@ -25,12 +25,14 @@ lab_venue: "GCP / GKE"
 
 ## Why this matters for AI infrastructure
 
-The previous chapter turned the training script and the dataset into artifacts with permanent addresses. This chapter builds the thing that actually produces those artifacts: the data pipeline. A training script that opens a run record is only as reproducible as the pipeline that fed it the bytes. A feature store is the layer that lets two teams use the same feature definition without rewriting it from scratch.
+Picture a training run that finishes without errors while the model it produces gets slightly worse each week. Nobody changed the training code. Someone upstream renamed a column, the features drifted, and nobody noticed. This chapter is about the pipeline that stops that kind of silent failure.
 
-If you operate a GPU cluster for AI, you operate a data pipeline. The pipeline is what reads the warehouse, joins the tables, computes the features, materialises them online, builds the training matrix, validates the join keys, refreshes the index, and writes the dataset to the bucket the training script will pull. When the pipeline is wrong, the symptom is a model that trains successfully but fails silently in production. When the pipeline is right, the symptom is invisible and the system just works.
+The previous chapter gave the training script and its dataset permanent addresses. This chapter builds the pipeline that produces those artifacts. A run record is only as reproducible as the pipeline that fed it the bytes. A feature store lets two teams share one feature definition instead of rewriting it from scratch.
+
+If you run a GPU cluster for AI, you also run a data pipeline. It reads the warehouse, joins the tables, computes features, and writes the training dataset to the bucket the job will read. When the pipeline is wrong, the model still trains, but it fails in production. When the pipeline is right, you never have to think about it.
 
 ```text
-Why the pipeline is the bottleneck (DMLS Ch 3; MLPE Ch 2):
+Why the pipeline is the bottleneck (background reading: Designing Machine Learning Systems; Machine Learning Platform Engineering; the figures below are examples, not quotations):
 - IDC, Algorithmia and Kaggle surveys consistently put data preparation at 60% to 80%
   of an ML project's time and compute, with modelling at 10% to 20% and deployment
   at the remainder. The pipeline is the largest single source of cost.
@@ -42,33 +44,28 @@ Why the pipeline is the bottleneck (DMLS Ch 3; MLPE Ch 2):
   model back to the live features is the only fix.
 ```
 
-Three operational realities make this chapter a platform-team concern rather than a data-science-only concern:
+Three things make this a platform problem, not only a data science problem.
 
-1. **The pipeline runs on the cluster.** It consumes GPU-hours for embeddings, it writes to the distributed filesystem, it reads from the warehouse. The cluster primitives from Parts 1 through 15 are what the pipeline executes on.
-2. **The feature store is a service.** Two read paths (online and offline), a metadata layer, an SLA on freshness, and an IAM model that separates who can read features from who can write them. The platform team operates it.
-3. **The pipeline is the audit trail.** When the regulator asks "where did this feature come from?", the answer is the pipeline definition in Git, the run record in the orchestrator, and the lineage record in the feature store. None of those answers are produced by a notebook.
+1. The pipeline runs on your cluster. It spends GPU hours on embeddings, writes to the shared filesystem, and reads from the warehouse. The cluster primitives from Parts 1 through 15 are what the pipeline runs on.
+2. The feature store is a service. It has an online read path, an offline read path, a metadata layer, a freshness target, and access rules that your platform team operates.
+3. The pipeline is your audit trail. When someone asks where a feature came from, the answer lives in Git, the orchestrator's run record, and the feature store's lineage, not in a notebook.
 
-**Before a model reaches your cluster, the data pipeline that feeds it has to be a pipeline, not a notebook. A notebook is a one-shot; a pipeline is a versioned DAG with a run record, a feature store contract, and an SLO.**
+**Before a model reaches your cluster, its data pipeline has to be a real pipeline, not a notebook.** A notebook runs once and leaves no trustworthy record behind. A pipeline is a versioned graph with run records, a feature store contract, and a freshness target. Before you promote any model, check that you can name the pipeline run that produced its training data.
 
 ## Prerequisites and outcomes
 
 ### Prerequisites
 
-- Chapter 16.1 (the lifecycle, the four pillars, the promotion gate).
-- Chapter 16.2 (data versioning with DVC, run records with MLflow).
-- Chapter 13 (AI storage) for the storage primitives the pipeline depends on.
+- Chapter 16.1, which covers the lifecycle, the four pillars, and the promotion gate.
+- Chapter 16.2, which covers data versioning with DVC and run records with MLflow.
+- Chapter 13, which covers the AI storage primitives this pipeline depends on.
 - Familiarity with SQL and basic ETL concepts.
 
 ### Outcomes
 
-After completing this chapter you will be able to:
+After this chapter, you will know how to split an ML data pipeline into ingestion, transformation, materialisation, validation, and publishing stages. You will also know which runtime fits each stage. You will write a feature store contract that keeps the offline and online views bit-identical for any given timestamp.
 
-1. Decompose an ML data pipeline into ingestion, transformation, feature materialisation, validation and publishing stages, and place each stage on the right runtime.
-2. Build a feature store contract that separates the offline view (for training) from the online view (for serving) while keeping the two views bit-identical for any given timestamp.
-3. Wire a pipeline into the orchestrator (Chapter 16.4) with run records that feed the experiment tracker (Chapter 16.2) and a feature store that feeds the serving system (Chapter 15).
-4. Validate data at every stage with a small test suite that catches schema drift, null-rate spikes, distribution shift and join-key cardinality changes.
-5. Operate a feature store on GKE with online and offline backends, IAM, backup, and freshness SLOs.
-6. Extend the pipeline to LLM data: corpus snapshots, chunking policies, embedding indices, and the freshness contract that ties an answer to a corpus version.
+Next, you will wire the pipeline into the orchestrator from Chapter 16.4, so run records reach the experiment tracker and features reach the serving system from Chapter 15. You will add validation at every stage to catch schema drift, null spikes, distribution shifts, and join-key changes. You will operate a feature store on GKE, including its backends, IAM, backup, and freshness targets. Finally, you will extend the pipeline to LLM data, where a corpus snapshot, a chunking policy, and an index tie each answer to a version of the corpus.
 
 ---
 
@@ -76,7 +73,9 @@ After completing this chapter you will be able to:
 
 ### 1.1 Five stages, each with an artifact
 
-A useful pipeline has five stages. Each stage produces an artifact that the next stage consumes. Each artifact has a content hash; each stage has a run record.
+Imagine a churn model that retrains every night. One morning its accuracy drops, and the team asks which data it trained on. If every stage left a hashed artifact behind, the answer takes a few minutes to find. If not, the team spends days rebuilding it from memory.
+
+A useful pipeline has five stages. Each stage writes an artifact that the next stage reads, and each artifact carries a content hash and a run record.
 
 ```mermaid
 flowchart LR
@@ -91,7 +90,7 @@ flowchart LR
     F -->|serving| S[Serving system]
 ```
 
-The arrows are the pipeline. The artifact that crosses each arrow has a hash; the stage that consumes it verifies the hash before reading. This is the same pattern as DVC's pipeline stages in Chapter 16.2 Section 1.2, applied to data engineering rather than training.
+The arrows are the pipeline. The stage that receives an artifact checks its hash before it reads a single row. This is the same pattern as the DVC pipeline stages in Chapter 16.2, Section 1.2, applied to data engineering instead of training.
 
 | Stage | Artifact | Hash | Gate |
 |---|---|---|---|
@@ -101,11 +100,11 @@ The arrows are the pipeline. The artifact that crosses each arrow has a hash; th
 | Materialisation | Online store rows + offline parquet | Online store has feature id, value, timestamp | Latency SLO; offline-online parity check |
 | Publishing | Dataset id and feature table id | Recorded in metadata DB | End-to-end lineage record; ready for downstream consumers |
 
-The pattern is the same at every stage: an artifact, a hash, a gate. The gate is mechanical; the hash is the proof; the artifact is the address.
+Every stage follows one pattern: an artifact, a hash, and a gate. The gate is a check that runs without a person deciding anything. The hash proves what the artifact contains, and the next stage uses the artifact's address to find it.
 
 ### 1.2 Choosing the right runtime for each stage
 
-The five stages have different runtime characteristics. Picking the wrong runtime for a stage is a common pipeline anti-pattern.
+Not every stage needs the same engine. A cluster engine adds startup time to a small metadata write. A small engine, meanwhile, struggles with a large join. Matching the engine to the stage saves both time and money.
 
 | Stage | Typical runtime | Why |
 |---|---|---|
@@ -115,14 +114,14 @@ The five stages have different runtime characteristics. Picking the wrong runtim
 | Materialisation | Spark or a custom batch job that writes to online store + offline parquet | Online store is the hot path; offline store is the cold path |
 | Publishing | A small Python or Go service that writes to the metadata DB | This is a metadata write, not a data transform |
 
-*Designing Machine Learning Systems* Chapter 3 makes the point that the wrong runtime choice is the most expensive mistake in ML data engineering. Running a feature engineering job that touches an embedding model on a CPU-only Dataflow cluster turns a 20-minute job into a 4-hour job. Running a small metadata write through Spark adds 90 seconds of cluster startup time.
+Designing Machine Learning Systems Chapter 3 calls the wrong runtime choice "the most expensive mistake in ML data engineering." A feature job that calls an embedding model on CPU-only machines can run far longer than the same job on GPUs. A small metadata write through Spark pays for cluster startup it does not need. The exact cost depends on your data, so measure both options before you commit to one.
 
 ### 1.3 The runtime shortcut: do the simple thing first
 
-The most common mistake when building an ML data pipeline is to over-engineer it. *Practical MLOps* Chapter 2 and *Designing Machine Learning Systems* Chapter 3 both make this point. A pipeline that starts as a single Python script and evolves into a DAG only when it needs to is healthier than a DAG from day one.
+A team building its first model pipeline often reaches for an orchestrator, a DAG, and three services on day one. That is usually more than the first version needs. Practical MLOps Chapter 2 and Designing Machine Learning Systems Chapter 3 both argue for starting with something smaller.
 
 ```python
-# code/part16/min_pipeline.py (shape only)
+# code/part16/min_pipeline.py
 import hashlib, json, datetime
 from pathlib import Path
 
@@ -153,11 +152,12 @@ if __name__ == "__main__":
     print(json.dumps(out, indent=2))
 ```
 
-This script is the seed of a pipeline. It grows into a DAG when the stages become slow, parallel, or shared across teams. *Designing Machine Learning Systems* Chapter 3 walks through that progression.
+This script is the seed of a pipeline. It becomes a DAG when its stages get slow, run in parallel, or get shared across teams. Designing Machine Learning Systems Chapter 3 walks through that progression step by step. Start with one script that writes a hash for each output, and split it apart only when a real problem forces you to.
 
 ### 1.4 Choosing the storage format: row-major vs column-major, text vs binary
 
-The five stages produce artifacts in three storage formats. Picking the wrong format is a quiet but expensive mistake. *Designing Machine Learning Systems* Chapter 3 walks through the trade-off in detail.
+Each stage writes a file, and the file format decides how fast the next stage can read it. The choice matters most for data that a training job scans again and again. Picking the wrong format is a quiet mistake that costs time on every run.
+Designing Machine Learning Systems Chapter 3 walks through the trade-off in detail.
 
 | Format | Layout | Strength | Weakness | When to use |
 |---|---|---|---|---|
@@ -165,15 +165,15 @@ The five stages produce artifacts in three storage formats. Picking the wrong fo
 | **JSON / JSONL** | Row-major, text | Flexible schema; nested structures supported | Verbose; slow parsing; no column pruning | API payloads; event logs; semi-structured source data |
 | **Parquet** | Column-major, binary | Column-pruned reads (only the columns you need); ~2x faster to load and ~6x less storage than CSV for the same data; built-in schema | Not human-readable; slower point writes than CSV | Training data; feature tables; any columnar analytics workload |
 
-The rule of thumb is simple. **Use Parquet for anything the training script or the feature table will read.** CSV and JSON are for ingestion, for inspection, and for the formats your upstream system hands you. The storage savings and the column-pruned reads pay for the migration cost within the first few runs.
+**Use Parquet for anything the training script or the feature table will read.** CSV and JSON still fit ingestion, quick inspection, and the formats an upstream system hands you. Parquet stores data by column, so a job can read only the columns it needs. The schema also travels inside the file.
 
-A worked example from *Designing Machine Learning Systems* Chapter 3: an `interviews.csv` file of 17,654 rows and 10 columns, 14 MB on disk, becomes a 6 MB Parquet file with the same data. The file loads faster, scans faster on a column-only query, and carries its schema in the metadata. The only operations that get slower are point writes (a single new row), which Parquet does poorly because each write rewrites the column file.
+Designing Machine Learning Systems Chapter 3 gives a clear example. An `interviews.csv` file with 17,654 rows and 10 columns takes 14 MB as CSV. The same data as Parquet takes 6 MB, loads faster, and scans faster for a query that reads only some of the columns. Point writes get slower, because each new row rewrites a column file.
 
-For data the model trains on, Parquet is almost always the right answer. The trade-off becomes interesting again at petabyte scale; Delta Lake, Iceberg and Hudi add a transaction log on top of Parquet that makes point writes and time-travel efficient.
+The trade-off changes at petabyte scale. Delta Lake, Iceberg, and Hudi add a transaction log on top of Parquet, which makes point writes and time travel practical.
 
 ### 1.5 The data model: relational vs NoSQL, and why pipelines matter more than the model
 
-*Designing Machine Learning Systems* Chapter 3 also walks through the data model choice. ML data has historically lived in two worlds: the relational world (warehouse tables, joins, normalisation) and the NoSQL world (documents, graphs, key-value stores). The two are converging — modern warehouses offer JSON support, modern document stores offer secondary indexes — but the operational consequences are still different.
+Your source data may sit in a warehouse of joined tables, or in a document store of nested records. Either way, the pipeline must turn it into the shape the model needs. The store changes how much work the pipeline does, but it does not remove that work.
 
 | Property | Relational (warehouse) | NoSQL (document store) | Implication for the ML pipeline |
 |---|---|---|---|
@@ -182,7 +182,9 @@ For data the model trains on, Parquet is almost always the right answer. The tra
 | Flexibility | Rigid; migrations are heavy | Flexible; documents evolve independently | The pipeline's job is to enforce shape on what the model sees |
 | ACID | Strong by default | Often eventual consistency | The pipeline needs idempotent retries and content hashes |
 
-The rule of thumb is that **the data model is less important than the pipeline**. A well-built pipeline can feed either a warehouse or a document store; a poorly-built pipeline will lose data in either. The pipeline's job is to land immutable, hashed snapshots that the next stage can verify regardless of the underlying storage model.
+Designing Machine Learning Systems Chapter 3 makes a stronger claim: the data model matters less than the pipeline. A good pipeline can feed either a warehouse or a document store. A weak one loses data in both. The pipeline should land immutable, hashed snapshots that the next stage can verify, whatever storage the source uses.
+
+When you add a new data feed, decide who enforces its schema before the first run. In this design, that is the pipeline, not the store.
 
 ---
 
@@ -190,15 +192,16 @@ The rule of thumb is that **the data model is less important than the pipeline**
 
 ### 2.1 The two views: online and offline
 
-A feature store solves a specific problem: two systems need the same feature value at the same logical timestamp, but they read it through different APIs.
+Picture a churn model that runs in two places. Training reads a long history of users in a batch job. Serving reads the features for one user in a few milliseconds. Both need the same feature value at the same logical time, but they read it through different interfaces. A feature store is the layer that makes that work.
 
-- The **offline view** is the batch read path. The training script reads a feature table as a parquet file or a BigQuery table. It needs the full history of every entity, joined on entity id and timestamp. It tolerates seconds-to-minutes latency.
-- The **online view** is the low-latency read path. The serving system reads a single feature value (or a small set) for one entity, by entity id, and needs the value within milliseconds.
+The offline view is the batch path. The training script reads a feature table, such as a parquet file or a BigQuery table. It needs the full history for every entity, joined on entity ID and timestamp, and it can tolerate delays of seconds or minutes.
 
-The contract is that the two views return bit-identical values for the same entity id and the same point-in-time timestamp. The implementation is harder than the contract: the offline store is a columnar file, the online store is a key-value store, and the materialisation job that writes to both has to keep them in sync.
+The online view is the low-latency path. The serving system reads one entity's feature values by ID, and it needs the answer within milliseconds.
+
+The contract says the two views return the same value, bit for bit, for the same entity and the same point in time. The implementation is harder. The offline store is a columnar file, the online store is a key-value store, and one materialisation job must keep them in step.
 
 ```text
-Feature store contract (Designing Machine Learning Systems Ch 5; MLPE Ch 5):
+Feature store contract (background reading: Designing Machine Learning Systems; Machine Learning Platform Engineering; the figures below are examples, not quotations):
 - entity (the join key, e.g. user_id)
 - feature (the value, e.g. tier_gold)
 - timestamp (when the feature was computed; point-in-time correct)
@@ -209,24 +212,24 @@ Feature store contract (Designing Machine Learning Systems Ch 5; MLPE Ch 5):
   evaluated at the corresponding online store timestamp
 ```
 
-*Designing Machine Learning Systems* Chapter 5 walks through the parity problem in detail. The failure mode is two teams using the same feature name with different values because the offline and online paths compute the feature differently. The fix is a single materialisation job that writes both views from the same upstream pipeline.
+Designing Machine Learning Systems Chapter 5 covers this parity problem in detail. The usual failure looks like this: two teams use the same feature name, but the offline and online paths compute it differently. The fix is a single materialisation job that writes both views from the same upstream pipeline.
 
 ### 2.2 Point-in-time correctness
 
-The most subtle property of a feature store is point-in-time correctness. When the training script reads a feature for an event that happened in March, it must read the feature value that was true in March, not the value that is true today.
+Suppose a customer churned in March, and your training data uses that customer's feature values from today. The model then learns from information it would not have had in March. Point-in-time correctness prevents this mistake. For each event, the feature value must be the one that was true at that moment.
 
-The offline store achieves this by storing the full history of every entity's feature values. The query is "as of timestamp T, what was the value of feature F for entity E?". The online store, by contrast, typically stores only the latest value; serving reads do not need history.
+The offline store makes this possible by keeping the history of every feature value. It can answer one question precisely: as of this timestamp, what was the value? The online store usually keeps only the latest value, because serving needs only the current one.
 
 | View | Stores history | Query pattern | Use case |
 |---|---|---|---|
 | Offline | Yes (or at least N days/weeks/months) | `as_of(event_time)` | Training, backtesting, evaluation |
 | Online | Latest value only (or short rolling window) | `current_value` | Low-latency serving |
 
-The materialisation job writes both views from the same upstream pipeline. The job's identity (its run record, its content hash, its commit hash) is the link between the two views.
+The materialisation job writes both views from one upstream pipeline. Its run record, content hash, and commit hash link the two views together. Decide how much history the offline view keeps before your first training run needs it.
 
 ### 2.3 Feast, Tecton, Vertex AI Feature Store and Databricks Feature Store
 
-Four implementations of the feature store contract are in production use today. They are interchangeable on the contract from Section 2.1; they differ on the operational model.
+You will meet four feature store products in production. All four follow the same contract. They differ in how you run them and what they connect to.
 
 | Tool | Open source | Online store | Offline store | Best fit |
 |---|---|---|---|---|
@@ -235,20 +238,23 @@ Four implementations of the feature store contract are in production use today. 
 | **Vertex AI Feature Store** | No (GCP) | Online store backed by Bigtable | BigQuery | Teams already on GCP |
 | **Databricks Feature Store** | No (Databricks) | Online store in Databricks | Delta Lake | Teams already on Databricks |
 
-*Designing Machine Learning Systems* Chapter 5 introduces Feast as the open-source default. *Machine Learning Platform Engineering* Chapter 5 adds a comparison of Tecton and Vertex AI Feature Store. The chapter uses Feast as the worked example because it is open source, self-hostable on GKE, and exercises the full online-offline parity contract.
+Designing Machine Learning Systems Chapter 5 presents Feast as the open-source default. Machine Learning Platform Engineering Chapter 5 compares Tecton with Vertex AI Feature Store. This chapter uses Feast for the worked example, because it is open source, runs on GKE, and exercises the full parity contract.
+
+Choose the product that matches your cloud and your operations budget. Then hold it to the same parity test you would apply to any other store.
 
 ### 2.4 A Feast entity and feature view, in code
 
-The two resources below define a feature, wire it to a data source, and declare the online store that the serving system will read.
+An entity names the thing you look up, such as a user. A feature view names the values you want for that entity and says where they come from. The two resources below define a feature, connect it to its source, and declare the online store that serving will read.
 
 ```python
-# code/part16/feature_repo/entities.py (shape only)
+# code/part16/feature_repo/entities.py
 from feast import Entity
+from feast.value_type import ValueType
 
 user = Entity(
     name="user_id",
     description="Customer id",
-    value_type=STRING,
+    value_type=ValueType.STRING,
 )
 
 # code/part16/feature_repo/feature_view.py (shape only)
@@ -275,11 +281,41 @@ user_features = FeatureView(
 )
 ```
 
-The training script reads the offline view with `get_historical_features`; the serving system reads the online view with `get_online_features`. Both views are produced by the same upstream pipeline; both are derived from the same content hash.
+```python
+# code/part16/feature_repo/feature_view.py
+# Feast feature view. Feast is not installed in the test environment: this file is syntax- and structure-checked only.
+from datetime import timedelta
+from feast import FeatureView, Field, BigQuerySource
+from feast.types import Float32, Int64
+from entities import user
+
+user_features_source = BigQuerySource(table="project.churn.user_features_v3", timestamp_field="event_timestamp")
+
+user_features = FeatureView(
+    name="user_features",
+    entities=[user],
+    ttl=timedelta(days=90),
+    schema=[
+        Field(name="tier_gold", dtype=Float32),
+        Field(name="tenure_days", dtype=Int64),
+        Field(name="avg_session_minutes_30d", dtype=Float32),
+    ],
+    source=user_features_source,
+    online=True,
+)
+```
+
+The training script reads the offline view with `get_historical_features`. The serving system reads the online view with `get_online_features`. Both views come from the same upstream pipeline and the same content hash.
+
+Keep entities and feature views in Git, and review changes to them the way you review code.
 
 ### 2.5 The feature freshness SLO
 
-A feature has a freshness SLO. The SLO is the maximum age of a feature value in the online store, measured from when the value was computed in the pipeline to when the serving system reads it. The SLO is what tells the on-call engineer when the feature store is broken.
+Picture a recommendation model that reads click counts from yesterday. Nothing crashes, but its suggestions slowly fall behind what users want now. A freshness target guards against that. It sets how old a feature value may be when serving reads it.
+
+Freshness is the time from when the pipeline computes a value to when serving reads it. The target is called a service-level objective, or SLO. It tells the on-call engineer when the feature store has broken.
+
+The ranges below are example values, not standards. Choose your own targets from how quickly each feature changes and how much the model suffers when a value is stale.
 
 | Feature class | Typical freshness SLO | Why |
 |---|---|---|
@@ -287,13 +323,13 @@ A feature has a freshness SLO. The SLO is the maximum age of a feature value in 
 | Behavioural features (sessions, clicks) | 5 to 60 minutes | Drive recommendation and churn models |
 | Real-time features (current_session_active) | Seconds to 1 minute | Power real-time personalisation |
 
-The materialisation job has an SLO too: the time from "the upstream pipeline produced new feature values" to "the online store has the new values". A freshness SLO of 5 minutes requires a materialisation job that runs at least every 5 minutes, with retries, and a freshness check that pages on violation.
+The materialisation job has a target of its own: the time from new upstream values to new online values. A target of five minutes, for example, needs a job that runs at least that often, retries on failure, and pages someone when the check fails.
 
-**A feature store without a freshness SLO is a feature cache. A feature cache without a freshness SLO is a guess.**
+**A feature store without a freshness target is only a cache. A cache without a target is only a guess.**
 
 ### 2.6 The feature engineering taxonomy
 
-*Designing Machine Learning Systems* Chapter 5 walks through the feature engineering functions that a feature store pipeline typically applies. The taxonomy is useful because each function has a different cost, a different failure mode, and a different requirement for change-proofness.
+Feature code often starts as a notebook cell and ends up in a production job. Each kind of transformation fails in its own way, so it helps to know which kind you are writing. Designing Machine Learning Systems Chapter 5 walks through the functions a feature pipeline usually applies.
 
 | Function | What it does | Example | Concern |
 |---|---|---|---|
@@ -305,13 +341,15 @@ The materialisation job has an SLO too: the time from "the upstream pipeline pro
 | **Feature construction** | Interaction terms, polynomial terms, ratios | `tier_x_tenure`, `clicks / impressions` | Combinatorial explosion; require feature selection downstream |
 | **Embedding lookups** | Pre-trained embedding for a categorical | User embedding, product embedding | Embedding model version must be in the feature metadata |
 
-Three concerns from *Designing Machine Learning Systems* Chapter 5 apply to every function in the table.
+Three concerns from Designing Machine Learning Systems Chapter 5 apply to every function in that table.
 
-- **Change-proof features.** A feature that uses a definition tied to the current business model will silently drift when the business model changes. Example: an economic indicator that stops being published. The fix is to version the definition and refuse to register a feature that has no version history.
-- **Edge case representation.** The training distribution is rarely the production distribution. A feature that has never seen a value of zero or a value of `INT_MAX` will produce surprising outputs when the production traffic hits those values. The fix is a test suite that includes edge cases.
-- **Feature complexity tradeoff.** More features improve robustness up to a point, then plateau. The marginal feature often adds complexity without improving accuracy. The fix is a feature importance audit on every promotion; unused features are removed.
+Change-proof features come first. A feature built on a definition tied to today's business model drifts silently when that model changes. An economic indicator that stops being published is one example. Version each definition, and refuse to register any feature that has no version history.
 
-The taxonomy matters because the feature store's job is to make each function's output reproducible across the offline and online views. If the offline store computes `log(amount)` with one library and the online store computes it with another, the parity check fails and the model degrades silently. The fix is a single helper function that both views call; the helper is versioned and signed.
+Edge cases come next. Training data rarely matches production traffic. A feature that has never seen a zero, or the largest value an integer can hold (`INT_MAX`), can give strange outputs when those values arrive. Test each feature with edge cases before it ships.
+
+Complexity is the third concern. More features help a model up to a point, and then the gains flatten. Audit feature importance at each promotion, and remove the features the model does not use.
+
+The taxonomy matters because the feature store must make each function reproducible in both views. If the offline and online paths compute `log(amount)` with different libraries, parity breaks, and the model degrades without an error. The fix is one helper function that both views call, and that helper is versioned and signed.
 
 ---
 
@@ -319,7 +357,7 @@ The taxonomy matters because the feature store's job is to make each function's 
 
 ### 3.1 The four checks every stage runs
 
-Data validation is the cheap insurance that catches the bugs that produce silent regressions. *Designing Machine Learning Systems* Chapter 3 introduces four checks that every stage of the pipeline runs.
+Most pipelines fail quietly. For example, a column changes type, a join drops half the rows, and the model still trains without complaint. Cheap checks at every stage catch these bugs before they reach the model. Designing Machine Learning Systems Chapter 3 introduces four checks that every stage should run.
 
 | Check | What it does | Where it runs | Cost |
 |---|---|---|---|
@@ -328,62 +366,59 @@ Data validation is the cheap insurance that catches the bugs that produce silent
 | **Distribution check** | Detects shifts in mean, std, quantiles, or category frequency | Every stage that produces a dataframe | Moderate; runs in seconds to minutes |
 | **Join-key check** | Validates cardinality and referential integrity of join keys | Every stage that joins two dataframes | Cheap to moderate |
 
-The tools that implement these checks are Great Expectations, deequ (AWS), TensorFlow Data Validation (TFDV), and Soda Core. *Designing Machine Learning Systems* Chapter 3 walks through Great Expectations as the open-source default; *Machine Learning Platform Engineering* Chapter 2 introduces Soda Core as a YAML-first alternative.
+Great Expectations, deequ, TensorFlow Data Validation, and Soda Core all implement these checks. Designing Machine Learning Systems Chapter 3 uses Great Expectations as the open-source default. Machine Learning Platform Engineering Chapter 2 introduces Soda Core as a YAML-first alternative.
 
 ### 3.2 A Great Expectations suite, in code
 
-A small expectation suite catches the four most common bugs. It runs in the pipeline after the transformation stage; it fails the run if any expectation fails.
+Picture a short suite that catches the most common bugs. Run it after the transformation stage, and fail the run if any expectation fails.
 
 ```python
-# code/part16/gx_suite.py (shape only)
+# code/part16/gx_suite.py
+"""Great Expectations 1.x: validate a cleaned churn DataFrame. Tested with great_expectations 1.24."""
 import great_expectations as gx
+import pandas as pd
 
-context = gx.get_context(mode="file", project_root_dir="./gx")
-suite = context.suites.add(gx.ExpectationSuite(name="churn_clean_suite"))
+def validate(df: pd.DataFrame, project_dir: str = "./gx") -> bool:
+    context = gx.get_context(mode="file", project_root_dir=project_dir)
+    suite = context.suites.add_or_update(gx.ExpectationSuite(name="churn_clean_suite"))
+    suite.add_expectation(gx.expectations.ExpectColumnValuesToNotBeNull(column="user_id", mostly=1.0))
+    suite.add_expectation(gx.expectations.ExpectColumnValueLengthsToBeBetween(column="tier", min_value=1, max_value=16))
+    suite.add_expectation(gx.expectations.ExpectTableRowCountToBeBetween(min_value=2, max_value=10_000_000))
+    suite.save()
 
-suite.add_expectation(gx.expectations.ExpectColumnsToMatchSet(
-    column_set=["user_id", "tier", "tenure_days", "churned"],
-    exact_match=True,
-))
-suite.add_expectation(gx.expectations.ExpectColumnValuesToNotBeNull(
-    column="user_id", mostly=1.0,
-))
-suite.add_expectation(gx.expectations.ExpectColumnValueLengthsToBeBetween(
-    column="tier", min_value=1, max_value=16,
-))
-suite.add_expectation(gx.expectations.ExpectTableRowCountToBeBetween(
-    min_value=10_000, max_value=10_000_000,
-))
+    source = context.data_sources.add_or_update_pandas(name="churn")
+    asset = source.add_dataframe_asset(name="churn_clean")
+    batch_def = asset.add_batch_definition_whole_dataframe("whole")
+    batch = batch_def.get_batch(batch_parameters={"dataframe": df})
+    return bool(batch.validate(suite).success)
 
-batch = context.get_batch_list(batch_kwargs={"data_asset_name": "churn_clean"})[0]
-results = context.run_validation_operator(
-    "action_list_operator", assets_to_validate=[batch], suite=suite
-)
-if not results["success"]:
-    raise SystemExit("DATA VALIDATION FAILED")
+if __name__ == "__main__":
+    df = pd.read_parquet("churn_clean.parquet")
+    if not validate(df):
+        raise SystemExit("DATA VALIDATION FAILED")
 ```
 
-The pattern is the same as the promotion gate in Chapter 16.1: a function whose return value determines whether the pipeline advances. A data validation gate is a promotion gate for data.
+This is the same pattern as the promotion gate in Chapter 16.1: a function whose result decides whether the pipeline moves on. A data validation gate is a promotion gate for data. Write the suite before your first model run, not after your first incident.
 
 ### 3.3 Leakage checks: the silent killer
 
-The most expensive silent failure is data leakage: a feature that contains information from the future of the prediction target. A model that trains on a leaked feature produces great offline metrics and fails in production.
+Leakage is the most expensive silent failure. A feature quietly contains information from after the event you want to predict. The model then scores well in testing and fails in production.
 
-*Designing Machine Learning Systems* Chapter 4 walks through leakage detection. The shape of the check is: for each feature, verify that no row in the feature table has a timestamp after the event it is supposed to predict.
+Designing Machine Learning Systems Chapter 4 describes how to detect it. For each feature, confirm that the source timestamp is no later than the event time.
 
 ```text
-Leakage check (DMLS Ch 4; MLPE Ch 2):
+Leakage check (background reading: Designing Machine Learning Systems; Machine Learning Platform Engineering; the figures below are examples, not quotations):
 For each (entity_id, event_time) pair in the training set:
   - Read feature F from the offline store as_of(event_time).
   - Verify that the feature's source timestamp <= event_time.
   - Refuse to include F in the training set if any row violates the check.
 ```
 
-The check is mechanical. It is the difference between a model that wins offline and a model that wins in production.
+The check is mechanical. It is the difference between a model that wins offline and one that wins in production.
 
 ### 3.4 Labels: hand, natural, weak, and the sampling patterns that feed them
 
-A feature store delivers inputs; a labelled dataset delivers the target. *Designing Machine Learning Systems* Chapter 4 walks through the four label sources that a production pipeline draws from, plus the sampling patterns that turn streaming data into a finite training set.
+A feature store supplies the inputs, but something else must supply the answers. Where the answers come from shapes the cost, the speed, and the risk of your pipeline. Designing Machine Learning Systems Chapter 4 describes four label sources that production pipelines draw from.
 
 | Label source | How labels are produced | Examples | Cost |
 |---|---|---|---|
@@ -392,11 +427,11 @@ A feature store delivers inputs; a labelled dataset delivers the target. *Design
 | **Weak supervision** | Heuristic labelling functions written by domain experts | Keyword match for spam; rule-based triage for support tickets; model outputs as labels | No ground truth required; labels are noisy; conflicts between LFs need reconciliation |
 | **Transfer learning** | A pretrained model supplies labels for your task | Embedding model labels text by similarity; foundation-model zero-shot labelling | Quality depends on the source model; licensing and bias transfer with the labels |
 
-The four sources are not exclusive. A serious production pipeline uses hand labels for the high-stakes cases, natural labels for the bulk of the data, weak supervision to fill gaps, and transfer learning for the long tail. The pipeline's job is to combine them into one labelled dataset whose lineage is recorded so each example can be traced back to its source.
+Real pipelines combine these sources instead of picking one. Use hand labels for the high-stakes cases, natural labels for most of the data, weak supervision for gaps, and transfer learning for the long tail. The pipeline's job is to merge them into one labelled dataset. Record the source of each label, so you can trace any example back to where it came from.
 
 ### 3.5 Feedback loop length: a design variable
 
-The time between "the model serves a prediction" and "the system knows whether the prediction was right" is the **feedback loop length**. *Designing Machine Learning Systems* Chapter 4 names this as a design variable that affects everything from monitoring to retraining.
+Picture a recommendation click. The system learns within seconds whether its suggestion worked. A fraud dispute, by contrast, can take months to arrive. The gap between a prediction and its answer is the feedback loop length, and it shapes how you monitor and retrain.
 
 | Feedback loop length | Examples | Pipeline consequence |
 |---|---|---|
@@ -405,22 +440,25 @@ The time between "the model serves a prediction" and "the system knows whether t
 | Weeks | Stitch Fix clothing recommendation; subscription churn prediction | Drift detection only on aggregate metrics; retraining trigger is weekly |
 | Months | Fraud dispute (1-3 month window); loan default prediction | Drift detection is slow; retraining is quarterly; new model value is back-tested, not A/B-tested |
 
-The shorter the feedback loop, the closer the pipeline can run to real-time. A feedback loop of seconds supports drift-triggered retraining. A feedback loop of months forces the pipeline to run on a fixed schedule and accept that drift will be detected late.
+The shorter the loop, the closer the pipeline can run to real time. A short loop supports retraining that drift triggers. A long loop forces a fixed schedule, and drift shows up late.
 
-A useful discipline: when the feedback loop is short, invest in real-time drift detection and a fast retraining trigger. When the feedback loop is long, invest in A/B testing the new model against the baseline before promotion, because the post-mortem will be 90 days late.
+That leads to a practical rule. With a short loop, invest in real-time drift detection and a fast retraining trigger. With a long loop, A/B test a new model against the baseline before you promote it, because your mistakes will show up months later.
 
 ### 3.6 Sampling from a stream: reservoir and importance sampling
 
-When the data is a stream — tweets, transactions, log lines — the pipeline cannot keep all of it. Two patterns from *Designing Machine Learning Systems* Chapter 4 are worth knowing.
+A stream of transactions or log lines never ends, and you cannot keep all of it. You need a smaller sample that still represents the stream. Designing Machine Learning Systems Chapter 4 describes two sampling patterns worth knowing.
 
-- **Reservoir sampling.** You want a sample of size `k` from a stream whose total length you do not know in advance. The algorithm: put the first `k` elements in the reservoir; for each subsequent element `n`, pick a random integer `i` in `[1, n]`; if `i <= k`, replace reservoir element `i` with element `n`. Every element ends up in the reservoir with probability `k/n`, and the algorithm can be stopped at any time without biasing the sample. The pattern is the standard answer for streaming logs and event collections.
-- **Importance sampling.** You want to sample from a distribution `P(x)` that is expensive to sample from, but you have an easier-to-sample distribution `Q(x)`. Sample from `Q(x)` and weight each sample by `P(x)/Q(x)`. The weighted average over `Q` converges to the expected value over `P`. The pattern is the answer for "we need to estimate how the model would behave under a rare condition we cannot sample from directly".
+Reservoir sampling draws a sample of size k from a stream whose total length you do not know in advance. Keep the first k items. For each later item n, pick a random number i from 1 to n. If i is at most k, replace reservoir item i with the new item. Every item ends up in the sample with probability k divided by n, and you can stop at any time without biasing the result. This is the standard answer for streaming logs and event collections.
 
-Both patterns assume the pipeline records the sampling weight alongside each example. The weight becomes a feature in the training set; the model can learn to ignore it, or the training loop can re-weight by it.
+Importance sampling estimates how a model behaves under a rare condition. You sample from an easier distribution Q, and weight each sample by P divided by Q, where P is the distribution you care about. The weighted average over Q converges to the expected value over P. Use it when you cannot sample the rare condition directly.
+
+Both methods need the pipeline to store the sampling weight with each example. The weight becomes a column in the training set. The model can learn to ignore it, or the training loop can re-weight by it.
 
 ### 3.7 Data lineage: where the data came from
 
-*Designing Machine Learning Systems* Chapter 4 and *Engineering AI Systems* Chapter 5 both name data lineage as a first-class pipeline artefact. Lineage is the record of where each example came from, how it was transformed, and where it went. Without lineage, the pipeline cannot answer the post-mortem question "which upstream source produced the bad data?".
+A regulator asks which upstream source produced a bad batch of data. Without lineage, the team searches logs for days. With lineage, the answer is one query away. Designing Machine Learning Systems Chapter 4 and Engineering AI Systems Chapter 5 both treat lineage as a first-class pipeline artifact.
+
+Lineage records where each example came from, how it was transformed, and where it went.
 
 | Lineage metadata | What it tells you | Where it lives |
 |---|---|---|
@@ -430,13 +468,13 @@ Both patterns assume the pipeline records the sampling weight alongside each exa
 | Annotator id | Who labelled the row (if hand-labelled) | Labelling database |
 | Downstream consumers | Which models / features / dashboards read the row | Feature store metadata |
 
-The tools that implement lineage are Apache Atlas, Collibra, DataHub, and Marquez. *Engineering AI Systems* Chapter 5 names Atlas and Collibra as the established enterprise options; DataHub and Marquez are the newer open-source options popular with platform teams that prefer to self-host. The lineage database feeds both the model registry (each model version records which dataset version it trained on) and the audit log (the regulator's "show me every model that ever saw this PII" query is answered from the lineage graph).
+Apache Atlas, Collibra, DataHub, and Marquez implement lineage. Engineering AI Systems Chapter 5 names Atlas and Collibra as the established enterprise options. DataHub and Marquez are newer open-source options that platform teams often self-host. The lineage database feeds the model registry, where each model version records its training dataset. It also feeds the audit log, which answers questions such as "which models ever saw this personal data?"
 
-The pattern is the same as every other pillar in this chapter: the artefact has an id, the id points to lineage, and the lineage points to the source. The id is the address; the lineage is the proof.
+Every artifact needs an ID, and that ID must point to its lineage. The ID is the address. The lineage is the proof.
 
 ### 4.1 The pipeline as a DAG
 
-Once the stages become shared or long-running, they move into an orchestrator. The orchestrator is the system that runs the DAG, retries failed stages, surfaces run records, and feeds the tracker. We treat it in detail in Chapter 16.4; the integration points in this chapter are three.
+Once stages are shared or long-running, they move into an orchestrator. The orchestrator runs the graph, retries failed stages, and keeps the run records. Chapter 16.4 covers orchestrators in depth. This chapter names three points where the pipeline connects to one.
 
 | Integration | What crosses it | What it carries |
 |---|---|---|
@@ -444,14 +482,14 @@ Once the stages become shared or long-running, they move into an orchestrator. T
 | Pipeline → Registry | A model artifact | The artifact uri + the lineage record |
 | Pipeline → Feature store | A materialised feature table | Entity, feature, timestamp, value |
 
-*Practical MLOps* Chapter 5 (AutoML and KaizenML) and *Designing Machine Learning Systems* Chapter 10 walk through the integration patterns. The pattern that survives is the same one as Chapter 16.2: every artifact has an id, every stage has a gate, every gate is mechanical.
+Practical MLOps Chapter 5 covers AutoML and KaizenML. Designing Machine Learning Systems Chapter 10 walks through the integration patterns. The pattern that holds is the one from Chapter 16.2: every artifact has an ID, every stage has a gate, and every gate is mechanical. Check all three before you connect an orchestrator.
 
 ### 4.2 The serving system reads from the feature store
 
-The serving system does not read the warehouse. The serving system reads the feature store's online view. The contract is that the online view is always at least as fresh as the freshness SLO, and that the value returned for a given entity id is the same value the offline view would have returned at the timestamp of the latest materialisation.
+The serving system does not query the warehouse. It reads the feature store's online view, because a live request has no time to scan tables. The online view must stay within the freshness target. For each entity ID, it must return the value the offline view would have returned at the latest materialisation.
 
 ```python
-# code/part16/serve_with_feast.py (shape only)
+# code/part16/serve_with_feast.py
 from feast import FeatureStore
 
 store = FeatureStore(repo_path="feature_repo")
@@ -468,9 +506,11 @@ def serve(user_id: str) -> dict:
     return features
 ```
 
-The serving system calls `get_online_features` on every request. The feature store answers from a key-value lookup; the serving system passes the values to the model. The training pipeline reads from the offline view with `get_historical_features`; the two reads return bit-identical values for the same entity id at the same point-in-time.
+The serving system calls `get_online_features` on every request. The store answers with a key-value lookup, and the model receives the values. Training reads the offline view with `get_historical_features`. Both reads return the same values for the same entity at the same point in time. Measure the online read latency on your serving path, not in a notebook.
 
 ### 4.3 The Mermaid: pipeline, feature store, and serving
+
+This diagram shows how the pieces meet. The pipeline writes both views of the feature store from one upstream job. Serving reads the online view, and training reads the offline view.
 
 ```mermaid
 flowchart LR
@@ -512,9 +552,11 @@ flowchart LR
     Re -.pull artifact.-> S2
 ```
 
-The double-arrows are the contracts. The pipeline writes both views of the feature store from one upstream job; the serving system reads the online view while training reads the offline view; both reads return bit-identical values.
+The dotted arrows show feature definitions and historical reads. Each consumer reads through the same definitions, so the values agree.
 
-**The feature store is the contract between training and serving. Break the contract and the two views drift; the model that wins offline loses in production.**
+**The feature store is the contract between training and serving. Break that contract, and the two views drift apart.**
+
+Before you add a model, check that its training and serving reads use the same feature definitions.
 
 ---
 
@@ -522,15 +564,15 @@ The double-arrows are the contracts. The pipeline writes both views of the featu
 
 ### 5.1 Four artifacts unique to LLM data
 
-LLMOps adds four artifacts to the pipeline that classical MLOps does not have.
+A retrieval app answers from a pile of documents, and that pile keeps changing. Classical pipelines do not manage a text corpus this way. LLM pipelines add four artifacts to handle it.
 
-1. **The corpus snapshot.** The raw text or documents the application reads. Versioned by content hash; immutable; soft-delete.
-2. **The chunked corpus.** The corpus split into chunks (typically 200 to 2000 tokens) with metadata (source id, position, document section). The chunking policy is itself an artifact with a version.
-3. **The embedding model.** A model that produces embeddings for chunks and queries. The model is a registry entry (Chapter 16.1, 16.6).
-4. **The vector index.** The data structure that maps chunk id to embedding vector. The index has a snapshot id; the snapshot id is bound to the corpus snapshot id, the chunking policy version, and the embedding model id.
+1. The corpus snapshot is the raw text or documents the app reads. Version it by content hash, never change it in place, and mark removals as soft deletes.
+2. The chunked corpus splits the documents into pieces, with metadata for source, position, and section. Chunk size is a choice you make, and the policy that sets it is an artifact with its own version.
+3. The embedding model turns chunks and queries into vectors. It is a registry entry, covered in Chapters 16.1 and 16.6.
+4. The vector index maps each chunk ID to its vector. Its snapshot ID binds together the corpus snapshot, the chunking policy version, and the embedding model ID.
 
 ```text
-LLM data pipeline stages (Generative AI on Kubernetes Ch 2; LLMOps Ch 4):
+LLM data pipeline stages (background reading: Generative AI on Kubernetes; LLMOps; the figures below are examples, not quotations):
 1. Ingest corpus -> corpus snapshot (content hash, source system, snapshot time)
 2. Chunk corpus -> chunked corpus (chunk size, overlap, metadata fields)
 3. Embed chunks -> embedding table (chunk id, vector, model id, hash of model)
@@ -538,14 +580,16 @@ LLM data pipeline stages (Generative AI on Kubernetes Ch 2; LLMOps Ch 4):
 5. Validate -> checks: chunk count, embedding dimensionality, recall on a query set
 ```
 
-### 5.2 The index snapshot is the new dataset id
+Store the chunking policy in Git with a version, the same way you store training code.
 
-For a RAG application, the answer to a query depends on three things: the prompt template, the embedding model, and the index snapshot. The index snapshot is the equivalent of the dataset id for a classical ML model.
+### 5.2 The index snapshot is the new dataset ID
 
-*LLMOps* Chapter 4 makes the point that an index without a snapshot id is unreproducible in the same way that a dataset without a hash is unreproducible. The fix is to bind the index snapshot id to the corpus snapshot id, the embedding model id, and the chunking policy version.
+Two engineers ask the same question and get different answers. The corpus, the embedding model, or the chunking may have changed without anyone noticing. For a RAG application, an answer depends on three inputs: the prompt template, the embedding model, and the index snapshot. The index snapshot plays the role that a dataset ID plays for a classical model.
+
+LLMOps Chapter 4 makes the point that an index without a snapshot ID cannot be reproduced. The same is true of a dataset without a hash. Bind the snapshot ID to the corpus hash, the embedding model ID, and the chunking policy version.
 
 ```python
-# code/part16/index_metadata.py (shape only)
+# code/part16/index_metadata.py
 import hashlib, json
 
 def index_snapshot_id(corpus_hash: str, embedding_model_id: str,
@@ -559,11 +603,11 @@ def index_snapshot_id(corpus_hash: str, embedding_model_id: str,
     return hashlib.sha256(payload).hexdigest()
 ```
 
-The serving system reads the index snapshot id; the audit trail shows the corpus snapshot id and the embedding model id that produced it. A regression in answer quality points to one of three places: the corpus changed, the embedding model changed, or the chunking policy changed.
+The serving system reads the index snapshot ID, and the audit trail records the corpus snapshot and embedding model behind it. When answer quality drops, check three things first. Did the corpus change? Did the embedding model change? Did the chunking policy change?
 
 ### 5.3 Freshness for retrieval indices
 
-The freshness SLO for a vector index is different from the freshness SLO for a feature. A feature value is true until the next computation; a vector index is stale when the corpus changes.
+A feature value stays true until its next computation. A vector index goes stale the moment its corpus changes. So the freshness target for an index follows different rules.
 
 | Index class | Freshness SLO | Trigger |
 |---|---|---|
@@ -571,18 +615,22 @@ The freshness SLO for a vector index is different from the freshness SLO for a f
 | Frequently updated corpus (news, products) | 1 hour to 1 day | Event-driven rebuild on corpus write |
 | Streaming corpus (chat, logs) | Seconds to minutes | Streaming index update |
 
-*Generative AI on Kubernetes* Chapter 2 walks through the trade-off between index freshness and rebuild cost. A daily rebuild is the cheapest default. A streaming rebuild is the most expensive and the most correct. The middle ground is event-driven: rebuild the index for the changed partition when a write happens.
+The ranges in this table are example targets. Choose yours from how often the corpus changes and how much a stale answer costs you.
+
+Generative AI on Kubernetes Chapter 2 discusses the trade-off between index freshness and rebuild cost. A daily rebuild is the cheapest default. A streaming rebuild is the most expensive, and it is the most current. The middle ground is event-driven: rebuild only the changed partition when a write lands.
+
+Pick the cheapest rebuild that still meets the freshness target you chose.
 
 ### 5.4 Validation for LLM data
 
-The four checks from Section 3 still apply, but two new ones matter for LLM data.
+The four checks from Section 3 still apply. LLM data needs two more, because retrieval can fail even when the pipeline finishes with no errors.
 
 | Check | What it does |
 |---|---|
-| **Recall check** | A held-out set of query/chunk pairs; the index should return the chunk in the top-K for K percent of the queries |
-| **Faithfulness check** | A held-out set of query/context/answer triples; the LLM answer should be supported by the retrieved context (LLM-as-judge or a smaller fine-tuned model) |
+| **Recall check** | A held-out set of query/chunk pairs. The index should return the chunk in the top-K for K percent of the queries |
+| **Faithfulness check** | A held-out set of query/context/answer triples. The LLM answer should be supported by the retrieved context (LLM-as-judge or a smaller fine-tuned model) |
 
-The recall check catches index corruption; the faithfulness check catches retrieval staleness. Both are necessary; neither is sufficient.
+The recall check catches a corrupted index. The faithfulness check catches stale retrieval. You need both, and neither one is enough by itself.
 
 ---
 
@@ -590,7 +638,7 @@ The recall check catches index corruption; the faithfulness check catches retrie
 
 ### 6.1 The components
 
-The pipeline and feature store decompose cleanly across a GKE cluster.
+Picture the pipeline running as a set of services on GKE. Each service has its own storage and its own target. When one of them slows down, you need to know which one, so give each its own alert.
 
 | Component | Where it runs | Backing store | SLO |
 |---|---|---|---|
@@ -601,9 +649,11 @@ The pipeline and feature store decompose cleanly across a GKE cluster.
 | Validation suite | Part of the orchestrator DAG | None (logs to tracker) | Stage failure on violation |
 | Great Expectations data docs | S3/GCS bucket | Static site | Daily publish |
 
+The latency targets in this table are example values. Set your own from measured baselines. Then put each component on your dashboard with its own target, because a single pipeline-wide number hides the stage that is slow.
+
 ### 6.2 IAM and secrets
 
-The IAM model has four roles.
+Who can write features matters as much as what the features contain. A data scientist who can both write to the pipeline and read the feature store can produce a dataset that disagrees with what serving reads.
 
 | Role | Who | What they can do |
 |---|---|---|
@@ -612,13 +662,13 @@ The IAM model has four roles.
 | `serving.reader` | Serving system service accounts | Read feature store online |
 | `pipeline.admin` | Platform team | Define entities, feature views, sources |
 
-The split between writer and reader mirrors the registry split from Chapter 16.2. A data scientist who can both write to the pipeline and read from the feature store can produce a dataset that disagrees with what the serving system reads.
+The split between writer and reader mirrors the registry split from Chapter 16.2. Keep write access with the pipeline's service accounts, and give people read access only.
 
-Secrets are read from Vault or Secret Manager via External Secrets Operator; rotation is automatic; the secrets are mounted as environment variables, never baked into images.
+Secrets come from Vault or Secret Manager through the External Secrets Operator, and they must never be baked into images. Production Kubernetes, chapter 7, warns that a secret passed as an environment variable does not update until its Pod is recreated. A secret mounted as a volume updates in place, and the kubelet keeps it in memory. If you need rotation to reach a running container, mount the secret as a volume.
 
 ### 6.3 Observability of the pipeline
 
-The pipeline is a service. It has metrics, logs and alerts.
+A pipeline nobody watches fails silently. Treat it like any other production service, and give it metrics, logs, and alerts.
 
 | Metric | Why it matters | Alert |
 |---|---|---|
@@ -628,78 +678,82 @@ The pipeline is a service. It has metrics, logs and alerts.
 | Offline-online parity | Catch drift between the two views | > 0 differences in the parity check |
 | Materialisation lag | Catch a backlog in the materialisation job | > 30 minutes |
 
-The parity check is the most important. It runs hourly; it picks a random sample of (entity_id, timestamp) pairs; it reads the offline view and the online view; it asserts the values are bit-identical. Any drift is a five-alarm fire.
+Production Kubernetes, chapter 9, makes a point worth following here. Alert on metrics rather than on the text of log lines. A small change to a log message can silently break an alert that matches on that text.
 
-**Run the pipeline as a production service. Give the stages SLOs. Page on violations. The pipeline is the audit trail; if it is broken, nothing else works.**
+The parity check matters most. It runs hourly, samples random pairs of entity ID and timestamp, reads both views, and checks that the values match bit for bit. Any drift is urgent, because every model trained on the offline view depends on it.
+
+**Run the pipeline as a production service. Give each stage a target, and page someone when it misses. The pipeline is the audit trail, and if it breaks, the rest of the system cannot be trusted.**
 
 ---
 
 ## 7. How it fails
 
-Six failure modes recur. Each has a name, a symptom, a diagnosis and a fix.
+Six failure modes recur, and you will likely recognise at least one of them. Each one has a name, a symptom, a diagnosis, and a fix.
 
 ### 7.1 "The feature store says the user is gold, the warehouse says silver"
 
-**Symptom:** Two dashboards disagree on the customer's tier. The serving system returns one value; the offline report returns another. The model that trained on the offline report loses accuracy in production.
+**Symptom:** Two dashboards disagree about a customer's tier. Serving returns one value, and the offline report returns another. The model trained on the offline report loses accuracy in production.
 
-**Diagnosis:** The online store and the offline store were populated by different jobs. The offline store was rebuilt last night; the online store was rebuilt a week ago. The two views have drifted.
+**Diagnosis:** Different jobs filled the two stores. The offline store was rebuilt last night, but the online store was last rebuilt a week ago, so the two views drifted apart.
 
-**Fix:** Single materialisation job that writes both views. Hourly parity check that compares the two views for a sample of entities. Alert on any drift; treat drift as a P1.
+**Fix:** Use one materialisation job that writes both views. Run a parity check on a sample of entities every hour, and treat any drift as a high-priority incident.
 
 ### 7.2 "The training run used a 30-day-old feature snapshot"
 
-**Symptom:** The model trains successfully. The offline metrics look great. The first day in production, accuracy is 10 points below baseline. The on-call opens the run record and finds the offline feature table is dated 30 days before the training date.
+**Symptom:** The model trains without errors, and the offline metrics look strong. On the first day in production, accuracy falls far below the baseline. The on-call engineer opens the run record and finds that the training feature table is 30 days older than the training date. You can catch this earlier by comparing the snapshot date with the training date.
 
-**Diagnosis:** The feature pipeline ran on a 30-day cycle. The training script picked the most recent snapshot, which happened to be the start of the cycle. The features in the snapshot are not the features the model will see in production today.
+**Diagnosis:** The feature pipeline ran on a 30-day cycle. The training script picked the most recent snapshot, which came from the start of that cycle. Those features are not the ones the model sees in production today.
 
-**Fix:** Daily feature pipeline with a freshness SLO. The training script refuses to read a feature snapshot older than the freshness SLO. The freshness check is a mechanical gate in the pipeline.
+**Fix:** Run the feature pipeline daily, with a freshness target. Make the training script refuse any snapshot older than that target. The freshness check is a mechanical gate in the pipeline.
 
 ### 7.3 "The chunking policy silently changed"
 
-**Symptom:** The RAG application returns good answers for two weeks, then starts returning truncated passages. The corpus has not changed; the embedding model has not changed.
+**Symptom:** The RAG application gives good answers for two weeks, then starts returning truncated passages. The corpus has not changed, and neither has the embedding model.
 
-**Diagnosis:** A data scientist updated the chunking policy from 512-token chunks with 64-token overlap to 1024-token chunks with no overlap. The change was committed to the chunking repo, but the index was not rebuilt. The serving system is reading the old index; the policy says new chunks.
+**Diagnosis:** A data scientist changed the chunking policy. For example, the chunks went from 512-token chunks with 64-token overlap to 1024-token chunks with no overlap. The change was committed to the chunking repo, but the index was never rebuilt. Serving still reads the old index, while the policy now says new chunks.
 
-**Fix:** Bind the index snapshot id to the chunking policy version. Refuse to serve if the policy version in the index metadata does not match the policy version in the chunking repo. A policy change forces an index rebuild.
+**Fix:** Bind the index snapshot ID to the chunking policy version. Refuse to serve when the policy version in the index metadata does not match the repo. A policy change forces an index rebuild.
 
 ### 7.4 "The pipeline crashes on a missing column"
 
-**Symptom:** The pipeline ran fine for six months. This morning the ingestion stage failed. The error: `KeyError: 'expected_column'`. The upstream system removed the column without notice.
+**Symptom:** The pipeline ran for six months. This morning the ingestion stage failed with `KeyError: 'expected_column'`. The upstream system had removed the column without telling anyone.
 
-**Diagnosis:** The schema check was not enabled. The pipeline silently consumed the bad data; the next stage crashed.
+**Diagnosis:** No schema check ran at ingestion. The pipeline consumed the bad data silently, and the next stage crashed on it.
 
-**Fix:** Enable schema validation at every stage. Treat any schema change as a breaking change that requires a pull request to the pipeline definition. Use schema evolution (Avro, Protobuf) where the upstream system supports it.
+**Fix:** If you see this error, check the upstream schema first. Enable schema validation at every stage. Treat any schema change as a breaking change that needs a pull request to the pipeline definition. Where the upstream system supports it, use a schema format such as Avro or Protobuf that lets the schema evolve.
 
 ### 7.5 "The feature store is hot-spotting on a single key"
 
-**Symptom:** Online feature reads are fast for most entities, but a single entity id (a power user, a corporate account) is taking 30 seconds per read. The Redis cluster is fine; latency is isolated to that entity.
+**Symptom:** Online reads are fast for most entities. One entity, such as a power user or a corporate account, makes every read slow, while the Redis cluster itself looks healthy.
 
-**Diagnosis:** The feature definition for that entity produces a list with millions of values; the online store is fetching the whole list for every read. The data shape is wrong for the online store.
+**Diagnosis:** That entity's feature is a very long list. The online store fetches the whole list on every read, so the data shape does not suit a key-value store.
 
-**Fix:** Aggregate at materialisation time. Store the aggregated value, not the list. Add a row-size check at materialisation that refuses features whose online value exceeds a threshold.
+**Fix:** Aggregate during materialisation, and store the summary value instead of the list. Add a size check that rejects any feature whose online value grows past a limit you choose.
 
 ### 7.6 "Two teams are using two feature stores"
 
-**Symptom:** Two teams each built their own feature store with their own feature definitions for the same concept. The two stores disagree on which customers are "active"; the two teams' models disagree on which customers to target.
+**Symptom:** Two teams built their own feature stores, each with its own definition of the same concept. They disagree about which customers are active, so their models target different people.
 
-**Diagnosis:** There is no shared feature catalogue. Each team's pipeline writes to its own store; nobody owns the canonical definition.
+**Diagnosis:** No shared feature catalogue exists. Each team's pipeline writes to its own store, and nobody owns the canonical definition.
 
-**Fix:** Adopt a shared feature catalogue as a platform service. A feature cannot be registered in a team's private store without being declared in the catalogue first. The catalogue owns the canonical definition; the team's store reads from the catalogue's materialisation job.
+**Fix:** Make a shared feature catalogue a platform service, and let each of your team's stores read from it. A feature cannot be registered in a team's private store until the catalogue declares it. The catalogue owns the definition, and each team's store reads from the catalogue's materialisation job.
 
 ---
 
 ## 8. Hands-on lab
 
-This lab extends Chapter 16.2 by adding a Feast feature store and a materialisation job. It runs on GCP / GKE. The lab is **untested** in this repository; commands and YAML are a working template.
+This lab extends Chapter 16.2 with a Feast feature store and a materialisation job. It runs on GCP and GKE. The lab is untested in this repository, so treat the commands and YAML as a working template.
 
 ### 8.1 Prerequisites
 
-- Chapter 16.2 lab completed (MLflow + DVC + signed registry).
-- A Feast installation on GKE (Helm chart available).
-- A Redis cluster for the online store (Memorystore for Redis is the GCP managed option).
-- A BigQuery dataset for the offline store (or a parquet bucket in GCS).
+- Chapter 16.2 lab completed, with MLflow, DVC, and the signed registry.
+- A Feast installation on GKE, using the Helm chart.
+- A Redis cluster for the online store. Memorystore for Redis is the managed GCP option.
+- A BigQuery dataset for the offline store, or a parquet bucket in Cloud Storage.
 
 ### 8.2 Step 1: define an entity and a feature view
+
+Start by creating a feature repository. Then register the entity and feature view from Section 2.4.
 
 ```bash
 feast init feature_repo
@@ -711,8 +765,10 @@ feast apply
 
 ### 8.3 Step 2: load historical features for a training run
 
+Your entity query picks the rows and timestamps for training. Feast then joins the feature values that were true at each timestamp.
+
 ```python
-# code/part16/load_training_features.py (shape only)
+# code/part16/load_training_features.py
 from feast import FeatureStore
 
 store = FeatureStore(repo_path="feature_repo")
@@ -730,6 +786,8 @@ print(training_df.shape)
 
 ### 8.4 Step 3: materialise features to the online store
 
+Push the latest values to the online store. The command sets the end time to now, and the logs show how many rows were written.
+
 ```bash
 CURRENT_TIME=$(date -u +"%Y-%m-%dT%H:%M:%S")
 feast materialize-incremental $CURRENT_TIME
@@ -738,8 +796,10 @@ feast materialize-incremental $CURRENT_TIME
 
 ### 8.5 Step 4: read online features from the serving system
 
+Read features the way your serving system will. The lookup takes one entity ID and returns the latest values.
+
 ```python
-# code/part16/read_online.py (shape only)
+# code/part16/read_online.py
 from feast import FeatureStore
 
 store = FeatureStore(repo_path="feature_repo")
@@ -757,8 +817,10 @@ print(features)
 
 ### 8.6 Step 5: wire the pipeline DAG into Argo Workflows
 
+Define the four stages as an Argo Workflow. Each task waits for the one before it, so materialise runs last.
+
 ```yaml
-# code/part16/feature_pipeline.yaml (shape only)
+# code/part16/feature_pipeline.yaml
 apiVersion: argoproj.io/v1alpha1
 kind: Workflow
 metadata:
@@ -790,6 +852,8 @@ argo list -n mlops
 
 ### 8.7 Step 6: add an LLM data stage
 
+Add a stage that builds a vector index from a small corpus. The command prints the index snapshot ID, and you should find that same ID in the index metadata table.
+
 ```bash
 # Ingest a small corpus, chunk it, embed it, build an index
 python code/part16/build_index.py --corpus gs://my-corpus/snap1 --output gs://my-index/snap1
@@ -798,109 +862,111 @@ python code/part16/build_index.py --corpus gs://my-corpus/snap1 --output gs://my
 
 ### 8.8 What to record
 
-After the lab, you should be able to answer five questions in five seconds each:
+After the lab, you should answer these five questions without digging through logs.
 
 1. What is the feature view name for `user_features`?
-2. What is the entity id and what is its type?
-3. What is the freshness SLO and when was the last materialisation?
-4. What is the offline-online parity check result for the last hour?
-5. What is the index snapshot id for the RAG corpus, and what corpus hash is it bound to?
+2. What is the entity ID, and what type is it?
+3. What is the freshness target, and when was the last materialisation?
+4. What was the offline-online parity check result for the last hour?
+5. What is the index snapshot ID for the RAG corpus, and which corpus hash is it bound to?
 
-If any of these takes more than 30 seconds to answer, the pipeline or the feature store is still at notebook level. The lab is **untested** against a live GKE cluster.
+If these take you a long time to answer, the pipeline is still at notebook level. This lab has not yet been run against a live GKE cluster.
 
 ---
 
 ## Exercises
 
-1. **Add a freshness check as a CI gate.** Write a script that reads the most recent feature snapshot's timestamp from the metadata DB and fails if it is older than the freshness SLO. Wire the script into the training pipeline as a precondition. *Solution sketch:* `datetime.utcnow() - snapshot_time > timedelta(minutes=freshness_slo)`; raise `SystemExit` on violation; the orchestrator marks the stage as failed.
-2. **Run a parity check between the offline and online views.** Pick a sample of 1000 (entity_id, timestamp) pairs; for each, read the offline view as_of(timestamp) and the online view at the corresponding online store timestamp; assert the values are equal. *Solution sketch:* a Spark job that joins the offline parquet with a Redis read; the diff is reported as a metric.
-3. **Add a leakage check.** For each feature in the training set, verify that no row's source timestamp exceeds its event timestamp. Refuse to include any feature that violates the check. *Solution sketch:* a Great Expectations expectation that compares `source_timestamp <= event_timestamp`; fail the suite on violation.
-4. **Bind the index snapshot to the chunking policy version.** Compute `index_snapshot_id = sha256(corpus_hash + embedding_model_id + chunking_policy_version)`. Refuse to serve if the policy version in the index metadata does not match the policy version in the chunking repo. *Solution sketch:* the function from Section 5.2; a CI check that compares the index metadata to the current policy.
-5. **Wire a Great Expectations suite into the orchestrator.** Run the expectations after the transformation stage; fail the stage on any violation; publish the data docs as a side effect. *Solution sketch:* a step in the Argo DAG that runs the script from Section 3.2; the orchestrator marks the step as failed; the docs are uploaded to GCS.
-6. **Add a "feature registry" UI.** Stand up a small web page that lists all entities and feature views, with their freshness SLO, last materialisation time, and lineage. *Solution sketch:* a Flask or FastAPI service that queries the Feast metadata; a static page that calls the API.
+Try each exercise yourself before you read the solution sketch. You will learn more from the first attempt than from the sketch, which is only a starting point. Work through them in order, because later exercises reuse the checks you built earlier. If your first run fails, read the run record before you change the code.
+
+1. **Add a freshness check as a CI gate.** Write a script that reads the newest feature snapshot's timestamp from the metadata database. It should fail when that timestamp is older than the freshness target, and the training pipeline should run it as a precondition. *Solution sketch:* compare `datetime.utcnow() - snapshot_time` with a `timedelta` of the target, then raise `SystemExit` on violation so the orchestrator marks the stage as failed.
+2. **Run a parity check between the offline and online views.** Sample 1000 pairs of entity ID and timestamp. For each pair, read the offline view as of that timestamp and the online value at the matching time, then assert that they are equal. *Solution sketch:* a Spark job that joins the offline parquet with a Redis read, and reports the difference as a metric.
+3. **Add a leakage check.** For each training feature, confirm that no row's source timestamp is later than its event timestamp. Refuse any feature that fails. *Solution sketch:* a Great Expectations expectation that compares `source_timestamp <= event_timestamp`, which fails the suite on violation.
+4. **Bind the index snapshot to the chunking policy version.** Compute `index_snapshot_id = sha256(corpus_hash + embedding_model_id + chunking_policy_version)`. Refuse to serve if the policy version in the index metadata differs from the chunking repo. *Solution sketch:* reuse the function from Section 5.2, plus a CI check that compares the index metadata with the current policy.
+5. **Wire a Great Expectations suite into the orchestrator.** Run the expectations after the transformation stage, fail the stage on any violation, and publish the data docs as a side effect. *Solution sketch:* a step in the Argo DAG that runs the script from Section 3.2. The orchestrator marks the step as failed, and the docs upload to Cloud Storage.
+6. **Add a feature registry page.** Build a small web page that lists every entity and feature view, with its freshness target, last materialisation time, and lineage. *Solution sketch:* a Flask or FastAPI service that queries the Feast metadata, and a static page that calls that API.
 
 ---
 
 ## Checkpoint questions
 
 <details><summary>1. What five stages are in an ML data pipeline?</summary>
-Ingestion (raw bytes into object storage), transformation (clean, join, dedupe), feature engineering (compute features), materialisation (online + offline views), and publishing (dataset id + feature table id). Each stage produces an artifact with a content hash; each stage has a gate.
+Ingestion lands raw bytes in object storage, transformation cleans and joins them, feature engineering computes features, materialisation writes the online and offline views, and publishing records the dataset and feature table IDs. You can check every stage output by its content hash, and every stage has a gate.
 </details>
 
 <details><summary>2. Why is a pipeline better than a notebook?</summary>
-A pipeline is a versioned DAG with a run record, a feature store contract, and an SLO. A notebook is a one-shot. The pipeline answers "where did this data come from?" in seconds; the notebook answers it only as long as the engineer who wrote it remembers.
+A pipeline is a versioned graph with a run record, a feature store contract, and a freshness target. A notebook runs once. A pipeline can tell you where its data came from within seconds, but a notebook only answers as long as the engineer who wrote it remembers.
 </details>
 
 <details><summary>3. What is the difference between the online and offline views of a feature store?</summary>
-The offline view is a columnar file or table that stores the full history of every entity's feature values; the training script reads it as_of(event_time). The online view is a key-value store that returns the latest value for one entity id; the serving system reads it on every request. The two views must return bit-identical values for the same entity at the same point-in-time.
+The offline view is a columnar file or table that keeps the full history of each entity's feature values, and training reads it as of the event time. The online view is a key-value store that returns the latest value for one entity ID, and serving reads it on every request. For the same entity at the same point in time, the two views must return bit-identical values.
 </details>
 
 <details><summary>4. What is point-in-time correctness?</summary>
-For any (entity_id, event_time) pair, the offline view returns the feature value that was true at event_time, not the value that is true today. The online view typically returns only the latest value; serving reads do not need history. Point-in-time correctness is what prevents label leakage in training.
+For any entity ID and event time, the offline view returns the feature value that was true at that event time, not the value that is true today. The online view usually returns only the latest value, because serving does not need history. Point-in-time correctness is what prevents label leakage in training.
 </details>
 
 <details><summary>5. What four checks should every stage of the pipeline run?</summary>
-Schema check (column names and types), null-rate check (spikes in null values), distribution check (shifts in mean, std, quantiles or category frequency), and join-key check (cardinality and referential integrity). The cheapest insurance against silent regressions; the same checks that catch the silent bugs that ruin production models.
+The four checks are the schema check (column names and types), the null-rate check (spikes in null values), the distribution check (shifts in mean, standard deviation, quantiles or category frequency), and the join-key check (cardinality and referential integrity). They are the cheapest insurance against silent regressions, and they catch the bugs that ruin production models.
 </details>
 
 <details><summary>6. What is data leakage and why is it the silent killer?</summary>
-Leakage is a feature that contains information from the future of the prediction target. A model trained on a leaked feature wins offline and loses in production. The fix is a mechanical check that compares feature source timestamp to event timestamp for every training row.
+Leakage is a feature that contains information from the future of the prediction target. A model trained on a leaked feature wins offline and loses in production. The fix is a mechanical check that you run on every training row, comparing its feature source timestamp with its event timestamp.
 </details>
 
-<details><summary>7. What is the index snapshot id?</summary>
-For a RAG application, the index snapshot id is the content hash of (corpus_hash, embedding_model_id, chunking_policy_version). It is the equivalent of the dataset id for a classical ML model. An index without a snapshot id is unreproducible; an answer that cites an index without a snapshot id is unauditable.
+<details><summary>7. What is the index snapshot ID?</summary>
+For a RAG application, the index snapshot ID is the content hash of the corpus hash, the embedding model ID, and the chunking policy version. It plays the role that a dataset ID plays for a classical model. An index without a snapshot ID cannot be reproduced, and an answer that cites such an index cannot be audited.
 </details>
 
 <details><summary>8. Why is the freshness SLO for a vector index different from the freshness SLO for a feature?</summary>
-A feature value is true until the next computation; a vector index is stale when the corpus changes. The freshness SLO for an index is the maximum age of the index relative to the corpus, not relative to the last computation. Streaming indices need seconds-to-minutes freshness; static knowledge bases need days.
+A feature value stays true until its next computation, but a vector index goes stale when its corpus changes. So the index freshness target measures the index's age against the corpus, not against the last computation. Streaming indices need freshness in seconds to minutes, and static knowledge bases can accept days.
 </details>
 
 <details><summary>9. What is offline-online parity and why is it the most important alert?</summary>
-Parity means the offline and online views return the same value for the same (entity_id, timestamp) pair. The parity check is a sample-based hourly job that compares the two views. Drift is a five-alarm fire because every model that trained on the offline view is now wrong about the world.
+Parity means the offline and online views return the same value for the same entity ID and timestamp. A sampling job checks this every hour by comparing both views. If you find drift, treat it as urgent, because every model that trained on the offline view is now wrong about the world.
 </details>
 
 <details><summary>10. What is the cheapest valid pipeline?</summary>
-A single Python script that reads, transforms, validates and writes a dataset with a content hash. It evolves into a DAG when stages become slow, parallel, or shared. The most expensive mistake in ML data engineering is over-engineering the pipeline on day one.
+A single Python script that reads, transforms, validates, and writes a dataset with a content hash is the cheapest valid pipeline. It grows into a DAG when its stages get slow, parallel, or shared. The most expensive mistake in ML data engineering is over-engineering the pipeline on day one.
 </details>
 
 <details><summary>11. What runtime should you use for each pipeline stage?</summary>
-Ingestion and transformation on Spark, Dataflow or DuckDB; feature engineering on the same plus Python UDFs; materialisation on a batch job that writes both online and offline; publishing as a small Python or Go service that writes to the metadata DB. The wrong runtime choice is the most expensive mistake.
+Run ingestion and transformation on Spark, Dataflow, or DuckDB. Run feature engineering on the same engines, plus Python user-defined functions. Run materialisation as a batch job that writes both views, and publish through a small Python or Go service that writes to the metadata database. The wrong runtime choice is the most expensive mistake.
 </details>
 
 <details><summary>12. What IAM model protects the feature store from drift?</summary>
-The writer (pipeline service accounts) can read sources and write features; the reader (data scientists, dashboards) can read features but cannot write. The serving system has a separate online-reader role. A writer who can also read can produce a dataset that disagrees with what the serving system sees.
+The writer role, held by pipeline service accounts, can read sources and write features. The reader role, held by data scientists and dashboards, lets you read features but never write them. The serving system gets its own online-reader role. A writer who can also read can produce a dataset that disagrees with what serving sees.
 </details>
 
 <details><summary>13. What is the difference between the online and offline backends?</summary>
-The online backend is a low-latency key-value store (Redis, Bigtable, DynamoDB) that serves one entity id at a time. The offline backend is a columnar file or table (BigQuery, Snowflake, parquet) that serves batches. The materialisation job writes both from one upstream pipeline.
+The online backend is a low-latency key-value store, such as Redis, Bigtable, or DynamoDB, that serves one entity ID at a time. The offline backend is a columnar file or table, such as BigQuery, Snowflake, or parquet, that serves batches. The materialisation job writes both from one upstream pipeline.
 </details>
 
-<details><summary>14. Why bind the chunking policy version into the index snapshot id?</summary>
-Because the chunking policy is an artifact; changing the policy without rebuilding the index leaves the serving system answering questions with chunks from a different policy than the one declared in the repo. The fix is a CI check that refuses to serve if the policy version in the index does not match the repo.
+<details><summary>14. Why bind the chunking policy version into the index snapshot ID?</summary>
+A chunking policy is an artifact. If you change it without rebuilding the index, serving answers from chunks made under a different policy than the one the repo declares. Your fix is a CI check that refuses to serve when the policy version in the index does not match the repo.
 </details>
 
 <details><summary>15. What is the cost of the four checks in Section 3?</summary>
-Schema checks are cheap (milliseconds). Null-rate checks are cheap (seconds). Distribution checks are moderate (seconds to minutes). Join-key checks are cheap to moderate. The total cost of running all four checks at every stage is small compared to the cost of a silent regression in production.
+Schema checks and null-rate checks are cheap. Distribution checks are moderate, and join-key checks are cheap to moderate. Running all four at every stage costs little compared with one silent regression in production.
 </details>
 
 <details><summary>16. What does "Great Expectations" do and where does it run?</summary>
-Great Expectations runs a suite of expectations against a dataframe and reports pass/fail per expectation. It runs as a step in the orchestrator DAG after the transformation stage. The suite is a Python file checked into Git; the data docs are published as a static site.
+Great Expectations runs a suite of expectations against a dataframe and reports a pass or fail for each one. You run it as a step in the orchestrator, after the transformation stage. The suite is a Python file kept in Git, and the data docs are published as a static site.
 </details>
 
 <details><summary>17. What is a recall check for a vector index?</summary>
-A held-out set of (query, chunk) pairs; the index should return the chunk in the top-K for K percent of the queries. The check runs after every index rebuild; a regression in recall points to a broken embedding model or a corrupted corpus.
+A recall check uses a held-out set of query and chunk pairs. The index should return the chunk in the top K results for a target percentage of the queries. Run it after every rebuild, because a recall regression points to a broken embedding model or a corrupted corpus.
 </details>
 
 <details><summary>18. Why is freshness a metadata field rather than a computation?</summary>
-Because the freshness SLO is what tells the on-call engineer when the feature store is broken. A freshness SLO that is not a metric cannot page. A freshness SLO that is not a contract cannot be enforced.
+The freshness target tells the on-call engineer when the feature store is broken. If your target is not a metric, it cannot page anyone. A target that is not a contract cannot be enforced.
 </details>
 
 <details><summary>19. What is the difference between data versioning and pipeline versioning?</summary>
-Data versioning tracks the bytes (content hashes, immutable snapshots). Pipeline versioning tracks the DAG definition (the orchestration code in Git). The two are complementary; the pipeline definition plus the data hashes is what reproduces a training run.
+Data versioning tracks the bytes, using content hashes and immutable snapshots. Pipeline versioning tracks the DAG definition, which lives in Git as orchestration code. The two complement each other, and the pipeline definition plus the data hashes is what reproduces a training run.
 </details>
 
 <details><summary>20. What is the difference between a feature store and a data warehouse?</summary>
-A data warehouse stores raw and curated data; a feature store stores features (curated values ready for ML) with point-in-time correctness and online-offline parity. The feature store is purpose-built for ML serving and training; the warehouse is general-purpose. The pipeline that feeds the feature store reads from the warehouse.
+A data warehouse stores raw and curated data for general use. A feature store stores features that are ready for ML, with point-in-time correctness and online-offline parity. The feature store is built for ML training and serving, while the warehouse is general-purpose. The pipeline that feeds the feature store reads from the warehouse.
 </details>
 
 ---

@@ -25,12 +25,12 @@ lab_venue: "GCP / GKE"
 
 ## Why this matters for AI infrastructure
 
-Every chapter in Part 17 has been about observing failures and acting on observations. This chapter is about engineering the system to be reliable in the first place. Reliability engineering is the discipline that turns an AI factory from "we hope it stays up" to "we know it stays up because we tested it".
+Suppose a platform team is asked how reliable its AI factory is. The honest answer is often "we hope it stays up." Reliability engineering replaces that hope with measurements, budgets and drills that show the service really does stay up. This chapter explains how to build that discipline on top of the observability work from Part 17.
 
-Reliability is what the customer pays for. The customer does not care about the GPU count; the customer does not care about the cluster's architecture; the customer cares that the service is up. An AI factory without reliability engineering is an AI factory that hopes the service stays up; an AI factory with reliability engineering is an AI factory that knows the service stays up because the SLOs are measured, the error budgets are tracked, and the chaos engineering drills are run.
+Customers do not care how many GPUs your cluster has or how it is wired. They care whether the service answers when they call it. An AI factory without reliability engineering depends on luck. An AI factory with it knows its uptime, because the targets are measured, the budget is tracked and the failure drills are run.
 
 ```text
-Why reliability engineering is on the critical path (EAS Ch 7; V19 chXX; PK Ch 14):
+Why reliability engineering is on the critical path (background reading: Engineering AI Systems; NVIDIA Zero-to-Hero volume 19; Production Kubernetes; the figures below are examples, not quotations):
 - A typical mature AI platform commits to 99.9% monthly availability. The
   commitment is enforced by the SLO; the commitment is measured by the
   error budget; the commitment is tested by chaos engineering.
@@ -42,15 +42,17 @@ Why reliability engineering is on the critical path (EAS Ch 7; V19 chXX; PK Ch 1
   error budget; the discipline is the chaos engineering game day.
 ```
 
-Three operational realities make this chapter a platform-team concern rather than a data-science-only concern:
+Three realities make this a platform-team concern, not only a data-science concern. Each one changes who has to act.
 
-1. **The SLOs are the platform team's contract.** The platform team commits to the SLOs; the business verifies the SLOs; the customer experiences the SLOs. The platform team's discipline is what makes the SLOs honest.
-2. **The error budget is the platform team's discipline.** The budget is the cost of unreliability; the team spends the budget on improvement; the team pauses when the budget is exhausted. The discipline is what makes the budget real.
-3. **The chaos engineering is the platform team's drill.** The game day tests the SLO; the game day tests the runbook; the game day drills the team. The drill is what makes the SLOs tested.
+1. The SLOs are the platform team's contract. The team commits to them, the business checks them, and customers feel them. A contract means something only when the team can show it is being kept.
+2. The error budget keeps that contract honest. It is the amount of unreliability the team is allowed, and the team spends it on change. When the budget runs out, the team stops changing things and works on stability.
+3. Chaos engineering is the drill. A game day tests the SLO, tests the runbook and trains the people who respond to an incident.
 
-**Before a team can claim their AI factory is reliable, the team must have SLOs, error budgets, and chaos engineering drills. A team that has SLOs but not chaos engineering is a team that has not tested the SLOs. A team that has chaos engineering but not SLOs is a team that has tested nothing.**
+**A team that has SLOs but no chaos engineering has never tested its SLOs. A team that has chaos engineering but no SLOs has tested nothing it can measure.**
 
 ## Prerequisites and outcomes
+
+This chapter builds on three earlier chapters. Read them first if their ideas are new to you.
 
 ### Prerequisites
 
@@ -60,13 +62,13 @@ Three operational realities make this chapter a platform-team concern rather tha
 
 ### Outcomes
 
-After completing this chapter you will be able to:
+After completing this chapter you will be able to do the following. Each outcome is something you can check on your own platform.
 
-1. Specify the SLOs for the AI factory: availability, latency, throughput, model quality.
-2. Implement the error budget: how much unreliability the team can afford; how the budget is tracked.
-3. Run chaos engineering game days: the planning; the injection; the observation; the post-mortem.
-4. Implement the redundancy patterns: N+1 GPU nodes, multi-region failover, active-active inference.
-5. Operate the reliability engineering stack on GKE with reliable SLOs, tracked budgets, and tested drills.
+1. Specify the SLOs for the AI factory: availability, latency, throughput and model quality.
+2. Implement an error budget that shows how much unreliability the team can afford, and track it.
+3. Run chaos engineering game days, from planning through injection and observation to the post-mortem.
+4. Implement the redundancy patterns: N+1 GPU nodes, multi-region failover and active-active inference.
+5. Operate the stack on GKE with measured SLOs, tracked budgets and tested drills.
 
 ---
 
@@ -74,7 +76,7 @@ After completing this chapter you will be able to:
 
 ### 1.1 The reliability triangle
 
-*Engineering AI Systems* Chapter 7 walks through the reliability triangle. The reliability triangle is: SLO + error budget + chaos engineering. The three corners of the triangle are what make the reliability honest.
+Reliability needs three parts that check one another. The *Engineering AI Systems* book, Chapter 7, calls this the reliability triangle. It joins an SLO (the commitment), an error budget (the allowed unreliability) and chaos engineering (the drill). If one corner is missing, the other two cannot prove much.
 
 ```mermaid
 flowchart TB
@@ -86,11 +88,11 @@ flowchart TB
     CE --- SLO
 ```
 
-The pattern is: the SLO is the commitment; the error budget is the cost; the chaos engineering is the drill. The triangle is what makes the reliability honest.
-
 ### 1.2 The reliability metrics
 
-The reliability metrics are the SLIs from Chapter 17.6. The metrics are the availability, the latency, the throughput, the error rate, and the model quality.
+You cannot set a target until you can measure the service. The measurements are the SLIs from Chapter 17.6, and this chapter uses five of them: availability, latency, throughput, error rate and model quality. Each one answers a question a user would ask, such as "Is it up?" or "Is it fast?"
+
+The targets in the table below are example values. Your team should choose its own numbers after it measures what users actually see.
 
 | SLI | Target | Measurement |
 |---|---|---|
@@ -100,11 +102,11 @@ The reliability metrics are the SLIs from Chapter 17.6. The metrics are the avai
 | Error rate | < 0.1% | Rate counter / total requests |
 | Model quality | > 0.85 AUC | Live accuracy signal |
 
-The pattern is: the metrics are measured continuously; the metrics feed the SLO dashboard; the SLO dashboard drives the error budget; the error budget drives the change management.
+Measure these continuously. The measurements feed the SLO dashboard. That dashboard drives the error budget, and the budget decides how fast the team can change the system.
 
 ### 1.3 The reliability tiers
 
-The reliability tiers are the levels of reliability the AI factory offers to different consumers. The tiers are: bronze (best-effort), silver (99.9%), gold (99.99%), platinum (99.999%).
+Not every consumer needs the same reliability, and higher reliability costs more to run. Tiers let each consumer pick a level that matches its job. Bronze suits experiments, and platinum suits critical services.
 
 | Tier | Availability | Latency | Use case |
 |---|---|---|---|
@@ -113,7 +115,7 @@ The reliability tiers are the levels of reliability the AI factory offers to dif
 | Gold | 99.99% monthly | < 300 ms | Customer-facing services |
 | Platinum | 99.999% monthly | < 100 ms | Critical services |
 
-The pattern is: each consumer picks a tier; the tier determines the SLO; the tier determines the cost; the platform team charges per tier.
+The numbers in this table are example values, not industry standards. Each consumer picks a tier, the tier sets the SLO, and the tier sets the cost. The platform team can then charge each consumer for the level it chooses.
 
 ---
 
@@ -121,7 +123,7 @@ The pattern is: each consumer picks a tier; the tier determines the SLO; the tie
 
 ### 2.1 The error budget model
 
-The error budget model is the team's SLO translated into a budget. The budget is the cost of unreliability; the team spends the budget on improvement; the team pauses when the budget is exhausted.
+Suppose your team promises 99.9% availability for a month. That promise leaves a small amount of room for failure. The error budget turns the promise into minutes of allowed downtime, and the team can spend those minutes on risky changes.
 
 ```text
 Error budget at 99.9% monthly availability:
@@ -132,11 +134,13 @@ Error budget at 99.9% monthly availability:
 - Burn rate at 10x: 14.4 minutes per day (page on-call)
 ```
 
-The pattern is: the budget is computed from the SLO; the burn rate is the rate at which the budget is consumed; the alert fires when the burn rate exceeds the threshold.
+The arithmetic is simple. A 30-day month has 43,200 minutes, and the 0.1% allowance is 43.2 minutes of that. The burn rate measures how fast you spend that allowance. At 1x you spend it evenly across the month, while 10x spends it ten times faster.
+
+Before you set an alert, decide how much budget you are willing to lose before someone must act.
 
 ### 2.2 The error budget policy
 
-The error budget policy says what the team does when the budget is exhausted. The policy is documented; the policy is enforced; the policy is reviewed quarterly.
+A budget helps only when the team agrees in advance what happens when it runs low. That agreement is the policy. The steps in the block below are example values. Your team chooses the percentages and the freezes, writes them down and reviews them on a fixed schedule, such as every quarter.
 
 ```text
 Error budget policy:
@@ -146,14 +150,12 @@ Error budget policy:
 - Budget at 0% remaining: the team freezes all deployments; the IC convenes a war room
 ```
 
-The pattern is: the policy is graduated; the policy is enforced; the policy is auditable.
-
 ### 2.3 The error budget dashboard
 
-The error budget dashboard is the team's view of the remaining budget. The dashboard shows the current budget; the dashboard shows the burn rate; the dashboard shows the forecast.
+The dashboard lets the team see the budget before a problem forces the question. Show the remaining budget, the burn rate and the forecast for the end of the month together. The JSON below is a starting point for a Grafana dashboard.
 
 ```yaml
-# code/part17/error_budget_dashboard.json (shape only)
+# code/part17/error_budget_dashboard.json
 {
   "dashboard": {
     "title": "AI Factory - Error Budget",
@@ -167,28 +169,26 @@ The error budget dashboard is the team's view of the remaining budget. The dashb
 }
 ```
 
-The pattern is: the dashboard shows the current state; the dashboard shows the trend; the dashboard drives the policy.
-
 ---
 
 ## 3. Chaos engineering
 
 ### 3.1 The chaos engineering principles
 
-Chaos engineering is the discipline of running controlled experiments on a production system to validate the system's resilience. The principles are: define steady state; hypothesise; run experiments; minimise blast radius.
+Chaos engineering means breaking things on purpose, in a controlled way, to learn whether the system holds. A team that never breaks anything learns its weak spots during a real outage. The principles below keep each experiment safe and useful.
+
+Every experiment starts by measuring the steady state, which is the normal value of the SLI. You then state a hypothesis that the SLI stays in that state. Next you inject the failure and watch the SLI, keeping the blast radius small enough to reverse quickly.
 
 | Principle | What it means |
 |---|---|
-| Define steady state | The SLIs are measured; the steady state is the expected SLI value |
+| Define steady state | The SLIs are measured, and the steady state is the expected SLI value |
 | Hypothesise | The hypothesis is "the SLI will remain in steady state during the experiment" |
-| Run experiments | The experiment injects a failure; the team observes the SLI |
-| Minimise blast radius | The experiment is small; the experiment is reversible; the experiment is contained |
-
-The pattern is: every experiment has a hypothesis; every experiment has a blast radius; every experiment has a post-mortem.
+| Run experiments | The experiment injects a failure, and the team observes the SLI |
+| Minimise blast radius | The experiment is small, reversible and contained |
 
 ### 3.2 The chaos engineering tools
 
-The chaos engineering tools are the platforms that run the experiments. The tools are: Chaos Mesh (Kubernetes-native), LitmusChaos (Kubernetes-native), Gremlin (managed).
+Tools run the experiments so your team does not have to script each failure by hand. Chaos Mesh and LitmusChaos run inside Kubernetes. Gremlin is a managed service. Choose one your team can operate, and check each tool's current documentation before you depend on it.
 
 | Tool | What it does |
 |---|---|
@@ -196,32 +196,33 @@ The chaos engineering tools are the platforms that run the experiments. The tool
 | LitmusChaos | Inject failures into Kubernetes pods, nodes, networks, cloud APIs |
 | Gremlin | Inject failures into Kubernetes pods, nodes, networks, cloud APIs |
 
-The pattern is: pick the tool that integrates with the existing observability stack; run the experiment in a staging environment first; run the experiment in production with a small blast radius.
-
 ### 3.3 The chaos engineering experiments
 
-The chaos engineering experiments are the scenarios the team drills. The experiments are: pod failure, node failure, network partition, disk failure, dependency failure.
+Start with the failures your platform is most likely to meet. Pod failure, node failure, network partition, disk failure and dependency failure are common first choices. The example below runs a pod-failure experiment every hour in the mlops namespace, for five minutes each time.
 
 ```yaml
-# code/part17/chaos_experiment.yaml (shape only)
+# Chaos Mesh runs a recurring experiment through a Schedule resource
 apiVersion: chaos-mesh.org/v1alpha1
-kind: PodChaos
+kind: Schedule
 metadata:
-  name: pod-failure-experiment
+  name: pod-failure-hourly
 spec:
-  action: pod-failure
-  mode: one
-  selector:
-    namespaces:
-      - mlops
-    labelSelectors:
-      app: churn-model
-  duration: "5m"
-  scheduler:
-    cron: "@every 1h"
+  schedule: "@every 1h"
+  type: PodChaos
+  historyLimit: 5
+  concurrencyPolicy: Forbid
+  podChaos:
+    action: pod-failure
+    mode: one
+    duration: "5m"
+    selector:
+      namespaces:
+        - mlops
+      labelSelectors:
+        app: churn-model
 ```
 
-The pattern is: the experiment is scheduled; the experiment has a duration; the experiment has a selector; the experiment has a blast radius.
+The Chaos Mesh version changes what the manifest may contain. The current PodChaos CRD has no scheduler field, which was checked against the CRD in the upstream repository. Recurring runs therefore use the Schedule kind shown here. Pin the version you install and check the manifest against it, because the experiment itself has not been run on a live cluster.
 
 ---
 
@@ -229,7 +230,7 @@ The pattern is: the experiment is scheduled; the experiment has a duration; the 
 
 ### 4.1 N+1 GPU nodes
 
-The N+1 GPU nodes pattern is the redundancy for GPU hardware. The pattern is: the cluster has N+1 GPU nodes for every N nodes the workload needs; when a node fails, the workload is rescheduled to the spare node.
+GPU hardware fails, and a spare node is the cheapest way to keep a training run going. N+1 redundancy keeps one spare for every group of nodes a workload needs. When a node fails, the scheduler moves the work to the spare. The AI Factory book, Chapter 9, makes the same point at the level of cloud services: the goal is no single point of failure, so one failed server does not stop the service.
 
 ```text
 N+1 GPU nodes:
@@ -239,11 +240,11 @@ N+1 GPU nodes:
 - Cost overhead: 1/9 = 11% extra GPUs
 ```
 
-The pattern is: the cluster has N+1 GPUs; the workload is rescheduled on failure; the cost overhead is the price of redundancy.
+In this example the spare adds about 11 percent to the GPU bill. You pay that price for faster recovery. Before you buy the spare, confirm that the scheduler can really move the workload onto it.
 
 ### 4.2 Multi-region failover
 
-The multi-region failover pattern is the redundancy for regional outages. The pattern is: the cluster is deployed in two regions; the workload runs in the primary region; when the primary region fails, the workload is failed over to the secondary region.
+Some failures are bigger than one node. A whole region can go down because of a power, network or provider problem. Multi-region failover keeps a second region ready. The workload runs in the primary region until that region fails, and then it moves to the secondary.
 
 ```text
 Multi-region failover:
@@ -254,11 +255,11 @@ Multi-region failover:
 - Cost overhead: 2x the compute (two regions)
 ```
 
-The pattern is: the workload runs in two regions; the failover is automatic; the cost overhead is the price of multi-region redundancy.
+A second region doubles the compute cost, which is the price of surviving a regional outage. A failover that has never been run is a guess, so treat the first drill as part of the design.
 
 ### 4.3 Active-active inference
 
-The active-active inference pattern is the redundancy for inference workloads. The pattern is: the workload runs in multiple regions simultaneously; the load balancer routes to the nearest region; when a region fails, the load balancer routes to the other region.
+Failover takes time, because the secondary region has to start and then take traffic. Active-active avoids that delay by serving inference from two regions at the same time. A load balancer sends each request to the nearest region, and if one region fails, the other already handles the traffic.
 
 ```text
 Active-active inference:
@@ -269,13 +270,17 @@ Active-active inference:
 - Cost overhead: 2x the compute (two regions)
 ```
 
-The pattern is: the workload runs in two regions; the load balancer routes to the nearest region; the failover is automatic.
+The block shows the cost. Both regions run at once, so compute is doubled. Choose active-active only when even a short outage costs the service too much.
 
 ---
 
 ## 5. Operating reliability engineering on GKE
 
 ### 5.1 The components
+
+Four components make up the stack on GKE. Chaos Mesh runs the experiments. Grafana shows the error budget and the SLO. Alertmanager sends the burn-rate alert to PagerDuty. The table lists where each one runs and what stores its data.
+
+The latency figures in the table are example targets. Set your own after you measure the stack.
 
 | Component | Where it runs | Backing store | SLO |
 |---|---|---|---|
@@ -286,7 +291,7 @@ The pattern is: the workload runs in two regions; the load balancer routes to th
 
 ### 5.2 IAM and the reliability discipline
 
-The reliability stack has its own IAM. The pattern is:
+The reliability stack needs its own access rules. Readers should see the dashboards, the platform team should change targets and policy, and only the platform lead should approve experiments. The table shows one way to split those rights.
 
 | Role | Who | What they can do |
 |---|---|---|
@@ -294,9 +299,11 @@ The reliability stack has its own IAM. The pattern is:
 | `reliability.writer` | The platform team | Update the SLO targets; update the error budget policy |
 | `reliability.admin` | The platform team lead | Approve the chaos engineering experiments; enforce the error budget policy |
 
-The reliability discipline is the platform team's discipline. The discipline is documented; the discipline is enforced; the discipline is reviewed quarterly.
+The platform team owns this discipline. It works only when the rules are written down, enforced and reviewed on a regular schedule.
 
 ### 5.3 Observability
+
+A dashboard alone is not enough. You need alerts that fire before the budget is gone, and you need to know when the monitoring itself fails. The table lists the metrics to watch and the thresholds to start with. Treat the thresholds as example values to tune for your service.
 
 | Metric | Why it matters | Alert |
 |---|---|---|
@@ -306,67 +313,71 @@ The reliability discipline is the platform team's discipline. The discipline is 
 | N+1 spare GPU ratio | Redundancy | < 1 spare GPU |
 | Multi-region failover latency | Redundancy | > 5 minutes |
 
-The chaos experiment success rate is the most important metric. A low success rate means the team's drills are failing; a low success rate means the team's reliability is not tested.
+Production Kubernetes, Chapter 9, adds one alert that teams often forget. Set an alert that fires on a regular schedule while everything is healthy. If that alert stops arriving, send a critical notice, because your alerting may be down without anyone knowing.
+
+Of the metrics above, the chaos experiment success rate says the most about whether your drills work. A falling rate means the drills keep failing, and the reliability claims are not yet tested.
 
 ---
 
 ## 6. How it fails
 
-Six failure modes recur.
+Six failure modes come up again and again. You may recognise one of them from your own team. Each one below starts with a symptom, names the likely cause and gives a fix. Most of them share one root: the practice exists on paper only.
 
 ### 6.1 "The error budget is exhausted but the team continues to deploy"
 
-**Symptom:** The error budget is at 0%; the team continues to deploy; the SLO is breached.
+**Symptom:** The budget is at 0%, yet deployments keep going out, and the SLO stays breached.
 
-**Diagnosis:** The error budget policy is not enforced; the team is not aware of the budget exhaustion.
+**Diagnosis:** The policy exists on paper, but nobody enforces it. The team may not even know the budget is gone.
 
-**Fix:** Enforce the budget policy in CI; add the budget exhaustion alert; train the team on the policy.
+**Fix:** Enforce the policy in CI, alert when the budget runs out, and train the team on what the policy requires. Consider which of these you can add this week.
 
 ### 6.2 "The chaos engineering experiment is too aggressive"
 
-**Symptom:** The chaos engineering experiment takes down the cluster; the SLO is breached; the customer complains.
+**Symptom:** The experiment takes down the cluster, the SLO is breached, and a customer complains.
 
-**Diagnosis:** The blast radius is too large; the experiment is not contained; the experiment is not reversible.
+**Diagnosis:** The blast radius was too large. Nothing contained the experiment, and nothing let the team reverse it quickly.
 
-**Fix:** Reduce the blast radius; add the rollback to every experiment; test the experiment in staging first.
+**Fix:** Shrink the blast radius, add a rollback to every experiment, and rehearse first in staging.
 
 ### 6.3 "The redundancy pattern is not tested"
 
-**Symptom:** The team has N+1 GPU nodes; the team has multi-region failover; the failover has never been tested; when the failover happens, the failover fails.
+**Symptom:** The team has N+1 GPU nodes and a second region, but the failover has never run. When a real failure arrives, the failover fails too.
 
-**Diagnosis:** The redundancy is theoretical; the failover has not been drilled; the failover is not documented.
+**Diagnosis:** The redundancy exists only on paper. Nobody has drilled it, and nobody has written down the steps.
 
-**Fix:** Run the failover as a chaos engineering experiment quarterly; document the failover; test the failover in staging.
+**Fix:** Run the failover as a chaos experiment every quarter, document each step, and test in staging first.
 
 ### 6.4 "The SLO is breached but the team does not know"
 
-**Symptom:** The SLO is breached; the dashboard shows the breach; the team does not know; the customer complains.
+**Symptom:** The dashboard shows the breach, but nobody acts on it, and the customer raises the problem first.
 
-**Diagnosis:** The SLO alert is not configured; the SLO dashboard is not monitored; the SLO breach is not detected.
+**Diagnosis:** The SLO alert is missing, or nobody watches the dashboard. The breach goes undetected.
 
-**Fix:** Add the SLO alert; monitor the SLO dashboard; add the SLO breach detection.
+**Fix:** Add an SLO alert, name an owner for the dashboard, and add breach checks to the on-call routine.
+
+Hardware signals belong on the same alert list. AI Systems Performance Engineering, Chapter 16, treats any uncorrectable ECC memory error as a critical alert, because it corrupts data and requires a reset.
 
 ### 6.5 "The reliability metrics are not tracked"
 
-**Symptom:** The team does not know the current reliability; the team does not know the trend; the team does not know what to improve.
+**Symptom:** The team cannot say whether reliability is improving or getting worse, and it cannot name its weakest service.
 
-**Diagnosis:** The reliability metrics are not tracked; the reliability dashboard is missing; the reliability review is missing.
+**Diagnosis:** No reliability dashboard or review exists, so the numbers never get looked at.
 
-**Fix:** Add the reliability dashboard; add the reliability review; add the reliability metrics to the team's quarterly OKRs.
+**Fix:** Build the reliability dashboard, hold a regular review, and add reliability goals to the team's planning cycle.
 
 ### 6.6 "The reliability discipline is not followed"
 
-**Symptom:** The team has SLOs but does not track them; the team has error budgets but does not enforce them; the team has chaos engineering but does not run it.
+**Symptom:** The team writes SLOs but does not track them, sets budgets but does not enforce them, and plans drills but never runs them.
 
-**Diagnosis:** The reliability discipline is documented but not enforced; the team is not trained on the discipline.
+**Diagnosis:** The discipline is written down but not enforced, and the team never learned how to use it.
 
-**Fix:** Train the team on the reliability discipline; enforce the discipline in CI; add the discipline to the team's onboarding.
+**Fix:** Train the team, enforce the rules in CI, and include the discipline in onboarding for new engineers.
 
 ---
 
 ## 7. Hands-on lab
 
-This lab walks through the SLOs, the error budget, the chaos engineering experiment, and the redundancy pattern. The lab is **untested** in this repository.
+This lab walks through the SLOs, the error budget, a chaos experiment and a redundancy drill. No one has run it against a live cluster yet, so treat each step as a plan to test, not a proven procedure.
 
 ### 7.1 Prerequisites
 
@@ -376,6 +387,8 @@ This lab walks through the SLOs, the error budget, the chaos engineering experim
 
 ### 7.2 Step 1: define the SLOs
 
+Start by putting the SLO definitions where the whole team can see them. The command below loads the dashboard file into a ConfigMap, and the comment after it shows where to find the dashboard.
+
 ```bash
 # Define the SLOs in the SLO dashboard
 kubectl -n monitoring create configmap slo-dashboard \
@@ -384,6 +397,8 @@ kubectl -n monitoring create configmap slo-dashboard \
 ```
 
 ### 7.3 Step 2: track the error budget
+
+Next, load the error budget alerts and reload Prometheus so the rules take effect. The reload call goes to the Prometheus endpoint in the monitoring namespace. The expected line tells you the alerts are live.
 
 ```bash
 # Add the error budget alert
@@ -396,6 +411,8 @@ curl -X POST http://prometheus.monitoring:9090/-/reload
 ```
 
 ### 7.4 Step 3: run a chaos engineering experiment
+
+Install Chaos Mesh, apply the experiment, and watch the events. You should see a pod fail and the workload come back on another node.
 
 ```bash
 # Install Chaos Mesh
@@ -414,6 +431,8 @@ kubectl get events -n mlops -w
 
 ### 7.5 Step 4: observe the SLO during the experiment
 
+While the experiment runs, query the availability metric. The result shows whether the SLO held through the failure.
+
 ```bash
 # Query the SLO during the experiment
 curl -s 'http://prometheus.monitoring:9090/api/v1/query?query=cluster_availability' | jq .
@@ -421,6 +440,8 @@ curl -s 'http://prometheus.monitoring:9090/api/v1/query?query=cluster_availabili
 ```
 
 ### 7.6 Step 5: run the failover drill
+
+Drain one node to simulate a failure, watch the pods move, and then bring the node back. The drain runs against the production context, so schedule it in a window your team has agreed on.
 
 ```bash
 # Drain a node
@@ -436,7 +457,7 @@ kubectl --context=production uncordon gpu-node-1
 
 ### 7.7 What to record
 
-After the lab, you should be able to answer five questions in five seconds each:
+After the lab, check that you can answer five questions quickly. Each answer should come from the dashboard in a few seconds.
 
 1. What is the current error budget remaining?
 2. What is the current burn rate (1h)?
@@ -444,101 +465,103 @@ After the lab, you should be able to answer five questions in five seconds each:
 4. What was the result of the most recent failover drill?
 5. What is the current SLO compliance per service?
 
-If any takes more than 30 seconds, the reliability engineering stack is not yet a production service. The lab is **untested** against a live GKE cluster.
+The five-second and 30-second limits in this section are example values. Pick limits that match your own on-call needs. If the answers take longer, the stack still needs work before it can carry production traffic. The lab has not yet been run against a live GKE cluster.
 
 ---
 
 ## Exercises
 
-1. **Add an SLO alert.** Configure a Prometheus alert that fires when the SLO is breached; add the runbook URL. *Solution sketch:* a Prometheus alert on the SLI; the alert severity is critical; the runbook URL is the runbook for the SLI.
-2. **Add an error budget policy.** Document the policy that says what the team does when the budget is exhausted. *Solution sketch:* a Markdown document; the document is the policy; the document is reviewed quarterly.
-3. **Add a chaos engineering game day.** Schedule a quarterly chaos engineering game day; the game day tests the SLOs; the game day produces a post-mortem. *Solution sketch:* a calendar event; the Chaos Mesh experiment; the post-mortem.
-4. **Add a redundancy pattern.** Add N+1 GPU nodes to the cluster; verify the workload is rescheduled on node failure. *Solution sketch:* a node pool with N+1 nodes; the workload's pod disruption budget; the failover drill.
-5. **Add a multi-region failover.** Deploy the cluster in two regions; configure the load balancer to route to the nearest region; test the failover. *Solution sketch:* a multi-region deployment; a global load balancer; the failover drill.
-6. **Add a reliability review.** Schedule a quarterly reliability review; the review produces a report; the report is added to the team's quarterly OKRs. *Solution sketch:* a calendar event; the review script; the report.
+Work through these on your own cluster or in a sandbox, and write down what you find.
+
+1. **Add an SLO alert.** Write a Prometheus alert that fires when the SLO is breached, and link it to a runbook. *Solution sketch:* the alert watches the SLI, carries critical severity and points to the runbook for that SLI.
+2. **Add an error budget policy.** Write down what the team does when the budget runs out. *Solution sketch:* a short Markdown document that states the policy and gets reviewed on a schedule.
+3. **Add a chaos game day.** Schedule a game day each quarter that tests the SLOs and ends in a post-mortem. *Solution sketch:* a calendar event, a Chaos Mesh experiment and a written post-mortem.
+4. **Add N+1 GPU nodes.** Add a spare node to the cluster and check that the workload moves when a node fails. *Solution sketch:* a node pool with one spare node, a pod disruption budget for the workload and a failover drill.
+5. **Add multi-region failover.** Deploy the cluster in two regions, route traffic to the nearest one and test the switch. *Solution sketch:* a second-region deployment, a global load balancer and a failover drill.
+6. **Add a reliability review.** Hold a quarterly review that produces a short report and feeds the team's goals. *Solution sketch:* a calendar event, a review script that gathers the numbers and the report itself.
 
 ---
 
 ## Checkpoint questions
 
 <details><summary>1. What is the reliability triangle?</summary>
-The three corners of the triangle are SLO (the commitment), error budget (the cost of unreliability), and chaos engineering (the drill). The triangle is what makes the reliability honest. Without one corner, the reliability is incomplete.
+The triangle has three corners: the SLO (the commitment), the error budget (the cost of unreliability) and chaos engineering (the drill). Each corner checks the other two. Without one of them, the reliability claim is incomplete.
 </details>
 
 <details><summary>2. What is the error budget?</summary>
-The team's SLO translated into a budget. At 99.9% monthly availability, the budget is 43.2 minutes of downtime per month. The team can spend the budget on improvement; the team pauses when the budget is exhausted. The budget is the cost of unreliability.
+The error budget is the SLO turned into a budget. If you can do this arithmetic yourself, you can explain the budget to a manager. At 99.9% monthly availability, the budget is 43.2 minutes of downtime per month. The team spends that room on change, and it pauses change when the budget runs out.
 </details>
 
 <details><summary>3. What are the chaos engineering principles?</summary>
-Define steady state (the SLI is measured; the steady state is the expected SLI value), hypothesise (the SLI will remain in steady state during the experiment), run experiments (inject a failure; observe the SLI), minimise blast radius (the experiment is small; the experiment is reversible; the experiment is contained).
+The principles are: define the steady state, hypothesise, run experiments and minimise the blast radius. Defining the steady state means measuring the normal value of the SLI. The hypothesis says the SLI stays in that state during the experiment. The experiment injects a failure and watches the SLI, and the blast radius stays small, reversible and contained.
 </details>
 
 <details><summary>4. What are the redundancy patterns?</summary>
-N+1 GPU nodes (the cluster has N+1 GPU nodes for every N nodes the workload needs), multi-region failover (the cluster is deployed in two regions; the workload fails over on regional outage), active-active inference (the workload runs in multiple regions simultaneously; the load balancer routes to the nearest region).
+The three patterns are N+1 GPU nodes, multi-region failover and active-active inference. N+1 keeps one spare for every N nodes the workload needs. Failover runs in one region and moves to a second when the first fails. Active-active runs in two regions at once, and the load balancer sends traffic to the nearest one.
 </details>
 
 <details><summary>5. What is the most common reliability failure?</summary>
-The error budget is exhausted but the team continues to deploy. The diagnosis is that the error budget policy is not enforced. The fix is to enforce the policy in CI; add the budget exhaustion alert; train the team on the policy.
+The most common failure is an exhausted error budget that the team keeps ignoring. The team keeps deploying, the SLO stays breached, and the policy goes unenforced. The fix is to enforce the policy in CI, alert on budget exhaustion and train the team on the policy.
 </details>
 
 <details><summary>6. What is the most common chaos engineering failure?</summary>
-The chaos engineering experiment is too aggressive. The blast radius is too large; the experiment is not contained; the experiment is not reversible. The fix is to reduce the blast radius; add the rollback to every experiment; test the experiment in staging first.
+The most common failure is an experiment that is too aggressive. Its blast radius was too large, nothing contained it, and it could not be reversed. The fix is a smaller blast radius, a rollback for every experiment and a first run in staging.
 </details>
 
 <details><summary>7. What is the most common redundancy failure?</summary>
-The redundancy pattern is not tested. The team has N+1 GPU nodes; the team has multi-region failover; the failover has never been tested. The fix is to run the failover as a chaos engineering experiment quarterly.
+The most common failure is a redundancy pattern that nobody tests. The team has spare nodes and a second region, but the failover has never been run. The fix is to run the failover as a chaos experiment every quarter.
 </details>
 
 <details><summary>8. What is the most common SLO failure?</summary>
-The SLO is breached but the team does not know. The SLO alert is not configured; the SLO dashboard is not monitored. The fix is to add the SLO alert; monitor the SLO dashboard.
+The most common failure is a breach that nobody notices. The SLO alert is missing, and nobody watches the dashboard. The fix is to add the alert and watch the dashboard.
 </details>
 
 <details><summary>9. What is the most common reliability metrics failure?</summary>
-The reliability metrics are not tracked. The team does not know the current reliability; the team does not know the trend. The fix is to add the reliability dashboard; add the reliability review.
+The most common failure is that nobody tracks the reliability numbers. The team cannot see the current state or the trend. The fix is a reliability dashboard and a regular review.
 </details>
 
 <details><summary>10. What is the most common reliability discipline failure?</summary>
-The reliability discipline is not followed. The team has SLOs but does not track them; the team has error budgets but does not enforce them. The fix is to train the team on the discipline; enforce the discipline in CI.
+The most common failure is a team that writes the rules and then skips them. It sets SLOs but does not track them, and it sets budgets but does not enforce them. The fix is training and enforcement in CI.
 </details>
 
 <details><summary>11. What is the difference between SLO and SLI?</summary>
-The SLI is the metric that measures the SLO. The SLO is the target that the platform team commits to meet. The SLI is the measurement; the SLO is the goal.
+The SLI is the measurement, and the SLO is the target that the platform team commits to meet. The SLI tells you what actually happened. The SLO says what you promised.
 </details>
 
 <details><summary>12. What is the difference between the error budget and the cost dashboard?</summary>
-The error budget is the forward-looking view: how much unreliability the team can afford. The cost dashboard is the backward-looking view: how much the team spent. The error budget is the cost of unreliability; the cost dashboard is the cost of reliability.
+The error budget looks forward and shows how much unreliability the team can still afford. The cost dashboard looks back at what the team already spent. The error budget measures the cost of unreliability, and the cost dashboard measures the cost of reliability.
 </details>
 
 <details><summary>13. What is the difference between chaos engineering and load testing?</summary>
-Load testing measures the system's behaviour under expected load. Chaos engineering measures the system's behaviour under unexpected failure. Load testing is for capacity; chaos engineering is for resilience.
+Load testing measures the system's behaviour under expected load, and it is used for capacity. Chaos engineering measures the system's behaviour under unexpected failure, and it is used for resilience.
 </details>
 
 <details><summary>14. What is the difference between N+1 and 2N redundancy?</summary>
-N+1 redundancy has N+1 components for every N needed; the spare component takes over on failure. 2N redundancy has 2N components for every N needed; both N components run simultaneously. N+1 is cheaper; 2N is more available.
+N+1 keeps N+1 components for every N needed, and the spare takes over on failure. 2N keeps two full sets of N components, and both run at the same time. N+1 costs less, and 2N gives higher availability. When you choose between them, ask how long you can afford to be down.
 </details>
 
 <details><summary>15. What is the difference between failover and active-active?</summary>
-Failover runs the workload in one region at a time; when the primary fails, the workload is failed over to the secondary. Active-active runs the workload in two regions simultaneously; the load balancer routes to the nearest region. Failover is cheaper; active-active is more available.
+Failover runs the workload in one region at a time and moves it to the secondary when the primary fails. Active-active runs the workload in two regions at once, and the load balancer routes to the nearest one. Failover costs less, and active-active is more available.
 </details>
 
 <details><summary>16. What is the difference between the burn rate and the error rate?</summary>
-The error rate is the rate of failed requests at a single moment. The burn rate is the rate at which the error budget is consumed over a period. The error rate is the input to the burn rate; the burn rate is the output.
+The error rate is the rate of failed requests at a single moment. The burn rate is the rate at which the error budget is consumed over a period. The error rate feeds the burn rate, which is its output.
 </details>
 
 <details><summary>17. What is the relationship between the SLO and the SLA?</summary>
-The SLO is the engineering target. The SLA is the customer-facing commitment; the SLA includes the consequences for breach (e.g. service credit). The SLO is what the team aims for; the SLA is what the customer is promised.
+The SLO is the engineering target the team aims for. The SLA is the customer-facing commitment, and it includes consequences for a breach, such as a service credit. The SLO is what the team works toward, and the SLA is what the customer is promised.
 </details>
 
 <details><summary>18. Why is reliability engineering a Tier 2 chapter?</summary>
-Because the reliability engineering discipline is what makes the platform team's SLO commitments honest. The discipline is what the platform team owns; the discipline is what the customer experiences; the discipline is what the CFO sees. A team that does not have the discipline is a team that is hoping the service stays up.
+Reliability engineering makes the platform team's SLO commitments honest. The platform team owns the discipline, customers experience it, and finance sees its results. A team without the discipline is only hoping the service stays up.
 </details>
 
 <details><summary>19. What is the difference between the reliability triangle and the reliability dashboard?</summary>
-The reliability triangle is the model (SLO + error budget + chaos engineering). The reliability dashboard is the visualisation of the model (the SLIs, the error budget, the chaos engineering results). The triangle is the concept; the dashboard is the implementation.
+The reliability triangle is the model: SLO, error budget and chaos engineering. The reliability dashboard puts that model into practice with the SLIs, the budget and the experiment results. The triangle is the concept, and the dashboard is the implementation.
 </details>
 
 <details><summary>20. What five questions should the reliability engineering lab let you answer in five seconds each?</summary>
-What is the current error budget remaining. What is the current burn rate 1h. What was the most recent chaos engineering experiment. What was the result of the most recent failover drill. What is the current SLO compliance per service. If any takes more than 30 seconds, the reliability engineering stack is not yet a production service.
+The lab should let you answer the current error budget remaining, the one-hour burn rate, the most recent chaos experiment, the result of the most recent failover drill, and the current SLO compliance per service. The chapter sets 30 seconds as an example limit for any one of these answers. Pick your own limit, and if an answer takes longer, the stack is not yet a production service.
 </details>
 
 ---

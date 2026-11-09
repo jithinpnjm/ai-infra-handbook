@@ -25,12 +25,12 @@ lab_venue: "GCP / GKE"
 
 ## Why this matters for AI infrastructure
 
-Chapters 18.2-18.6 verified the firmware, the supply chain, the access controls, the GPU sharing, and the high-assurance stack. This chapter verifies the data and the model — the assets that the AI factory exists to protect. Every byte in the cluster has a security requirement; every model in the registry has an IP requirement; every audit log entry has a compliance requirement. The platform team's job is to enforce the encryption, the watermarking, the DLP, and the audit log integrity that make the AI factory compliant.
+Chapters 18.2-18.6 covered firmware, the supply chain, access control, GPU sharing, and the high-assurance stack. This chapter covers the data and the models, which are the assets the AI factory exists to protect. Every byte in the cluster carries a security requirement. Every model in the registry carries an intellectual property requirement. Every audit log entry carries a compliance requirement.
 
-The data and model protection is the last line of defence. If the firmware is compromised, the access controls are bypassed, the GPU sharing is broken, and the high-assurance stack is bypassed — the data is still encrypted at rest. If everything else fails, encryption at rest is what saves the customer's data. The audit log is what proves to the regulator that the controls worked.
+Data and model protection is the last line of defence. Suppose an attacker compromises the firmware, gets past the access controls, and breaks the GPU sharing. The data on disk is still encrypted, and that encryption is what saves the customer's data. The audit log then shows the regulator that the controls worked.
 
 ```text
-Why data and model protection is on the critical path (V18 ch10, 11; V8 ch3; EAS Ch 9, 10):
+Why data and model protection is on the critical path (background reading: NVIDIA Zero-to-Hero volume 18; NVIDIA Zero-to-Hero volume 8; Engineering AI Systems; the figures below are examples, not quotations):
 - A typical AI factory stores terabytes of training data and petabytes of
   inference logs. Every byte is a compliance exposure. The platform team's
   job is to encrypt the bytes; the platform team's job is to audit the
@@ -45,17 +45,21 @@ Why data and model protection is on the critical path (V18 ch10, 11; V8 ch3; EAS
   team's job is to make the audit log tamper-evident and auditable.
 ```
 
-Three operational realities make this chapter a platform-team concern rather than a data-science-only concern:
+Three operational realities make this a platform team concern, not only a data science concern.
 
-1. **The encryption is the last line of defence.** If every other control fails, encryption at rest is what saves the customer's data. The platform team's job is to enforce encryption at rest and in transit; the platform team's job is to manage the keys.
-2. **The model watermarking is the IP protection.** The model is the platform's competitive advantage. The platform team's job is to watermark the model; the platform team's job is to verify the watermark; the platform team's job is to detect model theft.
-3. **The audit log is the regulatory evidence.** The regulator does not care about the controls in the abstract; the regulator cares about the evidence. The platform team's job is to make the audit log tamper-evident; the platform team's job is to make the audit log auditable.
+1. Encryption is the last line of defence. When every other control fails, encryption at rest is what keeps the customer's data unreadable. The platform team enforces encryption at rest and in transit, and it manages the keys. Keys are the part teams most often get wrong, so give them an owner from the start.
 
-**Before a team can claim their AI factory is compliant, the team must have enforced the data and model protection. The data must be encrypted at rest and in transit; the model must be watermarked; the audit log must be tamper-evident; the lineage must be auditable. A team that has not enforced the data and model protection is a team that has not enforced the regulatory commitments.**
+2. The model is the platform's intellectual property, so it needs a watermark. A watermark lets you prove that a model came from your platform. It also helps you detect a stolen copy. The platform team applies the watermark, verifies it, and checks for theft.
+
+3. The audit log is the evidence a regulator asks for. A regulator does not accept a description of controls on paper. It wants records that show the controls worked. The platform team makes the log tamper-evident and easy to audit. If the log fails that test, the controls it records cannot be defended.
+
+**Before you call the AI factory compliant, confirm data is encrypted at rest and in transit, models are watermarked, the audit log is tamper-evident, and lineage is auditable.**
 
 ## Prerequisites and outcomes
 
 ### Prerequisites
+
+Read these chapters first. Each one covers a piece of the platform that this chapter depends on. The controls below assume you already know the threat context, the regulatory rules, the storage primitives, and the audit log.
 
 - Chapter 18.1 (Threat modeling) for the threat context.
 - Chapter 16.13 (Governance, privacy, compliance) for the regulatory context.
@@ -64,14 +68,14 @@ Three operational realities make this chapter a platform-team concern rather tha
 
 ### Outcomes
 
-After completing this chapter you will be able to:
+When you finish this chapter, you should be able to do six things.
 
-1. Implement encryption at rest and in transit for every byte in the cluster; manage the keys with a KMS.
-2. Implement model watermarking; verify the watermark; detect model theft.
-3. Implement data loss prevention (DLP); prevent exfiltration of training data and inference logs.
-4. Implement tamper-evident audit log with object-lock and immutable storage.
-5. Build the lineage graph that satisfies GDPR, CCPA, HIPAA, and EU AI Act compliance.
-6. Operate the data and model protection on GKE with continuous verification, key rotation, and incident response.
+1. Encrypt every byte in the cluster at rest and in transit, and manage the keys in a KMS.
+2. Watermark your models, verify the watermark, and detect model theft.
+3. Set up data loss prevention so training data and inference logs do not leave the cluster.
+4. Build a tamper-evident audit log with object lock and immutable storage.
+5. Build a lineage graph that meets the GDPR, CCPA, HIPAA, and EU AI Act requirements.
+6. Run all of this on GKE with continuous checks, key rotation, and incident response.
 
 ---
 
@@ -79,7 +83,7 @@ After completing this chapter you will be able to:
 
 ### 1.1 Encryption at rest
 
-Encryption at rest is the encryption of data when it is stored on disk. Encryption at rest protects the data from disk theft; encryption at rest protects the data from unauthorised physical access; encryption at rest is the last line of defence.
+Picture a disk that leaves a data center without permission. With encryption at rest, the disk holds only scrambled bytes, so the training data on it stays unreadable. Encryption at rest covers data that is stored, not data that is moving. It guards against stolen disks and unauthorised physical access. Production Kubernetes, chapter 7, makes the same recommendation: treat encryption at rest as the default, even if you trust your cloud provider.
 
 ```bash
 # Enable encryption at rest on a GCS bucket
@@ -87,23 +91,23 @@ gsutil encryption set -k projects/${PROJECT_ID}/locations/us/keyRings/default/cr
 # expected: the bucket is encrypted with the customer-managed key
 ```
 
-The pattern is: every object storage bucket is encrypted with a customer-managed key (CMEK); every disk is encrypted with a customer-managed key; every database is encrypted at rest.
-
 ### 1.2 Encryption in transit
 
-Encryption in transit is the encryption of data when it is transmitted over the network. Encryption in transit protects the data from network eavesdropping; encryption in transit protects the data from man-in-the-middle attacks.
+Data also moves. A request from a client to the model API, or from one service to another, can be read by anyone on the network path. Encryption in transit wraps that traffic in TLS, which keeps the contents private and stops an attacker who tries to sit in the middle.
 
 ```bash
-# Enforce TLS 1.3 on every service
+# Allow ingress to the model API only on its TLS port (a NetworkPolicy cannot enforce the TLS version)
 kubectl apply -f code/part18/networkpolicy_tls.yaml
-# expected: every service is accessible only via TLS 1.3
+# expected: traffic to app=model-api is accepted only on TCP 8443
 ```
 
-The pattern is: every service is accessible only via TLS 1.3; every certificate is signed by a trusted CA; every certificate is rotated automatically.
+Set the minimum TLS version at the ingress or the service mesh, because a NetworkPolicy cannot enforce it. Every certificate should come from a trusted certificate authority, and rotation should happen automatically.
 
 ### 1.3 Key management
 
-Key management is the foundation of encryption. The keys are managed by a KMS (Key Management Service); the keys are rotated automatically; the keys are auditable.
+Encryption is only as strong as its keys. If the key sits next to the data, the lock protects nothing. A key management service (KMS) keeps keys apart from the data, rotates them, and keeps a record you can audit.
+
+Kubernetes applies the same idea to Secrets inside the cluster. Production Kubernetes, chapter 7, explains that the API server can encrypt Secret objects before they reach etcd. Kubernetes 1.10 and later can also use a KMS plug-in for envelope encryption, where a key stored in the KMS protects the data keys. The book warns that KMS plug-ins are still immature, so start with the built-in options first.
 
 ```bash
 # Rotate a key in Cloud KMS
@@ -114,15 +118,13 @@ gcloud kms keys rotate \
 # expected: the key is rotated; the new version is active; the old version is disabled
 ```
 
-The pattern is: every key is in a KMS; every key is rotated automatically; every key rotation is auditable.
-
 ---
 
 ## 2. Model watermarking
 
 ### 2.1 What watermarking does
 
-Model watermarking embeds an imperceptible signature in the model's weights or outputs. The watermark proves that the model came from the platform; the watermark detects model theft.
+Imagine a competitor ships a model that looks a lot like yours. You need evidence that it came from your platform. A watermark is a signature embedded in the model's weights or outputs. It links a copy back to you, and it is one way to spot a stolen model.
 
 ```text
 Watermarking properties:
@@ -132,14 +134,14 @@ Watermarking properties:
 - Verifiable: the watermark can be detected with a simple query
 ```
 
-The pattern is: the watermark is embedded at training time; the watermark is verified at inference time; the watermark is robust enough to survive model modification.
+Treat these properties as the goals for your watermark scheme. Test each one on your own model before you rely on it.
 
 ### 2.2 The watermarking implementation
 
-The watermarking is implemented by a library (e.g. `torchmark`). The watermarking adds a signature to the model's weights or outputs.
+The example uses a placeholder library called torchmark to show the shape of the calls. It is not a library that was verified for this book, so replace it with the watermarking tool your team has chosen. Swap in another library if your team prefers one. The embed function returns the model with the signature added. The verify function returns a yes or no answer.
 
 ```python
-# code/part18/model_watermark.py (shape only)
+# code/part18/snippets/model_watermark.py
 import torchmark
 
 def embed_watermark(model, signature: str) -> model:
@@ -151,28 +153,24 @@ def verify_watermark(model, signature: str) -> bool:
     return torchmark.verify(model, signature=signature)
 ```
 
-The pattern is: the watermark is embedded at training time; the watermark is verified at inference time; the watermark is robust enough to survive model modification.
-
 ### 2.3 The watermarking in production
 
-The watermarking is applied to every production model. The watermarking is verified before deployment; the watermarking is verified periodically.
+Apply the watermark to every production model, and verify it before deployment. Check it again on a schedule, so that a model changed after release does not slip through unnoticed.
 
 ```bash
 # Embed the watermark
-python code/part18/model_watermark.py \
+python code/part18/snippets/model_watermark.py \
   --model churn-model-v6 \
   --signature "platform=acme;team=data-science;date=2024-03-15"
 # expected: the watermark is embedded; the watermark is verifiable
 
 # Verify the watermark
-python code/part18/model_watermark.py \
+python code/part18/snippets/model_watermark.py \
   --model churn-model-v6 \
   --verify \
   --signature "platform=acme;team=data-science;date=2024-03-15"
 # expected: the watermark is verified; the audit log records the verification
 ```
-
-The pattern is: every production model is watermarked; every watermarked model is verified before deployment; every verification is recorded in the audit log.
 
 ---
 
@@ -180,7 +178,7 @@ The pattern is: every production model is watermarked; every watermarked model i
 
 ### 3.1 What DLP does
 
-DLP (Data Loss Prevention) prevents the exfiltration of sensitive data. DLP monitors the data flows; DLP blocks the unauthorised data flows; DLP alerts on suspicious data flows.
+Data leaves a cluster in ways nobody planned. A misconfigured job might copy a training set into an outside bucket. DLP watches the data flows, blocks the ones that break policy, and raises an alert on the ones that look wrong.
 
 ```text
 DLP rules:
@@ -190,32 +188,32 @@ DLP rules:
 - Enforce data residency (data stays in the region)
 ```
 
-The pattern is: the DLP monitors the data flows; the DLP blocks the unauthorised flows; the DLP alerts on suspicious flows.
+Use these rules as a checklist. If you own the pipeline, ask which rule would have caught your last leak. Give each rule a named owner and a way to test it.
 
 ### 3.2 The DLP for object storage
 
-The DLP for object storage monitors the access patterns. The DLP detects large downloads; the DLP detects unusual access patterns; the DLP detects cross-region access.
+Object storage is a common place for large leaks, so watch its access patterns closely. Look for large downloads, unusual access patterns, and reads from another region. The command below enforces public access prevention on the bucket.
 
 ```bash
-# Configure DLP for a GCS bucket
+# Enforce public access prevention on a GCS bucket (this is not DLP; DLP is a separate Google service)
 gsutil pap set enforced gs://my-bucket
 # expected: the public access prevention is enforced
 ```
 
-The pattern is: every object storage bucket has DLP rules; every access is monitored; every suspicious access is alerted.
+Give every bucket its own DLP rules, monitor its access, and alert on anything suspicious.
 
 ### 3.3 The DLP for the audit log
 
-The DLP for the audit log prevents the audit log from being modified. The DLP enforces object-lock on the audit log bucket; the DLP prevents deletion of the audit log; the DLP alerts on any modification attempt.
+An audit log is only useful if nobody can change it. Lock the bucket so entries cannot be deleted or overwritten during the retention period. The bucket should also alert on any attempt to modify it.
 
 ```bash
-# Configure object-lock on the audit log bucket
-gsutil retention set gs://audit-log-bucket 90d
+# Set a retention policy, then lock it (GCS calls this a retention policy and Bucket Lock; Object Lock is the S3 name)
+gsutil retention set 90d gs://audit-log-bucket
 gsutil retention lock gs://audit-log-bucket
 # expected: the bucket has a 90-day retention; the retention is locked
 ```
 
-The pattern is: the audit log bucket has object-lock; the retention is locked; the audit log cannot be deleted before the retention expires.
+The 90-day period in this example is a starting value. Set the retention your own policy and regulator require.
 
 ---
 
@@ -223,7 +221,7 @@ The pattern is: the audit log bucket has object-lock; the retention is locked; t
 
 ### 4.1 What tamper-evident means
 
-Tamper-evident means the audit log cannot be modified without detection. The audit log is append-only; the audit log is signed; the audit log is replicated; the audit log is auditable.
+Imagine an attacker who gets into the cluster and wants to erase their trail. If they can edit the log, the evidence is gone. Tamper-evident means that any change leaves a trace you can detect. Production Kubernetes, chapter 9, makes the same case for the Kubernetes API server. Its audit logs record who did what, and you want them turned on in production so you can explain what went wrong.
 
 ```text
 Tamper-evident properties:
@@ -233,34 +231,38 @@ Tamper-evident properties:
 - Auditable: the log can be verified by an independent auditor
 ```
 
-The pattern is: the audit log is append-only; the audit log is signed; the audit log is replicated; the audit log is auditable.
-
 ### 4.2 The audit log implementation
 
-The audit log is implemented as an immutable storage with object-lock. The audit log is written by every component of the cluster; the audit log is read by the security team.
+The implementation below writes each entry as its own file. It creates each file exclusively, so a second write to the same name fails instead of overwriting the first. That models an object-lock bucket, where an entry can be added but never replaced. Each entry also stores a SHA-256 hash of its event, which `verify_entry` recomputes. That check catches an edited event, but it does not catch an attacker who rewrites both the event and its hash. The bucket lock does the real protection here.
 
 ```python
-# code/part18/audit_log.py (shape only)
-import hashlib
-import json
+# code/part18/audit_log.py
+"""Write audit entries to an append-only store. The local store is a directory; each entry is a separate file named by its hash, created
+exclusively (O_EXCL), which models an object-lock bucket: an entry can be added but never overwritten."""
+import hashlib, json, os
 from datetime import datetime, timezone
+from pathlib import Path
 
-def write_audit_entry(bucket: str, event: dict) -> None:
+def write_to_bucket(bucket: str, entry: dict) -> Path:
+    d = Path(bucket); d.mkdir(parents=True, exist_ok=True)
+    p = d / f"{entry['timestamp']}-{entry['hash'][:12]}.json"
+    fd = os.open(p, os.O_WRONLY | os.O_CREAT | os.O_EXCL, 0o444)     # fails if it already exists
+    with os.fdopen(fd, "w") as f: json.dump(entry, f, sort_keys=True)
+    return p
+
+def write_audit_entry(bucket: str, event: dict) -> Path:
     """Write an audit entry to the tamper-evident bucket."""
-    entry = {
-        "timestamp": datetime.now(timezone.utc).isoformat(),
-        "event": event,
-        "hash": hashlib.sha256(json.dumps(event).encode()).hexdigest(),
-    }
-    # The bucket has object-lock; the entry cannot be modified
-    write_to_bucket(bucket, entry)
-```
+    entry = {"timestamp": datetime.now(timezone.utc).strftime("%Y%m%dT%H%M%S.%fZ"), "event": event,
+             "hash": hashlib.sha256(json.dumps(event, sort_keys=True).encode()).hexdigest()}
+    return write_to_bucket(bucket, entry)
 
-The pattern is: every audit entry has a timestamp, an event, and a hash; the entry is written to a bucket with object-lock; the entry cannot be modified.
+def verify_entry(path) -> bool:
+    e = json.loads(Path(path).read_text()); return hashlib.sha256(json.dumps(e["event"], sort_keys=True).encode()).hexdigest() == e["hash"]
+```
 
 ### 4.3 The audit log in production
 
-The audit log is queried by the security team. The audit log is queried by the regulator. The audit log is queried by the post-mortem.
+The security team, the regulator, and the post-mortem team all query the audit log. Production Kubernetes, chapter 9, advises restricting who can read these logs, because not everyone should see them. Start with a narrow query, such as one user's recent events.
 
 ```bash
 # Query the audit log
@@ -272,15 +274,13 @@ bq query --use_legacy_sql=false \
 # expected: the events are listed; the events are tamper-evident
 ```
 
-The pattern is: the audit log is queryable; the audit log is tamper-evident; the audit log is auditable.
-
 ---
 
 ## 5. Lineage for compliance
 
 ### 5.1 What lineage proves
 
-Lineage proves where the data came from, what model was trained on it, and where the model's predictions went. The lineage is the evidence that satisfies the regulator's question "which data trained the model that decided on this customer?".
+A regulator may ask one question: which data trained the model that decided on this customer? Lineage answers it by linking data, models, and customers in a chain. The chain has three links. Data feeds the model, the model serves the customer, and every step writes to the audit log. Lineage proves the chain itself. The audit log proves nobody changed the record.
 
 ```mermaid
 flowchart LR
@@ -292,11 +292,9 @@ flowchart LR
     C -->|audit| Audit
 ```
 
-The lineage has three edges: data -> model, model -> customer, and every step -> audit log. The lineage proves the chain; the audit log proves the integrity.
-
 ### 5.2 The lineage graph
 
-The lineage graph is the structured representation of the lineage. The lineage graph has nodes (data, model, customer) and edges (derived, trained, served).
+Store the chain as a graph, so a question about one customer can walk back to the data in a few steps. When you build it, test one customer end to end. The graph has three kinds of node: data, models, and customers. Its edges name the relationship between them. Record every edge in the audit log, so the graph itself can be checked later.
 
 ```text
 Lineage graph schema:
@@ -306,11 +304,9 @@ Lineage graph schema:
 - audit: every edge is recorded in the audit log
 ```
 
-The pattern is: every node has a hash; every edge has a timestamp; every operation is recorded in the audit log.
-
 ### 5.3 The lineage in production
 
-The lineage is built by the platform team. The lineage is queried by the security team. The lineage is queried by the regulator.
+The platform team builds the lineage. The security team and the regulator query it. Keep the query simple enough to run during an audit, not after one. If you answer the regulator, you need this query ready before the question arrives.
 
 ```bash
 # Query the lineage graph
@@ -321,13 +317,13 @@ bq query --use_legacy_sql=false \
 # expected: the lineage edges are listed; the customer can be traced back to the data
 ```
 
-The pattern is: the lineage is queryable; the lineage is auditable; the lineage satisfies the regulator.
-
 ---
 
 ## 6. Operating data and model protection on GKE
 
 ### 6.1 The components
+
+Six components work together, and each one has a backing store. The SLO column holds example targets, not values from a standard. Choose your own targets with your security and compliance teams, and measure them from the first day.
 
 | Component | Where it runs | Backing store | SLO |
 |---|---|---|---|
@@ -340,7 +336,7 @@ The pattern is: the lineage is queryable; the lineage is auditable; the lineage 
 
 ### 6.2 IAM and the data and model protection
 
-The data and model protection has its own IAM. The pattern is:
+Give each group only the access its job needs. Security reads the rules and the logs. The platform team manages keys and DLP rules. The CISO's office approves the policies. The role names below are placeholders, so map them to the roles your organisation already uses.
 
 | Role | Who | What they can do |
 |---|---|---|
@@ -348,9 +344,11 @@ The data and model protection has its own IAM. The pattern is:
 | `dataprotection.writer` | The platform team | Manage the encryption keys; manage the DLP rules |
 | `dataprotection.admin` | The CISO's office | Approve the encryption policy; approve the watermarking policy |
 
-The data and model protection is the security team's discipline. The discipline is documented; the discipline is enforced; the discipline is reviewed quarterly.
+Production Kubernetes, chapter 10, suggests a per-team pattern: one group per team, a view role, and a separate admin user. The book says this removes much of the risk of costly mistakes. The security team owns this discipline. Document it, enforce it, and review it on a regular schedule, such as quarterly.
 
 ### 6.3 Observability
+
+Each metric below shows whether one control is still working. The alert thresholds in the table are examples. Pick the level your own policy requires.
 
 | Metric | Why it matters | Alert |
 |---|---|---|
@@ -360,67 +358,67 @@ The data and model protection is the security team's discipline. The discipline 
 | Audit log tamper-evident rate | Compliance | < 100% |
 | Lineage queryability rate | Compliance | < 100% |
 
-The audit log tamper-evident rate alert is the most important. An audit log that is not tamper-evident is an audit log that the regulator cannot trust; the alert pages the on-call immediately.
+The audit log tamper-evident rate matters most. A log that is not tamper-evident is one the regulator cannot trust. Its alert should page the on-call engineer right away.
 
 ---
 
 ## 7. How it fails
 
-Six failure modes recur.
+Six failure modes come up again and again. When something breaks, match the symptom you see to one of these six patterns.
 
 ### 7.1 "Encryption at rest is not enabled"
 
-**Symptom:** A bucket or disk is not encrypted; the data is exposed to disk theft.
+**Symptom:** A bucket or disk is unencrypted, so anyone who gets the disk can read the data.
 
-**Diagnosis:** The encryption setting was not configured; the platform team's policy is not enforced.
+**Diagnosis:** The encryption setting was never applied, so the platform policy did not take effect.
 
-**Fix:** Enable encryption at rest on every bucket and disk; verify the encryption is in place; alert on any unencrypted resource.
+**Fix:** Turn on encryption at rest for every bucket and disk. Verify it is in place, and alert on any resource that is not encrypted.
 
 ### 7.2 "Encryption in transit is not enforced"
 
-**Symptom:** A service is accessible via HTTP; the data is exposed to network eavesdropping.
+**Symptom:** A service answers over plain HTTP, so anyone on the network path can read the traffic.
 
-**Diagnosis:** The TLS configuration is missing; the NetworkPolicy is misconfigured.
+**Diagnosis:** The TLS configuration is missing, or the NetworkPolicy is misconfigured.
 
-**Fix:** Enforce TLS 1.3 on every service; configure the NetworkPolicy; alert on any HTTP-only endpoint.
+**Fix:** Set the minimum TLS version at the ingress or service mesh. This chapter uses TLS 1.3 as its example, but your policy may set a different version. Use a NetworkPolicy to limit traffic to the TLS port, and alert on any HTTP-only endpoint.
 
 ### 7.3 "The model is not watermarked"
 
-**Symptom:** A model is deployed without a watermark; the model can be stolen without detection.
+**Symptom:** A model goes live without a watermark, so a stolen copy cannot be traced back to you.
 
-**Diagnosis:** The watermarking step was not run; the watermarking was not enforced in the CI/CD pipeline.
+**Diagnosis:** The watermark step was skipped, and the CI/CD pipeline does not require it.
 
-**Fix:** Add watermarking to the CI/CD pipeline; verify the watermark before deployment; alert on any unwatermarked model.
+**Fix:** Add the watermark step to the CI/CD pipeline. Verify the mark before deployment, and alert on any model that lacks one.
 
 ### 7.4 "The audit log is not tamper-evident"
 
-**Symptom:** The audit log is mutable; the audit log can be deleted or modified; the regulator cannot trust the audit log.
+**Symptom:** The audit log can be changed or deleted, so the regulator cannot trust it.
 
-**Diagnosis:** The object-lock is not enabled; the retention is not locked; the bucket policy is misconfigured.
+**Diagnosis:** Object lock is off, the retention is not locked, or the bucket policy is wrong.
 
-**Fix:** Enable object-lock on the audit log bucket; lock the retention; verify the audit log is tamper-evident.
+**Fix:** Turn on object lock for the audit log bucket and lock the retention. Then confirm the log really is tamper-evident.
 
 ### 7.5 "The DLP is not configured"
 
-**Symptom:** Sensitive data is being exfiltrated; the DLP is not catching the exfiltration.
+**Symptom:** Sensitive data is leaving the cluster, and nothing catches it.
 
-**Diagnosis:** The DLP rules are not configured; the DLP is not monitoring the data flows.
+**Diagnosis:** The DLP rules were never written, or DLP is not watching the data flows.
 
-**Fix:** Configure the DLP rules; verify the DLP is monitoring; alert on any exfiltration attempt.
+**Fix:** Write the DLP rules and confirm they watch the flows. Alert on any suspected exfiltration.
 
 ### 7.6 "The lineage is not queryable"
 
-**Symptom:** The regulator asks "which data trained the model that decided on this customer?"; the team cannot answer in seconds.
+**Symptom:** A regulator asks which data trained the model that decided on a customer, and the team cannot answer quickly.
 
-**Diagnosis:** The lineage graph is not maintained; the lineage edges are not recorded; the lineage query is slow.
+**Diagnosis:** The lineage graph is not kept up to date, the edges are not recorded, or the query is slow.
 
-**Fix:** Build the lineage graph; record every edge; verify the query is fast.
+**Fix:** Build the lineage graph and record every edge. Test that the query returns fast enough to use during an audit.
 
 ---
 
 ## 8. Hands-on lab
 
-This lab walks through implementing the data and model protection on GKE: the encryption, the watermarking, the DLP, the audit log, and the lineage. The lab is **untested** in this repository.
+In this lab you put the six protections in place on GKE: encryption, watermarking, DLP, the audit log, and lineage. The lab is **untested** in this repository, so treat each expected output as a claim to check.
 
 ### 8.1 Prerequisites
 
@@ -431,6 +429,8 @@ This lab walks through implementing the data and model protection on GKE: the en
 
 ### 8.2 Step 1: enable encryption at rest
 
+Start with the bucket. Point its encryption at your customer-managed key.
+
 ```bash
 gsutil encryption set -k projects/${PROJECT_ID}/locations/us/keyRings/default/cryptoKeys/default gs://my-bucket
 # expected: the bucket is encrypted with the customer-managed key
@@ -438,21 +438,27 @@ gsutil encryption set -k projects/${PROJECT_ID}/locations/us/keyRings/default/cr
 
 ### 8.3 Step 2: enforce encryption in transit
 
+Apply the policy that limits the model API to its TLS port.
+
 ```bash
 kubectl apply -f code/part18/networkpolicy_tls.yaml
-# expected: every service is accessible only via TLS 1.3
+# expected: traffic to app=model-api is accepted only on TCP 8443 (the TLS version itself is set at the ingress or mesh)
 ```
 
 ### 8.4 Step 3: watermark the model
 
+Embed the watermark, then check that you can verify it.
+
 ```bash
-python code/part18/model_watermark.py \
+python code/part18/snippets/model_watermark.py \
   --model churn-model-v6 \
   --signature "platform=acme;team=data-science;date=2024-03-15"
 # expected: the watermark is embedded; the watermark is verifiable
 ```
 
 ### 8.5 Step 4: configure DLP
+
+Enforce public access prevention on the bucket.
 
 ```bash
 gsutil pap set enforced gs://my-bucket
@@ -461,6 +467,8 @@ gsutil pap set enforced gs://my-bucket
 
 ### 8.6 Step 5: configure the tamper-evident audit log
 
+Set and lock the retention on the audit log bucket.
+
 ```bash
 gsutil retention set gs://audit-log-bucket 90d
 gsutil retention lock gs://audit-log-bucket
@@ -468,6 +476,8 @@ gsutil retention lock gs://audit-log-bucket
 ```
 
 ### 8.7 Step 6: build the lineage graph
+
+Generate the graph for the model and its dataset.
 
 ```bash
 python code/part18/lineage_graph.py \
@@ -479,7 +489,7 @@ python code/part18/lineage_graph.py \
 
 ### 8.8 What to record
 
-After the lab, you should be able to answer five questions in five seconds each:
+After the lab, you should be able to answer five questions. Time yourself, because the answers should come quickly.
 
 1. What is the current encryption at rest rate?
 2. What is the current encryption in transit rate?
@@ -487,101 +497,103 @@ After the lab, you should be able to answer five questions in five seconds each:
 4. What is the current audit log tamper-evident rate?
 5. What is the current lineage queryability rate?
 
-If any takes more than 30 seconds, the data and model protection is not yet a production service. The lab is **untested** against a live GKE cluster.
+The five-second and 30-second figures here are examples. Set your own target. If an answer takes longer than your target, the protection is not yet ready to run as a production service. The lab is **untested** against a live GKE cluster.
 
 ---
 
 ## Exercises
 
-1. **Add an encryption at rest alert.** Configure an alert that fires when encryption is not enabled on any object storage bucket. *Solution sketch:* a Prometheus exporter for the bucket state; an alert that fires when the state is not "encrypted".
-2. **Add an encryption in transit alert.** Configure an alert that fires when TLS 1.3 is not enforced on any service. *Solution sketch:* a Prometheus exporter for the TLS state; an alert that fires when the state is not "TLS 1.3 enforced".
-3. **Add a model watermarking alert.** Configure an alert that fires when a model is not watermarked. *Solution sketch:* a Prometheus exporter for the watermark state; an alert that fires when the state is not "watermarked".
-4. **Add an audit log tamper-evident alert.** Configure an alert that fires when the audit log is not tamper-evident. *Solution sketch:* a Prometheus exporter for the audit log state; an alert that fires when the state is not "tamper-evident".
-5. **Add a DLP alert.** Configure an alert that fires when DLP rules are not enforced. *Solution sketch:* a Prometheus exporter for the DLP state; an alert that fires when the state is not "DLP enforced".
-6. **Add a lineage queryability alert.** Configure an alert that fires when the lineage graph is not queryable. *Solution sketch:* a Prometheus exporter for the lineage state; an alert that fires when the state is not "queryable".
+Each exercise asks you to add one alert. Build it, then break the control on purpose in a test environment to confirm the alert fires. If the alert stays silent when the control is broken, fix the alert before you trust it.
+
+1. **Add an encryption at rest alert.** Configure an alert that fires when encryption is not enabled on any object storage bucket. *Solution sketch:* a Prometheus exporter for the bucket state, and an alert that fires when the state is not "encrypted".
+2. **Add an encryption in transit alert.** Configure an alert that fires when TLS 1.3 is not enforced on any service. *Solution sketch:* a Prometheus exporter for the TLS state, and an alert that fires when the state is not "TLS 1.3 enforced".
+3. **Add a model watermarking alert.** Configure an alert that fires when a model is not watermarked. *Solution sketch:* a Prometheus exporter for the watermark state, and an alert that fires when the state is not "watermarked".
+4. **Add an audit log tamper-evident alert.** Configure an alert that fires when the audit log is not tamper-evident. *Solution sketch:* a Prometheus exporter for the audit log state, and an alert that fires when the state is not "tamper-evident".
+5. **Add a DLP alert.** Configure an alert that fires when DLP rules are not enforced. *Solution sketch:* a Prometheus exporter for the DLP state, and an alert that fires when the state is not "DLP enforced".
+6. **Add a lineage queryability alert.** Configure an alert that fires when the lineage graph is not queryable. *Solution sketch:* a Prometheus exporter for the lineage state, and an alert that fires when the state is not "queryable".
 
 ---
 
 ## Checkpoint questions
 
 <details><summary>1. What is encryption at rest?</summary>
-The encryption of data when it is stored on disk. Encryption at rest protects the data from disk theft; encryption at rest protects the data from unauthorised physical access; encryption at rest is the last line of defence. Every object storage bucket is encrypted with a customer-managed key; every disk is encrypted with a customer-managed key; every database is encrypted at rest.
+Encryption at rest means data is encrypted while it sits on disk. It guards against stolen disks and unauthorised physical access, and it is the last line of defence. Every bucket and disk should use a customer-managed key, and every database should be encrypted at rest.
 </details>
 
 <details><summary>2. What is encryption in transit?</summary>
-The encryption of data when it is transmitted over the network. Encryption in transit protects the data from network eavesdropping; encryption in transit protects the data from man-in-the-middle attacks. Every service is accessible only via TLS 1.3.
+Encryption in transit means data is encrypted while it crosses the network. It protects against eavesdropping and man-in-the-middle attacks. Every service should accept connections only over TLS 1.3.
 </details>
 
 <details><summary>3. What is model watermarking?</summary>
-The embedding of an imperceptible signature in the model's weights or outputs. The watermark proves that the model came from the platform; the watermark detects model theft. The watermark is embedded at training time; the watermark is verified at inference time.
+Model watermarking embeds a signature in the model's weights or outputs that is hard to notice. The watermark shows that the model came from your platform, and it helps detect theft. The mark is added at training time and checked at inference time.
 </details>
 
 <details><summary>4. What is DLP?</summary>
-Data Loss Prevention: the prevention of sensitive data exfiltration. DLP monitors the data flows; DLP blocks the unauthorised data flows; DLP alerts on suspicious data flows. DLP is the control that prevents the customer data from leaving the cluster.
+DLP stands for Data Loss Prevention, which stops sensitive data from leaving your systems. It watches the data flows, blocks the ones that break policy, and alerts on suspicious ones. It is the control that keeps customer data inside the cluster, so check its rules before you trust it.
 </details>
 
 <details><summary>5. What is the tamper-evident audit log?</summary>
-The audit log that cannot be modified without detection. The audit log is append-only; the audit log is signed; the audit log is replicated; the audit log is auditable. The tamper-evident audit log is the regulatory evidence.
+A tamper-evident audit log is one that cannot be changed without someone noticing. It is append-only, signed, replicated, and auditable, so an independent auditor can check it. It is the evidence a regulator asks for.
 </details>
 
 <details><summary>6. What is the lineage graph?</summary>
-The structured representation of the lineage. The lineage graph has nodes (data, model, customer) and edges (derived_from, trained_on, served_to). The lineage graph proves the chain; the lineage graph satisfies the regulator's question "which data trained the model that decided on this customer?".
+The lineage graph is the structured form of the lineage. Its nodes are data, models, and customers, and its edges are derived_from, trained_on, and served_to. The graph proves the chain and answers the regulator's question: which data trained the model that decided on this customer?
 </details>
 
 <details><summary>7. What is the most common data protection failure?</summary>
-Encryption at rest is not enabled. A bucket or disk is not encrypted; the data is exposed to disk theft. The fix is to enable encryption at rest on every bucket and disk; verify the encryption is in place.
+The most common failure is that encryption at rest is not enabled. An unencrypted bucket or disk exposes its data to theft. Fix it by enabling encryption on every bucket and disk, and check that you can see it in place.
 </details>
 
 <details><summary>8. What is the most dangerous model protection failure?</summary>
-The model is not watermarked. A model is deployed without a watermark; the model can be stolen without detection. The fix is to add watermarking to the CI/CD pipeline; verify the watermark before deployment.
+The most dangerous failure is a model with no watermark. A model shipped without one can be stolen without anyone noticing. If you ship models, add watermarking to the CI/CD pipeline and verify the mark before deployment.
 </details>
 
 <details><summary>9. What is the relationship between encryption and the audit log?</summary>
-Encryption protects the data; the audit log records who accessed the data. Together, they form the data protection chain: encryption is the confidentiality control; the audit log is the accountability control.
+Encryption protects the data itself, while the audit log records who accessed it. Together they cover two needs: encryption provides confidentiality, and the audit log provides accountability.
 </details>
 
 <details><summary>10. What is the relationship between watermarking and the model registry?</summary>
-Watermarking protects the model; the model registry stores the model. Together, they form the IP protection chain: watermarking is the provenance control; the model registry is the storage control.
+Watermarking protects the origin of a model, and the model registry stores the model. Together they protect the intellectual property: the watermark provides provenance, and the registry provides storage control.
 </details>
 
 <details><summary>11. What is the relationship between DLP and the lineage graph?</summary>
-DLP prevents data exfiltration; the lineage graph proves where the data came from. Together, they form the data protection chain: DLP is the exfiltration control; the lineage graph is the provenance control.
+DLP stops data from leaving the cluster, and the lineage graph shows where the data came from. Together, DLP is the exfiltration control and the lineage graph is the provenance control.
 </details>
 
 <details><summary>12. What is the relationship between the audit log and the lineage graph?</summary>
-The audit log records every operation; the lineage graph proves the chain. Together, they form the compliance chain: the audit log is the evidence; the lineage graph is the structure.
+The audit log records every operation, and the lineage graph proves the chain between data and decisions. Together they form the compliance record: the audit log is the evidence, and the lineage graph is the structure.
 </details>
 
 <details><summary>13. What is the most important data protection metric?</summary>
-The audit log tamper-evident rate. The metric tells the team whether the audit log is tamper-evident. An audit log that is not tamper-evident is an audit log that the regulator cannot trust.
+If you track one metric, track the audit log tamper-evident rate. It tells the team whether the log is still tamper-evident. A log that is not tamper-evident is one the regulator cannot trust.
 </details>
 
 <details><summary>14. What is the difference between at-rest and in-transit encryption?</summary>
-At-rest encryption protects data when it is stored on disk. In-transit encryption protects data when it is transmitted over the network. Together, they form the data protection chain: at-rest is the storage control; in-transit is the network control.
+At-rest encryption protects stored data, and in-transit encryption protects data moving over the network. Together they cover the storage control and the network control. You need both, because each covers a gap the other leaves.
 </details>
 
 <details><summary>15. What is the difference between DLP and access control?</summary>
-Access control (Chapter 18.4) controls who can do what. DLP controls what can leave the cluster. Together, they form the data protection chain: access control is the ingress control; DLP is the egress control.
+Access control, covered in Chapter 18.4, decides who can do what. DLP decides what can leave the cluster. You need both: access control is the inbound control, and DLP is the outbound control.
 </details>
 
 <details><summary>16. What is the relationship between watermarking and model theft detection?</summary>
-Watermarking embeds the signature; model theft detection verifies the signature. Together, they form the IP protection chain: watermarking is the proof; model theft detection is the verification.
+Watermarking embeds the signature, and theft detection checks for it. Together they protect intellectual property: the watermark is the proof, and detection is the check.
 </details>
 
 <details><summary>17. What is the relationship between encryption and key management?</summary>
-Encryption protects the data; key management protects the encryption key. Together, they form the cryptographic chain: encryption is the algorithm; key management is the operational discipline.
+Encryption protects the data, and key management protects the key you use to encrypt it. Together they form the cryptographic chain: encryption is the algorithm, and key management is the daily discipline that keeps it safe.
 </details>
 
 <details><summary>18. What is the relationship between data and model protection and the threat model?</summary>
-The threat model identifies the threats (T-005: Container image supply chain attack; T-006: GPU memory scraping; data exfiltration). The data and model protection is the controls that mitigate the most advanced threats. The data and model protection is for regulated industries and high-stakes deployments.
+The threat model names the threats, such as T-005, a container image supply chain attack, T-006, GPU memory scraping, and data exfiltration. The controls in this chapter address the most advanced of those threats. They matter most for regulated industries and high-stakes deployments.
 </details>
 
 <details><summary>19. Why is data and model protection a Tier 2 chapter?</summary>
-Because the data and model protection is the regulatory evidence. The data and model protection is what the regulator sees; the data and model protection is what the auditor inspects; the data and model protection is what the post-mortem reads.
+It is Tier 2 because this work produces the regulatory evidence. Regulators see it, auditors inspect it, and post-mortems read it.
 </details>
 
 <details><summary>20. What five questions should the data and model protection lab let you answer in five seconds each?</summary>
-What is the current encryption at rest rate. What is the current encryption in transit rate. What is the current model watermarking rate. What is the current audit log tamper-evident rate. What is the current lineage queryability rate. If any takes more than 30 seconds, the data and model protection is not yet a production service.
+The lab should let you answer five questions: the current encryption at rest rate, the encryption in transit rate, the model watermarking rate, the audit log tamper-evident rate, and the lineage queryability rate. The five-second and 30-second figures are examples, not standards. If an answer takes more than 30 seconds, the protection is not yet a production service.
 </details>
 
 ---

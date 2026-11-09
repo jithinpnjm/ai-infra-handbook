@@ -25,12 +25,14 @@ lab_venue: "GCP / GKE"
 
 ## Why this matters for AI infrastructure
 
-Every other chapter in this part depends on this one. The metrics from Chapter 17.2 are general; the metrics in this chapter are GPU-specific. The team that does not have the DCGM exporter deployed cannot tell whether a GPU is healthy, whether its HBM is saturated, whether its ECC is correcting errors, or whether its clocks are throttling. The team is flying blind on the most expensive resource in the cluster.
+Picture a training job that stops making progress at three in the morning. Nothing has crashed, the logs are quiet, and the on-call engineer has no idea which GPU is failing. Without GPU metrics, the first sign of trouble is usually a stuck job or a failed inference request.
 
-A GPU cluster without the DCGM exporter is a cluster where the first sign of a GPU failure is a stuck training job or a crashed inference request. The on-call engineer cannot diagnose the failure because the metrics do not exist. The DCGM exporter is what turns "the GPU is broken" into "GPU 4 on node gpu-node-7 has 17 ECC errors in the last hour and is thermal-throttling at 92 degrees".
+The DCGM exporter changes that. It turns "the job is stuck" into a specific finding, such as one GPU on one node logging memory errors. A stuck job also wastes GPU time you already paid for, and it can cost you a deadline. The exporter gives you a chance to act before that time is gone.
+
+The metrics in chapter 17.2 are general. The metrics in this chapter are specific to the GPU, and the later chapters in this part assume they exist.
 
 ```text
-Why the DCGM exporter is on the critical path (V16 ch3, 4; V7 ch2; GAK Ch 5):
+Why the DCGM exporter is on the critical path (background reading: NVIDIA Zero-to-Hero volume 16; NVIDIA Zero-to-Hero volume 7; Generative AI on Kubernetes; the figures below are examples, not quotations):
 - A single H100 GPU costs $3-5 per hour. A 100-GPU cluster costs $300-500 per hour.
   The cost of a stuck training job is the GPU-hours wasted plus the deadline
   missed. The DCGM exporter is what catches the failure before it costs the
@@ -45,13 +47,13 @@ Why the DCGM exporter is on the critical path (V16 ch3, 4; V7 ch2; GAK Ch 5):
   catches the pressure before the crash.
 ```
 
-Three operational realities make this chapter a platform-team concern rather than a data-science-only concern:
+Three things make this a platform-team concern rather than a data-science concern.
 
-1. **The DCGM exporter is the only window into the GPU's health.** The exporter is the difference between catching the GPU failure at hour 1 and catching it at hour 24. The platform team owns the deployment.
-2. **The GPU metrics are GPU-specific.** A generic exporter (cAdvisor, node exporter) does not expose GPU utilisation, ECC errors, Xid events, or thermal throttling. The platform team must deploy the DCGM exporter separately.
-3. **The GPU alert thresholds are different from the CPU alert thresholds.** A 90% CPU utilisation is healthy; a 90% GPU memory utilisation is a CUDA OOM waiting to happen. The platform team must know the GPU-specific thresholds.
+1. The exporter is your only window into GPU health. The platform team owns the deployment, so it also owns the blind spot if the exporter is missing.
+2. GPU metrics are GPU-specific. A generic exporter such as cAdvisor or the node exporter does not expose GPU utilisation, ECC errors, Xid events or thermal throttling, so you must deploy the DCGM exporter separately.
+3. GPU alert thresholds differ from CPU thresholds. A CPU at 90 percent can be perfectly healthy, while GPU memory at the same level can mean the next job runs out of memory.
 
-**Before a team can run an AI workload on a GPU cluster, the cluster must have the DCGM exporter deployed and the GPU metrics flowing into Prometheus. A GPU cluster without the DCGM exporter is a GPU cluster that the on-call cannot debug.**
+**A GPU cluster without the DCGM exporter is a cluster the on-call engineer cannot debug, so deploy it before the first AI workload arrives.**
 
 ## Prerequisites and outcomes
 
@@ -64,14 +66,14 @@ Three operational realities make this chapter a platform-team concern rather tha
 
 ### Outcomes
 
-After completing this chapter you will be able to:
+By the end of this chapter, you should be able to:
 
-1. Deploy the DCGM exporter as a DaemonSet on every GPU node; verify the metrics are flowing into Prometheus.
-2. Read the DCGM metric families: utilisation, memory, ECC, Xid, temperature, power, clocks.
-3. Write PromQL queries for the GPU-specific operational concerns: per-GPU utilisation, memory pressure, ECC errors, thermal throttling.
-4. Configure alert thresholds that catch GPU failures before they cascade.
-5. Interpret the DCGM metrics during an incident: what does each metric mean when it spikes?
-6. Operate the DCGM exporter on GKE with SLOs, observability, and a runbook.
+1. Deploy the DCGM exporter as a DaemonSet on every GPU node, and confirm that Prometheus receives its metrics.
+2. Name the DCGM metric families and say what each one tells you.
+3. Write PromQL queries for per-GPU utilisation, memory pressure, ECC errors and thermal throttling.
+4. Set alert thresholds that catch GPU failures before they spread.
+5. Read the DCGM metrics during an incident and explain what a spike means.
+6. Run the DCGM exporter on GKE with clear SLOs, observability and a runbook.
 
 ---
 
@@ -79,9 +81,11 @@ After completing this chapter you will be able to:
 
 ### 1.1 What DCGM is
 
-The Data Center GPU Manager (DCGM) is NVIDIA's library for managing and monitoring GPUs in a cluster. DCGM runs on every GPU node; DCGM exposes the GPU's health, utilisation, and performance metrics; the metrics are queryable by other tools (DCGM exporter, nvidia-smi, the DCGM CLI).
+Suppose you want the temperature, memory use and error count of every GPU in a cluster. Running `nvidia-smi` by hand works on one machine, but nobody can do it all day on every node. The Data Center GPU Manager (DCGM) is NVIDIA's library for doing this continuously. It runs on every GPU node and reports each GPU's health, utilisation and performance, so other tools can read those numbers.
 
-The DCGM exporter is the bridge from DCGM to Prometheus. The DCGM exporter runs as a DaemonSet on every GPU node; the exporter reads the DCGM metrics; the exporter exposes the metrics in the Prometheus exposition format; Prometheus scrapes the exporter; the metrics flow into Grafana.
+*AI Systems Performance Engineering*, chapter 2, makes the same point. It describes DCGM tracking per-GPU utilisation, memory usage, temperature and NVLink throughput.
+
+The DCGM exporter is the bridge from DCGM to Prometheus. It runs as a DaemonSet, reads the DCGM metrics, and publishes them in the Prometheus exposition format. Prometheus scrapes that endpoint, and Grafana draws its dashboards from what Prometheus stores.
 
 ```mermaid
 flowchart LR
@@ -94,11 +98,9 @@ flowchart LR
     GPU --> DCGM --> E --> P --> G
 ```
 
-The pattern is: DCGM runs on every GPU node; the DCGM exporter runs alongside DCGM; the exporter exposes the metrics; Prometheus scrapes the exporter; Grafana renders the dashboards.
-
 ### 1.2 Deploying the DCGM exporter
 
-The DCGM exporter is deployed as a Helm chart on the GPU nodes.
+You install the exporter with Helm, on the GPU nodes.
 
 ```bash
 helm repo add nvidia https://helm.ngc.nvidia.com/nvidia
@@ -111,26 +113,30 @@ helm install dcgm-exporter nvidia/dcgm-exporter \
 # expected: the DCGM exporter pods are running on every GPU node; the metrics are scraped by Prometheus
 ```
 
-The pattern is: a DaemonSet on every GPU node; the DaemonSet tolerates the GPU taint; the exporter exposes the metrics on port 9400; the ServiceMonitor registers the exporter as a Prometheus target.
+The chart creates a DaemonSet, so each GPU node runs one exporter pod. The toleration lets that pod land on nodes tainted for GPU use. The exporter serves metrics on port 9400, and the ServiceMonitor tells Prometheus to scrape it.
+
+*AI Systems Performance Engineering*, chapter 3, notes that the NVIDIA Kubernetes GPU Operator also sets up GPU monitoring with DCGM. If your cluster already runs that operator, check it before you install a second copy.
 
 ### 1.3 The DCGM metric families
 
-NVIDIA Zero-to-Hero Volume 16 chapter 3 and the DCGM exporter documentation walk through the metric families.
+The NVIDIA Zero-to-Hero Volume 16, chapter 3, and the DCGM exporter documentation go through these families in more detail.
 
 | Family | Examples | What it measures |
 |---|---|---|
-| **Utilization** | `DCGM_FI_DEV_GPU_UTIL`, `DCGM_FI_DEV_SM_UTIL`, `DCGM_FI_DEV_MEM_UTIL` | GPU SM utilisation, memory utilisation |
+| **Utilization** | `DCGM_FI_DEV_GPU_UTIL`, `DCGM_FI_PROF_SM_ACTIVE`, `DCGM_FI_DEV_MEM_COPY_UTIL` | GPU SM utilisation, memory utilisation |
 | **Memory** | `DCGM_FI_DEV_FB_USED`, `DCGM_FI_DEV_FB_TOTAL`, `DCGM_FI_DEV_FB_FREE` | HBM used, total, free |
 | **Temperature** | `DCGM_FI_DEV_GPU_TEMP`, `DCGM_FI_DEV_MEMORY_TEMP` | GPU temperature |
-| **Power** | `DCGM_FI_DEV_POWER_USAGE`, `DCGM_FI_DEV_ENERGY_CONSUMPTION` | Power draw, energy |
+| **Power** | `DCGM_FI_DEV_POWER_USAGE`, `DCGM_FI_DEV_TOTAL_ENERGY_CONSUMPTION` | Power draw, energy |
 | **Clocks** | `DCGM_FI_DEV_SM_CLOCK`, `DCGM_FI_DEV_MEM_CLOCK` | SM clock, memory clock |
-| **ECC** | `DCGM_FI_DEV_ECC_DBE_AGG_DEDUP`, `DCGM_FI_DEV_ECC_DBE_VOL_DEDUP`, `DCGM_FI_DEV_ECC_SBE_AGG_DEDUP` | Double-bit errors (DBE), single-bit errors (SBE) |
+| **ECC** | `DCGM_FI_DEV_ECC_DBE_AGG_TOTAL`, `DCGM_FI_DEV_ECC_DBE_VOL_TOTAL`, `DCGM_FI_DEV_ECC_SBE_AGG_TOTAL` | Double-bit errors (DBE), single-bit errors (SBE) |
 | **Xid** | `DCGM_FI_DEV_XID_ERRORS` | NVIDIA Xid errors |
-| **Retired pages** | `DCGM_FI_DEV_RETIRED_PAGES`, `DCGM_FI_DEV_RETIRED_PAGES_DBE`, `DCGM_FI_DEV_RETIRED_PAGES_SBE` | Pages retired due to errors |
-| **NVLink** | `DCGM_FI_DEV_NVLINK_CRC_DATA_ERROR_COUNT_TX`, `DCGM_FI_DEV_NVLINK_CRC_DATA_ERROR_COUNT_RX` | NVLink CRC errors |
+| **Retired pages** | `DCGM_FI_DEV_RETIRED_PENDING`, `DCGM_FI_DEV_RETIRED_DBE`, `DCGM_FI_DEV_RETIRED_SBE` | Pages retired due to errors |
+| **NVLink** | `DCGM_FI_DEV_NVLINK_CRC_DATA_ERROR_TOTAL`, `DCGM_FI_DEV_NVLINK_CRC_DATA_ERROR_TOTAL` | NVLink CRC errors |
 | **PCIe** | `DCGM_FI_DEV_PCIE_REPLAY_COUNTER` | PCIe replay count |
 
-The pattern is: every metric family has a specific operational concern. Utilisation and memory are about capacity; ECC and Xid are about health; temperature and power are about thermals; clocks are about throttling; NVLink and PCIe are about interconnect health.
+Each family answers its own question. Utilisation and memory show how much capacity is in use. ECC and Xid show hardware and driver health. Temperature and power show heat, clocks show throttling, and NVLink and PCIe show whether the links are healthy.
+
+The field names were checked against the dcgm-exporter source, and that check turned up three points. `DCGM_FI_PROF_SM_ACTIVE` reports a ratio from 0 to 1, not a percentage, and not every exporter enables it by default. The retired-page family is `DCGM_FI_DEV_RETIRED_PENDING`, `DCGM_FI_DEV_RETIRED_DBE` and `DCGM_FI_DEV_RETIRED_SBE`. ECC counters end in `_TOTAL`, because an earlier draft used `_DEDUP` names that the exporter does not define.
 
 ---
 
@@ -138,7 +144,7 @@ The pattern is: every metric family has a specific operational concern. Utilisat
 
 ### 2.1 GPU utilisation
 
-The GPU utilisation is the fraction of the GPU's SMs (streaming multiprocessors) that are in use. The utilisation tells the platform team whether the GPU is doing useful work.
+A GPU you pay for by the hour should be busy, and utilisation tells you whether it is. The GPU utilisation is the fraction of the GPU's SMs (streaming multiprocessors) that are in use.
 
 ```promql
 # The current GPU utilisation per GPU
@@ -154,11 +160,13 @@ avg_over_time(DCGM_FI_DEV_GPU_UTIL[5m])
 sum by (team) (DCGM_FI_DEV_GPU_UTIL) by (gpu, team)
 ```
 
-The pattern is: utilisation below 30% is under-utilised (the GPU is paying for time it is not using); utilisation above 90% is over-utilised (the GPU is the bottleneck). The platform team's pattern is to alert when utilisation exceeds 95% for more than 10 minutes (the GPU is saturated).
+Read utilisation as a pattern over time, not as a single reading. *AI Systems Performance Engineering*, chapter 2, says training GPUs should sit near full utilisation most of the time. If they sit at 50 percent, something keeps them idle half the time, often a slow data loader or a synchronization point.
+
+The draft's example values are 30 percent for under-use, 90 percent for over-use, and an alert when utilisation stays above 95 percent for 10 minutes. These are examples. Choose your own numbers for your workload.
 
 ### 2.2 GPU memory
 
-The GPU memory is the HBM. The HBM is the most expensive resource on the GPU; the HBM is the leading cause of CUDA OOM crashes.
+High-bandwidth memory (HBM) is the GPU's own memory. When it runs out, a CUDA job fails with an out-of-memory error, which makes HBM a common cause of those crashes. Memory pressure is the early warning. A model that fits today can stop fitting when batch sizes or sequence lengths grow.
 
 ```promql
 # The GPU memory utilisation per GPU
@@ -171,31 +179,33 @@ DCGM_FI_DEV_FB_USED / DCGM_FI_DEV_FB_TOTAL > 0.9
 max by (gpu) (DCGM_FI_DEV_FB_USED)
 ```
 
-The pattern is: memory utilisation above 90% is a CUDA OOM waiting to happen; memory utilisation above 95% is the model growing beyond the GPU's capacity. The platform team's pattern is to alert when memory utilisation exceeds 90% for more than 5 minutes.
+Watch the ratio rather than the raw number. The 90 percent line in the example is a starting point. Pick the level that leaves your team enough time to act before a job fails.
 
 ### 2.3 ECC errors
 
-The ECC errors are the GPU's leading indicator of hardware failure. A GPU that is correcting errors today is a GPU that will fail tomorrow.
+Error-correcting code (ECC) is the memory's built-in repair. *AI Systems Performance Engineering*, chapter 3, explains that ECC fixes single-bit errors as they happen and detects double-bit errors, raising them to the calling code. ECC is on by default on data center GPUs, and the book advises keeping it on for serious AI work.
+
+Many teams treat a rising error count as an early warning. The rate that matters for your fleet is one you have to set and check yourself.
 
 ```promql
 # The ECC double-bit errors (DBE) per GPU over the last hour
-sum by (gpu) (increase(DCGM_FI_DEV_ECC_DBE_VOL_DEDUP[1h]))
+sum by (gpu) (increase(DCGM_FI_DEV_ECC_DBE_VOL_TOTAL[1h]))
 
 # The ECC single-bit errors (SBE) per GPU over the last hour
-sum by (gpu) (increase(DCGM_FI_DEV_ECC_SBE_VOL_DEDUP[1h]))
+sum by (gpu) (increase(DCGM_FI_DEV_ECC_SBE_VOL_TOTAL[1h]))
 
 # The retired pages (DBE) per GPU
-DCGM_FI_DEV_RETIRED_PAGES_DBE
+DCGM_FI_DEV_RETIRED_DBE
 
 # The alert: any DBE in the last hour
-sum by (gpu) (increase(DCGM_FI_DEV_ECC_DBE_VOL_DEDUP[1h])) > 0
+sum by (gpu) (increase(DCGM_FI_DEV_ECC_DBE_VOL_TOTAL[1h])) > 0
 ```
 
-The pattern is: a single DBE is a critical alert (the GPU is corrupting data; the GPU must be replaced); a sustained SBE rate is a warning (the GPU is degrading; the GPU must be scheduled for replacement). The platform team's pattern is to alert on any DBE immediately; alert on SBE rate above 100/hour.
+The draft treats a single double-bit error as critical and calls for replacing the GPU. It warns on single-bit errors and says the GPU should be scheduled for replacement once that rate stays high. The example rate in the draft is 100 per hour, so treat it as a starting value.
 
 ### 2.4 Xid errors
 
-The Xid errors are NVIDIA's driver-level error codes. The Xid errors tell the platform team what went wrong at the driver level.
+Xid errors are NVIDIA's driver-level error codes. Each code points to a class of problem, so the code tells you which runbook section to open.
 
 ```promql
 # The Xid errors per GPU
@@ -205,11 +215,11 @@ DCGM_FI_DEV_XID_ERRORS
 count by (gpu) (DCGM_FI_DEV_XID_ERRORS)
 ```
 
-The pattern is: every Xid error is an alert. Common Xid codes include 31 (GPU memory page fault), 43 (GPU stopped responding), 48 (double-bit ECC error), 63 (ECC page retirement). The platform team's pattern is to alert on any Xid error immediately; the runbook names the common Xid codes and the recovery steps.
+The draft alerts on every Xid error. Its common codes are 31 for a GPU memory page fault, 43 for a GPU that stopped responding, 48 for a double-bit ECC error and 63 for ECC page retirement. Whatever you alert on, the runbook should say what to do for each code.
 
 ### 2.5 Temperature and power
 
-The temperature and power are the GPU's thermals. The thermals are the leading indicator of thermal throttling.
+Heat is a quiet cause of slow jobs. A GPU that runs hot lowers its clock to protect itself, and the job slows down without raising an error. Temperature and power metrics let you see that before a deadline slips.
 
 ```promql
 # The current GPU temperature
@@ -222,11 +232,11 @@ DCGM_FI_DEV_POWER_USAGE
 DCGM_FI_DEV_GPU_TEMP > 85
 ```
 
-The pattern is: temperature above 85 degrees Celsius is a warning; temperature above 90 degrees is thermal throttling; temperature above 95 degrees is a critical alert. Power above the GPU's rated TDP (300 W for H100) is a sign of power supply issues.
+The draft's example lines are 85 degrees for a warning, 90 for throttling and 95 for critical. They are example values, not manufacturer limits, so check your GPU's documented thresholds first. The draft also says power draw above the rated TDP for your GPU model points to power supply problems.
 
 ### 2.6 Clocks
 
-The clocks are the SM clock and the memory clock. The clocks are the leading indicator of thermal or power throttling.
+The clocks are the SM clock and the memory clock, and they show whether a GPU is running at the speed you expect. *AI Systems Performance Engineering*, chapter 3, explains that GPU Boost moves the core clock up and down to stay within power and thermal limits. A clock below base usually means the GPU is being held back by heat or power.
 
 ```promql
 # The current SM clock
@@ -239,18 +249,20 @@ DCGM_FI_DEV_MEM_CLOCK
 DCGM_FI_DEV_SM_CLOCK < 1400  # H100 base clock is 1.4 GHz
 ```
 
-The pattern is: clock below the GPU's base clock is thermal or power throttling. The platform team's pattern is to alert when the clock is below the base clock for more than 10 minutes.
+The 1400 threshold in the example is a base-clock value for one model. Confirm your model's base clock before you use it. The draft alerts when the clock stays below base for 10 minutes, and that duration is an example too.
 
 ---
 
 ## 3. GPU-specific alerting
 
+Dashboards help only when someone is looking at them. Alerts make the platform tell you when a GPU needs attention. The rules below turn the metrics from section 2 into alerts.
+
 ### 3.1 The alert rules
 
-The GPU-specific alerting rules are the alerts that catch GPU failures.
+Each rule has an expression, a `for` time that the condition must hold before the alert fires, and a severity label. The `for` times and thresholds in this file are example values, so adjust them to your fleet before you rely on them.
 
 ```yaml
-# code/part17/gpu_alerts.yaml (shape only)
+# code/part17/gpu_alerts.yaml
 groups:
   - name: gpu_health
     interval: 30s
@@ -272,14 +284,14 @@ groups:
           summary: "GPU {{ $labels.gpu }} on {{ $labels.node }} is under memory pressure"
 
       - alert: GPUDoubleBitECCError
-        expr: sum by (gpu, node) (increase(DCGM_FI_DEV_ECC_DBE_VOL_DEDUP[1h])) > 0
+        expr: sum by (gpu, node) (increase(DCGM_FI_DEV_ECC_DBE_VOL_TOTAL[1h])) > 0
         labels:
           severity: critical
         annotations:
           summary: "GPU {{ $labels.gpu }} on {{ $labels.node }} has DBE errors"
 
       - alert: GPUSingleBitECCErrors
-        expr: sum by (gpu, node) (rate(DCGM_FI_DEV_ECC_SBE_VOL_DEDUP[1h])) > 100
+        expr: sum by (gpu, node) (increase(DCGM_FI_DEV_ECC_SBE_VOL_TOTAL[1h])) > 100
         labels:
           severity: warning
         annotations:
@@ -309,9 +321,11 @@ groups:
           summary: "GPU {{ $labels.gpu }} on {{ $labels.node }} is clock-throttling"
 ```
 
-The pattern is: every metric family has a specific alert threshold; the alerts page the on-call before the failure cascades; the runbook names the recovery steps for each alert.
+*Production Kubernetes*, chapter 9, warns against over-alerting. Too many critical alerts burn out on-call engineers, and the noise can bury the real incident. Keep the critical list short, and send the rest to a warning channel. The same chapter also suggests a heartbeat alert, one that fires all the time under normal conditions and pages you when it stops.
 
 ### 3.2 The recovery steps
+
+Each alert needs a first action, so the on-call engineer is not guessing in the middle of an incident. The table gives the first step for each rule. The runbook holds the details, and a runbook that lists these steps usually shortens the incident.
 
 | Alert | Recovery step |
 |---|---|
@@ -323,13 +337,13 @@ The pattern is: every metric family has a specific alert threshold; the alerts p
 | GPUThermalThrottle | Check the cooling system; reduce the workload's power draw |
 | GPUClockThrottle | Check the power supply; reduce the workload's clock |
 
-The recovery steps are the platform team's runbook. The runbook is the difference between an incident that is resolved in minutes and an incident that is resolved in hours.
-
 ---
 
 ## 4. Operating the DCGM exporter on GKE
 
 ### 4.1 The components
+
+Four pieces make up this stack, and each one can fail on its own. The table shows where each piece runs and the service target the draft uses for it.
 
 | Component | Where it runs | Backing store | SLO |
 |---|---|---|---|
@@ -338,9 +352,11 @@ The recovery steps are the platform team's runbook. The runbook is the differenc
 | Prometheus | Kubernetes Deployment | TSDB | Scrape latency p99 < 5 s |
 | Grafana | Kubernetes Deployment | (uses Prometheus) | Dashboard load p99 < 5 s |
 
+The SLO column holds example targets, not values from a source. Your team should choose its own targets and measure against them.
+
 ### 4.2 IAM and the cardinality budget
 
-The DCGM exporter adds new metrics to Prometheus. The cardinality budget applies.
+Every new time series costs Prometheus memory and storage, so count them before you deploy. The exporter adds many series, because each GPU reports many metrics. *Production Kubernetes*, chapter 9, warns that every label you add increases the load on Prometheus. Learn the effect of high cardinality before you add labels to these metrics.
 
 | Metric family | Cardinality per cluster | Budget impact |
 |---|---|---|
@@ -349,9 +365,11 @@ The DCGM exporter adds new metrics to Prometheus. The cardinality budget applies
 | NVLink, PCIe | ~10 metrics × 1000 GPUs = 10,000 series | Low |
 | Retired pages | ~3 metrics × 1000 GPUs = 3,000 series | Low |
 
-The total cardinality from the DCGM exporter on a 1000-GPU cluster is approximately 115,000 series. The cardinality is within the budget defined in Chapter 17.1.
+The counts in this table are rough estimates, not measurements. They add up to about 115,000 series for a 1000-GPU cluster. Compare that total with the budget in chapter 17.1 before you roll the exporter out.
 
 ### 4.3 Observability
+
+The exporter is a service too, so it needs its own monitoring. The table lists what to watch and the example alert values. The restart alert matters most. An exporter in a restart loop stops publishing, and the GPU graphs stop updating without showing an error. A frozen graph can look like a healthy GPU unless you alert on the silence.
 
 | Metric | Why it matters | Alert |
 |---|---|---|
@@ -360,75 +378,77 @@ The total cardinality from the DCGM exporter on a 1000-GPU cluster is approximat
 | GPU node CPU usage | DCGM exporter overhead | > 50% for 1 hour |
 | GPU node memory usage | DCGM exporter overhead | > 80% for 1 hour |
 
-The DCGM exporter pod restart alert is the most important. A DCGM exporter that is restarting is a DCGM exporter that is not exporting metrics; the GPU metrics are missing; the team cannot detect GPU failures.
+The alert values in this table are examples. Set your own after you have watched normal numbers on your cluster for a while.
 
 ---
 
 ## 5. How it fails
 
-Six failure modes recur.
+Six failures come up again and again. For each one, the symptom is what you notice first, the diagnosis is the likely cause, and the fix is what to do next.
 
 ### 5.1 "The DCGM exporter is not running on a GPU node"
 
-**Symptom:** The Prometheus target for the GPU node is missing; the GPU metrics for the node are missing.
+**Symptom:** The Prometheus target for the GPU node is missing, so that node's GPU metrics are missing too.
 
-**Diagnosis:** The DCGM exporter DaemonSet has a taint toleration that does not match the GPU node's taint; the pod is not scheduled on the node.
+**Diagnosis:** The exporter's DaemonSet toleration probably does not match the node's taint, so the pod never lands on the node.
 
-**Fix:** Verify the taint toleration; verify the pod is scheduled on the node; verify the metrics are exposed on port 9400; add an alert when the DCGM exporter is missing from a GPU node.
+**Fix:** Compare the toleration with the node's taint, confirm the pod runs on the node, and check that port 9400 serves metrics. Then add an alert for any GPU node that has no exporter.
 
 ### 5.2 "The DCGM exporter is consuming too much CPU"
 
-**Symptom:** The DCGM exporter pod is throttled; the metrics are delayed; the on-call cannot detect GPU failures in real time.
+**Symptom:** The exporter pod is throttled, so its metrics arrive late and you cannot see GPU problems in time.
 
-**Diagnosis:** The DCGM exporter is running too frequently; the metrics are being scraped at a high rate; the pod's CPU limit is too low.
+**Diagnosis:** The metrics are scraped often, and the pod's CPU limit is probably too low for that load.
 
-**Fix:** Increase the CPU limit; reduce the scrape interval; verify the metrics are still flowing within the SLO.
+**Fix:** Raise the CPU limit or lengthen the scrape interval. Then confirm the metrics still arrive within your latency target.
 
 ### 5.3 "The GPU is in ECC error storm"
 
-**Symptom:** The DCGM_FI_DEV_ECC_DBE_VOL_DEDUP metric is increasing rapidly; the GPU is corrupting data.
+**Symptom:** The double-bit error counter climbs quickly, which means something on the GPU is failing badly.
 
-**Diagnosis:** The GPU has a hardware failure; the GPU must be replaced.
+**Diagnosis:** The GPU probably has a hardware fault and must be replaced.
 
-**Fix:** Drain the node; replace the GPU; investigate the workload for data corruption; add the GPU to the retired-GPUs list.
+**Fix:** Drain the node and replace the GPU. Check the workload's output for damage, and add the GPU to your list of retired GPUs.
 
 ### 5.4 "The GPU is thermal-throttling"
 
-**Symptom:** The DCGM_FI_DEV_GPU_TEMP metric is above 85 degrees; the DCGM_FI_DEV_SM_CLOCK metric is below the base clock.
+**Symptom:** The temperature stays above your alert line, and the SM clock falls below base.
 
-**Diagnosis:** The cooling system is failing; the workload is consuming too much power; the data centre's HVAC is overloaded.
+**Diagnosis:** The likely causes are a cooling fault, a workload that draws more power than the node can cool, or a data-centre cooling shortfall.
 
-**Fix:** Check the cooling system; reduce the workload's power draw; move the workload to a cooler node.
+**Fix:** Check the cooling system, reduce the workload's power draw, or move the job to a cooler node.
 
 ### 5.5 "The DCGM exporter metrics are stale"
 
-**Symptom:** The Prometheus target for the DCGM exporter is up; the metrics are flowing; the metrics are stale (the values have not changed in hours).
+**Symptom:** The Prometheus target is up, but the values have not changed for hours.
 
-**Diagnosis:** The DCGM exporter is running but not reading from DCGM; the DCGM system library is failing; the kernel driver is failing.
+**Diagnosis:** The exporter may be running without reading fresh values from DCGM. The cause then sits lower in the stack, in DCGM or the kernel driver.
 
-**Fix:** Restart the DCGM exporter pod; restart the DCGM system library; check the kernel driver logs.
+**Fix:** Restart the exporter pod first. If the values stay frozen, restart the DCGM system library and check the kernel driver logs.
 
 ### 5.6 "The DCGM exporter is missing the high-cardinality labels"
 
-**Symptom:** The on-call cannot query the metrics by team or by model; the labels the team needs are missing.
+**Symptom:** You cannot query the metrics by team or model, because the labels are missing.
 
-**Diagnosis:** The DCGM exporter does not have access to the Kubernetes labels; the pod is missing the service account; the pod is missing the role binding.
+**Diagnosis:** The exporter may lack the access it needs to read Kubernetes labels. A missing service account or role binding is the first thing to check.
 
-**Fix:** Verify the pod's service account; verify the role binding; restart the pod; verify the labels are present.
+**Fix:** Verify the service account and the role binding, restart the pod, and confirm the labels now appear.
 
 ---
 
 ## 6. Hands-on lab
 
-This lab stands up the DCGM exporter on GKE, verifies the metrics are flowing into Prometheus, and builds the GPU-specific dashboards. The lab is **untested** in this repository.
+This lab installs the DCGM exporter on GKE, checks that its metrics reach Prometheus, and builds the GPU dashboard and alerts. The lab is **untested** in this repository.
 
 ### 6.1 Prerequisites
 
-- A GKE Autopilot or Standard cluster (1.27+) with at least 1 H100 or A100 GPU node.
+- A GKE Autopilot or Standard cluster (1.27+) with at least 1 H100 or A100 GPU node. Check the version against the GKE release you actually run.
 - Helm 3 for installing the DCGM exporter.
 - Prometheus installed (Chapter 17.2).
 
 ### 6.2 Step 1: install the DCGM exporter
+
+Install the chart with the same settings as section 1.2. The expected result is one exporter pod on each GPU node.
 
 ```bash
 helm repo add nvidia https://helm.ngc.nvidia.com/nvidia
@@ -443,6 +463,8 @@ helm install dcgm-exporter nvidia/dcgm-exporter \
 
 ### 6.3 Step 2: verify the metrics are flowing
 
+Open a port-forward to Prometheus and ask it for one metric. A value in the answer means the pipeline works from the GPU all the way to the database.
+
 ```bash
 # Port-forward to Prometheus
 kubectl -n monitoring port-forward svc/prometheus-kube-prometheus-prometheus 9090:9090 &
@@ -453,6 +475,8 @@ curl -s 'http://localhost:9090/api/v1/query?query=DCGM_FI_DEV_GPU_UTIL' | jq .
 ```
 
 ### 6.4 Step 3: build the GPU dashboard
+
+Load the dashboard JSON into a ConfigMap, then import it into Grafana. Use the Grafana credentials for your own instance, not the example ones in the command. The dashboard should then open at the path the last command names.
 
 ```bash
 # Apply the dashboard JSON
@@ -468,6 +492,8 @@ curl -X POST http://admin:admin@localhost:3000/api/dashboards/import \
 
 ### 6.5 Step 4: add the GPU alert rules
 
+Store the rules in a ConfigMap, then tell Prometheus to reload them. The file in this command is `configs/gpu_alerts.yaml`, while the rules in section 3.1 live under `code/part17/`, so check which copy you are using.
+
 ```bash
 # Apply the alert rules
 kubectl -n monitoring create configmap gpu-alerts \
@@ -480,13 +506,17 @@ curl -X POST http://localhost:9090/-/reload
 
 ### 6.6 Step 5: simulate a GPU failure
 
+This command only reads the ECC counters. It shows the current error counts, and it cannot create errors. Run it on a test GPU only, never in production, and do not expect it to trigger the alert.
+
 ```bash
-# Inject a synthetic ECC error (for testing only - DO NOT run on production)
+# Read the ECC counters (this cannot inject errors)
 nvidia-smi -q -d ECC
-# expected: the ECC error count is non-zero; the alert fires
+# expected: the current ECC error counts are printed; on a healthy GPU they are zero
 ```
 
 ### 6.7 Step 6: verify the alert fires
+
+Ask Alertmanager which alerts are active. On a healthy GPU, the double-bit alert should not appear, so this check mainly confirms that Alertmanager responds.
 
 ```bash
 # Query Alertmanager
@@ -497,7 +527,7 @@ curl -s http://localhost:9093/api/v2/alerts | jq .
 
 ### 6.8 What to record
 
-After the lab, you should be able to answer five questions in five seconds each:
+After the lab, you should be able to answer five questions in about five seconds each. The five seconds is an example target, not a standard.
 
 1. What is the current GPU utilisation per GPU?
 2. What is the current GPU memory pressure per GPU?
@@ -505,101 +535,103 @@ After the lab, you should be able to answer five questions in five seconds each:
 4. What is the current GPU temperature per GPU?
 5. What is the current GPU clock per GPU?
 
-If any takes more than 30 seconds, the GPU exporter is not yet a production service. The lab is **untested** against a live GKE cluster.
+If any answer takes more than 30 seconds, the GPU exporter is not yet a production service. The 30-second figure is also an example, and the lab is still untested against a live GKE cluster.
 
 ---
 
 ## Exercises
 
-1. **Add a GPU temperature dashboard.** Build a Grafana dashboard that shows the temperature per GPU; alert when the temperature exceeds 85 degrees. *Solution sketch:* the DCGM_FI_DEV_GPU_TEMP metric; a Grafana panel; an alert rule.
-2. **Add a retired-GPUs list.** Maintain a list of GPUs that have been retired due to ECC errors; add an alert when a GPU is added to the list. *Solution sketch:* a ConfigMap that lists the retired GPUs; a Prometheus alert that compares the running GPUs to the list.
-3. **Add a per-team GPU cost.** Compute the GPU cost per team from the DCGM metrics; the cost feeds the FinOps dashboard from Chapter 16.14. *Solution sketch:* the DCGM_FI_DEV_GPU_UTIL * DCGM_FI_DEV_POWER_USAGE; the per-team labels; the cost dashboard.
-4. **Add a GPU health check.** Add a Kubernetes health check that fails when the DCGM exporter is not running on a GPU node. *Solution sketch:* a Kubernetes Probe that checks the DCGM exporter's `/health` endpoint.
-5. **Add a GPU utilisation histogram.** Emit the GPU utilisation as a histogram; the histogram feeds the percentile-based dashboards. *Solution sketch:* a custom exporter that emits the utilisation as a histogram; the histogram feeds the dashboards.
-6. **Add a GPU NVLink error alert.** Alert when the NVLink CRC error count exceeds 100 in an hour. *Solution sketch:* a Prometheus alert on the DCGM_FI_DEV_NVLINK_CRC_DATA_ERROR_COUNT_TX metric.
+Try these after the lab. Each one asks you to build something you could use on your own cluster.
+
+1. **Add a GPU temperature dashboard.** Build a Grafana dashboard that shows temperature for each GPU. Alert when temperature passes a limit you choose. The draft's example is 85 degrees. *Solution sketch:* start from `DCGM_FI_DEV_GPU_TEMP`, add a Grafana panel, and write the alert rule.
+2. **Add a retired-GPUs list.** Keep a list of GPUs retired because of ECC errors, and alert when a GPU joins it. *Solution sketch:* store the list in a ConfigMap, then write a Prometheus alert that compares the running GPUs against it.
+3. **Add a per-team GPU cost.** Compute the GPU cost per team from the DCGM metrics, and feed the result into the FinOps dashboard from chapter 16.14. *Solution sketch:* multiply `DCGM_FI_DEV_GPU_UTIL` by `DCGM_FI_DEV_POWER_USAGE`, group the result by the team labels, and build the cost dashboard on top.
+4. **Add a GPU health check.** Add a Kubernetes health check that fails when the DCGM exporter is missing from a GPU node. *Solution sketch:* a Kubernetes probe that calls the exporter's `/health` endpoint.
+5. **Add a GPU utilisation histogram.** Emit GPU utilisation as a histogram, so the dashboards can show percentiles. *Solution sketch:* write a custom exporter that emits the histogram, then point the dashboards at it.
+6. **Add a GPU NVLink error alert.** Alert when NVLink CRC errors pass 100 in an hour, and treat 100 as an example value. *Solution sketch:* a Prometheus alert on the `DCGM_FI_DEV_NVLINK_CRC_DATA_ERROR_TOTAL` metric.
 
 ---
 
 ## Checkpoint questions
 
 <details><summary>1. What is the DCGM exporter?</summary>
-The bridge from DCGM to Prometheus. The DCGM exporter runs as a DaemonSet on every GPU node; the exporter reads the DCGM metrics; the exporter exposes the metrics in the Prometheus exposition format; Prometheus scrapes the exporter; the metrics flow into Grafana.
+It is the bridge from DCGM to Prometheus. It runs as a DaemonSet on every GPU node, reads the DCGM metrics, and exposes them in the Prometheus format, so Prometheus can scrape them and Grafana can graph them.
 </details>
 
 <details><summary>2. What is DCGM?</summary>
-NVIDIA's Data Center GPU Manager. DCGM is a system library that runs on every GPU node; DCGM exposes the GPU's health, utilisation, and performance metrics. DCGM is what the DCGM exporter reads from.
+It is NVIDIA's Data Center GPU Manager. It is a system library that runs on every GPU node and exposes each GPU's health, utilisation and performance. The DCGM exporter reads its numbers from DCGM.
 </details>
 
 <details><summary>3. What are the DCGM metric families?</summary>
-Utilization (GPU SM utilisation, memory utilisation), Memory (HBM used, total, free), Temperature (GPU temperature), Power (power draw, energy), Clocks (SM clock, memory clock), ECC (double-bit errors, single-bit errors), Xid (NVIDIA driver-level error codes), Retired pages (pages retired due to errors), NVLink (NVLink CRC errors), PCIe (PCIe replay count). Every metric family has a specific operational concern.
+The families cover utilisation, memory, temperature, power and clocks, plus ECC errors, Xid driver codes, retired pages, NVLink CRC errors and PCIe replays. Each family answers its own operational question about the GPU, such as whether it is busy or whether its memory is failing.
 </details>
 
 <details><summary>4. What does the GPU utilisation tell the platform team?</summary>
-Whether the GPU is doing useful work. Utilisation below 30% is under-utilised (the GPU is paying for time it is not using); utilisation above 90% is over-utilised (the GPU is the bottleneck). The platform team's pattern is to alert when utilisation exceeds 95% for more than 10 minutes.
+It shows whether the GPU is doing useful work. Under 30 percent is a sign of idle capacity, and over 90 percent means the GPU may be the bottleneck. The draft's example alert fires above 95 percent for 10 minutes, and those thresholds are examples to tune.
 </details>
 
 <details><summary>5. What does GPU memory pressure tell the platform team?</summary>
-Whether the GPU is at risk of CUDA OOM. Memory utilisation above 90% is a CUDA OOM waiting to happen; memory utilisation above 95% is the model growing beyond the GPU's capacity. The platform team's pattern is to alert when memory utilisation exceeds 90% for more than 5 minutes.
+It shows whether the GPU is at risk of a CUDA out-of-memory error. The draft treats 90 percent as the point where that error becomes likely, and 95 percent as the model outgrowing the GPU. Its example alert fires above 90 percent for 5 minutes, and that is an example value to set for your own workload.
 </details>
 
 <details><summary>6. What do ECC errors tell the platform team?</summary>
-The GPU's leading indicator of hardware failure. A GPU that is correcting errors today is a GPU that will fail tomorrow. The platform team's pattern is to alert on any double-bit error immediately; alert on single-bit error rate above 100/hour.
+They are an early sign of hardware trouble, and many teams treat a rising count as a warning. The draft's pattern is to page on any double-bit error at once. It also alerts when single-bit errors pass 100 per hour, an example rate to tune.
 </details>
 
 <details><summary>7. What do Xid errors tell the platform team?</summary>
-The NVIDIA driver-level error codes. Every Xid error is an alert. Common Xid codes include 31 (GPU memory page fault), 43 (GPU stopped responding), 48 (double-bit ECC error), 63 (ECC page retirement). The runbook names the common Xid codes and the recovery steps.
+Xid errors are NVIDIA's driver-level error codes. The draft alerts on every one. Its common codes are 31 for a GPU memory page fault, 43 for a GPU that stopped responding, 48 for a double-bit ECC error and 63 for ECC page retirement. The runbook should say what to do for each code.
 </details>
 
 <details><summary>8. What does thermal throttling tell the platform team?</summary>
-The GPU is overheating. The cooling system may be failing; the workload may be consuming too much power; the data centre's HVAC may be overloaded. The platform team's pattern is to alert when the temperature exceeds 85 degrees Celsius for more than 10 minutes.
+A hot GPU is usually overheating, which can mean a cooling fault, a workload drawing too much power or an overloaded data-centre cooling system. Each cause points to a different fix. The draft's example alert fires when temperature stays above 85 degrees Celsius for 10 minutes, and you should choose your own limit.
 </details>
 
 <details><summary>9. What does clock throttling tell the platform team?</summary>
-The GPU is reducing its clock to manage temperature or power. The platform team's pattern is to alert when the SM clock is below the GPU's base clock for more than 10 minutes.
+The GPU lowers its clock to stay within its temperature or power limits. The draft alerts when the SM clock stays below base for 10 minutes, which is an example value.
 </details>
 
 <details><summary>10. What is the cardinality impact of the DCGM exporter?</summary>
-Approximately 115,000 series per 1000-GPU cluster. The cardinality is within the budget defined in Chapter 17.1. The platform team's pattern is to verify the cardinality after every DCGM exporter upgrade.
+The draft's estimate is about 115,000 series for a 1000-GPU cluster, and it is a rough figure rather than a measurement. Compare that with the budget in chapter 17.1. Check the series count again after every exporter upgrade.
 </details>
 
 <details><summary>11. What is the most common DCGM exporter failure mode?</summary>
-The DCGM exporter is not running on a GPU node. The pod's taint toleration does not match the GPU node's taint; the pod is not scheduled on the node. The fix is to verify the taint toleration; verify the pod is scheduled; verify the metrics are exposed.
+The exporter pod is not running on a GPU node. Usually the pod's toleration does not match the node's taint, so the scheduler skips that node. If you see it, check the toleration, confirm the pod is scheduled, and confirm the metrics are exposed.
 </details>
 
 <details><summary>12. What is the most critical GPU alert?</summary>
-The double-bit ECC error alert. A single DBE is a critical alert; the GPU is corrupting data; the GPU must be replaced immediately. The platform team's pattern is to drain the node; replace the GPU; investigate the workload for data corruption.
+The double-bit ECC error alert is the most critical one. In the draft, a single double-bit error is critical, and it says the GPU is corrupting data and must be replaced at once. The usual response is to drain the node, replace the GPU and check the workload's output.
 </details>
 
 <details><summary>13. What is the difference between DBE and SBE?</summary>
-DBE (double-bit errors) are uncorrectable errors; the data is corrupted. SBE (single-bit errors) are correctable errors; the data is recovered. A single DBE is a critical alert; sustained SBE rate is a warning.
+DBE means double-bit error, which ECC cannot correct, so the data is treated as corrupted. SBE means single-bit error, which ECC corrects, so the data is recovered. In the draft, one DBE is critical, and a sustained SBE rate is a warning.
 </details>
 
 <details><summary>14. What is the Xid code 31?</summary>
-GPU memory page fault. The GPU tried to access a memory page that was not mapped. Common causes include driver bugs, workload bugs, or hardware failures. The runbook names the recovery steps.
+It is a GPU memory page fault. The GPU tried to reach a memory page that was not mapped. Driver bugs, workload bugs and hardware failures can all cause it. The runbook names the recovery steps.
 </details>
 
 <details><summary>15. What is the Xid code 48?</summary>
-Double-bit ECC error. The GPU detected an uncorrectable memory error. The GPU must be replaced immediately. The platform team's pattern is to drain the node and replace the GPU.
+It is a double-bit ECC error. The GPU detected a memory error it cannot correct. The draft says the GPU must be replaced immediately. The usual response is to drain the node and replace the GPU.
 </details>
 
 <details><summary>16. What is the Xid code 63?</summary>
-ECC page retirement. The GPU retired a memory page due to errors. The retirement is automatic; the GPU continues to operate; the retirement count increases. The platform team's pattern is to monitor the retirement count; alert when the rate increases.
+It is ECC page retirement. The GPU retired a memory page because of errors. The retirement happens automatically, the GPU keeps running, and the retirement count goes up. The draft's pattern is to watch that count and alert when its rate rises.
 </details>
 
 <details><summary>17. Why is the DCGM exporter a DaemonSet?</summary>
-Because the DCGM exporter must run on every GPU node; the DCGM exporter reads the GPU's metrics via the kernel driver; the DCGM exporter cannot run on a non-GPU node. The DaemonSet pattern ensures one exporter pod per GPU node.
+It must run on every GPU node, and it reads GPU metrics through the kernel driver, so it cannot do its job on a node without a GPU. A DaemonSet runs exactly one exporter pod on each GPU node.
 </details>
 
 <details><summary>18. What is the relationship between DCGM and nvidia-smi?</summary>
-Both DCGM and nvidia-smi read the GPU's metrics via the kernel driver. nvidia-smi is a CLI; DCGM is a system library that the DCGM exporter uses. nvidia-smi is for ad-hoc inspection; DCGM is for continuous monitoring.
+Both read GPU metrics through the kernel driver. nvidia-smi is a command-line tool you run by hand, while DCGM is a system library the exporter calls. Use nvidia-smi for a quick look, and use DCGM when you need continuous monitoring.
 </details>
 
 <details><summary>19. What is the most expensive GPU failure mode?</summary>
-The GPU is corrupting data (DBE errors). The workload's outputs are wrong; the workload's training is corrupted; the customer sees bad predictions. The fix is immediate GPU replacement; the data corruption must be investigated; the workload must be re-run on a healthy GPU.
+The most expensive case is a GPU that corrupts data, which shows up as DBE errors. Outputs and training can go wrong, and customers may see bad predictions before anyone notices. The fix is to replace the GPU at once, investigate the corruption, and re-run the workload on a healthy GPU.
 </details>
 
 <details><summary>20. What five questions should the DCGM exporter lab let you answer in five seconds each?</summary>
-What is the current GPU utilisation per GPU. What is the current GPU memory pressure per GPU. What is the current ECC error count per GPU. What is the current GPU temperature per GPU. What is the current GPU clock per GPU. If any takes more than 30 seconds, the GPU exporter is not yet a production service.
+What is the current GPU utilisation per GPU? What is the current GPU memory pressure per GPU? What is the current ECC error count per GPU? What is the current GPU temperature per GPU? What is the current GPU clock per GPU? If any takes more than 30 seconds, the GPU exporter is not yet a production service.
 </details>
 
 ---

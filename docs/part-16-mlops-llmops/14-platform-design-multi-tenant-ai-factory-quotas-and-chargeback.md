@@ -25,12 +25,14 @@ lab_venue: "GCP / GKE"
 
 ## Why this matters for AI infrastructure
 
-The previous chapters assumed a single team with a single set of resources. This chapter is about the case where the platform serves many teams. The multi-tenant AI factory is the production shape of a mature AI infrastructure: many teams (data science, ML engineering, applied research, product engineering) consume a shared platform (GPU pool, registry, orchestrator, feature store, serving platform); the platform team owns the shared platform; the teams own their models and their applications.
+Picture a platform that works. Soon, data science, ML engineering, applied research, and product engineering all want the same GPU pool, registry, orchestrator, feature store, and serving platform. The platform team owns those shared parts. The teams own their own models and applications.
 
-Multi-tenancy is not optional. A platform that is not multi-tenant becomes one by accident: teams share a namespace; their models share a registry; their traffic collides on the same ingress; their IAM is shared; their SLOs are coupled. The platform team's first job is the multi-tenant primitives: namespaces, service accounts, network policies, per-team quotas, per-team SLOs, per-team billing.
+Multi-tenancy is not optional. A platform that is not built for many teams becomes multi-tenant anyway, by accident. Teams end up sharing a namespace, a model registry, an ingress path, and an IAM policy. Their traffic and service levels then start to affect each other.
+
+The platform team's first job is to build the multi-tenant primitives on purpose: namespaces, service accounts, network policies, per-team quotas, per-team SLOs, and per-team billing.
 
 ```text
-Why multi-tenancy is on the critical path (PK Ch 12; MLPE Ch 9; V21 ch1):
+Why multi-tenancy is on the critical path (background reading: Production Kubernetes; Machine Learning Platform Engineering; NVIDIA Zero-to-Hero volume 21; the figures below are examples, not quotations):
 - A typical mature AI factory serves 5-30 teams across data science, ML
   engineering, applied research, and product engineering. Each team has its own
   models, its own data, its own SLOs; the teams share the GPU pool, the
@@ -43,33 +45,39 @@ Why multi-tenancy is on the critical path (PK Ch 12; MLPE Ch 9; V21 ch1):
   platform's job is to allocate the GPU fairly.
 ```
 
-Three operational realities make this chapter a platform-team concern rather than a data-science-only concern:
+The figures in that block are example values, not quoted prices or a measured team count. Replace them with numbers from your own cloud bill and team roster before you plan a budget.
 
-1. **The multi-tenant primitives are platform decisions.** Namespaces, service accounts, network policies, per-team quotas, per-team SLOs, per-team billing — the platform team owns them; the consuming teams consume them.
-2. **The GPU pool is the most expensive shared resource.** The platform team owns the FinOps dashboard; the FinOps dashboard is the feedback loop that prevents runaway costs.
-3. **The self-service onboarding is the platform's first impression.** A team that waits three weeks for a namespace is a team that builds their own platform. The platform team's job is to make the first model runnable in minutes.
+Three operational realities make this a platform-team concern, not only a data-science concern.
 
-**Before a team can serve the first model, the platform must have a multi-tenant primitive for every shared resource. Multi-tenancy is not a feature; multi-tenancy is a property of the platform.**
+1. The multi-tenant primitives are platform decisions. The platform team owns namespaces, service accounts, network policies, quotas, SLOs, and billing. The consuming teams use them.
+2. The GPU pool is the most expensive shared resource. The FinOps dashboard is the feedback loop that catches runaway spending before the bill arrives.
+3. Onboarding is the platform's first impression. A team that waits weeks for a namespace will build its own platform. Your goal is a first model that runs in minutes.
+
+*Production Kubernetes*, chapter 12, draws a useful line here. A soft multitenant platform hosts teams in one organization that trust each other, yet still need isolation against mistakes. A hard multitenant platform hosts parties that do not trust each other. Your internal AI factory is almost always the soft case, and bugs still spread across teams.
+
+**Multi-tenancy is a property of the platform, not a feature you add later.** Before the first team arrives, list every shared resource and name its owner.
 
 ## Prerequisites and outcomes
 
+This chapter assumes you already run GPU workloads on Kubernetes. Check the prerequisites first, because the quota and admission pieces depend on them. Then use the outcomes as a checklist for the rest of the chapter.
+
 ### Prerequisites
 
-- Chapter 16.1 (MLOps foundations).
-- Chapter 16.7 (Serving platforms and the InferenceService).
-- Chapter 11 (GPU Kubernetes) for the GPU pool, the gang scheduler, and the GPU Operator.
-- Chapter 5.22 (Multitenancy and platform services) for the Kubernetes multi-tenant primitives.
+- Chapter 16.1: MLOps foundations.
+- Chapter 16.7: Serving platforms and the InferenceService.
+- Chapter 11: GPU Kubernetes, for the GPU pool, the gang scheduler, and the GPU Operator.
+- Chapter 5.22: Multitenancy and platform services, for the Kubernetes multi-tenant primitives.
 
 ### Outcomes
 
-After completing this chapter you will be able to:
+After you finish this chapter, you should be able to do six things.
 
-1. Design the multi-tenant primitive for every shared resource (GPU pool, registry, orchestrator, feature store, serving platform).
-2. Implement per-team GPU quotas with Kueue or Volcano; the quota is enforced at admission time.
-3. Build the FinOps dashboard that shows per-team, per-model, per-month cost.
-4. Implement chargeback: the dashboard's cost data feeds the business's billing system.
-5. Build the self-service onboarding: a team can request a namespace, a GPU quota, a model registry, and a serving endpoint in minutes.
-6. Operate the multi-tenant platform on GKE with IAM, network policies, observability, and SLOs that match the business's needs.
+1. Design a multi-tenant primitive for every shared resource.
+2. Enforce per-team GPU quotas with Kueue or Volcano, at admission time.
+3. Build a FinOps dashboard that shows cost per team, per model, and per month.
+4. Feed the dashboard's cost data into chargeback.
+5. Let a team request a namespace, a GPU quota, a model registry, and a serving endpoint in minutes.
+6. Run the platform on GKE with IAM, network policies, observability, and SLOs that match the business.
 
 ---
 
@@ -77,7 +85,9 @@ After completing this chapter you will be able to:
 
 ### 1.1 The shared resources
 
-*Production Kubernetes* Chapter 12 walks through the shared resources that a multi-tenant platform exposes. The AI factory has eight shared resources; each is consumed by many teams; each is owned by the platform team.
+*Production Kubernetes*, chapter 12, explains the tenancy layers that a shared platform needs. This chapter applies them to the AI factory. The factory has ten shared resources. Each one is used by many teams and owned by the platform team.
+
+One point from that book matters here. A namespace is only metadata in the control plane. Unless you add policy or scheduling rules, pods from two different namespaces can land on the same node.
 
 | Shared resource | What it is | Who consumes it | Who owns it |
 |---|---|---|---|
@@ -92,11 +102,13 @@ After completing this chapter you will be able to:
 | **Vector store** | The shared vector store (Milvus, Qdrant, Vertex AI Vector Search) | Every team's retrieval indices | Platform team + team |
 | **Serving platform** | The shared serving platform (KServe, Seldon, BentoML) | Every team's inference services | Platform team + team |
 
-The pattern is that the platform owns the resource; the team consumes the resource; the team has its own namespace, service account, and quota within the resource.
+The pattern is that the platform owns each resource. The team consumes it, and gets its own namespace, service account, and quota inside it. When you add a new shared resource, give it an owner in this table before any team uses it.
 
 ### 1.2 The per-team primitives
 
-*Machine Learning Platform Engineering* Chapter 9 walks through the per-team primitives. Each team gets a slice of every shared resource.
+*Machine Learning Platform Engineering*, chapter 9, walks through the per-team primitives. Each team gets a slice of every shared resource. The slice is set at onboarding, enforced at admission time, and easy to audit.
+
+A namespace is not a secret boundary inside a team. If two engineers on the same team may read Secrets in their namespace, each of them can read every Secret there. *Production Kubernetes*, chapter 12, makes this point. Before you grant a role, ask who else can read the data it protects.
 
 | Primitive | What it is | How it is enforced |
 |---|---|---|
@@ -109,11 +121,11 @@ The pattern is that the platform owns the resource; the team consumes the resour
 | **Feature view** | One or more Feast feature views per team | Feast IAM |
 | **Vector index** | One or more Milvus collections per team | Milvus IAM |
 
-The pattern is that each team has a per-team slice of every primitive. The slice is configured at onboarding; the slice is enforced at admission time; the slice is auditable.
-
 ### 1.3 The IAM model
 
-The IAM model is the cross-cutting concern. The pattern is:
+IAM cuts across every other primitive. If it is too loose, a good quota or namespace will not protect you. The roles below are the pattern for team members and for the platform team. Start with the fewest roles you need, and add more only when a team asks for them.
+
+This is the writer, reader, promoter, and admin model from Chapter 16.6 Section 5.2, extended to the team level.
 
 | Role | Who | What they can do |
 |---|---|---|
@@ -123,7 +135,144 @@ The IAM model is the cross-cutting concern. The pattern is:
 | `platform.admin` | The platform team | Manage the cluster; manage the GPU pool; manage the orchestrator |
 | `platform.auditor` | The compliance team | Read every audit log; read every lineage graph |
 
-The IAM model is the same as Chapter 16.6 Section 5.2 (writer, reader, promoter, admin) extended to the team level.
+### 1.4 Default deny-all network policy
+
+Kubernetes assumes that every Pod can reach every other Pod. On a shared platform, that assumption lets one tenant's workload talk to another tenant's services. A default deny-all policy reverses it. Tenants are isolated the moment they join, and each connection they need must be declared.
+
+There are two ways to build the policy. The first uses the core NetworkPolicy API, which works with any CNI plug-in. The catch is that NetworkPolicy is namespace-scoped. You need one default deny-all object per namespace. Tenants can also create their own NetworkPolicy objects, so you need an admission webhook that stops them from changing or deleting the default one.
+
+```yaml
+apiVersion: networking.k8s.io/v1
+kind: NetworkPolicy
+metadata:
+  name: default-deny-all
+  namespace: tenant-a
+spec:
+  podSelector: {}
+  policyTypes:
+  - Ingress
+  - Egress
+```
+
+The empty `podSelector` matches every Pod in the namespace. Both policy types are listed, so inbound and outbound traffic are blocked.
+
+The second way uses custom resources from the CNI plug-in. Antrea, Calico, and Cilium offer cluster-wide, or global, network policies. One object covers the whole cluster, which cuts the management work. The price is a tie to one plug-in. The Calico version of the same default looks like this.
+
+```yaml
+apiVersion: projectcalico.org/v3
+kind: GlobalNetworkPolicy
+metadata:
+  name: default-deny
+spec:
+  selector: all()
+  types:
+  - Ingress
+  - Egress
+```
+
+Simplicity usually wins here, because switching CNI plug-ins is rare. The Kubernetes Networking Special Interest Group is also looking at cluster-scoped policies in the core API, so this choice may get easier later.
+
+Both sketches above are incomplete. A production default needs two exceptions. It must allow basic traffic such as DNS queries to the cluster's DNS server. It must also skip the kube-system namespace and other system namespaces, or the cluster can break.
+
+Once the default is in place, tenants open the holes they need with their own policies. Adopt the default deny-all pattern before the second tenant arrives. It is the strongest network stance you can take on a shared platform.
+
+### 1.5 Pod security policies
+
+Network isolation does not stop a workload from misusing the node it runs on. Without a Pod security control, a workload can run as privileged, mount host volumes, or bind to the host's network. Pod Security Policies control these settings at runtime.
+
+A warning before you copy anything from this section. The PodSecurityPolicy resource described here was removed from Kubernetes in version 1.25. The book this section draws on predates that removal. On a current cluster, use Pod Security Admission or a ValidatingAdmissionPolicy instead, as Chapter 18.4 shows. Read the policy below as a description of what a restrictive default must forbid, not as a manifest to apply.
+
+Kubernetes enforces most of these controls with an admission controller. Once the controller is enabled, a Pod is blocked unless a policy allows it. The rule that requires a nonroot user is partly enforced by the kubelet, which checks the runtime user after it pulls the image.
+
+The restrictive policy below is a good default for a multitenant cluster.
+
+```yaml
+apiVersion: policy/v1beta1
+kind: PodSecurityPolicy
+metadata:
+  name: default
+  annotations:
+    seccomp.security.alpha.kubernetes.io/allowedProfileNames: |
+      'docker/default,runtime/default'
+    apparmor.security.beta.kubernetes.io/allowedProfileNames: 'runtime/default'
+    seccomp.security.alpha.kubernetes.io/defaultProfileName: 'runtime/default'
+    apparmor.security.beta.kubernetes.io/defaultProfileName: 'runtime/default'
+spec:
+  privileged: false
+  allowPrivilegeEscalation: false
+  requiredDropCapabilities:
+    - ALL
+  volumes:
+    - 'configMap'
+    - 'emptyDir'
+    - 'projected'
+    - 'secret'
+    - 'downwardAPI'
+    - 'persistentVolumeClaim'
+  hostNetwork: false
+  hostIPC: false
+  hostPID: false
+  runAsUser:
+    rule: 'MustRunAsNonRoot'
+  seLinux:
+    rule: 'RunAsAny'
+  supplementalGroups:
+    rule: 'MustRunAs'
+    ranges:
+      - min: 1
+        max: 65535
+  fsGroup:
+    rule: 'MustRunAs'
+    ranges:
+      - min: 1
+        max: 65535
+  readOnlyRootFilesystem: false
+```
+
+Each setting does one job.
+
+- `privileged: false` disallows privileged containers.
+- `volumes` limits which volume types a Pod can use.
+- `hostNetwork`, `hostIPC`, and `hostPID` set to `false` keep the Pod off the host's namespaces.
+- `runAsUser` with `MustRunAsNonRoot` makes containers run as a nonroot user.
+- `seLinux` with `RunAsAny` assumes the nodes use AppArmor rather than SELinux.
+- `supplementalGroups` and `fsGroup` set the allowed group IDs. Root, group 0, is never allowed.
+
+A policy that exists is not enough. The Pod must also be authorized to use it, and RBAC handles that check. A Pod can use a policy when its service account is allowed to. It can also use one when the actor who creates it is allowed. Pods are seldom created by people, so service accounts are the common path. The Role and RoleBinding below let the service account `my-app` use the policy `sample-psp`.
+
+```yaml
+kind: Role
+apiVersion: rbac.authorization.k8s.io/v1
+metadata:
+  name: sample-psp
+rules:
+- apiGroups: ['policy']
+  resources: ['podsecuritypolicies']
+  resourceNames: ['sample-psp']
+  verbs: ['use']
+---
+apiVersion: rbac.authorization.k8s.io/v1beta1
+kind: RoleBinding
+metadata:
+  name: sample-psp
+subjects:
+- kind: ServiceAccount
+  name: my-app
+roleRef:
+  apiGroup: rbac.authorization.k8s.io
+  kind: Role
+  name: sample-psp
+```
+
+The platform team usually creates these policies and decides who may use them. Follow least privilege, and allow only the capabilities a Pod needs for its work. Most platforms start with three policies.
+
+- **Default.** Every tenant can use it. It blocks privileged operations, drops all Linux capabilities, and rejects root. Authorize all Pods through a ClusterRole and ClusterRoleBinding.
+- **kube-system.** It covers system components in the kube-system namespace. It must be more permissive, because those Pods mount `hostPath` volumes and run as root. Bind it to all service accounts in kube-system with a RoleBinding.
+- **Networking.** It covers the CNI plug-in and other networking Pods, which change the node's network stack. Bind it only to the networking service accounts.
+
+Some workloads need more privilege than the default allows. Decide whether the risk is tolerable inside the same cluster. If it is, create a policy for that workload alone. Grant only the privileges it needs, and authorize only its service account to use the policy.
+
+The Kubernetes community is discussing removal of the PodSecurityPolicy API from the core project. If that happens, a policy engine such as Open Policy Agent or Kyverno can provide similar controls.
 
 ---
 
@@ -131,7 +280,9 @@ The IAM model is the same as Chapter 16.6 Section 5.2 (writer, reader, promoter,
 
 ### 2.1 The quota tiers
 
-*LLMOps* Chapter 9 and NVIDIA Zero-to-Hero Volume 21 chapter 3 walk through the GPU quota tiers that a multi-tenant AI factory exposes. The tiers are based on the team's use case and the team's budget.
+Picture two teams. One runs exploratory notebooks on spare capacity. The other runs a production model that cannot wait in line. One tier for both would serve neither well. Tiers match each team's use case and budget to a quota.
+
+The tier idea follows *LLMOps*, chapter 9, and NVIDIA Zero-to-Hero Volume 21, chapter 3. The GPU ranges in the table are example values, so choose your own from your pool size and budget.
 
 | Tier | GPU pool | Use case | Quota |
 |---|---|---|---|
@@ -141,12 +292,16 @@ The IAM model is the same as Chapter 16.6 Section 5.2 (writer, reader, promoter,
 | **Tier 4: Heavy** | Large GPU pool | Large model training; high-QPS serving | 16-64 GPUs per team |
 | **Tier 5: Frontier** | Reserved GPU pool | Frontier model training; multi-tenant inference | 64-256 GPUs per team |
 
-The tiers are enforced by Kueue ClusterQueues. Each tier maps to one ClusterQueue with the corresponding GPU quota. The team subscribes to a tier at onboarding; the team can request a tier upgrade.
+Each tier maps to one ClusterQueue with the matching GPU quota. A team subscribes to a tier at onboarding and can ask for an upgrade later.
+
+A Kubernetes ResourceQuota works the same way, but only inside one namespace. *Production Kubernetes*, chapter 12, notes that the quota object is namespace-scoped. That is simple when each team has one namespace. A team with many namespaces needs extra automation, such as the Hierarchical Namespace Controller, to enforce one budget across them.
 
 ### 2.2 Kueue ClusterQueues and LocalQueues
 
+Kueue holds a Job until the quota has room. You define one ClusterQueue per tier and one LocalQueue per team. The LocalQueue ties a team to a tier, and the ClusterQueue enforces the quota.
+
 ```yaml
-# code/part16/cluster_queues.yaml (shape only)
+# code/part16/cluster_queues.yaml
 apiVersion: kueue.x-k8s.io/v1beta1
 kind: ClusterQueue
 metadata:
@@ -184,7 +339,7 @@ spec:
 ```
 
 ```yaml
-# code/part16/local_queues.yaml (shape only)
+# code/part16/local_queues.yaml
 apiVersion: kueue.x-k8s.io/v1beta1
 kind: LocalQueue
 metadata:
@@ -194,17 +349,87 @@ spec:
   clusterQueue: cluster-queue-standard
 ```
 
-The pattern is one ClusterQueue per tier; one LocalQueue per team. The LocalQueue binds the team to the tier; the ClusterQueue enforces the quota. When the team submits a Job, Kueue holds the Job until the quota allows; when the quota is exhausted, the Job is queued.
+A ResourceQuota refuses an over-budget request at the door, and that is the behaviour you want. In one example from *Production Kubernetes*, chapter 12, a namespace capped at 1 CPU and 512 MiB rejected a Pod that asked for 2 CPUs and 2 GiB. The error names the quota and shows both the requested and the limited amounts.
 
 ### 2.3 Quota rebalancing and fairness
 
-The platform team owns the quota rebalancing policy. The pattern is:
+Quotas drift away from real use over time. A rebalancing policy keeps them honest, and the platform team owns that policy. The three mechanisms below are the usual ones. The thresholds are examples you should set for your own factory.
 
-- **Weekly review.** The platform team reviews the per-team quota utilisation; teams that consistently use less than 50% of their quota are flagged for a downgrade; teams that consistently hit their quota are flagged for an upgrade.
-- **Borrowing queue.** A team that needs more GPU than its quota can borrow from a shared "burst" ClusterQueue; the burst queue is consumed first-come-first-served; the team pays back the borrow in the next billing cycle.
-- **Preemption.** A high-priority team can preempt a lower-priority team's Job; the preempted Job is queued again; the preempted team's checkpoint is preserved (Chapter 16.5 Section 3).
+- Weekly review. Look at each team's quota use every week. A team that consistently uses less than 50 percent of its quota is a downgrade candidate. A team that keeps hitting its quota is an upgrade candidate.
+- Borrowing queue. A team that needs more GPUs than its quota can borrow from a shared burst ClusterQueue. The queue is first come, first served, and the team pays back the borrow in the next billing cycle.
+- Preemption. A high-priority team can preempt a lower-priority Job. The preempted Job goes back into the queue, and its checkpoint is preserved, as described in Chapter 16.5 Section 3.
 
-The rebalancing is fair across teams; the rebalancing is auditable; the rebalancing is part of the FinOps dashboard.
+Put the rebalancing history on the FinOps dashboard, so every change stays visible and auditable.
+
+### 2.4 Requests, limits, and QoS on shared nodes
+
+Tenants share the nodes they run on. A tenant that takes too much CPU or memory hurts its neighbors on the same node. Requests and limits are the Kubernetes tools that keep tenants apart at the compute layer. Requests act mostly at the scheduler. Limits are enforced on the node, through Linux control groups (cgroups) and the Completely Fair Scheduler (CFS).
+
+Requests and limits isolate production workloads well. Still, the isolation is weaker than what a hypervisor gives. Noisy neighbor effects are hard to remove completely in containers. Load-test the workloads you plan to place together before you trust the layout.
+
+Requests and limits also set each Pod's Quality of Service (QoS) class. The kubelet uses that class to choose which Pods to evict when a node runs low. There are three classes.
+
+- **Guaranteed.** Every container has CPU limits equal to CPU requests, and memory limits equal to memory requests. The kubelet seldom evicts these Pods.
+- **Burstable.** Pods that are not Guaranteed, but have at least one container with a CPU or memory request. The kubelet evicts the Pods that use the most above their requests first.
+- **BestEffort.** Pods with no CPU or memory limits or requests. They run on a best-effort basis, and the kubelet evicts them first.
+
+Pod priority also affects eviction. The Kubernetes documentation on "Out of Resource" handling explains the details.
+
+#### Memory
+
+A memory request is a guaranteed floor. The scheduler adds the container requests into one Pod total, then finds a node with that much free memory. If no node has room, the Pod stays `Pending`. Once scheduled, its containers get the memory they requested.
+
+A Pod can use more memory than it requested when the node has spare memory. That extra memory is memory the scheduler might later give to someone else. When a new Pod needs memory on the same node, the Pod that is over its request is terminated. This frees memory for the new Pod.
+
+A memory limit sets the ceiling. Memory cannot be throttled, so a process that exceeds its limit is killed. The output below shows a container that was out-of-memory killed. Look for the `Reason` under `Last State`.
+
+```
+$ kubectl describe pod memory
+Name:         memory
+Namespace:    default
+Priority:     0
+... <snip> ...
+Containers:
+  stress:
+    ... <snip> ...
+    Last State:     Terminated
+      Reason:       OOMKilled
+      Exit Code:    1
+      Started:      Fri, 23 Oct 2020 10:11:51 -0400
+      Finished:     Fri, 23 Oct 2020 10:11:56 -0400
+    Ready:          True
+    Restart Count:  1
+    Limits:
+      memory:  100Mi
+    Requests:
+      memory:  100Mi
+```
+
+Teams often ask whether tenants may set memory limits above their requests. That choice oversubscribes the node on memory. It trades node density for stability. Oversubscribing packs more Pods per node, but it makes workloads more likely to die under contention. Most platform teams avoid it, especially on clusters that run production work.
+
+#### CPU
+
+CPU is a compressible resource. The kernel can slow a process down instead of killing it. One CPU unit equals one core. Fractions such as 0.5 are allowed, and the `m` suffix expresses millis. So `1000m` equals one CPU.
+
+The scheduler places a Pod on a node with enough CPU capacity. The kubelet then converts the CPU request into cgroup CPU shares. CPU shares are relative, so a share count is not a core count. The CPU is divided in proportion to the shares. A process with 2000 shares gets twice the CPU time of a process with 1000 shares.
+
+That proportion applies only under contention. When the CPU is idle, no process is throttled. As long as tenants declare CPU requests, the shared capacity is divided by those requests. No tenant can starve the others of CPU time.
+
+CPU limits work differently. They set an upper bound. Kubernetes uses the bandwidth control feature of CFS, which splits time into periods. The default period is 100 ms. Each container gets a quota per period, and it is throttled once the quota runs out. A container with a 0.5 CPU limit gets 50 ms in each 100 ms period. A container with a 3 CPU limit gets 300 ms per period.
+
+This can surprise you with multithreaded applications. A container with a 1 CPU limit gets 100 ms per period. If five threads are busy, they can use that quota in 20 ms. The container is then throttled for the remaining 80 ms of the period.
+
+Limits reduce variability. Without them, replicas on different nodes burst into idle CPU that differs from node to node. Setting limits equal to requests gives each workload exactly the CPU it asked for. Benchmarks without limits give inconclusive results for the same reason. For latency-sensitive services, set limits equal to requests. Otherwise, skip the upper bound, because shares already give each workload its fair part under contention, and idle cycles are not wasted.
+
+#### A Linux kernel bug that throttles CPU limits
+
+A Linux kernel bug can throttle containers without a real reason. This hurts latency-sensitive services such as web applications. Kubernetes users have worked around it in three ways.
+
+- Remove CPU limits from Pod specifications.
+- Disable CPU limit enforcement with the kubelet flag `--cpu-cfs-quota=false`.
+- Reduce the CFS period to 5-10 ms with the kubelet flag `--cpu-cfs-quota-period`.
+
+The bug is fixed in Linux kernel 5.4. The fix was also backported to 4.14.154 and later, to 4.19.84 and later, and to 5.3.9 and later. If you need CPU limits, upgrading the kernel is the cleaner path.
 
 ---
 
@@ -212,15 +437,15 @@ The rebalancing is fair across teams; the rebalancing is auditable; the rebalanc
 
 ### 3.1 The cost model
 
-*LLMOps* Chapter 9 and NVIDIA Zero-to-Hero Volume 21 chapter 2 walk through the cost model for the AI factory. The cost per team per month is the sum of:
+The cost model below follows *LLMOps*, chapter 9, and NVIDIA Zero-to-Hero Volume 21, chapter 2. A team's monthly bill has four parts. Each part is a quantity multiplied by a price.
 
-- **Compute cost.** GPU-hours * GPU price per hour. The team pays for every GPU-hour the team's workloads consume.
-- **Storage cost.** GB-month * storage price. The team pays for every GB the team's data consumes.
-- **Network cost.** Egress GB * network price. The team pays for every GB the team's inference traffic egresses.
-- **Licensing cost.** Per-GPU license * GPU-hours. The team pays for every NVAIE-licensed GPU-hour the team's workloads consume.
+- Compute cost is GPU-hours times the price per GPU-hour. The team pays for every GPU-hour its workloads consume.
+- Storage cost is GB-months times the storage price. The team pays for every gigabyte its data occupies.
+- Network cost is egress gigabytes times the network price. The team pays for every gigabyte its inference traffic sends out.
+- Licensing cost is licensed GPU-hours times the license price. The team pays for every GPU-hour covered by an NVAIE license.
 
 ```text
-Monthly cost per team (LLMOps Ch 9; V21 ch 2):
+Monthly cost per team (background reading: LLMOps; NVIDIA Zero-to-Hero volume 21; the figures below are examples, not quotations):
 - GPU compute: GPU-hours * $2-5 per GPU-hour (NVAIE) or $1 per GPU-hour (spot)
 - Storage: GB-month * $0.01-0.10 per GB-month
 - Network egress: GB * $0.01-0.12 per GB
@@ -228,11 +453,13 @@ Monthly cost per team (LLMOps Ch 9; V21 ch 2):
 - Operations: $0.05-0.20 per GPU-hour (the platform team's allocation)
 ```
 
-The cost model is the source of the chargeback. The chargeback is the business's billing system; the business uses the chargeback to allocate the AI factory's cost to the teams that consume it.
+The prices in that block are example values, not quoted rates. Use your cloud's price sheet and your license terms instead.
+
+The cost model is the source of the chargeback. The business uses it to allocate the factory's cost to the teams that consume it. If you change a price, change it here first, so your bills and your dashboard agree.
 
 ### 3.2 The FinOps dashboard
 
-The FinOps dashboard shows per-team, per-model, per-month cost. The dashboard is the feedback loop that prevents runaway costs.
+The FinOps dashboard shows cost per team, per model, and per month. It is the feedback loop that catches runaway spending early, before the monthly bill arrives. Platform engineers and team leads look at the same numbers, which keeps the conversation honest.
 
 ```mermaid
 flowchart LR
@@ -246,32 +473,35 @@ flowchart LR
     D --> C[Compliance<br/>audits the cost]
 ```
 
-The dashboard's data sources are:
+The dashboard reads four data sources.
 
-- **GPU usage.** The NVIDIA GPU Operator exposes GPU utilisation per pod; the metrics feed Prometheus; the dashboard aggregates per team per month.
-- **Storage usage.** The CSI driver exposes volume sizes; the metrics feed Prometheus; the dashboard aggregates per team per month.
-- **Network egress.** The cloud's metering exports network bytes; the metrics feed the dashboard; the dashboard aggregates per team per month.
-- **Licensing usage.** The NVAIE License Server exports per-GPU license usage; the metrics feed the dashboard; the dashboard aggregates per team per month.
+- GPU usage: the NVIDIA GPU Operator exposes GPU utilisation per pod. The metrics feed Prometheus, and the dashboard aggregates them per team per month.
+- Storage usage: the CSI driver exposes volume sizes. The dashboard aggregates them the same way.
+- Network egress: the cloud's metering exports network bytes into the same pipeline.
+- Licensing usage: the NVAIE License Server exports per-GPU license usage that feeds the dashboard.
 
 ### 3.3 The chargeback integration
 
-The dashboard's per-team cost feeds the business's chargeback system. The integration is a SQL query that aggregates the cost data by team; the query feeds the business's ERP or billing system.
+The dashboard's per-team cost feeds the business's chargeback system. A SQL query sums the cost data by team and month, and the result goes to the ERP or billing system.
 
 ```sql
--- code/part16/chargeback_query.sql (shape only)
-SELECT
-    team,
-    DATE_TRUNC('month', timestamp) AS month,
-    SUM(gpu_hours * gpu_price) AS compute_cost,
-    SUM(storage_gb_month * storage_price) AS storage_cost,
-    SUM(network_egress_gb * network_price) AS network_cost,
-    SUM(license_hours * license_price) AS license_cost,
-    SUM(compute_cost + storage_cost + network_cost + license_cost) AS total_cost
-FROM cost_metrics
-GROUP BY team, month
+-- code/part16/chargeback_query.sql
+WITH monthly AS (
+    SELECT
+        team,
+        DATE_TRUNC('month', timestamp) AS month,
+        SUM(gpu_hours * gpu_price) AS compute_cost,
+        SUM(storage_gb_month * storage_price) AS storage_cost,
+        SUM(network_egress_gb * network_price) AS network_cost,
+        SUM(license_hours * license_price) AS license_cost
+    FROM cost_metrics
+    GROUP BY team, DATE_TRUNC('month', timestamp)
+)
+SELECT *, compute_cost + storage_cost + network_cost + license_cost AS total_cost
+FROM monthly
 ```
 
-The chargeback is the business's view of the AI factory; the chargeback is the audit trail that proves the cost is allocated fairly.
+Chargeback is the business's view of the AI factory. It is also the audit trail that shows the cost was allocated fairly.
 
 ---
 
@@ -279,7 +509,9 @@ The chargeback is the business's view of the AI factory; the chargeback is the a
 
 ### 4.1 The onboarding flow
 
-*Machine Learning Platform Engineering* Chapter 9 walks through the self-service onboarding flow. A new team goes from "I want to use the platform" to "my first model is in production" in minutes, not weeks.
+Picture a new team on its first day. If it must file a ticket and wait, it will look for another platform. The goal is a team that goes from "I want to use the platform" to "my first model is in production" in minutes, not weeks.
+
+*Machine Learning Platform Engineering*, chapter 9, walks through this flow.
 
 ```mermaid
 flowchart LR
@@ -298,12 +530,14 @@ flowchart LR
     H --> P[First production model]
 ```
 
-The onboarding is automated by a Terraform module (or a Pulumi module, or a Crossplane composition). The module takes the team's name and the team's tier; the module provisions the namespace, the service account, the LocalQueue, the registry namespace, the Feast project, and the InferenceService template.
+A Terraform module, a Pulumi module, or a Crossplane composition can automate the provisioning. The module takes the team's name and tier. It then creates the namespace, service account, LocalQueue, registry namespace, Feast project, and InferenceService template.
 
 ### 4.2 The onboarding module
 
+The module call below shows what a team lead provides. The email addresses and quota values are placeholders, so replace them with your own.
+
 ```hcl
-# code/part16/onboarding.tf (shape only)
+# code/part16/onboarding.tf
 module "team_onboarding" {
   source = "./modules/team-onboarding"
   
@@ -321,18 +555,18 @@ module "team_onboarding" {
 }
 ```
 
-The module's output is the team's namespace, the team's service account, the team's LocalQueue, the team's registry namespace, the team's Feast project, and a hello-world InferenceService template. The team lead runs the hello-world; the hello-world succeeds in 5 minutes; the team has a running platform.
+The module outputs the namespace, the service account, the LocalQueue, the registry namespace, the Feast project, and a hello-world InferenceService template. The team lead runs the hello-world. This chapter uses 5 minutes as an example target for that run, so choose a target your platform can meet.
 
 ### 4.3 The onboarding documentation
 
-The onboarding documentation is the team's first impression of the platform. The documentation must:
+The onboarding documentation is the team's first impression of the platform. It must pass four tests.
 
-- Be discoverable (a link from the team's onboarding email).
-- Be copy-pasteable (every command in the docs is a command the team can run).
-- Be runnable in 10 minutes (a hello-world end to end).
-- Be up-to-date (the docs are tested in CI; the CI fails if the docs are stale).
+- It is easy to find, with a link in the onboarding email.
+- Every command can be copied and run as written.
+- A hello-world finishes end to end in about 10 minutes, as an example target.
+- It stays current, because CI fails when a command in it breaks.
 
-The platform team's pattern is to treat the docs as a CI artifact. The docs are written in Markdown; the docs are tested by a script that runs every command; the CI fails if a command fails.
+The platform team treats the docs as a CI artifact. The docs are written in Markdown, a script runs every command, and the build fails when a command fails.
 
 ---
 
@@ -340,7 +574,9 @@ The platform team's pattern is to treat the docs as a CI artifact. The docs are 
 
 ### 5.1 The platform SLOs
 
-*AI Engineering* Chapter 10 walks through the SLO-based platform design. The platform's SLOs are the contract between the platform team and the consuming teams.
+A service level objective (SLO) is a measurable promise. Without one, nobody can say whether the platform is working. The platform SLOs are the contract between the platform team and the teams that consume it.
+
+*AI Engineering*, chapter 10, describes the SLO-based platform design. The targets in the table are example values. Agree your own with the teams, then publish them.
 
 | SLO | Target | Why it matters |
 |---|---|---|
@@ -352,11 +588,11 @@ The platform team's pattern is to treat the docs as a CI artifact. The docs are 
 | **GPU availability** | 99.5% monthly | The team's ability to train |
 | **Registry availability** | 99.95% monthly | The audit trail |
 
-The SLOs are measured by the platform's observability stack; the SLOs are published on the platform's status page; the SLOs are enforced by the platform's alerting.
+The observability stack measures these SLOs. The status page publishes them, and alerting enforces them.
 
 ### 5.2 The team SLOs
 
-Each team has its own SLOs. The platform team owns the platform SLOs; the team owns the team SLOs. The team's SLOs are derived from the customer's SLOs (the inference latency, the inference availability, the inference accuracy).
+The platform team owns the platform SLOs. Each team owns its own SLOs, and those come from what the team's customers need: latency, availability, and accuracy.
 
 | Team SLO | Source | Platform support |
 |---|---|---|
@@ -365,14 +601,16 @@ Each team has its own SLOs. The platform team owns the platform SLOs; the team o
 | **Training throughput** | Team's iteration | GPU quota; queue priority |
 | **Model accuracy** | Customer-facing | Eval suite; retraining trigger |
 
-The team's SLOs are tracked on the team's dashboard; the team's SLOs are part of the team's quarterly review.
+Track the team SLOs on the team's dashboard, and review them as part of the team's quarterly review.
 
 ### 5.3 The error budget
 
-The error budget is the team's SLO translated into a budget. If the team's inference latency SLO is 200 ms p99, the error budget is the fraction of requests that can exceed 200 ms.
+An SLO becomes useful when you turn it into a budget. Suppose a team promises a p99 latency of 200 ms, an example value. p99 means 99 percent of requests finish within that target. The error budget is the share of requests allowed to miss it, and the team can spend that share.
+
+At 99.9 percent availability, a 30-day month allows 43.2 minutes of downtime.
 
 ```text
-Error budget per month (V21 ch 1):
+Error budget per month (background reading: NVIDIA Zero-to-Hero volume 21; the figures below are examples, not quotations):
 - SLO: p99 latency &lt;= 200 ms
 - Availability: 99.9% monthly
 - Error budget: 43.2 minutes of downtime per month
@@ -381,13 +619,15 @@ Error budget per month (V21 ch 1):
 - Alert: burn rate > 10x for 5 minutes -> page the on-call
 ```
 
-The error budget is the team's "spend" on reliability. The team can spend the budget on canary deployments, on shadow mode, on chaos engineering. When the budget is exhausted, the team pauses new deployments until the next billing cycle.
+The thresholds in that block are examples too, so tune them to your own traffic. The team spends its error budget on canary releases, shadow traffic, and chaos experiments. When the budget runs out, the team pauses new deployments until the next billing cycle.
 
 ---
 
 ## 6. Operating the multi-tenant platform on GKE
 
 ### 6.1 The components
+
+Each platform component has its own backing store and its own service target. Know both before production, because one slow component slows every team that depends on it.
 
 | Component | Where it runs | Backing store | SLO |
 |---|---|---|---|
@@ -400,12 +640,14 @@ The error budget is the team's "spend" on reliability. The team can spend the bu
 | KServe | Kubernetes Deployment | etcd | InferenceService ready p99 < 30 s |
 | Kubecost (or OpenCost) | Kubernetes Deployment | Prometheus + object storage | Cost aggregation < 1 hour |
 
+The latency targets in that table are example values. Measure your own system, then set each target from those measurements.
+
 ### 6.2 IAM and the per-team namespaces
 
-The platform team's IAM model from Section 1.3 enforces the per-team namespaces. The pattern is:
+The IAM model from Section 1.3 is enforced in the cluster. The manifest below creates a team namespace, a ResourceQuota, and a NetworkPolicy.
 
 ```yaml
-# code/part16/team_namespace.yaml (shape only)
+# code/part16/team_namespace.yaml
 apiVersion: v1
 kind: Namespace
 metadata:
@@ -447,9 +689,11 @@ spec:
               name: kube-system
 ```
 
-The namespace is the team's slice; the ResourceQuota is the team's budget; the NetworkPolicy is the team's isolation.
+The namespace is the team's slice. The ResourceQuota is the team's budget. The NetworkPolicy is the team's isolation. If you change one of them, check the other two, because they work together.
 
 ### 6.3 Observability
+
+Watch the platform the way the teams do. The table lists what to measure and the level that should trigger an alert. The thresholds are example values, so set them from your own baseline.
 
 | Metric | Why it matters | Alert |
 |---|---|---|
@@ -460,67 +704,72 @@ The namespace is the team's slice; the ResourceQuota is the team's budget; the N
 | InferenceService ready latency p99 | Iteration speed | > 5 minutes |
 | Cost per team per month | FinOps | > budget for 1 day |
 
-The cost-per-team-per-month alert is the most important. The alert fires when a team's cost exceeds its budget; the platform team investigates; the FinOps team adjusts the team's quota or the team's budget.
+The cost-per-team alert matters most. It fires when a team's cost passes its budget. The platform team investigates, and the FinOps team then adjusts the team's quota or budget.
+
+### 6.4 Per-tenant logging
+
+Centralized logging is another platform service that needs multitenancy. The usual approach sends each tenant's logs to its own backend. Most log forwarders have routing features that make this straightforward.
+
+Fluentd and Fluent Bit route by tag. The tag of each container log contains the Pod's namespace, so a `Match` rule can select one tenant's logs. The configuration below sends the logs from `alice-ns` to one Elasticsearch host, and the logs from `bob-ns` to another.
+
+```
+[OUTPUT]
+    Name es
+    Match kube.var.log.containers.**alice-ns**.log
+    Host alice.es.internal.cloud.example.com
+    Port ${FLUENT_ELASTICSEARCH_PORT}
+    Logstash_Format On
+    Replace_Dots On
+    Retry_Limit False
+[OUTPUT]
+    Name es
+    Match kube.var.log.containers.**bob-ns**.log
+    Host bob.es.internal.cloud.example.com
+    Port ${FLUENT_ELASTICSEARCH_PORT}
+    Logstash_Format On
+    Replace_Dots On
+    Retry_Limit False
+```
+
+Route logs by namespace from the first day. Then one tenant's log data never lands in another tenant's backend.
 
 ---
 
 ## 7. How it fails
 
-Six failure modes recur.
+Six failure modes recur. You will likely meet most of them. Each one below gives the symptom, the likely cause, and the fix.
 
 ### 7.1 "One team hogs the GPU pool"
 
-**Symptom:** The other teams cannot get GPUs. The dashboard shows one team using 80% of the GPU pool. The other teams' Jobs are queued.
-
-**Diagnosis:** The GPU quota is too high for the team that is hogging; the quota is too low for the other teams. The rebalancing from Section 2.3 is not running.
-
-**Fix:** Lower the hogging team's quota; raise the other teams' quotas; add a per-team dashboard that shows the utilisation; add an alert when a team uses more than 80% of its quota.
+Other teams cannot get GPUs. The dashboard shows one team using 80 percent of the pool, and the other teams' Jobs sit in the queue. The likely cause is a quota that is too high for the hungry team and too low for everyone else. The rebalancing from Section 2.3 is not running. The fix is to lower the hungry team's quota, raise the others, add a per-team utilisation view, and alert when a team passes 80 percent of its quota. The 80 percent threshold is an example value, so you should pick the level your teams can live with.
 
 ### 7.2 "The cost dashboard shows a team's bill exploded overnight"
 
-**Symptom:** The FinOps dashboard shows that one team's bill is 10x its budget. The team's GPU usage spiked overnight.
-
-**Diagnosis:** A runaway training job; a misconfigured autoscaler; an LLM application that loops.
-
-**Fix:** Add a per-team cost alert; add a hard cap on the team's GPU spend; the Kueue ClusterQueue refuses to admit new Jobs when the team's monthly spend exceeds the cap.
+One team's bill is 10 times its budget, and its GPU usage spiked overnight. If you see this pattern, check the job list first. The usual causes are a runaway training job, a misconfigured autoscaler, or an LLM application that loops. Add a per-team cost alert and a hard cap on GPU spend. Kueue limits GPUs, not money: a ClusterQueue admits Jobs up to its quota. A spend cap therefore needs a small controller of your own that reads the cost data and, when the cap is reached, sets `stopPolicy: Hold` on the team's LocalQueue so no new Jobs are admitted.
 
 ### 7.3 "The team's InferenceService is slow because of a noisy neighbour"
 
-**Symptom:** The team's InferenceService p99 latency spikes during peak hours. The cluster's other teams' workloads are saturating the network or the GPU memory bandwidth.
-
-**Diagnosis:** The team does not have network isolation; the team's pods share the cluster's network with other teams' pods.
-
-**Fix:** Add a NetworkPolicy that isolates the team's pods; bind the team's pods to a dedicated node pool; use the GPU Operator's time-slicing or MIG to share the GPU safely.
+The team's p99 latency spikes at peak hours. Other teams' workloads are saturating the network or the GPU memory bandwidth. The likely cause is that the team has no network isolation, so its pods share the network with everyone else. The fix is a NetworkPolicy for the team, a dedicated node pool for its pods, and MIG, which gives each team an isolated slice of the GPU. Time-slicing does not isolate memory or bandwidth, so it does not fix a noisy neighbour.
 
 ### 7.4 "The team's data leaked to another team"
 
-**Symptom:** Another team found a dataset they should not have access to. The audit log shows the dataset was in a shared bucket; the other team's IAM had read access.
-
-**Diagnosis:** The bucket's IAM was too permissive; the team's data was in a shared location.
-
-**Fix:** Per-team object storage prefixes; per-team IAM bindings; the team's bucket is not shared; the audit log records every read.
+Another team found a dataset it should not be able to read. The audit log shows the dataset sat in a shared bucket, and the other team's IAM had read access. The likely cause is a bucket policy that was too permissive. The fix is a per-team object storage prefix, per-team IAM bindings, no shared bucket for team data, and an audit log that records every read.
 
 ### 7.5 "The team's model was promoted without their approval"
 
-**Symptom:** A model is in production; the team's audit log shows no PR; the team did not approve the promotion.
-
-**Diagnosis:** The promotion pipeline bypassed the GitOps loop; the promotion happened through a manual API call.
-
-**Fix:** Refuse to transition the registry stage except through the reconciler (Chapter 16.6 Section 3.2); the reconciler's IAM is the only path; manual transitions are forbidden by policy and by IAM.
+A model is in production, but the audit log has no pull request, and the team never approved the promotion. The likely cause is that the promotion bypassed the GitOps loop through a manual API call. The fix is to refuse stage transitions except through the reconciler from Chapter 16.6 Section 3.2. The reconciler's IAM role should be the only path, and policy should forbid manual transitions.
 
 ### 7.6 "The team's namespace was deleted"
 
-**Symptom:** The team's namespace is gone; the team's pods, services, and InferenceServices are gone; the team's audit log is gone.
+The namespace is gone, and with it the team's pods, services, InferenceServices, and audit log. Someone deleted it, and nothing stopped them. The fix is to grant namespace deletion only to the platform team's break-glass admin. Record every namespace event. A finalizer does not ask for approval, so use RBAC and an admission policy that denies namespace deletion, or a policy that blocks deletion while the namespace still has workloads.
 
-**Diagnosis:** A well-meaning engineer (or a malicious one) deleted the namespace. The deletion was not prevented.
-
-**Fix:** The platform's IAM model does not grant namespace deletion to anyone except the platform team's break-glass admin; the audit log records every namespace event; the namespace has a finalizer that requires the platform team's approval.
+Walk through these six failures before go-live. For each one, confirm the fix is already in place. If you see a symptom in production, start with the dashboard and the audit log, then work back to the cause.
 
 ---
 
 ## 8. Hands-on lab
 
-This lab stands up Kueue, the per-team namespaces, the LocalQueues, and the FinOps dashboard on GKE. The lab is **untested** in this repository.
+This lab sets up Kueue, team namespaces, LocalQueues, and a FinOps dashboard on GKE. The lab is **untested** in this repository. Treat each expected output as a claim to check, not a guarantee.
 
 ### 8.1 Prerequisites
 
@@ -530,6 +779,8 @@ This lab stands up Kueue, the per-team namespaces, the LocalQueues, and the FinO
 - A team name (e.g. `team-data-science`).
 
 ### 8.2 Step 1: install Kueue
+
+Start with the admission controller that holds queued Jobs.
 
 ```bash
 helm install kueue kueue/kueue \
@@ -545,6 +796,8 @@ kubectl apply -f code/part16/cluster_queues.yaml
 ```
 
 ### 8.4 Step 3: provision a team's namespace
+
+Run the onboarding module. It creates the namespace, the service account, the LocalQueue, and the ResourceQuota.
 
 ```bash
 # Run the onboarding module (Terraform)
@@ -567,6 +820,8 @@ kubectl get workload -n team-data-science -w
 
 ### 8.6 Step 5: query the FinOps dashboard
 
+Open the cost dashboard, or query the allocation API directly.
+
 ```bash
 # Open Grafana and navigate to the Kubecost dashboard
 kubectl port-forward -n kubecost svc/kubecost-cost-analyzer 9090:9090
@@ -578,6 +833,8 @@ curl -s http://kubecost.kubecost:9090/model/allocation?window=7d \
 ```
 
 ### 8.7 Step 6: trigger the quota rebalancing alert
+
+This command is meant to inflate the team's GPU usage. The Jobs do not request any GPUs, though, so check that the team's quota actually moves before you trust the alert.
 
 ```bash
 # Inflate the team's GPU usage
@@ -602,7 +859,7 @@ terraform apply -auto-approve \
 
 ### 8.9 What to record
 
-After the lab, you should be able to answer five questions in five seconds each:
+After the lab, you should be able to answer five questions in five seconds each.
 
 1. What teams have provisioned namespaces, and what tier are they on?
 2. What is the GPU quota utilisation per team?
@@ -610,37 +867,39 @@ After the lab, you should be able to answer five questions in five seconds each:
 4. What is the most recent namespace provisioning event, and who provisioned it?
 5. What is the cluster's current availability, and what teams are affected by the SLO?
 
-If any takes more than 30 seconds, the multi-tenant platform is not yet a production service. The lab is **untested** against a live GKE cluster.
+If any answer takes more than 30 seconds, the platform is not ready for production. The 30-second limit is an example, so choose the limit that fits your operations.
 
 ---
 
 ## Exercises
 
-1. **Add a third tier.** Add a Tier 6 "Reserved" tier with a dedicated GPU pool; verify the tier's quota is enforced. *Solution sketch:* a new ClusterQueue with the dedicated GPU pool; the onboarding module adds a `tier=reserved` option.
-2. **Add a per-team cost alert.** Configure a Prometheus alert that fires when a team's monthly cost exceeds 80% of its budget. *Solution sketch:* a Prometheus rule that reads Kubecost's allocation data; alert on `team_cost > team_budget * 0.8`.
-3. **Add a borrowing queue.** Create a shared "burst" ClusterQueue; teams can borrow from the queue when their quota is exhausted. *Solution sketch:* a new ClusterQueue; the LocalQueue references both the team's queue and the burst queue with a fallback policy.
-4. **Add a per-team budget cap.** Configure a hard cap on the team's monthly spend; the Kueue ClusterQueue refuses to admit new Jobs when the cap is reached. *Solution sketch:* a Prometheus rule that reads Kubecost's allocation data; the rule calls the Kueue API to suspend the LocalQueue when the cap is reached.
-5. **Add a self-service onboarding portal.** Build a simple web app that lets a team lead request a namespace; the app calls the Terraform module. *Solution sketch:* a Flask or FastAPI app; an OAuth login; the app provisions the namespace on behalf of the user.
-6. **Add a per-team status page.** Configure a status page that shows the team's SLO attainment; the page is part of the platform's public status page. *Solution sketch:* a Grafana dashboard per team; the dashboard's metrics feed the public status page.
+Each exercise extends the lab. You can stop after any of them, and you should start with the one that matches your team's biggest risk. Each one comes with a solution sketch, not a full answer, so work out the details yourself.
+
+1. Add a third tier. Create a Tier 6 "Reserved" tier with a dedicated GPU pool, and verify the quota is enforced. *Solution sketch:* a new ClusterQueue on the dedicated pool, and an onboarding option `tier=reserved`.
+2. Add a per-team cost alert. Configure a Prometheus alert that fires when a team's monthly cost passes 80 percent of its budget. *Solution sketch:* a Prometheus rule that reads Kubecost allocation data and alerts when team cost is above 0.8 times the team budget.
+3. Add a borrowing queue. Create a shared burst ClusterQueue that teams can borrow from when their quota is used up. *Solution sketch:* a new ClusterQueue, and a LocalQueue that references both the team's queue and the burst queue with a fallback policy.
+4. Add a per-team budget cap. Set a hard cap on each team's monthly spend. *Solution sketch:* a Prometheus rule that reads Kubecost allocation data, and a small controller that sets `stopPolicy: Hold` on the team's LocalQueue when the cap is reached.
+5. Add a self-service onboarding portal. Build a simple web app where a team lead requests a namespace, and the app calls the Terraform module. *Solution sketch:* a Flask or FastAPI app, an OAuth login, and provisioning calls made on behalf of the signed-in user.
+6. Add a per-team status page. Show each team's SLO attainment on a page that is part of the platform's public status page. *Solution sketch:* a Grafana dashboard for each team, with its metrics feeding the public status page.
 
 ---
 
 ## Checkpoint questions
 
-<details><summary>1. What eight shared resources does the multi-tenant platform expose?</summary>
-Cluster, GPU pool, namespaces, IAM, network policies, model registry, orchestrator, feature store, vector store, and serving platform. Each is consumed by many teams; each is owned by the platform team. The pattern is that the platform owns the resource; the team consumes the resource; the team has its own namespace, service account, and quota within the resource.
+<details><summary>1. What ten shared resources does the multi-tenant platform expose?</summary>
+Cluster, GPU pool, namespaces, IAM, network policies, model registry, orchestrator, feature store, vector store, and serving platform. Each is consumed by many teams. Each is owned by the platform team. The pattern is that the platform owns the resource. The team consumes the resource. The team has its own namespace, service account, and quota within the resource.
 </details>
 
 <details><summary>2. What five quota tiers does the platform expose?</summary>
-Tier 1 (Hobby; 0 dedicated GPUs), Tier 2 (Standard; 1-4 GPUs), Tier 3 (Production; 4-16 GPUs), Tier 4 (Heavy; 16-64 GPUs), Tier 5 (Frontier; 64-256 GPUs). The tiers are enforced by Kueue ClusterQueues; the team subscribes to a tier at onboarding; the team can request a tier upgrade.
+Tier 1 (Hobby; 0 dedicated GPUs), Tier 2 (Standard; 1-4 GPUs), Tier 3 (Production; 4-16 GPUs), Tier 4 (Heavy; 16-64 GPUs), Tier 5 (Frontier; 64-256 GPUs). The tiers are enforced by Kueue ClusterQueues. The team subscribes to a tier at onboarding. The team can request a tier upgrade.
 </details>
 
 <details><summary>3. What is the FinOps dashboard's data sources?</summary>
-GPU usage (NVIDIA GPU Operator metrics), storage usage (CSI driver metrics), network egress (cloud metering), and licensing usage (NVAIE License Server). The metrics feed Prometheus; the dashboard aggregates per team per month; the chargeback query feeds the business's billing system.
+GPU usage (NVIDIA GPU Operator metrics), storage usage (CSI driver metrics), network egress (cloud metering), and licensing usage (NVAIE License Server). The metrics feed Prometheus. The dashboard aggregates per team per month. The chargeback query feeds the business's billing system.
 </details>
 
 <details><summary>4. What is the self-service onboarding flow?</summary>
-The team lead requests a namespace; the approval (manager + FinOps) gates the request; the platform team provisions the resources (namespace, service account, LocalQueue, registry namespace, Feast project, InferenceService template); the team runs a hello-world; the hello-world succeeds in 5 minutes; the team has a running platform.
+The team lead requests a namespace. The approval (manager + FinOps) gates the request. The platform team provisions the resources (namespace, service account, LocalQueue, registry namespace, Feast project, InferenceService template). The team runs a hello-world. The hello-world succeeds in 5 minutes. The team has a running platform.
 </details>
 
 <details><summary>5. What are the platform SLOs?</summary>
@@ -652,54 +911,54 @@ The team's SLO translated into a budget. If the SLO is p99 latency &lt;= 200 ms 
 </details>
 
 <details><summary>7. What is the per-team primitive for the GPU pool?</summary>
-One Kueue LocalQueue per team; the LocalQueue binds to a ClusterQueue with the corresponding GPU quota. The Kueue admission controller enforces the quota; when the team's quota is exhausted, the team's Jobs are queued.
+One Kueue LocalQueue per team. The LocalQueue binds to a ClusterQueue with the corresponding GPU quota. The Kueue admission controller enforces the quota; when the team's quota is exhausted, the team's Jobs are queued.
 </details>
 
 <details><summary>8. What is the per-team primitive for the model registry?</summary>
-One MLflow Registry namespace per team; the namespace is bound to the team's IAM; the team's models are isolated from other teams' models. The team's audit log is per-team.
+One MLflow Registry namespace per team. The namespace is bound to the team's IAM. The team's models are isolated from other teams' models. The team's audit log is per-team.
 </details>
 
 <details><summary>9. Why is the FinOps dashboard the feedback loop for cost?</summary>
-Because the dashboard shows the per-team cost in real time; the dashboard's alert fires when a team's cost exceeds its budget; the platform team can intervene before the cost explodes. Without the dashboard, the cost is invisible until the monthly bill arrives; the cost is too late to fix.
+Because the dashboard shows the per-team cost in real time. The dashboard's alert fires when a team's cost exceeds its budget. The platform team can intervene before the cost explodes. Without the dashboard, the cost is invisible until the monthly bill arrives. The cost is too late to fix.
 </details>
 
 <details><summary>10. What is the role of the borrowing queue?</summary>
-A shared "burst" ClusterQueue that teams can borrow from when their quota is exhausted. The borrowing queue is consumed first-come-first-served; the borrowing team pays back the borrow in the next billing cycle. The pattern prevents a team's burst workload from blocking other teams' steady workloads.
+A shared "burst" ClusterQueue that teams can borrow from when their quota is exhausted. The borrowing queue is consumed first-come-first-served. The borrowing team pays back the borrow in the next billing cycle. The pattern prevents a team's burst workload from blocking other teams' steady workloads.
 </details>
 <details><summary>11. What is the per-team primitive for network isolation?</summary>
-A NetworkPolicy per namespace that allows ingress from the cluster's ingress namespace only and egress to the cluster's DNS service only. The team's pods cannot reach each other across namespaces; the team's pods cannot reach the public internet.
+A NetworkPolicy per namespace that allows ingress from the cluster's ingress namespace only and egress to the cluster's DNS service only. The team's pods cannot reach each other across namespaces. The team's pods cannot reach the public internet.
 </details>
 
 <details><summary>12. Why is the platform team's IAM model more restrictive than the consuming teams' IAM model?</summary>
-Because the platform team's actions affect every team; the platform team's actions are audited; the platform team's actions are subject to the break-glass admin pattern. The consuming teams' actions affect only their own namespace; the consuming teams' actions are auditable within their namespace.
+Because the platform team's actions affect every team. The platform team's actions are audited. The platform team's actions are subject to the break-glass admin pattern. The consuming teams' actions affect only their own namespace. The consuming teams' actions are auditable within their namespace.
 </details>
 
 <details><summary>13. What is the per-team ResourceQuota?</summary>
-A Kubernetes ResourceQuota that bounds the team's CPU, memory, and GPU requests within the namespace. The quota is enforced at admission time; the quota is part of the team's onboarding configuration; the quota is part of the team's FinOps dashboard.
+A Kubernetes ResourceQuota that bounds the team's CPU, memory, and GPU requests within the namespace. The quota is enforced at admission time. The quota is part of the team's onboarding configuration. The quota is part of the team's FinOps dashboard.
 </details>
 
 <details><summary>14. What is the platform status page?</summary>
-A public dashboard that shows the platform's SLO attainment; the dashboard is per-team; the dashboard is part of the platform's operational discipline. The dashboard is the team's first place to look when something is wrong.
+A public dashboard that shows the platform's SLO attainment. The dashboard is per-team. The dashboard is part of the platform's operational discipline. The dashboard is the team's first place to look when something is wrong.
 </details>
 
 <details><summary>15. Why is the per-team dashboard's metrics latency important?</summary>
-Because the team uses the dashboard to debug its own issues; the dashboard's metrics must be fresh; the dashboard's metrics must be at the same resolution as the team's SLOs. A dashboard with stale metrics is a dashboard that cannot debug.
+Because the team uses the dashboard to debug its own issues. The dashboard's metrics must be fresh. The dashboard's metrics must be at the same resolution as the team's SLOs. A dashboard with stale metrics is a dashboard that cannot debug.
 </details>
 
 <details><summary>16. What is the cost-per-team-per-month alert?</summary>
-A Prometheus alert that fires when a team's monthly cost exceeds 80% of its budget. The alert fires in the first week of the month; the platform team investigates; the FinOps team adjusts the team's quota or the team's budget. The alert prevents the cost from exploding silently.
+A Prometheus alert that fires when a team's monthly cost exceeds 80% of its budget. The alert fires as soon as the team's cost passes 80 percent of its budget, which can be early in the month. The platform team investigates. The FinOps team adjusts the team's quota or the team's budget. The alert prevents the cost from exploding silently.
 </details>
 
 <details><summary>17. What is the role of the platform's break-glass admin?</summary>
-A privileged IAM role that the platform team can assume in an emergency. The break-glass admin can delete namespaces, revoke access, and intervene on production. The break-glass admin's use is audited; the audit log records every action.
+A privileged IAM role that the platform team can assume in an emergency. The break-glass admin can delete namespaces, revoke access, and intervene on production. The break-glass admin's use is audited. The audit log records every action.
 </details>
 
 <details><summary>18. What is the per-team audit log?</summary>
-An append-only log that records every action the team takes: every model registration, every pipeline run, every feature definition, every deployment. The per-team audit log is part of the platform's compliance story; the per-team audit log is what the regulator inspects.
+An append-only log that records every action the team takes: every model registration, every pipeline run, every feature definition, every deployment. The per-team audit log is part of the platform's compliance story. The per-team audit log is what the regulator inspects.
 </details>
 
 <details><summary>19. What is the role of the team's hello-world?</summary>
-The hello-world is the team's first end-to-end run on the platform. The hello-world succeeds in 5 minutes; the success gives the team confidence; the success reveals whether the platform's documentation is up to date. A hello-world that fails is a platform that needs fixing.
+The hello-world is the team's first end-to-end run on the platform. The hello-world succeeds in 5 minutes. The success gives the team confidence. The success reveals whether the platform's documentation is up to date. A hello-world that fails is a platform that needs fixing.
 </details>
 
 <details><summary>20. What five questions should the multi-tenant platform lab let you answer in five seconds each?</summary>

@@ -46,16 +46,16 @@ flowchart LR
     RB --> NW
 ```
 
-The four layers of Kubernetes access controls: identity (Workload Identity), authorisation (RBAC + NetworkPolicy), runtime (PSS + Secrets). Every layer is a control; every layer is auditable.
+Read the diagram from left to right. A workload first proves who it is, through its ServiceAccount and Workload Identity. RBAC and NetworkPolicy then decide what that identity may do and where it may connect. Pod Security Standards and Secrets control what runs inside the pod itself. You can check each layer on its own, and that is what makes the whole stack auditable.
 
 ## Why this matters for AI infrastructure
 
-Chapters 18.2 and 18.3 verified the firmware and the supply chain. This chapter verifies the access controls on the cluster itself. A Kubernetes namespace is the unit of multi-tenancy; a ServiceAccount is the identity of a workload; a NetworkPolicy is the network boundary; a PodSecurityStandard is the constraint on the pod. Every control in this chapter is a control on what a workload can do, who can do it, and where it can happen.
+Suppose three teams share one GPU cluster, and each team runs its training jobs in its own namespace. Chapters 18.2 and 18.3 checked the firmware and the software supply chain. This chapter checks the access controls on the cluster itself. A namespace marks a tenant. A ServiceAccount is the identity of a workload. A NetworkPolicy marks the network boundary, and a Pod Security Standard limits what a pod may do.
 
-The cluster's access controls are the boundary between tenants. A workload that can read another tenant's data is a workload that has escaped the tenant boundary. The platform team's job is to make the tenant boundary enforced by default; the platform team's job is to make the escape impossible without explicit cross-tenant authorisation.
+The access controls mark the boundary between tenants. A workload that can read another tenant's data has crossed that boundary. As the platform owner, you should enforce the boundary by default, so that crossing it needs an explicit, approved grant. When an auditor asks who can read a secret, the answer should come from these controls, not from memory.
 
 ```text
-Why Kubernetes access control is on the critical path (V18 ch4, 5; PK Ch 8, 10):
+Why Kubernetes access control is on the critical path (background reading: NVIDIA Zero-to-Hero volume 18; Production Kubernetes; the figures below are examples, not quotations):
 - A typical mature AI platform has 50-200 namespaces. Each namespace is a
   tenant boundary. Each ServiceAccount is a workload identity. The cluster's
   access controls are what enforce the tenant boundary.
@@ -69,13 +69,13 @@ Why Kubernetes access control is on the critical path (V18 ch4, 5; PK Ch 8, 10):
   a control; each layer is auditable.
 ```
 
-Three operational realities make this chapter a platform-team concern rather than a data-science-only concern:
+Three realities make this a platform-team concern, not only a data-science concern.
 
-1. **The Kubernetes access controls are the platform team's discipline.** The platform team defines the RBAC roles; the platform team configures the PodSecurityStandards; the platform team manages the secrets. The access controls are the platform team's responsibility.
-2. **The multi-tenant boundary is the platform team's contract.** The tenant expects that their data is not accessible by other tenants. The platform team's job is to enforce the boundary by default; the platform team's job is to make the escape impossible.
-3. **The secrets are the platform team's vault.** The API keys, the database credentials, the model signing keys are all secrets. The platform team's job is to store the secrets securely; the platform team's job is to rotate the secrets; the platform team's job is to make the secrets auditable.
+1. **The platform team owns the access controls.** It writes the RBAC roles, sets the Pod Security Standards, and manages the secrets. When a control drifts, the platform team is the one that has to fix it.
+2. **Tenants expect their data to stay private.** The platform team must enforce that privacy by default. It cannot rely on each team to configure it correctly.
+3. **Secrets need the same care.** API keys, database passwords, and model signing keys are all secrets. You have to store them safely, rotate them, and keep a record of their use.
 
-**Before a team can claim their AI factory is secure, the team must have enforced the Kubernetes access controls. The RBAC must be least-privilege; the PodSecurityStandards must be restricted; the NetworkPolicies must be default-deny; the secrets must be encrypted and rotated. A team that has not enforced the access controls is a team that has not enforced the tenant boundary.**
+**Before you claim your AI platform is secure, check that the access controls are enforced. Use least-privilege RBAC, restricted Pod Security Standards, default-deny NetworkPolicies, and secrets that are encrypted and rotated. A cluster without these controls has no real tenant boundary.**
 
 ## Prerequisites and outcomes
 
@@ -90,12 +90,12 @@ Three operational realities make this chapter a platform-team concern rather tha
 
 After completing this chapter you will be able to:
 
-1. Implement RBAC with least-privilege Roles and RoleBindings per namespace.
-2. Use Workload Identity to bind Kubernetes ServiceAccounts to cloud IAM roles.
-3. Configure PodSecurityStandards at the "restricted" level; refuse privileged pods.
-4. Implement NetworkPolicies with default-deny and explicit allow rules.
-5. Implement secrets management with Vault or External Secrets Operator; rotate secrets automatically.
-6. Operate the access controls on GKE with continuous verification, secret rotation, and incident response.
+1. Write least-privilege Roles and RoleBindings for each namespace.
+2. Use Workload Identity to link Kubernetes ServiceAccounts to cloud IAM roles.
+3. Set Pod Security Standards to "restricted" and refuse privileged pods.
+4. Write NetworkPolicies that deny by default and allow only what each workload needs.
+5. Manage secrets with Vault or External Secrets Operator, and rotate them automatically.
+6. Run these controls on GKE, with ongoing checks, secret rotation, and incident response.
 
 ---
 
@@ -103,10 +103,10 @@ After completing this chapter you will be able to:
 
 ### 1.1 Roles and RoleBindings
 
-RBAC (Role-Based Access Control) is the Kubernetes mechanism for controlling who can do what. Roles define the permissions; RoleBindings bind the Roles to subjects (users, groups, ServiceAccounts).
+Picture a data scientist who needs to watch training jobs in one namespace and nothing else. RBAC (Role-Based Access Control) lets you grant exactly that. A Role lists the permissions, and a RoleBinding attaches the Role to a user, a group, or a ServiceAccount.
 
 ```yaml
-# code/part18/rbac_role.yaml (shape only)
+# code/part18/rbac_role.yaml
 apiVersion: rbac.authorization.k8s.io/v1
 kind: Role
 metadata:
@@ -121,14 +121,16 @@ rules:
     verbs: ["get", "list", "watch", "create", "delete"]
 ```
 
-The pattern is: the Role grants least-privilege permissions; the RoleBinding binds the Role to the ServiceAccount; the workload uses the ServiceAccount.
+This Role reads pods, services, and config maps, and it can create and delete Jobs. A RoleBinding then attaches it to the ServiceAccount that the workload runs under.
+
+The Production Kubernetes multitenancy chapter (chapter 12) describes three built-in tenant roles. The view role is read-only inside a namespace, and edit can also change resources. The admin role can create Roles and RoleBindings too, so give it only to a tenant administrator.
 
 ### 1.2 ClusterRoles and ClusterRoleBindings
 
-ClusterRoles and ClusterRoleBindings are cluster-wide. They are used for cluster-level resources (nodes, namespaces, cluster roles).
+A ClusterRole works across the whole cluster. You need one for resources that do not belong to a single namespace, such as nodes. The example below lets a platform reader view nodes, namespaces, and webhook configurations.
 
 ```yaml
-# code/part18/rbac_clusterrole.yaml (shape only)
+# code/part18/rbac_clusterrole.yaml
 apiVersion: rbac.authorization.k8s.io/v1
 kind: ClusterRole
 metadata:
@@ -142,9 +144,9 @@ rules:
     verbs: ["get", "list", "watch"]
 ```
 
-The pattern is: ClusterRoles grant least-privilege cluster-wide permissions; ClusterRoleBindings bind the ClusterRoles to subjects.
-
 ### 1.3 The RBAC anti-patterns
+
+Most RBAC mistakes come from granting more than a workload needs. The table lists five common patterns and the fix for each. Check every binding against this list.
 
 | Anti-pattern | Why it's wrong | The fix |
 |---|---|---|
@@ -154,7 +156,7 @@ The pattern is: ClusterRoles grant least-privilege cluster-wide permissions; Clu
 | `clusterrolebinding` for namespace users | Bypasses the namespace boundary | Use `rolebinding` per namespace |
 | ServiceAccount tokens mounted as env vars | Long-lived credentials | Use Workload Identity |
 
-The pattern is: every RBAC grant is least-privilege; every RBAC grant is auditable; every RBAC grant is reviewed quarterly.
+Tenants can usually list every namespace. Production Kubernetes, chapter 12, notes that RBAC cannot hide namespace names from them.
 
 ---
 
@@ -162,10 +164,10 @@ The pattern is: every RBAC grant is least-privilege; every RBAC grant is auditab
 
 ### 2.1 The Workload Identity pattern
 
-Workload Identity binds a Kubernetes ServiceAccount to a cloud IAM role. The workload uses the IAM role to access cloud resources (object storage, secrets); the IAM role has the least-privilege permissions.
+Suppose a training job must read a model file from a cloud bucket. The job should not carry a password for that bucket. Workload Identity links the job's Kubernetes ServiceAccount to a cloud IAM role, so the job gets short-lived credentials for that role instead.
 
 ```yaml
-# code/part18/workload_identity.yaml (shape only)
+# code/part18/workload_identity.yaml
 apiVersion: v1
 kind: ServiceAccount
 metadata:
@@ -175,24 +177,22 @@ metadata:
     iam.gke.io/gcp-service-account: churn-trainer@gke-prod.iam.gserviceaccount.com
 ```
 
-The pattern is: the ServiceAccount has the annotation; the cluster creates the IAM binding; the workload uses the IAM role automatically.
+The annotation names the cloud service account that this Kubernetes ServiceAccount maps to. Give each workload its own ServiceAccount, not the namespace default. The Production Kubernetes identity chapter (chapter 10) recommends turning off automatic token mounting when a workload never calls the Kubernetes API. Set `automountServiceAccountToken: false` on the ServiceAccount, or on the Pod, where the Pod setting wins if both are present.
 
 ### 2.2 The benefits of Workload Identity
 
-Workload Identity has four benefits over the legacy pattern of mounting service account keys as environment variables.
+Long-lived keys copied into environment variables cause trouble over time. Workload Identity avoids four of those problems, as the table shows.
 
 | Benefit | Legacy pattern | Workload Identity |
 |---|---|---|
-| Credential lifetime | Long-lived (90+ days) | Short-lived (1 hour) |
+| Credential lifetime | Long-lived | Short-lived |
 | Credential rotation | Manual | Automatic |
 | Credential storage | Environment variable | Metadata server |
 | Credential audit | Limited | Full audit trail |
 
-The pattern is: Workload Identity replaces the legacy pattern; every workload uses Workload Identity; no workload has long-lived credentials.
-
 ### 2.3 The Workload Identity in production
 
-The Workload Identity is configured per ServiceAccount. The IAM role is configured per workload's needs. The cluster's metadata server issues the short-lived credential automatically.
+You configure Workload Identity for each ServiceAccount, and you size the IAM role to that workload's needs. At runtime, the cluster's metadata server issues the short-lived credential automatically. Run the check below from inside a pod to confirm the credential works.
 
 ```bash
 # Verify the Workload Identity is working
@@ -200,7 +200,7 @@ kubectl exec -it <pod> -- gcloud auth print-access-token
 # expected: the access token is issued; the workload can access the cloud resources
 ```
 
-The pattern is: every workload has a Workload Identity; every Workload Identity has a least-privilege IAM role; every IAM role is auditable.
+Before you grant a workload cloud access, ask which single IAM role it needs, and grant only that role.
 
 ---
 
@@ -208,7 +208,7 @@ The pattern is: every workload has a Workload Identity; every Workload Identity 
 
 ### 3.1 The Pod Security Standards levels
 
-Pod Security Standards (PSS) are the Kubernetes mechanism for enforcing the security baseline on every pod. PSS has three levels: Privileged (no restrictions), Baseline (minimal restrictions), Restricted (strict restrictions).
+A pod can ask for powerful things, such as the host's network or privileged access to the node. Pod Security Standards (PSS) set how far a pod may go. They come in three levels, from open to strict.
 
 | Level | Restrictions |
 |---|---|
@@ -216,14 +216,14 @@ Pod Security Standards (PSS) are the Kubernetes mechanism for enforcing the secu
 | **Baseline** | Minimal restrictions; prevents known privilege escalations |
 | **Restricted** | Strict restrictions; enforces Pod Security Best Practices |
 
-The pattern is: every workload runs at the Restricted level; the Baseline level is the fallback; the Privileged level is forbidden.
+Aim for Restricted. Move a workload down a level only when it truly needs the extra access.
 
 ### 3.2 The Restricted level in production
 
-The Restricted level enforces the Pod Security Best Practices.
+Restricted is the level to apply to team namespaces. The labels below turn it on in three modes, named enforce, warn, and audit.
 
 ```yaml
-# code/part18/pss_restricted.yaml (shape only)
+# code/part18/pss_restricted.yaml
 apiVersion: v1
 kind: Namespace
 metadata:
@@ -237,31 +237,124 @@ metadata:
     pod-security.kubernetes.io/audit-version: latest
 ```
 
-The pattern is: every namespace has the Restricted label; every pod in the namespace is restricted; the admission controller enforces the restriction.
+A namespace with these labels applies Restricted to the pods inside it. A namespace without them is not covered, so check every namespace for the labels.
 
 ### 3.3 The Pod Security admission
 
 The admission controller enforces the Pod Security Standards at admission time. The admission controller refuses pods that violate the standard.
 
 ```yaml
-# code/part18/pss_admission.yaml (shape only)
+# code/part18/pss_admission.yaml
+# A ValidatingAdmissionPolicy only takes effect once a binding selects where it applies.
 apiVersion: admissionregistration.k8s.io/v1
 kind: ValidatingAdmissionPolicy
 metadata:
-  name: pod-security-standards
+  name: restricted-pod-security
 spec:
   failurePolicy: Fail
-  rules:
-    - operations: ["CREATE", "UPDATE"]
-      apiGroups: [""]
-      apiVersions: ["v1"]
-      resources: ["pods"]
+  matchConstraints:
+    resourceRules:
+      - apiGroups: [""]
+        apiVersions: ["v1"]
+        operations: ["CREATE", "UPDATE"]
+        resources: ["pods"]
   validations:
-    - expression: "object.metadata.labels['pod-security.kubernetes.io/enforce'] != 'restricted'"
-      message: "Pod Security Standards enforcement level must be 'restricted'"
+    - expression: "object.spec.containers.all(c, has(c.securityContext) && has(c.securityContext.allowPrivilegeEscalation) && c.securityContext.allowPrivilegeEscalation == false)"
+      message: "Every container must set securityContext.allowPrivilegeEscalation to false"
+    - expression: "!has(object.spec.hostNetwork) || object.spec.hostNetwork == false"
+      message: "hostNetwork is not allowed"
+---
+apiVersion: admissionregistration.k8s.io/v1
+kind: ValidatingAdmissionPolicyBinding
+metadata:
+  name: restricted-pod-security-mlops
+spec:
+  policyName: restricted-pod-security
+  validationActions: ["Deny"]
+  matchResources:
+    namespaceSelector:
+      matchLabels:
+        kubernetes.io/metadata.name: mlops
 ```
 
-The pattern is: the admission controller enforces PSS; the admission controller refuses non-compliant pods; the platform team's audit log records the refusals.
+The policy above is a custom rule written as a ValidatingAdmissionPolicy. It is separate from the namespace labels in Section 3.2, so you need both if you want both checks. The policy sets `failurePolicy` to `Fail`. The Production Kubernetes admission chapter (chapter 8) warns that Gatekeeper fails open by default, so check which behaviour your own admission tool uses. After any policy change, confirm that the rule does not silently block a team's training job.
+
+### 3.4 Mutating webhooks and their trade-offs
+
+Pod Security admission is built in, and it handles one job. Kubernetes also lets you add your own admission logic through webhooks. A validating webhook can only admit or reject the object it receives. A mutating webhook can change the object before it is saved.
+
+A mutating webhook can add functionality to a Deployment and hide that complexity from the end user. The developer writes a short manifest, and the cluster fills in the rest. This is an effective way to improve the user experience.
+
+The trade-off is visibility. The object in the cluster can differ from the one the user applied. That confuses anyone who does not know a mutating controller is running. Tell your users which webhooks change their objects, and why.
+
+### 3.5 Writing a mutating webhook by hand
+
+A webhook receives a request from the API server and sends a response back. The format of these messages is well known. A webhook can therefore read the request and change the object by writing the patches itself.
+
+The response carries the patch set in its `Patch` field, and it sets the patch type to JSON Patch. The `v1beta1` admission API used in this snippet comes from the older book. Current Kubernetes versions use the `admission.k8s.io/v1` types, so check the type names against your client library.
+
+```go
+return &v1beta1.AdmissionResponse{
+	Allowed: true,
+	Patch:   patchBytes,
+	PatchType: func() *v1beta1.PatchType {
+		pt := v1beta1.PatchTypeJSONPatch
+		return &pt
+	}(),
+}
+```
+
+This approach needs a lot of manual work. You build the patch set and the response yourself, even with the Kubernetes libraries for Go. A real webhook also needs code for errors, graceful shutdown, and HTTP headers, which the example leaves out.
+
+Writing patches by hand gives you the most flexibility. It also requires more domain knowledge, and it is harder to build and maintain. Weigh that cost against your use case and your team's skills. If the effort grows, the next section shows an approach with much less boilerplate.
+
+### 3.6 Controller-runtime webhooks
+
+Controller-runtime gives admission controllers a strong foundation. It lets you focus on the logic you want, with very little boilerplate. The cost is that you need programming expertise. The admission logic also sits inside controller code, so end users can see results they did not expect. Before you choose this route, check that your team can build and maintain the controller.
+
+### 3.7 Gatekeeper and centralized policy
+
+For the rest of this section we focus on Gatekeeper, the most popular tool for the centralized policy model. Kyverno is also gaining traction. Gatekeeper runs on Open Policy Agent, an open source policy engine. That engine applies policies written in Rego to JSON documents and returns a result.
+
+Rego is designed for queries over data rather than general programming, and it can be hard to read at first. Gatekeeper connects the engine to Kubernetes, so you can write Rego rules for the objects applied to the cluster.
+
+Ingress rules are a good example. Teams should not overwrite each other's Ingress resources. Some Ingress controllers block this on their own, but if yours does not, Gatekeeper can enforce the rule. The official Gatekeeper documentation keeps this case in its library of common policies.
+
+The next example checks Ingress hosts against a pattern. A Namespace holds the regex in an annotation, and every Ingress in that Namespace must match it. Gatekeeper needs the Namespace data in its cache to make that decision, so the cluster must sync it first. The example below uses a Namespace annotated with the regex `\w\.my-namespace\.com`.
+
+```yaml
+# FAILS because the host doesn't match the pattern above
+apiVersion: networking.k8s.io/v1beta1
+kind: Ingress
+metadata:
+  name: test-1
+  namespace: ingress-test
+spec:
+  rules:
+    - host: foo.other-namespace.com
+      http:
+        paths:
+          - backend:
+              serviceName: service1
+              servicePort: 80
+---
+# SUCCEEDS as the pattern matches
+apiVersion: networking.k8s.io/v1beta1
+kind: Ingress
+metadata:
+  name: test-2
+  namespace: ingress-test
+spec:
+  rules:
+    - host: foo.my-namespace.com
+      http:
+        paths:
+          - backend:
+              serviceName: service2
+              servicePort: 80
+```
+
+The first Ingress is denied, because its host does not match the regex. The second Ingress is admitted, because its host matches. Test a policy like this with one passing object and one failing object before you rely on it.
 
 ---
 
@@ -269,10 +362,12 @@ The pattern is: the admission controller enforces PSS; the admission controller 
 
 ### 4.1 The default-deny pattern
 
-The default-deny NetworkPolicy denies all traffic to and from every pod in the namespace. The default-deny is the foundation of the multi-tenant boundary.
+Imagine a pod in one tenant's namespace opening a connection to a pod in another tenant's namespace. Nothing in the network stopped it. A default-deny policy closes that gap, because it blocks traffic to and from every pod in the namespace until you allow it.
+
+The Production Kubernetes multitenancy chapter (chapter 12) makes the same point. A namespace on its own has no effect on the workload plane until you add policy. Treat the default-deny policy as the first control you apply to each namespace.
 
 ```yaml
-# code/part18/networkpolicy_default_deny.yaml (shape only)
+# code/part18/networkpolicy_default_deny.yaml
 apiVersion: networking.k8s.io/v1
 kind: NetworkPolicy
 metadata:
@@ -285,14 +380,14 @@ spec:
     - Egress
 ```
 
-The pattern is: every namespace has a default-deny NetworkPolicy; every pod in the namespace is denied by default; explicit allow rules are added for the workload's needs.
+Apply a default-deny policy to each namespace. Then add an allow rule for each workload that needs traffic.
 
 ### 4.2 The explicit-allow pattern
 
-The explicit-allow NetworkPolicy allows specific traffic for the workload. The allow rule is the minimum necessary for the workload's function.
+The explicit-allow policy opens one path. In this example, pods labelled `app: churn-model` accept traffic on ports 8080 and 8443, but only from the namespace labelled `name: ingress`. Keep each allow rule as small as the workload allows.
 
 ```yaml
-# code/part18/networkpolicy_explicit_allow.yaml (shape only)
+# code/part18/networkpolicy_explicit_allow.yaml
 apiVersion: networking.k8s.io/v1
 kind: NetworkPolicy
 metadata:
@@ -314,9 +409,9 @@ spec:
         - port: 8443
 ```
 
-The pattern is: the explicit allow rule grants the minimum necessary access; the explicit allow rule is documented; the explicit allow rule is reviewed quarterly.
-
 ### 4.3 The NetworkPolicy anti-patterns
+
+Most NetworkPolicy mistakes make the policy wider than intended. The table lists four common ones and the fix for each.
 
 | Anti-pattern | Why it's wrong | The fix |
 |---|---|---|
@@ -325,7 +420,7 @@ The pattern is: the explicit allow rule grants the minimum necessary access; the
 | Empty podSelector with allow | Allows all pods | Use a specific podSelector |
 | No `policyTypes` | Allows all traffic | Specify Ingress and Egress |
 
-The pattern is: every NetworkPolicy is least-privilege; every NetworkPolicy is documented; every NetworkPolicy is reviewed quarterly.
+Write each policy with the smallest set of allowed traffic, and record why each rule exists. Review the policies on a schedule your team chooses.
 
 ---
 
@@ -333,10 +428,10 @@ The pattern is: every NetworkPolicy is least-privilege; every NetworkPolicy is d
 
 ### 5.1 The secret types
 
-Kubernetes has three types of secrets: Opaque (generic key-value), kubernetes.io/dockerconfigjson (image pull), kubernetes.io/tls (TLS certificate), and service-account-token (ServiceAccount token).
+Secrets are the passwords and keys your workloads need to do their work. If you store them the wrong way, anyone who can read the manifest can read them too. Kubernetes has four commonly used types of secrets: Opaque (generic key-value), kubernetes.io/dockerconfigjson (image pull), kubernetes.io/tls (TLS certificate), and service-account-token (ServiceAccount token).
 
 ```yaml
-# code/part18/secret_opaque.yaml (shape only)
+# code/part18/secret_opaque.yaml
 apiVersion: v1
 kind: Secret
 metadata:
@@ -348,14 +443,14 @@ stringData:
   password: <random-password>
 ```
 
-The pattern is: every secret has a type; every secret is in a namespace; every secret is encrypted at rest.
+The Opaque type holds generic data. The password above is a placeholder. The real value should never go into Git.
 
 ### 5.2 The External Secrets Operator pattern
 
-External Secrets Operator (ESO) syncs secrets from external secret managers (Vault, AWS Secrets Manager, GCP Secret Manager) into Kubernetes Secrets. ESO rotates the secrets automatically; ESO exposes the secrets as Kubernetes Secrets.
+The Production Kubernetes secrets chapter (chapter 7) says the built-in Secret API may fall short for enterprise secret data. External Secrets Operator (ESO) syncs secrets from external managers, such as Vault, AWS Secrets Manager, or GCP Secret Manager, into Kubernetes Secrets. ESO syncs the secrets on a refresh interval; it does not rotate the secret in the external manager, so rotation is done there. It then exposes them to your pods as Kubernetes Secrets.
 
 ```yaml
-# code/part18/external_secret.yaml (shape only)
+# code/part18/external_secret.yaml
 apiVersion: external-secrets.io/v1beta1
 kind: ExternalSecret
 metadata:
@@ -367,28 +462,33 @@ spec:
     name: vault-backend
     kind: ClusterSecretStore
   data:
-    - secretKey: secret/data/mlflow
+    - secretKey: password          # key name inside the resulting Kubernetes Secret
       remoteRef:
-        key: credentials
+        key: secret/data/mlflow    # path in the external store
+        property: password
 ```
 
-The pattern is: the secret is in Vault; ESO syncs the secret to Kubernetes; the secret is rotated automatically; the workload reads the Kubernetes Secret.
+The `refreshInterval` field sets how often the sync runs. In this example, it runs every hour.
 
 ### 5.3 The secret rotation
 
-The secret rotation is the process for changing the secret periodically. The rotation includes: the new secret is generated; the old secret is invalidated; the workloads are updated with the new secret.
+Rotation means replacing a secret on a schedule, so that an old value stops working. First, generate a new secret. Then invalidate the old one. Finally, update every workload that reads it.
 
 ```bash
 # Rotate the secret in Vault
-vault write -force secret/data/mlflow password=<new-password>
+vault kv put -mount=secret mlflow password=<new-password>
 # expected: ESO syncs the new secret to Kubernetes within the refresh interval
 ```
 
-The pattern is: the secret is rotated automatically; the rotation is recorded in the audit log; the rotation is tested in staging.
+The command updates Vault. The Kubernetes Secret changes only after the next sync, so check the refresh timing before you rely on it.
 
 ---
 
 ## 6. Operating Kubernetes access control on GKE
+
+A control that nobody watches tends to drift. Each access control on GKE runs in a different place and has its own latency target. Knowing where each one runs tells you where to look when a request is slow or denied.
+
+The SLO column below holds example targets. The chapter does not source them, so treat them as starting points. Set your own targets from measured latency.
 
 ### 6.1 The components
 
@@ -402,7 +502,7 @@ The pattern is: the secret is rotated automatically; the rotation is recorded in
 
 ### 6.2 IAM and the access controls
 
-The access controls have their own IAM. The pattern is:
+The people who change access controls need permissions too. The table below shows one example split of those permissions. Treat these role names as a pattern to adapt, not as names you will find in your cloud.
 
 | Role | Who | What they can do |
 |---|---|---|
@@ -410,9 +510,11 @@ The access controls have their own IAM. The pattern is:
 | `rbac.writer` | The platform team | Manage RBAC roles and bindings |
 | `rbac.admin` | The platform team lead | Approve RBAC changes; approve secret rotation |
 
-The access controls are the platform team's discipline. The discipline is documented; the discipline is enforced; the discipline is reviewed quarterly.
+Write down who may change each control, and why. Then review that list on a cadence your team chooses.
 
 ### 6.3 Observability
+
+Five signals tell you whether the access controls are healthy. The alert column holds example thresholds, which the chapter does not source. Set each threshold from your own baseline.
 
 | Metric | Why it matters | Alert |
 |---|---|---|
@@ -422,71 +524,73 @@ The access controls are the platform team's discipline. The discipline is docume
 | NetworkPolicy denial rate | Network isolation health | > 0 (expected; alerts on anomalous spike) |
 | Secret rotation freshness | Secret rotation health | > 24 hours stale |
 
-The RBAC denial rate alert is the most important. An anomalous spike in RBAC denials indicates a workload that is trying to access a resource it should not; the alert pages the on-call.
+The chapter treats the RBAC denial rate as the most important alert. A sudden spike can mean a workload is trying to reach a resource it should not. The alert should page the on-call engineer, so check that it does.
 
 ---
 
 ## 7. How it fails
 
-Six failure modes recur.
+When a control misbehaves, you can find the fix faster by matching the symptom to a known pattern. Six failure modes come up again and again. Each one below gives the symptom, the likely cause, and the fix.
 
 ### 7.1 "A workload has cluster-admin"
 
-**Symptom:** A workload can list all secrets in all namespaces; the workload can create pods in any namespace; the workload has full cluster access.
+**Symptom:** The workload can list secrets in every namespace and create pods anywhere. It has full cluster access.
 
-**Diagnosis:** The workload's ServiceAccount is bound to the cluster-admin ClusterRole; the binding is incorrect.
+**Diagnosis:** The workload's ServiceAccount is bound to the cluster-admin ClusterRole. That binding is wrong for this workload.
 
-**Fix:** Remove the cluster-admin binding; create a least-privilege Role; bind the Role to the ServiceAccount.
+**Fix:** Remove the cluster-admin binding. Create a least-privilege Role, and bind it to the ServiceAccount.
 
 ### 7.2 "The ServiceAccount token is mounted as an env var"
 
-**Symptom:** A workload has a long-lived ServiceAccount token in an environment variable; the token has not been rotated.
+**Symptom:** A workload holds a long-lived ServiceAccount token in an environment variable, and nobody has rotated it.
 
-**Diagnosis:** The workload is using the legacy pattern of mounting tokens; the workload has not migrated to Workload Identity.
+**Diagnosis:** The workload still uses the legacy token pattern. It has not moved to Workload Identity.
 
-**Fix:** Migrate the workload to Workload Identity; remove the legacy token mount; rotate the token.
+**Fix:** Move the workload to Workload Identity, remove the legacy token mount, and rotate the token.
 
 ### 7.3 "A privileged pod is running"
 
-**Symptom:** A pod has `privileged: true`; the pod has host namespaces; the pod has host paths.
+**Symptom:** A pod sets `privileged: true`, and it uses host namespaces and host paths.
 
-**Diagnosis:** The pod is running at the Privileged PSS level; the namespace has `enforce: privileged`.
+**Diagnosis:** The pod runs at the Privileged level, because its namespace sets `enforce: privileged`.
 
-**Fix:** Change the namespace to `enforce: restricted`; recreate the pod without the privileged fields.
+**Fix:** Change the namespace to `enforce: restricted`. Then recreate the pod without the privileged fields.
 
 ### 7.4 "The NetworkPolicy allows all traffic"
 
-**Symptom:** A pod in namespace A can reach a pod in namespace B; the NetworkPolicy allows the traffic.
+**Symptom:** A pod in namespace A reaches a pod in namespace B, and a NetworkPolicy allows that traffic.
 
-**Diagnosis:** The NetworkPolicy allows all ingress or egress; the podSelector is empty; the policyTypes are missing.
+**Diagnosis:** The policy allows all ingress or egress. Its podSelector is empty, or its policyTypes are missing.
 
-**Fix:** Add a default-deny NetworkPolicy; add explicit allow rules for the workload's needs.
+**Fix:** Add a default-deny policy. Then add explicit allow rules for what the workload needs.
 
 ### 7.5 "The secret is hard-coded in the manifest"
 
-**Symptom:** A secret is in plain text in the Kubernetes manifest; the secret is in the Git repository.
+**Symptom:** A secret sits in plain text in a Kubernetes manifest, and that manifest is in Git.
 
-**Diagnosis:** The workload is using a Kubernetes Secret; the Secret is in the manifest; the manifest is in Git.
+**Diagnosis:** The workload reads a Kubernetes Secret defined in the manifest, so the value lives in Git.
 
-**Fix:** Use External Secrets Operator; reference the Secret by name; the Secret is in Vault.
+**Fix:** Use External Secrets Operator, and refer to the Secret by name. Keep the value in Vault, so you never store it in Git.
 
 ### 7.6 "The secret has not been rotated in 90 days"
 
-**Symptom:** A secret is older than 90 days; the secret has not been rotated; the secret is at risk of compromise.
+**Symptom:** The secret has not changed for a long time, so it is at risk of compromise. The 90 days in this heading is an example age, not a standard.
 
-**Diagnosis:** The rotation policy is not configured; the ESO refresh interval is too long.
+**Diagnosis:** No rotation policy is configured, and the ESO refresh interval is set too long.
 
-**Fix:** Set the rotation policy to 30 days; verify the rotation is happening; alert on stale secrets.
+**Fix:** Set a rotation interval that matches your policy. Verify that rotation actually runs, and alert on stale secrets.
+
+Before you change anything in the cluster, match the symptom to one of these six patterns.
 
 ---
 
 ## 8. Hands-on lab
 
-This lab walks through implementing the Kubernetes access controls on GKE: the RBAC, the Workload Identity, the Pod Security Standards, the NetworkPolicies, and the secrets management. The lab is **untested** in this repository.
+This lab walks you through the controls in this chapter on GKE, in the order you would apply them. The lab is **untested** in this repository, so it has not been run against a live GKE cluster. Treat the commands as a plan to check, not as proof that the controls work.
 
 ### 8.1 Prerequisites
 
-- A GKE Autopilot or Standard cluster (1.27+).
+- A GKE Autopilot or Standard cluster. The first draft named version 1.27 without a source, so confirm the minimum version in the GKE documentation.
 - A cloud IAM role for Workload Identity.
 - A Vault instance (or GCP Secret Manager) for secrets management.
 
@@ -535,7 +639,7 @@ kubectl apply -f code/part18/external_secret.yaml
 
 ### 8.8 What to record
 
-After the lab, you should be able to answer five questions in five seconds each:
+After the lab, you should be able to answer five questions quickly. The five-second and 30-second limits in this chapter are example values, so set your own.
 
 1. What is the current RBAC denial rate?
 2. What is the current Workload Identity issuance rate?
@@ -543,101 +647,101 @@ After the lab, you should be able to answer five questions in five seconds each:
 4. What is the current secret rotation freshness?
 5. What is the current NetworkPolicy denial rate?
 
-If any takes more than 30 seconds, the Kubernetes access controls are not yet a production service. The lab is **untested** against a live GKE cluster.
+If any answer takes longer than the limit you set, the access controls are not yet ready to run as a production service. The lab is **untested** against a live GKE cluster, so that check is still open.
 
 ---
 
 ## Exercises
 
-1. **Add a least-privilege Role for the MLflow tracking server.** The Role should grant only the verbs and resources the tracking server needs. *Solution sketch:* the Role YAML in Section 1.1; the RoleBinding YAML; the ServiceAccount reference.
-2. **Configure Workload Identity for the model registry.** The ServiceAccount should be bound to a cloud IAM role with read/write permissions on the registry bucket. *Solution sketch:* the Workload Identity YAML in Section 2.1; the IAM role configuration.
-3. **Enable Pod Security Standards at the Restricted level for every namespace.** The namespace labels should be applied. *Solution sketch:* the PSS YAML in Section 3.2; the kubectl apply command.
-4. **Add a default-deny NetworkPolicy for every namespace.** The NetworkPolicy should be in place; explicit allow rules should be added per workload. *Solution sketch:* the default-deny YAML in Section 4.1; the explicit-allow YAML in Section 4.2.
-5. **Configure External Secrets Operator for the production secrets.** The secrets should be synced from Vault; the rotation should be automatic. *Solution sketch:* the ExternalSecret YAML in Section 5.2; the ClusterSecretStore configuration.
-6. **Add a Kubernetes access controls dashboard.** Build a Grafana dashboard that shows the RBAC denial rate, the PSS admission rate, and the NetworkPolicy denial rate. *Solution sketch:* the dashboard JSON; the panels; the data sources.
+1. **Write a least-privilege Role for the MLflow tracking server.** Give the server only the verbs and resources it needs. If you are unsure, start with read-only verbs, and add more only when a real request fails. *Solution sketch:* the Role YAML in Section 1.1, a matching RoleBinding, and the ServiceAccount reference.
+2. **Configure Workload Identity for the model registry.** Bind the ServiceAccount to a cloud IAM role that can read and write the registry bucket. Before you finish, confirm that you can reach the bucket from inside the pod. *Solution sketch:* the Workload Identity YAML in Section 2.1 and the IAM role configuration.
+3. **Enable Restricted Pod Security Standards in every namespace.** Apply the namespace labels to each one, and confirm that every namespace you own shows them. *Solution sketch:* the PSS YAML in Section 3.2 and a `kubectl apply` command.
+4. **Add a default-deny NetworkPolicy to every namespace.** Then add an explicit allow rule for each workload. *Solution sketch:* the default-deny YAML in Section 4.1 and the explicit-allow YAML in Section 4.2.
+5. **Configure External Secrets Operator for the production secrets.** Sync the secrets from Vault, and make the rotation automatic. *Solution sketch:* the ExternalSecret YAML in Section 5.2 and the ClusterSecretStore configuration.
+6. **Build an access-control health dashboard.** Show the RBAC denial rate, the Pod Security Standards admission rate, and the NetworkPolicy denial rate in Grafana. *Solution sketch:* the dashboard JSON, the panels, and the data sources.
 
 ---
 
 ## Checkpoint questions
 
 <details><summary>1. What is RBAC?</summary>
-Role-Based Access Control: the Kubernetes mechanism for controlling who can do what. Roles define the permissions; RoleBindings bind the Roles to subjects. ClusterRoles and ClusterRoleBindings are cluster-wide. The pattern is least-privilege: every Role grants only the necessary permissions.
+RBAC, or Role-Based Access Control, decides who can do what in Kubernetes. A Role defines the permissions, and a RoleBinding attaches it to subjects. ClusterRoles and ClusterRoleBindings apply across the whole cluster. Each Role should grant only the permissions your workload needs.
 </details>
 
 <details><summary>2. What is Workload Identity?</summary>
-The pattern that binds a Kubernetes ServiceAccount to a cloud IAM role. The workload uses the IAM role to access cloud resources; the IAM role has the least-privilege permissions. Workload Identity replaces the legacy pattern of mounting long-lived credentials; Workload Identity issues short-lived credentials automatically.
+Workload Identity binds a Kubernetes ServiceAccount to a cloud IAM role. The workload uses that role to reach cloud resources, and the role holds only the permissions it needs. It replaces the older habit of mounting long-lived credentials, because it issues short-lived credentials automatically.
 </details>
 
 <details><summary>3. What is Pod Security Standards?</summary>
-The Kubernetes mechanism for enforcing the security baseline on every pod. PSS has three levels: Privileged (no restrictions), Baseline (minimal restrictions), Restricted (strict restrictions). The pattern is: every workload runs at the Restricted level.
+Pod Security Standards are the Kubernetes mechanism for enforcing a security baseline on pods. They have three levels: Privileged with no restrictions, Baseline with minimal restrictions, and Restricted with strict restrictions. The chapter's pattern is to run every workload at the Restricted level.
 </details>
 
 <details><summary>4. What is the default-deny NetworkPolicy?</summary>
-The NetworkPolicy that denies all traffic to and from every pod in the namespace. The default-deny is the foundation of the multi-tenant boundary. The pattern is: every namespace has a default-deny NetworkPolicy; every pod in the namespace is denied by default; explicit allow rules are added for the workload's needs.
+A default-deny NetworkPolicy blocks all traffic to and from every pod in a namespace. It forms the base of the multi-tenant boundary. Apply it to every namespace you run, then add explicit allow rules for what each workload needs.
 </details>
 
 <details><summary>5. What is the External Secrets Operator?</summary>
-The Kubernetes operator that syncs secrets from external secret managers (Vault, AWS Secrets Manager, GCP Secret Manager) into Kubernetes Secrets. ESO rotates the secrets automatically; ESO exposes the secrets as Kubernetes Secrets. The pattern is: every secret is in Vault; ESO syncs the secret to Kubernetes; the secret is rotated automatically.
+The External Secrets Operator syncs secrets from outside managers, such as Vault, AWS Secrets Manager, or GCP Secret Manager, into Kubernetes Secrets. ESO syncs the secrets on a refresh interval; it does not rotate the secret in the external manager, so rotation is done there. The pattern is to keep every secret in Vault, let ESO sync it into the cluster, and rely on automatic rotation.
 </details>
 
 <details><summary>6. What is the most common RBAC failure?</summary>
-A workload has cluster-admin. The workload can list all secrets in all namespaces; the workload can create pods in any namespace. The fix is to remove the cluster-admin binding; create a least-privilege Role; bind the Role to the ServiceAccount.
+A workload is bound to cluster-admin. It can list secrets in every namespace and create pods anywhere. Remove that binding, create a least-privilege Role, and bind the Role to the ServiceAccount.
 </details>
 
 <details><summary>7. What is the second most common RBAC failure?</summary>
-The ServiceAccount token is mounted as an environment variable. The token is long-lived; the token has not been rotated. The fix is to migrate to Workload Identity; remove the legacy token mount.
+The ServiceAccount token is mounted as an environment variable. That token is long-lived and has not been rotated. Move the workload to Workload Identity, and remove the legacy token mount.
 </details>
 
 <details><summary>8. What is the most dangerous pod security failure?</summary>
-A privileged pod is running. The pod has `privileged: true`; the pod has host namespaces; the pod has host paths. The fix is to change the namespace to `enforce: restricted`; recreate the pod without the privileged fields.
+A privileged pod is running on the cluster. The pod sets `privileged: true`, and it uses host namespaces and host paths. Change the namespace to `enforce: restricted`, then recreate the pod without the privileged fields.
 </details>
 
 <details><summary>9. What is the most common network policy failure?</summary>
-The NetworkPolicy allows all traffic. A pod in namespace A can reach a pod in namespace B. The fix is to add a default-deny NetworkPolicy; add explicit allow rules for the workload's needs.
+A NetworkPolicy allows all traffic, so a pod in namespace A can reach a pod in namespace B. Add a default-deny NetworkPolicy first. Then add the explicit allow rules you need.
 </details>
 
 <details><summary>10. What is the most dangerous secret failure?</summary>
-The secret is hard-coded in the manifest. The secret is in plain text in the Git repository. The fix is to use External Secrets Operator; reference the Secret by name; the Secret is in Vault.
+The secret is hard-coded in a manifest. That puts plain text into the Git repository. Use External Secrets Operator instead, so you can reference the Secret by name and keep the value in Vault.
 </details>
 
 <details><summary>11. What is the relationship between RBAC and Workload Identity?</summary>
-RBAC controls who can do what within the cluster. Workload Identity extends that to cloud resources. Together, they form the access control chain: RBAC is the cluster's access control; Workload Identity is the cloud's access control.
+RBAC controls who can do what inside the cluster. Workload Identity extends that control to cloud resources. Together, RBAC covers the cluster side and Workload Identity covers the cloud side.
 </details>
 
 <details><summary>12. What is the relationship between Pod Security Standards and NetworkPolicies?</summary>
-Pod Security Standards control what the pod can do (host namespaces, host paths, privileged). NetworkPolicies control where the pod can communicate (other pods, other namespaces, the internet). Together, they form the containment chain: PSS is the workload's containment; NetworkPolicies is the network's containment.
+Pod Security Standards limit what a pod can do, such as using host namespaces, host paths, or privileged mode. NetworkPolicies limit where a pod can communicate, including other pods, other namespaces, and the internet. Together, they contain a workload from two directions: the pod itself and the network around it.
 </details>
 
 <details><summary>13. What is the relationship between RBAC and NetworkPolicies?</summary>
-RBAC controls who can do what. NetworkPolicies control where the traffic can go. Together, they form the multi-tenant boundary: RBAC is the identity boundary; NetworkPolicies is the network boundary.
+RBAC controls who can do what. NetworkPolicies control where traffic can go. Together, they form the multi-tenant boundary, with RBAC as the identity side and NetworkPolicies as the network side.
 </details>
 
 <details><summary>14. What is the relationship between External Secrets Operator and Workload Identity?</summary>
-Workload Identity provides the cloud IAM identity. External Secrets Operator provides the secrets. Together, they form the secret chain: Workload Identity is the identity that accesses the secrets; External Secrets Operator is the source of the secrets.
+Workload Identity provides the cloud IAM identity. External Secrets Operator provides the secrets. Together, they form the secret chain: the identity reads the secrets, and ESO is where those secrets come from.
 </details>
 
 <details><summary>15. What is the most important Kubernetes access control metric?</summary>
-The RBAC denial rate. The metric tells the team which workloads are being denied access. An anomalous spike indicates a workload that is trying to access a resource it should not. The alert fires when the rate spikes above the expected baseline.
+The RBAC denial rate is the metric to watch most closely. It shows which workloads are being denied access. A sudden spike points to a workload that is trying to reach a resource it should not. The alert should fire when the rate rises above the expected baseline.
 </details>
 
 <details><summary>16. What is the difference between Roles and ClusterRoles?</summary>
-Roles are namespace-scoped. ClusterRoles are cluster-wide. The pattern is: use Roles for namespace resources; use ClusterRoles for cluster-wide resources; avoid ClusterRoleBindings for namespace resources (the binding bypasses the namespace boundary).
+Roles are scoped to one namespace, while ClusterRoles apply across the cluster. Use a Role for namespace resources and a ClusterRole for cluster-wide ones. Avoid ClusterRoleBindings for namespace resources, because they bypass the namespace boundary.
 </details>
 
 <details><summary>17. What is the difference between Pod Security Standards and OPA Gatekeeper?</summary>
-Pod Security Standards are the Kubernetes-native mechanism for enforcing the security baseline. OPA Gatekeeper is the general-purpose policy engine for enforcing arbitrary policies. PSS is the baseline; Gatekeeper is the customisations.
+Pod Security Standards are Kubernetes' built-in baseline for pod security. OPA Gatekeeper is a general-purpose policy engine that enforces custom rules. In short, PSS sets the baseline, and Gatekeeper adds the custom rules on top.
 </details>
 
 <details><summary>18. What is the difference between NetworkPolicies and service mesh policies?</summary>
-NetworkPolicies are the Kubernetes-native L3/L4 network control. Service mesh policies (Istio, Linkerd) are the L7 network control. Together, they form the network control: NetworkPolicies is the network isolation; service mesh is the network observability and L7 control.
+NetworkPolicies are Kubernetes' built-in control at layers 3 and 4 of the network. Service mesh policies, from tools such as Istio or Linkerd, work at layer 7. Together they cover the network: NetworkPolicies provide isolation, and the mesh adds L7 control and observability.
 </details>
 
 <details><summary>19. Why is Kubernetes access control a Tier 2 chapter?</summary>
-Because the Kubernetes access controls are the boundary between tenants. Without the access controls, every tenant can access every other tenant's data. The access controls are what the platform team owns; the access controls are what the regulator sees; the access controls are what the auditor inspects.
+The access controls form the boundary between tenants. Without them, every tenant could reach every other tenant's data. The platform team owns these controls, and they are what regulators and auditors inspect.
 </details>
 
 <details><summary>20. What five questions should the Kubernetes access controls lab let you answer in five seconds each?</summary>
-What is the current RBAC denial rate. What is the current Workload Identity issuance rate. What is the current Pod Security Standards admission rate. What is the current secret rotation freshness. What is the current NetworkPolicy denial rate. If any takes more than 30 seconds, the Kubernetes access controls are not yet a production service.
+Be able to state the current RBAC denial rate. Be able to state the current Workload Identity issuance rate. Be able to state the current Pod Security Standards admission rate. Be able to state the current secret rotation freshness. Be able to state the current NetworkPolicy denial rate. The 30-second limit is an example, so you should set your own, and treat any answer that takes longer as a sign the controls are not yet a production service.
 </details>
 
 ---
@@ -645,7 +749,7 @@ What is the current RBAC denial rate. What is the current Workload Identity issu
 ## Sources and review notes
 
 - NVIDIA Zero-to-Hero Volume 18 (`chapter-04-kubernetes-access-control.md`, `chapter-05-pod-security.md`). Source for the RBAC, Workload Identity, Pod Security Standards, NetworkPolicies, and secrets management patterns. The wording has been rewritten in the handbook's voice.
-- *Production Kubernetes* (`production-kubernetes`, Chapters 8, 10). Source for the Kubernetes access control patterns and the operational discipline.
+- *Production Kubernetes* (`production-kubernetes`, Chapters 8, 10). Source for the Kubernetes access control patterns and the operational discipline. Chapter 8 (Admission Control) is the source for the webhook, mutating, and Gatekeeper material in Sections 3.4 to 3.7.
 
 ### Cross-references to other handbook chapters
 

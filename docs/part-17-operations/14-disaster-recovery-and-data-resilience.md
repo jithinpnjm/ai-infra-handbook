@@ -25,6 +25,8 @@ lab_venue: "GCP / GKE"
 
 ## Disaster recovery at a glance
 
+Imagine the primary region goes dark on a Tuesday afternoon. Your inference service still has to answer requests.
+
 ```mermaid
 flowchart LR
     subgraph Primary["Primary region"]
@@ -53,16 +55,16 @@ flowchart LR
     P1 --> AG
 ```
 
-The primary region serves traffic; the secondary region is pre-warmed; the air-gapped backup is the last resort.
+Normally the primary region serves all traffic. The secondary region stays pre-warmed, ready to take over, and the air-gapped backup is the last resort.
 
 ## Why this matters for AI infrastructure
 
-Reliability engineering (Chapter 17.13) is about preventing incidents. This chapter is about recovering when the prevention fails. Disaster recovery is the discipline that turns "we lost the cluster" into "we have the cluster back in 4 hours with no data loss".
+Chapter 17.13 teaches you how to prevent incidents. This chapter starts where that work stops, when prevention fails and something has to be brought back. Disaster recovery is the discipline that lets a team restore service within a time it agreed on in advance, with a known amount of lost data. For example, a team might aim to be back within 4 hours with no data loss. Those figures are examples you choose for your own platform, not industry standards.
 
-A disaster is an event that takes down the cluster beyond the team's ability to recover in the normal way. The disaster could be a regional outage; the disaster could be a ransomware attack; the disaster could be a hardware failure that takes down a zone. The disaster recovery plan is what the team follows when the normal playbook fails.
+A disaster is any event that takes the cluster down beyond what the normal recovery steps can handle. It might be a regional outage, a ransomware attack, or a hardware failure that takes out a whole zone. When that happens, the disaster recovery plan is what your team follows, because the usual playbook no longer works.
 
 ```text
-Why disaster recovery is on the critical path (V19 ch10; PK Ch 14):
+Why disaster recovery is on the critical path (background reading: NVIDIA Zero-to-Hero volume 19; Production Kubernetes; the figures below are examples, not quotations):
 - A typical mature AI platform commits to a 4-hour RTO and a 1-hour RPO for
   critical workloads. The RTO is the recovery time objective; the RPO is the
   recovery point objective. The RTO/RPO are what the business commits to.
@@ -74,33 +76,37 @@ Why disaster recovery is on the critical path (V19 ch10; PK Ch 14):
   The data resilience is what makes the recovery possible.
 ```
 
-Three operational realities make this chapter a platform-team concern rather than a data-science-only concern:
+The figures in that block are example values too. The claim that a drill catches failures worth 10 to 100 times its cost has no source in this chapter's references. Treat it as a guess until your own drills measure it.
 
-1. **The disaster recovery plan is a platform-team deliverable.** The plan names the RTO/RPO; the plan names the backup strategy; the plan names the multi-region replication; the plan names the recovery procedure. The platform team owns the plan.
-2. **The data resilience is a platform-team discipline.** Every byte in the cluster has a backup; every byte is replicated; every byte is encrypted. The discipline is what makes the recovery possible.
-3. **The disaster recovery drill is a platform-team drill.** The drill tests the plan; the drill tests the backup; the drill tests the recovery procedure. The drill is what makes the plan tested.
+Three things make this a platform-team concern, not only a data-science concern. Each one is work that someone has to own.
 
-**Before a team can claim their AI factory is disaster-resilient, the team must have a disaster recovery plan, data resilience, and disaster recovery drills. A team that has a plan but not drills is a team that has not tested the plan. A team that has drills but not data resilience is a team that drills an untestable plan.**
+1. **The disaster recovery plan is a platform-team deliverable.** The plan sets the time and data targets, names the backup and replication design, and writes the recovery steps. If the platform team does not own it, the plan goes stale.
+2. **Data resilience is a platform-team discipline.** Each data store in the cluster needs a backup, a second copy in another place, and encryption. Without all three, the recovery plan has nothing reliable to restore from.
+3. **The disaster recovery drill is a platform-team drill.** A drill tests the plan, the backups, and the recovery steps together. Until a drill has run, the plan is only a hypothesis.
+
+**Before a team can claim its AI factory is disaster-resilient, it needs a plan, data resilience, and drills.** A plan without drills is untested. Drills without resilient data have nothing to recover.
 
 ## Prerequisites and outcomes
 
+Before you start, make sure the foundations from earlier chapters are in place. This chapter builds directly on them. Each prerequisite supplies a piece you will use in the drills and failover sections, so read any unfamiliar one first.
+
 ### Prerequisites
 
-- Chapter 17.11 (Incident response) for the post-mortem and the blameless culture.
-- Chapter 17.13 (Reliability engineering) for the SLO and error budget patterns.
-- Chapter 17.6 (Alerting and SLOs) for the alerting stack.
-- Chapter 13 (AI storage) for the storage primitives.
+- Chapter 17.11, Incident response, covers the post-mortem and the blameless culture.
+- Chapter 17.13, Reliability engineering, covers SLOs and the error budget patterns.
+- Chapter 17.6, Alerting and SLOs, covers the alerting stack.
+- Chapter 13, AI storage, covers the storage primitives.
 
 ### Outcomes
 
 After completing this chapter you will be able to:
 
-1. Specify the RTO/RPO targets for the AI factory: critical workloads vs standard workloads vs development workloads.
-2. Build the backup strategy: full backups, incremental backups, point-in-time recovery.
-3. Implement multi-region replication: object storage, distributed filesystem, registry.
-4. Defend against ransomware: immutable backups, object-lock, audit log.
-5. Run disaster recovery drills: the scenario, the execution, the verification, the post-mortem.
-6. Operate the disaster recovery process on GKE with reliable backups, tested replication, and verified drills.
+1. Set RTO and RPO targets for critical, standard, and development workloads.
+2. Build a backup strategy with full backups, incremental backups, and point-in-time recovery.
+3. Set up multi-region replication for object storage, the distributed filesystem, and the model registry.
+4. Defend against ransomware with immutable backups, object lock, and an audit log.
+5. Run a disaster recovery drill from scenario to post-mortem.
+6. Operate disaster recovery on GKE with reliable backups, tested replication, and verified drills.
 
 ---
 
@@ -108,7 +114,9 @@ After completing this chapter you will be able to:
 
 ### 1.1 The recovery time objective (RTO)
 
-The RTO is the maximum acceptable time to restore the service after a disaster. The RTO is the contract between the platform team and the business.
+Picture an inference service that stops answering at 2 p.m. on a weekday. Every minute it stays down, customers see errors. The RTO answers one question: how long is the team allowed to take to bring the service back?
+
+The recovery time objective is the longest the service may stay down after a disaster. It is a commitment between the platform team and the business, and it should be written down before a disaster happens.
 
 | Workload tier | RTO | Use case |
 |---|---|---|
@@ -116,11 +124,13 @@ The RTO is the maximum acceptable time to restore the service after a disaster. 
 | Standard (internal) | 4 hours | Training pipelines; batch inference |
 | Development (experimentation) | 24 hours | Notebooks; experimental workloads |
 
-The pattern is: the critical tier has the tightest RTO; the development tier has the loosest RTO. The tier determines the cost (multi-region deployment is more expensive than single-region).
+The table gives example values, not fixed rules. Each tier gets the tightest target its business value justifies. A short RTO costs more, because critical workloads usually need a second region that is already running.
 
 ### 1.2 The recovery point objective (RPO)
 
-The RPO is the maximum acceptable data loss after a disaster. The RPO is the contract between the platform team and the customer.
+The RTO is about time. The RPO is about data: how much recent work can you afford to lose? If your newest good copy is an hour old, the data you lost is that hour of writes.
+
+The recovery point objective is the longest window of data that may be lost. Like the RTO, it is a commitment, and it sets how often you must back up or replicate.
 
 | Workload tier | RPO | Use case |
 |---|---|---|
@@ -128,11 +138,11 @@ The RPO is the maximum acceptable data loss after a disaster. The RPO is the con
 | Standard (internal) | 1 hour | Training data; experiment results |
 | Development (experimentation) | 24 hours | Notebooks; experimental data |
 
-The pattern is: the critical tier has the tightest RPO; the development tier has the loosest RPO. The RPO is enforced by the backup cadence.
+These values are examples too. An RPO of 1 minute means the copy has to be refreshed about every minute, which a nightly job cannot do.
 
 ### 1.3 The RTO/RPO matrix
 
-The RTO/RPO matrix combines the recovery time and the recovery point. The matrix is the platform team's contract with the business.
+Put the two targets side by side, and the deployment pattern usually becomes clear. A tight RTO with a tight RPO points toward a multi-region setup. A loose RTO and a loose RPO can often run from a single region with cold backups.
 
 | | RPO 1 minute | RPO 1 hour | RPO 24 hours |
 |---|---|---|---|
@@ -140,7 +150,7 @@ The RTO/RPO matrix combines the recovery time and the recovery point. The matrix
 | **RTO 4 hours** | Critical (warm standby) | Standard (warm backup) | N/A |
 | **RTO 24 hours** | Critical (cold standby) | Standard (cold backup) | Development (best effort) |
 
-The pattern is: the matrix maps the RTO and the RPO to the deployment strategy. The matrix is the platform team's planning tool.
+The N/A cells mark combinations the matrix does not support. Use the matrix to decide which deployment pattern each workload gets, and show the result to the business before you build anything.
 
 ---
 
@@ -148,19 +158,23 @@ The pattern is: the matrix maps the RTO and the RPO to the deployment strategy. 
 
 ### 2.1 The backup types
 
-The backup strategy has three types: full backups, incremental backups, and point-in-time recovery.
+A backup you have never restored is only a hope. Start by choosing which kind of backup each dataset needs.
+
+The strategy uses three types. A full backup copies everything, an incremental backup copies only what changed since the last backup, and point-in-time recovery rewinds the data to one chosen moment.
 
 | Backup type | What it captures | When to use |
 |---|---|---|
-| **Full backup** | The entire dataset | Weekly; the foundation for other backups |
-| **Incremental backup** | The changes since the last backup | Daily; the supplement to the full backup |
-| **Point-in-time recovery** | The state at a specific timestamp | As needed; the recovery from accidental deletion |
+| **Full backup** | The entire dataset | Weekly. The foundation for other backups |
+| **Incremental backup** | The changes since the last backup | Daily. The supplement to the full backup |
+| **Point-in-time recovery** | The state at a specific timestamp | As needed. The recovery from accidental deletion |
 
-The pattern is: full backups weekly; incremental backups daily; point-in-time recovery on demand. The strategy balances the backup cost against the RPO.
+The cadence in this table is an example. Choose your own from the RPO you committed to, because a daily backup cannot protect data you need back within an hour.
 
 ### 2.2 The backup targets
 
-The backup targets are the systems that need to be backed up. The targets are: object storage (datasets, models, audit log), distributed filesystem (training data), Kubernetes state (etcd, secrets), database state (MLflow, Feast).
+Think about what the cluster stores. Model files and datasets live in object storage, the cluster's own state lives in etcd and Kubernetes secrets, and MLflow and Feast keep their records in PostgreSQL. Each target needs a backup method that fits it.
+
+Production Kubernetes, chapter 2, takes the same view of cluster state. It recommends direct etcd snapshots together with Velero backups taken through the Kubernetes API. Production Kubernetes, chapter 4, adds that Velero supports backup and restore hooks, such as flushing a database before a backup runs.
 
 | Target | Backup method | Retention |
 |---|---|---|
@@ -171,11 +185,11 @@ The backup targets are the systems that need to be backed up. The targets are: o
 | MLflow database | PostgreSQL backup | 30 days |
 | Feast database | PostgreSQL backup | 30 days |
 
-The pattern is: every system has a backup; every backup has a retention; every backup has a verification.
+The retention periods are starting points. Regulators and your own audit rules decide the real numbers, so check them before you copy these values.
 
 ### 2.3 The backup verification
 
-The backup verification is the discipline that proves the backup works. The backup is restored to a staging environment; the backup is verified against the original; the backup's RTO and RPO are measured.
+Verification is what proves a backup works. Restore it into staging, compare the result with the original, and measure how long the restore took.
 
 ```bash
 # Restore the backup to staging
@@ -191,7 +205,7 @@ python code/part17/verify_backup.py \
 # expected: the backup restores within the RTO; the backup's data loss is within the RPO
 ```
 
-The pattern is: the backup is restored quarterly; the backup is verified against the original; the backup's RTO and RPO are measured.
+The expected line is a pass condition, not a report. After each restore, ask whether the team could meet the RTO with this exact procedure.
 
 ---
 
@@ -199,40 +213,36 @@ The pattern is: the backup is restored quarterly; the backup is verified against
 
 ### 3.1 Object storage replication
 
-Object storage replication copies the data from one region to another. The replication is automatic; the replication is asynchronous; the replication has a lag.
+Suppose a bucket in the primary region receives new model artifacts every hour. If that region fails, those artifacts are stranded. Replication copies each new object to a second region without anyone starting a job.
+
+The copy runs asynchronously, so it can trail the original. That delay is the replication lag, and it counts against your RPO.
 
 ```bash
-# Configure object storage replication
-gsutil replication set gs://primary-bucket \
-  --destination-bucket gs://secondary-bucket \
-  --role src
-
-gsutil replication set gs://secondary-bucket \
-  --destination-bucket gs://primary-bucket \
-  --role dst
-# expected: the data is replicated from primary to secondary; the replication lag is < 1 minute
+# Copy the primary bucket to a second region every hour with Storage Transfer Service
+# (gsutil has no replication command; a dual-region or multi-region bucket replicates by itself)
+gcloud transfer jobs create gs://primary-bucket gs://secondary-bucket --schedule-repeats-every=1h
+# expected: a transfer job that copies new objects each hour; the interval sets the worst-case lag
 ```
 
-The pattern is: object storage is replicated across two regions; the replication is automatic; the replication is monitored.
+The lag here is bounded by the schedule you choose. A dual-region bucket replicates continuously instead, so measure the lag you actually get and compare it with your RPO.
 
 ### 3.2 Distributed filesystem replication
 
-Distributed filesystem replication copies the filesystem from one cluster to another. The replication is synchronous or asynchronous; the replication has a lag.
+Synchronous replication waits for the second copy before it confirms a write. Asynchronous replication confirms first and copies later. Asynchronous mode is faster, but it can lose the newest writes if the primary fails.
 
 ```bash
-# Configure Lustre replication
-lfsctl replication create \
-  --source lustre-primary \
-  --destination lustre-secondary \
-  --mode async
-# expected: the filesystem is replicated; the replication lag is < 5 minutes
+# Lustre has no single replication command. Common options are changelog-driven copy
+# (the lustre_rsync tool) or an HSM archive tier. Check your Lustre version's manual for the exact syntax.
+# expected: the secondary filesystem trails the primary; measure that lag against your RPO
 ```
 
-The pattern is: the filesystem is replicated across two clusters; the replication is monitored.
+The expected line says the lag is under five minutes. Measure that on your own filesystem before you rely on it.
 
 ### 3.3 Kubernetes state replication
 
-Kubernetes state (etcd) is replicated within a cluster by default. Multi-region Kubernetes state requires a more complex setup (e.g. KubeFed, cluster API federation).
+Etcd copies its data between control-plane members, so one failed member is survivable. A bad command is copied to every member too, so a snapshot is still needed.
+
+Multi-region Kubernetes state needs more setup, such as KubeFed or cluster API federation.
 
 ```bash
 # Configure etcd snapshot
@@ -240,27 +250,27 @@ etcdctl snapshot save /backup/etcd-snapshot.db
 # expected: the etcd snapshot is saved
 ```
 
-The pattern is: etcd is snapshotted regularly; the snapshots are stored in object storage; the snapshots are replicated across regions.
-
 ---
 
 ## 4. Ransomware defence
 
 ### 4.1 Immutable backups
 
-Immutable backups cannot be modified or deleted before their retention period expires. The immutability is enforced by the object storage service (e.g. S3 Object Lock, GCS Bucket Lock).
+Picture an attacker with admin rights who wants to erase your backups before encrypting the data. An immutable backup defends against exactly that. Once written, it cannot be changed or deleted until its retention period ends.
+
+The storage service enforces that rule, not your scripts. S3 Object Lock and GCS Bucket Lock are two examples of this mechanism.
 
 ```bash
 # Configure object lock on the audit log bucket
-gsutil retention set gs://audit-log-bucket 90d
+gsutil retention set 90d gs://audit-log-bucket
 # expected: the bucket has a 90-day retention; the objects cannot be deleted before 90 days
 ```
 
-The pattern is: the audit log bucket has object-lock; the backup bucket has object-lock; the immutability is enforced by the object storage service.
+The expected line says the bucket keeps objects for 90 days. Choose the period from your recovery needs and retention rules, not from this example.
 
 ### 4.2 Air-gapped backups
 
-Air-gapped backups are backups that are stored in a separate environment that is not connected to the cluster. The air gap is what prevents a ransomware attack from reaching the backups.
+An air gap is a boundary the attacker cannot cross from the cluster. A bucket that the cluster's own account can write to is not truly air-gapped, because the same credentials may reach it. The example below copies a backup, but that step alone does not create the gap.
 
 ```bash
 # Copy the backup to an air-gapped bucket
@@ -268,11 +278,11 @@ gsutil cp /backup/2024-03-15.tar.gz gs://air-gap-bucket/
 # expected: the backup is in the air-gapped bucket; the air-gapped bucket is not connected to the cluster
 ```
 
-The pattern is: the most critical backups are in an air-gapped bucket; the air-gapped bucket is on a separate network.
+Design the isolation as separate work, with separate accounts or projects and separate credentials. The copy step only moves the data.
 
 ### 4.3 The audit log as a ransomware defence
 
-The audit log is the record of every action the team takes. The audit log is immutable (object-lock); the audit log is the evidence of what happened during a ransomware attack.
+When an attack happens, you need to know who deleted what, and when. The audit log answers that question, but only if an attacker cannot edit it, so keep it in locked storage.
 
 ```bash
 # Query the audit log for suspicious activity
@@ -284,7 +294,7 @@ bq query --use_legacy_sql=false \
 # expected: a list of recent backup deletions; the audit log proves what happened
 ```
 
-The pattern is: the audit log is immutable; the audit log is the evidence; the audit log is the foundation of the post-ransomware investigation.
+Run a query like this on a schedule. Alert when it returns deletions you did not expect, because a burst of backup deletions is an early sign of trouble.
 
 ---
 
@@ -292,7 +302,9 @@ The pattern is: the audit log is immutable; the audit log is the evidence; the a
 
 ### 5.1 The drill plan
 
-Disaster recovery drills test the plan. The drill has a scenario (e.g. regional outage, ransomware attack, hardware failure); the drill has an injection; the drill has an expected response; the drill has success criteria.
+Think of a drill as a rehearsal with a script. Before anyone starts, you write down the disaster, the event that triggers it, the response you expect, and how you will judge success.
+
+Drills test the plan itself. Each one needs a scenario, such as a regional outage, a ransomware attack, or a hardware failure, plus an injected fault, an expected response, and success criteria.
 
 ```markdown
 # Disaster Recovery Drill: Regional Outage
@@ -301,7 +313,7 @@ Disaster recovery drills test the plan. The drill has a scenario (e.g. regional 
 The primary region's data center suffers a power outage; all GPUs in the primary region are unavailable.
 
 ## Injection
-At 14:00 UTC, we will simulate a regional outage by cordoning all nodes in the primary region.
+At 14:00 UTC, we will simulate a regional outage by draining all nodes in the primary region.
 
 ## Expected response
 - 14:00: Alert fires
@@ -319,11 +331,13 @@ At 14:00 UTC, we will simulate a regional outage by cordoning all nodes in the p
 - The SLO is met in the secondary region
 ```
 
-The pattern is: the drill has a scenario; the drill has an injection; the drill has an expected response; the drill has success criteria.
+The times in this template are examples. Set timings that fit your own on-call rota and change windows.
+
+For the most critical workloads, Production Kubernetes, chapter 2, suggests going further. List the ways things can fail, automate recovery for each one, and then test those recoveries. It also suggests a standby cluster to fail over to, with the failover automated and tested.
 
 ### 5.2 The drill execution
 
-The drill is executed at a scheduled time. The team responds; the team documents the response.
+On drill day, the team follows the script, and someone records each action with its time. A timeline written during the drill is more accurate than one rebuilt from memory afterwards.
 
 ```bash
 # Schedule the drill
@@ -337,11 +351,11 @@ python code/part17/execute_drill.py \
   --scenario "Regional Outage"
 ```
 
-The pattern is: the drill is scheduled quarterly; the drill is executed at the scheduled time; the drill produces a post-mortem.
+Keep the drill ID, the scenario name, and the schedule in one place, so the post-mortem can refer to them later.
 
 ### 5.3 The drill post-mortem
 
-Every drill produces a post-mortem. The post-mortem documents what was tested; what worked; what did not work; what to improve.
+Every drill ends with a post-mortem. It records what was tested, what worked, what did not, and what the team will change. The post-mortem is where the value of the drill is kept.
 
 ```markdown
 # Disaster Recovery Drill Post-Mortem: Regional Outage
@@ -366,13 +380,15 @@ Every drill produces a post-mortem. The post-mortem documents what was tested; w
 - Update the runbook with the registry failover (Owner: platform-team, Due: 2024-04-22)
 ```
 
-The pattern is: the post-mortem documents what worked; the post-mortem documents what did not work; the post-mortem produces action items with owners and deadlines.
+Give each action item one owner and one due date. Without both, an action item tends to stay open with nobody responsible for it.
 
 ---
 
 ## 6. Operating disaster recovery on GKE
 
 ### 6.1 The components
+
+Running disaster recovery on GKE means several pieces must work together. Object storage, replication, the etcd snapshot job, and the verification and drill schedulers each have a job. The table shows what each piece does and what it is expected to achieve.
 
 | Component | Where it runs | Backing store | SLO |
 |---|---|---|---|
@@ -383,9 +399,11 @@ The pattern is: the post-mortem documents what worked; the post-mortem documents
 | Backup verification | CronJob | (verifies the backup) | Verification frequency 30 days |
 | DR drill scheduler | CronJob | (schedules the drill) | Drill frequency 90 days |
 
+The SLO column holds example targets. Replace each one with a value you actually measure, and write it down where the team can see it.
+
 ### 6.2 IAM and the disaster recovery
 
-The disaster recovery stack has its own IAM. The pattern is:
+The recovery stack needs its own access rules. Backups are only as safe as the people and services that can change them. Give each role only the rights it needs.
 
 | Role | Who | What they can do |
 |---|---|---|
@@ -393,9 +411,11 @@ The disaster recovery stack has its own IAM. The pattern is:
 | `dr.writer` | The platform team | Create backups; restore backups |
 | `dr.admin` | The platform team lead | Approve the DR plan; approve the failover |
 
-The disaster recovery is the platform team's discipline. The discipline is documented; the discipline is enforced; the discipline is reviewed quarterly.
+Write down who holds each role, and review that list every quarter. A quarterly review is an example cadence, so choose the one your team can keep.
 
 ### 6.3 Observability
+
+Dashboards show whether the plan is still true today. Track the metrics below, and alert when a value leaves its safe range.
 
 | Metric | Why it matters | Alert |
 |---|---|---|
@@ -406,89 +426,98 @@ The disaster recovery is the platform team's discipline. The discipline is docum
 | Object storage replication lag | DR readiness | > 5 minutes |
 | Object lock age | DR readiness | < 30 days remaining |
 
-The RTO and RPO drill metrics are the most important. A drill that exceeds the RTO target is a drill that has revealed a gap; a drill that exceeds the RPO target is a drill that has revealed a data loss gap.
+The two drill metrics matter most. A drill that misses the RTO target has found a gap in the plan. A drill that misses the RPO target has shown data you would have lost.
+
+Put the RTO and RPO from your last drill on the team dashboard first. Everything else in this table is easier to act on once those two numbers are visible.
 
 ---
 
 ## 7. How it fails
 
-Six failure modes recur.
+Six failure modes are worth checking for. Each one below gives the symptom you will see, the usual diagnosis, and the fix.
 
 ### 7.1 "The backup is corrupted"
 
-**Symptom:** The team attempts to restore the backup; the backup is corrupted; the team cannot recover.
+**Symptom:** The team tries to restore a backup and finds it corrupted, so recovery stops.
 
-**Diagnosis:** The backup was not verified; the backup was stored on a single disk; the backup's checksum is wrong.
+**Diagnosis:** Nobody verified the backup, it lived on a single disk, and its checksum does not match.
 
-**Fix:** Verify the backup quarterly; store the backup on multiple disks; verify the backup's checksum before the restore.
+**Fix:** Verify backups on a schedule, keep copies on more than one disk, and check the checksum before you restore.
 
 ### 7.2 "The RTO is exceeded"
 
-**Symptom:** The disaster happens; the team attempts to recover; the recovery takes longer than the RTO; the SLO is breached.
+**Symptom:** A real disaster hits, recovery starts, and it takes longer than the RTO allows.
 
-**Diagnosis:** The runbook is not accurate; the team has not drilled; the failover is not automated.
+**Diagnosis:** The runbook is out of date, nobody has rehearsed it, and the failover is manual.
 
-**Fix:** Update the runbook; drill the runbook quarterly; automate the failover.
+**Fix:** Update the runbook, rehearse it on a schedule, and automate the failover where you can.
 
 ### 7.3 "The RPO is exceeded"
 
-**Symptom:** The disaster happens; the team attempts to recover; the data loss exceeds the RPO; the customer data is lost.
+**Symptom:** Recovery finishes, but the data is older than the RPO allows, so customer records are missing.
 
-**Diagnosis:** The backup cadence is too low; the replication lag is too high; the backup is not recent enough.
+**Diagnosis:** Backups run too rarely, replication lags too far behind, or the newest backup is too old.
 
-**Fix:** Increase the backup cadence; reduce the replication lag; increase the backup retention.
+**Fix:** Run backups more often, reduce the replication lag, and keep enough history to choose a good restore point.
 
 ### 7.4 "The ransomware deletes the backups"
 
-**Symptom:** The ransomware attack succeeds; the backups are deleted; the team cannot recover.
+**Symptom:** The attack succeeds, the backups are gone, and the team has nothing to restore.
 
-**Diagnosis:** The backups are not immutable; the backups are not air-gapped; the audit log is not tamper-evident.
+**Diagnosis:** The backups were mutable, they were not air-gapped, and the audit log could be edited.
 
-**Fix:** Enable object-lock on the backup bucket; air-gap the most critical backups; enable tamper-evident audit logging.
+**Fix:** Turn on object lock for the backup bucket, air-gap the most critical backups, and make the audit log tamper-evident.
 
 ### 7.5 "The failover does not work"
 
-**Symptom:** The disaster happens; the team initiates the failover; the failover fails; the service is unavailable.
+**Symptom:** The team starts the failover, it fails partway, and the service stays down.
 
-**Diagnosis:** The failover has not been tested; the failover's dependencies are missing; the failover's runbook is inaccurate.
+**Diagnosis:** The failover was never tested, a dependency is missing in the secondary region, and the runbook is wrong.
 
-**Fix:** Test the failover quarterly; verify the failover's dependencies; update the failover's runbook.
+**Fix:** Test the failover on a schedule, confirm every dependency exists in the secondary region, and correct the runbook after each test.
 
 ### 7.6 "The disaster recovery drill is skipped"
 
-**Symptom:** The team has not drilled in 6 months; the team's muscle memory is weak; the team's readiness is unknown.
+**Symptom:** The team has not drilled for 6 months, so nobody is sure what to do first.
 
-**Diagnosis:** The drill schedule is missing; the team is too busy; the drill is not a priority.
+**Diagnosis:** No drill schedule exists, the team is busy, and drills are not a priority.
 
-**Fix:** Schedule the drill quarterly; automate the scheduling; add the drill to the team's quarterly OKRs.
+**Fix:** Put drills on a calendar, automate the scheduling, and add drills to the team's objectives.
+
+Pick the failure mode your team is least ready for, and write its runbook step this week.
 
 ---
 
 ## 8. Hands-on lab
 
-This lab walks through the RTO/RPO targets, the backup strategy, the multi-region replication, and the disaster recovery drill. The lab is **untested** in this repository.
+Run this lab in a test project, never in production, and run the steps in order. The lab is **untested** in this repository, so treat each command as a draft until you have run it yourself.
 
 ### 8.1 Prerequisites
 
 - A GKE Autopilot or Standard cluster (1.27+) with at least 4 H100 GPU nodes.
 - The observability stack from earlier chapters.
-- A second GKE cluster in a different region (for multi-region testing).
+- A second GKE cluster in a different region for multi-region testing.
 
 ### 8.2 Step 1: configure the backup strategy
+
+Turn on versioning first, so an overwritten object keeps its earlier copy. Then lock the backup bucket and set up replication from the cluster's artifact bucket.
 
 ```bash
 # Enable object versioning on the cluster's object storage bucket
 gsutil versioning set on gs://cluster-artifacts
 
 # Configure object lock on the backup bucket
-gsutil retention set gs://backup-bucket 90d
+gsutil retention set 90d gs://backup-bucket
 
-# Enable cross-region replication
-gsutil replication set gs://cluster-artifacts \
-  --destination-bucket gs://backup-bucket
+# Enable cross-region copy (Storage Transfer Service; gsutil has no replication command)
+gcloud transfer jobs create gs://cluster-artifacts gs://backup-bucket --schedule-repeats-every=1h
 ```
 
+This is the same Storage Transfer Service approach as in section 3, with the same lag caveat.
+
 ### 8.3 Step 2: schedule regular backups
+
+Scheduling is what turns these commands into a backup strategy. The first command copies the bucket once, into a folder dated today. The etcd CronJob then runs the snapshot on its own schedule.
 
 ```bash
 # Schedule a daily backup
@@ -498,7 +527,11 @@ gsutil cp -r gs://cluster-artifacts gs://backup-bucket/daily/$(date +%Y-%m-%d)/
 kubectl apply -f code/part17/etcd_snapshot_cronjob.yaml
 ```
 
+Without a scheduler, these commands run only when someone remembers to run them.
+
 ### 8.4 Step 3: verify the backup
+
+Restore the backup to a separate staging bucket, then verify the restored copy. A backup that restores but fails verification cannot be used for recovery.
 
 ```bash
 # Restore the backup to staging
@@ -513,10 +546,12 @@ python code/part17/verify_backup.py \
 
 ### 8.5 Step 4: simulate a regional outage
 
+This step simulates a regional outage by draining all nodes in the primary region. Watch the Pods during the drill, and confirm where the workloads run.
+
 ```bash
-# Cordoning all nodes in the primary region
+# Draining all nodes in the primary region (cordon alone does not move running Pods)
 for node in $(kubectl get nodes -l topology.kubernetes.io/region=us-central1 -o name); do
-  kubectl cordon $node
+  kubectl drain $node --ignore-daemonsets --delete-emptydir-data
 done
 
 # Observing the failover
@@ -525,6 +560,8 @@ kubectl get pods -n mlops -w
 ```
 
 ### 8.6 Step 5: measure the RTO and RPO
+
+Measure the RTO and RPO from timestamps, not from memory. Read the sample output carefully, because its comments do not agree with each other.
 
 ```bash
 # Measure the RTO
@@ -540,7 +577,11 @@ python code/part17/measure_rpo.py \
 # expected: RPO is 5 minutes; RPO is within the 1-minute target (need to improve cadence)
 ```
 
+The sample comments say the 5-minute RPO is within the 1-minute target. A 5-minute gap is larger than a 1-minute target, so the backup cadence has to improve before the target can be met.
+
 ### 8.7 Step 6: write the drill post-mortem
+
+Turn the timeline into a post-mortem with the generator below. It writes a draft from the drill ID, and you complete the lessons yourself.
 
 ```bash
 python code/part17/generate_dr_post_mortem.py \
@@ -550,7 +591,7 @@ python code/part17/generate_dr_post_mortem.py \
 
 ### 8.8 What to record
 
-After the lab, you should be able to answer five questions in five seconds each:
+Finish the lab by answering five questions.
 
 1. What is the current RTO target per workload tier?
 2. What is the current RPO target per workload tier?
@@ -558,109 +599,112 @@ After the lab, you should be able to answer five questions in five seconds each:
 4. What was the RTO and RPO in the last disaster recovery drill?
 5. What is the object-lock retention on the backup bucket?
 
-If any takes more than 30 seconds, the disaster recovery process is not yet a production service. The lab is **untested** against a live GKE cluster.
+The 30-second limit is a choice for your team, not a standard. Still, an answer that takes longer usually means the information lives in someone's head instead of in a document. The lab is **untested** against a live GKE cluster.
 
 ---
 
 ## Exercises
 
-1. **Add a backup verification cron job.** Configure a CronJob that verifies the backup monthly. *Solution sketch:* a Kubernetes CronJob that restores the backup to staging; the CronJob measures the RTO and RPO; the CronJob reports the results.
-2. **Add a multi-region failover drill.** Schedule a quarterly drill that tests the multi-region failover. *Solution sketch:* a Chaos Mesh experiment that cordoning all nodes in the primary region; the drill measures the failover latency; the drill produces a post-mortem.
-3. **Add a ransomware defence drill.** Schedule a quarterly drill that tests the ransomware defence. *Solution sketch:* a Chaos Mesh experiment that simulates a ransomware attack; the drill verifies that the immutable backups are not affected; the drill produces a post-mortem.
-4. **Add an air-gapped backup bucket.** Configure an air-gapped bucket in a separate network; copy the most critical backups to the air-gapped bucket. *Solution sketch:* a separate GCP project with a separate VPC; the backup is copied to the air-gapped bucket.
-5. **Add a backup age alert.** Configure an alert that fires when the backup age exceeds 24 hours. *Solution sketch:* a Prometheus alert on the backup age; the alert pages the on-call.
-6. **Add a disaster recovery runbook.** Build a runbook that walks the team through the regional outage scenario; the runbook is tested quarterly. *Solution sketch:* a Markdown document with the scenario; the runbook is the default for every DR drill.
+1. **Add a backup verification cron job.** Configure a CronJob that verifies the backup monthly. *Solution sketch:* Use a Kubernetes CronJob that restores the backup to staging, measures the RTO and RPO, and reports the results.
+2. **Add a multi-region failover drill.** Schedule a quarterly drill that tests the multi-region failover. *Solution sketch:* Write a Chaos Mesh experiment that cordons all nodes in the primary region. The drill measures the failover latency and produces a post-mortem.
+3. **Add a ransomware defence drill.** Schedule a quarterly drill that tests the ransomware defence. *Solution sketch:* Use a Chaos Mesh experiment that simulates a ransomware attack. The drill checks that the immutable backups are untouched, then produces a post-mortem.
+4. **Add an air-gapped backup bucket.** Configure a bucket in a separate network, and copy the most critical backups into it. *Solution sketch:* Create a separate GCP project with its own VPC, then copy the backup into the air-gapped bucket there.
+5. **Add a backup age alert.** Configure an alert that fires when the newest backup is older than 24 hours. *Solution sketch:* Write a Prometheus alert on backup age, and route it to the on-call engineer.
+6. **Add a disaster recovery runbook.** Build a runbook for the regional outage scenario, and test it quarterly. *Solution sketch:* Write a Markdown document that describes the scenario, and use it as the default for every drill.
+
+Start with exercise 1. A verification job tells you whether the rest of the plan can be trusted. If you have limited time, do exercise 5 next, because you need to know when your backups stop arriving.
 
 ---
 
 ## Checkpoint questions
 
 <details><summary>1. What is the RTO?</summary>
-The Recovery Time Objective: the maximum acceptable time to restore the service after a disaster. The RTO is the contract between the platform team and the business. Critical workloads have an RTO of 1 hour; standard workloads have an RTO of 4 hours; development workloads have an RTO of 24 hours.
+RTO stands for Recovery Time Objective, the longest a service may stay down after a disaster. It is the commitment between the platform team and the business. In the example targets, critical workloads get 1 hour, standard workloads get 4 hours, and development workloads get 24 hours.
 </details>
 
 <details><summary>2. What is the RPO?</summary>
-The Recovery Point Objective: the maximum acceptable data loss after a disaster. The RPO is the contract between the platform team and the customer. Critical workloads have an RPO of 1 minute; standard workloads have an RPO of 1 hour; development workloads have an RPO of 24 hours.
+RPO stands for Recovery Point Objective, the most data you may lose after a disaster. It is a commitment between the platform team and the customer. The example targets are 1 minute for critical workloads, 1 hour for standard workloads, and 24 hours for development workloads.
 </details>
 
 <details><summary>3. What are the three backup types?</summary>
-Full backup (the entire dataset; weekly), incremental backup (the changes since the last backup; daily), point-in-time recovery (the state at a specific timestamp; as needed). The strategy balances the backup cost against the RPO.
+A full backup copies the whole dataset, an incremental backup copies only the changes since the last backup, and point-in-time recovery restores the state at one chosen moment. The example schedule runs full backups weekly, incremental backups daily, and point-in-time recovery as needed, so balance each cost against your RPO.
 </details>
 
 <details><summary>4. What is immutable backup?</summary>
-A backup that cannot be modified or deleted before its retention period expires. The immutability is enforced by the object storage service (e.g. S3 Object Lock, GCS Bucket Lock). Immutable backups are the defence against ransomware attacks.
+An immutable backup cannot be changed or deleted until its retention period runs out. The object storage service enforces that rule, for example through S3 Object Lock or GCS Bucket Lock. That protection makes immutable backups the main defence against ransomware.
 </details>
 
 <details><summary>5. What is an air-gapped backup?</summary>
-A backup that is stored in a separate environment that is not connected to the cluster. The air gap prevents a ransomware attack from reaching the backups. The most critical backups should be in an air-gapped bucket.
+An air-gapped backup lives in a separate environment with no live connection to the cluster. That gap stops a ransomware attack that has taken over the cluster from reaching the backup. Keep your most critical backups in an air-gapped bucket.
 </details>
 
 <details><summary>6. What is the most common disaster recovery failure?</summary>
-The backup is corrupted. The team attempts to restore the backup; the backup is corrupted; the team cannot recover. The diagnosis is that the backup was not verified; the backup was stored on a single disk. The fix is to verify the backup quarterly; store the backup on multiple disks.
+A common failure is a corrupted backup, found only when someone tries to restore it. The usual cause is that nobody verified the backup, and it sat on a single disk. The fix is to verify backups on a schedule and store copies on more than one disk.
 </details>
 
 <details><summary>7. What is the most common RTO failure?</summary>
-The RTO is exceeded. The disaster happens; the recovery takes longer than the RTO; the SLO is breached. The diagnosis is that the runbook is not accurate; the team has not drilled. The fix is to update the runbook; drill the runbook quarterly.
+A common RTO failure is a recovery that takes longer than the target allows. The usual cause is an inaccurate runbook, or a team that has never drilled it. The fix is to correct the runbook, drill it on a regular schedule, and automate the failover where you can.
 </details>
 
 <details><summary>8. What is the most common RPO failure?</summary>
-The RPO is exceeded. The disaster happens; the data loss exceeds the RPO; the customer data is lost. The diagnosis is that the backup cadence is too low; the replication lag is too high. The fix is to increase the backup cadence; reduce the replication lag.
+A common RPO failure is data loss beyond what the RPO allows, found only after the disaster. Backups ran too rarely, or replication lagged too far behind. Run backups more often, reduce the replication lag, and keep enough history to pick a good restore point.
 </details>
 
 <details><summary>9. What is the most common ransomware failure?</summary>
-The ransomware deletes the backups. The attack succeeds; the backups are deleted; the team cannot recover. The diagnosis is that the backups are not immutable. The fix is to enable object-lock; air-gap the most critical backups.
+A common ransomware failure is an attack that deletes the backups along with the data. The usual cause is that the backups were not immutable. The fix is to turn on object lock and keep the most critical copies air-gapped.
 </details>
 
 <details><summary>10. What is the most common failover failure?</summary>
-The failover does not work. The disaster happens; the failover fails; the service is unavailable. The diagnosis is that the failover has not been tested. The fix is to test the failover quarterly.
+A common failover failure is a failover that does not work when you need it. The usual cause is that nobody tested it. The fix is to test the failover on a regular schedule.
 </details>
 
 <details><summary>11. What is the difference between RTO and RPO?</summary>
-RTO is the recovery time objective (how long to restore the service). RPO is the recovery point objective (how much data loss is acceptable). RTO is about time; RPO is about data.
+RTO is the recovery time objective, meaning how long the service may be down. RPO is the recovery point objective, meaning how much data you may lose. In short, RTO is about time, and RPO is about data.
 </details>
 
 <details><summary>12. What is the difference between full and incremental backups?</summary>
-A full backup captures the entire dataset. An incremental backup captures only the changes since the last backup. Full backups are slower and larger; incremental backups are faster and smaller. The strategy is: full weekly; incremental daily.
+A full backup captures the entire dataset, so it takes longer and needs more space. An incremental backup captures only the changes since the last backup, so it is faster and smaller. The example plan runs full backups weekly and incremental backups daily.
 </details>
 
 <details><summary>13. What is the difference between point-in-time recovery and snapshot?</summary>
-A snapshot captures the state at a single moment. Point-in-time recovery uses the snapshots and the WAL to restore to a specific timestamp. PITR is finer-grained than snapshots.
+A snapshot captures the state at a single moment. Point-in-time recovery, or PITR, uses snapshots together with the WAL, the write-ahead log, to restore any chosen timestamp. That makes PITR finer-grained than snapshots alone.
 </details>
 
 <details><summary>14. What is the difference between synchronous and asynchronous replication?</summary>
-Synchronous replication waits for the replica to acknowledge before proceeding. Asynchronous replication does not wait. Synchronous is more consistent; asynchronous is faster.
+Synchronous replication waits for the replica to acknowledge a write before it continues. Asynchronous replication does not wait. Synchronous replication is more consistent, and asynchronous replication is faster.
 </details>
 
 <details><summary>15. What is the difference between multi-region failover and active-active?</summary>
-Failover runs in one region; on failure, switches to the other. Active-active runs in two regions simultaneously. Failover is cheaper; active-active is more available.
+Failover runs in one region and switches to the other only when the first fails. Active-active runs in two regions at the same time. Failover costs less to run, while active-active gives you more availability.
 </details>
 
 <details><summary>16. Why is object-lock important for ransomware defence?</summary>
-Because object-lock prevents the deletion of objects before their retention period expires. A ransomware attack that tries to delete the backups cannot succeed; the backups are preserved; the recovery is possible.
+Object lock stops anyone from deleting an object before its retention period ends. So when a ransomware attack tries to delete the backups, the attempt fails and the backups survive to restore from.
 </details>
 
 <details><summary>17. What is the difference between a disaster recovery drill and a game day?</summary>
-A game day tests the response to a single failure mode (e.g. GPU node failure). A disaster recovery drill tests the response to a regional disaster (e.g. multi-region failover). Game days are more frequent; disaster recovery drills are less frequent but more comprehensive.
+A game day tests the response to a single failure mode, such as a GPU node failing. A disaster recovery drill tests the response to a regional disaster, such as a multi-region failover. Game days run more often, while drills run less often but cover more ground.
 </details>
 
 <details><summary>18. What is the most important disaster recovery metric?</summary>
-The RTO last drill. The metric tells the team whether the drill met the RTO target; the metric tells the team whether the recovery is fast enough. The drill is the verification; the RTO is the contract.
+This chapter treats the RTO from the last drill as the key metric. It tells you whether the last drill met the RTO target, and so whether recovery is fast enough. The drill is the test, and the RTO is the commitment the test checks.
 </details>
 
 <details><summary>19. Why is disaster recovery a Tier 2 chapter?</summary>
-Because the disaster recovery plan is what the team follows when the normal playbook fails. The plan is what the platform team owns; the plan is what the business sees during a disaster. A team that does not have the plan is a team that hopes the disaster does not happen.
+The chapter is tier 2 because the disaster recovery plan is what the team falls back on when the normal playbook fails. The platform team owns the plan, and the business sees its effects during a disaster. A team without a plan is hoping the disaster never comes.
 </details>
 
 <details><summary>20. What five questions should the disaster recovery lab let you answer in five seconds each?</summary>
-What is the current RTO target per workload tier. What is the current RPO target per workload tier. When was the last backup verification. What was the RTO and RPO in the last disaster recovery drill. What is the object-lock retention on the backup bucket. If any takes more than 30 seconds, the disaster recovery process is not yet a production service.
+First, what is the RTO target for each workload tier? Second, what is the RPO target for each tier? Third, when was the last backup verified? Fourth, what were the RTO and RPO in the last drill? Fifth, what is the object-lock retention on the backup bucket? If any answer takes more than 30 seconds, the process is not yet ready to run as a production service. The 30-second limit is one your team should choose for itself.
 </details>
 
 ---
 
 ## Sources and review notes
 
-- NVIDIA Zero-to-Hero Volume 19 (`chapter-10-disaster-recovery.md`). Source for the disaster recovery operational patterns and the RTO/RPO framework. The wording has been rewritten in the handbook's voice.
-- *Production Kubernetes* (`production-kubernetes`, Chapter 14). Source for the Kubernetes-level disaster recovery patterns.
+- NVIDIA Zero-to-Hero Volume 19, in the file `chapter-10-disaster-recovery.md`, supplied the disaster recovery patterns and the RTO and RPO framework. The handbook rewrote the wording.
+- *Production Kubernetes* (`production-kubernetes`, Chapter 14), supplied the Kubernetes-level disaster recovery patterns.
+- *Production Kubernetes*, chapters 2 and 4, supplied the points on backing up cluster state, standby clusters, and Velero hooks used in sections 2 and 5.
 
 ### Cross-references to other handbook chapters
 
@@ -671,16 +715,18 @@ What is the current RTO target per workload tier. What is the current RPO target
 
 ### Migrated from `nvidia-devops`
 
-The disaster recovery operational patterns draw on Volume 19 chapter 10. The wording has been rewritten in the handbook's voice.
+The disaster recovery operational patterns draw on Volume 19 chapter 10. The handbook rewrote the wording in its own voice.
 
 ### Explicitly labelled inferences
 
-- The RTO/RPO targets (critical: 1h/1m; standard: 4h/1h; development: 24h/24h) are starting points; specific targets depend on the business.
-- The backup retention periods (90 days for object storage, 30 days for etcd) are starting points; specific retention depends on the regulatory regime.
-- The drill frequency (quarterly) is a starting point; specific frequencies depend on the team's discipline.
+These values are starting points, not sourced facts. Check each one against your own business and your own rules before you use it.
+
+- The RTO and RPO targets (critical: 1h/1m; standard: 4h/1h; development: 24h/24h) are starting points. The real targets depend on the business.
+- The backup retention periods (90 days for object storage, 30 days for etcd) are starting points. The real retention depends on the regulatory regime.
+- The drill frequency (quarterly) is a starting point. The real frequency depends on how disciplined the team is.
 
 ### Not verified on live hardware
 
 - The lab in Section 8 is **untested** against a live GKE cluster in this repository.
 - The cross-region replication patterns in the lab assume a multi-region deployment is available.
-- The drill post-mortem template in the lab is illustrative; production templates are more detailed.
+- The drill post-mortem template in the lab is illustrative. Production templates are more detailed. Keep these caveats in view when you check the lab against your own environment.

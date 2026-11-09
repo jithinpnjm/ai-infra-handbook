@@ -25,12 +25,16 @@ lab_venue: "GCP / GKE"
 
 ## Why this matters for AI infrastructure
 
-The previous chapters assumed the team has the right to train and serve a model on the team's data. This chapter is about the cases where the team does not automatically have that right. Privacy regulations restrict what the team can train on. Fairness regulations restrict what the team can serve. Model-risk-management regulations restrict how the team can deploy. The EU AI Act creates a new category of "high-risk" AI systems with explicit compliance obligations. The platform team's job is to make the team's ML platform auditable against every regulation the team is subject to.
+Imagine a loan model that declined a customer last month. A regulator asks which data shaped that decision, and your team has days, not weeks, to answer. This chapter covers that kind of question. It is about the cases where your team does not automatically have the right to train or serve a model on its data.
 
-Compliance is not an add-on. Compliance is a property of the platform that the team designed from day one. A model registry without an audit log is a registry that cannot answer the regulator's questions. A feature store without a consent record is a feature store that cannot answer the GDPR's "lawful basis" question. A serving platform without a rollback path is a platform that cannot meet the EU AI Act's "right to rectification" requirement.
+Privacy rules limit what you can train on. Fairness rules limit what you can serve. Model risk rules limit how you can deploy. The EU AI Act adds a class of "high-risk" AI systems with explicit obligations. Your platform team's job is to make the ML platform auditable against every rule that applies to the company.
+
+Compliance is not an add-on that you attach after launch. It is a property the platform has from the first day. A model registry without an audit log cannot answer the regulator's questions. A feature store without a consent record cannot answer GDPR's "lawful basis" question. A serving platform without a rollback path is a platform that cannot meet the EU AI Act's "right to rectification" requirement.
+
+Three rules explain why governance sits on the critical path for ML platforms.
 
 ```text
-Why governance is on the critical path (LLO Ch 8; EAS Ch 9, 10; DMLS Ch 11):
+Why governance is on the critical path (background reading: LLMOps; Engineering AI Systems; Designing Machine Learning Systems; the figures below are examples, not quotations):
 - GDPR (EU), CCPA (California), LGPD (Brazil), PIPL (China): every jurisdiction that
   has personal-data protection laws requires the team to answer the question
   "which data trained the model that decided on this customer?" in days, not
@@ -45,33 +49,41 @@ Why governance is on the critical path (LLO Ch 8; EAS Ch 9, 10; DMLS Ch 11):
   must be auditable.
 ```
 
-Three operational realities make this chapter a platform-team concern rather than a data-science-only concern:
+Each rule adds a record you must keep. The data trail, the model documentation, and the fairness checks all have to exist before a model reaches users.
 
-1. **The platform produces the audit trail.** Every artifact (data, model, prediction, deployment) is a row in the audit log. The platform team's design decisions determine whether the audit log is complete or incomplete.
-2. **The platform enforces the controls.** The consent record, the access policy, the retention policy, the right-to-be-forgotten workflow are all enforced by the platform. The data scientist consumes the controls; the platform team owns them.
-3. **The platform is the subject of the audit.** The auditor inspects the platform's logs, IAM, retention, and access policies. The platform team is the one who answers the auditor's questions.
+*AI Factory*, chapter 11, makes the same point at the policy level. It says a regulatory framework should set guidelines for how data is acquired and stored, and should include quality assurance for that information.
 
-**Before a team deploys an ML system that touches a regulated domain, the platform must produce an audit trail that answers every question the regulator can ask. Compliance is not a feature; compliance is a property of the platform.**
+Three realities make governance a platform concern, not only a data-science concern.
+
+1. The platform produces the audit trail. Every artifact, whether data, model, prediction, or deployment, becomes a row in the audit log. Your design decides whether that log is complete.
+2. The platform enforces the controls. Consent records, access policies, retention rules, and the right-to-be-forgotten workflow all run inside the platform. Data scientists use these controls, but the platform team owns them.
+3. The platform is the subject of the audit. Auditors inspect the logs, IAM settings, retention rules, and access policies. The platform team is the one who answers their questions.
+
+**Before a team deploys an ML system in a regulated domain, the platform must produce an audit trail that answers every question the regulator can ask.**
+
+Treat compliance as a property of the platform. Check the audit trail before you check anything else.
 
 ## Prerequisites and outcomes
 
 ### Prerequisites
 
-- Chapter 16.1 (MLOps foundations and the four governance meanings).
-- Chapter 16.6 (Model registry and GitOps).
-- Chapter 16.10 (Monitoring and drift).
-- Chapter 18 (Security) for the security primitives.
+Read these chapters first. This one builds directly on their ideas, so a gap in an earlier chapter will show up here.
+
+- Chapter 16.1 covers MLOps foundations and the four governance meanings.
+- Chapter 16.6 covers the model registry and GitOps.
+- Chapter 16.10 covers monitoring and drift.
+- Chapter 18 covers the security primitives this chapter relies on.
 
 ### Outcomes
 
-After completing this chapter you will be able to:
+By the end of this chapter, you will be able to do six things. Use the list below as a checklist for your own platform, and mark each item you cannot yet show.
 
-1. Map the regulatory regimes (GDPR, HIPAA, EU AI Act, SOC2, ISO 27001, model-risk-management regulations) to the platform's controls.
-2. Build the data lineage that lets the team answer "which data trained the model that decided on this customer" in days, not weeks.
-3. Produce a model card for every model that captures the architecture, the training data, the fairness audit, the intended use, and the failure modes.
-4. Implement the right-to-be-forgotten workflow that excludes a customer's data from future training runs.
-5. Detect and remediate bias in training data and model outputs.
-6. Operate the governance, privacy, and compliance stack on GKE with audit logs, IAM, retention, and observability that match the regulatory requirements.
+1. Map the regulatory regimes to the platform's controls. The regimes here are GDPR, HIPAA, the EU AI Act, SOC2, ISO 27001, and model-risk-management rules.
+2. Build the data lineage that lets you answer "which data trained the model that decided on this customer" in days, not weeks.
+3. Produce a model card for every model. The card covers architecture, training data, the fairness audit, intended use, and failure modes.
+4. Implement the right-to-be-forgotten workflow that removes a customer's data from future training runs.
+5. Detect and fix bias in training data and in model outputs.
+6. Run the governance, privacy, and compliance stack on GKE, with audit logs, IAM, retention, and observability that match the regulatory requirements.
 
 ---
 
@@ -79,7 +91,7 @@ After completing this chapter you will be able to:
 
 ### 1.1 The four regimes the platform must support
 
-*LLMOps* Chapter 8 and *Engineering AI Systems* Chapters 9 and 10 walk through the four regulatory regimes that affect an AI platform. Each regime has different requirements; the platform team's job is to support all of them in a single governance layer.
+*LLMOps* Chapter 8 and *Engineering AI Systems* Chapters 9 and 10 describe the regulations that touch an AI platform. Each one asks for something different. Your job is to support all of them in one governance layer, not in a separate project for each.
 
 | Regime | Jurisdiction | Key requirement | Platform control |
 |---|---|---|---|
@@ -91,25 +103,25 @@ After completing this chapter you will be able to:
 | **SOC2** | Global | Security controls; availability; confidentiality | IAM; encryption; monitoring; incident response |
 | **ISO 27001** | Global | Information security management system | Risk assessment; security controls; continuous improvement |
 
-The regimes overlap; the platform's controls cover multiple regimes simultaneously. A consent record satisfies GDPR and CCPA; an audit log satisfies HIPAA, SOC2, and SR 11-7; a model card satisfies EU AI Act and SR 11-7.
+The regimes overlap, so one control can serve several of them. A consent record satisfies GDPR and CCPA. An audit log satisfies HIPAA, SOC2, and SR 11-7. A model card satisfies the EU AI Act and SR 11-7. When you design a control, list every regime it serves, because that list shows how much work the control saves you.
 
 ### 1.2 The data lineage audit
 
-GDPR Article 15 (right of access) requires the data controller to provide the data subject with a copy of their personal data and the purposes of processing. Article 22 (automated decision-making) gives the data subject the right to obtain human intervention on decisions that affect them. SR 11-7 requires the bank to document every input to a model that affects a credit decision.
+Picture a customer who asks why a bank declined their application. Under GDPR Article 15, the right of access lets that customer ask for a copy of their personal data and the purposes of processing. Article 22 covers decisions made by automated means and gives the customer the right to ask for human intervention. SR 11-7 asks the bank to document every input to a model that affects a credit decision.
 
-Both regimes require the same primitive: the ability to answer, in seconds, "which data trained the model that produced this prediction for this customer". The answer requires:
+Both regimes need the same capability. You must answer, in seconds, "which data trained the model that produced this prediction for this customer." A good answer needs five links:
 
-- The customer id (the entity that received the prediction).
-- The prediction id (the prediction that was served).
-- The model id (the model that produced the prediction).
-- The data snapshot id (the data the model was trained on).
-- The lineage graph (the chain from data to prediction).
+- The customer id, which identifies the entity that received the prediction.
+- The prediction id, for the prediction that was served.
+- The model id, for the model that produced the prediction.
+- The data snapshot id, for the data the model was trained on.
+- The lineage graph, which is the chain from data to prediction.
 
-The lineage graph is the audit trail. The graph is in the lineage database (Atlas, Collibra, DataHub, Marquez from Chapter 16.3 Section 3.7). The graph is updated at every step of the pipeline. The graph is queryable by the regulator on demand.
+The lineage graph is the audit trail. It lives in a lineage database such as Atlas, Collibra, DataHub, or Marquez, as covered in Chapter 16.3, Section 3.7. The pipeline updates the graph at every step, so the regulator can query it whenever they ask.
 
 ### 1.3 The EU AI Act risk classification
 
-The EU AI Act (2024) classifies AI systems into four risk categories: unacceptable, high, limited, and minimal. The classification determines the obligations.
+The EU AI Act (2024) sorts AI systems into four risk classes. The class you land in decides which obligations apply to you.
 
 | Risk class | Examples | Obligations |
 |---|---|---|
@@ -118,15 +130,17 @@ The EU AI Act (2024) classifies AI systems into four risk categories: unacceptab
 | **Limited** | Chatbots; emotion recognition; deep fakes | Transparency (the user knows they are interacting with AI) |
 | **Minimal** | Spam filters; AI-enabled video games | No obligations |
 
-A high-risk system must have:
+A high-risk system must have five things:
 
-- A **risk management system** that runs throughout the lifecycle.
-- **Data governance** that ensures the training data is relevant, representative, and free of bias.
-- **Transparency** that the system's capabilities and limitations are documented.
-- **Human oversight** that a human can intervene on every decision.
-- **Accuracy, robustness, and cybersecurity** that the system performs as documented.
+- A risk management system that runs throughout the lifecycle.
+- Data governance that ensures the training data is relevant, representative, and free of bias.
+- Transparency that documents the system's capabilities and limitations.
+- Human oversight that lets a person intervene on every decision.
+- Accuracy, robustness, and cybersecurity that the system performs as documented.
 
-The EU AI Act's obligations map directly to the platform's controls from earlier chapters. The risk management system is the promotion gate (Chapter 16.1 Section 4.3); the data governance is the data versioning (Chapter 16.2); the transparency is the model card (Chapter 16.6 Section 1.1); the human oversight is the canary deployment (Chapter 16.6 Section 4.2); the accuracy, robustness, and cybersecurity are the monitoring (Chapter 16.10) and the security controls (Chapter 18).
+The obligations map onto controls from earlier chapters. The risk management system is the promotion gate in Chapter 16.1, Section 4.3. Data governance is the data versioning in Chapter 16.2. Transparency is the model card in Chapter 16.6, Section 1.1. Human oversight is the canary deployment in Chapter 16.6, Section 4.2. Accuracy, robustness, and cybersecurity rely on the monitoring in Chapter 16.10 and the security controls in Chapter 18.
+
+Before you call a system high-risk, check which of these controls you cannot yet show to an auditor.
 
 ---
 
@@ -134,7 +148,7 @@ The EU AI Act's obligations map directly to the platform's controls from earlier
 
 ### 2.1 The lineage graph
 
-*Designing Machine Learning Systems* Chapter 11 and *Engineering AI Systems* Chapter 10 walk through the lineage graph. The graph has four node types: source system, dataset, feature, model. The graph has three edge types: derived from, trained on, used by.
+*Designing Machine Learning Systems* Chapter 11 and *Engineering AI Systems* Chapter 10 describe the lineage graph in detail. Think of it as a map of how each piece of data reached each model. The graph has four node types: source system, dataset, feature, and model. It has three edge types: derived from, trained on, and used by.
 
 ```mermaid
 flowchart LR
@@ -146,11 +160,11 @@ flowchart LR
     E -->|serves prediction to| U[Customer 12345]
 ```
 
-The graph is updated at every step of the pipeline. The lineage database (Atlas, Collibra, DataHub, Marquez) stores the graph; the platform team's pipeline writes to the database at every stage.
+Your pipeline writes to the lineage database at every stage. That database stores this graph, and it can be Atlas, Collibra, DataHub, or Marquez. A missing edge is a gap in the map, and a gap is exactly where a regulator's question gets stuck.
 
 ### 2.2 The answer to the regulator
 
-The regulator asks: "which data trained the model that decided on customer 12345?". The answer is:
+Suppose the regulator asks which data trained the model that decided on customer 12345. With the graph in place, you answer by following four links, as the trace below shows.
 
 ```
 customer 12345 -> received prediction from inference-service churn-v6 on 2024-03-15T10:30:00Z
@@ -159,11 +173,11 @@ churn-model-v6 -> trained on dataset churn-v3 (content hash abc123)
 churn-v3 -> derived from warehouse customers.parquet (snapshot 2024-02-01T00:00:00Z)
 ```
 
-The answer is a four-step traversal of the lineage graph. The traversal takes seconds. The auditor's report is generated in minutes. Without the lineage graph, the answer takes weeks.
+The traversal takes seconds, and the auditor's report follows in minutes. Without the lineage graph, the same answer takes weeks of searching through records.
 
 ### 2.3 The lineage contract
 
-The lineage database requires a contract from the pipeline. Every artifact writes its lineage at the moment it is created.
+Lineage only helps if every stage writes it at the right moment. That promise is the lineage contract. Each artifact records its own lineage as soon as it is created, as the table shows.
 
 | Artifact | Lineage metadata | When it writes |
 |---|---|---|
@@ -174,7 +188,11 @@ The lineage database requires a contract from the pipeline. Every artifact write
 | Deployment | Model lineage; deployment commit; deployer | At deployment |
 | Prediction | Deployment lineage; customer id; prediction timestamp | At serving |
 
-The contract is the platform's promise to the regulator. The contract is enforced by the pipeline (every artifact creation writes to the lineage database); the contract is audited by the platform team.
+The contract is the platform's promise to the regulator. The pipeline enforces it, because every artifact creation writes to the lineage database. The platform team audits that those writes actually happen.
+
+*Production Kubernetes*, chapter 15, adds a useful point about the code side of this contract. Git gives you a strong audit log of changes by default, and a pull request can act as the gate for each change.
+
+Before you let a pipeline register a model, check that every earlier stage wrote its lineage.
 
 ---
 
@@ -182,10 +200,10 @@ The contract is the platform's promise to the regulator. The contract is enforce
 
 ### 3.1 What the model card captures
 
-*Engineering AI Systems* Chapter 9 walks through the model card. The model card is a structured document that captures everything a regulator (or a downstream engineer) needs to know about a model.
+*Engineering AI Systems* Chapter 9 describes the model card. Picture the document a regulator or a new engineer reads before touching a model. It should answer every question they have about that model.
 
 ```text
-Minimum model card (EAS Ch 9; DMLS Ch 11; EU AI Act Annex IV):
+Minimum model card (background reading: Engineering AI Systems; Designing Machine Learning Systems; EU AI Act Annex IV; the figures below are examples, not quotations):
 - model name and version
 - intended use (what the model is for)
 - out-of-scope use (what the model is NOT for)
@@ -200,11 +218,11 @@ Minimum model card (EAS Ch 9; DMLS Ch 11; EU AI Act Annex IV):
 - last updated (when the card was last reviewed)
 ```
 
-The model card is a required artifact for promotion. The promotion gate (Chapter 16.1 Section 4.3) refuses to advance a model to staging if the model card is missing or stale.
+Your promotion gate must refuse a model whose card is missing or out of date. The gate from Chapter 16.1, Section 4.3, enforces that rule. A model card written after launch records the model, but it does not control the model.
 
 ### 3.2 The fairness audit
 
-*Engineering AI Systems* Chapter 10 walks through the fairness audit. The audit measures the model's performance across protected groups (gender, race, age, disability) and produces a report.
+Fairness problems often hide inside good averages. A model can look accurate overall and still fail one group of customers. *Engineering AI Systems* Chapter 10 describes an audit that measures performance across protected groups, such as gender, race, age, and disability, and then writes a report.
 
 | Metric | What it measures | Target |
 |---|---|---|
@@ -213,19 +231,25 @@ The model card is a required artifact for promotion. The promotion gate (Chapter
 | **Predictive parity** | The positive predictive value is the same across groups | Difference < 5% |
 | **Calibration** | The predicted probability matches the observed frequency across groups | Difference < 5% |
 
-The fairness audit runs on every promotion. The audit's output is a row in the model card; the audit's output is a metric in the promotion gate; the promotion gate refuses to advance the model if any fairness metric breaches the threshold.
+The thresholds in this table are example starting points, not legal limits. Choose the values for your regime and use case, with help from your legal and risk teams.
+
+The audit runs on every promotion. Its output becomes a row in the model card and a metric in the promotion gate. The gate refuses to advance any model that breaches a threshold.
 
 ### 3.3 The consent record
 
-The consent record is the answer to GDPR Article 6 (lawful basis) and CCPA's right to opt out. The record captures:
+A customer who withdraws consent expects their data to stop being used. The consent record is how the platform knows that. It is the answer to GDPR Article 6 on lawful basis, and to CCPA's right to opt out.
+
+The record captures five things:
 
 - The customer id.
 - The data fields the customer consented to.
 - The purpose of the processing.
 - The date and version of the consent.
-- The withdrawal date (if the customer withdrew consent).
+- The withdrawal date, if the customer withdrew.
 
-The consent record is in the feature store (Chapter 16.3); the feature store's data versioning (Chapter 16.2) makes the record immutable. The platform team's pipeline reads the consent record before training; the pipeline excludes customers who have withdrawn consent.
+The consent record lives in the feature store from Chapter 16.3. The feature store's data versioning from Chapter 16.2 makes the record immutable.
+
+Before each training run, the pipeline must read the consent record and drop every customer who withdrew. Make that read a required step, not an optional one.
 
 ---
 
@@ -233,16 +257,18 @@ The consent record is in the feature store (Chapter 16.3); the feature store's d
 
 ### 4.1 The GDPR Article 17 requirement
 
-GDPR Article 17 (right to erasure) requires the data controller to erase a customer's personal data "without undue delay" when the customer requests it. The erasure applies to the warehouse, the feature store, the training data, and the model weights (the model is a derived artefact; the model weights are not personal data per se, but the training data is).
+Picture a customer who asks a company to delete everything it holds about them. GDPR Article 17, the right to erasure, requires the controller to erase that data "without undue delay". The erasure reaches the warehouse, the feature store, and the training data. It also touches the model, which is a derived artefact. Model weights are not personal data per se, but the training data is.
 
-The platform team's job is to:
+For each request, the platform team has four jobs:
 
 - Identify all the artifacts that contain the customer's data.
 - Erase the customer's data from each artifact.
-- Retrain the model on the cleaned data (or retire the model if retraining is too expensive).
+- Retrain the model on the cleaned data, or retire the model if retraining is too expensive.
 - Document the erasure in the audit log.
 
 ### 4.2 The workflow
+
+The workflow runs in the order shown below.
 
 ```mermaid
 flowchart LR
@@ -253,22 +279,24 @@ flowchart LR
     D --> N[Notify customer]
 ```
 
-The platform team's pattern is to implement the workflow as a Kubernetes Job. The Job:
+Teams usually build this as a Kubernetes Job with six steps. Each step below maps to one box in the diagram.
 
-1. Reads the right-to-be-forgotten request from a queue.
-2. Identifies the artifacts (warehouse tables; feature store rows; model training data).
-3. Erases the customer data from each artifact (DELETE statements; row-level updates).
-4. Triggers a retraining DAG (Chapter 16.10) on the cleaned data.
-5. Writes the erasure record to the audit log.
-6. Sends a notification to the customer.
+1. Read the request from a queue.
+2. Identify the artifacts that hold the customer's data, such as warehouse tables, feature store rows, and training data.
+3. Erase that data with DELETE statements or row-level updates.
+4. Trigger a retraining DAG from Chapter 16.10 on the cleaned data.
+5. Write the erasure record to the audit log.
+6. Notify the customer.
+
+Build the request path first. If the customer-facing application cannot reach the queue, the workflow never starts.
 
 ### 4.3 The retraining cost
 
-The retraining cost is the operational cost of the right-to-be-forgotten requirement. A model that takes 12 hours to retrain and 2 hours to deploy costs 14 hours of GPU time per request.
+Erasure has a compute cost, and retraining is usually the largest part of it. For example, a model that takes 12 hours to retrain and 2 hours to deploy costs 14 hours of GPU time per request. Multiply that across many requests and the bill grows quickly.
 
-The platform team's pattern is to amortise the retraining cost across multiple erasure requests. The Job queues the requests; the Job retrains once per day with all the day's erasure requests; the Job writes the audit log; the Job notifies all customers at once.
+You can avoid paying that cost for every request. The Job queues the requests, retrains once a day with the day's batch, writes one audit entry, and notifies the customers together. The daily interval is an example. A longer wait can conflict with the "without undue delay" rule, so check the interval with your legal team.
 
-The pattern is the same as Chapter 16.10 Section 4.1's schedule-based retraining trigger. The right-to-be-forgotten retraining is a scheduled retraining with an additional constraint: the trained model must exclude the customers in the erasure queue.
+This follows the scheduled retraining trigger in Chapter 16.10, Section 4.1, with one extra rule: the new model must exclude every customer in the erasure queue. Set the batch interval with legal review, not only with a cost estimate.
 
 ---
 
@@ -276,39 +304,37 @@ The pattern is the same as Chapter 16.10 Section 4.1's schedule-based retraining
 
 ### 5.1 The three patterns
 
-*Engineering AI Systems* Chapter 10 walks through the three patterns for privacy-preserving ML. Each pattern addresses a different threat model.
+Sometimes raw customer data cannot leave its home, even for training. *Engineering AI Systems* Chapter 10 describes three patterns for that case. Each pattern guards against a different threat, so start by asking who you must keep the data from.
 
 | Pattern | What it does | Threat model | Cost |
 |---|---|---|---|
 | **Federated learning** | Train the model on the customer's device; aggregate the gradients on the server | The server cannot see the customer's data | Higher compute on the edge; aggregation overhead |
 | **Differential privacy** | Add noise to the training process to prevent memorisation of individual examples | The model does not memorise specific examples | Reduced accuracy; calibration required |
-| **Homomorphic encryption** | Train the model on encrypted data; the server never sees the plaintext | The server cannot see the data | 10-100x compute overhead |
+| **Homomorphic encryption** | Train the model on encrypted data, so the server never sees the plaintext | The server cannot see the data | 10-100x compute overhead |
 
-The platform team's pattern is to choose the pattern that matches the customer's threat model. Federated learning is the right choice for mobile devices; differential privacy is the right choice for medical data; homomorphic encryption is the right choice for highly sensitive financial data.
+The overhead figure for homomorphic encryption in this table has no source in this chapter. Treat it as a rough estimate until someone checks it against a source.
+
+Choose the pattern that matches the customer's threat model. Federated learning fits mobile devices. Differential privacy fits medical data. Homomorphic encryption fits highly sensitive financial data.
 
 ### 5.2 Federated learning on the cluster
 
-Federated learning runs the training on the customer's device (or the customer's cluster) and aggregates the gradients on the platform team's cluster. The pattern is:
+In federated learning, the data never moves. Training runs where the data lives, and only gradients travel back to you. The loop has six steps.
 
-1. The platform team ships a training container to the customer.
+1. Your platform team ships a training container to the customer.
 2. The customer's cluster runs the training container on the customer's data.
 3. The customer's cluster sends the gradients (not the data) to the platform team's cluster.
 4. The platform team's cluster aggregates the gradients across all customers.
 5. The platform team's cluster produces a new model version.
 6. The new model version is shipped to the customer's cluster.
 
-The platform team's tools:
-
-- **TensorFlow Federated** for the orchestration.
-- **PySyft** for the privacy primitives (secure aggregation, differential privacy).
-- **NVIDIA FLARE** for the federated learning framework with NVIDIA support.
+Three tools do this work. TensorFlow Federated handles the orchestration. PySyft provides privacy primitives such as secure aggregation and differential privacy. NVIDIA FLARE is a federated learning framework with NVIDIA support.
 
 ### 5.3 Differential privacy in training
 
-Differential privacy adds noise to the training process to prevent memorisation of individual examples. The pattern is:
+Differential privacy adds noise during training, so the model cannot memorise any single example. The snippet below attaches a differentially private optimizer to a Keras training loop.
 
 ```python
-# code/part16/differential_privacy.py (shape only)
+# code/part16/snippets/differential_privacy.py
 import tensorflow_privacy as tfp
 
 # Attach a differentially private optimiser to the training loop
@@ -322,13 +348,15 @@ optimizer = tfp.DPKerasAdamOptimizer(
 model.compile(optimizer=optimizer, loss='sparse_categorical_crossentropy', metrics=['accuracy'])
 ```
 
-The `l2_norm_clip` and `noise_multiplier` are the privacy budget. The platform team's pattern is to publish the privacy budget on the model card; the privacy budget is the trade-off between accuracy and privacy.
+The `l2_norm_clip` and `noise_multiplier` are settings that the training library uses to add noise. The privacy budget itself is the pair epsilon and delta, which the library computes from those settings, the batch size and the number of training steps. You publish epsilon and delta on the model card, because it records the trade-off between accuracy and privacy that a regulator will ask about.
 
 ---
 
 ## 6. Operating governance and compliance on GKE
 
 ### 6.1 The components
+
+Each governance component runs as a normal workload on your cluster, with its own backing store and its own service target. The table lists them. The service level objective (SLO) column holds example targets. Set your own, based on what your regulator and your customers expect.
 
 | Component | Where it runs | Backing store | SLO |
 |---|---|---|---|
@@ -340,7 +368,7 @@ The `l2_norm_clip` and `noise_multiplier` are the privacy budget. The platform t
 
 ### 6.2 IAM and the audit log
 
-The governance layer has its own IAM. The pattern is:
+Governance needs its own access rules. The people who read the audit log are often not the people who write to it. Each role below gets only the rights it needs.
 
 | Role | Who | What they can do |
 |---|---|---|
@@ -350,9 +378,15 @@ The governance layer has its own IAM. The pattern is:
 | `governance.erasure.writer` | The right-to-be-forgotten Job | Write to the lineage database; trigger retraining |
 | `governance.admin` | The platform team | Manage the lineage database; manage the consent record |
 
-The audit log is tamper-evident (object-lock on the GCS bucket). The audit log records every lineage change, every consent change, every erasure event, every fairness audit.
+The audit log is tamper-evident because the GCS bucket uses object-lock. It records every lineage change, consent change, erasure event, and fairness audit.
+
+*Production Kubernetes*, chapter 9, notes that the API server writes no audit records until you give it a policy file with the `--audit-policy-file` flag. It also warns that access to those logs needs thought, because they can reveal activity on sensitive systems.
+
+*Production Kubernetes*, chapter 10, adds that impersonation stays visible. When an admin impersonates a user, the Kubernetes audit logs still show the original user and the action taken.
 
 ### 6.3 Observability
+
+Dashboards tell you when governance is slipping, often before a regulator notices. The table lists the metrics and their alert thresholds. Treat the thresholds as example values, and tune them to your own risk.
 
 | Metric | Why it matters | Alert |
 |---|---|---|
@@ -362,67 +396,67 @@ The audit log is tamper-evident (object-lock on the GCS bucket). The audit log r
 | Consent record staleness | Catches a record that has not been refreshed | > 1 year |
 | Audit log write latency p99 | Catches a slow audit log | > 1 s |
 
-The right-to-be-forgotten latency is the most important metric. GDPR Article 17 requires erasure "without undue delay"; the platform team's SLO is 24 hours. The alert fires when the SLO is breached; the on-call investigates.
+Watch the right-to-be-forgotten latency most closely. GDPR Article 17 asks for erasure "without undue delay". The 24-hour figure is an example SLO, not a legal deadline. When the alert fires, the on-call engineer investigates the queue and the Job.
 
 ---
 
 ## 7. How it fails
 
-Six failure modes recur.
+Six failure modes come up again and again. Each one below gives the symptom you will see, the diagnosis, and the fix. Start with the diagnosis, not the fix, because a fix applied to the wrong cause hides the problem.
 
 ### 7.1 "The lineage graph is incomplete"
 
-**Symptom:** The regulator asks "which data trained the model that decided on customer 12345?". The platform team's query returns a partial answer: the model is known, the customer is known, but the data snapshot is unknown.
+Symptom: The regulator asks which data trained the model that decided on customer 12345. The platform's query returns a partial answer. The model and the customer are known, but the data snapshot is not.
 
-**Diagnosis:** The pipeline did not write to the lineage database at every step. The contract from Section 2.3 is not enforced.
+Diagnosis: The pipeline did not write to the lineage database at every step. The contract from Section 2.3 is not being enforced.
 
-**Fix:** Refuse to register a model version if the lineage database does not have all the required edges. The promotion gate (Chapter 16.1 Section 4.3) reads the lineage database; the gate fails if the lineage is incomplete.
+Fix: Refuse to register a model version when the lineage database lacks a required edge. The promotion gate from Chapter 16.1, Section 4.3, reads the lineage database and fails when the lineage is incomplete.
 
 ### 7.2 "The model card is missing the fairness audit"
 
-**Symptom:** The regulator asks for the fairness audit of a high-risk model. The model card is missing the section; the audit was never run.
+Symptom: The regulator asks for the fairness audit of a high-risk model. The model card has no such section, because the audit never ran.
 
-**Diagnosis:** The promotion gate (Chapter 16.1 Section 4.3) did not require the fairness audit. The model was promoted without the audit.
+Diagnosis: The promotion gate from Chapter 16.1, Section 4.3, did not require the audit. The model was promoted without one.
 
-**Fix:** Add the fairness audit as a required field in the model card. The promotion gate refuses to advance a model whose model card is missing the section.
+Fix: You make the fairness audit a required field in the model card. The gate then refuses any model whose card is missing that section.
 
 ### 7.3 "The right-to-be-forgotten Job was not triggered"
 
-**Symptom:** A customer requested erasure. The customer-facing application received the request; the platform team was not notified; the customer's data was not erased from the training data.
+Symptom: A customer asked for erasure. The customer-facing application received the request, but the platform team never heard about it. The customer's data stayed in the training set.
 
-**Diagnosis:** The right-to-be-forgotten workflow is not connected to the customer-facing application. The application received the request; the platform's queue did not.
+Diagnosis: The workflow is not connected to the application. The application received the request, but the platform's queue did not.
 
-**Fix:** Connect the customer-facing application to the right-to-be-forgotten queue. The platform team's pattern is "the customer-facing application writes to the queue; the platform team consumes from the queue".
+Fix: You connect the application to the erasure queue. The platform team's pattern: the customer-facing application writes to the queue, and the platform team consumes from it.
 
 ### 7.4 "The audit log was deleted"
 
-**Symptom:** The auditor asks for the audit log of a model that was in production two years ago. The audit log bucket is empty.
+Symptom: The auditor asks for the audit log of a model that ran in production two years ago. The audit log bucket is empty.
 
-**Diagnosis:** The audit log bucket did not have object-lock. A deletion by a well-meaning engineer (or a malicious one) removed the artefacts.
+Diagnosis: The bucket did not have object-lock. A deletion by a careless engineer, or by a malicious one, removed the artefacts.
 
-**Fix:** Object-lock on the audit log bucket. The runbook says "if the audit log is missing, page the on-call immediately, do not investigate first".
+Fix: Turn on object-lock for the audit log bucket. The runbook says "if the audit log is missing, page the on-call immediately, do not investigate first".
 
 ### 7.5 "The consent record is stale"
 
-**Symptom:** A customer consented to data processing in 2020. The customer has not refreshed consent in four years. The customer-facing application is still processing the customer's data.
+Symptom: A customer consented to processing in 2020 and never refreshed that consent. The application still processes their data four years later.
 
-**Diagnosis:** The consent record has no expiration date. The platform team never asked the customer to refresh consent.
+Diagnosis: The consent record has no expiration date. The platform team never asked the customer to refresh it.
 
-**Fix:** Add a consent expiration date (1 year is common). The platform team sends a refresh request 30 days before expiration; the customer's data processing is paused if the consent expires.
+Fix: Add an expiration date to every consent. A 1-year expiry is a common choice. Send a refresh request a set number of days before expiry, for example 30, and pause processing if the consent lapses.
 
 ### 7.6 "The model was retrained on data from a customer who withdrew consent"
 
-**Symptom:** A customer withdrew consent. The customer's data was still in the latest training data snapshot. A new model was trained. The customer's data is in the model.
+Symptom: A customer withdrew consent, but their data was still in the latest training snapshot. The new model trained on that snapshot, so the customer's data is now inside the model.
 
-**Diagnosis:** The consent record is not read at training time. The pipeline trains on the latest data; the latest data includes the customer's data.
+Diagnosis: The pipeline does not read the consent record at training time. It trains on the latest data, and the latest data still includes the customer.
 
-**Fix:** Read the consent record at training time. Exclude customers who have withdrawn consent. The platform team's pattern is "the consent record is a join key; the join excludes withdrawn customers".
+Fix: You read the consent record at training time, and you exclude every customer who withdrew. The platform team treats the consent record as a join key, and the join drops withdrawn customers.
 
 ---
 
 ## 8. Hands-on lab
 
-This lab stands up the lineage database, the consent record, the model card, and the right-to-be-forgotten Job on GKE. The lab is **untested** in this repository.
+This lab sets up the lineage database, the consent record, the model card, and the right-to-be-forgotten Job on GKE. The lab is **untested** in this repository, so treat every command as a starting point.
 
 ### 8.1 Prerequisites
 
@@ -432,6 +466,8 @@ This lab stands up the lineage database, the consent record, the model card, and
 
 ### 8.2 Step 1: install DataHub for lineage
 
+Start with the lineage store. DataHub runs as a Helm release in its own namespace.
+
 ```bash
 helm install datahub datahub/datahub \
   --namespace governance --create-namespace
@@ -440,8 +476,10 @@ helm install datahub datahub/datahub \
 
 ### 8.3 Step 2: wire the lineage into the pipeline
 
+Next, make the training pipeline write a lineage edge for each model it trains. The helper below emits one edge, from the dataset to the model. Run it after each training job, so the edge exists before anyone asks for it.
+
 ```python
-# code/part16/lineage_writer.py (shape only)
+# code/part16/snippets/lineage_writer.py
 from datahub.emitter.mce_builder import (
     DatasetAspect, make_dataset_urn, make_lineage_mcp
 )
@@ -456,7 +494,7 @@ def record_lineage(model_id: str, dataset_id: str, run_id: str):
 ```
 
 ```bash
-python code/part16/lineage_writer.py \
+python code/part16/snippets/lineage_writer.py \
   --model churn-model-v6 \
   --dataset churn-v3 \
   --run-id abc123
@@ -464,6 +502,8 @@ python code/part16/lineage_writer.py \
 ```
 
 ### 8.4 Step 3: produce a model card
+
+Generate the model card from the trained model. Review the output before you promote the model.
 
 ```bash
 python code/part16/produce_model_card.py \
@@ -474,6 +514,8 @@ python code/part16/produce_model_card.py \
 
 ### 8.5 Step 4: trigger a right-to-be-forgotten Job
 
+Now test the erasure path. Use a test customer id, not a real one.
+
 ```bash
 # Submit a right-to-be-forgotten request
 python code/part16/erasure_job.py \
@@ -483,6 +525,8 @@ python code/part16/erasure_job.py \
 ```
 
 ### 8.6 Step 5: verify the lineage graph
+
+Query the lineage store to confirm the data flow for the test customer.
 
 ```bash
 # Query the lineage database for the customer's data flow
@@ -495,6 +539,8 @@ curl -X POST http://datahub.governance:9002/api/graphql \
 
 ### 8.7 Step 6: verify the consent record
 
+Check the consent record for the same customer.
+
 ```bash
 # Query the feature store for the customer's consent
 python code/part16/check_consent.py \
@@ -503,6 +549,8 @@ python code/part16/check_consent.py \
 ```
 
 ### 8.8 Step 7: verify the audit log
+
+Read the most recent erasure events from the audit log.
 
 ```bash
 # Query the audit log for the most recent erasure events
@@ -516,7 +564,7 @@ bq query --use_legacy_sql=false \
 
 ### 8.9 What to record
 
-After the lab, you should be able to answer five questions in five seconds each:
+After the lab, you should answer five questions quickly. The five-second target is a suggestion from this lab, not a standard, so set your own.
 
 1. What is the lineage edge between churn-model-v6 and churn-v3?
 2. What is the model card for churn-model-v6?
@@ -524,101 +572,103 @@ After the lab, you should be able to answer five questions in five seconds each:
 4. What is the consent record for customer 12345?
 5. What is the cost of the right-to-be-forgotten Job per request?
 
-If any takes more than 30 seconds, the governance layer is not yet a production service. The lab is **untested** against a live GKE cluster.
+If any answer takes longer than 30 seconds, treat that as a warning sign. The 30-second figure is an example threshold. The lab is still untested against a live GKE cluster.
 
 ---
 
 ## Exercises
 
-1. **Add a fairness audit to the promotion gate.** Refuse to promote a model whose fairness metrics breach the threshold. *Solution sketch:* the promotion gate from Chapter 16.1 Section 4.3; add the fairness metric to the gate's policy.
-2. **Add a consent expiration alert.** Configure an alert that fires 30 days before a customer's consent expires. *Solution sketch:* a CronJob that scans the consent record; writes the expiring customers to a queue; an alert that fires on the queue.
-3. **Add a privacy budget to the model card.** Publish the differential privacy budget on the model card. *Solution sketch:* a script that reads the training run's privacy budget; writes the budget to the model card.
-4. **Add a federated learning training pipeline.** Stand up TensorFlow Federated or NVIDIA FLARE on a Kubernetes cluster. *Solution sketch:* a Kubernetes Deployment that runs the FLARE server; a Job that runs the FLARE clients.
-5. **Add an EU AI Act risk classification.** Add a field to the model card that captures the EU AI Act risk class; the promotion gate refuses to promote a high-risk model without the human-override and bias-audit fields. *Solution sketch:* the model card schema; the promotion gate that reads the schema.
-6. **Add a right-to-be-forgotten amortisation.** Queue erasure requests; run a daily retraining that consumes the queue. *Solution sketch:* a Kubernetes CronJob that consumes the erasure queue; runs a retraining DAG; updates the audit log.
+Work through these on your own platform, in order. Each one asks you to add or change a single control.
+
+1. Add a fairness audit to the promotion gate. Refuse to promote a model whose fairness metrics breach the threshold. *Solution sketch:* use the promotion gate from Chapter 16.1, Section 4.3, and add the fairness metric to the gate's policy.
+2. Add a consent expiration alert. Configure an alert that fires 30 days before a customer's consent expires. *Solution sketch:* a CronJob scans the consent record and writes the expiring customers to a queue. An alert fires on that queue.
+3. Add a privacy budget to the model card. Publish the differential privacy budget on the model card. *Solution sketch:* a script reads the training run's privacy budget and writes it to the card.
+4. Add a federated learning training pipeline. Stand up TensorFlow Federated or NVIDIA FLARE on a Kubernetes cluster. *Solution sketch:* a Kubernetes Deployment runs the FLARE server, and a Job runs the FLARE clients.
+5. Add an EU AI Act risk classification. Add a field to the model card that records the EU AI Act risk class. The promotion gate refuses to promote a high-risk model without the human-override and bias-audit fields. *Solution sketch:* change the model card schema, then make the promotion gate read it.
+6. Add right-to-be-forgotten amortisation. Queue the erasure requests, and run a daily retraining that consumes the queue. *Solution sketch:* a Kubernetes CronJob consumes the queue, runs a retraining DAG, and updates the audit log.
 
 ---
 
 ## Checkpoint questions
 
 <details><summary>1. What four regulatory regimes does the platform support?</summary>
-GDPR (EU), CCPA (California), HIPAA (US healthcare), EU AI Act (EU), SR 11-7 (US banking), SOC2 (global), ISO 27001 (global). The regimes overlap; the platform's controls cover multiple regimes simultaneously. A consent record satisfies GDPR and CCPA; an audit log satisfies HIPAA, SOC2, and SR 11-7; a model card satisfies EU AI Act and SR 11-7.
+The platform supports GDPR for the EU, CCPA for California, HIPAA for US healthcare, the EU AI Act for the EU, SR 11-7 for US banking, and SOC2 and ISO 27001 as global standards. Because the regimes overlap, one control often serves several of them. A consent record satisfies GDPR and CCPA, while an audit log satisfies HIPAA, SOC2, and SR 11-7, and a model card satisfies the EU AI Act and SR 11-7.
 </details>
 
 <details><summary>2. What is the EU AI Act's risk classification?</summary>
-The EU AI Act classifies AI systems into four risk categories: unacceptable (banned), high (explicit obligations for risk management, data governance, transparency, human oversight, accuracy, robustness, cybersecurity), limited (transparency only), and minimal (no obligations). The platform's controls map directly to the high-risk obligations.
+The EU AI Act sorts systems into four categories: unacceptable systems are banned, high-risk systems carry explicit duties, limited-risk systems need transparency, and minimal-risk systems have no obligations. Your platform's controls map directly onto the high-risk duties.
 </details>
 
 <details><summary>3. What is the lineage graph?</summary>
-A graph that captures the chain from data to prediction. The graph has four node types (source system, dataset, feature, model) and three edge types (derived from, trained on, used by). The graph is updated at every step of the pipeline; the graph is the audit trail that satisfies GDPR Article 15 and SR 11-7.
+It is a graph that traces the chain from data to prediction. It has four node types, which are source system, dataset, feature, and model, and three edge types, which are derived from, trained on, and used by. The pipeline updates it at every step, and it is the audit trail that satisfies GDPR Article 15 and SR 11-7.
 </details>
 
 <details><summary>4. What does the model card capture?</summary>
-Model name and version; intended use; out-of-scope use; architecture; training data summary; training environment; evaluation results; fairness audit; limitations; ethical considerations; contact information; last updated. The model card is a required artifact for promotion; the promotion gate refuses to advance a model without a complete card.
+It records the model name and version, intended use, out-of-scope use, architecture, training data summary, training environment, evaluation results, fairness audit, limitations, ethical considerations, contact information, and the date of the last update. You need a complete card before promotion, because the promotion gate refuses any model without one.
 </details>
 
 <details><summary>5. What is GDPR Article 17?</summary>
-The right to erasure ("right to be forgotten"). The data controller must erase a customer's personal data "without undue delay" when the customer requests it. The platform team's pattern is a Kubernetes Job that erases the customer's data from every artifact and retrains the model on the cleaned data.
+It is the right to erasure, often called the right to be forgotten. The data controller must erase a customer's personal data "without undue delay" when the customer asks. Your platform team's pattern is a Kubernetes Job that erases the customer's data from every artifact and retrains the model on the cleaned data.
 </details>
 
 <details><summary>6. What is the consent record?</summary>
-A record that captures the customer's consent to data processing. The record contains the customer id, the data fields consented to, the purpose, the date and version, and the withdrawal date. The pipeline reads the consent record at training time; the pipeline excludes customers who have withdrawn consent.
+It is a record of the customer's consent to data processing. It holds the customer id, the data fields consented to, the purpose, the date and version, and the withdrawal date. The pipeline reads the record at training time, and it excludes customers who have withdrawn consent.
 </details>
 
 <details><summary>7. What are the three privacy-preserving ML patterns?</summary>
-Federated learning (train on the customer's device; aggregate gradients on the server), differential privacy (add noise to the training process to prevent memorisation), and homomorphic encryption (train on encrypted data). The pattern matches the threat model: federated for mobile devices; differential privacy for medical data; homomorphic encryption for highly sensitive financial data.
+They are federated learning, which trains on the customer's device and aggregates gradients on the server, differential privacy, which adds noise to training to prevent memorisation, and homomorphic encryption, which trains on encrypted data. Each one matches a threat model. Federated learning suits mobile devices, differential privacy suits medical data, and homomorphic encryption suits highly sensitive financial data.
 </details>
 
 <details><summary>8. Why is the consent record a join key?</summary>
-Because the pipeline joins the training data to the consent record; the join excludes customers who have withdrawn consent. The pattern is the same as any other filter join; the consent record is a normal column in the data warehouse.
+The pipeline joins the training data to the consent record, and the join drops customers who have withdrawn consent. This is the same pattern as any other filter join, because the consent record is a normal column in the data warehouse.
 </details>
 
 <details><summary>9. What is the right-to-be-forgotten Job's amortisation pattern?</summary>
-Queue the erasure requests; run a daily retraining that consumes the queue. The pattern amortises the retraining cost across multiple requests; the pattern updates the audit log once per retraining; the pattern notifies all customers at once.
+You queue the erasure requests, and the Job runs one retraining per day that consumes the queue. This spreads the retraining cost across many requests, writes one audit entry per retraining, and notifies all the customers at once.
 </details>
 
 <details><summary>10. What is the privacy budget?</summary>
-The differential privacy budget is the trade-off between accuracy and privacy. The budget is the (l2_norm_clip, noise_multiplier) pair. The platform team's pattern is to publish the budget on the model card; the budget is the parameter that the regulator inspects.
+The differential privacy budget is the trade-off between accuracy and privacy. The budget is the pair epsilon and delta, computed from the noise settings, the batch size and the number of steps. You publish it on the model card, because it is the parameter a regulator inspects.
 </details>
 
 <details><summary>11. What is the fairness audit?</summary>
-A set of metrics that measure the model's performance across protected groups: demographic parity, equalised odds, predictive parity, and calibration. The audit runs on every promotion; the audit's output is a row in the model card; the promotion gate refuses to advance a model whose fairness metrics breach the threshold.
+It is a set of metrics that compare the model's performance across protected groups: demographic parity, equalised odds, predictive parity, and calibration. The audit runs on every promotion. Its output is a row in the model card, and the promotion gate refuses any model whose fairness metrics breach the threshold.
 </details>
 
 <details><summary>12. What is the lineage contract?</summary>
-The promise that every artifact writes its lineage at the moment it is created. Raw data writes source system + snapshot time; cleaned data writes raw data lineage + cleaning code commit; feature writes cleaned data lineage + feature definition; model writes feature lineage + training code commit + env image hash; deployment writes model lineage + deployment commit; prediction writes deployment lineage + customer id + prediction timestamp. The contract is enforced by the pipeline; the contract is audited by the platform team.
+It is the promise that every artifact writes its lineage at the moment it is created. Raw data writes its source system and snapshot time. Cleaned data writes its raw lineage and cleaning commit. A feature writes its cleaned data lineage and feature definition. A model writes its feature lineage, training commit, and environment image hash. A deployment writes its model lineage and deployment commit. A prediction writes its deployment lineage, customer id, and timestamp. Your pipeline enforces the contract, and your platform team audits it.
 </details>
 
 <details><summary>13. Why is the audit log tamper-evident?</summary>
-Because the audit log is the artefact that proves every other artefact was what it claimed to be. Object-lock on the GCS bucket prevents deletion or overwrite for the retention window. A deletion of the audit log is the worst possible incident; the runbook says "page the on-call immediately".
+The audit log proves that every other artifact was what it claimed to be. Object-lock on the GCS bucket blocks deletion or overwrite for the retention window. A deleted audit log is the worst possible incident, so the runbook says to "page the on-call immediately".
 </details>
 
 <details><summary>14. What is the consent expiration pattern?</summary>
-Add a consent expiration date (1 year is common). The platform team sends a refresh request 30 days before expiration; the customer's data processing is paused if the consent expires. The pattern satisfies GDPR Article 7 (conditions for consent) and CCPA's right to opt out.
+You add an expiration date to each consent, and one year is a common choice. Your team sends a refresh request 30 days before expiry, and processing pauses if the consent lapses. The pattern satisfies GDPR Article 7 on conditions for consent, and CCPA's right to opt out.
 </details>
 
 <details><summary>15. What is the role of the consent record in the right-to-be-forgotten workflow?</summary>
-The right-to-be-forgotten Job reads the consent record to identify the customers whose consent has been withdrawn. The Job erases the customers' data from every artifact; the Job retrains the model on the cleaned data. The consent record is the trigger; the erasure is the action; the retraining is the consequence.
+The Job reads the consent record to find customers who withdrew consent. It erases their data from every artifact, then retrains the model on the cleaned data. The consent record is the trigger, the erasure is the action, and the retraining is the consequence.
 </details>
 
 <details><summary>16. Why is federated learning more expensive on the edge?</summary>
-Because the training runs on the customer's device; the device has limited compute and battery; the gradient aggregation on the server has overhead. The trade-off is that the server never sees the customer's data; the customer's privacy is preserved.
+Training runs on the customer's device, which has limited compute and battery, and gradient aggregation on the server adds overhead. In return, the server never sees the customer's data, so the customer's privacy is preserved.
 </details>
 
 <details><summary>17. What is the difference between federated learning and differential privacy?</summary>
-Federated learning moves the training to the customer's device; the data never leaves the device. Differential privacy adds noise to the training process on the server; the data is on the server; the noise prevents memorisation of individual examples. The two patterns are complementary; a serious privacy-preserving deployment uses both.
+Federated learning moves training to the customer's device, so the data never leaves it. Differential privacy adds noise during training on the server, where the data sits, to stop memorisation of single examples. The two are complementary, and a serious privacy-preserving deployment often uses both.
 </details>
 
 <details><summary>18. Why is the lineage graph updated at every step?</summary>
-Because the regulator's question "which data trained the model that decided on this customer" requires the chain to be complete. A missing edge is an unanswered question. The pipeline's job is to write the edge at every step; the platform's job is to enforce the contract.
+The regulator's question, "which data trained the model that decided on this customer," needs a complete chain. A missing edge is an unanswered question. The pipeline writes the edge at every step, and the platform enforces the contract.
 </details>
 
 <details><summary>19. What is the role of the model card in the EU AI Act?</summary>
-The model card is the artefact that satisfies the EU AI Act's transparency requirement. The card documents the model's capabilities and limitations; the card documents the training data and the fairness audit; the card documents the human oversight mechanism. The card is a required artefact for high-risk systems.
+The model card is the artefact that meets the EU AI Act's transparency requirement. It documents the model's capabilities and limitations, the training data, the fairness audit, and the human oversight mechanism. High-risk systems need it.
 </details>
 
 <details><summary>20. What five questions should the governance lab let you answer in five seconds each?</summary>
-What is the lineage edge between the model and the data. What is the model card. What is the most recent erasure event. What is the consent record for a given customer. What is the cost of the right-to-be-forgotten Job per request. If any takes more than 30 seconds, the governance layer is not yet a production service.
+The first is the lineage edge between the model and the data. The second is the model card. The third is the most recent erasure event. The fourth is the consent record for a given customer. The fifth is the cost of the right-to-be-forgotten Job per request. If any takes longer than 30 seconds, the layer is not yet a production service, and the 30-second figure is an example threshold.
 </details>
 
 ---

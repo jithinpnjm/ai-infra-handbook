@@ -64,16 +64,18 @@ flowchart LR
     IC --> DR
 ```
 
-The catalogue organises failures by category; the detection layer wires each category to a signal; the response layer wires the signal to an action.
+Read the diagram from left to right. Each failure category points at the signal that should catch it. The signals feed Alertmanager, which leads to a runbook, then to the Incident Commander, and finally to disaster recovery. When you meet a new symptom, find its category first, then follow the arrows to the signal that should have caught it.
 
 ## Why this matters for AI infrastructure
 
-Every other chapter in this part has been about detecting failures. This chapter is a catalogue of the failures themselves. The on-call engineer who has read this chapter can name the failure mode from the symptom in seconds; the on-call engineer who has not is searching the wiki while the cluster burns.
+It is the middle of the night, and a page arrives. A training job stopped making progress a while ago, and the GPU dashboard shows nothing obvious. An on-call engineer who knows the failure modes can name the cause from the symptom and start the right fix. An engineer who does not know them spends the first minutes searching the wiki while the cluster stays stuck.
 
-An AI infrastructure failure mode is a way the cluster can stop meeting its SLOs. The failure modes range from a single GPU's ECC error (detected by the DCGM exporter) to a cluster-wide network partition (detected by the Prometheus blackbox exporter). Each failure mode has a detection signal; each detection signal has an alert; each alert has a runbook.
+The earlier chapters in this part teach you how to detect failures. This chapter is the catalogue of the failures themselves. An AI infrastructure failure mode is a specific way the cluster can stop meeting its service-level objectives. The range is wide. At one end, a single GPU reports a memory error that the DCGM exporter picks up. At the other, a network partition splits the cluster, and the Prometheus blackbox exporter is the detector.
+
+Every failure mode needs three things. It needs a detection signal, an alert built on that signal, and a runbook the alert links to. Without all three, the failure is either invisible or unhandled.
 
 ```text
-Why failure modes are on the critical path (V16 ch8; V20 chXX; PK Ch 14):
+Why failure modes are on the critical path (background reading: NVIDIA Zero-to-Hero volume 16; NVIDIA Zero-to-Hero volume 20; Production Kubernetes; the figures below are examples, not quotations):
 - A typical mature AI platform has 30-50 distinct failure modes. Each failure
   mode has a name, a symptom, a root cause, a detection signal, an alert, and a
   runbook. The on-call engineer who has the catalogue is the on-call engineer
@@ -89,13 +91,17 @@ Why failure modes are on the critical path (V16 ch8; V20 chXX; PK Ch 14):
   engineer's institutional knowledge.
 ```
 
-Three operational realities make this chapter a platform-team concern rather than a data-science-only concern:
+The count of 30 to 50 in that block is an example, not a measured figure. Count the failure modes on your own platform before you plan around any number.
 
-1. **The failure modes are platform-level.** The data scientist encounters a model failure; the platform team encounters a cluster failure. The cluster failures are what this chapter catalogues.
-2. **The detection signals are platform-level.** The DCGM exporter detects GPU failures; Prometheus detects metric failures; Loki detects log failures; Tempo detects trace failures. The platform team owns the detection.
-3. **The runbook integration is platform-level.** Every failure mode has a runbook; the runbook is integrated with Alertmanager; the runbook is the on-call engineer's guide. The platform team owns the runbook.
+This chapter belongs to the platform team as much as to the data scientists. Three things make it a platform concern.
 
-**Before a team can run an AI workload on a GPU cluster, the failure mode catalogue must exist. A cluster without a failure mode catalogue is a cluster where the on-call is reactive. A cluster with a failure mode catalogue is a cluster where the on-call is proactive.**
+1. The failure modes are platform-level. A data scientist sees a model that gives bad results. The platform team sees a cluster that stops working, and this chapter catalogues those cluster failures.
+
+2. The detection signals are platform-level. The DCGM exporter catches GPU failures, Prometheus catches metric failures, Loki catches log failures, and Tempo catches trace failures. The platform team owns that detection.
+
+3. The runbooks are platform-level. Each alert should carry a runbook link, so the on-call engineer finds the next step from the alert itself. Production Kubernetes, chapter 9, makes the same point. It recommends a description and a runbook link in each alert's annotations, so the responder has context right away. The platform team owns those runbooks.
+
+**Build the failure mode catalogue before the first AI workload runs on the cluster.** Without it, every incident starts from scratch. With it, the on-call engineer recognises the symptom and moves straight to the fix.
 
 ## Prerequisites and outcomes
 
@@ -105,16 +111,18 @@ Three operational realities make this chapter a platform-team concern rather tha
 - Chapter 17.6 (Alerting and SLOs) for the alert routing.
 - Chapter 11 (GPU Kubernetes) for the GPU node operations.
 
+Work through these first, because the rest of the chapter assumes you already know them.
+
 ### Outcomes
 
-After completing this chapter you will be able to:
+After completing this chapter, you will be able to:
 
-1. Name the most common AI infrastructure failure modes: GPU hardware, network, storage, scheduler, container image, and model serving.
-2. Identify the detection signal for each failure mode: which metric, log, trace, or probe catches the failure.
-3. Write the alert for each failure mode: the threshold, the routing, the runbook URL.
-4. Build the failure mode catalogue: a structured document that the on-call engineer can search during an incident.
-5. Operate the failure mode catalogue: update after every incident; review quarterly; automate the freshness check.
-6. Operate the failure mode stack on GKE with reliable detection, sensible alerting, and a runbook.
+1. Name the main AI infrastructure failure modes, which fall into six groups: GPU hardware, network, storage, scheduler, container image, and model serving.
+2. Identify the detection signal for each failure mode, meaning the metric, log, trace, or probe that catches it when the failure happens.
+3. Write the alert for each failure mode, with its threshold, its routing, and the runbook URL that the on-call engineer will open.
+4. Build the failure mode catalogue, a structured document the on-call engineer can search quickly during an incident.
+5. Operate the catalogue. Update it after every incident, review it quarterly, and automate the freshness check so stale entries get noticed.
+6. Operate the failure mode stack on GKE with reliable detection, sensible alerting, and a runbook that someone has actually tested.
 
 ---
 
@@ -122,26 +130,30 @@ After completing this chapter you will be able to:
 
 ### 1.1 The GPU failure catalogue
 
-The GPU hardware failures are the most common AI infrastructure failures. NVIDIA Zero-to-Hero Volume 16 chapter 8 and Volume 20 catalogue the failures.
+GPU hardware causes a large share of training interruptions. In Meta's record of 54 days of Llama 3 405B pretraining, faulty GPUs caused 30.1 percent of the interruptions, and GPU HBM3 memory caused another 17.2 percent. AI Systems Performance Engineering, chapter 4, reports those figures. NVIDIA Zero-to-Hero Volume 16 chapter 8 and Volume 20 catalogue the same kinds of failure in more detail.
+
+The table gives each failure a symptom, a likely root cause, a detection signal, and an alert level. Treat it as a starting list.
 
 | Failure mode | Symptom | Root cause | Detection signal | Alert |
 |---|---|---|---|---|
-| **ECC single-bit error** | Increased error rate | GPU memory degradation | `DCGM_FI_DEV_ECC_SBE_VOL_DEDUP` rate | Warning |
-| **ECC double-bit error** | Data corruption | GPU memory failure | `DCGM_FI_DEV_ECC_DBE_VOL_DEDUP` count | Critical |
+| **ECC single-bit error** | Increased error rate | GPU memory degradation | `DCGM_FI_DEV_ECC_SBE_VOL_TOTAL` rate | Warning |
+| **ECC double-bit error** | Data corruption | GPU memory failure | `DCGM_FI_DEV_ECC_DBE_VOL_TOTAL` count | Critical |
 | **GPU Xid error** | Driver-level error | Hardware or driver bug | `DCGM_FI_DEV_XID_ERRORS` count | Critical |
 | **Thermal throttling** | Reduced clock | Insufficient cooling | `DCGM_FI_DEV_GPU_TEMP > 85` | Warning |
 | **Power throttling** | Reduced clock | Insufficient power | `DCGM_FI_DEV_POWER_USAGE > TDP` | Warning |
 | **GPU OOM** | Training step crash | Model too large for HBM | `CUDA_OUT_OF_MEMORY` in logs | Warning |
 | **GPU hang** | No kernel progress | Driver or hardware hang | `DCGM_FI_DEV_SM_CLOCK > 0` for > 10s with no kernel | Critical |
-| **Retired pages** | Reduced HBM | Memory cell failure | `DCGM_FI_DEV_RETIRED_PAGES` count | Warning |
-| **NVLink CRC error** | Reduced bandwidth | Cable or port failure | `DCGM_FI_DEV_NVLINK_CRC_DATA_ERROR_COUNT_TX` count | Warning |
+| **Retired pages** | Reduced HBM | Memory cell failure | `DCGM_FI_DEV_RETIRED_PENDING` count | Warning |
+| **NVLink CRC error** | Reduced bandwidth | Cable or port failure | `DCGM_FI_DEV_NVLINK_CRC_DATA_ERROR_TOTAL` count | Warning |
 | **PCIe replay** | Reduced PCIe bandwidth | Cable or slot failure | `DCGM_FI_DEV_PCIE_REPLAY_COUNTER` count | Warning |
 
-The pattern is: every failure mode has a detection signal; the detection signal is a metric from the DCGM exporter; the alert is either warning (degrading) or critical (data corruption or hang).
+The 85 degree warning in the thermal row matches the example warning in AI Systems Performance Engineering, chapter 16. That chapter's example table also sets a critical level at 95 degrees and treats any uncorrectable ECC error as critical. Use these as starting points, then tune them to your own cooling and hardware.
 
 ### 1.2 The ECC error storm
 
-The ECC error storm is the most common GPU hardware failure. The storm starts with single-bit errors (SBEs); the storm escalates to double-bit errors (DBEs); the storm ends with a GPU that must be replaced.
+Memory errors often come before a GPU fails. ECC, the error-correcting code built into the GPU's memory, fixes a single-bit error on the fly, so the job keeps running. A double-bit error cannot be corrected, but the hardware detects it and raises it to the program that caused it. AI Systems Performance Engineering, chapter 3, describes this behaviour, and it notes that ECC is on by default on NVIDIA data center GPUs.
+
+The timeline below shows how a storm can unfold. It is an illustration, not a measured log from a real GPU. Use it to understand the order of events, not the exact times or rates.
 
 ```text
 The ECC error storm:
@@ -153,11 +165,13 @@ The ECC error storm:
 - T+4h: GPU is replaced
 ```
 
-The platform team's pattern is: alert on SBE rate above 100/hour (warning); alert on any DBE (critical); drain the node immediately on DBE; replace the GPU.
+One example policy warns at 100 single-bit errors per hour, pages on any double-bit error, and drains the node at once. These numbers are examples. Measure the normal error rate on your own fleet before you choose yours.
 
 ### 1.3 The GPU hang
 
-The GPU hang is the most dangerous GPU failure because it is silent. The workload is running; the kernels are queued; the GPU is not making progress. The detection signal is the GPU's SM clock: if the SM clock is non-zero for more than 10 seconds with no kernel progress, the GPU is hung.
+A GPU hang is the quietest failure in this chapter. The workload still runs, kernels sit in the queue, and the GPU makes no progress. Nothing crashes, so nothing forces anyone to look until the job stalls.
+
+The detection signal in this section is the SM clock. If the clock stays above zero for more than 10 seconds with no kernel progress, the check treats the GPU as hung. The 10 seconds is an example threshold, and the check itself needs a second signal to be reliable.
 
 ```bash
 # Detect a GPU hang
@@ -165,7 +179,9 @@ nvidia-smi --query-gpu=clocks.sm,clocks.mem --format=csv
 # expected: SM clock > 0 with no recent kernel activity -> hung
 ```
 
-The platform team's pattern is: alert on the GPU hang detection; restart the workload; drain the node; replace the GPU if the hang repeats.
+AI Systems Performance Engineering, chapter 16, argues for failing fast. Put timeouts around inference calls, so a hung call raises an error instead of holding GPU time. Apply the same idea to training jobs wherever you can.
+
+A reasonable response, in order, is to alert, restart the workload, drain the node, and replace the GPU if the hang returns.
 
 ---
 
@@ -173,7 +189,7 @@ The platform team's pattern is: alert on the GPU hang detection; restart the wor
 
 ### 2.1 The network failure catalogue
 
-The network failures are the second most common AI infrastructure failures.
+Network problems hit distributed training because every GPU depends on its neighbours. In the same Meta record, network switches and cables caused 8.4 percent of the interruptions. AI Systems Performance Engineering, chapter 4, reports that figure. The table lists the network failures this chapter covers. Start from the symptom column.
 
 | Failure mode | Symptom | Root cause | Detection signal | Alert |
 |---|---|---|---|---|
@@ -186,41 +202,51 @@ The network failures are the second most common AI infrastructure failures.
 | **Ingress failure** | External traffic not routed | Ingress controller error | 5xx rate spike | Critical |
 | **Service mesh failure** | mTLS handshake fails | Istio/Linkerd error | `mTLS ERROR` in logs | Warning |
 
-The pattern is: every network failure mode has a detection signal; the detection signal is a log entry or a metric; the alert is either warning (degraded performance) or critical (training failure).
-
 ### 2.2 The NCCL timeout
 
-The NCCL timeout is the most common network failure. The timeout happens when a collective operation does not complete within the configured timeout. The detection signal is the NCCL timeout error in the logs.
+An NCCL timeout happens when one collective operation, such as an all-reduce, runs past its time limit. Every GPU in the job waits on that operation, so the whole training step stalls. The timeout is the symptom you see first. The cause can be the network, or it can be a single rank that crashed, so check your peer ranks before you blame the fabric.
+
+That second case matters. AI Systems Performance Engineering, chapter 4, warns that when one GPU rank hits an error, the other ranks can hang waiting for it. Meta's record lists NCCL watchdog timeouts at 1.7 percent of interruptions, a small share, but each one stalls the whole job.
 
 ```python
-# code/part17/nccl_timeout.py (shape only)
+# code/part17/snippets/nccl_timeout.py
+"""Collective timeouts in PyTorch are set on the process group, not through an NCCL_TIMEOUT environment variable
+(PyTorch ignores that name). Requires GPUs and torchrun, so this file is syntax-checked only."""
 import os
-os.environ["NCCL_TIMEOUT"] = "600"  # 10 minutes
+from datetime import timedelta
 
 import torch
 import torch.distributed as dist
 from opentelemetry import trace
 
+os.environ.setdefault("TORCH_NCCL_ASYNC_ERROR_HANDLING", "1")   # abort the job instead of hanging on a timed-out collective
+dist.init_process_group(backend="nccl", timeout=timedelta(minutes=10))
 tracer = trace.get_tracer(__name__)
 
+tensor = torch.ones(1024, device="cuda")
 with tracer.start_as_current_span("all-reduce"):
-    # This will raise a RuntimeError if the collective does not complete within 600 seconds
-    dist.all_reduce(tensor)
+    dist.all_reduce(tensor)       # raises (and the watchdog aborts the job) if the collective does not finish in 10 minutes
 ```
 
-The platform team's pattern is: set the NCCL timeout to 600 seconds (10 minutes); alert on any NCCL timeout in the logs; investigate the network; restart the workload if the timeout repeats.
+The snippet sets the timeout to 10 minutes, which is the 600 seconds used in the policy below. Its error-handling setting makes the job abort instead of hang, as the comments explain.
+
+A simple policy sets the NCCL timeout to 600 seconds, alerts on any NCCL timeout in the logs, and investigates the network first. Restart the workload only if the timeout keeps coming back.
 
 ### 2.3 The network partition
 
-The network partition is the most dangerous network failure because it splits the cluster into two halves. The detection signal is the `ping` failure between nodes; the alert is critical.
+A network partition splits the cluster into two halves that cannot reach each other. Multi-node training stops, because the ranks on one side wait for peers they can no longer reach. The detection signal is a failed ping between nodes, and the alert is critical.
+
+The check in this section is an Ansible ping across all hosts. A host that does not answer is either on the other side of the split or simply down, so you need to tell those cases apart. Run it from a host you trust.
 
 ```bash
-# Detect a network partition
+# Check which hosts this machine can reach. Run it from a host on each side of the suspected split.
 ansible all -m ping
-# expected: ping fails between nodes in different partitions
+# expected: the set of unreachable hosts differs depending on where you run it
 ```
 
-The platform team's pattern is: alert on ping failure between nodes; investigate the network fabric; restart the affected workloads; drain the affected nodes.
+AI Systems Performance Engineering, chapter 16, notes that a GPU which shows much lower utilization than its peers may have dropped out of the NCCL group. The book suggests searching the logs for `WARN NCCL_COMM_FAILURE`, and setting `NCCL_DEBUG=WARN` so silent errors become visible.
+
+When the ping fails, alert, investigate the fabric, restart the affected workloads, and drain the affected nodes.
 
 ---
 
@@ -228,7 +254,7 @@ The platform team's pattern is: alert on ping failure between nodes; investigate
 
 ### 3.1 The storage failure catalogue
 
-The storage failures are the third most common AI infrastructure failures.
+Storage failures either stop a job from starting or slow it down while it runs. Training reads its data from object storage or a shared filesystem, so an outage there starves the GPUs. A read error and a slow read need different alerts, which is why the table separates them.
 
 | Failure mode | Symptom | Root cause | Detection signal | Alert |
 |---|---|---|---|---|
@@ -241,11 +267,9 @@ The storage failures are the third most common AI infrastructure failures.
 | **PVC mount failure** | Workload fails to start | PVC not bound | `kube_persistentvolumeclaim_status_phase{phase!="Bound"}` | Critical |
 | **Object lock failure** | Audit log cannot be deleted | Object storage misconfigured | Audit log bucket size | Critical |
 
-The pattern is: every storage failure mode has a detection signal; the detection signal is a metric from the object storage exporter, the node exporter, or the kube-state-metrics; the alert is either warning (degraded) or critical (data unavailable).
-
 ### 3.2 The object storage 5xx
 
-The object storage 5xx is the most common storage failure. The 5xx happens when the object storage service is unavailable. The detection signal is the `s3_errors_total` metric.
+A 5xx error means the object storage service failed to answer. The training job asks for the next batch of data and gets an error back instead. The detection signal is the `s3_errors_total` metric, and the query below counts the 5xx rate over five minutes.
 
 ```promql
 # The S3 5xx rate
@@ -255,11 +279,11 @@ sum(rate(s3_errors_total{status=~"5.."}[5m]))
 sum(rate(s3_errors_total{status=~"5.."}[5m])) > 0
 ```
 
-The platform team's pattern is: alert on any 5xx; investigate the object storage service; switch to a backup region if available; wait for the service to recover.
+The alert in that example fires on any 5xx at all. That is a deliberately sensitive starting point, so tune the threshold to the normal error rate of your traffic. When the outage lasts, switch to a backup region if you have one, and otherwise wait for the service to recover.
 
 ### 3.3 The local disk full
 
-The local disk full is the most common Kubernetes-level storage failure. The disk fills up when the workload's logs, the workload's cache, or the workload's checkpoints exceed the disk's capacity. The detection signal is the `node_filesystem_avail_bytes` metric.
+A full disk stops a workload in an ordinary way. Logs, caches, and checkpoints all grow on the node's disk, and once the disk fills, new work cannot start. The detection signal is the `node_filesystem_avail_bytes` metric, which tells you how much space is left.
 
 ```promql
 # The available disk space per node
@@ -269,7 +293,7 @@ node_filesystem_avail_bytes{mountpoint="/"}
 node_filesystem_avail_bytes{mountpoint="/"} / node_filesystem_size_bytes{mountpoint="/"} < 0.1
 ```
 
-The platform team's pattern is: alert on disk space below 10%; investigate the workload; clean up the logs; resize the disk; drain the node if necessary.
+The example alert fires below 10 percent free space, which is a starting point. A node that writes large checkpoints may need more margin. When the alert fires, find the workload that is filling the disk, clean up its logs, resize the disk, and drain the node only if you cannot free enough space safely.
 
 ---
 
@@ -277,7 +301,7 @@ The platform team's pattern is: alert on disk space below 10%; investigate the w
 
 ### 4.1 The scheduler failure catalogue
 
-The scheduler failures are the fourth most common AI infrastructure failures.
+Scheduler failures leave a pod waiting or kill it before it does useful work. Your first question is whether the pod is waiting for capacity, or whether it started and then died. The table below groups the failures by symptom, so you can start from what the pod shows.
 
 | Failure mode | Symptom | Root cause | Detection signal | Alert |
 |---|---|---|---|---|
@@ -290,11 +314,9 @@ The scheduler failures are the fourth most common AI infrastructure failures.
 | **Preemption loop** | Workload repeatedly preempted | Quota exhausted | Pod preempted events | Warning |
 | **Quota exhausted** | Workload pending | Team quota exhausted | Kueue LocalQueue depth | Warning |
 
-The pattern is: every scheduler failure mode has a detection signal; the detection signal is a Kubernetes metric or a log entry; the alert is either warning (workload pending) or critical (workload failed).
-
 ### 4.2 The GPU OOM
 
-The GPU OOM is the most common scheduler failure. The workload requests more GPU memory than the node has; Kubernetes kills the workload. The detection signal is the `OOMKilled` reason in the pod status.
+In this failure, the job asks for more GPU memory than the node can give, and Kubernetes kills the workload. The detection signal is the `OOMKilled` reason in the pod status. The query below finds those pods and counts them over the last hour.
 
 ```promql
 # The pods that were OOMKilled
@@ -304,11 +326,13 @@ kube_pod_container_status_terminated_reason{reason="OOMKilled"}
 sum(increase(kube_pod_container_status_terminated_reason{reason="OOMKilled"}[1h])) > 0
 ```
 
-The platform team's pattern is: alert on any OOMKilled in the last hour; investigate the workload's GPU memory request; increase the GPU memory request or reduce the model size; redeploy the workload.
+AI Systems Performance Engineering, chapter 3, describes the Linux OOM killer as the cgroup enforcement that ends a container which exceeds its memory allocation. That is a system-memory limit, so check it when you suspect a host-memory problem. Confirm the GPU side from the CUDA out-of-memory error in the workload's own logs.
+
+A reasonable response is to alert on any OOMKilled in the last hour, check the workload's memory request, then raise the request or shrink the model, and redeploy.
 
 ### 4.3 The image pull failure
 
-The image pull failure is the most common container-level failure. The image is not found (typo, missing tag), the pull rate limit is hit (Docker Hub limits anonymous pulls), or the image pull times out (network issue). The detection signal is the `ImagePullBackOff` reason in the pod status.
+An image pull failure leaves a pod stuck before its container starts. Three causes are common. The image name may be wrong, with a typo or a missing tag. The registry may be rate limiting you, as Docker Hub does for anonymous pulls. Or the pull may time out on the network. The detection signal is the `ImagePullBackOff` reason in the pod status.
 
 ```promql
 # The pods that are ImagePullBackOff
@@ -318,7 +342,7 @@ kube_pod_container_status_waiting_reason{reason="ImagePullBackOff"}
 count by (pod, namespace) (kube_pod_container_status_waiting_reason{reason="ImagePullBackOff"}) > 0
 ```
 
-The platform team's pattern is: alert on any ImagePullBackOff for > 5 minutes; investigate the image name and tag; check the pull rate limit; configure the image pull secret.
+Start by checking the image name and tag, because that is the cheapest fix. Then check the pull rate limit, and configure an image pull secret if the registry requires authentication. The five-minute window is an example, so choose the wait that suits your deploys.
 
 ---
 
@@ -326,7 +350,7 @@ The platform team's pattern is: alert on any ImagePullBackOff for > 5 minutes; i
 
 ### 5.1 The container image failure catalogue
 
-The container image failures are the fifth most common AI infrastructure failures.
+A container image can fail at the registry, at the admission check, or during a security scan. Each failure leaves a different trace, so read the event or log that names the stage first. The table lists the failures this chapter covers, along with the signal for each.
 
 | Failure mode | Symptom | Root cause | Detection signal | Alert |
 |---|---|---|---|---|
@@ -338,11 +362,9 @@ The container image failures are the fifth most common AI infrastructure failure
 | **Image out of date** | Workload runs with old base | Image not updated | Trivy scan | Warning |
 | **Image storage full** | Image push fails | Registry storage full | Registry metrics | Warning |
 
-The pattern is: every container image failure mode has a detection signal; the detection signal is an admission controller log, a Trivy scan, or a registry metric; the alert is either warning (degraded security) or critical (workload cannot start).
-
 ### 5.2 The image signature mismatch
 
-The image signature mismatch is the most dangerous container image failure. The image is signed; the signature does not match the image; the admission controller refuses to start the pod. The detection signal is the admission controller log.
+A signature mismatch is the failure you should treat with the most care. The image was signed, but the signature no longer matches the image. The admission controller then refuses to start the pod, which is the behaviour you want. Production Kubernetes, chapter 15, notes that admission webhooks can check for signed images before a pod runs, so this check fits into the cluster itself.
 
 ```bash
 # Detect an image signature mismatch
@@ -350,11 +372,11 @@ kubectl get events -n mlops --field-selector reason=Failed
 # expected: "Failed to verify signature" event
 ```
 
-The platform team's pattern is: alert on any signature mismatch; investigate the signing pipeline; rotate the signing key if compromised; do not bypass the admission controller.
+The exact event text depends on your admission controller, so confirm the wording in your own cluster before you write an alert on it. Alert on any mismatch, investigate the signing pipeline, and rotate the signing key if you think it was exposed. Never bypass the admission controller to get a pod running.
 
 ### 5.3 The image CVE
 
-The image CVE is the most common security failure. The image has a known CVE; the workload runs with the vulnerability; the security team flags the image. The detection signal is the Trivy scan.
+An image CVE means the image carries a known vulnerability. The workload keeps running with that weakness until the image is rebuilt. Scanning is the way you find these, and the Trivy command below scans one image.
 
 ```bash
 # Run Trivy on the image
@@ -362,7 +384,7 @@ trivy image my-image:v1
 # expected: list of CVEs with severity
 ```
 
-The platform team's pattern is: run Trivy on every image in the CI; alert on any CVE with severity >= HIGH; update the image base; rebuild the image.
+Production Kubernetes, chapter 15, makes a point you should keep in mind. An image that passed its scan at pull time can gain new CVEs later, so scans must repeat on a schedule. The chapter's policy is to run Trivy on every image in CI, alert on any CVE at HIGH severity or above, and rebuild on an updated base image. The severity cut-off is an example you can adjust.
 
 ---
 
@@ -370,7 +392,7 @@ The platform team's pattern is: run Trivy on every image in the CI; alert on any
 
 ### 6.1 The model serving failure catalogue
 
-The model serving failures are the sixth most common AI infrastructure failures.
+Model serving failures reach users in two ways. Some crash the request, so the user gets an error. Others return a wrong answer with no error at all, and you will not see those in your error logs. The table separates the two kinds, and the second kind is the one that needs the most attention.
 
 | Failure mode | Symptom | Root cause | Detection signal | Alert |
 |---|---|---|---|---|
@@ -383,11 +405,9 @@ The model serving failures are the sixth most common AI infrastructure failures.
 | **Model quality regression** | Inference succeeds but wrong | Model degradation | `model_quality_score` drop | Warning |
 | **Prompt injection** | Inference returns harmful content | Adversarial prompt | Guardrail trigger | Critical |
 
-The pattern is: every model serving failure mode has a detection signal; the detection signal is a metric from the inference exporter or a log entry; the alert is either warning (degraded performance) or critical (inference failure).
-
 ### 6.2 The model OOM
 
-The model OOM is the most common model serving failure. The model is too large for the GPU's HBM; the inference engine's KV cache fills up; the CUDA OOM crash occurs. The detection signal is the `inference_oom_total` rate.
+An OOM in serving happens when the model and its working memory no longer fit on the GPU. The model is too large for the GPU's memory, the inference engine's KV cache fills up, and a CUDA out-of-memory crash follows. The detection signal is the `inference_oom_total` rate, and the query below counts it over five minutes.
 
 ```promql
 # The inference OOM rate
@@ -397,11 +417,11 @@ sum(rate(inference_oom_total[5m]))
 sum(rate(inference_oom_total[5m])) > 0
 ```
 
-The platform team's pattern is: alert on any inference OOM; reduce the model's KV cache budget; move to a larger GPU; reduce the concurrent request count.
+AI Systems Performance Engineering, chapter 16, recommends backpressure when errors spike. You reject new requests or reduce the batch size for a while, which gives the system room to recover. An alert on any inference OOM is a good first step, and the fixes are to shrink the KV cache budget, move to a larger GPU, or lower the number of concurrent requests.
 
 ### 6.3 The model quality regression
 
-The model quality regression is the most dangerous model serving failure because it is silent. The inference succeeds; the model returns a prediction; the prediction is wrong. The detection signal is the `model_quality_score` metric from Chapter 16.10.
+A quality regression is the hardest serving failure to see. The request succeeds, the model returns an answer, and the answer is wrong. Nothing in the error logs points to the problem, so the detection signal has to measure quality itself. In this chapter that signal is the `model_quality_score` metric from Chapter 16.10.
 
 ```promql
 # The model quality score
@@ -411,7 +431,7 @@ model_quality_score{model="churn-model"}
 model_quality_score{model="churn-model"} < 0.85
 ```
 
-The platform team's pattern is: alert on model quality score below the threshold; retrain the model with the latest data; investigate the drift detector; rollback to the previous model version.
+The 0.85 in that alert is an example threshold, so choose the value your own model needs. Set yours from the score your model reached when it was approved. When the score drops below it, retrain with recent data, check the drift detector, and roll back to the previous model version if the retrain does not recover the score.
 
 ---
 
@@ -419,7 +439,7 @@ The platform team's pattern is: alert on model quality score below the threshold
 
 ### 7.1 The catalogue structure
 
-The failure mode catalogue is a structured document that the on-call engineer can search during an incident. The catalogue has the following fields per failure mode.
+The catalogue only helps if the on-call engineer can search it quickly during an incident. Give every failure mode the same fields, so each entry reads the same way. The list below shows the fields this chapter uses.
 
 ```text
 Failure mode catalogue fields:
@@ -434,11 +454,9 @@ Failure mode catalogue fields:
 - Last incident
 ```
 
-The pattern is: every failure mode has a unique ID; every failure mode has a structured record; the catalogue is searchable by ID, name, symptom, or detection signal.
-
 ### 7.2 The catalogue update
 
-The catalogue is updated after every incident. The update adds the new failure mode (if any); updates the runbook (if the mitigation changed); records the last incident.
+Update the catalogue at the end of every incident. Add a new failure mode if the incident did not match one. Change the runbook if the fix changed, and record the date of the last incident. The script below does this from the command line.
 
 ```bash
 # Update the failure mode catalogue after an incident
@@ -449,11 +467,11 @@ python code/part17/update_catalogue.py \
   --last-incident 2024-03-15
 ```
 
-The pattern is: the catalogue is a version-controlled document (in Git); the catalogue is updated via a script; the script's output is a commit; the commit is reviewed in a pull request.
+Keep the catalogue in Git. The script writes its change as a commit, and a reviewer approves that commit in a pull request. That gives you a history of how the catalogue changed over time.
 
 ### 7.3 The catalogue review
 
-The catalogue is reviewed quarterly. The review identifies failure modes that have not been seen in the last 90 days; the review identifies failure modes that have been seen multiple times; the review identifies new failure modes from the latest vendor releases.
+A stale catalogue sends people to runbooks that no longer work. Review it on a schedule, and this chapter suggests quarterly. The review flags failure modes that have not appeared in the last 90 days, failure modes that keep coming back, and new failure modes from the latest vendor releases. The 90-day window is an example, so set it to match how often your incidents happen.
 
 ```bash
 # Review the failure mode catalogue
@@ -463,67 +481,65 @@ python code/part17/review_catalogue.py \
 # expected: a list of stale failure modes; a list of repeated failure modes; a list of new failure modes
 ```
 
-The pattern is: the review is automated; the review's output is a report; the report is reviewed by the platform team; the report's findings are added to the next quarter's roadmap.
-
 ---
 
 ## 8. How it fails
 
-Six failure modes recur.
+Six patterns come back again and again when the catalogue or its alerts stop helping. Each pattern below has a symptom, a diagnosis, and a fix.
 
 ### 8.1 "The on-call cannot find the failure mode in the catalogue"
 
-**Symptom:** The on-call is paged; the on-call searches the catalogue; the failure mode is not in the catalogue; the on-call debugs from scratch.
+**Symptom:** The on-call is paged and searches the catalogue. The failure mode is not there, so the engineer starts debugging from scratch.
 
-**Diagnosis:** The catalogue is incomplete; the team has not added a new failure mode; the team's discovery process has missed a failure mode.
+**Diagnosis:** The catalogue is incomplete. Either the team never added this failure mode, or the discovery step missed it.
 
-**Fix:** Add the new failure mode to the catalogue; review the incident post-mortem; identify the failure mode; add the detection signal; add the alert; add the runbook.
+**Fix:** After the post-mortem, add the failure mode. Give it a detection signal, an alert, and a runbook, so the next on-call finds it. When you write the entry, use the words an on-call engineer would search for.
 
 ### 8.2 "The detection signal is wrong"
 
-**Symptom:** The alert fires for every minor variation; the on-call ignores the alerts; the real failure is missed.
+**Symptom:** The alert fires on every small variation. The on-call starts ignoring it, and the real failure slips past.
 
-**Diagnosis:** The detection signal is too sensitive; the threshold is too low; the alert is misconfigured.
+**Diagnosis:** The signal is too sensitive, the threshold is too low, or the alert is misconfigured.
 
-**Fix:** Tune the detection signal; raise the threshold; add a hysteresis; review the alert's precision and recall.
+**Fix:** Tune the signal, raise the threshold, add hysteresis, and measure the alert's precision and recall. Production Kubernetes, chapter 9, warns that too many critical alerts burn out on-call engineers and let false positives hide real events. Tune each alert until it is worth a page.
 
 ### 8.3 "The runbook is missing the recovery step"
 
-**Symptom:** The on-call follows the runbook; the recovery step fails; the incident escalates.
+**Symptom:** The on-call follows the runbook. The recovery step fails, and the incident escalates.
 
-**Diagnosis:** The runbook was not updated after the last incident; the recovery step has changed.
+**Diagnosis:** The runbook was not updated after the last incident, so the recovery step has since changed.
 
-**Fix:** Update the runbook after every incident; review the runbook quarterly; automate the runbook freshness check.
+**Fix:** Update the runbook after every incident, review it quarterly, and automate a freshness check. Before you trust a runbook during an incident, check when someone last changed it.
 
 ### 8.4 "The failure mode cascades"
 
-**Symptom:** A GPU failure cascades to a node failure; a node failure cascades to a cluster failure; the cluster SLO is breached.
+**Symptom:** A GPU failure spreads to its node, the node failure spreads to the cluster, and the cluster SLO is breached.
 
-**Diagnosis:** The failure isolation is missing; the failure cascades through the dependency chain.
+**Diagnosis:** Failure isolation is missing, so the failure travels along the dependency chain.
 
-**Fix:** Add failure isolation (drain the node on GPU failure); add circuit breakers (the workload stops calling the failing service); add bulkheads (the failure does not affect other teams).
+**Fix:** Drain the node when its GPU fails. Add circuit breakers, so a workload stops calling a failing service. Add bulkheads, so one team's failure does not reach another team. Production Kubernetes, chapter 14, notes that anti-affinity rules spread pods across failure domains and limit the damage from one disturbance, though they cannot remove the disturbance itself.
 
 ### 8.5 "The alert is inhibited at the wrong moment"
 
-**Symptom:** A critical alert is inhibited by a less critical alert; the on-call does not see the critical alert.
+**Symptom:** A less important alert hides a critical one, and the on-call never sees the critical alert.
 
-**Diagnosis:** The inhibit rule is too aggressive; the inhibit rule matches the wrong alerts.
+**Diagnosis:** The inhibit rule is too broad, or it matches the wrong alerts.
 
-**Fix:** Review the inhibit rules; verify the inhibit rules match the right alerts; add an integration test.
+**Fix:** Review the inhibit rules and check that each one matches only the alerts it should. If you cannot explain why an alert was hidden, read the inhibit rules first. Add an integration test. Production Kubernetes, chapter 9, also suggests an alert that always fires under normal conditions and pages when it goes quiet. That alert tells you when the alerting path itself has failed.
 
 ### 8.6 "The catalogue is stale"
 
-**Symptom:** The catalogue references runbooks that no longer exist; the catalogue references metrics that no longer exist; the catalogue references vendors that have changed.
+**Symptom:** The catalogue links to runbooks that are gone, metrics that no longer exist, and vendors that have changed.
 
-**Diagnosis:** The catalogue was not updated after the last incident; the catalogue was not reviewed quarterly.
+**Diagnosis:** Nobody updated the catalogue after the last incident, and nobody reviewed it on schedule.
 
-**Fix:** Update the catalogue after every incident; review the catalogue quarterly; automate the catalogue freshness check.
+**Fix:** Update the catalogue after every incident, review it quarterly, and automate the freshness check.
 
 ---
 
 ## 9. Hands-on lab
 
-This lab builds the failure mode catalogue, configures the detection signals, and verifies the on-call integration. The lab is **untested** in this repository.
+Work through this lab in order. It builds the failure mode catalogue, configures the detection signals, and checks the on-call integration. The lab is **untested** in this repository, so treat each expected output as something to confirm on your own cluster.
 
 ### 9.1 Prerequisites
 
@@ -533,6 +549,8 @@ This lab builds the failure mode catalogue, configures the detection signals, an
 
 ### 9.2 Step 1: create the failure mode catalogue
 
+Start with one entry, then add the rest as you learn your failures. The first entry below is for an uncorrectable GPU memory error.
+
 ```bash
 # Create the catalogue
 mkdir -p planning/failure_modes
@@ -541,7 +559,7 @@ cat > planning/failure_modes/catalogue.yaml <<EOF
   name: GPU ECC Double-Bit Error
   symptom: Data corruption
   root_cause: GPU memory failure
-  detection_signal: DCGM_FI_DEV_ECC_DBE_VOL_DEDUP
+  detection_signal: DCGM_FI_DEV_ECC_DBE_VOL_TOTAL
   alert: GPUDoubleBitECCError
   severity: critical
   runbook_url: https://wiki.example.com/runbooks/gpu-ecc-dbe
@@ -549,6 +567,8 @@ EOF
 ```
 
 ### 9.3 Step 2: configure the detection signals
+
+Load the alert rules into the cluster, then tell Prometheus to reload them. After the reload, the rules should be active.
 
 ```bash
 # Apply the alert rules
@@ -562,6 +582,8 @@ curl -X POST http://prometheus.monitoring:9090/-/reload
 
 ### 9.4 Step 3: verify the runbook integration
 
+Check that every alert carries a runbook URL. The command below forwards the Alertmanager port and lists each alert with its runbook link.
+
 ```bash
 # Query Alertmanager
 kubectl -n monitoring port-forward svc/alertmanager-operated 9093:9093 &
@@ -571,6 +593,8 @@ curl -s http://localhost:9093/api/v2/alerts | jq '.[] | {alertname, runbookURL}'
 
 ### 9.5 Step 4: simulate a failure mode
 
+The command below reads the ECC counters on the GPU. It does not create an error, so it checks what the detector sees rather than producing a fault. A non-zero count means ECC errors exist, and in that case the alert should fire.
+
 ```bash
 # Inject a synthetic ECC error (for testing only - DO NOT run on production)
 nvidia-smi -q -d ECC
@@ -579,6 +603,8 @@ nvidia-smi -q -d ECC
 
 ### 9.6 Step 5: verify the on-call runbook
 
+Open the runbook from the first alert, and check that it loads and gives a clear next step. A runbook that opens to an empty page fails this check.
+
 ```bash
 # Click the runbook URL in the alert
 open "$(curl -s http://localhost:9093/api/v2/alerts | jq -r '.[0].annotations.runbookURL')"
@@ -586,6 +612,8 @@ open "$(curl -s http://localhost:9093/api/v2/alerts | jq -r '.[0].annotations.ru
 ```
 
 ### 9.7 Step 6: review the catalogue
+
+Run the review with the 90-day window from Section 7.3. Treat that window as an example, and change it to match your own review cycle.
 
 ```bash
 python code/part17/review_catalogue.py \
@@ -596,7 +624,7 @@ python code/part17/review_catalogue.py \
 
 ### 9.8 What to record
 
-After the lab, you should be able to answer five questions in five seconds each:
+After the lab, you should be able to answer five questions quickly:
 
 1. What is the current number of failure modes in the catalogue?
 2. What is the current number of stale failure modes?
@@ -604,101 +632,101 @@ After the lab, you should be able to answer five questions in five seconds each:
 4. What is the current ECC error rate per GPU?
 5. What is the current alert firing rate per failure mode?
 
-If any takes more than 30 seconds, the failure mode catalogue is not yet a production service. The lab is **untested** against a live GKE cluster.
+Aim for five seconds per answer, and treat 30 seconds as the upper limit. Those times are examples, so pick targets that match how fast your on-call engineers need answers. If an answer takes longer than your target, the catalogue is not yet a production service. The lab is **untested** against a live GKE cluster.
 
 ---
 
 ## Exercises
 
-1. **Add a new failure mode to the catalogue.** Identify a recent incident; add the failure mode to the catalogue; add the detection signal; add the alert; add the runbook. *Solution sketch:* the YAML schema in Section 7.1; the incident post-mortem; the alert rule; the runbook.
-2. **Add a cascade detection.** Detect when a failure is cascading across multiple failure modes; alert when the cascade is detected. *Solution sketch:* a Prometheus alert that matches multiple failure modes; the alert severity is critical.
-3. **Add a failure isolation pattern.** Configure the platform to drain a node when the GPU is failing; verify the workload is rescheduled to a healthy node. *Solution sketch:* a Kubernetes controller that watches the GPU health; the controller drains the node when the GPU is unhealthy; the workload is rescheduled.
-4. **Add a runbook freshness check.** Configure a CI step that fails when a runbook has not been updated in 30 days. *Solution sketch:* the CI step reads the runbook's git log; the CI step fails when the last update is > 30 days ago.
-5. **Add a catalogue review report.** Generate a quarterly report that lists stale failure modes, repeated failure modes, and new failure modes from the latest vendor releases. *Solution sketch:* a Python script that reads the catalogue; the script generates the report; the report is reviewed by the platform team.
-6. **Add a per-team failure mode view.** Build a dashboard that shows the failure modes per team; the dashboard is the team's view of the cluster's health. *Solution sketch:* a Grafana dashboard that filters the alerts by team; the panels; the data source.
+1. **Add a new failure mode to the catalogue.** Pick the last incident you handled and add it to the catalogue. Then add its detection signal, alert, and runbook. *Solution sketch:* the YAML fields from Section 7.1, the post-mortem, the alert rule, and the runbook.
+2. **Add a cascade detection.** Detect when one failure spreads across several failure modes, and alert when that happens. *Solution sketch:* a Prometheus alert that matches several failure modes at once, with critical severity.
+3. **Add a failure isolation pattern.** Configure the platform to drain a node when its GPU fails. Then check that the workload reschedules onto a healthy node. *Solution sketch:* a Kubernetes controller that watches GPU health, drains the node when the GPU is unhealthy, and lets the workload reschedule.
+4. **Add a runbook freshness check.** Set up a CI step that fails when a runbook has not changed in 30 days. The 30-day window is only an example. *Solution sketch:* the CI step reads the runbook's Git history and fails when the last change is older than the window.
+5. **Add a catalogue review report.** Generate a quarterly report that lists stale failure modes, repeated ones, and new ones from the latest vendor releases. You will use the report to plan your next review. *Solution sketch:* a Python script that reads the catalogue and writes the report, which the platform team reviews.
+6. **Add a per-team failure mode view.** Build a dashboard that shows each team its own failure modes. The dashboard becomes the team's view of cluster health. *Solution sketch:* a Grafana dashboard that filters alerts by team, with one panel per view and a data source behind each panel.
 
 ---
 
 ## Checkpoint questions
 
 <details><summary>1. What six categories of failure modes does the chapter walk through?</summary>
-GPU hardware failures (ECC, Xid, thermal, power), network failures (NCCL timeout, RDMA error, partition), storage failures (object storage 5xx, local disk full), scheduler failures (GPU OOM, image pull failure, pod pending), container image failures (signature mismatch, CVE, pull rate limit), model serving failures (model OOM, quality regression, prompt injection). Each category has a detection signal and an alert.
+The six groups are GPU hardware, network, storage, scheduler, container image, and model serving. GPU hardware covers ECC, Xid, thermal, and power problems. Network covers NCCL timeouts, RDMA errors, and partitions. Storage covers object storage 5xx errors and a full local disk. Scheduler covers GPU OOM, image pull failures, and pending pods. Container image covers signature mismatches, CVEs, and pull rate limits. Model serving covers model OOM, quality regression, and prompt injection. Each group has a detection signal and an alert, and you should be able to name the group from the symptom.
 </details>
 
 <details><summary>2. What is the most common GPU hardware failure?</summary>
-The ECC error storm. The storm starts with single-bit errors (SBEs); the storm escalates to double-bit errors (DBEs); the storm ends with a GPU that must be replaced. The platform team's pattern is: alert on SBE rate above 100/hour; alert on any DBE; drain the node immediately on DBE.
+The ECC error storm. It starts with single-bit errors (SBEs), escalates to double-bit errors (DBEs), and ends with a GPU that must be replaced. An example policy alerts when the SBE rate passes 100 per hour, alerts on any DBE, and drains the node at once on a DBE.
 </details>
 
 <details><summary>3. What is the most dangerous GPU failure?</summary>
-The GPU hang. The hang is silent: the workload is running; the kernels are queued; the GPU is not making progress. The detection signal is the SM clock: if the SM clock is non-zero for more than 10 seconds with no kernel progress, the GPU is hung. The platform team's pattern is: alert on the hang detection; restart the workload; drain the node; replace the GPU if the hang repeats.
+The GPU hang. Your workload still appears to run, the kernels sit in the queue, and the GPU makes no progress, so nothing crashes to flag it. The detection signal is the SM clock. If it stays non-zero for more than 10 seconds with no kernel progress, the check treats the GPU as hung. An example response is to alert, restart the workload, drain the node, and replace the GPU if the hang repeats.
 </details>
 
 <details><summary>4. What is the most common network failure?</summary>
-The NCCL timeout. The timeout happens when a collective operation does not complete within the configured timeout. The detection signal is the NCCL timeout error in the logs. The platform team's pattern is: set the NCCL timeout to 600 seconds; alert on any timeout; investigate the network; restart the workload if the timeout repeats.
+The NCCL timeout. It fires when a collective operation misses the timeout you configured. The detection signal is the NCCL timeout error in the logs. An example policy sets the timeout to 600 seconds, alerts on any timeout, investigates the network, and restarts the workload if the timeout repeats.
 </details>
 
 <details><summary>5. What is the most dangerous network failure?</summary>
-The network partition. The partition splits the cluster into two halves; the multi-node training fails; the workload hangs. The detection signal is the ping failure between nodes. The platform team's pattern is: alert on ping failure; investigate the network fabric; restart the affected workloads.
+The network partition. It splits the cluster into two halves, so multi-node training fails and the workload hangs. The detection signal is a failed ping between nodes. An example response is to alert on the ping failure, investigate the network fabric, and restart the affected workloads.
 </details>
 
 <details><summary>6. What is the most common storage failure?</summary>
-The object storage 5xx. The 5xx happens when the object storage service is unavailable. The detection signal is the s3_errors_total metric. The platform team's pattern is: alert on any 5xx; investigate the object storage service; switch to a backup region if available.
+The object storage 5xx. It happens when the service is unavailable to your training job. The detection signal is the s3_errors_total metric. An example response alerts on any 5xx, investigates the storage service, and switches to a backup region if one is available.
 </details>
 
 <details><summary>7. What is the most common scheduler failure?</summary>
-The GPU OOM. The workload requests more GPU memory than the node has; Kubernetes kills the workload. The detection signal is the OOMKilled reason in the pod status. The platform team's pattern is: alert on any OOMKilled; investigate the workload's GPU memory request; increase the request or reduce the model size.
+The GPU OOM. The workload asks for more GPU memory than the node has, and Kubernetes kills the workload. The detection signal is the OOMKilled reason in the pod status. An example response alerts on any OOMKilled, checks the GPU memory request, and raises the request or reduces the model size.
 </details>
 
 <details><summary>8. What is the most common container image failure?</summary>
-The image pull failure. The image is not found (typo, missing tag), the pull rate limit is hit (Docker Hub limits), or the image pull times out (network issue). The detection signal is the ImagePullBackOff reason in the pod status. The platform team's pattern is: alert on any ImagePullBackOff for > 5 minutes; investigate the image name and tag; check the pull rate limit.
+The image pull failure. You will see this when the image name is wrong, when the registry rate limit is hit, or when the pull times out on the network. The detection signal is the ImagePullBackOff reason in the pod status. An example response alerts after 5 minutes of ImagePullBackOff, checks the image name and tag, and checks the pull rate limit.
 </details>
 
 <details><summary>9. What is the most dangerous container image failure?</summary>
-The image signature mismatch. The image is signed; the signature does not match the image; the admission controller refuses to start the pod. The platform team's pattern is: alert on any signature mismatch; investigate the signing pipeline; do not bypass the admission controller.
+The image signature mismatch. The image is signed, but the signature does not match it, so the admission controller refuses to start the pod. An example response alerts on any mismatch, investigates the signing pipeline, and never bypasses the admission controller.
 </details>
 
 <details><summary>10. What is the most common model serving failure?</summary>
-The model OOM. The model is too large for the GPU's HBM; the inference engine's KV cache fills up; the CUDA OOM crash occurs. The detection signal is the inference_oom_total metric. The platform team's pattern is: alert on any inference OOM; reduce the KV cache budget; move to a larger GPU.
+The model OOM. The model is too large for the GPU's memory, the inference engine's KV cache fills up, and a CUDA out-of-memory crash follows. You detect it with the inference_oom_total metric. An example response alerts on any inference OOM, shrinks the KV cache budget, or moves to a larger GPU.
 </details>
 
 <details><summary>11. What is the most dangerous model serving failure?</summary>
-The model quality regression. The inference succeeds; the model returns a prediction; the prediction is wrong. The detection signal is the model_quality_score metric. The platform team's pattern is: alert on quality score below the threshold; retrain the model; investigate the drift detector; rollback to the previous version.
+The model quality regression. The request succeeds and the model returns an answer, but the answer is wrong. The detection signal is the model_quality_score metric. An example response alerts when the score drops below a threshold, retrains the model on recent data, checks the drift detector, and rolls back to the previous version if needed.
 </details>
 
 <details><summary>12. What is the failure mode catalogue?</summary>
-A structured document that the on-call engineer can search during an incident. The catalogue has the following fields per failure mode: ID, name, symptom, root cause, detection signal, alert, runbook URL, last updated, last incident. The catalogue is updated after every incident; the catalogue is reviewed quarterly.
+A structured document that the on-call engineer can search during an incident. Each failure mode has these fields: ID, name, symptom, root cause, detection signal, alert, runbook URL, last updated, and last incident. The catalogue is updated after every incident and reviewed quarterly.
 </details>
 
 <details><summary>13. What is the cascade failure mode?</summary>
-A failure that spreads across multiple components. A GPU failure cascades to a node failure; a node failure cascades to a cluster failure; the cluster SLO is breached. The platform team's pattern is: add failure isolation (drain the node on GPU failure); add circuit breakers (the workload stops calling the failing service); add bulkheads (the failure does not affect other teams).
+A failure that spreads across multiple components. A GPU failure leads to a node failure, the node failure leads to a cluster failure, and the cluster SLO is breached. Your usual response is to isolate the failure. Drain the node when its GPU fails, add circuit breakers, and add bulkheads so one failure does not reach other teams.
 </details>
 
 <details><summary>14. What is the failure isolation pattern?</summary>
-The pattern that prevents a failure from cascading. The pattern is: drain the node on GPU failure; the workload is rescheduled to a healthy node; the failure does not affect other workloads. The platform team's pattern is: a Kubernetes controller that watches the GPU health; the controller drains the node when the GPU is unhealthy.
+The pattern that stops a failure from spreading. You drain the node when its GPU fails, so the workload reschedules onto a healthy node and other workloads stay unaffected. In practice, a Kubernetes controller watches GPU health and drains the node when the GPU is unhealthy.
 </details>
 
 <details><summary>15. What is the circuit breaker pattern?</summary>
-A pattern that stops a workload from calling a failing service. The pattern is: the workload tracks the failure rate of the service; when the failure rate exceeds a threshold, the workload stops calling the service; the workload returns a default response. The platform team's pattern is: configure the circuit breaker in the service mesh (Istio, Linkerd).
+A pattern that stops a workload from calling a failing service. The workload tracks the failure rate of that service. When the rate passes a threshold, the workload stops calling the service and returns a default response. The platform team configures the circuit breaker in the service mesh, such as Istio.
 </details>
 
 <details><summary>16. What is the bulkhead pattern?</summary>
-A pattern that isolates the failure to a subset of the workload. The pattern is: the workload's resources are partitioned; a failure in one partition does not affect the other partitions. The platform team's pattern is: configure the Kueue LocalQueues per team (Chapter 16.14); a failure in one team's queue does not affect the other teams.
+A pattern that isolates a failure to one part of the workload. Resources are split into partitions, so a failure in one partition does not touch the others. The platform team sets up Kueue LocalQueues per team (Chapter 16.14), so one team's queue failure does not reach the other teams.
 </details>
 
 <details><summary>17. What is the failure mode review process?</summary>
-A quarterly review that identifies failure modes that have not been seen in the last 90 days; failure modes that have been seen multiple times; new failure modes from the latest vendor releases. The review's output is a report; the report is reviewed by the platform team; the report's findings are added to the next quarter's roadmap.
+A quarterly review that flags failure modes unseen in the last 90 days, failure modes that keep coming back, and new failure modes from the latest vendor releases. The output is a report, and the platform team reviews it. The findings go into the next quarter's roadmap.
 </details>
 
 <details><summary>18. What is the difference between detection and alerting?</summary>
-Detection is the signal that catches the failure (the metric, log, trace, or probe). Alerting is the rule that fires when the detection signal breaches the threshold. The detection signal without the alert is a silent failure; the alert without the detection signal is a false alarm.
+Detection is the signal that catches the failure, such as a metric, log, trace, or probe. Alerting is the rule that fires when a detection signal crosses its threshold. If you have a detection signal without an alert, the failure stays silent. An alert without a detection signal is a false alarm.
 </details>
 
 <details><summary>19. Why is the failure mode catalogue a platform-team deliverable?</summary>
-Because the platform team owns the cluster; the platform team owns the detection signals; the platform team owns the alerts; the platform team owns the runbooks. The data scientist consumes the catalogue; the platform team produces the catalogue. The catalogue is the platform team's institutional knowledge.
+The platform team owns the cluster, the detection signals, the alerts, and the runbooks. The data scientist consumes the catalogue, and the platform team produces it. The catalogue holds the platform team's institutional knowledge.
 </details>
 
 <details><summary>20. What five questions should the failure mode catalogue lab let you answer in five seconds each?</summary>
-What is the current number of failure modes in the catalogue. What is the current number of stale failure modes. What is the most recent failure mode added to the catalogue. What is the current ECC error rate per GPU. What is the current alert firing rate per failure mode. If any takes more than 30 seconds, the failure mode catalogue is not yet a production service.
+The five questions cover the failure mode count, the stale count, the newest entry, the ECC error rate per GPU, and the alert firing rate. The five-second and 30-second times are example targets. If any answer takes longer than 30 seconds, the catalogue is not yet a production service.
 </details>
 
 ---

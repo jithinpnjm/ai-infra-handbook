@@ -19,18 +19,18 @@ lab_venue: "GCP / GKE"
 | Lab venue | GCP / GKE |
 | Part | Part 18: Security |
 | Primary sources | NVIDIA Zero-to-Hero Volume 18 (`chapter-02-hardware-and-firmware-trust.md`); NVIDIA Zero-to-Hero Volume 10 (`chapter-16-hardware-and-firmware-trust.md`); *Engineering AI Systems* (`engineering-ai-systems-architecture-and-devops-essentials`, Chapter 9) |
-| Cross-references | Chapter 18.1 (Threat modeling); Chapter 11.21 (GPU device plugin); Chapter 10.21 (GPU health); Chapter 18.3 (Containers and software supply chain) |
+| Cross-references | Chapter 18.1 (Threat modeling); Chapter 11.2 (device plugin and container toolkit); Chapter 10.21 (GPU health); Chapter 18.3 (Containers and software supply chain) |
 | Coverage file | `planning/coverage/chapters/18-02.md` |
 | Claim & number ledger | `planning/ledgers/18-02.md` |
 
 ## Why this matters for AI infrastructure
 
-Chapter 18.1 named the threats. This chapter is about the controls that close the threat-model gaps on the hardware and firmware layer. A GPU cluster is a collection of hardware, firmware, drivers, and workloads. Every layer is a potential attack surface; every layer is a potential control point. The team's job is to verify the hardware is trusted before the workload runs, and to keep verifying it continuously.
+Chapter 18.1 listed the threats to your GPU platform. This chapter covers the controls that close the gaps at the hardware and firmware layer. A GPU cluster is a stack of hardware, firmware, drivers, and workloads, and any layer in that stack can be attacked. Your job is to confirm that the hardware is trusted before a workload runs, and then to keep checking.
 
-The hardware and firmware layer is the foundation. If the foundation is compromised, every layer above it is compromised. A model signing key on a compromised host is worthless; a supply chain attestation on a compromised GPU is worthless. The hardware and firmware trust is what makes every other security control trustworthy.
+The firmware sits at the bottom of that stack, so a problem there reaches everything above it. A model signing key on a compromised host protects nothing. A supply chain attestation for a tampered GPU proves nothing either. Hardware and firmware trust is what gives every other security control its value.
 
 ```text
-Why hardware and firmware trust is on the critical path (V18 ch2; V10 ch16; EAS Ch 9):
+Why hardware and firmware trust is on the critical path (background reading: NVIDIA Zero-to-Hero volume 18; NVIDIA Zero-to-Hero volume 10; Engineering AI Systems; the figures below are examples, not quotations):
 - A typical mature AI platform runs on hundreds of GPU nodes. Each node has a
   TPM, a UEFI firmware, a BMC, a GPU, and a NIC. Each component has its own
   firmware; each firmware has its own vulnerabilities. The firmware surface is
@@ -44,33 +44,35 @@ Why hardware and firmware trust is on the critical path (V18 ch2; V10 ch16; EAS 
   trust. The FW BOM is what the auditor sees.
 ```
 
-Three operational realities make this chapter a platform-team concern rather than a data-science-only concern:
+Three realities make this a platform team concern, not only a data science concern.
 
-1. **The firmware is the platform team's responsibility.** The platform team owns the GPU nodes; the platform team owns the firmware updates; the platform team owns the firmware bill of materials. The firmware trust is the platform team's discipline.
-2. **The GPU attestation is a hardware-level control.** The GPU is the most expensive component in the cluster; the GPU is the most attacked component in the cluster; the GPU attestation is what proves the GPU is genuine and unmodified. The platform team's job is to deploy the GPU attestation.
-3. **The supply chain integrity starts at the firmware.** A compromised firmware at the factory is a supply chain attack that bypasses every software-level control. The platform team's job is to verify the firmware provenance.
+1. Firmware belongs to the platform team. The platform team owns the GPU nodes, the firmware updates, and the firmware bill of materials, so firmware trust is part of its daily work.
+2. GPU attestation is a hardware control. The GPU is the most expensive part of the node and a frequent target, so you need proof that it is genuine and unmodified. Deploying GPU attestation is the platform team's job.
+3. Supply chain trust starts in the factory. Firmware tampered with before it reaches your data center bypasses every software control you run. Verifying firmware provenance is therefore part of the platform team's job too.
 
-**Before a team can claim their AI factory is secure, the team must have verified that the hardware is trusted. The firmware must be trusted before the workload runs; the firmware must be re-verified continuously; the firmware bill of materials must be auditable. A team that has not verified the firmware is a team that has not verified the foundation.**
+**Verify the hardware before the workload runs, and keep verifying it.** A team that has not checked its firmware has not checked its foundation.
 
 ## Prerequisites and outcomes
 
+Firmware work touches the boot process, so a mistake here can stop a node from starting at all. Check the prerequisites below before you touch a node's firmware.
+
 ### Prerequisites
 
-- Chapter 18.1 (Threat modeling) for the threat context.
-- Chapter 11.21 (GPU device plugin) for the GPU hardware.
-- Chapter 10.21 (GPU health) for the GPU monitoring.
-- Familiarity with UEFI, TPM, and measured boot.
+- Chapter 18.1 (Threat modeling), for the threat context.
+- Chapter 11.2 (device plugin and container toolkit), for the GPU hardware.
+- Chapter 10.21 (GPU health), for GPU monitoring.
+- Working familiarity with UEFI, TPM, and measured boot.
 
 ### Outcomes
 
 After completing this chapter you will be able to:
 
-1. Implement UEFI secure boot on every GPU node; verify the boot chain.
-2. Implement TPM-based measured boot; record the PCR values.
-3. Implement GPU attestation; verify the GPU is genuine and unmodified.
-4. Build the firmware bill of materials (FW BOM); track every firmware component.
-5. Implement the firmware update process; verify the firmware is current and signed.
-6. Operate the hardware and firmware trust on GKE with continuous verification, FW BOM tracking, and incident response.
+1. Turn on UEFI secure boot on every GPU node, and verify the boot chain.
+2. Turn on TPM-based measured boot, and read the PCR values.
+3. Check GPU attestation, and confirm that the GPU is genuine and unmodified.
+4. Build the firmware bill of materials (FW BOM), and track every firmware component.
+5. Run the firmware update process, and confirm that firmware is current and signed.
+6. Operate hardware and firmware trust on GKE, with continuous verification, FW BOM tracking, and incident response.
 
 ---
 
@@ -78,7 +80,7 @@ After completing this chapter you will be able to:
 
 ### 1.1 The secure boot chain
 
-UEFI secure boot is the foundation of the firmware trust. The secure boot chain verifies that every firmware component is signed by a trusted key.
+Imagine a node that boots a modified bootloader. The machine starts, the operating system loads, and nobody notices the change until someone uses it. Secure boot is the control that catches this, because it checks every stage before that stage is allowed to run.
 
 ```mermaid
 flowchart LR
@@ -89,11 +91,13 @@ flowchart LR
     Kernel --> Userspace[Userspace<br/>distribution signed]
 ```
 
-The chain is: ROM -> secure boot -> firmware -> bootloader -> kernel -> userspace. Each link is verified against a trusted key. If any link fails, the boot is aborted.
+The chain runs in this order: ROM, secure boot, firmware, bootloader, kernel, and then userspace. Each link is checked against a trusted key. If any link fails, the boot stops, so a node with a bad component never reaches the workload.
 
 ### 1.2 The vendor keys
 
-The vendor keys are the trust anchors. The keys are stored in the TPM; the keys are immutable; the keys are vendor-specific.
+The vendor keys are the trust anchors of the chain. Every check ultimately depends on them. The vendor's public keys are stored in firmware, in the UEFI key databases. The TPM holds the measurements and its own keys. Each vendor has its own key.
+
+The table shows who signs each layer you will meet on a typical GPU node.
 
 | Vendor | Key store | Signing authority |
 |---|---|---|
@@ -102,11 +106,9 @@ The vendor keys are the trust anchors. The keys are stored in the TPM; the keys 
 | Ubuntu | Canonical shim | Microsoft + Canonical |
 | NVIDIA | GPU firmware | NVIDIA |
 
-The pattern is: the vendor signs the firmware; the platform team trusts the vendor's keys; the secure boot chain verifies the signatures.
-
 ### 1.3 The platform team's role
 
-The platform team's role is to enable secure boot on every node; the platform team verifies the boot chain; the platform team responds to boot failures.
+Check secure boot on a new node before it joins the cluster, not after the first incident. The platform team turns secure boot on for every node, verifies the boot chain, and responds when a boot fails. The three commands below show what a healthy node reports.
 
 ```bash
 # Verify secure boot is enabled on a node
@@ -122,7 +124,7 @@ sudo journalctl --boot | grep -i 'secure boot'
 # expected: "Secure boot: enabled" appears in the log
 ```
 
-The pattern is: every node has secure boot enabled; every boot is verified; every boot failure is investigated.
+If the first command does not report SecureBoot enabled, keep that node away from GPU workloads until it passes.
 
 ---
 
@@ -130,7 +132,7 @@ The pattern is: every node has secure boot enabled; every boot is verified; ever
 
 ### 2.1 The TPM
 
-The TPM (Trusted Platform Module) is a hardware chip that stores the keys and the measurements. The TPM is the root of trust for the firmware.
+Secure boot blocks code that is not signed, but it does not leave a record of what booted. The TPM, a Trusted Platform Module, fills that gap. It is a hardware chip that stores keys and measurements, and it is the root of trust for the firmware.
 
 ```text
 TPM functions:
@@ -140,11 +142,11 @@ TPM functions:
 - Sealed storage: encrypts data that can only be unsealed by the same TPM
 ```
 
-The TPM records the measurements of every boot component. The measurements are stored in the PCRs. The PCRs can be quoted (signed by the TPM's attestation key) to prove the boot state.
+The TPM records a measurement of every boot component, and it keeps those measurements in PCRs. A PCR value can be quoted, which means the TPM signs it with its attestation key. A signed quote is the proof of the boot state that you can hand to another system.
 
 ### 2.2 Measured boot
 
-Measured boot records the measurements of every boot component. The measurements are stored in the TPM's PCRs. The PCRs can be quoted to prove the boot state.
+Measured boot is the recording step. It stores a measurement of every boot component in the TPM's PCRs, so you can later see exactly what booted. Read the PCRs to see the current values, and quote them when another system needs proof.
 
 ```bash
 # Read the PCR values
@@ -156,11 +158,11 @@ sudo tpm2_quote --key-context 0x81000000 --pcr-bank sha256 --pcrs 0,1,2,3,4,5,6,
 # expected: the quote is signed by the TPM's attestation key
 ```
 
-The pattern is: the PCRs are populated at boot; the PCRs can be quoted; the quote proves the boot state.
-
 ### 2.3 Remote attestation
 
-Remote attestation proves the boot state to a remote verifier. The verifier asks the TPM for a quote; the TPM signs the quote with the attestation key; the verifier validates the signature.
+Remote attestation lets a verifier check a node's boot state from another machine. Instead of trusting the node's own report, the verifier asks the TPM for proof. Decide which service plays the verifier before you build the flow, so that one owner is responsible for the answer.
+
+The verifier sends a challenge. The node asks its TPM for a quote, and the TPM signs it. The verifier then checks the signature before it trusts the boot state.
 
 ```mermaid
 flowchart LR
@@ -171,14 +173,14 @@ flowchart LR
     V -->|validate| Result[Boot state]
 ```
 
-The pattern is: the verifier challenges the node; the node asks the TPM for a quote; the TPM signs the quote; the verifier validates the quote.
+Do not confuse this with node attestation in SPIRE. Production Kubernetes, chapter 10, describes node attestation as the step where a SPIRE agent identifies its node, so the server can issue that node an identity. The book presents it as identification, not as a check of the boot state.
 
 ### 2.4 The attestation in production
 
-The attestation is used by the workload to prove that the node is trusted. The workload reads the PCRs; the workload verifies the signature; the workload continues if the signature is valid.
+A workload that depends on a node should wait until the node proves its boot state. The snippet below shows one way to request a quote. The function takes a nonce, which is a value from the verifier, and passes it into the quote.
 
 ```python
-# code/part18/tpm_attestation.py (shape only)
+# code/part18/snippets/tpm_attestation.py
 import tpm2_pytss
 
 def attest_node(pcrs: list[int], nonce: bytes) -> dict:
@@ -195,7 +197,7 @@ def attest_node(pcrs: list[int], nonce: bytes) -> dict:
     }
 ```
 
-The pattern is: the workload calls the TPM for a quote; the workload validates the quote; the workload continues if the quote is valid.
+In production, the workload reads the PCRs, verifies the signature, and continues only if the signature is valid. Confirm that this call succeeds on each node before you schedule GPU work onto it.
 
 ---
 
@@ -203,20 +205,20 @@ The pattern is: the workload calls the TPM for a quote; the workload validates t
 
 ### 3.1 The NVIDIA GPU attestation
 
-The NVIDIA GPU has a hardware root of trust. The GPU attestation proves that the GPU is genuine and unmodified.
+Picture a GPU that was swapped for a copy somewhere between the factory and your rack. It looks the same, it boots, and it runs your jobs. Only a check against the hardware itself can reveal the difference. GPU attestation is that check, and it proves that the GPU is genuine and unmodified.
 
 ```text
 GPU attestation components:
-- GPU endorsement key: stored in the GPU's fuse; unique per GPU
+- GPU endorsement key: provisioned by the vendor in the GPU; unique per GPU
 - GPU attestation key: derived from the endorsement key; proves the GPU is genuine
 - GPU measurement: the hash of the GPU firmware; proves the firmware is unmodified
 ```
 
-The pattern is: the GPU has an endorsement key; the GPU has an attestation key; the GPU has a firmware measurement. The workload can verify all three.
+The GPU carries three pieces you can verify. These are an endorsement key, an attestation key derived from it, and a measurement of the GPU firmware. A workload can check all three before it starts.
 
 ### 3.2 The NVIDIA NVLink Switch attestation
 
-The NVIDIA NVLink Switch has its own attestation. The NVLink Switch attestation proves that the NVLink Switch is genuine and unmodified.
+The NVLink Switch has its own attestation, separate from the GPU's. Check it the same way you check the GPU. Treat a failure as a reason to investigate before you run more jobs.
 
 ```bash
 # Read the NVLink Switch attestation
@@ -224,15 +226,16 @@ nvidia-smi -q | grep -i attestation
 # expected: the attestation key is present; the measurement is present
 
 # Verify the NVLink Switch attestation
+# Illustrative command: check NVIDIA's NVSwitch documentation for the real attestation tool
 nv-switch-cli -c attestation
 # expected: the attestation is valid
 ```
 
-The pattern is: the NVLink Switch has an attestation; the platform team verifies the attestation; the platform team responds to attestation failures.
+The platform team verifies the switch attestation and responds when it fails.
 
 ### 3.3 The BMC attestation
 
-The BMC (Baseboard Management Controller) has its own attestation. The BMC attestation proves that the BMC is genuine and unmodified.
+The BMC, or baseboard management controller, has its own attestation. It proves that the BMC is genuine and unmodified. The BMC sits outside the operating system, so check it as well and do not assume the operating system's checks cover it.
 
 ```bash
 # Read the BMC attestation
@@ -240,11 +243,10 @@ ipmitool -I lanplus -H <bmc-ip> -U <user> -P <pass> raw 0x30 0x0e
 # expected: the attestation is present
 
 # Verify the BMC attestation
+# Illustrative: ipmitool has no 'attestation verify' command; BMC attestation goes through the vendor's Redfish or management tooling
 ipmitool -I lanplus -H <bmc-ip> -U <user> -P <pass> attestation verify
 # expected: the attestation is valid
 ```
-
-The pattern is: the BMC has an attestation; the platform team verifies the attestation; the platform team responds to attestation failures.
 
 ---
 
@@ -252,7 +254,7 @@ The pattern is: the BMC has an attestation; the platform team verifies the attes
 
 ### 4.1 What the FW BOM contains
 
-The firmware bill of materials (FW BOM) is the inventory of every firmware component on every node. The FW BOM is the audit trail for the firmware trust.
+Ask a simple question: which firmware is running on gpu-node-1 right now? If you cannot answer that quickly, your audit trail has a gap. The firmware bill of materials, or FW BOM, is the inventory that closes that gap, with one record for every firmware component on every node.
 
 ```text
 FW BOM schema:
@@ -266,11 +268,11 @@ FW BOM schema:
 - cve: the list of known CVEs for the firmware version
 ```
 
-The pattern is: every firmware component has a record; the record is auditable; the record is tracked.
+Each record shows the state of one component at one point in time. A record that marks a component as unsigned, or that lists a known CVE, is a finding you must act on, not a footnote.
 
 ### 4.2 Building the FW BOM
 
-The FW BOM is built by scanning every node and recording the firmware components. The scan is automated; the scan is continuous; the scan is auditable.
+Build the FW BOM by scanning every node and recording what the scan finds. Run the scan on a schedule, so the inventory does not fall far behind the real state of the cluster. Save each node's output in a location your auditors can reach later.
 
 ```bash
 # Scan a node for its firmware components
@@ -280,14 +282,12 @@ python code/part18/fw_bom_scan.py \
 # expected: the FW BOM for gpu-node-1 is generated; the components are listed
 ```
 
-The pattern is: the scan is automated; the scan is continuous; the scan produces a structured record.
-
 ### 4.3 The FW BOM dashboard
 
-The FW BOM dashboard shows the firmware status across the cluster. The dashboard is the platform team's view of the firmware trust.
+A dashboard puts the FW BOM for the whole cluster in one view. That makes it the platform team's daily view of firmware trust. Look at the unsigned-component and CVE panels first, because they show risk, while the inventory panels only show what you have.
 
 ```yaml
-# code/part18/fw_bom_dashboard.json (shape only)
+# code/part18/fw_bom_dashboard.json
 {
   "dashboard": {
     "title": "AI Factory - Firmware BOM",
@@ -301,15 +301,15 @@ The FW BOM dashboard shows the firmware status across the cluster. The dashboard
 }
 ```
 
-The pattern is: the dashboard shows the firmware status; the on-call engineer sees the dashboard when the alert fires.
-
 ---
 
 ## 5. The firmware update process
 
 ### 5.1 The firmware update cycle
 
-The firmware update cycle is the process for updating the firmware on every node. The cycle includes: the firmware vendor releases an update; the platform team tests the update; the platform team rolls out the update to staging; the platform team rolls out the update to production.
+A vendor ships a firmware update that fixes a security bug. Do you push it to every node tonight? Don't. Test the update in staging first, then roll it out in stages so a bad update reaches only a few nodes at a time.
+
+The cycle in this chapter has four steps: the vendor releases the update, your team tests it in staging, a canary group of nodes runs it, and then the full fleet gets it. The chapter uses 10 percent for the canary group and a quarterly cycle as examples. Choose your own canary size and cadence. Each step must pass before the next one starts.
 
 ```mermaid
 flowchart LR
@@ -319,11 +319,11 @@ flowchart LR
     F --> V[Vendor<br/>next release]
 ```
 
-The pattern is: the firmware is tested in staging; the firmware is canaried on 10% of nodes; the firmware is rolled out to 100% of nodes. The cycle is quarterly.
+The same idea appears for container images. Production Kubernetes, chapter 15, describes signing an image at each pipeline stage, then having the deployment check those signatures before it runs. The book also notes that signing tools were hard to adopt, because they need extra services and careful key rotation. If your firmware vendor signs its updates, you can apply the same check before any update reaches a node.
 
 ### 5.2 The firmware rollback
 
-The firmware rollback is the process for reverting to the previous firmware version. The rollback is triggered by: the firmware causes a boot failure; the firmware causes a performance regression; the firmware introduces a CVE.
+Roll back when a new firmware version breaks something. The chapter lists three triggers: a boot failure, a performance regression, or a new CVE. A rollback you have never run is a guess, so test it in staging as well.
 
 ```bash
 # Roll back the firmware on a node
@@ -333,11 +333,9 @@ python code/part18/fw_rollback.py \
 # expected: the firmware is rolled back; the node boots successfully
 ```
 
-The pattern is: the firmware rollback is automated; the firmware rollback is tested in staging; the firmware rollback is documented in the change log.
-
 ### 5.3 The firmware CVE monitoring
 
-The firmware CVE monitoring is the process for tracking CVEs in the firmware. The monitoring includes: subscribing to the vendor CVE feeds; correlating the CVEs with the FW BOM; alerting on the CVEs.
+A check you ran last month does not tell you about a CVE published yesterday. That is why CVE monitoring needs a feed that keeps watching. The monitor subscribes to the vendor feeds, matches each CVE against the FW BOM, and sends an alert when a match appears.
 
 ```bash
 # Subscribe to the vendor CVE feeds
@@ -347,13 +345,15 @@ python code/part18/fw_cve_monitor.py \
 # expected: the CVE monitor subscribes to the vendor feeds; the CVEs are correlated with the FW BOM
 ```
 
-The pattern is: the CVE monitoring is automated; the CVE monitoring is continuous; the CVE monitoring produces alerts.
+The monitor runs automatically and keeps running, so it can produce alerts at any hour. Start by alerting on the components that matter most to your fleet.
 
 ---
 
 ## 6. Operating hardware and firmware trust on GKE
 
 ### 6.1 The components
+
+Each control needs an owner, a place where its data lives, and a target it must meet. The table lists those for the six controls in this chapter. The two time limits in it, 24 hours and 1 hour, are example values. Your team should set its own targets based on its risk and its audit needs.
 
 | Component | Where it runs | Backing store | SLO |
 |---|---|---|---|
@@ -366,17 +366,19 @@ The pattern is: the CVE monitoring is automated; the CVE monitoring is continuou
 
 ### 6.2 IAM and the firmware trust
 
-The firmware trust has its own IAM. The pattern is:
+Firmware changes deserve tighter access than ordinary cluster changes. A single shared account that can both read and rewrite firmware records makes every change hard to trace. Split the rights into reader, writer, and admin roles, as the table shows.
 
 | Role | Who | What they can do |
 |---|---|---|
-| `firmware.reader` | The platform team; the security team | Read the FW BOM; read the attestation status |
+| `firmware.reader` | The platform team and the security team | Read the FW BOM; read the attestation status |
 | `firmware.writer` | The platform team | Update the firmware; update the FW BOM |
 | `firmware.admin` | The platform team lead | Approve the firmware update; approve the firmware rollback |
 
-The firmware trust is the platform team's discipline. The discipline is documented; the discipline is enforced; the discipline is reviewed quarterly.
+These roles are an example pattern. Map them onto your own identity system, and review who holds each role on a schedule you choose.
 
 ### 6.3 Observability
+
+Track one metric for each control, and alert when that metric leaves its healthy state. The thresholds in the table, such as 90 days for firmware age, are example values, not standards. Set them to match what your team can act on.
 
 | Metric | Why it matters | Alert |
 |---|---|---|
@@ -387,75 +389,87 @@ The firmware trust is the platform team's discipline. The discipline is document
 | Firmware version currency | Update cadence | > 90 days stale |
 | FW BOM freshness | Audit trail | > 24 hours stale |
 
-The firmware with known CVEs alert is the most important. Any firmware with a known CVE is a security exposure that the team must address.
+Of these, the alert for firmware with known CVEs matters most. Any such firmware is an exposure the team must address, so treat a count above zero as urgent.
 
 ---
 
 ## 7. How it fails
 
-Six failure modes recur.
+The chapter lists six failure modes. Start from the symptom you can see, then work back to the cause. Each entry below gives the symptom, the likely diagnosis, and the fix.
 
 ### 7.1 "Secure boot is disabled on a node"
 
-**Symptom:** A node boots with secure boot disabled. The node is vulnerable to firmware attacks.
+A BIOS setting changed, and nothing caught it. The node now boots without checking signatures, so a firmware attack has a way in.
 
-**Diagnosis:** The BIOS setting was changed; the platform team's policy is not enforced.
+**Symptom:** The node boots with secure boot turned off.
 
-**Fix:** Re-enable secure boot; verify the boot chain; alert on any node with secure boot disabled.
+**Diagnosis:** The BIOS setting changed, and the platform team's policy was not enforced.
+
+**Fix:** Turn secure boot back on, verify the boot chain, and alert on any node that boots with it off.
 
 ### 7.2 "The TPM is not provisioned"
 
-**Symptom:** A node has a TPM but the TPM is not provisioned. The TPM cannot generate quotes.
+A TPM that was never set up is only a chip on the board. It cannot produce the quotes that attestation depends on.
 
-**Diagnosis:** The TPM was not initialised; the platform team's policy is not enforced.
+**Symptom:** The node has a TPM, but the TPM is not provisioned, so it cannot generate quotes.
 
-**Fix:** Initialise the TPM; verify the attestation; alert on any node with an unprovisioned TPM.
+**Diagnosis:** Nobody initialised the TPM, and the platform policy did not catch it.
+
+**Fix:** Initialise the TPM, confirm that attestation works, and alert on any node with an unprovisioned TPM.
 
 ### 7.3 "The GPU attestation fails"
 
-**Symptom:** A workload tries to verify the GPU attestation; the attestation fails. The workload cannot run.
+This is the failure that should stop you cold. A workload checks the GPU, the check fails, and the workload cannot start. A failed check does not say which cause is behind it.
 
-**Diagnosis:** The GPU firmware has been modified; the GPU is counterfeit; the GPU is compromised.
+**Symptom:** A workload checks the GPU attestation, and the check fails. The workload cannot run.
 
-**Fix:** Investigate the GPU; replace the GPU if necessary; alert on any GPU attestation failure.
+**Diagnosis:** The GPU firmware may have been modified, the GPU may be counterfeit, or the GPU may be compromised. Investigation tells these apart.
+
+**Fix:** Investigate the GPU, replace it if the investigation confirms a problem, and alert on any GPU attestation failure.
 
 ### 7.4 "The firmware is out of date"
 
-**Symptom:** A node runs a firmware version that is more than 90 days old. The firmware has known CVEs.
+Old firmware can carry known CVEs that newer releases have fixed. Decide on an age limit that your team can act on. The chapter uses 90 days as an example.
 
-**Diagnosis:** The firmware update process is not running; the firmware is not being tested.
+**Symptom:** A node runs firmware older than the age limit, and that firmware may carry known CVEs.
 
-**Fix:** Run the firmware update process; verify the firmware is current; alert on any firmware older than 90 days.
+**Diagnosis:** The firmware update process is not running, so newer firmware is never tested.
+
+**Fix:** Run the update process, confirm the firmware is current, and alert on any node past the age limit.
 
 ### 7.5 "The FW BOM is incomplete"
 
-**Symptom:** A node has a firmware component that is not in the FW BOM. The audit trail is incomplete.
+An inventory with a missing component is an audit trail with a hole in it. The hole matters most when you need the record during an incident.
 
-**Diagnosis:** The FW BOM scan did not run; the FW BOM scan missed a component.
+**Symptom:** A node has a firmware component that is missing from the FW BOM.
 
-**Fix:** Re-run the FW BOM scan; verify every component is in the FW BOM; alert on any missing component.
+**Diagnosis:** The FW BOM scan did not run, or it missed a component.
+
+**Fix:** Run the scan again, confirm that every component appears, and alert on any missing component.
 
 ### 7.6 "The firmware update causes a regression"
 
-**Symptom:** The firmware update is rolled out; the workload's performance degrades; the workload's latency spikes.
+A firmware update can make a workload slower even though it installed cleanly. The update should have been tested in staging before the rollout started.
 
-**Diagnosis:** The firmware update was not tested in staging; the firmware has a performance regression.
+**Symptom:** After the firmware update, the workload slows down and its latency rises.
 
-**Fix:** Roll back the firmware; investigate the regression; update the firmware when the vendor releases a fix.
+**Diagnosis:** The update skipped staging, and the firmware has a performance regression.
+
+**Fix:** Roll the firmware back, find the cause of the regression, and update again only after the vendor ships a fix.
 
 ---
 
 ## 8. Hands-on lab
 
-This lab walks through verifying the firmware trust on a GPU node: the secure boot, the TPM attestation, the GPU attestation, the FW BOM, and the firmware update process. The lab is **untested** in this repository.
+This lab checks the firmware trust of one GPU node. You will verify secure boot, the TPM, and the GPU attestation. Then you will build the FW BOM and run a firmware update. The lab is **untested** in this repository, so run each step on a staging node first.
 
 ### 8.1 Prerequisites
 
-- A GPU node with TPM, UEFI, and NVIDIA GPU.
-- Access to the node's BMC.
-- Access to the node's operating system.
+Before you start, confirm that the node has a TPM, UEFI firmware, and an NVIDIA GPU. You also need access to its BMC and to its operating system.
 
 ### 8.2 Step 1: verify secure boot
+
+Start with the simplest check. Confirm that secure boot is on before you look at anything else.
 
 ```bash
 # Verify secure boot is enabled
@@ -464,6 +478,8 @@ mokutil --sb-state
 ```
 
 ### 8.3 Step 2: verify the TPM
+
+Next, confirm that the TPM is present and that its PCRs hold values.
 
 ```bash
 # Read the TPM version
@@ -477,6 +493,8 @@ sudo tpm2_pcrread sha256
 
 ### 8.4 Step 3: verify the GPU attestation
 
+Then check the GPU attestation with `nvidia-smi`.
+
 ```bash
 # Read the GPU attestation
 nvidia-smi -q | grep -i attestation
@@ -484,6 +502,8 @@ nvidia-smi -q | grep -i attestation
 ```
 
 ### 8.5 Step 4: build the FW BOM
+
+Scan the node so you have a record of its firmware components.
 
 ```bash
 # Scan the node for its firmware components
@@ -495,6 +515,8 @@ python code/part18/fw_bom_scan.py \
 
 ### 8.6 Step 5: update the firmware
 
+Apply the update, after the staging test has passed.
+
 ```bash
 # Apply the firmware update
 python code/part18/fw_update.py \
@@ -504,6 +526,8 @@ python code/part18/fw_update.py \
 ```
 
 ### 8.7 Step 6: verify the firmware update
+
+Last, confirm that the node runs the version you expected.
 
 ```bash
 # Verify the firmware is current
@@ -515,7 +539,7 @@ python code/part18/fw_verify.py \
 
 ### 8.8 What to record
 
-After the lab, you should be able to answer five questions in five seconds each:
+After the lab, you should be able to answer five questions in about five seconds each. The chapter's five seconds is an example target, not a standard. The five questions are below.
 
 1. What is the current secure boot verification rate?
 2. What is the current TPM attestation verification rate?
@@ -523,101 +547,103 @@ After the lab, you should be able to answer five questions in five seconds each:
 4. What is the current firmware version?
 5. What is the current number of firmware CVEs?
 
-If any takes more than 30 seconds, the hardware and firmware trust is not yet a production service. The lab is **untested** against a live GKE cluster.
+The chapter treats 30 seconds as the example limit for any one answer. If an answer takes longer than that, the firmware trust is not yet ready to run as a production service. The lab is **untested** against a live GKE cluster.
 
 ---
 
 ## Exercises
 
-1. **Add a secure boot alert.** Configure an alert that fires when secure boot is disabled on any node. *Solution sketch:* a Prometheus exporter for the boot state; an alert that fires when the boot state is not "SecureBoot enabled".
-2. **Add a TPM attestation alert.** Configure an alert that fires when the TPM attestation fails on any node. *Solution sketch:* a Prometheus exporter for the TPM; an alert that fires when the attestation is invalid.
-3. **Add a GPU attestation alert.** Configure an alert that fires when the GPU attestation fails on any GPU. *Solution sketch:* a Prometheus exporter for the GPU; an alert that fires when the attestation is invalid.
-4. **Add a firmware CVE alert.** Configure an alert that fires when a firmware component has a known CVE. *Solution sketch:* a Prometheus alert on the FW BOM CVE field; the alert fires when the field is non-empty.
-5. **Add a firmware update process.** Configure a CI/CD pipeline that updates the firmware quarterly. *Solution sketch:* a CI/CD pipeline that runs the firmware update script; the pipeline verifies the firmware is current.
-6. **Add a firmware rollback process.** Configure a CI/CD pipeline that rolls back the firmware when an alert fires. *Solution sketch:* a CI/CD pipeline that runs the firmware rollback script; the pipeline verifies the firmware is rolled back.
+These exercises turn the chapter's controls into alerts and pipelines. Build each one on a staging node before you touch production.
+
+1. **Add a secure boot alert.** Set up an alert that fires when secure boot is off on any node. *Solution sketch:* write a Prometheus exporter for the boot state, then alert whenever the state is not `SecureBoot enabled`.
+2. **Add a TPM attestation alert.** Set up an alert that fires when TPM attestation fails on any node. *Solution sketch:* write a Prometheus exporter for the TPM, then alert when the attestation is invalid.
+3. **Add a GPU attestation alert.** Set up an alert that fires when GPU attestation fails on any GPU. *Solution sketch:* write a Prometheus exporter for the GPU, then alert when the attestation is invalid.
+4. **Add a firmware CVE alert.** Set up an alert that fires when a firmware component has a known CVE. *Solution sketch:* write a Prometheus alert on the FW BOM CVE field, which fires when the field is not empty.
+5. **Add a firmware update process.** Build a CI/CD pipeline that updates firmware on the cadence you choose. The chapter uses quarterly as an example. *Solution sketch:* the pipeline runs the update script, then checks that the firmware is current.
+6. **Add a firmware rollback process.** Build a CI/CD pipeline that rolls firmware back when an alert fires. *Solution sketch:* the pipeline runs the rollback script, then checks that the previous version is running.
 
 ---
 
 ## Checkpoint questions
 
 <details><summary>1. What is UEFI secure boot?</summary>
-The foundation of the firmware trust. The secure boot chain verifies that every firmware component (ROM, secure boot, firmware, bootloader, kernel, userspace) is signed by a trusted key. If any link fails, the boot is aborted. Secure boot is enabled on every node; every boot is verified.
+It is the base of firmware trust. It checks that every firmware component (ROM, secure boot, firmware, bootloader, kernel, userspace) is signed by a trusted key. If any link fails, the boot stops. The goal is that every node has secure boot on, so you can trust every boot.
 </details>
 
 <details><summary>2. What is the TPM?</summary>
-A hardware chip that stores the keys and the measurements. The TPM is the root of trust for the firmware. The TPM has PCRs (Platform Configuration Registers) that store the boot measurements; the PCRs can be quoted to prove the boot state.
+A hardware chip that stores keys and measurements. It is the root of trust for the firmware. Its PCRs (Platform Configuration Registers) hold the boot measurements, and you can quote the PCRs to prove the boot state.
 </details>
 
 <details><summary>3. What is measured boot?</summary>
-The process of recording the measurements of every boot component. The measurements are stored in the TPM's PCRs. The PCRs can be quoted (signed by the TPM's attestation key) to prove the boot state. Measured boot is the foundation of remote attestation.
+The process of recording a measurement of every boot component. The measurements go into the TPM's PCRs. The PCRs can be quoted, which means the TPM signs them with its attestation key, to prove the boot state. This is the base of remote attestation.
 </details>
 
 <details><summary>4. What is remote attestation?</summary>
-The process of proving the boot state to a remote verifier. The verifier challenges the node; the node asks the TPM for a quote; the TPM signs the quote; the verifier validates the signature. Remote attestation is the foundation of the workload's trust in the node.
+It is the process of proving the boot state to a remote verifier. The verifier challenges the node, and the node asks its TPM for a quote that the TPM signs. The verifier checks that signature, and that check is what a workload relies on to trust the node.
 </details>
 
 <details><summary>5. What is the firmware bill of materials?</summary>
-The inventory of every firmware component on every node. The FW BOM has the node id, the component, the version, the vendor, the signature status, the attestation status, the last verified, and the CVE list. The FW BOM is the audit trail for the firmware trust.
+The inventory of every firmware component on every node. It records the node ID, the component, the version, the vendor, the signature status, the attestation status, the last verified time, and the CVE list. It is the audit trail for firmware trust.
 </details>
 
 <details><summary>6. What is the most common firmware trust failure?</summary>
-Secure boot is disabled on a node. The node is vulnerable to firmware attacks. The diagnosis is that the BIOS setting was changed; the platform team's policy is not enforced. The fix is to re-enable secure boot; verify the boot chain; alert on any node with secure boot disabled.
+Secure boot is off on a node, which leaves it open to firmware attacks. The cause is a changed BIOS setting that the platform policy did not catch. If you find secure boot off on a node, turn it back on, verify the boot chain, and alert on any node with it off.
 </details>
 
 <details><summary>7. What is the second most common firmware trust failure?</summary>
-The TPM is not provisioned. The TPM cannot generate quotes. The diagnosis is that the TPM was not initialised. The fix is to initialise the TPM; verify the attestation; alert on any node with an unprovisioned TPM.
+The TPM is not provisioned, so it cannot generate quotes. The cause is that nobody initialised the TPM. The fix is to initialise it, verify attestation, and alert on any node with an unprovisioned TPM.
 </details>
 
 <details><summary>8. What is the most dangerous firmware trust failure?</summary>
-The GPU attestation fails. The workload tries to verify the GPU attestation; the attestation fails. The GPU firmware has been modified; the GPU is counterfeit; the GPU is compromised. The fix is to investigate the GPU; replace the GPU if necessary.
+The GPU attestation fails. The workload cannot verify the GPU, which may mean the GPU firmware was modified, the GPU is counterfeit, or the GPU is compromised. The fix is to investigate the GPU and replace it if the investigation confirms a problem.
 </details>
 
 <details><summary>9. What is the most common firmware update failure?</summary>
-The firmware is out of date. A node runs a firmware version that is more than 90 days old. The firmware has known CVEs. The diagnosis is that the firmware update process is not running. The fix is to run the firmware update process; verify the firmware is current.
+The firmware is out of date. A node on firmware older than the age limit may carry known CVEs. The cause is that the firmware update process is not running. If you see old firmware, run the process and confirm that the firmware is current.
 </details>
 
 <details><summary>10. What is the relationship between secure boot and TPM?</summary>
-Secure boot verifies the signatures of every firmware component. The TPM stores the measurements of every firmware component. Together, they form the boot chain: secure boot verifies the signatures; the TPM records the measurements. The boot chain is the foundation of the firmware trust.
+Secure boot checks the signature of every firmware component. The TPM records a measurement of each one. Together they form the boot chain, and the boot chain is the base of firmware trust.
 </details>
 
 <details><summary>11. What is the relationship between TPM attestation and remote attestation?</summary>
-TPM attestation is the local process of generating a quote. Remote attestation is the network process of sending the quote to a verifier. The verifier validates the quote; the verifier trusts the TPM's attestation key. Together, they form the attestation chain.
+TPM attestation is the local step of generating a quote. Remote attestation is the network step of sending that quote to a verifier. The verifier checks the quote and trusts the TPM's attestation key. Together they make up the attestation chain.
 </details>
 
 <details><summary>12. What is the relationship between GPU attestation and workload trust?</summary>
-The GPU attestation proves that the GPU is genuine and unmodified. The workload reads the attestation; the workload verifies the attestation; the workload continues if the attestation is valid. The workload trust is built on the GPU attestation.
+GPU attestation proves that the GPU is genuine and unmodified. The workload reads that attestation, checks it, and starts only if it is valid. Workload trust rests on that check.
 </details>
 
 <details><summary>13. What is the difference between TPM and GPU attestation?</summary>
-The TPM attests the host (the CPU, the firmware, the bootloader). The GPU attests the GPU itself. Both are needed for full attestation: the workload needs to trust the host and the GPU. The workload's trust chain includes both the TPM and the GPU attestation.
+The TPM attests the host, including the CPU, the firmware, and the bootloader. GPU attestation covers the GPU itself. A workload needs both, because it must trust the host and the GPU before it starts.
 </details>
 
 <details><summary>14. What is the firmware update cycle?</summary>
-Vendor release -> test in staging -> canary on 10% of nodes -> full rollout to 100% of nodes -> vendor's next release. The cycle is quarterly. The firmware is tested in staging; the firmware is canaried on 10% of nodes; the firmware is rolled out to 100% of nodes.
+The cycle runs from vendor release, to a staging test, to a canary on 10 percent of nodes, to a full rollout on all nodes, and then to the vendor's next release. The chapter uses a quarterly cycle as an example. As you move through each stage, the update must pass before it goes to the next one.
 </details>
 
 <details><summary>15. What is the firmware rollback?</summary>
-The process for reverting to the previous firmware version. The rollback is triggered by: the firmware causes a boot failure; the firmware causes a performance regression; the firmware introduces a CVE. The rollback is automated; the rollback is tested in staging; the rollback is documented.
+It is the process for reverting to the previous firmware version. This chapter lists three triggers: a boot failure, a performance regression, or a new CVE. A rollback should be automated, tested in staging, and documented.
 </details>
 
 <details><summary>16. What is the most important firmware trust metric?</summary>
-Firmware with known CVEs. The metric tells the team which firmware components have known CVEs. Any firmware with a known CVE is a security exposure that the team must address. The alert fires when the field is non-empty.
+Firmware with known CVEs. This metric shows which components carry known CVEs. Any such firmware is an exposure the team must address, so set the alert to fire whenever you see a non-empty field.
 </details>
 
 <details><summary>17. What is the FW BOM cadence?</summary>
-The FW BOM is scanned daily. The scan is automated; the scan is continuous; the scan produces a structured record. The FW BOM freshness is less than 24 hours; the alert fires when the FW BOM is older than 24 hours.
+The chapter's example scans the FW BOM daily, and the scan is automated and produces a structured record. The freshness target is under 24 hours, and an alert fires when the FW BOM is older than that. Both the daily scan and the 24-hour target are example values to set for your own team.
 </details>
 
 <details><summary>18. What is the relationship between the FW BOM and the threat model?</summary>
-The threat model identifies the threats to the firmware (T-005: Container image supply chain attack; T-006: GPU memory scraping). The FW BOM is the audit trail for the controls that mitigate the threats. The FW BOM is the evidence that the controls are working.
+The threat model names threats to firmware, such as T-005 (container image supply chain attack) and T-006 (GPU memory scraping). The FW BOM is the audit trail for the controls that address those threats. It is the evidence that those controls work.
 </details>
 
 <details><summary>19. Why is hardware and firmware trust a Tier 2 chapter?</summary>
-Because the hardware and firmware trust is the foundation of the security controls. Without the firmware trust, every other control is compromised. The firmware trust is what the platform team owns; the firmware trust is what the regulator sees; the firmware trust is what the auditor inspects.
+Firmware trust underpins the other security controls, so if it fails, the rest cannot be relied on. The platform team owns it, and regulators and auditors look at it. The tier is a planning label in this handbook, and this reasoning is the chapter's own argument rather than a cited source.
 </details>
 
 <details><summary>20. What five questions should the firmware trust lab let you answer in five seconds each?</summary>
-What is the current secure boot verification rate. What is the current TPM attestation verification rate. What is the current GPU attestation verification rate. What is the current firmware version. What is the current number of firmware CVEs. If any takes more than 30 seconds, the hardware and firmware trust is not yet a production service.
+Answer these five questions. What is the current secure boot verification rate? What is the current TPM attestation verification rate? What is the current GPU attestation verification rate? What is the current firmware version? What is the current number of firmware CVEs? The chapter's example limit is 30 seconds per answer, and if your answer takes longer, your firmware trust is not yet ready to run as a production service.
 </details>
 
 ---
@@ -631,7 +657,7 @@ What is the current secure boot verification rate. What is the current TPM attes
 ### Cross-references to other handbook chapters
 
 - Chapter 18.1 for the threat-model context.
-- Chapter 11.21 for the GPU device plugin.
+- Chapter 11.2 for the GPU device plugin.
 - Chapter 10.21 for the GPU health.
 - Chapter 18.3 for the container and software supply chain.
 

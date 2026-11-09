@@ -25,12 +25,14 @@ lab_venue: "GCP / GKE"
 
 ## Why this matters for AI infrastructure
 
-Every chapter in Part 17 so far has been about preventing incidents. This chapter is about responding to incidents when they happen. An AI factory without an incident response process is an AI factory where the on-call is reactive, the escalation is ad-hoc, and the post-mortem is forgotten. An AI factory with an incident response process is an AI factory where the on-call knows what to do, the escalation is clear, and the post-mortem produces organisational learning.
+Imagine a GPU training cluster that starts failing at two in the morning. Nobody knows who is in charge, so three engineers change things at the same time. The outage runs longer, and the post-mortem never gets written. An incident response process prevents that. It decides ahead of time who responds, how fast they act, and what the team records afterwards.
 
-Incident response is the muscle memory of the platform team. The muscle memory is built by the process; the muscle memory is built by the game days; the muscle memory is built by the post-mortems. A platform team that does not drill cannot respond; a platform team that drills can respond in minutes.
+The earlier chapters in Part 17 were about stopping incidents from starting. Alerting, failure modes, and cluster lifecycle all lower how often things break. They cannot bring the number to zero. This chapter covers what you do once prevention has failed.
+
+Incident response is a skill you build by repetition. The process gives the team its steps, game days give it practice, and post-mortems turn each real incident into a change. A team that has drilled usually recovers faster, because nobody has to invent the steps during the outage.
 
 ```text
-Why incident response is on the critical path (V19 ch2; V16 ch12; V7 ch3; EAS Ch 7):
+Why incident response is on the critical path (background reading: NVIDIA Zero-to-Hero volume 19; NVIDIA Zero-to-Hero volume 16; NVIDIA Zero-to-Hero volume 7; Engineering AI Systems; the figures below are examples, not quotations):
 - A typical mature AI platform has 5-15 major incidents per quarter. Each
   incident has a severity; each severity has an escalation; each escalation
   has a comms cadence. The team that has the process responds in minutes; the
@@ -44,15 +46,19 @@ Why incident response is on the critical path (V19 ch2; V16 ch12; V7 ch3; EAS Ch
   not responds in hours.
 ```
 
-Three operational realities make this chapter a platform-team concern rather than a data-science-only concern:
+The figures in that block, such as 5-15 incidents per quarter, are example values. They are not measured data from a source. Treat them as a starting guess until your own incident history gives you real numbers.
 
-1. **The incident response process is a platform-team discipline.** The on-call is paged; the on-call follows the runbook; the on-call escalates to the IC; the IC coordinates the response. The platform team's discipline is what makes the response coherent.
-2. **The game day is a platform-team deliverable.** The game day is planned quarterly; the game day tests the runbook; the game day drills the team. The platform team's deliverable is what keeps the muscle memory sharp.
-3. **The post-mortem is a platform-team artefact.** Every incident produces a post-mortem; every post-mortem updates the runbook; every runbook update prevents the next incident. The platform team's artefact is what turns incidents into learning.
+Three operational realities make this a platform-team concern, not only a data-science concern.
 
-**Before a team can respond to an incident, the team must have an incident response process. A process is the severity levels; the escalation; the comms cadence; the IC role. A process is what makes the response fast; a process is what makes the response consistent; a process is what makes the response a learning.**
+1. Incident response is owned by the platform team. When an alert pages someone, the on-call follows the runbook and escalates to the Incident Commander, who keeps the response coordinated.
+2. Game days are a platform-team deliverable. Someone has to plan the failure, schedule the drill, and check that the runbook still matches the cluster.
+3. Post-mortems are a platform-team artefact. Each one should end with a runbook or alert change. Otherwise the same incident will come back.
+
+**A response process is what makes the response fast, consistent, and a source of learning.** Before you write any runbook, decide who the Incident Commander is for your next SEV-1, and who backs them up.
 
 ## Prerequisites and outcomes
+
+Before you start, you need the alerting, failure-mode, and change-management chapters. Think of this chapter as the response half of the prevention work you have already done. The outcomes below tell you what you should be able to do when you finish.
 
 ### Prerequisites
 
@@ -66,18 +72,20 @@ After completing this chapter you will be able to:
 
 1. Specify the severity levels (SEV-1, SEV-2, SEV-3) and the escalation for each.
 2. Build the incident response process: detection, triage, mitigation, resolution, post-mortem.
-3. Define the Incident Commander (IC) role: the IC's responsibilities; the IC's authority; the IC's communication.
-4. Run game days: the planning; the execution; the post-mortem.
-5. Write post-mortems: the blameless template; the timeline; the action items.
+3. Define the Incident Commander (IC) role, including its responsibilities, its authority, and how it communicates.
+4. Run game days: plan them, execute them, and write up the results.
+5. Write blameless post-mortems with a clear timeline and action items.
 6. Operate the incident response process on GKE with reliable detection, clear escalation, and productive learning.
 
 ---
 
 ## 1. The severity levels
 
+Severity tells the on-call engineer how fast to move and who to wake up. Pick the level from customer impact, not from how hard the bug looks to fix. The response times, deadlines, and cadences in the tables below are example values. Your team should choose its own, based on its SLOs and its staffing.
+
 ### 1.1 SEV-1: customer-facing outage
 
-A SEV-1 is a customer-facing outage. The customer cannot use the service; the SLO is breached; the revenue is impacted.
+A SEV-1 means customers cannot use the service. The SLO is breached, and revenue stops or drops. Treat it as the top priority. The on-call is paged at once, and the escalation clock starts.
 
 | Property | Value |
 |---|---|
@@ -87,11 +95,9 @@ A SEV-1 is a customer-facing outage. The customer cannot use the service; the SL
 | Resolution time | Within 4 hours |
 | Post-mortem | Within 5 business days |
 
-The pattern is: SEV-1 is the highest severity; SEV-1 pages the IC immediately; SEV-1 is communicated every 30 minutes; SEV-1 is resolved within 4 hours; SEV-1 has a post-mortem within 5 business days.
-
 ### 1.2 SEV-2: degraded service
 
-A SEV-2 is a degraded service. The customer can use the service but with reduced quality; the SLO is at risk; the revenue may be impacted.
+A SEV-2 means the service still works, but customers get a worse experience. The SLO is at risk, and revenue may suffer. The on-call responds quickly, but most of the company does not need to drop everything.
 
 | Property | Value |
 |---|---|
@@ -101,11 +107,9 @@ A SEV-2 is a degraded service. The customer can use the service but with reduced
 | Resolution time | Within 24 hours |
 | Post-mortem | Within 10 business days |
 
-The pattern is: SEV-2 is the medium severity; SEV-2 pages the on-call within 15 minutes; SEV-2 is communicated every 2 hours; SEV-2 is resolved within 24 hours.
-
 ### 1.3 SEV-3: internal issue
 
-A SEV-3 is an internal issue. The customer is not affected; the internal team is affected; the issue can wait until business hours.
+A SEV-3 is a problem inside your team. Customers do not notice it. It can wait for business hours, so the on-call notifies the team and the work goes into the normal queue. When you rank a new alert, ask first whether a customer would ever notice it.
 
 | Property | Value |
 |---|---|
@@ -115,7 +119,7 @@ A SEV-3 is an internal issue. The customer is not affected; the internal team is
 | Resolution time | Within 1 week |
 | Post-mortem | Optional |
 
-The pattern is: SEV-3 is the lowest severity; SEV-3 notifies the on-call within 1 hour; SEV-3 is communicated once per business day; SEV-3 is resolved within 1 week.
+Before your next incident, write down your team's three severity levels, with one real example of each.
 
 ---
 
@@ -123,7 +127,7 @@ The pattern is: SEV-3 is the lowest severity; SEV-3 notifies the on-call within 
 
 ### 2.1 The process stages
 
-The incident response process has six stages: detection, triage, mitigation, resolution, communication, and post-mortem.
+Picture a page at night. An alert fires, and within minutes someone has to decide what to do next. The process gives every incident the same path, so the on-call does not have to invent one. It has six stages, shown in the diagram: detection, triage, mitigation, resolution, communication, and post-mortem. The diagram adds one final step: updating the runbook.
 
 ```mermaid
 flowchart LR
@@ -136,25 +140,23 @@ flowchart LR
     G --> A
 ```
 
-The pattern is: every incident goes through the six stages; the stages are sequential; the stages are documented; the stages are audited.
-
 ### 2.2 Detection
 
-The incident is detected by the alerting stack (Chapter 17.6). The alert fires; the alert pages the on-call; the on-call acknowledges the page.
+Detection should happen before a customer tells you about the problem. The alerting stack from Chapter 17.6 watches the metrics and fires an alert. The alert pages the on-call, who acknowledges it so the rest of the team knows someone is looking.
 
 ```bash
-# The alert fires
-curl -X POST http://prometheus.monitoring:9090/api/v1/admin/tsdb \
+# Fire a synthetic alert through Alertmanager's API
+curl -X POST http://alertmanager.monitoring:9093/api/v2/alerts \
   -H "Content-Type: application/json" \
-  -d '{"name": "incident_test"}'
+  -d '[{"labels": {"alertname": "incident_test", "severity": "critical"}}]'
 # expected: the alert fires; the on-call is paged
 ```
 
-The pattern is: the detection is automatic; the on-call acknowledges within 5 minutes; the on-call starts the triage.
+The example above assumes the on-call acknowledges within 5 minutes. That is a target to set for your team, not a standard. Too many critical alerts burn out the on-call and bury the real ones. Put a description and a runbook link in each alert's annotations, so the engineer knows what to check first. Production Kubernetes, chapter 9, also suggests a dead man's switch: an alert that always fires and pages you when it stops.
 
 ### 2.3 Triage
 
-The on-call investigates the alert. The on-call reads the runbook; the on-call checks the dashboards; the on-call determines the severity.
+Triage answers one question: what is actually broken? Start with the runbook, then open the dashboard. Decide the severity only after you have seen what is failing.
 
 ```bash
 # The on-call reads the runbook
@@ -167,11 +169,9 @@ curl -s 'http://prometheus.monitoring:9090/api/v1/query?query=histogram_quantile
 echo "SEV-2: degraded inference latency" > /tmp/severity.txt
 ```
 
-The pattern is: the triage is fast; the on-call uses the runbook; the on-call determines the severity within 15 minutes.
-
 ### 2.4 Mitigation
 
-The on-call reduces the impact of the incident. The on-call may roll back; the on-call may drain a node; the on-call may scale the workload; the on-call may switch to a backup.
+Mitigation buys time. The goal is to reduce customer impact now, even before you know the root cause. A rollback is often the fastest option, because it returns the workload to the version that was running before the change. Other options are draining a node, scaling out, or switching to a backup. Each trades some risk for speed, so write down your choice.
 
 ```bash
 # Roll back the recent change
@@ -179,11 +179,9 @@ kubectl --context=production rollout undo deployment/churn-model
 # expected: the workload reverts to the previous version; the latency improves
 ```
 
-The pattern is: the mitigation is fast; the mitigation reduces the impact; the mitigation is documented.
-
 ### 2.5 Resolution
 
-The on-call restores the service. The on-call identifies the root cause; the on-call applies the fix; the on-call verifies the SLO.
+Resolution means the service is healthy and will stay that way. Find the root cause first, then apply a fix that addresses it. Check the SLO with the triage query, so you know the fix worked. The appendix of AI Systems Performance Engineering adds one habit: measure throughput, latency, and utilization before and after each change.
 
 ```bash
 # The on-call identifies the root cause
@@ -198,11 +196,9 @@ curl -s 'http://prometheus.monitoring:9090/api/v1/query?query=histogram_quantile
 # expected: the SLO is met
 ```
 
-The pattern is: the resolution is thorough; the on-call identifies the root cause; the on-call applies the fix; the on-call verifies the SLO.
-
 ### 2.6 Communication
 
-The IC communicates the incident to the stakeholders. The communication cadence depends on the severity.
+Communication runs alongside the fix, not after it. The IC posts updates on the cadence set for the severity. Each update should say what is known, what is not known yet, and when the next update arrives. Keep updates regular, even when nothing has changed.
 
 ```bash
 # Send a status update to Slack
@@ -213,15 +209,17 @@ python code/part17/send_status_update.py \
 # expected: the status update is sent to Slack; the status update is sent to email
 ```
 
-The pattern is: the communication is regular; the communication is concise; the communication includes the ETA.
+Before your first drill, write the status-update template and the cadence for each severity. Then the first update will not wait for a decision.
 
 ---
 
 ## 3. The Incident Commander role
 
+In a real incident, several engineers work at once. Without one person coordinating, they duplicate work, contradict each other, and forget to tell anyone outside the room. The Incident Commander (IC) is that person. The IC does not have to fix the problem personally. The job is to keep the response organised and the decisions clear.
+
 ### 3.1 The IC's responsibilities
 
-The Incident Commander (IC) is the single point of contact during an incident. The IC coordinates the response; the IC makes the decisions; the IC communicates with the stakeholders.
+The IC is the single point of contact during an incident. Everyone else reports to the IC, and the IC decides what happens next. The table below lists the four duties.
 
 | Responsibility | What the IC does |
 |---|---|
@@ -230,11 +228,9 @@ The Incident Commander (IC) is the single point of contact during an incident. T
 | **Communicate** | The IC sends status updates; the IC notifies stakeholders; the IC schedules the post-mortem |
 | **Document** | The IC documents the timeline; the IC documents the decisions; the IC documents the action items |
 
-The pattern is: the IC has the authority to make decisions; the IC is the single point of contact; the IC is not the implementer.
-
 ### 3.2 The IC's authority
 
-The IC has the authority to make decisions that affect the cluster. The IC can roll back; the IC can drain nodes; the IC can scale workloads; the IC can change the SLO temporarily.
+The IC needs authority to act without waiting for a committee. In practice, the IC can roll back a change, drain a node, scale a workload, or change an SLO for the length of the incident. Agree on these powers before the incident starts. Nobody wants to debate who may roll back production at three in the morning.
 
 ```bash
 # The IC rolls back the recent change
@@ -242,11 +238,9 @@ kubectl --context=production rollout undo deployment/churn-model
 # expected: the IC's authority is respected; the rollback proceeds
 ```
 
-The pattern is: the IC's authority is explicit; the IC's authority is documented; the IC's authority is respected by the team.
-
 ### 3.3 The IC's communication
 
-The IC communicates with the stakeholders. The IC's communication is regular; the IC's communication is concise; the IC's communication includes the ETA.
+The IC's messages should be short, regular, and easy to scan. The template below gives every update the same shape. Fill in every field each time you post, even the fields that have not changed, so readers never have to guess. The ETA is an example; give your own.
 
 ```text
 IC communication template:
@@ -259,15 +253,17 @@ IC communication template:
 - Next update: 14:30 UTC
 ```
 
-The pattern is: the IC's communication is structured; the IC's communication is regular; the IC's communication is honest.
+Before you name your first IC, put this template in the runbook. The next person on call can then use it without help.
 
 ---
 
 ## 4. Game days
 
+A game day is a drill. You plan a failure, inject it in a controlled way, and watch how the team responds. A good game day tests the runbook, the escalation path, and the post-mortem, not only the software. You learn the most from the places where the response stalls.
+
 ### 4.1 The game day plan
 
-Game days are planned failures that drill the team. The game day tests the runbook; the game day tests the escalation; the game day tests the post-mortem.
+The plan below describes one drill: a GPU node fails, and its workload has to move. Read it as a template. The times and targets in it, such as the one-minute alert window and the 30-minute window to meet the SLO, are example values for a practice run. They are not requirements.
 
 ```markdown
 # Game Day Plan: GPU Node Failure
@@ -294,11 +290,9 @@ At 14:00 UTC, we will simulate a GPU node failure by cordoning the node and evic
 - The post-mortem is written within 5 business days
 ```
 
-The pattern is: the game day has a scenario; the game day has an injection; the game day has an expected response; the game day has success criteria.
-
 ### 4.2 The game day execution
 
-The game day is executed at a scheduled time. The team is on-call; the team responds; the team documents the response.
+Schedule the game day ahead of time, so the participants can clear their calendars. On the day, the team stays on call and responds as it would to a real page. Someone should record the timeline as it happens, because timings are hard to recall accurately afterwards.
 
 ```bash
 # Schedule the game day
@@ -310,11 +304,9 @@ python code/part17/schedule_game_day.py \
 # expected: the game day is scheduled; the participants are notified
 ```
 
-The pattern is: the game day is scheduled in advance; the participants are notified; the game day is executed at the scheduled time.
-
 ### 4.3 The game day post-mortem
 
-Every game day produces a post-mortem. The post-mortem documents what was tested; what worked; what did not work; what to improve.
+Write up every game day the same way you write up a real incident. Record what was tested, what worked, what did not, and who owns each fix. The numbers in the example below are illustrative, not measurements from a real drill. Use the example to see the shape of a good write-up, then replace its numbers with your own.
 
 ```markdown
 # Game Day Post-Mortem: GPU Node Failure
@@ -340,15 +332,17 @@ Every game day produces a post-mortem. The post-mortem documents what was tested
 - Update the runbook with the actual drain duration (Action: update, Owner: platform-team, Due: 2024-04-22)
 ```
 
-The pattern is: the post-mortem documents what worked; the post-mortem documents what did not work; the post-mortem produces action items with owners and deadlines.
+Before you schedule the next drill, check that last quarter's action items are closed or have a new owner.
 
 ---
 
 ## 5. The post-mortem
 
+A post-mortem is how an incident turns into something the team learns from. The most useful ones describe the system, not the person who was on call when things went wrong. Ask what allowed the failure and what would have caught it sooner. If people fear blame, they hide details, and hidden details make the next incident harder to understand.
+
 ### 5.1 The blameless template
 
-Every incident produces a blameless post-mortem. The post-mortem focuses on the system; the post-mortem does not focus on individuals; the post-mortem produces organisational learning.
+Every incident gets a blameless post-mortem. The template below shows the sections you need. The incident in it is illustrative. Its times, customer counts, and severity are example values, not a record from a real outage. Notice how each action item has an owner and a due date, so the review can track it.
 
 ```markdown
 # Post-Mortem: INC-2024-03-15-001
@@ -391,11 +385,11 @@ The deployment of churn-model v7 introduced a memory leak in the inference engin
 - Update the runbook with the rollback procedure (Action: update, Owner: ml-platform-team, Due: 2024-04-15)
 ```
 
-The pattern is: the post-mortem has a summary; the post-mortem has an impact; the post-mortem has a timeline; the post-mortem has a root cause; the post-mortem has what worked; the post-mortem has what did not work; the post-mortem has action items.
+Keep configurations and benchmarks in source control, so you can trace a regression back to the change that caused it. Run the performance checks inside your CI/CD pipeline, not only by hand. The appendix checklist of AI Systems Performance Engineering recommends both. In the example above, that is the difference between a memory leak test that runs on every release and one that depends on someone remembering it.
 
 ### 5.2 The post-mortem review
 
-The post-mortem is reviewed by the platform team. The review identifies systemic issues; the review prioritises action items; the review tracks progress.
+The platform team reviews each post-mortem and looks for patterns across incidents. The review ranks the action items and tracks each one until it closes. Hold the review soon after the write-up, while people still remember the details. Check that every action item has an owner and a due date before the meeting ends.
 
 ```bash
 # Schedule the post-mortem review
@@ -406,13 +400,15 @@ python code/part17/schedule_review.py \
 # expected: the review is scheduled; the attendees are notified
 ```
 
-The pattern is: the review is scheduled within 5 business days of the incident; the review is attended by the platform team; the review tracks action items.
-
 ---
 
 ## 6. Operating the incident response process
 
+A process is only as good as the tools behind it. Paging, chat, and the bridge call all need to work when an incident starts. This section lists those components, the roles that use them, and the signals that show whether the process is healthy.
+
 ### 6.1 The components
+
+The table lists the services that carry an incident. The latency targets in it are example values. Check each one against the vendor's documentation, and set the targets your own team needs.
 
 | Component | Where it runs | Backing store | SLO |
 |---|---|---|---|
@@ -423,7 +419,7 @@ The pattern is: the review is scheduled within 5 business days of the incident; 
 
 ### 6.2 IAM and the incident response
 
-The incident response stack has its own IAM. The pattern is:
+Access during an incident should follow the role, not the person. The roles below decide who can be paged, who can declare an incident, and who can join the response. Keep the roles narrow, so a single engineer cannot change everything alone.
 
 | Role | Who | What they can do |
 |---|---|---|
@@ -432,9 +428,11 @@ The incident response stack has its own IAM. The pattern is:
 | `incident.commander` | The platform team lead | Declare incidents; coordinate responses |
 | `incident.responder` | Any engineer | Join incident bridges; contribute to the resolution |
 
-The on-call rotation is the platform team's discipline. The rotation is weekly; the primary and secondary rotate; the handover includes the current state of the cluster.
+The on-call rotation is a platform-team discipline. The example rotation is weekly, with a primary and a secondary who swap over. Your team may choose a different length, but every handover should include the current state of the cluster.
 
 ### 6.3 Observability
+
+Track the response itself, not only the cluster. The table lists the measures to watch and the thresholds that should raise a flag. The thresholds are example values, so tune them against your team's own history. MTTA, MTTM, and MTTR matter most. They show how fast the team responds, and their trend shows where it can improve.
 
 | Metric | Why it matters | Alert |
 |---|---|---|
@@ -445,67 +443,69 @@ The on-call rotation is the platform team's discipline. The rotation is weekly; 
 | Mean time to resolve (MTTR) | Resolution effectiveness | > 4 hours |
 | Game day frequency | Drill frequency | > 90 days since last game day |
 
-The MTTA, MTTM, and MTTR metrics are the most important. The metrics tell the platform team how fast the response is; the metrics tell the platform team where the response can improve.
+Pick one of these measures and check it against your last three incidents. That one check will show you whether the dashboard can answer the question you care about.
 
 ---
 
 ## 7. How it fails
 
-Six failure modes recur.
+Six failure modes recur. Each one below has a symptom you can see, a likely diagnosis, and a fix. Read them as warning signs for your own process.
 
 ### 7.1 "The on-call is paged but does not know what to do"
 
-**Symptom:** The on-call is paged; the on-call opens the runbook; the runbook is missing the recovery step; the on-call does not know what to do.
+**Symptom:** The on-call is paged and opens the runbook. The runbook is missing the recovery step, so the on-call is stuck.
 
-**Diagnosis:** The runbook was not updated after the last incident; the runbook has gaps; the on-call was not trained on the runbook.
+**Diagnosis:** The runbook was not updated after the last incident. It has gaps, and the on-call was never trained on it.
 
-**Fix:** Update the runbook; train the on-call on the runbook; add an integration test that exercises the runbook.
+**Fix:** Update the runbook, train the on-call on it, and add an integration test that follows the runbook.
 
 ### 7.2 "The IC is missing"
 
-**Symptom:** The incident is SEV-1; no IC is declared; the response is uncoordinated; the incident escalates.
+**Symptom:** A SEV-1 is open with no IC. The response is uncoordinated, and the incident escalates.
 
-**Diagnosis:** The IC role is not defined; the IC rotation is missing; the team does not know who is the IC.
+**Diagnosis:** The IC role is not defined. There is no IC rotation, so the team does not know who the IC is.
 
-**Fix:** Define the IC role; establish the IC rotation; train the team on the IC role; add the IC declaration to the alerting.
+**Fix:** Define the role, set up the rotation, train the team on it, and add the IC declaration to your alerting.
 
 ### 7.3 "The comms cadence is wrong"
 
-**Symptom:** The incident is SEV-1; the comms cadence is every 4 hours; the stakeholders are not informed; the incident escalates.
+**Symptom:** A SEV-1 gets an update only every 4 hours. Stakeholders hear nothing, and the incident escalates.
 
-**Diagnosis:** The comms cadence is not defined; the team does not know the cadence; the cadence is not enforced.
+**Diagnosis:** The cadence is not defined, so nobody knows it, and nobody enforces it.
 
-**Fix:** Define the comms cadence; train the team on the cadence; enforce the cadence in the incident management.
+**Fix:** Define the cadence for each severity, train the team on it, and enforce it in your incident management tool.
 
 ### 7.4 "The post-mortem is not written"
 
-**Symptom:** The incident is resolved; the post-mortem is not written; the team does not learn from the incident; the incident recurs.
+**Symptom:** The incident is resolved, but no post-mortem exists. The team does not learn from the incident, and it recurs.
 
-**Diagnosis:** The post-mortem template is missing; the team does not know how to write a post-mortem; the post-mortem is not enforced.
+**Diagnosis:** There is no template, so people do not know how to start one. Nobody enforces the step either.
 
-**Fix:** Create the post-mortem template; train the team on the post-mortem; enforce the post-mortem in the incident management.
+**Fix:** Create the template, train the team to use it, and make it a required step in the incident management tool.
 
 ### 7.5 "The game day is skipped"
 
-**Symptom:** The team has not drilled in 6 months; the team's muscle memory is weak; the incident response is slow.
+**Symptom:** The team has not drilled in 6 months. Its muscle memory is weak, and the response is slow.
 
-**Diagnosis:** The game day schedule is missing; the team is too busy; the game day is not a priority.
+**Diagnosis:** The schedule is missing, the team is busy, and nobody has made the drill a priority.
 
-**Fix:** Schedule the game day quarterly; automate the scheduling; add the game day to the team's quarterly OKRs.
+**Fix:** Schedule a game day each quarter, automate the booking, and add the drill to the team's quarterly goals.
 
 ### 7.6 "The post-mortem is not blameless"
 
-**Symptom:** The post-mortem blames an individual; the individual is demotivated; the team does not learn from the incident.
+**Symptom:** The post-mortem names one engineer as the cause. The team does not learn from the incident, because people stop being candid.
 
-**Diagnosis:** The post-mortem culture is not blameless; the team has not adopted the blameless mindset; the leadership has not modelled the blameless mindset.
+**Diagnosis:** The team has not adopted a blameless culture, and its leaders have not modelled one.
 
-**Fix:** Train the team on the blameless post-mortem; model the blameless mindset; remove blame from the post-mortem template.
+**Fix:** Train the team on blameless reviews, model the approach in your own write-ups, and remove blame language from the template.
+
+Pick the failure mode that matches your last incident, and fix it before the next drill.
 
 ---
 
 ## 8. Hands-on lab
 
-This lab walks through the incident response process: detect an alert; triage the alert; mitigate the impact; resolve the incident; communicate; run a game day; write a post-mortem. The lab is **untested** in this repository.
+In this lab you walk through one full incident. You detect an alert, triage it, mitigate it, resolve it, communicate, run a drill, and write a post-mortem. The lab is **untested** in this repository, so check each command before you run it. Run them on a non-production cluster first.
 
 ### 8.1 Prerequisites
 
@@ -515,18 +515,22 @@ This lab walks through the incident response process: detect an alert; triage th
 
 ### 8.2 Step 1: simulate an alert
 
+Start by creating a test alert. Fire it on a non-production cluster, where a page does no harm to customers.
+
 ```bash
-# Inject a synthetic critical alert
-curl -X POST http://prometheus.monitoring:9090/api/v1/admin/tsdb \
+# Inject a synthetic critical alert through Alertmanager's API
+curl -X POST http://alertmanager.monitoring:9093/api/v2/alerts \
   -H "Content-Type: application/json" \
-  -d '{"name": "incident_test"}'
+  -d '[{"labels": {"alertname": "incident_test", "severity": "critical"}}]'
 # expected: the alert fires; the on-call is paged
 ```
 
 ### 8.3 Step 2: triage the alert
 
+The request below opens an incident record in PagerDuty and sets its priority. Use the record as the single place where the timeline lives.
+
 ```bash
-# The on-call acknowledges the page
+# Open the incident record (acknowledging the page itself is done in the PagerDuty app or its API)
 curl -X POST http://pagerduty/api/incidents \
   -H "Authorization: Token token=$PAGERDUTY_TOKEN" \
   -H "Content-Type: application/json" \
@@ -535,6 +539,8 @@ curl -X POST http://pagerduty/api/incidents \
 
 ### 8.4 Step 3: mitigate the impact
 
+Roll back the recent deployment first. It is usually the quickest way to reduce the impact.
+
 ```bash
 # Roll back the recent deployment
 kubectl --context=production rollout undo deployment/churn-model
@@ -542,6 +548,8 @@ kubectl --context=production rollout undo deployment/churn-model
 ```
 
 ### 8.5 Step 4: resolve the incident
+
+Confirm the SLO is met with the same query you used during triage. Then close the incident record.
 
 ```bash
 # Verify the SLO is met
@@ -557,6 +565,8 @@ curl -X PUT http://pagerduty/api/incidents/INC-2024-03-15-001 \
 
 ### 8.6 Step 5: communicate
 
+Send the status update so the stakeholders know the incident is over and the post-mortem is coming.
+
 ```bash
 # Send a status update to Slack
 python code/part17/send_status_update.py \
@@ -568,6 +578,8 @@ python code/part17/send_status_update.py \
 
 ### 8.7 Step 6: write the post-mortem
 
+Generate the template, then fill it in using the timeline you recorded during the incident.
+
 ```bash
 # Generate the post-mortem template
 python code/part17/generate_post_mortem.py \
@@ -577,6 +589,8 @@ python code/part17/generate_post_mortem.py \
 ```
 
 ### 8.8 Step 7: run a game day
+
+Schedule the drill, then execute it using the same scenario you practised during the lab.
 
 ```bash
 # Schedule the game day
@@ -592,7 +606,7 @@ python code/part17/execute_game_day.py \
 
 ### 8.9 What to record
 
-After the lab, you should be able to answer five questions in five seconds each:
+When the lab is done, you should be able to answer five questions quickly:
 
 1. What is the current incident rate per week?
 2. What is the current MTTA?
@@ -600,101 +614,105 @@ After the lab, you should be able to answer five questions in five seconds each:
 4. When was the last game day?
 5. What is the most recent post-mortem, and what were the action items?
 
-If any takes more than 30 seconds, the incident response process is not yet a production service. The lab is **untested** against a live GKE cluster.
+The target is five seconds per question. Any answer that takes more than 30 seconds means the process is not yet a production service. These two limits are this chapter's own rule of thumb. The lab is **untested** against a live GKE cluster.
 
 ---
 
 ## Exercises
 
-1. **Add an incident severity matrix.** Build a matrix that maps every alert to a severity. *Solution sketch:* a YAML file that maps alerts to severities; the matrix is the default for every alert.
-2. **Add an IC rotation.** Build a rotation that rotates the IC weekly. *Solution sketch:* a PagerDuty schedule that rotates the IC; the schedule is published to the team.
-3. **Add a game day calendar.** Build a calendar that schedules a game day quarterly. *Solution sketch:* a calendar event; the event is repeated quarterly; the event is visible to the team.
-4. **Add a post-mortem template.** Build a template that includes the summary, impact, timeline, root cause, what worked, what did not work, and action items. *Solution sketch:* a Markdown template; the template is the default for every post-mortem.
-5. **Add an incident response dashboard.** Build a Grafana dashboard that shows the current incident, the MTTA, the MTTR, and the action items. *Solution sketch:* a Grafana dashboard; the panels query PagerDuty; the panels are visible to the team.
-6. **Add an incident response game.** Build a game that simulates an incident; the team responds; the team is scored on the response time. *Solution sketch:* a Python script that simulates the incident; the script measures the response time; the script generates the score.
+Try these after you finish the lab. Each one turns a step in this chapter into a tool you can keep and improve.
+
+1. **Add an incident severity matrix.** Build a matrix that maps every alert to a severity. *Solution sketch:* Use a YAML file that maps each alert to its severity, and make it the default for every alert.
+2. **Add an IC rotation.** Build a rotation that changes the IC each week. *Solution sketch:* Create a PagerDuty schedule for the IC, and publish it to the team.
+3. **Add a game day calendar.** Build a calendar that schedules a game day each quarter. *Solution sketch:* Create a recurring calendar event that repeats quarterly and is visible to the whole team.
+4. **Add a post-mortem template.** Build a template with a summary, impact, timeline, root cause, what worked, what did not work, and action items. *Solution sketch:* Write it as a Markdown template and make it the default for every post-mortem.
+5. **Add an incident response dashboard.** Build a Grafana dashboard that shows the current incident, MTTA, MTTR, and open action items. *Solution sketch:* The panels query PagerDuty and should be visible to the whole team.
+6. **Add an incident response game.** Build a game that simulates an incident. The team responds, and is scored on response time. *Solution sketch:* A Python script simulates the incident, measures the response time, and generates the score.
 
 ---
 
 ## Checkpoint questions
 
+Answer each question in your head before you open it. If you cannot, reread the section it comes from.
+
 <details><summary>1. What three severity levels does the incident response process define?</summary>
-SEV-1 (customer-facing outage; immediate response; 4-hour resolution; 5-day post-mortem), SEV-2 (degraded service; 15-minute response; 24-hour resolution; 10-day post-mortem), SEV-3 (internal issue; 1-hour response; 1-week resolution; optional post-mortem). Each severity has a response time, an escalation, a communication cadence, a resolution time, and a post-mortem timeline.
+SEV-1 is a customer-facing outage. Its response is immediate, its resolution time is 4 hours, and its post-mortem is due within 5 business days. SEV-2 is a degraded service. Its response takes 15 minutes, its resolution time is 24 hours, and its post-mortem is due within 10 business days. SEV-3 is an internal issue. Its response takes 1 hour, its resolution time is 1 week, and its post-mortem is optional. Each level sets a response time, an escalation, a communication cadence, a resolution time, and a post-mortem timeline.
 </details>
 
 <details><summary>2. What six stages does the incident response process have?</summary>
-Detection (alert fires), triage (on-call investigates), mitigation (reduce impact), resolution (restore service), communication (notify stakeholders), post-mortem (learn from incident). Every incident goes through the six stages; the stages are sequential; the stages are documented.
+Detection (the alert fires), triage (the on-call investigates), mitigation (the impact is reduced), resolution (the service is restored), communication (stakeholders are notified), and post-mortem (the team learns from the incident). Every incident passes through these stages in order, and each stage is documented.
 </details>
 
 <details><summary>3. What is the Incident Commander role?</summary>
-The IC is the single point of contact during an incident. The IC coordinates the response; the IC makes the decisions; the IC communicates with the stakeholders. The IC's responsibilities are: coordinate, decide, communicate, document. The IC's authority is explicit: the IC can roll back; the IC can drain nodes; the IC can scale workloads; the IC can change the SLO temporarily.
+The IC is the single point of contact during an incident. The IC coordinates the response, makes the decisions, and communicates with the stakeholders. The IC's four responsibilities are to coordinate, decide, communicate, and document. The IC can roll back a change, drain nodes, scale workloads, and change the SLO temporarily.
 </details>
 
 <details><summary>4. What is a game day?</summary>
-A planned failure that drills the team. The game day has a scenario (e.g. GPU node failure); the game day has an injection (e.g. cordon the node); the game day has an expected response (e.g. alert fires within 1 minute); the game day has success criteria. Game days are scheduled quarterly; the post-mortem produces action items.
+A game day is a planned failure that drills the team. It has a scenario, such as a GPU node failure. It has an injection, such as cordoning the node. It has an expected response, such as an alert within 1 minute. It has success criteria. Game days are scheduled quarterly, and each one ends with a post-mortem that produces action items.
 </details>
 
 <details><summary>5. What is a blameless post-mortem?</summary>
-A post-mortem that focuses on the system, not the individual. The post-mortem has a summary, impact, timeline, root cause, what worked, what did not work, and action items. The post-mortem does not blame individuals; the post-mortem produces organisational learning.
+A blameless post-mortem focuses on the system, not the individual. It has a summary, an impact section, a timeline, a root cause, what worked, what did not work, and action items. It does not blame anyone, so the team can learn from it.
 </details>
 
 <details><summary>6. What is the difference between SEV-1 and SEV-2?</summary>
-SEV-1 is a customer-facing outage; the customer cannot use the service; the SLO is breached; the response time is immediate; the resolution time is 4 hours. SEV-2 is a degraded service; the customer can use the service but with reduced quality; the SLO is at risk; the response time is 15 minutes; the resolution time is 24 hours.
+SEV-1 is a customer-facing outage. Customers cannot use the service, and the SLO is breached. The response is immediate, and the resolution time is 4 hours. SEV-2 is a degraded service. Customers can still use it, with reduced quality, and the SLO is at risk. The response takes 15 minutes, and the resolution time is 24 hours.
 </details>
 
 <details><summary>7. What is the difference between SEV-2 and SEV-3?</summary>
-SEV-2 is a degraded service; the customer is affected; the SLO is at risk; the response time is 15 minutes; the resolution time is 24 hours. SEV-3 is an internal issue; the customer is not affected; the issue can wait until business hours; the response time is 1 hour; the resolution time is 1 week.
+SEV-2 affects customers. The service is degraded, the SLO is at risk, the response takes 15 minutes, and the resolution time is 24 hours. SEV-3 does not affect customers. It is an internal issue that can wait for business hours, with a 1-hour response and a 1-week resolution time.
 </details>
 
 <details><summary>8. What is the difference between the triage and the mitigation?</summary>
-Triage is the on-call's investigation of the alert; the on-call reads the runbook; the on-call checks the dashboards; the on-call determines the severity. Mitigation is the on-call's action to reduce the impact; the on-call may roll back; the on-call may drain a node; the on-call may scale the workload. Triage is understanding; mitigation is acting.
+Triage is the on-call's investigation of the alert. The on-call reads the runbook, checks the dashboards, and determines the severity. Mitigation is the action that reduces the impact, such as a rollback, a node drain, or a scale-out. Triage helps you understand the problem. Mitigation is about acting on it.
 </details>
 
 <details><summary>9. What is the difference between the mitigation and the resolution?</summary>
-Mitigation is the on-call's action to reduce the impact; the mitigation is fast; the mitigation is temporary. Resolution is the on-call's action to restore the service; the resolution is thorough; the resolution is permanent. Mitigation is stopping the bleeding; resolution is healing the wound.
+Mitigation reduces the impact quickly, but only temporarily. Resolution restores the service for good, and it takes longer. Mitigation stops the bleeding, and resolution heals the wound.
 </details>
 
 <details><summary>10. What is the MTTA, MTTM, and MTTR?</summary>
-MTTA is Mean Time to Acknowledge (the time from the alert firing to the on-call acknowledging). MTTM is Mean Time to Mitigate (the time from the alert firing to the mitigation in place). MTTR is Mean Time to Resolve (the time from the alert firing to the resolution in place). The metrics are tracked on a dashboard; the metrics drive the response improvement.
+MTTA is the mean time from the alert firing to the on-call acknowledging it. MTTM is the mean time from the alert firing to a mitigation in place. MTTR is the mean time from the alert firing to the resolution in place. The team tracks all three on a dashboard, and uses them to decide where to improve.
 </details>
 
 <details><summary>11. What is the difference between the IC's role and the on-call's role?</summary>
-The on-call is the engineer who responds to the page; the on-call investigates the alert; the on-call applies the mitigation. The IC is the engineer who coordinates the response; the IC makes the decisions; the IC communicates with the stakeholders. The on-call is the doer; the IC is the coordinator.
+The on-call responds to the page, investigates the alert, and applies the mitigation. The on-call does the work. The IC coordinates the response, makes the decisions, and communicates with the stakeholders. When you are on call, you are the doer; the IC coordinates.
 </details>
 
 <details><summary>12. What is the difference between a game day and a fire drill?</summary>
-A game day is a planned failure that drills the team; the game day has a scenario; the game day has an injection; the game day has success criteria. A fire drill is an ad-hoc failure that the team responds to; the fire drill has no scenario; the fire drill has no injection; the fire drill has no success criteria.
+A game day is planned. It has a scenario, an injection, and success criteria. A fire drill is ad hoc. The team responds to a failure that has no scenario, no injection, and no success criteria.
 </details>
 
 <details><summary>13. What is the most common incident response failure?</summary>
-The on-call is paged but does not know what to do. The on-call opens the runbook; the runbook is missing the recovery step; the on-call does not know what to do. The diagnosis is that the runbook was not updated after the last incident. The fix is to update the runbook; train the on-call on the runbook.
+The on-call is paged but does not know what to do. The runbook is missing the recovery step, so the on-call is stuck. The diagnosis is that the runbook was not updated after the last incident. The fix is to update the runbook and train the on-call on it.
 </details>
 
 <details><summary>14. What is the most common IC failure?</summary>
-The IC is missing. The incident is SEV-1; no IC is declared; the response is uncoordinated; the incident escalates. The diagnosis is that the IC role is not defined; the IC rotation is missing. The fix is to define the IC role; establish the IC rotation; train the team on the IC role.
+The IC is missing. A SEV-1 has no declared IC, so the response is uncoordinated and the incident escalates. The diagnosis is that the IC role is not defined and there is no IC rotation. The fix is to define the role, set up the rotation, and train the team on it.
 </details>
 
 <details><summary>15. What is the most common comms failure?</summary>
-The comms cadence is wrong. The incident is SEV-1; the comms cadence is every 4 hours; the stakeholders are not informed; the incident escalates. The diagnosis is that the comms cadence is not defined. The fix is to define the comms cadence; train the team on the cadence.
+The comms cadence is wrong. A SEV-1 gets updates only every 4 hours, so the stakeholders are not informed and the incident escalates. The diagnosis is that the cadence is not defined. The fix is to define the cadence and train the team on it.
 </details>
 
 <details><summary>16. What is the most common post-mortem failure?</summary>
-The post-mortem is not written. The incident is resolved; the post-mortem is not written; the team does not learn from the incident; the incident recurs. The diagnosis is that the post-mortem template is missing; the team does not know how to write a post-mortem. The fix is to create the post-mortem template; train the team on the post-mortem.
+The post-mortem is not written. The incident is resolved, the team does not learn from it, and it recurs. The diagnosis is that the template is missing, and people do not know how to write a post-mortem. The fix is to create the template and train the team on it.
 </details>
 
 <details><summary>17. What is the most common game day failure?</summary>
-The game day is skipped. The team has not drilled in 6 months; the team's muscle memory is weak; the incident response is slow. The diagnosis is that the game day schedule is missing; the team is too busy. The fix is to schedule the game day quarterly; automate the scheduling.
+The game day is skipped. The team has not drilled in 6 months, its muscle memory is weak, and its response is slow. The diagnosis is that the schedule is missing and the team is too busy. The fix is to schedule the game day quarterly and automate the scheduling.
 </details>
 
 <details><summary>18. What is the most common blameless culture failure?</summary>
-The post-mortem is not blameless. The post-mortem blames an individual; the individual is demotivated; the team does not learn from the incident. The diagnosis is that the post-mortem culture is not blameless. The fix is to train the team on the blameless post-mortem; model the blameless mindset; remove blame from the post-mortem template.
+The post-mortem is not blameless. It blames one individual, who loses motivation, and the team does not learn from the incident. The diagnosis is that the culture is not blameless. The fix is to train the team on blameless reviews, model the approach, and remove blame from the template.
 </details>
 
 <details><summary>19. Why is the incident response process a Tier 2 chapter?</summary>
-Because the incident response process is what keeps the cluster running when the SLO is breached. The process is what the platform team owns; the process is what the on-call follows; the process is what the customer sees when the cluster is down. A team that does not have the process is a team that is afraid to respond.
+Because the process is what keeps the cluster running when the SLO is breached. The platform team owns it, the on-call follows it, and it shapes what customers see when the cluster is down. Without the process, you have a team that is afraid to respond.
 </details>
 
 <details><summary>20. What five questions should the incident response lab let you answer in five seconds each?</summary>
-What is the current incident rate per week. What is the current MTTA. What is the current MTTR. When was the last game day. What is the most recent post-mortem and what were the action items. If any takes more than 30 seconds, the incident response process is not yet a production service.
+What is the current incident rate per week? What is the current MTTA? What is the current MTTR? When was the last game day? What is the most recent post-mortem, and what were its action items? If any answer takes you more than 30 seconds, the incident response process is not yet a production service.
 </details>
 
 ---
