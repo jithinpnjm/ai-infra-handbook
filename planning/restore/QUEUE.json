@@ -1876,5 +1876,112 @@
    "docs/part-06-hpc-slurm/30-facility-basics-power-cooling-racks-and-liquid-cooling.md"
   ],
   "id": "U011"
+ },
+ {
+  "book": "ai-systems-performance-engineering",
+  "book_chapter": "Appendix. AI Systems Performance Checklist (175+ Items)",
+  "prefix": "Appendix",
+  "pct": 81,
+  "labels": [
+   "10.1",
+   "17.9"
+  ],
+  "primary": "docs/part-17-operations/09-the-ai-systems-performance-checklist-master.md",
+  "files": [
+   "docs/part-17-operations/09-the-ai-systems-performance-checklist-master.md"
+  ],
+  "id": "U200"
+ },
+ {
+  "book": "ai-systems-performance-engineering",
+  "book_chapter": "20. AI-Assisted Performance Optimizations and Scaling Toward Multimillion GPU Clusters",
+  "prefix": "20. ",
+  "pct": 100,
+  "labels": [
+   "17.16"
+  ],
+  "primary": "docs/part-17-operations/16-ai-assisted-operations-and-scaling-toward-very-large-clusters.md",
+  "files": [
+   "docs/part-17-operations/16-ai-assisted-operations-and-scaling-toward-very-large-clusters.md"
+  ],
+  "id": "U201"
+ },
+ {
+  "book": "ai-factory",
+  "book_chapter": "Chapter 8 Software Engineering",
+  "prefix": "Chapter 8",
+  "pct": 100,
+  "labels": [
+   "17.10"
+  ],
+  "primary": "docs/part-17-operations/10-cluster-lifecycle-upgrades-and-change-management.md",
+  "files": [
+   "docs/part-17-operations/10-cluster-lifecycle-upgrades-and-change-management.md"
+  ],
+  "id": "U202"
+ },
+ {
+  "book": "production-kubernetes",
+  "book_chapter": "15. Software Supply Chain",
+  "prefix": "15. ",
+  "pct": 38,
+  "labels": [
+   "5.27",
+   "18.3"
+  ],
+  "primary": "docs/part-18-security/03-containers-and-the-software-supply-chain.md",
+  "files": [
+   "docs/part-18-security/03-containers-and-the-software-supply-chain.md"
+  ],
+  "id": "U203"
+ },
+ {
+  "book": "production-kubernetes",
+  "book_chapter": "12. Multitenancy",
+  "prefix": "12. ",
+  "pct": 36,
+  "labels": [
+   "5.22",
+   "16.14"
+  ],
+  "primary": "docs/part-16-mlops-llmops/14-platform-design-multi-tenant-ai-factory-quotas-and-chargeback.md",
+  "files": [
+   "docs/part-16-mlops-llmops/14-platform-design-multi-tenant-ai-factory-quotas-and-chargeback.md"
+  ],
+  "id": "U204"
+ },
+ {
+  "book": "production-kubernetes",
+  "book_chapter": "9. Observability",
+  "prefix": "9. ",
+  "pct": 32,
+  "labels": [
+   "5.24",
+   "17.1",
+   "17.2",
+   "17.3"
+  ],
+  "primary": "docs/part-17-operations/01-observability-foundations-metrics-logs-and-traces.md",
+  "files": [
+   "docs/part-17-operations/01-observability-foundations-metrics-logs-and-traces.md",
+   "docs/part-17-operations/02-prometheus-and-grafana.md",
+   "docs/part-17-operations/03-logging-with-loki-and-tracing-with-opentelemetry.md"
+  ],
+  "id": "U205"
+ },
+ {
+  "book": "production-kubernetes",
+  "book_chapter": "8. Admission Control",
+  "prefix": "8. ",
+  "pct": 16,
+  "labels": [
+   "5.21",
+   "18.4"
+  ],
+  "primary": "docs/part-18-security/04-kubernetes-access-control-and-pod-security.md",
+  "files": [
+   "docs/part-18-security/04-kubernetes-access-control-and-pod-security.md"
+  ],
+  "id": "U206"
  }
 ]
