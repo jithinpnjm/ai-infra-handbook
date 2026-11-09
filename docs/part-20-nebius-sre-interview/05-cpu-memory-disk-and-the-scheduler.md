@@ -95,7 +95,7 @@ sequenceDiagram
     C->>T: "new period, quota refilled"
 ```
 
-You prove throttling with counters, not with feelings. In cgroup v2 the file `cpu.stat` has `nr_periods`, `nr_throttled` and `throttled_usec`. In cgroup v1 the same idea is `nr_throttled` and `throttled_time` in nanoseconds. Systems Performance shows a v1 example of 74 throttled periods out of 507 and 3.8 seconds throttled. The helper `c05_cpu_throttle.py` turns two samples into a ratio. On that book sample it printed `THROTTLED in 15% of periods`, run on this Mac. The file `cpu.max` shows the limit itself as quota and period, and `max 100000` means no limit.
+You prove throttling with counters, not with feelings. In cgroup v2 the file `cpu.stat` has `nr_periods`, `nr_throttled` and `throttled_usec`. In cgroup v1 the same idea is `nr_throttled` and `throttled_time` in nanoseconds. Systems Performance shows a v1 example of 74 throttled periods out of 507 and 3.8 seconds throttled. The helper `c05_cpu_throttle.py` turns two samples into a ratio. On that book sample it printed `THROTTLED in 15% of periods`. Scenario 2 shows it on a live container. The file `cpu.max` shows the limit itself as quota and period, and `max 100000` means no limit.
 
 Systems Performance also gives a flow chart for container CPU throttling that uses five statistics, including non-voluntary context switches in `/proc/PID/status` and whether the host has idle CPU. A growing throttled time is the straightforward test for bandwidth limits. Shares have no counter, which is why they are harder to diagnose.
 
@@ -154,7 +154,7 @@ There are two kinds of event. A global OOM happens when the whole node runs out.
 
 Read it in four steps. First look at the constraint to learn the scope. Second look at `oom_memcg` to learn which cgroup, which maps to a pod through its path. Third compare the victim's `anon-rss` to the limit. Fourth look at the table for who else was large. The kernel source picks the victim by a score. It starts from resident pages plus swap entries plus page tables, then shifts it by `oom_score_adj` scaled to the total memory. A task whose `oom_score_adj` equals the minimum value is skipped and cannot be chosen.
 
-The helper `c05_oom_parse.py` automates the reading. On a log built from the kernel format strings, with invented numbers, it printed `python (pid 2301) killed for container/cgroup limit; anon-rss 100 MiB, file-rss 2 MiB`. This is a fixture, not a captured log.
+The helper `c05_oom_parse.py` automates the reading. On a log built from the kernel format strings, with invented numbers, it printed `python (pid 2301) killed for container/cgroup limit; anon-rss 100 MiB, file-rss 2 MiB`. That one is a fixture. Scenario 3 has a real log from kernel 6.18, whose task table has three extra columns, `rss_anon`, `rss_file` and `rss_shmem`, that the 6.6 layout lacks. The parser mis-read that table until I fixed it, so a line layout in a book or a kernel source tree can differ from your kernel.
 
 In Kubernetes the same event appears as `OOMKilled` in `kubectl describe pod`, under Last State, as Production Kubernetes chapter 12 shows. Kubernetes documentation says memory limits are enforced reactively by the kernel, so a container that over-allocates may not be killed at the instant it crosses the limit. The kubelet can also evict pods under node pressure, first BestEffort, then Burstable pods above their requests. Eviction by the kubelet and a kill by the kernel are different events with different evidence.
 
@@ -276,7 +276,7 @@ List what lives in host memory: runtime per worker, pinned buffers, weights stag
 
 ## Worked scenarios
 
-Each scenario has a script in `code/part20/`. None of the scripts could run here. This machine is macOS and the Docker daemon was not running. Every "Expected shape" below is what the books and kernel documentation predict. It is not captured output.
+Each scenario has a script in `code/part20/`. All of them ran except the `perf` script, and the three that start containers ran as separate `docker run` commands. The environment was a throwaway `ubuntu:24.04` container, image digest `sha256:fe81560990fae86dc4743202b2cb4d3df98d0bcf949173cecef15ce1127ef852`, arm64, on the Docker VM kernel `6.18.37-0-virt` with 2 CPUs, cgroup v2, no swap and no PSI. Scenarios 1, 4 and 5 ran inside that container. Scenarios 2, 3 and 6 start their own containers, so I ran their `docker run` commands from the Mac against the same Docker daemon, with `alpine@sha256:d9e853e87e55526f6b2917df91a2115c36dd7c696a35be12163d44e6e2a4b6bc` and `python@sha256:78387bc3881b8273120a12ebe6c1ab22b018ccc2c9adf565ae1ac9b536e184ea` (3.12-slim). Where the output below is marked "real output", it was captured there. Section "What the container run showed" lists corrections.
 
 ### Scenario 1. High load, idle CPUs
 
@@ -288,12 +288,12 @@ Reasoning. Load includes state D tasks, so ask what they wait for. `vmstat 1` sh
 # code/part20/c05_s1_dstate_load.sh
 #!/usr/bin/env bash
 # Scenario 1: load average is high but CPUs are idle. Tasks wait on disk (state D).
-# Safe: 4 writers x 128 MiB by default, in one scratch directory that is removed on exit.
+# Safe: 8 writers x 512 MiB by default, in one scratch directory that is removed on exit.
 # Run on a Linux VM, not on a shared production host.
 set -euo pipefail
 [ "$(uname -s)" = "Linux" ] || { echo "Linux only"; exit 1; }
-WORKERS="${WORKERS:-4}"
-MB="${MB:-128}"
+WORKERS="${WORKERS:-8}"
+MB="${MB:-512}"
 DIR="${DIR:-/var/tmp/c05_s1}"
 [ "$WORKERS" -le 16 ] && [ "$MB" -le 512 ] || { echo "refusing: keep WORKERS<=16 MB<=512"; exit 1; }
 mkdir -p "$DIR"
@@ -311,13 +311,17 @@ ps -eo stat,pid,comm | awk '$1 ~ /^D/' || true
 echo "== vmstat: r is runnable, b is blocked, wa is iowait"
 vmstat 1 3
 echo "== PSI io (some = at least one task stalled)"
-cat /proc/pressure/io
-python3 "$(dirname "$0")/c05_psi_parse.py" /proc/pressure/io /proc/pressure/cpu
+if [ -r /proc/pressure/io ]; then
+  cat /proc/pressure/io
+  python3 "$(dirname "$0")/c05_psi_parse.py" /proc/pressure/io /proc/pressure/cpu
+else
+  echo "no /proc/pressure/io on this kernel (PSI not enabled): read vmstat b and wa instead"
+fi
 wait
 echo "done; scratch directory removed"
 ```
 
-Expected shape: `uptime` load near the number of writers, `b` greater than 0, `/proc/pressure/io` some value well above 0, CPU idle high.
+Real output, 8 writers of 512 MiB: `b` was 6 to 8 in `vmstat`, `wa` was 97 to 100, `us` and `sy` were 0 to 3, and `ps` listed seven `dd` processes in state `D`. `uptime` printed `load average: 0.76, 0.34, 0.20` one second in, so the load average had not caught up, which is the lag from section 1. There was no `/proc/pressure/io`, because this kernel has no PSI, and the script now says so and carries on. The first version of the script, with 4 writers of 128 MiB, finished in under a second and showed no `D` tasks at all.
 
 Answer. The load is I/O wait. Fix the storage or the process behind it, not the CPUs.
 
@@ -354,7 +358,7 @@ awk '/--- before/{f="b";next} /--- after/{f="a";next} /--- cpu.max/{f="";next}
 python3 "$HERE/c05_cpu_throttle.py" "$TMP/before" "$TMP/after"
 ```
 
-Expected shape: `nr_throttled` close to `nr_periods` in the difference, a throttled time of many seconds, and a line `THROTTLED in NN% of periods`.
+Real output, `--cpus=0.5` and four busy loops for 5 seconds: `cpu.max` read `50000 100000`, `nr_periods` went from 1 to 51, `nr_throttled` from 0 to 50, and `throttled_usec` from 0 to 7428341. The helper printed `THROTTLED in 100% of periods`. Note that 7.4 seconds throttled happened in 5 seconds of wall time, because `throttled_usec` adds up the waiting of all four threads.
 
 Answer. The container is throttled by its own quota. Raise the limit, reduce parallelism, or set requests equal to limits for predictable behaviour. Check the kernel version for the pre-5.4 bug.
 
@@ -391,7 +395,15 @@ fi
 rm -f /tmp/c05_s3_dmesg.txt
 ```
 
-Expected shape: `OOMKilled=true`, and a kernel line `Memory cgroup out of memory: Killed process`. Without root, `dmesg` may print nothing, so use `journalctl -k`.
+Real output: `OOMKilled=true ExitCode=137`. The kernel log, read from a container with `--cap-add SYSLOG`, held this, trimmed:
+
+```text
+python invoked oom-killer: gfp_mask=0x100cca(GFP_HIGHUSER_MOVABLE), order=0, oom_score_adj=0
+oom-kill:constraint=CONSTRAINT_MEMCG,nodemask=(null),...,oom_memcg=/docker/d3f7cf...,task_memcg=/docker/d3f7cf...,task=python,pid=30221,uid=0
+Memory cgroup out of memory: Killed process 30221 (python) total-vm:320776kB, anon-rss:101640kB, file-rss:52kB, shmem-rss:0kB, UID:0 pgtables:264kB oom_score_adj:0
+```
+
+Inside a 100 MiB container, `memory.events` read `max 30`, `oom 1`, `oom_kill 1`, and `memory.max` read `104857600`. The parser printed `python (pid 30221) killed for container/cgroup limit; anon-rss 99 MiB, file-rss 0 MiB`. Without `SYSLOG` or root, `dmesg` is refused in a container, so use `journalctl -k` on a host.
 
 Answer. This is a cgroup limit kill. Compare `anon-rss` to the limit, decide leak or mis-sizing, and watch `oom_kill` in `memory.events`.
 
@@ -427,7 +439,7 @@ rm -f "$FILE"
 show "after deleting the file (its cache pages are freed)"
 ```
 
-Expected shape: `Cached` up by about the file size, `MemFree` down, `MemAvailable` nearly flat. On the book's numbers the helper reads 8.4 percent free and 60.9 percent available.
+Real output with a 512 MiB file: `Cached` went from 2249340 kB to 2773628 kB, `MemFree` from 3240588 to 2698228 kB, `MemAvailable` from 4934840 to 4921872 kB, and `Dirty` from 2448 to 364880 kB. After the delete, `Cached` returned to 2249340 kB and `MemFree` to 3253872 kB. The helper moved from `81.4% available` to `81.2%` and back to `81.6%`. On the book's numbers it reads 8.4 percent free and 60.9 percent available.
 
 Answer. Not a problem. Alert on `MemAvailable`, swap and memory PSI.
 
@@ -465,7 +477,7 @@ run "small synchronous writes (4 KiB, dsync)" bs=4k count=5000 oflag=dsync
 run "large sequential writes (1 MiB, direct)" bs=1M count=256 oflag=direct
 ```
 
-Expected shape: the small-write run flags small requests and possibly slow `await`. The large-write run shows a large `areq-sz`. On the invented slow row, `aqu-sz` of 4.60 matches 120 requests per second times 38.5 ms, about 4.62, which is a useful arithmetic check on any iostat row.
+Real output from raw `iostat -sxz 1` on the container's `vda`: the 4 KiB `dsync` run showed about 5900 `tps`, `areq-sz` 9.3 kB, `await` 0.14 ms, `aqu-sz` 1.1 and `%util` 78 to 81. The 1 MiB direct run showed 256 `tps`, `areq-sz` 1024 kB, `await` 0.23 ms and `%util` 6.1. So the small-write disk was busier but not slow, and the helper printed `busy but fast`, which is exactly the lesson. The first iostat report is an average since boot, so the helper now skips it. On the invented slow row, `aqu-sz` of 4.60 matches 120 requests per second times 38.5 ms, about 4.62, which is a useful arithmetic check on any iostat row.
 
 Answer. Utilisation is not saturation. Judge by `await`, queue size and request size, then find the process with `pidstat -d`.
 
@@ -498,26 +510,34 @@ echo "== B: pod limit 24 GiB, 4 workers, 4 GiB pinned + 3 GiB anon each, 15 GiB 
 python3 "$HERE/c05_host_mem_budget.py" 24 4 4 3 15
 ```
 
-Expected shape: part A prints `OK` for 1 and 8 and `ENOMEM` for 64, then all `OK` with the capability. Part B printed `OOM kill expected: 28.0 GiB cannot be reclaimed, limit is lower` on this Mac for the hypothetical inputs.
+Real output: part A with `--ulimit memlock=8388608` printed `OK` for 1 and 8 MiB and `ENOMEM` at 64 MiB, and the probe stops at the first failure so 512 was not tried. Part A2 with `--cap-add IPC_LOCK` printed `OK` for all four sizes. In the `python:3.12-slim` container `CapEff` was `00000000a80425fb`, which has no `IPC_LOCK` bit, and `ulimit -l` was 8192 kB. Part B printed `OOM kill expected: 28.0 GiB cannot be reclaimed, limit is lower` for the hypothetical inputs.
 
 Answer. Add up pinned buffers and runtime memory per worker. Raise the memlock limit where needed. Size the pod limit above the unreclaimable total, and leave room for cache.
 
 ## Hands-on lab
 
-Use a Linux VM with root, Docker, `sysstat`, `perf` and Python 3. Do not run on a shared production host. The scripts cap their own size, but they write to disk and start busy loops.
+Use a Linux VM with root, Docker, `sysstat`, `perf` and Python 3. Do not run on a shared production host. The scripts cap their own size, but they write to disk and start busy loops. What I ran, and where, is in the scenario section. Here is each step with its real result.
 
-What I ran on this Mac: the helper tests, 38 passed. `tools/check_code_files.py` runs `bash -n` on every script and found no problems. Each helper ran once on a fixture file. The `c05_mlock_probe.py` smoke test printed OK for 1 and 8 MiB on macOS, which proves only that the script runs.
+1. Watch pressure for ten seconds with `bash code/part20/c05_psi_watch.sh 10`. Real output on the Docker VM kernel: `no /proc/pressure/cpu (PSI needs Linux 4.20+)`. That kernel has no PSI, so this step could not show columns. On a kernel with PSI, expect three columns near 0 on an idle machine.
+2. Run `bash code/part20/c05_s1_dstate_load.sh`. Result: `D` tasks, `b` of 6 to 8 and `wa` above 95. PSI was absent.
+3. Run the scenario 2 `docker run` with `--cpus=0.5`. Result: 100 percent throttled periods. I did not rerun it with `--cpus=2`.
+4. Run scenario 3. Result: `OOMKilled=true`, a `CONSTRAINT_MEMCG` log and a parsed reading.
+5. Run `bash code/part20/c05_s4_page_cache.sh`. Result: `Cached` up by about 524 MB and back, `MemAvailable` flat.
+6. Run `bash code/part20/c05_s5_disk_latency.sh`. Result: the small run flagged `busy but fast` and the large run printed `no flag` with an `areq-sz` of 1024 kB in the raw output.
+7. Run scenario 6. Result: `ENOMEM` at 64 MiB without the capability and `OK` with it.
+8. Run `sudo bash code/part20/c05_perf_flamegraph.sh 10` while `yes > /dev/null` runs. Not run. Ubuntu's `perf` package needs tools that match the running kernel, and for `6.18.37-0-virt` apt had none: `perf` printed `WARNING: perf not found for kernel 6.18.37-0`. The script itself was reached and stopped there.
 
-What I did not run: every shell script, every Docker command, `perf`, `iostat`, and any Linux-specific file under `/proc` or `/sys`.
+## What the container run showed
 
-1. Watch pressure for ten seconds with `bash code/part20/c05_psi_watch.sh 10`. Expected: three columns that stay near 0 on an idle VM.
-2. In another terminal run `bash code/part20/c05_s1_dstate_load.sh`. Expected: io pressure rises, D state tasks appear, CPU stays mostly idle.
-3. Run `bash code/part20/c05_s2_cpu_throttle.sh`. Expected: a high throttle ratio. Then run it again with `--cpus=2` edited in. Expected: a much lower ratio.
-4. Run `bash code/part20/c05_s3_cgroup_oom.sh`. Expected: `OOMKilled=true` and an OOM line in the kernel log. Paste the log into `c05_oom_parse.py` and compare its reading to yours.
-5. Run `bash code/part20/c05_s4_page_cache.sh`. Expected: `Cached` grows and shrinks, `MemAvailable` stays roughly flat.
-6. Run `bash code/part20/c05_s5_disk_latency.sh`. Expected: two different iostat patterns, small requests and large requests.
-7. Run `bash code/part20/c05_s6_pinned_memory.sh`. Expected: `ENOMEM` at 64 MiB without the capability.
-8. Run `sudo bash code/part20/c05_perf_flamegraph.sh 10` while `yes > /dev/null` runs. Expected: a graph with one wide tower ending in the `yes` program.
+- **`c05_s1_dstate_load.sh` did not show what it promised.** With 4 writers of 128 MiB it finished in under a second, so there were no `D` tasks and the load average stayed near 0.2. It also aborted at the PSI line, because `set -e` met a missing file. Defaults are now 8 writers of 512 MiB, and a missing PSI file is handled.
+- **PSI is not a given.** The kernel is far newer than 4.20 and still has no `/proc/pressure` and no `cpu.pressure` in the cgroup. The chapter's advice to read pressure first needs the fallback of `vmstat` `b` and `wa`. Section 2 is from the book and the kernel documentation, not from this run.
+- **The OOM parser broke on a newer kernel.** See section 7 and scenario 3. Fixed, with a test built from the real log.
+- **The iostat helper treated the since-boot report as live.** Fixed with a skip, and a test.
+- **Load average lagged, as claimed.** Eight blocked `dd` processes gave 0.76 after one second.
+- **Cgroup facts confirmed.** cgroup v2 with `cpu.stat` fields `nr_periods`, `nr_throttled`, `throttled_usec` and also `nr_bursts` and `burst_usec`, `cpu.max` as `50000 100000`, and `memory.events` with `low`, `high`, `max`, `oom`, `oom_kill` and `oom_group_kill`.
+- **Docker defaults confirmed.** The default capability set has no `IPC_LOCK`, and `OOMKilled=true ExitCode=137` matches the docker inspect fields in the script. The book's example exit code of 1 does not match.
+- **Defaults seen.** `vm.swappiness` was 60, matching the book. Transparent hugepages read `[always] madvise never`, which is the opposite of the latency advice in section 12.
+- **`dmesg` needs a capability.** In a container it is refused unless `--cap-add SYSLOG` is given.
 
 ## Drill questions
 
@@ -613,11 +633,11 @@ Explicitly labelled inferences.
 - All numbers in the host-memory budget are hypothetical inputs.
 
 Not verified.
-- No shell script was run. The host is macOS and Docker was not running. Every "Expected shape" is a prediction from the sources.
-- The OOM log in the parser test and in the text is built from kernel format strings with invented numbers. It is not a captured log.
+- Environment: Docker container and Docker daemon on a Rancher Desktop Alpine VM, kernel 6.18.37-0-virt, arm64, 2 CPUs, no swap, no PSI. Real server hardware, a systemd host and Kubernetes were not available.
+- Not run: `perf record` and the flame graph, because no `perf` matched the VM kernel. Section 10 is from the book.
+- Not run: PSI files and PSI per cgroup, steal time under a real hypervisor, NUMA (`numastat`, `numactl`, a single-node VM), swapping, `biolatency`, `runqlat` and any other BCC or bpftrace tool.
+- Not run: the scenario 2 rerun with a larger CPU limit, and the Kubernetes `OOMKilled` field in `kubectl describe pod`. Only the Docker equivalent ran.
+- The OOM log in `test_c05_oom_parse.py` has two fixtures. The first is built from kernel format strings with invented numbers. The second is a real trimmed log from the container.
 - The meminfo fixture is built from the book's `free -m` output. `AnonPages` and `Mlocked` are invented.
 - The slow iostat row is invented.
-- Whether the Docker `OOMKilled` flag and exit code appear exactly as shown depends on the Docker version. The book example shows exit code 1.
-- The `c05_mlock_probe.py` smoke test ran on macOS only.
-- Whether Docker's default capabilities exclude `IPC_LOCK` was not checked.
 - The kernel and cgroup versions on Nebius nodes are unknown.

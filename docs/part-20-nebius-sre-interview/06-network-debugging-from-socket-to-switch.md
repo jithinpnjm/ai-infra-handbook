@@ -28,7 +28,7 @@ The answer needs a mechanism, not a guess. By the end of this chapter you can gi
 
 An engineer says "the network is down". The first useful thing you can do is ask which error the client saw. Each one points to a different place.
 
-**Connection refused** means a host answered the first packet and said no. The kernel at the other end sent a reset because nothing listens on that port. So the path works, the host is up, and the service is not there. A closed local port shows it. In the lab for this chapter, a Python connect to port 1 on 127.0.0.1 gave `ConnectionRefusedError: [Errno 61] Connection refused`, and the OpenSSL client printed `connect:errno=61`. The error number differs between operating systems, so read the name, not the number.
+**Connection refused** means a host answered the first packet and said no. The kernel at the other end sent a reset because nothing listens on that port. So the path works, the host is up, and the service is not there. A closed local port shows it. In the lab for this chapter, a Python connect to port 1 on 127.0.0.1 gave `ConnectionRefusedError: [Errno 61] Connection refused`, and the OpenSSL client printed `connect:errno=61`. In an Ubuntu 24.04 container on Linux the same OpenSSL client printed `connect:errno=111`. The error number differs between operating systems, so read the name, not the number.
 
 **Connection timed out** means nobody answered. A packet was dropped on the way, or a firewall silently discards it, or the host is gone, or its queue is full. The client keeps retrying the SYN until it gives up. The Linux man page for tcp says the default for the syn retries setting is 6, which is about 127 seconds of trying. A hung connect that ends after two minutes is this case.
 
@@ -79,7 +79,7 @@ The book lists the TCP states: LISTEN, SYN-SENT, SYN-RECEIVED, ESTABLISHED, FIN-
 
 CLOSE-WAIT deserves emphasis because interviewers like it. The kernel has done its part. The remote side sent its close, and the kernel is waiting for your program to call close. A pile of CLOSE-WAIT sockets is nearly always a leak in the application, such as a forgotten response body.
 
-For a LISTEN socket the two queue columns change meaning. On Linux, Recv-Q is the number of connections waiting to be accepted and Send-Q is the limit. The ss manual page that we fetched does not define these columns, so treat this reading as common practice that you should confirm on the target kernel. The parser in code/part20 relies on it and flags a listener whose Recv-Q has reached its Send-Q.
+For a LISTEN socket the two queue columns change meaning. On Linux, Recv-Q is the number of connections waiting to be accepted and Send-Q is the limit. The ss manual page does not define these columns, and I checked. The source does. The kernel file `net/ipv4/tcp_diag.c`, which answers ss, fills the two numbers for a listening socket from `sk_ack_backlog`, the current queue length, and `sk_max_ack_backlog`, the limit. I also saw it live: a listener created with backlog 5 and never accepted showed `LISTEN 6 5` once it was full. The queue holds one more than the limit, so a full listener reads Recv-Q one above Send-Q. The parser in code/part20 flags a listener whose Recv-Q has reached its Send-Q, which catches both the at-limit and the over-limit row.
 
 For one connection, `ss -tiepm` gives a deep view. The book's example shows the process and file descriptor, the retransmission timeout, the round-trip time, the maximum segment size, the congestion window, and flags such as `app_limited`, `rwnd_limited` and `sndbuf_limited`. You use those flags to learn which side is the bottleneck, and you will use them again in chapter 20.18 when streaming slows.
 
@@ -210,7 +210,19 @@ if __name__ == "__main__":
     sys.exit(2 if f >= 0.8 else 0)
 ```
 
-On a live host you would run `conntrack -L` to list flows, and `conntrack -C` for the count. We did not run these on this Mac. The book shows `conntrack -L` and says you may need to install the conntrack tool and load the nf_conntrack module.
+On a live host you run `conntrack -L` to list flows, and `conntrack -C` for the count. The book says you may need to install the conntrack tool and load the nf_conntrack module. I ran them in the Ubuntu container with `--cap-add NET_ADMIN`. The count stayed at 0 at first, because a fresh container namespace tracks nothing until a rule needs tracking. After I added one iptables rule that matches on connection state and made a single curl request, the tools showed a real flow.
+
+```text
+$ conntrack -L
+tcp      6 119 TIME_WAIT src=127.0.0.1 dst=127.0.0.1 sport=42460 dport=8000 src=127.0.0.1 dst=127.0.0.1 sport=8000 dport=42460 [ASSURED] mark=0 use=1
+conntrack v1.4.8 (conntrack-tools): 1 flow entries have been shown.
+$ sysctl net.netfilter.nf_conntrack_count net.netfilter.nf_conntrack_max net.netfilter.nf_conntrack_tcp_timeout_established
+net.netfilter.nf_conntrack_count = 1
+net.netfilter.nf_conntrack_max = 262144
+net.netfilter.nf_conntrack_tcp_timeout_established = 432000
+```
+
+The last number is 432,000 seconds, which is the five days the kernel documentation gives for the established timeout. I could not make the table fill. The container may not write that sysctl, and Docker refused to set it at start. So the full-table message in scenario 3 is the checker run on real values at 0.0 percent, and the full case stays a test with sample input.
 
 The fix has layers. Raise the maximum if memory allows. Reduce the number of short-lived flows through connection reuse. Look for a client that opens connections in a loop. And in Kubernetes, remember that every pod-to-Service flow passes through here on the node.
 
@@ -325,7 +337,17 @@ if __name__ == "__main__":
         print(mtu, "mss", tcp_mss(mtu), "ping -s", ping_payload_for(mtu))
 ```
 
-To test a path, send pings of a chosen size with the do-not-fragment flag set. At MTU 1,500 you would try `ping -M do -s 1472 host` and, if it fails, step down. The ping command line is the Linux iputils form and was not run here because the Mac ping uses different flags. The book says a default ping sends 56 bytes of payload, which is 84 bytes with headers, and that matches the numbers above.
+To test a path, send pings of a chosen size with the do-not-fragment flag set. At MTU 1,500 you would try `ping -M do -s 1472 host` and, if it fails, step down. The ping command line is the Linux iputils form. I ran it in the container against a dummy interface set to MTU 1,450, which needs `--cap-add NET_ADMIN`. The oversize probe failed at once on the sender with the message below, and the probe sized for 1,450 was sent.
+
+```text
+$ ping -c1 -W1 -M do -s 1472 10.9.0.2
+PING 10.9.0.2 (10.9.0.2) 1472(1500) bytes of data.
+ping: local error: message too long, mtu=1450
+$ ping -c1 -W1 -M do -s 1422 10.9.0.2
+PING 10.9.0.2 (10.9.0.2) 1422(1450) bytes of data.
+```
+
+The second probe got no reply only because the dummy interface has no peer. The point is where the error comes from. This one is local. On a real overlay the same step shows up as a missing reply or an ICMP packet-too-big message from a router on the path. The book says a default ping sends 56 bytes of payload, which is 84 bytes with headers, and that matches the numbers above.
 
 The fixes are to repair ICMP filtering, to set the right MTU on the tunnel interface, or to clamp the TCP maximum segment size so endpoints never send more than fits. Say which you prefer and why. Fixing ICMP is cleanest. Clamping is a practical bandage when you do not own the whole path.
 
@@ -400,7 +422,16 @@ Name the signal before you name the fault. "I see the same sequence range twice,
 
 A new client cannot connect to the endpoint over HTTPS, but a plain TCP connect works. The TCP handshake is fine, so the fault is in the layer above it.
 
-The handbook's chapter 2.10 covers TLS and certificates, so here we only sort the failures by what you see. The command for a quick view is `openssl s_client -connect host:443 -servername host`. The servername flag sets SNI, the name the client asks for, which matters when one address serves many names. We ran it only against a closed local port, where it printed `connect:errno=61`, the refused case from section 1. A real handshake output was not run here.
+The handbook's chapter 2.10 covers TLS and certificates, so here we only sort the failures by what you see. The command for a quick view is `openssl s_client -connect host:443 -servername host`. The servername flag sets SNI, the name the client asks for, which matters when one address serves many names. I ran it on Linux against a local test server started with `openssl s_server`, using a self-signed certificate. Four results are worth knowing by sight.
+
+| Situation | What `s_client` printed |
+|---|---|
+| Good handshake with the certificate trusted and the right name | `New, TLSv1.3, Cipher is TLS_AES_256_GCM_SHA384` and `Verification: OK` |
+| Server name does not match | `Verification error: hostname mismatch`, return code 62 |
+| Certificate not trusted | `verify error:num=18:self-signed certificate`, return code 18 |
+| Closed port | `connect:errno=111`, the refused case from section 1 |
+
+A client that speaks plain HTTP to the TLS port got no answer at all. `curl -sS https://127.0.0.1:8443/` said `SSL certificate problem: self-signed certificate`. An OpenSSL client pointed at a plain HTTP port printed `wrong version number` and `no peer certificate available`. The version matters, so I record it here: OpenSSL 3.0.13 in Ubuntu 24.04.
 
 Ask where the failure occurs. If it occurs at connect, it is not TLS at all. If the server sends an alert straight after the hello, suspect a protocol or cipher mismatch, or a wrong SNI. If the handshake completes but the client rejects the certificate, suspect expiry, an incomplete chain, a name that does not match, or a client clock that is wrong. If the failure appears only after hours, suspect a rotated certificate that a long-lived process never reloaded. This last one matters for a platform with long-lived gateway pods. These are general TLS causes, and the exact messages differ per client library, so read the message and do not guess.
 
@@ -499,7 +530,7 @@ When a Service fails, confirm in order: pod, Service, DNS, endpoints, ports, kub
 
 ## Worked scenarios
 
-Every scenario below is a short broken system with its script in code/part20. The scripts are safe: localhost only, read-only, no root. On macOS some Linux behavior differs, and the text says so.
+Every scenario below is a short broken system with its script in code/part20. The scripts are safe: localhost only and read-only. The demos need no root. I ran every scenario in an Ubuntu 24.04 container on Linux kernel 6.18.37, and the outputs below are from there.
 
 ### Scenario 1: the full accept queue
 
@@ -507,7 +538,23 @@ Every scenario below is a short broken system with its script in code/part20. Th
 
 **Reasoning.** Slow connects with gaps of seconds suggest SYN retransmits. Retransmits suggest the listener's queue is full, because the book says SYNs are dropped when the backlog is full. So look at the queue, not the network.
 
-**Commands.** On a Linux host you would run `ss -ltn` and read the listener row. A row like `LISTEN 129 128 0.0.0.0:8000` means the queue is over its limit of 128. Then `nstat -az TcpExtListenOverflows TcpExtListenDrops` shows whether the kernel counted drops. The snapshot script `net06_linux_net_snapshot.sh` collects these and was not run here. Expected shape of the output: a listener row whose first number equals the second, and a non-zero overflow counter that rises during bursts.
+**Commands.** On a Linux host you run `ss -ltn` and read the listener row. A row like `LISTEN 129 128 0.0.0.0:8000` means the queue is over its limit of 128. Then `nstat -az TcpExtListenOverflows TcpExtListenDrops` shows whether the kernel counted drops. The snapshot script `net06_linux_net_snapshot.sh` collects these, and I ran it. Here is the real result of the demo below with backlog 5 and ten clients, sampled while the server held the queue full.
+
+```text
+$ python3 net06_accept_queue_demo.py 5 10 4
+backlog=5 results=['connected', 'connected', 'connected', 'connected', 'connected', 'connected', 'timeout', 'timeout', 'timeout', 'timeout']
+$ ss -ltn          (from a second shell, during the hold)
+State  Recv-Q Send-Q Local Address:Port  Peer Address:PortProcess
+LISTEN 6      5          127.0.0.1:39459      0.0.0.0:*
+$ ss -tn state syn-sent
+Recv-Q Send-Q Local Address:Port  Peer Address:Port Process
+0      1          127.0.0.1:54448    127.0.0.1:39459
+$ nstat -az TcpExtListenOverflows TcpExtListenDrops
+TcpExtListenOverflows           8                  0.0
+TcpExtListenDrops               8                  0.0
+```
+
+Backlog 5 let six connections in, so the rule is the limit plus one. The listener row reads 6 and 5, the four late clients sit in SYN-SENT, and both counters rose. Each late client sent its SYN again about once a second. In a separate run I held a `listen(1)` socket full and let `nc -w 5` try to connect. A loopback capture showed the SYN from one source port repeating at intervals of 1.02 seconds, four more times, and `nstat` counted four `TcpExtTCPSynRetrans`. That is not the doubling you may remember. The kernel documentation for `tcp_syn_linear_timeouts`, default 4 on this kernel, says the first four retries use a linear one second timeout, and doubling starts after that.
 
 The demo reproduces the effect in Python.
 
@@ -517,9 +564,10 @@ The demo reproduces the effect in Python.
 """Accept-queue overflow demo. Localhost only, no root, finishes in seconds.
 A server calls listen(backlog) but never calls accept(). Clients then connect.
 Linux: the first backlog+1 connects succeed, the rest time out (SYN dropped).
-Other kernels differ (the macOS run for this chapter saw resets), so the
-demo prints what it saw."""
-import socket, sys
+Other kernels differ (macOS did not enforce a tiny backlog), so the demo
+prints what it saw. An optional third argument holds the sockets open for
+that many seconds, so you can run ss -ltn and nstat from a second shell."""
+import socket, sys, time
 
 def classify(port, timeout):
     c = socket.socket()
@@ -537,7 +585,7 @@ def classify(port, timeout):
         c.close()
         return None, "reset"
 
-def run(backlog=1, clients=6, timeout=1.0):
+def run(backlog=1, clients=6, timeout=1.0, hold=0.0):
     srv = socket.socket()
     srv.bind(("127.0.0.1", 0))
     srv.listen(backlog)          # never accept(): queue fills and stays full
@@ -548,6 +596,7 @@ def run(backlog=1, clients=6, timeout=1.0):
         results.append(outcome)
         if sock:
             held.append(sock)
+    time.sleep(hold)
     for s in held:
         s.close()
     srv.close()
@@ -555,13 +604,15 @@ def run(backlog=1, clients=6, timeout=1.0):
 
 if __name__ == "__main__":
     backlog = int(sys.argv[1]) if len(sys.argv) > 1 else 1
-    res = run(backlog)
+    clients = int(sys.argv[2]) if len(sys.argv) > 2 else 6
+    hold = float(sys.argv[3]) if len(sys.argv) > 3 else 0.0
+    res = run(backlog, clients, hold=hold)
     print(f"backlog={backlog} results={res}")
     print("connected:", res.count("connected"), "timeout:", res.count("timeout"),
           "refused:", res.count("refused"), "reset:", res.count("reset"))
 ```
 
-**What we ran.** On this Mac, with backlog 1 and six clients, three runs all printed `connected: 6`. An earlier run printed a connection reset on the first connect. So macOS does not enforce a tiny backlog the way Linux does, and the result varies. Do not present the Mac result as Linux behavior. The Linux result, expected from the man page and the book, is that a few connects succeed and the rest time out. This was not run.
+**What we ran.** On Linux with backlog 1 and six clients, the run printed `connected: 2 timeout: 4`. With backlog 5 and six clients it printed `connected: 6`, as in the capture above. So Linux admits the backlog plus one and times out the rest. An earlier run of this demo on a Mac printed `connected: 6` for backlog 1, and once a connection reset. So macOS does not enforce a tiny backlog the way Linux does. Do not present the Mac result as Linux behavior.
 
 **Answer.** The accept loop is too slow, so the queue overflows. Find out why accept is slow, then size the queue for bursts, and decide whether fast refusal with tcp_abort_on_overflow suits your clients.
 
@@ -571,7 +622,7 @@ if __name__ == "__main__":
 
 **Reasoning.** All those rows share a destination, so only the source port varies. The budget is the range size divided by the hold time.
 
-**Commands.** `ss -tan | awk 'NR>1 {c[$1]++} END {for (s in c) print s, c[s]}'` gives counts by state. Then `sysctl net.ipv4.ip_local_port_range` reads the range. The parser in section 3 gives counts, and its port budget function gives the rate: 55,296 ports over 60 seconds is about 922 connects per second for the book's Netflix range. Both the counting and the budget function were tested with pytest. The Linux commands were not run.
+**Commands.** `ss -tan | awk 'NR>1 {c[$1]++} END {for (s in c) print s, c[s]}'` gives counts by state. Then `sysctl net.ipv4.ip_local_port_range` reads the range. The parser in section 3 gives counts, and its port budget function gives the rate: 55,296 ports over 60 seconds is about 922 connects per second for the book's Netflix range. Both the counting and the budget function were tested with pytest, and I ran the parser on real `ss -tan` output in the container, where it counted the states and named the full listener. The default range on this kernel, read with `sysctl`, is 32768 to 60999. That is 28,232 ports, so about 470 connects per second over 60 seconds. The Netflix range from the book gives the larger 922. Read the range on your own host before you quote a number.
 
 **Answer.** If the call rate is above the budget, the client must reuse connections. Pooling with keep-alive removes the problem. Widening the range raises the budget a little. Several destination addresses multiply it.
 
@@ -587,7 +638,7 @@ if __name__ == "__main__":
 sysctl net.netfilter.nf_conntrack_count net.netfilter.nf_conntrack_max | python3 net06_conntrack_check.py
 ```
 
-Expected shape of the output: a line such as `100.0% FULL: no space left, new connections cannot be made`, with exit code 2. We ran the checker with a sample input of equal count and max on this Mac and it printed that line. The sysctl commands themselves were not run.
+The full case prints a line such as `100.0% FULL: no space left, new connections cannot be made`, with exit code 2. I fed the checker a sample of equal count and max and it printed that line. On the real container values it printed `0.0% ok`. The sysctl commands ran, and their output is shown in section 6.
 
 **Answer.** Confirm usage, find which clients create the flows, cut short-lived flows by reuse, and raise the maximum with an eye on memory. Remember the established timeout default of five days when you look for stale entries.
 
@@ -603,7 +654,7 @@ Expected shape of the output: a line such as `100.0% FULL: no space left, new co
 printf 'search ml.svc.cluster.local svc.cluster.local cluster.local\noptions ndots:5\n' | python3 net06_resolv_ndots.py api.example.com
 ```
 
-We ran this on the Mac and it printed the three suffixed names and then `api.example.com`. The test suite checks that the cost is eight queries for the unsuffixed hit and two with a trailing dot.
+I ran this in the Linux container and it printed the three suffixed names and then `api.example.com`. The container's own `/etc/resolv.conf` came from Docker and has no search list or ndots line, so the sample stands in for a pod. The test suite checks that the cost is eight queries for the unsuffixed hit and two with a trailing dot.
 
 **Answer.** Use the fully qualified name with a trailing dot in configuration, or set a lower ndots in the pod's dnsConfig, or add NodeLocal DNSCache. Do not start by scaling CoreDNS, because that treats the symptom.
 
@@ -619,7 +670,7 @@ We ran this on the Mac and it printed the three suffixed names and then `api.exa
 tcpdump -nn -r capture.pcap | python3 net06_tcpdump_reader.py
 ```
 
-Expected shape: a list of retransmitted segment keys with the same sequence range. The reader was tested only on fixture text, and tcpdump was not run here. The MTU math script prints the sizes to test: 1,450 gives a TCP payload of 1,410 and a ping payload of 1,422.
+I ran the reader on a real `tcpdump -nn` capture taken on loopback during the accept queue demo. It printed `retransmits: []`, because those were SYN retries and the reader looks for repeated data segments. It listed the three SYNs that never got an answer under `unanswered SYN`. The data retransmit case was tested only on fixture text. The MTU math script prints the sizes to test: 1,450 gives a TCP payload of 1,410 and a ping payload of 1,422.
 
 **Answer.** Set the pod and tunnel MTU to the underlay MTU minus 50, or use a jumbo underlay, or clamp the maximum segment size. Check that ICMP packet-too-big can pass.
 
@@ -635,100 +686,89 @@ Expected shape: a list of retransmitted segment keys with the same sequence rang
 python3 code/part20/net06_idle_reset_demo.py
 ```
 
-We ran it on this Mac. The silent client ended with `BrokenPipeError` after the middlebox logged an idle timeout. The heartbeat client reported `still alive`. The names of the errors differ by operating system. On the real path you would find the timer with captures on both sides of each suspect device and note which side sends the first reset.
+I ran it on Linux. The silent client ended with `BrokenPipeError` after the middlebox logged an idle timeout. The heartbeat client reported `still alive`. I also captured the exchange with `tcpdump -i lo -nn`, and the packets taught me something the code comment did not. The demo's middlebox closes politely, so the capture shows a FIN from the server, then the client's ACK. Silence follows. The client's next write, 0.6 seconds later, is answered with `Flags [R]`, a reset, from the server. So the reset appears only when the client speaks again.
+
+```text
+20:52:02.458899 IP 127.0.0.1.33653 > 127.0.0.1.56856: Flags [F.], seq 1, ack 1, ...
+20:52:02.460148 IP 127.0.0.1.56856 > 127.0.0.1.33653: Flags [.], ack 2, ...
+20:52:03.058692 IP 127.0.0.1.56856 > 127.0.0.1.33653: Flags [P.], seq 1:6, ack 2, ..., length 5
+20:52:03.058700 IP 127.0.0.1.33653 > 127.0.0.1.56856: Flags [R], seq 1744103780, win 0, length 0
+```
+
+A real middlebox that silently drops its state sends nothing at the idle moment and the same reset when the next packet arrives. That is why a client sees the failure only at its next write. On the real path you would find the timer with captures on both sides of each suspect device and note which side sends the first reset.
 
 **Answer.** Heartbeats below the lowest idle timeout, keepalive on the sockets as a second layer, and a check that no hard total-duration limit applies. Add an alert on streams that end without a finish reason, tying this to the latency work in chapter 20.19.
 
 ## Hands-on lab
 
-The lab needs a Linux VM or a container with iproute2, and a second shell. It was not possible to run the Linux steps here, because the Docker daemon is not running and this host is macOS. The Python steps below were run on the Mac.
+The lab needs a Linux VM or a container with iproute2, and a second shell. I ran it in a disposable container: image `ubuntu:24.04`, Ubuntu 24.04.5 LTS, kernel `6.18.37-0-virt` aarch64 from the Rancher Desktop VM, started with `docker run --rm --cap-add NET_ADMIN`, with `code/part20` mounted read-only. I added `NET_ADMIN` for the dummy interface, the iptables rule and `conntrack`. Nothing else was privileged. Packages came from apt: iproute2, tcpdump, conntrack, iputils-ping, procps, dnsutils, openssl, netcat-openbsd.
 
-1. Run the tests. In the repository root, run `python3 -m pytest -q code/part20/test_net06_*.py`. Expected: 19 passed. Ran: yes.
+1. Run the tests. In the repository root, run `python3 -m pytest -q code/part20/test_net06_*.py`. Expected: 19 passed. Ran: yes, on the Mac and in the Linux container.
 2. Run the code checker with `python3 tools/check_code_files.py code/part20`. Expected: no problems for the files of this chapter. Ran: yes.
-3. Run the idle demo as in scenario 6. Expected: the silent client fails and the heartbeat client lives. Ran: yes, on macOS.
-4. Run the accept queue demo with a few different backlog values on a Linux VM. Expected on Linux: connected count about backlog plus one, the rest time out. Ran: no. On macOS it printed six connections each time.
-5. On the VM run `bash code/part20/net06_linux_net_snapshot.sh` as a normal user. Expected: socket summary, listener rows, state counts, sysctl values, and counters. Ran: no.
-6. On the VM, start a listener with `python3 -m http.server 8000`, then run `ss -ltn` and find the row for port 8000. Expected: a LISTEN row. Ran: no.
+3. Run the idle demo as in scenario 6. Expected: the silent client fails and the heartbeat client lives. Ran: yes, on macOS and Linux.
+4. Run the accept queue demo with a few different backlog values on a Linux VM. Expected on Linux: connected count is backlog plus one, the rest time out. Ran: yes, backlog 1 gave 2 connected and 4 timeouts. On macOS it printed six connections each time.
+5. On the VM run `bash code/part20/net06_linux_net_snapshot.sh` as a normal user. Expected: socket summary, listener rows, state counts, sysctl values, and counters. Ran: yes, all sections printed. The conntrack count was 0 and the max 262144. In a container the `ss -s` totals are small.
+6. On the VM, start a listener with `python3 -m http.server 8000`, then run `ss -ltn` and find the row for port 8000. Expected: a LISTEN row. Ran: yes, a Python `http.server` showed `LISTEN 0 5`, an idle queue with the Python default limit of 5. The demo in scenario 1 showed the full case.
 7. In a pod, print `/etc/resolv.conf` and feed it to the ndots script with a name of your choice. Expected: the candidate list in order. Ran: the script yes, with a sample file; the pod step no.
 8. If you have a cluster, run `bash code/part20/net06_k8s_service_path.sh NAMESPACE SERVICE`. Expected: the ladder of outputs. Ran: syntax check only.
 
 ## Drill questions
 
-1. What does connection refused mean, and what does it not mean?
-
-<details><summary>Answer</summary>
+<details><summary>1. What does connection refused mean, and what does it not mean?</summary>
 
 It means a host answered the first packet and rejected it, normally because nothing listens on that port. It does not mean the path is broken. The host is up and reachable, and the problem is the service or its bind address.
 
 </details>
 
-2. What does a connect timeout tell you, and how long does Linux try by default?
-
-<details><summary>Answer</summary>
+<details><summary>2. What does a connect timeout tell you, and how long does Linux try by default?</summary>
 
 Nobody answered, so a packet or its reply was dropped, or a queue was full. With the default of 6 SYN retries, the tcp man page puts the total at about 127 seconds.
 
 </details>
 
-3. On a LISTEN socket in ss, what do Recv-Q and Send-Q show, and when is it a problem?
+<details><summary>3. On a LISTEN socket in ss, what do Recv-Q and Send-Q show, and when is it a problem?</summary>
 
-<details><summary>Answer</summary>
-
-On Linux, Recv-Q is the number of connections waiting to be accepted and Send-Q is the limit. It is a problem when Recv-Q reaches Send-Q, since new connections are then dropped. Confirm the reading on the target kernel.
+On Linux, Recv-Q is the number of connections waiting to be accepted and Send-Q is the limit. It is a problem when Recv-Q reaches Send-Q, since new connections are then dropped. On the kernel I tested a full listener read one above the limit, `LISTEN 6 5`. The kernel source for ss fills these two numbers from the accept queue length and its limit.
 
 </details>
 
-4. Name the two queues for incoming connections and the settings that cap them.
-
-<details><summary>Answer</summary>
+<details><summary>4. Name the two queues for incoming connections and the settings that cap them.</summary>
 
 The SYN backlog holds half-open connections and is capped by tcp_max_syn_backlog. The accept queue holds established connections awaiting accept, and it is capped by the listen backlog argument and net.core.somaxconn. Since Linux 5.4 the somaxconn default is 4096, before that 128.
 
 </details>
 
-5. Many CLOSE-WAIT sockets. Who is at fault?
-
-<details><summary>Answer</summary>
+<details><summary>5. Many CLOSE-WAIT sockets. Who is at fault?</summary>
 
 Your own application. The peer has closed, and the program has not called close on its side. Look for leaked connections or unclosed response bodies.
 
 </details>
 
-6. How fast can a client open new connections to one server address and port before TIME_WAIT exhausts its ports?
-
-<details><summary>Answer</summary>
+<details><summary>6. How fast can a client open new connections to one server address and port before TIME_WAIT exhausts its ports?</summary>
 
 The number of ports in the ephemeral range divided by the TIME_WAIT hold time. With 65,536 ports and 60 seconds, about 1,092 per second. With the range 10240 to 65535, about 922 per second.
 
 </details>
 
-7. A pod's resolv.conf has ndots 5. How many queries does api.example.com cost with three search domains, and how do you cut it?
-
-<details><summary>Answer</summary>
+<details><summary>7. A pod's resolv.conf has ndots 5. How many queries does api.example.com cost with three search domains, and how do you cut it?</summary>
 
 It tries the three suffixed names first, then the real name. That is four candidates, and with A and AAAA queries, eight. Cut it with a trailing dot, a lower ndots in dnsConfig, or a node-local DNS cache.
 
 </details>
 
-8. Small requests work and large responses hang. What is your first suspect and your test?
-
-<details><summary>Answer</summary>
+<details><summary>8. Small requests work and large responses hang. What is your first suspect and your test?</summary>
 
 A path MTU black hole, where ICMP packet-too-big is filtered or an overlay lowered the real MTU. Test with a do-not-fragment ping at sizes near the limit, such as a payload of 1,472 for a 1,500 MTU.
 
 </details>
 
-9. Why does a default Linux keepalive not protect a streaming connection from a balancer idle timeout?
-
-<details><summary>Answer</summary>
+<details><summary>9. Why does a default Linux keepalive not protect a streaming connection from a balancer idle timeout?</summary>
 
 The default time before the first probe is 7200 seconds, and probes need SO_KEEPALIVE. A balancer idle timeout is much shorter. You need application heartbeats or short keepalive settings below the shortest idle timeout on the path.
 
 </details>
 
-10. A Service has no response. List your checks in order.
-
-<details><summary>Answer</summary>
+<details><summary>10. A Service has no response. List your checks in order.</summary>
 
 Pods work when called by pod IP and port. Service exists. DNS resolves the short and full names. Endpoint slices list endpoints. Ports and targetPort are right. Kube-proxy rules exist, in iptables or IPVS. Then conntrack usage and network policy.
 
@@ -775,19 +815,24 @@ Upstream documentation fetched on 2026-11-09, current pages at that date with no
 - https://man7.org/linux/man-pages/man8/ss.8.html (state names, timer option)
 - https://man7.org/linux/man-pages/man7/socket.7.html (SO_KEEPALIVE, SO_LINGER, SO_REUSEADDR)
 - https://www.kernel.org/doc/html/latest/networking/nf_conntrack-sysctl.html (conntrack max, count, buckets, established timeout)
+- https://raw.githubusercontent.com/torvalds/linux/master/net/ipv4/tcp_diag.c (listener Recv-Q is sk_ack_backlog, Send-Q is sk_max_ack_backlog)
+- https://docs.kernel.org/networking/ip-sysctl.html (tcp_syn_linear_timeouts, default 4)
 - https://docs.kernel.org/networking/snmp_counter.html (ListenOverflows, ListenDrops, TCPSynRetrans)
 - https://kubernetes.io/docs/concepts/services-networking/dns-pod-service/ (resolv.conf example with ndots 5)
 - https://kubernetes.io/docs/tasks/debug/debug-application/debug-service/ (Service debugging ladder, EndpointSlices, kube-proxy checks)
 
 Explicitly labelled inferences:
-- The Recv-Q and Send-Q meaning on LISTEN sockets is common Linux practice. The ss manual page did not define it, and the sourced book text describes the two queues without naming the columns.
+- The Recv-Q and Send-Q meaning on LISTEN sockets is now sourced. The ss manual page does not define it, but `net/ipv4/tcp_diag.c` in the kernel source does, and a live run matched it.
 - That an idle-timeout device is usually a cloud balancer or NAT, and not Linux conntrack, follows from the five-day conntrack default. It is reasoning, not a measurement of any platform.
 - The advice to prefer application heartbeats over TCP keepalive for HTTP streaming is reasoning from how proxies treat flows.
 - Nebius has not published its balancer, router or timeout settings. Every design remark about them is a reasonable design, not a fact.
 
 Not verified:
-- All Linux-only commands (ss, nstat, sysctl, conntrack, tcpdump, ping -M do, iptables-save) were not run, because the host is macOS and Docker is not running. The two shell scripts passed bash -n only.
-- The accept queue demo was run on macOS only, and its result differs from Linux.
-- The default value of net.ipv4.ip_local_port_range was not fetched. Check it on the target.
+- Linux commands ran in an Ubuntu 24.04 container (`ubuntu:24.04`, Ubuntu 24.04.5, kernel 6.18.37-0-virt aarch64, OpenSSL 3.0.13, iproute2 6.1.0, conntrack 1.4.8) with `--cap-add NET_ADMIN`. That kernel is the Rancher Desktop VM kernel, so numbers such as the port range are that kernel's, not Nebius's.
+- A full conntrack table was not reproduced, because the container could not lower `nf_conntrack_max`.
+- The idle-reset demo ran on loopback with a polite close. A real balancer or NAT that drops state silently was not tested.
+- `net06_k8s_service_path.sh` needs kubectl and a cluster, so it only passed `bash -n`.
+- The ndots step used a sample resolv.conf, not a pod.
+- The port range on this kernel is 32768 to 60999. The default is a kernel and distribution setting, so check it on the target.
 - The fixture lines in the tests are partly taken from book output and partly synthetic, as the comments in the test files say.
 - No balancer idle timeout number from any vendor is claimed.

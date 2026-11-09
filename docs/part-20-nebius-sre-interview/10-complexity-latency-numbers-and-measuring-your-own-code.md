@@ -48,7 +48,7 @@ You review code that looks like O(n) and runs like O(n squared). Python hides th
 | `s += 'ab'`, a second reference held | 1.5 ms for 10,000 pieces | 25 ms for 40,000 | Four times the data, about 17 times the time |
 | `sorted`, 1 million floats | 127 ms random | 22 ms already sorted | Timsort uses existing order |
 
-Fluent Python, chapter 2, says inserting at the head of a list is costly because the whole list shifts in memory. It recommends `collections.deque` for both ends, and warns that removing from the middle of a deque is not fast.
+The official Python documentation page "Time complexity of built-in types" lists `list.pop(0)` and `list.insert(0, x)` as O(n), `x in list` as O(n), set and dict lookups as O(1) on average and O(n) in the worst case, and `list.append` as O(1) amortised. The collections page gives deque appends and pops at either end as O(1). Fluent Python, chapter 2, says inserting at the head of a list is costly because the whole list shifts in memory. It recommends `collections.deque` for both ends, and warns that removing from the middle of a deque is not fast.
 
 The string result needs care. The textbook says `+=` on strings is quadratic, and my first run showed no such thing. CPython can resize a string in place when nothing else refers to it. That is an implementation detail, so do not rely on it. When I kept a second reference to the string, the optimisation was defeated, and four times the data cost about 17 times the time. Say "it is quadratic in general, CPython sometimes hides it, so I use join".
 
@@ -211,7 +211,7 @@ The formula is short. If each call lands in the slow tail with probability p, an
 | 100 | 63.4 percent |
 | 1,000 | about 99.996 percent |
 
-So with 100 backends, nearly two requests in three include a call from the slow 1 percent. The 99th percentile of the whole request is no longer the 99th percentile of one call. You can run the formula backwards. To keep the overall p99 at 0.99 with 100 calls, each call must meet its target at the 0.9999 quantile, roughly the 99.99th percentile. Dean and Barroso make this argument for large systems in "The Tail at Scale" (I read only its abstract). Here the formula is just arithmetic.
+So with 100 backends, nearly two requests in three include a call from the slow 1 percent. The 99th percentile of the whole request is no longer the 99th percentile of one call. You can run the formula backwards. To keep the overall p99 at 0.99 with 100 calls, each call must meet its target at the 0.9999 quantile, roughly the 99.99th percentile. Dean and Barroso make this argument in "The Tail at Scale". Their example is a server with a one-second p99, and with 100 such servers in parallel they report that 63 percent of user requests take more than one second, the same figure as the table above. Here the formula is just arithmetic.
 
 The simulation uses a continuous distribution. Each call is lognormal with a median of 10 ms, so the single-call p99 is about 40 ms. The request waits for the maximum of the calls. The code is seeded.
 
@@ -281,7 +281,7 @@ fanout   p50 ms   p99 ms
 
 With one call the median is 10 ms and the p99 is 40 ms. With 100 calls the median is 43.7 ms, which is above the single-call p99. The p99 is 92.7 ms. The model assumes independent calls with a lognormal shape. Real calls share queues and fail together, so this is an illustration, not a prediction.
 
-Defences are to reduce fan-out, set deadlines, and send a hedged second request after a short wait. I did not verify these against the paper, so present them as options. Chapter 20.21 covers hedging.
+The paper describes the defences. A hedged request sends the same request to a second replica after a short delay and cancels the loser. Waiting for the 95th percentile expected latency before sending it limits the extra load to about 5 percent. In the paper's BigTable benchmark of 1,000 keys over 100 servers, a hedge after 10 ms cut the 99.9th percentile from 1,800 ms to 74 ms for 2 percent more requests. Tied requests, micro-partitions, selective replication, latency-induced probation, good-enough responses and canary requests are the other techniques the paper lists. Reducing fan-out and setting deadlines are standard advice that the paper does not use as headings, so present them as your own options. Chapter 20.21 covers hedging.
 
 **With fan-out N, a rare slow call becomes a common slow request, so budget the per-call tail at the quantile that gives the overall target.**
 
@@ -734,7 +734,7 @@ Sources and dates fetched (2026-11-09):
 - Jeff Dean, "Designs, Lessons and Advice from Building Large Distributed Systems", keynote slides, LADIS 2009, from cs.cornell.edu/projects/ladis2009/talks/dean-keynote-ladis2009.pdf. The slide "Numbers Everyone Should Know" is the source of the latency table. PDF creation date October 2009.
 - Jeff Dean, "Software Engineering Advice from Building Large-Scale Distributed Systems", undated slides, from the Google-hosted file named stanford-295-talk.pdf. The file name suggests a Stanford CS295 talk, my inference. The PDF conversion date is March 2009. Used for the differing figures and the image-page example.
 - Peter Norvig, "Teach Yourself Programming in Ten Years", norvig.com/21-days.html, answers section.
-- Jeffrey Dean and Luiz Andre Barroso, "The Tail at Scale", Communications of the ACM, vol. 56, 2013, pp. 74 to 80. Only the abstract page at research.google was read.
+- Jeffrey Dean and Luiz Andre Barroso, "The Tail at Scale", Communications of the ACM, vol. 56, 2013, pp. 74 to 80. Read in full on 2026-11-09 from the author-hosted PDF (barroso.org), which is a scan, so I read it by OCR. The research.google page carries only the abstract.
 - Systems Performance, 2nd edition: chapter 2 "Methodologies" for Table 2.2 time scales, the cache hit ratio and runtime formulas, and the M/D/1 formula. Chapter 5 "Applications" for profiling. Chapter 6 "CPUs" for the 64-byte cache line. Chapter 12 "Benchmarking" for averages hiding variance.
 - Fluent Python, 2nd edition: chapter 2 "An Array of Sequences" for list head insertion, deque and Timsort. Chapter 3 "Dictionaries and Sets" for hash lookup.
 - Learning Python, 6th edition: chapter 21 "The Benchmarking Interlude" for best-of timing and timeit.
@@ -747,12 +747,16 @@ Explicitly labelled inferences:
 - That the Stanford-named slides predate the LADIS slides.
 - The 3 ns per comparison in section 10, from one measurement.
 - That cache explains the locality gap. I did not isolate it.
-- The tail-latency defences in section 6.
+- The 0.9999 per-call quantile, which is arithmetic from the formula.
 - The 83-minute and 150-second figures, which are arithmetic on assumed inputs.
 
 Not verified:
 
 - That Nebius asks for the "Numbers Every Programmer Should Know" figures. Only one secondary source says candidates should know them.
-- The Python wiki time-complexity page could not be fetched. Complexity claims come from Fluent Python and my measurements.
+- The old Python wiki page redirects to docs.python.org/3/builtins/time-complexity.html, which I fetched on 2026-11-09. It does not list deque, so deque costs come from the 3.12 collections page.
 - No measurement of a datacenter round trip on current cloud hardware.
 - The chapter gates and `sync_code_blocks.py` were not run, by instruction.
+
+### Verification log
+
+Fetched 2026-11-09: docs.python.org time-complexity page, the Python 3.12 collections page, the Tail at Scale paper (OCR of the PDF). Claims checked: 9. Confirmed: 8 (list, set, dict and deque costs, the 63 percent fan-out figure, hedging after the 95th percentile adding about 5 percent load, the string `+=` quadratic note, the 0.9999 quantile arithmetic, the Dean latency table from earlier fetches). Corrected: 1 (the tail-latency defences were unsourced and now follow the paper's list). Removed: 0. Still unverified: 3. They are that Nebius asks for the latency numbers, that cache explains the locality gap, and datacenter round-trip time on current cloud hardware. The Stanford-named slide date is still my inference.

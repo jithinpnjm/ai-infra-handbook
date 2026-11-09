@@ -104,7 +104,9 @@ Symptom. Requests queue up, nothing finishes, and `rate(vllm:generation_tokens_t
 
 A hang in tensor-parallel serving is often one rank waiting for another in a collective. The book Distributed AI Systems, chapter 9, notes that Docker's default shared memory is only 64 MB. Tensor-parallel workers route NCCL and IPC buffers through it. Too little space makes collectives hang with little diagnostic output. The vLLM troubleshooting page gives the debug switches: `NCCL_DEBUG=TRACE`, `CUDA_LAUNCH_BLOCKING=1` and `VLLM_TRACE_FUNCTION=1`. It warns that the last one slows generation by more than 100 times. It also offers `NCCL_P2P_DISABLE=1` as a temporary workaround only.
 
-Here is a trap you must know. In v0.32.0 the `/health` route returns 200 unless the engine is marked dead, and the code behind it checks only an error flag. A hung but not crashed engine keeps answering 200. That is my reading of the source, so say it as "the health route reports a crash, not a stall". A deep check must send a real one-token request, or watch the token counter.
+Here is a trap you must know. In v0.32.0 the `/health` route returns 200 unless the engine is marked dead, and the code behind it checks only an error flag. A hung but not crashed engine keeps answering 200. The route awaits `check_health()` in `async_llm.py`, which raises only if the engine-dead flag is set or the output loop is not running. Say it as "the health route reports a crash, not a stall". A deep check must send a real one-token request, or watch the token counter.
+
+A failure after the first token has a second trap. By then the server has sent HTTP 200 and cannot change it. In the v0.32.0 chat stream generator, a `GenerationError` or any other exception becomes one `data:` error chunk, followed by `data: [DONE]`. The engine side counts the request in `vllm:request_success_total` with `finished_reason="error"`, or `"abort"` if the client left first. So a status-code SLI misses it, and the finish-reason counter sees it.
 
 Xid errors are kernel-driver messages about GPU faults, visible in `dmesg`. The NVIDIA Xid catalog, last updated 2026-11-04 on the page I fetched, gives these examples.
 
@@ -165,7 +167,7 @@ Decide: if many replicas load together, fix the rollout order and the weight sou
 
 Two failures from the Nebius chat-app case study belong together. The case study says aggressive liveness probes were restarting healthy workers. It also says restarted workers sometimes did not rejoin the pool, so capacity shrank silently. Nebius has not published probe settings, so what follows is general method plus my own reasoning.
 
-Liveness kill. A busy engine is slow to answer anything that goes through its queue. If the liveness probe has a short timeout, or calls a path that waits behind generation work, Kubernetes sees failures and restarts a healthy pod. The restart drops every in-flight request and starts a new weight load. The book Production Kubernetes, chapter 14, says a liveness probe should fail only when a restart is needed, such as a deadlock. Many apps use an endpoint that unconditionally returns 200. It says not to check external dependencies in liveness. It describes readiness as the place for temporary conditions such as warm caches and overload. It also explains the startup probe, which covers slow initialisation and then steps aside.
+Liveness kill. The vLLM `/health` route in v0.32.0 does not queue behind generation, because it only reads a flag. So a busy engine alone does not make it slow. It can still time out when the API server process is starved, for example by CPU-heavy tokenisation or a saturated event loop. The default probe timeout is 1 second per the Kubernetes docs. If the liveness probe has a short timeout, or calls a path that waits behind generation work such as a real completion, Kubernetes sees failures and restarts a healthy pod. The restart drops every in-flight request and starts a new weight load. The book Production Kubernetes, chapter 14, says a liveness probe should fail only when a restart is needed, such as a deadlock. Many apps use an endpoint that unconditionally returns 200. It says not to check external dependencies in liveness. It describes readiness as the place for temporary conditions such as warm caches and overload. It also explains the startup probe, which covers slow initialisation and then steps aside.
 
 Silent shrink. A restarted worker has to pass readiness and be re-registered with whatever the router uses for discovery. If registration fails, the pod looks fine to Kubernetes but receives no traffic. Capacity drops from, say, eight replicas to five, and every alert that watches latency stays quiet until load rises. A reasonable design, which is my reasoning, alerts on ready versus desired replicas and on per-replica request rate being zero for a ready pod.
 
@@ -203,7 +205,7 @@ Symptom. Nothing errors, latency is fine, and users complain that answers are cu
 
 The signal. The counter `vllm:request_success_total` has a `finished_reason` label. In v0.32.0 the reasons are stop, length, abort, error and repetition. The source says error is a retryable request-level error returned as HTTP 500, and repetition means a repetitive token pattern was detected. A rise in the share of length, which means the model ran to its token limit, or any repetition finishes, is a drift signal. The classifier computes shares from rates.
 
-KV-cache corruption. vLLM has a counter `vllm:corrupted_requests`, counting requests with NaNs in logits. In v0.32.0 the source registers it only when the environment variable `VLLM_COMPUTE_NANS_IN_LOGITS` is set. If you never set it, the metric is simply absent. Absence does not mean zero corruption.
+KV-cache corruption. vLLM has a counter `vllm:corrupted_requests`, counting requests with NaNs in logits. A request is counted once, when it finishes, if any step produced NaNs. In v0.32.0 the source registers it only when the environment variable `VLLM_COMPUTE_NANS_IN_LOGITS` is set. If you never set it, the metric is simply absent. Absence does not mean zero corruption.
 
 Speculative decoding. The vLLM docs say speculative decoding is theoretically lossless up to hardware numerics, and that greedy output matches in their tests. They also say batch size changes can cause small variations. So a quality regression after enabling speculation is less likely to come from the algorithm than from a configuration change. The real trap is speed. If the draft rarely matches, you pay for drafts and save little. The design page gives the acceptance rate as accepted tokens over draft tokens, using `vllm:spec_decode_num_accepted_tokens_total` and `vllm:spec_decode_num_draft_tokens_total`. A rate below about 50 percent is my starting threshold, not a vLLM number.
 
@@ -505,84 +507,44 @@ Expected result: 23 passed.
 
 ## Drill questions
 
-1. Name the three places a request can wait in an LLM engine and the metric for each.
-
-<details><summary>Answer</summary>
-
+<details><summary>1. Name the three places a request can wait in an LLM engine and the metric for each.</summary>
 The waiting queue is `vllm:num_requests_waiting`. The running batch is `vllm:num_requests_running`. The KV cache is `vllm:kv_cache_usage_perc`, where 1 means full.
-
 </details>
 
-2. Why do you write `vllm:num_preemptions_total` in PromQL when the source defines `vllm:num_preemptions`?
-
-<details><summary>Answer</summary>
-
+<details><summary>2. Why do you write `vllm:num_preemptions_total` in PromQL when the source defines `vllm:num_preemptions`?</summary>
 Prometheus counters are exposed with a `_total` suffix. The vLLM metrics design page says the suffix is stripped in the definition and added when the series is exposed.
-
 </details>
 
-3. What does vLLM do when the KV cache is full, and what is the default mode in V1?
-
-<details><summary>Answer</summary>
-
+<details><summary>3. What does vLLM do when the KV cache is full, and what is the default mode in V1?</summary>
 It preempts a request, frees its cache and recomputes it later. The default mode in V1 is recompute, because the docs say recomputation has lower overhead than swap there.
-
 </details>
 
-4. Name three levers that reduce preemptions.
-
-<details><summary>Answer</summary>
-
+<details><summary>4. Name three levers that reduce preemptions.</summary>
 Raise `gpu_memory_utilization`, lower `max_num_seqs` or `max_num_batched_tokens`, and raise tensor parallel size. Pipeline parallel size is a fourth.
-
 </details>
 
-5. Compute the KV cache per token for Llama-2-7B in FP16, and how many 4,096-token requests fit in 10 GB.
-
-<details><summary>Answer</summary>
-
+<details><summary>5. Compute the KV cache per token for Llama-2-7B in FP16, and how many 4,096-token requests fit in 10 GB.</summary>
 Two times 32 layers times 32 heads times head dimension 128 times 2 bytes gives 524,288 bytes, which is 0.5 MB. Ten GB is 10,240 MB, divided by 0.5 MB times 4,096 tokens gives 5 requests.
-
 </details>
 
-6. Your engine has work queued and zero token rate, but `/health` returns 200. Why?
-
-<details><summary>Answer</summary>
-
+<details><summary>6. Your engine has work queued and zero token rate, but `/health` returns 200. Why?</summary>
 In v0.32.0 the health route fails only when the engine is marked dead. A hang does not set that flag. So the route reports a crash, not a stall. Use the token rate or a real one-token probe.
-
 </details>
 
-7. How do you tell startup OOM from runtime OOM, and what differs in the fix?
-
-<details><summary>Answer</summary>
-
+<details><summary>7. How do you tell startup OOM from runtime OOM, and what differs in the fix?</summary>
 Startup OOM happens during load or memory profiling, before serving, so sizing is wrong or a co-tenant holds memory. Fix by lowering `gpu_memory_utilization` or `max_model_len`. Runtime OOM happens under traffic, so headroom is too small. Fix by lowering batch limits and capping prompt length.
-
 </details>
 
-8. Why does a short liveness timeout hurt a busy LLM worker, and what should liveness check instead?
-
-<details><summary>Answer</summary>
-
+<details><summary>8. Why does a short liveness timeout hurt a busy LLM worker, and what should liveness check instead?</summary>
 A busy engine answers slowly, so the probe fails and Kubernetes restarts a healthy pod, dropping requests and forcing a weight load. Liveness should fail only when a restart is needed, and it should not check external dependencies. Readiness carries load state.
-
 </details>
 
-9. Give the formula for expected attempts per request with failure probability p and k attempts, and its value at p = 0.5, k = 4.
-
-<details><summary>Answer</summary>
-
+<details><summary>9. Give the formula for expected attempts per request with failure probability p and k attempts, and its value at p = 0.5, k = 4.</summary>
 The sum of p to the power i, for i from 0 to k minus 1. At 0.5 and 4 attempts it is 1 + 0.5 + 0.25 + 0.125, which is 1.875.
-
 </details>
 
-10. Infrastructure is green and users say answers are cut off. What do you check?
-
-<details><summary>Answer</summary>
-
+<details><summary>10. Infrastructure is green and users say answers are cut off. What do you check?</summary>
 The share of `finished_reason` equal to length in `vllm:request_success_total`, compared with a baseline, plus repetition finishes. Then the last change: engine version, quantisation, speculation, or sampling defaults from `generation_config.json`.
-
 </details>
 
 ## Common mistakes and weak answers
@@ -626,17 +588,27 @@ Sources and dates fetched (2026-11-09):
 
 Explicitly labelled inferences:
 
-- That a hung engine keeps returning 200 on `/health`. This is my reading of the v0.32.0 source, not a documented statement.
 - All thresholds in the classifier, including the 50 percent acceptance rate, the 8x prompt-length tail, 95 percent KV usage and the 15-point finish_reason shift.
 - The explanation of why Nebius liveness probes killed healthy workers, and the design that alerts on ready versus desired replicas.
-- That a busy engine answers probes slowly. The book states the general rule for liveness probes but not this vLLM-specific mechanism.
 - The equal-share model in the herd calculation.
 - That vLLM's preemption victim is the newest request. The toy assumes it.
 
 Not verified:
 
 - No real vLLM server was started, so no metric output, log line or `/metrics` text was observed. The preemption log line is quoted from the docs and may differ in your version.
-- The Kubernetes probe fields come from the book and were not checked against the current Kubernetes docs.
 - I did not check Nebius Token Factory documentation for the engine version it runs.
-- The book's default of about 0.85 for `gpu_memory_utilization` conflicts with 0.92 in the v0.32.0 config class. Real defaults can also be set when the engine config is created, so read the startup log.
+- The book's default of about 0.85 for `gpu_memory_utilization` conflicts with 0.92 in the v0.32.0 config class (`Field(default=0.92)` in `vllm/config/cache.py`). Real defaults can be changed at engine-config creation, so read the startup log. Trust the source for v0.32.0.
 - Nebius has not published its alert thresholds, probe settings or router design.
+
+### Verification log (fact-check pass, 2026-11-09)
+
+Resolved 6 flagged claims: 4 confirmed, 1 corrected, 1 still unverified.
+
+- CONFIRMED: `/health` returns 503 only when the engine is dead. `health.py` calls `check_health()`, and `async_llm.py` raises only if `errored` (engine dead flag or output loop not running) is true. A hung engine still returns 200. Read at tag v0.32.0.
+- CORRECTED: the claim that a busy engine answers `/health` slowly. The route reads a flag and does not wait behind generation work. Slowness would come from a starved API server process, so the text now says that.
+- CONFIRMED: `vllm:corrupted_requests` exists only when `VLLM_COMPUTE_NANS_IN_LOGITS` is set, and counts requests once at finish if any logits had NaNs (`stats.py`, `loggers.py`).
+- CONFIRMED: a stream failing after the first token ends with a `data:` error chunk then `[DONE]` under HTTP 200. Engine errors count as `finished_reason="error"`, client disconnects as `abort` (`chat_completion/serving.py`, `output_processor.py`).
+- CONFIRMED: Kubernetes probe fields and the 1 second `timeoutSeconds` default, and the startup probe pattern, from kubernetes/website `configure-liveness-readiness-startup-probes.md` at main.
+- CONFIRMED: `gpu_memory_utilization` default 0.92 in v0.32.0.
+- Latest stable vLLM at check time: v0.32.0 (2026-10-18). v0.33.0rc3 (2026-11-02) is flagged as a release candidate in the tag list, though the GitHub flag shows it as not prerelease, so keep v0.32.0 as the pin.
+- STILL UNVERIFIED: the classifier thresholds and Nebius probe settings, which are labelled design choices.

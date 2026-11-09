@@ -112,3 +112,11 @@ Size target: about 4-6k words per chapter for design/knowledge chapters, shorter
 
 ## 6. Status (2026-11-09 evening)
 All chapters 20.1 to 20.29 are drafted (gates: 648 tests, 289 code files clean, site build passes). 20.30 to 20.33 (Nebius public architecture series) were added by another session and are kept. Not yet done: human read of every chapter, fact-check pass over claims marked unverified or "my reasoning", running Linux scenarios on a real Linux host, and a trim of 20.26 (about 9,900 words, mostly drill tables). Part 19 rebuild has not started.
+
+## 7. Verification pass (2026-11-09 night)
+- 20.30 to 20.33 (drafted by ChatGPT) were re-verified against Nebius docs fetched today: about 200 claims checked, many corrected or removed; each chapter ends with a Verification log. 20.32 was largely rewritten.
+- 20.8 to 20.28 each have a Verification log in Sources. Remaining unverified items stay labelled in each chapter.
+- Chapters 20.3 to 20.7, 20.23 and 20.26 were run in Ubuntu 24.04 containers (Docker VM kernel 6.18, arm64). Not run: perf, PSI, systemd, SELinux/AppArmor, NUMA, swap, BCC/bpf, a full conntrack table, kubectl/cluster items.
+- 20.26 trimmed to about 7,500 words with all ten incidents kept.
+- Gates: 673 tests pass, 293 code files clean, 765 Mermaid diagrams clean, site build passes.
+- Still open: human read of every chapter; Part 19 rebuild; Triton KV metrics, Ray queue-time histogram, SRE book 2nd edition currency, Nebius pricing (client-rendered page).

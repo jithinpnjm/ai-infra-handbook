@@ -17,13 +17,17 @@ mem_avail=$(awk '/^MemAvailable:/ {print $2}' /proc/meminfo)
 swap_total=$(awk '/^SwapTotal:/ {print $2}' /proc/meminfo)
 swap_free=$(awk '/^SwapFree:/ {print $2}' /proc/meminfo)
 echo "MEM    U    available ${mem_avail} kB of ${mem_total} kB; swap free ${swap_free} of ${swap_total} kB"
-echo "MEM    E    dmesg lines with 'killed': $(dmesg 2>/dev/null | grep -c killed)"
+if dmesg >/dev/null 2>&1; then
+  echo "MEM    E    dmesg lines with 'killed': $(dmesg 2>/dev/null | grep -c killed)"
+else
+  echo "MEM    E    dmesg not readable here (container or dmesg_restrict): known-unknown"
+fi
 
 for r in cpu memory io; do
   if [ -r "/proc/pressure/$r" ]; then
     echo "PSI    S    $r: $(head -n 1 /proc/pressure/$r)"
   else
-    echo "PSI    S    $r: not available (needs Linux 4.20 or newer)"
+    echo "PSI    S    $r: not available (needs Linux 4.20 or newer with PSI enabled)"
   fi
 done
 

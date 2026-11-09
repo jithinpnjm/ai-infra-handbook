@@ -155,3 +155,14 @@ def test_report_survives_a_file_written_for_a_missing_tool():
                 fh.write(text)
         out = r.report(d)
     assert any("free.txt not readable: missing tool: free" in x.message for x in out)
+
+
+def test_report_flags_a_dmesg_that_could_not_be_read():
+    # Real text from ubuntu:24.04 in a Docker container (dmesg is not permitted there).
+    text = "dmesg: read kernel buffer failed: Operation not permitted\nexit 1 from: dmesg -T\n"
+    with tempfile.TemporaryDirectory() as d:
+        for name, body in [("nproc.txt", "2\n"), ("dmesg.txt", text)]:
+            with open(os.path.join(d, name), "w") as fh:
+                fh.write(body)
+        out = r.report(d)
+    assert any("dmesg.txt not readable" in x.message for x in out)

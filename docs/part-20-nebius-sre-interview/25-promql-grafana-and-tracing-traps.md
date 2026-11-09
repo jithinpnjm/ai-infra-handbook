@@ -296,7 +296,7 @@ A user says the answer started late. The gateway shows a healthy p50 and the eng
 
 The OpenTelemetry docs define a span as a unit of work or operation. Context propagation, in their words, is the core concept that enables distributed tracing. The W3C Trace Context specification defines the `traceparent` header as version, trace ID, parent ID and trace flags, with fields of 2, 32, 16 and 2 hex characters. The least significant bit of the flags is the sampled bit. Each service reads the header, creates a child span, and passes a new header to the next hop.
 
-A streaming request is awkward because the HTTP status is sent early and the work continues for seconds. A design that I think works, and that Nebius has not published, is below. Treat it as my reasoning.
+A streaming request is awkward because the HTTP status is sent early and the work continues for seconds. A design that I think works, and that Nebius has not published, is below. Treat it as my reasoning, except where the table says what vLLM v0.32.0 does.
 
 ```mermaid
 flowchart LR
@@ -304,18 +304,17 @@ flowchart LR
   G -->|"traceparent"| R["Router span<br/>pick replica"]
   R -->|"traceparent"| E["Engine span<br/>queue, prefill, decode"]
   G -. "event: first_token" .-> G
-  E -. "event: preempted" .-> E
 ```
 
 | Span | Kind | Lives until | Attributes and events |
 |---|---|---|---|
 | Gateway request | server | last token or abort | model, status, finish reason, token counts, event `first_token` |
 | Router decision | internal | replica chosen | replica, retries, queue depth seen |
-| Engine request | server | last token | queue wait, prefill, decode, event on preemption |
+| Engine request | server | last token | queue wait, prefill and decode times as attributes. vLLM v0.32.0 sets these on one span. It does not emit a preemption event. |
 
 Two rules make this work. The gateway span stays open until the stream ends, and its status is set to Error if the stream fails after a 200 was sent. The OTel docs say status takes one of three values, Unset, Error or Ok. Put the first-token moment on the span as an event, because a span event is a structured log message on a span.
 
-vLLM documents tracing through the flags `--otlp-traces-endpoint` and `--collect-detailed-traces`. I did not run a vLLM server here, so which spans it emits was not verified.
+vLLM documents tracing through the flags `--otlp-traces-endpoint` and `--collect-detailed-traces`. I read the v0.32.0 source, the version chapter 20.22 pins. The first flag sets the OTLP target. The second takes `model`, `worker` or `all`, needs the first flag, and the source warns it can be costly or blocking. With tracing on, the output processor emits one span named `llm_request` when a request finishes. It has kind SERVER and takes its parent from the incoming trace headers. Its attributes are time to first token, end-to-end time, time in queue, prefill, decode and inference time, token counts, request ID and some sampling parameters. So the engine hop gives you one span with timing attributes, not child spans for queue, prefill and decode. I read this and did not run a server.
 
 **One span per hop, the gateway span covers the whole stream, and failure after the 200 must set span status.**
 
@@ -323,7 +322,7 @@ vLLM documents tracing through the flags `--otlp-traces-endpoint` and `--collect
 
 At high volume you cannot keep every trace. The OTel docs split sampling into two. Head sampling decides as early as possible. It is simple and efficient, but it cannot guarantee that a trace containing an error is kept. Tail sampling decides after it sees all or most of the spans and can keep slow or failed traces. The docs call it harder to implement and operate, because it needs stateful components handling large volumes. The Collector includes a Tail Sampling Processor.
 
-The join between metrics and traces is the exemplar. The Prometheus feature-flag page says OpenMetrics lets scrape targets attach exemplars, and a common use is trace IDs. The flag is `--enable-feature=exemplar-storage`. The page says an exemplar with only a trace ID uses roughly 100 bytes in memory, in a fixed-size circular buffer. Grafana can show exemplars on a panel, but I did not verify the exact data source setting here.
+The join between metrics and traces is the exemplar. The Prometheus feature-flag page says OpenMetrics lets scrape targets attach exemplars, and a common use is trace IDs. The flag is `--enable-feature=exemplar-storage`. The page says an exemplar with only a trace ID uses roughly 100 bytes in memory, in a fixed-size circular buffer. In Grafana, you add an exemplar link on the Prometheus data source settings. Choose an internal link to a tracing data source, or an external URL, and set the label name that holds the trace ID, often `trace_id` or `traceID`. Then switch on the Exemplars toggle in the query editor. Exemplars do not work with instant queries.
 
 With an exemplar on a slow bucket you go from the panel to one trace. In that trace you find the trace ID, and in logs you search the same ID. Put `trace_id` on every log line from the gateway and the engine.
 
@@ -373,7 +372,7 @@ Also make the router alert on lost capacity, since the loss shows up as saturati
 
 A node fails. Scrape targets go away, the error ratio rises, KV cache saturates on the survivors and a queue alert fires.
 
-The Alertmanager config groups by cluster and model, so alerts for one model arrive as one notification. The inhibition rule silences symptom alerts while `VllmTargetsMissing` fires in the same cluster. The page rule silences tickets for the same model. The routing script confirms the pages go to the pager. Inhibition itself was not run end to end here, because no Alertmanager server was available. Say that honestly if asked.
+The Alertmanager config groups by cluster and model, so alerts for one model arrive as one notification. The inhibition rule silences symptom alerts while `VllmTargetsMissing` fires in the same cluster. The page rule silences tickets for the same model. The routing script confirms the pages go to the pager. I ran this against Alertmanager 0.35.0 in a throwaway container, as the lab says. The grouping and inhibition behaved as described.
 
 ## Hands-on lab
 
@@ -383,6 +382,7 @@ All steps run on a laptop with `promtool`, `amtool` and Python. No Docker is nee
 2. Run the exercise tests. `promtool test rules code/part20/c25_exercises_test.yaml` should print `SUCCESS`. Change one expected value and see the diff it prints.
 3. Run the alert tests. `promtool test rules code/part20/c25_trap_rules_test.yaml` should print `SUCCESS`.
 4. Check the Alertmanager config. `amtool check-config code/part20/c25_alertmanager.yml` should list 2 inhibit rules and 2 receivers. Run `code/part20/c25_route_check.sh` and expect three `ok` lines.
+4b. Run the real Alertmanager. Start `prom/alertmanager` in Docker with the config, pointing both webhooks at a small receiver on the host. Post three alerts for one model and cluster, one for another model, and one `VllmTargetsMissing`. I ran this. Two ticket alerts for model m1 arrived as one notification listing both. A page alert for model m2 reached the pager, and the ticket alert for the same model was inhibited. In cluster c2, `QueueDeep` with severity page was inhibited while `VllmTargetsMissing` was firing. The API listed the inhibited alerts as suppressed. The timing values were not measured to the second.
 5. Lint the good and bad rules. `python3 code/part20/c25_promql_lint.py code/part20/c25_trap_rules.yaml` reports 0 findings. The same command on `c25_bad_rules.yaml` reports 5 warnings and exits 0. Add `--strict` and it exits 1.
 6. Run the pytest suite. `python3 -m pytest code/part20/test_c25_promql_lint.py` should report 38 passed.
 7. Break an offset on purpose. Write `rate(gateway_requests_total[5m]) offset 1h` into a rule file and run `promtool check rules`. Expect the parse error quoted in idea 11. I ran this.
@@ -531,6 +531,9 @@ Sources, all fetched 2026-11-09 unless stated:
 - OpenTelemetry docs, traces and sampling concepts, https://opentelemetry.io/docs/concepts/. Spans, context propagation, status, head and tail sampling.
 - W3C Trace Context, https://www.w3.org/TR/trace-context/. traceparent format.
 - vLLM docs, metrics design page, https://docs.vllm.ai/en/latest/design/metrics.html. Latest developer docs, no version shown. Metric names and the tracing flags. The vLLM OpenTelemetry example page returned 404.
+- vLLM v0.32.0 source from github.com/vllm-project/vllm: `vllm/config/observability.py`, `vllm/engine/arg_utils.py`, `vllm/v1/engine/output_processor.py` and `docs/usage/metrics.md`, fetched 2026-11-09.
+- Grafana documentation sources: Prometheus data source configuration and query editor, and template variables, from github.com/grafana/grafana `main`, fetched 2026-11-09.
+- Alertmanager 0.35.0 docker image `prom/alertmanager:latest`, pulled 2026-11-09.
 - Systems Performance, 2nd edition, Chapter 2 "Methodologies": utilization, saturation, the USE method.
 - Production Kubernetes, Chapter 9 "Observability": Prometheus model, label cardinality, Alertmanager.
 - LLMs in Production, Chapter 3: streaming and completion length affect latency. Used only as background for per-token metrics.
@@ -547,7 +550,25 @@ Explicitly labelled inferences:
 
 Not verified:
 
-- No Alertmanager or Prometheus server was available, so inhibition, grouping timing and real scraping were not run. Only `promtool` unit tests and `amtool` config checks were run.
-- The Grafana setting that shows exemplars on a panel.
+- No Prometheus server was run, so real scraping was not exercised. Alertmanager grouping and inhibition were run on 2026-11-09, but group_wait and group_interval timing was not measured. My short-timer test showed notifications earlier than the configured values, and I did not work out why.
+- No vLLM server was run, so the `llm_request` span is read from source, not observed.
 - Which spans vLLM actually emits, and whether the vLLM docs page shown matches your installed version.
 - The linter is regex-level and was tested only on the cases in its test file.
+
+### Verification log
+
+Fact-check pass on 2026-11-09. Eleven claims were checked. Ten are confirmed, one was corrected and none are left unverified except the group timing noted above.
+
+| Claim | Result | Source |
+|---|---|---|
+| Alertmanager defaults: group_wait 30s, group_interval 5m, repeat_interval 4h | Confirmed | Alertmanager configuration reference, main |
+| Grouping by cluster and model merges alerts into one notification | Confirmed by running Alertmanager 0.35.0 | Container run |
+| Inhibition rules suppress the target alerts, including a page-severity target | Confirmed by running | Container run |
+| Source and target matchers should not match the same alert | Confirmed | Alertmanager configuration reference |
+| Lookback delta is 5 minutes | Confirmed | Prometheus querying basics |
+| `keep_firing_for` exists | Confirmed | Prometheus alerting rules page |
+| Exemplar flag is `--enable-feature=exemplar-storage`, about 100 bytes per exemplar | Confirmed | Prometheus feature flags page, main |
+| `$__rate_interval` is the larger of interval plus scrape interval and four scrape intervals | Confirmed | Grafana template variables page |
+| Grafana exemplar setting | Resolved: data source exemplar link plus the query toggle | Grafana docs, main |
+| vLLM tracing flags exist at v0.32.0 | Confirmed | `observability.py`, `arg_utils.py` |
+| The engine emits queue, prefill and decode spans, and a preemption event | Corrected: one `llm_request` span with timing attributes, no preemption event | `output_processor.py` v0.32.0 |

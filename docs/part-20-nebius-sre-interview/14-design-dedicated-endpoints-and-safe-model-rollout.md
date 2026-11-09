@@ -22,7 +22,9 @@ Two skills are checked at once. First, can you split an endpoint into a control 
 
 Public facts, from the plan's research section, tagged vendor and docs. Token Factory offers serverless and dedicated endpoints with an OpenAI-compatible API and the full vLLM parameter set. The control plane, which handles create, update, enable, disable and delete, is separate from the region-specific data plane. On a dedicated endpoint you pick the GPU type from L40, H100, H200 or B200, the GPUs per replica, the minimum and maximum replicas, and the region in the EU or US. The chat-app case study reports a 99.9 percent SLA on dedicated endpoints and a need for X+1 redundancy.
 
-Nothing else here is public. The plan records no detail on a weights hub, on how a checkpoint reaches an endpoint, on rollout strategy, on probe settings or on scale-to-zero. Wherever this chapter describes those, the text says "a reasonable design is" and it is my reasoning. Say the same in the room.
+The Token Factory dedicated endpoint pages, fetched 2026-11-09, add more. Lifecycle and readiness are two separate statuses, and the page says to use readiness to decide whether to send traffic. `min_replicas` and `max_replicas` are required fields. Minimum replicas are reserved and non-preemptible only while the endpoint is active. When an endpoint stops, for any reason including an incident or maintenance, its GPUs return to a shared pool and a restart asks for capacity again. The region cannot be changed after creation. The page on capacity says self-service dedicated endpoints carry no formal SLA unless covered by a contract, so the 99.9 percent figure in the case study should be quoted as a contract-level number. Custom model weights are in beta and available on request.
+
+Nothing else here is public. The pages show no detail on a weights hub, on rollout strategy, on probe settings or on scale-to-zero. They do not say whether `min_replicas` may be zero. Wherever this chapter describes those, the text says "a reasonable design is" and it is my reasoning. Say the same in the room.
 
 ## The core ideas
 
@@ -59,7 +61,7 @@ The validator rejects a GPU type outside the four public choices, a region outsi
 
 A customer asks for a 70 billion parameter model. You need the numbers before you pick hardware. Chapter 20.12 gives the full toolkit, so here is only the shape.
 
-Weights take parameters times bytes per parameter. At FP16 that is 70 x 2 = 140 GB. Hands-On LLM Serving and Optimization, chapter 5, gives this rule. One H100 SXM has 80 GB, according to the NVIDIA H100 page fetched on 2026-11-09, so 140 GB cannot fit on one GPU, and you need at least two for the weights alone. Add KV cache and activation headroom and the honest answer is four, or fewer if you quantise. The GPU memory figure is from the NVIDIA datasheet for the H100, which this chapter did not re-fetch, so check it before you quote it.
+Weights take parameters times bytes per parameter. At FP16 that is 70 x 2 = 140 GB. Hands-On LLM Serving and Optimization, chapter 5, gives this rule. One H100 SXM has 80 GB, according to the NVIDIA H100 page fetched on 2026-11-09, so 140 GB cannot fit on one GPU, and you need at least two for the weights alone. Add KV cache and activation headroom and the honest answer is four, or fewer if you quantise. The NVIDIA H100 page, fetched again on 2026-11-09, lists 80 GB for the SXM card and 94 GB for the NVL card.
 
 GPUs per replica is therefore a memory question first and a latency question second. More GPUs per replica via tensor parallelism cuts latency but costs interconnect traffic and makes each replica a bigger unit to lose and to reload. Replicas count is the capacity and availability question. The minimum is your floor for the SLA. The maximum is your cost ceiling and, as section 6 shows, also your rollout budget.
 
@@ -126,7 +128,7 @@ Production Kubernetes, chapter 14, says liveness failures cause restarts, so a l
 
 For an LLM engine that gives a clean split. The startup probe covers the load and compile window, and its length must be at least your measured cold start. Liveness is a cheap local check with generous failure tolerance, because a busy engine answers slowly and a restart throws away both the in-flight requests and a long weight load. Readiness should mean "has loaded, has warmed up and can complete a real one-token request", not "the port is open".
 
-Chapter 20.18 section 6 notes that in vLLM v0.32.0 the health route reports a crash and not a stall, which is my reading of the source. So a green health route is weak evidence for readiness. A reasonable design is a readiness check that runs a real one-token request after warm-up and then keeps passing as long as token rate is sane. The file `c14_engine_deploy.yaml` shows the shape with a startup window of 600 seconds, which comes from a failure threshold of 60 times a period of 10. The probe path `/ready` is a hypothetical one that a sidecar or wrapper would have to provide.
+Chapter 20.18 section 6 notes that the vLLM health route reports a crash and not a stall. I rechecked this at tag v0.33.0 on 2026-11-09. The `/health` handler in `vllm/entrypoints/serve/instrumentator/health.py` returns 503 only when `check_health` raises the engine-dead error, and `check_health` in `async_llm.py` raises only if the engine has errored. A hung engine that has not errored still answers 200. So a green health route is weak evidence for readiness. A reasonable design is a readiness check that runs a real one-token request after warm-up and then keeps passing as long as token rate is sane. The file `c14_engine_deploy.yaml` shows the shape with a startup window of 600 seconds, which comes from a failure threshold of 60 times a period of 10. The probe path `/ready` is a hypothetical one that a sidecar or wrapper would have to provide.
 
 ```yaml
 # Sketch of a GPU engine Deployment. Probe numbers are starting values, not Nebius settings.
@@ -170,7 +172,7 @@ spec:
             failureThreshold: 6
 ```
 
-The grace period matters for the old pods. On shutdown Kubernetes sends SIGTERM and waits for the grace period, 30 seconds by default, before SIGKILL, as Production Kubernetes chapter 14 explains. A long generation needs time to finish, so raise it and have the engine stop accepting new requests while it drains.
+The grace period matters for the old pods. On shutdown Kubernetes sends SIGTERM and waits for the grace period, 30 seconds by default, before SIGKILL, as Production Kubernetes chapter 14 explains. A long generation needs time to finish, so raise it and have the engine stop accepting new requests while it drains. The Kubernetes pod lifecycle page, fetched 2026-11-09, says the preStop hook runs first and then the runtime sends TERM, and that the control plane starts removing the pod from EndpointSlices at the same time, not before. So requests can still arrive after TERM. In vLLM at tag v0.33.0 the `--shutdown-timeout` option defaults to 0, which means abort in-flight requests at once. Its help text says a value above 0 waits for requests to finish. Set it below your grace period.
 
 **Make readiness mean "can complete a real request", keep liveness local and tolerant, and size the startup probe to your measured cold start.**
 
@@ -494,7 +496,7 @@ Sources and dates fetched or read (2026-11-09):
 - Practical MLOps, chapter 4 "Continuous Delivery for Machine Learning Models": blue/green and canary, the boolean example.
 - Machine Learning Platform Engineering, chapter 10 "Model inference and serving": model versioning and rollback.
 - Kubernetes for Generative AI Solutions, chapter 6 "Scaling GenAI Applications on Kubernetes": KEDA scale to zero. Chapter 13 "High Availability and Disaster Recovery": blue/green and canary for safer rollouts.
-- Hands-On LLM Serving and Optimization, chapter 5: weights size rule and the SSD bandwidth range. LLMs in Production, chapter 6, as summarised in chapter 20.13: weights on a mounted volume.
+- Hands-On LLM Serving and Optimization, chapter 5: weights size rule and the SSD bandwidth range. Token Factory dedicated endpoint pages (capacity and scaling, lifecycle and status, operating, control and data plane, best practice, custom weights), docs.tokenfactory.nebius.com, fetched 2026-11-09. vLLM source at tag v0.33.0 (`health.py`, `async_llm.py`, `arg_utils.py`, `config/vllm.py`), fetched 2026-11-09. Kubernetes pod lifecycle page, kubernetes/website main, fetched 2026-11-09. LLMs in Production, chapter 6, as summarised in chapter 20.13: weights on a mounted volume.
 - Chapters 20.12, 20.13, 20.18 and 20.19 of this volume for the facts they source.
 - `planning/VOLUME_20_NEBIUS_SRE_PLAN.md` section 1: public Nebius facts, tagged vendor or docs.
 
@@ -509,10 +511,12 @@ Explicitly labelled inferences:
 - Illustrative inputs for download rate, compile time and warm-up time.
 - The simulator frees a terminating pod's slot at once, which real pods do not, since they drain first.
 
+### Verification log
+
+Checked 6, confirmed 4 (H100 80 GB, health route behaviour at v0.33.0, grace period and TERM order, SIGTERM and shutdown timeout in vLLM), corrected 1 (the SLA wording, now tied to the capacity page), removed 0, still unverified 1 (whether `min_replicas` may be zero, and the rollout behaviour).
+
 Not verified:
 
 - No real cluster or GPU was used. The rolling update is a simulation of the controller's rules and not a real controller trace. The Deployment was checked by client-side dry run only.
-- The H100 SXM memory size of 80 GB was checked against the NVIDIA H100 page on 2026-11-09.
-- I did not check Nebius Token Factory documentation for custom-weights features, rollout behaviour or scale-to-zero. The plan records none.
-- The statement that a health route reports a crash and not a stall is inherited from chapter 20.18, where it is an inference from the source.
-- Docker was not running and the host is macOS, so no Linux command was run.
+- The Token Factory pages give no rollout behaviour, no probe settings and no statement on zero minimum replicas, so those stay my reasoning.
+- No Linux command was run. The Deployment now also passes `kubeconform -strict` on its own schema, which checks syntax and not behaviour.

@@ -8,6 +8,7 @@ Line shapes come from the kernel source, mm/oom_kill.c and mm/memcontrol.c (v6.6
   Memory cgroup out of memory: Killed process PID (NAME) total-vm:..kB, anon-rss:..kB,
       file-rss:..kB, shmem-rss:..kB, UID:N pgtables:..kB oom_score_adj:N
   [  pid  ]   uid  tgid total_vm      rss pgtables_bytes swapents oom_score_adj name
+  Newer kernels (seen on 6.18) add rss_anon rss_file rss_shmem after rss; both layouts parse.
 Usage: dmesg | python3 c05_oom_parse.py
 """
 import re
@@ -21,8 +22,8 @@ MEMCG = re.compile(r",oom_memcg=([^,\s]+)")
 KILLED = re.compile(TS + r"(Out of memory|Memory cgroup out of memory): Killed process "
                     r"(\d+) \((.+?)\) total-vm:(\d+)kB, anon-rss:(\d+)kB, file-rss:(\d+)kB, "
                     r"shmem-rss:(\d+)kB, UID:(\d+) pgtables:(\d+)kB oom_score_adj:(-?\d+)")
-TASK = re.compile(TS + r"\[\s*(\d+)\]\s+(\d+)\s+(\d+)\s+(\d+)\s+(\d+)\s+(\d+)\s+(\d+)\s+"
-                  r"(-?\d+)\s+(\S.*)$")
+TASK = re.compile(TS + r"\[\s*(\d+)\]\s+(\d+)\s+(\d+)\s+(\d+)\s+(\d+)\s+(?:\d+\s+\d+\s+\d+\s+)?"
+                  r"(\d+)\s+(\d+)\s+(-?\d+)\s+(\S.*)$")
 
 
 def parse(text):

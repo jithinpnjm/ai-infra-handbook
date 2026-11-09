@@ -67,7 +67,7 @@ flowchart TD
 
 The book gives three signs that you should declare an incident. A second team is needed, the outage is visible to customers, or the problem is unsolved after an hour of focused analysis. Declaring early is better than starting the process hours into a worsening problem.
 
-Handover is where incidents lose time. The book says the outgoing commander fully briefs the successor and then says "You're now the incident commander, okay?". They stay on the call until the successor firmly acknowledges. Then they tell everyone else who is in charge. The workbook notes that one company rotated its commanders every four hours during a long incident to keep people rested.
+Handover is where incidents lose time. The book says the outgoing commander fully briefs the successor and then says "You're now the incident commander, okay?". They stay on the call until the successor firmly acknowledges. Then they tell everyone else who is in charge. The workbook's PagerDuty case study says that company rotated on-call engineers and the incident commander every four hours during a long incident, to give people rest and fresh ideas.
 
 In an interview, name the roles you filled. If you did everything yourself, say so, and say what you would delegate with more people. When you are asked about a team incident, say who held which role.
 
@@ -387,9 +387,9 @@ If a runbook step is deterministic, ask whether a script should do it instead. T
 
 Some teams say their on-call is fine while two people quietly look for other jobs. Pager load and sleep are measurable, and you should treat them like any other service level.
 
-The Google SRE book chapter Being On-Call gives figures. On-call should take no more than 25 percent of an SRE's time, with at least 50 percent for engineering. The maximum is two incidents per 12-hour shift, because handling one incident, including root cause and follow-up, averages about 6 hours. A single-site team needs 8 engineers for a rotation, or 6 per site with two sites. The workbook says that one problem counts as one incident however many alerts it fires, and that a 21-day trailing average is useful for spotting trends.
+The Google SRE book chapter Being On-Call gives figures. On-call should take no more than 25 percent of an SRE's time, with at least 50 percent for engineering. The maximum is two incidents per 12-hour shift, because handling one incident, including root cause and follow-up, averages about 6 hours. A single-site team needs 8 engineers for a rotation, or 6 per site with two sites. The workbook defines pager load as paging incidents per shift and adds that an incident may involve more than one page. It says a 21-day trailing average is useful for spotting trends.
 
-To keep load down, the same chapter says to align paging alerts with symptoms that threaten SLOs, make every paging alert actionable, group related alerts so one incident does not generate many pages, and tune toward one alert per incident. The workbook warns that a 24-hour rotation with no break is unsustainable, and that out-of-hours work should be compensated. It also stresses psychological safety: escalating must never make a person look incompetent.
+To keep load down, the same chapter says to align paging alerts with symptoms that threaten SLOs, make every paging alert actionable, group related alerts so one incident does not generate many pages, and tune toward one alert per incident. The workbook recommends limiting shifts to 12 hours and says a 12-hour overnight shift beats 24 hours or more. It says out-of-hours work should be compensated. One of its case studies praises psychological safety: even when engineers escalated, they were still regarded as competent.
 
 | Measure | What to track | Warning sign |
 |---|---|---|
@@ -710,5 +710,26 @@ Explicitly labelled inferences:
 Not verified:
 
 - No Docker was needed and none was used. The code was run on macOS with Python 3.12.
-- The Google figures are from 2016 and 2018 books. They may differ from current Google practice.
+- The Google figures are from the 2016 book and the 2018 workbook, as served on sre.google on 2026-11-09. sre.google now also lists a completely rewritten Site Reliability Engineering, 2nd Edition. I did not read it, so I cannot say whether any figure here changed. Check it before quoting a number as current Google practice.
 - Nebius's own on-call, severity and post-mortem practice is not public, so none of it is stated here.
+
+### Verification log
+
+Fact-check pass on 2026-11-09 against the live text on sre.google. Fourteen figures and claims were checked. Eleven are confirmed, three were corrected in wording or attribution and the currency of all of them against the 2nd Edition stays unverified.
+
+| Claim | Result | Source |
+|---|---|---|
+| On-call at most 25 percent, engineering at least 50 percent | Confirmed | SRE book, Being On-Call, 2016 |
+| About 6 hours per incident, so at most 2 per 12-hour shift | Confirmed | Same chapter |
+| 8 engineers for a single-site rotation, 6 per site for two sites | Confirmed | Same chapter |
+| Aim for a 1:1 alert to incident ratio, group related alerts | Confirmed | Same chapter |
+| Toil below 50 percent of an SRE's time | Confirmed | SRE book, Eliminating Toil |
+| Break-even example: 120 working hours, 4 hours per page, 30 pages | Confirmed | Workbook, On-Call, 2018 |
+| 21-day trailing average of pager load | Confirmed | Same chapter |
+| Response-time table starts with 5 minutes for a revenue-impacting outage | Confirmed | Same chapter |
+| Shifts limited to 12 hours, out-of-hours work compensated | Confirmed, wording corrected from "24-hour rotation unsustainable" | Same chapter |
+| Pager load counts incidents, and an incident may involve several pages | Corrected from "one problem counts as one incident" | Same chapter |
+| Single incident above 20 percent of the error budget over four weeks needs a post-mortem with a P0 item | Confirmed | Workbook, Error Budget Policy |
+| Releases halt except P0 and security fixes when the four-week budget is exceeded | Confirmed | Same page |
+| Wheel of Misfortune is a post-mortem re-enactment with the original commander present | Confirmed | Workbook, Postmortem Culture |
+| Commander rotation every four hours | Corrected: it is PagerDuty's case study, not a generic Google rule | Workbook, Incident Response |

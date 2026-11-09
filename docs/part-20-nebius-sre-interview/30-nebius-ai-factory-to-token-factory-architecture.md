@@ -3,439 +3,383 @@ id: "c20-30"
 title: "20.30 From AI factory to Token Factory: a public architecture map"
 sidebar_label: "20.30 AI factory architecture map"
 sidebar_position: 30
-description: "Trace Nebius's public AI Cloud and Token Factory surfaces from cloud resources to inference APIs, billing, serving, caching, and recovery limits."
+description: "Trace Nebius's public AI Cloud and Token Factory surfaces from cloud resources to the inference API, billing, caching and recovery limits, and learn where the public evidence stops."
 status: "drafted"
 tier: "1"
-level: "A"
+level: "I"
 lab_venue: "Laptop / browser"
 ---
 
 # 20.30 From AI factory to Token Factory: a public architecture map
 
-The interviewer asks you to trace GPU capacity to a reliable token API. You know serving basics, but must reason inward from the cloud boundary. Drawing a gateway, router, Kubernetes cluster, and workers as Nebius's architecture would overstate what is public.
+The interviewer says, "Walk me from GPU capacity to a Token Factory response." You know serving basics, but you now have to reason inward from the cloud boundary. If you draw a gateway, a router and a Kubernetes cluster and call it Nebius's architecture, you have claimed more than Nebius has published.
 
-This chapter maps customer-visible AI Cloud and Token Factory layers. It separates product documentation, workload examples, and your own design. Trace what customers configure, what the API exposes, where metrics appear, what capacity means, and who owns recovery.
+This chapter maps what a customer can see. It separates three kinds of evidence. Product documentation is tagged [official]. Nebius blog posts and case studies are tagged [vendor]. Your own design reasoning is tagged [inference]. Where Nebius has not published something, the chapter says so and stops.
 
-With an interview about a month away, learn the request path, capacity caveats, and evidence boundary. Those let you answer confidently when internals are unpublished.
-
-This chapter opens a four-part architecture series. Chapter 20.31 follows the AI Cloud substrate; 20.32 traces Token Factory's model and request lifecycle; 20.33 builds customer architecture and recovery patterns. Together the series exceeds 20,000 words without turning one chapter into a reference wall.
+The chapter is the entry point to the architecture chapters that follow it. Chapter 20.31 covers the AI Cloud substrate, 20.32 the Token Factory lifecycle and economics, and 20.33 customer patterns and recovery. Depth on gateways, estimation and failure modes lives in 20.12, 20.13 and 20.18. This chapter links to them instead of repeating them.
 
 ## What the interviewer is testing
 
-This chapter serves the system-design and incident rounds. Nebius's process describes load, availability, compute, and storage trade-offs; the job posting adds routing, GPU autoscaling, observability, SLOs, and cross-layer debugging.
+This chapter serves the system-design round and the incident round. The plan records the official wording for system design as meeting load and availability targets, estimating performance and compute, and weighing data storage and processing trade-offs. The job posting adds routing, GPU autoscaling, observability and SLOs. The plan also marks autoscaling signals, the router algorithm and probe settings as not public. So the interviewer is checking your reasoning, not your recall of Nebius internals.
 
-Likely prompt: “Walk me from GPU capacity to a Token Factory response. What is managed, how is it billed, and what happens when capacity disappears?” The interviewer wants evidence-aware reasoning, not a fictional internal diagram.
+A realistic prompt: "Walk me from GPU capacity to a Token Factory response. What is managed, how is it billed, and what happens when capacity disappears?" A strong answer names the product boundary first, follows the public API, states the capacity caveats, and says plainly where the documentation ends.
 
 ## The core ideas
 
-### 1. Draw the product boundaries before the boxes
+### 1. Draw the product boundary before the boxes [official]
 
-Imagine a platform team choosing between operating its own GPU service and sending requests to a managed model API. The hardware may be similar; the customer's operating boundary is not.
+Picture a platform team choosing between running its own GPU service and calling a managed model API. The hardware may look the same. The operating boundary is very different.
 
-Nebius AI Cloud is the broader cloud service. Its public catalogue describes compute, storage, virtual networking, identity, Kubernetes, monitoring, logs, and other managed services. A customer can use these resources to build and operate an AI factory. Nebius Token Factory is a managed model-inference service with its own organization and project surface, model catalog, endpoint lifecycle, API keys, inference API, metrics, and billing documentation.
+Nebius AI Cloud is the broad cloud. Its service list covers compute, storage, virtual networks, identity, Kubernetes, monitoring, logging and more. Token Factory is a managed inference service with its own organization and project model, endpoints, API keys, metrics and billing pages. The two have separate documentation sites and separate credentials.
 
-There are two different products called serverless in this landscape. **Serverless AI** in AI Cloud runs customer-supplied containers as Devlabs, jobs, or endpoints. **Token Factory Public Serverless** exposes Nebius-hosted model APIs. One lets you deploy your own application; the other gives you a model API. This distinction changes who manages the runtime, what you can configure, where requests run, and how you pay.
+The word serverless appears in both. Serverless AI in AI Cloud runs your own containers as Devlabs, endpoints or jobs on Compute virtual machines, billed per second. Token Factory Public Serverless is a shared catalogue of Nebius-hosted models behind one API. In the first you deploy your application. In the second you only call a model.
 
-With customer-managed Kubernetes, you choose node groups, deploy engines, configure the gateway, and own cluster operations. With a Token Factory Dedicated Endpoint, you choose a supported template, region, GPU configuration, and replica range; Nebius manages the service infrastructure. You do not get the provider's Kubernetes control surface.
-
-Separate official product facts from vendor case-study results and your own design inference. *Scalable Kubernetes Infrastructure for AI Platforms*, Chapter 4, gives a generic serving-layer vocabulary; it is not evidence of Token Factory's internal topology.
+With your own Managed Kubernetes you choose node groups, deploy the engine, run the gateway and own the cluster operations. With a Token Factory Dedicated Endpoint you pick a template, region, GPU type, GPUs per replica and a replica range. Nebius runs the service infrastructure and you get no Kubernetes control surface.
 
 ```mermaid
 flowchart LR
-  Client[Client app] -->|API key and request| RegionalAPI[Regional Token Factory API]
-  Project[TF project and API key] --> Control[Endpoint control API]
-  Control -->|Create or update| Endpoint[Endpoint configuration]
-  Endpoint -->|ID and routing key| RegionalAPI
-  RegionalAPI --> Shared[Shared inference]
-  RegionalAPI --> Dedicated[Dedicated endpoint]
-  Shared --> Runtime[Managed model runtime<br/>internals not fully public]
+  Client["Client app"] -->|"API key and request"| DataPlane["Regional data-plane URL"]
+  Client -->|"manage endpoint"| Control["Control plane API"]
+  Control -->|"returns endpoint_id and routing_key"| Client
+  DataPlane --> Shared["Public Serverless pool"]
+  DataPlane --> Dedicated["Dedicated Endpoint"]
+  Shared --> Runtime["Model runtime: internals not public"]
   Dedicated --> Runtime
-  Runtime --> Reply[Token stream]
-  Runtime --> Metrics[Inference metrics]
-  RegionalAPI -. "Usage metering details unpublished" .-> Billing[Usage and billing views]
-
-  subgraph Cloud[Customer-visible AI Cloud resources]
-    Tenant[Tenant and IAM] --> CloudProject[Cloud project]
-    CloudProject --> Network[VPC and subnet]
-    CloudProject --> GPU[GPU compute and clusters]
-    CloudProject --> K8s[Managed Kubernetes]
-    CloudProject --> Storage[Disks, filesystems, objects]
+  Runtime --> Stream["Token stream"]
+  Dedicated --> Metrics["Dedicated-only metrics"]
+  DataPlane -.-> Billing["Usage and billing views: meter design not public"]
+  subgraph Cloud["AI Cloud resources a customer can build"]
+    Tenant["Tenant and IAM"] --> Proj["Project"]
+    Proj --> Net["VPC and subnet"]
+    Proj --> GPU["GPU VMs and clusters"]
+    Proj --> K8s["Managed Kubernetes"]
+    Proj --> Store["Disks, filesystems, objects"]
   end
-  GPU -. "Nebius says Token Factory runs on GPU clusters;<br/>exact resource mapping unpublished" .-> Runtime
 ```
 
-The diagram marks a published high-level GPU substrate but not the topology behind each endpoint.
+The diagram shows the customer-visible surfaces only. Nebius's product blog says Dedicated Endpoints run on Nebius AI Cloud, on dedicated NVIDIA GPU clusters in data centers Nebius owns and operates across Europe and the US [vendor]. It does not say how an endpoint maps to cloud resources, so the diagram draws no such link.
 
 **Start every architecture answer by saying which side of the managed-service boundary you are describing.**
 
-### 2. Start with the AI Cloud building blocks, not a Token Factory guess
+### 2. Know the AI Cloud building blocks [official]
 
-A data scientist asks for an endpoint. The AI Cloud catalogue exposes the customer-managed building blocks for identity, networking, capacity, images, artifacts, and telemetry.
+A data scientist asks for an endpoint, and you must decide whether to build or buy. The table gives the short version. Each service has its own limits, regions and prices.
 
-An AI solutions architect first chooses the operating boundary. The table is the short version; each service has its own limits, region availability, pricing, and support terms.
-
-| Service choice | What Nebius manages | What your team owns | A fit when |
+| Choice | Nebius manages | Your team owns | Fits when |
 |---|---|---|---|
-| Compute VMs and GPU clusters | Physical capacity, VM provisioning, and the GPU-cluster fabric | OS, drivers where not preinstalled, runtime, serving, monitoring, and repair policy | You need host control or a custom stack |
-| Managed Kubernetes | Kubernetes control plane and cluster operations | Workloads, node-group shape, policies, operators, and application reliability | You need container orchestration and custom serving |
-| Managed Soperator | Managed Slurm clusters built with Kubernetes and Nebius's Soperator | Training jobs, images, environment, data, and job-level recovery | You need Slurm workflows for distributed training |
-| [AI Cloud Serverless AI](https://docs.nebius.com/serverless/overview) | Container resource provisioning and endpoint/job lifecycle; usage-based per-second billing | Your container, model server, request contract, and application | You want to run a custom container without managing a cluster |
-| Token Factory Public Serverless | Model catalog and shared model-serving service | API client, prompts, application policy, and tolerant regional routing | You are evaluating models or can accept global/shared behavior |
-| Token Factory Dedicated Endpoint | Managed endpoint deployment and replicas | Model/template choice, region, GPU/replica settings, keys, SLOs, and recovery around the endpoint | You need a stable model endpoint with explicit hardware and region settings |
+| GPU VMs and GPU clusters | Physical capacity, VM provisioning, InfiniBand fabric | OS, drivers, runtime, serving, repair policy | You need host control |
+| Managed Kubernetes | Control plane and cluster operations | Workloads, node groups, operators, app reliability | You need custom serving on containers |
+| Managed Soperator | Slurm-based clusters for distributed training | Jobs, images, data, job-level recovery | You need Slurm workflows |
+| Serverless AI | Runs your container, per-second billing | The container, model server and request contract | You want a custom container without a cluster |
+| Token Factory Public Serverless | Shared model catalogue and API | Client, prompts, application policy | Testing or tolerant workloads |
+| Token Factory Dedicated Endpoint | Endpoint deployment and replicas | Template, region, GPU and replica settings, keys, SLOs | Stable model endpoint with explicit hardware |
 
-The project and IAM hierarchy is covered below. Compute offers GPU VMs and InfiniBand-connected GPU clusters. Its [topology guide](https://docs.nebius.com/compute/clusters/gpu/topology/index) describes scalable-unit, POD, and fabric layers. Topology-aware placement improved NCCL all-reduce by up to 20 percent in some tested sizes; treat this as workload-specific evidence, not a guarantee.
+Compute offers GPU VMs and InfiniBand-connected GPU clusters. The topology guide describes three layers: the InfiniBand fabric, the point of delivery, and the scalable unit. It reports NCCL AllReduce gains of up to 20 percent from topology-aware placement, depending on cluster size, in NCCL Tests runs. That is test evidence, not a guarantee for your job.
 
-Nebius's product blog says Token Factory runs on dedicated NVIDIA GPU clusters in data centers the company owns and operates across Europe and the US. This is a high-level statement about the substrate, not a rack diagram or evidence that every endpoint uses the same cluster design.
+Storage choices follow recovery needs. Network SSD tolerates up to two concurrent hardware failures. Non-replicated disks have no redundancy. Local SSD is erased when the VM stops or is deleted. A shared filesystem can attach to many VMs at once.
 
-Storage roles differ: Network SSD for durable VM disks, local SSD for ephemeral scratch, shared filesystems for common data or weights, Object Storage for datasets and artifacts, and Container Registry for images. The [storage guide](https://docs.nebius.com/compute/storage/types) says NRD has no redundancy and local SSD disappears when its VM stops. Pick from recovery needs, not bandwidth alone.
+Virtual Networks supports only IPv4 today. Each project gets a default network, subnet, pools, route table and DNS zone. Security groups act as a stateful or stateless firewall for VMs, and unmatched traffic is denied. You cannot change network resources while active workloads are attached, so plan address ranges before you start.
 
-Virtual Networks currently supports IPv4, with project defaults for networks, subnets, pools, routes, and DNS; security groups filter resource traffic. Plan address ranges and egress before attaching workloads, because changing active network resources can be disruptive. Nebius exposes console, CLI, SDK, and Terraform interfaces, so keep repeatable foundations in IaC. Cloud Observability includes preview services; verify their stage and limits before production use.
+In the service list, Monitoring and Logging are marked Preview, described as intended for testing and feedback. Check their status before you depend on them.
 
-The catalogue describes what customers can build. It does not reveal the compute, network, storage, or orchestration graph behind every Token Factory endpoint.
+**Use the cloud catalogue to explain the build-your-own path, never to guess Token Factory internals.**
 
-**Use the cloud catalogue to explain the build-your-own platform path, not to invent Token Factory internals.**
+### 3. Follow identity, project and billing boundaries [official]
 
-### 3. Follow the identity, project, and billing boundaries
+A customer says "my key does not work" or "the bill is wrong." Before you debug anything, ask which product they mean, because identity and billing are separate in the two products.
 
-Endpoint access starts with identity, not GPU selection. Both products use projects, but their credentials and permissions are separate.
+In AI Cloud, a tenant is the top container. It holds projects, users, groups, quotas and billing settings. Being a tenant member grants no resource access. Access comes from group membership, and the default groups run from auditors and viewers to editors and admins. Service accounts authenticate with access keys or authorized keys.
 
-Nebius AI Cloud documents a tenant-to-project hierarchy in its [IAM guide](https://docs.nebius.com/iam/overview). Projects contain cloud resources such as VMs, Kubernetes clusters, networks, and storage. Groups define user or service-account permissions. Quotas constrain resource use. Tenant-level configuration includes billing and identity settings, while project-level resources inherit access controls from their scope.
+Token Factory has its own organization and project hierarchy. A project holds API keys, dedicated endpoints, fine-tuning jobs, files and datasets. Its group page defines four roles. The Organization Admin has full access to settings, billing and all projects. The Organization Billing Manager manages billing and sees usage but has no access to project resources. The Project Admin controls project resources and creates and deletes API keys. The Project Member has full access to the Files, Fine-tuning, Batch, Dedicated Endpoints and Public Endpoints APIs and can create and delete only their own keys.
 
-Token Factory documents a separate organization-to-project hierarchy. Its [project guide](https://docs.tokenfactory.nebius.com/team-access/org-projects) lists API keys, dedicated endpoints, fine-tuning jobs, files, and datasets as project resources. Project permissions govern access to those resources. This is the customer-facing boundary for organizing model and inference work.
+So you can give finance cost visibility without handing over inference keys. Do not assume a Token Factory API key is an AI Cloud IAM token, or that a cloud service account can authorize inference. The documents show them as separate systems [inference: no page says they never interact].
 
-Its role model also separates finance from engineering. An Organization Admin manages all projects; an Organization Billing Manager sees usage and changes billing settings but cannot access project resources. A Project Admin manages project access. A Project Member can manage project resources and its own API keys, including Dedicated Endpoints. This lets an architect grant finance cost visibility without handing over inference keys or endpoint control.
+Billing is separate too. Token Factory billing has a balance, top-ups, card thresholds, monthly invoices for bank-transfer customers and a Usage tab you can filter by region, project, service and product. A failed card charge suspends the account, so payment setup is part of production readiness. AI Cloud billing is pay-as-you-go by default, with commitment discounts for eligible company accounts. The two models can be combined.
 
-An inference API key authorizes a request to Token Factory. A Nebius AI Cloud service-account credential authorizes management of cloud resources through the Nebius interfaces. They solve related but different access problems. Do not assume that a Token Factory API key is an IAM token, or that a cloud service account automatically authorizes inference.
+AI Cloud budgets only send alerts. The budget page says a budget does not stop or cap usage and that usage data updates every few hours. To actually limit usage, the page points to a quota decrease. Separately, capacity block groups reserve a number of GPUs on one platform in one region, on one InfiniBand fabric, for VMs or Kubernetes node groups. They are not project quotas and not the Token Factory `max_replicas` setting.
 
-Billing also crosses product boundaries. [Token Factory billing](https://docs.tokenfactory.nebius.com/other-capabilities/billing-new) describes its own billing account, balance, payment methods, transactions, and usage views. Nebius AI Cloud separately documents [cloud budgets](https://docs.nebius.com/signup-billing/budgets) and resource charges. If a company uses both products, an engineer should reconcile the relevant billing surfaces rather than assume a single GPU-utilization chart represents the full invoice.
+**Identify the product, project, credential and usage surface before you diagnose an access or billing complaint.**
 
-The Token Factory billing guide documents balance top-ups, card thresholds, usage reports, and company bank-transfer invoices. A failed card charge can suspend the account, so payment configuration is part of production readiness.
+### 4. Trace one request through the documented API [official]
 
-Nebius AI Cloud budgets track pay-as-you-go spending and send alerts when thresholds are crossed. They do not stop or cap usage, and the documentation says usage data updates every few hours. Treat a budget as a notification, not a circuit breaker. If you need an actual usage limit, investigate quotas and the product's enforcement controls.
+A developer has just created a dedicated endpoint. Which identifier goes in the inference call? The control plane returns two values, and knowing which is which removes most of the mystery.
 
-AI Cloud uses [pay-as-you-go by default](https://docs.nebius.com/signup-billing/billing-models/overview) and offers commitment discounts for eligible company accounts; the models can be combined. [GPU capacity block groups](https://docs.nebius.com/overview/limits/capacity-block-groups) reserve a platform, region, and InfiniBand fabric for VMs or Kubernetes node groups. They are capacity and commercial constructs, not the same as project quotas or Token Factory `max_replicas`.
+The deploy guide describes three steps. List the model templates, create the dedicated endpoint, then send inference requests. The template response is the source of truth for valid combinations of model, flavor, GPU type, GPU count and region. The create response carries an `endpoint_id` and a `routing_key`. The `endpoint_id` manages the endpoint through the control plane. The `routing_key` goes in the `model` field of OpenAI-compatible inference requests.
 
-**Identify the product, project, credential, and usage surface before diagnosing an access or billing complaint.**
+The control plane has one base URL, `https://api.tokenfactory.nebius.com`. The data plane URL depends on the endpoint region. The control and data plane page maps `eu-north1` to the same hostname as the control plane, `eu-west1` to `api.tokenfactory.eu-west1.nebius.com`, and `us-central1` to `api.tokenfactory.us-central1.nebius.com`. The deploy guide's own example creates an `eu-north1` endpoint but shows a `us-central1` inference URL, so match the URL to the region you actually chose.
 
-### 4. Trace one request through the documented API
+During provisioning, inference may fail, often with 404, until the endpoint is routable. The FAQ gives the status code meanings in the table below.
 
-A customer has created a dedicated endpoint and asks which identifier belongs in an inference call. The control plane returns one identifier for managing the resource and another value used to route inference. Knowing that difference makes the public architecture much less mysterious.
-
-The [dedicated-endpoint API guide](https://docs.tokenfactory.nebius.com/ai-models-inference/dedicated-endpoints/deploy-api) describes a three-step flow. First, list available model templates. Second, create a dedicated endpoint from a valid template. Third, send inference requests to the data plane. The template response is the source of truth for supported combinations of model, flavor, GPU type, GPU count, and region.
-
-When the endpoint is created, the response includes an `endpoint_id` and a `routing_key`. The `endpoint_id` is used for endpoint management through the control plane. The `routing_key` is passed as the model identifier in OpenAI-compatible inference requests. Requests go to a region-appropriate data-plane URL under `/v1`.
-
-Dedicated endpoint management uses the common control-plane base URL `https://api.tokenfactory.nebius.com`. The data plane uses the endpoint's region. The current control/data-plane guide maps `eu-north1` to the common hostname, while `eu-west1` and `us-central1` have region-specific hostnames. Use the URL from the current docs and created endpoint, not a hostname copied from an old example. Public Serverless is a different case: its location is Global and can change.
-
-The control API manages the deployment; the regional API serves requests. Provisioning takes time, and early requests may return `404`. Check readiness before retrying.
-
-The [FAQ](https://docs.tokenfactory.nebius.com/ai-models-inference/dedicated-endpoints/faq) maps `401` to missing/invalid auth, `403` to permissions, `404` to readiness/host/routing-key, `409` to capacity/configuration, and `422` to invalid template fields. Classify these before blaming the model server.
-
-The API docs expose the customer boundary, not the gateway topology, credential propagation, control-state synchronization, or worker-selection algorithm. The routing key selects the endpoint; it does not document how a replica is chosen. State this boundary rather than presenting a design guess as fact.
-
-| Public interface | Customer-visible purpose | What is not specified publicly |
+| Code | FAQ cause | First action |
 |---|---|---|
-| Token Factory API key | Authenticates the client to Token Factory | Internal token validation and propagation path |
-| Control-plane API | Lists templates and manages endpoints | Internal storage, reconciliation, and control-service topology |
-| `endpoint_id` | Identifies the endpoint for lifecycle operations | Internal resource identifiers behind the endpoint |
-| `routing_key` | Selects the dedicated endpoint in inference requests | How the key maps to workers and replicas internally |
-| Regional `/v1` endpoint | Receives OpenAI-compatible inference calls | The complete gateway, proxy, and load-balancing topology |
+| 401 | Missing or invalid token | Set the `Authorization: Bearer` header, check the token is active |
+| 403 | Token lacks permission | Use a token with dedicated endpoint permissions |
+| 404 | Not ready, wrong inference domain, or wrong `routing_key` | Wait for readiness, use the region URL, pass the key exactly |
+| 409 | Capacity or config conflict | Pick a supported GPU and region, or reduce max replicas |
+| 422 | Invalid payload values | Check fields against the templates |
 
-**Explain the request path from the API key to the regional data plane, then stop where the docs stop.**
+Classify the code before you blame the model server. The docs do not describe the gateway, the credential path, how control state reaches the data plane, or how a replica is chosen behind the routing key. Say that out loud when asked. A design guess about those parts is [inference] and must be labelled that way.
 
-### 5. Compare shared and dedicated inference as capacity products
+**Explain the path from API key to regional data plane, then stop where the docs stop.**
 
-A team starts with a few experiments, then receives a production commitment with a latency target. The first service may be economical and simple. The second may need a predictable baseline and a known region. The product choice changes both the capacity model and the bill.
+### 5. Compare shared and dedicated inference as capacity products [official]
 
-The [endpoint overview](https://docs.tokenfactory.nebius.com/ai-models-inference/dedicated-endpoints/overview) describes two Token Factory inference products. Public Serverless uses shared multi-tenant capacity, dynamic rate limits, and per-token prices. Its Region is `Global`: processing location can change without notice, so a region-specific base URL can stop working. Nebius says this option is for testing and non-critical workloads where region variability is acceptable, not production that requires stable residency or capacity.
+A team starts with experiments and then gets a production commitment with a latency target. The product that suited the first stage may not suit the second.
 
-Dedicated Endpoints are different: they bind a model deployment to a chosen region and let the customer set GPU type, GPUs per replica, and minimum/maximum replicas. The [legal quick guide](https://docs.tokenfactory.nebius.com/legal/legal-quick-guide) says this region choice is a DPA commitment and the service does not use multi-region routing or automatic overflow/failover. Pricing is per GPU-hour at per-minute granularity. In the current model, an EU-resident production endpoint cannot silently spill into the US during an EU capacity shortage.
+Public Serverless is shared multi-tenant capacity with dynamic rate limits and per-token prices. The legal guide says the Region field for public model endpoints shows Global, that the processing location can change without notice, and that these endpoints are intended for testing and non-critical workloads. It also says they are not meant for use cases that need a stable, predictable region.
 
-“Shared” does not mean every model is always available. The [November 9, 2026 notice](https://docs.tokenfactory.nebius.com/november-2026-deprecation-notice) lists model IDs removed from Public Serverless on that date and says Dedicated Endpoints are unaffected. Do not infer that all serverless inference was removed. Check the live catalog before recommending a model.
+The public rate limits are dynamic. The rate-limits page says a limit rises by 20 percent per 15-minute window when average usage stays at or above 80 percent of it. It falls by a third when usage stays at or below 50 percent. Responses carry `x-ratelimit-*` headers and a `Retry-After` header in seconds.
 
-A dedicated endpoint is not “pay only for generated tokens.” Its cost is tied to GPU capacity and active time. More GPUs per replica can improve per-replica performance or make a larger model fit, but raise baseline cost. More replicas raise traffic capacity and can help availability while active, but they also increase the amount of capacity being billed. Minimum replicas set the baseline; maximum replicas bound a possible scale-out, not a promise that GPUs will be available.
+Dedicated Endpoints bind a deployment to a region you choose, with GPU type, GPUs per replica and a replica range. Pricing is per GPU-hour, billed per minute. The overview says there are no standard rate limits and that throughput depends on deployed capacity. The legal guide says the region is fixed and that Nebius does not use automatic overflow or failover to other regions. An EU endpoint therefore cannot spill into the US when EU capacity is short.
 
-This differs from the customer-side AI Cloud options. A team operating its own GPU VMs or Kubernetes node groups makes its own decisions about reserved capacity, on-demand resources, preemptible instances, cluster scale, and idle time. Do not copy the VM reservation rules onto Token Factory Dedicated Endpoints. Token Factory's dedicated-endpoint capacity page describes a separate self-service on-demand model and says to contact sales for capacity guarantees.
+Shared does not mean every model stays available. The November 9, 2026 notice lists eleven model IDs removed from Token Factory Serverless on that date and says Dedicated Endpoints for those models are unaffected. Check the live catalogue before you recommend a model.
 
-**Choose shared inference for variable workloads only after checking model availability and limits; choose dedicated capacity when its controls justify the baseline cost.**
+A dedicated endpoint is not pay-per-token. Cost follows GPUs and time. More GPUs per replica can fit a larger model or speed one replica but raise the baseline. More replicas add traffic capacity but also add billed capacity. Minimum replicas set the baseline. Maximum replicas cap scale-out and are not a promise that GPUs exist. The total ceiling is `gpu_count × max_replicas`.
 
-### 6. Read endpoint deployment and readiness as a state machine
+**Choose shared inference only after checking model availability and limits, and choose dedicated capacity when its controls justify the baseline cost.**
 
-A customer sees an endpoint marked “created” and immediately sends production traffic. The first requests fail, so the team assumes the API is broken. The deployment state and the ability to serve requests are separate facts.
+### 6. Read lifecycle and readiness as two separate states [official]
 
-Token Factory's [lifecycle guide](https://docs.tokenfactory.nebius.com/ai-models-inference/dedicated-endpoints/lifecycle-and-status) separates operation state from traffic readiness. Starting, running, and updating describe lifecycle; ready, partially ready, and not ready describe serving capability. A running endpoint may still be degraded, and an update can temporarily reduce capacity. Send traffic based on readiness, not the lifecycle label or a successful control response.
+A customer sees an endpoint marked running and sends production traffic, and some requests fail. The lifecycle label and the ability to serve are different facts.
 
-Dedicated deployment configuration includes model template, flavor, region, GPU type, GPU count per replica, and replica scaling bounds. Custom model weights are documented as a beta capability with access and configuration subject to support. Do not assume every model accepts arbitrary fine-tuned weights or that an update preserves the same warm cache and capacity.
+The lifecycle guide lists six lifecycle states: Starting, Updating, Running, Warning, Stopping and Stopped. It lists three readiness states: Not ready, Partially ready and Ready. The page's table writes the Warning state as Error, which is an inconsistency in the source. Send traffic based on readiness, not on the lifecycle label or on a successful control-plane response.
 
-The [endpoint operations guide](https://docs.tokenfactory.nebius.com/ai-models-inference/dedicated-endpoints/operating) says `gpu_count` is per replica, so maximum footprint is `gpu_count × max_replicas`. `region` cannot be patched; migration requires a new endpoint and traffic/data cutover. Disabling stops and frees capacity. The OpenAPI schema exposes optional `reservation_policy`; confirm eligible IDs and contract terms rather than assuming a VM reservation applies.
-
-A customer rollout should define readiness, traffic cutover, and rollback criteria. Canarying and draining are customer design choices unless a current product page documents them.
-
-| Lifecycle | Readiness | Operational reading |
+| Lifecycle | Readiness | Meaning per the guide |
 |---|---|---|
-| Starting | Not ready | Provisioning; do not assume requests will succeed |
-| Starting | Partially ready | Some capacity may serve while scale-up continues |
-| Updating | Ready | Traffic may continue, but watch for temporary capacity loss |
-| Running | Partially ready | Degraded capacity; check active replicas and latency |
-| Running | Not ready | Unexpected outage or severe deployment problem |
-| Stopped | Not ready | Endpoint is intentionally unavailable |
+| Starting | Not ready | Provisioning in progress |
+| Starting | Partially ready | Serving traffic while scaling up |
+| Updating | Ready | Serving normally during an update |
+| Running | Ready | Fully operational |
+| Running | Partially ready | Reduced capacity |
+| Running | Not ready | Unexpected outage |
+| Warning | Ready | Serving, but a deployment issue exists |
+| Warning | Not ready | Deployment failure |
+| Stopping | Partially ready | Shutting down |
+| Stopped | Not ready | Fully stopped |
 
-The lifecycle documentation advises contacting support if a warning or partial-readiness condition remains unresolved for more than three hours. That is a support escalation threshold, not an acceptable recovery-time objective for your application.
+The guide says to contact support if a warning or partially ready state is unresolved for more than 3 hours. That is a support threshold, not a recovery objective for your application.
 
-**Send traffic based on readiness, and judge an update by serving capacity rather than by a successful control-plane response.**
+The operating guide says `gpu_count` is per replica and that `region` cannot be updated after creation. Moving region means creating a new endpoint and cutting over traffic and data yourself. Setting `enabled` to false stops the endpoint and frees its replicas. Custom model weights are described as beta and available on request, through support.
 
-### 7. Separate the serving concepts from the serving implementation
+The create-endpoint OpenAPI schema also has an optional `reservation_policy` object. Its `policy` field takes AUTO, FORBID or STRICT, and `reservation_ids` is an optional list. The capacity guide does not explain which reservations qualify or what guarantee follows. Confirm that with Nebius before you assume anything. Canarying and draining an endpoint rollout are your own design choices [inference], unless a current page documents them.
 
-An AI solution architect decides whether to serve a catalog model, adapt one, or run a customer-owned runtime. Token Factory documents text, embedding, and vision model families, an OpenAI-compatible API, and a separate post-training surface. The [Data Lab](https://docs.tokenfactory.nebius.com/data-lab/overview) can collect chat logs, build reusable datasets, and hold batch and fine-tuning outputs. That creates a potential loop from inference to evaluation and post-training, but what data exists depends on retention settings.
+**Judge an update by serving capacity, not by a successful control-plane response.**
 
-The [legal quick guide](https://docs.tokenfactory.nebius.com/legal/legal-quick-guide) is essential architecture input. It says prompts and outputs may be retained for speculative decoding unless Zero Data Retention is enabled; they are not used to train models. ZDR is organization-scoped, prevents retention and speculative decoding, and may reduce inference speed. Data Lab collects chat logs unless ZDR is on. Fine-tuning has a separate data path: the guide says fine-tuning artifacts are stored in the EU even when US jobs are processed in the US. Draw inference data, training data, and operational telemetry as distinct flows, then validate each against the DPA and current Data Lab processing guide.
+### 7. Separate serving concepts from serving implementation [official, vendor]
 
-Token Factory's [post-training overview](https://docs.tokenfactory.nebius.com/post-training/overview) describes supervised fine-tuning on full weights or LoRA adapters, plus custom speculator training. The [custom-weight endpoint guide](https://docs.tokenfactory.nebius.com/ai-models-inference/dedicated-endpoints/custom-weights) still marks deployment of custom weights as beta and available on request. Treat this as an evolving integration, not a general assumption that any checkpoint can be uploaded and served immediately.
+An architect must decide whether to serve a catalogue model, adapt one, or run a custom runtime. Token Factory lists text-to-text, embedding and vision model families behind an OpenAI-compatible API. Its Data Lab holds automatically collected chat completions unless Zero Data Retention is on, plus reusable datasets and batch and fine-tuning outputs. Post-training covers long-context supervised fine-tuning on full weights or LoRA adapters, and custom speculator training.
 
-At inference time, the [model overview](https://docs.tokenfactory.nebius.com/ai-models-inference/overview) lists continuous batching, paged attention, KV cache, context caching, flash attention, quantization, and speculative decoding. Base and fast flavors trade latency, throughput, and price; the fast flavor uses smaller batches and additional compute or speculative decoding according to the product description. These are documented capabilities, not a disclosure of the engine, scheduling policy, or exact optimization mix used by every template.
+The legal guide is architecture input. By default, inputs and outputs are kept to speed up inference through speculative decoding and are stored in Finland. They are not used to train models. Zero Data Retention applies to the whole organization, stops that retention and may reduce service performance, for example inference speed. Fine-tuning datasets, artifacts and outputs are stored in EU data centers even when a US customer's job runs in the US. Draw inference data, training data and telemetry as three flows and check each against the current terms.
 
-The generic serving mechanism belongs in linked chapter 20.13 and Part 15: prefill processes prompt context; decode produces output tokens; batching, GPU memory, and cache determine useful throughput. A Nebius conversational-workload blog reports a proof of concept with specialized prefill/decode pools and backpressure. It is evidence of one design exercise, not a universal Token Factory topology.
+The inference overview lists KV cache, paged attention, flash attention, quantization, continuous batching, context caching and speculative decoding. The base and fast flavors give identical outputs. They differ in price, latency and applied optimizations, and fast uses smaller batches, more compute and techniques such as speculative decoding. These are documented capabilities. They do not name the engine or the scheduling policy.
 
-**Learn the serving physics, but name a particular engine or topology only when a source does.**
+Prefill, decode, batching and KV memory are covered in chapters 20.13 and 20.18. A Nebius chat-app case study describes a proof of concept with prefill-specialized and decode-specialized workers and backpressure controls [vendor]. It is one design exercise, not Token Factory's topology.
 
-### 8. Understand cache-aware routing from the published examples
+**Learn the serving physics and name an engine or topology only when a source does.**
 
-An agent sends a chain of requests that reuse a long context. If requests land on different replicas, each one may repeat prefill instead of reusing work. This is where model-runtime behavior becomes an API routing and unit-cost concern.
+### 8. Treat cache-aware routing as a published example [official, vendor]
 
-Token Factory's [Cached Tokens guide](https://docs.tokenfactory.nebius.com/cached-tokens) adds important product specifics. Prefix caching is automatic and best-effort. Stable prompt prefixes are most useful; the caller need not set a cache key. Chat responses report the count as `prompt_tokens_details.cached_tokens`; streaming clients need `stream_options.include_usage` to receive usage in the final chunk. Public Serverless bills cached input at a model-specific token price. Dedicated Endpoints use GPU-time billing, so cache hits can improve throughput and latency without changing the bill directly.
+An agent sends a chain of requests that reuse a long context. If they land on different replicas, each may repeat the prefill work. That turns a runtime detail into a routing and cost question.
 
-Cache scope is a security and architecture decision. The docs say Public Serverless cache is shared within a model, regardless of organization, project, or API key. Dedicated Endpoint cache is isolated per customer. The cache stores derived computation rather than prompt text and is not exposed as readable content. Nebius says caching works with ZDR, but it is not an access-control boundary; do not put secrets in a prefix expecting isolation. `prompt_cache_key` can influence routing toward a cache holder; it is not a credential. Cache hits are best-effort and can disappear through eviction, model or service updates, or replica changes.
+The Cached Tokens guide says prefix caching is automatic and best-effort, with no SLA on hits. The caller does not set a cache key. Chat responses report the count in `prompt_tokens_details.cached_tokens`. Streaming clients must set `stream_options.include_usage` to receive usage. On Serverless, cached input is billed at a per-model cached input price. Dedicated Endpoints bill per GPU hour, so hits change speed and latency but not the bill.
 
-Nebius's [routing experiment](https://nebius.com/blog/posts/routing-is-the-difference-between-scaling-and-stalling) used 300 concurrent agent trajectories and compared one and three vLLM replicas. Its cache-aware router preferred a replica with a better KV match, falling back when overloaded. In that workload, average step time nearly halved and p95 fell from over a minute to under twenty seconds. The article did not test a standalone least-request baseline and calls memory-aware routing an open issue. Do not turn this single experiment into a promise about every endpoint.
+Scope matters for security. On Serverless the cache is shared within a model, regardless of organization, project or API key. On Dedicated Endpoints each customer has an isolated cache. The guide says caching is not an access-control boundary, so never put secrets at the start of a prompt expecting isolation. The `prompt_cache_key` only helps routing to the cache holder and is not a credential. A hit can fail through eviction, routing to another replica or a model or service update.
 
-For an interview, pair the cache hit signal with queue depth and latency. A cache-only router can send too much work to one replica. A reasonable customer-side design balances prefix locality against load and fails away from unhealthy workers. That is your design proposal, not a documented Token Factory routing contract.
+Nebius's routing experiment ran 300 concurrent agent trajectories on one or three vLLM replicas [vendor]. Default Kubernetes ClusterIP routing ignored request content. The cache-aware router picked the replica with the best KV match and fell back when it was overloaded. Average step time fell from 9.0 s to 4.8 s, and p95 fell from 70.8 s to 17 s. The post states that no standalone least-request baseline was evaluated, and that memory pressure and eviction signals were not tested. It is one experiment, not a product guarantee.
 
-**Treat cache locality as a performance signal, not permission to send every request to the same replica.**
+A cache-only router can overload one replica. A sensible customer-side design weighs prefix locality against queue depth and avoids unhealthy workers [inference]. Chapter 20.21 covers routing and retries in depth.
 
-### 9. Read the telemetry and the bill as separate views
+**Treat cache locality as a performance signal, not permission to send everything to one replica.**
 
-A dashboard says GPU utilization is low while the customer says the endpoint is slow. Another dashboard shows high token throughput but says nothing about whether the endpoint is meeting a service target. You need workload-level signals and you need to know which dashboard answers which question.
+### 9. Read telemetry and the bill as separate views [official]
 
-Token Factory [Inference Observability](https://docs.tokenfactory.nebius.com/ai-models-inference/observability) currently says these metrics are accessible only for Dedicated Endpoints. It exposes requests and tokens per minute, prompt/output-size distributions, p50/p90/p99 latency, streaming TTFT, output speed, active replicas and GPUs, average and busiest GPU utilization, status-code errors, and KV-cache hit rate. Metrics can be filtered by endpoint, project, API key, region, error, prompt length, and latency range; some capacity metrics depend on pricing model. For Public Serverless, do not assume this dedicated-endpoint metrics dashboard exists.
+A dashboard shows low GPU utilization while the customer says the endpoint is slow. Another shows high token throughput and says nothing about the target. You must know which view answers which question.
 
-The Token Factory metrics page says metrics are collected in the inference region and eventually stored in `eu-north`. Its Prometheus integration uses a static API key scoped to a project, and recommends a scrape interval of at least 15 seconds. That detail matters in a residency and credentials review. Do not infer from a region-locked endpoint that metrics, traces, audit events, or billing records have identical data locations.
+Token Factory inference observability says its metrics are only accessible for Dedicated Endpoints. The page lists requests per minute, input and output tokens per minute, input and output tokens per request, KV-cache hit rate, end-to-end latency, time to first token for streaming requests, output speed, active replicas and GPUs, average and busiest GPU utilization, and error rate by status code. Latency charts show p50, p90 and p99. Filters cover time range, endpoint, project, API key, region, error code, prompt length and latency range. Some capacity metrics may be hidden depending on the pricing model.
 
-Nebius AI Cloud's separate Observability service combines metrics, logs, traces, dashboards, and alerts for supported cloud resources. Its service catalogue currently marks Observability as preview. It can monitor your own VMs and Kubernetes workloads; it is not the same product surface as Token Factory inference observability. Verify regional availability, retention, quota, and lifecycle status before making it a production dependency.
+Metrics are collected where inference runs and ultimately stored in `eu-north`. The Prometheus and Grafana integration page uses a static API key issued in the Token Factory UI. Its path includes your project ID, and it recommends a scrape interval of no less than 15 seconds. A residency review should treat metrics location separately from endpoint region. The page also says the dashboards are for debugging and performance analysis, not billing reconciliation.
 
-For a customer-operated service, measure user-facing behavior at the gateway and use engine metrics to explain the cause. The neighboring chapters 20.13 and 20.19 cover gateway design, token-API SLIs, SLO arithmetic, and burn-rate alerts in depth. In this chapter, the point is narrower: Token Factory exposes an operational view, but its docs warn you not to treat that view as a billing ledger.
+For public serverless, do not assume this dashboard exists. AI Cloud has its own Monitoring and Logging services, which are separate products and still marked Preview.
 
-For billing, Public Serverless is metered by input, cached-input, and output tokens where cached-input pricing is offered. Dedicated Endpoints are billed by GPU time with per-minute granularity; cached tokens can improve performance but do not reduce the GPU-hour bill. Check current model and region prices rather than memorizing a blog figure.
+For billing, Public Serverless is metered per token, with a cached input price where one exists. Dedicated Endpoints are billed per GPU time. The billing policy says zero running replicas means inaccessible and not billed, and one or more running replicas means available and billed. Its state table says provisioning, not ready, partially ready, replica restarts and graceful shutdown are not billed, and capacity in a ready status is billed. Those two readings can differ for a partially ready endpoint that has a running replica, so confirm that case with support or your contract rather than infer an invoice from status.
 
-A reliable interview answer separates billable usage, operational utilization, and a budget alert. High GPU utilization is not itself a bill. AI Cloud budgets only notify; they neither stop nor cap usage and can lag recorded spend. Use the relevant product's usage report for reconciliation, not a utilization chart.
+Chapters 20.13 and 20.19 cover gateway SLIs and burn-rate alerts. **Use inference metrics to operate the endpoint and the billing surface to reconcile charges.**
 
-**Use inference metrics to operate the endpoint and the billing surface to reconcile charges.**
+### 10. Treat high availability as a capacity and ownership question [official, vendor]
 
-### 10. Treat high availability as a capacity and ownership question
+A minimum replica count can look like a recovery guarantee until the endpoint is interrupted and its GPUs return to the shared pool.
 
-A configured minimum may look like a recovery guarantee until an endpoint is interrupted and its GPUs return to the shared pool.
+The capacity guide says minimum replicas are reserved and non-preemptible while the endpoint is running. When it stops, because you stopped it, an incident interrupted it or maintenance stopped it, the GPUs are released back to the shared pool. On restart it requests capacity again. It may stay in Starting and Not ready, or reach only Partially ready, until enough capacity is available. Self-service endpoints have no formal SLA unless covered by contract. For guarantees across restarts and maintenance, the docs tell you to contact Sales.
 
-The [capacity and availability documentation](https://docs.tokenfactory.nebius.com/ai-models-inference/dedicated-endpoints/capacity-and-scaling) says self-service deployments use on-demand capacity from a shared pool. Minimum replicas remain allocated while the endpoint is active, but this is not a long-term reservation. If the endpoint stops, including because of an incident or scheduled or emergency maintenance, its capacity is released. When it starts again, it requests capacity from the pool anew. The docs warn that it may remain starting or partially ready, or that capacity may be unavailable during high demand.
+The chat-app case study says critical endpoints run with X+1 redundancy and that dedicated endpoints run with a 99.9 percent SLA [vendor]. That conflicts with the capacity guide for self-service endpoints. Treat the blog as marketing for a contract tier and the documentation as the self-service rule.
 
-Billing has a separate state rule. The [Dedicated Endpoint billing policy](https://docs.tokenfactory.nebius.com/ai-models-inference/dedicated-endpoints/billing-policy) says zero running replicas means inaccessible and not billed, while one or more running replicas make the endpoint active and billable. Its table separately lists provisioning, `not_ready`, and `partially_ready` as not billed, and `ready` as billed. Because the prose trigger and readiness table can be read differently for a partially-ready endpoint that has a running replica, confirm that case with support or the contract rather than infer an invoice from status alone.
+Managed Kubernetes has its own documented repair path, which is not Token Factory's hidden machinery. The control plane defaults to three etcd stores. The cluster autoscaler adds nodes for unschedulable Pods and removes underused ones. A CPU node group lets CoreDNS and Cilium keep running while the GPU group scales down. For a faulty GPU node, health checks cordon it, wait for GPU workloads to finish, drain it for up to one hour, then stop and start the VM so the node moves to a healthy VM.
 
-Maximum replicas cap burst scale but do not guarantee capacity after scale-down. Self-service endpoints have no formal SLA unless covered by contract. A Nebius chat-app case study mentions X+1 and a 99.9 percent SLA; do not generalize that customer or contract statement to every endpoint. Ask Sales about reserved capacity if restart guarantees matter.
+Alert on readiness and active capacity. Set baseline replicas from measured demand and settle contractual capacity before you promise recovery [inference].
 
-AI Cloud [capacity block groups](https://docs.nebius.com/overview/limits/capacity-block-groups) reserve GPUs for qualifying VMs or Kubernetes node groups and connect to a chosen platform, region, and fabric. The current Token Factory [Create Dedicated Endpoint OpenAPI schema](https://docs.tokenfactory.nebius.com/api-reference/dedicated-endpoints/create-dedicated-endpoint) also exposes an optional `reservation_policy` object with policy and reservation-ID fields. Its customer-facing capacity guide still directs capacity-guarantee requests to Sales and does not fully explain that field's eligibility or guarantee. An architect should verify its meaning and accepted IDs for the account; do not assume a raw VM reservation and endpoint reservation are interchangeable.
+**A configured replica count is not an availability contract, so name the capacity promise and its failure boundary.**
 
-Alert on readiness and active capacity. Set baseline replicas from measured demand and settle contractual capacity before promising recovery. Design retries and degraded behavior explicitly; customer logic does not create a provider guarantee.
+### 11. Plan recovery without inventing automatic failover [official, inference]
 
-Managed Kubernetes has a separate, documented repair path. Its control plane defaults to three etcd stores. The [cluster autoscaler](https://docs.nebius.com/kubernetes/node-groups/autoscaling) adds nodes for unschedulable Pods and removes underused ones. [GPU health checks](https://docs.nebius.com/kubernetes/maintenance/health-checks) can cordon a faulty node, drain workloads, replace the VM, and uncordon it; a drain can take up to an hour. This does not describe Token Factory's hidden workers. A CPU node group can keep Cilium and CoreDNS running while GPU nodes scale down.
+Public Serverless has a Global location that can change. Dedicated Endpoints stay in their chosen region, with no multi-region routing and no automatic overflow, and the region cannot be changed later.
 
-**A configured replica count is not an availability contract; name the capacity promise and its failure boundary.**
+For application-level failover, build and test a second endpoint, confirm the data may legally move there, and check model version, weights, keys, capacity and rollback. Without that, define a degraded mode and an escalation path [inference]. Use bounded retries with jitter and do not replay a partial stream unless the protocol can resume. Chapters 20.21 and 20.26 cover the method.
 
-### 11. Build a recovery plan without inventing automatic failover
-
-Nebius documents two different regional behaviors. Public Serverless is marked `Global`; its processing location can change without notice, and a region-specific base URL can stop working. Dedicated Endpoints are different: the [legal guide](https://docs.tokenfactory.nebius.com/legal/legal-quick-guide) makes the chosen region a contractual processing boundary and explicitly says Token Factory does not provide multi-region routing, load balancing, or automatic overflow/failover. The endpoint's region cannot be changed after creation.
-
-For application-level failover, provision and test a second endpoint, confirm the data may move there, and check model version, weights, keys, capacity, and rollback. Otherwise define a degraded mode and escalation path.
-
-Public endpoint limits are dynamic and may return `Retry-After`; Dedicated Endpoints have no standard rate limits and throughput depends on deployed capacity. Some 429s still indicate capacity or limit errors. Read the response and metrics, use bounded retries with jitter, and do not replay a partial stream unless it can resume. Chapters 20.21 and 20.26 cover the generic retry and incident method.
-
-A small evidence matrix makes the boundary explicit:
-
-| Failure | Public signal or documented behavior | Safe first response | Do not assume |
+| Failure | Documented behaviour | Safe first response | Do not assume |
 |---|---|---|---|
-| Request rejected with 429 | Rate-limit or capacity class; public limit headers may be available | Read headers and endpoint metrics; reduce or smooth demand | That every 429 has the same cause or retry delay |
-| Endpoint is still provisioning | Lifecycle and readiness state; early requests may fail | Wait on readiness and avoid a retry storm | That a created endpoint is already routable |
-| Partial readiness | Some capacity may serve below expectation | Check active replicas and user-facing latency | That `Running` means full capacity |
-| Endpoint stopped by incident or maintenance | Self-service GPUs are released to the shared pool | Inspect state, contact support if needed, invoke the customer recovery plan | That prior GPUs return automatically |
-| Region unavailable | Dedicated Endpoint stays in its chosen region; Public Serverless is Global | Follow the customer's residency-approved application policy | That the provider will overflow a Dedicated Endpoint elsewhere |
-| Billing alert crossed | Budget and usage surfaces report spend | Find the project/service/resource and apply an approved control | That a budget alert stops further charges |
+| 429 on public endpoints | Rate limit exceeded, headers and `Retry-After` available | Read headers, smooth demand | Every 429 has the same delay |
+| Endpoint still provisioning | Readiness state, early 404 possible | Wait on readiness, avoid retry storms | Created means routable |
+| Partial readiness | Reduced capacity | Check active replicas and latency | Running means full capacity |
+| Stopped by incident or maintenance | GPUs released to shared pool | Check state, contact support, run your plan | Old GPUs return automatically |
+| Region unavailable | Dedicated stays in region | Follow the approved residency policy | Provider overflows elsewhere |
+| Budget alert crossed | Alert only, data lags hours | Find the project and resource, apply a quota | The alert stopped charges |
 
-**Fail over only to a tested destination that is allowed to receive the data and has usable capacity.**
+**Fail over only to a tested destination that may receive the data and has usable capacity.**
 
-### 12. Keep a reference design ready for the interview
+### 12. Keep a reference design ready [inference]
 
-The interviewer asks, “What would you propose for a company launching an AI product on Nebius?” Begin with discovery, not a diagram. A solutions architect should ask whether the workload is training or serving, model size and modality, request and token rates, context lengths, streaming requirements, TTFT/TPOT targets, peak-to-average ratio, retention requirements, regions, recovery target, and monthly budget.
+The interviewer asks, "What would you propose for a company launching an AI product on Nebius?" Start with discovery, not a diagram. Ask whether the work is training or serving, the model size, request and token rates, context lengths, streaming needs, latency targets, peak-to-average ratio, retention rules, regions, recovery target and budget.
 
-Then choose the right operating boundary. For a standard model and variable experimentation traffic, Public Serverless is quickest if global processing location and dynamic limits are acceptable. For a production model with stable-region and hardware needs, propose a Dedicated Endpoint and explicitly design around its region, GPU count, replica range, billing states, and lack of provider failover. For a custom container, compare AI Cloud Serverless AI with Managed Kubernetes. For distributed training, consider Soperator or GPU VMs with an InfiniBand cluster. State what the customer operates in each option.
+Then pick the operating boundary. For variable experiments with a standard model, Public Serverless is quickest if the global location and dynamic limits are acceptable. For a production model that needs a fixed region and hardware, propose a Dedicated Endpoint and design around its region, billing states and lack of provider failover. For a custom container, compare Serverless AI with Managed Kubernetes. For distributed training, consider Soperator or GPU VMs on an InfiniBand cluster.
 
-Build the foundation around the chosen path: tenant and project separation, group roles, quotas, service-account or API-key handling, VPC address and security design, model/data storage, artifact registry, and cost allocation. Map model development from datasets or Data Lab through fine-tuning/checkpoints and into an endpoint, while confirming ZDR and regional data rules. Put the customer gateway in front only when you need product-specific auth, quotas, routing, or policy; do not present it as a Nebius component.
+Build the foundation around the choice: tenant and project separation, group roles, quotas, key handling, network design, storage, a registry and cost allocation. Put your own gateway in front only when you need product-specific auth, quotas or routing, and never present it as a Nebius component. Finish with operations: user-facing SLOs, readiness, cache and token metrics, budgets, rollback and a residency-approved recovery plan.
 
-Finally, show operations: user-facing SLOs, endpoint readiness, cache and token metrics, cloud resource health, budget and usage reports, rollback, capacity limits, and a residency-approved recovery plan. **Name one owner for each layer and one signal that tells that owner to act.**
-
-**Design the customer-owned edge around the published service contract, not around an imagined provider topology.**
+**Name one owner for each layer and one signal that tells that owner to act.**
 
 ## How to answer out loud
 
-Use this 90-second opening when the interviewer asks how Token Factory works:
+**Question 1. "How does Token Factory work?"** Open with the boundary, then the public API, then the limit of the evidence. A model answer:
 
-> “I’d separate Nebius AI Cloud from Token Factory. AI Cloud exposes customer resources such as GPU compute, networks, storage, Kubernetes, IAM, quotas, and observability. Token Factory is a managed inference service with its own organization and projects. For a dedicated endpoint, the public API lets a customer select a supported template and region, configure GPU shape and replica bounds, and then call an OpenAI-compatible regional data plane using the returned routing key. The public docs expose lifecycle, readiness, metrics, and pricing boundaries. They don’t reveal the internal gateway or router implementation. I would monitor readiness and user-facing latency, respect the capacity limits, and design customer-side recovery without assuming automatic cross-region failover.”
+> "I'd separate AI Cloud from Token Factory. AI Cloud gives customers GPU compute, networks, storage, Kubernetes and IAM. Token Factory is a managed inference service with its own organizations and projects. For a dedicated endpoint, you pick a template, region, GPU shape and replica range, and call a regional OpenAI-compatible URL with the routing key. The docs show lifecycle, readiness, metrics and billing. They do not show the gateway or router internals, so beyond that I'd be proposing a design, not describing Nebius."
 
-Then rehearse four likely follow-ups:
+**Question 2. "How does a request find its deployment?"** The control plane returns an endpoint ID and a routing key. The client sends the key as the model name to the regional `/v1` URL. Then say the gateway and router are not documented. Expect a follow-up on 404 versus 409.
 
-- **“How does a request find its deployment?”** The control API returns an endpoint ID and routing key. The client sends the key to the regional `/v1` API. The internal gateway and router are not documented.
-- **“Why can more replicas hurt?”** Related requests can lose cache locality across workers. The published vLLM experiment shows a case where cache-aware routing improved results, but load still bounds locality.
-- **“What does high availability mean here?”** Minimum replicas apply while active, not after stop or interruption. Ask about reserved capacity, then propose only a tested, residency-approved fallback.
-- **“How is the service billed?”** Public serverless is per token; dedicated endpoints are per GPU-hour with per-minute granularity. Do not use utilization dashboards to reconcile charges.
+**Question 3. "What does high availability mean here?"** Minimum replicas are reserved while the endpoint is running, not after it stops. Self-service has no SLA. Offer reserved capacity through Sales, plus a tested, residency-approved fallback as your own design.
 
-With a month to prepare, spend week one mapping product boundaries and the request path. In week two, rehearse billing, caching, and capacity trade-offs. In week three, practise recovery scenarios with 20.18, 20.19, and 20.26. In the final week, recheck the live docs and give the architecture answer aloud.
+**Question 4. "How is it billed?"** Public Serverless per token. Dedicated per GPU-hour billed per minute, and cache hits do not change that bill. Utilization charts and budgets are not a ledger. Expect a follow-up on partially ready billing, and say you would confirm it with support.
+
+**Question 5. "Why can more replicas make things worse?"** Related requests may lose cache locality. Nebius's experiment showed cache-aware routing helping on one workload, but it did not test a least-request baseline. Propose weighing locality against load as your own design.
 
 ## Worked scenarios
 
 ### Scenario 1: A request fails just after endpoint creation
 
-A developer lists a template, creates a dedicated endpoint, receives an endpoint ID and routing key, and sends a chat request immediately. The call returns `404`. The endpoint object exists, and the developer's first instinct is to increase client retries.
+A developer lists templates, creates an endpoint and receives an `endpoint_id` and `routing_key`. The first chat call returns 404 and the instinct is to raise client retries.
 
-Creation may take several minutes. Check lifecycle and readiness before retrying; early `404` is documented while the endpoint is not routable. If it is ready, verify the bearer key, routing key, and regional base URL. Do not diagnose an internal router fault from an early request.
+Check lifecycle and readiness first. The deploy guide says early failures, often 404, are expected until the endpoint is routable. If it is ready, check the bearer token, the exact `routing_key` and the region URL, as the FAQ lists. Do not diagnose an internal router fault from an early request.
 
 ### Scenario 2: Three replicas do worse than one
 
-An agent workload reuses context across sequential requests. The team scales vLLM from one replica to three, but p95 gets worse. Nebius's experiment found that default ClusterIP routing scattered related requests; its cache-aware router preferred a matching KV cache and fell back when overloaded. The reported improvement is for that test, not a product guarantee, and no least-request-only baseline was measured.
+An agent reuses context across sequential requests. After scaling vLLM from one to three replicas, p95 gets worse. Nebius's experiment found that default ClusterIP routing scattered related requests and that cache-aware routing recovered the loss.
 
-Measure prompt length, per-replica queue, cache hits, active replicas, TTFT, and tail latency. Propose a bounded cache-aware policy as your design, not as Nebius's published router.
+Measure prompt length, per-replica queue depth, cache hit rate, TTFT and tail latency. Propose a bounded cache-aware policy with a load fallback as your design. Say clearly that this is not Nebius's published router.
 
 ### Scenario 3: Recovery after capacity is released
 
-A dedicated endpoint is interrupted during maintenance. The customer sees it starting and partially ready, while the previous minimum replica count is not yet back. Product asks whether to send traffic to another region.
+A dedicated endpoint is interrupted by maintenance. It shows Starting and Partially ready, and the old replica count is not back. Product asks to send traffic to another region.
 
-The endpoint releases self-service GPUs when stopped and requests capacity again at restart. Do not promise the same GPUs or a recovery time. Before failover, verify residency, model/config parity, and warm capacity in the alternate region. If no tested alternative exists, use the approved degraded mode, shed or bound work, communicate impact, and ask Sales about contractual capacity after service returns.
+The capacity guide says GPUs were released to the shared pool and a restart requests capacity again. Do not promise the same GPUs or a recovery time. Before failover, verify that the data may move, that the model and config match, and that the other region has warm capacity. If no tested alternative exists, use the degraded mode, bound the work, communicate impact and ask Sales about reserved capacity.
 
 ## Hands-on lab
 
-This lab is designed to be safe without a Nebius account or paid GPU deployment. It tests whether you can distinguish product facts from your own architecture proposal.
+This lab needs no Nebius account and spends no money. It checks that you can separate product facts from your own proposal. I did not run any of it against a live endpoint.
 
-1. Open the Token Factory dedicated-endpoint API guide and write down the sequence: list templates, create endpoint, receive endpoint ID and routing key, call the regional `/v1` API. **Expected:** identify which value manages the endpoint and which selects it for inference.
-2. Draw the AI Cloud resource plane separately from Token Factory. Label tenant, project, identity, compute, storage, endpoint control, data plane, metrics, and billing. **Expected:** do not imply that customer-managed Kubernetes is the Token Factory implementation.
-3. Build a three-column evidence sheet: documented, case-study-only, and unpublished. **Expected:** lifecycle and readiness are documented; cache-routing measurements are case-study evidence; the production router implementation is unpublished.
-4. Add a recovery row for a stopped endpoint. Include released capacity, restart behavior, measurements, and questions for support or sales. **Expected:** the plan does not promise that the old GPUs return.
-5. Rehearse the opening answer in 90 seconds. Ask a partner to interrupt with “How does the internal router work?” **Expected:** distinguish evidence from inference without losing the thread.
-
-I checked the official web documentation and linked Nebius posts on 2026-11-09. I did not create a Token Factory endpoint, call a billable API, or verify account-specific capacity. Treat live product behavior, prices, model templates, and capacity as items to recheck before an interview.
+1. Open the dedicated-endpoint deploy guide. Write the sequence: list templates, create endpoint, receive `endpoint_id` and `routing_key`, call the regional `/v1` API. Expected result: you can say which value manages the endpoint and which selects it for inference.
+2. Draw the AI Cloud resource plane separately from Token Factory. Label tenant, project, identity, compute, storage, control plane, data plane, metrics and billing. Expected result: nothing implies that customer-managed Kubernetes is Token Factory's implementation.
+3. Build a three-column evidence sheet: documented, case-study only, unpublished. Expected result: lifecycle and readiness land in the first column, the cache-routing measurements in the second, and the router algorithm in the third.
+4. Add a recovery row for a stopped endpoint with released capacity, restart behaviour and the questions for Sales. Expected result: the plan never promises the old GPUs return.
+5. Say the opening answer aloud in 90 seconds and ask a partner to interrupt with "How does the internal router work?" Expected result: you separate evidence from inference without losing the thread.
 
 ## Drill questions
 
-1. What is the difference between Nebius AI Cloud and Token Factory?
-
-<details><summary>Answer</summary>
-
-Nebius AI Cloud is the broader customer-facing cloud resource platform. Token Factory is a managed inference service with its own organization, projects, endpoints, APIs, metrics, and billing surface. Do not assume Token Factory exposes its internal cloud resources.
+<details><summary>1. What is the difference between Nebius AI Cloud and Token Factory?</summary>
+AI Cloud is the broad cloud of VMs, networks, storage, Kubernetes and IAM. Token Factory is a managed inference service with its own organizations, projects, endpoints, metrics and billing. Do not assume Token Factory exposes its internal cloud resources.
 </details>
 
-2. What are the endpoint ID and routing key for?
-
-<details><summary>Answer</summary>
-
-The endpoint ID is used to manage the deployment through the control plane. The routing key is used as the model identifier in inference requests to the regional data plane.
+<details><summary>2. What are the endpoint ID and the routing key for?</summary>
+The endpoint ID manages the deployment through the control plane. The routing key goes in the model field of requests to the regional data plane.
 </details>
 
-3. Why are lifecycle and readiness separate?
-
-<details><summary>Answer</summary>
-
-Lifecycle says what operation the deployment is undergoing. Readiness says whether it can serve traffic now. A running endpoint can still be partially ready or not ready.
+<details><summary>3. Why are lifecycle and readiness separate?</summary>
+Lifecycle says what the deployment is doing. Readiness says whether it can serve now. A running endpoint can be partially ready or not ready.
 </details>
 
-4. What does a maximum replica count guarantee?
-
-<details><summary>Answer</summary>
-
-It sets a scale-out ceiling, not a guarantee that GPU capacity will be available. Additional replicas depend on capacity in the region.
+<details><summary>4. What does a maximum replica count guarantee?</summary>
+Only a ceiling on scale-out. It does not guarantee that GPUs will be available. The total possible footprint is gpu_count times max_replicas.
 </details>
 
-5. What does a minimum replica count guarantee after an endpoint stops?
-
-<details><summary>Answer</summary>
-
-For self-service dedicated endpoints, minimum capacity applies while the endpoint is active. When it stops or is interrupted, the GPUs are released, and restart requests capacity again.
+<details><summary>5. What do minimum replicas guarantee after an endpoint stops?</summary>
+Nothing. Minimum replicas are reserved while the endpoint runs. After a stop, the GPUs go back to the shared pool, and a restart requests capacity again.
 </details>
 
-6. What is the evidence for cache-aware routing at Nebius?
-
-<details><summary>Answer</summary>
-
-Nebius has published specific conversational and vLLM workload experiments. Those describe cache-aware routing and report measured gains for those workloads; they do not document a universal router contract for all Token Factory endpoints.
+<details><summary>6. How strong is the evidence for cache-aware routing at Nebius?</summary>
+It is one vLLM experiment with 300 concurrent agent trajectories, plus a case-study blueprint. Both are vendor evidence for specific workloads. The experiment did not test a least-request baseline, and neither is a product contract.
 </details>
 
-7. Why is Token Factory observability not a billing ledger?
-
-<details><summary>Answer</summary>
-
-The observability documentation says its metrics support operational debugging and performance analysis, not billing reconciliation. Use the product's usage and billing surfaces for charges.
+<details><summary>7. Why is Token Factory observability not a billing ledger?</summary>
+The page says the dashboards are for operational debugging and performance analysis, not billing reconciliation. Use the Usage tab and billing pages for charges.
 </details>
 
-8. What happens to self-service GPU capacity after a stop or incident?
-
-<details><summary>Answer</summary>
-
-The endpoint releases capacity to the shared pool. On restart it requests capacity again, so it may take time to become ready or may not reacquire the same capacity.
+<details><summary>8. What happens to a self-service endpoint's GPUs after a stop or incident?</summary>
+They are released to the shared pool. On restart the endpoint asks for capacity again. It may stay in Starting or only reach Partially ready until capacity is available.
 </details>
 
-9. Does the public documentation promise automatic cross-region failover?
-
-<details><summary>Answer</summary>
-
-The sources checked here describe region selection and regional endpoints but do not document automatic cross-region failover. Treat failover as a customer-side design unless a current product document or contract says otherwise.
+<details><summary>9. Does the public documentation promise cross-region failover for dedicated endpoints?</summary>
+No. The legal guide says the region is fixed and there is no multi-region routing or automatic overflow. Failover is a customer design that needs a tested second endpoint and a data-residency check.
 </details>
 
-10. How do you answer a question about an unpublished internal gateway?
-
-<details><summary>Answer</summary>
-
-State what the public API exposes, say that the internal implementation is not published, then offer your design as a proposal rather than a fact about Nebius.
+<details><summary>10. How do you answer a question about the unpublished internal gateway?</summary>
+State what the public API shows, say the internal implementation is not published, then offer your own design clearly labelled as a proposal.
 </details>
 
 ## Common mistakes and weak answers
 
-- Do not call a customer-visible AI Cloud resource map the internal Token Factory topology.
-- Do not conflate Token Factory API keys with AI Cloud IAM service-account credentials.
-- Do not describe a cache-routing case study as a universal endpoint feature or guarantee.
-- Do not treat a configured maximum as reserved GPU capacity, or a running endpoint as fully ready.
-- Do not infer billing from GPU utilization or treat cloud budgets as spending caps.
-- Do not promise cross-region failover, an SLA, or restoration of previous GPU capacity without a current source or contract.
+- Calling the customer-visible AI Cloud resource map the internal Token Factory topology. Say instead what the docs show and where they stop.
+- Mixing up Token Factory API keys with AI Cloud IAM credentials. Name the product first.
+- Presenting a cache-routing case study as a feature every endpoint has.
+- Treating a maximum replica count as reserved capacity, or a running endpoint as fully ready.
+- Reading billing from a GPU utilization chart, or treating a budget as a spending cap.
+- Promising cross-region failover, an SLA or the return of old GPUs with no source or contract.
 
 ## Connections to the rest of the handbook
 
-- [20.31 Nebius AI Cloud foundation](./31-nebius-ai-cloud-foundation-gpu-fabric-and-platform-choices.md) — facilities, GPU/fabric, storage, network, and service selection.
-- [20.32 Token Factory lifecycle and serving](./32-token-factory-model-lifecycle-serving-and-economics.md) — deployment API, caching, billing, data controls, and observability.
-- [20.33 Production AI Factory patterns](./33-ai-factory-solution-architecture-ha-and-recovery.md) — solution-architect designs, economics, SLOs, and failure recovery.
-- [20.12 Estimation toolkit for inference capacity](./12-estimation-toolkit-for-inference-capacity.md) — convert traffic and model shape into GPU and cost estimates.
-- [20.13 Design: a multi-tenant LLM inference API](./13-design-a-multi-tenant-llm-inference-api.md) — design the gateway, router, quotas, and failure policy rather than reverse-engineering Nebius internals.
-- 20.14–20.16 — dedicated endpoint rollout, observability pipelines, and GPU fleet capacity.
-- [20.18 How LLM serving fails](./18-how-llm-serving-fails.md) — diagnose queue, cache, runtime, and recovery failures.
-- [20.19 SLIs, SLOs and alerts for token APIs](./19-slis-slos-and-alerts-for-token-apis.md) — define user-facing signals and paging policy.
-- 20.20–20.21 — GPU inference autoscaling, routing, and retries.
-- Handbook Parts 15–18 — inference engines, MLOps, operations, reliability, observability, and security.
+- [20.12 Estimation toolkit for inference capacity](./12-estimation-toolkit-for-inference-capacity.md) turns traffic and model shape into GPU and cost estimates.
+- [20.13 Design a multi-tenant LLM inference API](./13-design-a-multi-tenant-llm-inference-api.md) covers the gateway, router, quotas and failure policy.
+- [20.14 Dedicated endpoints and safe model rollout](./14-design-dedicated-endpoints-and-safe-model-rollout.md) covers rollout design.
+- [20.15 Observability pipeline design](./15-design-an-observability-pipeline-for-very-high-volume.md) and [20.16 GPU fleet health and capacity](./16-design-gpu-fleet-health-and-capacity.md) cover telemetry and fleet capacity.
+- [20.18 How LLM serving fails](./18-how-llm-serving-fails.md) covers queue, cache and runtime failures.
+- [20.19 SLIs, SLOs and alerts for token APIs](./19-slis-slos-and-alerts-for-token-apis.md) covers user-facing signals and paging.
+- [20.20 Autoscaling GPU inference](./20-autoscaling-gpu-inference.md) and [20.21 Routing, retries and overload control](./21-request-routing-retries-and-overload-control.md) cover scaling and retries.
+- [20.26 The stress interview](./26-the-stress-interview-production-incident-role-play.md) covers incident role-play.
+- [20.31](./31-nebius-ai-cloud-foundation-gpu-fabric-and-platform-choices.md), [20.32](./32-token-factory-model-lifecycle-serving-and-economics.md) and [20.33](./33-ai-factory-solution-architecture-ha-and-recovery.md) continue this architecture series.
 
 ## Sources and review notes
 
-Official product documentation indexes checked 2026-11-09: [Nebius AI Cloud](https://docs.nebius.com/llms.txt) and [Token Factory](https://docs.tokenfactory.nebius.com/llms.txt). These indexes were used to map the relevant product, compute, storage, network, Kubernetes, IAM, billing, security, inference, and post-training documentation. The chapter does not claim to describe every unrelated service page. Model templates, prices, and service status change; recheck current docs before quoting them.
+All Nebius pages below were fetched on 2026-11-09. Prices, templates and status change, so recheck before quoting.
 
-- **Cloud foundation:** [services](https://docs.nebius.com/overview/services), [IAM](https://docs.nebius.com/iam/overview), [GPU VM hosting walkthrough](https://docs.nebius.com/compute/quickstart-host-model), [InfiniBand topology](https://docs.nebius.com/compute/clusters/gpu/topology/index), [VPC](https://docs.nebius.com/vpc/overview), [Compute storage](https://docs.nebius.com/compute/storage/types), and [Object Storage](https://docs.nebius.com/object-storage/overview).
-- **Managed platform and capacity:** [Kubernetes components](https://docs.nebius.com/kubernetes/components), [node-group autoscaling](https://docs.nebius.com/kubernetes/node-groups/autoscaling), [node health and recovery](https://docs.nebius.com/kubernetes/maintenance/health-checks), [capacity block groups](https://docs.nebius.com/overview/limits/capacity-block-groups), and [cloud billing models](https://docs.nebius.com/signup-billing/billing-models/overview).
-- **Token Factory control and deployment:** [organizations/projects](https://docs.tokenfactory.nebius.com/team-access/org-projects), [group access](https://docs.tokenfactory.nebius.com/team-access/groups), [control/data planes](https://docs.tokenfactory.nebius.com/ai-models-inference/dedicated-endpoints/control-data-plane), [create endpoint OpenAPI](https://docs.tokenfactory.nebius.com/api-reference/dedicated-endpoints/create-dedicated-endpoint), [operating endpoints](https://docs.tokenfactory.nebius.com/ai-models-inference/dedicated-endpoints/operating), [readiness](https://docs.tokenfactory.nebius.com/ai-models-inference/dedicated-endpoints/lifecycle-and-status), [capacity](https://docs.tokenfactory.nebius.com/ai-models-inference/dedicated-endpoints/capacity-and-scaling), and [billing policy](https://docs.tokenfactory.nebius.com/ai-models-inference/dedicated-endpoints/billing-policy).
-- **Models and data:** [inference overview](https://docs.tokenfactory.nebius.com/ai-models-inference/overview), [cached tokens](https://docs.tokenfactory.nebius.com/cached-tokens), [Data Lab](https://docs.tokenfactory.nebius.com/data-lab/overview), [post-training](https://docs.tokenfactory.nebius.com/post-training/overview), [Zero Data Retention and regional commitments](https://docs.tokenfactory.nebius.com/legal/legal-quick-guide), and [November 2026 model deprecations](https://docs.tokenfactory.nebius.com/november-2026-deprecation-notice).
-- **Operations and economics:** [Token Factory inference observability](https://docs.tokenfactory.nebius.com/ai-models-inference/observability), [Prometheus/Grafana integration](https://docs.tokenfactory.nebius.com/ai-models-inference/observability-api-integrations), [public rate limits](https://docs.tokenfactory.nebius.com/ai-models-inference/rate-limits), [Token Factory billing](https://docs.tokenfactory.nebius.com/other-capabilities/billing-new), and [AI Cloud budgets](https://docs.nebius.com/signup-billing/budgets).
-- **Published engineering evidence:** [The invisible architecture behind great chat apps](https://nebius.com/blog/posts/the-invisible-architecture-behind-great-chat-apps) is an anonymized workload proof of concept; [Routing in LLM inference](https://nebius.com/blog/posts/routing-is-the-difference-between-scaling-and-stalling) is a specific vLLM experiment. Neither is a universal product specification.
-- **Generic mechanisms only:** *Scalable Kubernetes Infrastructure for AI Platforms*, Chapter 4; *Hands-On LLM Serving and Optimization*, Chapters 4 and 7; and *AI Systems Performance Engineering*, Chapter 18. These explain serving layers, latency, and cache locality, not Nebius implementation details.
+- Token Factory docs: [deploy API](https://docs.tokenfactory.nebius.com/ai-models-inference/dedicated-endpoints/deploy-api), [control and data planes](https://docs.tokenfactory.nebius.com/ai-models-inference/dedicated-endpoints/control-data-plane), [FAQ](https://docs.tokenfactory.nebius.com/ai-models-inference/dedicated-endpoints/faq), [overview](https://docs.tokenfactory.nebius.com/ai-models-inference/dedicated-endpoints/overview), [lifecycle and status](https://docs.tokenfactory.nebius.com/ai-models-inference/dedicated-endpoints/lifecycle-and-status), [operating](https://docs.tokenfactory.nebius.com/ai-models-inference/dedicated-endpoints/operating), [capacity and scaling](https://docs.tokenfactory.nebius.com/ai-models-inference/dedicated-endpoints/capacity-and-scaling), [billing policy](https://docs.tokenfactory.nebius.com/ai-models-inference/dedicated-endpoints/billing-policy), [custom weights](https://docs.tokenfactory.nebius.com/ai-models-inference/dedicated-endpoints/custom-weights), [create endpoint OpenAPI](https://docs.tokenfactory.nebius.com/api-reference/dedicated-endpoints/create-dedicated-endpoint).
+- Token Factory models, data and operations: [inference overview](https://docs.tokenfactory.nebius.com/ai-models-inference/overview), [cached tokens](https://docs.tokenfactory.nebius.com/cached-tokens), [rate limits](https://docs.tokenfactory.nebius.com/ai-models-inference/rate-limits), [observability](https://docs.tokenfactory.nebius.com/ai-models-inference/observability), [Prometheus and Grafana](https://docs.tokenfactory.nebius.com/ai-models-inference/observability-api-integrations), [legal quick guide](https://docs.tokenfactory.nebius.com/legal/legal-quick-guide), [Data Lab](https://docs.tokenfactory.nebius.com/data-lab/overview), [post-training](https://docs.tokenfactory.nebius.com/post-training/overview), [billing](https://docs.tokenfactory.nebius.com/other-capabilities/billing-new), [November 2026 deprecations](https://docs.tokenfactory.nebius.com/november-2026-deprecation-notice), [organizations and projects](https://docs.tokenfactory.nebius.com/team-access/org-projects), [groups and roles](https://docs.tokenfactory.nebius.com/team-access/groups). Index checked: [llms.txt](https://docs.tokenfactory.nebius.com/llms.txt).
+- AI Cloud docs: [services](https://docs.nebius.com/overview/services), [IAM](https://docs.nebius.com/iam/overview), [budgets](https://docs.nebius.com/signup-billing/budgets), [billing models](https://docs.nebius.com/signup-billing/billing-models/overview), [capacity block groups](https://docs.nebius.com/overview/limits/capacity-block-groups), [GPU topology](https://docs.nebius.com/compute/clusters/gpu/topology/index), [storage types](https://docs.nebius.com/compute/storage/types), [VPC](https://docs.nebius.com/vpc/overview), [security groups](https://docs.nebius.com/vpc/security-groups), [Kubernetes components](https://docs.nebius.com/kubernetes/components), [node-group autoscaling](https://docs.nebius.com/kubernetes/node-groups/autoscaling), [GPU health checks](https://docs.nebius.com/kubernetes/maintenance/health-checks), [Serverless AI](https://docs.nebius.com/serverless/overview).
+- Vendor posts [vendor]: [Dedicated Endpoints and Custom Weights Hub](https://nebius.com/blog/posts/dedicated-endpoints-and-custom-weights-hub), [routing experiment](https://nebius.com/blog/posts/routing-is-the-difference-between-scaling-and-stalling), [chat-app architecture proof of concept](https://nebius.com/blog/posts/the-invisible-architecture-behind-great-chat-apps).
+- Planning: `planning/VOLUME_20_NEBIUS_SRE_PLAN.md` section 1 for the official interview wording and the list of non-public items.
+- Books: *Scalable Kubernetes Infrastructure for AI Platforms*, Chapter 4 "Model Deployment and Monitoring" was cited by the original draft for generic serving vocabulary. *Hands-On LLM Serving and Optimization* and *AI Systems Performance Engineering* Chapter 18 were also cited by the original draft. I did not re-read them in this pass, and no claim in this chapter depends on them.
 
-**Corpus search note:** the books support the generic serving and cache mechanisms above. The AI Factory source was not used to claim anything about Token Factory's provider-side implementation.
+**Explicitly labelled inferences:** that the two credential systems do not interact, customer gateways, application-level failover, cache and load balancing policy, retry rules, canary and drain procedures, warm capacity, and recovery targets.
 
-**Explicitly labelled inferences:** customer-managed gateways, application-level failover, cache/load balancing policy, retries, warm capacity, and recovery targets unless a source or contract documents them.
+**Not verified:** the gateway, router and Kubernetes topology behind Token Factory, autoscaling signals, the billing-meter pipeline, which reservations satisfy `reservation_policy`, how a partially ready endpoint with a running replica is billed, and any live behaviour. I created no endpoint and called no billable API.
 
-**Not verified:** internal gateway code, Token Factory's internal Kubernetes/network/storage topology, production routing algorithm, exact autoscaling signals, billing-meter implementation, account eligibility for reservation policies, customer-specific failover design, recovery-time objectives, or account-specific capacity.
+### Verification log
+
+About 64 claims and 40 URLs were checked on 2026-11-09, and none was unreachable. Roughly 47 claims were confirmed. About 11 were corrected, and 6 were removed or relabelled as inference. Notable corrections:
+
+- The lifecycle table now includes Warning and Stopping and shows the Warning versus Error inconsistency in the source.
+- The "testing and non-critical" wording comes from the legal guide, not the endpoint overview.
+- `reservation_policy` is in the OpenAPI schema, not the operating guide.
+- Role definitions come from the groups page. The Project Member row was corrected.
+- The Prometheus key being project-scoped was not supported and was removed.
+- The scrape-interval advice and the `eu-north` storage claim were each attributed to the correct page.
+- GPU health checks stop and start the VM, and the docs do not describe a replace step.
+- The claim that Token Factory itself runs on those GPU clusters was narrowed to what the blog says about Dedicated Endpoints.
+- The invented "several minutes" provisioning time, the claim that some 429s signal capacity errors, and the claim about derived cache storage were removed.
+- The 409 meaning was fixed to match the FAQ.
+- The routing experiment now quotes the measured numbers.

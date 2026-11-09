@@ -2,7 +2,7 @@
 # Two collector tiers in one file for reading. Field names come from the
 # OpenTelemetry Collector contrib READMEs for load balancing exporter,
 # tail sampling processor, memory limiter and batch processor.
-# Not run against a collector binary. Check with your collector version.
+# Validated with otel/opentelemetry-collector-contrib:0.164.0 (validate, each tier alone), 2026-11-09.
 
 # Tier 1: edge agents. Receive OTLP, protect memory, batch, then route by trace ID.
 ---

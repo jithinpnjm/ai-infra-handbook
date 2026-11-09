@@ -14,7 +14,7 @@ lab_venue: "Linux VM"
 
 A service is failing and the interviewer has given you a shell. The log says `Too many open files`, or `No space left on device` while the disk looks half empty, or `Permission denied` on a file whose mode is 666. You have a few minutes and every command you type is being judged. This chapter gives you the mechanisms behind those three messages and the order in which to check them.
 
-Not run on Linux. This chapter was written on a Mac with no Docker daemon and no Linux machine. The Python helpers and their tests ran. The shell scripts passed `bash -n`, and the logic of scenario 6 ran on macOS because it needs only POSIX permissions. Everything else that needs Linux is marked as not run, and any output shown for it is the expected shape, never captured output. Run the lab on a Linux VM before you trust it.
+Run on Linux, in a container. The scripts and commands here ran in a throwaway `ubuntu:24.04` container, image digest `sha256:fe81560990fae86dc4743202b2cb4d3df98d0bcf949173cecef15ce1127ef852`, arm64, on the Docker VM kernel `6.18.37-0-virt`. The scripts ran as an ordinary user named `u` that I created in the container. Three scenarios needed the container started with `--security-opt seccomp=unconfined --security-opt apparmor=unconfined`, because Docker's default profile blocks unprivileged user namespaces. Scenario 8 needed `--cap-add LINUX_IMMUTABLE`. Neither used `--privileged`. A container shares the VM's kernel and hides parts of it, so the section "What the container run showed" lists what differs from a real server. Output marked "real output" was captured in that container.
 
 ## What the interviewer is testing
 
@@ -146,7 +146,7 @@ On a filesystem with a fixed inode pool, many tiny files can use every inode whi
 
 The other puzzle is the deleted file that still holds space. A process opened a log file, and then someone or a rotation tool ran `rm`. The name is gone, so `ls` and `du` cannot see it, but the process still holds a descriptor. The proc_pid_exe manual says an unlinked path is shown with ` (deleted)` appended, and the lsof manual says `+L1` selects open files that were unlinked.
 
-Two things here are not sourced. That the kernel keeps the blocks until the last descriptor closes is standard Unix behaviour, and I am stating it from general knowledge. The ` (deleted)` marker on `/proc/PID/fd` links, as opposed to `/proc/PID/exe`, is not quoted from a manual either. Scenario 2 is built to check both on Linux.
+Two things here are not sourced from a manual. That the kernel keeps the blocks until the last descriptor closes is standard Unix behaviour. The ` (deleted)` marker on `/proc/PID/fd` links, as opposed to `/proc/PID/exe`, is not quoted from a manual either. Scenario 2 checked both in the container. The link read `/tmp/ch04-s2.Fi38Mc/app.log (deleted)`, `df` used space did not move after `rm`, and it fell by about 20 MB after the truncate.
 
 If the process is still running, you can usually fix this without a restart. Copy what you want out of `/proc/PID/fd/N`, then truncate through the same link, which frees the blocks while the process keeps writing. The lasting fix is to make the writer reopen its file after rotation.
 
@@ -169,7 +169,7 @@ flowchart TD
   Q -->|"EACCES"| A6["Walk dirs, mode class, ACL mask, noexec, MAC"]
 ```
 
-Next is who the process really is. The mode bits use the effective user ID and the group IDs of the process, including supplementary groups. Look at the process, not your shell. `/proc/PID/status` shows `Uid` and `Groups`. A service started by systemd has the groups its unit gave it. If you added the account to a group later, a running process probably keeps its old list. That is my reasoning from the credentials manual, so test it.
+Next is who the process really is. The mode bits use the effective user ID and the group IDs of the process, including supplementary groups. Look at the process, not your shell. `/proc/PID/status` shows `Uid` and `Groups`. A service started by systemd has the groups its unit gave it. If you added the account to a group later, a running process probably keeps its old list. That is my reasoning from the credentials manual. I tested it in the container. A running `sleep` started as user `u` showed `Groups: 1001`, and after `usermod -aG g1 u`, `id u` listed two groups while the running process still showed only `1001`.
 
 Then come the classes. The path_resolution manual says the owner bits apply when the effective user ID equals the file owner, the group bits when the group matches, and the other bits otherwise. Only the first matching class counts. If the service owns the file and the owner bits are `r--`, it cannot write even when the group bits say `rw-`.
 
@@ -194,7 +194,7 @@ Last come capabilities and user namespaces, covered in section 7. `/proc/PID/sta
 | MAC | SELinux, AppArmor policy | `ausearch -m avc`, `dmesg` |
 | Capabilities, userns | bypass rights, ID mapping | `CapEff`, `/proc/PID/uid_map` |
 
-I know `namei` and `findmnt` from experience. Neither is quoted from a manual in my sources, so check them on your box. The helper `ch04_access_check.py` models the path walk, class order, ACL mask, mounts, immutable flag and root bypass, and its 11 tests cover each rule.
+Both `namei -l` and `findmnt` ran in the container. Neither is quoted from a manual in my sources, so check the flags on your box. The helper `ch04_access_check.py` models the path walk, class order, ACL mask, mounts, immutable flag and root bypass, and its 11 tests cover each rule.
 
 **In the interview, say the layers in this order, and say which one the errno points to.** That shows you do not guess.
 
@@ -279,7 +279,7 @@ Ask for the errno and name `Read-only file system` as the other common one. List
 
 ## Worked scenarios
 
-Each scenario has a script in `code/part20`. Every script refuses to run as root unless it needs root, works only inside a directory from `mktemp -d`, and cleans up on exit. Run `bash SCRIPT answer` to print the answer key without running anything. Scripts that need a mount use a throwaway user and mount namespace. If the kernel disables that, they exit with status 77. None of the eight scripts has been run on Linux.
+Each scenario has a script in `code/part20`. Every script refuses to run as root unless it needs root, works only inside a directory from `mktemp -d`, and cleans up on exit. Run `bash SCRIPT answer` to print the answer key without running anything. Scripts that need a mount use a throwaway user and mount namespace. If the kernel disables that, they exit with status 77. All eight scripts and the bonus script were run in the container.
 
 The scripts are `ch04_s1_emfile.sh`, `ch04_s2_deleted_open.sh`, `ch04_s3_inodes.sh`, `ch04_s4_noexec.sh`, `ch04_s5_acl_mask.sh`, `ch04_s6_dir_search.sh`, `ch04_s7_readonly_mount.sh` and `ch04_s8_immutable.sh`, numbered like the scenarios.
 
@@ -289,11 +289,11 @@ A bonus script, `ch04_s9_userns_ids.sh`, prints how a user namespace maps IDs.
 
 Problem. The log says `Too many open files` and new requests fail. Restarting fixes it for about an hour.
 
-Reasoning. A restart that helps for a while is the signature of a leak. Compare the descriptor count with the soft limit of that process, then look at what the descriptors point at. The script runs a leaker that lowers its own soft limit to 24 and opens one file until `open` fails. Expected shape (not run): the count in `/proc/PID/fd` equals the soft limit, one path dominates the grouped targets, and `file-nr` is far below its maximum.
+Reasoning. A restart that helps for a while is the signature of a leak. Compare the descriptor count with the soft limit of that process, then look at what the descriptors point at. The script runs a leaker that lowers its own soft limit to 24 and opens one file until `open` fails. Real output: 23 entries in `/proc/PID/fd` against a soft limit of 24, 19 of them the same data file, and `file-nr` at `702 0 604700`. The helper printed `verdict: close to the limit`.
 
 <details><summary>Answer key</summary>
 
-The process holds as many descriptors as its soft `RLIMIT_NOFILE`, and nearly all point at one file, so a `close` is missing. It is `EMFILE`, not `ENFILE`, because the system counter is far from its maximum. Restart for recovery, or use `prlimit` with privilege. The lasting fix is in the code.
+The process holds almost as many descriptors as its soft `RLIMIT_NOFILE`, and nearly all point at one file, so a `close` is missing. It is `EMFILE`, not `ENFILE`, because the system counter is far from its maximum. Restart for recovery, or use `prlimit` with privilege. The lasting fix is in the code.
 
 </details>
 
@@ -301,7 +301,7 @@ The process holds as many descriptors as its soft `RLIMIT_NOFILE`, and nearly al
 
 Problem. An alert says a filesystem is 92 percent used. `du -sh /var/log` shows 3 GB on a 100 GB volume, and someone deleted the big log an hour ago.
 
-Reasoning. `du` walks names and `df` asks the filesystem for used blocks. If they disagree, some blocks have no name, and the usual owner is a process that still has the file open. The script holds a 20 MB file open, removes the name, then rescues and truncates it through `/proc`. Expected shape (not run): `df` used space barely moves after `rm`, `stat -L` on the descriptor shows 20 MB and a link count of 0, and after the truncate the size is 0 and used space falls.
+Reasoning. `du` walks names and `df` asks the filesystem for used blocks. If they disagree, some blocks have no name, and the usual owner is a process that still has the file open. The script holds a 20 MB file open, removes the name, then rescues and truncates it through `/proc`. Real output: used space was 27069364 KB before and after `rm`, `stat -L` showed `size=20971520 bytes, links=0`, `lsof` listed the file with `NLINK` 0, and after the truncate the size was 0 and used space fell to 27048884 KB.
 
 <details><summary>Answer key</summary>
 
@@ -313,11 +313,11 @@ Reasoning. `du` walks names and `df` asks the filesystem for used blocks. If the
 
 Problem. A batch job writing many tiny files fails with `No space left on device`, and `df -h` shows 60 percent free.
 
-Reasoning. A create needs an inode, so check `df -i`. The script mounts a private tmpfs with `size=8m` and `nr_inodes=40` in a throwaway namespace and creates files until the error appears. Expected shape (not run): a count of files created, then `No space left on device`, with free bytes in `df -h` and 100 percent in `df -i`.
+Reasoning. A create needs an inode, so check `df -i`. The script mounts a private tmpfs with `size=8m` and `nr_inodes=40` in a throwaway namespace and creates files until the error appears. Real output: `created 39 files, then: ... No space left on device`, `df -h` showing 8.0M available at 0% used, and `df -i` showing 40 inodes, 40 used, 100%. It needed the unconfined seccomp profile described at the top.
 
 <details><summary>Answer key</summary>
 
-The inode pool is exhausted. Remove or archive the tiny files, find which directory owns them, and stop the writer from making millions of small files. For a real ext4 volume you can create it with more inodes next time. I did not verify the `mkfs` option name.
+The inode pool is exhausted. Remove or archive the tiny files, find which directory owns them, and stop the writer from making millions of small files. For a real ext4 volume you can create it with more inodes next time. For ext4, `mkfs.ext4 -N 20000` worked in the container, and `dumpe2fs -h` showed the inode count change from 4096 to 20000 on a 16 MB image file.
 
 </details>
 
@@ -325,7 +325,7 @@ The inode pool is exhausted. Remove or archive the tiny files, find which direct
 
 Problem. An installer drops a script on a data volume. It is mode 755 and owned by the right user, yet running it prints `Permission denied`, and `chmod +x` changes nothing.
 
-Reasoning. Correct bits with a refusal on execute point at the mount. The mount manual says `noexec` means no direct execution of binaries. The script mounts a tmpfs with `noexec` and tries four things: run the file, show the options, run it through `sh`, and remount with `exec`. Expected shape (not run): the direct run fails, `mountinfo` lists `noexec`, `sh run.sh` works because the shell only reads the file, and the remount fixes the direct run.
+Reasoning. Correct bits with a refusal on execute point at the mount. The mount manual says `noexec` means no direct execution of binaries. The script mounts a tmpfs with `noexec` and tries four things: run the file, show the options, run it through `sh`, and remount with `exec`. Real output: the direct run printed `Permission denied` with exit status 126, `mountinfo` listed `rw,noexec,relatime`, and `sh run.sh` printed `it ran`. Correction found by running it: `mount -o remount,exec` failed with `EINVAL`, because mount(8) resends the tmpfs `uid=` and `gid=` options, which a remount rejects. The script now uses `mount -o remount,bind,exec`, which printed `it ran` on the direct run.
 
 <details><summary>Answer key</summary>
 
@@ -337,7 +337,7 @@ The filesystem is `noexec`, so `execve` fails with `EACCES` before the mode bits
 
 Problem. A deploy script gives the service account write access through an ACL. A hardening job later runs `chmod 640` on the file. The service can only read, though `getfacl` still shows `rw-`.
 
-Reasoning. With a mask present, the group bits of the mode are the mask, and the mask limits named entries. The script grants a made-up numeric user ID write access, runs `chmod 640`, prints `getfacl` before and after, and widens the mask. Expected shape (not run): `#effective:r--` beside the `user:12345:rw-` line, and a `+` after the mode in `ls -l`.
+Reasoning. With a mask present, the group bits of the mode are the mask, and the mask limits named entries. The script grants a made-up numeric user ID write access, runs `chmod 640`, prints `getfacl` before and after, and widens the mask. Real output after the `chmod 640`: `-rw-r-----+` in `ls -l`, and `user:12345:rw-	#effective:r--` with `mask::r--` in `getfacl`. After `setfacl -m m::rw` the mask line was `mask::rw-`.
 
 <details><summary>Answer key</summary>
 
@@ -349,7 +349,7 @@ The named entry is intact but the mask is `r--`, so the effective right is read-
 
 Problem. A secrets file is mode 644 and the service, its owner, still gets `Permission denied`. A colleague already ran `chmod 777` on it.
 
-Reasoning. The path walk comes before the file. The directory above has mode 600, so it has no search bit, and opening anything below it fails with `EACCES`. The script builds this, shows that even `chmod` on the file fails, and shows that `ls` of the directory works while opening a file inside does not. The permission logic of this script ran on macOS, and Linux was not used.
+Reasoning. The path walk comes before the file. The directory above has mode 600, so it has no search bit, and opening anything below it fails with `EACCES`. The script builds this, shows that even `chmod` on the file fails, and shows that `ls` of the directory works while opening a file inside does not. Real output on Linux as user `u`: `cat` printed `Permission denied`, `chmod 777` on the file printed `cannot access ... Permission denied`, `ls` of the directory listed `app.conf`, `namei -l` showed `app.conf - Permission denied` under a `drw-------` directory, and `strace` printed `openat(...) = -1 EACCES`.
 
 ```bash
 # code/part20/ch04_s6_dir_search.sh
@@ -406,7 +406,7 @@ The directory lacks the search bit, so the kernel cannot descend through it, and
 
 Problem. A container writes a lock file at startup and crashes with `Read-only file system`. The directory is mode 777 and owned by the service user.
 
-Reasoning. The error text is the clue. `Permission denied` is `EACCES`, and `Read-only file system` is `EROFS`, which the open(2) manual lists for a write on a read-only filesystem. The script makes a bind mount, remounts it read-only as the mount manual describes, and shows writes and deletes failing inside the namespace while the original directory stays writable outside. Kubernetes gives the same effect with `readOnlyRootFilesystem: true`, shown in the manifest in section 7. Expected shape (not run): `Read-only file system` on write and on `rm`, reads working, and the outside write succeeding.
+Reasoning. The error text is the clue. `Permission denied` is `EACCES`, and `Read-only file system` is `EROFS`, which the open(2) manual lists for a write on a read-only filesystem. The script makes a bind mount, remounts it read-only as the mount manual describes, and shows writes and deletes failing inside the namespace while the original directory stays writable outside. Kubernetes gives the same effect with `readOnlyRootFilesystem: true`, shown in the manifest in section 7. Real output: `Read-only file system` on the write and on `rm`, mount flags `ro,relatime`, the read printed `one`, and the outside write printed `write ok`. It needed the unconfined seccomp profile. I also ran the pod manifest's container settings with Docker: `docker run --read-only --user 10001 --cap-drop ALL` on `busybox@sha256:73aaf090f3d85aa34ee199857f03fa3a95c8ede2ffd4cc2cdb5b94e566b11662` printed `tmp-ok`, then `touch: /etc/nope: Read-only file system` and `etc-exit=1`. That is the same kernel behaviour, not a Kubernetes run.
 
 <details><summary>Answer key</summary>
 
@@ -418,7 +418,7 @@ The mount is read-only, so any write returns `EROFS` before any ownership check.
 
 Problem. A config file resists every change. `rm -f` as root says `Operation not permitted`, and the file is owned by root with mode 644.
 
-Reasoning. `Operation not permitted` is `EPERM`, a different error from `EACCES`. With root and normal modes, think of inode flags. `ls -l` does not show them and `lsattr` does. The script needs root or passwordless sudo and a filesystem such as ext4 or XFS. It sets the flag on one temp file, shows the refusals and `lsattr`, and clears the flag on exit. Expected shape (not run): appending, `chmod` and `rm` all fail, `lsattr` shows an `i`, and `chattr -i` restores writes.
+Reasoning. `Operation not permitted` is `EPERM`, a different error from `EACCES`. With root and normal modes, think of inode flags. `ls -l` does not show them and `lsattr` does. The script needs root or passwordless sudo and a filesystem such as ext4 or XFS. It sets the flag on one temp file, shows the refusals and `lsattr`, and clears the flag on exit. Real output as root with `--cap-add LINUX_IMMUTABLE`: the append, `chmod` and both `rm` calls printed `Operation not permitted`, `lsattr` printed `----i---------e-------`, and after `chattr -i` the write worked. Correction found by running it: root in a default container does not have `CAP_LINUX_IMMUTABLE`, so `chattr +i` itself failed with `Operation not permitted` and the script exited with status 77. This confirms the capability rule in section 6. It also worked on a tmpfs.
 
 <details><summary>Answer key</summary>
 
@@ -428,20 +428,30 @@ The file has the immutable attribute. Mode, owner and ACL are not the cause. Run
 
 ## Hands-on lab
 
-The lab needs a Linux VM with a normal user, `strace`, `lsof` and the `acl` package. A small Ubuntu or Debian VM is enough, and no GPU is needed. On the Mac where this chapter was written, the Python helpers and their 25 tests ran with pytest, all scripts passed `bash -n`, and the manifest passed `kubeconform`. Everything in Part B was not run.
+Every step below was run in the container described at the top of the chapter. Start it with `docker run --rm -it -v $PWD/code/part20:/work:ro ubuntu:24.04 bash`, install `procps psmisc util-linux acl attr e2fsprogs strace lsof iproute2 python3 python3-pytest`, create a normal user with `useradd -m u`, copy `/work` to `/home/u/w`, and run the scripts as `su u -c`. Add the two Docker flags from the top of the chapter for scenarios 3, 4, 7 and 9, and `--cap-add LINUX_IMMUTABLE` for scenario 8.
 
 ### Part A: offline checks
 
-1. From the repository root, run `python3 -m pytest -q code/part20/test_ch04_fd_triage.py code/part20/test_ch04_strace_errors.py code/part20/test_ch04_access_check.py`. Expected result: 25 tests pass. This was run.
-2. Run `for f in code/part20/ch04_s*.sh; do bash -n $f; done`. Expected result: no output. This was run.
+1. Run `python3 -m pytest -q test_ch04_fd_triage.py test_ch04_strace_errors.py test_ch04_access_check.py` from the copied directory. Result: 25 passed.
+2. Run `for f in ch04_s*.sh; do bash -n $f; done`. Result: no output.
 
-### Part B: on a Linux VM
+### Part B: on Linux
 
-1. Run `ls -l /proc/$$/fd`, `cat /proc/$$/limits` and `echo /proc/$$/fd/* | wc -w`. Expected result: descriptors 0, 1 and 2 plus a few more, and a Max open files line.
-2. Run scenarios 1 and 2. Expected result: the count equals the soft limit of 24 and the helper prints a verdict that starts with `exhausted`. In scenario 2 the used space stays high after `rm` and falls after the truncate. 
-3. Run scenarios 3, 4 and 7. Expected result: each prints its error and then evidence. If the kernel blocks unprivileged user namespaces, the script exits with status 77.
-4. Run scenarios 5 and 6, and scenario 8 with sudo on an ext4 or XFS directory by setting `TMPDIR`. Expected result: the effective ACL shows `r--`, the directory walk fails, and `lsattr` shows `i`.
-5. Run `strace -f -e trace=%file -e status=failed -o trace.txt bash code/part20/ch04_s6_dir_search.sh`, then `python3 code/part20/ch04_strace_errors.py < trace.txt`. Expected result: `EACCES` lines, each with a hint.
+1. Run `ls -l /proc/$$/fd`, `cat /proc/$$/limits` and `echo /proc/$$/fd/* | wc -w`. Real output as `su u -c`: descriptors 0, 1 and 2 only, so the word count was 3, and `Max open files 1024 1048576`. With a pipe in front there are no other descriptors, and an interactive shell has more.
+2. Run scenarios 1 and 2. Results are in the scenarios above. A note on scenario 1: it failed once in four runs with a bash syntax error reading its own last line, which I could not explain, so rerun it if that happens.
+3. Run scenarios 3, 4, 7 and 9 with the unconfined seccomp profile. Without it each printed `Unprivileged user namespaces are not available here. Skipping.` and exited with status 77, as designed. Scenario 9 printed the mapping `0 1001 1`, the root-owned file as owner `65534`, my own file as owner `0`, `cannot write /etc/hostname`, and `CapEff: 000001ffffffffff`.
+4. Run scenarios 5 and 6 as the normal user and scenario 8 as root with the capability added. Results are in the scenarios above.
+5. Run `strace -f -e trace=%file -e status=failed -o trace.txt bash ch04_s6_dir_search.sh`, then `python3 ch04_strace_errors.py < trace.txt`. Real output: 336 `openat ENOENT`, 60 `newfstatat ENOENT`, 29 `faccessat ENOENT`, and only 2 `openat EACCES` and 4 `newfstatat EACCES` among them. The `EACCES` lines carry the hint, but they are a small part of a long list. This is the point of section 4: tracing the whole script is noise, so look for the first failure that matters.
+6. Try `prlimit`. Real output: `prlimit --pid PID --nofile=2048:4096` changed `/proc/PID/limits` from `1048576 1048576` to `2048 4096` on the running `sleep`.
+
+## What the container run showed
+
+- **The scenario 1 script was wrong about the count.** It claimed the descriptor count equals the soft limit and that the helper says `exhausted`. In bash, `{fd}` redirections start at descriptor 10, so the leaker held 17 of 24 and the helper said `ok`. The script now opens descriptors 3 to 9 first, and the log file is opened early because no redirect works at the limit. Result: 23 of 24, verdict `close to the limit`.
+- **The scenario 4 remount was wrong.** See the scenario. The script now uses `remount,bind,exec`.
+- **Scenario 8 needs a capability that container root lacks.** See the scenario.
+- **User namespaces were blocked by Docker's default seccomp profile.** The scripts exited with status 77 as designed, and the unconfined profile let them run.
+- **Confirmed by running.** The ` (deleted)` marker on `/proc/PID/fd`, a running process keeping its old supplementary groups, `namei -l`, `findmnt`, `prlimit` and `mkfs.ext4 -N`. Also confirmed: dropping only `CAP_DAC_OVERRIDE` makes root fail on a file it does not own, as `cat` printed `Permission denied` for a mode 600 file owned by uid 1001, while it worked with the default capabilities.
+- **Not available in the image.** `getenforce` and `restorecon` were not installed, and `ls -Z` printed `?`. There is no SELinux or AppArmor policy to test in the container.
 
 ## Drill questions
 
@@ -549,15 +559,18 @@ Nebius. The interview page and the candidate report come from the volume 20 plan
 ### Explicitly labelled inferences
 
 - The picture of descriptor table, open file description and inode is the standard Unix model. The manual pages support each box, and I found no single page that draws it.
-- A running process keeps its supplementary groups after the account joins a group. This is my reading of the credentials manual.
+- A running process keeps its supplementary groups after the account joins a group. This is my reading of the credentials manual, and the container run agreed.
 - The order of the permission layers is a teaching order, not the kernel's internal order.
 - Reading the last line of a hung process's trace as the blocked call, and a mount hiding files from `du`, are general knowledge that I did not source.
-- Leaving the hard descriptor limit high follows my reading of the systemd.exec sentence about memory accounting. Running a file with `sh` on a `noexec` mount and truncating a deleted file through `/proc` are stated from general knowledge. Scenarios 2 and 4 are built to confirm both.
+- Leaving the hard descriptor limit high follows my reading of the systemd.exec sentence about memory accounting. Running a file with `sh` on a `noexec` mount and truncating a deleted file through `/proc` are stated from general knowledge. Scenarios 2 and 4 confirmed both in the container.
 
 ### Not verified
 
-- No Linux command in this chapter was run. That covers all eight scripts, the bonus script, `strace`, `lsof`, `getfacl`, `chattr`, `unshare` and `mount`.
-- The ` (deleted)` suffix on `/proc/PID/fd` links, and the commands `namei`, `findmnt`, `getenforce`, `ls -Z`, `restorecon` and `prlimit`.
-- The `mkfs` option for more inodes, and which distributions block unprivileged user namespaces. The scripts detect that failure and exit with status 77.
-- The manifest passes `kubeconform` in strict mode, but the pod was never applied and `busybox:1.36` was not pulled.
-- The Python fixtures use lines quoted from the books and manual pages. The layout of `/proc/PID/limits` lines follows the fields that `proc_pid_limits(5)` names, with made-up numbers.
+- Environment: Docker container on a Rancher Desktop Alpine VM, kernel 6.18.37-0-virt, arm64. Some scenarios used `seccomp=unconfined` and `apparmor=unconfined`, and scenario 8 used `--cap-add LINUX_IMMUTABLE`. A real host with systemd was not available.
+- `getenforce`, `ls -Z`, `restorecon`, `ausearch` and any SELinux or AppArmor denial. No policy module exists in the container.
+- `LimitNOFILE=` in a real systemd unit, and the `file-max` limit being reached, which the container could not safely do.
+- The Pod manifest was not applied to a Kubernetes cluster and `kubeconform` was not rerun. Only the equivalent `docker run --read-only` settings were run. User namespaces with `hostUsers: false` were not run.
+- `perf trace`, Ftrace and the BCC or bpftrace tools, including `opensnoop`. No matching `perf` existed for the VM kernel.
+- Whether `ptrace` `strace` slows a syscall-heavy program by the book's factor of 73. I did not measure it.
+- The scenario 1 failure that happened once in four runs.
+- The Python fixtures use lines quoted from the books and manual pages. The layout of `/proc/PID/limits` lines in the tests uses made-up numbers, though the real layout matched in this run.

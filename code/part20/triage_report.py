@@ -41,7 +41,9 @@ def report(d):
             first = text.strip().splitlines()[0] if text.strip() else "empty"
             out.append(f.Finding("known-unknown", "E", f"{name} not readable: {first}"))
     dm = read(d, "dmesg.txt")
-    if dm and p.find_oom(dm):
+    if dm is not None and "exit " in dm and " from: dmesg" in dm:
+        out.append(f.Finding("known-unknown", "E", "dmesg.txt not readable: " + dm.strip().splitlines()[0]))
+    elif dm and p.find_oom(dm):
         out.append(f.Finding("memory", "E", f"dmesg mentions {len(p.find_oom(dm))} OOM or killed lines"))
     order = {"E": 0, "S": 1, "U": 2}
     return sorted(out, key=lambda x: order[x.kind])

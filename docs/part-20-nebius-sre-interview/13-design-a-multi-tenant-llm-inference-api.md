@@ -83,9 +83,9 @@ The result says memory alone needs about 40 GPUs at peak. A compute check and he
 
 Keep the surface small. Nebius says the API is OpenAI-compatible, so the data path is a streaming chat or completion call. Add a separate control API for managing endpoints, which the public facts say lifecycle operations belong to. Say the split now, because everything later hangs on it.
 
-The data plane call needs four properties. It carries a tenant credential. It names a model or an endpoint. It can stream tokens back. It returns token counts for billing. OpenAI-style responses carry counts in a usage object. Unverified against Nebius docs: check the exact field names before relying on them.
+The data plane call needs four properties. It carries a tenant credential. It names a model or an endpoint. It can stream tokens back. It returns token counts for billing. The Token Factory chat completion reference, fetched 2026-11-09, defines a `usage` object with `prompt_tokens`, `completion_tokens` and `total_tokens`, plus optional `prompt_tokens_details` and `completion_tokens_details`. For streams, the same page says usage statistics arrive only when the request sets `stream_options` to `{"include_usage": true}`, in a final chunk. A gateway that bills streamed calls must therefore set that option itself.
 
-Failure must be part of the contract. Overload returns HTTP 429 with a Retry-After header, and that is standard HTTP behaviour. Capacity loss returns 503. A stream that dies half-way must say so, because the client has already received tokens. The public case study lists finish_reason drift as an alert, which tells you that finish_reason is a field the platform watches.
+Failure must be part of the contract. Overload returns HTTP 429 with a Retry-After header. The Token Factory rate limits page, fetched 2026-11-09, documents both. It defines `Retry-After` as the seconds to wait. It also lists `x-ratelimit-remaining-requests`, `x-ratelimit-remaining-tokens` and reset headers, so a client can see its headroom before it hits 429. The same page describes an `x-ratelimit-over-limit: yes` header on requests that exceed the limit but are still served at lower priority when spare capacity exists. Its index has no page on error codes or retry behaviour, so the 503 for capacity loss is my design, not a Nebius fact. Capacity loss returns 503. A stream that dies half-way must say so, because the client has already received tokens. The public case study lists finish_reason drift as an alert, which tells you that finish_reason is a field the platform watches.
 
 Decide what you will not promise. Exactly-once generation is out. A retry after a stream started can produce different text. Say that the API is at-least-once for the call and the client must treat partial output carefully.
 
@@ -140,7 +140,7 @@ Hands-On LLM Serving and Optimization, Chapter 7, says the key to a high prefix-
 
 The trap is the hot prefix. If one tenant owns 40% of traffic and the router always follows the cache, one replica gets 40% of the load. The handbook's chapter 15.09 describes this as the unbounded prefix hotspot and gives a bounded-load rule. The rule I would build: send the request to the replica holding the most of its prefix, but only if its backlog is within a bound of the least loaded replica. Otherwise send it to the least loaded one, which then caches the prefix too. Hot prefixes therefore spread over several replicas on their own.
 
-The router needs a cheap picture of each replica's cache. Options are a router-side radix tree of recent prefixes, which is approximate and cheap, or asking replicas for their cache contents, which is exact and costs a call. I would start approximate. A wrong guess only costs a cache miss, never correctness. The load signal should be the waiting queue and the KV usage reported by the engine, not CPU. vLLM exposes these as `vllm:num_requests_waiting` and `vllm:kv_cache_usage_perc`, and the prefix cache counters as `vllm:prefix_cache_queries` and `vllm:prefix_cache_hits`. These names are from the vLLM metrics design page, latest developer docs, fetched 2026-11-09, which shows no version number. The waiting-requests name is inferred from the page, so check it on your version.
+The router needs a cheap picture of each replica's cache. Options are a router-side radix tree of recent prefixes, which is approximate and cheap, or asking replicas for their cache contents, which is exact and costs a call. I would start approximate. A wrong guess only costs a cache miss, never correctness. The load signal should be the waiting queue and the KV usage reported by the engine, not CPU. vLLM exposes these as `vllm:num_requests_waiting` and `vllm:kv_cache_usage_perc`, and the prefix cache counters as `vllm:prefix_cache_queries` and `vllm:prefix_cache_hits`. I confirmed all four names in `vllm/v1/metrics/loggers.py` at tag v0.33.0, fetched 2026-11-09. The same file also defines `vllm:num_requests_waiting_by_reason`, whose help text says its reasons sum to the waiting total. Metric names move between releases, so check `/metrics` on the version you run.
 
 The simulation in the lab runs this. Eight replicas, forty prefixes, one hot prefix with 40% of traffic, a cache of six prefixes per replica. A hit costs 0.10 seconds of service and a miss 0.50 seconds. These are made-up numbers chosen to show the mechanism, not measurements of any engine.
 
@@ -218,7 +218,7 @@ For an inference API, the noisy neighbour is rarely CPU. It is the shared batch 
 
 Multi-tenant Kubernetes features still apply to the platform around the engines. Namespaces, RBAC, resource quotas and network policies isolate the control plane workloads. The book notes that a namespace is only metadata until policies are attached.
 
-Cache sharing is a security question too. A shared prefix cache across tenants can leak information through timing, because a fast response reveals that another tenant sent the same prefix. Unverified: check this against current vLLM and published research before claiming it is a real attack on your stack. A safe default is to scope the cache key by tenant, and to allow cross-tenant sharing only for public system prompts.
+Cache sharing is a security question too. A shared prefix cache across tenants can leak information through timing, because a fast response reveals that another tenant sent the same prefix. The vLLM security page at tag v0.33.0, fetched 2026-11-09, says prefix cache reuse is a timing side channel in multi-tenant deployments (it cites CVE-2025-46570). It offers a per-request `cache_salt` as a mitigation and says vLLM does not isolate tenants sharing a server process. A safe default is to scope the cache key by tenant, and to allow cross-tenant sharing only for public system prompts.
 
 ### 12. Streaming and backpressure (minutes 38 to 40)
 
@@ -663,7 +663,8 @@ Sources read for this chapter:
 - Production Kubernetes: Chapter 12 "Multitenancy" and Chapter 13 "Autoscaling".
 - Machine Learning Platform Engineering: Chapter 13 was searched. It covers prompt management and evaluation, not API serving design, so it contributed no claim here.
 - Scalable Kubernetes Infrastructure for AI Platforms: Chapter 4 "Model Deployment and Monitoring" (serving platform requirements, gateway and load balancer role, KServe). Used only for the general platform component list.
-- vLLM metrics design page, https://docs.vllm.ai/en/latest/design/metrics.html, fetched 2026-11-09, latest developer docs, no version shown.
+- vLLM source at tag v0.33.0, `vllm/v1/metrics/loggers.py`, `docs/usage/security.md`, `docs/design/prefix_caching.md`, raw.githubusercontent.com, fetched 2026-11-09. The docs site returned HTTP 429 that day, so I read the pinned source instead.
+- Nebius Token Factory docs, fetched 2026-11-09: `docs.tokenfactory.nebius.com/api-reference/inference/create-chat-completion.md`, `/ai-models-inference/rate-limits.md` and the `llms.txt` index.
 - `planning/VOLUME_20_NEBIUS_SRE_PLAN.md` section 1, for every public Nebius fact.
 - Handbook chapters 15.09, 15.10, 15.16 and 19.12, for the KV formula, the bounded-load rule and the dual-bucket rate limiter, which this chapter adds interview framing to.
 
@@ -674,9 +675,12 @@ Explicitly labelled inferences:
 - The control plane snapshot rule, the local-bucket limiter choice, the billing of delivered tokens, opt-in failover, the tenant-scoped cache key, and the 10% retry budget are my reasoning.
 - The router simulation uses invented costs and traffic. It shows a mechanism, not engine performance.
 
+### Verification log
+
+Checked 5, confirmed 4 (usage fields, Retry-After, waiting-requests metric name, cache timing channel), corrected 0, removed 0, still unverified 1 (the 503 status). Added one detail found on the way: streamed usage needs `include_usage`.
+
 Not verified:
 
-- The OpenAI-style usage field names and Retry-After handling against Nebius docs.
-- Whether cross-tenant prefix cache timing leaks are a real issue on current vLLM.
-- The waiting-requests metric name on your vLLM version.
+- The 503 status for capacity loss. The Token Factory docs index lists no error-code page.
+- How Token Factory itself isolates prefix caches between tenants. Nebius has not published this.
 - No Nebius endpoint or live GPU was used. Nothing here ran against a real inference engine.

@@ -637,7 +637,7 @@ Lines look like `<ISO time> <method> <path> <status> <latency_ms>`. A request is
 
 </details>
 
-**Insight.** A burn rate of one spends the budget exactly at the pace that would use it up by the end of the period. **Common wrong answer.** Storing every line, or alerting on the long window alone, which keeps paging long after recovery. **Follow-up.** "Which thresholds?" The thresholds are inputs, and I believe the Google SRE books discuss multi-window burn-rate alerts. Unverified: I did not read them for this chapter, so check the figures before you state a number. Files: `c11_p1_slo_burn.py`. See also chapter 20.19.
+**Insight.** A burn rate of one spends the budget exactly at the pace that would use it up by the end of the period. **Common wrong answer.** Storing every line, or alerting on the long window alone, which keeps paging long after recovery. **Follow-up.** "Which thresholds?" The thresholds are inputs. The Google SRE Workbook chapter on alerting on SLOs recommends, for a 99.9 percent SLO, three multiwindow alerts. A burn rate of 14.4 over 1 hour with a 5-minute short window consumes 2 percent of the budget and pages. A burn rate of 6 over 6 hours with a 30-minute window consumes 5 percent and pages. A burn rate of 1 over 3 days with a 6-hour window consumes 10 percent and opens a ticket. The workbook advises a short window of one twelfth of the long window. Multiply each burn rate by 0.001 to get the error ratio, so 14.4 means a 1.44 percent error rate. Chapter 20.19 covers the reasoning. Files: `c11_p1_slo_burn.py`. See also chapter 20.19.
 
 #### P2. Rate limiter with tests
 
@@ -1047,8 +1047,13 @@ Sources used:
 - Fluent Python, 2nd edition, chapter 2 "An Array of Sequences", deques section: a list is costly at the head, a deque is fast at both ends. Chapter 6 on mutable defaults and chapter 3 on dict insertion order informed the `None` defaults and ordered dictionaries.
 - Distributed AI Systems, chapter 9 "Production LLM Serving Stack": the gateway handles rate limiting, and a bounded queue rejects with 503 as backpressure.
 - Learning Python, 6th edition, lists, dictionaries and iteration: background only.
+- Google SRE Workbook, "Alerting on SLOs", https://sre.google/workbook/alerting-on-slos/, fetched 2026-11-09, for the burn-rate table and the one-twelfth short window guideline.
 - Code run on this Mac: Python 3.12.7, pytest 8.3.5, 61 tests passed, `tools/check_code_files.py` clean.
 
 Explicitly labelled inferences: the problems, the mini-projects, the time budgets and the schedule are my own planning. Nebius has not published its coding problems.
 
-Not verified: the string-compression report and the medium-to-hard claim, which come from the brief for this chapter. The burn-rate thresholds in the Google SRE books. Python versions other than 3.12.7.
+Not verified: the string-compression report and the medium-to-hard claim, which come from the brief for this chapter. Python versions other than 3.12.7.
+
+### Verification log
+
+Fetched 2026-11-09: sre.google/workbook/alerting-on-slos. Claims checked: 4 (the three burn-rate pairs, the one-twelfth short window, the meaning of burn rate one, the 0.001 multiplication). Confirmed: 4. Corrected: 0. Removed: 1 (the "I believe" hedge, replaced by the citation). Still unverified: 2. They are the string-compression report and the medium-to-hard report, which come from the planning brief and the plan's candidate-report section. The code keeps thresholds as inputs, so no code changed.

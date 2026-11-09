@@ -67,7 +67,7 @@ Your autoscaler reads a number every 15 seconds and decides how many replicas to
 desiredReplicas = ceil( currentReplicas × currentMetricValue / desiredMetricValue )
 ```
 
-The ratio is skipped when it is close to 1.0. The docs call this a tolerance and say it defaults to 0.1. Four ready replicas hold 22 in-flight requests each. The target is 11. The ratio is 2.0, so the desired count is 8. If the average were 11.9, the ratio of 1.08 sits inside the tolerance and nothing happens.
+The ratio is skipped when it is close to 1.0. The docs call this a tolerance and say it defaults to 0.1 cluster-wide, set by a kube-controller-manager flag. A per-HPA `behavior.scaleUp.tolerance` and `scaleDown.tolerance` field exists, on by default from Kubernetes 1.37 and off before that. Four ready replicas hold 22 in-flight requests each. The target is 11. The ratio is 2.0, so the desired count is 8. If the average were 11.9, the ratio of 1.08 sits inside the tolerance and nothing happens.
 
 Now the part interviewers like. Fifteen seconds later, the four new replicas are still loading weights. The old four still hold 22 requests each, so 88 are in flight. A naive controller divides 88 by 4 again and asks for 8 more. The docs describe how HPA avoids this. For a scale-up, not-yet-ready pods are assumed to use 0 percent of the target. The average becomes 88 divided by 8, which is 11. The ratio is 1.0 and the controller does nothing more. That rule stops a runaway while replicas are starting.
 
@@ -159,11 +159,11 @@ Start with who dies. When a ReplicaSet scales down, the Kubernetes docs say pend
 
 Next, the termination sequence. The docs say a pod gets 30 seconds by default. The kubelet runs a `preStop` hook, sends SIGTERM, and sends SIGKILL when the grace period ends. If the hook needs more time, you must raise `terminationGracePeriodSeconds`. A native `sleep` action exists for hooks. The pause gives load balancers time to stop sending new requests. My manifest uses 15 seconds, which is an arbitrary number to tune.
 
-Then the engine must finish what it has. The vLLM Kubernetes docs, from the main branch, say the listener stops accepting connections when shutdown starts, and a `--shutdown-timeout` flag drains in-flight requests. Check that flag against `vllm serve --help` for your version, because I read development documentation and did not run it. Set the grace period above your longest expected stream plus the timeout. A 120-second answer needs a grace period of more than 120 seconds.
+Then the engine must finish what it has. In vLLM v0.32.0 source, the engine core catches SIGTERM. The flag `--shutdown-timeout` defaults to 0, and its help text says "0 = abort, >0 = wait". At 0 the engine aborts every in-flight request at once. Above 0 it stops taking new requests, rejects any that arrive with an abort, and lets running ones finish. The parent process then waits up to that many seconds before it force-kills. The v0.32.0 Kubernetes page does not mention draining, so the source is the evidence. Set the flag yourself, because the default cuts streams. Set the grace period above your longest expected stream plus the timeout. A 120-second answer needs a grace period of more than 120 seconds.
 
 In the simulator, draining made a difference. On the sawtooth trace with the waiting-queue policy and no drain, 168 streams were cut. With a drain they were zero. With the in-flight policy and no drain, 16 were cut. A PodDisruptionBudget also helps, with `maxUnavailable: 1`, because node drains and cluster autoscaler evictions respect it.
 
-The cluster autoscaler adds its own rules. Per its FAQ, it considers a node for removal when its pods' CPU and memory requests sum to less than 50 percent of allocatable, and a node must stay unneeded for 10 minutes by default. Scale-down is also held for 10 minutes after a scale-up. It respects PodDisruptionBudgets and evicts through the eviction API for up to 2 minutes. The docs define utilisation by CPU and memory requests. How GPU nodes are judged is something I did not verify, so check it before you rely on the 50 percent rule.
+The cluster autoscaler adds its own rules. Per its FAQ, it considers a node for removal when its pods' CPU and memory requests sum to less than 50 percent of allocatable, and a node must stay unneeded for 10 minutes by default. Scale-down is also held for 10 minutes after a scale-up. It respects PodDisruptionBudgets and evicts through the eviction API for up to 2 minutes. The FAQ defines utilisation by CPU and memory requests. For accelerator nodes there is a separate flag, `scale-down-gpu-utilization-threshold`, default 0.5. Its description says utilisation is the sum of GPU requests divided by allocatable, and that CPU and memory are ignored on GPU nodes. So a GPU node holding one pod that requests 4 of 8 GPUs sits at exactly 0.5, and the node is not below the threshold. This is requested GPUs, not measured busy time.
 
 **Decision: make a pod unable to die mid-stream by setting a grace period, a preStop pause, an engine drain and a disruption budget together.**
 
@@ -818,84 +818,44 @@ spec:
 
 ## Drill questions
 
-1. Why does GPU utilisation fail as an autoscaling signal for an LLM engine?
-
-<details><summary>Answer</summary>
-
+<details><summary>1. Why does GPU utilisation fail as an autoscaling signal for an LLM engine?</summary>
 Continuous batching keeps the GPU busy even with a small batch. Once the batch is full, extra load waits in the queue and utilisation cannot rise. So the signal reads the same at light load and at overload. It tells you the GPU is active, not how much work is waiting.
-
 </details>
 
-2. State the HPA formula and the default tolerance.
-
-<details><summary>Answer</summary>
-
+<details><summary>2. State the HPA formula and the default tolerance.</summary>
 Desired replicas is the ceiling of current replicas times current metric value divided by the target value. The controller skips scaling when the ratio is within the tolerance of 1.0. The default tolerance is 0.1.
-
 </details>
 
-3. Four replicas hold 30 in-flight requests each. The target is 12. What does HPA ask for, and what happens at the next sync while the new pods start?
-
-<details><summary>Answer</summary>
-
+<details><summary>3. Four replicas hold 30 in-flight requests each. The target is 12. What does HPA ask for, and what happens at the next sync while the new pods start?</summary>
 The ratio is 2.5, so the desired count is ceil of 10, which is 10. Six pods start. At the next sync, not-ready pods count as 0 percent of target for a scale-up. The 120 requests are averaged over 10 pods, which gives 12, a ratio of 1.0, and no further scaling.
-
 </details>
 
-4. What are the default stabilization windows and policies for scale-up and scale-down, and why are they wrong for an LLM engine?
-
-<details><summary>Answer</summary>
-
+<details><summary>4. What are the default stabilization windows and policies for scale-up and scale-down, and why are they wrong for an LLM engine?</summary>
 Scale-up has no window and may add 100 percent or 4 pods every 15 seconds. Scale-down has a 300-second window and one policy that can remove 100 percent every 15 seconds. A replica takes minutes to start, so a short window lets the fleet shrink and then pay cold starts again. Lengthen the window past the cold start and slow the scale-down policy.
-
 </details>
 
-5. List the stages of a scale-up from decision to serving, and the cure for the biggest one.
-
-<details><summary>Answer</summary>
-
+<details><summary>5. List the stages of a scale-up from decision to serving, and the cure for the biggest one.</summary>
 Decision lag, node provision, image pull, weight load, warm-up and registration. In my simulator's assumptions node provision is the largest at 240 seconds, and a warm node removes it and the image pull. Your own biggest stage needs a measurement. Weight load is cured with a local cache, and warm-up with a warm-up request.
-
 </details>
 
-6. How do you compute how many standing replicas hide a cold start?
-
-<details><summary>Answer</summary>
-
+<details><summary>6. How do you compute how many standing replicas hide a cold start?</summary>
 Multiply the demand growth per minute by the cold start in minutes. Divide by what one replica serves. Round up. For growth of 0.4 requests per second per minute, an 8-minute cold start and 0.8 per replica, the answer is 4.
-
 </details>
 
-7. What is X+1 and how do you apply it to the minimum?
-
-<details><summary>Answer</summary>
-
+<details><summary>7. What is X+1 and how do you apply it to the minimum?</summary>
 X replicas carry the baseline load, and one more covers a failure. With a baseline of 1.2 requests per second and 0.8 per replica, X is 2 and the floor is 3. The Nebius case study names X+1 as vendor material. Nebius has not published its own floors.
-
 </details>
 
-8. Which pod does a ReplicaSet remove when scaling down, and why does that matter for streams?
-
-<details><summary>Answer</summary>
-
+<details><summary>8. Which pod does a ReplicaSet remove when scaling down, and why does that matter for streams?</summary>
 Pending pods go first, then lower pod-deletion-cost, then pods on nodes with more replicas, then newer pods, and otherwise random. None of that looks at open streams. So you need a grace period, a preStop pause, an engine drain and a disruption budget.
-
 </details>
 
-9. How do you know your scale-down is cutting streams?
-
-<details><summary>Answer</summary>
-
+<details><summary>9. How do you know your scale-down is cutting streams?</summary>
 Count client-side errors and finish reasons for streams that end during pod termination. Compare the termination time of pods with the end time of streams. A rise in cut streams at each scale-down event, with no engine fault, points to a missing drain.
-
 </details>
 
-10. Why do spare nodes help less than standing replicas?
-
-<details><summary>Answer</summary>
-
+<details><summary>10. Why do spare nodes help less than standing replicas?</summary>
 A spare node removes node provision and image pull, but the replica still has to load weights and warm up. In my simulation that left 150 seconds against 480. A standing replica serves at once. A node costs about the same as a replica but delivers capacity later.
-
 </details>
 
 ## Common mistakes and weak answers
@@ -924,7 +884,7 @@ Treating the simulator as truth is the fifth. It is a model with assumed numbers
 
 Sources and dates fetched, all on 2026-11-09:
 
-- Kubernetes HPA documentation, from the `kubernetes/website` repository at its main branch: algorithm, tolerance, not-ready pods, behavior defaults, stabilization window. The tolerance field is feature-gated, and I did not verify the release where it became default.
+- Kubernetes HPA documentation, from the `kubernetes/website` repository at its main branch: algorithm, tolerance, not-ready pods, behavior defaults, stabilization window. The tolerance field is the `HPAConfigurableTolerance` gate: alpha in 1.33, beta in 1.35, stable and on by default from 1.37 (feature-gate page, `kubernetes/website`). The latest Kubernetes release at check time was v1.37.2.
 - Kubernetes ReplicaSet and Pod lifecycle documentation, same repository: scale-down order, pod deletion cost, grace period, preStop.
 - KEDA documentation, `kedacore/keda-docs`, version 2.22 directory, and the ScaledObject CRD from `kedacore/keda` at main: `pollingInterval`, `cooldownPeriod`, `fallback`, HPA behavior, Prometheus trigger.
 - vLLM documentation at main: `docs/design/metrics.md` and the metrics page, which show the metric names, and `docs/deployment/k8s.md`, which mentions draining with a shutdown timeout. The page carried a footer date of October 30, 2026, and no version number.
@@ -947,8 +907,16 @@ Not verified:
 
 - No cluster, GPU or vLLM server was available. I did not apply any manifest, and none of the vLLM metrics were observed live.
 - The adapter rule that produces `vllm_requests_inflight` is not provided or tested. The image tag in the drain manifest is a placeholder.
-- The `--shutdown-timeout` flag is read from main-branch documentation and needs checking against your vLLM version.
-- How the cluster autoscaler computes utilisation for GPU nodes.
-- The pause image tag `registry.k8s.io/pause:3.10` was not pulled.
+- The pause image tag `registry.k8s.io/pause:3.10` was not pulled. The registry was unreachable from the Docker daemon (DNS timeout). The tag is a real release in the Kubernetes pause CHANGELOG (3.10, then 3.10.1 and 3.10.2 for Windows base images).
 - No vLLM metric for tokens in flight was found. That is a gap in my search, not proof.
-- Docker was not running, so nothing was run in a container.
+- Nothing was run in a container.
+
+### Verification log (fact-check pass, 2026-11-09)
+
+Resolved 5 flagged claims: 4 confirmed or corrected, 1 still unverified.
+
+- CONFIRMED: `--shutdown-timeout` exists in vLLM v0.32.0 (`vllm/engine/arg_utils.py`, default 0, "0 = abort, >0 = wait"). Behaviour read in `vllm/v1/engine/core.py` (`_handle_shutdown`) and `vllm/v1/engine/utils.py`. The earlier text relied on main-branch docs, so it was CORRECTED to cite the source and the default.
+- CONFIRMED: HPA tolerance. Default 10 percent cluster-wide. The `behavior.scaleUp.tolerance` field is gate `HPAConfigurableTolerance`: alpha 1.33, beta 1.35, stable and default-on 1.37.
+- CONFIRMED: the cluster autoscaler FAQ has `scale-down-gpu-utilization-threshold` (default 0.5, GPU requests over allocatable, CPU and memory ignored for accelerator nodes), `scale-down-unneeded-time` 10m and `scale-down-delay-after-add` 10m.
+- CONFIRMED: pause 3.10 is a released tag in the Kubernetes CHANGELOG. STILL UNVERIFIED: pulling it, since the registry was unreachable here. 3.10.2 is also listed.
+- STILL UNVERIFIED: no vLLM metric for tokens in flight was found. `vllm_requests_inflight` adapter rule is not provided.

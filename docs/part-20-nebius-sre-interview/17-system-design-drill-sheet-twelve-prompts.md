@@ -60,7 +60,7 @@ flowchart LR
 | Fair share of 4,096 GPUs | 50, 30, 20 percent | 2,048 / 1,229 / 819 |
 | 8-node jobs in a 32-node block, clean or with 3 busy nodes | 32 / 8, then 29 / 8 | 4 versus 3 |
 
-Young's rule is a standard approximation I am quoting from memory of the checkpointing literature. Unverified: check before relying on it. The sound part is the shape, which says checkpoint more often when failures are frequent.
+Young's rule comes from J. W. Young, Communications of the ACM 17(9), 1974. I confirmed its form in Aupy, Benoit, Herault, Robert and Dongarra, "Optimal Checkpointing Period: Time vs. Energy", fetched 2026-11-09. There the period is the square root of 2 x C x mu, plus C, where C is the checkpoint write time and mu is the mean time between failures of the whole platform. The 153 minutes above is the square-root part, the compute between checkpoints. The paper calls this a first-order approximation, valid only while C is small against mu. Here 120 seconds against 351,563 seconds is small. The shape is the point: checkpoint more often when failures are frequent or writes are cheap.
 
 **40 minutes.** 0-5 ask and numbers. 5-10 job model: gang size, priority, preemptible or not. 10-25 scheduler: queue, fair-share by usage decay, topology-aware placement, backfill. 25-33 failures: node health, requeue from checkpoint. 33-40 observability and what you would measure.
 
@@ -127,7 +127,7 @@ Decide: say the 3x burst number aloud and choose shed or buy.
 
 > **Interviewer:** "Design storage for a training cluster of thousands of GPUs. Think about throughput, checkpoints and cost."
 
-**Ask first.** Dataset size? Assume 2 PB. Model? Assume 70 billion parameters. Checkpoint contents? Assume weights plus optimiser state at 14 bytes per parameter. That figure is my assumption for mixed-precision training with Adam. Checkpoint cadence? Assume every 30 minutes, kept five deep.
+**Ask first.** Dataset size? Assume 2 PB. Model? Assume 70 billion parameters. Checkpoint contents? Assume weights plus optimiser state at 14 bytes per parameter. The ZeRO paper (Rajbhandari et al., arXiv 1910.02054, section 3.1, fetched 2026-11-09) counts mixed-precision Adam as 2 bytes for fp16 parameters, 2 for fp16 gradients and 12 for the fp32 copy, momentum and variance, 16 in total for training memory. Dropping the gradients gives 2 + 12 = 14, which is what this prompt assumes a checkpoint holds. Other setups save 16 bytes per parameter or only weights, so say which you assume. Checkpoint cadence? Assume every 30 minutes, kept five deep.
 
 | Quantity | Arithmetic | Result |
 |---|---|---|
@@ -330,11 +330,11 @@ Nebius reports cache-aware routing lifted hit rate from about 5 percent to 30 pe
 | Fit in 50.6 GB of GPU KV budget | 50.6 / 0.295 | 171 |
 | Fit in 512 GB host RAM | 512 / 0.295 | 1,736 |
 | Fit in 8 TB NVMe | 8,000 / 0.295 | 27,126 |
-| Recompute (assume 400 TFLOPS effective) | 2 x 8.2e9 x 2,000 / 400e12 | 82 ms |
+| Recompute (assume 400 TFLOPS effective, about 40 percent of 989) | 2 x 8.2e9 x 2,000 / 400e12 | 82 ms |
 | Load from RAM (128 GB/s at 50 percent) | 0.295 / 64 | 4.6 ms |
-| Load from NVMe (assume 7 GB/s) | 0.295 / 7 | 42 ms |
+| Load from NVMe (7 GB/s, top of the 5 to 7 range) | 0.295 / 7 | 42 ms |
 
-NVMe is only about twice as fast as recomputing, so the slow tier barely pays. RAM clearly pays.
+The 400 TFLOPS is my utilisation assumption of about 40 percent against 989 TFLOPS. That peak is half of the 1,979 BF16 figure the NVIDIA H100 page gives for SXM with sparsity, fetched 2026-11-09. The halving is the usual dense-versus-sparse convention, derived and not quoted. Distributed AI Systems, chapter 5, gives 5 to 7 GB/s sequential read for a PCIe Gen4 NVMe drive, and the 128 GB/s host link is the PCIe Gen5 figure on the same NVIDIA page. NVMe is only about twice as fast as recomputing, so the slow tier barely pays. RAM clearly pays.
 
 **40 minutes.** 0-5 questions. 5-10 numbers. 10-22 tiers, eviction, and keys by prefix hash. 22-30 routing: send a request to the replica that holds its prefix. 30-37 failure and privacy. 37-40 metrics.
 
@@ -370,7 +370,7 @@ Decide: justify each tier with a load-versus-recompute number.
 | Rack doubling rounds | log2(10), rounded up | 4 |
 | Rack copy, 4 rounds at 70 / 3 s each | 4 x 23.3 | 93 s |
 | Tree total | 70 + 93 | 163 s |
-| Local disk to GPU at an assumed 7 GB/s | 70 / 7 | 10 s |
+| Local disk to GPU at 7 GB/s (top of the sourced range) | 70 / 7 | 10 s |
 
 The rack stage is a conservative sum. In practice it overlaps with seeding.
 
@@ -861,10 +861,15 @@ Output tokens are uncharged, so a tenant can exceed the limit. Reserve the promp
 
 Sources:
 
-- Nebius SRE interview page, nebius.com/careers/interviews/sre, as recorded in `planning/VOLUME_20_NEBIUS_SRE_PLAN.md` section 1, research date 2026-11-09. This chapter fetched no web pages itself.
+- Nebius SRE interview page, nebius.com/careers/interviews/sre, as recorded in `planning/VOLUME_20_NEBIUS_SRE_PLAN.md` section 1, research date 2026-11-09. The first draft fetched no web pages. The verification pass of 2026-11-09 fetched the sources listed below.
 - The secondary source with five prompts and the two candidate reports, as supplied in the task brief. The brief does not name the secondary source or its URL.
+- ZeRO paper arXiv 1910.02054; Aupy et al. (netlib LAWN 281); Distributed AI Systems chapter 5 on NVMe read speed; NVIDIA H100 page. All fetched or read 2026-11-09.
 - Chapters 20.12 and 20.30 of this handbook for the KV formula, the 5,361 tokens per second figure, the 50.6 GB KV budget and the region-fixed dedicated endpoint facts. Those chapters hold the underlying book and documentation sources.
 - Nebius Token Factory case study figures (cache hit rates, X+1) as in plan section 1, tagged vendor.
+
+### Verification log
+
+Checked 4, confirmed 3 (Young's rule, 14 bytes per parameter as 2 + 12, 7 GB/s as the top of a book range), corrected 1 (the TFLOPS placeholder, now derived from a datasheet peak and labelled), removed 0, still unverified 1 (the 40 percent utilisation and MTBF assumptions, which stay labelled as mine).
 
 Explicitly labelled inferences:
 
@@ -875,7 +880,6 @@ Explicitly labelled inferences:
 
 Not verified:
 
-- Young's checkpoint rule and the 14 bytes per parameter were not checked against a book or paper this session.
-- The 400 TFLOPS effective figure and the NVMe 7 GB/s rate are placeholders.
+- The effective TFLOPS utilisation and the MTBF figures are still my assumptions, now anchored to a datasheet peak. A newer drive can read faster than 7 GB/s.
 - No Mermaid, lint or chain-density gate was run beyond what is noted in the report.
 - I did not confirm the Senior SRE posting is still open.

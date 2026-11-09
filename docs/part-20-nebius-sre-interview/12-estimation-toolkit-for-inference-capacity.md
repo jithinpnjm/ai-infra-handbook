@@ -109,7 +109,7 @@ flowchart TD
     R --> N["137 requests"]
 ```
 
-Two inputs need care. The first is the usable fraction. vLLM exposes `gpu_memory_utilization`, a fraction of memory the engine may use. On the main branch the source, read on 2026-11-09, says the default is 0.92 when unspecified, or 1.0 with its extensible cache. Older releases used a different default that this chapter did not verify. This chapter plans with 0.90, which is a cautious round number and my choice, not the engine's.
+Two inputs need care. The first is the usable fraction. vLLM exposes `gpu_memory_utilization`, a fraction of memory the engine may use. On the main branch the source, read on 2026-11-09, says the default is 0.92 when unspecified, or 1.0 with its extensible cache. The source for releases v0.10.0 and v0.11.0 sets the default to 0.9, so the value depends on your version. This chapter plans with 0.90, which is a cautious round number and my choice, not the engine's.
 
 The second input is overhead for activations, CUDA graphs and fragmentation. The book Hands-On LLM Serving and Optimization says you cannot reach the theoretical batch size because activations also need room. This chapter reserves 5 GB per GPU. That figure is a planning assumption, not a measurement. Replace it with the number your own engine logs at startup.
 
@@ -122,7 +122,7 @@ The worked example on an H100 SXM with 80 GB follows. The datasheet figure is on
 | After overhead | 55.6 - 5 | 50.6 GB |
 | Requests that fit | 50.6 / 0.36864 = 137.3 | 137 |
 
-With FP8 weights the same GPU holds 159 requests, because the budget grows by 8.2 GB. The book's Table 5-7 does the same sum for two cards. A 24 GB card fits 4 requests of a 7B model and a 48 GB card fits 16, so the pricier card is cheaper per request.
+With FP8 weights the same GPU holds 159 requests, because the budget grows by 8.2 GB. The book's Table 5-7 does the same sum for two cards. The book's table lists 4 requests on a 24 GB card and 16 on a 48 GB card for a 7B model, though its own formula in the same row gives 5 and 17, so treat the digits as approximate. Either way the pricier card is cheaper per request.
 
 For a model that needs several GPUs, add the memory and the overhead per GPU. Four H100s serving Qwen2.5-72B in BF16 have 4 x 80 x 0.90 equals 288 GB usable. Subtract 145.4 GB of weights and 20 GB of overhead, and 122.6 GB remains. Divided by 0.8192 GB, that is 149 requests.
 
@@ -136,7 +136,7 @@ The book Hands-On LLM Serving and Optimization, Chapter 5, explains this with ar
 
 The book works the L40S: 362 TFLOPS divided by 864 GB/s gives a ridge near 419 operations per byte. Its Table 5-10 then shows that decode with one row per request has an intensity of about 1 whatever the sequence length. Prefill, which processes the whole prompt as many rows, climbs from 62 at 64 tokens to 1,365 at 4,096 tokens. The book's conclusion is that prefill can be compute-bound while decode is always bandwidth-bound at batch size one.
 
-For an H100 the same step needs two datasheet numbers. The NVIDIA H100 page lists 1,979 TFLOPS for BF16 Tensor Core and 3.35 TB/s memory bandwidth for the SXM form factor. A footnote on that page marks the 1,979 as with sparsity. The NVIDIA L40S page shows its BF16 as 362.05 dense and 733 with sparsity, so the sparse figure is double the dense one. I apply the same halving to the H100, which gives 989.5 TFLOPS dense. That halving is my inference, so check the H100 datasheet before you quote it.
+For an H100 the same step needs two datasheet numbers. The NVIDIA H100 page lists 1,979 TFLOPS for BF16 Tensor Core and 3.35 TB/s memory bandwidth for the SXM form factor. A footnote on that page marks the 1,979 as with sparsity. The NVIDIA L40S page shows its BF16 as 362.05 dense and 733 with sparsity, so the sparse figure is double the dense one. I apply the same halving to the H100, which gives 989.5 TFLOPS dense. NVIDIA's Hopper architecture in-depth blog, fetched 2026-11-09, lists H100 SXM5 BF16 at 1,000 TFLOPS dense and 2,000 with sparsity, so the halving holds, and 1,000 is the same figure rounded.
 
 ```text
 Ridge point = 989.5e12 FLOP/s / 3.35e12 B/s = 295 FLOP/B
@@ -301,7 +301,7 @@ The fifth step is a comparison with a measured value. When the benchmark disagre
 | Headroom target | about 90 percent of peak throughput | AI Systems Performance Engineering, Chapter 16 |
 | Example latency objective | 0.4 s time to first token, 0.04 s per output token, both at p90 | AI Systems Performance Engineering, Chapter 17 |
 | Nebius on-demand H100, H200, B200 | $4.50, $5.40, $8.50 per GPU-hour | nebius.com/prices, fetched 2026-11-09 |
-| vLLM memory fraction default | 0.92, or 1.0 with extensible cache | vLLM main branch `vllm/config/cache.py`, read 2026-11-09 |
+| vLLM memory fraction default | 0.92, or 1.0 with extensible cache on main. 0.9 in v0.10.0 and v0.11.0 | vLLM `vllm/config/cache.py` and `vllm/config.py`, read 2026-11-09 |
 
 When an interviewer asks for a number you do not remember, derive it from the rows above and say how you derived it.
 
@@ -356,7 +356,7 @@ An alert fires: KV-cache usage is 95 percent and p99 time to first token is risi
 2. Divide by 60 requests: 0.80 GB per request.
 3. Divide by 147,456 bytes per token: about 5,430 tokens per request.
 
-The planned figure was 2,500 tokens. Live requests carry more than twice that, so the real mean context is longer than the one in your estimate. Either the customer's prompts grew, a retrieval step adds text, or a few very long requests dominate the mean. The estimate told you which question to ask in ten seconds. The actions are to check the prompt-length histogram, then lower the batch ceiling, shed or queue long requests, and add replicas. This chapter did not run vLLM, so the metric name for cache usage is not given here. Look it up in the vLLM metrics documentation for your version.
+The planned figure was 2,500 tokens. Live requests carry more than twice that, so the real mean context is longer than the one in your estimate. Either the customer's prompts grew, a retrieval step adds text, or a few very long requests dominate the mean. The estimate told you which question to ask in ten seconds. The actions are to check the prompt-length histogram, then lower the batch ceiling, shed or queue long requests, and add replicas. This chapter did not run vLLM, so no metric was observed live. In the vLLM source the gauge is named `vllm:kv_cache_usage_perc` on the main branch and `vllm:gpu_cache_usage_perc` in v0.8.0, so check the name for your version.
 
 ### Scenario 4: is the cheaper GPU cheaper per token?
 
@@ -718,12 +718,13 @@ Web sources, fetched 2026-11-09:
 - Qwen2.5-72B-Instruct model card and `config.json`, https://huggingface.co/Qwen/Qwen2.5-72B-Instruct: 72.7B parameters, 80 layers, 8 key-value heads, hidden size 8192 with 64 heads.
 - Nebius AI Cloud pricing, https://nebius.com/prices: on-demand GPU-hour prices.
 - vLLM source, `vllm/config/cache.py` on the main branch, via raw.githubusercontent.com: `gpu_memory_utilization` default text and the `fp8` cache dtype option. No release number was checked.
-- The vLLM documentation site returned HTTP 429 and was not used.
+- The vLLM documentation site returned HTTP 429 and was not used. Defaults and metric names come from the source files on GitHub for the tags named in the text.
+- NVIDIA Hopper architecture in-depth blog, https://developer.nvidia.com/blog/nvidia-hopper-architecture-in-depth/, fetched 2026-11-09, for dense H100 BF16.
 
 Explicitly labelled inferences:
 
-- Dense H100 BF16 of 989.5 TFLOPS is the page's 1,979 halved. The H100 page marks it as with sparsity, and the L40S page shows the same doubling, but I did not read the H100 datasheet table.
-- Per-GPU B200 memory and bandwidth are the DGX B200 totals divided by eight.
+- Dense H100 BF16 of 989.5 TFLOPS is the page's 1,979 halved, which agrees with the 1,000 dense figure in NVIDIA's Hopper in-depth blog.
+- Per-GPU B200 memory and bandwidth are the DGX B200 totals divided by eight. The DGX B200 page does not list BF16 figures, so the chapter uses none for B200.
 - 0.90 usable memory, 5 GB per GPU of overhead and 40 percent prefill efficiency are my planning assumptions, not measured or published values.
 - The additive model of prefill and decode seconds per request is a simplification of mine. Real engines overlap work.
 - The prompt length at which prefill reaches the H100 ridge, near 345 tokens, comes from the book's matmul formula with hidden size 4,096, solved by me. It describes one matrix multiply, not a whole model.
@@ -732,6 +733,9 @@ Explicitly labelled inferences:
 Not verified:
 
 - No GPU was available. Nothing here was benchmarked, and the decode and prefill figures are ceilings from arithmetic.
-- The vLLM metric name for KV-cache usage and the default memory fraction in older releases were not checked.
-- Four-bit scale overhead and FP8 cache quality impact were not measured.
+- Four-bit scale overhead and FP8 cache quality impact were not measured. I found no source for either.
 - The Nebius prices are list prices on one date and may exclude commitment discounts.
+
+### Verification log
+
+Re-fetched 2026-11-09: the NVIDIA H100, H200, L40S and DGX B200 pages, the NVIDIA Hopper blog, `config.json` and the model cards for both Qwen models, nebius.com/prices, the vLLM source at three tags, and the gem book chapters cited. I re-derived every worked figure with an independent script, and `capacity_estimator.py` output and its 13 tests agree. Claims checked: 41. Confirmed: 37 (all datasheet figures, model architecture numbers, prices, ridge points, all worked tables and scenarios, the 90 percent headroom rule, the DistServe numbers, Table 5-6 and 5-10 figures). Corrected: 3 (older vLLM default, the book's Table 5-7 digits, the KV-usage metric name). Removed: 0. Still unverified: 3. They are the four-bit scale overhead, the FP8 KV-cache quality effect, and the 40 percent prefill efficiency and 5 GB overhead, which remain labelled assumptions. No code changed. Nothing was benchmarked on a GPU.

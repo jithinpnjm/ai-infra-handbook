@@ -111,7 +111,7 @@ def compress(s):
     return packed if len(packed) < len(s) else s
 ```
 
-The line after the loop is the classic bug. The last run is never closed inside the loop, so you must append it after. Many first attempts forget this. Building a list and joining at the end also matters. Python strings cannot change, so repeated `+=` may copy the string each time. I did not benchmark that, so treat it as a reason to prefer the list, not a measured claim.
+The line after the loop is the classic bug. The last run is never closed inside the loop, so you must append it after. Many first attempts forget this. Building a list and joining at the end also matters. Python strings cannot change, so repeated `+=` can copy the string each time. The Python 3.12 FAQ says the total cost of concatenating many strings is quadratic in the total length in the general case, and recommends a list and `str.join`. CPython sometimes grows a plain local variable in place, so the slowdown does not always show. In a test on 2026-11-09, 200,000 appends took 0.007 s in a plain local loop but about 0.37 s once a second name referred to the string. The list and join version took 0.0035 s. Do not rely on the in-place shortcut in an interview.
 
 **Write the plain version, trace it once, and only then consider whether it needs to be shorter.**
 
@@ -356,7 +356,7 @@ Multiplying a list copies references. The grid `[[0] * 2] * 2` holds the same ro
 
 Slicing makes a copy. `data[1:4]` is a new list, and changing it does not change `data`. On a list of one million items, I measured `a[1:]` at about 2.7 ms on this Mac. So a loop that slices on every step, such as `s[1:]` in a recursion, turns a linear algorithm into a quadratic one. Pass indexes instead. Similarly `list.pop(0)` moves every other item. On a 100,000-item list I measured about 14 microseconds per `pop(0)` and `append`, against about 0.05 for a `deque` doing `popleft` and `append`. These are single measurements on my machine, so trust the ratio and not the digits. The Systems Performance book, chapter 2, gives a time-scale table that is the right mental model: a copy goes through memory, so cost scales with size.
 
-The recursion limit is 1000 by default. `sys.getrecursionlimit()` returned `1000`, and recursing 5000 deep raised `RecursionError`. For a depth that large, write the loop or use an explicit stack. Raising the limit is a risky answer, because a deep Python recursion can crash the interpreter on some systems. I did not test that.
+The recursion limit is 1000 by default. `sys.getrecursionlimit()` returned `1000`, and recursing 5000 deep raised `RecursionError`. For a depth that large, write the loop or use an explicit stack. Raising the limit is a risky answer. The Python 3.12 documentation for `sys.setrecursionlimit` says a too-high limit can lead to a crash, because the limit exists to protect the C stack. In my test on Python 3.12.7, a pure Python function recursed 5,000,000 deep after raising the limit without crashing, so the risk depends on the version and on recursion through C code. Treat the crash as a documented risk and not as something you can reproduce on demand.
 
 Dictionary order is insertion order, and Fluent Python, chapter 3, confirms it. In the run, adding `z` then `a` gave the key list `['z', 'a']`. Two dicts with the same items but different insertion order still compare equal. So you can rely on order for output, but not for equality.
 
@@ -563,11 +563,14 @@ Explicitly labelled inferences:
 - The time allocations in the seven-step diagram, the practice routine and the answer outlines are my reasoning.
 - The sharding answer to the log follow-up is my reasoning. Nebius has not published its coding problems.
 - The advice that Python is safer than Go for a candidate who is stronger in Python is my judgement.
-- That repeated string `+=` may copy is general knowledge about immutable strings. I did not benchmark it.
 
 Not verified:
 
 - I did not run the `<` to `<=` mutation in the lab. I did not implement the in-place compression variant.
-- I did not verify that raising the recursion limit can crash the interpreter. Treat it as unverified.
 - The timing figures for slicing and `pop(0)` are single runs on one laptop.
+- I could not crash CPython 3.12.7 with a raised recursion limit. The crash claim rests on the documentation only.
+
+### Verification log
+
+Fetched 2026-11-09 from docs.python.org/3.12: the sys page, the programming FAQ and the collections page. Claims checked: 6. Confirmed: 4 (string concatenation cost and `str.join`, recursion limit crash warning, deque against `list.pop(0)` cost, default limit 1000 and `RecursionError` by running). Corrected: 2 (the `+=` claim is now sourced and measured, and the crash claim is now documented with the failed reproduction stated). Removed: 0. Still unverified: 0 factual claims. The sharding answer and the time allocations remain my labelled reasoning, and the laptop timings stay single runs.
 - No `chain_gate`, lint or Mermaid gate result is claimed unless stated in the report to the supervisor.

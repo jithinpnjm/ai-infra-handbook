@@ -52,3 +52,21 @@ def test_task_table_sorted_by_rss():
 
 def test_no_oom_text():
     assert explain(parse("nothing here\n")) == "no 'Killed process' line found"
+
+
+# Real kernel log lines from a container killed at --memory=100m on kernel 6.18.37-0-virt.
+# The task table there has rss_anon, rss_file and rss_shmem columns that the 6.6 layout lacks.
+REAL_618_LOG = """\
+[ 1005.593587] Tasks state (memory values in pages):
+[ 1005.593593] [  pid  ]   uid  tgid total_vm      rss rss_anon rss_file rss_shmem pgtables_bytes swapents oom_score_adj name
+[ 1005.593599] [  30409]     0 30409    80194    25427    25410       17         0   266240        0             0 python
+[ 1005.593610] oom-kill:constraint=CONSTRAINT_MEMCG,nodemask=(null),cpuset=96060d,mems_allowed=0,oom_memcg=/docker/96060d,task_memcg=/docker/96060d,task=python,pid=30409,uid=0
+[ 1005.593662] Memory cgroup out of memory: Killed process 30409 (python) total-vm:320776kB, anon-rss:101640kB, file-rss:68kB, shmem-rss:0kB, UID:0 pgtables:260kB oom_score_adj:0
+"""
+
+
+def test_newer_kernel_task_table_layout():
+    info = parse(REAL_618_LOG)
+    assert info["tasks"] == [{"pid": 30409, "rss_pages": 25427, "swapents": 0, "adj": 0, "name": "python"}]
+    assert info["constraint"] == "CONSTRAINT_MEMCG"
+    assert info["anon_rss_kb"] == 101640

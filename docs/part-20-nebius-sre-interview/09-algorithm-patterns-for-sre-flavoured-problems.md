@@ -1067,7 +1067,7 @@ First, the exact definition. The nearest-rank percentile is the smallest value w
 
 Second, a reservoir sample keeps k values chosen uniformly from a stream of unknown length. After the first k, item number n replaces a random slot with probability k over n.
 
-Third, a fixed-bucket histogram counts how many samples fall in each of a set of buckets with geometric spacing. This is the idea behind a Prometheus histogram. Its memory depends on the number of buckets, not on the traffic, and histograms from many servers add bucket by bucket. The error depends on the bucket ratio. I measured it on 200,000 lognormal samples. The exact p99 was 551.79. A ratio of 1.1 with 123 buckets gave 593.35, and a ratio of 1.02 with 584 buckets gave 553.93. Finer buckets, smaller error.
+Third, a fixed-bucket histogram counts how many samples fall in each of a set of buckets with geometric spacing. This is the idea behind a Prometheus histogram. Its memory depends on the number of buckets, not on the traffic, and histograms from many servers add bucket by bucket. The Prometheus histogram guide says the error is limited by the width of the bucket the quantile falls in. The error depends on the bucket ratio. I measured it on 200,000 lognormal samples. The exact p99 was 551.79. A ratio of 1.1 with 123 buckets gave 593.35, and a ratio of 1.02 with 584 buckets gave 553.93. Finer buckets, smaller error.
 
 ```python
 """Streaming percentiles: exact, reservoir sample, fixed-bucket histogram, and the averaging trap."""
@@ -1152,7 +1152,7 @@ def true_p99(groups):
 
 A t-digest is a more advanced sketch. At a high level it keeps a small set of clusters, each with a mean and a count, with very small clusters at the tails so extreme percentiles stay accurate, and two digests can be merged. I did not implement it. If asked, describe that idea and say a library is the right choice in practice.
 
-The trap in the last two functions is the one to remember. If a quiet server has 1,000 requests with p99 of 10 and a busy one has 10 requests with p99 of 100, the average of the two p99s is 55. The true p99 across all 1,010 requests is 12. The test asserts exactly those numbers. Averaging percentiles weights a server with ten requests as much as one with a thousand. **To combine servers, merge the histograms or the raw samples, then take the percentile.** The same rule explains why a Prometheus query for a fleet p99 uses `histogram_quantile` over summed bucket rates and not an average of per-instance quantiles.
+The trap in the last two functions is the one to remember. If a quiet server has 1,000 requests with p99 of 10 and a busy one has 10 requests with p99 of 100, the average of the two p99s is 55. The true p99 across all 1,010 requests is 12. The test asserts exactly those numbers. Averaging percentiles weights a server with ten requests as much as one with a thousand. **To combine servers, merge the histograms or the raw samples, then take the percentile.** The same rule explains why a Prometheus query for a fleet p99 uses `histogram_quantile` over summed bucket rates and not an average of per-instance quantiles. The Prometheus histogram guide shows `histogram_quantile(0.95, sum by (le) (rate(http_request_duration_seconds_bucket[5m])))` as the good form. It says averaging quantiles gives statistically nonsensical values, and it adds that this works only while the bucket boundaries match across instances.
 
 
 
@@ -1558,4 +1558,7 @@ Not verified:
 - The thread race in `UnsafeCounter` did not reproduce on Python 3.12.7, so I have no observed lost update.
 - Timings are one run on one Mac and will vary.
 - The lab mutation steps were not run.
-- The Prometheus `histogram_quantile` advice comes from general practice and I did not fetch the Prometheus documentation for this chapter.
+
+### Verification log
+
+Fetched 2026-11-09: prometheus.io/docs/practices/histograms and the Python 3.12 asyncio Tasks page. Claims checked: 6. Confirmed: 5 (`histogram_quantile` with `sum by (le)`, error bounded by bucket width, averaging quantiles is invalid, `gather` leaves other awaitables running after one raises, `TaskGroup` and `timeout` added in 3.11). Corrected: 0. Removed: 1 (the "general practice" disclaimer, replaced by the citation). Still unverified: 2. They are the near-constant amortised cost of union-find and the t-digest description. No gem book in the local library mentions either, so I kept them as labelled textbook claims. The `UnsafeCounter` race still did not reproduce.

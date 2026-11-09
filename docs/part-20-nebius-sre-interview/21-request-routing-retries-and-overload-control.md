@@ -149,7 +149,7 @@ A replica returns errors for the fifth time in a row. Every request routed to it
 
 Envoy's outlier detection has several triggers, including consecutive 5xx, consecutive gateway failures, and a success-rate comparison across hosts. The API reference gives the defaults that matter: 5 consecutive errors, a check interval of 10 seconds, a base ejection time of 30 seconds, and a cap of 10 percent of hosts ejected. The ejection time grows with the number of times a host was ejected in a row, up to a maximum of 300 seconds.
 
-The 10 percent cap is a trap. In the simulation a quarter of the replicas failed. A default cap lets Envoy eject only about a tenth of the hosts, so most bad replicas would stay in the rotation. Raise the cap, but keep one, because ejecting everything leaves nothing to serve.
+The 10 percent cap is a trap. In the simulation a quarter of the replicas failed. Envoy tests whether ejected hosts plus one, as a share of the pool, stays at or under the cap. With a 10 percent cap, a pool of 20 hosts can lose at most 2, so most bad replicas stay in rotation. A pool of 8 can lose none, because one host is already 12.5 percent. The setting `always_eject_one_host` overrides that. Istio documents the same defaults for `maxEjectionPercent`. Raise the cap, but keep one, because ejecting everything leaves nothing to serve.
 
 Envoy also has a panic threshold. Its default is 50 percent. When fewer than half the hosts are available, Envoy ignores health status and spreads traffic across all hosts. Setting it to 0 means that when everything is unhealthy it returns a 503. The documentation does not describe how the panic threshold interacts with outlier ejection, so test it before relying on it.
 
@@ -216,7 +216,7 @@ The LLM twist is stream length. The default 30 second grace period is shorter th
 3. On SIGTERM, stop accepting, let running streams finish and exit before the grace period ends.
 4. Alert on any stream cut by SIGKILL.
 
-I did not verify what vLLM does on SIGTERM, and the vLLM serving page I fetched does not say. Check the version you run.
+In vLLM v0.32.0 source, the engine core catches SIGTERM. With the default `--shutdown-timeout 0` it aborts every running request at once, so those streams end with finish reason `abort`. Set the flag above 0 to let running requests finish while new ones are rejected. The parent process waits at most that long before it kills the engine. The simulation's worst case, work continuing for a client that has left, does not match vLLM v0.32.0. There a disconnect cancels the generator, which calls abort on the request. Also, the endpoint of a terminating pod always shows `ready: false` in the EndpointSlice, so load balancers that read it stop using the pod, but not instantly everywhere.
 
 Decide: size the grace period from the longest allowed stream, and test a rolling update while streams are running.
 
@@ -779,84 +779,44 @@ Expected result: "2 resources found in 1 file - Valid: 2". I ran this on 2026-11
 
 ## Drill questions
 
-1. When is it safe to retry a streaming completion, and when not?
-
-<details><summary>Answer</summary>
-
+<details><summary>1. When is it safe to retry a streaming completion, and when not?</summary>
 It is safe before the first output token, because nothing was delivered and a new replica can start fresh. After the first token it is not safe, because the replay gives different text. End the stream with an error and let the application decide.
-
 </details>
 
-2. State the expected number of attempts per request for failure probability p and k attempts, and the value at p = 0.5, k = 4.
-
-<details><summary>Answer</summary>
-
+<details><summary>2. State the expected number of attempts per request for failure probability p and k attempts, and the value at p = 0.5, k = 4.</summary>
 The sum of p to the power i for i from 0 to k minus 1. At 0.5 and four attempts it is 1 + 0.5 + 0.25 + 0.125, which is 1.875.
-
 </details>
 
-3. Three layers each make 4 attempts. How many attempts reach the database?
-
-<details><summary>Answer</summary>
-
+<details><summary>3. Three layers each make 4 attempts. How many attempts reach the database?</summary>
 Four to the power 3, which is 64. The Google SRE chapter gives the same example. This is why you retry in one layer only.
-
 </details>
 
-4. What does a retry budget guarantee?
-
-<details><summary>Answer</summary>
-
+<details><summary>4. What does a retry budget guarantee?</summary>
 It caps total load at 1 plus the budget ratio times the original traffic. With 10 percent the cap is 1.1 times. It cannot guarantee success, and in my simulation it lowered success during the outage while saving the service afterward.
-
 </details>
 
-5. Why did jitter not save the deep-queue simulation?
-
-<details><summary>Answer</summary>
-
+<details><summary>5. Why did jitter not save the deep-queue simulation?</summary>
 Jitter fixes retries that move together. There the load was continuous and the queue waits passed the timeout. The fix was a budget and shorter queues.
-
 </details>
 
-6. Give the full-jitter formula and the mean of the first four sleeps with base 0.1 s.
-
-<details><summary>Answer</summary>
-
+<details><summary>6. Give the full-jitter formula and the mean of the first four sleeps with base 0.1 s.</summary>
 Sleep a random time between 0 and the smaller of the cap and base times 2 to the power retry number minus 1. The means are 0.05, 0.1, 0.2 and 0.4 seconds, a total of 0.75. The ceilings total 1.5.
-
 </details>
 
-7. What is the difference between 429 and 503, and how should a client react?
-
-<details><summary>Answer</summary>
-
+<details><summary>7. What is the difference between 429 and 503, and how should a client react?</summary>
 A 429 says the tenant exceeded its limit, so wait for Retry-After and do not hop replicas. A 503 says this server is overloaded or draining, so retry on another replica within the budget. Both may carry Retry-After.
-
 </details>
 
-8. What does Envoy do by default when outlier detection finds bad hosts, and what trap does it have?
-
-<details><summary>Answer</summary>
-
+<details><summary>8. What does Envoy do by default when outlier detection finds bad hosts, and what trap does it have?</summary>
 It ejects a host after 5 consecutive errors, for a base time of 30 seconds that grows with repeats. The cap of 10 percent of hosts means a failure larger than that stays partly in rotation.
-
 </details>
 
-9. What is the Envoy panic threshold?
-
-<details><summary>Answer</summary>
-
+<details><summary>9. What is the Envoy panic threshold?</summary>
 When fewer than the threshold share of hosts are available, Envoy ignores health and spreads traffic across all hosts. The default is 50 percent, and 0 disables it so an all-unhealthy pool returns 503.
-
 </details>
 
-10. Why does a rolling update cut streams, and what sets the grace period?
-
-<details><summary>Answer</summary>
-
+<details><summary>10. Why does a rolling update cut streams, and what sets the grace period?</summary>
 Termination and endpoint removal run in parallel, and the default grace period of 30 seconds is shorter than long streams. Set it to the preStop sleep plus the longest allowed stream plus a margin, and drain at the router first.
-
 </details>
 
 ## Common mistakes and weak answers
@@ -890,9 +850,9 @@ Sources and dates fetched (2026-11-09):
 
 - Google SRE book, "Handling Overload" and "Addressing Cascading Failures", sre.google/sre-book. Used for attempt limits, the 10 percent ratio, criticality names, retry layers, deadline propagation and load shedding. The 243 figure is not on the SRE page, it is on the AWS page.
 - AWS Builders' Library, "Timeouts, retries, and backoff with jitter", read at its current address on builder.aws.com after a redirect. Used for timeout percentile choice, 243 times amplification, local token bucket and idempotency. I read a summary of the page, so check the wording of the 243 example.
-- Envoy documentation, latest: HTTP routing (retry semantics and hedging), router filter (retry-on values, backoff), circuit breaking, outlier detection, panic threshold, draining, and the route and outlier-detection API references. The version of "latest" was not recorded.
+- Envoy documentation, latest: HTTP routing (retry semantics and hedging), router filter (retry-on values, backoff), circuit breaking, outlier detection, panic threshold, draining, and the route and outlier-detection API references. Fetched 2026-11-09 from the `latest` docs and the `main` proto and source file, version not tagged.
 - gRPC guide "Retry", grpc.io: commit on response headers, transparent retries and retry throttling.
-- Istio reference: VirtualService HTTPRetry and DestinationRule OutlierDetection and connection pool. The defaults for outlier interval, ejection time and ejection percent were not in the part of the page I read.
+- Istio reference: VirtualService HTTPRetry and DestinationRule OutlierDetection and connection pool. Defaults read from the DestinationRule reference on 2026-11-09: interval 10s, baseEjectionTime 30s, maxEjectionPercent 10, consecutive5xxErrors 5, consecutiveGatewayErrors disabled.
 - RFC 9110 sections 9.2.2, 10.2.3 and 15.6.4, and RFC 6585 section 4, read as text.
 - Kubernetes documentation, "Pod Lifecycle", termination of pods.
 - Nebius Token Factory documentation, Rate Limits and Scaling, and Dedicated Endpoints capacity pages, fetched via docs.tokenfactory.nebius.com.
@@ -906,12 +866,22 @@ Explicitly labelled inferences:
 - The statement that a slow reader holds a slot and KV cache, and the advice to bound per-stream buffers.
 - The draining sequence, the 135 second grace period and the capacity arithmetic for regions.
 - The advice to eject on first-token timeouts and zero token rate.
-- That the Envoy ejection cap of 10 percent applies to a quarter of hosts failing. I did not test Envoy.
 
 Not verified:
 
 - No Envoy or Istio proxy was run. The Docker daemon was not running and Envoy was not installed. The YAML is schema-checked only.
-- vLLM behaviour on SIGTERM and on client disconnect was not checked. The simulation does not abort work for a client that has gone.
+- The simulation does not abort work for a client that has gone, although vLLM does.
 - I did not find a Nebius statement on retry settings, region failover or draining.
 - Whether Istio supports a retry budget in the version you run.
-- The Kubernetes page text was read in two parts and the readiness statement during termination was not found.
+
+### Verification log (fact-check pass, 2026-11-09)
+
+Resolved 7 flagged claims: 5 confirmed, 2 corrected or extended.
+
+- CONFIRMED: Envoy `max_ejection_percent` defaults to 10, `interval` 10 s, `base_ejection_time` 30 s, `consecutive_5xx` 5, `max_ejection_time` 300 s (API proto, main).
+- CORRECTED: the cap is not "about a tenth". `outlier_detection_impl.cc` ejects only if (active ejections + 1) / hosts is at most the cap. A pool under 10 hosts ejects nothing at the 10 percent default unless `always_eject_one_host` is set. I did not run Envoy.
+- CONFIRMED: Istio DestinationRule outlier defaults (interval 10s, baseEjectionTime 30s, maxEjectionPercent 10, consecutive5xxErrors 5).
+- CONFIRMED (vLLM v0.32.0 source): SIGTERM and shutdown timeout behaviour, and abort on client disconnect (`async_llm.py` cancels and calls `abort`).
+- CONFIRMED: Kubernetes terminating endpoints always have `ready: false` (Pod Lifecycle page, main).
+- STILL UNVERIFIED: the AWS 243x example wording (summary only), Istio retry budget support, and any Nebius statement.
+- Retry fixture: `c21_istio_resilience.yaml` uses `maxEjectionPercent: 25`, which is above the default as the chapter advises.

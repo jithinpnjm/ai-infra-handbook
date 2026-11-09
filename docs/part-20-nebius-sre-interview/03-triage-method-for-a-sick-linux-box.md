@@ -12,7 +12,7 @@ lab_venue: "Linux VM"
 
 # 20.3 Triage method for a sick Linux box
 
-Honest limit first. This chapter was written on a Mac with no Docker daemon running. **The Linux commands in it were not run on Linux in this repo.** Every claim about what a command prints comes from a gem book chapter, listed at the end. What did run here are the Python parser and its tests, the bash syntax checks and the Mac guard of the scripts. The lab section says which is which.
+Honest status first. The first draft of this chapter was written on a Mac with no Docker daemon. It has since been run on Linux, with limits. The scripts ran in a throwaway container, `ubuntu:24.04`, image digest `sha256:fe81560990fae86dc4743202b2cb4d3df98d0bcf949173cecef15ce1127ef852`, arm64, on the Docker VM kernel `6.18.37-0-virt` with 2 CPUs and no swap. **A container shares the VM's kernel and hides parts of it, so some output here differs from a real server.** Section "What the container run showed" lists the differences, and "Not verified" lists what still could not run.
 
 ## What the interviewer is testing
 
@@ -224,13 +224,17 @@ mem_avail=$(awk '/^MemAvailable:/ {print $2}' /proc/meminfo)
 swap_total=$(awk '/^SwapTotal:/ {print $2}' /proc/meminfo)
 swap_free=$(awk '/^SwapFree:/ {print $2}' /proc/meminfo)
 echo "MEM    U    available ${mem_avail} kB of ${mem_total} kB; swap free ${swap_free} of ${swap_total} kB"
-echo "MEM    E    dmesg lines with 'killed': $(dmesg 2>/dev/null | grep -c killed)"
+if dmesg >/dev/null 2>&1; then
+  echo "MEM    E    dmesg lines with 'killed': $(dmesg 2>/dev/null | grep -c killed)"
+else
+  echo "MEM    E    dmesg not readable here (container or dmesg_restrict): known-unknown"
+fi
 
 for r in cpu memory io; do
   if [ -r "/proc/pressure/$r" ]; then
     echo "PSI    S    $r: $(head -n 1 /proc/pressure/$r)"
   else
-    echo "PSI    S    $r: not available (needs Linux 4.20 or newer)"
+    echo "PSI    S    $r: not available (needs Linux 4.20 or newer with PSI enabled)"
   fi
 done
 
@@ -457,14 +461,64 @@ The first `vmstat` row is the trap. In the `vmstat 1 3` sample from the observab
 
 ## Hands-on lab
 
-The scripts and parser are in `code/part20/`. Honest status: steps 1 and 2 were run on a Mac. Steps 3 to 6 need a Linux VM and were not run.
+The scripts and parser are in `code/part20/`. Every step below was run, steps 1 to 6 on Linux in the container described at the top of the chapter. Start the container with `docker run --rm -it -v $PWD/code/part20:/work:ro ubuntu:24.04 bash`, then run `apt-get update && apt-get install -y procps sysstat iproute2 python3 python3-pytest`.
 
-1. **Run the unit tests.** From the repo root run `python3 -m pytest -q code/part20/test_triage.py code/part20/test_triage_repro.py`. Expected: 15 passed. This was run. The fixtures are text copied from the books, named above each fixture.
-2. **Check the scripts.** Run `bash -n code/part20/triage_first60.sh` and `bash -n code/part20/triage_use_sweep.sh`. Expected: no output. Then run each script on a Mac. Expected: a message that it needs Linux and exit status 2. All of this was run. During writing I also ran `triage_first60.sh` on the Mac with a fake `uname`, a fake `nproc` and a fake `timeout`. That showed a bug, which is that a missing tool left text the parser could not read and the report crashed. The fix and a test are in the code.
-3. **Baseline on a Linux VM.** Run `code/part20/triage_first60.sh /tmp/base`, then `python3 code/part20/triage_report.py /tmp/base`. Expected shape: a few `U` lines for utilisation and no `S` or `E` lines, plus `known-unknown` lines for any missing tool. Not run.
-4. **CPU saturation.** In a second terminal run `python3 code/part20/triage_repro.py cpu`. In the first run `triage_first60.sh /tmp/cpu` and the report. Expected shape: an `S` finding on `cpu` from the run queue, an `r` above the CPU count in `vmstat.txt`, and a load that is still rising. Not run.
-5. **Disk activity.** Run `python3 code/part20/triage_repro.py disk --mb 512`, then the checklist. Expected shape: `bo` and `wa` above zero in `vmstat.txt` and a busy device in `iostat.txt`. Whether the queue grows depends on the disk. Not run.
-6. **Sweep and narrate.** Run `code/part20/triage_use_sweep.sh`, note the USE cells it could not fill, then record yourself repeating step 4 with the three beats for each command. Not run.
+1. **Run the unit tests.** Copy `/work` to `/tmp/w`, then run `python3 -m pytest -q test_triage.py test_triage_repro.py` there. Result: 16 passed. The fixtures are text copied from the books, named above each fixture.
+2. **Check the scripts.** Run `bash -n` on both scripts. Expected: no output. On a Mac each script prints that it needs Linux and exits with status 2. Both were run. An earlier run with a fake `uname` showed that a missing tool left text the parser could not read, and the report crashed. The fix and a test are in the code.
+3. **Baseline.** Run `bash triage_first60.sh /tmp/base`, then `python3 triage_report.py /tmp/base`. Real output, idle container:
+
+```text
+wrote /tmp/base
+U  cpu            load trend is rising (0.52, 0.14, 0.05)
+U  memory         available 4809 of 5918 (81 percent)
+U  cpu            mpstat all busy 1.1 percent
+```
+
+4. **CPU saturation.** Start `python3 triage_repro.py cpu --seconds 25 &`, wait 5 seconds, then run the checklist and the report. Real output, 2 CPUs, 4 busy processes:
+
+```text
+S  cpu            run queue r above the CPU count 2
+U  cpu            load trend is rising (0.64, 0.25, 0.09)
+U  cpu            idle reached 0 in a live row
+U  cpu            mpstat all busy 100.0 percent
+```
+
+The `vmstat` rows showed `r` of 4 and `id` of 0 to 1, with `us` at 97 to 98. The load was 0.64 against 4 busy processes. That is the lag from section 4, seen for real.
+
+5. **Disk activity.** Run `python3 triage_repro.py disk --mb 2048 --seconds 40 &` and watch with `iostat -sxz 1 4` at once. Real output from the three interval reports, container disk `vda`:
+
+```text
+Device  tps      kB/s   await  aqu-sz  %util   (avg-cpu %iowait)
+vda     1368.00  477888  0.58   1.33    79.50   39.69
+vda     1155.00  403480  0.63   1.16    71.90   36.13
+vda     1723.00  601636  0.42   1.12    71.90   34.90
+```
+
+The `vmstat` `bo` column showed about 490000 and `wa` about 43. This is busy with a small queue and a sub-millisecond `await`, which is the reading of Scenario 2, and not saturation. Important correction: the 2048 MB write finishes in about four seconds. `triage_first60.sh` runs its tools one after another, so by the time it reached `iostat` the burst was over and `iostat.txt` showed an idle disk. Only `vmstat.txt`, the third tool, caught it. Run `iostat` by hand beside a short burst.
+
+6. **Sweep.** Run `bash triage_use_sweep.sh`. It ran. The container gave these differences from a real host:
+
+```text
+MEM    E    dmesg not readable here (container or dmesg_restrict): known-unknown
+PSI    S    cpu: not available (needs Linux 4.20 or newer with PSI enabled)
+FDS    U    system file-nr (allocated, unused, max): 761	0	604700
+```
+
+   Then record yourself repeating step 4 with the three beats for each command. Recording yourself was not something a script can check.
+
+## What the container run showed
+
+Seven corrections came out of running this on Linux. Each one is fixed in the code or the text.
+
+- **`dmesg` is refused in the container.** The output is `dmesg: read kernel buffer failed: Operation not permitted`. The old sweep printed `dmesg lines with 'killed': 0`, which reads as "no OOM kills" and was wrong. The sweep now says `dmesg not readable here`, and `triage_report.py` reports a known-unknown. Test added. On a real host with `kernel.dmesg_restrict` set you need `sudo`.
+- **PSI is absent on this kernel.** `/proc/pressure` does not exist on `6.18.37-0-virt`, although the kernel is far newer than 4.20. PSI also needs to be compiled in and enabled. The sweep message now says so. Section 4's description of PSI is from the book and was not seen here.
+- **The first `vmstat` row really is since boot.** In the baseline run the first row had `bi` 5223 and `bo` 5987 and the later rows 0 and 4. This confirms drill question 6 on a live system.
+- **The first `iostat` report is since boot too.** Its first `vda` row showed 2.83 percent busy and 212 MB per second averaged over the whole uptime. Skip it, exactly as with `vmstat`.
+- **Newer `vmstat` has an extra `gu` column.** The parser read it fine. Column names still differ across versions.
+- **One sample above the CPU count raised an `S` finding.** On the memory drill the 2-CPU box showed `r` of 3 and 4 for single seconds, from short-lived helper processes, and the report said "run queue above the CPU count". The rule is a screen, so say "one spike" and look at the other rows before you call saturation.
+- **Flags confirmed on this system.** `timeout 30`, `mktemp -d`, `top -b -n 1`, `df -h -x tmpfs -x devtmpfs`, `df -i`, `nstat -az TcpRetransSegs`, `sar -n TCP,ETCP`, `iostat -sxz` and `mpstat -P ALL` all ran with procps and sysstat from Ubuntu 24.04.
+
+The scenario 3 memory drill, `triage_repro.py mem --mb 256`, ran and held memory. It did not swap, because the VM has no swap, which is what the chapter predicted.
 
 ## Drill questions
 
@@ -562,7 +616,7 @@ Sources used, all read in this session. No web page was fetched, so there are no
 - Handbook chapters 1.23, 17.1, 17.8 and 17.11, for linking only.
 - The plan `planning/VOLUME_20_NEBIUS_SRE_PLAN.md` section 1, for the Nebius interview wording, the candidate report and the Token Factory facts. The Nebius careers page itself was not fetched in this session.
 
-Version notes: the book examples come from kernel 5.3 era systems and sysstat 12.3.x. Column names in `iostat` differ across sysstat versions, for example `aqu-sz` and `avgqu-sz`, so the parser accepts both. Upstream Linux man pages, kernel documentation and sysstat documentation were not fetched.
+Version notes: the container run used procps and sysstat from Ubuntu 24.04. The book examples come from kernel 5.3 era systems and sysstat 12.3.x. Column names in `iostat` differ across sysstat versions, for example `aqu-sz` and `avgqu-sz`, so the parser accepts both. Upstream Linux man pages, kernel documentation and sysstat documentation were not fetched.
 
 Explicitly labelled inferences:
 
@@ -573,7 +627,8 @@ Explicitly labelled inferences:
 
 Not verified:
 
-- No command in this chapter was run on Linux. The scripts `triage_first60.sh`, `triage_use_sweep.sh` and the live behaviour of `triage_repro.py` under Linux monitoring were not run on Linux.
-- Flags in the scripts that the books do not show: `timeout 30`, `mktemp -d`, `top -b -n 1`, `df -h -x tmpfs -x devtmpfs`, `df -i` and `nstat -az TcpRetransSegs`. They come from general practice, not from a source read here. Check each against the man page on your distribution before relying on it.
+- The environment was a Docker container on a Rancher Desktop Alpine VM, kernel 6.18.37-0-virt, 2 CPUs, no swap, no PSI. A real server with several disks, swap, PSI and a readable `dmesg` was not available.
+- Not run: `dmesg` content, PSI files, swapping under memory pressure (Scenario 3's book output), a saturated disk queue, and anything on a real NIC. The book numbers in the scenarios are still the book's, not this run's.
+- Upstream Linux man pages, kernel documentation and sysstat documentation were not fetched.
 - The golden signals table is taken from handbook chapter 17.1. The Google SRE text was not re-read.
 - The Amsterdam candidate report is a single anecdote.

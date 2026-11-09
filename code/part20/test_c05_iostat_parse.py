@@ -42,3 +42,27 @@ def test_wide_layout_uses_r_await():
     text = "Device r/s r_await w_await wareq-sz %util\nsdb 10 25.0 1.0 64 20\n"
     row = parse_iostat(text)[0]
     assert "slow: await 25.00 ms" in notes(row)
+
+
+# Real iostat -sxz 1 3 output, ubuntu:24.04 container on a Docker VM (kernel 6.18.37-0-virt):
+# the first report is an average since boot and must not be judged as a live interval.
+REAL_THREE = """\
+Device             tps      kB/s    rqm/s   await  areq-sz  aqu-sz  %util
+vda             121.53  94950.10   166.83    1.14   781.31    0.15   2.80
+
+Device             tps      kB/s    rqm/s   await  areq-sz  aqu-sz  %util
+vda            5854.00  54928.00  7878.00    0.14     9.38    1.12  80.60
+
+Device             tps      kB/s    rqm/s   await  areq-sz  aqu-sz  %util
+vda            6015.00  56140.00  8020.00    0.14     9.33    1.11  77.90
+"""
+
+
+def test_first_report_is_skipped_on_request():
+    assert len(parse_iostat(REAL_THREE)) == 3
+    live = parse_iostat(REAL_THREE, skip_first=True)
+    assert [r["tps"] for r in live] == [5854.0, 6015.0]
+
+
+def test_single_report_is_kept_even_when_skipping():
+    assert len(parse_iostat(SHORT, skip_first=True)) == 1

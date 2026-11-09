@@ -35,5 +35,7 @@ unshare -Urm bash -c '
   echo "--- 3. reading is fine, so an interpreter can still run it"
   sh "$M/run.sh"
   echo "--- 4. remount with exec and try again"
-  mount -o remount,exec "$M" && "$M/run.sh"
+  # A plain "remount,exec" fails here with EINVAL (tmpfs rejects the uid= and gid= options that
+  # mount(8) re-sends). A bind remount changes only the per-mount flag, which is what we want.
+  mount -o remount,bind,exec "$M" && "$M/run.sh"
 ' _ "$W/mnt"

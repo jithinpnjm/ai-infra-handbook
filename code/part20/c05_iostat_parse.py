@@ -5,21 +5,28 @@ Columns are read from the header line, so the short (-s) and wide layouts both w
 Column meanings: Systems Performance 2nd ed, chapter 9, iostat. await is the average
 response time in ms including OS queueing. %util is busy time only and says little
 about devices that serve many requests in parallel.
-Usage: iostat -sxz 1 5 | python3 c05_iostat_parse.py
+Usage: iostat -sxz 1 5 | python3 c05_iostat_parse.py   (the since-boot first report is skipped)
 """
 import sys
 
 
-def parse_iostat(text):
-    """Return a list of dicts, one per device row, using the latest 'Device' header."""
-    rows, header = [], None
+def parse_iostat(text, skip_first=False):
+    """Return a list of dicts, one per device row, using the latest 'Device' header.
+
+    The first iostat report is an average since boot. With skip_first=True its rows are
+    dropped when there is a later report, so only the live intervals are returned.
+    """
+    rows, header, reports = [], None, 0
     for line in text.splitlines():
         parts = line.split()
         if not parts:
             continue
         if parts[0].startswith("Device"):
             header = parts
+            reports += 1
         elif header and len(parts) == len(header):
+            if skip_first and reports == 1 and text.count("Device") > 1:
+                continue
             try:
                 values = [float(x) for x in parts[1:]]
             except ValueError:
@@ -46,5 +53,5 @@ def notes(row, await_ms=10.0, util_pct=60.0):
 
 
 if __name__ == "__main__":
-    for row in parse_iostat(sys.stdin.read()):
+    for row in parse_iostat(sys.stdin.read(), skip_first=True):
         print(row["device"], "; ".join(notes(row)))

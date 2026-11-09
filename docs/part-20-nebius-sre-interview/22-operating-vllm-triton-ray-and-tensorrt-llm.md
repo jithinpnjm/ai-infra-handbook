@@ -162,11 +162,11 @@ A load balancer says the pod is healthy while users get timeouts. The question i
 
 In the v0.32.0 source, the `/health` handler calls the engine client's health check. It returns 200 if that passes and 503 if the engine is dead. Render-only servers with no engine always return 200. The vLLM Kubernetes guide uses `/health` for both liveness and readiness. The handler is a liveness-style check of the engine process. It does not prove the model produces good tokens, that the queue is short, or that the KV cache has room.
 
-Chapter 20.18 explains why that matters, including my inference that a hung engine can still pass `/health`. Here is the operating rule. Use `/health` for the startup probe and a forgiving liveness probe. Put load and warm-up judgement in readiness through the router or a metric, not in a short-timeout liveness check that kills busy pods.
+Chapter 20.18 explains why that matters, including why a hung engine can still pass `/health`, which I confirmed in the source. Here is the operating rule. Use `/health` for the startup probe and a forgiving liveness probe. Put load and warm-up judgement in readiness through the router or a metric, not in a short-timeout liveness check that kills busy pods.
 
 Triton exposes more. Its HTTP API follows the KServe protocol: `v2/health/live`, `v2/health/ready` and `v2/models/<name>/ready`. The protocol text says server ready means all models are ready, and that it can implement a Kubernetes readiness probe. So Triton separates "the process is up" from "the model is loaded", which vLLM's single endpoint does not. I read this in the open inference protocol document. I did not verify every Triton flag around it.
 
-For TensorRT-LLM's `trtllm-serve` and for Ray Serve, I did not read the health documentation. Do not assume it matches vLLM. Check the endpoint list of the exact version, and then check what a failing endpoint triggers.
+The other engines differ from vLLM, so do not assume they match. In TensorRT-LLM v1.2.1, `trtllm-serve` has `/health`, which returns 200 or 503 from the engine's own health check, and `/health_generate`, which runs a real one-token chat request. SGLang v0.5.23 is stricter. Its `/health` also sends a one-token generation by default, waits up to 20 seconds by default, and returns 503 while starting or shutting down. That is a deep check, but under load a slow answer can make a short-timeout probe fail. Ray Serve has two levels. The proxy answers `/-/healthz`, which is non-OK while it drains or has no route table. Each replica runs an optional `check_health` method, every 10 seconds with a 30 second timeout by default, and the controller restarts a replica whose check raises.
 
 **Decide what each probe may kill, and make sure only a truly dead process can cause a restart.**
 
@@ -192,14 +192,14 @@ For vLLM, chapter 20.18 section 1 has the names: waiting requests, running reque
 
 Triton publishes Prometheus metrics on port 8002 by default, at `/metrics`. Useful ones from its metrics page are `nv_inference_pending_request_count`, which is the queue size per model, and `nv_inference_queue_duration_us`, the cumulative wait in the scheduler queue. The failure counter `nv_inference_request_failure` carries reasons such as REJECTED for scheduler timeouts and BACKEND for failures inside the model. The latency histograms appear only when `summary_latencies` is set to `simplified`. The default publishes counters only.
 
-Ray Serve LLM provides service-level metrics, engine metrics such as time to first token and time per output token, and a Grafana dashboard. For TensorRT-LLM, I did not read the metrics documentation. Do not guess names. Find them in the version you run.
+Ray Serve LLM provides service-level metrics, engine metrics such as time to first token and time per output token, and a Grafana dashboard. For TensorRT-LLM v1.2.1, `/metrics` returns runtime iteration statistics as JSON, and the docs say entries are removed once read, so poll it from one collector only. For the PyTorch backend it needs `enable_iter_perf_stats: true` and is marked beta in the docs. SGLang publishes Prometheus metrics with `--enable-metrics`, including `sglang:num_queue_reqs`, `sglang:token_usage`, `sglang:queue_time_seconds` and `sglang:time_to_first_token_seconds`.
 
 | Question | vLLM | Triton | Ray Serve LLM |
 |---|---|---|---|
-| Is work queued? | Waiting-requests gauge | `nv_inference_pending_request_count` | Service-level request metrics |
-| How long does it wait? | Queue-time histogram | `nv_inference_queue_duration_us` | Not read |
-| Is the cache full? | KV usage gauge | Not read | Engine metrics, not read in detail |
-| Is it failing? | 503 on `/health` when the engine is dead | `nv_inference_request_failure` by reason | Not read |
+| Is work queued? | Waiting-requests gauge | `nv_inference_pending_request_count` | `ray_serve_deployment_queued_queries` |
+| How long does it wait? | Queue-time histogram | `nv_inference_queue_duration_us` | No queue-time histogram on the metrics page, and `ray_serve_deployment_processing_latency_ms` excludes queue wait |
+| Is the cache full? | KV usage gauge | Not on the core metrics page, backend-specific | vLLM engine metrics such as GPU cache utilization |
+| Is it failing? | 503 on `/health` when the engine is dead | `nv_inference_request_failure` by reason | `ray_serve_deployment_error_counter_total` by exception type |
 
 **Build one dashboard row per question, not per engine, so that the on-call person reads the same four answers whichever engine is behind the endpoint.**
 
@@ -211,10 +211,10 @@ Ray Serve LLM provides service-level metrics, engine metrics such as time to fir
 | Hardware | Many, per docs | NVIDIA only | Many backends | Follows its engine | Broad per the book |
 | Strength | Open models, community, fast to adopt | Peak efficiency on NVIDIA | One surface for many model types | Scaling, routing, multi-model | Prefix reuse, agent workloads |
 | Operating cost | Flags to tune, version churn | Version and hardware coupling | Repository and backend config | Two systems to run | Smaller ecosystem than vLLM per the book |
-| Health | `/health` 200 or 503 | Not read | live, ready, model ready | Not read | Not read |
-| Metrics | `/metrics` vLLM names | Not read | `/metrics` on 8002 | Service and engine metrics | Not read |
+| Health | `/health` 200 or 503 | `/health` 200 or 503, and `/health_generate` runs a one-token request | live, ready, model ready | Proxy `/-/healthz`, and a replica `check_health` method | `/health` and `/health_generate`, both a one-token generation by default |
+| Metrics | `/metrics` vLLM names | `/metrics` iteration stats, Prometheus at `/prometheus/metrics` only with perf metrics on | `/metrics` on 8002 | Ray metrics export, with `ray_serve_` and engine metrics | `/metrics` with `--enable-metrics`, `sglang:` names |
 
-Treat the "Not read" cells as work to do before the interview if a role needs them.
+Every cell above was read from the cited version. The cells that say "not on the page" mean I did not find the item, so check your version.
 
 **Memorise the layer and the one strength of each tool, and say plainly which cells you have not verified.**
 
@@ -778,74 +778,44 @@ Expected shape of the output, from the docs and not observed: lines for weight l
 
 ## Drill questions
 
-1. Name the three layers and place vLLM, Triton, Ray Serve LLM and TensorRT-LLM on them.
-<details><summary>Answer</summary>
-
+<details><summary>1. Name the three layers and place vLLM, Triton, Ray Serve LLM and TensorRT-LLM on them.</summary>
 Engine, server and orchestrator. vLLM, TensorRT-LLM and SGLang are engines, and each also ships a server command. Triton is a server that can host an engine as a backend. Ray Serve LLM is an orchestrator that runs vLLM or SGLang.
-
 </details>
 
-2. What does `gpu_memory_utilization` limit, and what is the v0.32.0 default?
-<details><summary>Answer</summary>
-
+<details><summary>2. What does `gpu_memory_utilization` limit, and what is the v0.32.0 default?</summary>
 It limits the fraction of GPU memory this one instance may use, and it ignores other processes. The default in the v0.32.0 config class is 0.92. Real defaults can be set when the engine config is created, so read the start-up log.
-
 </details>
 
-3. What happens if you disable chunked prefill and leave the token budget below the model length?
-<details><summary>Answer</summary>
-
+<details><summary>3. What happens if you disable chunked prefill and leave the token budget below the model length?</summary>
 The optimisation guide says vLLM may crash at server start-up. With chunked prefill off, the budget must be larger than `max_model_len`.
-
 </details>
 
-4. State the guidance for tensor and pipeline parallel on two nodes with eight GPUs each.
-<details><summary>Answer</summary>
-
+<details><summary>4. State the guidance for tensor and pipeline parallel on two nodes with eight GPUs each.</summary>
 Set tensor parallel to the GPUs per node, which is eight, and pipeline parallel to the number of nodes, which is two. The guide also says to use fast inter-node links such as InfiniBand.
-
 </details>
 
-5. Which flag skips memory profiling at start-up, and what is its risk?
-<details><summary>Answer</summary>
-
+<details><summary>5. Which flag skips memory profiling at start-up, and what is its risk?</summary>
 Passing back the logged `--kv-cache-memory` value skips memory profiling. A low value caps concurrency and a high value can fail at allocation. It is valid only for the same GPU and free memory.
-
 </details>
 
-6. What does vLLM's `/health` return, and what does it not prove?
-<details><summary>Answer</summary>
-
+<details><summary>6. What does vLLM's `/health` return, and what does it not prove?</summary>
 It returns 200 when the engine client's health check passes and 503 when the engine is dead. It does not prove good output, a short queue or free cache. Use it for startup and forgiving liveness.
-
 </details>
 
-7. How does Triton's readiness differ from vLLM's?
-<details><summary>Answer</summary>
-
+<details><summary>7. How does Triton's readiness differ from vLLM's?</summary>
 Triton has separate live, ready and per-model ready endpoints. Server ready means all models are ready for inference. So it separates a running process from a loaded model.
-
 </details>
 
-8. Your start-up takes 400 seconds. Give a startup probe budget and say how you chose it.
-<details><summary>Answer</summary>
-
+<details><summary>8. Your start-up takes 400 seconds. Give a startup probe budget and say how you chose it.</summary>
 About twice the measured start, for example 10 second period and 90 failures for 900 seconds. The factor of two is my choice, not a rule. A low threshold gets the container killed, as the vLLM guide's troubleshooting section warns.
-
 </details>
 
-9. What invalidates the vLLM compile cache?
-<details><summary>Answer</summary>
-
+<details><summary>9. What invalidates the vLLM compile cache?</summary>
 Any change to the model, the config, relevant `VLLM_*` variables, the torch build or the GPU model. The first start after an upgrade is therefore slow.
-
 </details>
 
-10. When would you pick vLLM over TensorRT-LLM?
-<details><summary>Answer</summary>
-
+<details><summary>10. When would you pick vLLM over TensorRT-LLM?</summary>
 When you serve many open models that change often, run mixed hardware, or value community and speed of adoption. Pick TensorRT-LLM for a few stable models on NVIDIA where measured efficiency repays the tighter coupling. Benchmark both on your traffic.
-
 </details>
 
 ## Common mistakes and weak answers
@@ -888,16 +858,26 @@ Explicitly labelled inferences:
 
 - The 5 GB overhead, the 900 second startup budget and the factor of two over measured start.
 - That a surge pod stays Pending without a spare GPU, and the rollout choice that follows.
-- That a hung engine can still pass `/health`, from chapter 20.18.
 - That TensorRT-LLM may repay its coupling for one stable model. This is a hypothesis to benchmark.
 - Reviewer rule `numa-flags-without-switch` is inference. The `fp8-w8a8-hardware` rule reads one table row and other FP8 paths may differ.
 
 Not verified:
 
-- No vLLM, Triton, TensorRT-LLM or Ray process was started. No GPU or Docker daemon was available. Step 5 of the lab was not run.
-- The health and metrics documentation for TensorRT-LLM, Ray Serve and SGLang was not read.
+- No vLLM, Triton, TensorRT-LLM, Ray or SGLang process was started. No GPU was available. Step 5 of the lab was not run.
 - TensorRT-LLM's parallelism trade-offs were not read in detail.
-- The book's claim that the vLLM image is under 5 GB conflicts with the 9.2 GB Docker Hub figure. I trust the Docker Hub figure.
+- The book's claim that the vLLM image is under 5 GB conflicts with the Docker Hub tag listing, which gives 9,205,727,079 bytes for amd64 and 10,306,685,803 for arm64 (re-checked 2026-11-09, last updated 2026-10-18). The Docker Hub figure wins.
 - The book's claim that TensorRT-LLM builds TensorRT engines conflicts with the v1.2.1 PyTorch-based overview. Check your version.
 - The real value of `max_num_seqs` and `max_num_batched_tokens` in force. The class docstring says they are set when the engine config is created.
 - Nebius has not published its engines, versions or flag settings.
+
+### Verification log (fact-check pass, 2026-11-09)
+
+Filled 11 of 12 "Not read" cells and resolved 3 other flagged claims.
+
+- CONFIRMED (Docker Hub API): `vllm/vllm-openai:v0.32.0` amd64 compressed size 9,205,727,079 bytes (about 9.2 GB), arm64 10.3 GB. The book's "under 5 GB" is outdated.
+- FILLED, TensorRT-LLM v1.2.1 (latest stable, 2026-04-20; v1.4.0rc3 is a release candidate): `tensorrt_llm/serve/openai_server.py` routes `/health`, `/health_generate`, `/metrics`, `/perf_metrics`. `/prometheus/metrics` is mounted only when `return_perf_metrics` is set. `trtllm-serve.rst` describes `/metrics` as iteration stats, read-and-remove, beta for the PyTorch backend.
+- FILLED, Ray 2.60.0: `/-/healthz` and `/-/routes` in `proxy.py`, `check_health` defaults 10 s period and 30 s timeout in `constants.py`, metric names from `serve/monitoring.md`.
+- FILLED, SGLang v0.5.23 (latest, 2026-11-02): `/health` and `/health_generate` in `http_server.py`, 20 s default timeout, metrics names in `observability/metrics_collector.py` and `production_metrics.mdx`.
+- CONFIRMED: vLLM v0.32.0 k8s.md uses `/health` for both liveness and readiness probes.
+- STILL UNVERIFIED: Triton KV-cache metrics, which live in a backend and not on the core metrics page. Ray Serve queue-time histogram, which I did not find. TensorRT-LLM parallelism trade-offs.
+- Not changed: the claim that TensorRT-LLM may build engines in older versions. The v1.2.1 overview is PyTorch-based.

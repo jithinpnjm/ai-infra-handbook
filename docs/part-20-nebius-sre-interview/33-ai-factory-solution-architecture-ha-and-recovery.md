@@ -1,337 +1,397 @@
 ---
 id: "c20-33"
-title: "20.33 Production AI Factory architecture on Nebius: patterns, economics, HA and recovery"
-sidebar_label: "20.33 Production AI Factory design"
+title: "20.33 AI Factory architecture on Nebius: patterns, HA and recovery"
+sidebar_label: "20.33 AI Factory design, HA and recovery"
 sidebar_position: 33
-description: "An interview-focused solutions-architect guide to composing Nebius AI Cloud, Token Factory, customer-operated inference fleets, training, security, cost controls, SLOs and recovery."
+description: "A solutions-architect guide to composing Nebius AI Cloud, Token Factory and customer-operated inference fleets, with an evidence-tagged account of what Nebius documents about regions, SLAs, capacity, maintenance and backups, and labelled design advice where it is silent."
 status: "drafted"
 tier: "1"
-level: "A"
-lab_venue: "Laptop / browser"
+level: "I"
+lab_venue: "Laptop"
 ---
 
-# 20.33 Production AI Factory architecture on Nebius: patterns, economics, HA and recovery
-
-The customer says, “We want an AI factory, not a collection of GPU instances.” That is a useful starting point, but it is not a design. You still need to decide where data lives, which team operates the model runtime, how traffic reaches it, how costs are allocated, and what happens when the chosen region has no capacity.
-
-An AI factory is a production system with several control boundaries. Some services are managed by Nebius, some are run by the customer's platform team, and some sit above the cloud as application platforms. A strong solution-architect answer makes each boundary explicit. It then tests the paths between them with a workload, a cost model, and a failure scenario.
-
-This chapter turns the public architecture map from 20.30, the AI Cloud foundation from 20.31, and the Token Factory contract from 20.32 into complete customer designs. The three architectures below are intentionally different. One is a managed Token Factory deployment. One is a Nebius reference inference fleet operated by the customer. One moves capacity between training and inference. They illustrate options, not one universal Nebius stack.
+# 20.33 AI Factory architecture on Nebius: patterns, HA and recovery
 
 ## What the interviewer is testing
 
-This chapter serves the system-design, project-deep-dive, and production-incident rounds. The interviewer is looking for discovery before diagrams, explicit ownership, a cost unit that matches the service, and a recovery plan that respects residency and capacity. They also want to hear when you would choose a managed model endpoint instead of building another platform team.
+A customer says, "We want an AI factory, not a collection of GPU instances." Then the interviewer asks, "How does it survive an outage?" This chapter serves the system design round and the project deep dive. The job posting asks for knowledge of how distributed back-ends fail and for designing for load and availability. Nebius has not published the interview questions. So the skill is a method: name the boundary, name the owner, and say what is documented and what is your own design.
 
-Likely prompt: “Design an AI factory for an enterprise that trains models, builds agents, and serves them to customers in Europe. Give me the architecture, who owns each part, what it costs, and how it survives an outage.”
+Evidence tags follow the volume plan. `[official]` is a Nebius documentation page fetched on 2026-11-09. `[vendor]` is Nebius marketing or a blog post. `[gap]` means Nebius has not published it. `[design]` marks my own reasoning, which you must present as your recommendation and never as a Nebius fact.
+
+Here is a realistic question in the interviewer's voice: "Design an AI factory for an enterprise that fine-tunes models and serves them to customers in Europe. Who owns each part, what does it cost, and what happens when the region has no GPUs?"
 
 ## The core ideas
 
-### 1. Turn a vague AI-factory request into decision requirements
+### 1. Turn a vague request into decision requirements
 
-An executive request often arrives as a desired technology: “We need B200s,” “We need a private LLM,” or “We need Kubernetes.” Those are possible implementation choices, not requirements. A solution architect first asks what business process the system must support and what failure would cost.
+An executive request often arrives as a product: "We need B200s" or "We need a private LLM". Those are answers, not requirements. Ask what the business process is and what an outage costs. Then characterise the workload: training, batch, chat, embeddings, or an agent that calls tools in a loop. Ask for model size, context length, token distributions, peak concurrency, and streaming needs.
 
-Characterize the workload before selecting services. Is it pretraining, fine-tuning, batch inference, online chat, image generation, embeddings, or an agent that calls tools repeatedly? What are model size, context length, input/output token distributions, concurrency, traffic peaks, and streaming requirements? Is the model a public catalog model, a fine-tuned checkpoint, or a customer-owned runtime?
-
-Then define service objectives and policy. Ask for a target time to first token, inter-token latency, goodput, request availability, recovery point, and recovery time. Establish whether prompts can leave a region, whether data retention is allowed, which groups may create endpoints, and whether the system must survive a single GPU, node, rack, cluster, or region failure. Finally, set a monthly spend envelope and decide who can pause workloads or approve a capacity commitment.
-
-Use a discovery table rather than arguing about brands:
+Next ask for objectives and policy. You need time to first token, inter-token latency, request availability, a recovery point objective (RPO) and a recovery time objective (RTO). RPO is how much recent work you can afford to lose. RTO is how long you can be down. Ask whether prompts may leave a region, who may create endpoints, and which failure the system must survive: one GPU, one node, one cluster, or one region.
 
 | Requirement | Question to ask | Design decision it changes |
 |---|---|---|
-| Workload | Training, batch, interactive inference, agent, or mixed? | Soperator, Kubernetes, Serverless AI, Token Factory, or own fleet |
-| Demand | Average/peak requests, tokens, contexts, concurrency, growth? | GPU type, replicas, queues, warm capacity, and limits |
-| Latency | TTFT, time per output token, end-to-end target? | Model, GPU shape, cache, routing, batching, and placement |
-| Data | What is processed, retained, logged, or exported? | Product mode, region, ZDR, object policy, and DPA review |
-| Availability | What failure domain and RTO/RPO must be met? | Spare capacity, checkpointing, alternate endpoint, support contract |
-| Ownership | Who operates runtime, gateway, model versions, pager, billing? | Managed service versus customer-run platform |
+| Workload | Training, batch, interactive, agent, mixed? | Soperator, Kubernetes, Serverless AI, Token Factory, own fleet |
+| Demand | Peak requests, tokens, contexts, growth? | GPU type, replicas, warm capacity |
+| Latency | Target TTFT and time per output token? | Model, GPU shape, cache, routing |
+| Data | What is processed, retained, exported? | Product mode, region, ZDR, DPA review |
+| Availability | Which failure domain, which RPO and RTO? | Spare capacity, checkpoints, alternate endpoint, contract |
+| Ownership | Who runs runtime, gateway, pager, billing? | Managed service or customer-run platform |
 
-**Do not size or choose a product until the workload, data, service level, and owner are clear.**
+The capacity arithmetic comes from [20.12](./12-estimation-toolkit-for-inference-capacity.md). **Do not choose a product until the workload, data rules, objectives and owner are written down.**
 
 ### 2. Compose services by operating boundary
 
-Nebius offers multiple layers that can be composed, but product names can sound more similar than their responsibilities. Serverless AI, Token Factory Public Serverless, Token Factory Dedicated Endpoints, Managed Kubernetes, and Soperator are not interchangeable endpoint flavors.
+Serverless AI, Token Factory Public Serverless, Token Factory Dedicated Endpoints, Managed Kubernetes and Soperator are not interchangeable flavours of "an endpoint". They differ in who runs what. The product map is in [20.30](./30-nebius-ai-factory-to-token-factory-architecture.md) and [20.31](./31-nebius-ai-cloud-foundation-gpu-fabric-and-platform-choices.md). The table below keeps only what decides an HA design.
 
-Use this selection matrix in a design review:
-
-| Pattern | Managed layer | Customer team owns | Typical fit |
+| Pattern | Nebius runs | Customer runs | Region behaviour [official] |
 |---|---|---|---|
-| Token Factory Public Serverless | Hosted catalog models, shared inference API, dynamic service capacity | Caller, prompts, app-level security and retries | Evaluation, prototypes, variable/non-critical workloads that accept Global processing |
-| Token Factory Dedicated Endpoint | Regional model deployment, selected GPU/replica settings, inference surface | Model/template choice, key policy, min/max, client SLO, contractual capacity discussions | Stable region and a managed model endpoint |
-| AI Cloud Serverless AI | Container jobs, Devlabs, and endpoints with service-managed lifecycle | Container image, server, request behavior, application data | Custom container work without owning a cluster |
-| Managed Kubernetes | Kubernetes control plane and node-group service | Pods, operators, policy, model runtime, platform observability | Custom serving stack, service mesh, schedulers, or multiple workloads |
-| Managed Soperator | Managed Slurm-on-Kubernetes cluster | Job design, data staging, checkpointing, workload operations | Slurm-oriented distributed training and HPC |
-| Compute GPU VMs | VM capacity, GPU host and cloud primitives | OS/runtime, cluster configuration, gateway, monitoring, repair | Full host/network control, bespoke stack, HPC or specialized topology |
+| Token Factory Public Serverless | Shared model API | Caller, prompts, retries | Region shows Global and can change without notice |
+| Token Factory Dedicated Endpoint | Regional model deployment | Template choice, keys, min and max replicas, client SLO | Fixed at creation, no multi-region routing or overflow |
+| AI Cloud Serverless AI | Container lifecycle | Image, server, data | Follows the Serverless AI regions in the region table |
+| Managed Kubernetes | Control plane, node health checks | Pods, runtime, policy, observability | One region per cluster |
+| Managed Soperator | Slurm on Kubernetes | Jobs, checkpoints, data staging | One region per cluster |
+| Compute GPU VMs | VM capacity | Everything above the VM | One region per VM |
 
-The right architecture can use several of these. A team may prototype on Public Serverless, run an endpoint in a fixed region for production, and use Soperator for fine-tuning. A platform team may instead build a multi-region Kubernetes fleet for customers that need their own job API, queues, private VPC access, and cost policies. Do not force all workloads into Token Factory or all workloads into Kubernetes.
+A team may prototype on Public Serverless, run production on a Dedicated Endpoint, and fine-tune on Soperator. Another may build a Kubernetes fleet. Do not force every workload into one product. Ask for an exit path too. If the application calls a gateway you own, you can move the model behind it later without changing the public contract. **Choose a service for the operating burden it removes, not for the GPUs it lists.**
 
-The architecture decision should include an exit path. If a team starts with a managed endpoint, can it move to a customer-owned runtime without changing the public application contract? If it builds a fleet, who maintains the controller, gateway, API keys, model images, and upgrade cadence? A flexible API is useful only if operations stay sustainable.
+### 3. What Nebius documents about regions and zones
 
-**Select a service for the operational boundary it removes, not only for the GPUs it advertises.**
+An interviewer will probe "region" and "zone" vocabulary. The public regions list is `eu-north1` (Finland), `eu-south1` (Madrid), `eu-west1` and `eu-west2` (France), `me-west1` (Israel), `us-central1` (Kansas City), `us-north1` (Woodbury), `uk-south1` and `uk-south2` (UK) [official]. `eu-north2` (Iceland) is private to customers who already have deployments there [official]. Services and GPU platforms are available per region, and the table is uneven. For example the Managed PostgreSQL row is ticked only for `eu-north1`, `eu-west1`, `me-west1`, `us-central1`, `uk-south1` and `eu-west2` [official].
 
-### 3. Pattern A: a managed Token Factory endpoint behind an application gateway
+I found no page about availability zones in the documentation index. Nebius has not published whether a region has several independent failure zones, or how a Managed Kubernetes control plane or a node group is spread inside one. A reasonable design is to treat the region as the failure domain you can name, and to ask the account team in writing for any placement guarantee [design]. Do not say "multi-AZ" in an interview as a Nebius fact.
 
-An application needs a hosted open model, a predictable region, and a small operations team. A Dedicated Endpoint is a reasonable starting point when its template, region, performance, and contract meet the requirement. The application still needs a gateway of its own if it has product-specific users, quotas, policy, or fallback behavior.
+Two more facts shape any multi-region plan. Disk snapshots are available only in the project where they were created [official]. Object Storage bucket names are unique per region and the endpoint carries the region ID [official]. I found no documented cross-region replication or durability figure for Object Storage, so copy data across regions yourself and test the copy [design].
 
-One reference path is:
+**Say "region" when you mean what Nebius documents, and ask about anything finer.**
+
+### 4. What each failure domain looks like and who owns it
+
+The phrase "the cloud is highly available" hides many failures. Use this table to say what Nebius does and what you must do.
+
+| Layer | Example failure | Documented Nebius behaviour | Your job |
+|---|---|---|---|
+| Whole region | Power or cooling loss, service outage | Nothing published about regional failover [gap] | Alternate region, tested, inside the legal region rules |
+| Compute VM | Host hardware or software fault | Maintenance event. You may stop and start the VM before the due date, or it is stopped after it. Support can reschedule up to two times, up to seven days each [official] | Restart tolerance, checkpoints |
+| Kubernetes node | Not Ready, GPU Xid or ECC error, boot disk I/O errors | Node Problem Detector, automatic recovery. A node Ready false for more than five minutes or Unknown for more than 15 minutes is deleted and replaced [official] | Pod disruption budgets, spare capacity, state outside the node |
+| Maintenance | Planned or emergency node work | Cordon, wait for GPU Pods until one hour before the SLA deadline, drain for up to one hour, stop and start the VM [official] | Finish or checkpoint GPU work, label CPU Pods that must defer drain |
+| Control plane | API server unreachable | 99.90% target for control plane access, with exclusions (see section 5) | Running workloads do not depend on it, but rescheduling does [design] |
+| Dedicated Endpoint | Incident, maintenance, manual stop | GPUs are released to the shared pool and requested again on restart [official] | Reserved capacity by contract, or an alternate endpoint |
+| Customer fleet | Database, dispatcher or cache outage | Reference template only (section 8) | Control plane HA and restore drills |
+
+The last column for the control plane row is my reasoning. A running Pod keeps running when the API server is down, but nothing can schedule a replacement. The upstream Kubernetes documentation describes the control plane as the component that makes scheduling decisions. For node repair details and the PodDisruptionBudget idea, see [20.23](./23-kubernetes-failure-drills-for-gpu-platforms.md) and [20.16](./16-design-gpu-fleet-health-and-capacity.md).
+
+**For each layer, write who detects it, who repairs it, and what state survives.**
+
+### 5. What the SLAs actually promise
+
+Start with the Managed Kubernetes service level [official]. The target is 99.90%. Unavailability means no customer access to the control plane, from inside or outside the platform, for at least five minutes. The credit is 10% of the service fee if uptime falls below 99.90% down to 95.00%, and 25% below 95.00%. The page excludes events beyond Nebius control, control planes that are not the highly available kind, defined as an etcd cluster size of three, outages caused by your firewall or routing rules, disabled clusters caused by an add-on you installed, changed pre-installed add-ons, and end-of-life Kubernetes versions. Nebius gives at least 30 days notice before a version reaches end of life, and after that date the service level no longer applies to the cluster.
+
+The general SLA page adds rules for every service [official]. Credit is against future fees, claims go through the console within 14 calendar days after the reporting period, credit is the exclusive remedy, and planned node maintenance and emergency works are excluded from downtime up to eight hours per reporting period. It does not name the services and percentages. That list is on the service levels page.
+
+Now work out what 99.90% means. A 30-day month has 30 times 24 times 60, which is 43,200 minutes. The allowed downtime is 0.1% of that, which is 43.2 minutes. At 99.99% it is 4.32 minutes. Run `python3 code/part20/c33_recovery_math.py` to see the same numbers. This SLA covers control plane access. It says nothing about GPU supply, time to first token, node repair time, or whether your model answered.
+
+Token Factory is different. The Supplemental Terms say the SLA does not apply to the Token Factory service and that no credits are available unless agreed in writing [official]. The Dedicated Endpoint capacity page says self-service endpoints have no formal SLA unless covered by contract [official]. The enterprise page advertises "99.9% SLA with reserved capacity and fail-over" for dedicated endpoints [vendor]. Treat that sentence as a sales pointer. The thing you can rely on is the Order Form. Nebius has not published what "fail-over" means there, since its own legal guide says there is no automatic cross-region failover for dedicated endpoints [gap].
+
+**Quote the SLA page for the service, state its exclusions, and say which party can act when it burns.**
+
+### 6. Dedicated endpoint capacity and recovery
+
+You are asked, "What happens to a dedicated endpoint when its node fails?" The documented answer is narrow and important [official]. Self-service endpoints run on on-demand capacity from a shared pool. Capacity is held for the endpoint only while it is active. When an endpoint stops, for any reason, its GPUs go back to the pool. The reasons listed are a manual stop, an incident and maintenance. When it starts again, capacity is requested anew and allocated based on availability at that moment. Nothing holds your previous GPUs.
+
+Minimum replicas are reserved and non-preemptible while the endpoint is active. Scaling above the minimum depends on burst capacity and is not guaranteed, and extra replicas may not come back after scale-down. After a restart the endpoint can sit in Starting or Not ready, or reach only Partially ready, until capacity appears. Lifecycle and readiness are separate statuses, and a Warning state unresolved for more than three hours means you should contact support [official]. If you need guaranteed capacity across restarts, incidents and maintenance, the page points you to Nebius sales to reserve capacity.
+
+Billing follows readiness. The billing policy says an endpoint is billable when at least one replica is running, yet its table says provisioning, Not ready and Partially ready are not billed, and Ready is billed [official]. Those two statements disagree for a partially ready endpoint. Ask support which one your invoice follows. The enterprise page says "pay only for what you serve" and "no idle GPU costs" [vendor]. That conflicts with the billing policy, where GPU time is billed while at least one replica is running. Plan on the billing policy.
+
+**Never promise that a restarted dedicated endpoint gets its capacity back. Promise a restart procedure and an alternate.**
+
+### 7. Pattern A: a managed Dedicated Endpoint behind your own gateway
+
+An application needs a hosted open model, a stable region and a small operations team. A Dedicated Endpoint fits when the template, region, performance and contract fit. The application still needs a gateway of its own for end-user identity, tenant quotas, retry budgets and fallback.
 
 ```mermaid
 flowchart LR
-  User[User or agent] --> App[Customer application]
-  App --> Gateway[Customer auth, policy, quotas]
-  Gateway --> TokenAPI[Token Factory regional API]
-  TokenAPI --> Endpoint[Dedicated model endpoint]
-  Endpoint --> Reply[Streaming response]
-  Endpoint --> Metrics[Endpoint metrics]
-  Gateway --> AppMetrics[Customer request and tenant metrics]
-  App --> Logs[Application traces and audit]
+  U["User or agent"] --> G["Your gateway<br/>auth, quotas, retries"]
+  G --> A["Token Factory<br/>regional API"]
+  A --> E["Dedicated endpoint"]
+  E --> G
+  G --> F["Alternate endpoint<br/>same legal region"]
+  E --> M["Endpoint metrics"]
+  G --> T["Your traces, tenant metrics"]
 ```
 
-The customer gateway is a design choice, not a documented Token Factory internal component. It can validate the end-user identity, map it to a Token Factory project/key, enforce prompt-size and spend limits, record request IDs, manage retry budgets, and protect the product from noisy clients. Keep its secrets server-side. Call the region URL and routing key exactly as documented; do not assume a direct browser request is an acceptable production security design.
+The gateway is a design choice of yours. Token Factory does not document it as a component. Keep its secrets server-side and call the regional URL with the routing key as documented. Then decide what you promise:
 
-The team then decides which of these promises it can make:
+- **Region.** Public Serverless is Global and "can change at any time without prior notice". Dedicated is fixed to the chosen region as a DPA commitment. The legal guide says there is no multi-region routing, load balancing or automatic overflow for dedicated endpoints [official].
+- **Capacity.** The minimum replicas are your baseline while active. The maximum is a best-effort ceiling.
+- **Recovery.** A stopped endpoint releases its GPUs. If that is unacceptable, buy reserved capacity in writing, or keep a warm second endpoint.
+- **Data.** ZDR is an organisation-level setting. Without it, inputs and outputs are kept for speculative decoding and are stored in Finland regardless of where processing happens [official]. With ZDR no speculative decoding data is kept, and the guide warns inference speed may drop.
 
-- **Region:** Public Serverless is Global and can change processing location. Dedicated Endpoint is fixed to its selected region by the documented legal terms. There is no Token Factory provider-side automatic cross-region overflow for Dedicated Endpoints.
-- **Capacity:** `min_replicas` provides active baseline capacity; `max_replicas` caps attempted burst capacity. The provider warns that capacity above the minimum may not be available after scale-down.
-- **Cost:** Public Serverless charges tokens, with cached-input pricing for supported models. Dedicated charges GPU time, so quiet periods may still cost money while replicas remain active.
-- **Recovery:** A stopped self-service endpoint releases GPUs and must request capacity again. If that is unacceptable, discuss reserved capacity and written terms before launch.
+For fine-tuning, the guide says all datasets, artifacts and outputs are stored in EU data centers even when a US job is processed in the US, and there is no regional choice [official]. A cross-region fallback therefore has to be checked against what you promised the data owner.
 
-Model lifecycle can sit alongside the endpoint. Teams may use Data Lab and post-training to prepare datasets, tune full model weights or LoRA adapters, train a speculator, then deploy a supported checkpoint to a Dedicated Endpoint. The custom-weight path is described as beta and access-controlled. The architect must confirm which exact model, artifact, region, ZDR, and deployment workflow the account can use.
+**Put your own gateway in front when identity, tenant policy or failover goes beyond the provider API.**
 
-This is the managed pattern: Nebius operates most serving infrastructure; the customer owns the application gateway and user promise. It is not equivalent to purchasing a private Kubernetes cluster.
+### 8. Pattern B: a customer-operated multi-region fleet
 
-**Put an application gateway in front when customer identity, tenant policy, or product-level failover exceeds the provider API contract.**
+Some platform teams need arbitrary containers, per-tenant GPU budgets, spot recovery, multi-node serving or one API across regions. The Nebius Solutions Library contains a Kubernetes inference fleet for this [official, repository]. Its README says it is a template for a platform team and not a hardened multi-tenant service.
 
-### 4. Pattern B: a customer-operated multi-region inference fleet
+The design is a CPU control cluster plus one worker cluster per region. The control side holds the API, LiteLLM, a Kueue MultiKueue manager, a cost dispatcher and a Managed PostgreSQL fleet database. Each region has GPU pools, KServe on Knative, Kueue, Envoy gateways, image caches and weights filesystems. A regional Envoy gateway checks a tenant key against the central API, then forwards to the model. Calls entering through LiteLLM are accounted by LiteLLM. Direct calls through the fleet API are accounted by the custom API.
 
-Some platform organizations need more control than a managed endpoint exposes. They may need arbitrary containers, model-specific queues, custom per-tenant GPU budgets, spot recovery, multi-node serving, private routing, or a single API across several regions. Nebius's public Solutions Library contains a detailed Kubernetes inference-fleet example for this pattern.
+The operations guide in the same repository gives HA facts you can reuse [official, repository]. Request-path components run two replicas spread over two system nodes: Envoy, LiteLLM, the API, Kueue and Knative Serving. Several reconcile-only components run a single replica on purpose, because an outage delays changes and not traffic. The fleet database is a Managed PostgreSQL cluster with one host by default, and setting two hosts adds a replica with the service's failover. A CronJob recovers stopped spot nodes every two minutes.
 
-The repository describes a control cluster and one worker cluster per region. The control side hosts a customer API, LiteLLM, Kueue MultiKueue manager, cost dispatcher, and managed PostgreSQL. Region clusters host GPU pools, KServe on Knative for model endpoints, Kueue for jobs, Envoy gateways, image caches, DCGM, OpenCost, Loki, and shared weights filesystems. Object Storage provides tenant artifacts.
+Backups are the managed service's. The Managed PostgreSQL docs say backups run daily, with a retention of 7 to 30 days and a 7-day default, and the retention also covers the write-ahead log [official]. They support point-in-time recovery. A restore creates a new cluster. Backup settings cannot be changed after the cluster is created [official]. So a database outage in this template ends with a new cluster, new endpoints, and repointing the API and LiteLLM secrets. That cutover is yours and you must rehearse it.
 
-The request path in that solution has two main edges. A regional Envoy gateway validates a tenant key by calling the central API, then forwards to the endpoint. A LiteLLM OpenAI-compatible route sits alongside the direct platform API. The API stores model definitions and key records in the fleet database and renders KServe endpoints in the selected regions. That reference implementation makes the accounting distinction explicit: calls entering through LiteLLM are accounted by LiteLLM; direct calls through the fleet API are accounted by the custom API.
-
-The job path is separate from the endpoint path. The client submits an operation. Kueue holds it against quotas. MultiKueue selects a worker cluster. A cost dispatcher ranks eligible region/pool candidates by capacity class, free quota, and price. Kubernetes Jobs or JobSets execute work; object storage carries inputs and outputs; a shared filesystem can provide checkpoints or weights; a runner uploads status and artifacts. On spot interruption, a checkpointed job can restart in-region or continue on a new attempt according to the platform's rules.
-
-| Component | Responsibility in this reference design | New failure dependency |
+| Component | Responsibility | New failure dependency |
 |---|---|---|
-| Control API | Model registry, keys, invocation, operations, results | Central database/API outage can block management and API entry |
-| Envoy gateway | TLS, key check, rate limits, routing to model or API | Gateway and authorization dependencies lie on request path |
-| LiteLLM | OpenAI-compatible model groups and token accounting | Key mirror and spend records need reconciliation |
-| Kueue/MultiKueue | Admission and cross-cluster job placement | Queue configuration and worker API reachability affect job start |
-| Cost dispatcher | Chooses region/pool by preference, quota, and price | Stale prices or missing pool metadata can misplace or delay jobs |
-| KServe/Knative | Model endpoint lifecycle and scale-to-zero | Cold start, readiness and revision management become platform duties |
-| Zot/Spegel | Pull-through image cache and peer layer distribution | Cache outage/cold pull slows model and node startup |
-| PostgreSQL | Desired model state, keys, operations and accounting | Database backup/restore and schema migrations become customer concerns |
+| Control API and database | Model registry, keys, operations | Database restore is a new cluster and a cutover |
+| Envoy gateway | TLS, key check, routing | Key lookup is on the request path |
+| LiteLLM | OpenAI-compatible route, spend | Key mirror can drift after a restore |
+| Kueue and MultiKueue | Admission, cross-cluster placement | Worker API reachability |
+| Cost dispatcher | Region and pool choice by price and quota | Stale prices misplace jobs |
+| KServe and Knative | Endpoint lifecycle, scale to zero | Cold start is your duty |
+| Image cache | Faster image pulls | Cold pulls slow node start |
 
-This is a useful worked architecture, but its README explicitly says it is a customer-operated template, not Token Factory. It has meaningful limitations: tenant containers share GPU nodes; baseline pod security is not VM isolation; default inter-pod traffic may be unencrypted; the team owns upgrades, incidents, PostgreSQL, and gateway security. It should undergo a security review before external tenants receive keys.
+The README lists limits you must repeat: tenant containers share GPU nodes with container isolation and not VM isolation, traffic inside the clusters is not encrypted, user images are not scanned, and a formal security review is due before outside tenants get keys [official, repository]. **Build this fleet only when the extra control is worth owning every control plane in it.**
 
-**Build this fleet only when its extra control is worth owning every control plane and operational burden.**
+### 9. Pattern C: share reserved GPUs between training and inference
 
-### 5. Pattern C: share reserved GPUs between training and inference
+Training demand rises and falls. Nebius documents moving capacity between Soperator workers and a Managed Kubernetes inference node group that draw from the same capacity block group [official].
 
-Training demand rises and falls. Inference may need GPUs when a training run is idle. Nebius documents a pattern that moves GPU capacity between Soperator training workers and Managed Kubernetes inference node groups by sharing a Capacity Block Group.
+The prerequisites are strict. Both sides must consume the same reserved capacity block group. Soperator must be version 3.0 or later with ephemeral nodes enabled. You need the editor role and a login node. To move capacity to inference, power the chosen Slurm nodes down, drain them so the queue does not power them back, check that they show powered down, then raise the inference node group by the same count. There are three power-down modes. Plain power down acts when the node is idle, and queued jobs may still start on it first. The `asap` mode drains, waits for the current job and powers down. The `force` mode powers down at once and cancels running jobs. To move back, shrink the inference group, wait until the GPUs return to the block, resume the drained nodes and power them up.
 
-The precondition is not merely “both services are in the same cloud.” Both the Soperator worker nodes and inference node group must be configured to consume the same compatible capacity reservation. Soperator must have ephemeral nodes enabled. To move capacity to inference, an operator powers down or drains selected idle Slurm workers, waits for the GPUs to be released, then increases the inference node-group size. To move capacity back, the operator scales down the inference node group, resumes drained Slurm nodes, and powers them up. A force power-down can cancel training jobs; it is not a routine elasticity step.
+The documentation gives the steps and gives no policy. That part is yours [design]. Decide who wins when both want GPUs, how much training capacity stays, how much inference headroom stays, how much notice a training job gets, and who may trigger a move. Inference that needs a GPU during a move can fail because the capacity is in transit. The pattern does not create capacity the reservation does not hold. **Use shared reservation capacity only with a written priority rule and a rehearsed drain and power-up.**
 
-This design can improve utilization but couples two workload domains. The teams need an arbitration rule: which workload wins during simultaneous demand, how much minimum training capacity remains, how much inference headroom is reserved, how much notice a training job needs, and who can trigger capacity movement. It also needs shared-capacity billing and quota review. It does not create capacity that the reservation block does not contain.
+### 10. Recovery arithmetic: RPO, RTO and the lost work you can compute
 
-It is different from Token Factory Dedicated Endpoint autoscaling. Token Factory manages replica scaling inside its product boundary; the documented public behavior still says that a stopped endpoint can release capacity. The training/inference block-sharing workflow described here is a customer-managed Soperator/Managed Kubernetes pattern.
+Interviewers like numbers. Here is the arithmetic, with inputs stated.
 
-**Use shared reservation capacity only with an explicit priority policy and a tested drain/power-up workflow.**
+**Lost training work.** A job checkpoints every 30 minutes. A crash just before the next checkpoint loses 30 minutes. A crash at a random time loses 15 minutes on average. For 512 GPUs, worst case lost compute is 512 times 30 / 60, which is 256 GPU-hours. The average is 128 GPU-hours. So the checkpoint interval is your RPO for the training job. Add the restart time to get the full cost.
 
-### 6. Design tenancy, security, and compliance across planes
+**Restart time.** A 70 billion parameter model trained with mixed precision Adam is often sized at about 16 bytes per parameter for weights, gradients and optimizer state. That figure is an assumption I am stating, not a Nebius number, and you should replace it with your own measured checkpoint size. 70 times 16 is 1,120 GB. At a sustained 5 GB/s the read alone is 1,120 / 5 = 224 seconds. The weights of the same model in 16-bit are 140 GB, and at 2 GB/s a replica takes 70 seconds just to load them. Those are floors. Image pull, scheduling and warm-up come on top, so measure them in a drill.
 
-“Project” does not mean the same boundary everywhere. Nebius AI Cloud projects hold VMs, networks, Kubernetes clusters, storage, service accounts, quotas, and groups. Token Factory projects hold endpoint resources, API keys, files, datasets, and fine-tuning jobs. An enterprise platform may add another tenant hierarchy above either product.
+**Availability in series and in parallel.** If a request needs your gateway and an endpoint, both at 99.9%, the result is 0.999 times 0.999, which is 0.998001, or 86.4 minutes a month. If two independent endpoints at 99.9% each can serve, the chance both are down is 0.001 squared, so availability is 0.999999, about 2.6 seconds a month. That only holds if failures are independent. A shared gateway, shared key, shared model version or a shared region breaks independence. The calculation also ignores the time your switch takes to notice a failure. For a dedicated endpoint the second one must be in the same legal region, which weakens independence further [design].
 
-For a managed Token Factory application, define organization and project groups separately for administrators, billing, model operators, and runtime clients. The product's Billing Manager can see organization usage without project endpoint access. For a custom fleet, the reference repository creates namespaces, queues, object-storage buckets, API keys with budgets, and allow-lists. That is application-level tenancy. The repository warns it does not provide VM isolation: customer images share worker nodes.
+**etcd quorum.** A consensus group of n members needs floor(n/2) + 1 votes to commit, so it tolerates n minus that. Three members tolerate one failure, five tolerate two, four still tolerate one. Production Kubernetes explains that etcd keeps state on several machines with a consensus algorithm and that its defaults assume one datacenter, so stretching it across sites needs testing of round trips [Production Kubernetes, chapter 2]. The SLA above counts only an etcd size of three as highly available. On Managed Kubernetes Nebius operates etcd, and nothing public says how it is backed up or restored [gap]. For a cluster you run yourself, the upstream Kubernetes and etcd documents describe snapshot backup and restore, and you should rehearse restore on a throwaway cluster.
 
-On AI Cloud, combine IAM with VPC security groups, subnet routes, private/public addressing, service accounts, KMS, SecretStash, and Audit Logs. Kubernetes adds RBAC, Pod Security Admission, network policies/Cilium, workload identity, and secrets. A project should not give the serving pod a broad node or cloud identity. In the customer-managed fleet, a node service account and a pod workload identity have different privileges; avoid mounting a general-purpose API credential into model containers.
+**Terraform state.** Your recovery plan depends on the state file. Terraform: Up and Running, chapter 3, explains that remote backends provide locking and versioning and that state files can contain secrets. Nebius documents storing state in an Object Storage bucket through the S3 backend and notes that Terraform recommends bucket versioning [official]. Versioning is off by default, cannot be fully disabled once enabled, and the docs recommend it disabled for high-load buckets [official]. So keep the state bucket small and separate, turn versioning on, and put it in a region you can still reach when the workload region is down [design]. See [20.24](./24-terraform-for-resilient-gpu-clusters.md).
 
-For data governance, make a data-flow inventory. List prompt and response content, cached computation, Data Lab logs, training datasets, checkpoints, metrics, traces, audit events, support tickets, and billing records. Apply the right region, retention, encryption, access, and deletion policy to each. The Token Factory legal guide says Dedicated Endpoint processing is region-pinned, while Public Serverless is Global. It also says fine-tuning data is stored in the EU even for US-processed jobs. The Token Factory Supplemental Terms and DPA take precedence over simplified product summaries where they differ.
+**Multi-region.** Active-passive needs the model, keys, quota, capacity, data policy and traffic switch all pre-built and tested. Without a reservation, GPUs in the second region are not held for you either [design, from the capacity page]. Production Kubernetes recommends federating by region and then globally to limit the blast radius of the management layer [Production Kubernetes, chapter 2]. The overload and retry rules for the switch itself are in [20.21](./21-request-routing-retries-and-overload-control.md).
 
-| Control | Applies to | Architect's validation |
-|---|---|---|
-| Organization/project roles | Human and application access | Can billing see cost without endpoint credentials? |
-| API keys and budgets | Token Factory or customer API edge | Are keys scoped, rotated, revocable and server-side? |
-| Cloud IAM/service accounts | VMs, Kubernetes, storage, Terraform | Does the workload have only the needed API actions? |
-| VPC/security groups | Customer-operated resources | Are ingress, egress, DNS, NAT and control-plane paths explicit? |
-| ZDR and region selection | Token Factory content | What is retained, used for speculators, or processed outside the region? |
-| Audit and cost records | Cloud and product operations | Who can export, retain and review each record? |
+**State a recovery target as a pair: what you lose and how long you are down, and how you tested both.**
 
-**Threat-model the managed product boundary and the customer edge separately.**
+### 11. Security, tenancy and cost under failure
 
-### 7. Design FinOps and unit economics around the chargeable unit
+Failure plans often break on access and billing, not on GPUs.
 
-“Cost per million tokens” is not enough for an architecture review. The answer depends on whether the service charges per token, per active GPU, per VM, per node, or per committed capacity interval. It also depends on idle time, cache hit rate, utilization, storage, egress, platform services, and support contracts.
+Projects mean different things in different places. An AI Cloud project holds VMs, networks, clusters and storage. A Token Factory project holds endpoints, keys and fine-tuning jobs. Keep administrator, billing, model operator and runtime roles in separate groups. In a customer fleet, tenancy is application-level, and the template does not give VM isolation.
 
-Token Factory Public Serverless charges input, cached-input where supported, and output tokens. Dedicated Endpoints charge GPU time at per-minute granularity. AI Cloud Compute charges running resources by time; Cloud PAYG and commitment discounts can coexist. Capacity blocks reserve specified GPU capacity over intervals and tie into commercial commitments. Customer-managed fleets also pay for control nodes, GPU pools, managed databases, storage, registries, observability, and data transfer even when token throughput is low.
+Billing is an availability risk. The Token Factory Billing page says that with a bank card the balance is debited in real time, the card is charged when the balance is negative at the start of the month or a threshold is reached, and if a card charge fails the account is suspended [official]. The Supplemental Terms say fees are post-paid unless an Order Form says otherwise [official]. The two descriptions differ in tone. Confirm which applies to your organisation, and keep a valid payment method or an invoice arrangement before launch. AI Cloud budgets are alerts that can lag and do not stop spending, as noted in [20.32](./32-token-factory-model-lifecycle-serving-and-economics.md).
 
-The denominator should reflect the product outcome. For inference, compare cost per useful token or latency-qualified request, not raw GPU utilization. For training, compare cost per completed experiment or checkpoint that survives failures. For agents, include retries, tool calls, and evaluation runs. The GPU-utilization chart is a diagnostic, not a billable unit.
+For cost, state the billable unit: tokens for Public Serverless, GPU time per minute for Dedicated, running resources by time for Compute. Minimum replicas are an idle baseline. Retries cost tokens. Use consumption reports for reconciliation and endpoint metrics for explanation. Token Factory observability is documented as available only for Dedicated Endpoints and is not a billing record [official]. Metrics design is in [20.19](./19-slis-slos-and-alerts-for-token-apis.md).
 
-A customer-operated platform can meter each key, model, project, or run. The Solutions Library example maintains a GPU-charge ledger and OpenCost views, but says its own metering and platform limits are part of that implementation. In a managed Token Factory deployment, use Token Factory consumption reports for reconciliation and use endpoint metrics to explain cost drivers. Do not derive the invoice from the observability API.
+**Write the billable unit, the idle baseline and the payment dependency into the design.**
 
-Budget enforcement also needs care. Nebius AI Cloud budgets alert on spending and may lag; they do not stop charges. Token Factory product billing and legal terms have changed over time: its changelog and Supplemental Terms say fees are post-paid, while the Billing & Consumption page still describes balance top-ups and threshold charging. The Dedicated Endpoint billing policy also has wording/table nuance for partially-ready endpoints. Confirm the actual account's contract and invoice process before quoting cost.
+### 12. A customer-ready review
 
-**State the billable unit, idle baseline, cost owner, and enforcement mechanism in the architecture.**
-
-### 8. Set service objectives that match ownership
-
-The customer cannot page a cloud provider on an SLI it cannot observe, and the provider's availability promise may apply only to a control plane, not to the model's quality or the application path. Define objectives at each boundary.
-
-For a Token Factory application, the customer can measure request success, TTFT, inter-token latency, completion time, output quality/finish reasons, retries, cache usage where returned, and tenant-specific goodput at its own gateway. Dedicated Endpoint metrics add request/token rates, latency percentiles, active replicas/GPUs, utilization, error codes, and cache-hit share. The docs say Token Factory Inference Observability is currently for Dedicated Endpoints only and is for operations, not billing.
-
-For a customer-managed cloud stack, observe GPU utilization/memory/power/temperature, InfiniBand errors/throughput, node readiness, pod pending time, Kueue queue/admission, model cold starts, storage throughput, object request performance, API SLOs, and cost allocation. Nebius AI Cloud Observability integrates metrics, logs, and traces for supported services but is marked preview in the service catalogue. Check the current service matrix and retention before depending on it as your only pager pipeline.
-
-The [Managed Kubernetes SLA](https://docs.nebius.com/legal/sla-levels/managed-kubernetes) is not an application SLA. Its 99.90% objective covers customer access to the control plane, with exclusions for customer firewall/routing changes, unsupported versions, and modified add-ons. It does not guarantee inference availability, GPU supply, TTFT, or job completion. Token Factory's [Supplemental Terms](https://docs.nebius.com/legal/token-factory) say no SLA applies unless a written Order Form says otherwise. Enterprise marketing advertises 99.9%; confirm the exact plan and contract.
-
-**Write one objective per boundary and say which party can act when it burns.**
-
-### 9. Map recovery and failure ownership
-
-The phrase “the cloud is highly available” hides too many failure modes. A facility power event, a fabric partition, an unhealthy GPU, a failed endpoint deployment, a lost checkpoint, and an invalid API key need different signals and owners.
-
-| Layer | Example failure | Signal/evidence | First mitigation | Recovery boundary |
-|---|---|---|---|---|
-| Facility/region | Power, cooling or regional service issue | Status page, capacity unavailability, regional API errors | Keep user-impact bounded; activate only an approved alternate | Nebius operates facilities; customer owns cross-region application decision |
-| GPU fabric | Link errors, NCCL slowdown, topology spread | IB port counters, NCCL tests, collective time | Drain/avoid affected nodes; confirm fabric and placement | Customer cloud operator or managed service based on product |
-| K8s node | GPU Xid, disk/Ready condition | Node conditions, NPD, DCGM, events | Cordon/drain/replace using the service path | Managed K8s documented node repair; application checkpoint is customer-owned |
-| Storage | Slow shared reads, failed volume, missing checkpoint | IOPS/throughput, mount state, object/version audit | Restore durable copy; move scratch load away | Depends on storage class and backup/retention contract |
-| Model endpoint | 404 during start, partial readiness, 429 or 5xx | Endpoint state, API error, metrics/status page | Wait for readiness, apply backpressure, contact support | Token Factory manages internal deployment; customer owns caller policy |
-| Customer fleet | Dispatcher/database/cache outage | API health, queue admission, database and gateway alerts | Fail closed where needed; restore service from tested state | Platform team owns control-plane HA and recovery |
-
-For training, checkpoint interval defines potential lost work. Keep checkpoints on durable/shared storage and rehearse restart. For online inference, a new endpoint in another region is not a failover until its model, keys, capacity, data policy, and traffic path have been tested. For Kubernetes node repair, respect PodDisruptionBudgets, Slurm draining, and the documented drain window. For Token Factory Dedicated Endpoints, stopped capacity is released; the provider does not promise the same GPUs back unless the account has a matching reservation/contract.
-
-**Test failure recovery as a product workflow, not as a claim that the infrastructure will never fail.**
-
-### 10. A customer-ready architecture review
-
-Close a design review with a clear picture of the service, its responsible teams, and its evidence. A practical architecture decision record can use five columns: requirement, chosen Nebius service, customer-owned component, failure/recovery promise, and open validation item.
-
-For a regulated agent, one defensible design might use a customer identity gateway, Token Factory Dedicated Endpoint in the contract-approved region, ZDR configured at the organization, a customer-owned orchestration/retrieval layer, an evaluation/simulation pipeline, per-tenant gateway telemetry, Token Factory endpoint metrics, and a tested application-level fallback that stays in the permitted data region. A different organization may choose a self-managed Kubernetes fleet to own all model images, private networking, custom scale rules, and chargeback. The latter can use the Solutions Library as a reference but must close its documented security gaps and operate its components.
-
-The architecture review should record whether performance numbers came from a public benchmark, a vendor case study, a customer's measurement, or an estimate. Keep deployment date and model version with the result. If the SLA, billing unit, capacity guarantee, data retention, subprocessor, or region claim is important, attach the governing documentation or written contract to the decision record.
-
-**A solution is ready for approval when owners, cost boundaries, failure behavior, and open assumptions are explicit.**
+Close a review with a record that has five columns: requirement, chosen service, customer-owned part, recovery promise and open validation item. Record whether each number came from a public benchmark, a vendor case study, your measurement or an estimate, with date and model version. The Nebius chat-app case study reports separate prefill and decode pools, cache-aware routing, backpressure, retry changes and X+1 redundancy [vendor]. It is one workload and not a Token Factory guarantee. Likewise the DataRobot validated stack is one partner configuration announced in March 2026 [vendor]. Attach the governing page or Order Form to any SLA, capacity or region claim. **A design is ready when owners, costs, failure behaviour and open assumptions are written down.**
 
 ## How to answer out loud
 
-Open with the workload and boundary. “I would first determine whether this is training, custom-container serving, or hosted-model inference. I would then choose among Compute, Managed Kubernetes, Soperator, Serverless AI, Token Factory Public Serverless, and Dedicated Endpoints based on control, region, and operating burden. I would map the data and cost flows, set user-facing objectives, then prove capacity and recovery in the account.”
+**Question 1: "Design an AI factory for a European enterprise."** Open with discovery. Say "I would first separate training, custom serving and hosted-model inference." Then choose the boundary: Dedicated Endpoint plus your own gateway for a small team, a Kubernetes fleet only for real control needs, Soperator for training. State the region rule: Dedicated is region-fixed and has no provider failover. Close with the cost unit and one failure test. Expect the follow-up "why not Public Serverless?" Answer: its region is Global and can change without notice.
 
-Prepare three follow-ups: why fabric topology changes distributed training, what Dedicated Endpoint region pinning means for failover, and how you distinguish an infrastructure SLO from application goodput. Give one public fact and one customer decision in each answer.
+**Question 2: "How does it survive a regional outage?"** Say what is documented: Nebius publishes no regional failover for these products, and dedicated endpoints never overflow to another region. Then give your design: an alternate endpoint in an allowed region, tested model and keys, reserved capacity in writing, a gateway that switches, data copied by you. Give the arithmetic from section 10 and name the independence caveat.
+
+**Question 3: "What does the SLA give you?"** Give 99.90% for control plane access, five minutes of downtime, credits of 10% and 25%, the etcd size three condition. Say it does not cover inference. Say Token Factory carries no SLA unless in writing. Follow-up: "What would you do with that?" Answer: set your own SLO at your gateway.
+
+**Question 4: "A dedicated endpoint restarts after an incident and stays Partially ready."** Say capacity is requested again and may be short. Check readiness status and the endpoint state, shift traffic to the alternate, contact support, and escalate if Warning exceeds three hours. Do not promise the same GPUs.
+
+**Question 5: "How do you recover the fleet database?"** The managed service takes daily backups with point-in-time recovery, restore makes a new cluster, so the answer is restore, repoint secrets, reconcile the LiteLLM key mirror, and verify with a test request. Name the RPO as unpublished [gap] and measure it.
 
 ## Worked scenarios
 
 ### Scenario 1: Enterprise agent with compliance-sensitive prompts
 
-The customer wants an agent that searches internal data, calls tools, and uses an open model. Ask whether the prompts may be retained, which region is allowed, and whether the customer needs the model endpoint or the entire runtime hosted. Compare a Dedicated Endpoint plus customer-owned gateway/orchestration with a full Kubernetes fleet. Record ZDR, region, DPA, endpoint capacity, cached-token behavior, and failure plan as separate decisions. Do not assume a Token Factory marketing feature overrides contract terms.
+The customer wants an agent that searches internal data and calls tools with an open model. Prompts may not leave the EU. Reasoning: Public Serverless is out because its region is Global. A Dedicated Endpoint in an EU region is a DPA-backed commitment. Turn ZDR on at the organisation, accepting that speculative decoding is off. Put your gateway, retrieval and evaluation outside the endpoint. For failure, name a second EU region endpoint as the alternate, and check that the template exists there. The answer: Dedicated in an EU region, ZDR, own gateway, written reserved capacity, warm alternate in a second EU region, tested monthly. Record every open item, including the unpublished failover meaning in the "99.9% fail-over" sales line.
 
 ### Scenario 2: Training and inference share committed GPUs
 
-Training demand drops overnight, but inference needs more replicas. If the customer uses Soperator ephemeral workers and a Managed Kubernetes inference node group on the same Capacity Block Group, follow the documented capacity-move procedure: release/drain Slurm workers, wait for capacity return, then increase the inference group. Make the priority policy explicit; a forced `power down` can cancel training. Test the reverse move and ensure inference does not still need the GPUs.
+Overnight, training drops and inference needs more replicas. Reasoning: confirm the Soperator version and ephemeral nodes, and that both sides use one capacity block group. Choose `asap` for planned moves, never `force` as routine. Drain the nodes, wait for powered-down state, then raise the inference group by the same count. The reverse move shrinks inference first and waits for the GPUs to return. The answer: a runbook with an owner and a written priority rule, tested in both directions, plus the check that inference traffic really fell before shrinking.
 
-### Scenario 3: The model serves but unit economics deteriorate
+### Scenario 3: Unit economics deteriorate while latency looks fine
 
-The service has low request latency and high GPU utilization, but cost per useful response is rising. Separate endpoint GPU time, idle minimum replicas, cloud platform services, cache-hit profile, retry amplification, model mix, and evaluation workload. Compare direct Token Factory billing records with customer gateway request IDs and endpoint metrics. Do not use the observability dashboard as the invoice or infer that a high cache-hit rate guarantees a price reduction on Dedicated Endpoints.
+Cost per useful response rises with GPU utilisation high. Reasoning: split endpoint GPU time, idle minimum replicas, retries, model mix, evaluation traffic and cache profile. Compare billing records with your gateway request IDs and endpoint metrics. Do not read the dashboard as an invoice, and do not assume a cache hit reduces a Dedicated GPU bill, since that bill is per GPU minute. The answer: report cost per latency-qualified response, not per token.
+
+### Scenario 4: The fleet database host dies
+
+A fleet from the Solutions Library runs with one database host, the default. The API and Envoy key checks start failing. Reasoning: the request path depends on the key lookup, so new requests fail while established ones may continue [design]. With one host the service has no replica to fail over to. The answer: restore from the latest backup or point in time, as a new cluster. Repoint the secrets, reconcile the key mirror, and test. The prevention is two hosts and a rehearsed restore. Estimate the outage as detection plus new cluster build plus cutover and measure it, because Nebius has not published a build time.
 
 ## Hands-on lab
 
-Use browser research and an architecture worksheet; no paid deployment is required.
+This lab runs on a laptop and needs no paid deployment. I ran step 1 and step 2. Steps 3 to 5 are worksheet work.
 
-1. Pick one of the three patterns in the worked scenarios. Write the workload, user, model, data region, SLO, and budget.
-2. Fill a responsibility matrix for facilities, GPUs, fabric, cloud control plane, model runtime, gateway, data, metrics, security, and billing.
-3. Draw the end-to-end request and artifact paths; label which steps use Cloud versus Token Factory APIs and where region boundaries apply.
-4. Write one normal operating procedure and one failure runbook. Include status/metrics, mitigation, recovery owner, and the condition that proves recovery.
-5. Review the official terms and pricing pages. Mark every sales claim that requires an Order Form or written confirmation.
+1. Run the tests: from `code/part20`, run `python3 -m pytest -q test_c33_recovery_math.py`. Expected and observed: 11 passed.
+2. Run `python3 c33_recovery_math.py`. Expected and observed: 43.2 minutes for 99.9%, 86.4 minutes for two in series, 224.0 seconds for the restore, and etcd with three members tolerates 1.
+3. Change the checkpoint interval to 10 minutes in the script and compute the worst case for 512 GPUs. Expected: 512 times 10 / 60, about 85.3 GPU-hours.
+4. Pick one pattern. Fill a responsibility matrix for facility, GPUs, fabric, control plane, runtime, gateway, data, metrics, security and billing. Write one normal procedure and one failure runbook with its recovery owner.
+5. Read the capacity page, the billing policy, the legal quick guide and the SLA pages. Mark every claim that needs an Order Form. Expected result: a one-page decision record and at least five facts to verify in the live project.
 
-Expected result: a one-page architecture decision record plus a list of at least five facts you must verify in the customer's live project or contract before go-live.
+The code file is below, and the same code is in `code/part20/c33_recovery_math.py`.
+
+```python
+# code/part20/c33_recovery_math.py
+"""Recovery arithmetic for chapter 20.33. Standard library only."""
+
+
+def downtime_minutes(availability, days=30):
+    """Allowed downtime in minutes for an availability target over a period."""
+    return (1.0 - availability) * days * 24 * 60
+
+
+def serial_availability(*parts):
+    """All parts must work: multiply the availabilities."""
+    result = 1.0
+    for p in parts:
+        result *= p
+    return result
+
+
+def parallel_availability(*parts):
+    """Any one part is enough, assuming independent failures."""
+    miss = 1.0
+    for p in parts:
+        miss *= 1.0 - p
+    return 1.0 - miss
+
+
+def lost_work_minutes(checkpoint_interval_min):
+    """Return (worst case, average) minutes of training lost on a crash."""
+    return checkpoint_interval_min, checkpoint_interval_min / 2.0
+
+
+def lost_gpu_hours(gpus, minutes):
+    return gpus * minutes / 60.0
+
+
+def transfer_seconds(size_gb, gb_per_s):
+    """Time to read a checkpoint or model weights at a sustained rate."""
+    return size_gb / gb_per_s
+
+
+def quorum(members):
+    """Votes an etcd style consensus group needs to commit a write."""
+    return members // 2 + 1
+
+
+def tolerated_failures(members):
+    return members - quorum(members)
+
+
+if __name__ == "__main__":
+    print("99.9% month:", round(downtime_minutes(0.999), 1), "min")
+    print("99.99% month:", round(downtime_minutes(0.9999), 2), "min")
+    both = serial_availability(0.999, 0.999)
+    print("two 99.9% in series:", round(both, 6), round(downtime_minutes(both), 1), "min")
+    two = parallel_availability(0.999, 0.999)
+    print("two 99.9% independent in parallel:", round(two, 6),
+          round(downtime_minutes(two), 3), "min")
+    worst, mean = lost_work_minutes(30)
+    print("30 min checkpoints, 512 GPUs: worst", lost_gpu_hours(512, worst),
+          "GPU-h, mean", lost_gpu_hours(512, mean), "GPU-h")
+    params_b = 70
+    ckpt_gb = params_b * 16
+    print("70B checkpoint at 16 B/param:", ckpt_gb, "GB;",
+          "restore at 5 GB/s:", round(transfer_seconds(ckpt_gb, 5), 1), "s")
+    print("weights 140 GB at 2 GB/s:", transfer_seconds(140, 2), "s")
+    for n in (1, 3, 5):
+        print("etcd members", n, "quorum", quorum(n), "tolerates", tolerated_failures(n))
+```
 
 ## Drill questions
 
-1. What does an AI factory include beyond GPU servers?
-
-<details><summary>Answer</summary>
-Facility power/cooling, GPU and network fabric, compute/orchestration, storage/data, model/runtime, security, operations, and the business processes that turn those resources into useful output.
+<details><summary>1. What does the Managed Kubernetes 99.90% service level cover, and what does it not?</summary>
+It covers customer access to the control plane, where downtime is no access for at least five minutes. Credits are 10% and 25%. It excludes control planes that are not the highly available kind with an etcd size of three, your firewall changes, modified add-ons and end-of-life versions. It does not promise GPU supply, time to first token, or inference availability.
 </details>
 
-2. When is the Nebius Solutions Library inference fleet useful, and what does it not represent?
-
-<details><summary>Answer</summary>
-It is a customer-operated multi-region Kubernetes reference for custom models, queues, tenants, jobs, and cost controls. It is not Token Factory's internal implementation and requires its own security/operations review.
+<details><summary>2. Is there a Token Factory SLA?</summary>
+The Supplemental Terms say the SLA does not apply to Token Factory unless agreed in writing, and the capacity page says self-service dedicated endpoints have no formal SLA unless covered by contract. The enterprise page advertises 99.9% with reserved capacity. That is a sales claim, so rely on the Order Form.
 </details>
 
-3. Which billing statements are safe to make about Token Factory without an Order Form?
-
-<details><summary>Answer</summary>
-Public Serverless is token-metered and Dedicated Endpoints are GPU-time priced in the product docs. Fees are post-paid by default in supplemental terms, but account billing pages and custom Order Forms may differ; verify the current account terms.
+<details><summary>3. A dedicated endpoint is stopped by maintenance. What happens to its GPUs?</summary>
+They are released to the shared pool, as for any stop. On restart, capacity is requested again and depends on availability. The endpoint can stay Starting or Not ready, or reach only Partially ready. Guaranteed capacity needs a reservation by contract.
 </details>
 
-4. What does the Managed Kubernetes 99.90% SLA cover?
-
-<details><summary>Answer</summary>
-It covers documented control-plane availability under the SLA definition and exclusions. It does not guarantee application or inference availability, GPU supply, TTFT, or job completion.
+<details><summary>4. Can a dedicated endpoint fail over to another region automatically?</summary>
+No. The legal guide says there is no multi-region routing, load balancing or automatic overflow for dedicated endpoints, and processing stays in the chosen region. Cross-region recovery is a design you build and test, with the data rules checked first.
 </details>
 
-5. What is the difference between cloud node repair and workload recovery?
-
-<details><summary>Answer</summary>
-Node repair replaces or restores infrastructure. Workload recovery requires checkpoints, idempotency, restart semantics, and a valid destination for data and model state.
+<details><summary>5. Why is Public Serverless a poor fit for a strict region requirement?</summary>
+Its Region field shows Global, and the processing location can change at any time without notice. Use a Dedicated Endpoint in the chosen region and keep the region commitment in the contract.
 </details>
 
-6. Why is the DataRobot AI Factory material evidence but not a universal architecture?
-
-<details><summary>Answer</summary>
-It documents one partner-validated configuration with DataRobot, NVIDIA software, Nebius AI Cloud, and Token Factory. Other customers may use different components and contractual services.
+<details><summary>6. Two independent endpoints are each 99.9% available. What is the combined availability, and what is the caveat?</summary>
+The chance both are down is 0.001 squared, so availability is 0.999999, about 2.6 seconds a month. It holds only if failures are independent and the switch is instant. A shared gateway, model version, key or region breaks that.
 </details>
 
-7. How would you justify a customer-owned Kubernetes inference fleet over Dedicated Endpoints?
-
-<details><summary>Answer</summary>
-Only for a requirement that needs custom gateways, private networking, arbitrary containers, multi-region placement, or customer-owned scheduling/tenancy—and with a team prepared to operate the control plane and security.
+<details><summary>7. A job checkpoints every 30 minutes on 512 GPUs. What is the lost compute on a crash?</summary>
+The worst case is 30 minutes, which is 512 times 30 divided by 60, so 256 GPU-hours. The average is half of that, 128 GPU-hours. The checkpoint interval is the training RPO. Restart and warm-up time add to it.
 </details>
 
-8. What does a high PUE say, and what does it not say?
-
-<details><summary>Answer</summary>
-PUE compares total facility energy with IT-equipment energy. It does not measure tokens per watt, model quality, GPU utilization, or a customer's workload efficiency.
+<details><summary>8. How many failures does a five-member etcd cluster tolerate, and why?</summary>
+Two. A write needs floor(5/2) + 1, which is 3 votes, so five minus three leaves two members that can fail. A four-member cluster still tolerates one, which is why odd sizes are used.
 </details>
 
-9. Why is a public Token Factory endpoint a poor fit for a strict region commitment?
-
-<details><summary>Answer</summary>
-Public Serverless is Global and its processing location can change without notice. Use a Dedicated Endpoint with the selected region and contract terms when stable regional processing is required.
+<details><summary>9. A fleet database from the Solutions Library fails. What is the recovery path?</summary>
+The managed PostgreSQL service has daily backups with point-in-time recovery, and a restore creates a new cluster. Restore, repoint the API and LiteLLM secrets, reconcile the key mirror, and test. The template defaults to one host, and two hosts add a replica with service failover. Nebius has not published the restore time, so measure it.
 </details>
 
-10. What must an architecture decision record say about a benchmark number?
-
-<details><summary>Answer</summary>
-Name source, date, model, hardware, workload, topology, metric, and test boundary. Label vendor/partner results and do not treat them as universal service guarantees.
+<details><summary>10. What is the difference between cloud node repair and workload recovery?</summary>
+Node repair is Nebius replacing or restarting the node. It cordons, waits for GPU Pods, drains for up to an hour, and restarts the VM. Workload recovery is yours: checkpoints, idempotent restarts, and a place for the state to live. Node repair does not bring your data back.
 </details>
 
 ## Common mistakes and weak answers
 
-- Treating one vendor case study as the standard Nebius topology.
-- Quoting PUE or GPU throughput as an application efficiency promise.
-- Confusing Soperator, Managed Kubernetes, Serverless AI, and Token Factory ownership.
-- Using “reserved,” “guaranteed,” and “minimum replicas” as synonyms.
-- Assuming monitoring data and billing data are the same record.
-- Designing cross-region recovery without checking the legal region boundary.
+- Saying "multi-AZ" as a Nebius fact. The documentation index names regions, and zones are a gap. Say so and ask the account team.
+- Treating the Kubernetes SLA as an inference SLA. It covers control plane access only. Quote its five-minute rule and its exclusions.
+- Promising a dedicated endpoint gets its GPUs back after maintenance. The capacity page says it does not.
+- Treating "99.9% SLA with fail-over" as a published guarantee. It is marketing. The legal guide says there is no automatic cross-region failover.
+- Using a case-study design as the standard Nebius topology. Say "one vendor case study reported".
+- Quoting availability numbers without independence and switching time.
+- Planning recovery without a payment method, a quota, a model in the second region, or a restore drill.
+- Using "reserved", "guaranteed" and "minimum replicas" as synonyms. Minimum replicas are guaranteed only while the endpoint is active.
 
 ## Connections to the rest of the handbook
 
-- [20.30 Public architecture map](./30-nebius-ai-factory-to-token-factory-architecture.md), [20.31 AI Cloud foundation](./31-nebius-ai-cloud-foundation-gpu-fabric-and-platform-choices.md), and [20.32 Token Factory architecture](./32-token-factory-model-lifecycle-serving-and-economics.md).
-- [20.12 Capacity estimation](./12-estimation-toolkit-for-inference-capacity.md), [20.13 inference API design](./13-design-a-multi-tenant-llm-inference-api.md), [20.18 serving failures](./18-how-llm-serving-fails.md), [20.19 token API SLOs](./19-slis-slos-and-alerts-for-token-apis.md), and [20.26 incident drills](./26-the-stress-interview-production-incident-role-play.md).
-- Parts 6, 11, 12, 13, 15, 16, 17, and 18 — Slurm, GPU Kubernetes, networks, storage, inference, MLOps, operations, and security.
+- [20.30 Public architecture map](./30-nebius-ai-factory-to-token-factory-architecture.md), [20.31 AI Cloud foundation](./31-nebius-ai-cloud-foundation-gpu-fabric-and-platform-choices.md) and [20.32 Token Factory lifecycle and economics](./32-token-factory-model-lifecycle-serving-and-economics.md).
+- [20.12 Capacity estimation](./12-estimation-toolkit-for-inference-capacity.md), [20.13 Multi-tenant inference API](./13-design-a-multi-tenant-llm-inference-api.md) and [20.14 Dedicated endpoints and safe rollout](./14-design-dedicated-endpoints-and-safe-model-rollout.md).
+- [20.16 GPU fleet health and capacity](./16-design-gpu-fleet-health-and-capacity.md), [20.18 How serving fails](./18-how-llm-serving-fails.md) and [20.19 SLIs, SLOs and alerts](./19-slis-slos-and-alerts-for-token-apis.md).
+- [20.21 Routing, retries and overload](./21-request-routing-retries-and-overload-control.md), [20.23 Kubernetes failure drills](./23-kubernetes-failure-drills-for-gpu-platforms.md) and [20.24 Terraform for resilient clusters](./24-terraform-for-resilient-gpu-clusters.md).
+- [20.26 The incident round](./26-the-stress-interview-production-incident-role-play.md) and [20.27 Post-mortems and on-call](./27-post-mortems-on-call-and-incident-leadership.md).
 
 ## Sources and review notes
 
-Official Nebius documentation indexes and relevant Cloud/Token Factory product pages checked 2026-11-09. Public reference designs and company-authored announcements are dated evidence; marketing claims and customer results are not service guarantees.
+All Nebius pages below were fetched on 2026-11-09.
 
-- [Nebius Solutions Library inference fleet](https://github.com/nebius/nebius-solutions-library/tree/main/k8s-inference) — customer-operated KServe/Knative, Envoy, LiteLLM, Kueue/MultiKueue, database, image cache, cost dispatcher and tenant controls.
-- [Nebius Agents Blueprint](https://nebius.com/blog/posts/introducing-the-nebius-agents-blueprint), [DataRobot validated AI Factory stack](https://nebius.com/blog/posts/datarobot-validated-ai-factory-stack), and [DataRobot's benchmark/architecture analysis](https://www.datarobot.com/blog/datarobot-nebius-enterprise-ai-factory-optimized-for-agents/) — examples of enterprise AI stack composition; partner-specific, not universal.
-- [Nebius Inference Frontier Program](https://nebius.com/blog/posts/elevating-the-craft-introducing-the-inference-frontier-program), [routing experiment](https://nebius.com/blog/posts/routing-is-the-difference-between-scaling-and-stalling), and [Token Factory legal terms](https://docs.nebius.com/legal/token-factory) — production-inference themes, a single measured route experiment, and default legal terms.
-- [Managed Kubernetes SLA](https://docs.nebius.com/legal/sla-levels/managed-kubernetes) and [AI Cloud terms/SLA](https://docs.nebius.com/legal/sla) — read scope and exclusions; do not map a control-plane SLA to model-serving behavior.
-- [Soperator open-source architecture](https://github.com/nebius/soperator/blob/main/docs/architecture.md) and [training/inference capacity movement](https://docs.nebius.com/slurm-soperator/capacity/move-capacity) — open implementation and documented shared-capacity workflow.
-- Generic sources: *NVIDIA DevOps Zero-to-Hero*, Vol. 19, Chs. 2, 3, 6, 7, 10; Vol. 21, Chs. 1, 2, 9, Lab 01; and AI Systems Performance Engineering, Chs. 16–18. These support SRE and capacity methods, not Nebius-specific guarantees.
+- Nebius AI Cloud documentation index (`https://docs.nebius.com/llms.txt`), regions page `https://docs.nebius.com/overview/regions`.
+- Managed Kubernetes service level `https://docs.nebius.com/legal/sla-levels/managed-kubernetes` and general SLA `https://docs.nebius.com/legal/sla`.
+- Token Factory Supplemental Terms `https://docs.nebius.com/legal/token-factory`. Section numbers 6.1 (post-paid) and 7.4 (no SLA) as fetched.
+- Token Factory documentation index `https://docs.tokenfactory.nebius.com/llms.txt`, with the Capacity, availability and service guarantees page, the Dedicated Endpoint Billing Policy, Lifecycle and Readiness Status, Billing and Consumption, Inference Observability, and the Legal Quick Guide (`https://docs.tokenfactory.nebius.com/legal/legal-quick-guide`).
+- Managed Kubernetes maintenance and health checks pages, Compute VM maintenance page, Managed PostgreSQL backups page, disk snapshots page, Object Storage versioning and Terraform state pages under `https://docs.nebius.com/`.
+- Soperator capacity movement `https://docs.nebius.com/slurm-soperator/capacity/move-capacity`, and the Soperator architecture page `https://github.com/nebius/soperator/blob/main/docs/architecture.md` (reachable, not read in depth).
+- Solutions Library inference fleet: `https://github.com/nebius/nebius-solutions-library/tree/main/k8s-inference`, README and `docs/OPERATIONS.md` on the main branch.
+- Marketing and blogs `[vendor]`: Token Factory enterprise page `https://nebius.com/services/token-factory/enterprise-grade-inference`, the Agents Blueprint post, the DataRobot validated stack post and DataRobot's own post, the Inference Frontier Program post, and the routing post. All reachable, cited only as examples.
+- Books: Production Kubernetes, chapter 2 "Deployment Models" (etcd deployment models, federation by region, availability zone definition). Terraform: Up and Running, 3rd edition, chapter 3 "How to Manage Terraform State" (locking, versioning, secrets in state).
+- Upstream: Kubernetes documentation on operating etcd clusters and the etcd FAQ. Only the page structure and the recommendation of five members in production were confirmed. I did not read the restore steps.
 
-**Explicitly labelled inferences:** customer workload sizing, customer-owned API gateways, multi-region app routing, and recommended SLOs unless directly contracted or documented.
+**Explicitly labelled inferences:** region as the only nameable failure domain, control plane versus running Pods behaviour, the 16 bytes per parameter checkpoint size, bandwidth figures, the independence caveat, the shared-capacity priority policy, and the database restore outage estimate.
 
-**Not verified:** account-specific Order Forms, live capacity reservations, the internal Token Factory gateway/router/fleet, and any customer-specific SLA or recovery target.
+**Not verified:** account Order Forms, live capacity reservations, any intra-region zone placement, Object Storage durability and replication, the Managed Kubernetes etcd backup practice, the Managed PostgreSQL recovery point and restore time, the internal Token Factory gateway and router, and the checkpoint sizes and bandwidths used above. The code and tests were run on a laptop.
+
+### Verification log
+
+| Item | Count | Detail |
+|---|---|---|
+| Claims and URLs checked | 38 claims, 17 URLs | Nebius docs, legal pages, repository docs, blogs, upstream pages |
+| Confirmed | 24 | 99.90% control plane SLA, region-fixed dedicated endpoints, no overflow, capacity release on stop, minimum replica guarantee, no formal SLA for self-service endpoints, ZDR scope, Global region of Public Serverless, post-paid terms, observability only for dedicated, three power-down modes, ephemeral nodes prerequisite, repository security limits, fleet database with managed backups, node health check timings |
+| Corrected | 8 | Region, ZDR and fine-tuning storage claims moved to the Legal Quick Guide URL instead of the Supplemental Terms. The Supplemental Terms support only post-paid and no SLA. SLA detail added: five-minute rule, credits, etcd size three. Soperator 3.0 prerequisite and power-down modes. Database backup is a managed service and restore makes a new cluster, where the draft called it a customer concern. Default fleet database has one host. Compute VM maintenance reschedule rules added. Account suspension on a failed card charge added. |
+| Removed or relabelled | 6 | Drill on PUE and DataRobot dropped as off-topic for HA. Unsupported "documented node repair respects PodDisruptionBudgets" relabelled as upstream design advice. "Token Factory manages internal deployment" removed. Statement that a stopped endpoint is "the provider does not promise" kept but now sourced. Marketing "no idle GPU costs" flagged as conflicting with the billing policy. Reserved "fail-over" line relabelled `[vendor]` with meaning marked `[gap]`. |
+| Unreachable | 0 | Every cited URL returned 200 |
+| Conflicts to flag | 2 | Billing policy prose versus its table for partially ready endpoints. Billing page top-up model versus post-paid terms. |

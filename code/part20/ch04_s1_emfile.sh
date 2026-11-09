@@ -6,7 +6,7 @@ set -u
 if [ "${1:-}" = answer ]; then
   cat <<'KEY'
 Cause: the process holds as many descriptors as its soft RLIMIT_NOFILE allows (24 here).
-Proof: count of /proc/PID/fd entries equals the Soft Limit in /proc/PID/limits, and every
+Proof: count of /proc/PID/fd entries is at or one below the Soft Limit in /proc/PID/limits, and nearly every
        extra entry points at the same file. strace would show openat() = -1 EMFILE.
 Not the cause: /proc/sys/fs/file-max (system-wide, would give ENFILE, not EMFILE).
 Fix now: restart the process, or raise its limit live with prlimit --pid PID --nofile=N:N (needs privilege).
@@ -23,9 +23,13 @@ echo data > "$W/data"
 # The broken "service": leaks one descriptor per loop until open() fails.
 (
   ulimit -n 24
+  # bash numbers {fd} redirections from 10 upward, so fill 3 to 8 by hand. Fd 9 is the log
+  # file, opened first, because no redirect can be made once the limit is hit.
+  exec 9>"$W/leaker.log" 3<"$W/data" 4<"$W/data" 5<"$W/data" 6<"$W/data" 7<"$W/data" 8<"$W/data"
   n=0
   while exec {fd}<"$W/data" 2>/dev/null; do n=$((n + 1)); done
-  echo "leaker: open() failed after $n extra descriptors" > "$W/leaker.log"
+  exec 1>&9
+  echo "leaker: open() failed after $n extra descriptors"
   exec sleep 120
 ) &
 LEAKER=$!

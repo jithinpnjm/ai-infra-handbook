@@ -42,7 +42,7 @@ One request meets the gateway, a router, an engine, a GPU, a node and Kubernetes
 |---|---|---|---|
 | Gateway | Request counter by code, latency histogram, token counters, rejects by reason | Gateway code | model, code, route, reason |
 | Engine | Waiting and running requests, KV cache usage, preemptions, TTFT and inter-token histograms, finish reasons | vLLM `/metrics` | model_name, engine, finished_reason |
-| GPU | Memory used, temperature, power, ECC and Xid errors | DCGM exporter, see chapter 17.4 | gpu index, host |
+| GPU | Memory used, temperature, power, ECC and Xid errors | DCGM exporter, see chapter 17.4 | `gpu`, `hostname` |
 | Node | CPU, memory, disk, network, pressure | Node exporter | instance |
 | Kubernetes | Pod phase, restarts, requests and limits, events | kube-state-metrics, see chapter 17.2 | namespace, pod |
 | Tenant | Tokens in and out, requests, rejects, p99 for large tenants | Gateway | tenant, model, direction |
@@ -123,7 +123,7 @@ Prometheus local storage keeps 15 days by default. The storage page says it stor
 
 For longer retention you have two families of designs. In the first, Thanos runs a sidecar beside each Prometheus. The sidecar uploads blocks to object storage. A querier fans out over live sidecars and a store gateway for old blocks, and a compactor consolidates blocks, downsamples and applies retention. Object storage is cheap, so the cost moves into query fan-out.
 
-In the second, Prometheus pushes samples by remote write to a store that ingests them, such as Cortex, Mimir or VictoriaMetrics. Production Kubernetes names Thanos and Cortex. VictoriaMetrics documents a 31-day default retention and claims up to 7 times less RAM than Prometheus, Thanos or Cortex at high cardinality. That is a vendor claim, so test it with your own data before you rely on it. I did not fetch the Mimir documentation. Unverified: check before relying on it.
+In the second, Prometheus pushes samples by remote write to a store that ingests them, such as Cortex, Mimir or VictoriaMetrics. Production Kubernetes names Thanos and Cortex. VictoriaMetrics documents a 31-day default retention and claims up to 7 times less RAM than Prometheus, Thanos or Cortex at high cardinality. That is a vendor claim, so test it with your own data before you rely on it. The Mimir distributor page, fetched 2026-11-09, says its per-tenant rate limiters drop a request and return HTTP 429 when exceeded.
 
 | Option | What it buys you | What can break | Note |
 |---|---|---|---|
@@ -244,7 +244,7 @@ For an inference platform, my policy set keeps all error traces, all traces slow
 # Two collector tiers in one file for reading. Field names come from the
 # OpenTelemetry Collector contrib READMEs for load balancing exporter,
 # tail sampling processor, memory limiter and batch processor.
-# Not run against a collector binary. Check with your collector version.
+# Validated with otel/opentelemetry-collector-contrib:0.164.0 (validate, each tier alone), 2026-11-09.
 
 # Tier 1: edge agents. Receive OTLP, protect memory, batch, then route by trace ID.
 ---
@@ -369,6 +369,7 @@ Choose the drop order in advance. My policy, as reasoning: drop debug logs first
 | Collector receive | Memory limiter refuses data | `otelcol_receiver_refused_spans` |
 | Collector export | Sending queue full | `otelcol_exporter_enqueue_failed_spans` |
 | Log agent | Buffer overflow, noisy neighbour | Agent drop counters, check your agent |
+| Log store | Rate limit or stream limit hit | `loki_discarded_samples_total` by `reason`, HTTP 429 for `rate_limited` |
 
 **Put the memory limiter first, choose the drop order in advance, and alert on every place data can disappear.**
 
@@ -535,7 +536,7 @@ The reasoning: the sampler holds traces for `decision_wait`. At 5,000 traces per
 
 The long-term store is down. Prometheus keeps running, and local queries work. After 3 hours the store returns. Dashboards that read the store show a hole.
 
-From the remote write page, retries lose nothing only for outages up to 2 hours, and after that the WAL is compacted and unsent data is lost. So you lost the first hour of the gap in the long-term store. Local Prometheus still has it, since local retention is 15 days by default. The recovery is to query it locally and, if you need it in the store, backfill from local blocks with a store-specific tool. Unverified: check your store's backfill procedure. The prevention is the `RemoteWriteFallingBehind` alert, which fires well before the two-hour line.
+From the remote write page, retries lose nothing only for outages up to 2 hours, and after that the WAL is compacted and unsent data is lost. So you lost the first hour of the gap in the long-term store. Local Prometheus still has it, since local retention is 15 days by default, per the Prometheus v3.16.0 storage page. The recovery is to query it locally and, if you need it in the store, backfill from local blocks with a store-specific tool. The backfill tool differs per store, so read your store's procedure. The prevention is the `RemoteWriteFallingBehind` alert, which fires well before the two-hour line.
 
 ### Scenario 4: Dashboard and invoice disagree by 2 percent
 
@@ -691,10 +692,17 @@ Upstream documentation:
 - Prometheus configuration reference, scrape limits only. I read the first part of a long page.
 - OpenMetrics specification, exemplars, https://prometheus.io/docs/specs/om/open_metrics_spec/.
 - OpenTelemetry, Sampling concepts, Collector configuration and internal telemetry, https://opentelemetry.io/docs/.
-- OpenTelemetry Collector README files for the memory limiter, batch processor, tail sampling processor and load balancing exporter, from the main branch on raw.githubusercontent.com. The branch is not pinned to a release.
+- OpenTelemetry Collector README files for the memory limiter, batch processor, tail sampling processor and load balancing exporter, and the receiver and exporter helper metric docs, at release tag v0.164.0 (published 2026-10-26), raw.githubusercontent.com, fetched 2026-11-09. Internal telemetry page from opentelemetry.io main, same date, for the `without_type_suffix` default.
+- Prometheus remote write practices page, prometheus/docs main, fetched 2026-11-09. Prometheus v3.16.0 `docs/configuration/configuration.md` and `storage/remote/queue_manager.go`, fetched 2026-11-09.
+- Grafana Loki, request validation and rate limits page, grafana/loki main, fetched 2026-11-09. Grafana Mimir distributor page, grafana/mimir main, fetched 2026-11-09. VictoriaMetrics README, master, fetched 2026-11-09.
+- NVIDIA dcgm-exporter at tag 4.9.0, `llms.txt` and `internal/pkg/rendermetrics/render_metrics.go`, fetched 2026-11-09.
 - Grafana Loki, Labels and Overview, https://grafana.com/docs/loki/latest/.
 - Thanos design page, https://thanos.io/tip/thanos/design.md/. VictoriaMetrics single-server documentation, https://docs.victoriametrics.com/.
 - Plan for this volume, section 1, for the job posting and interview description.
+
+### Verification log
+
+Checked 11, confirmed 10, corrected 1, removed 0, still unverified 2 (log agent counters, backfill). Confirmed: both Collector tiers pass `validate` at 0.164.0 (a deliberately bad key in the tail sampling block failed, so the check is real), memory limiter and batch and tail sampling defaults, load balancing routing key default, collector metric names without `_total`, remote write 2 hour rule, `hashmod` relabel action exists in Prometheus 3.16.0, `sample_limit` exists, Loki `loki_discarded_samples_total` with 429 on `rate_limited`, Mimir distributor 429, VictoriaMetrics 1 month default retention and the 7x RAM claim (vendor). Corrected: the DCGM label names, now `gpu` and `hostname`, with `UUID`, `pci_bus_id`, `device` and `modelName` also present at 4.9.0, and the default port 9400.
 
 Explicitly labelled inferences:
 
@@ -705,8 +713,7 @@ Explicitly labelled inferences:
 
 Not verified:
 
-- `c15_otelcol_config.yaml` was checked only as valid YAML. No Collector binary was available.
-- DCGM exporter documentation: the NVIDIA page I fetched had moved and gave no metric list, so I link to chapter 17.4 and name no DCGM labels or ports.
-- Mimir documentation, Prometheus hash-based target sharding, Loki or log agent drop counters, and store backfill procedures were not fetched.
-- The VictoriaMetrics memory claim is the vendor's and was not tested.
-- Docker was not running, so nothing was tested in containers.
+- The log agent drop counters. They depend on the agent, and I checked only Loki's server side.
+- Store backfill procedures were not fetched.
+- The VictoriaMetrics memory claim is the vendor's, confirmed as written in its README but not tested.
+- The validate command checks configuration shape only. No traffic ran through either tier.

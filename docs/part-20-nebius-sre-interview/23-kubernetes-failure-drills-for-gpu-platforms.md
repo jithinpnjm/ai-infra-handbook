@@ -358,13 +358,13 @@ tolerations:
 
 **Root cause.** A fail-closed webhook with wide scope depends on pods that it must itself admit. The apiserver's own error text is "failed calling webhook %q: %v", and the Kubernetes webhook good-practices page names the deadlock: a webhook that intercepts the resources needed to start its own pods blocks its own recovery. Production Kubernetes, chapter 8, says an unreachable webhook is treated as failing and `failurePolicy` chooses `Ignore` or `Fail`.
 
-**Fix.** The webhook configuration object is not itself blocked by the webhook, because it matches Pods. So an operator can patch or delete the configuration. Set `failurePolicy: Ignore` and add a `namespaceSelector` that excludes `kube-system` and `policy-system`, as in the fixed manifest. Then restart the webhook pods. Say what you give up. For security-critical webhooks Production Kubernetes calls `Fail` the safest option. Fail open only where that is acceptable and add a controller that audits the result.
+**Fix.** The webhook configuration object cannot be blocked by any webhook. The API server source skips webhook configuration objects when it picks API-based webhooks, in the function `isExcludedFromAPIHooks` in the generic webhook plugin, to prevent circular dependencies. So an operator can patch or delete the configuration. Set `failurePolicy: Ignore` and add a `namespaceSelector` that excludes `kube-system` and `policy-system`, as in the fixed manifest. Then restart the webhook pods. Say what you give up. For security-critical webhooks Production Kubernetes calls `Fail` the safest option. Fail open only where that is acceptable and add a controller that audits the result.
 
 **Prevention line.** "Webhooks get a short timeout, a high-availability Deployment, an exclusion for kube-system and their own namespace, and a staged rollout starting with fail open in a test namespace."
 
 ## Hands-on lab
 
-I ran steps 1 to 5 on macOS with Python 3.12 and kubeconform from `~/go/bin`. Step 6 is not run. The Docker daemon was not running and there is no cluster.
+I ran steps 1 to 5 on macOS with Python 3.12 and kubeconform from `~/go/bin`. I ran steps 1 to 4 again in a disposable Linux container, `ubuntu:24.04` on kernel `6.18.37-0-virt` with Python 3.12.3 and the repository mounted read-only. The results were the same on both. I did not run kubeconform on Linux. Step 6 is not run, because there is no cluster, and Docker alone cannot stand one up without privileged mode.
 
 1. Run the tests.
 
@@ -373,7 +373,7 @@ cd code/part20
 python3 -m pytest -q test_c23_triage.py
 ```
 
-Observed: `13 passed`.
+Observed: `13 passed`, on the Mac and in the Linux container.
 
 2. Triage a Pending GPU pod. This is the fixture shown here, built from the Kubernetes for Generative AI Solutions event text.
 
@@ -419,6 +419,8 @@ python3 c23_triage.py samples/c23_describe_pending_gpu.txt --events samples/c23_
 
 Observed: gpu_unavailable, node_pressure_eviction, admission_webhook_unreachable, then cpu_memory_capacity and node_not_ready at medium confidence.
 
+One Linux fact behind step 3 I could test without a cluster. The kubelet reports exit code 137 for an OOM kill, because the container runtime kills the process with SIGKILL when it passes its cgroup memory limit. I started `docker run -m 64m --memory-swap 64m ubuntu:24.04` with a shell loop that grows a variable. The container exited with code 137, and `docker inspect` showed `ExitCode=137 OOMKilled=true`. This is Docker, not the kubelet, so it shows the Linux mechanism and not the pod status text. The same 137 also appears for a plain SIGKILL, which is why the `OOMKilled` reason is what tells them apart.
+
 5. Validate the manifests.
 
 ```bash
@@ -442,81 +444,61 @@ Expected shape of the output: a FailedScheduling event, an empty EndpointSlice, 
 
 ## Drill questions
 
-1. Which component owns a pod that is Pending with no node?
-
-<details><summary>Answer</summary>
+<details><summary>1. Which component owns a pod that is Pending with no node?</summary>
 
 The scheduler. The pod never reached a kubelet. Read the FailedScheduling event in the pod's events.
 
 </details>
 
-2. Why do GPU requests go in `limits`?
-
-<details><summary>Answer</summary>
+<details><summary>2. Why do GPU requests go in `limits`?</summary>
 
 The Kubernetes GPU page says GPUs are specified in limits. A limit alone is used as the request. Both are allowed if equal. A request alone is not allowed.
 
 </details>
 
-3. How do you tell an OOM kill from a liveness kill?
-
-<details><summary>Answer</summary>
+<details><summary>3. How do you tell an OOM kill from a liveness kill?</summary>
 
 Read Last State in describe. OOMKilled is a memory-limit kill. A liveness kill shows Unhealthy and Killing events and no OOMKilled.
 
 </details>
 
-4. What are the restart back-off numbers?
-
-<details><summary>Answer</summary>
+<details><summary>4. What are the restart back-off numbers?</summary>
 
 The delay starts at 10 seconds, doubles, and is capped at 300 seconds. It resets after ten minutes of running without problems.
 
 </details>
 
-5. What happens to pods on a node that stops sending heartbeats?
-
-<details><summary>Answer</summary>
+<details><summary>5. What happens to pods on a node that stops sending heartbeats?</summary>
 
 Ready becomes Unknown, unreachable taints appear, and by default the node controller waits five minutes before it starts evictions. Eviction is rate limited at 0.1 nodes per second by default.
 
 </details>
 
-6. Does node-pressure eviction respect a PDB?
-
-<details><summary>Answer</summary>
+<details><summary>6. Does node-pressure eviction respect a PDB?</summary>
 
 No. The Kubernetes page says the kubelet does not respect the PDB or the termination grace period for hard thresholds. API-initiated eviction, as used by drain, does respect it.
 
 </details>
 
-7. A drain hangs and the PDB shows ALLOWED DISRUPTIONS 0. What do you change?
-
-<details><summary>Answer</summary>
+<details><summary>7. A drain hangs and the PDB shows ALLOWED DISRUPTIONS 0. What do you change?</summary>
 
 Set maxUnavailable to 1 in place of minAvailable equal to the replica count, and add unhealthyPodEvictionPolicy AlwaysAllow. Do not delete the pods directly, because deletion bypasses the budget.
 
 </details>
 
-8. A Service has pods but no endpoints. Name two causes.
-
-<details><summary>Answer</summary>
+<details><summary>8. A Service has pods but no endpoints. Name two causes.</summary>
 
 The selector does not match the pod labels, or the pods are not Ready because the readiness probe fails. The EndpointSlice controller reads the pod Ready condition.
 
 </details>
 
-9. Why can an HPA show unknown for CPU?
-
-<details><summary>Answer</summary>
+<details><summary>9. Why can an HPA show unknown for CPU?</summary>
 
 Utilisation is a percentage of the container's CPU request. With no request there is nothing to divide by. The Metrics Server must also be running.
 
 </details>
 
-10. What do you check before uncordoning a GPU node after an upgrade?
-
-<details><summary>Answer</summary>
+<details><summary>10. What do you check before uncordoning a GPU node after an upgrade?</summary>
 
 That the device plugin pod is running and the node's Allocatable shows the GPU count. A new kubelet deletes the plugin sockets, so the plugin has to register again.
 
@@ -559,4 +541,22 @@ Fetched on 2026-11-09. Kubernetes pages were read from the `main` branch of the 
 
 **Explicitly labelled inferences.** The twelve interviewer tables are invented teaching data. The GPU fragmentation point in drill 1, the spreading of CoreDNS replicas in drill 7, and the image pre-pull advice in drill 2 are my reasoning. Nebius has not published how its clusters, node pools, taints or upgrades work.
 
-**Not verified.** The claim that the webhook configuration object is not blocked by its own webhook is my reasoning from the rule matching only Pods. No command was run against a cluster. The fixtures for ImagePullBackOff, the Pending taint case and the mixed events table are built from field names and message strings in the documentation and source, not captured from a cluster. The kubeconform version is a development build. The probe-kill exit code is not stated in the docs, so no fixture claims one.
+**Not verified.** No command was run against a cluster. The Linux container run covered only the Python triage scripts and a Docker OOM kill. No kubectl command, kubelet behaviour or device plugin ran. The fixtures for ImagePullBackOff, the Pending taint case and the mixed events table are built from field names and message strings in the documentation and source, not captured from a cluster. The kubeconform version is a development build. The probe-kill exit code is not stated in the docs, so no fixture claims one, and that claim stays unverified.
+
+### Verification log
+
+Fact-check pass on 2026-11-09 against the kubernetes/website `main` branch and kubernetes/kubernetes source, latest release tag v1.37.2. Eleven claims were checked. Ten are confirmed, none were corrected, one stays unverified.
+
+| Claim | Result | Source |
+|---|---|---|
+| Default hard thresholds: memory.available 100Mi on Linux, nodefs.available 10 percent, imagefs.available 15 percent, inodes 5 percent | Confirmed | Node-pressure eviction page |
+| Eviction pressure transition period defaults to 5m | Confirmed | Same page |
+| Node pressure conditions map to NoSchedule taints, and pods get a default 300 second NoExecute toleration for not-ready and unreachable | Confirmed | Taints and tolerations page |
+| Eviction rate 0.1 per second, 55 percent zone threshold, evictions stop at 50 nodes or fewer | Confirmed | Nodes page |
+| An eviction blocked by a PDB returns 429, and 500 when several PDBs match | Confirmed | API-initiated eviction page |
+| A webhook defaults to failurePolicy Fail, timeout 10 seconds, allowed range 1 to 30 seconds | Confirmed | Dynamic admission control page |
+| A webhook cannot intercept its own configuration object | Confirmed, was my reasoning | `isExcludedFromAPIHooks` in `generic/webhook.go`, master and release-1.35 |
+| Extended-resource quota uses the `requests.` prefix and violation returns 403 | Confirmed | Resource quotas page |
+| Restart backoff 10 s doubling to 300 s, reset after 10 minutes | Confirmed | Pod lifecycle page |
+| HPA tolerance 0.1 and 5 minute scale-down stabilization | Confirmed | HPA page |
+| Exit code of a container killed by a failing liveness probe | Still unverified | Not in the docs |

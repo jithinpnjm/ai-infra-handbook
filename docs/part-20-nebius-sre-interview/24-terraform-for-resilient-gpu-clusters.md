@@ -118,7 +118,7 @@ Locking works like this. Before any operation that could write state, Terraform 
 
 Which backend locks, and how, varies. The S3 backend page says locking is opt-in through `use_lockfile`, which defaults to false, and that DynamoDB locking is deprecated. The same page says it highly recommends bucket versioning, so state can be recovered after accidental deletion. It also calls support for S3-compatible stores best effort, tested only against Amazon S3.
 
-That last point matters for Nebius. The solutions library says every state lives in a bucket created once by a bootstrap script outside Terraform, that generated credentials end up in state, and that the bucket must stay private. It does not name the backend type. Nebius has not published a recommended backend, so check the current docs before you claim one. The bootstrap-outside-Terraform pattern is the important idea. The book creates its S3 bucket with Terraform first and then migrates state in, with `prevent_destroy` on the bucket. Either way, the state store must exist before the first stack and must outlive every stack.
+That last point matters for Nebius. Its documentation page on storing Terraform state in an Object Storage bucket uses the `s3` backend with a Nebius endpoint, sets `use_lockfile = true`, and skips the AWS-specific checks. The page also notes that Terraform recommends bucket versioning, and that keeping many object versions adds cost. The solutions library says every state lives in a bucket created once by a bootstrap script outside Terraform, that generated credentials end up in state, and that the bucket must stay private. I did not run init against a Nebius bucket, so the S3 compatibility is the vendor's claim here, and HashiCorp says it tests the backend only against Amazon S3. The bootstrap-outside-Terraform pattern is the important idea. The book creates its S3 bucket with Terraform first and then migrates state in, with `prevent_destroy` on the bucket. Either way, the state store must exist before the first stack and must outlive every stack.
 
 Locks protect the state file. They do not protect the code. Chapter 10 of the book shows two engineers, Anna and Bill, on different branches. Bill's plan would quietly undo Anna's change, and no lock stops that, because the conflict is in code. The rule that follows is the Golden Rule of Terraform: the main branch of the live repository is a one-to-one picture of what is deployed. Apply shared environments only from main.
 
@@ -226,7 +226,7 @@ Decide: write the upgrade strategy and capacity assumptions into the module inpu
 
 Drift is the gap between code and reality. Someone scales a pool from the console during an incident, and Terraform now disagrees. The book's chapter 10 gives a simple health check: run plan in a few random live folders. If the answer is always no changes, your code matches reality. A small diff now and then means someone edited by hand. A huge diff means the code is useless.
 
-The Terraform plan docs describe `-refresh-only`, which updates state to match the outside world without proposing changes to resources. They also describe `-detailed-exitcode`: zero for no changes, one for error, two for changes present. Together they give you a scheduled drift job. The job runs plan with a detailed exit code, and exit code 2 opens a ticket with the diff. I did not run this, because it needs real credentials and real resources.
+The Terraform plan docs describe `-refresh-only`, which updates state to match the outside world without proposing changes to resources. They also describe `-detailed-exitcode`: zero for no changes, one for error, two for changes present. Together they give you a scheduled drift job. The job runs plan with a detailed exit code, and exit code 2 opens a ticket with the diff. I ran the mechanism on a local file resource, not on Nebius. A refresh-only plan with no outside change exited 0. After I edited the file by hand, the same command exited 2 and printed a note that objects had changed outside Terraform. The plan changed nothing, and an ordinary plan also exited 2 and wanted to recreate the file. Running `apply -refresh-only` then only rewrote the state. Treat that as a demonstration of exit codes, not a drift job against a GPU cluster.
 
 Decide, per drift item, whether the code or the world is right. Fix the code if the emergency change was right. Re-apply if it was wrong. Never leave it.
 
@@ -424,7 +424,9 @@ The lab runs entirely on a laptop. It needs Terraform 1.9 or later and Python 3 
 5. Run the checker on each fixture and watch the exit codes. Two fixtures, `c24_plan_create_cluster.json` and `c24_plan_delete_nodegroup.json`, were produced by `terraform plan -out` and `terraform show -json` using the real provider. The others were hand-written from the documented format, based on the real ones, because updates and replacements make API calls that need real resources. I did not generate real plans for update or replace.
 6. Try to break the module. Remove `gpu` from the pools in a scratch copy and run plan against a state that contains it. Expected: the destroy line and then "Instance cannot be destroyed". I ran this against a hand-written state.
 
-Not run: `terraform plan -refresh-only -detailed-exitcode`, a real apply, a state restore from a versioned bucket, and a real Nebius backend.
+7. Watch the drift exit codes. In a scratch folder, create a `local_file` resource with `content = "replicas=3\n"`, run apply, then run `terraform plan -refresh-only -detailed-exitcode`. Expected: exit code 0. Edit the file by hand and run it again. Expected: exit code 2 and the line "Objects have changed outside of Terraform". I ran this with Terraform 1.10.4 and the hashicorp/local provider.
+
+Not run: a real apply on Nebius, a refresh-only plan against a Nebius cluster, a state restore from a versioned bucket, and a real Nebius backend.
 
 ## Drill questions
 
@@ -515,6 +517,7 @@ Sources and dates fetched (2026-11-09):
 - Terraform Up and Running, 3rd edition: chapter 3 "How to Manage Terraform State", chapter 4 "How to Create Reusable Infrastructure with Terraform Modules", chapter 5 "Terraform Tips and Tricks" (zero-downtime deployment, valid plans can fail, refactoring), chapter 6 "Managing Secrets with Terraform", chapter 8 "Production-Grade Terraform Code", chapter 9 "How to Test Terraform Code", chapter 10 "How to Use Terraform as a Team".
 - Production Kubernetes, chapter 2 "Deployment Models": node pools, cluster size and blast radius, infrastructure tools, upgrade strategies.
 - Scalable Kubernetes Infrastructure for AI Platforms: chapter 4 read for what runs on GPU nodes. It has almost nothing on Terraform, so no claim here depends on it.
+- Nebius documentation page "How to store a Terraform state in an Object Storage bucket", https://docs.nebius.com/object-storage/store-terraform-state.md, found through https://docs.nebius.com/llms.txt on 2026-11-09. My first guessed URL returned 404 because the page lives under object-storage, not under interfaces.
 - Terraform documentation on developer.hashicorp.com: plan JSON format (internals/json-format), lifecycle meta-arguments, refactoring with moved blocks, state locking, S3 backend, tests, import, and the plan command. The docs page is written for v1.17.x. I ran Terraform 1.10.4 locally, so features newer than that were not exercised.
 - Nebius provider documentation on docs.nebius.com: landing page, installation, `mk8s_v1_node_group` and `mk8s_v1_cluster` references, sensitive values, and the quotas overview. The provider README on github.com/nebius/terraform-provider-nebius.
 - The nebius-solutions-library repository README and the `k8s-inference` README on github.com/nebius/nebius-solutions-library.
@@ -531,8 +534,25 @@ Explicitly labelled inferences:
 Not verified:
 
 - The exact Nebius platform, preset and taint effect strings. Those in the example are placeholders.
-- No real apply, no Nebius backend, no refresh-only plan and no restore from versioned state.
-- No documentation page on using Nebius object storage as a Terraform backend was found. The one URL I tried returned 404.
+- No real apply, no Nebius backend and no restore from versioned state.
 - The documentation example for the node group uses block syntax. Provider 0.6.82 rejected it and required attribute syntax.
 - Update and replace fixtures are hand-written from the documented format, not produced by Terraform.
 - Nebius has not published its own Terraform layout or zone model. The node group docs say its strategy defaults are changing, so none is quoted here.
+
+### Verification log
+
+Fact-check pass on 2026-11-09. Nine claims were checked. Seven are confirmed, one was corrected and one stays unverified.
+
+| Claim | Result | Source |
+|---|---|---|
+| `-refresh-only` updates state without proposing resource changes, and `-detailed-exitcode` returns 0, 1 or 2 | Confirmed, and run locally with Terraform 1.10.4 | Terraform plan command page, v1.17.x |
+| The S3 backend locking is opt-in with `use_lockfile`, default false, DynamoDB locking is deprecated | Confirmed | Terraform S3 backend page |
+| Bucket versioning is highly recommended, and S3-compatible stores are best effort | Confirmed | Same page |
+| Nebius has no documented Terraform backend | Corrected: a Nebius page exists and uses the `s3` backend with `use_lockfile = true` | docs.nebius.com store-terraform-state page |
+| The Nebius sensitive values page needs Terraform 1.11 or later | Confirmed | docs.nebius.com sensitive-values page |
+| The node group has no zone argument | Confirmed on the node group reference page, which names zones only for DNS | docs.nebius.com mk8s_v1_node_group reference |
+| Node group strategy defaults are changing | Confirmed: the page says drain_timeout defaulted to 0 on 2026-08-01 and moves to 10m from Q3 2026 | Same page |
+| The provider version is 0.6.82 | Confirmed as the latest on the registry on 2026-11-09 | registry.terraform.io |
+| Exact platform, preset and taint effect strings | Still unverified, placeholders | None |
+
+The node group page adds one fact worth saying aloud. A node group update that recreates nodes hangs on a pod that a PodDisruptionBudget will not let drain, as long as drain_timeout is 0. That links this chapter to the drain drill in chapter 20.23.

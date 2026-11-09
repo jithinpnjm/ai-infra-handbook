@@ -404,6 +404,7 @@ These are the limits of what anyone can know before the interview. Read them so 
 
 - The scoring rubric, the order of rounds and the interview teams are not public. [gap]
 - Autoscaling signals, router algorithm, TPOT targets and probe settings are not public. [gap]
+- On 2026-11-09 a search found many aggregator copies of this posting, none from nebius.com itself. They list Amsterdam, Berlin, London, Prague and remote Europe, and some add remote United States. One reports senior level as 5 to 10 years and one reports a closing date of 22 November. These are third-party claims and I did not confirm them. A similar posting titled AI Studio (Inference Platform) also exists, so the role may have been renamed. Ask the recruiter which title and location apply to you.
 - I could not confirm the posting against nebius.com, and the plan says it lists Remote Europe, London, Amsterdam, Berlin and Prague while the aggregator shows London and Remote. Confirm with the recruiter.
 - I did not read the sister postings.
 - The day-to-day descriptions in section 3 are my inference.

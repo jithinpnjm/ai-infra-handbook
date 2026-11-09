@@ -685,7 +685,7 @@ Two more habits cost points. Talking for five minutes without a pause stops the 
 
 Sources:
 
-- Nebius SRE interview page, nebius.com/careers/interviews/sre, as recorded in `planning/VOLUME_20_NEBIUS_SRE_PLAN.md` section 1 (research dated 2026-10): final stage of one hour with a team leader about team, projects and services, with extra technical questions notified in advance. I did not re-fetch it for this chapter.
+- Nebius SRE interview page, nebius.com/careers/interviews/sre, as recorded in `planning/VOLUME_20_NEBIUS_SRE_PLAN.md` section 1 (research dated 2026-10): final stage of one hour with a team leader about team, projects and services, with extra technical questions notified in advance. I re-fetched it on 2026-11-09, see the verification log.
 - A secondary candidate-report source, supplied with the chapter brief: a 90-minute deep dive on one project, and a hiring manager asking about past projects, reasons for decisions and teamwork. Unverified.
 - Job posting content and Token Factory facts as summarised in the plan, section 1, including the vendor-tagged chat-app case study. The plan does not record a URL for the case study.
 - Systems Performance, 2nd edition, chapter 2 "Methodologies": the problem statement questions, the scientific method, the streetlight and blame-someone-else anti-methods. Chapter 16 "Case Study" was read as an example of narrating an investigation from problem statement to resolution.
@@ -703,6 +703,19 @@ Explicitly labelled inferences:
 Not verified:
 
 - No source confirms that Nebius runs a project deep dive. Only the one-hour team-leader format is official.
-- I did not fetch the Nebius page again, so wording may have changed since the plan was written.
 - I did not check whether the posting is still open or which countries are hired in.
 - The checker reads structure only. It was tested with the unit tests and the lab runs described above on a Mac, and was not tried on any real candidate dossier.
+
+### Verification log
+
+Fact-check pass on 2026-11-09. I re-fetched https://nebius.com/careers/interviews/sre. Five claims were checked. Three are confirmed, one was corrected and one stays unverified.
+
+| Claim | Result |
+|---|---|
+| The final stage is a meeting with a team leader about the team, its projects and its services | Confirmed. The page heading is "Final meetings". |
+| The final interview lasts one hour | Confirmed. The page says "a final hour-long interview". |
+| Extra technical tasks or questions may be requested, with advance notice | Confirmed. The page says you will be notified in advance. |
+| A 90-minute figure belongs to the final round | Corrected. The page gives 60 to 90 minutes for each of the three technical interviews, not for the final. The 90-minute project deep dive remains one secondary source. |
+| A project deep dive or hiring-manager past-projects round exists at Nebius | Still unverified. The page does not mention either. |
+
+The page also says the three technical interviews come from different teams and need not fit in one day. It lists "your experience in the design and architecture of different services/systems" as one assessed area, which supports preparing a project story either way.

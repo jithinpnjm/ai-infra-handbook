@@ -682,7 +682,7 @@ The reasoning is that a ratio over almost no traffic is noise. If tenant b is a 
 
 The gateway shows 100% success by status code. Customers say replies stop in the middle. The status code is 200 because the headers went out with the first token. Streams that break later are invisible to a status-code SLI.
 
-The fix has three parts. Count a stream good only if it ends normally. Add a gateway counter for streams that ended with a server-side abort. Cross-check against the engine: `vllm:request_success_total` by `finished_reason`, since error and abort show up there. How your gateway can observe a mid-stream break depends on its design, so name the assumption you make.
+The fix has three parts. Count a stream good only if it ends normally. Add a gateway counter for streams that ended with a server-side abort. Cross-check against the engine: `vllm:request_success_total` by `finished_reason`. In v0.32.0 a server-side failure after the first token ends the stream with a `data:` error chunk and `[DONE]` under HTTP 200, and the engine counts it as `error`. A client that disconnects is counted as `abort`, so do not alert on abort alone. How your gateway can observe a mid-stream break depends on its design, so name the assumption you make.
 
 ## Hands-on lab
 
@@ -828,7 +828,7 @@ It always fires. A receiver pages you when it stops arriving, which proves that 
 
 Sources and the date fetched or read, 2026-11-09 for all online pages:
 
-- Google SRE Workbook, "Alerting on SLOs", https://sre.google/workbook/alerting-on-slos/. The source of Table 5-8, the burn rate definition and the one-twelfth short window guidance. The page's formulas were garbled in fetching, so the budget and detection formulas in this chapter are derived by me and confirmed by the calculator tests.
+- Google SRE Workbook, "Alerting on SLOs", https://sre.google/workbook/alerting-on-slos/. The source of Table 5-8, the burn rate definition and the one-twelfth short window guidance. The page's formulas are MathML that does not survive text extraction, so the budget and detection formulas in this chapter are derived by me and confirmed by the calculator tests and by hand against Tables 5-4 and 5-8.
 - Google SRE Workbook, "Implementing SLOs", https://sre.google/workbook/implementing-slos/. Error budget definition, the 3 million request example, SLI as a ratio and the error budget policy contents.
 - Google SRE book, "Service Level Objectives", https://sre.google/sre-book/service-level-objectives/. Definitions, percentiles over averages, target guidance.
 - Google SRE book, "Monitoring Distributed Systems", https://sre.google/sre-book/monitoring-distributed-systems/. Golden signals, symptoms versus causes, actionable pages, alert fatigue.
@@ -846,12 +846,21 @@ Explicitly labelled inferences:
 
 - The gateway metric names and labels, all SLO targets such as 99% under 1.0 s, the traffic guard of 0.1 requests per second, the finish reason drift rule and the split between page and ticket are my design choices.
 - The dedicated versus serverless counting rule and the table in section 10 are my reasoning. Nebius has not published its SLO terms.
-- The claim that streaming failures after the first token are invisible to status-code SLIs is reasoning from how HTTP streaming works. It was not tested against Nebius or vLLM serving code.
+- The claim that streaming failures are invisible to status-code SLIs is now confirmed for vLLM v0.32.0 source (see the verification log). For the Nebius gateway it remains my reasoning.
 - The cardinality figure of 460,000 series is arithmetic from an assumed 22 buckets plus a count series and an assumed 1,000 tenants and 20 models.
 
 Not verified:
 
 - The rules were tested only against synthetic input in `promtool test rules`. I did not run them against a live vLLM server or Prometheus instance, so the real shape of scraped labels such as `engine` is taken from the source and not observed.
 - The `le="1.0"` label format was confirmed with the Python `prometheus_client`. I did not confirm that every Prometheus client version formats it the same way.
-- I did not verify whether a vLLM server reports a stream that fails after the first token as `error` or as `abort`.
-- The statement that the vLLM docs site metric list matches v0.32.0 exactly was not checked against the live docs page, which returned HTTP 429.
+- The statement that the vLLM docs site metric list matches v0.32.0 exactly was not checked against the live docs page, which returned HTTP 429. The metric names in this chapter come from source at the tag.
+
+### Verification log (fact-check pass, 2026-11-09)
+
+Resolved 5 flagged claims: 4 confirmed, 1 still unverified.
+
+- CONFIRMED against sre.google/workbook/alerting-on-slos (re-fetched 2026-11-09): Table 5-8 rows (1 h and 5 min at 14.4 for 2%, 6 h and 30 min at 6 for 5%, 3 days and 6 h at 1 for 10%), Table 5-6 (same percentages with a 3 day ticket window), Table 5-4 (burn 1000 is 100% errors and 43 minutes), and the "1/12 of the long window" guidance.
+- RECOMPUTED: 14.4 x 1 / 720 = 2%, 6 x 6 / 720 = 5%, 1 x 72 / 720 = 10%. Thresholds 0.0144, 0.006, 0.001 at budget 0.001. Time to empty 50, 120, 720 hours. Detection at 100% errors is 0.0144 h, about 52 s. All match the chapter, so no text or test change was needed. `pytest test_slo_burn_rate.py` 15 passed. `promtool test rules` passed for both rule test files.
+- CONFIRMED: the Workbook itself warns that Table 5-8 cannot fire for low-availability SLOs, since a total outage of a 90 percent target consumes only 1.4 percent in an hour. It is a useful follow-up answer.
+- CONFIRMED (vLLM v0.32.0 source): streamed failures after the first token arrive as an SSE error chunk under HTTP 200 and count as `finished_reason="error"`. Client disconnects count as `abort`.
+- STILL UNVERIFIED: the `le="1.0"` label format across every Prometheus client version, the gateway metric names, and Nebius SLO terms.
