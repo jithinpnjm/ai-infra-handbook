@@ -1,0 +1,31 @@
+# The image is referenced by digest, not by tag, so the signature that was verified is the artifact that runs.
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: model-api
+  namespace: team-data-science
+spec:
+  replicas: 2
+  selector:
+    matchLabels:
+      app: model-api
+  template:
+    metadata:
+      labels:
+        app: model-api
+    spec:
+      automountServiceAccountToken: false
+      securityContext:
+        runAsNonRoot: true
+        seccompProfile:
+          type: RuntimeDefault
+      containers:
+        - name: api
+          image: myregistry.example.com/model-api@sha256:0000000000000000000000000000000000000000000000000000000000000000
+          ports:
+            - containerPort: 8443
+          securityContext:
+            allowPrivilegeEscalation: false
+            readOnlyRootFilesystem: true
+            capabilities:
+              drop: ["ALL"]

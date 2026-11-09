@@ -1,0 +1,13 @@
+apiVersion: rbac.authorization.k8s.io/v1
+kind: RoleBinding
+metadata:
+  name: model-trainer-binding
+  namespace: team-data-science
+subjects:
+  - kind: ServiceAccount
+    name: trainer
+    namespace: team-data-science
+roleRef:
+  apiGroup: rbac.authorization.k8s.io
+  kind: Role
+  name: model-trainer

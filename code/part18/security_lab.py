@@ -122,6 +122,16 @@ def main() -> int:
             book in all_text,
         )
 
+    # Real code checks (these test behaviour; the checks above only test document structure)
+    import subprocess
+    r = subprocess.run([sys.executable, "-m", "pytest", "-q", "-p", "no:cacheprovider", str(ROOT / "code/part18/test_part18.py")], capture_output=True, text=True, cwd=ROOT)
+    check("pytest suite for code/part18 passes", r.returncode == 0, (r.stdout + r.stderr)[-300:])
+    r = subprocess.run([sys.executable, "-I", "tools/check_code_files.py", "code/part18"], capture_output=True, text=True, cwd=ROOT)
+    check("code/part18 files compile; pyflakes finds no undefined names", r.returncode == 0, r.stdout[-300:])
+    cited = set(re.findall(r"code/part18/[\w./-]+", "".join(fp.read_text() for fp in file_map.values())))
+    missing = sorted(c for c in cited if not (ROOT / c).exists())
+    check("every code/part18 file cited in the chapters exists", not missing, ", ".join(missing[:5]))
+
     print(
         f"\nSummary: {passed} passed, {failed} failed (total {passed + failed})"
     )

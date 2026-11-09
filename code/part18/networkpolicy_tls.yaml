@@ -1,0 +1,17 @@
+# A NetworkPolicy works on IP addresses and ports (layers 3 and 4). It can limit traffic to the TLS port, but it cannot see
+# or require a TLS version. Enforcing TLS 1.3 is the job of the ingress or service mesh (see chapter 18.7).
+apiVersion: networking.k8s.io/v1
+kind: NetworkPolicy
+metadata:
+  name: allow-tls-port-only
+  namespace: team-data-science
+spec:
+  podSelector:
+    matchLabels:
+      app: model-api
+  policyTypes:
+    - Ingress
+  ingress:
+    - ports:
+        - protocol: TCP
+          port: 8443

@@ -1,0 +1,14 @@
+# GitHub Actions workflow: build, generate an SBOM, scan it, fail on HIGH or CRITICAL.
+name: image-scan
+on: [push]
+jobs:
+  build-scan:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: Build image
+        run: docker build -t myregistry/myimage:${{ github.sha }} .
+      - name: Generate SBOM (CycloneDX)
+        run: syft myregistry/myimage:${{ github.sha }} -o cyclonedx-json > sbom.json
+      - name: Scan the SBOM
+        run: trivy sbom --severity HIGH,CRITICAL --exit-code 1 sbom.json

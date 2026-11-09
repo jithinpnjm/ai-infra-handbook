@@ -1,0 +1,7 @@
+apiVersion: v1
+kind: ServiceAccount
+metadata:
+  name: churn-trainer
+  namespace: team-data-science
+  annotations:
+    iam.gke.io/gcp-service-account: churn-trainer@gke-prod.iam.gserviceaccount.com

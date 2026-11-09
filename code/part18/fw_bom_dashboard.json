@@ -1,0 +1,11 @@
+{
+  "dashboard": {
+    "title": "AI Factory - Firmware BOM",
+    "panels": [
+      {"title": "Firmware components per node", "type": "stat", "targets": [{"expr": "count by (component) (fw_bom_component)"}]},
+      {"title": "Unsigned firmware components", "type": "stat", "targets": [{"expr": "count(fw_bom_component{signature_status=\"unsigned\"})"}]},
+      {"title": "Firmware with known CVEs", "type": "table", "targets": [{"expr": "fw_bom_cve"}]},
+      {"title": "Last FW BOM scan", "type": "stat", "targets": [{"expr": "max(fw_bom_last_verified)"}]}
+    ]
+  }
+}

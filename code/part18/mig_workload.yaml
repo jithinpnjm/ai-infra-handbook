@@ -1,0 +1,11 @@
+apiVersion: v1
+kind: Pod
+metadata:
+  name: churn-model
+spec:
+  containers:
+    - name: model
+      image: my-model:v1
+      resources:
+        limits:
+          nvidia.com/mig-1g.5gb: 1
