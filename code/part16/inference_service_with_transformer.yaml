@@ -1,0 +1,20 @@
+apiVersion: serving.kserve.io/v1beta1
+kind: InferenceService
+metadata:
+  name: churn-model
+spec:
+  transformer:
+    containers:
+      - name: transformer
+        image: my-transformer:v1
+        command: [python, transform.py]
+        args: ["--mode", "preprocess"]
+  predictor:
+    model:
+      modelFormat: {name: sklearn}
+      storageUri: s3://...
+  explainer:
+    containers:
+      - name: explainer
+        image: my-explainer:v1
+    minReplicas: 1

@@ -1,0 +1,61 @@
+apiVersion: argoproj.io/v1alpha1
+kind: Workflow
+metadata:
+  generateName: churn-training-
+spec:
+  entrypoint: pipeline
+  arguments:
+    parameters:
+      - {name: dataset-id, value: "churn-v1"}
+      - {name: seed, value: "42"}
+  templates:
+    - name: pipeline
+      dag:
+        tasks:
+          - name: prepare
+            template: prepare
+            arguments:
+              parameters: [{name: dataset-id, value: "{{workflow.parameters.dataset-id}}"}]
+          - name: train
+            template: train
+            dependencies: [prepare]
+            arguments:
+              parameters:
+                - {name: dataset-id, value: "{{workflow.parameters.dataset-id}}"}
+                - {name: seed, value: "{{workflow.parameters.seed}}"}
+          - name: evaluate
+            template: evaluate
+            dependencies: [train]
+          - name: register
+            template: register
+            dependencies: [evaluate]
+    - name: prepare
+      container:
+        image: my-prepare:v1
+        command: [python, prepare.py]
+        args: ["--dataset-id", "{{inputs.parameters.dataset-id}}"]
+      inputs:
+        parameters:
+          - {name: dataset-id}
+    - name: train
+      container:
+        image: my-train:v1
+        command: [python, train.py]
+        args: ["--dataset-id", "{{inputs.parameters.dataset-id}}", "--seed", "{{inputs.parameters.seed}}"]
+        resources:
+          requests:
+            nvidia.com/gpu: "1"
+          limits:
+            nvidia.com/gpu: "1"
+      inputs:
+        parameters:
+          - {name: dataset-id}
+          - {name: seed}
+    - name: evaluate
+      container:
+        image: my-evaluate:v1
+        command: [python, evaluate.py]
+    - name: register
+      container:
+        image: my-register:v1
+        command: [python, register.py]

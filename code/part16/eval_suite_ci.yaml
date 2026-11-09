@@ -1,0 +1,31 @@
+name: eval_suite
+on:
+  pull_request:
+    paths:
+      - 'prompts/**'
+      - 'models/**'
+jobs:
+  eval:
+    runs-on: [self-hosted, gpu]
+    steps:
+      - uses: actions/checkout@v4
+      - name: Run golden set
+        run: |
+          python code/part16/run_eval.py \
+            --eval-set eval/golden-v3.jsonl \
+            --prompt-template prompts/qa-v7.jinja \
+            --model gpt-4o \
+            --output eval-results/golden-v3-qa-v7.json
+      - name: Run regression set
+        run: |
+          python code/part16/run_eval.py \
+            --eval-set eval/regression-v3.jsonl \
+            --prompt-template prompts/qa-v7.jinja \
+            --model gpt-4o \
+            --output eval-results/regression-v3-qa-v7.json
+      - name: Check thresholds
+        run: |
+          python code/part16/check_thresholds.py \
+            --golden-results eval-results/golden-v3-qa-v7.json \
+            --regression-results eval-results/regression-v3-qa-v7.json \
+            --thresholds eval/thresholds.yaml

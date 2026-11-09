@@ -1,0 +1,29 @@
+name: train_and_promote
+on:
+  push:
+    branches: [main]
+jobs:
+  train:
+    runs-on: [self-hosted, gpu]
+    steps:
+      - uses: actions/checkout@v4
+      - name: Build and sign training image
+        run: |
+          docker build -t ${REGISTRY}/train:${GITHUB_SHA} .
+          cosign sign --key cosign.key ${REGISTRY}/train:${GITHUB_SHA}
+      - name: Train
+        run: python train.py --dataset-id churn-v3 --seed 42
+      - name: Promote
+        env:
+          MLFLOW_TRACKING_URI: ${{ secrets.MLFLOW_TRACKING_URI }}
+        run: |
+          python code/part16/promote_to_registry.py \
+            --run-id ${{ steps.train.outputs.run_id }} \
+            --model-name churn-model \
+            --baseline-run-id ${{ steps.train.outputs.baseline_run_id }}
+      - name: Trigger canary
+        if: success()
+        run: |
+          python code/part16/trigger_canary.py \
+            --model-name churn-model \
+            --version ${{ steps.train.outputs.version }}

@@ -1,0 +1,21 @@
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: ngc-proxy-config
+  namespace: nvaie
+data:
+  config.yaml: |
+    upstream: nvcr.io
+    cache:
+      backend: gcs
+      bucket: ngc-cache-${PROJECT_ID}
+    licensing:
+      enforce: true
+      licensed_images:
+        - nvcr.io/nvidia/pytorch:24.06-py3
+        - nvcr.io/nvidia/tritonserver:24.06-py3
+        - nvcr.io/nim/llama3-8b-instruct:1.0.0
+        - nvcr.io/nvidia/nemo:24.06
+    audit:
+      backend: bigquery
+      dataset: nvaie_audit

@@ -1,0 +1,19 @@
+apiVersion: batch.volcano.sh/v1alpha1
+kind: Job
+metadata:
+  name: nemo-finetune-llama3
+spec:
+  minAvailable: 8
+  queue: gpu-pool
+  tasks:
+    - replicas: 8
+      template:
+        spec:
+          containers:
+            - name: nemo
+              image: nvcr.io/nvidia/nemo:24.06
+              command: [python, nemo_finetune.py]
+              args: ["--model", "llama3-8b-instruct", "--dataset", "s3://my-bucket/dataset", "--lora"]
+              resources:
+                limits:
+                  nvidia.com/gpu: 1

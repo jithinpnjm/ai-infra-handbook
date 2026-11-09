@@ -1,0 +1,30 @@
+name: capstone_e2e
+on:
+  pull_request:
+    paths:
+      - 'charts/**'
+      - 'policies/**'
+      - 'onboarding/**'
+jobs:
+  capstone:
+    runs-on: [self-hosted, gpu]
+    timeout-minutes: 720
+    steps:
+      - uses: actions/checkout@v4
+      - name: Provision cluster
+        run: ./capstone/01_provision.sh
+      - name: Deploy stack
+        run: ./capstone/02_deploy.sh
+      - name: Train model
+        run: ./capstone/03_train.sh
+      - name: Promote model
+        run: ./capstone/04_promote.sh
+      - name: Deploy model
+        run: ./capstone/05_deploy.sh
+      - name: Monitor and retrain
+        run: ./capstone/06_retrain.sh
+      - name: Handle erasure
+        run: ./capstone/07_erasure.sh
+      - name: Cleanup
+        if: always()
+        run: ./capstone/99_cleanup.sh

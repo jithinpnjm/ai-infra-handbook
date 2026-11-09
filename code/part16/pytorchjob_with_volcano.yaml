@@ -1,0 +1,23 @@
+apiVersion: kubeflow.org/v1
+kind: PyTorchJob
+metadata:
+  name: churn-distributed
+  annotations:
+    scheduling.volcano.sh/group-name: "churn-distributed"
+    scheduling.volcano.sh/group-min-member: "8"
+spec:
+  pytorchReplicaSpecs:
+    Master:
+      replicas: 1
+      template:
+        metadata:
+          annotations:
+            scheduling.volcano.sh/group-name: "churn-distributed"
+        spec: { ... }
+    Worker:
+      replicas: 7
+      template:
+        metadata:
+          annotations:
+            scheduling.volcano.sh/group-name: "churn-distributed"
+        spec: { ... }

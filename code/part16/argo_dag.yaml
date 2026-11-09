@@ -1,0 +1,30 @@
+apiVersion: argoproj.io/v1alpha1
+kind: Workflow
+metadata:
+  generateName: training-pipeline-
+spec:
+  entrypoint: pipeline
+  arguments:
+    parameters:
+      - {name: dataset-id, value: "churn-v3"}
+      - {name: seed, value: "42"}
+  templates:
+    - name: pipeline
+      dag:
+        tasks:
+          - name: prepare
+            template: prepare
+            arguments:
+              parameters: [{name: dataset-id, value: "{{workflow.parameters.dataset-id}}"}]
+          - name: train
+            template: train
+            dependencies: [prepare]
+            arguments:
+              parameters: [{name: dataset-id, value: "{{workflow.parameters.dataset-id}}"},
+                           {name: seed, value: "{{workflow.parameters.seed}}"}]
+          - name: evaluate
+            template: evaluate
+            dependencies: [train]
+          - name: register
+            template: register
+            dependencies: [evaluate]

@@ -1,0 +1,12 @@
+apiVersion: scheduling.volcano.sh/v1beta1
+kind: PodGroup
+metadata:
+  name: train-gang
+spec:
+  minMember: 8
+  minResources:
+    cpu: "32"
+    memory: "256Gi"
+    nvidia.com/gpu: "8"
+  queue: gpu-pool
+  priorityClassName: high

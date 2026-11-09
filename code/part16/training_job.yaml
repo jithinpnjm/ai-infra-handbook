@@ -1,0 +1,23 @@
+apiVersion: batch/v1
+kind: Job
+metadata:
+  generateName: churn-train-
+  labels:
+    kueue.x-k8s.io/queue-name: team-data-science-queue
+spec:
+  suspend: true          # Kueue unsuspends the Job once it admits it
+  backoffLimit: 0
+  template:
+    spec:
+      restartPolicy: Never
+      containers:
+        - name: train
+          image: my-training-image:v1
+          command: [python, train.py]
+          resources:
+            requests:
+              cpu: "8"
+              memory: 64Gi
+              nvidia.com/gpu: "1"
+            limits:
+              nvidia.com/gpu: "1"

@@ -1,0 +1,25 @@
+apiVersion: argoproj.io/v1alpha1
+kind: Workflow
+metadata:
+  generateName: multi-gpu-train-
+spec:
+  entrypoint: train
+  templates:
+    - name: train
+      container:
+        image: my-training-image:v1
+        command: [python, train.py]
+        args: ["--num-gpus", "8"]
+        resources:
+          requests:
+            cpu: "32"
+            memory: "256Gi"
+            nvidia.com/gpu: "8"
+          limits:
+            nvidia.com/gpu: "8"
+      schedulerName: kai-scheduler  # or volcano, kueue
+      podSpecPatch: |
+        - op: add
+          path: /spec/schedulingGates
+          value:
+            - name: gang-scheduling

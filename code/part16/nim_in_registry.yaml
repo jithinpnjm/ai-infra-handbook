@@ -1,0 +1,14 @@
+apiVersion: mlops.example.com/v1
+kind: ModelStage
+metadata:
+  name: llama3-8b-instruct
+  namespace: mlops
+spec:
+  model_name: llama3-8b-instruct
+  stage: production
+  version: 1.0.0
+  artifact_uri: nvcr.io/nim/llama3-8b-instruct:1.0.0
+  signature_id: sha256:nvidia-signed...
+  nim:
+    gpu_type: h100-sxm5-80gb
+    replicas: 1

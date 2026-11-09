@@ -1,0 +1,22 @@
+apiVersion: machinelearning.seldon.io/v1
+kind: SeldonDeployment
+metadata:
+  name: rag-pipeline
+spec:
+  predictors:
+    - name: retriever
+      graph:
+        children:
+          - name: query-encoder
+            type: MODEL
+            modelUri: s3://models/encoder
+          - name: vector-store
+            type: MODEL
+            modelUri: s3://models/vectorstore
+        modelUri: s3://models/retriever
+    - name: generator
+      graph:
+        children:
+          - name: retrieved-context
+            type: OUTPUT_TRANSFORMER
+        modelUri: s3://models/generator

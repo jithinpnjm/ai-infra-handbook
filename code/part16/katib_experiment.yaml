@@ -1,0 +1,35 @@
+apiVersion: kubeflow.org/v1beta1
+kind: Experiment
+metadata:
+  name: churn-sweep
+spec:
+  algorithm:
+    name: bayesian-optimization
+  objective:
+    type: maximize
+    goal: 0.95
+    objectiveMetricName: auc
+  parameters:
+    - name: learning_rate
+      parameterType: double
+      feasibleSpace:
+        min: "0.0001"
+        max: "0.1"
+    - name: n_estimators
+      parameterType: int
+      feasibleSpace:
+        min: "50"
+        max: "500"
+  trialTemplate:
+    primaryContainerName: training-container
+    spec:
+      containers:
+        - name: training-container
+          image: my-training-image:v1
+          command: [python, train.py]
+          args: ["--dataset-id", "churn-v3"]
+          resources:
+            limits:
+              cpu: "4"
+              memory: "16Gi"
+              nvidia.com/gpu: "1"

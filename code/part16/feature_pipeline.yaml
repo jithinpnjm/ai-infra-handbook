@@ -1,0 +1,21 @@
+apiVersion: argoproj.io/v1alpha1
+kind: Workflow
+metadata:
+  generateName: feature-pipeline-
+spec:
+  entrypoint: pipeline
+  templates:
+    - name: pipeline
+      dag:
+        tasks:
+          - name: ingest
+            template: ingest
+          - name: transform
+            template: transform
+            dependencies: [ingest]
+          - name: validate
+            template: validate
+            dependencies: [transform]
+          - name: materialise
+            template: materialise
+            dependencies: [validate]

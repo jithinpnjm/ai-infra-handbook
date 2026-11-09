@@ -1,0 +1,37 @@
+apiVersion: ray.io/v1
+kind: RayCluster
+metadata:
+  name: churn-train
+spec:
+  rayVersion: "2.9.0"
+  headGroupSpec:
+    serviceType: ClusterIP
+    template:
+      spec:
+        containers:
+          - name: ray-head
+            image: rayproject/ray-ml:2.9.0-gpu
+            ports:
+              - {name: gcs, containerPort: 6379}
+              - {name: client, containerPort: 10001}
+              - {name: dashboard, containerPort: 8265}
+            resources:
+              limits:
+                cpu: "4"
+                memory: "16Gi"
+                nvidia.com/gpu: "1"
+  workerGroupSpecs:
+    - groupName: gpu-workers
+      replicas: 7
+      minReplicas: 4
+      maxReplicas: 16
+      template:
+        spec:
+          containers:
+            - name: ray-worker
+              image: rayproject/ray-ml:2.9.0-gpu
+              resources:
+                limits:
+                  cpu: "16"
+                  memory: "64Gi"
+                  nvidia.com/gpu: "1"

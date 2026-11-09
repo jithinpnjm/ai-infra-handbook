@@ -1,0 +1,26 @@
+apiVersion: serving.kserve.io/v1beta1
+kind: InferenceService
+metadata:
+  name: churn-model
+  namespace: team-data-science
+spec:
+  predictor:
+    model:
+      modelFormat:
+        name: sklearn
+      runtime: kserve-mlserver
+      storageUri: s3://mlflow-artifacts/churn-model/production/model.pkl
+      resources:
+        requests:
+          cpu: "1"
+          memory: "2Gi"
+        limits:
+          cpu: "4"
+          memory: "8Gi"
+      env:
+        - name: STORAGE_URI
+          value: s3://mlflow-artifacts/churn-model/production/model.pkl
+    minReplicas: 1
+    maxReplicas: 10
+    scaleTarget: 80       # CPU utilisation target; per-request concurrency on GPU
+    scaleMetric: cpu

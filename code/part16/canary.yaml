@@ -1,0 +1,25 @@
+apiVersion: argoproj.io/v1alpha1
+kind: Rollout
+metadata:
+  name: churn-model
+spec:
+  replicas: 10
+  strategy:
+    canary:
+      steps:
+        - setWeight: 5
+        - pause: {duration: 10m}
+        - setWeight: 25
+        - pause: {duration: 10m}
+        - setWeight: 50
+        - pause: {duration: 10m}
+        - setWeight: 100
+      canaryService: churn-model-canary
+      stableService: churn-model-stable
+      analysis:
+        templates:
+          - templateName: churn-model-slo
+        startingStep: 1
+        args:
+          - name: error-rate-threshold
+            value: "0.01"

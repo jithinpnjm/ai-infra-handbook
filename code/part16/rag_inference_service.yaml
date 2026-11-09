@@ -1,0 +1,20 @@
+apiVersion: serving.kserve.io/v1beta1
+kind: InferenceService
+metadata:
+  name: rag-assistant
+  namespace: rag
+spec:
+  predictor:
+    minReplicas: 1
+    maxReplicas: 4
+    containers:
+      - name: kserve-container
+        image: registry.example.com/rag-assistant:1.0.0
+        env:
+          - name: MILVUS_URI
+            value: milvus://rag.milvus.svc.cluster.local:19530
+          - name: INDEX_SNAPSHOT
+            value: snap1
+        resources:
+          limits:
+            nvidia.com/gpu: "1"

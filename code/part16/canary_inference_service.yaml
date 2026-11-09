@@ -1,0 +1,10 @@
+apiVersion: serving.kserve.io/v1beta1
+kind: InferenceService
+metadata:
+  name: churn-model
+spec:
+  predictor:
+    canaryTrafficPercent: 10   # 10% to this spec, 90% to the last rolled-out revision
+    model:
+      modelFormat: {name: sklearn}
+      storageUri: s3://mlflow-artifacts/churn-model/canary/model.pkl   # the NEW model

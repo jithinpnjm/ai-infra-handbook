@@ -1,0 +1,12 @@
+# code/part16/registry_repo/models/churn-model/production.yaml
+apiVersion: mlops.example.com/v1
+kind: ModelStage
+metadata:
+  name: churn-model
+  namespace: mlops
+spec:
+  model_name: churn-model
+  stage: production
+  version: 6
+  artifact_uri: gs://mlflow-artifacts/churn-model/v6/model.pkl
+  signature_id: sha256:abc123...

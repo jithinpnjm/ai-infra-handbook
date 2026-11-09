@@ -1,0 +1,17 @@
+apiVersion: serving.kserve.io/v1beta1
+kind: InferenceService
+metadata:
+  name: llm-serving
+spec:
+  predictor:
+    model:
+      modelFormat: {name: vllm}
+      runtime: kserve-vllm
+      storageUri: s3://...
+      resources:
+        limits:
+          nvidia.com/gpu: "1"
+    minReplicas: 0      # scale to zero when idle
+    maxReplicas: 8
+    scaleTarget: 4       # 4 concurrent requests per replica
+    scaleMetric: concurrency
