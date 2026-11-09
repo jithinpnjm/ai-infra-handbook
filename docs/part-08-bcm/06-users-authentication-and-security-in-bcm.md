@@ -22,20 +22,22 @@ lab_venue: "Nebius GPU"
 
 ## Why this matters for AI infrastructure
 
-A GPU cluster is expensive, shared and a target. Researchers need accounts that work on every node. Operators need to power-cycle nodes without being able to read everyone's data. Auditors ask who changed what. BCM answers with a few simple ideas: one user directory for the whole cluster, certificates for management access, and profiles that say what each certificate may do. Knowing them lets you give a person exactly the access they need.
+Picture a GPU cluster that many teams share. Researchers need accounts that work on every node. Operators need to power-cycle a node without being able to read anyone's data. Auditors will eventually ask who changed what, and when. BCM handles all of this with a few simple ideas: one user directory for the whole cluster, certificates for management access, and profiles that say what each certificate may do. Once you know these ideas, you can give a person exactly the access they need and no more.
 
 ## Prerequisites and outcomes
 
-You need chapters 8.1 to 8.5. After this chapter you can:
+You need chapters 8.1 to 8.5 before you start. When you finish this chapter, you should be able to do the following.
 
-- add users and groups in cmsh and Base View, and explain why a new account cannot log in until it has a password
-- change the four administrative passwords with one tool and remember the HA and image catches
-- explain how cmsh and Base View authenticate (certificates) and what a profile is
-- give someone read-only or power-only access, and create a time-limited certificate
-- point the cluster at an external LDAP server, and know what Keycloak integration needs
-- turn on audit logging and use a security checklist for a new cluster
+- Add users and groups in `cmsh` and Base View, and explain why a new account cannot log in until it has a password.
+- Change the four administrative passwords with one tool, and remember the HA and image catches.
+- Explain how `cmsh` and Base View authenticate with certificates, and what a profile is.
+- Give someone read-only or power-only access, and create a time-limited certificate.
+- Point the cluster at an external LDAP server, and know what Keycloak integration needs.
+- Turn on audit logging, and use a security checklist when you set up a new cluster.
 
 ## 1. The big picture
+
+Before you change any setting, know which part of the system you are touching. The diagram shows how a management request travels from a person to the cluster, and where the cluster's user directory fits in.
 
 ```mermaid
 flowchart LR
@@ -48,17 +50,18 @@ flowchart LR
   S[Users logging in to nodes] --> L
 ```
 
-Two separate worlds:
+Security in BCM splits into two separate worlds, and each uses its own mechanism.
 
-1. **Cluster users**: people who log in to nodes and run jobs. They live in BCM's own **LDAP directory** on the head node, not in `/etc/passwd`.
-2. **Management access**: who may use cmsh or Base View. This is decided by **X509 certificates** that carry a **profile**. Every management operation needs a **token**, and a profile is a set of tokens.
+1. **Cluster users**: people who log in to nodes and run jobs. Their accounts live in BCM's own **LDAP directory** on the head node, not in `/etc/passwd`.
+2. **Management access**: who may use cmsh or Base View. That is decided by **X509 certificates** that carry a **profile**. Every management operation needs a **token**, and a profile is a set of tokens.
 
-A person can be in both worlds, but they are different mechanisms.
+A person can be in both worlds, but the two mechanisms are different. Login rights on a node do not grant management rights.
 
 ## 2. Users and groups (6.1 and 6.2)
 
-- In Base View: **Identity Management > Users** and **Groups**. In cmsh: `user` and `group` modes.
-- A fresh cluster has one user already: **cmsupport**. It has no password (so no logins), and BCM uses it for diagnostics. **Do not remove it** or its home directory contents.
+You manage cluster users in Base View under **Identity Management > Users** and **Groups**, or in `cmsh` with the `user` and `group` modes. A fresh cluster already has one account, `cmsupport`. It has no password, so nobody can log in with it, and BCM uses it for diagnostics. Do not remove `cmsupport` or the contents of its home directory.
+
+Here is how you add a user in `cmsh` and give that user a password. The manual shows this session, but it was not run on a live cluster here.
 
 ```text
 [basecm11]% user
@@ -68,40 +71,43 @@ A person can be in both worlds, but they are different mechanisms.
 [basecm11->user*[maureen*]]% commit
 ```
 
-(The manual's session, untested here. The `add` drops you into the new object, as in chapter 8.5.)
+The `add` command drops you straight into the new object, the same way it does in chapter 8.5. The first `commit` is the important step, because it fills every empty field with a default. IDs start at **1000**, or 500 on SLES; the starting point is set by the `LowUserId` setting. The shell becomes `/bin/bash`, and the home directory becomes `/home/<name>`. The shadow values are set too: minimum age 0, maximum 999999, a warning 7 days ahead, and expiry on 2038/1/1.
 
-What `commit` does: it fills empty fields with defaults. IDs start at **1000** (500 on SLES; the starting point is the `LowUserId` setting), the shell is `/bin/bash`, the home directory is `/home/<name>`, and the shadow values are set (minimum age 0, maximum 999999, warning 7 days, expiry 2038/1/1). **An empty password stays empty and a login to that account is refused**: a safe default. Set the password afterwards and commit again.
+An empty password stays empty, and a login to that account is refused. That is a safe default, because nobody gets in by accident. You set the password afterwards and commit again, and only then can the user log in.
 
-Other points:
+A few other points matter in practice:
 
-- A string starting with `{SSHA}`, `{MD5}` or `{CRYPT}` is taken as a password **hash** (made with `slappasswd`). The manual says this is not normally done.
-- `AddUserPasswordReset` (an AdvancedConfig directive) forces a password change at first login.
-- User properties include an **email**, a **profile** (section 5), `disablepasswordssh`, `createsshkey`, `authorizedsshkeys`, `expirationdate`, and `allowgpuworkloadpowerprofiles` (whether jobs may change GPU power profiles).
-- **Groups:** `append members maureen tim fred` adds, `removefrom members tim fred` removes, and `clear members` empties the group (and its extras). `commit` at user-mode level commits **all** modified users, so mind which level you are at.
-- `remove` on a user keeps the home directory; `remove -d` deletes it too.
+- A string that starts with `{SSHA}`, `{MD5}` or `{CRYPT}` is treated as a password hash, made with `slappasswd`. The manual says this is not normally done.
+- The AdvancedConfig directive `AddUserPasswordReset` forces a password change at the first login.
+- A user has more properties than the password. These include an email, a profile (section 5), `disablepasswordssh`, `createsshkey`, `authorizedsshkeys`, `expirationdate`, and `allowgpuworkloadpowerprofiles`, which controls whether jobs may change GPU power profiles.
+- For groups, `append members maureen tim fred` adds people, `removefrom members tim fred` removes them, and `clear members` empties the group. Be careful at the user level: `commit` there commits **all** modified users, not just the one you are looking at.
+- Running `remove` on a user keeps the home directory. Running `remove -d` deletes the home directory as well.
+
+Create the account, set the password, and commit again. Treat that second commit as part of the job, not an optional extra.
 
 ## 3. Passwords (2.3.1)
 
-`cm-change-passwd` is one dialog for four passwords: the **head node root**, the **root in the software images**, the **root in the node-installer**, and the **MySQL root**.
+Four passwords protect the cluster, and one tool changes all of them. `cm-change-passwd` is one dialog for the head node `root`, the `root` in the software images, the `root` in the node-installer, and the MySQL `root`. Running it once saves you from editing four places by hand.
 
-- **High availability:** run it on both head nodes. (The image password is copied to the other head automatically; the other three are not.)
-- **The image password does not reach running nodes until `imageupdate` or a reboot** (chapter 8.4).
-- It does **not** change the **LDAP root password** (a random string set at install; Appendix I has the procedure).
-- If you saved the cluster password in Base View, update it there too.
+Two catches matter on a high-availability pair. Run the tool on both head nodes, because the image password is copied to the other head automatically but the other three are not. The image password also does not reach running nodes until you run imageupdate or reboot them, as chapter 8.4 covers.
+
+The tool does **not** change the LDAP root password. That password is a random string set at install time, and Appendix I has its own procedure. If you saved the cluster password in Base View, update it there too, so the two stay in step.
 
 ## 4. SSH (2.3.2)
 
-- From the **head node to regular nodes**, SSH is passwordless by default (root keys are in `/root`; user keys are in `/home`, which is mounted everywhere).
-- From a regular node **to the head node**, a **root** login asks for a password, deliberately.
-- Restrict user logins to regular nodes with the `usernodelogin` option (the manual covers it with workload management, chapter 8.8); restrict the head node in `/etc/ssh/sshd_config` (for example `AllowUsers root`).
+SSH works differently in each direction, on purpose. From the head node to a regular node, SSH is passwordless by default. The root keys live in `/root`, and user keys live in `/home`, which is mounted everywhere. From a regular node back to the head node, a root login asks for a password, so a compromised compute node cannot easily take over the head node.
+
+To restrict user logins to regular nodes, use the `usernodelogin` option, covered in chapter 8.8. To restrict the head node, edit `/etc/ssh/sshd_config`; `AllowUsers root` lets only root log in.
+
+Test both directions after any change, so you know which way the boundary runs.
 
 ## 5. Certificates and profiles: how management access works
 
-**Certificates (2.3.3).** CMDaemon accepts only SSL connections on port 8081 and checks the client's X509 certificate. On a new cluster `root` has one: `/root/.cm/admin.pem` and `admin.key`. cmsh uses them by default, so root is not asked for a password. Base View asks for a username and password unless you import a PKCS#12 file made from the same pair (`openssl pkcs12 -export -in ~/.cm/admin.pem -inkey ~/.cm/admin.key -out ~/.cm/admin.pfx`). Two warnings: **if the administrator certificate is replaced, the certificates it signed must be made again**, and the same applies to the regular user certificates when a **license** (including an evaluation license) is replaced. `cm-check-certificates.sh` checks whether certificates are current.
+**Certificates (2.3.3).** Every `cmsh` or Base View session talks to CMDaemon, and CMDaemon accepts only SSL connections on port 8081. It checks the client's X509 certificate before it does anything. On a new cluster, `root` already has one, stored as `/root/.cm/admin.pem` and `admin.key`. `cmsh` uses these files by default, so root is never asked for a password. Base View is different: it asks for a username and password, unless you import a PKCS#12 file made from the same pair. You create that file with `openssl pkcs12 -export -in ~/.cm/admin.pem -inkey ~/.cm/admin.key -out ~/.cm/admin.pfx`.
 
-**Profiles and tokens (6.5).** The certificate contains a **profile**. A profile is a named set of **tokens**, and **every cluster management operation, even the administrator's, needs the matching token**. Think of tokens as fine-grained permissions and profiles as roles.
+Certificates have two warnings attached. If you replace the administrator certificate, every certificate it signed must be made again. The same rule applies to the regular user certificates when a license, including an evaluation license, is replaced. To check whether your certificates are still current, run `cm-check-certificates.sh`.
 
-The manual's preconfigured profiles:
+**Profiles and tokens (6.5).** Access is then limited by profiles. The certificate carries a **profile**, and a profile is a named set of **tokens**. Every cluster management operation needs the matching token, even when the administrator runs it. Think of tokens as fine-grained permissions and profiles as roles. The manual ships these preconfigured profiles:
 
 | Profile | Allows | For people? |
 |---|---|---|
@@ -111,36 +117,41 @@ The manual's preconfigured profiles:
 | `power` | device power | no (nonuser) |
 | `node`, `bootstrap`, `cmhealth`, `cmpam`, `litenode`, `monitoringpush`, `mqtt`, `prs`, `autonomous-hardware-recovery`, `autonomous-job-recovery` | tasks done by BCM's own components | no (nonuser) |
 
-**Nonuser profiles are for cluster manager clients and must never be modified**; only `admin`, `readonly` and `portal` are handed to people (and you can clone or create custom profiles, 6.5.2). Assign with `user use conner; set profile readonly; commit`.
+Only `admin`, `readonly` and `portal` are meant for people. The nonuser profiles serve cluster manager clients, and you must never modify them. If you need something different, clone a profile or create a custom one, as section 6.5.2 of the manual describes. To assign a profile, run `user use conner; set profile readonly; commit`.
 
-**Trim a profile.** Example from the manual: `readonly` can see burn results by default. To stop that: `profile use readonly; removefrom tokens burn_status_token get_burn_log_token; commit` (Base View: **Identity Management > Profiles**).
+Sometimes a built-in profile gives away more than you want. The manual's example is `readonly`, which can see burn results by default. To remove that access, run `profile use readonly; removefrom tokens burn_status_token get_burn_log_token; commit`. In Base View, the same change lives under **Identity Management > Profiles**.
 
-**A time-limited certificate.** In `cert` mode: `createcertificate <key-length> <common-name> <organization> <organizational-unit> <locality> <state> <country> <profile> <sys-login> <days> <key-file> <cert-file>`. The manual's example makes a `readonly` certificate for user `peter` valid for 30 days. Facts:
+Some access should expire on its own. In `cert` mode you create such a certificate with `createcertificate <key-length> <common-name> <organization> <organizational-unit> <locality> <state> <country> <profile> <sys-login> <days> <key-file> <cert-file>`. The manual's example makes a `readonly` certificate for user `peter` that stays valid for 30 days. Keep three facts in mind when you use it. The expiry cannot be extended, so when the 30 days run out you must make a new certificate. The files belong to whoever ran the command, so use `chown` to hand them to the user. And `cmsh` looks for a certificate in a fixed order: first the `-i` and `-k` options, then `~/.cm/admin.{pem,key}`, and finally `~/.cm/cert.{pem,key}`.
 
-- The **expiry cannot be extended**; make a new certificate.
-- The files belong to whoever ran the command; `chown` them to the user.
-- cmsh finds a certificate in this order: `-i` and `-k` options, then `~/.cm/admin.{pem,key}`, then `~/.cm/cert.{pem,key}`.
-- `listcertificates` shows serial, revoked, time left, profile, system login and name; node certificates (from the node installer, chapter 8.4) appear too.
-- For a user in **external LDAP** the `external-user-cert` script makes the certificate (`external-user-cert readonly spongebob --home=/home`).
-- In Base View a privileged user sets a user's **Profile** and BCM places `cert.pem` and `cert.key` in that user's `.cm` directory.
+To see what exists, run `listcertificates`. It shows the serial number, whether the certificate is revoked, the time left, the profile, the system login and the name. Node certificates, which come from the node installer in chapter 8.4, appear in the same list. Users in an external LDAP directory are a special case. For them, the `external-user-cert` script makes the certificate, for example `external-user-cert readonly spongebob --home=/home`. In Base View, a privileged user sets the **Profile** for a user, and BCM places `cert.pem` and `cert.key` in that user's `.cm` directory.
 
-`cm-component-certificate` regenerates LDAP certificates for a node or a new LDAP CA, but the manual says the administrator is not expected to use it and should use it with caution.
+The `cm-component-certificate` tool regenerates the LDAP certificates for a node or a new LDAP CA. The manual says the administrator is not expected to need it, and should use it with caution.
+
+Choose the narrowest profile that does the job, and hand out a time-limited certificate where you can.
 
 ## 6. External LDAP and Keycloak (6.3 and 6.4)
 
-**External LDAP.** If the company already has a directory, nodes can authenticate against it. For smaller clusters, point the LDAP clients on all nodes straight at the external server. The files to change are `/etc/nslcd.conf` and `/etc/openldap/ldap.conf` on RHEL 8 family, or `/etc/sssd/sssd.conf` instead of nslcd on RHEL 9 family, on the head node **and in the node image**; then restart `nslcd` or `sssd`, run `updateprovisioners`, and `imageupdate` or reboot nodes. If you still manage users with BCM against that server, the cmd.conf directives `LDAPHost`, `LDAPUser`, `LDAPPass` and `LDAPSearchDN` change (rare, because schemas rarely match). BCM runs an `ldap` health check using `cmsupport`; with an external server, give it a permanent check user or disable it, or you get false alarms. Open **port 636** in the head node firewall (Shorewall) if outside nodes use it.
+Many companies already have a directory of users. If yours does, the cluster can check logins against it instead of keeping a second list. For a small cluster, you point the LDAP client on every node straight at the external server. You change `/etc/nslcd.conf` and `/etc/openldap/ldap.conf` on the RHEL 8 family, or `/etc/sssd/sssd.conf` instead of nslcd on the RHEL 9 family. You make the change on the head node **and** in the node image, because a node that reboots from an old image would quietly go back to BCM's local directory. Then restart `nslcd` or `sssd`, run `updateprovisioners`, and run `imageupdate` or reboot the nodes.
 
-For larger clusters, **replicate** the external directory to the head node (OpenLDAP provider and consumer with `syncrepl`; the interval format is `DD:HH:MM:SS`, and `rid=2` avoids a clash with the HA setting). In an HA pair the active head replicates from the external server and the passive head from the active head.
+If you still manage users with BCM against that external server, the `cmd.conf` directives `LDAPHost`, `LDAPUser`, `LDAPPass` and `LDAPSearchDN` have to change. This is rare, because schemas seldom match. BCM also runs an `ldap` health check that logs in as `cmsupport`. With an external server, that check can raise false alarms, so give it a permanent check user or disable it. If outside nodes need the directory, open port 636 in the head node firewall (Shorewall).
 
-**Keycloak (6.4).** From BCM 11.34 the `cluster-tools` package can install Keycloak on the head node and federate BCM's LDAP into a realm for single sign-on, for example for NVIDIA Mission Control. Prerequisites: BCM 11.34+, **Ubuntu 24.04 or 26.04** on the head node (RHEL and Rocky are not supported), MySQL/MariaDB and BCM's LDAP running, free ports **9443** and **9999**, and outbound HTTPS to GitHub or a pre-staged Keycloak archive. Run `cm-setup-keycloak.py`, then `cm-setup-keycloak-realm.py --ldap`. **Set the admin and database passwords explicitly** (`--admin-password`, `--db-password`): the defaults (`admin/system`, `keycloak/system`) are well known. Verify with `cm-setup-keycloak.py --ready`. The lab checks the prerequisites list.
+For a larger cluster, replicate the external directory onto the head node instead. You configure an OpenLDAP provider and consumer with `syncrepl`. The interval uses the format `DD:HH:MM:SS`, and `rid=2` prevents a clash with the HA setting. In an HA pair, the active head replicates from the external server, and the passive head replicates from the active head.
+
+Keycloak adds single sign-on on top of BCM's directory. From BCM 11.34, the `cluster-tools` package can install Keycloak on the head node and federate BCM's LDAP into a realm. NVIDIA Mission Control is one example of a product that uses this. The prerequisites are strict. You need BCM 11.34 or later and Ubuntu 24.04 or 26.04 on the head node, because RHEL and Rocky are not supported. MySQL or MariaDB and BCM's LDAP must be running. Ports 9443 and 9999 must be free, and outbound HTTPS must reach GitHub or a pre-staged Keycloak archive.
+
+Run `cm-setup-keycloak.py`, then `cm-setup-keycloak-realm.py --ldap`. Set the admin and database passwords yourself with `--admin-password` and `--db-password`, because the defaults, `admin/system` and `keycloak/system`, are well known. Confirm the install with `cm-setup-keycloak.py --ready`.
+
+Before you point the cluster at an external directory, confirm that the external server is reachable from one test node. Only then change the rest of the cluster.
 
 ## 7. Audit logging (6.5.4)
 
-Three CMDaemon directives: `CMDaemonAudit` turns logging of user actions on, `CMDaemonAuditorFile` says where, and `DisableAuditorForProfiles` leaves chosen profiles out. For a cluster with several administrators, turn auditing on and **do not exclude the `admin` profile**. The lab flags an audit setup with no file or with profiles excluded.
+Audit logging answers the question an auditor will ask: who changed what? Three CMDaemon directives control it. `CMDaemonAudit` turns logging on, `CMDaemonAuditorFile` sets the file, and `DisableAuditorForProfiles` leaves chosen profiles out.
+
+When several administrators share a cluster, you should turn auditing on and not exclude the `admin` profile. Excluding it would hide the changes that matter most. The lab flags two problems: an audit setup with no file, and one with profiles excluded.
 
 ## 8. A security checklist for a new BCM cluster
 
-This gathers settings from the whole part. Each item names where it was covered.
+You have now seen settings spread across this whole part of the handbook. This checklist gathers them in one place, so you can work through a new cluster top to bottom. Each row names the section where the topic was covered.
 
 | Check | Where |
 |---|---|
@@ -160,32 +171,36 @@ This gathers settings from the whole part. Each item names where it was covered.
 | Rotate the BMC credentials BCM created at install (my advice) | 7.4, 8.7 |
 | Firewall (Shorewall on the head node): open only what you need (636 for external LDAP, 9443 for Keycloak) | 8.6 |
 
+Read the BMC row twice. BCM created those credentials during install, so they are the ones most likely to be left as they were. Work down the table in order on a new cluster, and mark any row you cannot confirm.
+
 ## 9. Common first mistakes
 
-1. Using root and the shared `admin.pem` for everyone.
-2. Editing a nonuser profile.
-3. Forgetting that an expired certificate cannot be extended.
-4. Creating users and never setting a password, then wondering why they cannot log in.
-5. Changing the image root password and expecting running nodes to follow.
-6. Not rerunning `cm-change-passwd` on the second head node.
-7. Pointing nodes at an external LDAP server but forgetting the node image.
-8. Leaving Keycloak with default passwords.
-9. Removing `cmsupport`.
-10. Replacing a license and not regenerating user certificates.
+Ten mistakes come up again and again on new clusters. Check your cluster against each one.
+
+1. Using root and the shared `admin.pem` for everyone hides who did what.
+2. Editing a nonuser profile can break the services that depend on it.
+3. Forgetting that an expired certificate cannot be extended means you must issue a new one.
+4. Creating users and never setting a password leaves them unable to log in.
+5. Changing the image root password and expecting running nodes to follow. Running nodes pick it up only after `imageupdate` or a reboot.
+6. Not rerunning `cm-change-passwd` on the second head node leaves that head with the old passwords.
+7. Pointing nodes at an external LDAP server but forgetting the node image means the change disappears when a node reboots.
+8. Leaving Keycloak with its default passwords.
+9. Removing `cmsupport`, which BCM still needs for its own checks.
+10. Replacing a license without regenerating user certificates.
 
 ### 9.1 Architecting least-privilege management profiles for multi-team AI clusters
 
-In a production AI factory, giving every systems engineer, NOC operator, help-desk technician, and platform developer a copy of `/root/.cm/admin.pem` (or the `admin` profile) is an audit and reliability nightmare. With the `admin` profile, a single mistyped `remove` or `power off` in `cmsh` can wipe a software image or drop power to an entire Scalable Unit.
+Picture a systems engineer, a NOC operator, a help-desk technician and a platform developer, each holding a copy of `/root/.cm/admin.pem` or the `admin` profile. That setup is hard to audit and easy to break. One mistyped `remove` or `power off` in `cmsh` can wipe a software image or drop power to an entire Scalable Unit. BCM avoids this with its profile and token architecture, described in section 6.5 of the manual. You can split management authority into narrow roles without sharing `root` at all.
 
-BCM's **Profile and Token architecture** (§6.5) lets you carve management authority into fine-grained, cryptographically enforced roles without sharing `root`:
+The first tier is read-only observability, for auditors and monitoring staff. Start by cloning the built-in `readonly` profile with `profile; clone readonly noc-viewer`. Holders of this profile can log in to Base View or `cmsh`, check device status, view monitoring graphs and inspect job queues. They lack every `set_*`, `add_*`, `remove_*` and `power_*` token. If compliance rules keep auditors away from sensitive burn-in or system logs, remove those specific tokens with `removefrom tokens burn_status_token get_burn_log_token; commit`.
 
-1. **Tier 1 — Read-Only Observability & Auditors (`readonly` profile, customized):** Start by cloning the built-in `readonly` profile (`profile; clone readonly noc-viewer`). Holders of this profile can log into Base View or `cmsh`, inspect device status, view monitoring graphs, and check job queues, but lack every `set_*`, `add_*`, `remove_*`, and `power_*` token. If compliance rules forbid auditors or contractors from reading sensitive burn-in or system logs, strip those specific tokens (`removefrom tokens burn_status_token get_burn_log_token; commit`).
-2. **Tier 2 — Data-Center Smart-Hands & Rack Operators (custom `rack-operator` profile):** Field technicians swapping failed DIMMs, optical transceivers, or SXM GPUs need to blink chassis locator LEDs (`identify`), check BMC event logs (`bmceventlog`), close/open nodes for maintenance (`close`/`open`), and run `power status`/`power reset`—without being able to modify software images, edit LDAP users, or change network subnets. By creating a custom profile containing only the read tokens plus device power and state tokens, and issuing each technician a personal X.509 certificate (`createcertificate`) valid for their contract duration (`30` or `90` days), every power reset is logged under that technician's exact certificate identity in `CMDaemonAuditorFile`.
-3. **Tier 3 — Senior Cluster Administrators (`admin` profile on named accounts):** Even senior infrastructure architects should not share the literal `root` UNIX login for daily `cmsh` work. By assigning the `admin` profile to each architect's individual user account (`user use alice; set profile admin; commit`) and enabling `CMDaemonAudit` in `cmd.conf` (with `DisableAuditorForProfiles` left empty), `~/.cm/cert.pem` authenticates `alice` personally so the audit log records `alice`—never an anonymous shared `root`—for every committed change.
+The second tier is data-center smart hands, the technicians who swap DIMMs, optical transceivers or SXM GPUs. They need to blink chassis locator LEDs with `identify`, check BMC event logs with `bmceventlog`, close and open nodes for maintenance, and run `power status` or `power reset`. They should not change software images, edit LDAP users or change network subnets. Create a custom `rack-operator` profile that holds only the read tokens plus the device power and state tokens. Then issue each technician a personal X.509 certificate with `createcertificate`, valid for the length of their contract, which is `30` or `90` days. Every power reset is now logged under that technician's own certificate in `CMDaemonAuditorFile`.
+
+The third tier is the senior cluster administrators. Even senior architects should not share the literal `root` login for daily `cmsh` work. Assign the `admin` profile to each architect's own account with `user use alice; set profile admin; commit`. Enable `CMDaemonAudit` in `cmd.conf`, and leave `DisableAuditorForProfiles` empty. Then `~/.cm/cert.pem` identifies `alice` personally, and the audit log records `alice`, not an anonymous shared root, for every committed change.
 
 ### 9.2 Enterprise identity architectures: Local LDAP vs Direct External LDAP vs `syncrepl`
 
-Every cluster needs POSIX user and group resolution (`uidNumber`, `gidNumber`, `homeDirectory`, `loginShell`) across the head node, login nodes, and all compute nodes so Slurm jobs and shared filesystem permissions (`Lustre`, `GPFS`, `NFS`) match everywhere. Section 6 introduced the three directory architectures supported by BCM; here is how to choose between them based on cluster size and organizational boundaries:
+Every cluster needs POSIX user and group resolution (`uidNumber`, `gidNumber`, `homeDirectory`, `loginShell`) on the head node, the login nodes and every compute node. Only then do Slurm jobs and shared filesystem permissions on Lustre, GPFS or NFS match everywhere. Section 6 introduced the three directory architectures BCM supports. The table below helps you choose between them by cluster size and by how much the organization's boundaries matter.
 
 | Architecture | How It Works | Best For | Operational Trade-Offs |
 |---|---|---|---|
@@ -193,189 +208,189 @@ Every cluster needs POSIX user and group resolution (`uidNumber`, `gidNumber`, `
 | **2. Direct External LDAP / AD (`sssd` / `nslcd`)** | Compute and login nodes point `/etc/sssd/sssd.conf` and `/etc/openldap/ldap.conf` directly at corporate LDAP/Active Directory | Small-to-medium enterprise clusters with reliable low-latency links to corporate IT | Centralizes user lifecycle in corporate IT, but a corporate WAN blip or overloaded AD controller can stall `srun` UID lookups across all compute nodes |
 | **3. OpenLDAP `syncrepl` Consumer on Head Node** | Corporate LDAP is the provider; the BCM head node's OpenLDAP replicates the tree locally via `syncrepl` (`rid=2`), and compute nodes query the head node | Large-scale AI factories (`500–5,000+` nodes) within an enterprise | Best of both worlds: corporate IT owns user accounts, while high-rate job-launch UID lookups stay inside the cluster on the local head-node replica |
 
-When implementing Option 2 or Option 3, remember two practical details from the manual:
-- **Update both the head node AND the software image:** If you configure `/etc/sssd/sssd.conf` only on the head node (or only on running compute nodes without updating `/cm/images/<image>/etc/sssd/sssd.conf`), any compute node that reboots will revert to BCM's default local LDAP config and fail to resolve external users (`id <user>: no such user`).
-- **Adjust the `ldap` health check (`cmsupport`):** BCM's built-in `ldap` health check queries for the `cmsupport` user. If you point nodes directly at an external corporate directory that does not contain a `cmsupport` account, the `ldap` health check will fail on every node until you either create a read-only `cmsupport` probe account in the external directory or reconfigure/disable the check.
+The first option works well for a standalone cluster. Its trade-off is that you manage the cluster password and SSH key lifecycle yourself, unless you federate it with Keycloak. The second option centralizes user lifecycle in corporate IT. The cost is that a WAN blip or an overloaded AD controller can stall `srun` UID lookups across every compute node. The third option keeps user ownership with corporate IT and keeps the high-rate lookups local, which suits large AI factories.
+
+Two practical details from the manual apply to options 2 and 3. First, update the head node **and** the software image. If you change `/etc/sssd/sssd.conf` only on the head node, or only on running compute nodes, then a node that reboots reverts to BCM's default local LDAP config. It then fails to resolve external users with `id <user>: no such user`. Second, adjust the `ldap` health check, which looks for the `cmsupport` user. If the external directory has no `cmsupport` account, that check fails on every node. Either create a read-only `cmsupport` probe account in the external directory, or reconfigure or disable the check.
 
 ### 9.3 Single Sign-On (SSO) with Keycloak for Base View, User Portal, and Mission Control
 
-Starting in BCM 11.34, `cm-setup-keycloak.py` (and `cm-setup-keycloak-realm.py --ldap`) adds an OpenID Connect (OIDC) / SAML identity broker on the head node, federating BCM's OpenLDAP directory into a Keycloak realm on port `9443`. Why is this important for modern AI factories?
+Starting in BCM 11.34, `cm-setup-keycloak.py` and `cm-setup-keycloak-realm.py --ldap` add an OpenID Connect (OIDC) or SAML identity broker on the head node. The broker federates BCM's OpenLDAP directory into a Keycloak realm on port `9443`. Why does this matter for an AI factory? Traditional HPC clusters needed POSIX UIDs mainly for SSH and Slurm. A modern AI factory exposes many more web and API surfaces. These include Base View, the BCM User Portal, Kubernetes and Run:ai, Grafana and Prometheus, Argo CD, and NVIDIA Mission Control.
 
-While traditional HPC clusters only needed POSIX UIDs for SSH and Slurm, a modern AI factory exposes multiple web and API surfaces: **Base View**, the **BCM User Portal**, **Kubernetes / Run:ai**, **Grafana / Prometheus**, **Argo CD**, and **NVIDIA Mission Control**. Deploying Keycloak and federating it with your cluster LDAP (or upstream corporate IdP) gives researchers and operators a single OIDC login flow across all web portals—provided you deploy it on a supported Ubuntu `24.04`/`26.04` head node, explicitly rotate the default `--admin-password` and `--db-password` at setup time, and keep port `9443` free from conflicting services like Harbor (Chapter 8.10).
+With Keycloak in front of them, researchers and operators get one OIDC login flow across all of these portals. You can also federate Keycloak with your cluster LDAP or an upstream corporate identity provider. Two conditions apply. Deploy it on a supported Ubuntu `24.04` or `26.04` head node. And rotate the default `--admin-password` and `--db-password` at setup time. Keep port `9443` free from conflicting services, such as Harbor in chapter 8.10.
 
 ### 9.4 Step-by-step incident response: Revoking compromised credentials and rotating cluster secrets
 
-What happens when a contractor leaves the project early, an engineer's laptop containing `~/.cm/cert.pem` is lost, or a security audit requires rotating all administrative credentials across an HA BCM cluster? Because BCM separates **management certificates (`cert` mode)**, **cluster POSIX users (`user` mode)**, **administrative daemon passwords (`cm-change-passwd`)**, and **out-of-band BMC credentials (`bmcsettings`)**, a complete secret rotation follows four distinct steps:
+Suppose a contractor leaves a project early, or an engineer loses a laptop that holds `~/.cm/cert.pem`. Or a security audit asks you to rotate every administrative credential on an HA BCM cluster. BCM keeps four kinds of secret apart: management certificates in `cert` mode, cluster POSIX users in `user` mode, administrative daemon passwords set by `cm-change-passwd`, and out-of-band BMC credentials in `bmcsettings`. Because they are separate, a full rotation takes four steps.
 
-1. **Revoke or expire the management X.509 certificate (`cert` mode):**
-   - Run `cmsh -c "cert; listcertificates"` to locate the certificate serial number, common name, system login, and profile associated with the lost laptop or departing contractor.
-   - Revoke the certificate in `cert` mode (and if the user had a local cluster account in `user` mode, either disable SSH login with `set disablepasswordssh yes` and `clear authorizedsshkeys`, set an immediate `expirationdate`, or `remove` the user and `commit`).
-   - If the root administrator certificate (`/root/.cm/admin.pem`) itself was exposed, replace the administrator certificate and immediately regenerate all dependent user certificates signed by it (verifying with `cm-check-certificates.sh`).
-2. **Rotate the four core infrastructure passwords with `cm-change-passwd`:**
-   - Run `cm-change-passwd` on the **active head node** to rotate the head-node `root` password, the software-image `root` password, the `node-installer` `root` password, and the MySQL `root` password.
-   - If the cluster runs an HA head-node pair, run `cm-change-passwd` on the **passive head node** as well (because only the software-image password is synced automatically between heads).
-   - Push the updated software-image `/etc/shadow` hash out to running regular nodes by running `updateprovisioners` followed by `imageupdate -w` (or a rolling reboot).
-3. **Rotate the OpenLDAP root password if directory administration was exposed:**
-   - Because `cm-change-passwd` does not touch the OpenLDAP `cn=admin` password (which is generated randomly at installation time and stored in `cmd.conf`), follow the Appendix I procedure if the head node's `cmd.conf` was ever exposed to an unauthorized party.
-4. **Rotate out-of-band BMC passwords across the fleet (`bmcsettings`):**
-   - In `cmsh`, update the password under `partition use base; bmcsettings` (and any category or node overrides), commit, push the change to the BMCs, and run `credentialsoverview --inverse` in `device` mode to confirm that all nodes converge onto the single new salted SHA-256 fingerprint with zero outliers left behind.
+1. **Revoke or expire the management X.509 certificate in `cert` mode.** Start by running `cmsh -c "cert; listcertificates"`. That shows the serial number, common name, system login and profile of the lost laptop or the departing contractor. Next, revoke the certificate. If the person also had a local cluster account in `user` mode, you can disable SSH login with `set disablepasswordssh yes` and `clear authorizedsshkeys`, set an immediate `expirationdate`, or `remove` the user and commit. If the root administrator certificate, `/root/.cm/admin.pem`, was exposed, replace it and regenerate every dependent user certificate it signed. Verify the result with `cm-check-certificates.sh`.
+2. **Rotate the four core passwords with `cm-change-passwd`.** Run it on the **active head node** to change the head-node `root` password, the software-image `root` password, the `node-installer` `root` password and the MySQL `root` password. On an HA pair, run it on the **passive head node** too, because only the software-image password syncs automatically. Then push the new software-image `/etc/shadow` hash to running regular nodes with `updateprovisioners` followed by `imageupdate -w`, or with a rolling reboot.
+3. **Rotate the OpenLDAP root password if directory administration was exposed.** `cm-change-passwd` does not touch the OpenLDAP `cn=admin` password. That password is generated randomly at installation and stored in `cmd.conf`. If that file was ever exposed to an unauthorized party, follow the Appendix I procedure.
+4. **Rotate the out-of-band BMC passwords with `bmcsettings`.** In `cmsh`, change the password under `partition use base; bmcsettings`, along with any category or node overrides, and commit. Push the change to the BMCs. Then run `credentialsoverview --inverse` in `device` mode. It should show every node converging on the single new salted SHA-256 fingerprint, with no outliers left.
+
+Work through the steps in the order given, starting with the certificate, because that is the access someone may be using right now.
 
 ### 9.5 Hardening SSH and login-node boundaries (`usernodelogin` and `AllowUsers`)
 
-In a multi-tenant AI cluster, researchers should interact with the cluster through **dedicated login nodes**, **Open OnDemand / Jupyter portals**, **Slurm (`sbatch`/`srun`)**, or **Kubernetes APIs**—never by SSHing directly into the head node or into idle GPU compute nodes. Enforce this boundary at three points:
+In a multi-tenant AI cluster, researchers should reach the cluster through dedicated login nodes, Open OnDemand or Jupyter portals, Slurm with `sbatch` or `srun`, or Kubernetes APIs. They should not SSH into the head node or into idle GPU compute nodes. You enforce that boundary at three places.
 
-- **On the head node (`/etc/ssh/sshd_config`):** Restrict SSH access to infrastructure administrators only (`AllowUsers root` or `AllowGroups wheel cluster-admins`), require SSH public-key authentication (`PasswordAuthentication no`), and place the head node's external interface behind your corporate MFA bastion.
-- **On regular GPU compute nodes (`usernodelogin`):** Set `set usernodelogin onlywhenjob` on every compute category (Chapter 8.8) so `pam_bright.so` permits a researcher to SSH to `gpu014` **only** while that researcher has an active Slurm job allocated on `gpu014` (while keeping your platform team's diagnostic group in `/etc/security/pam_bright.d/pam_allow_group.conf` inside the software image).
-- **On dedicated login nodes (`login` category):** Place user-facing login nodes in their own `login` category with `usernodelogin always`, resource limits (`cgroup` / `/etc/security/limits.conf`) so a user compiling code on a login node cannot exhaust RAM, and no direct route to `bmcnet` (`10.148.0.0/16`).
+On the head node, edit `/etc/ssh/sshd_config`. Restrict SSH to infrastructure administrators only, for example with `AllowUsers root` or `AllowGroups wheel cluster-admins`. Require public-key authentication with `PasswordAuthentication no`. Place the head node's external interface behind your corporate MFA bastion.
+
+On regular GPU compute nodes, set `set usernodelogin onlywhenjob` on every compute category, as chapter 8.8 explains. With this setting, `pam_bright.so` lets a researcher SSH to a node such as `gpu014` only while that researcher holds an active Slurm job allocated on `gpu014`. Keep your platform team's diagnostic group in `/etc/security/pam_bright.d/pam_allow_group.conf` inside the software image.
+
+On dedicated login nodes, put user-facing machines in their own `login` category with `usernodelogin always`. Add resource limits through `cgroup` or `/etc/security/limits.conf`, so a user who compiles code on a login node cannot exhaust its RAM. Give those nodes no direct route to `bmcnet`, which is `10.148.0.0/16`.
 
 ### 9.6 Auditing user, certificate, and profile state across the cluster
 
-To keep identity and access controls from drifting over years of cluster operation, schedule a monthly security review in `cmsh` that checks four invariants across `user`, `group`, `profile`, and `cert` modes:
+Identity and access controls drift over the years a cluster runs. A monthly security review in `cmsh` catches that drift. The review checks four invariants across the `user`, `group`, `profile` and `cert` modes.
 
-1. **Certificate inventory and expiration check (`cert; listcertificates` and `cm-check-certificates.sh`):** Verify that every active certificate belongs to a current team member or active BCM service, that no contractor certificate has been left unrevoked after project completion, and that `cm-check-certificates.sh` reports no expiring system or LDAP certificates.
-2. **Profile token audit (`profile; foreach * (show)`):** Confirm that only named human administrators hold the `admin` profile, that operators hold `readonly` or least-privilege custom profiles, and that none of the internal `nonuser` profiles (`node`, `bootstrap`, `cmhealth`, `power`, `litenode`, `autonomous-hardware-recovery`, `autonomous-job-recovery`) have been altered from their factory token sets.
-3. **Orphaned user and home-directory audit (`user; list`):** Cross-check the users in BCM's LDAP directory against your organization's active HR/IdP roster, verify that `cmsupport` remains intact with no password set, and confirm that any departed user removed with `remove` either had their `/home/<user>` archived and cleaned up (`remove -d`) or transferred to their research group's project lead.
-4. **Auditor log integrity (`CMDaemonAudit`):** Inspect `/cm/local/apps/cmd/etc/cmd.conf` on both active and passive head nodes to confirm `CMDaemonAudit` is enabled, `CMDaemonAuditorFile` is shipping to your central SIEM, and `DisableAuditorForProfiles` does not exclude `admin`.
+1. **Certificate inventory and expiry.** Run `cert; listcertificates` and `cm-check-certificates.sh`. Confirm that every active certificate belongs to a current team member or an active BCM service. Confirm that no contractor certificate is still unrevoked after the project ends, and that no system or LDAP certificate is about to expire.
+2. **Profile token audit.** Run `profile; foreach * (show)`. Confirm that only named human administrators hold the `admin` profile, and that operators hold `readonly` or a least-privilege custom profile. Also confirm that none of the internal nonuser profiles, such as `node`, `bootstrap`, `cmhealth`, `power`, `litenode`, `autonomous-hardware-recovery` and `autonomous-job-recovery`, has changed from its factory token set.
+3. **Orphaned users and home directories.** Run `user; list`, and compare the users in BCM's LDAP directory with your organization's active HR or identity roster. Confirm that `cmsupport` is still there with no password set. For anyone you remove with `remove`, make sure the `/home/<user>` directory was either archived and cleaned up with `remove -d`, or handed to the research group's project lead.
+4. **Auditor log integrity.** On both the active and the passive head node, inspect `/cm/local/apps/cmd/etc/cmd.conf`. Confirm that `CMDaemonAudit` is enabled, that `CMDaemonAuditorFile` ships to your central SIEM, and that `DisableAuditorForProfiles` does not exclude `admin`.
+
+Run this review every month, as the chapter recommends, and keep each month's results so you can compare them.
 
 ## Exercises
 
-1. Run `python3 security_lab.py`. Pick four checks and explain each rule in your own words.
-2. Design three profiles for a team: an operator who can only power-cycle nodes, an auditor who sees everything but changes nothing, a researcher who sees only their own jobs. For each, say which preconfigured profile you start from, and what you remove.
-3. Write the cmsh steps (from the manual, untested) to give contractor `peter` a read-only certificate that expires in 14 days.
-4. A user cannot log in right after being created. List three possible reasons and how to check each.
-5. Plan a move from BCM's LDAP to the company's external LDAP for 400 nodes: which files, which image, which health check, and what do you test first on one node?
-6. Use the checklist in section 8 to audit a cluster you know. Mark each row done, not done or unknown.
+Work through these in order. Each one builds on the chapter's checks and tools.
+
+1. Run `python3 security_lab.py`. Choose four of its checks, and explain each rule in your own words, as if you were telling a colleague why it matters.
+2. Design three profiles for a team. The first is an operator who can only power-cycle nodes. The second is an auditor who can see everything but change nothing. The third is a researcher who can see only their own jobs. For each one, name the preconfigured profile you would start from, and say what you would remove from it.
+3. Write the `cmsh` steps from the manual to give contractor `peter` a read-only certificate that expires in 14 days. The manual has not been run on a live cluster, so note that in your answer.
+4. A user cannot log in right after being created. List three possible reasons, and for each one say how you would check it.
+5. You need to move 400 nodes from BCM's LDAP to the company's external LDAP. Plan the change: which files you would edit, which image you would update, which health check you would handle, and what you would test first on a single node.
+6. Use the checklist in section 8 to audit a cluster you know. Mark each row as done, not done or unknown. Notice which rows you cannot answer without asking someone.
 
 ## 11. Interview angles
 
-- "How does BCM decide what an administrator may do?" Certificate with a profile; profile is a set of tokens; each operation checks a token.
-- "How would you give a junior read-only access?" Create a user, set the `readonly` profile, optionally trim tokens, issue a time-limited certificate.
-- "Where do cluster users live?" BCM's own LDAP on the head node (or an external directory).
-- "A user's new account does not work." The password is unset (a safe default), or the profile/ssh settings block it; fix and recommit.
-- "What do you rotate after an incident?" The four administrative passwords, the LDAP root password separately, certificates, and BMC credentials.
+These questions test the model behind the commands. Each answer below gives the short version to say out loud.
+
+- "How does BCM decide what an administrator may do?" A certificate carries a profile. A profile is a set of tokens, and each operation checks for the token it needs.
+- "How would you give a junior read-only access?" Create the user, set the `readonly` profile, optionally trim some tokens, and issue a time-limited certificate.
+- "Where do cluster users live?" In BCM's own LDAP on the head node, or in an external directory if you point the cluster at one.
+- "A user's new account does not work." Either the password is still unset, which is a safe default, or the profile or SSH settings block the login. Fix the cause and commit again.
+- "What do you rotate after an incident?" The four administrative passwords, the LDAP root password on its own, the certificates, and the BMC credentials.
 
 ## Checkpoint questions (20)
 
 <details>
 <summary>1. Where do standard cluster users live in BCM, and what is the built-in `cmsupport` account?</summary>
 
-Cluster users live in BCM's own **OpenLDAP directory** on the head node (not in `/etc/passwd`). **`cmsupport`** is a pre-created diagnostic account with no password (so interactive login is disabled) used by BCM for internal health checks like `ldap`—**never remove `cmsupport`**.
+Standard cluster users live in BCM's own **OpenLDAP directory** on the head node, not in `/etc/passwd`. The `cmsupport` account is created for you. It has no password, so nobody can log in with it, and BCM uses it for internal health checks such as `ldap`. **Never remove `cmsupport`.**
 </details>
 
 <details>
 <summary>2. What happens if you `add` a new user in `cmsh` and `commit` without setting a password?</summary>
 
-`commit` populates default POSIX fields (`uid`, `/bin/bash`, `/home/<user>`), but leaves the password **empty**, and **any login attempt to that account is refused** until `set password` and a second `commit` are run.
+The commit fills in the default POSIX fields, such as the UID, `/bin/bash` and `/home/<user>`. The password stays **empty**, though, and every login attempt to that account is refused. The account stays locked until you run `set password` and then a second `commit`.
 </details>
 
 <details>
 <summary>3. At what numeric UID do newly created BCM users start by default, and which directive changes that starting number?</summary>
 
-New users start at UID **`1000`** (`500` on SLES), controlled by the **`LowUserId`** directive.
+New users start at UID **`1000`**, or `500` on SLES. The **`LowUserId`** directive controls that starting number.
 </details>
 
 <details>
 <summary>4. In `cmsh` `group` mode, which commands add members, remove specific members, and empty a group completely?</summary>
 
-**`append members maureen tim fred`** adds members, **`removefrom members tim fred`** removes specific members, and **`clear members`** empties the group.
+Use **`append members maureen tim fred`** to add members. Use **`removefrom members tim fred`** to remove specific members. Use **`clear members`** to empty the group.
 </details>
 
 <details>
 <summary>5. What is the difference between `remove <user>` and `remove -d <user>` in `cmsh` `user` mode?</summary>
 
-`remove <user>` deletes the LDAP account while **keeping `/home/<user>` on disk**; `remove -d <user>` deletes both the LDAP account and the user's home directory.
+`remove <user>` deletes the LDAP account and leaves `/home/<user>` on disk. `remove -d <user>` deletes the LDAP account and the home directory together.
 </details>
 
 <details>
 <summary>6. Which four administrative passwords does `cm-change-passwd` update, and which directory password does it NOT update?</summary>
 
-It updates: (1) **head node `root`**, (2) **software image `root`**, (3) **`node-installer` `root`**, and (4) **MySQL `root`**. It does **not** change the **LDAP root password** (which has its own procedure in Appendix I).
+It updates four passwords: the head node `root`, the software image `root`, the `node-installer` `root`, and the MySQL `root`. It does **not** change the **LDAP root password**. That password has its own procedure in Appendix I.
 </details>
 
 <details>
 <summary>7. After changing the software image root password with `cm-change-passwd`, what step is needed for already-running compute nodes to get the new password?</summary>
 
-Run **`imageupdate -w`** or **reboot** the regular nodes so they synchronize from the updated software image.
+Run **`imageupdate -w`**, or reboot the regular nodes, so they sync from the updated software image.
 </details>
 
 <details>
 <summary>8. On an HA cluster with two head nodes, why must you run `cm-change-passwd` on both head nodes?</summary>
 
-Because while the software image root password is automatically synced to the passive head node, the **head node `root`, `node-installer` `root`, and MySQL `root` passwords are not copied automatically** to the partner head node.
+The software image root password syncs to the passive head node automatically. The head node `root`, `node-installer` `root` and MySQL `root` passwords do not. You therefore have to run the tool on both heads to cover those three.
 </details>
 
 <details>
 <summary>9. How does default root SSH behavior differ from the head node to regular nodes versus from a regular node back to the head node?</summary>
 
-From the **head node to regular nodes**, root SSH is **passwordless** by default (`/root/.ssh` keys). From a **regular node back to the head node**, root SSH deliberately **prompts for a password** so a compromised compute node cannot trivially compromise the head node.
+From the head node to regular nodes, root SSH is **passwordless** by default, using the keys in `/root/.ssh`. From a regular node back to the head node, root SSH **prompts for a password** on purpose. That way, a compromised compute node cannot easily compromise the head node.
 </details>
 
 <details>
 <summary>10. How do `cmsh` and Base View authenticate to `CMDaemon` on port `8081`?</summary>
 
-Using **client-side X.509v3 PEM certificates** (`/root/.cm/admin.pem` and `admin.key` for root, or PKCS#12 `.pfx` imported into a browser for certificate-based Base View login).
+Both use client-side X.509v3 PEM certificates. For root, these are `/root/.cm/admin.pem` and `admin.key`. For a certificate-based Base View login, you import a PKCS#12 `.pfx` file into the browser.
 </details>
 
 <details>
 <summary>11. What are a **Profile** and a **Token** in BCM's management authorization model (§6.5)?</summary>
 
-A **Token** is an atomic permission required to perform a specific `CMDaemon` operation (e.g., `burn_status_token`), and a **Profile** is a named collection of tokens embedded in a user's X.509 certificate.
+A **Token** is a single permission that one specific `CMDaemon` operation requires, such as `burn_status_token`. A **Profile** is a named collection of tokens, and it is embedded in a user's X.509 certificate.
 </details>
 
 <details>
 <summary>12. Which three preconfigured profiles are designed to be assigned to human users?</summary>
 
-**`admin`** (full administrative access), **`readonly`** (view-only cluster inspection), and **`portal`** (user portal access).
+They are **`admin`** for full administrative access, **`readonly`** for view-only cluster inspection, and **`portal`** for user portal access.
 </details>
 
 <details>
 <summary>13. Why must `nonuser` profiles (such as `node`, `bootstrap`, `cmhealth`, `power`, `litenode`) never be modified or assigned to human accounts?</summary>
 
-They are internal service profiles used by BCM's own daemons and components to authenticate component-to-head-node RPCs; altering their tokens breaks internal cluster services.
+BCM's own daemons and components use these profiles to authenticate RPCs between the components and the head node. Changing their tokens breaks those internal services.
 </details>
 
 <details>
 <summary>14. Write the `cmsh` commands to prevent holders of the `readonly` profile from viewing burn-in status or logs.</summary>
 
-`profile use readonly; removefrom tokens burn_status_token get_burn_log_token; commit`.
+Run `profile use readonly; removefrom tokens burn_status_token get_burn_log_token; commit`.
 </details>
 
 <details>
 <summary>15. Can the expiration date of an existing BCM X.509 client certificate be extended in place?</summary>
 
-**No.** X.509 validity dates are cryptographically signed at issuance; once a certificate expires (or needs a longer lifetime), you must issue a **new certificate** with `createcertificate`.
+No. The validity dates are signed into the certificate when it is issued. When a certificate expires, or when you need a longer lifetime, you issue a **new certificate** with `createcertificate`.
 </details>
 
 <details>
 <summary>16. In what order does `cmsh` search for client certificate and key files when starting up?</summary>
 
-1. Explicit **`-i <cert>` and `-k <key>`** command-line flags.
-2. **`~/.cm/admin.pem` and `~/.cm/admin.key`**.
-3. **`~/.cm/cert.pem` and `~/.cm/cert.key`**.
+It checks three places in order. First come the explicit **`-i <cert>` and `-k <key>`** flags. Second are **`~/.cm/admin.pem` and `~/.cm/admin.key`**. Third are **`~/.cm/cert.pem` and `~/.cm/cert.key`**.
 </details>
 
 <details>
 <summary>17. In which two situations must regular user certificates be regenerated across the cluster?</summary>
 
-When the signing **administrator certificate is replaced**, or when the cluster **license (including an evaluation license) is replaced** (verify with `cm-check-certificates.sh`).
+You regenerate them when the signing **administrator certificate is replaced**, and when the cluster **license is replaced**, including an evaluation license. Check the result with `cm-check-certificates.sh`.
 </details>
 
 <details>
 <summary>18. Which configuration files must be updated on both the head node and inside the software image to point RHEL 9 / Rocky 9 nodes at an external LDAP server?</summary>
 
-**`/etc/sssd/sssd.conf`** and **`/etc/openldap/ldap.conf`** (whereas RHEL 8 used `/etc/nslcd.conf`), followed by restarting `sssd`, running `updateprovisioners`, and running `imageupdate` or rebooting nodes.
+Update **`/etc/sssd/sssd.conf`** and **`/etc/openldap/ldap.conf`**. RHEL 8 used `/etc/nslcd.conf` instead. After that, restart `sssd`, run `updateprovisioners`, and then run `imageupdate` or reboot the nodes.
 </details>
 
 <details>
 <summary>19. What are the head-node OS and TCP port prerequisites for installing Keycloak via `cm-setup-keycloak.py` (BCM 11.34+)?</summary>
 
-Requires **BCM 11.34+**, **Ubuntu 24.04 or 26.04** on the head node (RHEL/Rocky are not supported for the Keycloak installer), running MySQL/MariaDB and BCM LDAP, and free TCP ports **`9443` and `9999`**.
+You need **BCM 11.34 or later** and **Ubuntu 24.04 or 26.04** on the head node. RHEL and Rocky are not supported by the Keycloak installer. MySQL or MariaDB and BCM LDAP must be running, and the TCP ports **`9443` and `9999`** must be free.
 </details>
 
 <details>
 <summary>20. What do the `cmd.conf` directives `CMDaemonAudit`, `CMDaemonAuditorFile`, and `DisableAuditorForProfiles` control?</summary>
 
-`CMDaemonAudit` enables audit logging of management actions performed in `CMDaemon`, `CMDaemonAuditorFile` sets the log file path, and `DisableAuditorForProfiles` lists profiles excluded from audit logging (never exclude `admin` on a multi-administrator cluster).
+`CMDaemonAudit` turns on audit logging of management actions in `CMDaemon`. `CMDaemonAuditorFile` sets the path of the log file. `DisableAuditorForProfiles` lists profiles to leave out of the log. On a cluster with several administrators, never exclude `admin`.
 </details>
 
 ## Sources and review notes

@@ -22,11 +22,13 @@ lab_venue: "Nebius GPU"
 
 ## Why this matters for AI infrastructure
 
-A GPU cluster has hundreds of nodes. Someone has to answer: how does a blank node get its operating system, how do you change a setting on 500 nodes at once, how do you power-cycle a rack, how does the scheduler learn what each node is? BCM is NVIDIA's answer, and it is the management software of NVIDIA's DGX SuperPOD reference designs (the SuperPOD architecture documents name Base Command Manager and Mission Control among the in-cluster services). If you know the BCM objects and rules, you can read any BCM cluster and predict what a change will do.
+Picture a cluster with hundreds of nodes and one change that has to reach all of them. Someone has to answer a few hard questions. How does a blank node get its operating system? How do you change a setting on 500 nodes at once? How do you power-cycle a rack, and how does the scheduler learn what each node is? BCM is NVIDIA's answer. It is the management software of NVIDIA's DGX SuperPOD reference designs, and the SuperPOD architecture documents name Base Command Manager and Mission Control among the in-cluster services.
+
+If you know the BCM objects and rules, you can read any BCM cluster and predict what a change will do. That is the goal of this chapter. Learn the objects first, and the rest of the cluster becomes much easier to read.
 
 ## Prerequisites and outcomes
 
-You need Linux basics, and Part 7 helps (BMCs). After this chapter you can:
+Before you start, you need Linux basics. Part 7 helps too, because it covers BMCs. When you finish this chapter, you should be able to do the following.
 
 - explain what BCM does and which parts it is made of
 - explain devices, software images, categories, node groups, roles and configuration overlays
@@ -36,9 +38,9 @@ You need Linux basics, and Part 7 helps (BMCs). After this chapter you can:
 
 ## 1. What BCM is, in simple words
 
-The manual's first sentence: BCM "contains tools and applications to facilitate the installation, administration, and monitoring of a cluster". It runs **on top of a normal Linux distribution**. The 11 installation manual lists supported platforms: Red Hat family (RHEL and Rocky 8 and 9), SUSE Enterprise Server 15, Ubuntu (22.04, 24.04 and a newer LTS) and **DGX OS 7 and 8**, on x86_64 and arm64. The same manual keeps a feature matrix because not every feature exists on every OS and architecture.
+Start with the manual's own first sentence. BCM "contains tools and applications to facilitate the installation, administration, and monitoring of a cluster". It runs on top of a normal Linux distribution. It does not replace the distribution. The 11 installation manual lists the supported platforms: the Red Hat family (RHEL and Rocky 8 and 9), SUSE Enterprise Server 15, Ubuntu (22.04, 24.04 and a newer LTS), and DGX OS 7 and 8, on x86_64 and arm64. Not every feature exists on every OS and architecture, which is why the same manual keeps a feature matrix.
 
-A basic BCM cluster has:
+A basic BCM cluster is made of the parts in the table below. You should know each part, because each one is a place where a problem can start.
 
 | Part | Role |
 |---|---|
@@ -47,7 +49,11 @@ A basic BCM cluster has:
 | **Managed Ethernet switches** | the internal network |
 | **Power distribution units (PDUs)** (optional) | let the head node switch nodes on and off |
 
-The most useful sentence in the installation manual is the one on provisioning: every time a compute node starts, the software on its local drive is **synchronized with a software image kept on the head node**, so a node can always be brought back to a known state, and replacing a broken node is easy. "Software changes need to be carried out only once (in the software image)". This is the heart of BCM: you do not log in to 500 nodes to change them. You change an image or a setting and the nodes follow.
+The head node is the one to watch. Everything else depends on it, so it is the control point for the whole cluster.
+
+The most useful sentence in the installation manual is the one about provisioning. Every time a compute node starts, the software on its local drive is synchronized with a software image kept on the head node. A node can always be brought back to a known state, and replacing a broken node is easy. The manual puts it this way: "Software changes need to be carried out only once (in the software image)". This is the heart of BCM. You do not log in to 500 nodes to change them. You change an image or a setting, and the nodes follow.
+
+The diagram below shows the parts and how they talk to each other.
 
 ```mermaid
 flowchart TD
@@ -70,24 +76,39 @@ flowchart TD
     BMC["BMCs, PDUs, switches"] -. "power and hardware control" .-> CMD
 ```
 
+Notice that both front ends, the BMCs and the regular nodes all talk to CMDaemon on the head node. Before you change a node, ask whether the change belongs in the software image, so that every node that follows the image gets it.
+
 ## 2. The parts of the daemon, front ends and files
 
-- **CMDaemon** is the cluster management daemon. It runs on the head node and on every regular node. All management goes through it. During normal operation, the only management route to CMDaemon is **TCP port 8081** over SSL, authenticated with client-side X509v3 certificates. Two port directives in `/cm/local/apps/cmd/etc/cmd.conf` control how CMDaemon listens:
-  - **`Port = 8080`** (default `8080`): the non-SSL HTTP port. By default it is used **only during `init` / pre-init boot** (and is required when `bootloaderprotocol` is set to `HTTP`, the default, because most bootloaders do not support HTTPS).
-  - **`SSLPort = 8081`** (default `8081`): the SSL HTTPS port used for all communication with Base View and `cmsh` once CMDaemon is up.
-  - **`SSLPortOnly = no`** (default `no`): when `no`, both 8080 and 8081 listen, though only 8081 is used after startup; setting `SSLPortOnly = yes` disables the non-SSL port, which is only allowed if `bootloaderprotocol` is **not** `HTTP`.
-  - **`cm-cmd-ports`**: lists (`cm-cmd-ports -l`, showing `http 8080` and `https 8081` across `/cm/images/<image>/cm/local/apps/cmd/etc/cmd.conf`, `/cm/local/apps/cmd/etc/cmd.conf`, and `/cm/node-installer/scripts/node-installer.conf`) and changes (`--http`, `--https`) the ports. It does **not** update the head node firewall automatically: you must update `/etc/shorewall/rules` and run `shorewall reload` (from BCM 12 onwards Shorewall is superseded by `nftables`), run `softwareimage updateprovisioners` and `fspart; trigger -a`, restart `cmd` on the **active** head node first and then the passive head node, and push `cmd.conf` to running regular nodes before restarting `cmd` on them.
-  - The head node's configuration file is `/cm/local/apps/cmd/etc/cmd.conf` (`Master = master` by default, which makes the head node start in head mode and regular nodes start in node mode); for regular nodes it lives inside the software image. After editing `cmd.conf`, restart the `cmd` service.
-- **Two front ends** talk to CMDaemon and offer the same functions: **Base View** (a web GUI) and **`cmsh`** (a shell). The manual says an administrator need not learn both. Base View is served on port 8081 at `/base-view` (`https://<head>:8081/base-view`); the `base-view` package can be removed to disable it. `cmsh` suits scripting; for real programs the manual recommends the Python bindings of the Developer Manual instead of batch `cmsh`.
-- **CMDaemon Lite** (`cm-lite-daemon`, a Python service) is a minimal alternative for devices where a full daemon is overkill. It uses one node license.
-- **Checks and tools:** `cmdaemonctl full-status` shows version, uptime, sessions, worker threads and request rate; `cmdaemonctl debugon` and `debugoff` switch debug logging (turn it off in production, the logs grow fast); logs go to `/var/log/cmdaemon`; `cmdaemonversions` in `cmsh` device mode lists the daemon version of every node, and the manual expects the same version everywhere. `cm-change-passwd` changes the four administrative passwords (head node root, software image root, node-installer root, MySQL root) in one dialog; on an HA pair run it on both head nodes.
-- **Generated files.** CMDaemon writes many system files. A file it generates carries the header "This file was automatically generated by cmd. Do not edit manually!" and a manual edit is overwritten, unless you list the file in the `FrozenFile` directive of `cmd.conf` (for example `FrozenFile = { "/etc/dhcpd.conf" }`). If a generated file had a hand edit and is not frozen, CMDaemon raises an event and saves your copy in `/var/spool/cmd/saved-config-files`. This one rule prevents many confusing "my change disappeared" tickets.
+Suppose Base View stops answering after a firewall change. To tell a network problem from a daemon problem, you need to know which ports CMDaemon uses. This section walks through them, along with the front ends and the files that matter.
 
-Authentication (chapter 8.6 goes deeper): `cmsh` uses PEM certificates. A fresh install makes an administrator certificate for root at `/root/.cm/admin.pem` and `/root/.cm/admin.key`. A certificate carries a **profile**, which decides what the holder may do. `admin` is the built-in profile that allows everything. `cm-check-certificates.sh` checks whether certificates are current.
+CMDaemon is the cluster management daemon. It runs on the head node and on every regular node, and all management goes through it. During normal operation, the only management route to CMDaemon is TCP port `8081` over SSL. Clients authenticate with client-side X509v3 certificates.
+
+Two port directives in `/cm/local/apps/cmd/etc/cmd.conf` control how CMDaemon listens. `Port = 8080` is the non-SSL HTTP port, with a default of `8080`. By default it is used only during `init` / pre-init boot, and it is required when `bootloaderprotocol` is set to `HTTP`, the default, because most bootloaders do not support HTTPS. `SSLPort = 8081` is the SSL port, with a default of `8081`. Base View and `cmsh` use it for all communication once CMDaemon is up.
+
+`SSLPortOnly = no` is the default. With `no`, both 8080 and 8081 listen, although only 8081 is used after startup. Setting `SSLPortOnly = yes` disables the non-SSL port, but that is allowed only when `bootloaderprotocol` is not `HTTP`.
+
+The `cm-cmd-ports` tool lists the ports and changes them. Run `cm-cmd-ports -l` to see `http 8080` and `https 8081` across three files: `/cm/images/<image>/cm/local/apps/cmd/etc/cmd.conf`, `/cm/local/apps/cmd/etc/cmd.conf` and `/cm/node-installer/scripts/node-installer.conf`. You change the ports with the tool's `--http` and `--https` options, but that takes more than one command. The tool does not update the head node firewall for you. You must update `/etc/shorewall/rules` and run `shorewall reload`. From BCM 12 onwards, Shorewall is superseded by `nftables`. Then run `softwareimage updateprovisioners` and `fspart; trigger -a`. Restart `cmd` on the active head node first, then on the passive head node. Push `cmd.conf` to running regular nodes before you restart `cmd` on them.
+
+On the head node, the configuration file is `/cm/local/apps/cmd/etc/cmd.conf`. It sets `Master = master` by default, which makes the head node start in head mode and regular nodes start in node mode. On regular nodes, the file lives inside the software image. After you edit `cmd.conf`, restart the `cmd` service.
+
+Two front ends talk to CMDaemon and offer the same functions. Base View is the web GUI, and `cmsh` is the shell. The manual says you do not need to learn both. Base View is served on port 8081 at `/base-view`, so the address is `https://<head>:8081/base-view`. Remove the `base-view` package to disable it. `cmsh` suits scripting. For real programs, the manual recommends the Python bindings from the Developer Manual instead of batch `cmsh`.
+
+CMDaemon Lite (`cm-lite-daemon`, a Python service) is a minimal alternative. It fits devices where a full daemon is overkill, and it uses one node license.
+
+For day-to-day checks, `cmdaemonctl full-status` shows the version, uptime, sessions, worker threads and request rate. `cmdaemonctl debugon` and `debugoff` switch debug logging. Turn debug logging off in production, because the logs grow fast. Logs go to `/var/log/cmdaemon`. In `cmsh` device mode, `cmdaemonversions` lists the daemon version of every node, and the manual expects the same version everywhere. The `cm-change-passwd` tool changes four administrative passwords in one dialog: head node root, software image root, node-installer root, and MySQL root. On an HA pair, run it on both head nodes.
+
+CMDaemon writes many system files, and it owns them. A generated file carries the header "This file was automatically generated by cmd. Do not edit manually!" A manual edit to that file is overwritten, unless you list the file in the `FrozenFile` directive of `cmd.conf`, for example `FrozenFile = { "/etc/dhcpd.conf" }`. If a generated file has a hand edit and is not frozen, CMDaemon raises an event and saves your copy in `/var/spool/cmd/saved-config-files`. This one rule prevents many confusing "my change disappeared" tickets.
+
+Authentication gets its own chapter (chapter 8.6 goes deeper), but here is the outline. `cmsh` uses PEM certificates. A fresh install creates an administrator certificate for root at `/root/.cm/admin.pem` and `/root/.cm/admin.key`. A certificate carries a profile, and the profile decides what its holder may do. `admin` is the built-in profile that allows everything. Run `cm-check-certificates.sh` to see whether certificates are current.
+
+The safe habit is simple. Change the setting in BCM, and let CMDaemon write the file for you.
 
 ## 3. The object model
 
-This is the most important part of the chapter. BCM keeps the cluster in a database as **objects**. Most BCM mistakes come from not knowing which object a setting belongs to.
+Most BCM mistakes come from not knowing which object a setting belongs to. This section is the most important part of the chapter, so take it slowly. BCM keeps the cluster in a database as objects, and each object owns a different kind of setting.
+
+The diagram below shows how the objects connect.
 
 ```mermaid
 flowchart LR
@@ -109,11 +130,13 @@ flowchart LR
     PART -->|"names the default"| CAT
 ```
 
+Notice that a device sits in exactly one category, while a node group only collects devices for operations. Keep that difference in mind through the rest of the chapter.
+
 ### 3.1 Devices
 
-A **device** is a component of the cluster. The manual's list: head node, physical node, virtual node, cloud node, GPU unit, chassis, switch (Ethernet, InfiniBand, Myrinet), lite node, power distribution unit, rack sensor kit and generic device. A device has properties (rack position, host name, switch port) and operations (power on). What you can do depends on the type: you can mount a filesystem on a node but not on a switch.
+Start with the question every on-call engineer asks first: is this device supposed to be up? A device is a component of the cluster. The manual lists these types: head node, physical node, virtual node, cloud node, GPU unit, chassis, switch (Ethernet, InfiniBand, Myrinet), lite node, power distribution unit, rack sensor kit and generic device. A device has properties, such as rack position, host name or switch port, and operations, such as power on. What you can do depends on the type. You can mount a filesystem on a node, but not on a switch.
 
-Every device has a **state**:
+Every device has a state. The table below shows the four states.
 
 | State | The device is | Monitored? | Meaning |
 |---|---|---|---|
@@ -122,45 +145,54 @@ Every device has a **state**:
 | `[ CLOSED ] (UP)` | up | mostly ignored | deliberately set aside |
 | `[ CLOSED ] (DOWN)` | down | mostly ignored | the administrator **deliberately** took it down and wants it ignored |
 
-The difference between `DOWN` and `CLOSED (DOWN)` is the most useful one: the first needs a fix, the second is on purpose. My model code returns only the `DOWN` nodes as failures.
+The difference between `DOWN` and `CLOSED (DOWN)` is the most useful one. A `DOWN` device needs a fix. A `CLOSED (DOWN)` device is down on purpose. The model code returns only the `DOWN` nodes as failures.
 
 ### 3.2 Software images
 
-A **software image** is "a blueprint for the contents of the local filesystems on a regular node". In practice it is a **directory on the head node** (normally under `/cm/images/<name>`) holding a full Linux filesystem. A fresh install creates `default-image`. Facts from the manual:
+A node that boots needs a complete Linux filesystem to start from. In BCM, that filesystem is the software image. A software image is a blueprint for the contents of the local filesystems on a regular node. In practice it is a directory on the head node, normally under `/cm/images/<name>`, that holds a full Linux filesystem. A fresh install creates `default-image`. The manual adds these facts.
 
-- By default the image uses the same Linux family as the head node. Different families are supported but harder to manage. RHEL 8 with Rocky 8, and RHEL 9 with Rocky 9, mix without problems because Rocky is binary compatible; SLES and Ubuntu mixes need "quite some effort".
-- At boot the node-provisioning system gives the node a copy. A running node can be **re-synchronised** to pick up image changes without rebooting (the `imageupdate` command, chapter 8.4).
-- An image can be **locked** so no node picks it up while you work on it.
-- You change an image with normal Linux tools (`chroot`, `rpm`, and so on). Chapter 8.4 and 8.13 show the safe method.
+The image uses the same Linux family as the head node by default. Other families are supported, but they are harder to manage. RHEL 8 with Rocky 8, and RHEL 9 with Rocky 9, mix without problems, because Rocky is binary compatible. SLES and Ubuntu mixes need "quite some effort".
+
+At boot, the node-provisioning system gives the node a copy of the image. A running node can be re-synchronised to pick up image changes without a reboot, using the `imageupdate` command from chapter 8.4. You can also lock an image, so no node picks it up while you work on it.
+
+You change an image with normal Linux tools, such as `chroot` and `rpm`. Chapters 8.4 and 8.13 show the safe method.
+
+Lock the image before you work on it if nodes are still provisioning from it, so no node picks up a half-changed image.
 
 ### 3.3 Categories
 
-A **category** is "a group of regular nodes that share the same configuration". It lets you configure and operate on many nodes at once: one disk layout for a group, or one reboot for a whole category.
+Suppose a rack holds nodes that need the same disk layout. A category is how you give them one shared configuration. A category is a group of regular nodes that share the same configuration. It lets you configure and operate on many nodes at once, such as setting one disk layout for a group or rebooting a whole category with one command.
 
-- A regular node is in **exactly one category at all times**, `default` unless changed. You can change the default for new nodes with `defaultcategory` in the partition's base object.
-- People usually split categories by hardware or by task. The manual's examples: `nodes-ib` (InfiniBand), `nodes-highmem`, `login`, `storage`. The rule of thumb: make a new category when the configuration (monitoring, disk layout, roles) differs from the others.
-- A category and a software image do not map one to one. Several categories can share an image, and a category can be switched to another image.
+Every regular node is in exactly one category at all times. The default is `default`, unless you change it. To change the default for new nodes, set `defaultcategory` in the partition's base object.
+
+People usually split categories by hardware or by task. The manual's examples are `nodes-ib` (InfiniBand), `nodes-highmem`, `login` and `storage`. As a rule of thumb, make a new category when the configuration differs from the others, whether that is monitoring, disk layout or roles.
+
+A category and a software image do not map one to one. Several categories can share an image, and a category can be switched to another image. Before you create a category, ask whether its nodes need a configuration the others do not have.
 
 ### 3.4 Node groups
 
-A **node group** is any collection of nodes for convenience: any mix of head nodes and regular nodes, in any categories. A node can be in **zero or more** groups. Groups are for **operations** on a set (for example "reboot rack5"). Because the members may have different configurations, **you cannot change configuration through a group**. Examples from the manual: `brokenhardware`, `headnodes`, `rack5`.
+Sometimes you need to reboot one rack, and you do not care how its nodes are configured. That is what a node group is for. A node group is any collection of nodes for convenience. It can mix head nodes and regular nodes, in any categories. A node can be in zero or more groups.
+
+Groups are for operations on a set, such as "reboot rack5". Because the members may have different configurations, you cannot change configuration through a group. The manual's examples are `brokenhardware`, `headnodes` and `rack5`. Use a group to act on nodes, and a category to configure them.
 
 ### 3.5 Roles
 
-A **role** is a task a node can perform. Giving a node a role switches on that function. Examples: `boot` (the node can netboot others, with the `dhcpd` service), `provisioning`, `storage`, the Slurm client role. Roles can have parameters (the Slurm client role takes queues and GPU counts).
+A node sometimes needs one specific job switched on, such as netbooting other nodes. A role is how you switch it on. A role is a task a node can perform, and giving a node a role switches on that function. Examples are `boot`, which lets the node netboot others with the `dhcpd` service, plus `provisioning`, `storage` and the Slurm client role. Some roles take parameters. The Slurm client role, for example, takes queues and GPU counts.
 
-Rules:
+Four rules govern roles.
 
-1. A role can be given to a single node or to a whole category (then every node in it has it).
-2. **You cannot create roles.** The `add` command does not exist in role mode, "by design". You can only `assign` roles that BCM provides.
-3. If a category has a role with some parameters, you can **override the parameters for one node** by assigning the same role to that node again with different parameters.
-4. Every assignment has a **priority**. The higher one wins.
+1. A role can go to a single node, or to a whole category, in which case every node in that category has it.
+2. You cannot create roles. The `add` command does not exist in role mode, by design, so you can only `assign` the roles BCM provides.
+3. If a category has a role with some parameters, you can override those parameters for one node. Assign the same role to that node again with different parameters.
+4. Every assignment has a priority, and the higher one wins.
+
+If you need a function that BCM does not offer as a role, build a configuration overlay instead.
 
 ### 3.6 Configuration overlays
 
-A **configuration overlay** is a group of roles that you assign to chosen nodes or categories, with a priority. It is the BCM way to get what a custom role would give: you can build your own overlay (the `add` command works in `configurationoverlay` mode).
+Suppose you need a custom function on a set of nodes, and BCM has no role for it. A configuration overlay solves that. It is a group of roles that you assign to chosen nodes or categories, with a priority. It is the BCM way to get what a custom role would give. You can build your own overlay, because the `add` command works in `configurationoverlay` mode.
 
-**The priority table.** This is worth memorising:
+The priority table is worth memorising. It shows where each assignment's priority comes from.
 
 | Assignment comes from | Priority |
 |---|---|
@@ -169,19 +201,27 @@ A **configuration overlay** is a group of roles that you assign to chosen nodes 
 | a node | **750** (fixed) |
 | overlay set to **-1** | the overlay is ignored |
 
-An overlay may not use 250 or 750 (those belong to category and node). So by default: **node beats overlay, overlay beats category**. By the numbers, an overlay with a priority above 750 (up to 1000) would outrank a node-level role. The manual gives the numbers and the rule "the highest priority determines the role", but no example of this case, so that last point is **my reading**, not a quoted rule. My model follows the numbers, and the lab marks that check as "my reading".
+By default, a node beats an overlay, and an overlay beats a category. An overlay may not use 250 or 750, because those belong to the category and node levels. A worked example makes this concrete. An overlay set to 600 beats the category at 250, but it loses to a node at 750.
+
+Read the numbers closely, because they lead to a case the manual does not spell out. An overlay with a priority above 750, up to 1000, would outrank a node-level role. The manual gives the numbers and the rule that the highest priority determines the role. It gives no example of this case, so that last point is **my reading**, not a quoted rule. The model follows the numbers, and the lab marks that check as "my reading".
 
 ### 3.7 How Auto Scaler (`cm-scale`) uses overlays and categories
 
-A practical reason BCM separates **categories** (the software image and boot settings) from **configuration overlays** (workload manager roles) appears in **NVIDIA Base Command Manager Auto Scaler**. Auto Scaler runs as the `cm-scale` daemon on nodes that hold the `ScaleServer` role and watches pending work across workload engines (`wlmresources` in `cmsh` `device` mode shows what it sees):
+Some clusters run Kubernetes and Slurm side by side. When one queue backs up while the other sits idle, someone has to move nodes. That is the practical reason BCM separates categories from configuration overlays. Categories hold the software image and boot settings, and overlays hold the workload manager roles. NVIDIA Base Command Manager Auto Scaler shows the idea in action.
 
-- **Sharing nodes between Kubernetes and Slurm:** when both Kubernetes and Slurm settings are added to the `ScaleServer` role, `cm-scale` repurposes a free node from one scheduler to the other **by switching its configuration overlays** (for example turning an idle Kubernetes worker into a Slurm node "pretty much immediately" when Slurm jobs are queued, without changing the node's category or re-provisioning its disk).
-- **Sharing nodes between LSF and Slurm, or cloudbursting / power saving:** `cm-scale` can also repurpose nodes between categories when a job finishes, power down idle physical nodes and start them when jobs arrive (several minutes), or extend queues to cloud nodes via Cluster Extension.
-- **Resource matching:** `cm-scale` matches CPUs (fractional in Kubernetes), memory, and GPU count and type (for Kubernetes it natively matches `nvidia.com/gpu`, uses `maxPods` from the `kubelet` role, tracks job `parallelism` via `kube_job_spec_parallelism`, and checks extra resources only if listed in `KUBE_EXTENDED_RESOURCES` in `config.py`).
+Auto Scaler runs as the `cm-scale` daemon on nodes that hold the `ScaleServer` role. It watches pending work across workload engines. The `wlmresources` command in `cmsh` `device` mode shows what it sees.
+
+Sharing nodes between Kubernetes and Slurm works like this. When both Kubernetes and Slurm settings are added to the `ScaleServer` role, `cm-scale` repurposes a free node from one scheduler to the other. It does this by switching the node's configuration overlays. For example, an idle Kubernetes worker can become a Slurm node "pretty much immediately" when Slurm jobs are queued. The node's category stays the same, and its disk is not re-provisioned.
+
+Sharing nodes between LSF and Slurm, cloudbursting and power saving work differently. Here `cm-scale` can repurpose nodes between categories when a job finishes. It can power down idle physical nodes, then start them again when jobs arrive, which takes several minutes. It can also extend queues to cloud nodes through Cluster Extension.
+
+Resource matching is the last piece. `cm-scale` matches CPUs, which can be fractional in Kubernetes, along with memory and GPU count and type. For Kubernetes, it natively matches `nvidia.com/gpu`, uses `maxPods` from the `kubelet` role, and tracks job `parallelism` through `kube_job_spec_parallelism`. It checks extra resources only when they are listed in `KUBE_EXTENDED_RESOURCES` in `config.py`.
+
+The practical rule is to keep images and categories steady, and let overlays do the switching.
 
 ### 3.8 BCM and Ansible: where the boundary sits
 
-BCM is not a replacement for Ansible and Ansible is not a bare-metal boot/provisioning engine:
+Many teams already manage servers with Ansible. Before you put BCM and Ansible side by side, you need to know who owns which job. BCM is not a replacement for Ansible, and Ansible is not a bare-metal boot and provisioning engine. The table shows who owns each job and why.
 
 | Responsibility | Natural owner | Why |
 |---|---|---|
@@ -191,15 +231,19 @@ BCM is not a replacement for Ansible and Ansible is not a bare-metal boot/provis
 | Slurm and Kubernetes cluster roles and overlays | **BCM** | Managed by `cm-wlm-setup`, `cm-kubernetes-setup`, and `cm-scale` |
 | Site-specific policy files, extra agents, or managing BCM objects as code in Git | **Ansible** (or BCM chroot—pick **one** owner per file) | BCM ships the `brightcomputing.bcm110` Ansible collection (chapter 8.13, section 6) so playbooks can manage categories, users, and devices from Git; mixing live Ansible edits on nodes with BCM image sync causes drift |
 
+The last row is where the overlap starts. BCM ships the `brightcomputing.bcm110` collection, which lets playbooks manage categories, users and devices from Git. Live Ansible edits on nodes, mixed with BCM image sync, cause drift. So pick one owner per file.
+
 ## 4. Where does a value come from? Three rules
 
-For a **setting of a node**:
+You set a value on a node, but the node still shows a different one. Which level won? Three rules answer that question. The first two cover settings on a node, and the third covers roles.
 
-1. **Normal values are inherited.** A node gets the value from its category. Setting the value on the node overrules the category for that node only.
-2. **Yes/no (Boolean) values are not inherited.** The category value and the node value are combined with **OR**. By default both are false, so at first it looks like normal inheritance. But a node **cannot switch off** a Boolean that its category switches on. The manual's examples are `datanode` and `installbootrecord`.
-3. **Roles** are resolved by priority as in section 3.6.
+For a setting on a node, the rules work like this.
 
-My model implements these and prints where a value came from (like the BCM `credentialsoverview` command in chapter 7.1, which shows which level supplies a credential). Part of the output of the lab:
+1. Normal values are inherited. A node gets the value from its category. A value you set on the node overrules the category, but only for that node.
+2. Yes/no (Boolean) values are not inherited. The category value and the node value are combined with OR. By default both are false, so at first it looks like normal inheritance. But a node cannot switch off a Boolean that its category switches on. The manual's examples are `datanode` and `installbootrecord`.
+3. Roles are resolved by priority, as section 3.6 explains.
+
+The model implements these rules, and it prints where each value came from. It works like the BCM `credentialsoverview` command in chapter 7.1, which shows which level supplies a credential. Part of the lab's output is below.
 
 ```text
 PASS  a non-Boolean value is inherited from the category (2.1.3)
@@ -213,186 +257,202 @@ PASS  overlay priority 250 is forbidden (2.1.6)
 30 passed, 0 failed
 ```
 
-Run it with `python3 bcm_model_lab.py` in `code/part08`. If a check ever fails, my reading of the manual was wrong, so the lab is also a way to find my own mistakes.
+Run the lab with `python3 bcm_model_lab.py` in `code/part08`. If a check ever fails, the model's reading of the manual was wrong, so the lab also catches your mistakes.
 
-**A worked example.** You have a category `dgx` with the Slurm client role (8 GPUs) and a kernel parameter `iommu=pt`. One node, `dgx-01`, has a bad GPU, so you set its Slurm client role to 4 GPUs on the node itself, and give it extra kernel parameters. Result in the model: `dgx-01` gets 4 GPUs (node 750 beats category 250), its own kernel parameter string, and everything else from `dgx`. The other nodes keep 8 GPUs. If instead you had put a `datanode` flag on the category, `dgx-01` could not turn it off.
+A worked example shows all three rules at work. Say you have a category `dgx` with the Slurm client role at 8 GPUs and a kernel parameter `iommu=pt`. One node, `dgx-01`, has a bad GPU. You set its Slurm client role to 4 GPUs on the node itself, and you give it extra kernel parameters. In the model, `dgx-01` gets 4 GPUs, because the node-level 750 beats the category-level 250. It also gets its own kernel parameter string, and everything else comes from `dgx`. The other nodes keep 8 GPUs. If you had put a `datanode` flag on the category instead, `dgx-01` could not turn it off.
+
+When a value looks wrong, first ask whether it is a Boolean. A Boolean cannot be switched off on one node, so that check comes before anything else.
 
 ## 5. A few practical points from the manual
 
-- **Modules.** The "modules environment" (Environment Modules) sets up compilers and libraries for users. `module avail`, `module load`. Applications split into **local** (on the node) and **shared** (on shared storage; load the `shared` module to see them). The manual advises against loading `shared` automatically for root on a cluster whose shared storage is not on the head node, because root logins could hang if that storage is down. Administrators can set a default environment for all users in `/etc/profile.d` and in the `default-environment` meta-module (empty by default). Lmod can replace the default Tcl modules (`ENABLE_LMOD` in `cm-lmod-init.sh`, changed in the image for regular nodes and applied with `imageupdate`).
-- **SSH.** Passwordless SSH works from the head node to regular nodes by default; for root from a regular node to the head node a password is requested "as a security consideration". User logins to regular nodes can be restricted with the `usernodelogin` option.
-- **Scope.** BCM has separate manuals for cloudbursting, edge, containerization, the developer API and NVIDIA Mission Control. This part of the handbook follows the administrator, installation and containerization manuals.
+Users reach for compilers and libraries on every node, and the manual has a few practical points about how to set that up. Three points matter most in daily work.
+
+The modules environment, Environment Modules, sets up compilers and libraries for users. Users run `module avail` to see what is available, and `module load` to set one up. Applications split into local ones, which live on the node, and shared ones, which live on shared storage. To see the shared applications, load the `shared` module. The manual advises against loading `shared` automatically for root on a cluster whose shared storage is not on the head node. Root logins could hang if that storage is down. You can set a default environment for all users in `/etc/profile.d`, and in the `default-environment` meta-module, which is empty by default. Lmod can replace the default Tcl modules. Set `ENABLE_LMOD` in `cm-lmod-init.sh`, change it in the image for regular nodes, and apply it with `imageupdate`.
+
+SSH is the second point. Passwordless SSH works from the head node to regular nodes by default. For root, going from a regular node back to the head node, the system asks for a password "as a security consideration". You can restrict user logins to regular nodes with the `usernodelogin` option.
+
+The third point is scope. BCM has separate manuals for cloudbursting, edge, containerization, the developer API and NVIDIA Mission Control. This part of the handbook follows the administrator, installation and containerization manuals.
+
+For a cluster whose shared storage sits off the head node, keep `shared` out of root's login, and let users load it themselves.
 
 ## 6. BCM and SuperPOD
 
-The DGX GB300 SuperPOD reference architecture says NVIDIA Mission Control software "is used to manage all DGX GB300 SuperPOD deployments" and calls it a full-stack solution for AI factories. It lists Base Command Manager, Slurm and Kubernetes as in-cluster services that reach the outside world (NGC registry, code repositories, data sources) through the border network. Mission Control builds on BCM. Chapters 8.15 and 8.16 cover this. For now: when you see a SuperPOD, expect BCM to be the layer that provisions and manages its nodes and ties in Slurm and Kubernetes.
+You open a SuperPOD design document and see a list of software names. Which one manages the nodes? The DGX GB300 SuperPOD reference architecture answers that question. It says NVIDIA Mission Control "is used to manage all DGX GB300 SuperPOD deployments", and it calls Mission Control a full-stack solution for AI factories.
+
+The same document lists Base Command Manager, Slurm and Kubernetes as in-cluster services. These services reach the outside world, such as the NGC registry, code repositories and data sources, through the border network. Mission Control builds on BCM. Chapters 8.15 and 8.16 cover this in detail.
+
+For now, when you see a SuperPOD, look for the BCM layer. It is the layer that provisions and manages the nodes, and it ties in Slurm and Kubernetes.
 
 ## 7. Common first mistakes
 
-1. **Editing a generated file by hand** and losing the change (use `FrozenFile`, or change the setting in BCM).
-2. **Expecting a node to switch off a Boolean its category switches on.**
-3. **Changing a setting on one node when the whole category needs it** (or the reverse), then wondering why new nodes differ.
-4. **Trying to create a custom role.** Make an overlay.
-5. **Treating `DOWN` and `CLOSED (DOWN)` alike.**
-6. **Not knowing a node's category.** Nodes in a surprising category inherit surprising settings.
-7. **Changing an image while nodes are provisioning from it** (lock it first, chapter 8.4).
+The mistakes below are the ones this chapter has already warned you about. Each one has a clear fix.
+
+Each mistake below comes with its fix.
+
+1. Editing a generated file by hand loses the change. Add the file to `FrozenFile`, or change the setting in BCM.
+2. Expecting a node to switch off a Boolean that its category switches on will fail, because the two values are combined with OR.
+3. Changing a setting on one node when the whole category needs it, or the reverse, leaves new nodes looking different. Then you wonder why.
+4. Trying to create a custom role fails. Build an overlay instead.
+5. Treating `DOWN` and `CLOSED (DOWN)` as the same hides the difference between a failure and a deliberate shutdown.
+6. Not knowing a node's category is costly, because nodes in a surprising category inherit surprising settings.
+7. Changing an image while nodes are provisioning from it can cause trouble. Lock the image first, as chapter 8.4 explains, so no node picks up a half-changed image.
+
+If a change disappears, check the generated-file rule first. It explains most of those tickets.
 
 ### 7.1 Mental model: How CMDaemon reconciles database state into Linux files
 
-When you transition from managing individual Linux servers with SSH and Ansible to managing an AI factory with NVIDIA Base Command Manager, the single most important shift in thinking is understanding **who owns `/etc`**.
+Moving from SSH and Ansible on single servers to BCM on an AI factory forces one shift in thinking above all. You need to know who owns `/etc`.
 
-On a standalone Linux server, the files in `/etc`—such as `/etc/dhcp/dhcpd.conf`, `/etc/exports`, `/etc/named.conf`, `/etc/slurm/slurm.conf`, and `/etc/fstab`—are the source of truth. If you edit `/etc/exports` and run `exportfs -ra`, your change is permanent. On a BCM cluster, **those files are build artifacts, not the source of truth**. The authoritative source of truth is the object graph stored inside the MySQL database on the head node and managed in memory by `CMDaemon`.
+On a standalone Linux server, the files in `/etc` are the source of truth. Those files include `/etc/dhcp/dhcpd.conf`, `/etc/exports`, `/etc/named.conf`, `/etc/slurm/slurm.conf` and `/etc/fstab`. If you edit `/etc/exports` and run `exportfs -ra`, the change is permanent. On a BCM cluster, those files are build artifacts, not the source of truth. The real source of truth is the object graph stored in the MySQL database on the head node, which CMDaemon manages in memory.
 
-Every time you run `commit` in `cmsh` (or click Save in Base View) to add a node, change an IP range, or modify a category's NFS mounts, `CMDaemon` evaluates the inheritance rules across partitions, categories, overlays, and devices. It then regenerates the affected daemon configuration files on the head node (and pushes the relevant state to regular node `CMDaemon` instances over TCP port `8081`), stamps the top of each generated file with `"This file was automatically generated by cmd. Do not edit manually!"`, and reloads or signals the underlying Linux service (`dhcpd`, `named`, `nfs-server`, `slurmctld`).
+Every time you run `commit` in `cmsh`, or click Save in Base View, CMDaemon does the work. You might be adding a node, changing an IP range, or modifying a category's NFS mounts. CMDaemon evaluates the inheritance rules across partitions, categories, overlays and devices. It regenerates the affected daemon configuration files on the head node, and it pushes the relevant state to regular node CMDaemon instances over TCP port `8081`. It stamps the top of each generated file with "This file was automatically generated by cmd. Do not edit manually!" Then it reloads or signals the Linux service behind the file, such as `dhcpd`, `named`, `nfs-server` or `slurmctld`.
 
-Once you internalize that reconciliation loop, the architecture of BCM becomes completely predictable. You never SSH into a compute node to fix a mount in `/etc/fstab` or edit `/etc/resolv.conf`—because the next time `CMDaemon` reconciles state or the node reboots from its software image, your manual edit is wiped away. Instead, you ask: *which BCM object (`partition`, `network`, `category`, `configurationoverlay`, `softwareimage`, or `device`) owns this property?* You change the property once on that object, commit, and let `CMDaemon` propagate the change across all five hundred nodes deterministically.
+Once that reconciliation loop is clear, the architecture of BCM becomes predictable. You never SSH into a compute node to fix a mount in `/etc/fstab` or edit `/etc/resolv.conf`. The next time CMDaemon reconciles state, or the node reboots from its software image, your manual edit is wiped away. Ask a better question instead: which BCM object owns this property? The objects are `partition`, `network`, `category`, `configurationoverlay`, `softwareimage` and `device`. Change the property once on that object, commit, and let CMDaemon propagate the change across all five hundred nodes deterministically.
+
+The next time a file on a node looks wrong, find the BCM object that owns it before you touch the file.
 
 ## Exercises
 
-1. Run `python3 bcm_model_lab.py`. Pick three checks and explain each rule in one sentence of your own.
-2. Extend the model: add a node group `rack5` and write a function that returns the `Slurm client` GPU count for every node in the group.
-3. In the model, an overlay at priority 600 and another at 400 both give a node a role. Which wins and why? Confirm by running it.
-4. Write down which object (device, category, group, role, overlay, image) you would use for: a disk layout; the Slurm client role for all DGX nodes; the one broken node that needs 4 GPUs; "reboot everything in rack 5"; a different kernel for a test group.
-5. Explain in your own words why the manual forbids overlay priorities 250 and 750.
-6. Read section 2.6.5 of the manual and write a short rule for your team about editing files on the head node.
+Try these on your own, and run the model whenever you need to check a rule.
+
+1. Run `python3 bcm_model_lab.py`. Choose three of the checks, and explain each rule in a sentence of your own.
+2. Extend the model. Add a node group called `rack5`, then write a function that returns the `Slurm client` GPU count for every node in that group.
+3. The model has an overlay at priority 600 and another at 400, and both give a node a role. Which one wins, and why? Run the model to confirm your answer.
+4. For each job, say which object you would use: device, category, group, role, overlay or image. The jobs are a disk layout; the Slurm client role for all DGX nodes; the one broken node that needs 4 GPUs; "reboot everything in rack 5"; and a different kernel for a test group.
+5. In your own words, explain why the manual forbids overlay priorities 250 and 750.
+6. Read section 2.6.5 of the manual. Then write a short rule for your team about editing files on the head node.
 
 ## 9. Interview angles
 
-- "What does BCM do?" Installs and boots nodes from images on the head node, applies configuration through objects, controls power and hardware, monitors, and integrates Slurm and Kubernetes.
-- "Category or group?" Category carries configuration, one per node; a group is only a set for operations, many per node.
-- "A node ignores its category's setting. Why?" The node may have its own value, or the setting is a Boolean (OR), or a higher-priority role or overlay applies.
-- "Why can't I add a custom role?" By design; create a configuration overlay.
-- "DOWN versus CLOSED (DOWN)?" Failure versus a deliberate shutdown.
+- "What does BCM do?" It installs and boots nodes from images on the head node. It applies configuration through objects, controls power and hardware, monitors the cluster, and integrates Slurm and Kubernetes.
+- "Category or group?" A category carries configuration, and every regular node is in exactly one. A group is only a set for operations, and a node can be in zero or more.
+- "A node ignores its category's setting. Why?" Either the node has its own value, or the setting is a Boolean that combines with OR, or a higher-priority role or overlay applies.
+- "Why can't I add a custom role?" It is by design. Create a configuration overlay instead.
+- "DOWN versus CLOSED (DOWN)?" One is a failure, and the other is a deliberate shutdown.
 - "Where do you change software for 500 nodes?" In the software image, then re-sync or reboot the nodes.
+
+If you can answer all six without notes, you have the core of this chapter.
 
 ## Checkpoint questions (20)
 
 <details>
 <summary>1. What is the BCM head node responsible for in a cluster?</summary>
 
-The head node (master node) is the central control point of the cluster: it runs the primary `CMDaemon` and MySQL configuration database, stores software images under `/cm/images`, serves DHCP, TFTP/HTTP boot, DNS, NTP, and LDAP, manages BMCs/PDUs/switches, and coordinates workload managers (Slurm and Kubernetes).
+The head node, also called the master node, is the central control point. It runs the primary `CMDaemon` and the MySQL configuration database, and it stores software images under `/cm/images`. It also serves DHCP, TFTP/HTTP boot, DNS, NTP and LDAP. On top of that, it manages BMCs, PDUs and switches, and it coordinates the workload managers, Slurm and Kubernetes.
 </details>
 
 <details>
 <summary>2. What does CMDaemon do, where does it run, and which TCP ports does it use (`Port` vs `SSLPort`)?</summary>
 
-`CMDaemon` (`cmd`) is the core cluster management daemon that runs on the head node (`Master = master` in `/cm/local/apps/cmd/etc/cmd.conf`) and on every regular node. During normal operation, all management traffic from `cmsh` and Base View uses **TCP port `8081` over SSL (`SSLPort = 8081`)** authenticated with X.509v3 client certificates; non-SSL **`Port = 8080`** is used only during `init` / pre-init HTTP boot.
+CMDaemon (`cmd`) is the core cluster management daemon. It runs on the head node, where `Master = master` in `/cm/local/apps/cmd/etc/cmd.conf` sets it, and on every regular node. In normal operation, all management traffic from `cmsh` and Base View uses TCP port `8081` over SSL (`SSLPort = 8081`), with X.509v3 client certificates for authentication. The non-SSL `Port = 8080` is used only during `init` / pre-init HTTP boot.
 </details>
 
 <details>
 <summary>3. Name the two administrative front ends to CMDaemon and where each is accessed.</summary>
 
-1. **Base View:** The web GUI served at `https://<head>:8081/base-view` (provided by the `base-view` package).
-2. **`cmsh`:** The interactive and scriptable cluster management shell on the head node.
+The first is Base View, the web GUI. You reach it at `https://<head>:8081/base-view`, and the `base-view` package provides it. The second is `cmsh`, the interactive and scriptable cluster management shell on the head node.
 </details>
 
 <details>
 <summary>4. What happens if you manually edit a configuration file generated by CMDaemon, and what does the `FrozenFile` directive in `cmd.conf` do?</summary>
 
-Any file carrying the header `"This file was automatically generated by cmd. Do not edit manually!"` will be overwritten by `CMDaemon` (which saves your manual copy to `/var/spool/cmd/saved-config-files` and raises an event) unless you list that file path in the **`FrozenFile`** directive of `cmd.conf` (e.g., `FrozenFile = { "/etc/dhcpd.conf" }`).
+CMDaemon overwrites any file that carries the header "This file was automatically generated by cmd. Do not edit manually!" It saves your manual copy to `/var/spool/cmd/saved-config-files` and raises an event. Listing a file path in the `FrozenFile` directive of `cmd.conf` stops that overwrite, for example `FrozenFile = { "/etc/dhcpd.conf" }`.
 </details>
 
 <details>
 <summary>5. What is a `Device` object in BCM, and name six device types supported by the manual.</summary>
 
-A `Device` represents any managed hardware or virtual component in the cluster, including: **head node**, **physical node**, **virtual node**, **cloud node**, **GPU unit**, **chassis**, **switch** (Ethernet/InfiniBand), **lite node**, **PDU**, and **rack sensor kit**.
+A `Device` is any managed hardware or virtual component in the cluster. The manual lists head node, physical node, virtual node, cloud node, GPU unit, chassis, switch (Ethernet/InfiniBand), lite node, PDU and rack sensor kit.
 </details>
 
 <details>
 <summary>6. What is the operational difference between a node in state `[ DOWN ]` and `[ CLOSED ] (DOWN)`?</summary>
 
-- **`[ DOWN ]`:** The node is unreachable/down when it is meant to be running—this is an active **failure** that triggers monitoring alerts.
-- **`[ CLOSED ] (DOWN)`:** An administrator deliberately took the node offline (`close`) and marked it to be ignored by monitoring.
+A node in `[ DOWN ]` is unreachable or down when it should be running. That is an active failure, and it triggers monitoring alerts. A node in `[ CLOSED ] (DOWN)` was taken offline on purpose with `close`, and monitoring is told to ignore it.
 </details>
 
 <details>
 <summary>7. What is a BCM Software Image physically on the head node?</summary>
 
-It is a directory on the head node's filesystem—normally **`/cm/images/<image-name>`** (such as `/cm/images/default-image`)—containing a complete Linux root filesystem tree, kernel, and ramdisk that acts as the golden blueprint for regular nodes.
+It is a directory on the head node, normally `/cm/images/<image-name>`, such as `/cm/images/default-image`. The directory holds a complete Linux root filesystem tree, a kernel and a ramdisk. It is the blueprint for regular nodes.
 </details>
 
 <details>
 <summary>8. Can multiple node categories share the same Software Image?</summary>
 
-**Yes.** Categories and software images have a many-to-one relationship: several categories (for example, `gpu-train` and `gpu-infer`) can point to the same `/cm/images/default-image` while applying different disk layouts, roles, or kernel parameters.
+Yes. Categories and software images have a many-to-one relationship. For example, `gpu-train` and `gpu-infer` can both point to `/cm/images/default-image`, and each can use its own disk layout, roles or kernel parameters.
 </details>
 
 <details>
 <summary>9. How many categories can a regular node belong to at any given time?</summary>
 
-**Exactly one** category at all times (`default` unless changed via `defaultcategory` on the `base` partition or `set category` on the node).
+Exactly one. The node uses `default` unless you change it with `defaultcategory` on the `base` partition or `set category` on the node.
 </details>
 
 <details>
 <summary>10. How many node groups can a node belong to?</summary>
 
-**Zero or more** node groups (`rack5`, `brokenhardware`, etc.).
+Zero or more. Groups such as `rack5` or `brokenhardware` are examples.
 </details>
 
 <details>
 <summary>11. Why can you run operational commands (like reboot) on a node group, but cannot set configuration properties through a node group?</summary>
 
-Because a node can belong to multiple node groups simultaneously and a group can mix head nodes and regular nodes from different categories; allowing configuration on groups would create ambiguous, conflicting inheritance. Configuration belongs strictly on partitions, categories, overlays, and nodes.
+A node can belong to several groups at once, and a group can mix head nodes and regular nodes from different categories. If groups could hold configuration, the inheritance would conflict. Configuration therefore belongs to partitions, categories, overlays and nodes.
 </details>
 
 <details>
 <summary>12. What is a Role in BCM, and can an administrator create a brand-new custom Role type?</summary>
 
-A Role (`boot`, `provisioning`, `storage`, `slurmclient`, `kubelet`) enables a specific service or function on a node or category. Administrators **cannot** create new role types (`add` does not exist in `role` mode by design); instead, you group existing roles using a **Configuration Overlay**.
+A role such as `boot`, `provisioning`, `storage`, `slurmclient` or `kubelet` switches on a specific service or function on a node or category. Administrators cannot create new role types, because `add` does not exist in `role` mode by design. Instead, you group existing roles into a configuration overlay.
 </details>
 
 <details>
 <summary>13. What numeric priorities do category-assigned roles, configuration overlays (by default), and node-assigned roles have?</summary>
 
-- **Category role assignment:** **`250`** (fixed).
-- **Configuration overlay:** **`500`** by default (configurable from `0` to `1000`, excluding `250` and `750`).
-- **Node role assignment:** **`750`** (fixed).
-The highest numeric priority wins.
+Roles assigned by a category get priority `250`, which is fixed. A configuration overlay gets `500` by default, and you can set it from `0` to `1000`, excluding `250` and `750`. Roles assigned to a node get `750`, which is also fixed. The highest number wins.
 </details>
 
 <details>
 <summary>14. Why are priorities `250` and `750` forbidden on a Configuration Overlay?</summary>
 
-Because `250` is reserved for category-level role assignments and `750` is reserved for node-level role assignments, ensuring deterministic tie-breaking between categories, overlays, and nodes.
+The number 250 is reserved for category-level role assignments, and 750 is reserved for node-level ones. Keeping them free makes the tie-breaks between categories, overlays and nodes deterministic.
 </details>
 
 <details>
 <summary>15. What happens when a Configuration Overlay's priority is set to `-1`?</summary>
 
-A priority of **`-1`** disables the overlay so it is completely **ignored** during role resolution.
+The overlay is disabled. Role resolution ignores it completely.
 </details>
 
 <details>
 <summary>16. How are non-Boolean settings resolved between a node and its category?</summary>
 
-Non-Boolean settings use **standard override inheritance**: the node inherits its category's value unless an explicit value is set on the node itself, in which case the node-level value wins.
+They use standard override inheritance. A node inherits its category's value, unless you set an explicit value on the node. In that case, the node's value wins.
 </details>
 
 <details>
 <summary>17. How are Boolean (`yes`/`no`) settings resolved between a category and a node, and what trap does this create?</summary>
 
-Boolean properties (such as `datanode` and `installbootrecord`) are combined using **logical `OR` (`category_val OR node_val`)**, not override inheritance. Consequently, if a category sets a Boolean to `yes` (`true`), an individual node in that category **cannot switch it off** (`true OR false == true`).
+Booleans such as `datanode` and `installbootrecord` are combined with a logical OR, so the result is `category_val OR node_val`. That is the trap. If the category sets a Boolean to `yes`, a single node cannot switch it off, because `true OR false` is still `true`.
 </details>
 
 <details>
 <summary>18. Which four administrative passwords does `cm-change-passwd` update in a single dialog?</summary>
 
-1. **Head node `root`** password.
-2. **Software image `root`** password.
-3. **`node-installer` `root`** password.
-4. **MySQL `root`** password (on an HA cluster, run `cm-change-passwd` on both head nodes).
+It updates the head node `root` password, the software image `root` password, the `node-installer` `root` password and the MySQL `root` password. On an HA cluster, run `cm-change-passwd` on both head nodes.
 </details>
 
 <details>
 <summary>19. What does `cmdaemonversions` in `cmsh` `device` mode display, and why does it matter?</summary>
 
-It lists the running `CMDaemon` version and build across the head node and every regular node. The manual requires all nodes to run the same `CMDaemon` revision so protocol and database schemas stay aligned.
+It lists the running CMDaemon version and build across the head node and every regular node. It matters because the manual requires all nodes to run the same CMDaemon revision, which keeps protocol and database schemas aligned.
 </details>
 
 <details>
 <summary>20. How does BCM Auto Scaler (`cm-scale`) repurpose nodes between Slurm and Kubernetes without re-provisioning their disks?</summary>
 
-Running on a node with the `ScaleServer` role, `cm-scale` watches pending queues (`wlmresources`) and switches idle nodes between **Slurm and Kubernetes configuration overlays** (priority `500`), changing their active workload-manager roles in place while leaving their underlying category and software image untouched.
+A node with the `ScaleServer` role runs `cm-scale`. It watches pending queues through `wlmresources`, and it switches idle nodes between Slurm and Kubernetes configuration overlays, which have priority `500`. The node's active workload-manager roles change in place. Its category and software image stay untouched.
 </details>
 
 ## Sources and review notes

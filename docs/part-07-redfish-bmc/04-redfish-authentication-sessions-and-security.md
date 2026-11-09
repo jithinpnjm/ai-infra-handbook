@@ -22,25 +22,25 @@ lab_venue: "GCP / GKE"
 
 ## Why this matters for AI infrastructure
 
-A BMC can turn off a server, rewrite its firmware and change its settings. Whoever holds its password controls the machine below the operating system, where your normal security tools cannot see. A fleet of 1,000 BMCs with one shared factory password is one leaked password away from disaster. This chapter shows how Redfish handles who you are and what you may do, and how to set it up so automation is safe.
+Picture a node that will not boot after a firmware update. The only way in is through its BMC. A BMC can turn a server off, rewrite its firmware and change its settings. Whoever holds the BMC password controls the machine below the operating system, where your normal security tools cannot see. Now picture a fleet of 1,000 BMCs that all share one factory password. One leaked password puts the whole fleet at risk. This chapter shows how Redfish decides who you are and what you may do. It also shows how to set that up so your automation stays safe.
 
 ## Prerequisites and outcomes
 
-You need 7.1 to 7.3. After this chapter you can:
+Start with 7.1 to 7.3, because this chapter builds on them. When you finish, you should be able to:
 
-- explain why Redfish needs HTTPS, and why `curl -k` is a lab shortcut only
-- choose between Basic authentication and a session, and use a session properly
-- explain roles and privileges, and create a least-privilege account for automation
-- explain lockout, session timeout and forced password change
-- run a lab that checks all of this
+- explain why Redfish needs HTTPS, and why `curl -k` is a lab shortcut only.
+- choose between Basic authentication and a session, and use a session properly.
+- explain roles and privileges, and create a least-privilege account for automation.
+- explain lockout, session timeout and forced password change.
+- run a lab that checks all of this.
 
 ## 1. Start with the basics: encryption first
 
-Redfish carries passwords and commands over the network, so it must be encrypted. The spec says services shall support **TLS 1.2 or later**, and shall only offer cipher suites marked "Recommended" by the IANA TLS registry. All requests that use HTTP Basic authentication must use HTTPS. Operations with sensitive data (for example a firmware update that includes a user name and password for a download server) "should use HTTPS only".
+Every Redfish request can carry a password and a command across the network. Anyone who can watch that traffic could read them, so the traffic must be encrypted before anything else. The spec says services shall support **TLS 1.2 or later**. They shall also offer only cipher suites marked "Recommended" by the IANA TLS registry. Any request that uses HTTP Basic authentication must use HTTPS. Operations with sensitive data, such as a firmware update that includes a user name and password for a download server, "should use HTTPS only".
 
-**Certificates.** A BMC ships with a **self-signed** certificate. Your computer has no reason to trust it, so tools complain. The lazy answer is `curl -k` (skip checking). That removes the protection that stops someone on the network from pretending to be the BMC. Use `-k` only for a lab. For production the spec says services shall support **replacing the default certificate**, and certificates must be X.509 v3.
+**Certificates.** A BMC ships with a self-signed certificate. Your computer has no reason to trust it, so your tools will complain. The quick fix is `curl -k`, which skips the check. That also removes the protection that stops someone on the network from pretending to be the BMC. Use `-k` only in a lab. For production, the spec says services shall support replacing the default certificate, and certificates must be X.509 v3.
 
-How to replace it: the Redfish schema guide describes a standard action, `CertificateService.ReplaceCertificate`, which takes the new certificate text, its type (`PEM`) and a link to the certificate being replaced:
+Replacing the certificate is a standard action. The Redfish schema guide describes `CertificateService.ReplaceCertificate`. It takes three values: the new certificate text, its type (`PEM`), and a link to the certificate being replaced.
 
 ```json
 {
@@ -50,7 +50,7 @@ How to replace it: the Redfish schema guide describes a standard action, `Certif
 }
 ```
 
-It is sent with `POST` to the action address on the `CertificateService` (the guide shows `.../Actions/CertificateService.ReplaceCertificate`). There is also `GenerateCSR`, which asks the BMC to make a signing request so the private key never leaves the BMC. **I did not run either one.** Paths such as `/Managers/BMC/...` come from the guide's example and differ per platform, so discover them from the service root.
+You send this body with a POST to the action address on the `CertificateService`. The guide shows that address as `.../Actions/CertificateService.ReplaceCertificate`. There is also `GenerateCSR`. It asks the BMC to make a signing request, so the private key never leaves the BMC. **I did not run either one.** Paths such as `/Managers/BMC/...` come from the guide's example and differ per platform, so discover them from the service root.
 
 :::note Correction to my notes
 The NVIDIA-DevOps volume 10 notes show a plain `POST` of `CertificateString` to `.../NetworkProtocol/HTTPS/Certificates`. The schema guide's documented way to replace a certificate is the `ReplaceCertificate` action above. A plain POST to the collection may work on some BMCs, but I could not confirm that, so prefer the action and test on one machine first.
@@ -58,7 +58,7 @@ The NVIDIA-DevOps volume 10 notes show a plain `POST` of `CertificateString` to 
 
 ## 2. Two ways to log in
 
-The spec says a service must support **both**, and a client using Basic must not be forced to create a session.
+Every script you write for a BMC has to answer one question first: how should it prove who it is? Redfish gives you two options, and the spec says a service must support both. A client that uses Basic must never be forced to create a session.
 
 | | HTTP Basic | Redfish session |
 |---|---|---|
@@ -68,9 +68,9 @@ The spec says a service must support **both**, and a client using Basic must not
 | Good for | a single quick command | scripts and tools |
 | Can be turned off | yes, with `HTTPBasicAuth` in `AccountService` (`Enabled`, `Disabled` or `Unadvertised`) | no |
 
-Base64 is not encryption. Anyone who sees a Basic header can read the password, which is why Basic is only allowed over HTTPS. If multi-factor authentication is enabled, the spec says services must refuse Basic for accounts that did not opt out, so sessions become the only way.
+Read the table by asking two questions: how often does the password travel, and can an administrator switch the method off? Base64 is not encryption. Anyone who sees a Basic header can read the password, which is why Basic is only allowed over HTTPS. If multi-factor authentication is enabled, the spec says services must refuse Basic for accounts that did not opt out. In that case, sessions become the only way in.
 
-The spec says clients **should** use sessions "for improved performance and security".
+The spec says clients **should** use sessions "for improved performance and security". The diagram below shows the whole life of a session, from login to logout.
 
 ### The session steps
 
@@ -88,27 +88,19 @@ sequenceDiagram
     S-->>C: 204 No Content
 ```
 
-Facts from the spec:
+Notice that the password travels once, at login, and the token travels with every request after that. To find the Sessions address, read it from the service root (`Links` / `Sessions`) or from `SessionService`. Both must be the same. The `POST` that creates a session must use HTTPS, and it needs no auth header. If a service runs both HTTP and HTTPS, the HTTP login should redirect you to HTTPS.
 
-- To find the Sessions address, read it from the service root (`Links` / `Sessions`) or from `SessionService`. Both must be the same.
-- The `POST` to create a session must be HTTPS-only. It needs no auth header. If a service has both HTTP and HTTPS, the HTTP login should redirect to HTTPS.
-- The answer **must** contain the `X-Auth-Token` header, the `Location` header and the full Session body. The body's `Password` is `null`: services must never send passwords back.
-- The **session id** (last part of `Location`) is not the **token**. The id names the Session resource, so an administrator can list or end it. The token is the secret that only the logging-in client holds.
-- Sessions do **not** expire at a fixed time. They **time out when idle**: while you keep sending requests within the timeout, the token stays valid. (A service can also have an absolute timeout through `AbsoluteSessionTimeout` in the schema guide.)
-- Logging out is a `DELETE` of the Session address. An administrator can end other users' sessions the same way.
-- Services must not use HTTP cookies to authenticate requests.
+The answer **must** contain the `X-Auth-Token` header, the `Location` header and the full Session body. The body's `Password` is `null`, because services must never send passwords back. The session id is the last part of `Location`, and it is not the token. The id names the Session resource, so an administrator can list or end it. The token is the secret that only the client which logged in holds.
 
-**Always log out.** BMCs are small computers with limited memory, and the spec leaves the number of open sessions to the implementation. A script that logs in 5,000 times and never logs out may get locked out of the BMC. In your code use a `try/finally` so the logout always runs.
+Sessions do not expire at a fixed time. They time out when they go idle. While you keep sending requests inside the timeout, the token stays valid. A service can also set an absolute timeout through `AbsoluteSessionTimeout` in the schema guide. To log out, send a `DELETE` to the Session address. An administrator can end other users' sessions the same way. Services must not use HTTP cookies to authenticate requests.
+
+**Always log out.** A BMC is a small computer with limited memory, and the spec leaves the number of open sessions up to each implementation. Picture a script that logs in 5,000 times and never logs out. It may lock itself out of the BMC. In your code, put the logout in a `try/finally` so it always runs.
 
 ## 3. Who may do what: roles and privileges
 
-After the service knows **who** you are, it decides **what** you may do. The spec's model has three pieces:
+Knowing who you are is only half the job. Once the service has checked your login, it still has to decide what you may change. The spec handles this with three pieces. A **privilege** is a single permission, such as `Login`, `ConfigureComponents` or `ConfigureUsers`. A role is a named set of privileges. Each user account has exactly one role, stored in `RoleId`.
 
-1. A **privilege** is a permission. Examples: `Login`, `ConfigureComponents`, `ConfigureUsers`.
-2. A **role** is a named set of privileges.
-3. Each **user account** has exactly one role (`RoleId`).
-
-The spec requires three standard roles:
+The spec requires three standard roles. Read the table row by row, and notice that each role contains everything the role below it has, plus more.
 
 | Role | Privileges |
 |---|---|
@@ -116,38 +108,33 @@ The spec requires three standard roles:
 | `Operator` | Login, ConfigureComponents, ConfigureSelf |
 | `ReadOnly` | Login, ConfigureSelf |
 
-Plain meaning:
+The privilege names mean the following. `ConfigureManager` changes settings of the BMC itself, such as the network, protocols and certificates. `ConfigureUsers` creates, deletes and changes accounts. `ConfigureComponents` changes the computer and its parts, and runs actions such as a reset. `ConfigureSelf` changes your own account, for example your password. `Login` lets you read.
 
-- **ConfigureManager**: change settings of the BMC itself (network, protocols, certificates).
-- **ConfigureUsers**: create, delete and change accounts.
-- **ConfigureComponents**: change settings of the computer and its parts, and run actions such as reset.
-- **ConfigureSelf**: change your own account (for example your password).
-- **Login**: read.
+Services may add optional roles, OEM roles and custom roles. The spec lists `SystemAdministrator`, `SystemOperator`, `StorageAdministrator` and `StorageBackupOperator` as optional examples. Standard roles cannot be modified.
 
-Services may add optional roles (the spec lists `SystemAdministrator`, `SystemOperator`, `StorageAdministrator` and `StorageBackupOperator`), OEM roles and custom roles. Standard roles cannot be modified.
-
-Each type of operation requires certain privileges, and a service should publish this as a **Privilege Registry**. Examples from the spec: `GET` on a Manager needs `Login`, `PATCH` needs `ConfigureManager`. Some properties have different rules from their parent. The `Password` property in an account needs `ConfigureSelf` **or** `ConfigureUsers`, while other fields need `ConfigureUsers`. That is how you can change your own password but not someone else's.
+Each type of operation needs certain privileges, and a service should publish those rules as a **Privilege Registry**. For example, `GET` on a Manager needs `Login`, and `PATCH` needs `ConfigureManager`. Some properties follow different rules from their parent. The `Password` property in an account needs `ConfigureSelf` or `ConfigureUsers`, while other fields need `ConfigureUsers`. That is how you can change your own password but not someone else's.
 
 ### 3.1 Privilege Registry overrides, logical AND/OR, and Restricted Roles (DSP0266 §13.4.2–13.4.3)
 
-How does a BMC express fine-grained authorization rules inside its **Privilege Registry** (DSP0266 §13.4.3)? Every resource type (`Entity`) has a base `OperationMap` listing the required privileges for `GET`, `HEAD`, `PATCH`, `POST`, `PUT`, and `DELETE`:
-- **Logical `OR` vs Logical `AND` (§13.4.3.8):** Separate objects inside the operation's array represent **logical `OR`** (`[{"Privilege": ["ConfigureUsers"]}, {"Privilege": ["ConfigureSelf"]}]` means *either* `ConfigureUsers` *or* `ConfigureSelf`), whereas multiple privilege names inside the same `"Privilege"` array represent **logical `AND`** (`[{"Privilege": ["ConfigureComponents", "OEMSysAdminPriv"]}]` requires *both* privileges).
-- **Three override levels and their precedence (§13.4.3.4 Table 43):** When a specific property, URI instance, or parent-child context needs a different privilege than the base `Entity`, the Privilege Registry defines three override types evaluated in strict precedence order:
-  1. **`PropertyOverrides` (highest precedence):** Overrides the privilege for a specific property name (for example, allowing `ConfigureSelf` or `ConfigureUsers` to `PATCH` the `Password` property on `ManagerAccount`, while all other properties on `ManagerAccount` require `ConfigureUsers`).
-  2. **`ResourceURIOverrides`:** Overrides privileges for specific URI instances (such as `/redfish/v1/Systems/VM6`).
-  3. **`SubordinateOverrides` (lowest precedence):** Changes the required privilege based on where a resource sits in the tree. Classic example from DSP0266 §13.4.3.6: an `EthernetInterface` under `ComputerSystem` requires `ConfigureComponents` to `PATCH` (so an `Operator` can configure a host NIC), whereas an `EthernetInterface` subordinate to `Manager` requires `ConfigureManager` (so only an `Administrator` can reconfigure the BMC's own OOB management NIC).
-- **Restricted roles and privileges (§13.4.2.2):** To prevent privilege escalation (for example, keeping a general `Administrator` from modifying a dedicated security officer role), a service can mark a role `Restricted: true` (providing an `AlternateRoleId` for normal use) and list `RestrictedPrivileges` / `RestrictedOemPrivileges` in `AccountService`. Services **shall not** allow users to create, delete, or modify accounts assigned to a restricted role (except toggling `Enabled`), nor assign restricted privileges to custom roles.
+A single role table is not always precise enough. The Privilege Registry (DSP0266 §13.4.3) can express finer rules. Each resource type, called an `Entity`, has a base `OperationMap`. That map lists the privileges needed for `GET`, `HEAD`, `PATCH`, `POST`, `PUT` and `DELETE`.
+
+The map also has its own logic. Separate objects inside an operation's array mean logical OR. For example, `[{"Privilege": ["ConfigureUsers"]}, {"Privilege": ["ConfigureSelf"]}]` means either `ConfigureUsers` or `ConfigureSelf` is enough. Several names inside the same `"Privilege"` array mean logical AND. So `[{"Privilege": ["ConfigureComponents", "OEMSysAdminPriv"]}]` requires both privileges. The spec covers this in §13.4.3.8.
+
+Sometimes a property, a single URI or a resource's place in the tree needs a different privilege from the base `Entity`. The registry handles that with three override types, and they apply in a strict order (§13.4.3.4, Table 43). `PropertyOverrides` comes first. It can set a privilege for one property. For example, it can let `ConfigureSelf` or `ConfigureUsers` change the `Password` on `ManagerAccount`, while every other property on `ManagerAccount` still needs `ConfigureUsers`.
+
+`ResourceURIOverrides` comes next. It targets specific URI instances, such as `/redfish/v1/Systems/VM6`. `SubordinateOverrides` has the lowest precedence. It changes the required privilege based on where a resource sits in the tree. DSP0266 §13.4.3.6 gives a classic case. An `EthernetInterface` under `ComputerSystem` needs `ConfigureComponents` to `PATCH`, so an `Operator` can configure a host NIC. An `EthernetInterface` under `Manager` needs `ConfigureManager`, so only an `Administrator` can reconfigure the BMC's own out-of-band management NIC.
+
+Restricted roles guard against privilege escalation. Suppose you want to stop a general `Administrator` from changing a dedicated security officer role. The service can mark that role `Restricted: true` and name an `AlternateRoleId` for normal use. It can also list `RestrictedPrivileges` and `RestrictedOemPrivileges` in `AccountService`. Services shall not let users create, delete or modify accounts assigned to a restricted role, except to toggle `Enabled`. They also must not assign restricted privileges to custom roles (§13.4.2.2). When you design a role for a new team, check the override rules first, because one role can behave differently on a host and on the BMC.
 
 ### 3.2 Client Certificate Authentication (mTLS) and OAuth 2.0 JWTs (DSP0266 §13.3.5 & §13.4.4)
 
-Beyond passwords and sessions, DSP0266 specifies two enterprise authentication and authorization mechanisms for zero-trust fleets:
-1. **Mutual TLS (mTLS) Client Certificate Authentication (§13.3.5):** When enabled under `AccountService.MultiFactorAuth.ClientCertificate`, the BMC requests a client X.509 certificate during the TLS handshake, verifies it against the trusted `CertificateCollection`, and checks revocation via configured **OCSP (Online Certificate Status Protocol)** servers. The boolean `RespondToUnauthenticatedClients` controls failure behavior: if `true` (or unsupported), the TLS handshake completes so the BMC can still serve unauthenticated resources (`/redfish/v1/`) or structured `401` JSON errors; if `false`, the BMC aborts the TLS handshake immediately on an invalid client certificate.
-2. **Delegated Authorization with OAuth 2.0 Bearer JWTs (§13.4.4):** A Redfish service acting as an OAuth 2.0 resource server (configured via `AccountService.OAuth2`) accepts RFC 7519 **JSON Web Tokens (JWTs)** in `Authorization: Bearer <jwt>`. Per Tables 44 and 45 of DSP0266:
-   - The JOSE Header **shall** specify `alg` (the signature algorithm, such as `"RS256"`) and services **shall not** accept `alg: "none"`.
-   - The JWT payload **shall** include `iss` (issuer), `sub` (subject), `aud` (audience matching the service), and `scope` (plus optional `exp`, `nbf`, `iat`, `jti`).
-   - The `scope` claim is a space-delimited list mapping directly to Redfish roles (`Redfish.Role.<RoleId>`, e.g., `"Redfish.Role.Operator"`) or individual privileges (`Redfish.Privilege.<PrivilegeId>`).
+Passwords and sessions are not the only options. DSP0266 also describes two mechanisms for enterprise and zero-trust fleets. The first is mutual TLS, or mTLS, which uses client certificates (§13.3.5). When it is enabled under `AccountService.MultiFactorAuth.ClientCertificate`, the BMC asks for a client X.509 certificate during the TLS handshake. It checks that certificate against the trusted `CertificateCollection`. Then it checks revocation through the configured OCSP (Online Certificate Status Protocol) servers.
 
-**Least privilege for automation.** Do not share the `admin` account. Create accounts by purpose:
+The boolean `RespondToUnauthenticatedClients` controls what happens on failure. If it is `true`, or unsupported, the TLS handshake completes. The BMC can then still serve unauthenticated resources such as `/redfish/v1/`, or return structured `401` JSON errors. If it is `false`, the BMC aborts the TLS handshake at once when a client certificate is invalid.
+
+The second mechanism is delegated authorization with OAuth 2.0 bearer JWTs (§13.4.4). A Redfish service can act as an OAuth 2.0 resource server, configured through `AccountService.OAuth2`. It then accepts RFC 7519 JSON Web Tokens (JWTs) sent as `Authorization: Bearer <jwt>`. DSP0266 sets rules for these tokens in Tables 44 and 45. The JOSE header must name the signature algorithm in `alg`, such as `"RS256"`, and services shall not accept `alg: "none"`. The payload shall include `iss`, the issuer, `sub`, the subject, `aud`, the audience that matches the service, and `scope`. It may also carry `exp`, `nbf`, `iat` and `jti`. The `scope` claim is a space-delimited list. Each entry maps to a Redfish role, such as `Redfish.Role.<RoleId>`, or to one privilege, such as `Redfish.Privilege.<PrivilegeId>`. The example form is `"Redfish.Role.Operator"`.
+
+**Least privilege for automation.** Do not share the `admin` account. Create accounts by purpose, as the table below shows.
 
 | Account | Role | Used by |
 |---|---|---|
@@ -156,11 +143,11 @@ Beyond passwords and sessions, DSP0266 specifies two enterprise authentication a
 | `fw_update` | `Administrator` (the standard roles are broad, so check whether your BMC offers a narrower custom role) | firmware jobs only |
 | a personal account | as needed | each person, so logs show who did what |
 
-The lab proves this works: a `ReadOnly` user can read but gets **403** on a change, an `Operator` can change a system but gets **403** when creating accounts.
+The lab in section 5 checks this rule. A `ReadOnly` user can read, but a change returns 403. An `Operator` can change a system, but creating an account returns 403.
 
 ## 4. Protections against guessing and stale passwords
 
-The Account Service schema in the Resource Guide has settings for these:
+Left alone, a BMC would let anyone keep guessing passwords. The Account Service has settings that slow down guessing and retire old credentials. The Account Service schema in the Resource Guide lists these settings. The table below shows the ones that matter most for your scripts.
 
 | Setting | Meaning |
 |---|---|
@@ -173,26 +160,26 @@ The Account Service schema in the Resource Guide has settings for these:
 | `RequireChangePasswordAction` | passwords can only be changed with the `ChangePassword` action, not by `PATCH` |
 | `PasswordExpirationDays` (in the account resource) | password lifetime |
 
-Rules from the spec that matter in practice:
+The spec's rules explain how these settings behave in practice. Error messages must not leak information. An unknown user and a wrong password must look the same, and a locked account should look like a wrong password. The lab checks this. Passwords are write-only, too. Any response property that holds a password "shall be null".
 
-- **Error messages must not leak.** An unknown user and a wrong password must look the same, and a locked account should look like a wrong password. The lab checks this.
-- **Passwords are write-only.** Any response property that is a password "shall be null".
-- **Atomic password change.** If `RequireChangePasswordAction` is true, the service rejects `PATCH` of `Password` and you must use the `ChangePassword` action, which asks for `SessionAccountPassword` (your current password, or the administrator's password when changing someone else's). This protects against a stolen session token being used to lock you out by changing your password.
-- **Password change required.** An account with `PasswordChangeRequired: true` (a factory-default password, or a reset by an administrator) can log in, but the login answer includes a `PasswordChangeRequired` message, and everything else gets **403** until the password is changed. Allowed: read your own account, change your password (by `PATCH` or `ChangePassword`), and delete your own sessions. Once changed, the flag becomes false.
-- **Changing an account may close its sessions**, so the user must log in again.
-- Services should store passwords with a one-way hash.
-- **Time-based One-Time Password (TOTP) Multi-Factor Authentication (DSP0266 §13.5.5):** When RFC 6238 TOTP MFA is enabled and an account does not yet have a TOTP secret key configured, a session login without `Token` succeeds with `@Message.ExtendedInfo` containing `GenerateSecretKeyRequired`. Exactly like `PasswordChangeRequired`, that bootstrap session is restricted (returning `403 Forbidden` with `GenerateSecretKeyRequired` on normal resources) until the user invokes `POST .../Actions/ManagerAccount.GenerateSecretKey` (and optionally `VerifyTimeBasedOneTimePassword`), closes the session, and logs in again with `"Token": "<6-digit-otp>"` in the session `POST` body.
+Atomic password change is the next rule. If `RequireChangePasswordAction` is true, the service rejects a `PATCH` of `Password`. You must use the `ChangePassword` action instead. That action asks for `SessionAccountPassword`, which is your current password, or the administrator's password when you change someone else's. This protects you from a stolen session token being used to lock you out by changing your password.
 
-Why this matters for you: a new DGX or BMC often arrives with a default password that must be changed. Your provisioning script has to handle the "login works but nothing else does" state, otherwise it fails in confusing ways.
+Password change required works differently. An account with `PasswordChangeRequired: true` can log in, for example with a factory-default password or after an administrator's reset. But the login answer includes a `PasswordChangeRequired` message, and every other request gets **403** until the password changes. While the flag is set, the account may read itself, change its own password by `PATCH` or `ChangePassword`, and delete its own sessions. Once the password changes, the flag becomes false. Changing an account can also close its sessions, so the user must log in again. Services should store passwords with a one-way hash.
+
+Time-based One-Time Password (TOTP) multi-factor authentication (DSP0266 §13.5.5) follows the same pattern. When RFC 6238 TOTP MFA is enabled and an account has no TOTP secret key yet, a session login without `Token` succeeds. The answer carries `@Message.ExtendedInfo` with `GenerateSecretKeyRequired`. That bootstrap session is restricted, just like the password case. Normal resources return `403 Forbidden` with `GenerateSecretKeyRequired` until the user calls `POST .../Actions/ManagerAccount.GenerateSecretKey`. The user may also call `VerifyTimeBasedOneTimePassword`. Then the user closes the session and logs in again, with `"Token": "<6-digit-otp>"` in the session `POST` body.
+
+A new DGX or BMC often arrives with a default password that must be changed. Your provisioning script has to handle the state where login works but nothing else does. Without that handling, the script fails in confusing ways.
 
 ## 5. The lab
+
+Reading about these rules is one thing. Watching a service enforce them is another, and the lab does exactly that. Run it from the chapter's code folder.
 
 ```bash
 cd code/part07
 python3 auth_lab.py
 ```
 
-The mock service runs inside the script and the script moves a fake clock forward, so a five-minute timeout and a 30-second lockout test in milliseconds. It runs 44 checks. A selection of the output:
+The script starts a mock service and moves a fake clock forward. That way, a five-minute timeout and a 30-second lockout are tested in milliseconds. The lab runs 44 checks. Here is a selection of the output:
 
 ```text
 PASS  login returns 201 with X-Auth-Token, Location and a Session body [13.3.4.2]
@@ -214,212 +201,208 @@ PASS  administrator can disable HTTP Basic [13.3.3]
 44 passed, 0 failed
 ```
 
-Read the file `auth_lab.py` after running it. It doubles as a clear list of what a good Redfish login system does. If you ever build tooling for BMC accounts, these checks are a useful acceptance list.
+Read the file `auth_lab.py` after you run it. It doubles as a clear list of what a good Redfish login system does. If you ever build tooling for BMC accounts, these checks make a useful acceptance list.
 
-A mistake I made while writing the lab, worth noticing: one check failed because my test sent a stale session token together with a Basic header. The service looked at the token first, found it expired, and answered 401 without trying Basic. That is real behaviour to remember: **a bad token is not rescued by a good password header.** Remove stale tokens when you re-login.
+I made a mistake while writing the lab, and it is worth noticing. One check failed because my test sent a stale session token together with a Basic header. The service looked at the token first, found it expired, and answered 401 without trying Basic. That is real behaviour to remember: **a bad token is not rescued by a good password header.** Remove stale tokens when you log in again.
 
 ## 6. Safe handling in your own scripts
 
-1. **Use HTTPS and verify the certificate.** Install your own CA on the BMCs (section 1) and point tools at it (`curl --cacert ca.pem`). Use `-k` or `verify=False` only in a lab.
-2. **Keep passwords off the command line.** The SCL book warns the same about `ipmitool -P`. For `curl` use `--netrc-file` or a `--config` file with mode 600. In Python read from your secret store.
-3. **Use sessions.** Log in once per machine, log out in a `finally`.
-4. **Treat the token like a password.** Do not print it in logs.
-5. **Use one account per purpose,** and a personal account for people.
-6. **Check for `PasswordChangeRequired`** on first contact with new hardware.
-7. **Audit regularly** (chapter 7.1 has a credential audit tool; BCM's `credentialsoverview` does this too).
-8. **Rate-limit your scripts.** Many failed logins can lock an account and block the real owner. Stop on the first 401, do not retry hundreds of times.
+Most of the protections above depend on how your own scripts behave. Keep these eight habits in every script that talks to a BMC.
+
+1. **Use HTTPS and verify the certificate.** Install your own CA on the BMCs, as section 1 describes, and point tools at it with `curl --cacert ca.pem`. Use `-k` or `verify=False` only in a lab.
+2. **Keep passwords off the command line.** *Supercomputers for Linux SysAdmins* warns about the same risk with `ipmitool -P`. For `curl`, use `--netrc-file` or a `--config` file with mode 600. In Python, read the password from your secret store.
+3. **Use sessions.** Log in once per machine, and log out in a `finally` block.
+4. **Treat the token like a password.** Never print it in logs.
+5. **Use one account per purpose.** Give each person a personal account, so logs show who did what.
+6. **Check for `PasswordChangeRequired`** the first time you contact new hardware.
+7. **Audit regularly.** Chapter 7.1 has a credential audit tool, and BCM's `credentialsoverview` does the same job.
+8. **Rate-limit your scripts.** Many failed logins can lock an account and block the real owner. Stop on the first 401, and do not retry hundreds of times.
 
 ### 6.1 Anatomy of a session-table exhaustion outage
 
-Consider what happens when a monitoring team writes a naive health scraper for a large GPU cluster. Every thirty seconds, a cron job opens a new Redfish session on each BMC. It reads the chassis sensors, prints the temperatures, and exits the Python process without calling `DELETE` on the session URI.
+Suppose a monitoring team writes a naive health scraper for a large GPU cluster. Every thirty seconds, a cron job opens a new Redfish session on each BMC. It reads the chassis sensors, prints the temperatures, and exits the Python process without calling `DELETE` on the session URI.
 
-Each embedded BMC has a small, fixed table of active sessions in RAM. The Redfish specification leaves the maximum count of simultaneous open sessions up to the firmware implementation. While a session stays idle, the BMC must retain it until `SessionTimeout` expires. If the default timeout is thirty minutes and your scraper logs in twice a minute without logging out, a single script will consume sixty session slots per BMC.
+Each embedded BMC has a small, fixed table of active sessions in RAM. The Redfish specification leaves the maximum number of simultaneous open sessions up to the firmware implementation. While a session stays idle, the BMC must keep it until `SessionTimeout` expires. Take the default timeout of thirty minutes. If the scraper logs in twice a minute without logging out, the arithmetic is simple: two logins a minute for thirty minutes is sixty sessions. One script therefore consumes sixty session slots per BMC.
 
-Long before the thirty-minute idle timer reclaims the first orphaned token, the BMC's session table fills completely. From that moment onward, every new login attempt from your provisioning engine, your Slurm power-fencing scripts, and your human operators is rejected. The node is still running, and its hardware is healthy, yet the out-of-band control plane has locked you out.
+The table fills long before the thirty-minute idle timer reclaims the first orphaned token. From that point, every new login is rejected. That includes logins from your provisioning engine, your Slurm power-fencing scripts and your human operators. The node is still running and its hardware is healthy. Yet the out-of-band control plane has locked you out.
 
-Preventing this failure requires three habits in every client you write. First, wrap every session login in a `try` and `finally` block so the `DELETE` call runs even when an exception interrupts the script. Second, reuse a single long-lived session across multiple read requests to the same BMC instead of logging in once per metric. Third, give your scraper its own dedicated `ReadOnly` account so that an administrator can inspect `/redfish/v1/SessionService/Sessions`, see which `UserName` owns the orphaned sessions, and terminate them selectively via `DELETE` without dropping active maintenance sessions.
+Preventing this takes three habits in every client you write. First, wrap every session login in a `try/finally` block, so the `DELETE` runs even when an exception interrupts the script. Second, reuse one long-lived session across several reads to the same BMC, instead of logging in once per metric. Third, give your scraper its own dedicated `ReadOnly` account. An administrator can then inspect `/redfish/v1/SessionService/Sessions`, see which `UserName` owns the orphaned sessions, and end them one at a time with `DELETE`. Active maintenance sessions keep running.
 
 ### 6.2 How the Privilege Registry governs multi-team operations
 
-In a mature AI data center, three separate teams touch the server fleet every day. The observability team scrapes temperatures, fan speeds, and power consumption. The compute operations team drains and reboots wedged nodes when training jobs hang. The platform security and hardware engineering team rotates X.509 certificates, updates firmware, and manages user accounts.
+In a mature AI data center, three teams touch the server fleet every day. The observability team scrapes temperatures, fan speeds and power consumption. The compute operations team drains and reboots wedged nodes when training jobs hang. The platform security and hardware engineering team rotates X.509 certificates, updates firmware and manages user accounts.
 
-If all three teams share the factory `admin` account, a bug in a metrics scraper or a leaked environment variable in a CI runner grants full administrative control over every BMC in the building. Redfish's **Privilege Registry** lets you enforce strict separation of duties across these three workflows.
+If all three share the factory `admin` account, one bug in a metrics scraper, or one leaked environment variable in a CI runner, gives full control over every BMC in the building. The Privilege Registry lets you separate these duties.
 
-When the observability scraper authenticates with a `ReadOnly` account, its role carries only `Login` and `ConfigureSelf`. The Privilege Registry maps `GET` and `HEAD` across `ComputerSystem`, `Chassis`, `Sensor`, and `Manager` to the `Login` privilege. If someone accidentally modifies the scraper to send a `POST` to `ComputerSystem.Reset` or a `PATCH` to `Bios/Settings`, the BMC checks the `OperationMap` for those endpoints, sees that `ConfigureComponents` is required, and immediately rejects the request with HTTP `403 Forbidden`.
+When the observability scraper uses a `ReadOnly` account, its role carries only `Login` and `ConfigureSelf`. The registry maps `GET` and `HEAD` across `ComputerSystem`, `Chassis`, `Sensor` and `Manager` to the `Login` privilege. Suppose someone changes the scraper to send a `POST` to `ComputerSystem.Reset`, or a `PATCH` to `Bios/Settings`. The BMC checks the `OperationMap` for those endpoints, sees that `ConfigureComponents` is required, and rejects the request with HTTP 403 Forbidden.
 
-Similarly, the compute operations team receives an `Operator` account. That role adds `ConfigureComponents` on top of `Login` and `ConfigureSelf`. An operator can reboot a hung GPU node, set a one-time PXE boot override, or adjust a chassis power cap. However, if that operator tries to create a backdoor user account under `/redfish/v1/AccountService/Accounts` or disable TLS certificate checks on the BMC under `/redfish/v1/Managers/BMC/NetworkProtocol`, the Privilege Registry blocks the call. Account mutations require `ConfigureUsers`, and BMC network changes require `ConfigureManager` through the `SubordinateOverrides` rule. Only the `Administrator` role holds those privileges.
+The compute operations team gets an `Operator` account. That role adds `ConfigureComponents` on top of `Login` and `ConfigureSelf`. An operator can reboot a hung GPU node, set a one-time PXE boot override, or adjust a chassis power cap. But if an operator tries to create a backdoor user account under `/redfish/v1/AccountService/Accounts`, or to disable TLS certificate checks under `/redfish/v1/Managers/BMC/NetworkProtocol`, the registry blocks the call. Account changes need `ConfigureUsers`. BMC network changes need `ConfigureManager` through the `SubordinateOverrides` rule. Only the `Administrator` role holds those privileges.
+
+Give each team the lowest role that covers its work, and keep `admin` out of automation.
 
 ### 6.3 Designing zero-touch factory password rotation on Day 0
 
-When a pallet of new GPU servers arrives on the data-center floor, their BMCs either ship with a well-known factory default password or a unique per-chassis password printed on the physical pull-tab. On hardened platforms, the factory account also sets `PasswordChangeRequired` to `true`.
+A pallet of new GPU servers has just arrived on the data-center floor. Each BMC ships with either a well-known factory default password or a unique per-chassis password printed on the physical pull-tab. On hardened platforms, the factory account also sets `PasswordChangeRequired` to `true`.
 
-If your Day-0 discovery pipeline assumes that a successful `201 Created` response from `/redfish/v1/SessionService/Sessions` means the node is ready for inventory and firmware checks, the pipeline will fail on its very next step. As soon as the script sends `GET /redfish/v1/Systems`, the BMC returns `403 Forbidden` with the `PasswordChangeRequired` message from the Base Message Registry.
+If your Day-0 discovery pipeline assumes that a successful 201 Created from `/redfish/v1/SessionService/Sessions` means the node is ready for inventory and firmware checks, it fails on the very next step. As soon as the script sends `GET /redfish/v1/Systems`, the BMC returns 403 Forbidden with the `PasswordChangeRequired` message from the Base Message Registry.
 
-A resilient Day-0 onboarding workflow handles this state machine explicitly right after establishing the initial session:
+A resilient Day-0 workflow handles this state explicitly, right after the first session is up:
 
-1. Inspect the `201 Created` login response body for `@Message.ExtendedInfo`. If any message entry contains `PasswordChangeRequired`, enter the bootstrap rotation branch before running any hardware discovery.
-2. Follow the account link or query `/redfish/v1/AccountService` to check whether `RequireChangePasswordAction` is `true`.
-3. If `RequireChangePasswordAction` is `true`, invoke the `ManagerAccount.ChangePassword` action with both `NewPassword` and `SessionAccountPassword` set to the factory password. Otherwise, send a `PATCH` with the new password to the user's own `ManagerAccount` URI.
-4. Read the `ManagerAccount` resource back to confirm that `PasswordChangeRequired` is now `false`, and verify that `GET /redfish/v1/Systems` returns `200 OK`.
-5. Once the bootstrap account is rotated to your vault-managed secret, provision the dedicated `ReadOnly` and `Operator` service accounts and disable `HTTPBasicAuth` on `AccountService` so all subsequent automation uses session tokens exclusively.
+1. Read the 201 Created login body for `@Message.ExtendedInfo`. If any entry contains `PasswordChangeRequired`, take the bootstrap rotation branch before running any hardware discovery.
+2. Check whether `RequireChangePasswordAction` is `true` in `AccountService`, either by following the account link or by querying `/redfish/v1/AccountService`.
+3. If it is `true`, call the `ManagerAccount.ChangePassword` action with both `NewPassword` and `SessionAccountPassword` set to the factory password. If it is not, send a `PATCH` with the new password to the user's own `ManagerAccount` URI.
+4. Read the `ManagerAccount` back to confirm that `PasswordChangeRequired` is now `false`. Then verify that `GET /redfish/v1/Systems` returns 200 OK.
+5. Once the bootstrap account uses your vault-managed secret, create the dedicated `ReadOnly` and `Operator` service accounts. Then disable `HTTPBasicAuth` on `AccountService`, so all later automation uses session tokens only.
+
+Build this state machine into your onboarding script before the first discovery call.
 
 ### 6.4 External directory integration and certificate lifecycle
 
-Managing local `ManagerAccount` resources on each BMC works well for small clusters and emergency break-glass access, but human administrators should not have local accounts scattered across hundreds of BMCs. When an engineer leaves the team, revoking their access should happen in one central directory rather than requiring a fleet-wide `DELETE` loop across every rack.
+Local `ManagerAccount` resources work well for small clusters and for emergency break-glass access. Human administrators should not, however, hold local accounts scattered across hundreds of BMCs. When an engineer leaves the team, access should be revoked in one central directory. It should not take a fleet-wide `DELETE` loop across every rack.
 
-Redfish supports central directory integration through `ExternalAccountProvider` resources under `AccountService` (supporting LDAP, Active Directory, TACACS+, and OAuth 2.0). An administrator configures the directory server addresses, TLS trust certificates, and `RemoteRoleMapping` rules that map enterprise directory groups directly to Redfish roles such as `Administrator`, `Operator`, and `ReadOnly`. You then keep only one vault-escrowed local `Administrator` account on each BMC for out-of-band break-glass recovery when the corporate directory or management network is unreachable during a facility outage.
+Redfish supports central directory integration through `ExternalAccountProvider` resources under `AccountService`. Those resources support LDAP, Active Directory, TACACS+ and OAuth 2.0. An administrator configures the directory server addresses, the TLS trust certificates, and `RemoteRoleMapping` rules. Those rules map enterprise directory groups straight to Redfish roles such as `Administrator`, `Operator` and `ReadOnly`. You then keep only one vault-escrowed local `Administrator` account on each BMC. That account is for out-of-band break-glass recovery, for the case where the corporate directory or the management network is unreachable during a facility outage.
+
+Decide which directory groups map to which roles before you roll out the first BMC.
 
 ## Exercises
 
-1. **Verifying non-leaking login errors (`code/part07/auth_lab.py`):** Run `python3 code/part07/auth_lab.py` and inspect lines 56–70 of `code/part07/auth_lab.py`. Verify that an unknown username (`nosuchuser`), a wrong password on a valid user (`admin`), and a valid password on a locked account (`viewer` after `3` failed attempts) all return the exact same HTTP `401 Unauthorized` status and generic error message (`DSP0266` §13.3.2.3).
-2. **Designing least-privilege service accounts:** Using the required roles table (`Administrator`, `Operator`, `ReadOnly`) and the Privilege Registry override rules (`ConfigureManager` vs `ConfigureComponents` vs `ConfigureUsers`), state which role you would assign to: (a) a Prometheus `dcgm`/`redfish` telemetry scraper (`prom_scraper`), (b) a Slurm fencing/reboot script (`fleet_ops`), and (c) a BMC certificate rotation playbook.
-3. **Testing `Operator` restrictions on `AccountService`:** Add a 45th check to `code/part07/auth_lab.py` verifying that an `Operator` account attempting `PATCH /redfish/v1/AccountService {"HTTPBasicAuth": "Disabled"}` receives `403 Forbidden` because modifying `AccountService` requires `ConfigureManager` / `ConfigureUsers`.
-4. **Writing a context-managed Redfish session helper:** Write a Python `@contextlib.contextmanager` function `redfish_session(base_url, username, password)` that posts to `/redfish/v1/SessionService/Sessions`, yields `(token, session_uri)`, and guarantees `DELETE` on `session_uri` inside a `finally:` block even if an exception occurs during the caller's work.
-5. **Automating first-boot `PasswordChangeRequired` rotation:** Trace lines 114–128 of `code/part07/auth_lab.py` for the `factory` account (`PasswordChangeRequired: true`). Explain why `GET /redfish/v1/Systems/System_0` returns `403 Forbidden` right after login, which three operations are permitted during that restricted session (`DSP0266` §13.5.4), and how `ChangePassword` (`SessionAccountPassword`) prevents session-hijacking lockouts when `RequireChangePasswordAction: true`.
-6. **Generating a lab PKI and CSR workflow (`code/part07/tls_setup.py`):** Run `python3 code/part07/tls_setup.py /tmp/lab_pki` and inspect the generated X.509 v3 extensions (`subjectAltName=IP:127.0.0.1,DNS:localhost`, `basicConstraints=CA:FALSE`, `extendedKeyUsage=serverAuth`). Explain why `CertificateService.GenerateCSR` followed by `CertificateService.ReplaceCertificate` is safer than generating private keys on a central workstation.
+Work through these in order. Each one asks you to read, run or write something, so try it yourself before you check the answers.
+
+1. Run `python3 code/part07/auth_lab.py`, then read lines 56–70 of `code/part07/auth_lab.py`. Check that an unknown username (`nosuchuser`), a wrong password for a valid user (`admin`), and a correct password on a locked account (`viewer` after `3` failed attempts) all return the same HTTP `401 Unauthorized` status and the same generic message (`DSP0266` §13.3.2.3). Ask yourself, or your team, why the three cases must look identical.
+2. Use the table of required roles (`Administrator`, `Operator`, `ReadOnly`) and the Privilege Registry override rules (`ConfigureManager`, `ConfigureComponents`, `ConfigureUsers`) to decide which role each of these needs. The three cases are: (a) a Prometheus `dcgm`/`redfish` telemetry scraper (`prom_scraper`), (b) a Slurm fencing or reboot script (`fleet_ops`), and (c) a BMC certificate rotation playbook. Explain each choice in one sentence, so you can defend it to your team.
+3. Add a 45th check to `code/part07/auth_lab.py`. It should confirm that an `Operator` who sends `PATCH /redfish/v1/AccountService {"HTTPBasicAuth": "Disabled"}` gets `403 Forbidden`. Changing `AccountService` needs `ConfigureManager` or `ConfigureUsers`, and an `Operator` has neither.
+4. Write a Python context manager called `redfish_session`, decorated with `@contextlib.contextmanager`. It takes `base_url`, `username` and `password`, posts to `/redfish/v1/SessionService/Sessions`, and yields `(token, session_uri)`. It must send `DELETE` to `session_uri` in a `finally:` block, so the logout runs even if the caller's work raises an exception.
+5. Trace lines 114–128 of `code/part07/auth_lab.py`, where the `factory` account has `PasswordChangeRequired: true`. Explain three things. First, why `GET /redfish/v1/Systems/System_0` returns `403 Forbidden` right after login. Second, which three operations DSP0266 §13.5.4 allows during that restricted session. Third, how `ChangePassword` with `SessionAccountPassword` prevents a session-hijacking lockout when `RequireChangePasswordAction: true`.
+6. Run `python3 code/part07/tls_setup.py /tmp/lab_pki` and inspect the X.509 v3 extensions it generates: `subjectAltName=IP:127.0.0.1,DNS:localhost`, `basicConstraints=CA:FALSE`, and `extendedKeyUsage=serverAuth`. Then explain to a colleague why `CertificateService.GenerateCSR` followed by `CertificateService.ReplaceCertificate` is safer than generating private keys on a central workstation.
 
 ## 8. Interview angles
 
-- "Basic or session?" Session, because the password is sent once, tokens can be ended, and Basic can be switched off or needs MFA exceptions.
-- "How do you give monitoring access to BMCs?" A `ReadOnly` account per purpose, over HTTPS with a trusted certificate.
-- "What happens if a script logs in thousands of times without logging out?" It can exhaust the BMC's session limit. Always `DELETE` the session.
-- "How would you roll out password changes to a fleet?" Through the BMC manager (BCM's `bmcsettings`) or a Redfish `PATCH` or `ChangePassword`, with a check that all machines have the same credential fingerprint afterward.
-- "Why does the login error for a locked account look like a wrong password?" So attackers cannot learn which users exist or are locked.
+- "Basic or session?" Choose a session. The password is sent once, tokens can be ended, and Basic can be switched off or needs MFA exceptions.
+- "How do you give monitoring access to BMCs?" Create a `ReadOnly` account for each purpose, and reach the BMC over HTTPS with a trusted certificate.
+- "What happens if a script logs in thousands of times without logging out?" It can exhaust the BMC's session limit. Always send a `DELETE` for the session.
+- "How would you roll out password changes to a fleet?" Use the BMC manager, such as BCM's `bmcsettings`, or a Redfish `PATCH` or `ChangePassword`. Then check that every machine has the same credential fingerprint afterward.
+- "Why does the login error for a locked account look like a wrong password?" So that attackers cannot learn which users exist or which accounts are locked.
 
 ## Checkpoint questions (20)
 
 <details>
 <summary>1. What minimum TLS version and cipher suite category does the Redfish Specification require (DSP0266 §13.1)?</summary>
 
-Redfish services **shall** support **TLS 1.2 or later** (following RFC 7525 recommendations; TLS 1.1 is deprecated) and **shall** only offer cipher suites marked **"Recommended"** in the IANA TLS Cipher Suites registry (such as `AES-GCM` suites).
+Redfish services **shall** support **TLS 1.2 or later**. The spec follows the RFC 7525 advice, and TLS 1.1 is deprecated. Services shall only offer cipher suites marked **"Recommended"** in the IANA TLS Cipher Suites registry, such as `AES-GCM` suites.
 </details>
 
 <details>
 <summary>2. Why is using `curl -k` (or `verify=False` in Python) unsafe in production, and what X.509 standard must BMC certificates follow?</summary>
 
-`curl -k` disables TLS server certificate verification, allowing an attacker on the network path to perform a man-in-the-middle (MitM) attack and intercept BMC credentials or inject power/firmware commands. Under DSP0266 §13.1.3, BMC certificates **shall** conform to **X.509 v3** (RFC 5280) and services shall support replacing the default self-signed certificate.
+`curl -k` turns off server certificate checking. An attacker on the network path can then run a man-in-the-middle (MitM) attack. That lets them read BMC credentials or inject power and firmware commands. Under DSP0266 §13.1.3, BMC certificates **shall** follow X.509 v3 (RFC 5280), and services must support replacing the default self-signed certificate.
 </details>
 
 <details>
 <summary>3. What are the two standard actions on `CertificateService` for replacing a BMC certificate without exposing the private key on the network?</summary>
 
-1. **`CertificateService.GenerateCSR`:** Instructs the BMC to generate a keypair internally (so the private key never leaves the BMC) and return a Certificate Signing Request (CSR) for your CA to sign.
-2. **`CertificateService.ReplaceCertificate`:** Replaces the existing certificate at `CertificateUri` with the CA-signed PEM `CertificateString` (`CertificateType: "PEM"`).
+`CertificateService.GenerateCSR` has the BMC create its keypair internally, so the private key never leaves the BMC. It returns a Certificate Signing Request (CSR) for your CA to sign. `CertificateService.ReplaceCertificate` then swaps the existing certificate at `CertificateUri` for your CA-signed PEM `CertificateString`, with `CertificateType: "PEM"`.
 </details>
 
 <details>
 <summary>4. Compare HTTP Basic authentication and Redfish session authentication across headers, password exposure, and MFA compatibility.</summary>
 
-- **HTTP Basic (`Authorization: Basic <base64>`):** Sends the base64-encoded `username:password` on **every request** (HTTPS required); can be disabled via `AccountService.HTTPBasicAuth` and **shall be rejected** when multi-factor authentication (MFA) is required for the account (DSP0266 §13.3.3).
-- **Redfish Session (`X-Auth-Token: <token>`):** Sends `UserName` and `Password` **once** to `POST /redfish/v1/SessionService/Sessions`, receives a random `X-Auth-Token` for subsequent requests, supports MFA (`Token` property), and can be explicitly terminated via `DELETE`.
+Basic sends the base64-encoded `username:password` with every request, and only over HTTPS. You can disable it with `AccountService.HTTPBasicAuth`. The BMC **shall** reject Basic when MFA is required for the account (DSP0266 §13.3.3). A session sends `UserName` and `Password` once, to `POST /redfish/v1/SessionService/Sessions`. The BMC answers with a random `X-Auth-Token` for later requests. Sessions support MFA through the `Token` property, and you can end one with `DELETE`.
 </details>
 
 <details>
 <summary>5. Why is Base64 encoding in an HTTP Basic header not a form of encryption, and in what order must a BMC process authentication headers relative to ETag headers (DSP0266 §13.3.2.2)?</summary>
 
-Base64 is a reversible text encoding that anyone can decode instantly without a key, which is why Basic auth is forbidden over plain HTTP. Under DSP0266 §13.3.2.2, services **shall** process authentication headers **before** any other headers that affect the response (such as `If-Match` or `If-None-Match`) and **shall not** use HTTP cookies for authentication.
+Base64 is a reversible text encoding. Anyone can decode it at once, without a key, which is why Basic is forbidden over plain HTTP. Under DSP0266 §13.3.2.2, services **shall** process authentication headers before any other header that changes the response, such as `If-Match` or `If-None-Match`. They **shall not** use HTTP cookies for authentication.
 </details>
 
 <details>
 <summary>6. What three items must a BMC return when `POST /redfish/v1/SessionService/Sessions` succeeds (`201 Created`)?</summary>
 
-1. The **`X-Auth-Token`** response header containing the secret session token.
-2. The **`Location`** response header containing the URI of the newly created `Session` resource (e.g., `/redfish/v1/SessionService/Sessions/1`).
-3. A **JSON response body** containing the full representation of the new `Session` resource (with `"Password": null`).
+The BMC returns three things. First, the `X-Auth-Token` response header, which holds the secret token. Second, the `Location` header, which holds the URI of the new Session, such as `/redfish/v1/SessionService/Sessions/1`. Third, a JSON body with the full Session resource, where `"Password": null`.
 </details>
 
 <details>
 <summary>7. What is the difference between the Session ID (`Id` in the `Location` URI) and the Session Authentication Token (`X-Auth-Token`)?</summary>
 
-The **Session ID** (`"1"`) is the public resource identifier used by the user or an administrator to inspect or terminate (`DELETE`) the session in `/redfish/v1/SessionService/Sessions/<id>`. The **`X-Auth-Token`** is the cryptographic bearer secret returned only once in the login response header and known only to the client that created the session.
+The Session ID, the `"1"` in the example, is the public identifier. Users and administrators use it to inspect or end (`DELETE`) the session at `/redfish/v1/SessionService/Sessions/<id>`. The `X-Auth-Token` is the cryptographic bearer secret. It comes back only once, in the login response, and only the client that created the session knows it.
 </details>
 
 <details>
 <summary>8. Do Redfish sessions expire at a fixed wall-clock timestamp or via an idle timeout (DSP0266 §13.3.4.3)?</summary>
 
-Redfish sessions use a **sliding idle timeout** (`SessionTimeout` in `SessionService`): as long as the client sends authenticated requests more frequently than `SessionTimeout`, the timer resets and the token remains valid (unless the BMC also enforces an optional `AbsoluteSessionTimeout`).
+Redfish sessions use a sliding idle timeout, set by `SessionTimeout` in `SessionService`. Each authenticated request that arrives inside the timeout restarts the timer, so the token stays valid. The BMC can also enforce an optional `AbsoluteSessionTimeout`.
 </details>
 
 <details>
 <summary>9. How do you log out of a Redfish session, and what happens to open Server-Sent Event (SSE) streams or firmware transfers started by that session (DSP0266 §13.3.4.4)?</summary>
 
-Send an HTTP **`DELETE`** request to the session's `Location` URI (`/redfish/v1/SessionService/Sessions/<id>`), which returns `204 No Content`. Per DSP0266 §13.3.4.4, terminating a session **shall not** abort independent connections originally established by that session, such as active SSE streams or ongoing `UpdateService` image transfers.
+Send an HTTP `DELETE` to the session's `Location` URI, `/redfish/v1/SessionService/Sessions/<id>`. The reply is `204 No Content`. Per DSP0266 §13.3.4.4, ending a session **shall not** abort connections that the session opened on its own. Those include active SSE streams and ongoing `UpdateService` image transfers.
 </details>
 
 <details>
 <summary>10. Why must automation scripts always close their Redfish sessions in a `finally` block?</summary>
 
-Embedded BMCs have a finite session table limit. If a script runs every minute and leaks open sessions without calling `DELETE`, it will exhaust all available session slots on the BMC (`503 Service Unavailable` or login refusal) until `SessionTimeout` expires.
+Embedded BMCs have a finite session table. A script that runs every minute and leaks sessions without calling `DELETE` will eventually use every slot. Then the BMC refuses new logins, or answers with `503 Service Unavailable`, until `SessionTimeout` expires.
 </details>
 
 <details>
 <summary>11. What is the difference between a Privilege and a Role in Redfish, and how many roles can a `ManagerAccount` have?</summary>
 
-A **Privilege** is an atomic permission (`Login`, `ConfigureManager`, `ConfigureUsers`, `ConfigureComponents`, `ConfigureSelf`), whereas a **Role** is a named collection of privileges (`AssignedPrivileges` and `OemPrivileges`). Each `ManagerAccount` is assigned **exactly one** role via its `RoleId` property (DSP0266 §13.4.2).
+A **Privilege** is one atomic permission: `Login`, `ConfigureManager`, `ConfigureUsers`, `ConfigureComponents` or `ConfigureSelf`. A **Role** is a named collection of privileges, held in `AssignedPrivileges` and `OemPrivileges`. Each `ManagerAccount` has **exactly one** role, set by its `RoleId` property (DSP0266 §13.4.2).
 </details>
 
 <details>
 <summary>12. Name the three required standard roles in Redfish (DSP0266 Table 41) and the exact privileges assigned to each.</summary>
 
-1. **`Administrator`:** `Login`, `ConfigureManager`, `ConfigureUsers`, `ConfigureComponents`, `ConfigureSelf`.
-2. **`Operator`:** `Login`, `ConfigureComponents`, `ConfigureSelf`.
-3. **`ReadOnly`:** `Login`, `ConfigureSelf`.
+`Administrator` has `Login`, `ConfigureManager`, `ConfigureUsers`, `ConfigureComponents` and `ConfigureSelf`. `Operator` has `Login`, `ConfigureComponents` and `ConfigureSelf`. `ReadOnly` has `Login` and `ConfigureSelf`. These are the three required roles in DSP0266 Table 41.
 </details>
 
 <details>
 <summary>13. What is the difference between `ConfigureManager`, `ConfigureComponents`, `ConfigureUsers`, and `ConfigureSelf`?</summary>
 
-- **`ConfigureManager`:** Modify the BMC itself (network settings, protocols, certificates, subscriptions).
-- **`ConfigureComponents`:** Modify or reset managed computer systems, chassis, BIOS, and storage components.
-- **`ConfigureUsers`:** Create, modify, unlock, or delete any user account in `AccountService`.
-- **`ConfigureSelf`:** Read your own account and change your own password.
+`ConfigureManager` changes the BMC itself, such as network settings, protocols, certificates and subscriptions. `ConfigureComponents` changes or resets managed computer systems, chassis, BIOS and storage components. `ConfigureUsers` creates, modifies, unlocks or deletes any account in `AccountService`. `ConfigureSelf` lets you read your own account and change your own password.
 </details>
 
 <details>
 <summary>14. In the Privilege Registry (`DSP0266` §13.4.3.4), what are the three override types and their precedence order, and how do they explain why a user can change their own password or why an Operator can edit a host NIC but not the BMC NIC?</summary>
 
-The precedence order is **`PropertyOverrides` $\rightarrow$ `ResourceURIOverrides` $\rightarrow$ `SubordinateOverrides`**.
-- A **`PropertyOverride`** on `ManagerAccount` grants `PATCH` on the `Password` property to `ConfigureUsers` **or** `ConfigureSelf`, allowing any user to change their own password without having `ConfigureUsers`.
-- A **`SubordinateOverride`** on `EthernetInterface` requires `ConfigureManager` when the NIC is under `Manager` (the BMC's OOB port) vs `ConfigureComponents` when under `ComputerSystem` (the host's NIC).
+The precedence order is **`PropertyOverrides` $\rightarrow$ `ResourceURIOverrides` $\rightarrow$ `SubordinateOverrides`**. A `PropertyOverride` on `ManagerAccount` lets `ConfigureUsers` or `ConfigureSelf` PATCH the `Password` property. That is how any user can change their own password without holding `ConfigureUsers`. A `SubordinateOverride` on `EthernetInterface` needs `ConfigureManager` when the NIC sits under `Manager`, which is the BMC's OOB port. Under `ComputerSystem`, the same NIC needs `ConfigureComponents`. That is why an Operator can edit a host NIC but not the BMC NIC.
 </details>
 
 <details>
 <summary>15. How do `AccountLockoutThreshold`, `AccountLockoutDuration`, and early administrator unlock work in `AccountService`?</summary>
 
-After `AccountLockoutThreshold` consecutive failed logins, the BMC sets `Locked: true` on the `ManagerAccount` and rejects all logins (even with the correct password) for `AccountLockoutDuration` seconds. An administrator with `ConfigureUsers` can unlock the account early by sending `PATCH {"Locked": false}` to the account URI.
+After `AccountLockoutThreshold` consecutive failed logins, the BMC sets `Locked: true` on the `ManagerAccount`. It then rejects every login for `AccountLockoutDuration` seconds, even with the correct password. An administrator with `ConfigureUsers` can unlock the account early by sending `PATCH {"Locked": false}` to the account URI.
 </details>
 
 <details>
 <summary>16. Why must a failed login for a nonexistent user, a wrong password, and a locked account all return the exact same HTTP 401 message (DSP0266 §13.3.2.3)?</summary>
 
-To prevent username enumeration and lockout-state reconnaissance: if the BMC returned different error messages, an attacker could probe which usernames exist and which accounts are currently locked.
+If the BMC returned different messages, an attacker could learn which usernames exist and which accounts are locked. That is username enumeration and lockout-state reconnaissance. So all three cases return the same HTTP 401 message.
 </details>
 
 <details>
 <summary>17. How does `PasswordChangeRequired: true` behave upon login, and which specific operations are permitted before the password is changed (DSP0266 §13.5.4)?</summary>
 
-Session login succeeds (`201 Created`) and includes a `PasswordChangeRequired` message in `@Message.ExtendedInfo`. However, all other authenticated requests return **`403 Forbidden`** (`PasswordChangeRequired`) except:
-1. `GET` on the user's own `ManagerAccount` resource.
-2. `PATCH` on `Password` (if `RequireChangePasswordAction` is `false`) or `POST` to `ManagerAccount.ChangePassword` on the user's own account (which clears `PasswordChangeRequired` to `false`).
-3. `DELETE` on the user's own `Session` resource (plus `GET` on unauthenticated root resources).
+Login succeeds with `201 Created`, and `@Message.ExtendedInfo` includes a `PasswordChangeRequired` message. Every other authenticated request returns **`403 Forbidden`** with `PasswordChangeRequired`, except three things. You may `GET` your own `ManagerAccount`. You may change your password, either by `PATCH` on `Password` when `RequireChangePasswordAction` is `false`, or by `POST` to `ManagerAccount.ChangePassword` on your own account, which clears the flag to `false`. You may also `DELETE` your own Session, and `GET` the unauthenticated root resources.
 </details>
 
 <details>
 <summary>18. What is `RequireChangePasswordAction` in `AccountService` (DSP0266 §13.5.3), and what security attack does `ManagerAccount.ChangePassword` prevent?</summary>
 
-When `RequireChangePasswordAction` is `true`, the BMC rejects `PATCH` requests to `Password` and requires callers to invoke the `ManagerAccount.ChangePassword` action, which requires both `NewPassword` and **`SessionAccountPassword`** (the caller's current password, or the admin's password when resetting another user). This prevents an attacker who steals an active `X-Auth-Token` from changing the victim's password without knowing the current password.
+When `RequireChangePasswordAction` is `true`, the BMC rejects `PATCH` requests to `Password`. Callers must invoke the `ManagerAccount.ChangePassword` action instead, which needs both `NewPassword` and **`SessionAccountPassword`**. That is your current password, or the admin's password when resetting someone else's. An attacker who steals an active `X-Auth-Token` still cannot change the victim's password, because they do not know the current one.
 </details>
 
 <details>
 <summary>19. Why are `Password` properties always `null` in `GET` responses (DSP0266 §13.2), and what happens to a user's open sessions when an administrator resets their password (§13.5.2)?</summary>
 
-DSP0266 §13.2 requires all sensitive properties such as `Password` to be returned as `null` in responses so password hashes or cleartext secrets can never be read back. When an account's properties/password are changed (§13.5.2), the BMC closes open sessions for that account so old tokens are immediately invalidated.
+DSP0266 §13.2 requires sensitive properties such as `Password` to come back as `null` in responses. That way, no password hash or cleartext secret can be read back. When an account's properties or password change (§13.5.2), the BMC closes that account's open sessions, so old tokens stop working at once.
 </details>
 
 <details>
 <summary>20. How does Redfish OAuth 2.0 JWT authorization represent roles and privileges in the token's `scope` claim, and which `alg` header value is strictly forbidden (DSP0266 §13.4.4)?</summary>
 
-The JWT `scope` claim contains space-delimited strings formatted as **`Redfish.Role.<RoleId>`** (e.g., `Redfish.Role.Operator`) or **`Redfish.Privilege.<PrivilegeId>`**. In the JWT JOSE header, services **shall not** accept **`alg: "none"`** (unsigned tokens).
+The JWT `scope` claim is a space-delimited list. Each entry is either `Redfish.Role.<RoleId>`, such as `Redfish.Role.Operator`, or `Redfish.Privilege.<PrivilegeId>`. The JOSE header must never use `alg: "none"`, because services **shall not** accept unsigned tokens (DSP0266 §13.4.4).
 </details>
 
 ## Sources and review notes

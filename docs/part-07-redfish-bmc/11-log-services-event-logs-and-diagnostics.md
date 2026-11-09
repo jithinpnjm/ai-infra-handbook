@@ -22,23 +22,19 @@ lab_venue: "GCP / GKE"
 
 ## Why this matters for AI infrastructure
 
-When a job dies with a CUDA error and the operating system logs show nothing, the cause may be a hardware event that only the BMC saw: a memory error, a power supply drop, a fan failure, an over-temperature trip, a PCIe fault. The BMC keeps its own memory of the machine, and that memory survives the crash and even a power loss of the host. When you ask a vendor for help, they will want a **diagnostic bundle** collected from the BMC. Reading and collecting these logs is a core skill.
+A job dies with a CUDA error, and the operating system logs show nothing useful. The cause may still be on the machine, recorded by a hardware event that only the BMC saw. The BMC is the small controller that watches the server's hardware separately from the operating system. It can log a memory error, a power supply drop, a fan failure, an over-temperature trip or a PCIe fault. Its memory survives the crash, and even a power loss on the host.
+
+When you ask a vendor for help, they will want a **diagnostic bundle** collected from the BMC. Reading these logs and collecting that bundle is therefore a core skill for anyone who runs GPU servers.
 
 ## Prerequisites and outcomes
 
-You need chapters 7.2, 7.3, 7.5 and 7.7. After this chapter you can:
+Before you start, work through chapters 7.2, 7.3, 7.5 and 7.7. This chapter is about reading what the BMC remembers. When you finish, you can find every log on a Redfish service and read the fields of a log entry. You will know how Redfish event entries differ from IPMI SEL entries. You can also explain overwrite policies, and see why a full log can hide the event you need.
 
-- find every log on a Redfish service
-- read a log entry and explain its fields
-- tell Redfish event entries from IPMI SEL entries
-- explain overwrite policies and why a full log can hide the event you need
-- spot a BMC clock that makes logs misleading
-- clear a log safely and collect a diagnostic bundle
-- use logs together with sensors and GPU tools to find a cause
+The last part of the chapter is practical. You will learn to spot a BMC clock that makes its logs misleading. You will clear a log safely and collect a diagnostic bundle. Finally, you will combine logs with sensors and GPU tools to find a cause.
 
 ## 1. Where logs live
 
-Logs are kept by **log services**. A log service is a resource of type `LogService`, found under the thing it belongs to:
+A log service is a resource of type `LogService`, and it lives under the thing it belongs to. The path tells you what kind of events it keeps, so check the owner first:
 
 | Owner | Path pattern | Usually holds |
 |---|---|---|
@@ -46,13 +42,13 @@ Logs are kept by **log services**. A log service is a resource of type `LogServi
 | System | `Systems/<id>/LogServices/<log>` | events about the computer: boot, memory, processors |
 | Chassis | `Chassis/<id>/LogServices/<log>` | events about the box |
 
-Names such as `EventLog`, `SEL`, `Log` or `Dump` are choices of the maker. Always discover them by following the `LogServices` link. In my tool a single function does this:
+Vendors choose the names. You will see `EventLog`, `SEL`, `Log` or `Dump`, but the names differ from one maker to the next, so do not guess them. Find them by following the `LogServices` link. My tool does this in one function:
 
 ```bash
 python3 rf_logs.py services http://<bmc> <user> <password>
 ```
 
-On my mock it prints:
+On the mock, the output looks like this:
 
 ```text
 Manager  BMC_0        EventLog   type=Event  entries=0/200 policy=WrapsWhenFull
@@ -60,7 +56,7 @@ Manager  BMC_0        SEL        type=SEL    entries=0/200 policy=WrapsWhenFull
 System   System_0     EventLog   type=Event  entries=0/200 policy=WrapsWhenFull
 ```
 
-A `LogService` has these useful properties (from the schema):
+The schema describes what each log service can tell you. These are the properties that matter most:
 
 | Property | Meaning |
 |---|---|
@@ -73,7 +69,7 @@ A `LogService` has these useful properties (from the schema):
 | `ServiceEnabled`, `Status` | on or off, health |
 | `SyslogFilters` | rules for which syslog messages are stored |
 
-Its actions: `ClearLog`, `CollectDiagnosticData`, `DownloadRawLog` and `PushDiagnosticData`.
+The service also offers four actions: `ClearLog`, `CollectDiagnosticData`, `DownloadRawLog` and `PushDiagnosticData`. This chapter uses the first two, and sections 5 and 6 cover them.
 
 ```mermaid
 flowchart LR
@@ -91,11 +87,13 @@ flowchart LR
     POL --> ENT & ACT
 ```
 
+Before you read any entries, list the log services on the machine. The names differ between vendors, so you cannot assume them.
+
 ## 2. A log entry
 
-Two kinds are common.
+A log service is only useful if you can read its entries. Two kinds show up most often, and a single machine can have both.
 
-**Event entries** (`EntryType: Event`) follow the Redfish message design from chapter 7.5 and 7.6: a `MessageId` points into a message registry. From my mock after a power-off:
+**Event entries** (`EntryType: Event`) follow the Redfish message design from chapters 7.5 and 7.6. A `MessageId` points into a message registry, which is a lookup table of known messages. This event came from the mock after a power-off:
 
 ```json
 {
@@ -109,9 +107,9 @@ Two kinds are common.
 }
 ```
 
-**SEL entries** (`EntryType: SEL`) are the old IPMI **System Event Log**: compact records that the BMC translates. The `MessageId` field then holds raw event data, and `SensorType`, `SensorNumber` and `EntryCode` carry the meaning (the schema says `EntryCode` is used if the type is `SEL`). A SEL record in DMTF's example reads *"Temperature threshold exceeded"* with `MessageId: 0x592A28`, a code that you read with the IPMI documentation.
+The second kind is the SEL entry (`EntryType: SEL`). SEL stands for System Event Log, the older IPMI log. Its records are compact, and the BMC translates them. The `MessageId` field then holds raw event data. The meaning sits in `SensorType`, `SensorNumber` and `EntryCode` instead. The schema says `EntryCode` is used when the type is `SEL`. In DMTF's example, a SEL record reads *"Temperature threshold exceeded"* with `MessageId: 0x592A28`. You read a code like that with the IPMI documentation.
 
-Fields you will use:
+These are the fields you will use most:
 
 | Field | Meaning |
 |---|---|
@@ -127,15 +125,21 @@ Fields you will use:
 | `Resolved`, `Resolution`, `ResolutionSteps` | whether the cause is fixed and suggested fixes |
 | `AdditionalDataURI`, `AdditionalDataSizeBytes`, `DiagnosticDataType` | attached data, for example a diagnostic bundle |
 
-**Collections of log entries come with their members inline.** The spec says the `Members` property of a `LogEntryCollection` is expanded by default (so `Entries`, `Entries?$expand=.` and `Entries?$expand=.($levels=1)` give the same answer). My lab confirms the mock does this. That saves one request per entry. For long logs use paging (`$top`, `$skip`, the `nextLink`).
+The `Links.OriginOfCondition` field is the one to remember. It names the resource the event is about, so you can `GET` that resource next.
+
+Reading a log usually means reading its collection of entries. The spec says the `Members` property of a `LogEntryCollection` is expanded by default. So `Entries`, `Entries?$expand=.` and `Entries?$expand=.($levels=1)` all return the same answer. My lab confirms the mock does this, which saves one request per entry. For a long log, page through the entries with `$top`, `$skip` and the `nextLink`.
+
+When you read a log, check `EntryType` first. It tells you which fields the entry carries.
 
 ## 3. The tool: read, filter and group
+
+Reading one log at a time is slow, and the fault you need may sit in a log you did not open. The `show` command reads every log service, normalizes the entries, applies your filters and prints the result in time order. Here is a command that keeps Warning entries and anything worse, from a given date, that mention fans:
 
 ```bash
 python3 rf_logs.py show http://<bmc> <user> <password> --min Warning --since 2026-10-24T00:00:00Z --grep fan
 ```
 
-It reads every log service, normalises the entries, applies your filters and prints them in time order. Results on DMTF's rack-server example with `--min Critical`:
+On DMTF's rack-server example, the `--min Critical` filter returns these three entries:
 
 ```text
 2012-03-07T14:44:00Z BMC/Log      Critical Event.TempWayTooHot            System May be Melting
@@ -144,65 +148,80 @@ It reads every log service, normalises the entries, applies your filters and pri
 3 entries
 ```
 
-and on the blade enclosure example: `Fan 2 crossed Lower Fatal Threshold; fans are no longer redundant` (from the enclosure manager).
+All three are critical temperature events. The first comes from the BMC log, and the other two are from `437XR1138R2/Log1`. The blade enclosure example makes a different point. There, the enclosure manager reports `Fan 2 crossed Lower Fatal Threshold; fans are no longer redundant`.
 
-The lab shows that related entries can be grouped. Two entries "Fan 3 speed low" and "Fan 3 redundancy lost" carry the same `EventGroupId`, so one problem does not look like two.
+The lab also shows how to group related entries. The two entries `Fan 3 speed low` and `Fan 3 redundancy lost` carry the same `EventGroupId`. The tool can therefore show them as one problem rather than two.
 
 ### Using a log in an investigation
 
-Take the "mystery crash" from the user's notes (volume 10, scenario 4): a PyTorch job dies with a CUDA illegal memory access, and the OS logs show nothing obvious. The notes' answer is to cross-check the software side with the BMC side:
+Picture a PyTorch job that dies with a CUDA illegal memory access, while the operating system logs show nothing obvious. The notes for this case are in volume 10, scenario 4. They suggest checking the software side and the BMC side together.
 
-1. On the host, check GPU memory error counters (for example `nvidia-smi -q -d ECC`).
-2. On the BMC, read the event log entries around that time. The notes name `GET /redfish/v1/Managers/BMC/LogServices/EventLog/Entries` and look for memory parity errors, PCIe AER fatal events and processor machine check exceptions.
-3. Find the component. A fault on a host DIMM means drain the node and replace the DIMM. A fault on a GPU means run a targeted GPU test to see whether it repeats.
+1. On the host, check the GPU memory error counters, for example with `nvidia-smi -q -d ECC`.
+2. On the BMC, read the event log entries from around that time. The notes point to `GET /redfish/v1/Managers/BMC/LogServices/EventLog/Entries` and tell you to look for memory parity errors, PCIe AER fatal events and processor machine check exceptions.
+3. Identify the component. A fault on a host DIMM means you drain the node and replace the DIMM. A fault on a GPU means you run a targeted GPU test to see whether the fault repeats.
 
-I have not run this on a real DGX. The point is the method: **put the BMC log and the host logs on one timeline**. That only works if both clocks are right (see section 5).
+I have not run this on a real DGX, so treat it as a method rather than a tested recipe. The key idea is to put the BMC log and the host logs on one timeline. That only works if both clocks agree, which section 4 covers.
+
+Before you trust a BMC entry in an incident, confirm that its clock matches the host's.
 
 ## 4. What the log tells you about itself
 
-A log can mislead if it is full or if its clock is wrong. The tool checks both.
+A log can mislead you in two ways. It can be full, so the event you need was overwritten or never written. Or its clock can be wrong, so its timestamps do not line up with your host logs. The tool checks both problems.
 
-**Overwrite policy.**
+The overwrite policy decides what happens when a log is full, and each policy fails in its own way:
 
 | Policy | When full | Risk |
 |---|---|---|
 | `WrapsWhenFull` | the oldest entries are replaced | the first sign of trouble, which is often the most useful, disappears under later noise |
 | `NeverOverWrites` | **new** entries are discarded | the log silently stops recording just when something bad is happening |
 
-My lab shows both. With a 5-entry limit, `WrapsWhenFull` kept the newest five entries (ids kept counting) and with `NeverOverWrites` a new Critical entry was dropped. The tool warns when a `NeverOverWrites` log is 80 percent full or more, and when a wrapping log is 95 percent full. Whichever policy your BMC uses, **forward** important entries to a central place (events, chapter 7.5) so they are not lost.
+Neither policy is safe on its own, so check which one your BMC uses. The lab shows both behaviours. With a limit of 5 entries, `WrapsWhenFull` kept the newest five, and the ids kept counting up. With `NeverOverWrites`, a new Critical entry was dropped. The tool warns when a `NeverOverWrites` log is 80 percent full or more. It also warns when a wrapping log is 95 percent full. Whichever policy your BMC uses, forward the important entries to a central place, as chapter 7.5 on events describes, so they are not lost.
 
-**Clock.** Log entries carry the BMC's time. If the BMC never had NTP configured, its clock may be hours or years off, and entries will not match your host logs. The tool compares each service's `DateTime` with the clock of the computer running the tool and warns if they differ by more than five minutes. In the DMTF examples this warning fires on every service because the sample dates are from 2012 to 2016. That is the correct behaviour for stale data, and a reminder to check the BMC's NTP setting (`NetworkProtocol`, chapter 7.15) when you bring a node in.
+The clock is the second risk. Every log entry carries the BMC's time. If the BMC never had NTP configured, its clock may be hours or years off, and its entries will not match your host logs. The tool compares each service's `DateTime` with the clock of the computer running the tool. It warns when the two differ by more than five minutes.
+
+In the DMTF examples, this warning fires on every service, because the sample dates run from 2012 to 2016. That is the right behaviour for stale data. It is also a reminder to check the BMC's NTP setting, which lives in `NetworkProtocol` (chapter 7.15).
+
+When you bring a new node in, check its NTP setting before you trust any of its timestamps.
 
 ## 5. Clearing a log
 
-`ClearLog` empties the log. Treat it like deleting evidence.
+Clearing a log is permanent, so treat `ClearLog` the way you would treat deleting evidence. Use these guards before you run it.
 
-- **Collect first.** Take a diagnostic bundle (next section) or at least copy the entries.
-- **Use the ETag guard.** The action has a parameter `LogEntriesETag`. If you send the ETag of the entries collection that you read, the service refuses with `412` when the log changed since, so you do not wipe entries you never saw. My lab proves it: a stale ETag gives 412, the current one gives 204.
-- **Check privileges.** A read-only user gets 403.
-- The tool's `clear` command is a **dry run unless `--yes`** is given.
+- Collect first. Take a diagnostic bundle, which the next section explains, or at least copy the entries.
+- Use the ETag guard. The action takes a parameter called `LogEntriesETag`. If you send the ETag of the entries collection you read, the service refuses with 412 whenever the log has changed since then. That keeps you from wiping entries you never saw. The lab proves it: a stale ETag gives 412, and the current one gives 204.
+- Check privileges too. A read-only user gets 403 when they try to clear the log.
+
+The tool's clear command is a dry run unless you add `--yes`.
+
+Before you run `ClearLog`, collect the bundle and send the ETag you read.
 
 ## 6. Diagnostic bundles: `CollectDiagnosticData`
 
-A vendor's support team usually wants a bundle: a file with logs and state from the BMC. Redfish defines the action `LogService.CollectDiagnosticData`. Its parameter `DiagnosticDataType` can be `Manager`, `PreOS`, `OS`, `OEM` or `Device`. It can also send the data to a `TargetURI` with a user name and password, or keep it in the BMC.
+When a vendor's support team asks for help, they usually want a bundle. A bundle is one file with logs and state from the BMC. Redfish defines the action `LogService.CollectDiagnosticData` for this job. Its parameter `DiagnosticDataType` can be `Manager`, `PreOS`, `OS`, `OEM` or `Device`. You can also have the BMC send the data to a `TargetURI`, with a user name and password. Or you can keep it on the BMC.
 
-How it works (spec and schema):
+The spec and schema describe the process in three steps:
 
 1. `POST` the action. The answer is `202` with a task monitor, because collecting takes time.
-2. When the task ends, **its `Location` header is the new `LogEntry`**, and that entry's `AdditionalDataURI` is where you download the data.
-3. `GET` the `AdditionalDataURI`. Compare the number of bytes with `AdditionalDataSizeBytes`.
+2. When the task ends, its `Location` header is the new `LogEntry`. That entry's `AdditionalDataURI` tells you where to download the data.
+3. `GET` the `AdditionalDataURI`, and compare the number of bytes with `AdditionalDataSizeBytes`.
 
-`rf_logs.py collect` does all of that and checks the size:
+The `collect` command in `rf_logs.py` runs all three steps and checks the size for you:
 
 ```bash
 python3 rf_logs.py collect http://<bmc> <user> <password> --out bundle.bin
 ```
 
-On my mock the tool printed `saved 150 bytes to bundle.bin (log entry 3, Manager)`. (The mock's bundle is only a few lines of text.) A deliberately corrupted size field makes the tool stop with exit code 7 and the message `size mismatch`. A real bundle can be many megabytes, so give the request time and do not assume success if the download is cut off.
+On the mock, the tool prints `saved 150 bytes to bundle.bin (log entry 3, Manager)`. The mock's bundle is only a few lines of text. If the size field is wrong on purpose, the tool stops with exit code 7 and the message `size mismatch`.
 
-On NVIDIA DGX the user's notes mention `nvsm dump health`, which "packages all system logs, configuration files and hardware states" for NVIDIA support. That runs on the host operating system and is a different route from the BMC bundle. For an RMA you usually need both. I did not run either.
+A real bundle can be many megabytes. Give the request time, and do not assume success if the download is cut off.
+
+The NVIDIA notes also mention `nvsm dump health` on DGX systems. They describe it as a command that "packages all system logs, configuration files and hardware states" for NVIDIA support. It runs on the host operating system, so it is a different route from the BMC bundle. For an RMA you usually need both. I did not run either one.
+
+Collect the BMC bundle and confirm its size before you start any repair that could erase state.
 
 ## 7. The lab
+
+Run the lab from the chapter's code directory. It checks the mock, the tool and the schemas together.
 
 ```bash
 cd code/part07
@@ -232,64 +251,78 @@ PASS  the tool detects a size mismatch between the entry and the downloaded data
 23 passed, 0 failed
 ```
 
-One real bug the schema check caught while I built this: I had put `OriginOfCondition` at the top of the log entry. The official `LogEntry` schema has it under `Links`. My first version of the mock and the tool both got it wrong, and the validator told me.
+The schema check caught a real bug while I built this. I had put `OriginOfCondition` at the top of the log entry. The official `LogEntry` schema places it under `Links`. My first version of the mock and the tool both got it wrong, and the validator is what told me.
+
+If any check fails, fix the tool or the mock before you trust either one against a real BMC.
 
 ## 8. Logs in a fleet
 
-- **Centralise.** Do not rely on each BMC's small log. Subscribe to events (chapter 7.5), or poll and ship entries to a log system, with the BMC name and the original timestamp.
-- **Fix clocks** on every BMC with NTP before the machine goes into service.
-- **Alert on Critical entries** and on the log-health warnings above.
-- **Collect bundles** before any repair that might reset the BMC or erase state.
-- **Tie logs to jobs.** The scheduler knows which job ran on a node when an event happened.
-- **Keep sample logs** from healthy nodes. Knowing what normal chatter looks like makes the unusual entry stand out.
+A single BMC's log is easy to read. A fleet of them needs a plan. Start by centralising. Each BMC keeps only a small log, so subscribe to events (chapter 7.5), or poll each BMC and ship its entries to a log system. Tag every entry with the BMC name and the original timestamp, so you can line them up later.
+
+Fix the clock on every BMC with NTP before the machine goes into service. Then alert on Critical entries and on the log-health warnings from section 4. Collect bundles before any repair that might reset the BMC or erase state. Tie logs to jobs as well, because the scheduler knows which job ran on a node when an event happened. Finally, keep sample logs from healthy nodes. Normal chatter is what makes the unusual entry stand out.
+
+Before a node goes into service, its BMC clock and its alerts should both be working.
 
 ### 8.1 Reconstructing a cross-layer hardware crash timeline
 
-When a multi-node training job crashes at 03:00 with a cryptic `NCCL WARN Call to connect returned Connection refused` or `CUDA error: an illegal memory access was encountered`, the biggest mistake an operator can make is looking only at the application log or rebooting the node to "clear the state." A hardware crash leaves footprints across three separate layers—the application/scheduler layer, the host Linux kernel layer, and the out-of-band BMC hardware log layer. Putting those three layers onto a single UTC timeline is the fastest way to isolate the root cause.
+At 03:00, a multi-node training job crashes. The application log shows a cryptic `NCCL WARN Call to connect returned Connection refused` or `CUDA error: an illegal memory access was encountered`.
 
-Walk through how an experienced infrastructure engineer correlates those three logs during a real post-mortem:
+The biggest mistake here is to read only the application log, or to reboot the node to clear the state. A hardware crash leaves footprints in three separate layers. There is the application and scheduler layer, the host Linux kernel layer, and the out-of-band BMC hardware log layer. The BMC is out-of-band because it works apart from the host operating system. Put all three layers on one UTC timeline, and you have the fastest way to isolate the root cause.
 
-1. **Anchor the incident window from the scheduler and application logs (`T = 0`):** Check `sacct -j <jobid> --format=JobID,NodeList,Start,End,State,ExitCode` and the job's `stderr` log to find the exact UTC second when the rank process died or timed out, and which rank/hostname emitted the first error (rather than the 511 ranks that failed a second later when their peer disappeared).
-2. **Inspect theBMC `LogServices` (`EventLog` and `SEL`) across `T - 5 minutes` to `T + 5 minutes`:** Using `rf_logs.py show --since <T-5m>`, examine every entry recorded by the BMC on that node. Why check the BMC log before trusting host `dmesg`? Because when a server suffers a catastrophic hardware event—such as a CPU Machine Check Exception (MCE), a multi-bit DDR5 memory parity error, a PCIe root-port fatal surprise-down reset, or a `12V`/`54V` power rail droop—the host Linux kernel often freezes before `rsyslog` or `systemd-journald` can flush the error to disk or network syslog. The BMC's out-of-band microcontroller, running on independent standby power, captures that fault over `I2C`/`PECI`/`SMBus` and writes it to non-volatile flash in `LogServices`.
-3. **Correlate `EventGroupId` and `Links.OriginOfCondition`:** A single physical fault frequently generates a burst of three to five log entries within the same second. For example, a failing PSU might emit a voltage-sensor threshold crossing, a PSU status change, and a chassis power-redundancy lost message. By grouping entries that share the same `EventGroupId` and following `Links.OriginOfCondition["@odata.id"]` directly to the faulted resource (`/redfish/v1/Systems/System_0/Memory/DIMM_A1` or `/redfish/v1/Chassis/DGX/PowerSubsystem/PowerSupplies/PSU_2`), you avoid chasing secondary symptoms and immediately identify the exact Field Replaceable Unit (FRU) to replace.
+Here is how an experienced engineer lines the three logs up during a real post-mortem.
+
+1. Anchor the incident window from the scheduler and application logs, where `T = 0`. Check `sacct -j <jobid> --format=JobID,NodeList,Start,End,State,ExitCode` and the job's `stderr` log. Find the exact UTC second when the rank process died or timed out. Also find which rank and hostname emitted the first error. That first error matters more than the 511 ranks that failed a second later, when their peer disappeared.
+2. Next, inspect the BMC `LogServices`, `EventLog` and `SEL`, from `T - 5 minutes` to `T + 5 minutes`. Run `rf_logs.py show --since <T-5m>` and examine every entry the BMC recorded on that node. Why trust the BMC over host `dmesg`? Serious hardware events, such as a CPU Machine Check Exception (MCE), a multi-bit DDR5 memory parity error, a PCIe root-port fatal surprise-down reset, or a `12V`/`54V` power rail droop, often freeze the host kernel first. The kernel then never gets the error through `rsyslog` or `systemd-journald` to disk or to network syslog. The BMC's out-of-band microcontroller runs on independent standby power. It captures the fault over `I2C`, `PECI` or `SMBus`, and writes it to non-volatile flash in `LogServices`.
+3. Correlate `EventGroupId` with `Links.OriginOfCondition`. One physical fault often produces a burst of three to five entries within the same second. A failing PSU, for example, might emit a voltage-sensor threshold crossing, a PSU status change and a chassis power-redundancy lost message. Group the entries that share an `EventGroupId`. Then follow `Links.OriginOfCondition["@odata.id"]` straight to the faulted resource, such as `/redfish/v1/Systems/System_0/Memory/DIMM_A1` or `/redfish/v1/Chassis/DGX/PowerSubsystem/PowerSupplies/PSU_2`. That way you skip the secondary symptoms and find the exact Field Replaceable Unit (FRU) to replace.
+
+Start every crash review from the scheduler's timestamp, because it sets the window for every other log.
 
 ### 8.2 Why BMC clock drift ruins root-cause analysis (and how to prevent it)
 
-The timeline reconstruction above has one critical prerequisite: **the timestamps in the BMC's `LogEntry.Created` field must agree with the UTC clock of your Linux compute nodes and Slurm controller**.
+The timeline above rests on one requirement. The timestamps in the BMC's `LogEntry.Created` field must agree with the UTC clock on your Linux compute nodes and your Slurm controller.
 
-On a newly unboxed server—or on a server whose BMC was reset to factory defaults during troubleshooting—NTP is frequently disabled in `/redfish/v1/Managers/{id}/NetworkProtocol`. Even worse, if the server spent months in a warehouse with no AC power and its coin-cell RTC battery drained, its BMC clock may read `1970-01-01` or `2018-01-01`, or may be set to local factory time eight hours off from UTC. When a GPU job crashes on that node at `14:22:05 UTC` on October 28, the BMC's `SEL` records the fatal PCIe error with a timestamp from three years ago. An engineer filtering the log with `--since 2026-10-28T14:00:00Z` will miss the hardware fault completely and conclude that the BMC log was clean.
+A newly unboxed server often has NTP disabled in `/redfish/v1/Managers/{id}/NetworkProtocol`. So does a BMC that was reset to factory defaults during troubleshooting. A server that sat in a warehouse with no AC power is worse. Its coin-cell RTC battery drains, and the BMC clock may then read `1970-01-01` or `2018-01-01`. It may also show local factory time, eight hours off from UTC.
 
-That is why `code/part07/rf_logs.py` performs an automatic clock-skew check on every `LogService` it touches. Before filtering entries by timestamp, it reads `DateTime` (and `DateTimeLocalOffset`) on the `LogService` or parent `Manager`, parses it as an ISO 8601 timestamp, and compares it against the management host's own NTP-synchronized UTC clock. If the absolute difference exceeds five minutes (`300` seconds), `rf_logs.py` prints a prominent `CLOCK SKEW` warning.
+Now suppose a GPU job crashes on that node at `14:22:05 UTC` on October 28. The BMC's `SEL` records the fatal PCIe error, but with a timestamp from three years ago. An engineer who filters with `--since 2026-10-28T14:00:00Z` misses the hardware fault completely. That engineer then concludes the BMC log was clean.
 
-In production, you prevent BMC clock drift at two layers:
-- **Day-0 provisioning (`rf_harden.py`):** Enable `NTP.ProtocolEnabled: true` and populate `NTP.NTPServers` under `/redfish/v1/Managers/{id}/NetworkProtocol` pointing to your internal management network NTP servers (such as the BCM head node alias `10.141.255.254` or your OOB switch NTP relay).
-- **Continuous audit:** Include the `LogService.DateTime` skew check in your daily `fleet_run.py` health sweep so any BMC whose NTP client stalls is flagged before an incident occurs.
+That is why `code/part07/rf_logs.py` runs an automatic clock-skew check on every `LogService` it touches. Before it filters by timestamp, the tool reads `DateTime` and `DateTimeLocalOffset` from the `LogService` or its parent `Manager`. It parses the value as an ISO 8601 timestamp, and compares the result with the management host's own NTP-synchronized UTC clock. If the difference exceeds five minutes, which is `300` seconds, `rf_logs.py` prints a prominent `CLOCK SKEW` warning.
+
+In production, you prevent drift at two layers.
+
+- At day-0 provisioning, `rf_harden.py` sets `NTP.ProtocolEnabled: true` and fills `NTP.NTPServers` under `/redfish/v1/Managers/{id}/NetworkProtocol`. Point those servers at your internal management network, such as the BCM head node alias `10.141.255.254` or your out-of-band switch's NTP relay.
+- For continuous audit, add the `LogService.DateTime` skew check to your daily `fleet_run.py` health sweep. Then a BMC whose NTP client stalls gets flagged before an incident happens.
+
+Set NTP on every BMC at provisioning, and keep the skew check in your daily sweep.
 
 ### 8.3 Managing log capacity: `WrapsWhenFull` vs `NeverOverWrites` at scale
 
-Unlike a Linux host with terabytes of NVMe storage for `/var/log/journal`, a BMC stores its `SEL` and `EventLog` in a small partition of SPI NOR flash or eMMC memory. As a result, `MaxNumberOfRecords` on a BMC `LogService` is typically bounded to a few hundred or a few thousand entries.
+A BMC has far less room than a Linux host. A host might have terabytes of NVMe storage for `/var/log/journal`. A BMC keeps its `SEL` and `EventLog` in a small partition of SPI NOR flash or eMMC memory. So `MaxNumberOfRecords` on a BMC log is typically a few hundred or a few thousand entries.
 
-How the BMC behaves when `Entries` reaches `MaxNumberOfRecords` is governed by `OverWritePolicy`, and both policies carry operational hazards that your automation must manage:
+What the BMC does when `Entries` reaches `MaxNumberOfRecords` depends on `OverWritePolicy`. Both policies create hazards that your automation has to manage.
 
-1. **The `NeverOverWrites` hazard (silent blindness):** When `OverWritePolicy` is `NeverOverWrites`, the moment the log reaches `100%` capacity (`200/200` or `1024/1024` records), the BMC **stops recording new hardware faults**. If chattery informational messages (such as periodic login/logout audit events or minor temperature caution crossings) fill the log over the first six months of cluster operation, a fatal DIMM ECC error or PSU failure in month seven is silently dropped on the floor. Whenever a BMC uses `NeverOverWrites`, your monitoring must alert at `80%` capacity (`rf_logs.py` does this automatically), archive the existing entries to central storage, and clear the log using `ClearLog` guarded by `LogEntriesETag`.
-2. **The `WrapsWhenFull` hazard (root-cause erasure):** When `OverWritePolicy` is `WrapsWhenFull`, the log acts as a ring buffer, overwriting the oldest entries as new ones arrive. While this guarantees that recent events are recorded, a cascading hardware fault—such as an intermittent optical transceiver or fan sensor that flaps every few seconds—can generate hundreds of repetitive entries in an hour and overwrite the original fatal assertion that started the incident.
+1. The `NeverOverWrites` hazard is silent blindness. Once the log hits 100 percent capacity, at `200/200` or `1024/1024` records, the BMC stops recording new hardware faults. Suppose routine messages, such as login and logout audit events or minor temperature caution crossings, fill the log during the first six months. A fatal DIMM ECC error or PSU failure in month seven is then silently dropped. If a BMC uses `NeverOverWrites`, your monitoring must alert at 80 percent capacity. `rf_logs.py` does this automatically. You should also archive the existing entries to central storage, and clear the log with `ClearLog`, guarded by `LogEntriesETag`.
+2. The `WrapsWhenFull` hazard is root-cause erasure. The log works as a ring buffer, overwriting the oldest entries as new ones arrive. That guarantees recent events are recorded. The trouble comes from noise. A cascading fault, such as an intermittent optical transceiver or a fan sensor that flaps every few seconds, can produce hundreds of repeat entries in an hour. Those entries can overwrite the original fatal assertion that started the incident.
 
-The architectural solution to both hazards is **continuous log streaming and archival**. By subscribing to Redfish push events (Chapter 7.5) or running a periodic incremental collector that tracks the highest seen `LogEntry.Id` per BMC and ships new entries to Loki, Elasticsearch, or syslog, you keep an unlimited, searchable history of every BMC hardware event across the entire cluster while keeping local BMC flash buffers clean.
+The architectural fix for both hazards is **continuous log streaming and archival**. Either subscribe to Redfish push events (chapter 7.5), or run a periodic incremental collector. The collector tracks the highest `LogEntry.Id` seen per BMC and ships new entries to Loki, Elasticsearch or syslog. You then keep an unlimited, searchable history of every BMC hardware event across the cluster, and the local flash buffers stay clean.
+
+Decide how entries will leave each BMC before you rely on it, because the flash buffer is small.
 
 ### 8.4 End-to-end RMA evidence collection workflow (`CollectDiagnosticData` + `nvsm`)
 
-When a hardware component fails on a GPU server and you open a Return Merchandise Authorization (RMA) ticket with NVIDIA or your server OEM, support engineers will ask for diagnostic evidence before dispatching a replacement SXM GPU, HGX baseboard, or motherboard. Clearing the BMC log or re-imaging the node before capturing that evidence can delay an RMA by days.
+Suppose a GPU server fails, and you open a Return Merchandise Authorization (RMA) ticket with NVIDIA or your server vendor. Support engineers will ask for diagnostic evidence before they dispatch a replacement SXM GPU, HGX baseboard or motherboard. If you clear the BMC log or re-image the node before capturing that evidence, the RMA can slip by days.
 
-A disciplined RMA evidence runbook executes four non-destructive steps in strict sequence before any reset or repair:
+Follow four non-destructive steps in strict order, before any reset or repair.
 
-1. **Capture the human-readable BMC event logs:** Run `rf_logs.py show` (and save the raw JSON of `/Managers/{id}/LogServices/SEL/Entries` and `EventLog/Entries`) so your own team has an immediate text summary of the fault timestamps, `MessageId` codes, and `OriginOfCondition` links.
-2. **Trigger the out-of-band BMC diagnostic bundle (`LogService.CollectDiagnosticData`):** Run `python3 code/part07/rf_logs.py collect https://<bmc> <user> <password> --out <node>-bmc-bundle.bin`. As verified in Check 14 and 15 of `logs_lab.py`, this posts `{"DiagnosticDataType": "Manager"}` (or `"OEM"`), polls the `202 Accepted` task monitor until completion, follows the resulting `LogEntry` `Location` header, downloads the binary archive from `AdditionalDataURI`, and verifies that the downloaded byte count matches `AdditionalDataSizeBytes` (`exit 7` on mismatch).
-3. **Capture the in-band host diagnostic bundle (if the host OS is still reachable):** If SSH to the host OS still works, run `sudo nvsm dump health` (on DGX systems) or `sudo nvidia-bug-report.sh` to capture the in-band kernel ring buffer, PCIe AER registers, NVLink error counters, and DCGM state.
-4. **Clear the BMC log safely after repair (`ClearLog` with `LogEntriesETag`):** Only after the physical repair is complete and both diagnostic bundles are archived in your ticket system should you clear the BMC's `SEL`/`EventLog`—passing the `ETag` of the `Entries` collection in `LogEntriesETag` so any new post-repair fault is never wiped by mistake (`412 Precondition Failed`).
+1. Capture the readable BMC event logs. Run `rf_logs.py show`, and save the raw JSON from `/Managers/{id}/LogServices/SEL/Entries` and `EventLog/Entries`. Your team then has an immediate text summary of the fault timestamps, `MessageId` codes and `OriginOfCondition` links.
+2. Trigger the out-of-band BMC diagnostic bundle with `LogService.CollectDiagnosticData`. Run `python3 code/part07/rf_logs.py collect https://<bmc> <user> <password> --out <node>-bmc-bundle.bin`. Checks 14 and 15 of `logs_lab.py` verify this step. The command posts a body with `DiagnosticDataType` set to `Manager` or `OEM`. It polls the `202 Accepted` task monitor until the task finishes, then follows the `LogEntry` `Location` header and downloads the binary archive from `AdditionalDataURI`. Last, it checks that the downloaded byte count matches `AdditionalDataSizeBytes`, and exits with `exit 7` on a mismatch.
+3. Capture the in-band host bundle, if SSH to the host OS still works. Run `sudo nvsm dump health` on DGX systems, or `sudo nvidia-bug-report.sh`. Either one captures the in-band kernel ring buffer, PCIe AER registers, NVLink error counters and DCGM state.
+4. Clear the BMC log last, and only after the repair. Clear the `SEL` and `EventLog` only when the physical repair is finished and both bundles are archived in your ticket system. Pass the ETag of the `Entries` collection in `LogEntriesETag`, so a new post-repair fault is never wiped by mistake. A stale ETag gets `412 Precondition Failed`.
+
+Do not run `ClearLog` until both bundles are safely in your ticket.
 
 ### 8.5 Mapping legacy IPMI SEL sensor types to modern Redfish `Event` registries
 
-When you operate a mixed fleet containing both newer OpenBMC/DGX platforms and older enterprise OEM servers, your log collector will encounter both `EntryType: "Event"` and `EntryType: "SEL"` records side by side. Understanding how to normalize both formats into a single alerting schema prevents blind spots in your monitoring pipeline:
+If your fleet mixes newer OpenBMC and DGX platforms with older enterprise OEM servers, your collector will see `EntryType: "Event"` and `EntryType: "SEL"` records side by side. A single alerting schema prevents blind spots in your monitoring pipeline. The table maps each fault domain from its legacy SEL form to its modern Event form.
 
 | Hardware Fault Domain | Legacy `EntryType: "SEL"` (`SensorType` & `EntryCode`) | Modern `EntryType: "Event"` (`MessageId` & `OriginOfCondition`) |
 |---|---|---|
@@ -299,148 +332,152 @@ When you operate a mixed fleet containing both newer OpenBMC/DGX platforms and o
 | **Power Supply Drop** | `SensorType: "Power Supply / Converter"`, `EntryCode: "Power Supply input lost"` | `OriginOfCondition` $\rightarrow$ `/Chassis/{id}/PowerSubsystem/PowerSupplies/PSU_1` |
 | **OS Watchdog Timeout** | `SensorType: "Watchdog 2"`, `EntryCode: "Hard Reset"` or `"Timer expired"` | `ResourceEvent` / `Platform` watchdog message on `/Systems/{id}` |
 
-By normalizing every log entry in `code/part07/rf_logs.py` into a common tuple—`(timestamp, owner_service, severity, code_or_message_id, message, origin_uri, group_id)`—your downstream alerting rules can trigger on any `Critical` hardware fault across the entire data center regardless of whether the underlying BMC speaks legacy SEL hex codes or modern Redfish Message Registries.
+The same fault shows up with different keys in each format. Match on the fault domain rather than on the raw code.
+
+Normalizing every entry in `code/part07/rf_logs.py` into one common tuple, `(timestamp, owner_service, severity, code_or_message_id, message, origin_uri, group_id)`, gives your alerts one format to work with. Your rules can then trigger on any Critical hardware fault across the data center. It does not matter whether the BMC speaks legacy SEL hex codes or modern Redfish message registries.
+
+Normalize both formats in your collector before you write any alert rule.
 
 ## Exercises
 
-1. **Discovering log services and inline entries (`code/part07/logs_lab.py` & `rf_logs.py`):** Run `python3 code/part07/logs_lab.py` (`22` / `23` checks pass). Then start `redfish_mock.py` (`--profile dgx`), trigger three power-state transitions on `System_0`, and run `python3 code/part07/rf_logs.py show http://127.0.0.1:18441 admin adminpass` to inspect the generated `Event` entries.
-2. **Triaging an enclosure fan failure across multiple `LogServices` (`public-bladed-system`):** Serve `$REDFISH_PUBLICATIONS/mockups/public-bladed-system` with `redfish_mock.py --mockup` and run `rf_logs.py show --min Warning`. Identify which `Manager` (`MultiBladeBMC`) logged `Fan 2 crossed Lower Fatal Threshold; fans are no longer redundant` and why that event sits on the enclosure manager rather than an individual blade BMC.
-3. **Testing `WrapsWhenFull` vs `NeverOverWrites` capacity warnings:** Inspect checks 8–10 of `code/part07/logs_lab.py`, where `MaxNumberOfRecords` is set to `5`. Explain why `rf_logs.py` alerts at `>= 80%` capacity on a `NeverOverWrites` log and `>= 95%` capacity on a `WrapsWhenFull` log.
-4. **Writing a pre-RMA evidence collection checklist:** Write the exact sequence of commands to run before unbolting a faulted DGX node for RMA, combining in-band `sudo nvsm dump health` (if the host OS is reachable), out-of-band `rf_logs.py collect --out bundle.bin` (`LogService.CollectDiagnosticData`), and `rf_logs.py show`—before anyone runs `ClearLog`.
-5. **Diagnosing BMC vs host clock skew (`DateTime`):** Suppose a PCIe fatal error appears in host `dmesg -T` at `14:02:10 UTC`, while the corresponding BMC `LogEntry.Created` timestamp says `16:02:10` (or `1970-01-01`). Give three causes (missing BMC NTP configuration in `NetworkProtocol`, `DateTimeLocalOffset` timezone mismatch, or dead CMOS/RTC coin-cell battery after AC power loss) and how `rf_logs.py` detects clock drift `> 300 s`.
-6. **Protecting logs from race-condition deletion (`LogEntriesETag`):** Test calling `POST .../LogServices/EventLog/Actions/LogService.ClearLog` with an outdated `"LogEntriesETag"` string against `redfish_mock.py` and verify that the BMC rejects the clear with HTTP `412 Precondition Failed` so new unread entries are never wiped accidentally.
+1. Start with the lab. Run `python3 code/part07/logs_lab.py`, and confirm that `22` / `23` checks pass. Then start `redfish_mock.py` with `--profile dgx`, trigger three power-state transitions on `System_0`, and run `python3 code/part07/rf_logs.py show http://127.0.0.1:18441 admin adminpass`. Inspect the `Event` entries it generates.
+2. Work through a fan failure in an enclosure. Serve `$REDFISH_PUBLICATIONS/mockups/public-bladed-system` with `redfish_mock.py --mockup`, then run `rf_logs.py show --min Warning`. Find which `Manager` (`MultiBladeBMC`) logged `Fan 2 crossed Lower Fatal Threshold; fans are no longer redundant`. Then explain why that event sits on the enclosure manager and not on an individual blade BMC.
+3. Compare the two capacity policies. Look at checks 8 to 10 of `code/part07/logs_lab.py`, where `MaxNumberOfRecords` is set to `5`. Explain why `rf_logs.py` alerts at `>= 80%` on a `NeverOverWrites` log, but at `>= 95%` on a `WrapsWhenFull` log.
+4. Write a pre-RMA checklist. List the exact commands you would run before you unbolt a faulted DGX node for RMA. Combine three steps: in-band `sudo nvsm dump health` if the host OS is reachable, out-of-band `rf_logs.py collect --out bundle.bin` (`LogService.CollectDiagnosticData`), and `rf_logs.py show`. All of them must come before anyone runs `ClearLog`.
+5. Find out why two clocks disagree. Suppose a PCIe fatal error appears in host `dmesg -T` at `14:02:10 UTC`, while the matching BMC `LogEntry.Created` says `16:02:10`, or `1970-01-01`. Give three causes: missing BMC NTP configuration in `NetworkProtocol`, a `DateTimeLocalOffset` timezone mismatch, or a dead CMOS/RTC coin-cell battery after AC power loss. Then explain how `rf_logs.py` detects drift greater than `300 s`.
+6. Test the ETag protection. Call `POST .../LogServices/EventLog/Actions/LogService.ClearLog` with an outdated `"LogEntriesETag"` value, against `redfish_mock.py`. Confirm that the BMC rejects the clear with HTTP `412 Precondition Failed`. The point is that new, unread entries are never wiped by accident.
 
 ## 10. Interview angles
 
-- "A GPU job crashed with no OS errors. Where do you look?" BMC event log and SEL around the crash time, GPU error counters on the host, sensors for heat and power, put on one timeline.
-- "What is the SEL?" The IPMI System Event Log, a compact legacy log that Redfish exposes as `EntryType: SEL`.
-- "Why can a full log be dangerous?" `NeverOverWrites` drops new events, and wrapping loses old ones.
-- "How do you gather evidence before a repair?" A diagnostic bundle through `CollectDiagnosticData`, plus the host-side bundle, before clearing anything.
-- "How do you tell if two log entries are the same incident?" `EventGroupId` and `OriginOfCondition`.
+- "A GPU job crashed with no OS errors. Where do you look?" Start with the BMC event log and the SEL around the crash time. Then check the GPU error counters on the host and the sensors for heat and power. Put all of them on one timeline.
+- "What is the SEL?" It is the IPMI System Event Log, a compact legacy log. Redfish exposes it as `EntryType: SEL`.
+- "Why can a full log be dangerous?" A `NeverOverWrites` log drops new events. A wrapping log loses the old ones.
+- "How do you gather evidence before a repair?" Collect a diagnostic bundle through `CollectDiagnosticData`, and the host-side bundle too. Do this before you clear anything.
+- "How do you tell if two log entries are the same incident?" Compare `EventGroupId` and `OriginOfCondition`.
 
 ## Checkpoint questions (20)
 
 <details>
 <summary>1. Under which three Redfish resource families can a `LogServices` collection appear?</summary>
 
-Under **`Managers/{id}/LogServices`** (BMC hardware/audit/SEL logs), **`Systems/{id}/LogServices`** (host boot, CPU, memory, and BIOS logs), and **`Chassis/{id}/LogServices`** (physical enclosure, thermal, and power logs).
+It can appear under **`Managers/{id}/LogServices`** for BMC hardware, audit and SEL logs. It can also appear under **`Systems/{id}/LogServices`** for host boot, CPU, memory and BIOS logs. Finally, it can appear under **`Chassis/{id}/LogServices`** for physical enclosure, thermal and power logs.
 </details>
 
 <details>
 <summary>2. What are the two most common `EntryType` (and `LogEntryType`) values in Redfish logs, and how do they differ?</summary>
 
-- **`Event`:** Modern Redfish structured entries where `MessageId` points into a standard or OEM Message Registry (`ResourceEvent.1.0.ResourceStatusChanged`) and `Links.OriginOfCondition` links to the affected resource.
-- **`SEL`:** Legacy IPMI System Event Log records translated by the BMC, using `SensorType`, `SensorNumber`, `EntryCode`, and raw hex `MessageId` (`0x592A28`).
+- **`Event`:** These are modern structured entries. Their `MessageId` points into a standard or OEM Message Registry, such as `ResourceEvent.1.0.ResourceStatusChanged`, and `Links.OriginOfCondition` names the affected resource.
+- **`SEL`:** These are legacy IPMI System Event Log records that the BMC translates. They use `SensorType`, `SensorNumber`, `EntryCode` and a raw hex `MessageId`, such as `0x592A28`.
 </details>
 
 <details>
 <summary>3. What are the three standard `Severity` values on a `LogEntry` resource?</summary>
 
-**`OK`** (informational/normal state change), **`Warning`** (degraded or caution condition), and **`Critical`** (fatal fault or threshold breach requiring immediate attention).
+They are **`OK`** for an informational or normal state change, **`Warning`** for a degraded or caution condition, and **`Critical`** for a fatal fault or threshold breach that needs immediate attention.
 </details>
 
 <details>
 <summary>4. What does `MessageId` represent on an `EntryType: "Event"` log entry versus an `EntryType: "SEL"` log entry?</summary>
 
-On an `Event` entry, `MessageId` is a `<RegistryPrefix>.<Major>.<Minor>.<MessageKey>` lookup key into a Redfish Message Registry. On a `SEL` entry, `MessageId` holds the raw hexadecimal IPMI event data bytes (`0x592A28`).
+On an `Event` entry, `MessageId` is a lookup key into a Redfish Message Registry, in the form `<RegistryPrefix>.<Major>.<Minor>.<MessageKey>`. On a `SEL` entry, it holds the raw hexadecimal IPMI event data, such as `0x592A28`.
 </details>
 
 <details>
 <summary>5. Where is `OriginOfCondition` located inside a `LogEntry` resource (as verified by `schema_lab.py`), and what is it used for?</summary>
 
-Inside **`Links.OriginOfCondition`** (`{"Links": {"OriginOfCondition": {"@odata.id": "/redfish/v1/Systems/System_0"}}}`). It lets an operator or automation script immediately `GET` the exact hardware resource that generated the log entry.
+It sits inside **`Links.OriginOfCondition`**, as in `{"Links": {"OriginOfCondition": {"@odata.id": "/redfish/v1/Systems/System_0"}}}`. The `schema_lab.py` check verifies that location. Operators and scripts use it to `GET` the exact hardware resource that produced the entry.
 </details>
 
 <details>
 <summary>6. What is `EventGroupId` on a `LogEntry`?</summary>
 
-An integer identifier shared across multiple log entries that were triggered by the same underlying root cause (for example, `"Fan 3 speed low"` and `"Fan 3 redundancy lost"` sharing `EventGroupId: 7`).
+It is an integer shared by the entries that came from the same root cause. For example, `"Fan 3 speed low"` and `"Fan 3 redundancy lost"` can both carry `EventGroupId: 7`.
 </details>
 
 <details>
 <summary>7. On an `EntryType: "SEL"` record, what information do `SensorType`, `SensorNumber`, and `EntryCode` provide?</summary>
 
-`SensorType` names the hardware category (`Temperature`, `Voltage`, `Fan`, `Memory`, `Processor`, `Power Supply / Converter`, `Drive Slot/Bay`, `Watchdog`), `SensorNumber` gives the numeric IPMI sensor ID, and `EntryCode` gives the IPMI assertion/transition code (`Assert`, `Deassert`, `Upper Non-recoverable going high`).
+`SensorType` names the hardware category, such as `Temperature`, `Voltage`, `Fan`, `Memory`, `Processor`, `Power Supply / Converter`, `Drive Slot/Bay` or `Watchdog`. `SensorNumber` gives the numeric IPMI sensor ID. `EntryCode` gives the IPMI assertion or transition code, such as `Assert`, `Deassert` or `Upper Non-recoverable going high`.
 </details>
 
 <details>
 <summary>8. Why does `GET` on `/redfish/v1/Managers/{id}/LogServices/{log}/Entries` return the full `LogEntry` objects inside `Members` instead of just `{"@odata.id": "..."}` links (DSP0266 §9.13.11)?</summary>
 
-The `LogEntryCollection` schema marks `Members` with the **Expanded resource** annotation, meaning the BMC expands `Members` inline by default (`$expand=.($levels=1)` behavior) so clients can read a page of 75 log entries in a single HTTP request instead of 76 requests.
+The `LogEntryCollection` schema marks `Members` as an expanded resource. The BMC therefore fills in `Members` inline by default, which matches `$expand=.($levels=1)`. A client can read a page of 75 log entries in one HTTP request, instead of making 76 requests.
 </details>
 
 <details>
 <summary>9. What happens when a `LogService` with `OverWritePolicy: "NeverOverWrites"` reaches `MaxNumberOfRecords`?</summary>
 
-The BMC **silently discards all new log entries** until an administrator clears the log (`ClearLog`), meaning critical hardware faults occurring after the log fills up are completely lost.
+The BMC silently discards every new entry until someone clears the log with `ClearLog`. Critical faults that happen after the log fills are lost.
 </details>
 
 <details>
 <summary>10. What is the operational risk of `OverWritePolicy: "WrapsWhenFull"` during a cascading hardware failure?</summary>
 
-`WrapsWhenFull` overwrites the oldest entries in a circular buffer. If a primary hardware fault triggers hundreds of secondary symptom messages, the initial root-cause entry at the start of the incident can be overwritten before an engineer reads the log.
+`WrapsWhenFull` overwrites the oldest entries in a circular buffer. If one fault triggers hundreds of secondary messages, the first entry of the incident can be overwritten before an engineer reads the log.
 </details>
 
 <details>
 <summary>11. Why should a log-reading tool always compare `LogService.DateTime` against the management host's NTP-synchronized clock?</summary>
 
-If NTP is not enabled on the BMC (`Managers/{id}/NetworkProtocol`), `LogEntry.Created` timestamps can drift by minutes, hours, or years—making it impossible to correlate BMC hardware events with Linux `dmesg` or Slurm job timestamps.
+If NTP is off on the BMC (`Managers/{id}/NetworkProtocol`), `LogEntry.Created` can drift by minutes, hours or even years. The BMC's hardware events then cannot be matched with `dmesg` or Slurm job times.
 </details>
 
 <details>
 <summary>12. What does the optional `LogEntriesETag` parameter on `#LogService.ClearLog` protect against?</summary>
 
-Passing the `ETag` of the `Entries` collection you just archived in `LogEntriesETag` ensures the BMC returns **`412 Precondition Failed`** if new log entries arrived between your read and your `ClearLog` call, preventing accidental deletion of unread events.
+You pass the ETag of the `Entries` collection you archived. If new entries arrived between your read and your `ClearLog` call, the BMC returns **`412 Precondition Failed`**. That protects unread events from being deleted.
 </details>
 
 <details>
 <summary>13. Why should `ClearLog` never be run before collecting a diagnostic bundle and exporting the existing entries?</summary>
 
-Because `ClearLog` permanently erases the non-volatile hardware fault history (`SEL` and `EventLog`) that vendor support engineers require to approve an RMA or diagnose intermittent ECC/PCIe/PSU faults.
+`ClearLog` permanently erases the non-volatile fault history in `SEL` and `EventLog`. Vendor support often needs that history to approve an RMA or to diagnose intermittent ECC, PCIe or PSU faults. So collect the bundle and export the entries first.
 </details>
 
 <details>
 <summary>14. What does `POST .../LogServices/{id}/Actions/LogService.CollectDiagnosticData` return initially?</summary>
 
-Because assembling a support bundle takes seconds or minutes, it returns HTTP **`202 Accepted`** with a `Location` header pointing to a **Task Monitor URI**.
+It returns **`202 Accepted`** with a `Location` header that points to a task monitor. Collecting a support bundle takes seconds or minutes, so the BMC answers before the work is done.
 </details>
 
 <details>
 <summary>15. Once the `CollectDiagnosticData` task completes (`200 OK` or `201 Created`), how do you locate the URL to download the binary diagnostic bundle?</summary>
 
-Per the `LogService` schema, the completed task monitor response's `Location` header (or returned resource) points to a newly created **`LogEntry`** resource, and that `LogEntry`'s **`AdditionalDataURI`** property holds the download URI for the raw archive.
+Per the `LogService` schema, the completed task monitor's `Location` header, or the returned resource, points to a new **`LogEntry`**. That entry's **`AdditionalDataURI`** property is the download address for the raw archive.
 </details>
 
 <details>
 <summary>16. How does `code/part07/rf_logs.py collect` verify that a downloaded diagnostic bundle was not truncated in transit?</summary>
 
-It compares the exact byte length of the data downloaded from `AdditionalDataURI` against the **`AdditionalDataSizeBytes`** integer recorded on the `LogEntry` resource (exiting with status `7` on a size mismatch).
+The tool compares the number of bytes it downloads from `AdditionalDataURI` with the **`AdditionalDataSizeBytes`** value on the `LogEntry`. If the sizes differ, it exits with status `7`.
 </details>
 
 <details>
 <summary>17. Name the five standard `DiagnosticDataType` values supported by `LogService.CollectDiagnosticData`.</summary>
 
-**`Manager`** (BMC internal logs and state), **`PreOS`** (UEFI/BIOS/POST logs), **`OS`** (host operating system crash/diagnostic data), **`Device`** (specific adapter/controller dump), and **`OEM`** (vendor-specific support archive).
+They are **`Manager`** for BMC internal logs and state, **`PreOS`** for UEFI, BIOS and POST logs, **`OS`** for host operating system crash and diagnostic data, **`Device`** for a specific adapter or controller dump, and **`OEM`** for a vendor support archive.
 </details>
 
 <details>
 <summary>18. On an NVIDIA DGX node, how does `sudo nvsm dump health` complement `LogService.CollectDiagnosticData`?</summary>
 
-`LogService.CollectDiagnosticData` collects **out-of-band BMC/chassis/FPGA telemetry** (and works even when the host OS refuses to boot), whereas `sudo nvsm dump health` runs **in-band inside the host Linux OS** to package kernel logs, `nvidia-smi`/DCGM state, InfiniBand counters, and driver configs. NVIDIA Enterprise Support typically requests both when diagnosing complex hardware faults.
+`LogService.CollectDiagnosticData` gathers **out-of-band BMC, chassis and FPGA telemetry**, and it still works when the host OS refuses to boot. `sudo nvsm dump health` runs **in-band, inside the host Linux OS**. It packages kernel logs, `nvidia-smi` and DCGM state, InfiniBand counters and driver configs. NVIDIA Enterprise Support usually asks for both when a hardware fault is complex.
 </details>
 
 <details>
 <summary>19. Why should every production AI cluster ship BMC logs centrally (via Redfish `EventService` or periodic scraping) instead of relying on local BMC storage?</summary>
 
-Local BMC flash buffers are small (often a few hundred to a few thousand records) and can wrap, fill up under `NeverOverWrites`, or become unreachable if the BMC itself suffers a hardware failure.
+Local BMC flash holds only a few hundred to a few thousand records. That space can wrap, fill up under `NeverOverWrites`, or become unreachable if the BMC itself fails. Shipping logs centrally keeps the history safe in every one of those cases.
 </details>
 
 <details>
 <summary>20. Walk through how you combine host GPU counters, BMC `LogServices`, and BMC `Sensors` when a PyTorch job crashes with an unexplained memory error (`volume-10/01` Scenario 4).</summary>
 
-1. Check in-band GPU HBM ECC counters (`nvidia-smi -q -d ECC`) to see if a GPU suffered an uncorrectable double-bit ECC error.
-2. Query out-of-band BMC `LogServices` (`EventLog/Entries` and `SEL/Entries`) around the job crash timestamp for host `DIMM` parity/ECC errors, PCIe AER fatal events, or CPU Machine Check Exceptions (MCEs).
-3. Check BMC `Sensors` (`rf_sensors.py`) for thermal or PSU voltage transients at that timestamp, isolating whether to RMA a host DIMM, reset/drain a GPU, or repair cooling.
+1. Check the in-band GPU HBM ECC counters with `nvidia-smi -q -d ECC`. See whether a GPU hit an uncorrectable double-bit ECC error.
+2. Next, query the out-of-band BMC `LogServices`, `EventLog/Entries` and `SEL/Entries`, around the crash time. Look for host DIMM parity or ECC errors, PCIe AER fatal events, or CPU Machine Check Exceptions (MCEs).
+3. Then check BMC `Sensors` with `rf_sensors.py` for thermal or PSU voltage transients at that moment. The result tells you whether to RMA a host DIMM, reset or drain a GPU, or repair the cooling.
 </details>
 
 ## Sources and review notes

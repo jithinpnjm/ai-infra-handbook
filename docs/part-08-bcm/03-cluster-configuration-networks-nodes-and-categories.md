@@ -22,23 +22,23 @@ lab_venue: "Nebius GPU"
 
 ## Why this matters for AI infrastructure
 
-After the install, almost everything you do in BCM is "change a setting and decide how far it reaches". A GPU cluster has several networks (management, compute fabric, storage, BMC), several kinds of node (login, CPU, GPU) and settings that must be identical on hundreds of machines. The skill is knowing the level at which a setting lives, so one change reaches the nodes you mean and no others.
+Picture a GPU node that resolves names differently from its neighbours. Nothing has crashed, and the node still boots. Someone changed a setting at one level when the change belonged at another. After the install, most of your work in BCM is changing a setting and deciding how far that change should reach. A GPU cluster has several networks: management, compute fabric, storage and BMC. It also has several kinds of node: login, CPU and GPU. Some settings must be identical on hundreds of machines.
+
+The skill is knowing the level at which a setting lives. Set it at that level, and one change reaches the nodes you mean and no others.
 
 ## Prerequisites and outcomes
 
-You need chapters 8.1 (objects and inheritance) and 8.2 (install). After this chapter you can:
+Before you start, read chapter 8.1 on objects and inheritance, and chapter 8.2 on the install. This chapter uses the vocabulary from both.
 
-- find and change the cluster-wide settings, and know which ones email you
-- explain the default networks and the four places an internal network setting can come from
-- configure interfaces, static routes, bridges, VLANs and bonds, and avoid the bond mistakes the manual warns about
-- check addresses and connectivity with the built-in tools
-- explain disk layouts, NFS exports and mounts, and services, and where each inherits from
-- place devices in racks and set GPU options per node or category
-- choose between "let CMDaemon do it" and the three escape routes the manual describes
+When you finish, you should be able to find and change the cluster-wide settings, and you will know which of them send you email. You should also explain the default networks and the four places an internal network setting can come from. From there you can configure interfaces, static routes, bridges, VLANs and bonds, and avoid the bond mistakes the manual warns about.
+
+You should also be able to check addresses and connectivity with the built-in tools. You will explain disk layouts, NFS exports and mounts, and services, and say where each one inherits from. Last, you can place devices in racks, set GPU options per node or category, and choose between "let CMDaemon do it" and the three escape routes the manual describes.
 
 ## 1. The shape of it: partition, overlay, category, node
 
-The cluster-wide settings live in the **partition** object (in cmsh, `partition use base`; in Base View, **Cluster > Settings**). The manual says these values "can in some cases be overridden by more specific configuration levels, such as (configuration-)overlay-level, category-level, or node-level". That is the inheritance rule from chapter 8.1 again, applied to settings such as time zone, name servers and network choices. Whenever you read a setting in this chapter, ask: *partition, category or node?*
+Every setting in this chapter lives at one of several levels, and the node receives the final value. The cluster-wide settings live in the **partition** object. In cmsh, you open it with `partition use base`. In Base View, you find it under **Cluster > Settings**.
+
+The manual says these values "can in some cases be overridden by more specific configuration levels, such as (configuration-)overlay-level, category-level, or node-level". That is the inheritance rule from chapter 8.1 again, and it applies to settings such as time zone, name servers and network choices. When you read a setting in this chapter, ask one question: is it a partition, category or node setting?
 
 ```mermaid
 flowchart TB
@@ -48,9 +48,11 @@ flowchart TB
   P -.->|used if nothing below sets it| V
 ```
 
+Follow the arrows from the top. The partition value applies only when nothing below it sets the same setting. Before you change a setting, decide which level should own it.
+
 ## 2. Cluster-wide settings (section 3.1)
 
-The settings window lists name and time settings, networks and several objects. The ones to know:
+The settings window holds the name and time settings, the networks and several objects that apply to the whole cluster. The table lists the ones you should know, with the manual's default for each. Learn them early, because they shape the whole cluster before you change anything else.
 
 | Setting | Default in the manual | Notes |
 |---|---|---|
@@ -64,19 +66,23 @@ The settings window lists name and time settings, networks and several objects. 
 | Default burn configuration | `default-destructive` | Chapter 8.2 |
 | Sign installer certificates | `AUTO` | Chapter 8.4 |
 
-Objects that already exist (BMC, SNMP, provisioning) and objects you create when you need them (SELinux, switch access, ZTP, NetQ, UFM, NMX manager) hang off the same window.
+The objects that already exist, such as BMC, SNMP and provisioning, sit in the same window. So do the objects you create when you need them, such as SELinux, switch access, ZTP, NetQ, UFM and NMX manager.
 
-**BMC defaults.** User name `bright`, a random password made at install, user ID 4, privilege administrator, power reset delay 0. They are set only if you configured BMC networks at install (chapter 8.7 and Part 7).
+The BMC defaults are the user name `bright`, a random password made at install, user ID 4, the administrator privilege, and a power reset delay of 0. BCM sets them only if you configured BMC networks at install. Chapter 8.7 and Part 7 cover those networks.
 
-**Email.** By default BCM sends admin mail to root. Set the address in `partition use base` (the manual's cmsh example spells the property `administratore-mail`; use tab completion to confirm the name on your version). Three events send mail: **a month before the license expires** (and daily in the last week), **a head node service that fails on its first ever boot**, and **a failed automatic failover**. The head node runs Postfix with no relay host set; set `relayhost` in the partition. Test with `cmsh -c "main; testemail"`.
+Suppose the license runs out and nobody reads the root mailbox. BCM sends admin mail to root by default, so the warning goes there unless you change it. To change the address, run `partition use base` and set the property. The manual's cmsh example spells it `administratore-mail`, so use tab completion to confirm the name on your version. Three events send mail. A month before the license expires, BCM sends a warning, and it repeats daily in the last week. BCM also sends mail when a head node service fails on its first ever boot, and when an automatic failover fails. The head node runs Postfix with no relay host set, so set `relayhost` in the partition. Test the setup with `cmsh -c "main; testemail"`.
 
-**FIPS.** FIPS mode can be set per node or per category (node wins), needs a reboot, and **cannot be set on the head node through CMDaemon**, because a bad FIPS boot configuration could leave the head node unbootable.
+FIPS mode can be set per node or per category, and the node setting wins. It needs a reboot. You cannot set it on the head node through CMDaemon, because a bad FIPS boot configuration could leave the head node unbootable.
 
-**Open-file limits.** BCM sets `fs.file-max` to 131072 in `/etc/sysctl.d/90-cm-sysctl.conf` and the per-user `nofile` to 131072 in `91-cm-limits.conf` (head node and the image). To change file-max, add your own later file (`91-site-...conf`) rather than editing BCM's. The kernel source's rule of thumb is memory in MB times 10 (128 GB gives 1,280,000). Do not let users compile or test on the head node.
+BCM sets `fs.file-max` to 131072 in `/etc/sysctl.d/90-cm-sysctl.conf`. It sets the per-user `nofile` limit to 131072 in `91-cm-limits.conf`. Both apply to the head node and to the image. If you need a different file-max, do not edit BCM's file. Add your own later file, such as `91-site-...conf`, instead. The kernel source gives a rule of thumb of memory in MB times 10, so 128 GB gives 1,280,000. Do not let users compile or test on the head node.
+
+Keep site-specific file-max changes in your own file, and leave BCM's files alone.
 
 ## 3. Networks (section 3.2)
 
 ### The three default networks
+
+BCM ships with three network objects. Each one has a different job, so know them before you change a network setting. The table lists what each one is for.
 
 | Network | Purpose |
 |---|---|
@@ -84,42 +90,59 @@ Objects that already exist (BMC, SNMP, provisioning) and objects you create when
 | `externalnet` | The link to the outside (corporate or campus). The only network where BCM supports IPv6 |
 | `globalnet` | A name-space helper: nodes are named `node001.cm.cluster`, whether local or cloud. **Do not remove it.** Only its domain name is sensibly changed |
 
-Each network object is a **layer 3** (IP) network; several can share one layer 2 segment. Important fields, from the manual's table: base address, netmask bits, gateway, domain name, MTU (1500 default), **dynamic range** (a temporary DHCP range for nodes while they PXE boot), **node booting** (this network may be used to boot nodes), **lock down dhcpd** (refuse new, unknown MAC addresses), **management allowed**, and **layer 3** (route per device through a switch, `/31` per device and port, `/30` possible for some switches). The manual also lists IMEX options for NVIDIA IMEX peer lists on multi-node NVLink systems.
+Each network object is a layer 3 (IP) network, and several of them can share one layer 2 segment. The manual's table lists the important fields. They are the base address, the netmask bits, the gateway, the domain name, and the MTU, whose default is 1500. The dynamic range is a temporary DHCP range that nodes use while they PXE boot. Node booting says whether this network may be used to boot nodes. Lock down dhcpd refuses new, unknown MAC addresses. Management allowed and layer 3 complete the list. The layer 3 option gives each device a route through a switch, with a `/31` per device and port. A `/30` is possible for some switches. The manual also lists IMEX options for NVIDIA IMEX peer lists on multi-node NVLink systems.
 
-**Defaults of the internal network:** base `10.141.0.0`, 16 bits, node addresses from `10.141.0.1`, dynamic range `10.141.128.0` to `10.141.143.255`, domain `eth.cluster`. The manual does not recommend the dynamic range, because it can clash with static addresses. `lockdowndhcpd` is how you stop unknown machines from getting a boot address on your cluster network once all your nodes are known.
+The defaults of the internal network are a base of `10.141.0.0` with 16 bits, and node addresses that start at `10.141.0.1`. The dynamic range runs from `10.141.128.0` to `10.141.143.255`, and the domain is `eth.cluster`. The manual does not recommend the dynamic range, because it can clash with static addresses. `lockdowndhcpd` is how you stop unknown machines from getting a boot address on your cluster network, once all your nodes are known.
 
 ### Four places an internal-network value can come from
 
-1. the **network object** (base address, gateway, MTU, domain),
-2. the **cluster object** (management network, node name prefix, digits, default category, default image),
-3. the **device interface** (its IP, its network, `BOOTIF`),
-4. the **node category** (default gateway, management network, name server, time server, search domain).
+An internal-network value can come from four places. When you need to know where a value came from, check these four in turn.
 
-The default gateway shows the order: a **category** default gateway wins; otherwise the **network** gateway; if that is `0.0.0.0`, the DHCP server on the head node hands out `10.141.255.254`, the head node's alias. `bcm_netconf.default_gateway` implements exactly this order.
+1. The **network object** supplies the base address, gateway, MTU and domain.
+2. The **cluster object** supplies the management network, node name prefix, digits, default category and default image.
+3. The **device interface** supplies its IP, its network and `BOOTIF`.
+4. The **node category** supplies the default gateway, management network, name server, time server and search domain.
+
+The default gateway shows the order best. A category default gateway wins. If the category has none, the network's gateway is used. If that gateway is `0.0.0.0`, the DHCP server on the head node hands out `10.141.255.254`, which is the head node's alias. The function `bcm_netconf.default_gateway` implements exactly this order.
 
 ### Interfaces
 
-A node's boot interface is `BOOTIF`, on `internalnet`. Its address is a **static** address by default, which the manual recommends because a node that loses the head node keeps working. Each interface also has `onnetworkpriority`, which decides which interface answers name-resolution queries (higher wins). Defaults by type: bridge 80, bond 70, physical 60, VLAN 50, alias 40, tunnel 30, netmap 20, BMC 10.
+A node's boot interface is `BOOTIF`, and it sits on `internalnet`. Its address is static by default. The manual recommends that, because a node that loses the head node keeps working. Each interface also has `onnetworkpriority`. It decides which interface answers name-resolution queries, and a higher number wins. Each interface type has a default priority.
 
-A new interface on a running node is added in `device > interfaces`, then the node is rebooted (a reboot activates network changes).
+| Interface type | Default `onnetworkpriority` |
+|---|---|
+| Bridge | 80 |
+| Bond | 70 |
+| Physical | 60 |
+| VLAN | 50 |
+| Alias | 40 |
+| Tunnel | 30 |
+| Netmap | 20 |
+| BMC | 10 |
+
+To add a new interface on a running node, use `device > interfaces`. Then reboot the node, because a reboot activates network changes.
 
 ### Names, DNS and search domains
 
-- Reach the head node from inside the cluster with the alias `master`. Do not call the head node `master`.
-- Add extra names for an interface with `additionalhostnames` in the interface. Do **not** edit `/etc/hosts` for cluster hosts; let BCM's DNS (named) do it.
-- To add your own DNS zones, put them in the **include file** the manual names (`/etc/named.conf.include` on RHEL 9/10 and SLES 15; `/etc/bind/named.conf.include` on Ubuntu). BCM does not touch that file. By default the head node's name server answers only internal queries; the `PublicDNS` directive opens it to outside queries.
-- `/etc/resolv.conf` is written by CMDaemon from, in order: the global network, other networks, category search domains, partition search domains. Older glibc versions read only **6** entries. A domain may carry an index (`example.com:1`), CMDaemon sorts by index and writes the six lowest. The manual's advice for more than six: use FQDNs instead of forcing a newer glibc.
+Reach the head node from inside the cluster with the alias `master`. Do not call the head node `master`. To add extra names for an interface, use `additionalhostnames` in the interface. Do not edit `/etc/hosts` for cluster hosts. Let BCM's DNS, named, do that work.
+
+To add your own DNS zones, put them in the include file the manual names. That file is `/etc/named.conf.include` on RHEL 9/10 and SLES 15, and `/etc/bind/named.conf.include` on Ubuntu. BCM does not touch that file. By default, the head node's name server answers only internal queries. The `PublicDNS` directive opens it to outside queries.
+
+CMDaemon writes `/etc/resolv.conf` from four sources, in this order: the global network, other networks, category search domains, and partition search domains. Older glibc versions read only 6 entries. A domain may carry an index, such as `example.com:1`. CMDaemon sorts by index and writes the six lowest. For more than six domains, the manual advises using FQDNs instead of forcing a newer glibc.
 
 ### The head node's outside address
 
-The cluster object has no IP address. In a **Type 1** network the cluster's address is the head node's external interface; in Types 2 and 3 it is an upstream router and not part of BCM. After changing external settings, **reboot the head node**. DHCP for the external interface is possible but the manual says it is not recommended for production, because DHCP problems make network troubleshooting harder.
+The cluster object has no IP address of its own. In a Type 1 network, the cluster's address is the head node's external interface. In Types 2 and 3, the address belongs to an upstream router, which is not part of BCM. After you change external settings, reboot the head node. DHCP for the external interface is possible, but the manual says it is not recommended for production, because DHCP problems make network troubleshooting harder.
 
 ### Routes and port forwarding
 
-- **Static routes** are a `staticroutes` submode on a device or category: name, gateway, destination, interface. CMDaemon makes the OS run `ip route add` when the interface comes up.
-- **Port forwarding** (`portforward` in device mode) opens a port on the head node that forwards to a port on a node, using one `socat` process per rule. Example from the manual: `portforward create node001 1234 4321`. The head node's firewall (Shorewall) can block it. `portforward bmc node001` forwards the BMC web port (443) and console port. This is the safe way to reach a node's BMC from outside a Type 1 cluster.
+Static routes are a `staticroutes` submode on a device or a category. Each route has a name, a gateway, a destination and an interface. CMDaemon makes the OS run `ip route add` when the interface comes up.
+
+Port forwarding uses `portforward` in device mode. It opens a port on the head node and forwards traffic to a port on a node, with one `socat` process per rule. The manual's example is `portforward create node001 1234 4321`. The head node's firewall, Shorewall, can block that traffic. `portforward bmc node001` forwards the BMC web port, 443, and the console port. This is the safe way to reach a node's BMC from outside a Type 1 cluster.
 
 ### Tools to check the network
+
+Use these built-in tools when an address or a path looks wrong. The table shows what each one is for.
 
 | Tool | Use |
 |---|---|
@@ -129,279 +152,329 @@ The cluster object has no IP address. In a **Type 1** network the cluster's addr
 | `connectivity` | ICMP pings along each node route on the management network; `--statistics` shows how uniform latencies are |
 | `cm-iperf.py` | Bandwidth between node pairs |
 
-`cm-iperf.py` checks **n(n−1)/2** pairs at about 10 seconds each. The manual says a 1000-node run would take about two months; the lab computes 58 days. Use `--count`, `-r` (random pairs) and `-p` (parallel threads).
+Be careful with `cm-iperf.py`. It checks n(n−1)/2 pairs, at about 10 seconds each. The manual says a 1000-node run would take about two months, and the lab computes 58 days. Use `--count`, `-r` for random pairs, and `-p` for parallel threads to keep the run manageable.
+
+Before you run `cm-iperf.py` on a large cluster, decide how many pairs you really need to test.
 
 ## 4. Bridges, VLANs and bonds (sections 3.3 to 3.5)
 
-- **Bridge** (`br<number>`): joins segments at layer 2. Member interfaces must have **empty IP and network**.
-- **VLAN**: `add vlan BOOTIF.1` in the interfaces submode, then set its network and IP.
-- **Bond**: `add bond bond0`, set network, IP, `mode` and `interfaces`. Seven modes: 0 balance-rr (the default), 1 active-backup, 2 balance-xor, 3 broadcast, 4 802.3ad, 5 balance-tlb, 6 balance-alb. Set the mode with the **mode property**, not as an option; a commit with `mode=` inside the options **fails validation**.
+Picture a bond you built the quick way, with the defaults. Node networking often combines bridges, VLANs and bonds on one machine. Each one changes how packets reach the wire, so a small mistake here can take a node off the network. Start with the three building blocks, then read the rules the manual warns about.
 
-Rules that trip people up, all from the manual:
+A bridge, named `br<number>`, joins network segments at layer 2. Its member interfaces must have an empty IP and an empty network. A VLAN is added with `add vlan BOOTIF.1` in the interfaces submode, and then you set its network and IP. A bond is added with `add bond bond0`. You then set its network, IP, `mode` and `interfaces`. Bonds come in seven modes, and mode 0 is the default.
 
-1. The **provisioning interface cannot be a member of a bond** (but a bond can be the provisioning interface, with one member used for PXE).
-2. For failover bonds, **`miimon` is off by default** and should be set (`miimon=100` is the common value).
-3. On a bonded **HA head node**, rename the shared alias interfaces (`eth0:0` to `bond0:0`) and change the head node's provisioning interface name to the bond.
-4. In BCM 11, the node installer accepts **any** MAC address of a bonded interface when identifying a node.
+| Mode | Name |
+|---|---|
+| 0 | balance-rr (the default) |
+| 1 | active-backup |
+| 2 | balance-xor |
+| 3 | broadcast |
+| 4 | 802.3ad |
+| 5 | balance-tlb |
+| 6 | balance-alb |
+
+Set the mode with the mode property, not as an option. A commit with `mode=` inside the options fails validation.
+
+Five rules trip people up, and all of them come from the manual.
+
+1. The provisioning interface cannot be a member of a bond. A bond can, however, be the provisioning interface, with one member used for PXE.
+2. For failover bonds, `miimon` is off by default, so set it. `miimon=100` is the common value.
+3. On a bonded HA head node, rename the shared alias interfaces from `eth0:0` to `bond0:0`. Also change the head node's provisioning interface name to the bond.
+4. In BCM 11, the node installer accepts any MAC address of a bonded interface when it identifies a node.
 5. The bonding kernel module must be in the node's software image for regular nodes.
 
-`bcm_netconf.validate_interfaces` checks these.
+The function `bcm_netconf.validate_interfaces` checks these rules for you.
 
 ### 4.1 InfiniBand interfaces, `mlxconfig`, and subnet managers
 
-In an AI cluster, Ethernet carries management and often storage, while InfiniBand (or RoCE) carries GPU-to-GPU collectives (Part 12). Setting up InfiniBand in BCM covers five areas:
+In an AI cluster, Ethernet usually carries management and often storage. InfiniBand, or RoCE, carries the GPU-to-GPU collectives that Part 12 covers. Setting up InfiniBand in BCM involves five areas, and each one depends on the one before it.
 
-1. **OFED packages:** by default, BCM installs the Linux distribution's OFED packages on the head node and in software images, and writes `/etc/rdma/modules/infiniband.conf` and `rdma.conf` automatically if InfiniBand was enabled during install. You can replace distribution OFED with NVIDIA DOCA Mellanox OFED for the whole cluster or specific images (`cm-doca-ofed-install.sh`, chapter 8.2 and 8.14). Verify on a running node with `ibstat` (`State: Active`, `Physical state: LinkUp`).
-2. **Mellanox adapter settings with `mlxconfig`:** the `device` mode `mlxconfig` command inspects and sets ConnectX adapter firmware parameters (`mlxconfig node001 --adapters`, `--interface ib0`, `--pci-address 0000:03:00.0 --port 1`, `--detail-level 1`, or immediate `--set link_type=ETH` / `--set link_type_p1=ETH`; some changes stay `pending` until reboot).
-   - **Persistent `MLX_` policy (`extra_values`):** declare persistent adapter settings with `set -e MLX_<field> <value>` on a category, a node, or an interface. When the same field is defined at multiple levels, **the precedence is:**
-     ```text
-     category.extra_values < node.extra_values < interface.extra_values
-     ```
-   - Category and node settings apply to all discovered Mellanox adapters on the node (`*`); interface settings apply to that interface (and for a VLAN or bond interface, BCM resolves the setting to the underlying physical interface(s)). Boolean values (`true`/`false`) are passed to `mlxconfig` as `1` or `0`. Reconciliation is idempotent (if current or pending value already matches, BCM does nothing) and `mlxconfig node001 --desired` displays the resolved policy without querying the node.
-3. **Subnet managers:** every InfiniBand subnet needs at least one active subnet manager (`opensm`, or `opensmd` on SLES). **The manual recommends running 2 subnet managers per subnet** (one becomes active, the other stays passive for failover; on large clusters use dedicated nodes or managed switches). In BCM, start it through CMDaemon in one of two ways:
-   - Assign the role: `cmsh -c "device roles <node>; assign subnetmanager; commit"` (Base View: `Devices > All Devices > <node> > Settings > Roles > + Add > [SubnetManagerRole]`).
-   - Or add the service in `services` submode: `add opensm; set autostart yes; set monitored yes; commit`.
-4. **IP over InfiniBand (`ibnet`) settings:** recommended defaults for the network object are `name = ibnet`, `domainname = ib.cluster`, `type = internal`, `baseaddress = 10.149.0.0`, `netmaskbits = 16` (`/16`).
-   - **Datagram vs connected mode:** by default, IPoIB interfaces use **datagram mode** (scales better, **MTU up to 4k**). Setting `set connectedmode yes` on `interfaces[ib0]` switches to **connected mode** (**MTU up to 64k**). If nodes PXE-boot or provision over InfiniBand (chapter 8.4), `/cm/node-installer/scripts/ipoib_mode` must match (`echo datagram > /cm/node-installer/scripts/ipoib_mode`).
-   - Bulk-add `ib0` across nodes with `addinterface -n node001..node150 physical ib0 ibnet 10.149.0.1` and give the head node `10.149.255.254` (reboot the head node to activate).
-5. **Verifying connectivity:** `ping node015.ib.cluster` tests reachability; for bandwidth and latency, use the **Intel MPI Benchmark (IMB)** pre-installed at `/cm/shared/apps/imb/current` (`./setup.sh`, `module load openmpi/gcc`, `mpirun -np 2 -machinefile ../nodes IMB-MPI1 PingPong`).
+The first area is the OFED packages. By default, BCM installs the Linux distribution's OFED packages on the head node and in the software images. If InfiniBand was enabled during install, BCM also writes `/etc/rdma/modules/infiniband.conf` and `rdma.conf` automatically. You can replace the distribution OFED with NVIDIA DOCA Mellanox OFED, for the whole cluster or for specific images, using `cm-doca-ofed-install.sh`. Chapters 8.2 and 8.14 describe that script. To verify a running node, run `ibstat`. You want to see `State: Active` and `Physical state: LinkUp`.
+
+The second area is the Mellanox adapter settings, which you manage with `mlxconfig`. The `mlxconfig` command in `device` mode inspects and sets ConnectX adapter firmware parameters. Examples include `mlxconfig node001 --adapters`, `--interface ib0`, and `--pci-address 0000:03:00.0 --port 1`, with `--detail-level 1` for more detail. To change a setting immediately, use `--set link_type=ETH` or `--set link_type_p1=ETH`. Some changes stay `pending` until the node reboots.
+
+For persistent adapter settings, declare them as `MLX_` fields in `extra_values`. Use `set -e MLX_<field> <value>` on a category, a node or an interface. When the same field is set at more than one level, the precedence is:
+
+```text
+category.extra_values < node.extra_values < interface.extra_values
+```
+
+The interface setting wins over the node setting, and the node setting wins over the category setting. Category and node settings apply to every discovered Mellanox adapter on the node, which the manual shows as `*`. An interface setting applies to that one interface. For a VLAN or bond interface, BCM resolves the setting to the underlying physical interfaces. Boolean values `true` and `false` go to `mlxconfig` as `1` and `0`. Reconciliation is idempotent. If the current or pending value already matches, BCM does nothing. To see the resolved policy without querying the node, run `mlxconfig node001 --desired`.
+
+The third area is the subnet manager. Every InfiniBand subnet needs at least one active subnet manager, which is `opensm`, or `opensmd` on SLES. The manual recommends running two subnet managers per subnet. One becomes active, and the other stays passive for failover. On large clusters, use dedicated nodes or managed switches for them. You can start a subnet manager through CMDaemon in one of two ways. The first is to assign the role with `cmsh -c "device roles <node>; assign subnetmanager; commit"`, or in Base View under `Devices > All Devices > <node> > Settings > Roles > + Add > [SubnetManagerRole]`. The second is to add the service in the `services` submode with `add opensm; set autostart yes; set monitored yes; commit`.
+
+The fourth area is IP over InfiniBand, which the manual calls `ibnet`. The recommended defaults for the network object are `name = ibnet`, `domainname = ib.cluster`, `type = internal`, `baseaddress = 10.149.0.0`, and `netmaskbits = 16`, which is `/16`. By default, IPoIB interfaces use datagram mode. Datagram mode scales better, and its MTU goes up to 4k. Set `set connectedmode yes` on `interfaces[ib0]` to switch to connected mode, which allows an MTU up to 64k. If nodes PXE-boot or provision over InfiniBand, as chapter 8.4 describes, the file `/cm/node-installer/scripts/ipoib_mode` must match. Run `echo datagram > /cm/node-installer/scripts/ipoib_mode` to set it. To add `ib0` across many nodes at once, use `addinterface -n node001..node150 physical ib0 ibnet 10.149.0.1`. Give the head node `10.149.255.254`, and reboot the head node to activate it.
+
+The fifth area is checking connectivity. `ping node015.ib.cluster` tests reachability. For bandwidth and latency, use the Intel MPI Benchmark, IMB, which is pre-installed at `/cm/shared/apps/imb/current`. Run `./setup.sh` first, then `module load openmpi/gcc`, and then `mpirun -np 2 -machinefile ../nodes IMB-MPI1 PingPong`.
+
+For each InfiniBand subnet, decide where its two subnet managers will run before you build the fabric.
 
 ### 4.2 Switches, SNMP, Cumulus Linux, ZTP, NetQ, UFM, and `device` helpers
 
-BCM also manages network switches, fabric managers, and special devices:
+BCM also manages network switches, fabric managers and a few special devices. The paragraphs below cover switch ports and SNMP first, then Cumulus Linux switches, then the commands for finding ports and nodes.
 
-- **Switch ports and SNMP:**
-  - **Assigning switch ports at interface level:** setting `switchports` at node level (`set node003 switchports switch01:1`) is a legacy option that breaks when a node has multiple interfaces. Since BCM 10, **assign `switchports` inside the node's `interfaces` submode** (`interfaces; set eth1 switchports switch01:2`), which supports bonding and is required if CMDaemon Lite manages a Cumulus switch.
-  - **APC PDUs:** must have `set powercontrol apc`, otherwise BCM ignores their port list by default.
-  - **SNMP (`snmpsettings`):** enabled by default (`disablesnmp = no`), with partition settings inherited by devices (`snmpsettings -s` shows effective values). Default community strings are `readstring = public` and `writestring = private`. Versions `v1`, `v2c`, and `v3` are supported (`file` is for internal SNMP-walk debugging only). In `v3`, `authenticationprotocol` (`md5` default, or `sha`) and `privacyprotocol` (`des` default, or `aes`) are configurable. Assigning the `snmptrap` role to a node runs `snmptrapd` (defaults: `Add services = yes`, `Event = yes`, `Mail = yes`, `Access = public`, `Server = localhost`).
-- **Cumulus Linux switches and ZTP:**
-  - Cumulus switches boot via **ONIE** (which wipes any existing switch OS image) and provision day-0 via **ZTP** (`http://10.141.255.254:8080/switch/<name>/cumulus-ztp.sh`, generated on boot from `cumulus-ztp.sh` or immediately via `initialize`). Cumulus images (`.bin`) go in `/cm/local/apps/cmd/etc/htdocs/switch/images/`.
-  - **Authentication and daemon choice:** DGX SuperPODs run full CMDaemon with certificate authentication on Cumulus switches; on most other clusters **CMDaemon Lite** (`set hasclientdaemon yes`) is recommended, using credentials in `accesssettings` (default `username = cumulus`, `Rest port = 8765`, `Update in ztp = no`, `Update in NV = no`; password changes take effect on switch reboot). The old `/cm/local/apps/cmd/scripts/cm-cumulus-switch.py` discovery script is deprecated and needed only for Cumulus Linux 4 (not Cumulus 5+).
-  - **Three `nvconfigurationmode` options (`nvconfiguration` submode):**
-    1. `auto`: BCM settings (hostname, timezone, SNMP, NTP/DNS/syslog `10.141.255.254`, `br_default` vlan-aware) become `auto`-type `nv set ...` commands; you can also add `manual`-type `nv set` commands; run `apply` to push to the switch. Only `manual`-type commands can be deleted (`nv del`).
-    2. `manual`: running `manual` inside `nvconfiguration` copies the `auto` stack into the `manual` stack so you can edit or delete (`nv del 1-2; commit; apply`) any command; `auto` commands are ignored.
-    3. `file`: uses a YAML file (`set nvconfigurationfile startup.yaml`, placed in `/cm/local/apps/cmd/etc/htdocs/switch/<switch>/`) applied over ZTP (or via `cm-import-startup` with `cm-startup.yaml` on DGX SuperPODs); `apply` is not used in `file` mode.
-  - **`ztpsettings` defaults:** `checkimageonboot = yes`, `runztponeachboot = yes`, `installlitedaemon = yes`, `enableapi = no`, `enableexternalaccessapi = no`, and all three SSH key files (`authorizedkeyfileroot`, `authorizedkeyfilecumulus` for the Cumulus API user, and `authorizedkeyfileadmin` for the **NVLink switch** API user) are unset by default.
-- **Uplinks and port-discovery commands:**
-  - **Uplinks (`set switch01 uplinks 15 16`):** ports connected to other switches **must** be marked as uplinks so CMDaemon ignores them during MAC-to-port learning; otherwise transit traffic corrupts node port mapping.
-  - **`showport [-s switch01] <MAC>`** finds `switch:port` for a MAC; **`finddevicebyswitchport switch01:1`** (or breakout `switch01:1s1`) is the converse (one port prints just the hostname; multiple ports prefix each line with `switch:port`); **`switchoverview`** lists port status, speed, uplink flag, and SNMP-detected MACs; **`setmacviaswitchport [--dry-run] [-f|--force] [--index N]`** populates device MACs from switch port tables (refuses to overwrite an existing MAC unless `--force` is given); **`checkfactorydefaultpassword [--update]`** tests (and with `--update` replaces) factory switch passwords. To disable port-based node identification on buggy switch firmware, run `clear switchports`.
-- **Node and DPU helper commands:**
-  - `nodeoverview` (uptime, load, memory, WLM slots, NIC and disk use), `minimalconfig` (the exact category, overlays, head nodes, and data producers applied to a node), `checkremotemount -n node001 /cm/shared` (`--file`, `-f`, `--clear`), `proxysettings`, and `selinuxsettings` (`Initialize = yes`, `Mode = permissive`, `Policy = targeted`, `Allow NFS home directories = yes`).
-  - `additionalnodeinformation`: runs custom scripts registered via `cm-manipulate-advanced-config.py -g "AdditionalNodeInfo=info-1,info-2"` and `-g "info-1=/cm/shared/info-1.sh"` (`-a` runs on the active head node).
-  - **`remotedaemon install|remove <device>`:** installs or removes `CMDaemon` on an **already-running OS without reprovisioning** (primary use case: a BlueField **DPU** whose Ubuntu OS was already installed by DPF). Prerequisites: device already defined in BCM as a compute node, running Ubuntu, reachable from the active head node over SSH using `accesssettings`, and able to reach the active head node over HTTPS (`-f|--force` reinstalls; `--purge-repo` removes the BCM repo on removal).
-- **NetQ, UFM, Prometheus sampling, and custom scripts:**
-  - `partition[base] -> netqsettings` and `ufmsettings` both connect BCM to a running NetQ or UFM server (defaults: `Port = 443`, `Verify SSL = no`, plus `server`, `username`, `password`, certificates, and `Prometheus metric forwarders`), turning NetQ and UFM telemetry into BCM measurables.
-  - To sample any Prometheus exporter (such as UFM on `http://<ip>:9001/metrics`), add `monitoring setup -> add prometheus UFM`, set `urls`, optionally set `-e NoPostAllowed yes` for older exporters that require HTTP GET, and set `nodeexecutionfilters -> active` so only the active head node polls it. (Conversely, `EnablePrometheusExporterService` in `cmd.conf` makes CMDaemon export Prometheus metrics.)
-  - For non-standard hardware, BCM supports `custompowerscript`, `custompingscript` (using `$CMD_IP`), `customremoteconsolescript`, and `sysinfo` custom scripts (`retrydelay` default `30` s, minimum `5` s; triggered across nodes with `triggersysinfo`).
+Switch ports have one legacy trap. Setting `switchports` at node level, as in `set node003 switchports switch01:1`, still works, but it breaks when a node has several interfaces. Since BCM 10, assign `switchports` inside the node's interfaces submode instead, as in `interfaces; set eth1 switchports switch01:2`. That form supports bonding. It is also required when CMDaemon Lite manages a Cumulus switch. APC PDUs must have `set powercontrol apc`, or BCM ignores their port list by default.
+
+SNMP is enabled by default, with `disablesnmp = no`. Partition settings flow down to the devices, and `snmpsettings -s` shows the effective values. The default community strings are `readstring = public` and `writestring = private`. Versions `v1`, `v2c` and `v3` are supported. The `file` option exists only for internal SNMP-walk debugging. In `v3`, `authenticationprotocol` defaults to `md5` and can be set to `sha`. `privacyprotocol` defaults to `des` and can be set to `aes`. Assigning the `snmptrap` role to a node runs `snmptrapd`, with the defaults `Add services = yes`, `Event = yes`, `Mail = yes`, `Access = public` and `Server = localhost`.
+
+Cumulus Linux switches boot through ONIE, which wipes any existing switch OS image. They then receive their day-0 setup through ZTP. The ZTP address is `http://10.141.255.254:8080/switch/<name>/cumulus-ztp.sh`. BCM generates that script on boot from `cumulus-ztp.sh`, or immediately when you run `initialize`. Put Cumulus images, which are `.bin` files, in `/cm/local/apps/cmd/etc/htdocs/switch/images/`.
+
+Authentication and the daemon you choose depend on the cluster. DGX SuperPODs run full CMDaemon with certificate authentication on Cumulus switches. On most other clusters, CMDaemon Lite is the recommended choice. Enable it with `set hasclientdaemon yes`. It uses the credentials in `accesssettings`, whose defaults are `username = cumulus`, `Rest port = 8765`, `Update in ztp = no` and `Update in NV = no`. A password change takes effect when the switch reboots. The old discovery script, `/cm/local/apps/cmd/scripts/cm-cumulus-switch.py`, is deprecated. You need it only for Cumulus Linux 4, not for Cumulus 5 or later.
+
+The `nvconfiguration` submode has three `nvconfigurationmode` options. Each one decides where the switch's configuration commands come from.
+
+- `auto`: BCM's settings become `auto`-type `nv set` commands. They cover the hostname, timezone, SNMP, NTP, DNS and syslog, which point at `10.141.255.254`, and they set `br_default` to vlan-aware. You can add `manual`-type `nv set` commands as well. Run `apply` to push the commands to the switch. Only `manual`-type commands can be deleted, with `nv del`.
+- `manual`: Running `manual` inside `nvconfiguration` copies the `auto` stack into the `manual` stack. You can then edit or delete any command, for example with `nv del 1-2`, followed by `commit` and `apply`. The `auto` commands are ignored in this mode.
+- `file`: This mode uses a YAML file. Set it with `set nvconfigurationfile startup.yaml`, and place the file in `/cm/local/apps/cmd/etc/htdocs/switch/<switch>/`. The file is applied over ZTP, or through `cm-import-startup` with `cm-startup.yaml` on DGX SuperPODs. `apply` is not used in `file` mode.
+
+The `ztpsettings` defaults are `checkimageonboot = yes`, `runztponeachboot = yes`, `installlitedaemon = yes`, `enableapi = no` and `enableexternalaccessapi = no`. All three SSH key files are unset by default. They are `authorizedkeyfileroot`, `authorizedkeyfilecumulus` for the Cumulus API user, and `authorizedkeyfileadmin` for the NVLink switch API user.
+
+Uplinks need care. A port that connects to another switch must be marked as an uplink, as in `set switch01 uplinks 15 16`. That tells CMDaemon to ignore the port during MAC-to-port learning. Otherwise, transit traffic corrupts the node port mapping.
+
+Five commands help you trace ports and nodes. `showport [-s switch01] <MAC>` finds the `switch:port` for a MAC address. `finddevicebyswitchport switch01:1` does the reverse. For a breakout port, use `switch01:1s1`. With one port it prints only the hostname, and with several ports each line starts with `switch:port`. `switchoverview` lists port status, speed, the uplink flag and the MACs that SNMP detected. `setmacviaswitchport [--dry-run] [-f|--force] [--index N]` fills device MACs from the switch port tables. It refuses to overwrite an existing MAC unless you give `--force`. `checkfactorydefaultpassword [--update]` tests factory switch passwords, and with `--update` it replaces them. If switch firmware is buggy and you want to disable port-based node identification, run `clear switchports`.
+
+A few helper commands cover nodes and DPUs. `nodeoverview` shows uptime, load, memory, WLM slots, and NIC and disk use. `minimalconfig` shows the exact category, overlays, head nodes and data producers applied to a node. `checkremotemount -n node001 /cm/shared` checks a remote mount, and it takes the options `--file`, `-f` and `--clear`. `proxysettings` and `selinuxsettings` are also available. The `selinuxsettings` defaults are `Initialize = yes`, `Mode = permissive`, `Policy = targeted`, and `Allow NFS home directories = yes`. `additionalnodeinformation` runs custom scripts. You register them with `cm-manipulate-advanced-config.py -g "AdditionalNodeInfo=info-1,info-2"`, and point each one at a file with `-g "info-1=/cm/shared/info-1.sh"`. Add `-a` to run them on the active head node.
+
+`remotedaemon install|remove <device>` installs or removes CMDaemon on an OS that is already running, without reprovisioning. Its main use is a BlueField DPU whose Ubuntu OS was already installed by DPF. The device must already be defined in BCM as a compute node, must run Ubuntu, and must be reachable from the active head node over SSH using `accesssettings`. It must also reach the active head node over HTTPS. Use `-f` or `--force` to reinstall. Add `--purge-repo` when you remove the daemon, to remove the BCM repo as well.
+
+NetQ and UFM connect through `partition[base] -> netqsettings` and `ufmsettings`. Their defaults are `Port = 443` and `Verify SSL = no`. You also set a server, a username, a password, certificates and Prometheus metric forwarders. Once connected, NetQ and UFM telemetry become BCM measurables. To sample any Prometheus exporter, such as UFM on `http://<ip>:9001/metrics`, add it with `monitoring setup -> add prometheus UFM` and set `urls`. Older exporters that require HTTP GET need `-e NoPostAllowed yes`. Then set `nodeexecutionfilters -> active`, so that only the active head node polls the exporter. The reverse direction also exists. `EnablePrometheusExporterService` in `cmd.conf` makes CMDaemon export its own Prometheus metrics.
+
+For hardware that does not fit the standard model, BCM supports `custompowerscript`, `custompingscript` (which can use `$CMD_IP`), `customremoteconsolescript`, and `sysinfo` custom scripts. The `retrydelay` default is `30` s, and its minimum is `5` s. Use `triggersysinfo` to run the `sysinfo` script across nodes.
+
+Before you bring a switch under BCM, mark its uplinks. Otherwise, transit traffic will corrupt the node port mapping.
 
 ## 5. Disks, NFS and services
 
-**Disk layouts (3.13).** A disk layout is an XML file stored in the **CMDaemon database** (the files in `.../htdocs/disk-setup/` are only templates). A category's layout is inherited by its nodes; a node's own layout overrides it; `clear` on the node returns to the category's. Templates cover the default layout, hardware or software RAID, LVM, diskless and semi-diskless. Switch a node to diskless with the template `slave-diskless.xml`, then reboot; it runs from RAM. **A head node's disk layout cannot be changed by BCM after install** (ordinary Linux administration, with backups).
+Disks, NFS exports and services look like three separate topics, but they follow the same inheritance rule as everything else. A category can carry them, and a node can override them. Knowing which level owns each one tells you where to make the change.
 
-**NFS exports (3.14.1).** On the head node, `fsexports` lists exports (name, path, hosts, write). Three are built in since BCM 9.0 and come with the `headnode` role: `/var/spool/burn`, `/home` and `/cm/shared`. They cannot simply be removed; set `disableautomaticexports` in the headnode role. Your own exports can be removed or **disabled**.
+Section 3.13 of the manual covers disk layouts. A disk layout is an XML file stored in the CMDaemon database. The files in `.../htdocs/disk-setup/` are only templates. A category's layout is inherited by its nodes, and a node can have its own layout, which overrides the category's. Running `clear` on the node returns it to the category's layout. The templates cover the default layout, hardware or software RAID, LVM, diskless and semi-diskless setups. To switch a node to diskless, use the template `slave-diskless.xml` and reboot. The node then runs from RAM. BCM cannot change a head node's disk layout after install. You manage that with ordinary Linux administration, and you should keep backups.
 
-**NFS mounts (3.14.2).** `fsmounts` on a category or node: device (`basecm11:/modeldata`), mount point, filesystem, options (add `_netdev` to wait for the network). A node shows its category's mounts marked `[default]` (the category name). **To remove a category mount, remove it in the category**, not on the node. A removed mount is not unmounted until the node reboots. To give some nodes a mount and not others, put them in another category, or set the mount per node. Mount **order** matters (a parent mounted first, the subtree after); use `up` and `down`. Autofs mounts must be added to `excludelistupdate` or an image update can wipe them (chapter 8.4).
+Section 3.14.1 covers NFS exports. On the head node, `fsexports` lists the exports, with their name, path, hosts and write setting. Three exports have been built in since BCM 9.0, and they come with the `headnode` role. They are `/var/spool/burn`, `/home` and `/cm/shared`. You cannot simply remove them. Instead, set `disableautomaticexports` in the headnode role. Your own exports can be removed, or disabled.
 
-Diskless nodes can mount rarely used subtrees from the head node's image over NFS to save RAM; the manual's example frees about 440 MB. The manual notes the BCM default NFS versions are a mix of 3 and 4 (as of its August 2025 date), with a procedure to move to 4 only.
+Section 3.14.2 covers NFS mounts. You set them with `fsmounts` on a category or a node. Each mount has a device, such as `basecm11:/modeldata`, a mount point, a filesystem and options. Add `_netdev` to the options to make the mount wait for the network. A node shows its category's mounts marked `[default]`, with the category name beside them. To remove a category mount, remove it in the category, not on the node. A removed mount is not unmounted until the node reboots. To give some nodes a mount and not others, put those nodes in another category, or set the mount per node. Mount order matters, because a parent must mount before its subtree. Use `up` and `down` to set the order. Autofs mounts must be added to `excludelistupdate`, or an image update can wipe them. Chapter 8.4 explains why.
 
-**Services (3.15).** Services (like `cups`, `autofs`) can be added in `services` for a device or category, with `monitored` (watched), `autostart` (restart a failed service) and `runif` (HA: active, passive, always, preferpassive). If autostart is on and **you stop the service through BCM, BCM will not restart it** until you start it through BCM again. A service's own configuration stays with the service and the OS (`systemctl disable` controls start at boot).
+Diskless nodes can mount rarely used subtrees from the head node's image over NFS, which saves RAM. The manual's example frees about 440 MB this way. It also notes that BCM's default NFS versions are a mix of 3 and 4, as of its August 2025 date, and it gives a procedure to move to version 4 only.
+
+Section 3.15 covers services. Services such as `cups` and `autofs` can be added in the `services` submode of a device or a category. Each service has three settings to decide. `monitored` means BCM watches the service. `autostart` tells BCM to restart a failed service. `runif` controls HA behaviour, with the values active, passive, always and preferpassive. If `autostart` is on and you stop the service through BCM, BCM will not restart it until you start it through BCM again. A service's own configuration stays with the service and the OS. `systemctl disable` controls whether the service starts at boot.
+
+Before you mount something on a category, check that every node in that category should have it.
 
 ## 6. Racks and chassis (3.16)
 
-A rack is 42U by default. Put a device in a rack with `set rack` and `set deviceposition`, or fill positions with `addrackposition -n node001..node010 rack2` (first free slots, `--position`, `--force`). **The position is the top of the device.** Chassis (blade enclosures) have members and a `chassisposition` (slot, position, width). `rackoverview` shows UP/DOWN/CLOSED counts, cores, GPUs, power and, for NVIDIA racks, NVLink switches and power shelves. The model in `bcm_netconf.Rack` shows the placement rules.
+A rack is 42U by default. You place a device in a rack with `set rack` and `set deviceposition`. To fill positions in bulk, use `addrackposition -n node001..node010 rack2`, which takes the first free slots. The `--position` and `--force` options refine that command. The position you set is the top of the device.
+
+Chassis, such as blade enclosures, have members and a `chassisposition`. That holds the slot, the position and the width. `rackoverview` shows the UP, DOWN and CLOSED counts, the cores, the GPUs and the power. For NVIDIA racks, it also shows NVLink switches and power shelves. The model `bcm_netconf.Rack` shows the placement rules.
+
+Check the free positions before you add devices.
 
 ## 7. GPU settings (3.17)
 
-In `gpusettings` (node or category), add `nvidia 1-3` or `all` for a range of GPU slots. A range may be one number, `0-2`, `1,3-5`, or `all`/`*`. Options if supported: `clockspeeds`, `clocksyncboostmode`, `computemode` (default, exclusive thread, exclusive process, prohibited), `eccmode`, `powerlimit` (`min`, `max`, a number, `default`). **No value means the hardware default; a node value overrides a category value.** The `cuda-dcgm` package must be installed for GPU metrics. `updatedevicepowerconfig` sets power limits for GPUs or CPUs (`--dry-run` available); setting a limit both there and in `gpusettings` may conflict.
+GPU settings tell BCM how to treat each GPU on a node. You can set them on a node or on a category. Start with the everyday options, then read the MIG rules, because MIG changes the GPU itself.
 
-**MIG.** BCM can manage Multi-Instance GPU (MIG; Part 10 chapter 10.24 covers the GPU internals). The rules and commands:
-- **Use only one MIG management tool:** if you use the DGX native `nvidia-migmanager.service` or the Kubernetes GPU Operator's `nvidia-mig-manager`, BCM leaves MIG alone; never run multiple MIG managers simultaneously.
-- **Utilization vs `gpuprofiling`:** once MIG is enabled on a GPU, the full physical GPU is no longer available as a device and standard GPU utilization metrics stop by default. You can still watch physical GPU profiling metrics in `device` mode with `gpuprofiling show` and `gpuprofiling watch 1003` (for example `1002` `gpu_profiling_sm_active`, `1003` `gpu_profiling_sm_occupancy`), with caution that it may affect performance.
-- **Slices and hierarchy:** on Ampere (GA100, compute capability 8.0, CUDA 11+, driver `450.80.02+`) and newer GPUs, a **memory slice** is 1/8th of physical GPU memory, an **SM slice** is 1/7th of physical SMs, and a **GPU slice** combines one memory slice and one SM slice (at most **7 GPU slices** per physical GPU). Slices form a **GPU instance (GI)**, which contains one or more **compute instances (CIs)**. Leaving any of the 7 GPU slices unallocated wastes those SMs.
-- **Enabling MIG (`mig` command in `device` mode):** `mig status` shows `Active` and `Pending` states per GPU; `mig enable [gpu-list]` and `mig disable [gpu-list]` set the `Pending` state (accepting node-list syntax like `3,5-7`). **On A100 GPUs, pending MIG state changes require a node reboot to become active; on H100 and newer GPUs, no reboot is required.**
-- **Profile syntax and persistence:** `mig profiles [gpu]` lists supported profiles, named `<slices>g.<mem>gb` (plus `+me` for media extensions, for example `1g.5gb`, `2g.10gb`, `3g.20gb`, `4g.20gb`, `7g.40gb`).
-  - Set persistently in `gpusettings -> use nvidia:0 -> set migprofiles <spec>; commit`, then apply with **`mig apply`** (`mig show` is empty until `mig apply` runs).
-  - Running `mig apply --profile 1g.5gb,2g.10gb` applies profiles immediately, **but `--profile` is not persistent and is lost on reboot**.
-  - **Multipliers and compute-instance colon syntax:** `<N>*<profile>` repeats a GPU instance (for example `7*1g.5gb`, or heterogeneous `5*1g.5gb,2g.10gb` which uses all 7 GPU slices, whereas `2*1g.5gb,2g.10gb` wastes 3 of 7 slices). Appending `:<k>` (0-indexed!) creates a compute instance of `k+1` slices (`1c.<profile>` for `:0`, `2c.<profile>` for `:1`, up to `:N-1` which equals `<profile>`), so `2g.10gb:0:0` (expanded: `2g.10gb:1c.2g.10gb:1c.2g.10gb`) creates one 2-slice GPU instance containing two 1-slice compute instances. (Hardware restrictions still apply: on `A100-PCIE-40GB`, `7g.40gb:3` is allowed, `7g.40gb:4` is not.)
-  - **Overallocation trap:** if a profile list asks for more than 7 GPU slices, BCM does not reject the whole string—**slices that arrive after the budget of 7 is exhausted are silently not allocated**. For example, `5*1g.5gb,2g.10gb` allocates five `1g` and one `2g` (7 slices total), whereas `6*1g.5gb,2g.10gb`, `7*1g.5gb,2g.10gb`, and `70*1g.5gb,2g.10gb` allocate 6, 7, and 7 of the `1g.5gb` instances respectively and **none** of the `2g.10gb` instance.
+In `gpusettings`, add `nvidia 1-3` or `all` to target a range of GPU slots. A range may be a single number, `0-2`, `1,3-5`, or `all` or `*`. If the hardware supports them, the options are `clockspeeds`, `clocksyncboostmode`, `computemode`, `eccmode` and `powerlimit`. The `computemode` values are default, exclusive thread, exclusive process and prohibited. The `powerlimit` values are `min`, `max`, a number, or `default`. No value means the hardware default, and a node value overrides a category value.
+
+GPU metrics need the `cuda-dcgm` package installed. The command `updatedevicepowerconfig` sets power limits for GPUs or CPUs, and it accepts `--dry-run`. Setting a limit both there and in `gpusettings` may cause a conflict.
+
+BCM can also manage Multi-Instance GPU, or MIG, which splits a physical GPU into slices. Chapter 10.24 in Part 10 covers the GPU internals. Several rules matter here, and each one below comes from the manual.
+
+Use only one MIG management tool. If you use the DGX native `nvidia-migmanager.service` or the Kubernetes GPU Operator's `nvidia-mig-manager`, BCM leaves MIG alone. Never run several MIG managers at the same time.
+
+Utilization and `gpuprofiling` need care. Once MIG is enabled on a GPU, the full physical GPU is no longer available as a device, and standard GPU utilization metrics stop by default. You can still watch the physical GPU profiling metrics in `device` mode, with `gpuprofiling show` and `gpuprofiling watch 1003`. For example, `1002` is `gpu_profiling_sm_active` and `1003` is `gpu_profiling_sm_occupancy`. Be careful, because this may affect performance.
+
+The slice sizes are fixed on Ampere and newer GPUs. The Ampere GA100 needs compute capability 8.0, CUDA 11+, and driver `450.80.02+`. A memory slice is 1/8th of the physical GPU memory. An SM slice is 1/7th of the physical SMs. A GPU slice combines one memory slice with one SM slice, and a physical GPU has at most 7 GPU slices. Slices form a GPU instance, GI, which holds one or more compute instances, CIs. If you leave any of the 7 GPU slices unallocated, those SMs go to waste.
+
+Enabling MIG is done with the `mig` command in `device` mode. `mig status` shows the `Active` and `Pending` state for each GPU. `mig enable [gpu-list]` and `mig disable [gpu-list]` set the `Pending` state, and they accept node-list syntax such as `3,5-7`. On A100 GPUs, a pending MIG change needs a node reboot before it becomes active. On H100 and newer GPUs, no reboot is needed.
+
+Profile names follow the pattern `<slices>g.<mem>gb`, with `+me` added for media extensions. Examples are `1g.5gb`, `2g.10gb`, `3g.20gb`, `4g.20gb` and `7g.40gb`. Use `mig profiles [gpu]` to list the profiles your GPU supports. To make a profile list persistent, set `migprofiles` in `gpusettings -> use nvidia:0 -> set migprofiles <spec>; commit`. Then run `mig apply`. Until you run `mig apply`, `mig show` stays empty. A command such as `mig apply --profile 1g.5gb,2g.10gb` applies profiles immediately, but the `--profile` option is not persistent, and it is lost on reboot.
+
+The `<N>*<profile>` syntax repeats a GPU instance. For example, `7*1g.5gb` fills all seven slices. A mixed list such as `5*1g.5gb,2g.10gb` uses all 7 GPU slices. The list `2*1g.5gb,2g.10gb` wastes 3 of the 7 slices. Appending `:<k>` creates a compute instance of `k+1` slices. The index starts at 0, so `:0` gives `1c.<profile>`, and `:1` gives `2c.<profile>`. The highest index, `:N-1`, equals `<profile>`. For example, `2g.10gb:0:0` expands to `2g.10gb:1c.2g.10gb:1c.2g.10gb`. That creates one 2-slice GPU instance holding two 1-slice compute instances. Hardware restrictions still apply. On `A100-PCIE-40GB`, `7g.40gb:3` is allowed, but `7g.40gb:4` is not.
+
+Overallocation is easy to miss. If a profile list asks for more than 7 GPU slices, BCM does not reject the whole string. Instead, the slices that come after the budget of 7 is used up are silently left unallocated. Take `5*1g.5gb,2g.10gb`. Five `1g` slices and one `2g` slice add up to 7, so everything fits. Now take `6*1g.5gb,2g.10gb`. The six `1g.5gb` instances use 6 slices, and the `2g.10gb` needs 2 more, which makes 6 + 2 = 8 in total. BCM allocates the six `1g.5gb` instances and none of the `2g.10gb` instance. The same thing happens with `7*1g.5gb,2g.10gb`, which allocates seven `1g.5gb` instances and no `2g.10gb`. It also happens with `70*1g.5gb,2g.10gb`, which allocates 7 `1g.5gb` instances and no `2g.10gb`.
+
+Before you apply a MIG profile list, add up the GPU slices and make sure the total is 7 or less.
 
 ## 8. Going beyond CMDaemon: the manual's order of preference
 
-Section 3.20 ranks the ways to change a node, and says the first is preferred:
+Sometimes CMDaemon has no setting for what you need. Section 3.20 of the manual ranks the ways to go beyond it, and the first option is always the preferred one. The reason is maintenance. The further you move away from CMDaemon, the more you have to track yourself.
 
-1. **Configure through CMDaemon** (cmsh or Base View). CMDaemon then tracks the state.
-2. **Use a different image** for a category or node (clone the image, clone the category, set the image, move nodes).
-3. **Place files through the image**: `/cm/images/<image>/cm/conf/category/<category>/<path>` or `.../node/<node>/<path>` or `.../node/<MAC with dashes>/<path>`. Copied just before the node installer's finalize stage. **Node-level wins over category-level.**
-4. **`FrozenFile`**: stop CMDaemon rewriting a file. The manual says avoid it where possible.
-5. **`initialize` and `finalize` scripts**: run at the initrd stage, before CMDaemon on the node starts. Good for a setting that gets overwritten by the node installer on every boot (the manual's example appends an `ETHTOOL_OPTS` line to an interface file).
-6. A **shared directory** with software the nodes run.
+1. **Configure through CMDaemon** in cmsh or Base View. CMDaemon then tracks the state.
+2. **Use a different image** for a category or a node. You clone the image, clone the category, set the image, and move the nodes.
+3. **Place files through the image.** Put them in `/cm/images/<image>/cm/conf/category/<category>/<path>`, or in `.../node/<node>/<path>`, or in `.../node/<MAC with dashes>/<path>`. BCM copies them just before the node installer's finalize stage. A node-level file wins over a category-level file.
+4. **Use `FrozenFile`** to stop CMDaemon rewriting a file. The manual says to avoid it where possible.
+5. **Use `initialize` and `finalize` scripts.** They run at the initrd stage, before CMDaemon on the node starts. They suit a setting that the node installer overwrites on every boot. The manual's example appends an `ETHTOOL_OPTS` line to an interface file.
+6. **Use a shared directory** for the software the nodes run.
 
-The reason for the order is maintenance: the further you move from CMDaemon, the more you must track yourself.
+Start at item 1, and move down the list only when CMDaemon has no setting for the job.
 
 ## 9. Common first mistakes
 
-1. Changing one node when the category should change (or the reverse).
-2. Editing `/etc/hosts` or `resolv.conf` by hand instead of the interface or network object.
+These ten mistakes come up again and again in the first weeks with BCM. Read the list before you change a live cluster.
+
+1. Changing one node when the category should change, or the reverse.
+2. Editing `/etc/hosts` or `/etc/resolv.conf` by hand, instead of changing the interface or network object.
 3. Making the provisioning interface a bond member.
 4. Forgetting `miimon` on a failover bond.
 5. Removing `globalnet`, or a built-in NFS export.
-6. Setting a node's mount when the category should carry it (it then is not removable from the node view).
+6. Setting a node's mount when the category should carry it. The mount then cannot be removed from the node view.
 7. Using DHCP for the head node's external interface in production.
 8. Putting static node addresses in the dynamic DHCP range.
 9. Freezing files because it is quick.
-10. Running `cm-iperf.py` on a big cluster with defaults.
+10. Running `cm-iperf.py` on a big cluster with its defaults.
+
+When a change feels quick, check its level first, because most of these mistakes start with the wrong level.
 
 ## Exercises
 
-1. Run `python3 netconf_lab.py`. Pick four checks and explain each rule in your own words.
-2. Plan a two-network cluster: management (`10.141.0.0/16`) and storage (`10.150.0.0/16`) with 64 nodes. Write down which object holds each setting.
+Work through these on the lab machine. Each one asks you to apply a rule from this chapter.
+
+1. Run `python3 netconf_lab.py`. Choose four of the checks, and explain each rule in your own words.
+2. Plan a two-network cluster. The management network is `10.141.0.0/16`, and the storage network is `10.150.0.0/16`, with 64 nodes. Write down which object holds each setting.
 3. Use `Rack` to place 18 nodes, a switch and a PDU in one rack. What does `--force` risk?
-4. List which of these you would do in the category, and which on one node: a different disk layout for one broken node; an NFS mount for all GPU nodes; a power limit on GPU 3 of one node; a static route to a license server for everyone.
+4. For each change, decide whether it belongs in the category or on one node. The changes are: a different disk layout for one broken node; an NFS mount for all GPU nodes; a power limit on GPU 3 of one node; and a static route to a license server for everyone.
 5. Explain why the manual calls the dynamic DHCP range not recommended.
-6. Write the cmsh commands (from the manual's examples, untested) to bond `eth1` and `eth2` as `bond0` in active-backup mode with `miimon=100`.
+6. Write the cmsh commands that bond `eth1` and `eth2` as `bond0` in active-backup mode with `miimon=100`. Base them on the manual's examples. You will not test them on a live system.
 
 ## 11. Interview angles
 
-- "Where does a node get its default gateway?" Category default gateway, then the network's gateway, then the head node alias `10.141.255.254` through DHCP.
-- "Why is the provisioning interface not allowed in a bond?" The manual states it as a restriction and does not give the reason; a bond can itself be the provisioning interface, and then the node installer brings up the bond and all its members before provisioning.
-- "How do you expose a node's service to the outside on a Type 1 cluster?" `portforward` on the head node (socat), watching the firewall.
-- "A node's configured IP and its real IP differ. How do you find it fleet-wide?" `ipaddresses --check`.
-- "You need a setting BCM does not model. What are your options and which is best?" Image file placement or initialize/finalize scripts before `FrozenFile`.
+Interviewers often ask questions like these. Each answer names the fact worth remembering.
+
+- "Where does a node get its default gateway?" It comes from the category's default gateway first, then from the network's gateway, and finally from the head node alias `10.141.255.254`, which DHCP hands out.
+- "Why is the provisioning interface not allowed in a bond?" The manual states the rule as a restriction and does not give the reason. A bond can itself be the provisioning interface. In that case, the node installer brings up the bond and all its members before provisioning.
+- "How do you expose a node's service to the outside on a Type 1 cluster?" Use `portforward` on the head node, which runs socat, and keep an eye on the firewall.
+- "A node's configured IP and its real IP differ. How do you find it fleet-wide?" Run `ipaddresses --check`.
+- "You need a setting BCM does not model. What are your options and which is best?" Image file placement, or initialize and finalize scripts, come before `FrozenFile`.
 
 ## Checkpoint questions (20)
 
 <details>
 <summary>1. What is the `partition` object in BCM, and how do you open it in `cmsh` and Base View?</summary>
 
-The `partition` object (`base`) holds cluster-wide global settings (cluster name, admin email, DNS/NTP servers, default category, BMC/SNMP/UFM/NetQ settings). You edit it in `cmsh` with **`partition use base`** or in Base View under **Cluster > Settings**.
+The `partition` object, named `base`, holds the cluster-wide settings. Those include the cluster name, the admin email, the DNS and NTP servers, the default category, and the BMC, SNMP, UFM and NetQ settings. In `cmsh`, run **`partition use base`**. In Base View, open **Cluster > Settings**.
 </details>
 
 <details>
 <summary>2. Which three cluster events cause BCM to automatically send an email to the administrator?</summary>
 
-1. **License expiration warning:** One month before the BCM license expires (and daily during the final week).
-2. **First-boot service failure:** A head-node service that fails on its very first boot after installation.
-3. **Failed automatic HA failover:** When an automatic failover between active and passive head nodes fails.
+1. **License expiration warning:** BCM sends it one month before the license expires, and daily during the final week.
+2. **First-boot service failure:** A head-node service fails on its very first boot after installation.
+3. **Failed automatic HA failover:** An automatic failover between the active and passive head nodes fails.
 </details>
 
 <details>
 <summary>3. Why can FIPS mode be enabled on regular nodes and categories through CMDaemon, but NOT on the head node through CMDaemon?</summary>
 
-Because an incomplete or mismatched FIPS kernel/boot configuration could leave the head node itself **unbootable**, taking down the entire cluster management plane.
+A wrong FIPS kernel or boot configuration could leave the head node unbootable. If that happened, the whole cluster management plane would go down with it.
 </details>
 
 <details>
 <summary>4. What are the three default network objects (`internalnet`, `externalnet`, `globalnet`) and why must `globalnet` never be deleted?</summary>
 
-- **`internalnet` (`10.141.0.0/16`, `eth.cluster`):** Default network for PXE-booting nodes and internal cluster management.
-- **`externalnet`:** Uplinks the head node to the corporate/campus network (the only network where BCM supports IPv6).
-- **`globalnet` (`cm.cluster`):** Provides the unified cluster namespace (`node001.cm.cluster`) across local and cloud nodes; **never remove it**.
+- **`internalnet` (`10.141.0.0/16`, `eth.cluster`):** This is the default network for PXE-booting nodes and internal cluster management.
+- **`externalnet`:** It connects the head node to the corporate or campus network. It is the only network where BCM supports IPv6.
+- **`globalnet` (`cm.cluster`):** It gives the cluster one namespace, such as `node001.cm.cluster`, across local and cloud nodes. Never remove it.
 </details>
 
 <details>
 <summary>5. What does `lockdowndhcpd` on a network object do?</summary>
 
-Once all legitimate cluster nodes have had their MAC addresses recorded in BCM, enabling `lockdowndhcpd` configures `dhcpd` to **refuse DHCP leases to unknown MAC addresses**, preventing rogue or unconfigured machines from netbooting on the cluster network.
+After every legitimate node's MAC address is recorded in BCM, `lockdowndhcpd` tells `dhcpd` to refuse leases to unknown MAC addresses. That stops rogue or unconfigured machines from netbooting on the cluster network.
 </details>
 
 <details>
 <summary>6. Name the four BCM object levels from which an internal-network parameter can originate.</summary>
 
 1. The **network object** (`internalnet`: base address, netmask, gateway, MTU, domain).
-2. The **cluster / partition object** (`base`: management network, naming prefix/digits, default category).
-3. The **device interface** (`interfaces[BOOTIF]`: IP address, network binding).
-4. The **node category** (default gateway, management network, DNS/NTP servers, search domains).
+2. The **cluster / partition object** (`base`: management network, naming prefix and digits, default category).
+3. The **device interface** (`interfaces[BOOTIF]`: IP address and network binding).
+4. The **node category** (default gateway, management network, DNS and NTP servers, search domains).
 </details>
 
 <details>
 <summary>7. In what exact fallback order is a regular node's default gateway determined?</summary>
 
-1. The **category's** default gateway (if set).
-2. Otherwise, the **network object's** gateway.
-3. If the network gateway is `0.0.0.0`, DHCP hands out **`10.141.255.254`** (the head node's internal alias).
+First, the category's default gateway is used, if one is set. If not, the network object's gateway is used. If that gateway is `0.0.0.0`, DHCP hands out **`10.141.255.254`**, the head node's internal alias.
 </details>
 
 <details>
 <summary>8. What does `onnetworkpriority` on a node interface control, and what is the default priority order across interface types?</summary>
 
-It determines which interface IP is returned when resolving the node's primary hostname (highest number wins). Defaults from highest to lowest: **bridge (`80`) $>$ bond (`70`) $>$ physical (`60`) $>$ VLAN (`50`) $>$ alias (`40`) $>$ tunnel (`30`) $>$ netmap (`20`) $>$ BMC (`10`)**.
+It decides which interface IP is returned when the node's primary hostname is resolved. The highest number wins. The defaults, from highest to lowest, are **bridge (`80`) $>$ bond (`70`) $>$ physical (`60`) $>$ VLAN (`50`) $>$ alias (`40`) $>$ tunnel (`30`) $>$ netmap (`20`) $>$ BMC (`10`)**.
 </details>
 
 <details>
 <summary>9. How many search domains in `/etc/resolv.conf` do older `glibc` resolvers read, and how does BCM's `:index` suffix order them?</summary>
 
-Older `glibc` resolvers read only the **first `6` search domains**. Attaching `:index` (such as `example.com:1`) causes `CMDaemon` to sort search domains by ascending index and write the `6` lowest-indexed domains first.
+Older `glibc` resolvers read only the first **`6`** search domains. When you add an index, such as `example.com:1`, CMDaemon sorts the search domains by ascending index. It then writes the six lowest-indexed domains.
 </details>
 
 <details>
 <summary>10. How do you add custom DNS zones to the head node's BIND server without `CMDaemon` overwriting them?</summary>
 
-Place custom zones in **`/etc/named.conf.include`** (on RHEL/Rocky and SLES) or **`/etc/bind/named.conf.include`** (on Ubuntu), which `CMDaemon` includes automatically and never overwrites.
+Put custom zones in **`/etc/named.conf.include`** on RHEL, Rocky and SLES, or in **`/etc/bind/named.conf.include`** on Ubuntu. CMDaemon includes that file automatically and never overwrites it.
 </details>
 
 <details>
 <summary>11. How does `portforward` in `cmsh` `device` mode work, and what does `portforward bmc node001` do?</summary>
 
-`portforward` spawns a `socat` listener on the head node that forwards traffic to an internal node port (`portforward create node001 1234 4321`), subject to the head node's Shorewall/`nftables` firewall. `portforward bmc node001` forwards the node's BMC HTTPS (`443`) and console ports through the head node so engineers can reach a Type-1 internal BMC remotely.
+`portforward` starts a `socat` listener on the head node. The listener forwards traffic to a port on an internal node, as in `portforward create node001 1234 4321`. The head node's Shorewall or `nftables` firewall still applies. `portforward bmc node001` forwards the node's BMC HTTPS port, 443, and its console port. That lets engineers reach an internal BMC on a Type-1 cluster from outside.
 </details>
 
 <details>
 <summary>12. What are the four status values reported by `ipaddresses --check` in `cmsh` `device` mode?</summary>
 
-**`OK`** (configured IP matches live detected IP), **`Mismatch`** (live IP differs from BCM config), **`Not detected`** (configured in BCM but not seen on node), and **`Not configured`** (live on node but not in BCM).
+**`OK`** means the configured IP matches the live IP. **`Mismatch`** means the live IP differs from the BCM configuration. **`Not detected`** means the IP is configured in BCM but not seen on the node. **`Not configured`** means the IP is live on the node but missing from BCM.
 </details>
 
 <details>
 <summary>13. How many node pairs does `cm-iperf.py` test by default across $n$ nodes, and why must you pass `--count` or `-r` on a 1,000-node cluster?</summary>
 
-It tests all **$n(n - 1) / 2$** pairs at `~10` seconds per pair. On `1,000` nodes, that is nearly half a million pairs (`~58` days continuously), so you must use `-r` (random sample), `--count`, and `-p` (parallel threads).
+It tests all **$n(n - 1) / 2$** pairs, at `~10` seconds per pair. On `1,000` nodes, that is nearly half a million pairs, or about `~58` days of continuous running. So you must use `-r` for a random sample, `--count`, and `-p` for parallel threads.
 </details>
 
 <details>
 <summary>14. In BCM interface bonding, which mode is default (`0`), which is `active-backup` (`1`), and why does putting `mode=` inside bond `options` fail validation?</summary>
 
-Mode `0` (`balance-rr`) is the default and Mode `1` is `active-backup` (Mode `4` is `802.3ad` LACP). In BCM, the bonding mode **must be set via the dedicated `mode` property** (`set mode 1`), not inside the free-form `options` string (where you set `miimon=100`).
+Mode `0` (`balance-rr`) is the default. Mode `1` is `active-backup`. Mode `4` is `802.3ad`, which is LACP. In BCM, you set the bonding mode with the dedicated `mode` property, as in `set mode 1`. Do not put it inside the free-form `options` string, where you set `miimon=100`.
 </details>
 
 <details>
 <summary>15. Can a node's provisioning interface (`BOOTIF`) be a slave member of a bond? Can `bond0` itself be the provisioning interface?</summary>
 
-A physical interface named as `provisioninginterface` **cannot** be a member of a bond; however, **`bond0` itself CAN be set as the `provisioninginterface`** (in which case the node installer brings up `bond0` and its member NICs during boot).
+A physical interface named as the `provisioninginterface` cannot be a member of a bond. However, `bond0` itself can be set as the `provisioninginterface`. In that case, the node installer brings up `bond0` and its member NICs during boot.
 </details>
 
 <details>
 <summary>16. When configuring persistent Mellanox ConnectX parameters (`MLX_<field>`) in `extra_values`, what is the precedence order across BCM objects, and how does IPoIB `datagram` mode differ from `connected` mode?</summary>
 
-The precedence order is **`category.extra_values < node.extra_values < interface.extra_values`**. For IPoIB (`ibnet`, default `10.149.0.0/16`), **datagram mode** (the default) scales better across many peers with an **MTU up to `4k` (`4092`)**, whereas **connected mode** (`set connectedmode yes`) supports an **MTU up to `64k` (`65520`)**.
+The precedence is **`category.extra_values < node.extra_values < interface.extra_values`**. For IPoIB on `ibnet`, which defaults to `10.149.0.0/16`, datagram mode is the default. It scales better across many peers, and its MTU goes up to `4k`, which is `4092`. Connected mode, set with `set connectedmode yes`, allows an MTU up to `64k`, which is `65520`.
 </details>
 
 <details>
 <summary>17. Where are node disk layouts stored in BCM, and why can't BCM modify the head node's disk layout after installation?</summary>
 
-Disk layouts are XML documents stored inside the **`CMDaemon` database** (seeded from templates in `.../htdocs/disk-setup/`, such as `slave-diskless.xml`). Regular node layouts are applied when `node-installer` partitions the node at boot, whereas the head node is already running live and never runs `node-installer`.
+BCM stores disk layouts as XML documents inside the **`CMDaemon` database**. The database is seeded from templates in `.../htdocs/disk-setup/`, such as `slave-diskless.xml`. A regular node's layout is applied when `node-installer` partitions the node at boot. The head node is already running and never goes through `node-installer`, so BCM cannot change its layout after installation.
 </details>
 
 <details>
 <summary>18. Which three NFS exports are built into the `headnode` role since BCM 9.0, and how do you remove a category-inherited `fsmount` from a node?</summary>
 
-The three built-in head-node exports are **`/var/spool/burn`**, **`/home`**, and **`/cm/shared`** (controlled by `disableautomaticexports`). A category `fsmount` marked `[default]` on a node **cannot be deleted on the node object**—you must either remove it in the category or move that node to a different category.
+The three built-in head-node exports are **`/var/spool/burn`**, **`/home`** and **`/cm/shared`**. They are controlled by `disableautomaticexports`. A category `fsmount` marked `[default]` cannot be deleted on the node object. Instead, remove it in the category, or move the node to a different category.
 </details>
 
 <details>
 <summary>19. In BCM's Multi-Instance GPU (`mig`) management (§3.17.3), how many GPU slices exist on an A100/H100 GPU, which GPU generation requires a reboot to enable MIG, and what happens if `migprofiles` specifies more than 7 slices (e.g., `6*1g.5gb,2g.10gb`)?</summary>
 
-An A100/H100 has **7 GPU slices** (`7` SM slices and `8` memory slices). Enabling/disabling MIG requires a **node reboot on A100**, but **no reboot on H100 and newer GPUs**. If `migprofiles` exceeds 7 slices (`6*1g.5gb,2g.10gb` asks for `6 + 2 = 8` slices), BCM **silently drops slices that arrive after the budget of 7 is exhausted** (allocating six `1g.5gb` instances and zero `2g.10gb` instances).
+An A100 or H100 has **7 GPU slices**, made of 7 SM slices and 8 memory slices. Enabling or disabling MIG needs a node reboot on A100, but not on H100 or newer GPUs. If `migprofiles` asks for more than 7 slices, BCM silently drops the slices that come after the budget of 7 is used up. The example `6*1g.5gb,2g.10gb` asks for 6 + 2 = 8 slices, so BCM allocates six `1g.5gb` instances and no `2g.10gb` instance.
 </details>
 
 <details>
 <summary>20. List the manual's 6-level order of preference (§3.20) when you need to configure a node beyond standard CMDaemon properties.</summary>
 
-1. **Configure through `CMDaemon`** (`cmsh` / Base View) whenever a native property exists.
-2. **Use a cloned/separate Software Image** for the category or node.
-3. **Image file placement** (`/cm/images/<img_name>/cm/conf/category/<cat>/<path>` or `.../node/<node>/<path>`, where node wins over category).
-4. **`FrozenFile` directive** in `cmd.conf` (avoid when possible).
-5. **`initialize` and `finalize` scripts** (run during the pre-init node-installer stage).
-6. **Shared directory** (`/cm/shared`) holding site scripts/software.
+1. **Configure through `CMDaemon`** in `cmsh` or Base View whenever a native property exists.
+2. **Use a cloned or separate software image** for the category or node.
+3. **Place image files** under `/cm/images/<img_name>/cm/conf/category/<cat>/<path>` or `.../node/<node>/<path>`. A node-level file wins over a category-level file.
+4. **Use the `FrozenFile` directive** in `cmd.conf`. Avoid it when possible.
+5. **Use `initialize` and `finalize` scripts**, which run during the pre-init node-installer stage.
+6. **Use the shared directory** (`/cm/shared`) for site scripts and software.
 </details>
 
 ## Sources and review notes

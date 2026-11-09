@@ -22,26 +22,32 @@ lab_venue: "GCP / GKE"
 
 ## Why this matters for AI infrastructure
 
-An automation script that powers down GPU nodes, modifies BIOS attributes, or rotates BMC certificates across a 1,024-GPU cluster is only as safe as its understanding of the **Redfish wire protocol**. While Redfish runs over standard HTTP/1.1 and HTTP/2, the DMTF Redfish Specification (**DSP0266 v1.21.0**, Sections 6, 7, and 8) defines exact behavioral contracts that distinguish a completed change (`200 OK`) from an asynchronous background job (`202 Accepted`), a partial property update (`200 OK` carrying `@Message.ExtendedInfo` warnings) from a total rejection (`400 Bad Request`), and a stale concurrent edit (`412 Precondition Failed`) from a missing authentication token (`401 Unauthorized`).
+An automation script that powers down GPU nodes, changes BIOS settings, or rotates BMC certificates across a 1,024-GPU cluster can do real damage. Its safety depends on how well you understand the **Redfish wire protocol**. Redfish runs over ordinary HTTP/1.1 and HTTP/2, so the requests look familiar. The meaning of each reply is less obvious, and the DMTF Redfish Specification (DSP0266 v1.21.0, Sections 6, 7, and 8) spells it out.
 
-A naive script that checks only `if response.status_code < 300:` will silently ignore read-only BIOS properties that failed to apply during a partial `PATCH`, will proceed to reboot a server while a firmware flash task (`202 Accepted`) is only 5% complete, and will overwrite a colleague's concurrent BMC edits. Mastering the protocol rules in this chapter—and testing them against the 36 automated checks in `code/part07/protocol_lab.py`—gives you the foundation to write production-grade fleet automation.
+The status codes carry more meaning than success or failure. A `200 OK` means a change is complete. A `202 Accepted` means a background job has started and is not finished. A `200 OK` can also carry `@Message.ExtendedInfo` warnings, which tell you only part of your change landed. A `400 Bad Request` means nothing was applied, while a `412 Precondition Failed` means someone else changed the resource first, and a `401 Unauthorized` means your credentials were not accepted.
+
+Consider a script that checks only `if response.status_code < 300:`. On a quiet day it looks fine. It will silently skip read-only BIOS properties that failed during a partial `PATCH`. It can reboot a server while a firmware flash (`202 Accepted`) is only 5% complete. It can also overwrite a colleague's BMC edit made at the same time.
+
+The rules in this chapter, and the 36 automated checks in `code/part07/protocol_lab.py` that test them, give you a solid base for fleet automation. Learn each rule first, then watch the lab prove it. Treat every status code as a promise to verify, not as a success flag.
+
+---
 
 ## Prerequisites and outcomes
 
-You need Chapters 7.1 and 7.2. After completing this chapter, you will be able to:
+You need Chapters 7.1 and 7.2 first. When you finish this chapter, you will be able to do the following:
 
-- Select the exact HTTP method (`GET`, `HEAD`, `POST`, `PATCH`, `PUT`, `DELETE`, `OPTIONS`) for reading, modifying properties, patching arrays, creating resources, and invoking actions (DSP0266 §6.2, §7.2–7.12).
-- Construct compliant request headers (`Accept`, `Content-Type`, `X-Auth-Token`, `If-Match`, `If-None-Match`, `OData-Version`) and parse response headers (`ETag`, `Location`, `Allow`, `Retry-After`, `WWW-Authenticate`, `Link`).
-- Prevent lost updates across concurrent administrators or scripts using `ETag` and `If-Match` (`412 Precondition Failed` and `428 Precondition Required`, DSP0266 §6.5).
-- Handle every Redfish HTTP status code (`200`–`507`), parse `@Message.ExtendedInfo` error arrays, and detect partial-success `PATCH` responses (DSP0266 §7.6, §8.3, §8.6).
-- Use OData query parameters (`$select`, `$expand`, `$filter`, `$top`, `$skip`, `only`, `excerpt`) in their specification-mandated evaluation order to cut fleet polling traffic by an order of magnitude (DSP0266 §7.3).
-- Run `code/part07/protocol_lab.py` (`36 passed, 0 failed`) to verify every protocol edge case locally.
+- Pick the right HTTP method (`GET`, `HEAD`, `POST`, `PATCH`, `PUT`, `DELETE`, `OPTIONS`) to read data, change properties, patch arrays, create resources, and run actions. DSP0266 §6.2 and §7.2–7.12 define each one.
+- Build compliant request headers such as `Accept`, `Content-Type`, `X-Auth-Token`, `If-Match`, `If-None-Match`, and `OData-Version`, and read the response headers `ETag`, `Location`, `Allow`, `Retry-After`, `WWW-Authenticate`, and `Link`.
+- Stop lost updates when several administrators or scripts touch the same resource. You will use `ETag` and `If-Match`, and handle `412 Precondition Failed` and `428 Precondition Required`. The rules sit in DSP0266 §6.5.
+- Handle every Redfish status code from `200` to `507`, parse `@Message.ExtendedInfo` error arrays, and catch partial-success `PATCH` responses. The relevant clauses are DSP0266 §7.6, §8.3, and §8.6.
+- Use the OData query parameters (`$select`, `$expand`, `$filter`, `$top`, `$skip`, `only`, and `excerpt`) in the order the specification requires. Done well, this cuts fleet polling traffic by an order of magnitude, as DSP0266 §7.3 explains.
+- Run `code/part07/protocol_lab.py` on your own machine and confirm you see `36 passed, 0 failed`.
 
 ---
 
 ## 1. HTTP methods and data modification semantics
 
-Redfish maps all management operations onto seven standard HTTP methods (DSP0266 §6.2 Table 3 and §7.2–7.11). A service is **required** to implement `GET`, `HEAD`, `POST`, `PATCH`, and `DELETE`, while `PUT` and `OPTIONS` are optional:
+Every management action you send to a BMC travels as one of a small set of HTTP methods. Pick the wrong one and the BMC refuses the request, or worse, does something you never meant to trigger. Redfish maps all management operations onto seven standard HTTP methods (DSP0266 §6.2 Table 3 and §7.2–7.11). A service must implement `GET`, `HEAD`, `POST`, `PATCH`, and `DELETE`. `PUT` and `OPTIONS` are optional.
 
 | HTTP Method | Redfish Semantic (DSP0266 §6.2) | Idempotent? | Safe (No Side Effects)? | Required for Services? |
 |---|---|---|---|---|
@@ -53,41 +59,46 @@ Redfish maps all management operations onto seven standard HTTP methods (DSP0266
 | **`DELETE`** | Remove a resource (e.g., log out a session, delete an account or subscription) | **Should be** | **No** | **Yes** |
 | **`OPTIONS`** | Retrieve allowed headers/methods and handle CORS pre-flight checks | **Yes** | **Yes** | No (Optional) |
 
-Three protocol rules govern how methods behave on a compliant BMC:
+Read the last two columns first. "Idempotent" means that sending the same request twice leaves the resource in the same state as sending it once. "Safe" means the call changes nothing on the BMC at all. A `GET` is both, while a `POST` is neither, which is why the table matters before you script anything.
 
-1. **Unsupported methods return `405 Method Not Allowed` with an `Allow` header:** If a client sends `PATCH` to a read-only resource (such as `/redfish/v1/Chassis/Chassis_0` when no properties on that chassis are writable) or sends `PUT` to a service that does not implement `PUT`, the BMC shall return HTTP **`405 Method Not Allowed`** (or `501 Not Implemented` for unknown verbs) and include an **`Allow`** response header listing the permitted methods (for example, `Allow: GET, HEAD`).
-2. **`HEAD` requests forbid query parameters (DSP0266 §7.4):** The `HEAD` method exists solely to check whether a URI is reachable and inspect its headers (`ETag`, `Link`, `Allow`) without transferring the JSON body. Under DSP0266 §7.4, services **shall reject `HEAD` requests that contain query parameters** (such as `HEAD /redfish/v1/Systems/System_0?$select=Name`) and should return **`400 Bad Request`**.
-3. **HTTP redirects (DSP0266 §6.3):** A BMC may return `301 Moved Permanently`, `302 Found`, `307 Temporary Redirect`, or `308 Permanent Redirect` with a `Location` header (for example, when redirecting a URI without a trailing slash or aliasing a subtree). All Redfish clients **shall** handle HTTP redirects properly.
+Three protocol rules govern how methods behave on a compliant BMC. The first covers methods that a URI does not support. Suppose you send a `PATCH` to a read-only resource, such as `/redfish/v1/Chassis/Chassis_0`, where no properties are writable. Or you send a `PUT` to a service that does not implement `PUT`. The BMC answers with `405 Method Not Allowed`, or with `501 Not Implemented` for unknown verbs. It also returns an **`Allow`** header that lists the methods the URI does accept, for example `Allow: GET, HEAD`.
+
+The second rule covers `HEAD`. The method exists to check whether a URI is reachable and to read its headers, such as `ETag`, `Link`, and `Allow`, without downloading the JSON body. Because `HEAD` has that narrow job, DSP0266 §7.4 says services shall reject `HEAD` requests that carry query parameters. Try `HEAD /redfish/v1/Systems/System_0?$select=Name`, and the BMC should answer `400 Bad Request`.
+
+The third rule covers redirects. A BMC may answer with `301 Moved Permanently`, `302 Found`, `307 Temporary Redirect`, or `308 Permanent Redirect`, and point you to the new address in a `Location` header. It might do this when a URI lacks a trailing slash or when a subtree has an alias. DSP0266 §6.3 requires every Redfish client to handle redirects properly. Make sure your client follows them, and treat a `405` with its `Allow` header as the BMC telling you what it accepts.
 
 ### 1.1 `PATCH` (properties) versus `POST` (actions and creation)
 
-The most common conceptual error when learning Redfish is confusing `PATCH` and `POST`:
-- **Use `PATCH` to edit state properties:** To change a server's `AssetTag`, `HostName`, one-time `Boot` override (`BootSourceOverrideTarget`), or staged BIOS attributes (`/Bios/Settings`), send a `PATCH` request containing only the JSON properties you want to change. Any property omitted from your `PATCH` body remains untouched.
-- **Use `POST` to create collection members or trigger Actions:**
-  - When creating a new member in a collection (such as `/redfish/v1/EventService/Subscriptions`), DSP0266 §7.9 states that you may `POST` either to the collection URI (`/Subscriptions`) or to its `Members` property URI (`/Subscriptions/Members`); services supporting member creation shall accept both.
-  - When triggering an operation that **does** something rather than setting a property—such as resetting a server, flashing firmware, or clearing an event log—you **never** `PATCH` `"PowerState": "Off"`. Instead, you `POST` a JSON parameter object to the action's `target` URI inside the resource's `Actions` block (`POST /redfish/v1/Systems/System_0/Actions/ComputerSystem.Reset` with `{"ResetType": "GracefulRestart"}`). Because `POST` is **not idempotent**, sending a reset `POST` twice may reboot the server twice.
+The most common mistake people make when they first learn Redfish is mixing up `PATCH` and `POST`. The two look alike in code, but they do different jobs. Use `PATCH` to change state properties. To change a server's `AssetTag` or `HostName`, to set a one-time boot override in `BootSourceOverrideTarget`, or to stage BIOS attributes under `/Bios/Settings`, send a `PATCH` with only the JSON properties you want to change. Any property you leave out of the body stays untouched.
+
+Use `POST` for two different jobs. The first is creating a member in a collection, such as a new subscription under `/redfish/v1/EventService/Subscriptions`. DSP0266 §7.9 says you may `POST` to the collection URI (`/Subscriptions`) or to its `Members` property URI (`/Subscriptions/Members`). Services that support member creation must accept both. The second job is running an operation, such as a reset, a firmware flash, or clearing an event log. Those operations do something rather than set a value.
+
+For operations, you never `PATCH` `"PowerState": "Off"` to shut a server down. You `POST` a JSON parameter object to the action's `target` URI, which sits in the resource's `Actions` block. For example, `POST /redfish/v1/Systems/System_0/Actions/ComputerSystem.Reset` with `{"ResetType": "GracefulRestart"}` asks for a graceful restart. Because `POST` is **not idempotent**, sending that reset twice may reboot the server twice. Use `POST` when you want an operation to happen, and `PATCH` when you want a value to change.
 
 ### 1.2 `PATCH` on array properties and `@Redfish.OperationApplyTime` (DSP0266 §7.7 & §7.12)
 
-What if a writable property on a resource is a JSON **array** (for example, a list of NTP servers `NTPServers` or boot order targets `BootOrder`) and you want to update or delete specific array elements via `PATCH`? DSP0266 §7.7 defines positional array-patching semantics:
-- **Empty object `{}` in an array position:** Leaves the existing element at that index **unchanged**.
-- **`null` in an array position:** **Removes (deletes)** the element at that index, shifting subsequent elements left.
-- **A new value in an array position:** Replaces the element at that index (or appends to the array if beyond the current length).
-  For example, if an array currently holds `["10.0.0.1", "10.0.0.2", "10.0.0.3"]`, sending `PATCH {"NTPServers": [{}, null, "10.0.0.9"]}` keeps `"10.0.0.1"`, removes `"10.0.0.2"`, and replaces `"10.0.0.3"` with `"10.0.0.9"`, resulting in `["10.0.0.1", "10.0.0.9"]`.
+Some properties are lists. Say a writable property is a JSON array, such as the NTP server list in `NTPServers` or the boot order in `BootOrder`. You may want to change one entry, or remove one, and leave the rest alone. DSP0266 §7.7 defines how `PATCH` handles this, and it works by position. An empty object `{}` at a position leaves the element at that index unchanged. A `null` at a position removes that element, and the elements after it shift left. A new value at a position replaces the element there, or appends it when the position lies beyond the end of the array.
 
-Furthermore, when invoking a `PATCH`, `POST`, or `DELETE` operation that requires a reboot or maintenance window, DSP0266 §7.12 allows clients to include **`"@Redfish.OperationApplyTime"`** in the request body (when advertised by `@Redfish.OperationApplyTimeSupport`), with standard values:
-- `"Immediate"`: Apply right now.
-- `"OnReset"`: Stage the operation and apply it the next time the system resets.
-- `"AtMaintenanceWindowStart"`: Apply automatically when the configured `@Redfish.MaintenanceWindow` begins.
-- `"InMaintenanceWindowOnReset"`: Apply when a reset occurs inside the configured maintenance window.
+Here is a worked example. The array holds `["10.0.0.1", "10.0.0.2", "10.0.0.3"]`, and you send `PATCH {"NTPServers": [{}, null, "10.0.0.9"]}`. The first position keeps `"10.0.0.1"`. The second position removes `"10.0.0.2"`. The third position replaces `"10.0.0.3"` with `"10.0.0.9"`. The array ends up as `["10.0.0.1", "10.0.0.9"]`.
+
+Some changes need a reboot or a maintenance window before they take effect. DSP0266 §7.12 lets you include `"@Redfish.OperationApplyTime"` in the request body. You may use it only when the service advertises it through `@Redfish.OperationApplyTimeSupport`. The spec defines four standard values:
+
+- `"Immediate"`: apply right now.
+- `"OnReset"`: stage the operation and apply it the next time the system resets.
+- `"AtMaintenanceWindowStart"`: apply automatically when the configured `@Redfish.MaintenanceWindow` begins.
+- `"InMaintenanceWindowOnReset"`: apply when a reset occurs inside the configured maintenance window.
+
+Check `@Redfish.OperationApplyTimeSupport` on the resource before you rely on any of these values.
 
 ---
 
 ## 2. Request and response headers
 
-DSP0266 Sections 7.1 and 8.1 specify the HTTP headers that govern content negotiation, authentication, caching, concurrency, and schema discovery.
+Headers tell the BMC what format you want, who you are, and which version of a resource you are editing. Get one wrong and the BMC answers with an error you did not expect. DSP0266 Sections 7.1 and 8.1 define the headers that handle content negotiation, authentication, caching, concurrency, and schema discovery.
 
 ### 2.1 Essential request headers (sent by your client)
+
+Your client sends these headers on every call. The table lists what each one does and what the BMC expects in return.
 
 | Request Header | Example Value | Client & Service Requirement (DSP0266 §7.1) |
 |---|---|---|
@@ -99,7 +110,11 @@ DSP0266 Sections 7.1 and 8.1 specify the HTTP headers that govern content negoti
 | `If-None-Match` | `W/"fbd530fd09c0"` | Conditional header for `GET`: return `200 OK` only if the `ETag` has changed; otherwise return `304 Not Modified` with an empty body. |
 | `OData-Version` / `OData-MaxVersion` | `4.0` | Declares OData v4.0 conformance. |
 
+Two of these are conditional headers. If-Match and If-None-Match ask the BMC to compare the `ETag` before it acts, so a stale copy of the resource never silently wins. Keep them in mind for the concurrency section ahead.
+
 ### 2.2 Essential response headers (returned by the BMC)
+
+The BMC sends its own headers back, and your script should read them just as carefully. A `Location` header on a `202 Accepted`, for example, gives you the Task Monitor URI to poll. The table below covers the headers you will meet most often.
 
 | Response Header | Example Value | Meaning & Client Action (DSP0266 §8.1–8.2) |
 |---|---|---|
@@ -112,15 +127,17 @@ DSP0266 Sections 7.1 and 8.1 specify the HTTP headers that govern content negoti
 | `OData-Version` | `4.0` | Required on all Redfish responses (`OData-Version: 4.0`). |
 | `Link` | `</redfish/v1/JsonSchemas/ComputerSystem.v1_17_0.json>; rel=describedby` | Points directly to the schema file that describes the returned resource (§8.2). |
 
+Of these, the ETag and Location headers will do most of the work in the sections ahead.
+
 ---
 
 ## 3. Optimistic concurrency control with `ETag` and `If-Match`
 
-Imagine two automation playbooks running at the same time against `gpu014`: Playbook A reads `/redfish/v1/Systems/DGX` to update `AssetTag`, while Playbook B updates `HostName` or boot properties on the same resource. Without concurrency control, whichever `PATCH` lands second can overwrite or conflict with the first.
+Two automation playbooks start at the same time against `gpu014`. Playbook A reads `/redfish/v1/Systems/DGX` so it can update `AssetTag`. Playbook B updates `HostName` or boot properties on that same resource. Without concurrency control, whichever `PATCH` lands second can overwrite the first, or conflict with it.
 
-DSP0266 §6.5 solves the "lost update" problem using HTTP **Entity Tags (`ETag`)**:
-- Whenever you `GET` a resource, the BMC returns an `ETag` header (and `@odata.etag` property), such as `"fbd530fd09c0"` (strong ETag) or `W/"fbd530fd09c0"` (weak ETag). The generation algorithm (hash, counter, or timestamp) is internal to the BMC; clients **shall treat the ETag string as completely opaque**.
-- When you send a `PATCH` or `PUT`, DSP0266 §6.5 states that clients **should** ("highly recommended") include `If-Match: <etag>` with the exact `ETag` string read from the prior `GET`.
+DSP0266 §6.5 solves this "lost update" problem with HTTP entity tags, called `ETag`s. An `ETag` is a version label that the BMC attaches to a resource. Each `GET` returns an `ETag` header and a matching `@odata.etag` property. A value looks like `"fbd530fd09c0"` (a strong ETag) or `W/"fbd530fd09c0"` (a weak ETag). The BMC decides how to build the value, whether by hash, counter, or timestamp. Your client should treat the string as opaque and never try to parse it.
+
+When you send a `PATCH` or a `PUT`, DSP0266 §6.5 says clients should include `If-Match` with the exact `ETag` you read earlier. The spec calls this "highly recommended." The sequence below shows how the check plays out when two playbooks collide.
 
 ```mermaid
 sequenceDiagram
@@ -141,17 +158,25 @@ sequenceDiagram
     BMC-->>A: 200 OK (Update applied safely)
 ```
 
-Memorize the four status codes and edge cases associated with ETags (DSP0266 §6.5, §7.2.1, §8.3):
-1. **`412 Precondition Failed`:** Your `If-Match` header did not match the resource's current `ETag` because someone else modified the resource after your `GET`. Re-fetch the resource via `GET`, inspect the new state, and retry with the new `ETag`.
-2. **`428 Precondition Required`:** Some resources (often `AccountService/Accounts/<id>` or `Bios/Settings` on strict BMCs) **require** `If-Match` on every `PATCH`. If you omit `If-Match`, the BMC returns `428 Precondition Required`.
-3. **`304 Not Modified` on conditional `GET`:** If you poll a resource repeatedly and pass `If-None-Match: <last_etag>`, the BMC returns `304 Not Modified` with no body whenever nothing has changed, saving network bandwidth and JSON parsing CPU across large fleets.
-4. **Why rapidly ticking properties (`DateTime`) require care (§6.5):** As DSP0266 §6.5 notes, if a `Manager` resource includes a `DateTime` clock property that increments every second and the BMC naively hashes the entire payload to compute its `ETag`, the `ETag` will change every second—causing almost every `If-Match` `PATCH` on `Manager` to fail with `412`. The specification therefore advises BMC implementers to exclude or round rapidly ticking properties when computing ETags.
+Follow the diagram from the top. Playbook B's change gives the resource a new `ETag`, so Playbook A's old `If-Match` no longer matches. Playbook A re-reads the resource, sees the new `AssetTag`, and retries with the fresh tag. Nothing was overwritten.
+
+The ETag rules show up in four cases (DSP0266 §6.5, §7.2.1, §8.3), and each one needs its own response:
+
+1. `412 Precondition Failed`. Your `If-Match` no longer matches, because someone changed the resource after your `GET`. Read the resource again, check the new state, and retry with the new `ETag`.
+
+2. `428 Precondition Required`. Some resources, often `AccountService/Accounts/<id>` or `Bios/Settings` on strict BMCs, insist on `If-Match` for every `PATCH`. Leave the header out and the BMC answers `428 Precondition Required`.
+
+3. `304 Not Modified` on a conditional `GET`. If you poll a resource and send `If-None-Match` with your last `ETag`, the BMC answers `304 Not Modified` with no body when nothing has changed. Across a large fleet, that saves network bandwidth and the CPU time spent parsing JSON.
+
+4. Clock churn. A `Manager` resource can include a `DateTime` clock that ticks every second. If the BMC hashes the whole payload, the `ETag` changes every second too. Then almost every `If-Match` `PATCH` on `Manager` fails with `412`. DSP0266 §6.5 therefore advises BMC makers to leave out or round rapidly ticking properties when they compute an `ETag`.
+
+When a `PATCH` returns `412`, treat it as a signal to re-read, not as a failure to ignore.
 
 ---
 
 ## 4. Complete guide to Redfish HTTP status codes and error bodies
 
-When a request succeeds or fails, the HTTP status code gives the high-level outcome, while the JSON response body gives the exact machine-readable reason. Table 4 summarizes every status code defined in DSP0266 §8.3 (Table 15) plus the specialized codes in §6.5 and §7.3:
+The status code tells you the outcome in one number. The JSON body tells you why. You need both to know whether a change happened and what to do next. Table 4 summarizes every status code that DSP0266 §8.3 defines, in its Table 15. It also adds the special codes from §6.5 and §7.3.
 
 | Status Code | HTTP Name | Redfish Meaning & Client Action (DSP0266 §8.3) |
 |---|---|---|
@@ -180,9 +205,11 @@ When a request succeeds or fails, the HTTP status code gives the high-level outc
 | **`503`** | `Service Unavailable` | BMC is temporarily overloaded, rebooting after `mc reset cold`, or out of session slots. Honor `Retry-After` and back off. |
 | **`507`** | `Insufficient Storage` | The response payload generated by a deep `?$expand` query exceeds the BMC's memory buffer (§7.3.2). Retry without `$expand` or with smaller `$levels`. |
 
+Two codes deserve extra care. A `200` can hide a partial failure, and a `202` means the work is still running. Section 4.2 covers the first case, and Chapter 7.5 covers the second.
+
 ### 4.1 Parsing extended error bodies (`@Message.ExtendedInfo`, DSP0266 §8.6)
 
-Whenever a BMC returns a `4xx` or `5xx` status code, DSP0266 §8.6 requires it to return a structured JSON **`error`** object. Clients must inspect `error["@Message.ExtendedInfo"]` first (falling back to top-level `error.code` and `error.message` only if `@Message.ExtendedInfo` is absent):
+When a call fails with a `4xx` or `5xx` code, the BMC has to explain why. DSP0266 §8.6 requires it to return a structured `error` object. Read `error["@Message.ExtendedInfo"]` first. Fall back to the top-level `error.code` and `error.message` only when `@Message.ExtendedInfo` is missing. A typical body looks like this:
 
 ```json
 {
@@ -204,26 +231,28 @@ Whenever a BMC returns a `4xx` or `5xx` status code, DSP0266 §8.6 requires it t
 }
 ```
 
-Every entry in `@Message.ExtendedInfo` carries:
-- **`MessageId`:** A deterministic `<RegistryPrefix>.<Major>.<Minor>.<MessageKey>` identifier (from the DMTF `Base` registry or a vendor registry, Chapter 7.6) that your code can match programmatically (`msg["MessageId"].endswith(".PropertyNotWritable")`).
-- **`Message` and `MessageArgs`:** The human-readable explanation and the substituted arguments.
-- **`RelatedProperties`:** JSON Pointer strings (`"#/SerialNumber"`) pinpointing which request property triggered the error.
-- **`Resolution`:** Actionable remediation advice from the message registry.
+Each entry in the `@Message.ExtendedInfo` array carries four fields that matter to your code:
+
+- `MessageId`: a stable identifier in the form `<RegistryPrefix>.<Major>.<Minor>.<MessageKey>`. It comes from the DMTF Base registry or a vendor registry, which Chapter 7.6 covers. Your code can match it, for example with `msg["MessageId"].endswith(".PropertyNotWritable")`.
+- `Message` and `MessageArgs`: the human-readable explanation, and the values that fill its blanks.
+- `RelatedProperties`: JSON Pointer strings such as `"#/SerialNumber"`, which point at the request property that caused the error.
+- `Resolution`: remediation advice from the message registry.
 
 ### 4.2 The `PATCH` partial-success rule (DSP0266 §7.6)
 
-One of the most important rules in DSP0266 §7.6 governs what happens when a client sends a `PATCH` containing **multiple** properties—say, `{"AssetTag": "A2", "SerialNumber": "X", "Bogus": 1}`—where `"AssetTag"` is writable, `"SerialNumber"` is read-only, and `"Bogus"` is an unknown property:
+One rule in DSP0266 §7.6 trips up many scripts. Suppose a single `PATCH` carries three properties. `AssetTag` is writable, `SerialNumber` is read-only, and `Bogus` is not a property at all. The body looks like this: `{"AssetTag": "A2", "SerialNumber": "X", "Bogus": 1}`. What the BMC does depends on how many of those properties succeed.
 
-1. **If at least ONE property in the `PATCH` succeeds:** The BMC applies the valid property change (`"AssetTag": "A2"`), returns HTTP **`200 OK`** with the updated resource representation, and attaches an **`@Message.ExtendedInfo`** array inside the `200 OK` body listing `PropertyNotWritable` for `SerialNumber` and `PropertyUnknown` for `Bogus`.
-2. **If ALL properties in the `PATCH` are read-only, unknown, or invalid (or the body is `{}`):** Nothing was updated, so the BMC returns HTTP **`400 Bad Request`** with an `error` body (`PropertyNotWritable` / `NoOperation`).
+If at least one property succeeds, the BMC applies the valid change. Here, `AssetTag` becomes `A2`. The BMC returns `200 OK` with the updated resource, and it adds an `@Message.ExtendedInfo` array inside that body. The array lists `PropertyNotWritable` for `SerialNumber` and `PropertyUnknown` for `Bogus`.
 
-**Operational rule:** In your Python and Ansible scripts, never assume `status == 200` on a `PATCH` means every property in your payload was accepted. Always check `if "@Message.ExtendedInfo" in resp_json:` on a `200 OK` response.
+If every property is read-only, unknown, or invalid, or the body is `{}`, nothing changes. The BMC returns `400 Bad Request` with an `error` body that uses `PropertyNotWritable` or `NoOperation`.
+
+Never assume that a `200 OK` on a `PATCH` means every property you sent was accepted. A check such as `if "@Message.ExtendedInfo" in resp_json:` belongs on every `200 OK` response in your Python and Ansible scripts. Read the body of each `200 OK` to a `PATCH` before you mark the change as done.
 
 ---
 
 ## 5. OData query parameters: fetching less, more, or filtered data
 
-Query parameters are appended to a `GET` URI after `?` and joined with `&` (DSP0266 §7.3). When a client supplies multiple query parameters in a single `GET` request, DSP0266 §7.3.1 mandates that the BMC evaluate them in a **strict 7-step pipeline order**:
+Polling every sensor on every node wastes time and bandwidth when you need only a few values. OData query parameters let you ask the BMC for just the part you want. You add them after `?` on a `GET` URI, and you join several with `&` (DSP0266 §7.3). When one request carries several parameters, DSP0266 §7.3.1 requires the BMC to apply them in a fixed seven-step order.
 
 ```mermaid
 flowchart LR
@@ -235,11 +264,17 @@ flowchart LR
     S6 --> S7["7. $select<br/>(Keep selected fields)"]
 ```
 
-Why does this evaluation order matter? Suppose a sensor collection has `10` sensors (`6` temperatures and `4` fans) and you request:
+The order is not a style choice. Filtering comes first, so it decides which members are left to skip and count. `$select` comes last, so it can only trim what the earlier steps produced. A worked example makes this concrete.
+
+Take a sensor collection with 10 sensors: 6 temperature sensors and 4 fans. You send this request:
+
 `GET /redfish/v1/Chassis/1/Sensors?$filter=ReadingType eq 'Temperature'&$skip=2&$top=3&$expand=.($levels=1)&$select=Members/Reading`
-Because `$filter` runs **first** (keeping the `6` temperature sensors and setting `Members@odata.count` to `6`), `$skip=2` skips the first `2` temperature sensors, `$top=3` takes the next `3` temperature sensors (leaving `1` on the next page via `Members@odata.nextLink`), `$expand` inlines only those `3` sensor objects, and `$select` trims each inlined object down to `Reading` (plus mandatory `@odata.id` and `@odata.type`).
+
+The `$filter` runs first and keeps the 6 temperature sensors. The collection's count becomes 6. The `$skip=2` step drops the first 2 of those, and `$top=3` keeps the next 3. One sensor is left over for the next page, reached through `Members@odata.nextLink`. The `$expand` step inlines only those 3 sensor objects. Finally, `$select` trims each object down to `Reading`, plus the mandatory `@odata.id` and `@odata.type`.
 
 ### 5.1 Query parameter reference (DSP0266 §7.3.1–7.3.8)
+
+Table 5.1 lists every parameter. Pay attention to the Service Support column. Parameters marked **May** support are optional, so a BMC is free to skip them. Check what your BMC supports before you build on any of them.
 
 | Query Parameter | Target Scope | Service Support | Specification Behavior & Syntax |
 |---|---|---|---|
@@ -251,19 +286,27 @@ Because `$filter` runs **first** (keeping the `6` temperature sensors and settin
 | **`$filter=<expr>`** | Collections only | **May** support | Filters collection members using comparison operators (`eq`, `ne`, `gt`, `ge`, `lt`, `le`), logical operators (`and`, `or`, `not`), and parentheses `()`, evaluated in precedence order `()` $\rightarrow$ `not` $\rightarrow$ relational $\rightarrow$ `and` $\rightarrow$ `or` (§7.3.4). Updates `Members@odata.count` to the filtered count. |
 | **`excerpt`** | Any resource | **May** support | Returns only properties marked as `excerpt` in the schema definition. |
 
+The Target Scope column tells you where each parameter applies. Collection-only parameters such as `$top` and `$skip` have no effect on a single resource, and sending them there is an error, as the next subsection shows.
+
 ### 5.2 Error handling rules for query parameters (DSP0266 §7.3.1)
 
-When writing a client that uses query parameters across different BMC models, check `ProtocolFeaturesSupported` in `/redfish/v1/` first and handle these four error codes:
-1. **Unsupported `$` parameter $\rightarrow$ `501 Not Implemented`:** If a client sends `$filter`, `$expand`, or `$select` to a BMC that does not implement that parameter, the BMC **shall** return **`501 Not Implemented`**.
-2. **Unrecognized non-`$` parameter $\rightarrow$ Ignored:** Query parameters that do **not** start with `$` (and are not `only` or `excerpt`, e.g., `?cachebust=123`) are silently ignored by the BMC.
-3. **Malformed value or wrong target $\rightarrow$ `400 Bad Request`:** Sending `$top=abc` (non-integer), sending `$top=1` or `$skip=1` to a single non-collection resource (`/redfish/v1/Systems/System_0?$top=1`), or combining `only` with another parameter (`?only&$top=1`) returns **`400 Bad Request`**.
-4. **Expanded payload exceeds BMC buffer $\rightarrow$ `507 Insufficient Storage`:** If `?$expand=*($levels=3)` produces a JSON tree larger than the BMC's response memory buffer, the BMC returns **`507 Insufficient Storage`**.
+When your client uses query parameters against different BMC models, read `ProtocolFeaturesSupported` in `/redfish/v1/` first. Then expect four kinds of response.
+
+An unsupported `$` parameter gets `501 Not Implemented`. If a client sends `$filter`, `$expand`, or `$select` to a BMC that does not implement it, the BMC **shall** return **`501 Not Implemented`**.
+
+A query parameter that does not start with `$` is silently ignored, unless it is `only` or `excerpt`. For example, `?cachebust=123` does nothing and the `GET` proceeds as normal.
+
+A malformed value or the wrong target gets `400 Bad Request`. `$top=abc` is not an integer. Sending `$top=1` or `$skip=1` to a single resource, such as `/redfish/v1/Systems/System_0?$top=1`, targets the wrong kind of resource. Combining `only` with another parameter, as in `?only&$top=1`, is also refused with `400 Bad Request`.
+
+A response that is too large for the BMC gets `507 Insufficient Storage`. If `?$expand=*($levels=3)` produces a JSON tree bigger than the BMC's response buffer, the BMC returns `507 Insufficient Storage`.
+
+Read `ProtocolFeaturesSupported` once per BMC model, and let your client handle a missing parameter gracefully.
 
 ---
 
 ## 6. Lab: Running the 36-check protocol compliance suite (`code/part07/protocol_lab.py`)
 
-To see every rule from Sections 1 through 5 tested against a live HTTP service, run `code/part07/protocol_lab.py`. It starts an in-memory instance of `redfish_mock.py` (`dgx` profile) on an ephemeral port and executes **36 self-checking protocol assertions**, each annotated with the exact DSP0266 clause number it verifies:
+Reading a rule is easy. Remembering it under pressure is harder. This lab checks the rules from Sections 1 through 5 one at a time, against a running HTTP service on your laptop. Run `code/part07/protocol_lab.py`. It starts an in-memory instance of `redfish_mock.py` (`dgx` profile) on an ephemeral port. Then it runs 36 self-checking protocol assertions, and each line names the exact DSP0266 clause it tests.
 
 ```bash
 $ python3 code/part07/protocol_lab.py
@@ -307,38 +350,44 @@ PASS  deleted token no longer works
 36 passed, 0 failed
 ```
 
+A clean run ends with `36 passed, 0 failed`. If a line fails, the clause number in brackets tells you which rule broke, so start with that section of this chapter.
+
 ### 6.1 Three real protocol bugs caught while building the lab
 
-Writing `protocol_lab.py` against `redfish_mock.py` immediately caught three subtle bugs in our own initial implementation—the exact kinds of edge cases that bite custom BMC agents and client libraries in production:
-1. **Error handler fall-through on `$top=abc`:** When `$top` contained a non-integer, our initial query helper sent a `400 Bad Request` response and returned `None`, which the caller mistook for "no query error" and proceeded to write a second `200 OK` HTTP response on the same socket.
-2. **Dropping parameterless `?only`:** Python's `urllib.parse.parse_qsl(query)` drops query keys that have no `=` sign (such as `?only` or `?excerpt`) unless you pass `keep_blank_values=True`.
-3. **Nested `$select=Status/State` projection:** A naive `$select` filter that checks only top-level dictionary keys drops `"Status"` entirely when the caller requests `"Status/State"`. Compliant `$select` handling splits on `/` and projects the requested sub-key inside the nested object while preserving `@odata.id`, `@odata.type`, and `@odata.etag`.
+The lab was not a formality. Writing `protocol_lab.py` against `redfish_mock.py` immediately exposed three bugs in our first implementation. Each one is the kind of edge case that bites custom BMC agents and client libraries in production.
+
+The first bug was an error handler that fell through. When `$top` held a non-integer, our first query helper sent a `400 Bad Request` and then returned `None`. The caller read `None` as "no query error" and carried on to write a second `200 OK` on the same socket.
+
+The second bug was a dropped query key. Python's `urllib.parse.parse_qsl(query)` discards keys that have no `=` sign, such as `?only` or `?excerpt`. Unless you pass `keep_blank_values=True`, those parameters vanish before your code sees them.
+
+The third bug was a broken nested `$select`. A naive filter checks only the top-level keys, so it drops `"Status"` when the caller asks for `"Status/State"`. A compliant version splits on `/`, keeps the requested sub-key inside the nested object, and still keeps `@odata.id`, `@odata.type`, and `@odata.etag`.
 
 ---
 
 ## 7. Production checklist for safe fleet-wide `PATCH` operations
 
-Whenever you write a tool (such as `code/part07/rf_bios.py` or `rf_harden.py`) that modifies BMC or host settings across dozens or hundreds of servers, follow this eight-step protocol sequence:
+A tool that changes BMC or host settings across dozens or hundreds of servers needs the same care on its last server as on its first. When you write one, such as `code/part07/rf_bios.py` or `rf_harden.py`, follow the eight steps below in order.
 
-1. **Authenticate with a session (`POST /redfish/v1/SessionService/Sessions`):** Capture `X-Auth-Token` and `Location`, and register a `try ... finally` block to `DELETE` the session URI (`204 No Content`) when finished.
-2. **`GET` the target resource and save its `ETag`:** Read both the current property values and the `ETag` response header (or `@odata.etag`).
-3. **Check idempotency before writing:** Compare the current values against your desired state. If they already match, skip the `PATCH` and report `unchanged`.
-4. **Send `PATCH` with `If-Match: <etag>`:** Include only the properties you intend to modify. If the service returns `412 Precondition Failed`, re-`GET` the resource and abort or retry according to your conflict policy; if it returns `428 Precondition Required`, ensure `If-Match` is populated.
-5. **Inspect `@Message.ExtendedInfo` even on `200 OK`:** Check whether any property in your `PATCH` was rejected as `PropertyNotWritable`, `PropertyUnknown`, or `PropertyValueNotInList` inside a partial-success `200 OK` response.
-6. **Handle `202 Accepted` asynchronous tasks:** If the modification returns `202 Accepted`, poll the `Location` Task Monitor URI (honoring `Retry-After`) until `TaskState` reaches `Completed` with `TaskStatus: "OK"` (Chapter 7.5).
-7. **Re-`GET` to verify active vs pending state:** Confirm either that the active resource updated immediately or that `@Redfish.Settings` / `/Bios/Settings` staged the change for the next system reset.
-8. **Log an auditable record:** Record the node name, BMC IP, resource URI, old value, new value, HTTP status, and new `ETag`.
+Steps 1 and 2 come first. Open a session with `POST /redfish/v1/SessionService/Sessions`, and keep the `X-Auth-Token` and `Location` that come back. Wrap the work in a `try ... finally` block so that the session URI is deleted (`204 No Content`) when you finish, even if something fails. Then `GET` the target resource and save both its current property values and its `ETag`, taken from the header or from `@odata.etag`.
+
+Steps 3 and 4 come next. Compare before you write. If the current values already match your desired state, skip the `PATCH` and report `unchanged`. Otherwise, send the `PATCH` with `If-Match` set to the saved tag, and include only the properties you intend to modify. If the service answers `412 Precondition Failed`, re-`GET` the resource, then abort or retry according to your conflict policy. If it answers `428 Precondition Required`, make sure `If-Match` is populated.
+
+Steps 5 and 6 deal with the response. Read it with care, even when it is a `200 OK`. The body may carry `@Message.ExtendedInfo` entries that name properties the BMC rejected as `PropertyNotWritable`, `PropertyUnknown`, or `PropertyValueNotInList`. If the change returns `202 Accepted`, poll the `Location` Task Monitor URI and honor `Retry-After` between checks. Keep polling until `TaskState` reaches `Completed` with `TaskStatus: "OK"`. Chapter 7.5 covers task polling in detail.
+
+Steps 7 and 8 confirm the state and keep a record. Re-`GET` the resource. Either the active value changed right away, or `@Redfish.Settings` and `/Bios/Settings` hold the staged change for the next system reset. Write an auditable log entry with the node name, BMC IP, resource URI, old value, new value, HTTP status, and new `ETag`. Make that log the last thing each run writes, so every change leaves a trace you can audit.
 
 ---
 
 ## Exercises
 
-1. **Tracing all 36 protocol assertions (`code/part07/protocol_lab.py`):** Run `python3 code/part07/protocol_lab.py` and inspect `code/part07/protocol_lab.py` lines 50–135. Group the 36 checks into five categories: Unauthenticated discovery, Conditional `GET` & `ETag` concurrency, Query parameters, Partial vs failed `PATCH`, and Session lifecycle.
-2. **Reproducing a `412 Precondition Failed` collision with `curl`:** Start `python3 code/part07/redfish_mock.py --profile dgx --port 18441`. Run `curl -i -u admin:adminpass http://127.0.0.1:18441/redfish/v1/Systems/System_0` to record the initial `ETag`. Then run two `curl -i -X PATCH` commands using that **same** initial `If-Match` header: verify that the first returns `200 OK` with a new `ETag` and the second returns `412 Precondition Failed`.
-3. **Testing `PATCH` partial success vs total failure:** Against `/redfish/v1/Systems/System_0`, send (a) `PATCH {"AssetTag": "NODE-01", "SerialNumber": "FAKE"}` and (b) `PATCH {"SerialNumber": "FAKE"}`. Explain why (a) returns `200 OK` while (b) returns `400 Bad Request`, and inspect the `@Message.ExtendedInfo` array in both responses.
-4. **Reducing sensor polling from 5 HTTP requests to 1 with `$expand` and `$select`:** Against `/redfish/v1/Chassis/Chassis_0/Sensors` on the mock server, construct a single `GET` URL using `$expand=.($levels=1)` and `$select=Members` that fetches all `4` sensor readings inline in one HTTP request. How many HTTP round-trips does this save across a 256-node cluster polled every 30 seconds?
-5. **Evaluating query pipeline order (`$filter` $\rightarrow$ `$skip` $\rightarrow$ `$top` $\rightarrow$ `$expand` $\rightarrow$ `$select`):** Suppose a collection has `20` Drives (`8` `SSD` drives with `Status.Health == "OK"`, `2` `SSD` drives with `Status.Health == "Warning"`, and `10` `HDD` drives). Trace each stage of the 7-step query pipeline for `GET /Drives?$filter=MediaType eq 'SSD'&$skip=3&$top=4&$select=Id,Status/Health`: what is `Members@odata.count`, how many items are in `Members`, and is `Members@odata.nextLink` present?
-6. **Adding a 37th check to `protocol_lab.py`:** Inspect how `protocol_lab.py` line 116 tests `PUT` returning `405 Method Not Allowed`. Verify whether the `405` response also includes the `Allow` header (`"Allow" in h`) and test what status code is returned when sending `GET` with an unknown non-`$` query parameter (`?foo=bar`, which DSP0266 §7.3.1 says must be ignored and return `200 OK`).
+Work through these with the lab open in another window. Each one turns a rule from this chapter into something you can see on your own screen.
+
+1. Trace all 36 protocol assertions. Run `python3 code/part07/protocol_lab.py`, then read lines 50–135 of `code/part07/protocol_lab.py`. Sort the 36 checks into five groups: unauthenticated discovery, conditional `GET` and `ETag` concurrency, query parameters, partial versus failed `PATCH`, and session lifecycle.
+2. Reproduce a `412 Precondition Failed` collision with `curl`. Start `python3 code/part07/redfish_mock.py --profile dgx --port 18441`. Run `curl -i -u admin:adminpass http://127.0.0.1:18441/redfish/v1/Systems/System_0` and note the initial `ETag`. Then send two `curl -i -X PATCH` commands that both use that same initial `If-Match` header. The first should return `200 OK` with a new `ETag`, and the second should return `412 Precondition Failed`.
+3. Compare partial success with total failure. Against `/redfish/v1/Systems/System_0`, send `PATCH {"AssetTag": "NODE-01", "SerialNumber": "FAKE"}` and then `PATCH {"SerialNumber": "FAKE"}`. Explain why the first returns `200 OK` and the second returns `400 Bad Request`. Read the `@Message.ExtendedInfo` array in both responses.
+4. Cut sensor polling from 5 HTTP requests to 1. Against `/redfish/v1/Chassis/Chassis_0/Sensors` on the mock server, build one `GET` URL with `$expand=.($levels=1)` and `$select=Members`. It should fetch all `4` sensor readings inline in a single request. How many HTTP round-trips does this save across a 256-node cluster polled every 30 seconds?
+5. Trace a query through the 7-step pipeline. Suppose a collection has `20` Drives: `8` SSD drives with `Status.Health == "OK"`, `2` SSD drives with `Status.Health == "Warning"`, and `10` HDD drives. Walk each stage for `GET /Drives?$filter=MediaType eq 'SSD'&$skip=3&$top=4&$select=Id,Status/Health`. What is `Members@odata.count`, how many items are in `Members`, and is `Members@odata.nextLink` present?
+6. Add a 37th check to `protocol_lab.py`. Look at how line 116 of `protocol_lab.py` tests a `PUT` that returns `405 Method Not Allowed`. Check whether that `405` response also includes the `Allow` header (`"Allow" in h`). Then test the status code for a `GET` with an unknown non-`$` query parameter, `?foo=bar`. DSP0266 §7.3.1 says such a parameter must be ignored and return `200 OK`, so confirm the BMC does exactly that.
 
 ---
 
@@ -347,131 +396,131 @@ Whenever you write a tool (such as `code/part07/rf_bios.py` or `rf_harden.py`) t
 <details>
 <summary>1. Which HTTP method is used to invoke a Redfish Action (such as resetting a server), and why is PATCH never used for Actions?</summary>
 
-**`POST`** is used to invoke an Action by posting to the action's `target` URI (`<ResourceUri>/Actions/<QualifiedActionName>`). `PATCH` is reserved for modifying resource data properties; an Action is a procedural operation that may have side effects beyond changing a single property and is **not idempotent**.
+Use **`POST`**. You send it to the Action's `target` URI, which is `<ResourceUri>/Actions/<QualifiedActionName>`. `PATCH` is for changing data properties. An Action is an operation that can do more than change one property, and it is **not idempotent**, so `PATCH` is the wrong tool.
 </details>
 
 <details>
 <summary>2. Which HTTP method modifies a subset of writable properties on an existing Redfish resource while leaving unmentioned properties unchanged?</summary>
 
-**`PATCH`** (DSP0266 §7.6). Only the properties included in the `PATCH` JSON request body are modified.
+**`PATCH`**, as DSP0266 §7.6 defines. Only the properties in the request body change. Anything you leave out stays as it was.
 </details>
 
 <details>
 <summary>3. What HTTP status code and response header must a Redfish service return when a client sends an HTTP method that the target URI does not support?</summary>
 
-HTTP **`405 Method Not Allowed`** (or `501 Not Implemented` for unrecognized verbs), accompanied by an **`Allow`** response header listing the HTTP methods supported by that URI (for example, `Allow: GET, HEAD`).
+The service returns **`405 Method Not Allowed`**, or **`501 Not Implemented`** for verbs it does not recognize. It also sends an **`Allow`** header that lists the methods the URI supports, for example `Allow: GET, HEAD`.
 </details>
 
 <details>
 <summary>4. How does the HEAD method behave in Redfish, and what happens if you include query parameters on a HEAD request (DSP0266 §7.4)?</summary>
 
-`HEAD` is an idempotent check that returns the exact response headers of a `GET` request with **no response body**, allowing clients to verify hyperlink validity or check `ETag` values cheaply. Under DSP0266 §7.4, services **shall reject `HEAD` requests containing query parameters** and should return **`400 Bad Request`**.
+`HEAD` returns the same headers a `GET` would, but with no response body. Clients use it to check that a link works or to read an `ETag` cheaply. DSP0266 §7.4 says services shall reject `HEAD` requests that carry query parameters, and should answer **`400 Bad Request`**.
 </details>
 
 <details>
 <summary>5. What is an ETag in Redfish, and why must clients treat its value as opaque (DSP0266 §6.5)?</summary>
 
-An `ETag` (Entity Tag) is a version identifier attached to a resource representation in the `ETag` header and `@odata.etag` property that changes whenever the resource changes. Because each BMC vendor chooses its own internal algorithm (hash, counter, or timestamp) and strong (`"..."`) or weak (`W/"..."`) prefix, clients must treat it as an opaque string and echo it back unchanged.
+An `ETag` is a version identifier. It appears in the ETag header and in `@odata.etag`, and it changes whenever the resource changes. Each vendor picks its own method, whether hash, counter, or timestamp, and its own strong or weak prefix. Your code must treat the value as an opaque string and send it back unchanged.
 </details>
 
 <details>
 <summary>6. How do If-Match and If-None-Match use ETags on PATCH versus GET requests?</summary>
 
-- **`If-Match` on `PATCH`/`PUT`/`DELETE`:** Instructs the BMC to apply the modification **only if** the resource's current `ETag` still matches the value read earlier (preventing lost updates).
-- **`If-None-Match` on `GET`:** Instructs the BMC to return the full resource (`200 OK`) **only if** its `ETag` differs from the client's cached `ETag`; if unchanged, the BMC returns **`304 Not Modified`** with no body.
+- **`If-Match` on `PATCH`/`PUT`/`DELETE`:** The BMC applies the change only if the resource's current `ETag` still matches the value you read earlier. That prevents lost updates.
+- **`If-None-Match` on `GET`:** The BMC returns the full resource with `200 OK` only if its `ETag` differs from your cached one. If nothing changed, it returns **`304 Not Modified`** with no body.
 </details>
 
 <details>
 <summary>7. What is the difference between HTTP 412 Precondition Failed and HTTP 428 Precondition Required?</summary>
 
-- **`412 Precondition Failed`:** You supplied an `If-Match` header, but its `ETag` value no longer matches the resource on the BMC (another client modified the resource since your last `GET`).
-- **`428 Precondition Required`:** The BMC requires an `If-Match` header on modification requests to that resource, and your request omitted `If-Match` entirely.
+- **`412 Precondition Failed`:** You sent an `If-Match` header, but its `ETag` no longer matches the resource, because another client changed it after your last `GET`.
+- **`428 Precondition Required`:** The BMC insists on an `If-Match` header for changes to that resource, and your request left it out.
 </details>
 
 <details>
 <summary>8. What is the exact difference between HTTP 401 Unauthorized and HTTP 403 Forbidden in Redfish?</summary>
 
-- **`401 Unauthorized`:** The BMC does **not know who you are** (credentials or `X-Auth-Token` are missing, wrong, or expired).
-- **`403 Forbidden`:** The BMC **authenticated you successfully**, but your account's assigned role (such as `ReadOnly` or `Operator`) lacks the privilege required to perform the requested operation.
+- **`401 Unauthorized`:** The BMC does not know who you are. Your credentials or `X-Auth-Token` are missing, wrong, or expired.
+- **`403 Forbidden`:** The BMC authenticated you, but your role, such as ReadOnly or Operator, lacks the privilege for this operation.
 </details>
 
 <details>
 <summary>9. What is the difference between HTTP 200 OK, 201 Created, 202 Accepted, and 204 No Content after a write or action request?</summary>
 
-- **`200 OK`:** Operation completed synchronously; the response body holds the resulting resource or action response.
-- **`201 Created`:** A new resource was synchronously created; its URI is in the `Location` header.
-- **`202 Accepted`:** Operation was accepted for **asynchronous background execution** and is **not finished yet**; poll the Task Monitor URI in the `Location` header.
-- **`204 No Content`:** Operation completed synchronously and intentionally returned an empty body.
+- **`200 OK`:** The operation finished synchronously, and the response body holds the resulting resource or action response.
+- **`201 Created`:** A new resource was created synchronously, and its URI is in the Location header.
+- **`202 Accepted`:** The operation was accepted for asynchronous background work and is **not finished yet**. Poll the Task Monitor URI in the Location header.
+- **`204 No Content`:** The operation finished synchronously and intentionally returned an empty body.
 </details>
 
 <details>
 <summary>10. Where should a client look first inside a 4xx or 5xx Redfish JSON error response (DSP0266 §8.6)?</summary>
 
-Look first in **`error["@Message.ExtendedInfo"]`**, which contains an array of structured message objects (`MessageId`, `Message`, `RelatedProperties`, `Resolution`). Fall back to top-level `error["code"]` and `error["message"]` only if `@Message.ExtendedInfo` is absent.
+Look first at **`error["@Message.ExtendedInfo"]`**. It holds an array of message objects with `MessageId`, `Message`, `RelatedProperties`, and `Resolution`. Use the top-level `error["code"]` and `error["message"]` only when `@Message.ExtendedInfo` is missing.
 </details>
 
 <details>
 <summary>11. What HTTP status code and payload does a BMC return when you PATCH three properties on a resource, one succeeds, and two are read-only (DSP0266 §7.6)?</summary>
 
-It returns HTTP **`200 OK`** with the updated resource JSON reflecting the one successful property change, **plus an `@Message.ExtendedInfo` array** inside the `200 OK` body detailing why the other two properties were rejected (`PropertyNotWritable`).
+The BMC returns **`200 OK`** with the updated resource, which reflects the one property that changed. The body also includes an **`@Message.ExtendedInfo`** array that explains why the other two were rejected, each as `PropertyNotWritable`.
 </details>
 
 <details>
 <summary>12. Under what two conditions does a PATCH request on an updatable resource return HTTP 400 Bad Request instead of 200 OK?</summary>
 
-1. When **all** properties in the `PATCH` request are read-only, unknown, invalid, or only `@odata.*` annotations.
-2. When the `PATCH` body is an empty JSON object `{}` (returning `Base.x.y.NoOperation`).
+First, every property in the request is read-only, unknown, invalid, or only an `@odata.*` annotation. Second, the body is an empty JSON object, `{}`, which returns `Base.x.y.NoOperation`.
 </details>
 
 <details>
 <summary>13. How do you leave an element unchanged versus delete an element when sending a PATCH to an array property (DSP0266 §7.7)?</summary>
 
-Place an empty object **`{}`** at an array index to leave the existing element at that position unchanged, and place **`null`** at an array index to delete that element from the array.
+Put an empty object **`{}`** at an index to leave that element unchanged. Put **`null`** at an index to delete that element.
 </details>
 
 <details>
 <summary>14. In what exact 7-step order does a Redfish service evaluate query parameters on a GET request (DSP0266 §7.3.1)?</summary>
 
-**1. `$filter` $\rightarrow$ 2. `$skip` $\rightarrow$ 3. `$top` $\rightarrow$ 4. Server-side pagination (`nextLink`) $\rightarrow$ 5. `$expand` $\rightarrow$ 6. `excerpt` $\rightarrow$ 7. `$select`**.
+**1. `$filter`, 2. `$skip`, 3. `$top`, 4. server-side pagination (nextLink), 5. `$expand`, 6. `excerpt`, 7. `$select`.**
 </details>
 
 <details>
 <summary>15. How does the `only` query parameter work on a collection, and what happens if you combine `?only` with `$top=1`?</summary>
 
-If the target collection contains **exactly `1` member**, `?only` returns that single member resource directly instead of the collection wrapper (if the collection has `0` or `>= 2` members, it returns the collection). Combining `only` with any other query parameter is forbidden by DSP0266 §7.3.1 and returns **`400 Bad Request`**.
+`only` returns the single member itself when the collection holds exactly one member. With `0` members or `>= 2` members, you get the collection back as usual. You cannot combine `only` with any other parameter. `?only&$top=1` returns **`400 Bad Request`**, as DSP0266 §7.3.1 requires.
 </details>
 
 <details>
 <summary>16. What HTTP status code must a BMC return when a client sends a standard `$` query parameter (like `$filter`) that the BMC does not support, versus an unknown parameter that does not start with `$`?</summary>
 
-An unsupported `$` query parameter **shall** return **`501 Not Implemented`**, whereas an unrecognized query parameter that does **not** start with `$` is silently **ignored** and the `GET` proceeds normally.
+An unsupported `$` parameter gets **`501 Not Implemented`**. An unknown parameter that does not start with `$` is silently **ignored**, and the `GET` continues normally.
 </details>
 
 <details>
 <summary>17. Where does a BMC advertise which OData query parameters (`$expand`, `$filter`, `$select`, `only`, `excerpt`) it supports?</summary>
 
-Inside the **`ProtocolFeaturesSupported`** object of the Service Root resource at **`/redfish/v1/`**.
+In the **`ProtocolFeaturesSupported`** object, which sits in the Service Root at **`/redfish/v1/`**.
 </details>
 
 <details>
 <summary>18. What do the three `$expand` specifiers `.`, `~`, and `*` mean, and what status code is returned if an expanded response is too large for the BMC's memory?</summary>
 
-- **`.`**: Expands subordinate hyperlinks outside the `Links` property.
-- **`~`**: Expands only hyperlinks inside the `Links` property.
-- **`*`**: Expands all hyperlinks (both subordinate and `Links`).
-If the resulting JSON payload exceeds the BMC's buffer capacity, the BMC returns **`507 Insufficient Storage`**.
+- **`.`**: expands subordinate hyperlinks that sit outside the `Links` property.
+- **`~`**: expands only the hyperlinks inside the `Links` property.
+- **`*`**: expands all hyperlinks, both subordinate ones and those in `Links`.
+
+If the resulting JSON is too big for the BMC's buffer, the BMC returns **`507 Insufficient Storage`**.
 </details>
 
 <details>
 <summary>19. Which properties are always preserved in a GET response even when they are not listed in `$select=...` (DSP0266 §7.3.3)?</summary>
 
-**`@odata.id`** and **`@odata.type`** (plus `@odata.context` and `@odata.etag` if supported by the resource) are always included in the response regardless of what properties were requested in `$select`.
+**`@odata.id`** and **`@odata.type`** always come back, even when `$select` does not ask for them. `@odata.context` and `@odata.etag` come back too, when the resource supports them.
 </details>
 
 <details>
 <summary>20. What are the four standard values of `@Redfish.OperationApplyTime` when staging a modification or action (DSP0266 §7.12)?</summary>
 
-**`"Immediate"`**, **`"OnReset"`**, **`"AtMaintenanceWindowStart"`**, and **`"InMaintenanceWindowOnReset"`**.
+The four standard values are **`"Immediate"`**, **`"OnReset"`**, **`"AtMaintenanceWindowStart"`**, and **`"InMaintenanceWindowOnReset"`**.
 </details>
 
 ---

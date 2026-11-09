@@ -22,41 +22,41 @@ lab_venue: "GCP / GKE"
 
 ## Why this matters for AI infrastructure
 
-Every modern GPU server—from an 8-GPU NVIDIA DGX H100 or HGX node to a 72-GPU rack-scale GB200 NVL72—exposes its out-of-band hardware state through a **DMTF Redfish** service running on the BMC. Platform teams use Redfish to inventory serial numbers and GPU VBIOS versions, monitor inlet and SXM thermal sensors, stage BIOS tuning attributes, flash firmware bundles, and reset frozen nodes without touching the host OS.
+Picture a GPU server whose host operating system has frozen. You need to reset it, and you need to read its hardware state without logging in to that OS. Every modern GPU server gives you that path. Whether it is an 8-GPU NVIDIA DGX H100 or HGX node or a 72-GPU rack-scale GB200 NVL72, the server exposes its out-of-band hardware state through a **DMTF Redfish** service running on the BMC. Platform teams use that service every day. They inventory serial numbers and GPU VBIOS versions, watch inlet and SXM thermal sensors, stage BIOS tuning attributes, flash firmware bundles, and reset frozen nodes without touching the host OS.
 
-If you treat Redfish as a pile of memorized `curl` URLs, your scripts will break the first time you move from one vendor's BMC to another—or even after a BMC firmware upgrade on the same server. If instead you understand how the **Redfish data model is shaped**—how the single Service Root (`/redfish/v1/`) links to collections and resources, how `@odata` and `@Redfish` annotations work, how active resources pair with pending `/Settings` resources, and how a hypermedia crawler navigates the graph without hard-coding paths—you can automate any vendor's server without reading a vendor-specific manual first. This chapter teaches that shape and proves it against two different server profiles in `code/part07/`.
+Now suppose your automation is a pile of memorized `curl` URLs. It will break the first time you move from one vendor's BMC to another. It can also break after a BMC firmware upgrade on the very same server. The fix is to learn the shape of the data model instead. You need to see how the single Service Root (`/redfish/v1/`) links to collections and resources, how `@odata` and `@Redfish` annotations work, how active resources pair with pending `/Settings` resources, and how a hypermedia crawler finds its way through the graph without hard-coded paths. Once you have that shape, you can automate any vendor's server without first reading a vendor-specific manual. This chapter teaches that shape and tests it against two different server profiles in `code/part07/`.
 
 ## Prerequisites and outcomes
 
-You need Chapter 7.1 (BMCs and out-of-band networks) and a basic grasp of HTTP requests and JSON. After completing this chapter, you will be able to:
+Before you start, make sure you have read Chapter 7.1 on BMCs and out-of-band networks. You should also be comfortable with basic HTTP requests and JSON. By the end of the chapter, you will be able to do the following.
 
-- Explain REST, JSON, OData conventions, and the Redfish design tenets in **DSP0266** (§5.1–5.4), including why Redfish separates the protocol from the data model.
-- List the required well-known Redfish URIs (`/redfish`, `/redfish/v1/`, `/redfish/v1/odata`, `/redfish/v1/$metadata`) and distinguish which endpoints allow unauthenticated `GET` requests (DSP0266 §6.7, §13.3.2).
-- Inspect any Redfish resource and interpret its required properties (`@odata.id`, `@odata.type`, `Id`, `Name`), common properties (`Status`, `Links`, `Actions`, `Oem`), PascalCase naming and unit suffixes (`MHz`, `Mbps`, `MB`, `Count`), and schema versioning rules.
-- Distinguish empty strings (`""`) from `null`, parse ISO 8601 timestamps and durations (`PT10S`, `PT1H30M`), and read payload annotations (`@Redfish.AllowableValues`, `@Redfish.AllowableNumbers`, `@Redfish.Settings`, `@Message.ExtendedInfo`).
-- Traverse resource collections using `Members`, `Members@odata.count`, and `Members@odata.nextLink` (`$skiptoken`) without losing pages.
-- Run `redfish_mock.py`, `redfish_crawl.py`, `rf_inventory.py`, and `crawl_concepts_lab.py` across heterogeneous server profiles (`dgx` with `168` URIs vs `generic` with `150` URIs) using pure link discovery and loop protection.
+- You can explain REST, JSON, OData conventions, and the Redfish design tenets in **DSP0266** (§5.1–5.4), including why Redfish keeps the protocol separate from the data model.
+- You can list the required well-known Redfish URIs (`/redfish`, `/redfish/v1/`, `/redfish/v1/odata`, `/redfish/v1/$metadata`) and tell which of them allow an unauthenticated `GET` (DSP0266 §6.7, §13.3.2).
+- You can inspect any Redfish resource and read its required properties (`@odata.id`, `@odata.type`, `Id`, `Name`) and its common ones (`Status`, `Links`, `Actions`, `Oem`). You will also understand PascalCase naming, unit suffixes (`MHz`, `Mbps`, `MB`, `Count`), and schema versioning.
+- You can tell an empty string (`""`) from `null`, parse ISO 8601 timestamps and durations (`PT10S`, `PT1H30M`), and read payload annotations (`@Redfish.AllowableValues`, `@Redfish.AllowableNumbers`, `@Redfish.Settings`, `@Message.ExtendedInfo`).
+- You can walk a resource collection with `Members`, `Members@odata.count`, and `Members@odata.nextLink` (`$skiptoken`) without losing any pages.
+- You can run `redfish_mock.py`, `redfish_crawl.py`, `rf_inventory.py`, and `crawl_concepts_lab.py` against two server profiles, `dgx` with `168` URIs and `generic` with `150` URIs. The crawl relies only on link discovery and loop protection.
 
 ---
 
 ## 1. Foundational building blocks: HTTP, REST, JSON, and OData
 
-Before diving into Redfish clauses, let us anchor four core terms from the DMTF Redfish Specification (**DSP0266 v1.21.0**, §5.1–5.4):
+Every Redfish clause assumes four terms from the DMTF Redfish Specification (**DSP0266 v1.21.0**, §5.1–5.4). You will meet them in every request and every response, so it pays to pin them down first.
 
-1. **HTTP (Hypertext Transfer Protocol):** The request/response messaging protocol of the web over TCP/IP (and TLS). A client sends a request containing an HTTP verb (`GET`, `POST`, `PATCH`, `PUT`, `DELETE`), a target URI path (such as `/redfish/v1/Systems`), headers, and an optional body; the BMC returns a numeric **HTTP status code** (`200 OK`, `201 Created`, `202 Accepted`, `401 Unauthorized`, `404 Not Found`) along with response headers and a payload.
-2. **REST (Representational State Transfer):** An architectural style where every manageable entity on the BMC—a computer system, a fan sensor, a BIOS configuration, an event log entry—is modeled as a **resource** with its own URI address, manipulated through standard HTTP verbs. As DSP0266 §5.4.1 notes, Redfish chose REST because it requires fewer protocol layers than legacy standards like IPMI or WS-Management, is ubiquitous across programming languages, and leverages existing HTTP/TLS libraries and CLI tools.
-3. **JSON (JavaScript Object Notation):** A human-readable, text-based data format built from key-value objects (`{"PowerState": "On"}`), ordered arrays (`[1, 2, 3]`), strings, numbers, booleans (`true`/`false`), and `null`. Unlike IPMI's packed binary Sensor Data Records, a JSON response from Redfish can be read directly by an engineer and parsed in one line of Python, Go, or `jq`.
-4. **OData (Open Data Protocol) conventions:** While thousands of web services call themselves "RESTful," most invent incompatible ways to name links, declare types, paginate lists, and filter results. To guarantee interoperability across tools, Redfish adopts standardized **OData v4 JSON conventions** (DSP0266 §5.4.6) for metadata properties starting with `@odata.` (such as `@odata.id`, `@odata.type`, `@odata.count`, and `@odata.nextLink`) and query parameters starting with `$` (`$select`, `$expand`, `$filter`, `$top`, `$skip`, covered in Chapter 7.3).
+1. **HTTP (Hypertext Transfer Protocol):** HTTP is the request and response protocol of the web, carried over TCP/IP and TLS. Your client sends a verb (`GET`, `POST`, `PATCH`, `PUT`, `DELETE`), a target path such as `/redfish/v1/Systems`, some headers, and an optional body. The BMC answers with a numeric status code, such as `200 OK`, `201 Created`, `202 Accepted`, `401 Unauthorized`, or `404 Not Found`, followed by its own headers and payload.
+2. **REST (Representational State Transfer):** REST is an architectural style. Every manageable entity on the BMC, whether a computer system, a fan sensor, a BIOS configuration, or an event log entry, is a **resource** with its own URI. You change it with the standard HTTP verbs. DSP0266 §5.4.1 explains why Redfish chose it: REST needs fewer protocol layers than legacy standards such as IPMI or WS-Management, almost every language supports it, and existing HTTP and TLS libraries and CLI tools already work with it.
+3. **JSON (JavaScript Object Notation):** JSON is a text format built from key-value objects, ordered arrays, strings, numbers, booleans (`true`/`false`), and `null`. Legacy IPMI returns packed binary Sensor Data Records. A Redfish response is different. An engineer can read it directly, and you can parse it in one line of Python, Go, or `jq`.
+4. **OData (Open Data Protocol) conventions:** Many web services call themselves "RESTful," yet each one invents its own way to name links, declare types, paginate lists, and filter results. That makes tools hard to share. Redfish adopts the standard OData v4 JSON conventions (DSP0266 §5.4.6). Metadata properties start with `@odata.`, such as `@odata.id`, `@odata.type`, `@odata.count`, and `@odata.nextLink`. Query parameters start with `$`, such as `$select`, `$expand`, `$filter`, `$top`, and `$skip`. Chapter 7.3 covers those in detail.
 
-A key design tenet in DSP0266 §5.2 is the **strict separation of the protocol from the data model**. The HTTP/TLS transport rules (Section 6 of the spec) and the hardware resource schemas (Section 9 and the DMTF Resource and Schema Guide, **DSP2046**) evolve independently, with explicit versioning rules for each.
+The design rule behind all of this is the separation of protocol from data model (DSP0266 §5.2). The transport rules in Section 6 of the spec and the hardware schemas in Section 9 and the DMTF Resource and Schema Guide (**DSP2046**) evolve independently. Each has its own versioning rules, so a change to one does not force a change to the other. When a Redfish script misbehaves, first decide whether the problem is in the transport or in the data model.
 
 ---
 
 ## 2. The Service Root (`/redfish/v1/`) and well-known URIs
 
-In IPMI, you issue action commands to a flat controller address. In Redfish, the entire BMC is organized as a **hypermedia graph** anchored at one well-known entry point called the **Service Root**: **`/redfish/v1/`**.
+In IPMI, you send action commands to a flat controller address. Redfish works differently, and the difference matters the first time you script it. The whole BMC is organized as a **hypermedia graph**, with one well-known entry point called the **Service Root**: **`/redfish/v1/`**. Think of it as the home page of a website. Every subsystem is one or more clicks away.
 
-From `/redfish/v1/`, every subsystem on the server is reachable by following `@odata.id` hyperlinks embedded in the JSON responses—just like clicking links from a website's home page.
+From `/redfish/v1/`, you reach each subsystem by following the `@odata.id` links in the JSON responses. Your script never needs to know a path in advance. It reads a link, fetches that URI, and reads the next link.
 
 ```mermaid
 flowchart TD
@@ -80,13 +80,11 @@ flowchart TD
     C1 -. "Links.ComputerSystems" .-> S1
 ```
 
-Notice the two arrow styles in Figure 1:
-- **Solid arrows** represent **subordinate (parent-to-child) containment** in the URI hierarchy (for example, `Chassis_0` contains `Sensors`).
-- **Dashed arrows** represent **associated cross-links** under the `Links` property (`System_0` links to `Chassis_0`, and `Chassis_0` links back to `System_0`). Because cross-links can form cycles, DSP0266 §5.3 explicitly warns that the Redfish data model is a **directed graph, not a strict tree**. Any client or crawler that walks `@odata.id` references must maintain a `visited` set so it never enters an infinite loop.
+Read Figure 1 with two arrow styles in mind. Solid arrows show **subordinate containment**, the parent-to-child layout of the URI tree. For example, `Chassis_0` contains `Sensors`. Dashed arrows show **associated cross-links** under the `Links` property. `System_0` links to `Chassis_0`, and `Chassis_0` links back to `System_0`. Those back-links create cycles, so DSP0266 §5.3 calls the Redfish data model a **directed graph, not a strict tree**. Any crawler that follows `@odata.id` references must keep a `visited` set, or it will loop forever.
 
 ### 2.1 The three primary hardware collections under `/redfish/v1/`
 
-As detailed in the *Redfish Resource and Schema Guide* (DSP2046, `ServiceRoot`), the Service Root links to service singletons (`SessionService`, `AccountService`, `UpdateService`, `TaskService`, `EventService`, `TelemetryService`, `Registries`, `JsonSchemas`) and three foundational hardware collections:
+The *Redfish Resource and Schema Guide* (DSP2046, `ServiceRoot`) describes what hangs off the root. It links to service singletons such as `SessionService`, `AccountService`, `UpdateService`, `TaskService`, `EventService`, `TelemetryService`, `Registries`, and `JsonSchemas`. It also links to three hardware collections, which you will use in almost every script.
 
 | Root Collection | Schema Type | What It Models | Typical Subordinate Resources |
 |---|---|---|---|
@@ -94,11 +92,11 @@ As detailed in the *Redfish Resource and Schema Guide* (DSP2046, `ServiceRoot`),
 | **`Chassis`** | `ChassisCollection` | The **physical sheet-metal enclosure(s)**, trays, and power/cooling envelope | `Sensors`, `ThermalSubsystem` (fans, temps), `PowerSubsystem` (PSUs), `PCIeDevices`, `NetworkAdapters`, `Drives` |
 | **`Managers`** | `ManagerCollection` | The **management controller(s)** (BMCs, satellite HMCs, enclosure managers) | `NetworkProtocol` (HTTPS, IPMI, SSH, SSDP), `EthernetInterfaces` (OOB NIC), `LogServices` (`SEL`), `SerialInterfaces`, `VirtualMedia` |
 
-A standard 1U server usually has `1` member in `Systems`, `1` in `Chassis`, and `1` in `Managers`. An 8-GPU NVIDIA DGX H100/H200 or HGX node frequently exposes **multiple** members in `Systems` and `Chassis`—for example, `Systems/DGX` (or `System_0`) for the x86 host system and `Systems/HGX_Baseboard_0` for the 8-GPU baseboard managed by its satellite controller (Chapter 7.7 and 7.13).
+A standard 1U server usually has one member in each collection: one in `Systems`, one in `Chassis`, and one in `Managers`. A DGX H100 or H200 or an HGX node is different. It often exposes several members in `Systems` and `Chassis`. Take `Systems/DGX` (or `System_0`) for the x86 host, and `Systems/HGX_Baseboard_0` for the 8-GPU baseboard. A satellite controller manages that baseboard. See Chapters 7.7 and 7.13 for that setup.
 
 ### 2.2 Well-known Redfish URIs and unauthenticated endpoints (DSP0266 §6.7 & §13.3.2)
 
-While you must never hard-code deep paths like `/redfish/v1/Systems/1`, DSP0266 §6.7 (Table 4) defines five **fixed, well-known URIs** at the root of every Redfish service. Furthermore, DSP0266 §13.3.2 specifies that these root-level discovery documents **shall or may be accessible via `GET` without authentication** so clients can verify protocol versions, inspect schemas, and find the login endpoint (`SessionService/Sessions`) before authenticating:
+Never hard-code deep paths such as `/redfish/v1/Systems/1`. Still, DSP0266 §6.7 (Table 4) fixes a small set of URIs at the root of every Redfish service. DSP0266 §13.3.2 allows some of those root documents to be read with a `GET` and no authentication. That lets a client check the protocol version, inspect the schemas, and find the login endpoint (`SessionService/Sessions`) before it signs in.
 
 | Well-Known URI | Required by DSP0266 Table 4 | Unauthenticated `GET` Allowed (§13.3.2) | What It Returns |
 |---|---|---|---|
@@ -109,28 +107,32 @@ While you must never hard-code deep paths like `/redfish/v1/Systems/1`, DSP0266 
 | `/redfish/v1/openapi.yaml` | No (Optional, v1.6+) | **Yes** (if implemented) | OpenAPI v3.0 description of the service's URIs |
 | Everything else (e.g., `/redfish/v1/Systems`) | Schema-dependent | **No (`401 Unauthorized`)** | Requires HTTP Basic over TLS or an `X-Auth-Token` session header (Chapter 7.4) |
 
+The table is your lookup for this rule. Notice that the first four rows are open to an anonymous `GET`, and everything below the root needs a session. Your first script should probe the open documents, then authenticate before it touches a hardware subtree.
+
 ### 2.3 Inspecting `ServiceRoot` properties and `ProtocolFeaturesSupported` (DSP2046)
 
-When your client performs its initial unauthenticated `GET /redfish/v1/`, the returned `ServiceRoot` resource (defined in `ServiceRoot.v1_17_0` in the *Redfish Resource and Schema Guide*, DSP2046 §6.121) tells you far more than just top-level links. It also advertises the BMC's protocol version, service identity, and which optional OData query parameters this specific BMC firmware supports:
+The first unauthenticated `GET /redfish/v1/` returns a `ServiceRoot` resource. It is defined in `ServiceRoot.v1_17_0` in the *Redfish Resource and Schema Guide* (DSP2046 §6.121). Its top-level links matter, but so do the fields that describe the BMC itself. Those fields tell you the protocol version, the service identity, and which optional OData query parameters this firmware supports.
 
-- **`RedfishVersion`:** The version of the Redfish Specification (`DSP0266`) to which this service conforms, formatted as `"Major.Minor.Errata"` (for example, `"1.17.0"` or `"1.21.0"`). Do not confuse `RedfishVersion` (the protocol specification version) with the `ServiceRoot` schema version inside `@odata.type` (`#ServiceRoot.v1_17_0.ServiceRoot`).
-- **`UUID`:** A 36-character RFC 4122 universally unique identifier for this Redfish service instance (`"00000000-0000-0000-0000-000000000000"`). If a client discovers the same BMC over multiple IP addresses (for example, IPv4, IPv6, and a host-side USB NIC), matching `UUID` proves both endpoints belong to the same BMC.
-- **`Product` and `Vendor`:** Optional human-readable strings identifying the server product and manufacturer (`"NVIDIA DGX H100"`, `"NVIDIA"`).
-- **`Links.Sessions`:** Alongside the authenticated `/redfish/v1/SessionService` link, `ServiceRoot` includes `"Links": {"Sessions": {"@odata.id": "/redfish/v1/SessionService/Sessions"}}` so an unauthenticated client can discover the exact `POST` login URI on its very first request.
-- **`ProtocolFeaturesSupported`:** A structured object declaring which query parameters and deep operations the BMC supports, so clients never have to guess before sending `$expand` or `$filter`:
-  - `ExpandQuery` (`ExpandAll`, `Levels`, `Links`, `MaxLevels`, `NoLinks`): whether `?$expand=.($levels=1)` is supported to inline child objects in one HTTP round-trip.
-  - `FilterQuery` (`true`/`false`): whether `?$filter=` expressions are supported on collections.
-  - `SelectQuery` (`true`/`false`): whether `?$select=` property projection is supported.
-  - `OnlyMemberQuery` (`true`/`false`): whether `?only` is supported to automatically dereference a collection that contains exactly `1` member.
-  - `ExcerptQuery` and `DeepOperations` (`DeepPATCH`, `DeepPOST`): whether excerpt views or multi-resource deep edits are implemented.
+- **`RedfishVersion`** is the version of the Redfish Specification (`DSP0266`) that this service follows. It uses the form `"Major.Minor.Errata"`, such as `"1.17.0"` or `"1.21.0"`. Do not confuse it with the schema version in `@odata.type` (`#ServiceRoot.v1_17_0.ServiceRoot`), which tracks the schema, not the protocol.
+- **`UUID`** is a 36-character RFC 4122 identifier for this Redfish service instance, for example `"00000000-0000-0000-0000-000000000000"`. Suppose you discover the same BMC over several paths: IPv4, IPv6, and a host-side USB NIC. Matching `UUID` values prove that all of those endpoints belong to one BMC.
+- **`Product` and `Vendor`** are optional strings that name the server product and its maker, such as `"NVIDIA DGX H100"` and `"NVIDIA"`.
+- **`Links.Sessions`** points to the login URI. Alongside the authenticated `/redfish/v1/SessionService` link, `ServiceRoot` carries `"Links": {"Sessions": {"@odata.id": "/redfish/v1/SessionService/Sessions"}}`. An anonymous client can therefore find the exact `POST` login URI on its very first request.
+- **`ProtocolFeaturesSupported`** is a structured object that lists which query parameters and deep operations the BMC supports. Read it before you send `$expand` or `$filter`, so you never have to guess:
+  - `ExpandQuery` (`ExpandAll`, `Levels`, `Links`, `MaxLevels`, `NoLinks`) shows whether `?$expand=.($levels=1)` works. That call inlines child objects in one HTTP round-trip.
+  - `FilterQuery` (`true`/`false`) shows whether `?$filter=` expressions work on collections.
+  - `SelectQuery` (`true`/`false`) shows whether `?$select=` property projection works.
+  - `OnlyMemberQuery` (`true`/`false`) shows whether `?only` works. It dereferences a collection that holds exactly `1` member automatically.
+  - `ExcerptQuery` and `DeepOperations` (`DeepPATCH`, `DeepPOST`) show whether excerpt views and multi-resource deep edits are implemented.
+
+Before you write any query-heavy script, read `ProtocolFeaturesSupported` on the target BMC and only use the parameters it lists.
 
 ---
 
 ## 3. Anatomy of a Redfish resource
 
-A **resource** is a single JSON document returned at an `@odata.id` URI. Under DSP0266 §9.5 and §9.6, every individual resource response **shall** include four mandatory properties—`@odata.id`, `@odata.type`, `Id`, and `Name`—alongside standard optional properties defined by its schema.
+A **resource** is one JSON document returned at an `@odata.id` URI. When you request a resource, the response tells you what it is, where it lives, and what it contains. DSP0266 §9.5 and §9.6 require four properties in every individual resource: `@odata.id`, `@odata.type`, `Id`, and `Name`. Schema-defined properties come on top of those four.
 
-Here is a live response from `code/part07/redfish_mock.py` (`dgx` profile) for `/redfish/v1/Systems/System_0`:
+The example below is a live response from `code/part07/redfish_mock.py` (`dgx` profile) for `/redfish/v1/Systems/System_0`. Read it top to bottom once, and you will recognize the same pattern in every other resource.
 
 ```json
 {
@@ -182,6 +184,8 @@ Here is a live response from `code/part07/redfish_mock.py` (`dgx` profile) for `
 
 ### 3.1 Core resource properties (DSP0266 §9.6)
 
+The table below is your reference for each common property. The first column is the property name. The second says whether the specification requires it. The third explains what the property means and how a client should read it.
+
 | Property | Required? | Specification Rule & Meaning |
 |---|---|---|
 | `@odata.id` | **Yes** | Canonical URI of this resource (`"/redfish/v1/Systems/System_0"`). Used by clients to re-fetch or link to the resource. |
@@ -196,39 +200,39 @@ Here is a live response from `code/part07/redfish_mock.py` (`dgx` profile) for `
 | `Actions` | Common | Operations invoked via `POST` that do not map to simple property edits (`#ComputerSystem.Reset`, with a `target` URI). |
 | `Oem` | Common | Vendor-specific extensions isolated under a company/organization key (`Oem.Nvidia`, `Oem.OpenBMC`). |
 
+Two of these rows deserve a closer look. `Id` is the final segment of the URI, so it must stay URL-safe. `Name` is only a label, and two siblings may share it. Use `Id` when you build a path and `Name` when you show something to a person.
+
 ### 3.2 Naming rules, unit suffixes, and schema versioning (DSP0266 §9.7)
 
-Redfish enforces strict property naming rules (DSP0266 §9.7.1) so engineers and code generators can predict property semantics:
-- **PascalCase everywhere:** Every standard resource type, property name, and action parameter uses `PascalCase` starting with a letter and containing only alphanumeric characters (`ComputerSystem`, `PowerState`, `SerialNumber`, `TotalSystemMemoryGiB`). Two-letter acronyms capitalize both letters (`IPAddress`, `RemoteIP`), while well-known mixed-case names keep their standard form (`PCIe`, `iSCSI`, `NVMe`, `LDAP`, `SNMPv2`).
-- **Explicit unit suffixes:** Properties that express physical measurements or counts append their unit directly to the property name so you never have to guess whether a speed is in `MHz` or `GHz` or a size is in `MB` or `GiB`:
-  - Bandwidth: `PortSpeedMbps`, `MaxBandwidthGbps`
-  - Frequency: `ProcessorSpeedMHz`, `OperatingSpeedMHz`
-  - Capacity: `MemoryMB`, `TotalSystemMemoryGiB`, `CapacityBytes`
-  - Temperature & Power: `ReadingCelsius`, `TemperatureThresholdCelsius`, `PowerCapacityWatts`
-  - Counts: `ProcessorCount`, `FanCount`
-- **Schema versioning (`#ComputerSystem.v1_17_0.ComputerSystem`):** Minor version bumps (`v1_16_0` $\rightarrow$ `v1_17_0`) are **strictly additive and backward-compatible**—they add new optional properties or enumeration values without removing or changing the types of existing properties. A client written against `v1_4_0` can safely parse a `v1_17_0` payload as long as it **ignores unknown properties**.
+Redfish enforces strict naming rules (DSP0266 §9.7.1), so you can guess what a property means before you read its documentation. Every resource type, property, and action parameter uses PascalCase. It starts with a letter and contains only letters and digits, as in `ComputerSystem`, `PowerState`, `SerialNumber`, and `TotalSystemMemoryGiB`. Two-letter acronyms capitalize both letters, as in `IPAddress` and `RemoteIP`. Well-known mixed-case names keep their standard form, such as `PCIe`, `iSCSI`, `NVMe`, `LDAP`, and `SNMPv2`.
+
+Units go in the name itself. That way you never have to guess whether a speed is in `MHz` or `GHz`, or whether a size is in `MB` or `GiB`. Bandwidth appears as `PortSpeedMbps` and `MaxBandwidthGbps`. Frequency appears as `ProcessorSpeedMHz` and `OperatingSpeedMHz`. Capacity appears as `MemoryMB`, `TotalSystemMemoryGiB`, and `CapacityBytes`. Temperature and power appear as `ReadingCelsius`, `TemperatureThresholdCelsius`, and `PowerCapacityWatts`. Counts end in `Count`, as in `ProcessorCount` and `FanCount`.
+
+Schema versions read like `#ComputerSystem.v1_17_0.ComputerSystem`. A minor bump, such as `v1_16_0` to `v1_17_0`, only adds optional properties or enumeration values. It never removes a property or changes an existing one's type. A client written against `v1_4_0` can therefore parse a `v1_17_0` payload, provided it ignores properties it does not know.
 
 ### 3.3 Special data value rules: `""` vs `null`, ISO 8601 dates, and durations
 
-When writing Python or Go parsers for Redfish, four value conventions from DSP0266 §9.5 prevent subtle bugs:
-1. **Empty string `""` versus `null`:** These two values mean completely different things in Redfish:
-   - **`""` (empty string):** The property is supported and healthy, but its value is currently **unset / blank** (for example, `"AssetTag": ""` before an admin assigns an asset tag).
-   - **`null`:** The BMC **cannot obtain or compute the value** right now (for example, `"Reading": null` on a host CPU temperature sensor while the host power is `Off`, or when an `I2C` sensor bus read fails). Never coerce `null` to `0` or `""` in telemetry scripts—treating `"Reading": null` as `0 °C` will corrupt your thermal dashboards.
-2. **Timestamps (ISO 8601 extended format):** Date-time strings always include `T` and an explicit timezone offset (`Z` for UTC or `+HH:MM`/`-HH:MM`), such as `"2026-10-28T14:30:00Z"`.
-3. **Durations (ISO 8601 duration format):** Time intervals use `P[nD]T[nH][nM][nS]`, such as `"PT10S"` (`10` seconds), `"PT5M"` (`5` minutes), or `"PT1H30M"` (`1` hour `30` minutes).
-4. **Extensible enumerations:** Firmware updates may introduce new enum strings (for example, a new `ResetType` or `ProcessorType`). Your parser should log or fall back gracefully on unrecognized enum strings rather than throwing an unhandled exception.
+Four value conventions from DSP0266 §9.5 trip up parsers that are written too quickly. Learn them now, and your thermal dashboards will not show phantom zeros later.
+
+The first is the difference between an empty string and `null`. They mean different things. An empty string, `""`, says the property is supported and healthy, but its value is blank. An `AssetTag` of `""` is normal before an admin assigns one. A `null` says the BMC cannot get or compute the value right now. For example, `"Reading": null` on a host CPU temperature sensor is expected while the host is powered off, or when an `I2C` sensor bus read fails. Never coerce `null` to `0` or `""` in telemetry scripts. Treating `"Reading": null` as `0 °C` would corrupt your thermal data.
+
+The second is the timestamp format. Date-time strings follow ISO 8601 extended format. They always include the `T` separator and an explicit timezone offset, either `Z` for UTC or `+HH:MM` or `-HH:MM`. An example is `"2026-10-28T14:30:00Z"`.
+
+The third is the duration format. Time intervals use `P[nD]T[nH][nM][nS]`. `"PT10S"` means 10 seconds, `"PT5M"` means 5 minutes, and `"PT1H30M"` means 1 hour and 30 minutes.
+
+The fourth is enumerations that grow over time. A firmware update can add a new enum string, such as a new `ResetType` or `ProcessorType`. Your parser should log an unknown value or fall back gracefully. It should not throw an unhandled exception.
 
 ---
 
 ## 4. Payload annotations, `/Settings` resources, and OEM extensions
 
-Look back at the `ComputerSystem` JSON in Section 3 and notice keys containing an `@` sign in the middle or at the start, such as `"ResetType@Redfish.AllowableValues"`. In DSP0266 §9.9, these are **payload annotations** formatted as:
+Look back at the `ComputerSystem` JSON in Section 3. You will see keys with an `@` sign in the middle, such as `"ResetType@Redfish.AllowableValues"`. These keys are **payload annotations**. They do not hold hardware data. They tell you what a value is allowed to be. DSP0266 §9.9 gives them this form:
 
 ```text
 [<PropertyName>]@<Namespace>.<TermName>
 ```
 
-Redfish restricts annotations to three official namespaces—**`odata`**, **`Redfish`** (an alias for `RedfishExtensions.v1_0_0`), and **`Message`**—and requires clients to ignore any unrecognized annotation without failing. Table 4 summarizes the essential annotations you will encounter on real BMCs:
+Redfish limits annotations to three official namespaces: **`odata`**, **`Redfish`** (an alias for `RedfishExtensions.v1_0_0`), and **`Message`**. Clients must ignore any annotation they do not recognize, and they must not fail when one shows up. The table below covers the annotations you will meet on real BMCs.
 
 | Annotation | Example in JSON Payload | Purpose (DSP0266 §9.9 & §9.10) |
 |---|---|---|
@@ -241,32 +245,38 @@ Redfish restricts annotations to three official namespaces—**`odata`**, **`Red
 | `[<Prop>]@Message.ExtendedInfo` | `"PinOut@Message.ExtendedInfo": [{"MessageId": "Base.1.8.PropertyValueNotInList", ...}]` | Attaches structured registry diagnostics, warnings, or resolution hints to a whole object or a single property (§9.9.5). |
 | `<Prop>@Redfish.Deprecated` | `"VendorID@Redfish.Deprecated": "Deprecated in favor of ModuleManufacturerID."` | Warns that a property is deprecated in newer schema versions (§9.9.14). |
 
+Two of these matter most when you write a script. `AllowableValues` tells you which strings the BMC will accept right now, so your script can check a value before it sends a `PATCH`. `@Redfish.Settings` tells you where a pending change must go, and the next section explains why.
+
 ### 4.1 Active resources vs `/Settings` resources (DSP0266 §9.10)
 
-Why does `/redfish/v1/Systems/DGX/Bios` have a child resource at `/redfish/v1/Systems/DGX/Bios/Settings` (or `/SD`)?
-Some hardware settings—like an `AssetTag` or an LED indicator—take effect the millisecond you `PATCH` them. Other settings—most notably **BIOS attributes** (`SubNumaClustering`, `PcieRelaxedOrdering`)—cannot be mutated in live silicon while the host CPUs are running; they can only be applied by UEFI firmware during the **next system reboot**.
+Why does `/redfish/v1/Systems/DGX/Bios` have a child at `/redfish/v1/Systems/DGX/Bios/Settings` (or `/SD`)? Some settings take effect the moment you change them, such as an `AssetTag` or an LED indicator. Others cannot change in live silicon while the host CPUs are running. BIOS attributes such as `SubNumaClustering` and `PcieRelaxedOrdering` fall in this group. UEFI firmware can only apply them during the next system reboot.
 
-DSP0266 §9.10 solves this cleanly with the **Settings resource pattern**:
-- **The Active Resource (`/Bios`):** Represents the **current running state** of the hardware. It is read-only for reboot-deferred attributes and carries an `@Redfish.Settings` annotation whose `SettingsObject` points to `/Bios/Settings` (along with `Time`, `ETag`, and `Messages` from the last time pending settings were applied).
-- **The Settings Resource (`/Bios/Settings` or `/Bios/SD`):** Uses the exact same schema as the active resource, but represents the **future intended state**. You send your `PATCH` request to `/Bios/Settings`, and on the next host reset (`GracefulRestart` or `ForceRestart`), the BIOS consumes `/Bios/Settings`, updates the active `/Bios` resource, and records any validation messages in `@Redfish.Settings.Messages`.
+DSP0266 §9.10 handles this with the Settings resource pattern, and it works in two parts. Think of it as a draft and a published copy.
+
+- **The active resource (`/Bios`)** shows the current running state. It is read-only for attributes that wait for a reboot. It carries an `@Redfish.Settings` annotation whose `SettingsObject` points to `/Bios/Settings`. It also reports `Time`, `ETag`, and `Messages` from the last time pending settings were applied.
+- **The Settings resource (`/Bios/Settings` or `/Bios/SD`)** uses the same schema as the active resource, but it holds the intended future state. You send your `PATCH` to `/Bios/Settings`. On the next host reset, such as `GracefulRestart` or `ForceRestart`, the BIOS consumes `/Bios/Settings`, updates `/Bios`, and records any validation messages under `@Redfish.Settings.Messages`.
+
+So a BIOS change is a two-step story. You stage it in the Settings resource, then you reset the host so the firmware applies it.
 
 ### 4.2 OEM extensions (DSP0266 §9.8)
 
-When a hardware vendor builds a novel capability before a standard DMTF schema exists, DSP0266 §9.8 provides a structured escape hatch: the **`Oem`** object.
-- Every OEM extension inside `"Oem": { ... }` must be keyed by a unique **OEM identifier** derived from the vendor's ICANN domain name with dots replaced by underscores (`.com` may be omitted, e.g., `"Nvidia"`, `"Dell"`, `"Supermicro"`, `"Contoso_org"`), an IANA Enterprise Number prefixed with `"EID_"` (e.g., `"EID_412"`), or a DMTF-reserved namespace such as **`"OpenBMC"`** (§9.8.3).
-- Subordinate OEM resources live under `<BaseUri>/Oem/<OemIdentifier>/<ResourcePath>` (§9.8.6), and OEM actions live under `Actions.Oem.#<OEMSchemaName>.<Action>` with target `<ResourceUri>/Actions/Oem/<OEMSchemaName>.<Action>` (§9.8.8).
-- Generic client code should treat unknown `Oem` subtrees as opaque data and never fail when they are present.
+Sometimes a vendor builds a capability before any standard DMTF schema exists. DSP0266 §9.8 gives it a safe place to live: the **`Oem`** object. Everything inside `"Oem": { ... }` is keyed by a unique **OEM identifier**. That identifier can be the vendor's ICANN domain name with the dots replaced by underscores, and the `.com` may be left off. Examples are `"Nvidia"`, `"Dell"`, `"Supermicro"`, and `"Contoso_org"`. It can also be an IANA Enterprise Number with an `"EID_"` prefix, such as `"EID_412"`, or a DMTF-reserved name such as **`"OpenBMC"`** (§9.8.3).
+
+Subordinate OEM resources sit under `<BaseUri>/Oem/<OemIdentifier>/<ResourcePath>` (§9.8.6). OEM actions sit under `Actions.Oem.#<OEMSchemaName>.<Action>`, and their target is `<ResourceUri>/Actions/Oem/<OEMSchemaName>.<Action>` (§9.8.8). The result is that vendor code never collides with standard DMTF names.
+
+When your client meets an unknown `Oem` subtree, treat it as opaque data. Read what you need and leave the rest alone. Your client should never fail just because that subtree is there.
 
 ---
 
 ## 5. Resource collections and pagination
 
-A **Resource Collection** is a container of resources that share the same base type (such as `ComputerSystemCollection`, `SensorCollection`, or `LogEntryCollection`). Under DSP0266 §9.2.1 and §9.6.10–9.6.12, every collection response **shall** include five required properties:
-1. `@odata.id` (the collection's URI)
-2. `@odata.type` (unversioned format `#<Type>Collection.<Type>Collection`, e.g., `#SensorCollection.SensorCollection`)
-3. `Name`
-4. `Members` (a JSON array of link objects `[{"@odata.id": "..."}]`; never `null`—an empty collection is `[]`)
-5. `Members@odata.count` (an integer giving the **total number of members in the collection across all pages**)
+A **Resource Collection** is a container of resources that share a base type, such as `ComputerSystemCollection`, `SensorCollection`, or `LogEntryCollection`. Think of a folder that holds only sensors, or only log entries. DSP0266 §9.2.1 and §9.6.10–9.6.12 require every collection response to carry five properties:
+
+1. `@odata.id`, the collection's own URI.
+2. `@odata.type`, in the unversioned form `#<Type>Collection.<Type>Collection`, for example `#SensorCollection.SensorCollection`.
+3. `Name`.
+4. `Members`, a JSON array of link objects like `[{"@odata.id": "..."}]`. It is never `null`. An empty collection is `[]`.
+5. `Members@odata.count`, an integer giving the total number of members across all pages.
 
 ```json
 {
@@ -282,24 +292,30 @@ A **Resource Collection** is a container of resources that share the same base t
 }
 ```
 
-Three pagination rules in DSP0266 §9.6.10–9.6.12 are essential for reliable fleet tooling:
-- **`Members@odata.count` vs `len(Members)`:** When a BMC paginates a large collection (for example, a DGX H100 System Event Log returning `75` entries per page out of `450` total entries), `len(Members)` is `75`, while `Members@odata.count` is `450`. Note that `$top` and `$skip` query parameters **do not** reduce `Members@odata.count`, whereas a `$filter` query parameter updates `Members@odata.count` to reflect the total number of members matching the filter.
-- **Following `Members@odata.nextLink`:** Whenever more pages remain, the BMC includes `Members@odata.nextLink`. Its URL may use `$skip` or an opaque **`$skiptoken`** (e.g., `?$skiptoken=ffb559f3...`). Clients **shall not** parse or construct `$skiptoken` strings; simply `GET` the exact `Members@odata.nextLink` URI in a loop until `Members@odata.nextLink` is absent (see `collection()` in `code/part07/rf_inventory.py`).
-- **Never assume `Members[0]` is the only member or has `Id == "1"`:** A collection may have `0`, `1`, or `N` members, and even a single-member collection is still wrapped in `"Members": [{"@odata.id": "..."}]`.
+The payload above is a page, not the whole list. Pagination is where most collection scripts go wrong, so read the three rules below slowly. You will need every one of them.
+
+The first rule is that `Members@odata.count` and `len(Members)` are different numbers. Take a DGX H100 System Event Log that returns 75 entries per page out of 450 in total. Here `len(Members)` is 75 and `Members@odata.count` is 450. Query parameters `$top` and `$skip` do not change the count, because it still describes the whole collection. A `$filter` does change it, because the count then describes only the matching members.
+
+The second rule is to follow `Members@odata.nextLink` until it disappears. A BMC adds that link whenever more pages remain. Its URL may contain `$skip`, or an opaque `$skiptoken` such as `?$skiptoken=ffb559f3...`. Do not parse that token or build one yourself. You simply send a `GET` to the exact `Members@odata.nextLink` URI, again and again, until the key is gone. The `collection()` function in `code/part07/rf_inventory.py` does this.
+
+The third rule is about small collections. Never assume `Members[0]` is the only member, or that its `Id` is `"1"`. A collection can hold 0, 1, or N members. Even a single member still arrives wrapped in `"Members": [{"@odata.id": "..."}]`, so your loop must handle that shape every time.
 
 ---
 
 ## 6. Lab: Crawling heterogeneous Redfish services (`redfish_mock.py` & `crawl_concepts_lab.py`)
 
-Why does DSP0266 §5.3 and §12.3 insist that clients must discover resources dynamically from `/redfish/v1/` rather than hard-coding URIs? Because even two servers running the exact same Redfish specification version can have completely different member names and system counts.
+Why would the DSP0266 §5.3 and §12.3 insist that a client find resources at run time, starting from `/redfish/v1/`? Here is the reason. Two servers can run the exact same specification version and still name their members differently. One may have a single system, and the other may have two. Hard-coded paths work on one box and fail on the next.
 
-In `code/part07/redfish_mock.py`, we built a standards-compliant teaching Redfish server using only the Python standard library that supports two hardware profiles:
-- **`--profile dgx`:** Models a dual-tray GPU server with `Systems/System_0` (host tray), `Systems/HGX_Baseboard_0` (8-GPU HGX tray), `Chassis/Chassis_0`, and `Managers/BMC_0` (`168` total URIs).
-- **`--profile generic`:** Models a standard 1U server with `Systems/1`, `Chassis/1`, and `Managers/1` (`150` total URIs).
+To prove the point, `code/part07/redfish_mock.py` is a teaching Redfish server. It uses only the Python standard library, and it offers two hardware profiles:
+
+- **`--profile dgx`** models a dual-tray GPU server. It has `Systems/System_0` for the host tray, `Systems/HGX_Baseboard_0` for the 8-GPU HGX tray, `Chassis/Chassis_0`, and `Managers/BMC_0`. That makes `168` URIs in total.
+- **`--profile generic`** models a standard 1U server. It has `Systems/1`, `Chassis/1`, and `Managers/1`, for `150` URIs in total.
+
+The same crawler has to work on both. You will see that it does, without any change to its code.
 
 ### 6.1 How the hypermedia crawler works (`code/part07/redfish_crawl.py`)
 
-Look at the `crawl()` function in `code/part07/redfish_crawl.py`:
+Read the `crawl()` function in `code/part07/redfish_crawl.py`. It is short, and every line does a job.
 
 ```python
 def crawl(c):
@@ -321,14 +337,11 @@ def crawl(c):
     return seen, types
 ```
 
-Notice the three engineering safeguards in those 16 lines:
-1. **Starts solely at `["/redfish/v1/"]`:** Not a single hardware URI (`Systems`, `Chassis`, `DGX`, `1`) is hard-coded in the crawler.
-2. **Graph cycle protection (`seen` dictionary):** Every visited URI (normalized with `.rstrip("/")`) is recorded in `seen`. When `System_0` links to `Chassis_0` via `Links.Chassis` and `Chassis_0` links right back to `System_0` via `Links.ComputerSystems`, the `if key in seen: continue` guard prevents an infinite loop.
-3. **Skips `Actions` targets during `GET` traversal:** Action targets (`/Actions/ComputerSystem.Reset`) are `POST`-only endpoints (`GET` returns `405 Method Not Allowed`), so the crawler excludes `"Actions"` when harvesting `@odata.id` links.
+Three safeguards in those 16 lines keep the crawl honest. The first is the starting point. The crawler begins only at `["/redfish/v1/"]`, and no hardware URI such as `Systems`, `Chassis`, `DGX`, or `1` is hard-coded anywhere. The second is cycle protection. Every visited URI is normalized with `.rstrip("/")` and recorded in `seen`. When `System_0` links to `Chassis_0` through `Links.Chassis`, and `Chassis_0` links back through `Links.ComputerSystems`, the `if key in seen: continue` guard stops the loop. The third is that action targets are skipped. Targets such as `/Actions/ComputerSystem.Reset` accept only `POST`. A `GET` on one returns `405 Method Not Allowed`, so the crawler leaves `"Actions"` out when it collects `@odata.id` links.
 
 ### 6.2 Running the self-checking lab (`code/part07/crawl_concepts_lab.py`)
 
-Run `python3 code/part07/crawl_concepts_lab.py` to launch both mock profiles on ephemeral local ports, test unauthenticated vs authenticated endpoints, crawl both graphs completely, and run `rf_inventory.py` across both:
+Run the lab with one command. It starts both mock profiles on ephemeral local ports. It tests unauthenticated against authenticated endpoints, crawls both graphs in full, and then runs `rf_inventory.py` against each one.
 
 ```bash
 $ python3 code/part07/crawl_concepts_lab.py
@@ -338,7 +351,9 @@ PASS: rf_inventory.py discovers System_0 + HGX_Baseboard_0 on dgx profile and Sy
 Summary: 3 passed, 0 failed (total 3)
 ```
 
-When you run `redfish_crawl.py` directly against the `dgx` profile, it summarizes all `168` discovered resources by schema type:
+All three checks should print PASS, and the summary line should read 3 passed, 0 failed.
+
+Run `redfish_crawl.py` directly against the `dgx` profile, and it prints a summary of all `168` resources it found, grouped by schema type. Each row shows one example URI so you can see what that type looks like in practice.
 
 ```text
 visited 168 URIs, 0 not OK
@@ -359,21 +374,25 @@ visited 168 URIs, 0 not OK
   SoftwareInventory            5  e.g. /redfish/v1/UpdateService/FirmwareInventory/VBIOS_0
 ```
 
+Notice the two `ComputerSystem` rows in that output. They are the host tray and the GPU baseboard, found by the same crawler that found everything else. The `LogEntry` row is the largest group, with 78 entries, so it is where pagination from Section 5 shows up in practice.
+
 ---
 
 ## 7. Network service discovery (SSDP) and BCM Redfish commands
 
 ### 7.1 Discovering BMCs on a lab subnet via SSDP (DSP0266 §12.4)
-How does a management tool discover unknown BMCs on a lab network when DHCP logs are unavailable? DSP0266 §12.4 specifies optional support for **SSDP (Simple Service Discovery Protocol)**—the multicast discovery protocol used by UPnP on **UDP port `1900`** (`239.255.255.250` IPv4 / `ff02::c` IPv6) with the Redfish search target:
+
+Say you need to find unknown BMCs on a lab network, and the DHCP logs are gone. How would a management tool locate them? DSP0266 §12.4 describes an optional answer, **SSDP (Simple Service Discovery Protocol)**. SSDP is the multicast discovery protocol that UPnP uses. It runs on **UDP port `1900`**, at `239.255.255.250` on IPv4 or `ff02::c` on IPv6. The search target for Redfish is shown below.
 
 ```text
 ST: urn:dmtf-org:service:redfish-rest:1
 ```
 
-If a BMC enables SSDP, it responds with an `AL:`/`Location:` header pointing to its `/redfish/v1/` Service Root, and DSP0266 requires that administrators be able to disable SSDP via `/redfish/v1/Managers/<id>/NetworkProtocol` (`"SSDP": {"ProtocolEnabled": false}`). In production AI data centers, you already know every BMC IP from your `nodes.csv` / DHCP reservations (Chapters 6.22 and 7.1), so SSDP should be **disabled** during BMC security hardening (Chapter 7.15) to reduce the multicast attack surface.
+A BMC that has SSDP enabled answers with an `AL:` or `Location:` header. That header points to its `/redfish/v1/` Service Root. DSP0266 requires that administrators can turn SSDP off, using `"SSDP": {"ProtocolEnabled": false}` under `/redfish/v1/Managers/<id>/NetworkProtocol`. In a production AI data center, you already know every BMC address from your `nodes.csv` file and your DHCP reservations (Chapters 6.22 and 7.1). Turning SSDP off also shrinks the multicast attack surface. Disable it during BMC security hardening (Chapter 7.15).
 
 ### 7.2 Issuing fleet-wide Redfish calls from NVIDIA Base Command Manager (`bcm11-admin` Appendix N)
-In clusters managed by NVIDIA Base Command Manager (BCM 11), you do not even need to write external loops for quick ad-hoc Redfish operations. Appendix N of the *BCM 11 Administrator Manual* documents seven built-in `cmsh` commands (in `device` mode) that fan Redfish requests out across nodes, categories, or racks (`-r <rack>`, `-n <nodes>`, `-c <category>`):
+
+On a cluster run by NVIDIA Base Command Manager (BCM 11), you may not need a loop of your own for quick ad-hoc calls. Appendix N of the *BCM 11 Administrator Manual* lists seven built-in `cmsh` commands in `device` mode. They send Redfish requests across nodes, categories, or racks, using the `-r <rack>`, `-n <nodes>`, and `-c <category>` selectors. The table below maps each command to its HTTP verb.
 
 | `cmsh` Command | HTTP Verb | Description & Example (`bcm11-admin` Appendix N) |
 |---|---|---|
@@ -385,148 +404,147 @@ In clusters managed by NVIDIA Base Command Manager (BCM 11), you do not even nee
 | `redfishsubscriptions` | — | Display the status of BCM-managed Redfish event subscriptions across BMCs |
 | `redfishevent` | `POST` | Trigger a synthetic test event (`redfishevent -m test1`) to verify end-to-end event delivery |
 
-Appendix N also notes that BCM's native `power on`, `power off`, and `power reset` commands automatically use the Redfish API on Redfish-capable nodes (assuming AC standby power to the BMC is on).
+Use the table as a lookup when you pick a command. Appendix N also says that BCM's native `power on`, `power off`, and `power reset` commands go through the Redfish API on Redfish-capable nodes. This works as long as AC standby power reaches the BMC.
 
 ---
 
 ## Exercises
 
-1. **Manual hypermedia walk from `/redfish/v1/` to a GPU processor (`redfish_mock.py`):** Start the mock server (`python3 code/part07/redfish_mock.py --profile dgx --port 18441`) and use `curl` (or `python3 -m json.tool`) to walk step-by-step from `/redfish/v1/` $\rightarrow$ `Systems` $\rightarrow$ `HGX_Baseboard_0` $\rightarrow$ `Processors` $\rightarrow$ `GPU_0`. Record the exact `@odata.id` and `@odata.type` returned at each of the five hops.
-2. **Comparing `dgx` and `generic` resource graphs (`code/part07/crawl_concepts_lab.py`):** Run `python3 code/part07/crawl_concepts_lab.py`. Then run `redfish_crawl.py` against both `--profile dgx` and `--profile generic` and explain why `ComputerSystem` has `2` instances (`168` total URIs) in `dgx` versus `1` instance (`150` total URIs) in `generic`, while `rf_inventory.py` succeeds on both without code changes.
-3. **Pagination math (`Members@odata.count` vs `len(Members)`):** Inspect `/redfish/v1/Managers/BMC_0/LogServices/SEL/Entries` on the `dgx` mock server (`78` total entries across `2` pages of `75` and `3`). Write a 10-line Python function that fetches the first page, compares `Members@odata.count` against `len(Members)`, and follows `Members@odata.nextLink` until all `78` entries are collected.
-4. **Testing unauthenticated vs authenticated endpoints (DSP0266 §13.3.2):** Against a running `redfish_mock.py` instance, send unauthenticated `GET` requests (no Basic Auth and no `X-Auth-Token`) to `/redfish`, `/redfish/v1/`, `/redfish/v1/odata`, `/redfish/v1/$metadata`, and `/redfish/v1/Systems`. Explain why the first four return `200 OK` while `/redfish/v1/Systems` returns `401 Unauthorized`.
-5. **Proving loop termination under cyclic `Links`:** Trace what happens in `redfish_crawl.py` when `System_0` contains `"Links": {"Chassis": [{"@odata.id": "/redfish/v1/Chassis/Chassis_0"}]}` and `Chassis_0` contains `"Links": {"ComputerSystems": [{"@odata.id": "/redfish/v1/Systems/System_0"}]}`. What happens if you comment out `if key in seen: continue`?
-6. **Interpreting `""`, `null`, and `@Redfish.Settings`:** Given a Redfish JSON payload containing `"AssetTag": ""`, `"ReadingCelsius": null`, and `"@Redfish.Settings": {"SettingsObject": {"@odata.id": "/redfish/v1/Systems/System_0/Bios/Settings"}}`, explain what each of those three fields means operationally and which URI you must `PATCH` to stage a BIOS attribute change.
-
----
+1. Start the mock server with `python3 code/part07/redfish_mock.py --profile dgx --port 18441`. Then walk the graph by hand with `curl` (or `python3 -m json.tool`), starting at `/redfish/v1/` and going through `Systems`, then `HGX_Baseboard_0`, then `Processors`, and finally `GPU_0`. Write down the exact `@odata.id` and `@odata.type` you get back at each of those five hops.
+2. Run `python3 code/part07/crawl_concepts_lab.py`. Then run `redfish_crawl.py` against both `--profile dgx` and `--profile generic`. Explain why `ComputerSystem` appears twice (`168` total URIs) on `dgx`, but only once (`150` total URIs) on `generic`. Also explain why `rf_inventory.py` succeeds on both without any code change.
+3. Inspect `/redfish/v1/Managers/BMC_0/LogServices/SEL/Entries` on the `dgx` mock server. It holds `78` entries across `2` pages, of `75` and `3`. Write a Python function of about 10 lines. It should fetch the first page, compare `Members@odata.count` with `len(Members)`, and follow `Members@odata.nextLink` until all `78` entries are collected.
+4. Against a running `redfish_mock.py`, send `GET` requests with no Basic Auth and no `X-Auth-Token` to `/redfish`, `/redfish/v1/`, `/redfish/v1/odata`, `/redfish/v1/$metadata`, and `/redfish/v1/Systems`. Then explain why the first four return `200 OK`, while `/redfish/v1/Systems` returns `401 Unauthorized` (DSP0266 §13.3.2).
+5. Trace what `redfish_crawl.py` does when `System_0` contains `"Links": {"Chassis": [{"@odata.id": "/redfish/v1/Chassis/Chassis_0"}]}` and `Chassis_0` contains `"Links": {"ComputerSystems": [{"@odata.id": "/redfish/v1/Systems/System_0"}]}`. Then answer the harder question: what happens if you comment out `if key in seen: continue`?
+6. A payload contains `"AssetTag": ""`, `"ReadingCelsius": null`, and `"@Redfish.Settings": {"SettingsObject": {"@odata.id": "/redfish/v1/Systems/System_0/Bios/Settings"}}`. Explain what each of those three fields means in operations terms. Then name the URI you must `PATCH` to stage a BIOS attribute change.
 
 ## Checkpoint questions (20)
 
 <details>
 <summary>1. In one sentence each, what are REST, JSON, and OData in the context of DMTF Redfish?</summary>
 
-- **REST:** An architectural style over HTTP where every hardware or management entity on the BMC is a URI-addressed resource manipulated with standard HTTP verbs (`GET`, `POST`, `PATCH`, `DELETE`).
-- **JSON:** The human- and machine-readable text serialization format (`{key: value}` objects and arrays) used for all Redfish request and response bodies.
-- **OData:** The standard REST metadata and query convention (`@odata.id`, `@odata.type`, `@odata.count`, `@odata.nextLink`, `$select`, `$expand`, `$filter`) that Redfish adopts for cross-vendor interoperability.
+- **REST:** A style built on HTTP, where every entity on the BMC is a resource with its own URI, changed with standard verbs such as `GET`, `POST`, `PATCH`, and `DELETE`.
+- **JSON:** The text format, made of `{key: value}` objects and arrays, that every Redfish request and response body uses.
+- **OData:** The metadata and query conventions (`@odata.id`, `@odata.type`, `@odata.count`, `@odata.nextLink`, `$select`, `$expand`, `$filter`) that Redfish adopts so that tools from different vendors interoperate.
 </details>
 
 <details>
 <summary>2. What is the Redfish Service Root URI, and what does it mean that Redfish is a "hypermedia API"?</summary>
 
-The Service Root URI is **`/redfish/v1/`**. Calling Redfish a hypermedia API means clients start at `/redfish/v1/` and dynamically discover every collection, resource, and action on the server by following `@odata.id` hyperlinks inside JSON responses rather than hard-coding URI paths.
+The Service Root is at **`/redfish/v1/`**. Calling Redfish a hypermedia API means your client starts there and finds every collection, resource, and action by following `@odata.id` links in the JSON. It never has to hard-code a path.
 </details>
 
 <details>
 <summary>3. Why does DSP0266 §5.2 separate the Redfish protocol from the Redfish data model?</summary>
 
-Separating the HTTP/TLS transport protocol rules from the CSDL/JSON hardware schemas allows the DMTF to add new hardware resource types and properties (such as liquid cooling CDUs or NVSwitch fabrics) without changing the underlying HTTP transport rules, and vice versa.
+The transport rules for HTTP and TLS stay separate from the CSDL and JSON hardware schemas. So the DMTF can add new hardware types, such as liquid cooling CDUs or NVSwitch fabrics, without touching the HTTP rules. The reverse holds too.
 </details>
 
 <details>
 <summary>4. Which four properties are mandatory in every individual Redfish resource response (DSP0266 §9.5–9.6)?</summary>
 
-**`@odata.id`** (the resource's own URI), **`@odata.type`** (its schema namespace, version, and type), **`Id`** (its unique identifier within its parent collection), and **`Name`** (its human-readable display string).
+**`@odata.id`** is the resource's own URI. **`@odata.type`** gives its schema namespace, version, and type. **`Id`** is its unique identifier inside its parent collection. **`Name`** is its human-readable label.
 </details>
 
 <details>
 <summary>5. How is `@odata.type` formatted on a versioned resource, and how does backward compatibility work across minor schema versions?</summary>
 
-It is formatted as **`#<Namespace>.v<Major>_<Minor>_<Errata>.<ResourceType>`** (for example, `#ComputerSystem.v1_17_0.ComputerSystem`). Because minor version increments only add optional properties or enum values without breaking existing fields, a client built for `v1_4_0` can safely consume a `v1_17_0` resource by ignoring unrecognized properties.
+The format is **`#<Namespace>.v<Major>_<Minor>_<Errata>.<ResourceType>`**, for example `#ComputerSystem.v1_17_0.ComputerSystem`. A minor version only adds optional properties or enum values, so a client built for `v1_4_0` can read a `v1_17_0` resource by ignoring the fields it does not know.
 </details>
 
 <details>
 <summary>6. What is the difference between `State`, `Health`, and `HealthRollup` inside the `Status` object?</summary>
 
-- **`State`:** Whether the resource is operationally enabled (`Enabled`, `Disabled`, `StandbyOffline`, `Absent`, `Updating`).
-- **`Health`:** The health of **this specific resource alone** (`OK`, `Warning`, `Critical`).
-- **`HealthRollup`:** The worst-case aggregated health of this resource **plus all subordinate resources beneath it** (for example, a `ComputerSystem` with `Health: "OK"` may show `HealthRollup: "Warning"` if one DIMM under its `Memory` collection is degraded).
+- **`State`:** Whether the resource is operationally enabled, shown as `Enabled`, `Disabled`, `StandbyOffline`, `Absent`, or `Updating`.
+- **`Health`:** The health of **this resource alone**, shown as `OK`, `Warning`, or `Critical`.
+- **`HealthRollup`:** The worst health among this resource **and everything beneath it**. A `ComputerSystem` can show `Health: "OK"` and still show `HealthRollup: "Warning"`, if one degraded DIMM sits under its `Memory` collection.
 </details>
 
 <details>
 <summary>7. In a Redfish JSON payload, what is the exact semantic difference between an empty string (`""`) and `null`?</summary>
 
-An empty string **`""`** means the property is supported and working, but its value is currently **blank / unset** (such as an unpopulated `AssetTag`). **`null`** means the BMC **could not obtain or measure the value** (for example, a sensor that cannot be read while host power is off or due to a bus error).
+An empty string **`""`** means the property is supported and working, but its value is blank, as with an unset `AssetTag`. **`null`** means the BMC could not get or measure the value, for example a sensor that cannot be read while host power is off or after a bus error.
 </details>
 
 <details>
 <summary>8. Which five properties are mandatory in every Redfish Resource Collection response?</summary>
 
-**`@odata.id`**, **`@odata.type`** (e.g., `#SensorCollection.SensorCollection`), **`Name`**, **`Members`** (an array of `{"@odata.id": "..."}` link objects, `[]` if empty), and **`Members@odata.count`** (total member count across all pages).
+**`@odata.id`**, **`@odata.type`** (for example, `#SensorCollection.SensorCollection`), **`Name`**, **`Members`** (an array of `{"@odata.id": "..."}` links, or `[]` when empty), and **`Members@odata.count`**, which is the total member count across all pages.
 </details>
 
 <details>
 <summary>9. Why does `Members` in a standard collection hold `@odata.id` link objects rather than inlining the full JSON of every member?</summary>
 
-Returning compact `@odata.id` stubs keeps collection responses small and fast on constrained embedded BMC processors (especially when a collection contains dozens of sensors, PCIe devices, or log entries), letting clients fetch only the members they need (or request inline expansion explicitly via `?$expand` when supported).
+Short link stubs keep collection responses small and fast on the modest processors inside a BMC. That matters when a collection holds dozens of sensors, PCIe devices, or log entries. Clients fetch only the members they need, or ask for inline expansion with `?$expand` when the BMC supports it.
 </details>
 
 <details>
 <summary>10. What does `Members@odata.nextLink` indicate, and how do `$top`/`$skip` versus `$filter` affect `Members@odata.count`?</summary>
 
-`Members@odata.nextLink` provides the opaque URL to fetch the **next page** of a paginated collection when `len(Members) < Members@odata.count`. Per DSP0266 §9.6.10, `$top` and `$skip` **do not** change `Members@odata.count` (it remains the full collection size), whereas `$filter` updates `Members@odata.count` to the total number of members matching the filter.
+`Members@odata.nextLink` is the URL for the next page, and you get it when `len(Members)` is less than `Members@odata.count`. Under DSP0266 §9.6.10, `$top` and `$skip` leave `Members@odata.count` at the full collection size. `$filter` changes it to the number of members that match the filter.
 </details>
 
 <details>
 <summary>11. Which well-known Redfish URIs are required by DSP0266 Table 4 and permitted to be read via `GET` without authentication (§13.3.2)?</summary>
 
-**`/redfish`** (protocol version object), **`/redfish/v1/`** (Service Root), **`/redfish/v1/odata`** (OData service document), and **`/redfish/v1/$metadata`** (CSDL schema metadata document), plus `/redfish/v1/openapi.yaml` if implemented. All hardware and management subtrees (`/redfish/v1/Systems`, `/Managers`, `/Chassis`) require authentication (`401 Unauthorized`).
+They are **`/redfish`** (the protocol version object), **`/redfish/v1/`** (the Service Root), **`/redfish/v1/odata`** (the OData service document), and **`/redfish/v1/$metadata`** (the CSDL schema metadata). `/redfish/v1/openapi.yaml` is also open if the BMC implements it. Every hardware and management subtree, such as `/redfish/v1/Systems`, `/Managers`, and `/Chassis`, returns `401 Unauthorized` without a login.
 </details>
 
 <details>
 <summary>12. What is `/redfish/v1/$metadata`, and why is it useful to client tools?</summary>
 
-`/redfish/v1/$metadata` returns an XML CSDL (Common Schema Definition Language) document listing the exact schema namespaces, versions, and entity types implemented by that specific BMC firmware.
+It returns an XML CSDL (Common Schema Definition Language) document. The document lists the exact schema namespaces, versions, and entity types that this particular BMC firmware implements.
 </details>
 
 <details>
 <summary>13. What is the difference between a subordinate reference at the root of a resource and a reference inside `Links`, and what graph hazard do `Links` create?</summary>
 
-Subordinate references at the root of a resource (`"Processors": {"@odata.id": "..."}`) point to direct children in the containment hierarchy, whereas references inside **`Links`** (`Links.Chassis`, `Links.ManagedBy`) point to associated resources elsewhere in the model. Because `Links` are often bidirectional, they turn the model into a cyclic graph that will trap a naive recursive crawler in an infinite loop unless it tracks a `visited` set.
+A subordinate reference at the root of a resource, such as `"Processors": {"@odata.id": "..."}`, points to a direct child in the containment tree. A reference inside **`Links`**, such as `Links.Chassis` or `Links.ManagedBy`, points to an associated resource elsewhere in the model. `Links` are often two-way, which makes the model a cyclic graph. A naive recursive crawler can loop forever on it unless it keeps a `visited` set.
 </details>
 
 <details>
 <summary>14. How do `Systems`, `Chassis`, and `Managers` divide the representation of a server, and why does the `dgx` mock profile have two `ComputerSystem` instances?</summary>
 
-- **`Systems`:** Logical computer view (CPUs, GPUs, RAM, BIOS, boot order, power state).
-- **`Chassis`:** Physical sheet-metal enclosure view (power supplies, fans, temperatures, physical drives, PCIe slots).
-- **`Managers`:** Management controller view (the BMC itself, its network settings, accounts, and SEL).
-The `dgx` profile has two `ComputerSystem` instances because `System_0` models the host x86 computer and `HGX_Baseboard_0` models the 8-GPU HGX accelerator subsystem.
+- **`Systems`:** The logical computer, with its CPUs, GPUs, RAM, BIOS, boot order, and power state.
+- **`Chassis`:** The physical enclosure, with power supplies, fans, temperatures, physical drives, and PCIe slots.
+- **`Managers`:** The management controller, meaning the BMC itself, along with its network settings, its accounts, and its System Event Log, or SEL.
+
+The `dgx` profile has two `ComputerSystem` instances because `System_0` models the host x86 computer, while `HGX_Baseboard_0` models the 8-GPU HGX accelerator subsystem.
 </details>
 
 <details>
 <summary>15. How are payload annotations formatted in Redfish (DSP0266 §9.9), and which three annotation namespaces are permitted?</summary>
 
-They are formatted as **`[<PropertyName>]@<Namespace>.<TermName>`** (for example, `ResetType@Redfish.AllowableValues` or `@Redfish.Settings`). Services may only use the **`odata`**, **`Redfish`**, and **`Message`** namespaces.
+They follow the form **`[<PropertyName>]@<Namespace>.<TermName>`**, for example `ResetType@Redfish.AllowableValues` or `@Redfish.Settings`. A service may use only three namespaces: **`odata`**, **`Redfish`**, and **`Message`**.
 </details>
 
 <details>
 <summary>16. Explain the relationship between an active resource (such as `/Bios`) and its `@Redfish.Settings` subordinate resource (`/Bios/Settings` or `/Bios/SD`).</summary>
 
-The active resource (`/Bios`) reflects the **currently running state** of the hardware, whereas the subordinate Settings resource (`/Bios/Settings` or `/SD`, pointed to by `@Redfish.Settings.SettingsObject`) holds the **pending future state**. Clients `PATCH` `/Bios/Settings`, and the UEFI firmware applies those staged changes on the next system reboot.
+The active resource, `/Bios`, shows the state the hardware is running right now. The Settings resource, `/Bios/Settings` or `/SD`, holds the pending future state. The `@Redfish.Settings.SettingsObject` link points you to it. You `PATCH` `/Bios/Settings`, and the UEFI firmware applies those staged changes on the next system reboot.
 </details>
 
 <details>
 <summary>17. How does Redfish isolate vendor-specific properties, resources, and actions so they never collide with standard DMTF names (DSP0266 §9.8)?</summary>
 
-All vendor extensions are placed inside the **`Oem`** object under a unique vendor key derived from the company's ICANN domain name (`"Nvidia"`, `"Contoso_org"`), an IANA Enterprise ID (`"EID_412"`), or a reserved name (`"OpenBMC"`), with subordinate OEM URIs following `<BaseUri>/Oem/<OemIdentifier>/<ResourcePath>`.
+Vendor extensions go inside the **`Oem`** object, under a vendor key. That key can come from the company's ICANN domain name (`"Nvidia"`, `"Contoso_org"`), an IANA Enterprise ID (`"EID_412"`), or a reserved name (`"OpenBMC"`). Vendor URIs follow the pattern `<BaseUri>/Oem/<OemIdentifier>/<ResourcePath>`.
 </details>
 
 <details>
 <summary>18. What is SSDP in Redfish (DSP0266 §12.4), what port and search target does it use, and why is it usually disabled in production AI data centers?</summary>
 
-SSDP (Simple Service Discovery Protocol) is an optional UPnP multicast discovery mechanism on **UDP port `1900`** using search target **`urn:dmtf-org:service:redfish-rest:1`**. While convenient on a lab bench, production data centers already track BMC IPs via DHCP/inventory and disable SSDP in `NetworkProtocol` to reduce network reconnaissance exposure.
+SSDP (Simple Service Discovery Protocol) is an optional UPnP multicast discovery mechanism. It uses **UDP port `1900`** and the search target **`urn:dmtf-org:service:redfish-rest:1`**. A lab bench finds it handy. A production data center already tracks every BMC address through DHCP and inventory, so it turns SSDP off in `NetworkProtocol` to reduce what an attacker can learn from the network.
 </details>
 
 <details>
 <summary>19. In NVIDIA Base Command Manager (`cmsh` `device` mode), which built-in commands issue Redfish `GET`, `POST`, `PATCH`, and `DELETE` requests across nodes or racks?</summary>
 
-**`redfishget`**, **`redfishpost`**, **`redfishpatch`** (plus `redfishput` for `PUT`), and **`redfishdelete`** (along with `redfishsubscriptions` and `redfishevent`), all of which accept node (`-n`), category (`-c`), or rack (`-r`) filters.
+The commands are **`redfishget`**, **`redfishpost`**, **`redfishpatch`**, and **`redfishdelete`**. The set also includes `redfishput` for `PUT`, plus `redfishsubscriptions` and `redfishevent`. Each one accepts a node (`-n`), category (`-c`), or rack (`-r`) filter.
 </details>
 
 <details>
 <summary>20. Why can a hyperlink advertised in `/redfish/v1/` still return HTTP `404 Not Found` or `501 Not Implemented` on some BMCs, and how should a crawler handle it?</summary>
 
-Some BMC firmware builds populate static template links in `ServiceRoot` (such as `TelemetryService` or `TaskService`) even on hardware SKUs or license tiers where that subsystem is not active. A crawler must check the HTTP status code on every `GET` (`st == 200`), record non-`200` responses without crashing, and continue walking the remaining graph.
+Some firmware builds fill `ServiceRoot` with template links, such as `TelemetryService` or `TaskService`, even on hardware or license tiers where that subsystem is not active. So a crawler must check the status code on every `GET` (`st == 200`). It should record any non-`200` response without crashing, then keep walking the rest of the graph.
 </details>
 
 ---

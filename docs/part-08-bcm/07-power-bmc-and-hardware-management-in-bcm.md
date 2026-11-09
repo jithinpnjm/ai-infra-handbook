@@ -22,24 +22,26 @@ lab_venue: "Nebius GPU"
 
 ## Why this matters for AI infrastructure
 
-A GPU server is more than an operating system. Under it sit a BMC, a BIOS, GPU and switch firmware, power feeds and cooling. When a node hangs, you cannot SSH in; you power-cycle it through the BMC. When you roll out new GPU firmware, a wrong activation step leaves the old firmware running while everyone thinks it is updated. BCM puts these jobs under one tool so they can be done for a rack at a time. Part 7 of this handbook explains the Redfish protocol underneath; this chapter shows how BCM wraps it.
+It is three in the morning and a GPU node has stopped answering. You cannot SSH in, because the operating system is the part that hung. A GPU server is more than an operating system. Under it sit a BMC, a BIOS, GPU and switch firmware, power feeds and cooling.
+
+When a node hangs, the way back in runs through the BMC, so you power-cycle the machine from there. When you roll out new GPU firmware, a wrong activation step can leave the old firmware running while everyone believes it was updated. BCM puts all of these jobs under one tool, so you can handle a whole rack at a time. Part 7 of this handbook explains the Redfish protocol underneath. This chapter shows how BCM wraps it.
 
 ## Prerequisites and outcomes
 
-You need chapters 8.1 to 8.5 and, ideally, Part 7. After this chapter you can:
+Before you start, you should have chapters 8.1 to 8.5 behind you, and ideally Part 7. When you finish this chapter, you should be able to:
 
-- choose a power control method and explain what BCM does with each
-- power nodes on and off in batches without a power surge
-- set up a BMC network and credentials, and audit which credentials each node really uses
-- identify a node, read its BMC event log and reset its BMC
-- manage BIOS settings with the four-state model
-- flash firmware and explain why an AC power cycle is needed
-- set up serial over LAN so a console works when the network does not
-- list hardware, GPUs and PCI devices from the BMC, and handle leak detection
+- choose a power control method, and explain what BCM does with each one.
+- power nodes on and off in batches without causing a power surge.
+- set up a BMC network and its credentials, and audit which credentials each node really uses.
+- identify a node, read its BMC event log, and reset its BMC.
+- manage BIOS settings with the four-state model.
+- flash firmware, and explain why an AC power cycle is needed.
+- set up serial over LAN, so a console works even when the network does not.
+- list hardware, GPUs and PCI devices from the BMC, and handle leak detection.
 
 ## 1. The power control methods (4.1)
 
-BCM can control power in several ways. The setting is the device's **`powercontrol`** property.
+Suppose a node will not respond, and you need to know which path BCM uses to cut or restore its power. The answer lives in one property. BCM stores the method in the device's **`powercontrol`** property, and the table below lists the values you can set.
 
 | Method | `powercontrol` | Notes |
 |---|---|---|
@@ -48,26 +50,33 @@ BCM can control power in several ways. The setting is the device's **`powercontr
 | BMC (others) | `ilo0`, `drac0`, `cimc0`, `rf0` | HPE iLO, Dell DRAC, Cisco CIMC, Redfish. Treated like IPMI with different interface names |
 | Custom | `custom` | Your own script (section 2) |
 
-**Important details from the manual:**
+For a server with a BMC, `ipmi0` is the normal choice, and the BMC does the switching. The vendor variants in the table are treated like IPMI, with different interface names. In that case BCM ignores any PDU ports listed for the node, and that detail catches people out.
 
-- **Twin nodes** that share one PDU port: a power operation on one applies to **all** nodes on that port.
-- A **dumb (non-manageable) PDU** assigned to a node makes the node's BMC state "unknown". Record dumb PDUs in the node's `notes` or `userdefined1` instead of assigning them.
-- **Combining PDU and BMC:** with `PowerOffPDUOutlet = true` in `cmd.conf`, BCM also switches the PDU outlet off after a BMC power-off. That powers down the BMC too (a few watts per node). The node BIOS must then be set to **power on when power is restored**, or the node never comes back. With shared ports, the outlet goes off only when all nodes on it are off.
-- A BMC with a **DHCP-assigned address** is not power-managed by BCM; it needs a custom script, because the address is dynamic.
-- On Dell hardware BCM calls `racadm` (`serveraction powerstatus`, `hardreset`); if the `bright` user lacks privilege, the manual shows raising it with `racadm ... set iDRAC.Users.4.Privilege 511`.
-- On a **Redfish** BMC, `power on/off/reset` is a **DC power cycle** and assumes AC power to the BMC is on. The **AC power cycle** (cutting all AC inputs) is a different thing, needed for some firmware (section 7).
+The manual adds a few details that matter in practice. Twin nodes often share one PDU port, and then a power operation on one of them applies to all the nodes on that port. A dumb PDU, meaning one BCM cannot manage, makes the node's BMC state unknown if you assign it. Record such a PDU in the node's `notes` or `userdefined1` field instead.
+
+You can also combine PDU and BMC control. With `PowerOffPDUOutlet = true` in `cmd.conf`, BCM switches the PDU outlet off after a BMC power-off. That cuts power to the BMC too, which draws a few watts per node. The node's BIOS must then be set to power on when power is restored, or the node never comes back. With shared ports, the outlet goes off only when every node on it is off.
+
+A BMC with a DHCP-assigned address is not power-managed by BCM. The address can change, so that node needs a custom script, as section 2 explains. On Dell hardware, BCM calls `racadm` with `serveraction powerstatus` and `hardreset`. If the `bright` user lacks the privilege it needs, the manual shows raising it with `racadm ... set iDRAC.Users.4.Privilege 511`.
+
+On a Redfish BMC, `power on`, `off` and `reset` perform a DC power cycle, and they assume AC power to the BMC is on. An AC power cycle, where you cut all AC inputs, is a different operation. Some firmware needs it, as section 7 explains.
+
+Start with the BMC method for any server that has one, and keep the PDU method for the cases the BMC cannot cover.
 
 ## 2. Custom power scripts (4.1.4)
 
-For a device nothing else covers, set `powercontrol custom` and `custompowerscript /path/to/script`. The script is run as:
+Sometimes a device fits none of the built-in methods, such as a smart plug with its own control interface. Then you write your own script and tell BCM to call it. Set `powercontrol custom` and `custompowerscript /path/to/script`. BCM then runs the script in this form:
 
 ```bash
 myscript <operation> <device> [custompowerscriptargument]
 ```
 
-`operation` is `ON`, `OFF`, `RESET` or `STATUS`; exit **0 on success, non-zero on failure**. CMDaemon also provides environment variables, for example `CMD_MAC` (so a Wake-on-LAN script can call `wakeonlan $CMD_MAC` without any extra argument). The manual ships an example at `/cm/local/examples/cmd/custompower`. The lab runs a real script to show the contract.
+The `operation` argument is `ON`, `OFF`, `RESET` or `STATUS`. Your script must exit with **0 on success** and a non-zero code on failure, because that exit code is how BCM knows what happened.
+
+CMDaemon also sets environment variables, such as `CMD_MAC`. A Wake-on-LAN script can call `wakeonlan $CMD_MAC` with no extra argument. The manual ships an example at `/cm/local/examples/cmd/custompower`, and the lab runs a real script to show the same contract.
 
 ## 3. Power operations (4.2)
+
+Suppose a rack has just come back from maintenance and every node needs power. The tempting move is to power them all at once. The delays and batches in this section exist to stop you from doing that.
 
 ```bash
 device power -n node001,node018..node033 on        # in device mode of cmsh
@@ -78,18 +87,23 @@ device power on -p 3 rack[01-12]                    # in batches of 3 racks
 power off --at 23:55            power off --after 10m
 ```
 
-- **Delay between devices:** 1 second by default, to avoid power surges (`-d`). Do not use `-d 0` for many nodes unless you have considered the surge.
-- **Batches:** `-p N` starts N items at once, **20 seconds** between batches (`--parallel-delay`), and 0 delay inside a batch. `--parallel-dry-run` only prints the times. The lab shows the schedule for the manual's example: 12 racks in batches of 3 start at 0, 20, 40 and 60 seconds.
-- **Threads:** 32 by default (`PowerThreadPoolSize`).
-- **Closed** devices are skipped unless `-f`.
-- **Not inside `foreach`/`range`** (chapter 8.5). Give the selection to the power command: `-n`, `-c`, `-g`, `-r`, `-s`.
-- **Status values:** `ON`, `OFF`, `RESET` (the short time power is off during a reset), `FAILED` (communication failure), `UNKNOWN` (timeout). For DGX racks: `DONE`, `GOOD`, `BUSY`, `FAIL`, `PENDING`, `CANCELLED`. `power status` output arrives as an event, so it prints nothing if private events are off.
-- Scheduled operations: `power list`, `power wait`, `power cancel`; states waiting, busy, cancelled, done.
-- `--retry-count` and `--retry-delay` (default 3 s) retry failed operations; `--port pdu1:3` works on a PDU port directly.
+The first guard is the delay between devices. It is 1 second by default, set with `-d`, and it protects you from power surges. Do not use `-d 0` for many nodes unless you have considered the surge.
 
-Also: a switch must keep **dynamic speed negotiation** on, or it can lose a node or BMC link when the NIC negotiates its speed down for power saving, and BCM may misread the node's state (4.5). PDU metrics `PDUBankLoad` and `PDULoad` feed monitoring (chapter 8.11). Overview commands: `pduoverview`, `cduoverview` (coolant temperatures, pressures and flow, data from a building management system), `powershelfoverview` (per-PSU power, current, voltage, fan and temperature on rack-scale systems).
+For larger groups, `-p N` starts N items at once, with no delay inside a batch. Batches are spaced 20 seconds apart (`--parallel-delay`). Take the manual's example of 12 racks in batches of 3. That gives four waves, which start at 0, 20, 40 and 60 seconds. The lab shows the same schedule. `--parallel-dry-run` only prints the times, so use it to check a plan before you run it.
+
+BCM uses 32 threads for power work by default, set with `PowerThreadPoolSize`. Closed devices are skipped unless you add `-f`. You cannot run these commands inside `foreach` or `range` (chapter 8.5). Instead, give the selection to the power command itself with `-n`, `-c`, `-g`, `-r` or `-s`.
+
+`power status` reports one of `ON`, `OFF`, `RESET`, `FAILED` or `UNKNOWN`. `RESET` means the power was off only briefly during a reset. `FAILED` means communication broke down, and `UNKNOWN` means the request timed out. DGX racks report their own set: `DONE`, `GOOD`, `BUSY`, `FAIL`, `PENDING` and `CANCELLED`. The output arrives as an event, so `power status` prints nothing if private events are off.
+
+Scheduled operations are managed with `power list`, `power wait` and `power cancel`. An operation can be waiting, busy, cancelled or done. If an operation fails, `--retry-count` and `--retry-delay` retry it, and the retry delay defaults to 3 s. `--port pdu1:3` works on a PDU port directly.
+
+A switch must keep dynamic speed negotiation turned on. Otherwise a NIC that drops its speed to save power can lose a node or BMC link, and BCM may misread the node's state (4.5). PDU metrics `PDUBankLoad` and `PDULoad` feed monitoring (chapter 8.11). For an overview, use `pduoverview`, `cduoverview` (coolant temperatures, pressures and flow, from a building management system) or `powershelfoverview` (per-PSU power, current, voltage, fan and temperature on rack-scale systems).
+
+Before a large power-on, run the dry run and read the schedule first.
 
 ## 4. BMC networks and credentials (3.7)
+
+Before BCM can manage a BMC, the BMC needs an address on a network the head node can reach, and it needs a login. This section covers both, starting with the picture below.
 
 ```mermaid
 flowchart LR
@@ -100,14 +114,21 @@ flowchart LR
   CM[CMDaemon] -->|power, sensors, firmware| B1
 ```
 
-- A BMC interface is a special interface type, `bmc`, on a dedicated network. Recommended names: `bmcnet`, `ilonet`, `ipminet`, `dracnet`, `cimcnet` or `rfnet`, base `10.148.0.0`, 16 bits (default). Interface names start with `ipmi`, `ilo`, `drac`, `cimc` or `rf`.
-- Add the interfaces for many nodes at once: `addinterface -n node001..node150 bmc ipmi0 bmcnet 10.148.0.1` (then `commit`); `--increment` changes the step.
-- The **head node needs an address on the BMC network** too: an alias interface if BMCs share the internal network, or a physical interface if the BMC network is separate. Test with a ping loop; 100 percent loss means a connectivity problem.
-- **Authentication:** the node installer (chapter 8.4) sets each BMC's network settings and credentials at boot. Defaults: user `bright`, a random password made at install, user ID 4, privilege administrator, reset delay 0. Set them in `partition use base; bmcsettings`, per category or per node. **Node overrides category overrides partition.** `bmcsettings --show` prints the effective values and where they come from.
-- **`credentialsoverview`** (device mode) lists the effective access and BMC credentials per device and where each comes from. Passwords appear as a **short SHA-256 fingerprint salted per cmsh session**: equal passwords look equal within one session, so a **node with a different password stands out**, and a copied fingerprint is useless in another session. `--inverse` groups devices by identical credentials, **outliers first**. If you lack the right tokens the fields are redacted (`-`). This is the BCM answer to the "which BMC passwords have drifted?" question; chapter 7.14 does the same job over Redfish.
-- If BMC authentication fails, the reason is often in `/var/log/node-installer`.
+A BMC interface is a special interface type, `bmc`, that sits on a dedicated network. The recommended network names are `bmcnet`, `ilonet`, `ipminet`, `dracnet`, `cimcnet` or `rfnet`. The default base is `10.148.0.0`, with 16 bits. Interface names start with `ipmi`, `ilo`, `drac`, `cimc` or `rf`.
+
+For many nodes, you add the interfaces in one command: `addinterface -n node001..node150 bmc ipmi0 bmcnet 10.148.0.1`, followed by `commit`. Use `--increment` to change the step between addresses.
+
+The head node also needs an address on the BMC network. If the BMCs share the internal network, add an alias interface. If the BMC network is separate, use a physical interface. To test it, run a ping loop. A 100 percent loss means you have a connectivity problem.
+
+The node installer (chapter 8.4) sets each BMC's network settings and credentials at boot. The defaults are user `bright`, a random password made at install, user ID 4, administrator privilege, and a reset delay of 0. You set these in `partition use base; bmcsettings`, per category or per node. A node setting overrides a category setting, and a category setting overrides the partition. `bmcsettings --show` prints the effective values and tells you where each one comes from.
+
+`credentialsoverview` in device mode lists the effective access and BMC credentials for each device, and where each one comes from. It never shows a real password. Each password appears as a short SHA-256 fingerprint, salted for each cmsh session. Within one session, equal passwords look equal, so a node with a different password stands out. A copied fingerprint is useless in another session. The `--inverse` option groups devices by identical credentials and lists the outliers first. Without the right tokens, fields show as `-`. This is BCM's answer to which BMC passwords have drifted, and chapter 7.14 does the same job over Redfish.
+
+If BMC authentication fails, check `/var/log/node-installer` first, because the reason is often recorded there.
 
 ## 5. Looking at and resetting the hardware
+
+When a machine misbehaves, you often need to find it in the rack, read what its BMC has recorded, or reset the BMC without touching the operating system. The table lists the device-mode commands for those jobs.
 
 | Command (device mode) | Purpose |
 |---|---|
@@ -120,13 +141,15 @@ flowchart LR
 | `rconsole` | the serial console (section 8) |
 | `leakdetection enable\|disable`, `leakinfo` | coolant leak sensors via the BMC |
 
-**Leak detection.** Enabled by default on liquid-cooled systems. If a leak sensor is broken or reports falsely, `leakdetection disable` on that device prevents an unwanted power-off until the sensor is replaced; the status line then shows `leak:disabled`. It is not for devices without sensors. Remember to re-enable.
+Use the table as a lookup. The one to be careful with is `bmcreset`. It drops out-of-band access for a few minutes, but the node keeps its power state and its OS.
 
-**Without a BMC tool.** `ipmitool -U <user> -P <pass> -H <ip> chassis identify 1` or `mc reset cold` work from the head node (module `ipmitool`). Port 623/UDP is the IPMI port (`nc -vz -u <ip> 623`). A BMC that is up but not serving may need a cold reset; the manual also says pulling the power cable is the physical way, and that shutting a server down usually does not power down the BMC.
+Liquid-cooled systems have leak detection enabled by default. If a leak sensor is broken or reports falsely, `leakdetection disable` on that device stops an unwanted power-off until the sensor is replaced. The status line then shows `leak:disabled`. Leak detection does not apply to devices without sensors. Remember to turn it back on with `leakdetection enable`.
+
+If you do not have BCM's tools, the head node can still talk to the BMC with `ipmitool`, from the `ipmitool` module. For example, `ipmitool -U <user> -P <pass> -H <ip> chassis identify 1` works, and so does `mc reset cold`. The IPMI port is 623/UDP, which you can test with `nc -vz -u <ip> 623`. A BMC that is up but not serving requests may need a cold reset. The manual also says pulling the power cable is the physical way to reset it, and that shutting a server down usually does not power down the BMC.
 
 ## 6. BIOS settings: four states (14.5.2)
 
-BCM manages BIOS settings through Redfish using JSON templates, one per vendor model, under `/cm/local/apps/cm-bios-tools/templates/` (the manual lists Dell 14g, 15g AMD and Intel, R730, and HPE DL110 and DL380 Gen10). A node's BIOS configuration has four places and three operations:
+A new Boot Mode setting can look saved and still do nothing. BCM keeps a BIOS setting in four places, and it helps to know which one you are looking at. BCM manages BIOS settings through Redfish, using JSON templates for each vendor model. Those templates live under `/cm/local/apps/cm-bios-tools/templates/`. The manual lists templates for Dell 14g, 15g AMD and Intel, R730, and HPE DL110 and DL380 Gen10.
 
 ```mermaid
 flowchart LR
@@ -135,91 +158,95 @@ flowchart LR
   C -->|reboot| D[BIOS: Live]
 ```
 
-- **Model first.** Set `model` in `biossettings` (device or category) before anything else.
-- `status` shows three columns: Configured (database), Pending (stored in the BIOS), Live (running).
-- A configured value of **`<default>`** (null, from `clear`) **does nothing**; only values you set change the BIOS.
-- To change Boot Mode: `set` it, `commit` (database), `bios apply` (pending), reboot (live).
-- `cm-bios-manage` is the underlying utility.
+Model comes first. Set `model` in `biossettings`, on a device or a category, before anything else.
 
-This is the same pending-versus-live idea as the Redfish Settings resource in chapter 7.9.
+The `status` command shows three columns. Configured is the value in the CMDaemon database. Pending is the value stored in the BIOS. Live is the value the BIOS is actually running. A configured value of `<default>`, which is null after `clear`, does nothing. Only the values you set change the BIOS.
+
+To change Boot Mode, set it, then run `commit` to save it to the database. Run `bios apply` to stage it in the BIOS as pending, and reboot so it becomes live. `cm-bios-manage` is the underlying utility.
+
+This is the same pending-versus-live idea as the Redfish Settings resource in chapter 7.9. After `bios apply`, check that the value shows as Pending, and wait for the reboot before you call the change done.
 
 ## 7. Firmware (14.5.3)
 
-For Redfish systems (HPE iLO, DGX), set **`firmwaremanagemode`** in `bmcsettings` (device, category or partition): `auto`, `b200`, `b300`, `gb200`, `gb200sw`, `gb300`, `gb300sw`, `h100`, `iLO` or `none`. HPE DL380a Gen 12 follows the same Redfish procedure as earlier HPE generations.
+Firmware updates are where a node can end up half-updated, so follow the steps in order. For Redfish systems such as HPE iLO and DGX, set **`firmwaremanagemode`** in `bmcsettings`, on a device, category or partition. The values are `auto`, `b200`, `b300`, `gb200`, `gb200sw`, `gb300`, `gb300sw`, `h100`, `iLO` or `none`. HPE DL380a Gen 12 follows the same Redfish procedure as earlier HPE generations.
 
-**The manual's DGX H100 example:**
+The manual's DGX H100 example runs as follows.
 
-1. Download the `.fwpkg` packages from the DGX support portal and put them in `/cm/local/apps/cmd/etc/htdocs/bios/firmware/<platform>/` on the head node.
-2. Configure the BMC network and `bmcsettings` (username, user ID, password, firmware mode) and the node's BMC interface.
-3. `firmware info` lists the packages. `firmware status -n node001` lists every component with its version and state.
-4. `firmware flash <package>` on the node. Status shows `flashing` with a progress percentage and then versions in transition, for example `96.00.70.00.01 -> 96.00.74.00.01`.
-5. The State column then shows **`pending`** and the Result column says **`success: AC power cycle to activate`**.
-6. Do an **AC power cycle**: cut all AC inputs (a PDU turning the whole system off, or pulling every mains lead). **A normal `power reset` is a DC (board-level) power cycle and does not activate some components.**
-7. `firmware status` now shows **`success: activated`** and the new versions.
+1. Download the `.fwpkg` packages from the DGX support portal, and copy them to `/cm/local/apps/cmd/etc/htdocs/bios/firmware/<platform>/` on the head node.
+2. Configure the BMC network, `bmcsettings` (username, user ID, password and firmware mode), and the node's BMC interface.
+3. Run `firmware info` to list the packages. Run `firmware status -n node001` to see every component with its version and state.
+4. Run `firmware flash <package>` on the node. The status shows `flashing` with a progress percentage, and then the versions in transition, for example `96.00.70.00.01 -> 96.00.74.00.01`.
+5. When the update finishes, the State column shows `pending`, and the Result column says `success: AC power cycle to activate`.
+6. Perform an **AC power cycle** by cutting all AC inputs, for example with a PDU that turns the whole system off, or by pulling every mains lead. A normal `power reset` is a DC, board-level power cycle, and it does not activate some components.
+7. Run `firmware status` again. It should show `success: activated` and the new versions.
 
-For HPE iLO there are extra `list`, `upload` and `remove` operations (the package goes to a special flash storage first, then `flash`). Older systems can flash a BIOS from a DOS image served through the PXE menu (the manual describes `bios/menu.conf`); rewrite the BIOS settings afterwards, because a new BIOS version may not understand the old stored configuration.
+For HPE iLO there are extra `list`, `upload` and `remove` operations. The package goes to a special flash storage first, and then you run `flash`. Older systems can flash a BIOS from a DOS image served through the PXE menu, which the manual describes in `bios/menu.conf`. Rewrite the BIOS settings afterwards, because a new BIOS version may not understand the old stored configuration.
 
-The lab models the pending-to-active flow. **Do not read "success" as "active":** check the version and the `activated` result.
+The lab models the pending-to-active flow. You will see why the word "success" is not enough. Do not read "success" as "active". Before you call a firmware update finished, check the new version and the `activated` result.
 
 ## 8. Serial over LAN (14.7)
 
-When SSH is impossible (bad network settings, hung boot), the BMC can carry the **serial console over the LAN**. Three places must agree:
+When SSH is impossible, for example after bad network settings or a hung boot, the BMC can carry the serial console over the LAN. This is serial over LAN, or SOL. It only works when three places agree on the same settings.
 
-1. **BMC BIOS**: SOL enabled, same speed, flow control, port.
-2. **Node kernel**: the software image's SOL settings (`softwareimage use default-image; set enablesol yes`; `show | grep SOL` lists enable, flow control, port, speed).
-3. **Node BIOS**: serial port enabled, same settings.
+1. The BMC BIOS, with SOL enabled and matching speed, flow control and port.
+2. The node kernel, through the software image's SOL settings. Run `softwareimage use default-image; set enablesol yes`, and `show | grep SOL` lists enable, flow control, port and speed.
+3. The node BIOS, with its serial port enabled and the same settings.
 
-Rules of thumb from the manual: **115200 bps** (higher is possible but more likely to fail), **flow control on**, **COM1 = `ttyS0`** on x86_64 or **`ttyAMA0`** on aarch64 (COM2 = `ttyS1` / `ttyAMA1`), terminal type VT100 or ANSI; console redirection before and during POST on, after POST off. Two traps: **BCM can configure the BMC's network and users but not the SOL settings in the BMC BIOS**, so a factory reset can break the match; and if BMC LAN traffic is on the **shared NIC**, a client plugged into the dedicated BMC port sees no console. Connect with `rconsole` in device mode or `minicom`; `conman` logs serial consoles. A node installer can freeze at "freeing unused kernel memory" if SOL is on in the BIOS and the hardware cannot keep up; disabling SOL is the workaround (chapter 8.4).
+The manual gives some rules of thumb. Use 115200 bps. Higher speeds work, but they fail more often. Turn flow control on. COM1 is `ttyS0` on x86_64, or `ttyAMA0` on aarch64, and COM2 is `ttyS1` or `ttyAMA1`. Use the terminal type VT100 or ANSI. Turn console redirection on before and during POST, and off after POST.
+
+Two traps catch many people. BCM can configure the BMC's network and users, but it does not configure the SOL settings in the BMC BIOS. A factory reset can therefore break the match. Also, if BMC LAN traffic shares the NIC, a client plugged into the dedicated BMC port sees no console.
+
+To connect, use `rconsole` in device mode, or `minicom`. `conman` logs serial consoles. A node installer can freeze at `freeing unused kernel memory` if SOL is on in the BIOS and the hardware cannot keep up. Disabling SOL is the workaround, as chapter 8.4 explains.
+
+Set up all three layers before you need the console. The moment you need it is usually the moment SSH has already failed.
 
 ## 9. A routine for a hung node
 
-1. `ds node001` (status), `power status -n node001`.
-2. `bmceventlog -n node001 --tail 20` for fan, power or memory events.
-3. If you need the console: `rconsole`.
-4. `identify -n node001 on` so the person at the rack finds it.
-5. `close -m "hung, ticket 123" -n node001` and **drain** it first if the scheduler is involved (chapter 8.4).
-6. `power reset -n node001` (a DC cycle). If it does not return, check the BMC (`bmcreset`).
-7. After repair: `open`, `undrain`, and a short burn if hardware was replaced (chapter 8.2).
+A node has hung, and a ticket is waiting. The routine below strings together the commands from this chapter.
+
+1. Check the node's status with `ds node001`, and its power with `power status -n node001`.
+2. Read the BMC event log with `bmceventlog -n node001 --tail 20` for fan, power or memory events.
+3. If you need the console, open it with `rconsole`.
+4. Turn on the identify light with `identify -n node001 on`, so the person at the rack can find it.
+5. Close the node with `close -m "hung, ticket 123" -n node001`. If the scheduler is involved, drain the node first (chapter 8.4).
+6. Run `power reset -n node001`, which is a DC cycle. If the node does not come back, check the BMC with `bmcreset`.
+7. After the repair, run `open` and `undrain`, and do a short burn if you replaced hardware (chapter 8.2).
 
 ## 10. Common first mistakes
 
-1. Listing PDU ports and expecting them to be used with `ipmi0`.
-2. Assigning a dumb PDU, which makes the BMC state unknown.
-3. Using `power on` with delay 0 on a whole rack.
-4. Forgetting that `PowerOffPDUOutlet` needs "power on after AC loss" in the BIOS.
-5. Treating "pending" firmware as active, or trying a DC reset for something that needs an AC cycle.
-6. Configuring the BIOS but forgetting `bios apply` and the reboot.
-7. Leaving a BMC password drifted on one node.
-8. Assuming SOL settings are copied by BCM into the BMC BIOS.
-9. Leaving leak detection disabled after a sensor swap.
-10. Using a DHCP address for BMCs and expecting BCM power control.
+Most early mistakes come from a few habits. People mix up PDU and BMC settings, or they treat a pending change as a finished one. The ten below come up again and again.
+
+Mistakes 1 to 5 involve power. Mistake 1 is listing PDU ports on a node and expecting them to be used with `ipmi0`. Mistake 2 is assigning a dumb PDU, which makes the BMC state unknown. Mistake 3 is using `power on` with delay 0 on a whole rack. Mistake 4 is forgetting that `PowerOffPDUOutlet` needs "power on after AC loss" in the BIOS. Mistake 5 is treating pending firmware as active, or trying a DC reset for something that needs an AC cycle.
+
+Mistakes 6 to 10 are habits of the workflow. Mistake 6 is configuring the BIOS but forgetting `bios apply` and the reboot. Mistake 7 is leaving a BMC password drifted on one node. Mistake 8 is assuming BCM copies SOL settings into the BMC BIOS. Mistake 9 is leaving leak detection disabled after a sensor swap. Mistake 10 is using a DHCP address for BMCs and then expecting BCM power control to work.
 
 ### 10.1 Deep dive: How BCM orchestrates Redfish, IPMI, and PDUs across a rack
 
-Chapters 7.1 through 7.15 showed how to speak Redfish and IPMI to a single BMC or a CSV of endpoints. In an NVIDIA Base Command Manager cluster, you rarely run standalone `curl` or `ipmitool` loops by hand for daily operations, because **`CMDaemon` acts as a stateful, topology-aware Redfish and IPMI proxy for the entire cluster**.
+Chapters 7.1 through 7.15 showed how to speak Redfish and IPMI to one BMC, or to a list of endpoints. In an NVIDIA Base Command Manager cluster, though, you rarely run standalone `curl` or `ipmitool` loops for daily work. `CMDaemon` acts as a stateful, topology-aware Redfish and IPMI proxy for the whole cluster. To see what BCM adds, follow what happens when an operator runs `device power on -p 3 rack[01-12]` or `firmware flash nvfw_DGX-HGX-H100x8_...fwpkg` in `cmsh`.
 
-To appreciate what BCM adds on top of raw Redfish calls, trace what happens when an operator runs `device power on -p 3 rack[01-12]` or `firmware flash nvfw_DGX-HGX-H100x8_...fwpkg` in `cmsh`:
+First, BCM resolves the target node's BMC address from its `bmc` interface (`ipmi0` or `rf0` on `bmcnet` `10.148.0.0/16`). It then finds the username, password, user slot ID (`4`), and `firmwaremanagemode` (`h100`, `b200`, `gb200`, `gb300`). It does this by walking the inheritance chain from `partition[base]` $\rightarrow$ `category` $\rightarrow$ `device`. Instead of reading passwords from a flat file on disk, it resolves them through that chain.
 
-1. **Hierarchical credential and interface resolution (`bmcsettings`):** Instead of reading passwords from a flat file on disk, `CMDaemon` resolves the target node's BMC IP address from its `bmc` interface (`ipmi0` or `rf0` on `bmcnet` `10.148.0.0/16`) and resolves the username, password, user slot ID (`4`), and `firmwaremanagemode` (`h100`, `b200`, `gb200`, `gb300`) by walking the inheritance chain from `partition[base]` $\rightarrow$ `category` $\rightarrow$ `device`.
-2. **Surge-protected power sequencing (`-d` and `-p` / `--parallel-delay`):** When an entire cooling row or Scalable Unit recovers from a planned facility maintenance window, powering on a hundred `10.2 kW` or `14.3 kW` GPU servers at the exact same millisecond creates a massive transformer and breaker inrush current surge. By enforcing a default `1`-second stagger (`-d 1`) between individual nodes—or starting `-p 3` racks at a time with a `20`-second pause (`--parallel-delay`) between rack waves—`CMDaemon` smooths the electrical ramp across the data-center PDUs automatically.
-3. **Coordinated BMC + PDU power-off (`PowerOffPDUOutlet`):** In high-security or energy-saving modes where even the BMC's standby power rail should be de-energized when a node is powered down (`PowerOffPDUOutlet = true` in `cmd.conf`), `CMDaemon` first issues a clean BMC power-off, waits for the host to power down, checks whether any twin node shares the same PDU outlet (`mypdu:1`), and only then switches the physical PDU outlet off—reversing the sequence (`PDU outlet ON` $\rightarrow$ wait for BMC boot / BIOS `Always On`) when powering the node back up.
-4. **Unified hardware, cooling, and power-shelf telemetry (`rackoverview`, `powershelfoverview`, `cduoverview`):** On liquid-cooled GB200 and GB300 NVL72 racks, power and cooling are no longer confined to individual compute nodes. `CMDaemon` subscribes to Redfish event streams (`redfishsubscriptions`) across compute trays (`GB300`) and NVLink switch trays (`GB200SW`), polls `33 kW` power shelves (`powershelfoverview`), ingests Coolant Distribution Unit (CDU) flow and pressure metrics from the facility Building Management System over MQTT (`cduoverview`), and monitors tray-level leak sensors (`leakdetection` / `leakinfo`) inside a single object model.
+Second, BCM staggers power-on to protect the electrical supply. When a cooling row or Scalable Unit comes back from a planned facility maintenance window, powering on a hundred `10.2 kW` or `14.3 kW` GPU servers at the same instant creates a massive inrush current surge at the transformers and breakers. The default is a 1-second stagger between nodes (`-d 1`). You can also start `-p 3` racks at a time, with a 20-second pause (`--parallel-delay`) between rack waves. Either way, CMDaemon smooths the electrical ramp across the data-center PDUs.
+
+Third, BCM coordinates a BMC and PDU power-off. In high-security or energy-saving modes, you may want even the BMC's standby rail off when a node is down. Set `PowerOffPDUOutlet = true` in `cmd.conf` for that. CMDaemon then issues a clean BMC power-off, waits for the host to power down, and checks whether a twin node shares the same PDU outlet (`mypdu:1`). Only then does it switch the physical outlet off. Powering back up reverses the sequence. The PDU outlet comes on first, and then BCM waits for the BMC to boot, with the BIOS set to `Always On`.
+
+Fourth, BCM gathers telemetry across power and cooling. On liquid-cooled GB200 and GB300 NVL72 racks, power and cooling are no longer limited to single compute nodes. CMDaemon subscribes to Redfish event streams (`redfishsubscriptions`) from compute trays (`GB300`) and NVLink switch trays (`GB200SW`). It polls `33 kW` power shelves (`powershelfoverview`). It takes Coolant Distribution Unit (CDU) flow and pressure metrics from the facility Building Management System over MQTT (`cduoverview`). It also monitors tray-level leak sensors (`leakdetection` / `leakinfo`), all within one object model.
 
 ### 10.2 End-to-end runbook: Flashing and activating DGX H100/B200 firmware via BCM
 
-Because firmware updates on 8-GPU servers touch over thirty independent microcontrollers (`BIOS`, `BMC`, `CPLD`, `FPGA`, `ERoT` roots of trust, `8x` SXM GPU VBIOS, `4x` NVSwitches, and `8x` PCIe retimers), let us consolidate the exact end-to-end operational runbook for executing a firmware upgrade in `cmsh` without leaving nodes in a half-updated `pending` state:
+A DGX firmware update touches more than thirty independent microcontrollers: BIOS, BMC, CPLD, FPGA, ERoT roots of trust, 8x SXM GPU VBIOS, 4x NVSwitches and 8x PCIe retimers. The steps below run in `cmsh`, and they keep nodes from being left in a half-updated `pending` state.
 
-1. **Stage the vendor `.fwpkg` bundles on the active head node:** Download the co-validated motherboard-tray and GPU-tray `.fwpkg` archives from the NVIDIA Enterprise Support Portal and place them in `/cm/local/apps/cmd/etc/htdocs/bios/firmware/<platform>/` (for example, `h100/` or `b200/`). Run `cmsh -c "device; firmware info"` to confirm both packages show state `available`.
-2. **Verify BMC reachability, credentials, and `firmwaremanagemode`:** Run `credentialsoverview --inverse` in `device` mode to confirm no target node has a drifted BMC password, and verify that `bmcsettings -> get firmwaremanagemode` is set to the matching platform (`h100`, `b200`, `gb200`, or `auto`).
-3. **Drain and close the target canary node (or rack wave):** Drain the nodes in Slurm (`drain -n node001..node008`) and wait for running jobs to finish (`jobs; list`). Stop any in-band GPU polling agents if required by the platform release notes, and mark the nodes closed (`close -m "FW upgrade ticket CHG-402" -n node001..node008`).
-4. **Check pre-update firmware baseline (`firmware status`):** Run `firmware status -n node001` and archive the output so you have a complete record of the pre-change versions across all thirty-plus components.
-5. **Execute the flash (`firmware flash`):** Start the update on your canary node first (`firmware flash nvfw_DGX-HGX-H100x8_...fwpkg -n node001`) and monitor progress with `firmware status -n node001`. Watch the state transition from `flashing` (with percentage progress) to **`pending`** with result **`success: AC power cycle to activate`**.
-6. **Perform the required AC power cycle (not a warm `power reset`):** Remember the golden rule from Section 7: a normal `power reset` in `cmsh` only performs a DC board-level reset and **will not activate** GPU-tray `ERoT`, CPLD, FPGA, NVSwitch, or retimer firmware. Shut the host down cleanly and trigger a full **AC power cycle** via the rack PDU outlets (or the platform's documented virtual AC cycle procedure), waiting at least sixty seconds for standby capacitors to discharge before restoring AC power.
-7. **Verify `activated` state, PCIe link widths, and DCGM health before undraining:** Once `node001` boots back to `[ UP ]`, run `firmware status -n node001` and verify that every component shows state **`completed`**, result **`success: activated`**, and the new target version string. Run `lspci` / `accelerators` and a quick `dcgmi diag -r 2` check, then `open` and `undrain` the node before advancing to the next rack wave.
+1. Stage the vendor `.fwpkg` bundles on the active head node. Download the co-validated motherboard-tray and GPU-tray `.fwpkg` archives from the NVIDIA Enterprise Support Portal, and place them in `/cm/local/apps/cmd/etc/htdocs/bios/firmware/<platform>/`, for example `h100/` or `b200/`. Run `cmsh -c "device; firmware info"` to confirm both packages show state `available`.
+2. Check reachability, credentials and the firmware mode. Run `credentialsoverview --inverse` in `device` mode to confirm that no target node has a drifted BMC password. Then verify that `bmcsettings -> get firmwaremanagemode` is set to the matching platform (`h100`, `b200`, `gb200`, or `auto`).
+3. Drain and close the canary node, or the rack wave. Drain the nodes in Slurm with `drain -n node001..node008`, and wait for running jobs to finish with `jobs; list`. If the platform release notes require it, stop any in-band GPU polling agents first. Then mark the nodes closed with `close -m "FW upgrade ticket CHG-402" -n node001..node008`.
+4. Record the baseline. Run `firmware status -n node001` and archive the output, so you have a full record of the pre-change versions for all thirty-plus components.
+5. Flash the canary node first. Run `firmware flash nvfw_DGX-HGX-H100x8_...fwpkg -n node001`, and watch `firmware status -n node001`. The state moves from `flashing`, with a percentage, to `pending`, with the result `success: AC power cycle to activate`.
+6. Do a true AC power cycle, not a warm reset. Section 7 explained that a normal `power reset` in `cmsh` only performs a DC board-level reset, and it will not activate GPU-tray `ERoT`, CPLD, FPGA, NVSwitch or retimer firmware. Shut the host down cleanly. Then trigger a full AC power cycle through the rack PDU outlets, or the platform's documented virtual AC cycle procedure. Wait at least sixty seconds for the standby capacitors to discharge before you restore AC power.
+7. Verify before you undrain. When `node001` boots back to `[ UP ]`, run `firmware status -n node001`. Every component should show state `completed`, result `success: activated`, and the new version string. Run `lspci` and `accelerators`, and a quick `dcgmi diag -r 2` check. Then run `open` and `undrain` the node before you move to the next rack wave.
 
 ### 10.3 Troubleshooting common BMC, SOL, and power-control failures in BCM
 
-When a power, console, or firmware command fails in `cmsh` `device` mode, use this diagnostic table to isolate the root cause in under two minutes:
+When a power, console or firmware command fails in `cmsh` device mode, the table below helps you narrow the cause quickly.
 
 | Symptom in `cmsh` | Root Cause | Diagnostic & Remediation Steps |
 |---|---|---|
@@ -229,148 +256,154 @@ When a power, console, or firmware command fails in `cmsh` `device` mode, use th
 | `firmware status` stays at `pending` (`AC power cycle to activate`) after `power reset` | `power reset` only performs a DC board-level reset, leaving standby rails energized | Perform a true **AC power cycle** by switching off the node's PDU outlets (or virtual AC cycle) so `5V`/`12V` standby rails discharge completely. |
 | Node powers off cleanly with `PowerOffPDUOutlet = true`, but never boots on `power on` | Node BIOS `Power Restore Policy` is set to `Always Off` | When `CMDaemon` re-energizes the PDU outlet, the server waits for a physical button press unless its BIOS is set to **`Power On` (`Always On`) after AC power loss**. |
 
+Find the row that matches your symptom, then check the cause it names before you change anything.
+
 ## Exercises
 
-1. Run `python3 hardware_lab.py`. Pick four checks and explain each rule in your own words.
-2. Write the cmsh commands (from this chapter, untested) to give 150 nodes BMC interfaces on a new BMC network and set the BMC credentials cluster-wide, with one category overriding them.
-3. Compute with `power_schedule` how long it takes to power on 40 racks in batches of 4, and what the first nodes see.
+Work through these in order. The first one runs the lab, so start there.
+
+1. Run `python3 hardware_lab.py`. Choose four checks, and explain each rule in your own words.
+2. Write the cmsh commands from this chapter (untested) that give 150 nodes BMC interfaces on a new BMC network and set the BMC credentials cluster-wide. Then add one category that overrides them.
+3. Use `power_schedule` to work out how long it takes to power on 40 racks in batches of 4, and what the first nodes see.
 4. Write a custom power script for a device with a smart plug that has an HTTP API. What would `STATUS` print?
-5. Draw the BIOS state diagram for a change of the NUMA setting on 8 nodes, with the commands for each step.
+5. Draw the BIOS state diagram for changing the NUMA setting on 8 nodes. Include the commands for each step.
 6. List the five checks that prove a GPU firmware update is really active.
 
 ## 12. Interview angles
 
-- "Walk me through updating GPU firmware across a rack." Stage packages on the head node, check status, flash in small batches, confirm `pending`, AC power cycle, confirm `activated` and versions, run a GPU test; drain before, undrain after.
-- "A node shows `power status` UNKNOWN." A timeout from the BMC or PDU; check BMC reachability and credentials (`credentialsoverview`), the BMC network and the head node's interface on it.
-- "Why do BCM and Redfish both exist in your toolbox?" BCM holds the inventory, credentials and policy and fans out to many nodes; Redfish is the protocol per BMC (Part 7).
-- "How do you power on a rack without tripping the breakers?" Delay and batch options; PDU limits come first.
-- "How do you find which node has a different BMC password?" `credentialsoverview --inverse`.
+These are the questions interviewers tend to ask about this material, with the answers worth having ready.
+
+- "Walk me through updating GPU firmware across a rack." Stage the packages on the head node and check their status. Flash in small batches, confirm `pending`, do an AC power cycle, then confirm `activated` and the versions. Run a GPU test, draining before the update and undraining after.
+- "A node shows `power status` UNKNOWN." That is a timeout from the BMC or PDU. Check BMC reachability and credentials with `credentialsoverview`, then check the BMC network and the head node's interface on it.
+- "Why do BCM and Redfish both exist in your toolbox?" BCM holds the inventory, credentials and policy, and it fans out to many nodes. Redfish is the protocol each BMC speaks, and Part 7 covers it.
+- "How do you power on a rack without tripping the breakers?" Use the delay and batch options. PDU limits come first, so know them before you power anything on.
+- "How do you find which node has a different BMC password?" Run `credentialsoverview --inverse`.
 
 ## Checkpoint questions (20)
 
 <details>
 <summary>1. Which `powercontrol` property values does BCM support on a device?</summary>
 
-**`apc`** (managed PDU outlet), **`ipmi0`** (IPMI BMC), **`ilo0`** (HPE iLO), **`drac0`** (Dell iDRAC), **`cimc0`** (Cisco CIMC), **`rf0`** (Redfish BMC), and **`custom`** (`custompowerscript`).
+You can set **`apc`** for a managed PDU outlet, **`ipmi0`** for an IPMI BMC, **`ilo0`** for HPE iLO, **`drac0`** for Dell iDRAC, **`cimc0`** for Cisco CIMC, **`rf0`** for a Redfish BMC, and **`custom`** for a script set through `custompowerscript`.
 </details>
 
 <details>
 <summary>2. What happens to any `powerdistributionunits` ports configured on a node when its `powercontrol` is set to `ipmi0`?</summary>
 
-They are **ignored** for normal power operations (unless `PowerOffPDUOutlet = true` is explicitly enabled in `cmd.conf`).
+They are **ignored** for normal power operations, unless `PowerOffPDUOutlet = true` is explicitly enabled in `cmd.conf`.
 </details>
 
 <details>
 <summary>3. What does `PowerOffPDUOutlet = true` in `cmd.conf` do, and what BIOS setting does it require on the compute nodes?</summary>
 
-After shutting a node down via its BMC, BCM also switches off the node's PDU outlet (cutting standby power to the BMC as well). The node's BIOS **`Power Restore Policy` must be set to `Always On` (power on after AC loss)**, or the node will remain off when the PDU outlet is turned back on.
+After a node is shut down through its BMC, BCM also switches off the node's PDU outlet, which cuts standby power to the BMC as well. The node's BIOS **`Power Restore Policy` must be set to `Always On`**, that is, power on after AC loss. Otherwise the node stays off when the PDU outlet is turned back on.
 </details>
 
 <details>
 <summary>4. What happens if two twin nodes share a single PDU outlet port and you issue a PDU power operation on one of them?</summary>
 
-With `powercontrol = apc`, switching the shared outlet affects **all nodes plugged into that port**; with `PowerOffPDUOutlet = true`, BCM turns the shared PDU outlet off only after **all** nodes sharing that outlet are powered off.
+With `powercontrol = apc`, switching the shared outlet affects **all nodes plugged into that port**. With `PowerOffPDUOutlet = true`, BCM turns the shared outlet off only after all the nodes sharing it are powered off.
 </details>
 
 <details>
 <summary>5. What command-line arguments and environment variables does a `custompowerscript` receive, and what exit code indicates success?</summary>
 
-It is invoked as **`<script> <operation> <device> [custompowerscriptargument]`**, where `<operation>` is `ON`, `OFF`, `RESET`, or `STATUS`, with `CMD_*` variables (such as `CMD_MAC` and `CMD_IP`) in the environment. Exit code **`0`** indicates success; non-zero indicates failure.
+If you write one, BCM runs it as **`<script> <operation> <device> [custompowerscriptargument]`**. The operation is `ON`, `OFF`, `RESET` or `STATUS`, and CMDaemon sets `CMD_*` variables such as `CMD_MAC` and `CMD_IP` in the environment. Exit code **`0`** means success, and any non-zero code means failure.
 </details>
 
 <details>
 <summary>6. What is the default per-device delay (`-d`) in `device power on`, and how do `-p N` and `--parallel-delay` schedule batch power-ons?</summary>
 
-The default delay between individual devices is **`1` second** (`-d 1`). Passing **`-p N`** starts `N` items simultaneously per batch (with `0` delay inside the batch) and waits **`20` seconds** (`--parallel-delay`) between batches (so `12` racks with `-p 3` start at `0`, `20`, `40`, and `60` seconds).
+The default delay between devices is **`1` second** (`-d 1`). `-p N` starts N items at once in a batch, with no delay inside the batch. Batches are **`20` seconds** apart (`--parallel-delay`). So if you start 12 racks with `-p 3`, they begin at 0, 20, 40 and 60 seconds.
 </details>
 
 <details>
 <summary>7. Why are `power` commands blocked inside `foreach` and `range` loops in `cmsh`?</summary>
 
-Because loop timing across hundreds of objects can inadvertently stack concurrent power-on spikes or cloud API bursts. Instead, pass `-n`, `-c`, `-g`, or `-r` directly to `device power`.
+Loop timing across hundreds of objects can stack power-on spikes or cloud API bursts by accident. Pass `-n`, `-c`, `-g` or `-r` directly to `device power` instead.
 </details>
 
 <details>
 <summary>8. What are the five standard power status values returned by `device power status`?</summary>
 
-**`ON`**, **`OFF`**, **`RESET`** (momentarily off during a reset cycle), **`FAILED`** (BMC/PDU communication failure), and **`UNKNOWN`** (timeout).
+They are **`ON`**, **`OFF`**, **`RESET`** (briefly off during a reset cycle), **`FAILED`** (a BMC or PDU communication failure), and **`UNKNOWN`** (a timeout).
 </details>
 
 <details>
 <summary>9. What is the default subnet for `bmcnet` in BCM, and what naming prefixes are used for BMC interfaces?</summary>
 
-The default subnet is **`10.148.0.0/16`**, and BMC interface names start with **`ipmi`**, **`ilo`**, **`drac`**, **`cimc`**, or **`rf`** (e.g., `ipmi0`, `rf0`).
+The default subnet is **`10.148.0.0/16`**. BMC interface names start with **`ipmi`**, **`ilo`**, **`drac`**, **`cimc`** or **`rf`**, for example `ipmi0` or `rf0`.
 </details>
 
 <details>
 <summary>10. What are BCM's default BMC username, user slot ID, and privilege level, and which component configures them on the node's BMC?</summary>
 
-Default username **`bright`**, random password generated at cluster install, **User ID `4`**, and **Administrator** privilege, configured onto each node's BMC at boot by the **`node-installer`**.
+The default username is **`bright`**, with a random password generated at cluster install, User ID **`4`**, and Administrator privilege. The **`node-installer`** configures these on each node's BMC at boot.
 </details>
 
 <details>
 <summary>11. In what precedence order do partition, category, and node `bmcsettings` apply, and which flag shows the effective source?</summary>
 
-**Node overrides Category, which overrides Partition (`base`)**. Running `bmcsettings --show` displays the effective settings and which level supplied each value.
+**Node overrides category, which overrides partition (`base`)**. Running `bmcsettings --show` displays the effective settings and which level supplied each one.
 </details>
 
 <details>
 <summary>12. How does `credentialsoverview --inverse` in `cmsh` `device` mode help spot drifted BMC passwords?</summary>
 
-It hashes each device's effective credentials into a **per-session salted SHA-256 fingerprint** and groups devices by identical fingerprint with the **smallest (outlier) groups listed first**, never exposing cleartext passwords.
+In practice, it hashes each device's effective credentials into a **per-session salted SHA-256 fingerprint**. It then groups devices with identical fingerprints and lists the smallest groups, the outliers, first. Cleartext passwords are never shown.
 </details>
 
 <details>
 <summary>13. What does `bmcreset -n node001` do, and does it reboot the running Linux OS on `node001`?</summary>
 
-`bmcreset` performs a hardware cold reset of the node's **BMC microcontroller only**. Out-of-band BMC access drops for a couple of minutes while the BMC reboots, but the **host server's power state and running Linux OS are completely unaffected**.
+`bmcreset` performs a hardware cold reset of the node's **BMC microcontroller only**. Out-of-band BMC access drops for a couple of minutes while the BMC reboots. The host's power state and its running Linux OS are **completely unaffected**.
 </details>
 
 <details>
 <summary>14. What are the four states and three transitions for managing BIOS settings in BCM (§14.5.2)?</summary>
 
-1. Edit in `cmsh` / Base View (`biossettings`, after setting `model`).
-2. **`commit`** $\rightarrow$ saved in `CMDaemon` database as **`Configured`**.
-3. **`bios apply`** $\rightarrow$ staged to the BMC via Redfish as **`Pending`**.
-4. **Node reboot** $\rightarrow$ applied by UEFI at POST as **`Live`**.
+1. Edit in `cmsh` or Base View, after setting `model`, in `biossettings`.
+2. **`commit`** saves it in the CMDaemon database as **`Configured`**.
+3. **`bios apply`** stages it to the BMC through Redfish as **`Pending`**.
+4. A **node reboot** lets UEFI apply it at POST, and it becomes **`Live`**.
 </details>
 
 <details>
 <summary>15. In BCM `biossettings`, what happens to a BIOS attribute whose Configured value is `<default>` (`null`, after `clear`)?</summary>
 
-BCM **leaves that BIOS attribute untouched** on the server—only attributes with explicit non-default Configured values are pushed during `bios apply`.
+BCM **leaves that BIOS attribute untouched** on the server. Only attributes with explicit non-default Configured values are pushed during `bios apply`.
 </details>
 
 <details>
 <summary>16. What does `firmwaremanagemode` in `bmcsettings` configure, and list six supported platform values?</summary>
 
-It tells BCM which Redfish/platform firmware workflow (`cm-nvfwupd` / iLO) to use for the device. Supported values include **`auto`**, **`h100`**, **`b200`**, **`b300`**, **`gb200`**, **`gb200sw`**, **`gb300`**, **`gb300sw`**, **`iLO`**, and **`none`**.
+If you set it, it tells BCM which Redfish or platform firmware workflow to use for the device, such as `cm-nvfwupd` or iLO. Supported values include **`auto`**, **`h100`**, **`b200`**, **`b300`**, **`gb200`**, **`gb200sw`**, **`gb300`**, **`gb300sw`**, **`iLO`**, and **`none`**.
 </details>
 
 <details>
 <summary>17. After `firmware flash <pkg>.fwpkg` completes on a DGX H100, why does `firmware status` show state `pending` with `success: AC power cycle to activate`, and why is `power reset` insufficient?</summary>
 
-Because the new firmware is staged in inactive flash and requires cutting **all AC input power** (via rack PDU outlets or mains cords so standby rails discharge) to reinitialize the GPU tray's `ERoT`, CPLD, FPGA, NVSwitch, and retimer chips. A standard `power reset` in `cmsh` only performs a **DC board reset**, leaving the old firmware running.
+The new firmware is staged in inactive flash. It needs all AC input power cut, through the rack PDU outlets or mains cords, so the standby rails discharge. That reinitializes the GPU tray's **`ERoT`**, **`CPLD`**, **`FPGA`**, **`NVSwitch`** and retimer chips. A standard `power reset` in `cmsh` performs only a **DC board reset**, which leaves the old firmware running.
 </details>
 
 <details>
 <summary>18. Which three places must have matching baud rate, port, and flow-control settings for Serial over LAN (`SOL` / `rconsole`) to work?</summary>
 
-1. **The BMC BIOS / SOL configuration.**
+1. **The BMC BIOS or SOL configuration.**
 2. **The node's motherboard BIOS serial redirection settings.**
-3. **The software image's kernel SOL parameters** (`softwareimage use default-image; set enablesol yes`).
+3. **The software image's kernel SOL parameters**, set with `softwareimage use default-image; set enablesol yes`.
 </details>
 
 <details>
 <summary>19. What serial port device name and baud rate does the BCM manual recommend for `SOL` on `x86_64` versus `aarch64` (ARMv8)?</summary>
 
-**`115200` bps** with hardware flow control on **`ttyS0`** (COM1, or `ttyS1` for COM2) on `x86_64`, and **`ttyAMA0`** (COM1, or `ttyAMA1` for COM2) on `aarch64`.
+The manual recommends **`115200` bps** with hardware flow control on. On `x86_64`, use **`ttyS0`** for COM1, or `ttyS1` for COM2. On `aarch64`, use **`ttyAMA0`** for COM1, or `ttyAMA1` for COM2.
 </details>
 
 <details>
 <summary>20. When should you run `leakdetection disable` on a liquid-cooled node, and what status indicator reminds you that it is disabled?</summary>
 
-Only temporarily when a faulty leak sensor triggers false alarms and would otherwise cause an unwanted emergency power-off while waiting for sensor replacement. While disabled, the node's status line displays **`leak:disabled`**.
+Only temporarily, when a faulty leak sensor raises false alarms that would otherwise trigger an unwanted emergency power-off. Keep it disabled until the sensor is replaced. While it is disabled, the node's status line shows **`leak:disabled`**.
 </details>
 
 ## Sources and review notes

@@ -22,11 +22,13 @@ lab_venue: "Nebius GPU"
 
 ## Why this matters for AI infrastructure
 
-A training run that loses one GPU can stall hundreds of others. The sooner a bad node is found and drained, the less compute is wasted. BCM's monitoring collects thousands of numbers per node, turns some of them into pass or fail checks, and can run actions when something changes. The skill is deciding what to watch, what is only information and what should act on its own.
+Picture a training run that spans hundreds of GPUs. When one GPU fails, the others can stall while they wait for it. The sooner you find the bad node and drain it, the less compute gets wasted. BCM's monitoring collects thousands of numbers per node. Some of those numbers become pass or fail checks, and some can run actions when something changes. Your real skill is deciding what to watch, what is only information, and what should act on its own.
 
 ## Prerequisites and outcomes
 
-You need chapters 8.1 to 8.7 (objects, nodes, power) and 8.8 (drain). After this chapter you can:
+Before you start, you need chapters 8.1 to 8.7 (objects, nodes, power) and 8.8 (drain). Check that list against what you already know, and go back to an earlier chapter for anything you cannot yet do.
+
+When you finish this chapter, you should be able to:
 
 - name the parts of the monitoring pipeline and what each does
 - tell metrics, enummetrics and health checks apart, and read `PASS`, `FAIL`, `UNKNOWN` and `no data`
@@ -38,6 +40,8 @@ You need chapters 8.1 to 8.7 (objects, nodes, power) and 8.8 (drain). After this
 
 ## 1. The pipeline
 
+A measurement on a node has a long way to travel before anyone is paged. It starts with a producer, becomes a stored value, and may then pass through a trigger that runs an action. The diagram below shows that path.
+
 ```mermaid
 flowchart LR
   P[data producer: a sampler or a script] -->|every N seconds| M[measurable: metric, enummetric or health check]
@@ -48,21 +52,25 @@ flowchart LR
   A --> E[event + mail + drain + power ...]
 ```
 
-The manual's words, simplified:
+The manual's terms, in plain words, are these. A **data producer** is the thing that takes a measurement. One producer can yield many measurables. ProcStat, for example, gives CPU user, system, idle, forks and more. Another producer yields just one, such as a health check script like `ssh2node`.
 
-- A **data producer** is the thing that takes a measurement. It may produce many measurables (ProcStat gives CPU user, system, idle, forks...), or one (a health check script such as `ssh2node`).
-- A **measurable** is one measured value for an **entity**. An entity is usually a device, but can be a category, partition, software image, network, job queue, user and more.
-- **Metrics** are numbers (or `no data`). **Enummetrics** have a small set of states (for example `DeviceStatus`). **Health checks** have the states `PASS`, `FAIL`, `UNKNOWN` and `no data`.
-- A **trigger** is a condition on a measurable. When it is met, it launches **actions**. An action is a built-in or a script that exits 0 on success.
-- **Severity** and **AlertLevel** summarise how bad things are.
+A **measurable** is one measured value for an **entity**. An entity is usually a device, but it can also be a category, partition, software image, network, job queue, user and more.
+
+**Metrics** are numbers, or `no data`. **Enummetrics** pick from a small set of states, such as `DeviceStatus`. **Health checks** report one of the states `PASS`, `FAIL`, `UNKNOWN` and `no data`.
+
+A **trigger** is a condition on a measurable. When the condition is met, the trigger launches **actions**. An action is either built in or a script, and a script counts as successful when it exits 0. **Severity** and **AlertLevel** tell you how bad things are, and the next section covers both.
+
+When you read a monitoring setup, trace it in the same order a value travels: producer, then measurable, then trigger, then action.
 
 ## 2. Health checks, severities and AlertLevel (10.2.4 to 10.2.8)
 
-`PASS` means fine. `FAIL` means failed. **`UNKNOWN`** means it neither passed nor failed (for example a timeout); the manual says to investigate it. **`no data`** means the check did not run (for example it is disabled), and CMDaemon writes it explicitly so a gap is visible. Keep `UNKNOWN` as its own signal; do not fold it into `FAIL`.
+A health check tells you whether one part of a node is working, and its answer can decide whether anyone gets paged. There are four possible answers, and they do not mean the same thing.
 
-**Default severities** come from the three pre-defined trigger templates: **FAIL 15, UNKNOWN 10, PASS 0**. A standalone health check script can override them with its own value (`FAIL 40`, as the `hpraid` script does).
+`PASS` means fine, and `FAIL` means failed. **`UNKNOWN`** means the check neither passed nor failed, for example because it timed out. The manual says to investigate that case. **`no data`** means the check did not run at all, for example because it is disabled. CMDaemon writes it explicitly, so a gap stays visible. Keep `UNKNOWN` as its own signal, and do not fold it into `FAIL`.
 
-**AlertLevel** is a special metric with three forms, recalculated whenever an event with a severity happens:
+Each result also carries a severity, which is a number for how serious the problem is. The three pre-defined trigger templates set the defaults: **FAIL 15, UNKNOWN 10, PASS 0**. A standalone health check can set its own value instead. The `hpraid` script, for example, uses `FAIL 40`, which overrides the default 15.
+
+AlertLevel is a special metric that comes in three forms. BCM recalculates it whenever an event with a severity happens. Each form answers a different question, so pick the one that matches what you need to know:
 
 | Form | Meaning | Use it to |
 |---|---|---|
@@ -70,17 +78,25 @@ The manual's words, simplified:
 | max | the highest latest severity | see the worst problem |
 | sum | the sum of the latest severities | see overall load of problems |
 
-`healthoverview` (device mode) shows sum, maximum and count per node. Example from the manual: a node with "hot" (15) and "fan high" (15) has sum 30, max 15, count 2.
+`healthoverview` (device mode) shows sum, maximum and count per node. Take the manual's example: a node has a "hot" event at severity 15 and a "fan high" event at severity 15. The sum is 15 + 15 = 30, the maximum is 15, and the count is 2. Read together, those three numbers tell you there are two problems and that the worst one has severity 15.
+
+Watch the count to see how many problems exist, and watch the max to find the one that needs attention first.
 
 ## 3. Common health checks you will see
 
-From `/cm/local/apps/cmd/scripts/healthchecks/` and the measurables list: `ssh2node`, `diskspace`, `mounts`, `mysql`, `ldap`, `ntp`, `dmesg`, `oomkiller`, `defaultgateway`, `exports`, `interfaces`, `chrootprocess` (a daemon running inside an image), `cmsh`, `cuda-dcgm`, `lustre`, `hpraid`, `ManagedServicesOk` (CMDaemon), and the Redfish checks `chassis_health`, `cpu_health`, `memory_health`, `storage_health`, `drive_health`, `volume_health`, `psu_health` and more. The `cm-docker-setup`, `cm-kubernetes-setup` and `cm-wlm-setup` tools add their own health checks when they install a component (chapters 8.8 to 8.10).
+BCM ships with many checks, so you will meet most of them early. The standalone scripts live in `/cm/local/apps/cmd/scripts/healthchecks/`, and the measurables list shows the rest.
 
-In cmsh: `measurables node001` lists everything for an entity, `healthchecks`, `metrics`, `enummetrics` the subsets, `usage <measurable>` shows which entities use one, `monitoringproducers` lists the producers on an entity.
+The list includes `ssh2node`, `diskspace`, `mounts`, `mysql`, `ldap`, `ntp`, `dmesg`, `oomkiller`, `defaultgateway`, `exports`, `interfaces`, `chrootprocess` (a daemon running inside an image), `cmsh`, `cuda-dcgm`, `lustre`, `hpraid`, `ManagedServicesOk` (CMDaemon), and the Redfish checks `chassis_health`, `cpu_health`, `memory_health`, `storage_health`, `drive_health`, `volume_health`, `psu_health` and more. Some setup tools add their own checks when they install a component. `cm-docker-setup`, `cm-kubernetes-setup` and `cm-wlm-setup` do this, and chapters 8.8 to 8.10 cover the components they install.
+
+To explore these from `cmsh`, use `measurables node001` to list everything for an entity. The subsets are `healthchecks`, `metrics` and `enummetrics`. `usage <measurable>` shows which entities use a given measurable, and `monitoringproducers` lists the producers on an entity.
+
+Run `measurables node001` on one node first, so you see what is already watched before you add anything.
 
 ## 4. Triggers: exactly when does it fire? (10.4.5)
 
-A trigger watches one measurable. The "zone" is where the condition is true (for example `CPUUser > 50`). The manual defines four launch options:
+Suppose a CPU value climbs above 50 and stays there. Does the trigger fire once, or on every sample? The answer depends on the launch option you choose, and the options are easy to mix up.
+
+A trigger watches one measurable. The **zone** is the region where its condition is true. For example, the zone for `CPUUser > 50` is every sample above 50. The manual defines four launch options, and each one answers a different question about the zone:
 
 | Option | Fires when |
 |---|---|
@@ -89,18 +105,15 @@ A trigger watches one measurable. The "zone" is where the condition is true (for
 | **During actions** | this sample and the previous sample are both in the zone |
 | **State flapping actions** | the threshold is crossed repeatedly: 5 times (default) within 5 minutes (default) |
 
-Consequences the lab proves:
+These rules have consequences you can predict. The first sample can never fire an Enter action, because there is no previous sample to compare with. The manual makes the same point with its example: after an Enter, the very next sample never enters again. A value that stays in the zone fires During on every sample, not Enter again.
 
-- **The first sample can never "enter"**: there is no previous sample. The manual says it directly for the example: after an enter, the very next sample never enters again.
-- A value that stays in the zone fires **During** every sample, not Enter again.
-- Pre-defined triggers: only **three** exist, all with Enter actions: failing, passing and unknown health checks, each running the Event action at severities 15, 0 and 10.
-- **The default sampling period is 120 s** (the manual's basic example samples `CPUUser` every 120 s, changeable in the data producer).
+Only three pre-defined triggers exist, and all three use Enter actions. They cover failing, passing and unknown health checks, and they run the Event action at severities 15, 0 and 10. The default sampling period is 120 s. The manual's basic example samples `CPUUser` every 120 s, and you can change that in the data producer.
 
-**A derived caveat (my arithmetic).** With 120 s sampling and flapping defined as 5 crossings in 300 s, flapping can never be detected on that measurable: crossings are only seen between consecutive samples, so at most two fit in five minutes. To use flapping actions, sample faster or loosen the flap settings. The manual does not say this; I computed it from its defaults, and the lab labels it so.
+**A derived caveat (my arithmetic).** With 120 s sampling and flapping defined as 5 crossings in 300 s, flapping can never be detected on that measurable. Crossings are only seen between consecutive samples, so at most two fit in five minutes. To use flapping actions, sample faster or loosen the flap settings. The manual does not say this; I computed it from its defaults, and the lab labels it so.
 
-**The basic example (10.1).** The manual simulates a user running eight `yes` processes on a head node. The administrator clones the `killprocess` action as `killallyesaction` pointing at a script in `/cm/local/apps/cmd/scripts/actions/`, then clones the *Failing health checks* trigger as `killallyestrigger` with Enter action `killallyesaction` and the expression *entity = head node, measurable `CPUUser`, operator `>`, value 50*. `CPUUser` is in jiffies per second; do not confuse it with `CPUUsage`, a percentage. It is deliberately contrived: any CPU-heavy process would fire it.
+**The basic example (10.1).** The manual simulates a user running eight `yes` processes on a head node. The administrator clones the `killprocess` action as `killallyesaction`, which points at a script in `/cm/local/apps/cmd/scripts/actions/`. Then they clone the *Failing health checks* trigger as `killallyestrigger`, with `killallyesaction` as its Enter action. The expression is: entity = head node, measurable `CPUUser`, operator `>`, value 50. `CPUUser` is in jiffies per second, so do not confuse it with `CPUUsage`, which is a percentage. The example is deliberately contrived, because any CPU-heavy process would fire it.
 
-**Always validate.** In cmsh, `validate` on a new trigger warns "No actions were set" and "No known measurable matches the specified regexes". The manual's own example is a misspelled `devicestate` (the data producer) instead of `devicestatus` (the measurable).
+**Always validate.** In `cmsh`, `validate` on a new trigger warns "No actions were set" and "No known measurable matches the specified regexes". A common slip is to type `devicestate`, which is the data producer, where you meant `devicestatus`, which is the measurable. The manual's example below uses the correct name.
 
 ```text
 [basecm11]% monitoring trigger add nodedown
@@ -111,9 +124,13 @@ Consequences the lab proves:
 
 (The manual's example, shortened; untested here.)
 
+Run `validate` on every new trigger, and check that the measurable name matches exactly.
+
 ## 5. Actions (10.2.6, G.4)
 
-Built-in actions, with where they run:
+When a trigger fires, an action does the work. Some actions run on the head node, and others run on the node that triggered them. The place matters, because the power actions and the OS-level actions behave very differently. `PowerOff`, `PowerOn` and `PowerReset` are hard actions that go through the BMC or PDU. `Reboot` and `Shutdown` are clean, because they go through the operating system.
+
+The table lists the built-in actions and where each one runs.
 
 | Action | Runs on | What it does |
 |---|---|---|
@@ -125,28 +142,41 @@ Built-in actions, with where they run:
 | Reboot, Shutdown | node | clean, through the operating system |
 | `killprocess`, `remount`, `testaction` | node | standalone scripts in `/cm/local/apps/cmd/scripts/actions/` (head) or the image path (nodes) |
 
-Drain has a hidden setting, `post-drain-actions`, that runs more actions after the node is fully drained: `set -e -v post-drain-actions send\ e-mail\ to\ administrators poweroff`. Also relevant: `monitoringactionhistory` shows which triggers fired and what ran.
+Drain also has a hidden setting, `post-drain-actions`, which runs more actions once the node is fully drained. The manual's example is `set -e -v post-drain-actions send\ e-mail\ to\ administrators poweroff`. Finally, `monitoringactionhistory` shows which triggers fired and what ran.
+
+If a drain happens on a node that went down, you will need to undrain it from another node. Plan that step before you wire a drain into any trigger.
 
 ## 6. GPU and DCGM health (G.1.6, G.2.2)
 
-The `GPUSampler` producer reads GPUs. Metrics are written `name:gpuN` (for example `gpu_ecc_dbe_agg:gpu1`): ECC single and double bit counts (aggregate and volatile), memory, power, clocks, temperature, NVLink bandwidth, power violation time, and `gpu_xid_error`. Profiling metrics (SM activity, NVLink read and transmit) exist too (see MIG caveats in 8.3).
+GPUs get their own checks because they need watching separately from the rest of the node. The `GPUSampler` producer reads them. Each GPU gets its own metrics, written as `name:gpuN`, such as `gpu_ecc_dbe_agg:gpu1`. These cover ECC single and double bit counts (aggregate and volatile), memory, power, clocks, temperature, NVLink bandwidth, power violation time and `gpu_xid_error`. Profiling metrics such as SM activity and NVLink read and transmit exist too. See the MIG caveats in 8.3 before you rely on them.
 
-**Fourteen GPU health checks** (the V100 and A100 table; newer GPUs are in the Mission Control Manual): `gpu_health_driver`, `_hostengine`, `_inforom`, `_mcu`, `_mem`, `_nvlink`, `_nvswitch_fatal`, `_nvswitch_non_fatal`, `_overall`, `_pcie`, `_pmu`, `_power`, `_sm`, `_thermal`. Written with `:gpuN` for one GPU, without it for all; `_hostengine` is always for the whole node.
+The GPU health checks are fourteen in number for the V100 and A100 table. Newer GPUs are covered in the Mission Control Manual. The checks are `gpu_health_driver`, `_hostengine`, `_inforom`, `_mcu`, `_mem`, `_nvlink`, `_nvswitch_fatal`, `_nvswitch_non_fatal`, `_overall`, `_pcie`, `_pmu`, `_power`, `_sm` and `_thermal`. Add `:gpuN` to target one GPU, or leave it off to cover all of them. `_hostengine` is always for the whole node.
 
-**DCGM WARN.** These checks report only PASS, UNKNOWN or FAIL. A DCGM **WARN is reported as PASS by default**, with the reason in the Info field. If you want warnings to count as failures, set the `GPUSampler` extra parameter **`Warn as fail`** to true (`monitoring setup use gpusampler; set -e "Warn as fail" true; commit`); it then applies to all `gpu_health_*` checks. This is an easy way to have a "healthy" cluster that is hiding DCGM warnings: decide on purpose.
+DCGM reports a WARN as well, but these checks only report PASS, UNKNOWN or FAIL. So by default a DCGM WARN is reported as PASS, with the reason placed in the Info field. A cluster can look fully healthy while DCGM is warning about it, and nothing in the default setup will show you. If you want warnings to count as failures, set the `GPUSampler` extra parameter **`Warn as fail`** to true. It then applies to all `gpu_health_*` checks. Run `monitoring setup use gpusampler; set -e "Warn as fail" true; commit` to set it.
 
-The `cuda-dcgm` package must be present for GPU metrics (chapter 8.3).
+The `cuda-dcgm` package has to be present before GPU metrics appear (see chapter 8.3).
+
+Decide now whether DCGM warnings should count as failures, because the default hides them.
 
 ## 7. Keeping data: consolidation, storage and scale
 
-- Raw samples are stored on the head node. **Consolidators** summarise old data; the default `hour` consolidator keeps hourly averages for **7 years 26 weeks** at most **65,536 samples** (65,536 hours is about 7.5 years; the lab checks this). Reducing the sample limit discards consolidated data, so change it with care.
-- `monitoringinfo --storage` shows disk use; the raw store grows in **1 GB increments**. `cm-monitoring-disk-usage.py` estimates the final size (the manual's 10-entity, 286-measurable example gives a maximum of about 1.4 GB). `dumpmonitoringdata` exports a period, `monitoringdrop` removes data, `samplenow`, `latestmetricdata` and `latesthealthdata` read live and last values.
-- Nodes **cache** their samples; the head node picks them up at a **pickup interval** (`monitoringpickup`).
-- **Scale:** the traditional design handles about **10,000 nodes** with default metrics and hit a limit around **20,000** on 2020 hardware. **Offloaded monitoring** assigns the `monitoring` role to nodes, removes the single point of failure and scales with the cluster (10.7). Add data producers and metrics with the monitoring storage in mind.
+Monitoring data piles up quickly, and the head node has to keep all of it somewhere. Consolidators are how BCM shrinks old data, so the history stays useful without filling the disk.
+
+Raw samples are stored on the head node. Consolidators summarise the old ones. The default `hour` consolidator keeps hourly averages for up to 7 years 26 weeks, and for at most 65,536 samples. Those 65,536 hours are about 7.5 years, which the lab checks. Reducing the sample limit discards consolidated data, so change it with care.
+
+Use `monitoringinfo --storage` to see disk use. The raw store grows in 1 GB increments. `cm-monitoring-disk-usage.py` estimates the final size. In the manual's example of 10 entities and 286 measurables, the maximum comes to about 1.4 GB. `dumpmonitoringdata` exports a period, and `monitoringdrop` removes data. `samplenow`, `latestmetricdata` and `latesthealthdata` read live and last values.
+
+Nodes cache their samples, and the head node picks them up at the pickup interval (`monitoringpickup`).
+
+Scale is the last concern. The traditional design handles about 10,000 nodes with default metrics. On 2020 hardware it hit a limit around 20,000. Offloaded monitoring assigns the `monitoring` role to nodes. It removes the single point of failure and scales with the cluster (10.7). Keep the monitoring storage in mind whenever you add data producers or metrics.
+
+If your cluster is heading toward those node counts, plan offloaded monitoring before you add more metrics.
 
 ## 8. Automatic remediation: a design that cannot make things worse
 
-BCM gives the pieces (health check, trigger, action). It does **not** ship a policy. This is the design recommendation from the user's notes (marked as the author's recommendation there; the mechanisms are documented, the mapping is judgment):
+It is tempting to let BCM fix a sick node by itself. Done badly, though, an automatic fix can keep rebooting a broken node or hide a real hardware fault. The design below is meant to prevent both.
+
+BCM gives you the pieces: a health check, a trigger and an action. It does not ship a policy. The design in the table is a recommendation from the author's notes, not a BCM feature. The mechanisms are documented, but the mapping from fault to action is judgment.
 
 | Tier | Fault | Suggested chain | Why |
 |---|---|---|---|
@@ -154,49 +184,75 @@ BCM gives the pieces (health check, trigger, action). It does **not** ship a pol
 | 2 | reproducible **software state** (missing mount, wrong package, bad module) | Drain, `ImageUpdate` (or reboot), re-run the check, Undrain on PASS | The image defines the state, so restoring the image restores the node |
 | 3 | **transient** (a brief fabric blip, one timeout) | alert; use flapping and `UNKNOWN`; drain only if it persists | Reimaging healthy nodes wastes the time you meant to save |
 
-**The loop trap.** In tier 2 a node that fails after every reimage will be reimaged forever. Count attempts per node (the counter is yours to build in the action script) and move the node to tier 1 after the second failure. The lab implements this cap.
+The three tiers follow one rule. Hardware faults get drained and investigated, never rebooted. Software-state faults can be repaired by restoring the image. Transient faults call for patience, so you alert first and drain only if the problem persists.
 
-Also: treat `UNKNOWN` as its own signal; remember an action that drains must be paired with an undrain plan; and test every trigger on one node with `samplenow` and `validate` before applying it to a category.
+**The loop trap.** In tier 2, a node that fails after every reimage will be reimaged forever. Count attempts per node. The counter is yours to build in the action script. Move the node to tier 1 after the second failure. The lab implements this cap.
+
+Also, treat `UNKNOWN` as its own signal. Remember that an action that drains must be paired with an undrain plan. Test every trigger on one node with `samplenow` and `validate` before you apply it to a category.
+
+For each fault you automate, write down the tier first and the action second, so you never reach for a reboot by default.
 
 ## 8.1 Base View monitoring screens, data producer tuning, consolidator math, and PromQL
 
-- **Top-right Base View icons:** eight icons sit in the top-right bar, from left to right: (1) **Cluster Overview**, (2) **Job Accounting**, (3) **Monitoring** (visual graphs), (4) **Chargeback**, (5) **Events**, (6) **Background Tasks**, (7) **Package Updates** (the GUI equivalent of `packages --outdated` in `cmsh`), and (8) the **Menu (`≡`)** icon (dark mode toggle and logout).
-- **Monitoring visualization window:** opens the **Critical Services** dashboard by default, with two plot panels plotting the `ManagedServicesOK` health check—panel 1 for the head node, panel 2 for all regular nodes in the `default` category. The left navigation filter is case-insensitive, supports regexes (`node001.*cpuuser`, `(node001|node002).*cpuuser`), and uses `/` for tree depth (`node001/cpu/cpuuser`). Dragging a measurable into a panel draws two graphs: a smaller bottom bar chart of polled values and a larger upper interpolated line graph.
-- **Data producer settings and RLE:** samples are compressed with **run length encoding (RLE)**.
-  - **`Maximal samples` and `Maximal Age`:** whichever limit is reached first drops older RLE samples (`0` means ignore that limit; setting both to `0` keeps samples forever and is discouraged because of disk exhaustion). Reducing `Maximal samples` discards previously consolidated values after about **30 minutes**.
-  - **`Offset` and `Fuzzy offset`:** `Offset` delays sampling for producers that depend on others (for example `AggregateNode`, which computes `TotalCPUIdle` and `TotalMemoryFree`, depends on `ProcStat` for `CPUIdle` and `ProcMemInfo` for `MemoryFree`). `Fuzzy offset` is a multiplier in `[0, 1]` that spreads node sampling evenly across `[0, fuzzy_offset * interval]` to avoid a sampling storm—in the manual's example, a `120 s` interval with a `0.25` fuzzy offset spreads node samples across a **`30 s`** window (`0.25 * 120 = 30`).
-  - **`When` and `Only when idle`:** `When` is `Timed` (default), `On demand`, `Out of band`, or `On start`. Enabling `Only when idle` runs the producer only when the node is idle, defined by the metric condition `LoadOne > 1`.
-- **Cumulative metrics:** a metric marked `Cumulative` is monotonic from boot (such as interface bytes received, resetting at boot); administrators usually plot its differential per sample interval (bytes/second).
-- **Consolidators and the consolidation time equations:**
-  - Pre-existing groups are `default` (in BCM 11 it contains only `hour`, interval `3600 s`; clusters upgraded from BCM 10 also keep legacy `day` and `week`) and `none` (no consolidation). Each consolidator item has `Kind` (`average` by default, `maximum`, or `minimum`; **changing `Kind` discards all previous consolidated data for that consolidator**).
-  - When a measurable with interval `Interval_measurable` and maximal raw samples `Maximal_samples_measurable` drops its oldest raw point, that point enters consolidation at age:
-    ```text
-    t_raw_gone = Maximal_samples_measurable * Interval_measurable
-    ```
-    With `Offset` on the consolidator item, consolidated data is presented starting at `t_consolidation = t_raw_gone + Offset` into the past, and extends back to `t_consolidation_gone = Maximal_samples_consolidation * Interval_consolidation`.
-- **Action `Allowed time` syntax and `Run on`:** an action runs on `Active head node`, `Node` (the triggering node), or `Monitoring node`. `Allowed time` restricts when an action may start (months and days in **lowercase**), such as `november-march{monday-saturday{13:00-17:00}}`, `may-september{monday-friday{09:00-18:00};saturday-sunday{13:00-17:00}}`, or `may,september{1-15{monday-friday}}`. In `Send e-mail to administrators`, the `Info` field replaces `{infomessage}` in `/cm/local/apps/cmd/scripts/actions/sendemail.py`.
-- **Standalone monitored entities and PromQL queries:** `Monitoring > Standalone Monitored Entities` monitors unmanaged devices (no CMDaemon on the target, such as an admin workstation pinged by a custom script on the head node). `Monitoring > Queries` manages PromQL job-related queries and drilldown queries (`Monitoring > Queries > <query> > Manage the drilldown queries`).
+The Base View window is where you will spend most of your monitoring time, so it helps to know what each part does. The top-right bar holds eight icons. From left to right they are: (1) **Cluster Overview**, (2) **Job Accounting**, (3) **Monitoring** (visual graphs), (4) **Chargeback**, (5) **Events**, (6) **Background Tasks**, (7) **Package Updates** (the GUI equivalent of `packages --outdated` in `cmsh`), and (8) the **Menu (`≡`)** icon, which holds the dark mode toggle and logout.
+
+The monitoring visualization window opens the **Critical Services** dashboard by default. It shows two plot panels for the `ManagedServicesOK` health check. Panel 1 covers the head node, and panel 2 covers all regular nodes in the `default` category. The left navigation filter ignores case and accepts regexes such as `node001.*cpuuser` and `(node001|node002).*cpuuser`. It uses `/` for tree depth, as in `node001/cpu/cpuuser`. Dragging a measurable into a panel draws two graphs: a smaller bottom bar chart of polled values, and a larger upper interpolated line graph.
+
+Data producers compress their samples with **run length encoding (RLE)**. Two settings decide how much history survives. `Maximal samples` and `Maximal Age` work together, and whichever limit is reached first drops the older RLE samples. A value of `0` means ignore that limit. Setting both to `0` keeps samples forever, which the manual discourages because it exhausts the disk. Reducing `Maximal samples` discards previously consolidated values after about **30 minutes**.
+
+`Offset` delays sampling for producers that depend on other producers. For example, `AggregateNode` computes `TotalCPUIdle` and `TotalMemoryFree`, so it depends on `ProcStat` for `CPUIdle` and on `ProcMemInfo` for `MemoryFree`. `Fuzzy offset` is a multiplier in `[0, 1]`. It spreads node sampling across the window from 0 to `fuzzy_offset * interval`, which avoids a sampling storm. Take the manual's example: a 120 s interval with a 0.25 fuzzy offset spreads node samples across a 30 s window, because 0.25 * 120 = 30.
+
+`When` is `Timed` by default. The other options are `On demand`, `Out of band` and `On start`. Enabling `Only when idle` restricts the producer to idle nodes, where idle is defined by the metric condition `LoadOne > 1`.
+
+A metric marked `Cumulative` only grows from boot. Interface bytes received is one example, and it resets at boot. Administrators usually plot its differential per sample interval, which gives bytes/second.
+
+Consolidators summarise old data. The pre-existing groups are `default` and `none`. In BCM 11, `default` holds only `hour`, with a 3600 s interval. Clusters upgraded from BCM 10 also keep the legacy `day` and `week` consolidators. `none` means no consolidation. Each consolidator item has a `Kind`, which is `average` by default, or `maximum`, or `minimum`. Changing `Kind` discards all previous consolidated data for that consolidator, so make that choice early.
+
+The timing follows a simple chain. When a measurable with interval `Interval_measurable` and at most `Maximal_samples_measurable` raw samples drops its oldest raw point, that point enters consolidation at this age:
+
+```text
+t_raw_gone = Maximal_samples_measurable * Interval_measurable
+```
+
+With `Offset` on the consolidator item, consolidated data is presented starting at `t_consolidation = t_raw_gone + Offset` into the past. It extends back to `t_consolidation_gone = Maximal_samples_consolidation * Interval_consolidation`.
+
+An action runs on `Active head node`, on `Node` (the triggering node), or on `Monitoring node`. Its `Allowed time` field limits when it may start. Write months and days in lowercase. Examples are `november-march{monday-saturday{13:00-17:00}}`, `may-september{monday-friday{09:00-18:00};saturday-sunday{13:00-17:00}}`, and `may,september{1-15{monday-friday}}`. In `Send e-mail to administrators`, the `Info` field replaces `{infomessage}` in `/cm/local/apps/cmd/scripts/actions/sendemail.py`.
+
+`Monitoring > Standalone Monitored Entities` covers unmanaged devices, which have no CMDaemon on the target. An admin workstation pinged by a custom script on the head node is one example. `Monitoring > Queries` manages PromQL job-related queries and drilldown queries. You reach the drilldown queries through `Monitoring > Queries > <query> > Manage the drilldown queries`.
+
+When you change a data producer, check `Maximal samples` and the consolidator's `Kind` first, because those two settings decide how much history survives.
 
 ## 8.2 The User Portal, Cloud Job Tagging, Events, the Event Bucket, and InfoMessages
 
-- **The User Portal:** a restricted, read-only version of Base View for non-root users, installed via the **`cm-webportal`** package (`yum install cm-webportal`; when missing, the head-node landing page shows a grey block with `⊕`; when installed, a colored block with a chain-link icon).
-  - **URL and server:** `https://<head>:8081/userportal`, served directly by **CMDaemon** (unlike the landing page, which Apache serves), using BCM's self-signed X509v3 certificate (`NVIDIA Bright CA`) unless replaced with a public CA certificate.
-  - **Authentication and profile:** users log in with their own credentials and get the `readonly` profile by default. To enable a shared login for all users, create a user in `cmsh` and set `"username"` and `"password"` in `/cm/local/apps/cmd/etc/htdocs/userportal/assets/config/common-credentials.json` (blank by default, which disables common access).
-  - **Home page:** shows the Message Of The Day (`/cm/local/apps/cmd/etc/htdocs/userportal/assets/config/message-of-the-day.html`), cluster documentation links, a cluster state overview **refreshed every 10 s by default**, and a Job Accounting chart icon. **Security rule:** the user portal serves static files only and **will not execute PHP or CGI scripts**.
-- **Cloud Job Tagging (AWS only):** enabled with `cmsh -c 'cloud; use amazon; set cloudjobtagging yes; commit'`. When a job starts on an AWS cloud node, CMDaemon applies four cost-allocation tags (out of AWS's 50-tag limit)—**`BCM_JOB_ID`**, **`BCM_JOB_ACCOUNT`**, **`BCM_JOB_USER`**, and **`BCM_JOB_NAME`**—and removes them when the job stops, so AWS Cost Explorer can attribute cloud spend per job.
-- **Viewing events in Base View and `cmsh`:** enabled by the `EventLogger` directive in `cmd.conf`. In `cmsh`, the global `events` command supports `on [broadcast|private]`, `off [broadcast|private]`, `show-acknowledged <yes/no>`, `show-detailed <yes/no>`, `level <info|notice|warning|error|alert>`, `clear`, `details <id>`, `acknowledge <id>`, `unacknowledge <id>`, `events <number> [level]`, and `events follow` (like `tail -f`). By default (`events` with no arguments): `Private events: off`, `Broadcast events: on`, `Acknowledged events: off`, `Details: off`, `Level: notice`. For example, `updateprovisioners` emits **private** events, which appear live in your `cmsh` session only if `events on private` (or `events on`) is set.
-- **The Event Bucket and InfoMessages:**
-  - **InfoMessages from health/metric scripts:** inside a measurable script, writing to **file descriptor 3** sets the status reason (InfoMessage):
-    ```bash
-    echo "Drive speed unknown: Reverse polarity" >&3
-    ```
-  - **Head/node Event Bucket (`/var/spool/cmd/eventbucket`):** piping a line into `/var/spool/cmd/eventbucket` creates a BCM event (default severity `info`). Prefix with `EVENT_SEVERITY_DEBUG:`, `EVENT_SEVERITY_INFO:`, `EVENT_SEVERITY_NOTICE:`, `EVENT_SEVERITY_WARNING:`, `EVENT_SEVERITY_ERROR:`, or `EVENT_SEVERITY_ALERT:` to choose the severity; regex filters live in `/cm/local/apps/cmd/etc/eventbucket.filter` (`EventBucket` and `EventBucketFilter` directives in `cmd.conf`).
-  - **Tagging device status lines and reloading logging via the Event Bucket:**
-    - `echo "STATE.USERMESSAGE.node001:just right" > /var/spool/cmd/eventbucket` makes `device status node001` display `node001 ... (just right) [ UP ]` (omitting `.node001` targets the local host; echoing an empty message `STATE.USERMESSAGE.node001:` clears it).
-    - `echo LOGGING.RELOAD.CONFIG > /var/spool/cmd/eventbucket` reloads CMDaemon's logging configuration **without restarting `cmd`**.
-  - **Node-installer Event Bucket (`/tmp/eventbucket`):** during node provisioning (before `systemd` and node `CMDaemon` are up), initialize and finalize scripts can write to `/tmp/eventbucket` in two modes: `echo "info-message: text" > /tmp/eventbucket` (updates the device status line) or `echo "Some text" > /tmp/eventbucket` (raises a warning event).
+Not every user should be able to change the cluster. The User Portal gives non-root users a restricted, read-only version of Base View. You install it with the `cm-webportal` package, using `yum install cm-webportal`. Until it is installed, the head-node landing page shows a grey block with `⊕`. After installation, the block turns colored and shows a chain-link icon.
+
+Users reach the portal at `https://<head>:8081/userportal`. CMDaemon serves it directly, unlike the landing page, which Apache serves. It uses BCM's self-signed X509v3 certificate, `NVIDIA Bright CA`, unless you replace it with a public CA certificate. Users log in with their own credentials and get the `readonly` profile by default. If you want one shared login for everyone, create a user in `cmsh`, then set `"username"` and `"password"` in `/cm/local/apps/cmd/etc/htdocs/userportal/assets/config/common-credentials.json`. That file is blank by default, which disables common access.
+
+The home page shows the Message Of The Day, which comes from `/cm/local/apps/cmd/etc/htdocs/userportal/assets/config/message-of-the-day.html`. It also shows cluster documentation links, a cluster state overview refreshed every 10 s by default, and a Job Accounting chart icon. The portal serves static files only. That is a security rule: it will not execute PHP or CGI scripts.
+
+Cloud Job Tagging is for AWS only. Turn it on with `cmsh -c 'cloud; use amazon; set cloudjobtagging yes; commit'`. When a job starts on an AWS cloud node, CMDaemon applies four cost-allocation tags, out of AWS's limit of 50 tags. The tags are `BCM_JOB_ID`, `BCM_JOB_ACCOUNT`, `BCM_JOB_USER` and `BCM_JOB_NAME`. CMDaemon removes them when the job stops, so AWS Cost Explorer can attribute cloud spend to each job.
+
+Viewing events in Base View and `cmsh` is enabled by the `EventLogger` directive in `cmd.conf`. In `cmsh`, the global `events` command takes several options: `on [broadcast|private]`, `off [broadcast|private]`, `show-acknowledged <yes/no>`, `show-detailed <yes/no>`, `level <info|notice|warning|error|alert>`, `clear`, `details <id>`, `acknowledge <id>`, `unacknowledge <id>`, `events <number> [level]`, and `events follow`, which works like `tail -f`. Run `events` with no arguments and you see the defaults: `Private events: off`, `Broadcast events: on`, `Acknowledged events: off`, `Details: off`, `Level: notice`. For example, `updateprovisioners` emits **private** events. Those appear live in your `cmsh` session only if you set `events on private`, or `events on`.
+
+Scripts can also report back through two channels, and the **Event Bucket** and **InfoMessages** are the two parts of that story.
+
+An InfoMessage comes from a health or metric script. Inside a measurable script, write to file descriptor 3 to set the status reason:
+
+```bash
+echo "Drive speed unknown: Reverse polarity" >&3
+```
+
+The Event Bucket at `/var/spool/cmd/eventbucket` turns a line into a BCM event, and the default severity is `info`. Add a prefix to choose the severity: `EVENT_SEVERITY_DEBUG:`, `EVENT_SEVERITY_INFO:`, `EVENT_SEVERITY_NOTICE:`, `EVENT_SEVERITY_WARNING:`, `EVENT_SEVERITY_ERROR:` or `EVENT_SEVERITY_ALERT:`. Regex filters live in `/cm/local/apps/cmd/etc/eventbucket.filter`, and the `EventBucket` and `EventBucketFilter` directives in `cmd.conf` control them.
+
+The bucket can also tag device status lines. The command `echo "STATE.USERMESSAGE.node001:just right" > /var/spool/cmd/eventbucket` makes `device status node001` display `node001 ... (just right) [ UP ]`. Leave out `.node001` to target the local host. To clear the message, echo an empty one, `STATE.USERMESSAGE.node001:`. Finally, `echo LOGGING.RELOAD.CONFIG > /var/spool/cmd/eventbucket` reloads CMDaemon's logging configuration without restarting `cmd`.
+
+During node provisioning, before `systemd` and the node's CMDaemon are up, the initialize and finalize scripts use a different bucket, `/tmp/eventbucket`. They can write in two modes. `echo "info-message: text" > /tmp/eventbucket` updates the device status line. `echo "Some text" > /tmp/eventbucket` raises a warning event.
+
+Pick the channel by where the message should appear. Use fd 3 for a measurable's status reason, and use the Event Bucket for an event.
 
 ## 9. Common first mistakes
+
+The chapter has warned about the ten mistakes below. Scan the list before you build your first trigger.
 
 1. Folding `UNKNOWN` into `FAIL`, or ignoring it.
 2. Expecting Enter to fire again while the value stays high (that is During).
@@ -211,48 +267,50 @@ Also: treat `UNKNOWN` as its own signal; remember an action that drains must be 
 
 ### 9.1 End-to-end walkthrough: Building a custom health check, trigger, and bounded remediation action
 
-To see how every piece of BCM's monitoring pipeline fits together in production, let us trace the complete lifecycle of a custom health check from a shell script on a compute node to an automated, loop-protected `Drain` action on the active head node:
+Here is the full lifecycle of one custom check. It starts as a shell script on a compute node and ends as a loop-protected `Drain` action on the active head node. Each step depends on the one before it.
 
 1. **Write the health check script to return `PASS`, `FAIL [severity]`, or `UNKNOWN` plus fd 3 `InfoMessage`:**
-   A standalone health check script in `/cm/local/apps/cmd/scripts/healthchecks/` (on the head node and inside the software image) must follow a strict output contract:
-   - Print **`PASS`**, **`FAIL`** (optionally followed by a custom severity integer such as `FAIL 40`, overriding the default `15`), or **`UNKNOWN`** (default severity `10`) to standard output (`fd 1`).
-   - Optionally write a concise human-readable diagnostic reason to **file descriptor 3 (`>&3`)**, which `CMDaemon` captures as the check's `InfoMessage` (`echo "Scratch mount /scratch is read-only" >&3`) and substitutes into `{infomessage}` in administrator alert emails.
+   A standalone health check script lives in `/cm/local/apps/cmd/scripts/healthchecks/`, both on the head node and inside the software image. It must follow a strict output contract. Print `PASS`, `FAIL`, or `UNKNOWN` to standard output (`fd 1`). `FAIL` may carry a custom severity integer, such as `FAIL 40`, which overrides the default 15. `UNKNOWN` defaults to severity 10. You can also write a short reason to file descriptor 3 (`>&3`). CMDaemon captures it as the check's `InfoMessage`, as in `echo "Scratch mount /scratch is read-only" >&3`, and substitutes it into `{infomessage}` in administrator alert emails.
 2. **Register the measurable and tune its data producer (`Fuzzy offset` and `prejob`):**
-   In `cmsh` `monitoring setup`, add the health check script, scope it to the relevant node categories (`nodeexecutionfilters`), and set a sampling interval (`120 s`) with a `Fuzzy offset` (e.g., `0.25`) so a thousand nodes spread their execution evenly across a thirty-second window instead of spiking at once. If the check verifies a prerequisite for running training jobs—such as InfiniBand port `ACTIVE` state or parallel scratch mount responsiveness—set `prejob yes` on the check *and* `enableprejob yes` on the Slurm WLM instance so BCM runs the check immediately before allocating any job to the node (preventing the **Black Hole Node Syndrome**).
+   In `cmsh`, open `monitoring setup`. Add the health check script, limit it to the right node categories with `nodeexecutionfilters`, and set a sampling interval of 120 s. Add a `Fuzzy offset` of 0.25, so that a thousand nodes spread their runs across a thirty-second window instead of spiking at once. If the check verifies something a training job needs, such as an InfiniBand port in `ACTIVE` state or a responsive parallel scratch mount, set `prejob yes` on the check. Also set `enableprejob yes` on the Slurm WLM instance. BCM then runs the check just before it allocates any job to the node, which prevents **Black Hole Node Syndrome**.
 3. **Wire the trigger (`Enter` vs `During` vs `State flapping`) and validate before committing:**
-   Create a trigger watching the new health check measurable. Use an **`Enter`** action when you want the action (such as `Drain` + `Send e-mail to administrators`) to fire **once** when the check transitions from `PASS` to `FAIL`. Remember that if you want a **`State flapping`** action (`5` crossings in `300 s`) to catch an intermittently bouncing optical link, you must lower the data producer's sampling interval (for example, to `15 s` or `30 s`), because a `120 s` sampler can never cross a threshold five times inside a five-minute window. Always run `validate` before `commit` so `cmsh` verifies that your measurable regex matches a real registered measurable and that at least one action is attached.
+   Create a trigger that watches the new measurable. Use an **`Enter`** action when you want something like `Drain` plus `Send e-mail to administrators` to fire once, at the moment the check moves from `PASS` to `FAIL`. Suppose you also want a **`State flapping`** action (5 crossings in 300 s) to catch an intermittently bouncing optical link. Then you must shorten the data producer's sampling interval, to 15 s or 30 s. A 120 s sampler can never cross a threshold five times inside a five-minute window. Finally, run `validate` before `commit`. It checks that your measurable regex matches a real measurable and that at least one action is attached.
+
+Run `validate` on the trigger before you commit it, every time.
 
 ## Exercises
 
-1. Run `python3 monitoring_lab.py`. Pick four checks and explain each rule in your own words.
-2. Using `evaluate_trigger`, find a series where Enter fires twice but During fires only once.
-3. Choose a sampling interval and flap settings for a link-flap alert on a GPU fabric port. Show it can be detected.
-4. Write the cmsh steps (from the manual, untested) for a trigger that mails the administrators when `gpu_health_overall` fails, and a second that drains on `gpu_health_nvlink` failing.
-5. Decide whether you want `Warn as fail` on a training cluster, and say what you would watch if not.
-6. Sketch a remediation counter that survives a reboot of the node (it must live somewhere other than the node's local disk).
+Work through these after the chapter. Some ask you to run the lab, and others ask you to write steps. The cmsh steps have not been tested on a live BCM system.
+
+1. Run `python3 monitoring_lab.py`. Choose four checks and explain each rule in your own words.
+2. Use `evaluate_trigger` to find a series where Enter fires twice but During fires only once.
+3. Choose a sampling interval and flapping settings for a link-flap alert on a GPU fabric port. Show that the alert can detect the flapping.
+4. Write the cmsh steps, taken from the manual and untested, for two triggers. The first mails the administrators when `gpu_health_overall` fails. The second drains the node when `gpu_health_nvlink` fails.
+5. Decide whether you want `Warn as fail` on a training cluster. Say what you would watch if you leave it off.
+6. Sketch a remediation counter that survives a reboot of the node. It must live somewhere other than the node's local disk.
 
 ## 11. Interview angles
 
-- "How does BCM decide a node is unhealthy?" Health checks produce PASS/FAIL/UNKNOWN/no data on a schedule; triggers watch them; severities feed AlertLevel and `healthoverview`.
-- "Explain Enter versus During." Enter is a threshold crossing; During is staying in the zone.
+- "How does BCM decide a node is unhealthy?" Health checks produce PASS, FAIL, UNKNOWN or no data on a schedule. Triggers watch those results, and severities feed AlertLevel and `healthoverview`.
+- "Explain Enter versus During." Enter is a threshold crossing. During is staying in the zone.
 - "What would you not automate?" Reboot or reimage for suspected hardware faults.
-- "How do you avoid alert storms?" Flapping detection, severities, `mute` during maintenance (chapter 8.4), consolidation of notifications.
-- "When does head-node monitoring stop scaling?" Around 10,000 to 20,000 nodes; offloaded monitoring.
+- "How do you avoid alert storms?" Flapping detection, severities, `mute` during maintenance (chapter 8.4), and consolidation of notifications.
+- "When does head-node monitoring stop scaling?" Around 10,000 to 20,000 nodes. Offloaded monitoring is the answer.
 
 ## Checkpoint questions (20)
 
 <details>
 <summary>1. Name the three kinds of measurables in BCM monitoring and how their values differ.</summary>
 
-1. **Metrics:** Numerical measurements (or `no data`), such as `CPUUser` or `gpu_temp:gpu0`.
-2. **Enummetrics:** Discrete state values from a small set (such as `DeviceStatus`: `UP`, `DOWN`, `CLOSED`).
-3. **Health checks:** Diagnostic checks returning one of four states: **`PASS`**, **`FAIL`**, **`UNKNOWN`**, or **`no data`**.
+1. **Metrics:** Numbers, or `no data`, such as `CPUUser` or `gpu_temp:gpu0`.
+2. **Enummetrics:** Discrete states from a small set, such as `DeviceStatus`, which can be `UP`, `DOWN` or `CLOSED`.
+3. **Health checks:** Diagnostic checks that return one of four states: **`PASS`**, **`FAIL`**, **`UNKNOWN`**, or **`no data`**.
 </details>
 
 <details>
 <summary>2. What is the difference between a health check returning `UNKNOWN` versus `no data`?</summary>
 
-**`UNKNOWN`** means the health check ran but could neither confirm `PASS` nor `FAIL` (for example, a command timeout that requires investigation). **`no data`** means the check did not run at all during that interval (for example, because it is disabled), and `CMDaemon` records the gap explicitly.
+**`UNKNOWN`** means the check ran but could confirm neither `PASS` nor `FAIL`, such as a command that timed out and needs investigation. **`no data`** means the check did not run during that interval, for example because it is disabled. `CMDaemon` records that gap explicitly.
 </details>
 
 <details>
@@ -264,110 +322,110 @@ To see how every piece of BCM's monitoring pipeline fits together in production,
 <details>
 <summary>4. How can a standalone health check script override the default `FAIL 15` severity?</summary>
 
-By printing its own severity integer after `FAIL` in its output—for example, **`FAIL 40`** (as used by the `hpraid` check).
+It prints its own severity integer after `FAIL`, as in **`FAIL 40`**, which the `hpraid` check uses.
 </details>
 
 <details>
 <summary>5. What do the three forms of `AlertLevel` (`count`, `max`, `sum`) displayed by `healthoverview` represent?</summary>
 
-- **`count`:** Number of active events at `"notice"` (`>= 10`) severity or higher on the entity.
+- **`count`:** The number of active events at `"notice"` (`>= 10`) severity or higher on the entity.
 - **`max`:** The highest current severity among active problems on the entity.
-- **`sum`:** The sum of the latest severities across all active problems on the entity (for example, two severity-`15` failures give `sum = 30, max = 15, count = 2`).
+- **`sum`:** The total of the latest severities across all active problems on the entity. Two severity-15 failures, for example, give `sum = 30, max = 15, count = 2`.
 </details>
 
 <details>
 <summary>6. Define the four trigger action launch options (`Enter`, `Leave`, `During`, `State flapping`).</summary>
 
-- **`Enter`:** Fires when the **current sample is inside the trigger zone AND the previous sample was outside**.
+- **`Enter`:** Fires when the current sample is inside the zone and the previous sample was outside.
 - **`Leave`:** Fires when the current sample is outside the zone and the previous sample was inside.
-- **`During`:** Fires when **both the current sample and the previous sample are inside the zone**.
-- **`State flapping`:** Fires when the threshold is crossed repeatedly (`5` times within `5` minutes by default).
+- **`During`:** Fires when both the current sample and the previous sample are inside the zone.
+- **`State flapping`:** Fires when the threshold is crossed repeatedly, by default 5 times within 5 minutes.
 </details>
 
 <details>
 <summary>7. Why can the very first sample collected by a data producer NEVER fire an `Enter` action?</summary>
 
-Because `Enter` requires a transition from *"previous sample outside the zone"* to *"current sample inside the zone,"* and on the very first sample no previous sample exists.
+Enter needs a change from outside the zone to inside it, so it needs a previous sample to compare with. The first sample has none, so it can never fire Enter.
 </details>
 
 <details>
 <summary>8. Which three pre-defined triggers exist in a fresh BCM installation, and what action do they run?</summary>
 
-**Failing health checks** (severity `15`), **Unknown health checks** (severity `10`), and **Passing health checks** (severity `0`), each configured with an `Enter` action that runs the built-in **`Event`** action.
+They are **Failing health checks** (severity `15`), **Unknown health checks** (severity `10`), and **Passing health checks** (severity `0`). Each has an `Enter` action that runs the built-in **`Event`** action.
 </details>
 
 <details>
 <summary>9. Why can a measurable sampled at `120 s` intervals never trigger the default `State flapping` rule (`5` crossings in `300 s`)?</summary>
 
-In `300` seconds (`5` minutes), a `120 s` sampler collects at most `2–3` intervals (`0 s, 120 s, 240 s`), which can produce at most **2 threshold crossings**—far below the required `5` crossings. Detecting flapping requires a shorter sampling interval or a longer flapping window.
+In `300` seconds, a `120 s` sampler collects at most `2–3` intervals (`0 s, 120 s, 240 s`). That gives at most **2 threshold crossings**, well short of the 5 that flapping needs. A shorter sampling interval or a longer flapping window fixes this.
 </details>
 
 <details>
 <summary>10. What is the difference between the metrics `CPUUser` and `CPUUsage` in BCM?</summary>
 
-**`CPUUser`** is measured in **jiffies per second** (from `/proc/stat`), whereas **`CPUUsage`** is a **percentage (`0–100%`)**.
+**`CPUUser`** is measured in **jiffies per second** (from `/proc/stat`). **`CPUUsage`** is a percentage from `0–100%`.
 </details>
 
 <details>
 <summary>11. What two configuration mistakes does running `validate` on a new trigger in `cmsh` catch?</summary>
 
-1. **`"No actions were set"`** (a trigger that does nothing when its condition matches).
-2. **`"No known measurable matches the specified regexes"`** (such as typing the data producer name `devicestate` instead of the measurable name `devicestatus`).
+1. **`"No actions were set"`**, which means the trigger does nothing when its condition matches.
+2. **`"No known measurable matches the specified regexes"`**, for example when you type the data producer name `devicestate` instead of the measurable name `devicestatus`.
 </details>
 
 <details>
 <summary>12. Which built-in trigger actions execute on the **active head node** versus on the **target regular node**?</summary>
 
-- **Run on the active head node:** `Drain`, `Undrain`, `Send e-mail to administrators`, `Event`, `ImageUpdate`, and the hard BMC/PDU power actions (`PowerOff`, `PowerOn`, `PowerReset`).
-- **Run on the target node:** OS-level `Reboot` and `Shutdown`, plus node scripts like `killprocess`, `remount`, and `testaction`.
+- **Run on the active head node:** `Drain`, `Undrain`, `Send e-mail to administrators`, `Event`, `ImageUpdate`, and the hard BMC or PDU power actions `PowerOff`, `PowerOn` and `PowerReset`.
+- **Run on the target node:** The OS-level `Reboot` and `Shutdown`, plus node scripts such as `killprocess`, `remount` and `testaction`.
 </details>
 
 <details>
 <summary>13. What does the hidden `post-drain-actions` parameter on the `Drain` action do?</summary>
 
-It chains additional actions (such as `send e-mail to administrators` and `poweroff`) to execute **only after** all running WLM jobs on the drained node have finished.
+It chains more actions, such as `send e-mail to administrators` and `poweroff`. They run only after all running WLM jobs on the drained node have finished.
 </details>
 
 <details>
 <summary>14. How are per-GPU metrics and the 14 `GPUSampler` health checks named for a single GPU versus the whole node?</summary>
 
-Appending **`:gpuN`** (for example, `gpu_ecc_dbe_agg:gpu1` or `gpu_health_nvlink:gpu0`) scopes the metric or check to GPU `N`; omitting `:gpuN` (`gpu_health_overall`, `gpu_health_hostengine`) scopes it to the entire node.
+Appending **`:gpuN`** scopes a metric or check to GPU `N`, as in `gpu_ecc_dbe_agg:gpu1` or `gpu_health_nvlink:gpu0`. Leaving it off, as in `gpu_health_overall` or `gpu_health_hostengine`, scopes it to the whole node.
 </details>
 
 <details>
 <summary>15. How does `GPUSampler` report a DCGM `WARN` condition by default, and how do you make DCGM warnings fail the health check?</summary>
 
-By default, a DCGM `WARN` is reported as **`PASS`** (with the warning reason placed in the `Info` field). To treat warnings as failures across all `gpu_health_*` checks, set **`monitoring setup use gpusampler; set -e "Warn as fail" true; commit`**.
+By default a DCGM `WARN` is reported as **`PASS`**, with the reason placed in the `Info` field. To treat warnings as failures across all `gpu_health_*` checks, run `monitoring setup use gpusampler; set -e "Warn as fail" true; commit`.
 </details>
 
 <details>
 <summary>16. What does `Fuzzy offset` (e.g., `0.25` on a `120 s` interval) on a data producer do?</summary>
 
-It spreads node sampling uniformly across `[0, fuzzy_offset * interval]` (`0` to `30 s` for `0.25 * 120 s`) so hundreds of nodes do not all sample and push monitoring data at the exact same second.
+It spreads node sampling evenly across the window from `0` to `fuzzy_offset * interval`, which is `0` to `30 s` for `0.25 * 120 s`. Hundreds of nodes then do not all sample and push monitoring data in the same second.
 </details>
 
 <details>
 <summary>17. What does the default `hour` consolidator retain, and what happens if you change a consolidator's `Kind` (`average`, `maximum`, `minimum`)?</summary>
 
-The default `hour` consolidator (`3600 s` interval) retains up to **`65,536` samples** (**`7` years `26` weeks**, `~7.5` years). Changing a consolidator's `Kind` **discards all previously consolidated data** for that consolidator.
+The default `hour` consolidator, with a `3600 s` interval, retains up to **`65,536` samples**, which is **`7` years `26` weeks**, about `~7.5` years. Changing a consolidator's `Kind` **discards all previously consolidated data** for that consolidator.
 </details>
 
 <details>
 <summary>18. How does a custom health check script set its human-readable `InfoMessage`, and how do scripts inject events into `/var/spool/cmd/eventbucket`?</summary>
 
-A health check or metric script writes its `InfoMessage` to **file descriptor 3 (`echo "reason" >&3`)**. External scripts can pipe lines into **`/var/spool/cmd/eventbucket`** (with optional `EVENT_SEVERITY_WARNING:` prefixes, `STATE.USERMESSAGE.node001:text` to tag `device status`, or `LOGGING.RELOAD.CONFIG` to reload logging without restarting `cmd`).
+A health check or metric script writes its `InfoMessage` to **file descriptor 3**, as in `echo "reason" >&3`. External scripts pipe lines into **`/var/spool/cmd/eventbucket`**. A line can start with `EVENT_SEVERITY_WARNING:` to set its severity. It can also be `STATE.USERMESSAGE.node001:text`, which tags the `device status` line, or `LOGGING.RELOAD.CONFIG`, which reloads logging without restarting `cmd`.
 </details>
 
 <details>
 <summary>19. At roughly what node count does traditional head-node monitoring reach its limit, and how does BCM scale beyond it?</summary>
 
-Traditional head-node monitoring handles roughly **`10,000` to `20,000` nodes**; beyond that (or to remove the head node as a monitoring bottleneck), assign the **`monitoring` role** to dedicated regular nodes (**offloaded monitoring**, §10.7).
+Traditional head-node monitoring handles roughly **`10,000` to `20,000` nodes**. Beyond that, or to stop the head node being the monitoring bottleneck, assign the **`monitoring` role** to dedicated regular nodes. This is **offloaded monitoring**, covered in §10.7.
 </details>
 
 <details>
 <summary>20. In a three-tier automated remediation design (Hardware vs Software state vs Transient), why must Tier 1 (hardware faults) never auto-reboot/reimage, and why must Tier 2 (software drift) cap reimage attempts?</summary>
 
-Rebooting or reimaging a node with a hardware fault (`Xid 79`, double-bit ECC, dead PSU) does not fix broken silicon and risks returning a faulty node to the scheduler. For Tier 2 software drift, capping automatic `ImageUpdate`/reboot attempts (e.g., max `2` attempts before escalating to Tier 1 quarantine) prevents an infinite reimage loop when a persistent fault masquerades as a software check failure.
+Rebooting or reimaging a node with a hardware fault, such as `Xid 79`, double-bit ECC or a dead PSU, does not repair the silicon. It can also return a faulty node to the scheduler. For Tier 2 software drift, cap automatic `ImageUpdate` or reboot attempts, for example at `2` before escalating to Tier 1 quarantine. Otherwise a persistent fault that looks like a software failure can cause an endless reimage loop.
 </details>
 
 ## Sources and review notes
