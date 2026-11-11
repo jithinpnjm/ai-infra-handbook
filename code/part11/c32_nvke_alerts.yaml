@@ -1,0 +1,37 @@
+groups:
+  - name: nvke-management-plane
+    rules:
+      - alert: NVKEApiAuthenticationOff
+        expr: nvke_auth_enabled{mode="off"} == 1
+        for: 5m
+        labels:
+          severity: warning
+        annotations:
+          summary: The NVKE API serves every caller without authentication.
+      - alert: NVKEWorkloadClusterStuck
+        expr: nvke_controller_cluster_info{status=~"provisioning|deleting|control_plane_upgrading|cp_nodes_recycling"} == 1
+        for: 2h
+        labels:
+          severity: warning
+        annotations:
+          summary: "Cluster {{ $labels.name }} has been {{ $labels.status }} for 2 hours."
+      - alert: NVKENodeStuckInLifecycleState
+        expr: nvke_controller_node_lifecycle_elapsed_seconds{state=~"pending|provisioning|deleting"} > 7200
+        for: 10m
+        labels:
+          severity: warning
+        annotations:
+          summary: "Node {{ $labels.node }} in {{ $labels.tenant_cluster }} has been {{ $labels.state }} for over 2 hours."
+      - alert: NVKEProvisioningGiveUps
+        expr: increase(nvke_controller_node_provisioning_giveups_total[1h]) > 0
+        labels:
+          severity: warning
+        annotations:
+          summary: NVKE deleted a worker node because provisioning exceeded its timeout.
+      - alert: NVKEPoolBelowDesired
+        expr: nvke_controller_node_pool_actual_count < nvke_controller_node_pool_desired_count
+        for: 1h
+        labels:
+          severity: warning
+        annotations:
+          summary: "Pool {{ $labels.node_pool_name }} in {{ $labels.tenant_cluster }} has fewer nodes than desired."

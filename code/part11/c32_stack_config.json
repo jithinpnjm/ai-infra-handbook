@@ -1,0 +1,12 @@
+{
+  "nico": {
+    "endpoint": "https://nico.example.internal",
+    "orgID": "example-org",
+    "apiName": "forge"
+  },
+  "images": {
+    "controller": "nvke.local/nke-controller:site",
+    "profiles": "nvke.local/controller-profiles:site"
+  },
+  "mirror": ""
+}

@@ -1,0 +1,21 @@
+clusterName: nvke-site
+cluster:
+  nodes:
+    - name: node1
+      ip: 10.0.0.1
+      tpmEkThumbprint: "0000000000000000000000000000000000000000000000000000000000000000"
+    - name: node2
+      ip: 10.0.0.2
+      tpmEkThumbprint: "1111111111111111111111111111111111111111111111111111111111111111"
+    - name: node3
+      ip: 10.0.0.3
+      tpmEkThumbprint: "2222222222222222222222222222222222222222222222222222222222222222"
+  k8sVersion: 1.36.3
+  cniName: ovn-kubernetes
+  podCidr: 192.168.0.0/16
+  serviceCidr: 10.96.0.0/12
+  controlPlaneVIP: 10.0.0.100
+  kubeletConfig:
+    systemReservedMemory: 16Gi
+spire:
+  trustDomain: mgmt.example.com

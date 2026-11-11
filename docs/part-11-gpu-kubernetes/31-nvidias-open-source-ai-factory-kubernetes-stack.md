@@ -24,6 +24,8 @@ lab_venue: "Local Python 3 and Docker, no GPU"
 
 ## Read this first
 
+For NVKE in full, with the cluster spec, the API, installation, NVKR, runbooks, security and failure modes, read the three chapters that follow: [11.32 architecture, API and cluster spec](32-nvke-nvidia-kubernetes-engine-in-depth.md), [11.33 installation, NVKR and cluster lifecycle](33-nvke-in-depth-part-2-installation-nvkr-and-cluster-lifecycle.md) and [11.34 operations, security, failure modes and comparison](34-nvke-in-depth-part-3-operations-security-failure-modes-and-comparison.md).
+
 NVKE is a management plane that runs managed Kubernetes on your own GPU bare metal, and NVKR builds its images and charts. AICR pins which driver, operator and plugin versions belong together. NVCRE certifies a cluster under real load. KAI Scheduler, inside the Run:ai platform, gives queues, quotas and gangs. Grove with Dynamo runs a multi-pod inference replica as one unit. NVSentinel detects faulty nodes and cordons, drains and repairs them.
 
 **NVKE and NVKR are public previews and are not recommended for production.** That is NVIDIA's announcement and the NVKE README. The NVKE README and preview-status page, read at commit `487f511` of 2026-11-10, add four facts:
