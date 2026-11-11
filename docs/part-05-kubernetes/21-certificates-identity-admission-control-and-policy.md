@@ -1070,9 +1070,6 @@ spec:
     spec:
       names:
         kind: LimitNamespaceIngress
-        listKind: LimitNamespaceIngressList
-        plural: limitnamespaceingresss
-        singular: limitnamespaceingress
       validation:
         # Schema for the `parameters` field in the constraint
         openAPIV3Schema:

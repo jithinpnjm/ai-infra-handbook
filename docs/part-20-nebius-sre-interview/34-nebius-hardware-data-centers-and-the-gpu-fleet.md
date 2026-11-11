@@ -47,7 +47,7 @@ The levels that matter and what each one shares are in the table. The right colu
 
 ### 2. How Nebius says it builds hardware, and why you care
 
-Nebius says it designs its servers and racks in-house. The 2025 annual report states this, and adds proprietary server firmware, a toolless rack design, and servers engineered for inlet temperatures up to 40 degrees Celsius [filing]. It claims components can be swapped in minutes and that one engineer can manage thousands of servers. It gives no uptime figure, so the claims are qualitative. A November 2024 company digest says hardware engineers gave a talk at the Open Compute Project summit, that the designs rest on several OCP principles, and that Nebius brought its own work back to the community [vendor]. I found no named contribution and I could not read the talk.
+Nebius says it designs its servers and racks in-house. The 2025 annual report states this, and adds proprietary server firmware, a toolless rack design, and servers engineered for inlet temperatures up to 40 degrees Celsius [filing]. I confirmed the temperature and tool-less points in Nebius's 2025 Sustainability Report, which says air up to 40 degrees Celsius and liquid up to 45 degrees Celsius for the cooling systems, with tool-less component replacement [vendor, read 2026-11-11]. It claims components can be swapped in minutes and that one engineer can manage thousands of servers. It gives no uptime figure, so the claims are qualitative. A November 2024 company digest says hardware engineers gave a talk at the Open Compute Project summit, that the designs rest on several OCP principles, and that Nebius brought its own work back to the community [vendor]. I found no named contribution and I could not read the talk.
 
 The same filing says Nebius relies on NVIDIA for GPUs and on a limited number of other suppliers for key components. It lists limited access to the latest components and limits on power availability as risks [filing]. The filing names no server maker.
 
@@ -324,6 +324,7 @@ Hall, row and rack counts, the fabric leaf and spine counts, and the cooling loo
 Pages fetched on 2026-11-11. Raw notes with every URL are in `planning/research/nebius_hardware.md`.
 
 - Filings [filing]: Nebius Group N.V. Form 20-F for 2025 (sec.gov, Item 3 and Item 4, read in three chunks, last part not reviewed). Q2 2026 shareholder letter dated 2026-08-12.
+- Vendor [vendor]: Nebius 2025 Sustainability Report (assets.nebius.com PDF, read 2026-11-11), pages on server design, cooling temperatures and tool-less serviceability.
 - Nebius docs [official]: Managed Kubernetes health checks, Compute maintenance reasons, Compute VM maintenance, Soperator worker node health.
 - Nebius pages [vendor]: GB300 product page, Aether 3.1 release post, Storage page, ClusterMAX 3.0 post, Exemplar Cloud posts for GB300 and B300, MLPerf Inference v6.1 post, November 2024 digest.
 - Books: *DGX GB300 SuperPOD* reference and *DGX B200 SuperPOD data center design*, through handbook chapters 9.8 and 9.7. *AI Data Center Network Design and Technologies*, chapters "Network Design Considerations", "Optics and Cable Management", "Thermal and Power Efficiency Considerations" and "Monitoring and Telemetry". The book *AI Factory* has no data-centre hardware content and I did not use it.

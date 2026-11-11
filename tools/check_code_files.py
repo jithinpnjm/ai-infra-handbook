@@ -10,7 +10,7 @@ dirs=sys.argv[1:] or ['code/part16','code/part17','code/part18']
 bad=0;n=0
 for d in dirs:
   for p in sorted(glob.glob(d+'/**/*',recursive=True)):
-    if not os.path.isfile(p) or p.endswith('_lab.py') or p.endswith('.md'): continue
+    if not os.path.isfile(p) or p.endswith('_lab.py') or p.endswith('.md') or '__pycache__' in p or p.endswith('.pyc'): continue
     n+=1;e=os.path.splitext(p)[1];t=open(p).read();err=None
     try:
       if e=='.py':
