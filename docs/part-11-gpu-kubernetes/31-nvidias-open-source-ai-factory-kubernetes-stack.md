@@ -22,15 +22,35 @@ lab_venue: "Local Python 3 and Docker, no GPU"
 | Research notes | `planning/research/nvidia_opensource_k8s_stack.md` |
 | Code | `code/part11/c31_*` |
 
+## Read this first
+
+NVKE is a management plane that runs managed Kubernetes on your own GPU bare metal, and NVKR builds its images and charts. AICR pins which driver, operator and plugin versions belong together. NVCRE certifies a cluster under real load. KAI Scheduler, inside the Run:ai platform, gives queues, quotas and gangs. Grove with Dynamo runs a multi-pod inference replica as one unit. NVSentinel detects faulty nodes and cordons, drains and repairs them.
+
+**NVKE and NVKR are public previews and are not recommended for production.** That is NVIDIA's announcement and the NVKE README. The NVKE README and preview-status page, read at commit `487f511` of 2026-11-10, add four facts:
+
+- The API serves plain HTTP on port 30080 with authentication off by default.
+- NVKE does no authorization, so any admitted caller can delete any cluster.
+- There is no management-plane upgrade or backup procedure.
+- The customer admin kubeconfig cannot be revoked.
+
+The other projects are less risky but still young, and section 11 grades each one. NVSentinel calls itself Beta/Stable, KAI is a 0.x CNCF Sandbox project, and Grove and NVCRE are early.
+
+| Your goal | Read |
+|---|---|
+| Interview in a hurry | Sections 1, 11, 12 and 14, then the checkpoint questions |
+| Decide what to adopt | Sections 10 and 11 |
+| Run it on call | Sections 3, 8, 9 and 12 |
+| Learn each project | Sections 3 to 8 |
+
 ## Why this matters for AI infrastructure
 
 A new GPU cluster arrives on Monday. By Wednesday a training job is slow because one node has a flaky NIC. By Friday a second team asks why the inference service starts its decode pods before the prefill pods exist. Each problem belongs to a different tool, and until recently most of those tools were either closed or scattered across unrelated repositories.
 
-In 2026 NVIDIA moved most of that tooling into open source. This week, on 10 November 2026, it added NVKE, a management plane for running managed Kubernetes on your own GPU servers, together with its build system NVKR. Earlier, the Run:ai platform was released on 13 October 2026. The DSX OS layer, with AICR, the Cluster Readiness Engine and NVSentinel, was announced on 31 May 2026 and described in a workflow post on 5 November 2026. Grove, the inference orchestration API, sits beside Dynamo. KAI Scheduler had already been open since 2025.
+In 2026 NVIDIA moved most of that tooling into open source. On 10 November 2026 it added NVKE, a management plane for running managed Kubernetes on your own GPU servers, together with its build system NVKR. Earlier, the Run:ai platform was released on 13 October 2026. The DSX OS layer, with AICR, the Cluster Readiness Engine and NVSentinel, was announced on 31 May 2026 and described in a workflow post on 5 November 2026. Grove, the inference orchestration API, sits beside Dynamo. KAI Scheduler had already been open since 2025.
 
 A site reliability engineer needs a map of this stack more than a feature list. You should know which project does which job, which pieces overlap, which are mature, and which can hurt a production cluster if you switch them on too fast. Interviewers who ask "what NVIDIA open-source software would you use to run an AI cluster?" want that map, with honest caveats about maturity.
 
-This chapter builds the map from the upstream repositories and NVIDIA's own posts. It does not repeat the KAI queue and topology manifests from 19.2 or the KAI internals from 11.13 to 11.18. It links to them and shows where the other projects attach.
+The map comes from the upstream repositories and NVIDIA's own posts. KAI manifests (19.2) and internals (11.13 to 11.18) are linked, not repeated.
 
 ## Prerequisites and outcomes
 
@@ -80,7 +100,7 @@ flowchart TD
     C -->|"failed nodes become health events"| F
 ```
 
-Read the diagram top to bottom for a new cluster, then follow the loop between NVSentinel and NVCRE for a node that breaks later. The loop is the reason the projects are described as one suite.
+Read the diagram top to bottom for a new cluster. The loop between NVSentinel and NVCRE covers a node that breaks later.
 
 The table below gives the one-line identity of each project as of 2026-11-11. Version numbers and star counts come from the GitHub API on that date. Stars are a popularity signal and say nothing about readiness.
 
@@ -110,7 +130,7 @@ KAI Scheduler is the scheduling engine that Run:ai built. NVIDIA released it und
 
 The second event came on 13 October 2026. NVIDIA announced that it was "making the full NVIDIA Run:ai platform available as open source software". The platform is the part around the scheduler: the control plane, the web interface, the command line, the REST API and the cluster services. The post names four modular components as separate repositories: the KAI Scheduler, a GPU fractioning operator, a resource management component and a Workload Map. The full platform lives in the `dsx-ai-factory/run-ai` repository.
 
-I checked the licence in the repository itself. The root licence file is Apache 2.0, the README says so, and a notice file lists third-party code. The blog post is vaguer and says the code is governed by "its applicable open source licenses". The repository answers the question the post leaves open. The same README warns that Apache 2.0 does not grant any right to use NVIDIA or Run:ai trademarks.
+The repository settles the licence. The root licence file is Apache 2.0, the README says so, and a notice file lists third-party code. The blog post is vaguer and says only "its applicable open source licenses". The same README warns that Apache 2.0 does not grant any right to use NVIDIA or Run:ai trademarks.
 
 The third event is the DSX platform. NVIDIA announced DSX at GTC Taipei and published a post on 31 May 2026 describing DSX OS as an open, modular operating layer for AI factories. The post lists many components. Several are not Kubernetes software at all, for example power management and facility signal exchange. The three that matter for a Kubernetes SRE are AICR, NVSentinel, and the Cluster Readiness Engine that the 5 November post adds to the same workflow.
 
@@ -126,7 +146,7 @@ Grove deserves its own line. It started as part of the Dynamo project and lives 
 | 2026-11-05 | Workflow post: configure with AICR, certify with NVCRE, operate with NVSentinel | official blog |
 | 2026-11-10 | NVKE and NVKR released as public previews at KubeCon North America, with Snapshot and the OpenShell donation to the CNCF | official blogs and repositories |
 
-One more caution. A third-party article dated 12 October 2026 reported the Run:ai release one day before NVIDIA's own post. I used NVIDIA's post and the repository as the sources of record. The secondary articles agree on the repository location but add nothing that the primary sources do not say.
+A third-party article dated 12 October 2026 reported the Run:ai release one day before NVIDIA's own post. NVIDIA's post and the repository are the sources of record here.
 
 **Decision rule:** When an engineer says "Run:ai is open source", ask whether they mean the scheduler or the whole platform, because the support answer differs.
 
@@ -158,7 +178,7 @@ NVKE's own documentation pins Cluster API core, kubeadm bootstrap and the kubead
 
 ### Where it sits in the stack
 
-NVKE stops at a running, conformant Kubernetes cluster. Its docs say what is out of scope: the GPU driver and software stack inside clusters belongs to Nodewright and the GPU Operator through AICR, readiness certification belongs to the Cluster Readiness Engine, and workload-aware break-fix belongs to NVSentinel. The documented bring-up order is NICo first, then the NVKE management cluster, then a workload cluster, then an AICR recipe bundle, then certification, then NVSentinel, then tenant workloads.
+NVKE stops at a running, conformant Kubernetes cluster. Its docs put the GPU driver and software stack inside clusters with Nodewright and the GPU Operator through AICR, certification with the Cluster Readiness Engine, and workload-aware break-fix with NVSentinel. The documented bring-up order is NICo first, then the NVKE management cluster, then a workload cluster, then an AICR recipe bundle, then certification, then NVSentinel, then tenant workloads.
 
 | Neighbour | Relationship to NVKE |
 |---|---|
@@ -167,7 +187,7 @@ NVKE stops at a running, conformant Kubernetes cluster. Its docs say what is out
 | AICR | Configures the workload cluster. NVKR can also build AICR artifacts. |
 | NVCRE | Certifies the new cluster. It never changes nodes. |
 | NVSentinel | Decides when a node needs repair and applies cordon and drain. NVKE carries out the reboot or replacement. |
-| KAI Scheduler and Run:ai | Not mentioned in the NVKE docs I read. They are tenant-side software that you install inside a workload cluster, as in sections 4 and 5. |
+| KAI Scheduler and Run:ai | Not mentioned in the NVKE docs I read. They are tenant-side software that you install inside a workload cluster, as in section 4. |
 
 One boundary matters in an incident. The NVKE docs say it is not responsible for deciding when tenant workloads may be disrupted. Cordon, drain and node SLO policy belong to the tenant's SRE team or a break-fix system such as NVSentinel.
 
@@ -183,7 +203,7 @@ This comparison is my own reasoning. The NVKE documents do not compare it with o
 | What do customers receive? | A cluster and an API | An admin kubeconfig at preview |
 | Where do machines come from? | The provider's fleet | Your NICo-managed bare metal |
 
-The first row is the key point. NVKE does not remove the work of running a managed service. It gives you the software for it, and the operator's responsibility list in the NVKE docs is long. It names NICo, the management cluster, artifact verification, the accelerated runtime, cluster availability and customer access. The customer owns workloads, images, namespaces, application secrets and role-based access control for its own users.
+The first row is the key point. NVKE does not remove the work of running a managed service. It gives you the software for it, and the operator's responsibility list in the NVKE docs is long: NICo, the management cluster, artifact verification, the accelerated runtime, cluster availability and customer access. The customer owns workloads, images, namespaces, application secrets and role-based access control for its own users.
 
 ### The cluster request
 
@@ -231,7 +251,7 @@ Three fields deserve attention. The version has no leading `v`, and the API reje
 
 ### Preview limits
 
-I checked the NVKE README and its preview-status page, because a third-party write-up said the preview has no API authentication and no management-plane upgrade or backup procedure. Both claims are true in the repository. The list below is the part an SRE should read before anything else.
+A third-party write-up said the preview has no API authentication and no management-plane upgrade or backup procedure. The NVKE README and preview-status page confirm both. The table below is the part an SRE should read before anything else.
 
 | Limit | What the NVKE docs say |
 |---|---|
@@ -252,15 +272,15 @@ The local quickstart needs no GPU. It uses a simulated NICo on a Linux host with
 
 ### Running a management plane as an SRE
 
-If you adopt NVKE, you have taken on a stateful control system. The failure modes follow from the architecture above and from the preview list, and section 13 gives the signals. The main ones are PostgreSQL loss, because cluster state lives there. A Temporal or outbox stall, because a cluster request is accepted but nothing happens. A lost bootstrap kubeconfig or etcd key file. An unauthenticated plain-HTTP API on a shared network. A management cluster that cannot be upgraded. And an irrevocable admin kubeconfig in a customer's hands.
+If you adopt NVKE, you have taken on a stateful control system. Cluster state lives in PostgreSQL, a Temporal or outbox stall leaves a request accepted but idle, and a lost bootstrap kubeconfig or etcd key file cannot be replaced. Section 12 gives the signals for each.
 
-Announced the same day were NVIDIA Snapshot, which restores checkpointed inference replicas, and OpenShell, an agent security runtime that NVIDIA is contributing to the CNCF as a Sandbox project. Neither is part of cluster management. Snapshot appears as an optional subchart in the Dynamo platform chart, and I did not examine it further.
+Announced the same day were NVIDIA Snapshot, which restores checkpointed inference replicas, and OpenShell, an agent security runtime that NVIDIA is contributing to the CNCF as a Sandbox project. Neither is part of cluster management. Snapshot appears as an optional subchart in the Dynamo platform chart.
 
 **Decision rule:** Evaluate NVKE on a lab with simulated machines, never expose its API to a shared network, and do not offer it to paying customers until authorization, upgrade and backup procedures exist.
 
 **In one minute:** NVKE is a management plane you install to run managed GPU Kubernetes on your own bare metal. NVKR builds its images and charts. It sits below AICR, NVCRE, NVSentinel and the schedulers and drives Cluster API and NICo. It is an Apache 2.0 public preview with no API authorization, no management-plane upgrade or backup, and an unauthenticated HTTP default.
 
-## 4. Open-source Run:ai against the commercial offering
+## 4. Run:ai: open source against commercial, and where KAI sits
 
 A platform lead asks: "We have budget for the Run:ai licence. Do we still need it?" The honest answer depends on what you buy a licence for.
 
@@ -278,25 +298,19 @@ The repository's own support page says only the current release branch is suppor
 | Where help comes from | GitHub Issues and Discussions, CNCF Slack channel for KAI | NVIDIA support under the agreement |
 | Install source | NGC Helm chart and `runai-oss` images | Per the commercial agreement |
 
-I want to be exact about what is unclear. I found no feature-by-feature comparison between the two editions. I found no statement about whether any feature is withheld from the Community Product. The post says the proprietary GPU fractioning was retired in favour of a native fractioning feature in CUDA 13.4. I could not confirm the CUDA claim in a second source, so label it as NVIDIA's statement. Whether the hosted SaaS control plane is open source is also unclear. The support page describes it as a cloud service under separate terms, so assume it is not.
+Three points are unclear. I found no feature-by-feature comparison of the two editions and no statement on whether any feature is withheld from the Community Product. The post says the proprietary GPU fractioning was retired in favour of a native fractioning feature in CUDA 13.4. I could not confirm that CUDA claim in a second source, so label it as NVIDIA's statement. The support page describes the hosted SaaS control plane as a cloud service under separate terms, so assume it is not open source.
 
-What does this mean for an SRE? You can now read the code that schedules your jobs and the code of the control plane, and you can file issues in public. You cannot assume NVIDIA will answer a production outage on the Community Product. Plan your own on-call runbook, your own upgrade rehearsals and a fallback.
+For an SRE, you can now read the scheduler and control-plane code and file issues in public. You cannot assume NVIDIA will answer a production outage on the Community Product. Plan your own on-call runbook, upgrade rehearsals and a fallback.
 
-Chapter 11.19 describes Run:ai as a commercial platform. That was true when it was written. The correct current statement is that the platform is open source and a supported commercial release also exists.
+Chapter 11.19 describes Run:ai as a commercial platform. The current statement is that the platform is open source and a supported commercial release also exists.
 
-**Decision rule:** Choose the Community Product when you can own the operations, and the Support-Entitled Release when an external SLA is part of your risk plan.
-
-**In one minute:** The code is one Apache 2.0 monorepo. The commercial offering sells support, an SLA and a defined lifecycle. Feature differences, the SaaS control plane's status and the CUDA fractioning claim are not confirmed by what I could read.
-
-## 5. Where KAI sits inside Run:ai
-
-A job is pending and the team wants to know whether Run:ai or KAI is to blame. You need to know which process made the decision.
+Now the second question: a job is pending and the team wants to know whether Run:ai or KAI is to blame. You need to know which process made the decision.
 
 The Run:ai README describes two installed parts. The control plane manages workload submission, organisational resources, policies and monitoring across one or more clusters. The cluster part runs on each Kubernetes cluster and extends scheduling with GPU-aware behaviour. Users reach the control plane through the web interface, the CLI or the REST API. The cluster part ships the KAI Scheduler.
 
-The repository is a monorepo. The control-plane directory holds about thirty services, including the frontend, identity management, policy, workload management and metrics. The cluster directory holds the controllers, admission webhooks and the scheduler. A separate installer directory holds a guided installer and a Model Context Protocol server. The README also says the root Makefile targets are placeholders, and the real build targets live inside each service directory. That is an honest sign of a very large repository that was opened as it was.
+The repository is a monorepo. The control-plane directory holds about thirty services, including the frontend, identity management, policy, workload management and metrics. The cluster directory holds the controllers, admission webhooks and the scheduler. A separate installer directory holds a guided installer and a Model Context Protocol server. The README also says the root Makefile targets are placeholders, and the real build targets live inside each service directory.
 
-KAI alone is a scheduler. Its README lists batch (gang) scheduling, bin packing and spreading, hierarchical queues, fairness with reclaim, time-based fair share, a minimum guaranteed runtime, consolidation, elastic workloads, background pods, topology-aware scheduling, hierarchical pod groups and GPU sharing. It runs next to the default scheduler, and workloads opt in by setting a scheduler name. Chapters 11.14 to 11.18 cover those features.
+KAI alone is a scheduler. Its README lists batch (gang) scheduling, bin packing and spreading, hierarchical queues, fairness with reclaim, time-based fair share, a minimum guaranteed runtime, consolidation, elastic workloads, background pods, topology-aware scheduling, hierarchical pod groups and GPU sharing. It runs next to the default scheduler, and workloads opt in by setting a scheduler name. Chapters 11.14 to 11.18 cover them.
 
 So when is KAI enough, and when do you want the whole platform? Use KAI alone when your platform team already has a way to create queues, authenticate users and show dashboards. Use the Run:ai platform when you want a ready-made control plane for many teams, with a web interface, policies, projects and departments, and central views across several clusters. The Run:ai README itself says that if one team runs jobs on dedicated GPUs, native Kubernetes scheduling may be enough.
 
@@ -304,11 +318,11 @@ AICR knows both. Its supported-platform list includes Run:ai, Dynamo, Kubeflow, 
 
 When you debug a pending job, start at the scheduler. KAI writes Kubernetes events for every major step, and its PodGroup and Queue resources show the state. The 11.18 chapter gives the commands. Only after that, look at the Run:ai control plane for policy or quota that might have changed the Queue.
 
-**Decision rule:** Debug scheduling in the cluster with KAI events first, and treat the Run:ai control plane as the place that writes the queues.
+**Decision rule:** Choose the Community Product when you can own the operations and the Support-Entitled Release when an external SLA is part of your risk plan. Debug scheduling with KAI events first, and treat the Run:ai control plane as the place that writes the queues.
 
-**In one minute:** Run:ai is a control plane plus a cluster part, and the cluster part contains KAI. KAI alone is enough when you already run your own tenancy layer. The whole platform adds the multi-team control plane.
+**In one minute:** The code is one Apache 2.0 monorepo. The commercial offering sells support, an SLA and a defined lifecycle. Run:ai is a control plane plus a cluster part, and the cluster part contains KAI, which alone is enough when you already run your own tenancy layer. Feature differences, the SaaS control plane's status and the CUDA fractioning claim are not confirmed.
 
-## 6. Grove and Dynamo: one unit of inference
+## 5. Grove and Dynamo: one unit of inference
 
 An inference service uses one frontend, a prefill group and a decode group. Prefill needs eight GPUs across two nodes, with a leader and workers. If Kubernetes starts three of the four prefill pods, the model cannot serve. The GPUs are held, the service is down, and the autoscaler may add another incomplete group on top.
 
@@ -425,9 +439,9 @@ spec:
         minAvailable: 1
 ```
 
-Four details are worth reading closely. `cliqueStartupType: CliqueStartupTypeExplicit` is what makes `startsAfter` take effect. Without it, the order of cliques is not guaranteed. The constraint `pack.required: rack` replaces the older `packDomain` field, which version v0.2.0-beta1 removed from the beta API. The `minAvailable` values say how many pods are guaranteed to be gang scheduled. The `terminationDelay` is how long Grove waits before it terminates a gang that has fallen below its minimum, and its default is four hours.
+Four details matter. `cliqueStartupType: CliqueStartupTypeExplicit` is what makes `startsAfter` take effect. Without it, the order of cliques is not guaranteed. The constraint `pack.required: rack` replaces the older `packDomain` field, which version v0.2.0-beta1 removed from the beta API. The `minAvailable` values say how many pods are guaranteed to be gang scheduled. The `terminationDelay` is how long Grove waits before it terminates a gang that has fallen below its minimum, and its default is four hours.
 
-The image names and the GPU counts are placeholders. A real service needs a real server image, a model, and probes. This listing is a shape check, validated against the upstream CRD schema, and I did not run it on a cluster.
+The image names and GPU counts are placeholders. This listing is a shape check validated against the upstream CRD schema, and I did not run it on a cluster.
 
 Maturity is the important caveat. Grove's APIs were promoted to beta only on 30 October 2026, in v0.2.0-beta1, and the earlier line was alpha. The release notes say the old alpha API is still served but deprecated, existing objects stay stored as alpha until they are next written, and a later release will migrate them before the alpha version is dropped. Treat Grove as a fast-moving beta. Pin the chart version, read the release notes before every upgrade, and keep the downgrade command from the notes in your runbook.
 
@@ -437,7 +451,7 @@ Grove also needs Kubernetes 1.34 or later. The README lists 1.34 as the minimum 
 
 **In one minute:** Grove adds PodClique, PodCliqueScalingGroup and PodCliqueSet to Kubernetes so that a multi-pod model replica becomes one unit. Dynamo uses it for disaggregated serving, and KAI is one of its scheduler backends. It reached beta on 30 October 2026, so pin versions.
 
-## 7. AICR: configure with a pinned recipe
+## 6. AICR: configure with a pinned recipe
 
 The GPU Operator version on a staging cluster is not the one on production. A kernel patch is rolled out on one node pool. An incident review concludes that "the cluster drifted", and nobody can say from what to what.
 
@@ -449,7 +463,7 @@ A recipe is a pinned object. Each overlay names a base, the criteria it applies 
 
 The command line has a small number of verbs. The README quick start generates a recipe with `aicr recipe`, renders it into a bundle with `aicr bundle`, validates a running cluster with `aicr validate`, and queries one resolved value with `aicr query`. The bundle step can emit Helm, Argo CD, Flux, Helmfile, Terraform or Rancher Fleet artifacts. A separate `aicr diff` compares two snapshots and, with `--fail-on-drift`, exits with an error code, which makes it a gate in CI.
 
-The most important boundary is what AICR does not do. The README says it is not a Kubernetes distribution, not a cluster provisioner and not a managed control plane. It generates artifacts and checks them. Your deployer applies them. If someone changes the cluster by hand, AICR does not stop them. It can only tell you afterwards.
+The most important boundary is what AICR does not do. The README says it is not a Kubernetes distribution, not a cluster provisioner and not a managed control plane. It generates artifacts and checks them, and your deployer applies them. If someone changes the cluster by hand, AICR can only tell you afterwards.
 
 Version drift in the API is the practical trap. The 5 November blog post shows a recipe with `aicr.run/v1alpha2`. On 2026-11-11 the repository's overlays use `aicr.run/v1beta1`, and the CLI documentation shows a `RecipeResult` on `aicr.run/v1beta2`. Do not copy a recipe from a blog post. Generate it with the CLI version you pin, and keep the output in Git.
 
@@ -505,7 +519,7 @@ Several supply-chain features matter for a regulated cluster. The README states 
 
 **In one minute:** AICR turns "which versions go together" into a pinned recipe and renders it for your deployer. It does not apply anything or provision a cluster. Its API versions moved between the blog post and the repository, so pin the CLI.
 
-## 8. NVCRE: certify under real load
+## 7. NVCRE: certify under real load
 
 The delivery team hands over a new cluster and every node shows Ready. A week later a job spanning all nodes runs at half speed. The slow node passed every check, because the checks never moved real traffic.
 
@@ -515,7 +529,7 @@ The APIs compose like a Deployment, ReplicaSet and Pod. A Certification creates 
 
 The 5 November post names three categories of check: NCCL communication tests, level 4 DCGM diagnostics and NeMo pretraining workloads. The README adds that failures are attributed per node with a reason, and that the engine bisects groups to find the suspect node. The README also states what the cluster needs: the GPU Operator, the Prometheus Operator CRDs, and for the level 4 diagnostics a standalone DCGM service that the GPU Operator creates only when `dcgm.enabled` is true. GB200 and GB300 entries need the DRA driver.
 
-Here is the key warning, and it appears in several places. NVCRE has no pass or fail thresholds by default. The design notes say thresholds exist only if the user sets them, and that a run can pass after a fallback to slower transport. The Certification resource has a `thresholds` field, a map from metric name to a CEL expression over a variable called `value`. A slow node passes if you set none.
+Here is the key warning. NVCRE has no pass or fail thresholds by default. The design notes say thresholds exist only if the user sets them, and that a run can pass after a fallback to slower transport. The Certification resource has a `thresholds` field, a map from metric name to a CEL expression over a variable called `value`. A slow node passes if you set none.
 
 ```yaml
 apiVersion: nvcre.nvidia.com/v1alpha1
@@ -537,7 +551,7 @@ spec:
 
 The value 300 is the number from NVIDIA's blog example. It is not a recommendation for your fabric. Derive your own threshold from a known-good node group on your hardware, and write down how you derived it. Chapter 11.10 and 11.11 explain the network side of that number.
 
-NVCRE does not change node state. It records results in the Certification and names the failing nodes. That makes it safe to run, and it also means somebody else must act on the result. NVSentinel has a monitor that does exactly this, which the next section covers.
+NVCRE does not change node state. It records results in the Certification and names the failing nodes, so it is safe to run, and somebody else must act on the result. NVSentinel has a monitor that does exactly this.
 
 Maturity: version 0.11.0 on 2026-11-09 and `v1alpha1` APIs. The repository is active, with releases on 2 and 9 November 2026. Use it as a bring-up and re-validation tool, and expect schema changes.
 
@@ -545,7 +559,7 @@ Maturity: version 0.11.0 on 2026-11-09 and `v1alpha1` APIs. The repository is ac
 
 **In one minute:** NVCRE runs real NCCL, DCGM level 4 and training workloads and reports which nodes failed and why. Without thresholds a slow node can pass. It reports but does not act, and it is a pre-1.0 project.
 
-## 9. NVSentinel: operate and heal
+## 8. NVSentinel: operate and heal
 
 At two in the morning a GPU throws a fatal Xid error. The training job on that node hangs, the other seven nodes wait, and the scheduler keeps placing new pods on the broken node. The first person to notice is a researcher in the morning.
 
@@ -565,7 +579,7 @@ Third, the node drainer evicts pods through the Eviction API, so PodDisruptionBu
 
 Recommended actions come with events. The data model lists values such as a component reset, a bare-metal restart and `CONTACT_SUPPORT`. The 5 November post says events recommending `CONTACT_SUPPORT` need manual action. That matches the data model, which says automated remediation is not possible for them.
 
-The configuration surface has one trap that I found by rendering the chart. The documentation example puts `dryRun` under `fault-quarantine` and the drainer. The chart's templates read `global.dryRun`. A per-subchart `dryRun` is ignored. With `global.dryRun: true` the rendered deployments carry `--dry-run=true`. Check the rendered flags before trusting a dry run.
+One configuration trap showed up when I rendered the chart. The documentation example puts `dryRun` under `fault-quarantine` and the drainer. The chart's templates read `global.dryRun`. A per-subchart `dryRun` is ignored. With `global.dryRun: true` the rendered deployments carry `--dry-run=true`. Check the rendered flags before trusting a dry run.
 
 ```yaml
 global:
@@ -591,17 +605,15 @@ The 5 November post adds a lifecycle controller that creates `ValidationRequest`
 
 Maturity: version 1.31.0 on 2026-11-07, and the roadmap file says the project reached "Beta / Stable" status at v1.0.0 and is "recommended for production testing and use". That is NVIDIA's wording. It is a stronger claim than for Grove or NVCRE, but it is not general availability, and automated actions are off by default for good reason.
 
-The tested module `code/part11/c31_sentinel_sim.py` models the staged stages, the dry-run, the circuit breaker arithmetic and the `CONTACT_SUPPORT` rule. In the model, the cordon that would reach the threshold is refused and trips the breaker. Whether the real service allows that last cordon first is not stated in the documentation I read, so treat the exact off-by-one as unverified.
-
-For a fuller policy design, chapter 19.6 builds a different node-health policy with a cordon rate limit and a return-to-service gate. The code in `code/part19/c06_node_policy.py` is a separate model, and I did not reuse it here because NVSentinel's stages and breaker semantics differ.
+The tested module `code/part11/c31_sentinel_sim.py` models the staged stages, the dry-run, the circuit breaker arithmetic and the `CONTACT_SUPPORT` rule. In the model, the cordon that would reach the threshold is refused and trips the breaker. Whether the real service allows that last cordon first is not stated in the documentation I read, so treat the exact off-by-one as unverified. Chapter 19.6 builds a different node-health policy in `code/part19/c06_node_policy.py`, which I did not reuse because the stages and breaker semantics differ.
 
 **Decision rule:** Run NVSentinel in monitor mode for weeks, enable cordon only after the conditions match reality, and enable remediation last.
 
 **In one minute:** NVSentinel watches GPU, NIC and system signals and publishes node conditions. Cordon, drain and repair are off until you enable them. Its circuit breaker stops mass cordons, but when tripped it also blocks uncordon until a human resets it.
 
-## 10. How the pieces fit in one lifecycle
+## 9. How the pieces fit in one lifecycle
 
-Picture the lifecycle of one cluster, from empty racks to a year of production. The same pieces appear at different times, and some of them touch the same objects. That overlap is where incidents come from.
+Picture one cluster from empty racks to a year of production. The same pieces appear at different times, and some touch the same objects. That overlap is where incidents come from.
 
 The standard order is as follows. First, generate and commit an AICR recipe. Second, bundle it for your deployer and apply it, so the GPU Operator, Network Operator, cert-manager, the monitoring stack, NVSentinel, a scheduler and the inference stack arrive pinned. Third, run NVCRE with thresholds and fix or replace the failed nodes. Fourth, hand the cluster to tenants through KAI queues or the Run:ai control plane. Fifth, deploy inference as Grove PodCliqueSets, usually through the Dynamo operator. Sixth, let NVSentinel watch and heal, and re-certify after every change to driver, operator or fabric.
 
@@ -623,13 +635,13 @@ The second is two systems that cordon. The post warns that if NVCRE-driven autom
 
 The third is scheduler and gang ownership. Grove creates PodGang objects that its scheduler backend reads. If you also wrap the same pods in a Kueue workload or a Run:ai workload type, two layers try to decide admission. Chapter 11.20 explains why you pick one admission owner. For Grove with KAI, KAI is the owner of placement.
 
-AICR already encodes a lot of these dependencies. In the Dynamo overlay, `dynamo-platform` waits for Grove, KAI, cert-manager, the GPU Operator and the Prometheus CRDs. That is why the order checker in the lab matters: an out-of-order install on a hand-built cluster is a common cause of a half-installed webhook.
+AICR already encodes many of these dependencies, which is why the order checker in the lab matters. An out-of-order install on a hand-built cluster is a common cause of a half-installed webhook.
 
 **Decision rule:** Give every object one owner, and write the handoffs in the runbook before the first incident.
 
 **In one minute:** Configure, enable, certify, schedule, serve and heal, in that order. Re-certify after in-place changes because lifecycle validation covers only new and repaired nodes. Watch the shared DCGM, the cordon owner and the admission owner.
 
-## 11. What to use when
+## 10. What to use when
 
 A manager asks for a recommendation, and "all of it" is not an answer. The table gives the smallest useful set for four common situations. It reflects my reasoning from the sources, and the dependencies it names come from upstream files.
 
@@ -643,17 +655,17 @@ A manager asks for a recommendation, and "all of it" is not an answer. The table
 | AI factory selling isolated GPU clusters on bare metal | NICo, NVKE with NVKR, then AICR, NVCRE and NVSentinel in workload clusters | NVKE in production until authorization, upgrade and backup procedures exist | NVKE is the only open provisioning layer in this stack, but it is a preview |
 | Existing Slurm site | Keep Slurm, evaluate Slinky through AICR | Replacing Slurm | Slurm is still the batch standard, see 11.20 |
 
-Some rules of thumb follow from the table. If you already run Kueue for batch queues, do not add a second scheduler for the same pods without a reason. If you adopt NVSentinel, start with monitoring and pair it with your existing alerting. If you install Grove, plan for beta upgrade work.
+Two rules of thumb follow. If you already run Kueue for batch queues, do not add a second scheduler for the same pods without a reason. If you install Grove, plan for beta upgrade work.
 
-A short word on alternatives. AICR is not the only way to pin a cluster stack. A team with a mature GitOps repository may already do this with Helm values and renovate rules. AICR adds validated combinations and a drift diff. Adopt it for those, not because it is new. The same applies to NVSentinel. Cloud providers and node-problem-detector setups cover part of its ground, and the AICR components list includes `node-problem-detector` as its own item.
+AICR is not the only way to pin a cluster stack. A team with a mature GitOps repository may already use Helm values and renovate rules. AICR adds validated combinations and a drift diff, so adopt it for those. The same applies to NVSentinel, because cloud providers and node-problem-detector setups cover part of its ground, and the AICR components list includes `node-problem-detector` as its own item.
 
 **Decision rule:** Start from the smallest row that fits, and add a project only when a specific failure you have seen justifies it.
 
 **In one minute:** Most teams need the GPU Operator plus one scheduler. Add Grove only for multi-pod inference, AICR for reproducible builds, NVCRE for delivery, and NVSentinel for scale. The full Run:ai platform pays off with many teams and clusters.
 
-## 12. Is it production ready?
+## 11. Is it production ready?
 
-The honest answer differs per project, and your answer should show that you read the version numbers. Treat the table as a starting point for your own review. NVIDIA's wording is quoted where it exists, and the rest is my reasoning.
+The honest answer differs per project. The table is a starting point for your own review. NVIDIA's wording is quoted where it exists, and the rest is my reasoning.
 
 | Project | Version and API stability | Evidence | My reading |
 |---|---|---|---|
@@ -686,9 +698,9 @@ Item 5 deserves an example. Grove's operator ships validating and mutating webho
 
 **In one minute:** KAI and Run:ai are the most mature, NVSentinel is Beta/Stable with careful defaults, AICR is usable but changing, and Grove and NVCRE are early. Use the ten-point checklist for each one.
 
-## 13. SRE failure modes and what to monitor
+## 12. SRE failure modes and what to monitor
 
-A tool that protects the cluster also fails in its own ways. This section lists realistic failure modes for each project and the signal that shows each one. Metric names come from the upstream metrics documents read on 2026-11-11. Where I could not find a metric, I say so.
+A tool that protects the cluster also fails in its own ways. This section lists realistic failure modes and the signal for each. Metric names come from the upstream metrics documents read on 2026-11-11. Where I could not find a metric, I say so.
 
 | Project | Failure mode | Signal |
 |---|---|---|
@@ -721,15 +733,15 @@ Two incident stories show how the pieces interact. In the first, a certification
 
 In the second, a misconfigured health rule marks a quarter of the nodes as faulty. The breaker trips. The operator fixes the rule and sees healthy conditions on every node, yet the nodes stay cordoned. The cause is the documented gap between conditions and cordons. The fix is to reset the breaker and uncordon deliberately.
 
-Neither story comes from a real incident. They are scenarios that follow from the documented behaviour, and I label them as reasoning.
+Neither story is a real incident. Both follow from the documented behaviour and are my reasoning.
 
 **Decision rule:** Alert on the safety mechanisms, such as a tripped breaker or a growing backlog, before you alert on the faults they protect against.
 
 **In one minute:** Each project has a quiet failure: pending pods with free GPUs, a frozen gang, a slow node that passes, a tripped breaker. Watch queue gaps, breaker state, backlog and drift output.
 
-## 14. Hands-on lab
+## 13. Hands-on lab
 
-This lab checks the manifests and the code in this chapter without a GPU or a cluster. It runs on any machine with Python 3, `pyyaml`, `jsonschema`, `pytest` and Docker. Run it from the root of the handbook repository.
+This lab checks the manifests and code in this chapter without a GPU or a cluster. It needs Python 3, `pyyaml`, `jsonschema`, `pytest` and Docker, and runs from the root of the handbook repository.
 
 **What was run here.** I cloned the upstream repositories into a scratch directory on 2026-11-11 and validated the YAML against their CRDs. I rendered the Grove and NVSentinel Helm charts with the `alpine/helm` container. I ran the pytest files.
 
@@ -745,7 +757,7 @@ git clone --depth 1 https://github.com/NVIDIA/NVSentinel
 git clone --depth 1 https://github.com/dsx-ai-factory/nvke
 ```
 
-Expected result: four directories. What to record: the commit hash of each, with `git -C <dir> log -1 --format=%h`, so you can reproduce the checks. Run here, with the same commands.
+Expected result: four directories. What to record: the commit hash of each, with `git -C <dir> log -1 --format=%h`, so you can reproduce the checks.
 
 ### Step 2: Validate the manifests against the CRDs
 
@@ -828,9 +840,9 @@ For NVSentinel, the README quick start installs with a pinned version and `--set
 
 **In one minute:** Validate against the upstream CRDs, render the charts, and run the tests. Install and certification steps need a cluster and are listed as not run.
 
-## 15. How to answer out loud
+## 14. How to answer out loud
 
-The question is: "What NVIDIA open-source software would you use to run an AI cluster?" The interviewer is testing whether you can map tools to jobs, and whether you know which tools are mature. Never claim the interviewer asks a specific thing. Aim for a two-minute answer in this order.
+The question is: "What NVIDIA open-source software would you use to run an AI cluster?" The interviewer is testing whether you can map tools to jobs, and whether you know which tools are mature. Aim for a two-minute answer in this order.
 
 1. **Frame by jobs.** Say there are seven jobs: provision, configure, enable, certify, schedule, serve and operate. Name one project for each.
 2. **Name the projects.** NVKE with NVKR to provision managed clusters on bare metal, AICR for pinned recipes, GPU Operator and Network Operator for enablement, NVCRE for certification, KAI Scheduler or the Run:ai platform for scheduling, Grove with Dynamo for inference, NVSentinel for node health.
@@ -1045,7 +1057,7 @@ None. This chapter draws on current upstream sources and does not copy `nvidia-d
 
 ### Explicitly labelled inferences
 
-- The decision table in section 11, the failure-mode scenarios in section 13 and the maturity reading in section 12 are my reasoning from the sources.
+- The decision table in section 10, the failure-mode scenarios in section 12 and the maturity reading in section 11 are my reasoning from the sources.
 - The sample AICR recipe and the Grove PodCliqueSet are handbook examples, not upstream files.
 - That Grove is not tied to KAI is inferred from the operator chart's scheduler profiles.
 
