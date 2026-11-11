@@ -1,0 +1,71 @@
+# ActiveCheck from helm/soperator-activechecks
+# Source: nebius/soperator commit f10392e1264a (2026-11-10), `helm template` of the chart named below with default values, namespace slurm.
+# Labels added by Helm were removed. Validated with tools/check_crd_yaml.py against config/crd/bases.
+apiVersion: slurm.nebius.ai/v1alpha1
+kind: ActiveCheck
+metadata:
+  name: soperator-gpu-checks
+  labels: {}
+spec:
+  checkType: slurmJob
+  name: soperator-gpu-checks
+  dependsOn:
+  - soperator-manage-jail-state
+  - soperator-wait-for-soperatorchecks-srun-ready
+  slurmClusterRefName: soperator
+  schedule: 0 0,12 * * *
+  hostUsers: true
+  suspend: false
+  activeDeadlineSeconds: 3600
+  runAfterCreation: true
+  slurmJobSpec:
+    sbatchScript: "#!/bin/bash\n#SBATCH --deadline=\"now+8hours\"\n#SBATCH --time=50:00\n\
+      #SBATCH --exclusive\n#SBATCH --mem=0\n#SBATCH --licenses=gpu_checks:1\n\nplatform=\"\
+      \"\ngpus_on_node=$(nvidia-smi --query-gpu=name --format=csv,noheader | sort\
+      \ | uniq -c)\nif [[ \"${gpus_on_node}\" == *\"8 NVIDIA H100\"* ]]; then\n  platform=\"\
+      8xH100\"\nelif [[ \"${gpus_on_node}\" == *\"8 NVIDIA H200\"* ]]; then\n  platform=\"\
+      8xH200\"\nelif [[ \"${gpus_on_node}\" == *\"8 NVIDIA B200\"* ]]; then\n  platform=\"\
+      8xB200\"\nelif [[ \"${gpus_on_node}\" == *\"8 NVIDIA B300\"* ]]; then\n  platform=\"\
+      8xB300\"\nelif [[ \"${gpus_on_node}\" == *\"4 NVIDIA GB300\"* ]]; then\n  platform=\"\
+      4xGB300\"\nelse\n  echo \"Unsupported platform\"\n  exit 0\nfi\n\necho \"Platform\
+      \ found: $platform\"\necho \"Running GPU checks on $(hostname)...\"\nHC_OUTPUT=$(srun\
+      \ sudo bash -l -c \"health-checker run -e soperator_active_checks -p $platform\
+      \ -f json-partial --tests-stdout-path /opt/soperator-outputs/local/health_checker_cmd_stdout\
+      \ --log-level info\")\n\necho \"Health checker output:\"\necho \"$HC_OUTPUT\"\
+      \nHC_STATUS=$(echo \"$HC_OUTPUT\" | awk '/^\\s*{/,/^\\s*}/' | jq -r '.status')\n\
+      \necho \"Health checker status: $HC_STATUS\"\nif [[ \"$HC_STATUS\" == \"FAIL\"\
+      \ ]]; then\n  echo \"Health-checker reported status=FAIL.\"\n  exit 1\nelif\
+      \ [[ \"$HC_STATUS\" == \"ERROR\" ]]; then\n  echo \"Health-checker reported\
+      \ status=ERROR.\"\n  exit 0\nelse\n  echo \"Health-checker passed or returned\
+      \ non-FAIL status.\"\n  exit 0\nfi\n"
+    eachWorkerJobs: true
+    jobContainer:
+      appArmorProfile: unconfined
+      image: cr.nebius.cloud/soperator/slurm_check_job:5.0.0-slurm26.05.4-nebius-1
+      imagePullPolicy: IfNotPresent
+      env:
+      - name: K8S_POD_NAME
+        valueFrom:
+          fieldRef:
+            fieldPath: metadata.name
+      - name: K8S_POD_NAMESPACE
+        valueFrom:
+          fieldRef:
+            fieldPath: metadata.namespace
+      - name: SNCCLD_ENABLED
+        value: 'false'
+      - name: SBATCH_GPUS_PER_NODE
+        value: '8'
+      volumeMounts:
+      - mountPath: /mnt/jail
+        name: jail
+      volumes:
+      - name: jail
+        persistentVolumeClaim:
+          claimName: jail-pvc
+    mungeContainer:
+      appArmorProfile: unconfined
+      image: cr.nebius.cloud/soperator/munge:5.0.0-slurm26.05.4-nebius-1
+  failureReactions:
+    drainSlurmNode:
+      drainReasonPrefix: '[node_problem]'

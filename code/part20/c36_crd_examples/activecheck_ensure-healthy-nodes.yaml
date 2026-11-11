@@ -1,0 +1,53 @@
+# ActiveCheck from helm/soperator-activechecks
+# Source: nebius/soperator commit f10392e1264a (2026-11-10), `helm template` of the chart named below with default values, namespace slurm.
+# Labels added by Helm were removed. Validated with tools/check_crd_yaml.py against config/crd/bases.
+apiVersion: slurm.nebius.ai/v1alpha1
+kind: ActiveCheck
+metadata:
+  name: soperator-ensure-healthy-nodes
+  labels: {}
+spec:
+  checkType: slurmJob
+  name: soperator-ensure-healthy-nodes
+  dependsOn:
+  - soperator-gpu-checks
+  - soperator-manage-jail-state
+  - soperator-wait-for-soperatorchecks-srun-ready
+  slurmClusterRefName: soperator
+  hostUsers: true
+  suspend: true
+  activeDeadlineSeconds: 1800
+  runAfterCreation: true
+  slurmJobSpec:
+    sbatchScript: "#!/bin/bash\n#SBATCH --deadline=\"now+4hours\"\n#SBATCH --time=5:00\n\
+      \nset -euo pipefail\n\njson=$(scontrol show nodes --json)\nbad_nodes=$(echo\
+      \ \"$json\" | jq -r '\n  .nodes[]\n  | select(\n      (.reason // \"\") != \"\
+      \"\n      or ([.state] | flatten | any(IN(\"DOWN\",\"DRAIN\",\"FAIL\",\"ERROR\"\
+      ,\"INVALID_REG\")))\n    )\n  | {name, reason: (.reason // \"\"), state: .state}\n\
+      ')\n\nif [[ -n \"$bad_nodes\" ]]; then\n  echo \"Found non-healthy nodes: $bad_nodes\"\
+      \n  exit 1\nelse\n  echo \"All nodes are healthy\"\nfi\n"
+    jobContainer:
+      appArmorProfile: unconfined
+      image: cr.nebius.cloud/soperator/slurm_check_job:5.0.0-slurm26.05.4-nebius-1
+      imagePullPolicy: IfNotPresent
+      env:
+      - name: K8S_POD_NAME
+        valueFrom:
+          fieldRef:
+            fieldPath: metadata.name
+      - name: K8S_POD_NAMESPACE
+        valueFrom:
+          fieldRef:
+            fieldPath: metadata.namespace
+      - name: SNCCLD_ENABLED
+        value: 'false'
+      volumeMounts:
+      - mountPath: /mnt/jail
+        name: jail
+      volumes:
+      - name: jail
+        persistentVolumeClaim:
+          claimName: jail-pvc
+    mungeContainer:
+      appArmorProfile: unconfined
+      image: cr.nebius.cloud/soperator/munge:5.0.0-slurm26.05.4-nebius-1

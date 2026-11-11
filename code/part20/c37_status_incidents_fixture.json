@@ -1,0 +1,5231 @@
+{
+ "_fixture": {
+  "source": "https://status.nebius.com/api/v2/incidents.json",
+  "fetched": "2026-11-11",
+  "note": "Statuspage API returns the 50 most recent incidents. Trimmed to the fields the parser uses; update bodies cut to 160 chars."
+ },
+ "incidents": [
+  {
+   "id": "58w3nfkrvb00",
+   "name": "Compute Cloud: some hosts unreachable in eu-north1",
+   "status": "resolved",
+   "impact": "major",
+   "created_at": "2026-11-09T16:45:00.000Z",
+   "started_at": "2026-11-09T16:45:00.000Z",
+   "resolved_at": "2026-11-09T18:33:10.099Z",
+   "components": [
+    {
+     "name": "Compute Cloud"
+    }
+   ],
+   "incident_updates": [
+    {
+     "status": "resolved",
+     "created_at": "2026-11-09T18:33:10.099Z",
+     "body": "The incident has been resolved",
+     "affected_components": [
+      {
+       "name": "EU-NORTH1 - Compute Cloud"
+      }
+     ]
+    },
+    {
+     "status": "monitoring",
+     "created_at": "2026-11-09T18:26:21.858Z",
+     "body": "The affected Compute Cloud hosts in eu-north1 are reachable again, and no new unreachable hosts have been observed. We are verifying that virtual machines on th",
+     "affected_components": [
+      {
+       "name": "EU-NORTH1 - Compute Cloud"
+      }
+     ]
+    },
+    {
+     "status": "monitoring",
+     "created_at": "2026-11-09T17:19:44.139Z",
+     "body": "Some Compute Cloud hosts in eu-north1 became unreachable for 5 min, which may affect running virtual machines on them. Some hosts have since recovered, full rec",
+     "affected_components": [
+      {
+       "name": "EU-NORTH1 - Compute Cloud"
+      }
+     ]
+    }
+   ]
+  },
+  {
+   "id": "k5d9bv4s52z2",
+   "name": "Network problems",
+   "status": "resolved",
+   "impact": "critical",
+   "created_at": "2026-11-06T19:31:23.388Z",
+   "started_at": "2026-11-06T19:31:23.377Z",
+   "resolved_at": "2026-11-07T03:44:11.705Z",
+   "components": [
+    {
+     "name": "Token Factory"
+    }
+   ],
+   "incident_updates": [
+    {
+     "status": "resolved",
+     "created_at": "2026-11-07T03:44:11.705Z",
+     "body": "This incident has been resolved.",
+     "affected_components": [
+      {
+       "name": "TF-CA1 - Token Factory"
+      }
+     ]
+    },
+    {
+     "status": "monitoring",
+     "created_at": "2026-11-07T03:43:43.954Z",
+     "body": "A fix has been implemented and we are monitoring the results.",
+     "affected_components": [
+      {
+       "name": "TF-CA1 - Token Factory"
+      }
+     ]
+    },
+    {
+     "status": "investigating",
+     "created_at": "2026-11-06T19:31:23.489Z",
+     "body": "We are currently investigating this issue.",
+     "affected_components": [
+      {
+       "name": "TF-CA1 - Token Factory"
+      }
+     ]
+    }
+   ]
+  },
+  {
+   "id": "jtz4y86v6rvl",
+   "name": "Token Factory: some models unavailable in eu-north1",
+   "status": "resolved",
+   "impact": "major",
+   "created_at": "2026-11-05T10:30:59.000Z",
+   "started_at": "2026-11-05T10:30:59.000Z",
+   "resolved_at": "2026-11-05T11:07:17.959Z",
+   "components": [
+    {
+     "name": "Token Factory"
+    }
+   ],
+   "incident_updates": [
+    {
+     "status": "resolved",
+     "created_at": "2026-11-05T11:07:17.959Z",
+     "body": "The affected Token Factory models in eu-north1 are available again. The issue has been resolved.",
+     "affected_components": [
+      {
+       "name": "EU-NORTH1 - Token Factory"
+      }
+     ]
+    },
+    {
+     "status": "investigating",
+     "created_at": "2026-11-05T11:00:18.280Z",
+     "body": "Requests to some Token Factory models in eu-north1 are currently failing. We are investigating the issue.",
+     "affected_components": [
+      {
+       "name": "EU-NORTH1 - Token Factory"
+      }
+     ]
+    }
+   ]
+  },
+  {
+   "id": "y3brxl10yvrc",
+   "name": "Public API gateway partially unavailable in US-NORTH1 and US-CENTRAL1",
+   "status": "resolved",
+   "impact": "minor",
+   "created_at": "2026-11-02T09:09:59.495Z",
+   "started_at": "2026-11-02T09:09:59.479Z",
+   "resolved_at": "2026-11-02T12:15:36.583Z",
+   "components": [
+    {
+     "name": "API"
+    },
+    {
+     "name": "API"
+    },
+    {
+     "name": "Logging"
+    },
+    {
+     "name": "Logging"
+    }
+   ],
+   "incident_updates": [
+    {
+     "status": "resolved",
+     "created_at": "2026-11-02T12:15:36.583Z",
+     "body": "This incident has been resolved.",
+     "affected_components": [
+      {
+       "name": "US-CENTRAL1 - API"
+      },
+      {
+       "name": "US-CENTRAL1 - Logging"
+      },
+      {
+       "name": "US-NORTH1 - API"
+      },
+      {
+       "name": "US-NORTH1 - Logging"
+      }
+     ]
+    },
+    {
+     "status": "investigating",
+     "created_at": "2026-11-02T09:37:46.136Z",
+     "body": "The issues has been located and resolved. Operation for the Public API Gateway in US zone is back to normal.",
+     "affected_components": [
+      {
+       "name": "US-CENTRAL1 - API"
+      },
+      {
+       "name": "US-CENTRAL1 - Logging"
+      },
+      {
+       "name": "US-NORTH1 - API"
+      },
+      {
+       "name": "US-NORTH1 - Logging"
+      }
+     ]
+    },
+    {
+     "status": "investigating",
+     "created_at": "2026-11-02T09:09:59.686Z",
+     "body": "Read requests to the Logging Service are failing in these regions. We are investigating the issue.",
+     "affected_components": [
+      {
+       "name": "US-CENTRAL1 - API"
+      },
+      {
+       "name": "US-CENTRAL1 - Logging"
+      },
+      {
+       "name": "US-NORTH1 - API"
+      },
+      {
+       "name": "US-NORTH1 - Logging"
+      }
+     ]
+    }
+   ]
+  },
+  {
+   "id": "ds1p9ztf613z",
+   "name": "Token Factory: some dedicated endpoints partially unavailable",
+   "status": "resolved",
+   "impact": "minor",
+   "created_at": "2026-10-31T00:38:19.484Z",
+   "started_at": "2026-10-31T00:38:19.476Z",
+   "resolved_at": "2026-10-31T07:55:42.630Z",
+   "components": [],
+   "incident_updates": [
+    {
+     "status": "resolved",
+     "created_at": "2026-10-31T07:55:42.630Z",
+     "body": "This incident has been resolved.",
+     "affected_components": []
+    },
+    {
+     "status": "identified",
+     "created_at": "2026-10-31T02:41:30.719Z",
+     "body": "The issue has been identified and a fix is being implemented.",
+     "affected_components": []
+    },
+    {
+     "status": "investigating",
+     "created_at": "2026-10-31T00:38:19.550Z",
+     "body": "Some Token Factory dedicated endpoints are partially unavailable. Requests to affected endpoints may fail or time out. Our team is investigating the problem.",
+     "affected_components": []
+    }
+   ]
+  },
+  {
+   "id": "gxycrfb5xxy8",
+   "name": "Compute Cloud: disk images and snapshots partial unavailability",
+   "status": "resolved",
+   "impact": "major",
+   "created_at": "2026-10-28T11:00:00.000Z",
+   "started_at": "2026-10-28T11:00:00.000Z",
+   "resolved_at": "2026-10-28T17:54:54.834Z",
+   "components": [
+    {
+     "name": "Compute Cloud"
+    },
+    {
+     "name": "Compute Cloud"
+    },
+    {
+     "name": "Compute Cloud"
+    },
+    {
+     "name": "Compute Cloud"
+    },
+    {
+     "name": "Compute Cloud"
+    },
+    {
+     "name": "Compute Cloud"
+    },
+    {
+     "name": "Compute Cloud"
+    },
+    {
+     "name": "Compute Cloud"
+    },
+    {
+     "name": "Compute Cloud"
+    }
+   ],
+   "incident_updates": [
+    {
+     "status": "resolved",
+     "created_at": "2026-10-28T17:54:54.834Z",
+     "body": "The incident has been resolved",
+     "affected_components": [
+      {
+       "name": "EU-NORTH1 - Compute Cloud"
+      },
+      {
+       "name": "EU-NORTH2 - Compute Cloud"
+      },
+      {
+       "name": "EU-WEST1 - Compute Cloud"
+      },
+      {
+       "name": "US-CENTRAL1 - Compute Cloud"
+      },
+      {
+       "name": "ME-WEST1 - Compute Cloud"
+      },
+      {
+       "name": "UK-SOUTH1 - Compute Cloud"
+      },
+      {
+       "name": "EU-WEST2 - Compute Cloud"
+      },
+      {
+       "name": "US-NORTH1 - Compute Cloud"
+      },
+      {
+       "name": "EU-SOUTH1 - Compute Cloud"
+      }
+     ]
+    },
+    {
+     "status": "monitoring",
+     "created_at": "2026-10-28T17:38:48.377Z",
+     "body": "The fix has been applied. Tasks are processed.\nWe continue to monitor the accumulated queue and will consider incident resolved once the queue is processed.",
+     "affected_components": [
+      {
+       "name": "EU-NORTH1 - Compute Cloud"
+      },
+      {
+       "name": "EU-NORTH2 - Compute Cloud"
+      },
+      {
+       "name": "EU-WEST1 - Compute Cloud"
+      },
+      {
+       "name": "US-CENTRAL1 - Compute Cloud"
+      },
+      {
+       "name": "ME-WEST1 - Compute Cloud"
+      },
+      {
+       "name": "UK-SOUTH1 - Compute Cloud"
+      },
+      {
+       "name": "EU-WEST2 - Compute Cloud"
+      },
+      {
+       "name": "US-NORTH1 - Compute Cloud"
+      },
+      {
+       "name": "EU-SOUTH1 - Compute Cloud"
+      }
+     ]
+    },
+    {
+     "status": "identified",
+     "created_at": "2026-10-28T13:49:45.699Z",
+     "body": "We are continuing to work on a fix for this issue.",
+     "affected_components": [
+      {
+       "name": "EU-NORTH1 - Compute Cloud"
+      },
+      {
+       "name": "EU-NORTH2 - Compute Cloud"
+      },
+      {
+       "name": "EU-WEST1 - Compute Cloud"
+      },
+      {
+       "name": "US-CENTRAL1 - Compute Cloud"
+      },
+      {
+       "name": "ME-WEST1 - Compute Cloud"
+      },
+      {
+       "name": "UK-SOUTH1 - Compute Cloud"
+      },
+      {
+       "name": "EU-WEST2 - Compute Cloud"
+      },
+      {
+       "name": "US-NORTH1 - Compute Cloud"
+      },
+      {
+       "name": "EU-SOUTH1 - Compute Cloud"
+      }
+     ]
+    },
+    {
+     "status": "identified",
+     "created_at": "2026-10-28T13:49:07.257Z",
+     "body": "We are continuing to work on a fix for this issue.",
+     "affected_components": [
+      {
+       "name": "EU-NORTH1 - Compute Cloud"
+      },
+      {
+       "name": "EU-NORTH2 - Compute Cloud"
+      },
+      {
+       "name": "EU-WEST1 - Compute Cloud"
+      },
+      {
+       "name": "US-CENTRAL1 - Compute Cloud"
+      },
+      {
+       "name": "ME-WEST1 - Compute Cloud"
+      },
+      {
+       "name": "UK-SOUTH1 - Compute Cloud"
+      },
+      {
+       "name": "EU-WEST2 - Compute Cloud"
+      },
+      {
+       "name": "US-NORTH1 - Compute Cloud"
+      },
+      {
+       "name": "EU-SOUTH1 - Compute Cloud"
+      }
+     ]
+    },
+    {
+     "status": "identified",
+     "created_at": "2026-10-28T13:47:00.019Z",
+     "body": "We are continuing to work on a fix for this issue.",
+     "affected_components": [
+      {
+       "name": "EU-NORTH1 - Compute Cloud"
+      },
+      {
+       "name": "EU-NORTH2 - Compute Cloud"
+      },
+      {
+       "name": "EU-WEST1 - Compute Cloud"
+      },
+      {
+       "name": "US-CENTRAL1 - Compute Cloud"
+      },
+      {
+       "name": "ME-WEST1 - Compute Cloud"
+      },
+      {
+       "name": "UK-SOUTH1 - Compute Cloud"
+      },
+      {
+       "name": "EU-WEST2 - Compute Cloud"
+      },
+      {
+       "name": "US-NORTH1 - Compute Cloud"
+      },
+      {
+       "name": "EU-SOUTH1 - Compute Cloud"
+      }
+     ]
+    },
+    {
+     "status": "identified",
+     "created_at": "2026-10-28T13:42:35.445Z",
+     "body": "We are continuing to work on a fix for this issue.",
+     "affected_components": [
+      {
+       "name": "EU-NORTH1 - Compute Cloud"
+      },
+      {
+       "name": "EU-NORTH2 - Compute Cloud"
+      },
+      {
+       "name": "EU-WEST1 - Compute Cloud"
+      },
+      {
+       "name": "US-CENTRAL1 - Compute Cloud"
+      },
+      {
+       "name": "ME-WEST1 - Compute Cloud"
+      },
+      {
+       "name": "UK-SOUTH1 - Compute Cloud"
+      },
+      {
+       "name": "EU-WEST2 - Compute Cloud"
+      },
+      {
+       "name": "US-NORTH1 - Compute Cloud"
+      },
+      {
+       "name": "EU-SOUTH1 - Compute Cloud"
+      }
+     ]
+    },
+    {
+     "status": "identified",
+     "created_at": "2026-10-28T13:06:15.794Z",
+     "body": "Currently following operations are stuck or failing in some regions:\n- Creation of new images and snapshots\n- Creation of new disks from existing images and sna",
+     "affected_components": [
+      {
+       "name": "EU-NORTH1 - Compute Cloud"
+      },
+      {
+       "name": "EU-NORTH2 - Compute Cloud"
+      },
+      {
+       "name": "EU-WEST1 - Compute Cloud"
+      },
+      {
+       "name": "US-CENTRAL1 - Compute Cloud"
+      },
+      {
+       "name": "ME-WEST1 - Compute Cloud"
+      },
+      {
+       "name": "UK-SOUTH1 - Compute Cloud"
+      },
+      {
+       "name": "EU-WEST2 - Compute Cloud"
+      },
+      {
+       "name": "US-NORTH1 - Compute Cloud"
+      },
+      {
+       "name": "EU-SOUTH1 - Compute Cloud"
+      }
+     ]
+    }
+   ]
+  },
+  {
+   "id": "t5h8gvmjq4zb",
+   "name": "Token Factory 503 errors in eu-west2",
+   "status": "resolved",
+   "impact": "major",
+   "created_at": "2026-10-24T13:22:08.754Z",
+   "started_at": "2026-10-24T13:22:08.743Z",
+   "resolved_at": "2026-10-24T14:24:34.158Z",
+   "components": [
+    {
+     "name": "Token Factory"
+    }
+   ],
+   "incident_updates": [
+    {
+     "status": "resolved",
+     "created_at": "2026-10-24T14:24:34.158Z",
+     "body": "The issue has been resolved.",
+     "affected_components": [
+      {
+       "name": "EU-WEST2 - Token Factory"
+      }
+     ]
+    },
+    {
+     "status": "monitoring",
+     "created_at": "2026-10-24T14:05:24.182Z",
+     "body": "Some customers receive 503 errors from Token Factory dedicated endpoints in eu-west2. We have identified the cause and applied the fix. The team is monitoring t",
+     "affected_components": [
+      {
+       "name": "EU-WEST2 - Token Factory"
+      }
+     ]
+    },
+    {
+     "status": "investigating",
+     "created_at": "2026-10-24T13:22:08.969Z",
+     "body": "Some customers receive 503 errors from Token Factory endpoints in eu-west2. We are investigating and determining the full scope of the issue.",
+     "affected_components": [
+      {
+       "name": "EU-WEST2 - Token Factory"
+      }
+     ]
+    }
+   ]
+  },
+  {
+   "id": "9qs4wqcmjjgq",
+   "name": "Partial IAM and console unavailability",
+   "status": "resolved",
+   "impact": "none",
+   "created_at": "2026-10-18T14:07:37.000Z",
+   "started_at": "2026-10-18T14:07:37.000Z",
+   "resolved_at": "2026-10-18T14:07:37.000Z",
+   "components": [
+    {
+     "name": "Identity and Access Management"
+    }
+   ],
+   "incident_updates": [
+    {
+     "status": "resolved",
+     "created_at": "2026-10-18T14:58:37.064Z",
+     "body": "The console and IAM were unavailable for approximately 10 minutes. The incident has been mitigated, and service availability has been restored.",
+     "affected_components": [
+      {
+       "name": "EU-NORTH1 - Identity and Access Management"
+      }
+     ]
+    }
+   ]
+  },
+  {
+   "id": "81hyz9gkpxm3",
+   "name": "CLI login issues",
+   "status": "resolved",
+   "impact": "major",
+   "created_at": "2026-10-16T13:02:49.618Z",
+   "started_at": "2026-10-16T13:02:49.581Z",
+   "resolved_at": "2026-10-16T13:13:36.842Z",
+   "components": [
+    {
+     "name": "API"
+    },
+    {
+     "name": "API"
+    },
+    {
+     "name": "API"
+    },
+    {
+     "name": "API"
+    },
+    {
+     "name": "API"
+    },
+    {
+     "name": "API"
+    },
+    {
+     "name": "API"
+    },
+    {
+     "name": "API"
+    },
+    {
+     "name": "API"
+    }
+   ],
+   "incident_updates": [
+    {
+     "status": "resolved",
+     "created_at": "2026-10-16T13:13:36.842Z",
+     "body": "This incident has been resolved.",
+     "affected_components": [
+      {
+       "name": "EU-NORTH1 - API"
+      },
+      {
+       "name": "EU-NORTH2 - API"
+      },
+      {
+       "name": "EU-WEST1 - API"
+      },
+      {
+       "name": "US-CENTRAL1 - API"
+      },
+      {
+       "name": "ME-WEST1 - API"
+      },
+      {
+       "name": "UK-SOUTH1 - API"
+      },
+      {
+       "name": "EU-WEST2 - API"
+      },
+      {
+       "name": "US-NORTH1 - API"
+      },
+      {
+       "name": "EU-SOUTH1 - API"
+      }
+     ]
+    },
+    {
+     "status": "investigating",
+     "created_at": "2026-10-16T13:02:50.081Z",
+     "body": "Some users may experience login failures when authenticating with the Nebius CLI via `auth.eu.nebius.com`.",
+     "affected_components": [
+      {
+       "name": "EU-NORTH1 - API"
+      },
+      {
+       "name": "EU-NORTH2 - API"
+      },
+      {
+       "name": "EU-WEST1 - API"
+      },
+      {
+       "name": "US-CENTRAL1 - API"
+      },
+      {
+       "name": "ME-WEST1 - API"
+      },
+      {
+       "name": "UK-SOUTH1 - API"
+      },
+      {
+       "name": "EU-WEST2 - API"
+      },
+      {
+       "name": "US-NORTH1 - API"
+      },
+      {
+       "name": "EU-SOUTH1 - API"
+      }
+     ]
+    }
+   ]
+  },
+  {
+   "id": "sdb2htxgyprr",
+   "name": "InfiniBand connectivity issues for GPU clusters in eu-west2",
+   "status": "resolved",
+   "impact": "major",
+   "created_at": "2026-10-15T05:34:27.405Z",
+   "started_at": "2026-10-15T05:34:27.395Z",
+   "resolved_at": "2026-10-15T16:12:53.879Z",
+   "components": [
+    {
+     "name": "Compute Cloud"
+    }
+   ],
+   "incident_updates": [
+    {
+     "status": "resolved",
+     "created_at": "2026-10-15T16:12:53.879Z",
+     "body": "This incident has been resolved.",
+     "affected_components": [
+      {
+       "name": "EU-WEST2 - Compute Cloud"
+      }
+     ]
+    },
+    {
+     "status": "monitoring",
+     "created_at": "2026-10-15T13:13:41.117Z",
+     "body": "We have taken corrective actions to stabilize the affected infrastructure and are working to address the root cause. Recovery is still in progress, and we are c",
+     "affected_components": [
+      {
+       "name": "EU-WEST2 - Compute Cloud"
+      }
+     ]
+    },
+    {
+     "status": "investigating",
+     "created_at": "2026-10-15T09:32:50.554Z",
+     "body": "We have identified the root cause and taken the necessary corrective actions to address the issue. We are monitoring the service to confirm recovery.",
+     "affected_components": [
+      {
+       "name": "EU-WEST2 - Compute Cloud"
+      }
+     ]
+    },
+    {
+     "status": "investigating",
+     "created_at": "2026-10-15T05:34:27.506Z",
+     "body": "We are currently investigating this issue.",
+     "affected_components": [
+      {
+       "name": "EU-WEST2 - Compute Cloud"
+      }
+     ]
+    }
+   ]
+  },
+  {
+   "id": "ck6r51h1yl0b",
+   "name": "Connectivity issues between eu-south1 and other Nebius regions",
+   "status": "resolved",
+   "impact": "minor",
+   "created_at": "2026-10-14T20:41:24.666Z",
+   "started_at": "2026-10-14T20:41:24.647Z",
+   "resolved_at": "2026-10-15T05:50:30.585Z",
+   "components": [
+    {
+     "name": "Network Block Storage"
+    },
+    {
+     "name": "API"
+    },
+    {
+     "name": "Management Console"
+    }
+   ],
+   "incident_updates": [
+    {
+     "status": "resolved",
+     "created_at": "2026-10-15T05:50:30.585Z",
+     "body": "This incident has been resolved.",
+     "affected_components": [
+      {
+       "name": "EU-SOUTH1 - Network Block Storage"
+      },
+      {
+       "name": "EU-SOUTH1 - API"
+      },
+      {
+       "name": "EU-SOUTH1 - Management Console"
+      }
+     ]
+    },
+    {
+     "status": "identified",
+     "created_at": "2026-10-14T22:08:46.954Z",
+     "body": "We have identified the root cause of the connectivity issues and are preparing a fix.\nCurrently, disk snapshot creation in NBS may be affected. Additionally, Ne",
+     "affected_components": [
+      {
+       "name": "EU-SOUTH1 - Network Block Storage"
+      },
+      {
+       "name": "EU-SOUTH1 - API"
+      },
+      {
+       "name": "EU-SOUTH1 - Management Console"
+      }
+     ]
+    },
+    {
+     "status": "identified",
+     "created_at": "2026-10-14T22:07:56.866Z",
+     "body": "We have identified the root cause of the connectivity issues and are preparing a fix.\nCurrently, disk snapshot creation in NBS may be affected. Additionally, Ne",
+     "affected_components": [
+      {
+       "name": "EU-SOUTH1 - Network Block Storage"
+      },
+      {
+       "name": "EU-SOUTH1 - Object Storage"
+      },
+      {
+       "name": "EU-SOUTH1 - Virtual Private Cloud (Networking)"
+      },
+      {
+       "name": "EU-SOUTH1 - Identity and Access Management"
+      },
+      {
+       "name": "EU-SOUTH1 - API"
+      },
+      {
+       "name": "EU-SOUTH1 - Management Console"
+      },
+      {
+       "name": "EU-SOUTH1 - Monitoring"
+      },
+      {
+       "name": "EU-SOUTH1 - Logging"
+      },
+      {
+       "name": "EU-SOUTH1 - Audit Logs"
+      }
+     ]
+    },
+    {
+     "status": "investigating",
+     "created_at": "2026-10-14T20:41:25.075Z",
+     "body": "We are currently experiencing network connectivity issues between the eu-south1 region and other Nebius regions.\nCross-region network traffic may be disrupted o",
+     "affected_components": [
+      {
+       "name": "EU-SOUTH1 - Object Storage"
+      },
+      {
+       "name": "EU-SOUTH1 - Virtual Private Cloud (Networking)"
+      },
+      {
+       "name": "EU-SOUTH1 - Identity and Access Management"
+      },
+      {
+       "name": "EU-SOUTH1 - API"
+      },
+      {
+       "name": "EU-SOUTH1 - Management Console"
+      },
+      {
+       "name": "EU-SOUTH1 - Monitoring"
+      },
+      {
+       "name": "EU-SOUTH1 - Logging"
+      },
+      {
+       "name": "EU-SOUTH1 - Audit Logs"
+      }
+     ]
+    }
+   ]
+  },
+  {
+   "id": "qb5k9v6s04m3",
+   "name": "InfiniBand connectivity issues for GPU clusters in eu-west2",
+   "status": "resolved",
+   "impact": "major",
+   "created_at": "2026-10-14T09:54:45.255Z",
+   "started_at": "2026-10-14T09:54:45.243Z",
+   "resolved_at": "2026-10-14T10:52:45.269Z",
+   "components": [
+    {
+     "name": "Compute Cloud"
+    }
+   ],
+   "incident_updates": [
+    {
+     "status": "resolved",
+     "created_at": "2026-10-14T10:52:45.269Z",
+     "body": "This incident has been resolved.",
+     "affected_components": [
+      {
+       "name": "EU-WEST2 - Compute Cloud"
+      }
+     ]
+    },
+    {
+     "status": "identified",
+     "created_at": "2026-10-14T09:54:45.375Z",
+     "body": "We have identified the cause of the InfiniBand connectivity issues. Our on-site team is working to resolve it. We will provide an update as soon as we have more",
+     "affected_components": [
+      {
+       "name": "EU-WEST2 - Compute Cloud"
+      }
+     ]
+    }
+   ]
+  },
+  {
+   "id": "5lpm2lwh6p56",
+   "name": "Metrics unavailable in Management Console for Monitoring in eu-west1",
+   "status": "resolved",
+   "impact": "minor",
+   "created_at": "2026-10-08T08:30:51.418Z",
+   "started_at": "2026-10-08T08:48:19.000Z",
+   "resolved_at": "2026-10-08T08:59:13.481Z",
+   "components": [
+    {
+     "name": "Monitoring"
+    }
+   ],
+   "incident_updates": [
+    {
+     "status": "resolved",
+     "created_at": "2026-10-08T08:59:13.481Z",
+     "body": "The incident has been resolved.",
+     "affected_components": [
+      {
+       "name": "EU-WEST1 - Monitoring"
+      }
+     ]
+    },
+    {
+     "status": "monitoring",
+     "created_at": "2026-10-08T08:48:19.412Z",
+     "body": "This incident has been resolved. We are monitoring current status to verify if everything has been restored.",
+     "affected_components": [
+      {
+       "name": "EU-WEST1 - Monitoring"
+      }
+     ]
+    },
+    {
+     "status": "investigating",
+     "created_at": "2026-10-08T08:30:51.527Z",
+     "body": "We are investigating an issue with Monitoring in eu-west1. Customers may be unable to view metrics in the Management Console or query them via the Monitoring AP",
+     "affected_components": [
+      {
+       "name": "EU-WEST1 - Monitoring"
+      }
+     ]
+    }
+   ]
+  },
+  {
+   "id": "kkq8thm8pjt1",
+   "name": "Problems with power for several dozens of nodes",
+   "status": "resolved",
+   "impact": "major",
+   "created_at": "2026-10-07T16:37:14.000Z",
+   "started_at": "2026-10-07T16:37:14.000Z",
+   "resolved_at": "2026-10-08T07:21:51.476Z",
+   "components": [
+    {
+     "name": "Compute Cloud"
+    }
+   ],
+   "incident_updates": [
+    {
+     "status": "resolved",
+     "created_at": "2026-10-08T07:21:51.476Z",
+     "body": "This incident has been resolved.",
+     "affected_components": [
+      {
+       "name": "EU-NORTH1 - Compute Cloud"
+      }
+     ]
+    },
+    {
+     "status": "investigating",
+     "created_at": "2026-10-07T17:10:14.242Z",
+     "body": "We are currently investigating this issue.",
+     "affected_components": [
+      {
+       "name": "EU-NORTH1 - Compute Cloud"
+      }
+     ]
+    }
+   ]
+  },
+  {
+   "id": "tnl6q9m91tph",
+   "name": "Issues with preempted Managed Kubernetes nodes in all regions",
+   "status": "resolved",
+   "impact": "minor",
+   "created_at": "2026-10-02T15:31:01.455Z",
+   "started_at": "2026-10-04T15:54:00.000Z",
+   "resolved_at": "2026-10-05T15:54:00.000Z",
+   "components": [
+    {
+     "name": "Managed Service for Kubernetes\u00ae"
+    },
+    {
+     "name": "Managed Service for Kubernetes\u00ae"
+    },
+    {
+     "name": "Managed Service for Kubernetes\u00ae"
+    },
+    {
+     "name": "Managed Service for Kubernetes\u00ae"
+    },
+    {
+     "name": "Managed Service for Kubernetes\u00ae"
+    },
+    {
+     "name": "Managed Service for Kubernetes\u00ae"
+    },
+    {
+     "name": "Managed Service for Kubernetes\u00ae"
+    },
+    {
+     "name": "Managed Service for Kubernetes\u00ae"
+    },
+    {
+     "name": "Managed Service for Kubernetes\u00ae"
+    }
+   ],
+   "incident_updates": [
+    {
+     "status": "resolved",
+     "created_at": "2026-10-07T14:02:21.086Z",
+     "body": "This incident has been resolved.",
+     "affected_components": [
+      {
+       "name": "EU-NORTH1 - Managed Service for Kubernetes\u00ae"
+      },
+      {
+       "name": "EU-NORTH2 - Managed Service for Kubernetes\u00ae"
+      },
+      {
+       "name": "EU-WEST1 - Managed Service for Kubernetes\u00ae"
+      },
+      {
+       "name": "US-CENTRAL1 - Managed Service for Kubernetes\u00ae"
+      },
+      {
+       "name": "ME-WEST1 - Managed Service for Kubernetes\u00ae"
+      },
+      {
+       "name": "UK-SOUTH1 - Managed Service for Kubernetes\u00ae"
+      },
+      {
+       "name": "EU-WEST2 - Managed Service for Kubernetes\u00ae"
+      },
+      {
+       "name": "US-NORTH1 - Managed Service for Kubernetes\u00ae"
+      },
+      {
+       "name": "EU-SOUTH1 - Managed Service for Kubernetes\u00ae"
+      }
+     ]
+    },
+    {
+     "status": "identified",
+     "created_at": "2026-10-02T15:50:24.115Z",
+     "body": "The issue has been identified and a fix has been prepared. The issue has limited impact and does not affect running workloads. To avoid possible disruption of c",
+     "affected_components": [
+      {
+       "name": "EU-NORTH1 - Managed Service for Kubernetes\u00ae"
+      },
+      {
+       "name": "EU-NORTH2 - Managed Service for Kubernetes\u00ae"
+      },
+      {
+       "name": "EU-WEST1 - Managed Service for Kubernetes\u00ae"
+      },
+      {
+       "name": "US-CENTRAL1 - Managed Service for Kubernetes\u00ae"
+      },
+      {
+       "name": "ME-WEST1 - Managed Service for Kubernetes\u00ae"
+      },
+      {
+       "name": "UK-SOUTH1 - Managed Service for Kubernetes\u00ae"
+      },
+      {
+       "name": "EU-WEST2 - Managed Service for Kubernetes\u00ae"
+      },
+      {
+       "name": "US-NORTH1 - Managed Service for Kubernetes\u00ae"
+      },
+      {
+       "name": "EU-SOUTH1 - Managed Service for Kubernetes\u00ae"
+      }
+     ]
+    },
+    {
+     "status": "investigating",
+     "created_at": "2026-10-02T15:31:01.752Z",
+     "body": "We are investigating an issue affecting Managed Kubernetes node groups in all regions. Preemptible nodes that were in a preempted (stopped) state on October 1 o",
+     "affected_components": [
+      {
+       "name": "EU-NORTH1 - Managed Service for Kubernetes\u00ae"
+      },
+      {
+       "name": "EU-NORTH2 - Managed Service for Kubernetes\u00ae"
+      },
+      {
+       "name": "EU-WEST1 - Managed Service for Kubernetes\u00ae"
+      },
+      {
+       "name": "US-CENTRAL1 - Managed Service for Kubernetes\u00ae"
+      },
+      {
+       "name": "ME-WEST1 - Managed Service for Kubernetes\u00ae"
+      },
+      {
+       "name": "UK-SOUTH1 - Managed Service for Kubernetes\u00ae"
+      },
+      {
+       "name": "EU-WEST2 - Managed Service for Kubernetes\u00ae"
+      },
+      {
+       "name": "US-NORTH1 - Managed Service for Kubernetes\u00ae"
+      },
+      {
+       "name": "EU-SOUTH1 - Managed Service for Kubernetes\u00ae"
+      }
+     ]
+    }
+   ]
+  },
+  {
+   "id": "hdgzpb9tvb3q",
+   "name": "InfiniBand connectivity issues for GPU clusters in eu-west2",
+   "status": "resolved",
+   "impact": "minor",
+   "created_at": "2026-10-03T02:30:46.000Z",
+   "started_at": "2026-10-03T02:30:46.000Z",
+   "resolved_at": "2026-10-03T08:59:10.439Z",
+   "components": [
+    {
+     "name": "Compute Cloud"
+    }
+   ],
+   "incident_updates": [
+    {
+     "status": "resolved",
+     "created_at": "2026-10-03T08:59:10.439Z",
+     "body": "This incident has been resolved.",
+     "affected_components": [
+      {
+       "name": "EU-WEST2 - Compute Cloud"
+      }
+     ]
+    },
+    {
+     "status": "monitoring",
+     "created_at": "2026-10-03T07:44:33.140Z",
+     "body": "A fix has been implemented and we are monitoring the results.",
+     "affected_components": [
+      {
+       "name": "EU-WEST2 - Compute Cloud"
+      }
+     ]
+    },
+    {
+     "status": "identified",
+     "created_at": "2026-10-03T05:17:33.561Z",
+     "body": "We have identified the cause of the InfiniBand connectivity issues. Our on-site team is working to resolve it. We will provide an update as soon as we have more",
+     "affected_components": [
+      {
+       "name": "EU-WEST2 - Compute Cloud"
+      }
+     ]
+    },
+    {
+     "status": "investigating",
+     "created_at": "2026-10-03T04:45:46.404Z",
+     "body": "We are investigating InfiniBand connectivity issues affecting some GPU clusters in Compute Cloud in eu-west2. Distributed training jobs on affected clusters may",
+     "affected_components": [
+      {
+       "name": "EU-WEST2 - Compute Cloud"
+      }
+     ]
+    }
+   ]
+  },
+  {
+   "id": "nf5nnfbgj25b",
+   "name": "Compute VM creation and Object storage are partial unavailable",
+   "status": "resolved",
+   "impact": "major",
+   "created_at": "2026-10-02T01:34:47.946Z",
+   "started_at": "2026-10-02T01:58:05.000Z",
+   "resolved_at": "2026-10-02T02:07:19.950Z",
+   "components": [
+    {
+     "name": "Compute Cloud"
+    },
+    {
+     "name": "Compute Cloud"
+    },
+    {
+     "name": "Compute Cloud"
+    },
+    {
+     "name": "Object Storage"
+    }
+   ],
+   "incident_updates": [
+    {
+     "status": "resolved",
+     "created_at": "2026-10-02T02:07:19.950Z",
+     "body": "This incident has been resolved.",
+     "affected_components": [
+      {
+       "name": "EU-NORTH1 - Compute Cloud"
+      },
+      {
+       "name": "EU-WEST1 - Compute Cloud"
+      },
+      {
+       "name": "EU-WEST1 - Object Storage"
+      },
+      {
+       "name": "ME-WEST1 - Compute Cloud"
+      }
+     ]
+    },
+    {
+     "status": "monitoring",
+     "created_at": "2026-10-02T01:58:05.917Z",
+     "body": "Object Storage was partially unavailable in eu-west1. Moreover, we observed problems around creation of new virtual machines and disks in several regions. Now p",
+     "affected_components": [
+      {
+       "name": "EU-NORTH1 - Compute Cloud"
+      },
+      {
+       "name": "EU-WEST1 - Compute Cloud"
+      },
+      {
+       "name": "EU-WEST1 - Object Storage"
+      },
+      {
+       "name": "ME-WEST1 - Compute Cloud"
+      }
+     ]
+    },
+    {
+     "status": "investigating",
+     "created_at": "2026-10-02T01:34:48.158Z",
+     "body": "We are currently investigating this issue.",
+     "affected_components": [
+      {
+       "name": "EU-NORTH1 - Compute Cloud"
+      },
+      {
+       "name": "EU-WEST1 - Compute Cloud"
+      },
+      {
+       "name": "EU-WEST1 - Object Storage"
+      },
+      {
+       "name": "ME-WEST1 - Compute Cloud"
+      }
+     ]
+    }
+   ]
+  },
+  {
+   "id": "16jx7nyhzjsd",
+   "name": "Network issues in eu-west2",
+   "status": "resolved",
+   "impact": "major",
+   "created_at": "2026-09-23T05:20:49.000Z",
+   "started_at": "2026-09-23T05:20:49.000Z",
+   "resolved_at": "2026-09-23T08:32:29.768Z",
+   "components": [
+    {
+     "name": "Compute Cloud"
+    },
+    {
+     "name": "Virtual Private Cloud (Networking)"
+    }
+   ],
+   "incident_updates": [
+    {
+     "status": "resolved",
+     "created_at": "2026-09-23T08:32:29.768Z",
+     "body": "This incident has been resolved.",
+     "affected_components": [
+      {
+       "name": "EU-WEST2 - Compute Cloud"
+      },
+      {
+       "name": "EU-WEST2 - Virtual Private Cloud (Networking)"
+      }
+     ]
+    },
+    {
+     "status": "monitoring",
+     "created_at": "2026-09-23T08:32:06.422Z",
+     "body": "We are continuing to monitor for any further issues.",
+     "affected_components": [
+      {
+       "name": "EU-WEST2 - Compute Cloud"
+      },
+      {
+       "name": "EU-WEST2 - Virtual Private Cloud (Networking)"
+      }
+     ]
+    },
+    {
+     "status": "monitoring",
+     "created_at": "2026-09-23T08:31:57.679Z",
+     "body": "A fix has been implemented and we are monitoring the results.",
+     "affected_components": [
+      {
+       "name": "EU-WEST2 - Compute Cloud"
+      },
+      {
+       "name": "EU-WEST2 - Virtual Private Cloud (Networking)"
+      }
+     ]
+    },
+    {
+     "status": "identified",
+     "created_at": "2026-09-23T06:03:44.734Z",
+     "body": "The issue has been identified and a fix is being implemented.",
+     "affected_components": [
+      {
+       "name": "EU-WEST2 - Compute Cloud"
+      },
+      {
+       "name": "EU-WEST2 - Virtual Private Cloud (Networking)"
+      }
+     ]
+    },
+    {
+     "status": "investigating",
+     "created_at": "2026-09-23T06:02:49.507Z",
+     "body": "We are currently investigating this issue.",
+     "affected_components": [
+      {
+       "name": "EU-WEST2 - Compute Cloud"
+      },
+      {
+       "name": "EU-WEST2 - Virtual Private Cloud (Networking)"
+      }
+     ]
+    }
+   ]
+  },
+  {
+   "id": "sc3g49xmbyrg",
+   "name": "Object storage unavailable in eu-west1",
+   "status": "resolved",
+   "impact": "major",
+   "created_at": "2026-09-22T08:55:00.000Z",
+   "started_at": "2026-09-22T09:21:00.000Z",
+   "resolved_at": "2026-09-22T09:21:00.000Z",
+   "components": [],
+   "incident_updates": [
+    {
+     "status": "resolved",
+     "created_at": "2026-09-22T10:09:26.109Z",
+     "body": "Incident is resolved.",
+     "affected_components": []
+    }
+   ]
+  },
+  {
+   "id": "471nh208bh8m",
+   "name": "Compute services are partially unavailable for customers",
+   "status": "resolved",
+   "impact": "major",
+   "created_at": "2026-09-17T16:26:17.944Z",
+   "started_at": "2026-09-17T16:26:17.929Z",
+   "resolved_at": "2026-09-17T17:09:26.277Z",
+   "components": [
+    {
+     "name": "Compute Cloud"
+    },
+    {
+     "name": "Compute Cloud"
+    }
+   ],
+   "incident_updates": [
+    {
+     "status": "resolved",
+     "created_at": "2026-09-17T17:09:26.277Z",
+     "body": "The root cause was found and this incident has been resolved.",
+     "affected_components": [
+      {
+       "name": "EU-NORTH1 - Compute Cloud"
+      },
+      {
+       "name": "EU-WEST2 - Compute Cloud"
+      }
+     ]
+    },
+    {
+     "status": "investigating",
+     "created_at": "2026-09-17T16:26:18.041Z",
+     "body": "We are currently experiencing a partial unavailability of our Compute services, which may affect some of your workloads. Our team is actively investigating the ",
+     "affected_components": [
+      {
+       "name": "EU-NORTH1 - Compute Cloud"
+      },
+      {
+       "name": "EU-WEST2 - Compute Cloud"
+      }
+     ]
+    }
+   ]
+  },
+  {
+   "id": "57z38w248cjg",
+   "name": "Resuming IAM accounts is unavailable",
+   "status": "resolved",
+   "impact": "none",
+   "created_at": "2026-09-17T10:46:52.768Z",
+   "started_at": "2026-09-17T10:46:52.752Z",
+   "resolved_at": "2026-09-17T11:45:10.736Z",
+   "components": [
+    {
+     "name": "Identity and Access Management"
+    },
+    {
+     "name": "Identity and Access Management"
+    }
+   ],
+   "incident_updates": [
+    {
+     "status": "resolved",
+     "created_at": "2026-09-17T11:45:10.736Z",
+     "body": "This incident has been resolved.",
+     "affected_components": [
+      {
+       "name": "EU-NORTH1 - Identity and Access Management"
+      },
+      {
+       "name": "US-CENTRAL1 - Identity and Access Management"
+      }
+     ]
+    },
+    {
+     "status": "monitoring",
+     "created_at": "2026-09-17T11:10:44.333Z",
+     "body": "Root cause is located and fixed. We keep monitoring the resolution.",
+     "affected_components": [
+      {
+       "name": "EU-NORTH1 - Identity and Access Management"
+      },
+      {
+       "name": "US-CENTRAL1 - Identity and Access Management"
+      }
+     ]
+    },
+    {
+     "status": "investigating",
+     "created_at": "2026-09-17T10:46:52.830Z",
+     "body": "We are investigating an issue with IAM Tenants Status change.\n\nCustomers may not be able to resume their accounts from the suspended state.",
+     "affected_components": [
+      {
+       "name": "EU-NORTH1 - Identity and Access Management"
+      },
+      {
+       "name": "US-CENTRAL1 - Identity and Access Management"
+      }
+     ]
+    }
+   ]
+  },
+  {
+   "id": "fpnry2rlsjqv",
+   "name": "[eu-west1] Metrics for resources in this region are partially unavailable",
+   "status": "resolved",
+   "impact": "major",
+   "created_at": "2026-09-16T16:52:49.349Z",
+   "started_at": "2026-09-16T16:52:49.337Z",
+   "resolved_at": "2026-09-16T18:21:30.319Z",
+   "components": [
+    {
+     "name": "Monitoring"
+    }
+   ],
+   "incident_updates": [
+    {
+     "status": "resolved",
+     "created_at": "2026-09-16T18:21:30.319Z",
+     "body": "This incident has been resolved.",
+     "affected_components": [
+      {
+       "name": "EU-WEST1 - Monitoring"
+      }
+     ]
+    },
+    {
+     "status": "investigating",
+     "created_at": "2026-09-16T16:52:49.438Z",
+     "body": "We are currently investigating this issue.",
+     "affected_components": [
+      {
+       "name": "EU-WEST1 - Monitoring"
+      }
+     ]
+    }
+   ]
+  },
+  {
+   "id": "tc0gvtkv5bg9",
+   "name": "[us-central1] Object Storage is partially unavailable",
+   "status": "resolved",
+   "impact": "major",
+   "created_at": "2026-09-16T10:45:23.705Z",
+   "started_at": "2026-09-16T10:45:23.695Z",
+   "resolved_at": "2026-09-16T15:42:08.726Z",
+   "components": [
+    {
+     "name": "Object Storage"
+    }
+   ],
+   "incident_updates": [
+    {
+     "status": "resolved",
+     "created_at": "2026-09-16T15:42:08.726Z",
+     "body": "This incident has been resolved.",
+     "affected_components": [
+      {
+       "name": "US-CENTRAL1 - Object Storage"
+      }
+     ]
+    },
+    {
+     "status": "identified",
+     "created_at": "2026-09-16T15:12:54.799Z",
+     "body": "The team has identified the root cause of the issue and is currently applying a fix. We expect the incident to be fully mitigated within two hours.",
+     "affected_components": [
+      {
+       "name": "US-CENTRAL1 - Object Storage"
+      }
+     ]
+    },
+    {
+     "status": "investigating",
+     "created_at": "2026-09-16T10:45:23.787Z",
+     "body": "Users might be experiencing a high rate of 5xx errors on upload requests and elevated latency on read requests.",
+     "affected_components": [
+      {
+       "name": "US-CENTRAL1 - Object Storage"
+      }
+     ]
+    }
+   ]
+  },
+  {
+   "id": "kq83h7xllm0k",
+   "name": "Managed Service for SkyPilot: cluster creation and update requests failing in eu-north1",
+   "status": "resolved",
+   "impact": "major",
+   "created_at": "2026-09-14T15:00:00.000Z",
+   "started_at": "2026-09-14T15:00:00.000Z",
+   "resolved_at": "2026-09-15T15:33:28.964Z",
+   "components": [
+    {
+     "name": "Managed Service for SkyPilot"
+    }
+   ],
+   "incident_updates": [
+    {
+     "status": "resolved",
+     "created_at": "2026-09-15T15:33:28.964Z",
+     "body": "This incident has been resolved.",
+     "affected_components": [
+      {
+       "name": "EU-NORTH1 - Managed Service for SkyPilot"
+      }
+     ]
+    },
+    {
+     "status": "monitoring",
+     "created_at": "2026-09-15T12:19:22.484Z",
+     "body": "The error rate has dropped to zero. Requests to create, update, start, and stop SkyPilot clusters in eu-north1 are completing successfully again. We are continu",
+     "affected_components": [
+      {
+       "name": "EU-NORTH1 - Managed Service for SkyPilot"
+      }
+     ]
+    },
+    {
+     "status": "investigating",
+     "created_at": "2026-09-15T09:56:56.501Z",
+     "body": "We are investigating an issue affecting Managed Service for SkyPilot in eu-north1. Requests to create or update SkyPilot clusters, as well as start and stop req",
+     "affected_components": [
+      {
+       "name": "EU-NORTH1 - Managed Service for SkyPilot"
+      }
+     ]
+    }
+   ]
+  },
+  {
+   "id": "gdrrknjscq82",
+   "name": "Unstable compute VM create",
+   "status": "resolved",
+   "impact": "minor",
+   "created_at": "2026-09-09T12:17:14.822Z",
+   "started_at": "2026-09-09T12:17:14.813Z",
+   "resolved_at": "2026-09-09T12:41:15.898Z",
+   "components": [
+    {
+     "name": "Compute Cloud"
+    }
+   ],
+   "incident_updates": [
+    {
+     "status": "resolved",
+     "created_at": "2026-09-09T12:41:15.898Z",
+     "body": "This incident has been resolved.",
+     "affected_components": [
+      {
+       "name": "EU-NORTH1 - Compute Cloud"
+      }
+     ]
+    },
+    {
+     "status": "monitoring",
+     "created_at": "2026-09-09T12:37:55.816Z",
+     "body": "The fix has been deployed and the team is looking into the instrumentation for any signs of any remaining abnormal behaviour.",
+     "affected_components": [
+      {
+       "name": "EU-NORTH1 - Compute Cloud"
+      }
+     ]
+    },
+    {
+     "status": "investigating",
+     "created_at": "2026-09-09T12:17:14.897Z",
+     "body": "In some cases VMs may fail to create or metadata inside may not be available. The team has identified the issue and is working on deploying the fix.",
+     "affected_components": [
+      {
+       "name": "EU-NORTH1 - Compute Cloud"
+      }
+     ]
+    }
+   ]
+  },
+  {
+   "id": "j51yrs70wj7x",
+   "name": "Connectivity issues for newly created worker nodes",
+   "status": "resolved",
+   "impact": "major",
+   "created_at": "2026-09-01T16:11:31.761Z",
+   "started_at": "2026-09-01T16:11:31.749Z",
+   "resolved_at": "2026-09-01T16:26:32.520Z",
+   "components": [
+    {
+     "name": "Virtual Private Cloud (Networking)"
+    },
+    {
+     "name": "Virtual Private Cloud (Networking)"
+    },
+    {
+     "name": "Managed Service for Kubernetes\u00ae"
+    },
+    {
+     "name": "Managed Service for Kubernetes\u00ae"
+    }
+   ],
+   "incident_updates": [
+    {
+     "status": "resolved",
+     "created_at": "2026-09-01T16:26:32.520Z",
+     "body": "This incident has been resolved.",
+     "affected_components": [
+      {
+       "name": "EU-NORTH1 - Virtual Private Cloud (Networking)"
+      },
+      {
+       "name": "EU-NORTH1 - Managed Service for Kubernetes\u00ae"
+      },
+      {
+       "name": "US-CENTRAL1 - Virtual Private Cloud (Networking)"
+      },
+      {
+       "name": "US-CENTRAL1 - Managed Service for Kubernetes\u00ae"
+      }
+     ]
+    },
+    {
+     "status": "monitoring",
+     "created_at": "2026-09-01T16:25:31.861Z",
+     "body": "We are continuing to monitor for any further issues.",
+     "affected_components": [
+      {
+       "name": "EU-NORTH1 - Virtual Private Cloud (Networking)"
+      },
+      {
+       "name": "EU-NORTH1 - Managed Service for Kubernetes\u00ae"
+      },
+      {
+       "name": "US-CENTRAL1 - Virtual Private Cloud (Networking)"
+      },
+      {
+       "name": "US-CENTRAL1 - Managed Service for Kubernetes\u00ae"
+      }
+     ]
+    },
+    {
+     "status": "monitoring",
+     "created_at": "2026-09-01T16:24:38.085Z",
+     "body": "The issue may have caused consequential impact to VPC functionality of VMs that are not Managed Service for Kubernetes worker nodes.",
+     "affected_components": [
+      {
+       "name": "EU-NORTH1 - Virtual Private Cloud (Networking)"
+      },
+      {
+       "name": "EU-NORTH1 - Managed Service for Kubernetes\u00ae"
+      },
+      {
+       "name": "US-CENTRAL1 - Virtual Private Cloud (Networking)"
+      },
+      {
+       "name": "US-CENTRAL1 - Managed Service for Kubernetes\u00ae"
+      }
+     ]
+    },
+    {
+     "status": "identified",
+     "created_at": "2026-09-01T16:11:31.854Z",
+     "body": "Worker nodes of Managed Service for Kubernetes clusters created after 15:13 CET Sep 1 2026 could experience problems connecting to/from other nodes in the same ",
+     "affected_components": [
+      {
+       "name": "EU-NORTH1 - Managed Service for Kubernetes\u00ae"
+      },
+      {
+       "name": "US-CENTRAL1 - Managed Service for Kubernetes\u00ae"
+      }
+     ]
+    }
+   ]
+  },
+  {
+   "id": "kk5ry8fr08g5",
+   "name": "Region us-central1 partial degradation",
+   "status": "postmortem",
+   "impact": "major",
+   "created_at": "2026-08-19T10:43:23.999Z",
+   "started_at": "2026-08-19T10:43:23.987Z",
+   "resolved_at": "2026-08-20T08:16:20.133Z",
+   "components": [
+    {
+     "name": "Compute Cloud"
+    },
+    {
+     "name": "Object Storage"
+    },
+    {
+     "name": "Virtual Private Cloud (Networking)"
+    },
+    {
+     "name": "Managed Service for Kubernetes\u00ae"
+    },
+    {
+     "name": "Token Factory"
+    },
+    {
+     "name": "Managed Service for MLflow"
+    },
+    {
+     "name": "Managed Service for PostgreSQL\u00ae"
+    },
+    {
+     "name": "Managed Service for SkyPilot"
+    },
+    {
+     "name": "Serverless AI"
+    }
+   ],
+   "incident_updates": [
+    {
+     "status": "postmortem",
+     "created_at": "2026-09-01T09:15:23.677Z",
+     "body": "[https://nebius.com/blog/posts/incident-post-mortem-analysis-us-central1-service-disruption-on-august-19](https://nebius.com/blog/posts/incident-post-mortem-ana",
+     "affected_components": []
+    },
+    {
+     "status": "resolved",
+     "created_at": "2026-08-20T08:16:20.133Z",
+     "body": "This incident has been resolved.",
+     "affected_components": [
+      {
+       "name": "US-CENTRAL1 - Compute Cloud"
+      },
+      {
+       "name": "US-CENTRAL1 - Object Storage"
+      },
+      {
+       "name": "US-CENTRAL1 - Virtual Private Cloud (Networking)"
+      },
+      {
+       "name": "US-CENTRAL1 - Managed Service for Kubernetes\u00ae"
+      },
+      {
+       "name": "US-CENTRAL1 - Token Factory"
+      },
+      {
+       "name": "US-CENTRAL1 - Managed Service for MLflow"
+      },
+      {
+       "name": "US-CENTRAL1 - Managed Service for PostgreSQL\u00ae"
+      },
+      {
+       "name": "US-CENTRAL1 - Managed Service for SkyPilot"
+      },
+      {
+       "name": "US-CENTRAL1 - Serverless AI"
+      }
+     ]
+    },
+    {
+     "status": "identified",
+     "created_at": "2026-08-19T21:59:30.217Z",
+     "body": "Most critical issues have been resolved and the region is operational, though a subset of nodes remains unavailable.",
+     "affected_components": [
+      {
+       "name": "US-CENTRAL1 - Compute Cloud"
+      },
+      {
+       "name": "US-CENTRAL1 - Object Storage"
+      },
+      {
+       "name": "US-CENTRAL1 - Virtual Private Cloud (Networking)"
+      },
+      {
+       "name": "US-CENTRAL1 - Managed Service for Kubernetes\u00ae"
+      },
+      {
+       "name": "US-CENTRAL1 - Token Factory"
+      },
+      {
+       "name": "US-CENTRAL1 - Managed Service for MLflow"
+      },
+      {
+       "name": "US-CENTRAL1 - Managed Service for PostgreSQL\u00ae"
+      },
+      {
+       "name": "US-CENTRAL1 - Managed Service for SkyPilot"
+      },
+      {
+       "name": "US-CENTRAL1 - Serverless AI"
+      }
+     ]
+    },
+    {
+     "status": "identified",
+     "created_at": "2026-08-19T20:50:14.696Z",
+     "body": "The Managed Service for Kubernetes is nearly fully restored, though a subset of nodes remains unavailable.",
+     "affected_components": [
+      {
+       "name": "US-CENTRAL1 - Compute Cloud"
+      },
+      {
+       "name": "US-CENTRAL1 - Object Storage"
+      },
+      {
+       "name": "US-CENTRAL1 - Virtual Private Cloud (Networking)"
+      },
+      {
+       "name": "US-CENTRAL1 - Managed Service for Kubernetes\u00ae"
+      },
+      {
+       "name": "US-CENTRAL1 - Token Factory"
+      },
+      {
+       "name": "US-CENTRAL1 - Managed Service for MLflow"
+      },
+      {
+       "name": "US-CENTRAL1 - Managed Service for PostgreSQL\u00ae"
+      },
+      {
+       "name": "US-CENTRAL1 - Managed Service for SkyPilot"
+      },
+      {
+       "name": "US-CENTRAL1 - Serverless AI"
+      }
+     ]
+    },
+    {
+     "status": "identified",
+     "created_at": "2026-08-19T19:13:56.916Z",
+     "body": "Most nodes are operating normally. The Managed Service for Kubernetes\u00ae is still degraded, but the situation is improving.",
+     "affected_components": [
+      {
+       "name": "US-CENTRAL1 - Compute Cloud"
+      },
+      {
+       "name": "US-CENTRAL1 - Object Storage"
+      },
+      {
+       "name": "US-CENTRAL1 - Virtual Private Cloud (Networking)"
+      },
+      {
+       "name": "US-CENTRAL1 - Managed Service for Kubernetes\u00ae"
+      },
+      {
+       "name": "US-CENTRAL1 - Token Factory"
+      },
+      {
+       "name": "US-CENTRAL1 - Managed Service for MLflow"
+      },
+      {
+       "name": "US-CENTRAL1 - Managed Service for PostgreSQL\u00ae"
+      },
+      {
+       "name": "US-CENTRAL1 - Managed Service for SkyPilot"
+      },
+      {
+       "name": "US-CENTRAL1 - Serverless AI"
+      }
+     ]
+    },
+    {
+     "status": "identified",
+     "created_at": "2026-08-19T17:26:44.923Z",
+     "body": "Most nodes are operating normally. The Managed Service for Kubernetes\u00ae is experiencing a partial outage, and the team is actively working to restore it.",
+     "affected_components": [
+      {
+       "name": "US-CENTRAL1 - Compute Cloud"
+      },
+      {
+       "name": "US-CENTRAL1 - Object Storage"
+      },
+      {
+       "name": "US-CENTRAL1 - Virtual Private Cloud (Networking)"
+      },
+      {
+       "name": "US-CENTRAL1 - Managed Service for Kubernetes\u00ae"
+      },
+      {
+       "name": "US-CENTRAL1 - Token Factory"
+      },
+      {
+       "name": "US-CENTRAL1 - Managed Service for MLflow"
+      },
+      {
+       "name": "US-CENTRAL1 - Managed Service for PostgreSQL\u00ae"
+      },
+      {
+       "name": "US-CENTRAL1 - Managed Service for SkyPilot"
+      },
+      {
+       "name": "US-CENTRAL1 - Serverless AI"
+      }
+     ]
+    },
+    {
+     "status": "identified",
+     "created_at": "2026-08-19T16:00:44.942Z",
+     "body": "Services are still gradually continuing to recover. Many of the virtual machines are already running, but not all of them.",
+     "affected_components": [
+      {
+       "name": "US-CENTRAL1 - Compute Cloud"
+      },
+      {
+       "name": "US-CENTRAL1 - Object Storage"
+      },
+      {
+       "name": "US-CENTRAL1 - Virtual Private Cloud (Networking)"
+      },
+      {
+       "name": "US-CENTRAL1 - Managed Service for Kubernetes\u00ae"
+      },
+      {
+       "name": "US-CENTRAL1 - Token Factory"
+      },
+      {
+       "name": "US-CENTRAL1 - Managed Service for MLflow"
+      },
+      {
+       "name": "US-CENTRAL1 - Managed Service for PostgreSQL\u00ae"
+      },
+      {
+       "name": "US-CENTRAL1 - Managed Service for SkyPilot"
+      },
+      {
+       "name": "US-CENTRAL1 - Serverless AI"
+      }
+     ]
+    },
+    {
+     "status": "identified",
+     "created_at": "2026-08-19T15:06:28.163Z",
+     "body": "Services are still gradually continuing to recover. Some virtual machines are already running, but not all of them.",
+     "affected_components": [
+      {
+       "name": "US-CENTRAL1 - Compute Cloud"
+      },
+      {
+       "name": "US-CENTRAL1 - Object Storage"
+      },
+      {
+       "name": "US-CENTRAL1 - Virtual Private Cloud (Networking)"
+      },
+      {
+       "name": "US-CENTRAL1 - Managed Service for Kubernetes\u00ae"
+      },
+      {
+       "name": "US-CENTRAL1 - Token Factory"
+      },
+      {
+       "name": "US-CENTRAL1 - Managed Service for MLflow"
+      },
+      {
+       "name": "US-CENTRAL1 - Managed Service for PostgreSQL\u00ae"
+      },
+      {
+       "name": "US-CENTRAL1 - Managed Service for SkyPilot"
+      },
+      {
+       "name": "US-CENTRAL1 - Serverless AI"
+      }
+     ]
+    },
+    {
+     "status": "identified",
+     "created_at": "2026-08-19T13:49:19.354Z",
+     "body": "Services are gradually continuing to recover.",
+     "affected_components": [
+      {
+       "name": "US-CENTRAL1 - Compute Cloud"
+      },
+      {
+       "name": "US-CENTRAL1 - Object Storage"
+      },
+      {
+       "name": "US-CENTRAL1 - Virtual Private Cloud (Networking)"
+      },
+      {
+       "name": "US-CENTRAL1 - Managed Service for Kubernetes\u00ae"
+      },
+      {
+       "name": "US-CENTRAL1 - Token Factory"
+      },
+      {
+       "name": "US-CENTRAL1 - Managed Service for MLflow"
+      },
+      {
+       "name": "US-CENTRAL1 - Managed Service for PostgreSQL\u00ae"
+      },
+      {
+       "name": "US-CENTRAL1 - Managed Service for SkyPilot"
+      },
+      {
+       "name": "US-CENTRAL1 - Serverless AI"
+      }
+     ]
+    },
+    {
+     "status": "identified",
+     "created_at": "2026-08-19T12:52:07.109Z",
+     "body": "The root cause was fixed, and the situation is stabilizing. The services are recovering.",
+     "affected_components": [
+      {
+       "name": "US-CENTRAL1 - Compute Cloud"
+      },
+      {
+       "name": "US-CENTRAL1 - Object Storage"
+      },
+      {
+       "name": "US-CENTRAL1 - Virtual Private Cloud (Networking)"
+      },
+      {
+       "name": "US-CENTRAL1 - Token Factory"
+      }
+     ]
+    },
+    {
+     "status": "identified",
+     "created_at": "2026-08-19T12:20:13.959Z",
+     "body": "We are still experiencing temperature issues in the us-central1. Team is working on it",
+     "affected_components": [
+      {
+       "name": "US-CENTRAL1 - Compute Cloud"
+      },
+      {
+       "name": "US-CENTRAL1 - Object Storage"
+      },
+      {
+       "name": "US-CENTRAL1 - Virtual Private Cloud (Networking)"
+      },
+      {
+       "name": "US-CENTRAL1 - Token Factory"
+      }
+     ]
+    },
+    {
+     "status": "identified",
+     "created_at": "2026-08-19T11:18:30.461Z",
+     "body": "The root cause has been identified as overheating hardware. GPU performance is impacted, and some nodes may be unavailable.",
+     "affected_components": [
+      {
+       "name": "US-CENTRAL1 - Compute Cloud"
+      },
+      {
+       "name": "US-CENTRAL1 - Object Storage"
+      },
+      {
+       "name": "US-CENTRAL1 - Token Factory"
+      }
+     ]
+    },
+    {
+     "status": "investigating",
+     "created_at": "2026-08-19T10:43:24.089Z",
+     "body": "We are currently investigating this issue.",
+     "affected_components": [
+      {
+       "name": "US-CENTRAL1 - Compute Cloud"
+      },
+      {
+       "name": "US-CENTRAL1 - Object Storage"
+      }
+     ]
+    }
+   ]
+  },
+  {
+   "id": "km3ghfmwtzg1",
+   "name": "Issues logging to the Management Console",
+   "status": "resolved",
+   "impact": "minor",
+   "created_at": "2026-08-17T11:00:00.000Z",
+   "started_at": "2026-08-17T13:00:00.000Z",
+   "resolved_at": "2026-08-17T13:00:00.000Z",
+   "components": [],
+   "incident_updates": [
+    {
+     "status": "resolved",
+     "created_at": "2026-08-18T15:59:48.024Z",
+     "body": "Some newly registered users may have experienced issues logging in to the management console between 13:00 UTC on 17 August 2026 and 14:00 UTC on 18 August 2026",
+     "affected_components": []
+    }
+   ]
+  },
+  {
+   "id": "syhtwmxgvn4t",
+   "name": "Partial InfiniBand unavailability",
+   "status": "resolved",
+   "impact": "major",
+   "created_at": "2026-08-15T18:25:42.541Z",
+   "started_at": "2026-08-15T18:25:42.531Z",
+   "resolved_at": "2026-08-15T21:43:06.000Z",
+   "components": [
+    {
+     "name": "Compute Cloud"
+    }
+   ],
+   "incident_updates": [
+    {
+     "status": "resolved",
+     "created_at": "2026-08-15T22:27:06.477Z",
+     "body": "This incident has been resolved.",
+     "affected_components": [
+      {
+       "name": "UK-SOUTH1 - Compute Cloud"
+      }
+     ]
+    },
+    {
+     "status": "investigating",
+     "created_at": "2026-08-15T18:25:42.631Z",
+     "body": "We are currently investigating this issue.",
+     "affected_components": [
+      {
+       "name": "UK-SOUTH1 - Compute Cloud"
+      }
+     ]
+    }
+   ]
+  },
+  {
+   "id": "cdrs6y5vq0ty",
+   "name": "External VPC connectivity issues",
+   "status": "resolved",
+   "impact": "major",
+   "created_at": "2026-08-12T13:30:52.000Z",
+   "started_at": "2026-08-12T13:30:52.000Z",
+   "resolved_at": "2026-08-12T13:56:33.912Z",
+   "components": [
+    {
+     "name": "Virtual Private Cloud (Networking)"
+    },
+    {
+     "name": "Monitoring"
+    }
+   ],
+   "incident_updates": [
+    {
+     "status": "resolved",
+     "created_at": "2026-08-12T13:56:33.912Z",
+     "body": "This incident has been resolved.",
+     "affected_components": [
+      {
+       "name": "EU-NORTH1 - Virtual Private Cloud (Networking)"
+      },
+      {
+       "name": "EU-NORTH1 - Monitoring"
+      }
+     ]
+    },
+    {
+     "status": "monitoring",
+     "created_at": "2026-08-12T13:37:30.582Z",
+     "body": "According to our metrics, the situation with VPC has stabilised.",
+     "affected_components": [
+      {
+       "name": "EU-NORTH1 - Virtual Private Cloud (Networking)"
+      },
+      {
+       "name": "EU-NORTH1 - Monitoring"
+      }
+     ]
+    },
+    {
+     "status": "identified",
+     "created_at": "2026-08-12T13:30:52.591Z",
+     "body": "We are investigating an issue with external VPC connectivity",
+     "affected_components": [
+      {
+       "name": "EU-NORTH1 - Virtual Private Cloud (Networking)"
+      },
+      {
+       "name": "EU-NORTH1 - Monitoring"
+      }
+     ]
+    }
+   ]
+  },
+  {
+   "id": "zxs4235g76gq",
+   "name": "Creation of new VMs is broken",
+   "status": "resolved",
+   "impact": "none",
+   "created_at": "2026-08-05T14:27:20.297Z",
+   "started_at": "2026-08-05T14:27:20.284Z",
+   "resolved_at": "2026-08-05T15:45:34.945Z",
+   "components": [
+    {
+     "name": "Compute Cloud"
+    },
+    {
+     "name": "Compute Cloud"
+    }
+   ],
+   "incident_updates": [
+    {
+     "status": "resolved",
+     "created_at": "2026-08-05T15:45:34.945Z",
+     "body": "This incident has been resolved.",
+     "affected_components": [
+      {
+       "name": "EU-WEST1 - Compute Cloud"
+      },
+      {
+       "name": "UK-SOUTH1 - Compute Cloud"
+      }
+     ]
+    },
+    {
+     "status": "monitoring",
+     "created_at": "2026-08-05T14:43:26.594Z",
+     "body": "A fix has been implemented and we are monitoring the results.",
+     "affected_components": [
+      {
+       "name": "EU-WEST1 - Compute Cloud"
+      },
+      {
+       "name": "UK-SOUTH1 - Compute Cloud"
+      }
+     ]
+    },
+    {
+     "status": "investigating",
+     "created_at": "2026-08-05T14:29:49.985Z",
+     "body": "We are continuing to investigate this issue.",
+     "affected_components": [
+      {
+       "name": "EU-WEST1 - Compute Cloud"
+      },
+      {
+       "name": "UK-SOUTH1 - Compute Cloud"
+      }
+     ]
+    },
+    {
+     "status": "investigating",
+     "created_at": "2026-08-05T14:27:20.359Z",
+     "body": "Due to issue with internal services the creation of new VM and other operations may be affected. We are investigating the issue.",
+     "affected_components": [
+      {
+       "name": "UK-SOUTH1 - Compute Cloud"
+      }
+     ]
+    }
+   ]
+  },
+  {
+   "id": "c2tj0j6lsl87",
+   "name": "Network issues",
+   "status": "resolved",
+   "impact": "major",
+   "created_at": "2026-07-27T18:30:09.000Z",
+   "started_at": "2026-07-27T18:30:09.000Z",
+   "resolved_at": "2026-07-27T20:03:14.886Z",
+   "components": [
+    {
+     "name": "Compute Cloud"
+    },
+    {
+     "name": "Compute Cloud"
+    },
+    {
+     "name": "Compute Cloud"
+    },
+    {
+     "name": "Compute Cloud"
+    },
+    {
+     "name": "Compute Cloud"
+    },
+    {
+     "name": "Compute Cloud"
+    },
+    {
+     "name": "Network Block Storage"
+    },
+    {
+     "name": "Network Block Storage"
+    },
+    {
+     "name": "Network Block Storage"
+    },
+    {
+     "name": "Network Block Storage"
+    },
+    {
+     "name": "Network Block Storage"
+    },
+    {
+     "name": "Network Block Storage"
+    },
+    {
+     "name": "Object Storage"
+    },
+    {
+     "name": "Object Storage"
+    },
+    {
+     "name": "Object Storage"
+    },
+    {
+     "name": "Object Storage"
+    },
+    {
+     "name": "Object Storage"
+    },
+    {
+     "name": "Object Storage"
+    },
+    {
+     "name": "Virtual Private Cloud (Networking)"
+    },
+    {
+     "name": "Virtual Private Cloud (Networking)"
+    },
+    {
+     "name": "Virtual Private Cloud (Networking)"
+    },
+    {
+     "name": "Virtual Private Cloud (Networking)"
+    },
+    {
+     "name": "Virtual Private Cloud (Networking)"
+    },
+    {
+     "name": "Virtual Private Cloud (Networking)"
+    },
+    {
+     "name": "Managed Service for Kubernetes\u00ae"
+    },
+    {
+     "name": "Managed Service for Kubernetes\u00ae"
+    },
+    {
+     "name": "Managed Service for Kubernetes\u00ae"
+    },
+    {
+     "name": "Managed Service for Kubernetes\u00ae"
+    },
+    {
+     "name": "Managed Service for Kubernetes\u00ae"
+    },
+    {
+     "name": "Managed Service for Kubernetes\u00ae"
+    },
+    {
+     "name": "Identity and Access Management"
+    },
+    {
+     "name": "Identity and Access Management"
+    },
+    {
+     "name": "Identity and Access Management"
+    },
+    {
+     "name": "Identity and Access Management"
+    },
+    {
+     "name": "Identity and Access Management"
+    },
+    {
+     "name": "Identity and Access Management"
+    },
+    {
+     "name": "Billing"
+    },
+    {
+     "name": "Billing"
+    },
+    {
+     "name": "Billing"
+    },
+    {
+     "name": "Billing"
+    },
+    {
+     "name": "Billing"
+    },
+    {
+     "name": "Billing"
+    },
+    {
+     "name": "API"
+    },
+    {
+     "name": "API"
+    },
+    {
+     "name": "API"
+    },
+    {
+     "name": "API"
+    },
+    {
+     "name": "API"
+    },
+    {
+     "name": "API"
+    },
+    {
+     "name": "Management Console"
+    },
+    {
+     "name": "Management Console"
+    },
+    {
+     "name": "Management Console"
+    },
+    {
+     "name": "Management Console"
+    },
+    {
+     "name": "Management Console"
+    },
+    {
+     "name": "Management Console"
+    },
+    {
+     "name": "Monitoring"
+    },
+    {
+     "name": "Monitoring"
+    },
+    {
+     "name": "Monitoring"
+    },
+    {
+     "name": "Monitoring"
+    },
+    {
+     "name": "Monitoring"
+    },
+    {
+     "name": "Monitoring"
+    },
+    {
+     "name": "Logging"
+    },
+    {
+     "name": "Logging"
+    },
+    {
+     "name": "Logging"
+    },
+    {
+     "name": "Logging"
+    },
+    {
+     "name": "Logging"
+    },
+    {
+     "name": "Logging"
+    },
+    {
+     "name": "Audit Logs"
+    },
+    {
+     "name": "Audit Logs"
+    },
+    {
+     "name": "Audit Logs"
+    },
+    {
+     "name": "Audit Logs"
+    },
+    {
+     "name": "Audit Logs"
+    },
+    {
+     "name": "Audit Logs"
+    },
+    {
+     "name": "Mysterybox"
+    },
+    {
+     "name": "Mysterybox"
+    },
+    {
+     "name": "Mysterybox"
+    },
+    {
+     "name": "Mysterybox"
+    },
+    {
+     "name": "Mysterybox"
+    },
+    {
+     "name": "Mysterybox"
+    },
+    {
+     "name": "Token Factory"
+    },
+    {
+     "name": "Token Factory"
+    },
+    {
+     "name": "Token Factory"
+    },
+    {
+     "name": "Token Factory"
+    },
+    {
+     "name": "Token Factory"
+    },
+    {
+     "name": "Token Factory"
+    },
+    {
+     "name": "Managed Service for MLflow"
+    },
+    {
+     "name": "Managed Service for MLflow"
+    },
+    {
+     "name": "Managed Service for MLflow"
+    },
+    {
+     "name": "Managed Service for MLflow"
+    },
+    {
+     "name": "Managed Service for MLflow"
+    },
+    {
+     "name": "Managed Service for MLflow"
+    },
+    {
+     "name": "Managed Service for PostgreSQL\u00ae"
+    },
+    {
+     "name": "Managed Service for PostgreSQL\u00ae"
+    },
+    {
+     "name": "Managed Service for PostgreSQL\u00ae"
+    },
+    {
+     "name": "Managed Service for PostgreSQL\u00ae"
+    },
+    {
+     "name": "Managed Service for PostgreSQL\u00ae"
+    },
+    {
+     "name": "Managed Service for PostgreSQL\u00ae"
+    },
+    {
+     "name": "Container Registry"
+    },
+    {
+     "name": "Container Registry"
+    },
+    {
+     "name": "Container Registry"
+    },
+    {
+     "name": "Container Registry"
+    },
+    {
+     "name": "Container Registry"
+    },
+    {
+     "name": "Container Registry"
+    },
+    {
+     "name": "Marketplace"
+    },
+    {
+     "name": "Marketplace"
+    },
+    {
+     "name": "Marketplace"
+    },
+    {
+     "name": "Marketplace"
+    },
+    {
+     "name": "Marketplace"
+    },
+    {
+     "name": "Marketplace"
+    },
+    {
+     "name": "Standalone Applications"
+    },
+    {
+     "name": "Standalone Applications"
+    },
+    {
+     "name": "Standalone Applications"
+    },
+    {
+     "name": "Standalone Applications"
+    },
+    {
+     "name": "Standalone Applications"
+    },
+    {
+     "name": "Standalone Applications"
+    },
+    {
+     "name": "Managed Soperator"
+    },
+    {
+     "name": "Managed Soperator"
+    },
+    {
+     "name": "Managed Soperator"
+    },
+    {
+     "name": "Managed Soperator"
+    },
+    {
+     "name": "Managed Soperator"
+    },
+    {
+     "name": "Managed Soperator"
+    },
+    {
+     "name": "Managed Service for SkyPilot"
+    },
+    {
+     "name": "Managed Service for SkyPilot"
+    },
+    {
+     "name": "Managed Service for SkyPilot"
+    },
+    {
+     "name": "Managed Service for SkyPilot"
+    },
+    {
+     "name": "Managed Service for SkyPilot"
+    },
+    {
+     "name": "Managed Service for SkyPilot"
+    },
+    {
+     "name": "Serverless AI"
+    },
+    {
+     "name": "Serverless AI"
+    },
+    {
+     "name": "Serverless AI"
+    },
+    {
+     "name": "Serverless AI"
+    },
+    {
+     "name": "Serverless AI"
+    },
+    {
+     "name": "Serverless AI"
+    }
+   ],
+   "incident_updates": [
+    {
+     "status": "resolved",
+     "created_at": "2026-07-27T20:03:14.886Z",
+     "body": "This incident has been resolved.",
+     "affected_components": [
+      {
+       "name": "EU-NORTH1 - Compute Cloud"
+      },
+      {
+       "name": "EU-NORTH1 - Network Block Storage"
+      },
+      {
+       "name": "EU-NORTH1 - Object Storage"
+      },
+      {
+       "name": "EU-NORTH1 - Virtual Private Cloud (Networking)"
+      },
+      {
+       "name": "EU-NORTH1 - Managed Service for Kubernetes\u00ae"
+      },
+      {
+       "name": "EU-NORTH1 - Identity and Access Management"
+      },
+      {
+       "name": "EU-NORTH1 - Billing"
+      },
+      {
+       "name": "EU-NORTH1 - API"
+      },
+      {
+       "name": "EU-NORTH1 - Management Console"
+      },
+      {
+       "name": "EU-NORTH1 - Monitoring"
+      },
+      {
+       "name": "EU-NORTH1 - Logging"
+      },
+      {
+       "name": "EU-NORTH1 - Audit Logs"
+      },
+      {
+       "name": "EU-NORTH1 - Mysterybox"
+      },
+      {
+       "name": "EU-NORTH1 - Token Factory"
+      },
+      {
+       "name": "EU-NORTH1 - Managed Service for MLflow"
+      },
+      {
+       "name": "EU-NORTH1 - Managed Service for PostgreSQL\u00ae"
+      },
+      {
+       "name": "EU-NORTH1 - Container Registry"
+      },
+      {
+       "name": "EU-NORTH1 - Marketplace"
+      },
+      {
+       "name": "EU-NORTH1 - Standalone Applications"
+      },
+      {
+       "name": "EU-NORTH1 - Managed Soperator"
+      },
+      {
+       "name": "EU-NORTH1 - Managed Service for SkyPilot"
+      },
+      {
+       "name": "EU-NORTH1 - Serverless AI"
+      },
+      {
+       "name": "EU-NORTH2 - Compute Cloud"
+      },
+      {
+       "name": "EU-NORTH2 - Network Block Storage"
+      },
+      {
+       "name": "EU-NORTH2 - Object Storage"
+      },
+      {
+       "name": "EU-NORTH2 - Virtual Private Cloud (Networking)"
+      },
+      {
+       "name": "EU-NORTH2 - Managed Service for Kubernetes\u00ae"
+      },
+      {
+       "name": "EU-NORTH2 - Identity and Access Management"
+      },
+      {
+       "name": "EU-NORTH2 - Billing"
+      },
+      {
+       "name": "EU-NORTH2 - API"
+      },
+      {
+       "name": "EU-NORTH2 - Management Console"
+      },
+      {
+       "name": "EU-NORTH2 - Monitoring"
+      },
+      {
+       "name": "EU-NORTH2 - Logging"
+      },
+      {
+       "name": "EU-NORTH2 - Audit Logs"
+      },
+      {
+       "name": "EU-NORTH2 - Mysterybox"
+      },
+      {
+       "name": "EU-NORTH2 - Token Factory"
+      },
+      {
+       "name": "EU-NORTH2 - Managed Service for MLflow"
+      },
+      {
+       "name": "EU-NORTH2 - Managed Service for PostgreSQL\u00ae"
+      },
+      {
+       "name": "EU-NORTH2 - Container Registry"
+      },
+      {
+       "name": "EU-NORTH2 - Marketplace"
+      },
+      {
+       "name": "EU-NORTH2 - Standalone Applications"
+      },
+      {
+       "name": "EU-NORTH2 - Managed Soperator"
+      },
+      {
+       "name": "EU-NORTH2 - Managed Service for SkyPilot"
+      },
+      {
+       "name": "EU-NORTH2 - Serverless AI"
+      },
+      {
+       "name": "EU-WEST1 - Compute Cloud"
+      },
+      {
+       "name": "EU-WEST1 - Network Block Storage"
+      },
+      {
+       "name": "EU-WEST1 - Object Storage"
+      },
+      {
+       "name": "EU-WEST1 - Virtual Private Cloud (Networking)"
+      },
+      {
+       "name": "EU-WEST1 - Managed Service for Kubernetes\u00ae"
+      },
+      {
+       "name": "EU-WEST1 - Identity and Access Management"
+      },
+      {
+       "name": "EU-WEST1 - Billing"
+      },
+      {
+       "name": "EU-WEST1 - API"
+      },
+      {
+       "name": "EU-WEST1 - Management Console"
+      },
+      {
+       "name": "EU-WEST1 - Monitoring"
+      },
+      {
+       "name": "EU-WEST1 - Logging"
+      },
+      {
+       "name": "EU-WEST1 - Audit Logs"
+      },
+      {
+       "name": "EU-WEST1 - Mysterybox"
+      },
+      {
+       "name": "EU-WEST1 - Token Factory"
+      },
+      {
+       "name": "EU-WEST1 - Managed Service for MLflow"
+      },
+      {
+       "name": "EU-WEST1 - Managed Service for PostgreSQL\u00ae"
+      },
+      {
+       "name": "EU-WEST1 - Container Registry"
+      },
+      {
+       "name": "EU-WEST1 - Marketplace"
+      },
+      {
+       "name": "EU-WEST1 - Standalone Applications"
+      },
+      {
+       "name": "EU-WEST1 - Managed Soperator"
+      },
+      {
+       "name": "EU-WEST1 - Managed Service for SkyPilot"
+      },
+      {
+       "name": "EU-WEST1 - Serverless AI"
+      },
+      {
+       "name": "US-CENTRAL1 - Compute Cloud"
+      },
+      {
+       "name": "US-CENTRAL1 - Network Block Storage"
+      },
+      {
+       "name": "US-CENTRAL1 - Object Storage"
+      },
+      {
+       "name": "US-CENTRAL1 - Virtual Private Cloud (Networking)"
+      },
+      {
+       "name": "US-CENTRAL1 - Managed Service for Kubernetes\u00ae"
+      },
+      {
+       "name": "US-CENTRAL1 - Identity and Access Management"
+      },
+      {
+       "name": "US-CENTRAL1 - Billing"
+      },
+      {
+       "name": "US-CENTRAL1 - API"
+      },
+      {
+       "name": "US-CENTRAL1 - Management Console"
+      },
+      {
+       "name": "US-CENTRAL1 - Monitoring"
+      },
+      {
+       "name": "US-CENTRAL1 - Logging"
+      },
+      {
+       "name": "US-CENTRAL1 - Audit Logs"
+      },
+      {
+       "name": "US-CENTRAL1 - Mysterybox"
+      },
+      {
+       "name": "US-CENTRAL1 - Token Factory"
+      },
+      {
+       "name": "US-CENTRAL1 - Managed Service for MLflow"
+      },
+      {
+       "name": "US-CENTRAL1 - Managed Service for PostgreSQL\u00ae"
+      },
+      {
+       "name": "US-CENTRAL1 - Container Registry"
+      },
+      {
+       "name": "US-CENTRAL1 - Marketplace"
+      },
+      {
+       "name": "US-CENTRAL1 - Standalone Applications"
+      },
+      {
+       "name": "US-CENTRAL1 - Managed Soperator"
+      },
+      {
+       "name": "US-CENTRAL1 - Managed Service for SkyPilot"
+      },
+      {
+       "name": "US-CENTRAL1 - Serverless AI"
+      },
+      {
+       "name": "ME-WEST1 - Compute Cloud"
+      },
+      {
+       "name": "ME-WEST1 - Network Block Storage"
+      },
+      {
+       "name": "ME-WEST1 - Object Storage"
+      },
+      {
+       "name": "ME-WEST1 - Virtual Private Cloud (Networking)"
+      },
+      {
+       "name": "ME-WEST1 - Managed Service for Kubernetes\u00ae"
+      },
+      {
+       "name": "ME-WEST1 - Identity and Access Management"
+      },
+      {
+       "name": "ME-WEST1 - Billing"
+      },
+      {
+       "name": "ME-WEST1 - API"
+      },
+      {
+       "name": "ME-WEST1 - Management Console"
+      },
+      {
+       "name": "ME-WEST1 - Monitoring"
+      },
+      {
+       "name": "ME-WEST1 - Logging"
+      },
+      {
+       "name": "ME-WEST1 - Audit Logs"
+      },
+      {
+       "name": "ME-WEST1 - Mysterybox"
+      },
+      {
+       "name": "ME-WEST1 - Token Factory"
+      },
+      {
+       "name": "ME-WEST1 - Managed Service for MLflow"
+      },
+      {
+       "name": "ME-WEST1 - Managed Service for PostgreSQL\u00ae"
+      },
+      {
+       "name": "ME-WEST1 - Container Registry"
+      },
+      {
+       "name": "ME-WEST1 - Marketplace"
+      },
+      {
+       "name": "ME-WEST1 - Standalone Applications"
+      },
+      {
+       "name": "ME-WEST1 - Managed Soperator"
+      },
+      {
+       "name": "ME-WEST1 - Managed Service for SkyPilot"
+      },
+      {
+       "name": "ME-WEST1 - Serverless AI"
+      },
+      {
+       "name": "EU-WEST2 - Compute Cloud"
+      },
+      {
+       "name": "EU-WEST2 - Network Block Storage"
+      },
+      {
+       "name": "EU-WEST2 - Object Storage"
+      },
+      {
+       "name": "EU-WEST2 - Virtual Private Cloud (Networking)"
+      },
+      {
+       "name": "EU-WEST2 - Managed Service for Kubernetes\u00ae"
+      },
+      {
+       "name": "EU-WEST2 - Identity and Access Management"
+      },
+      {
+       "name": "EU-WEST2 - Billing"
+      },
+      {
+       "name": "EU-WEST2 - API"
+      },
+      {
+       "name": "EU-WEST2 - Management Console"
+      },
+      {
+       "name": "EU-WEST2 - Monitoring"
+      },
+      {
+       "name": "EU-WEST2 - Logging"
+      },
+      {
+       "name": "EU-WEST2 - Audit Logs"
+      },
+      {
+       "name": "EU-WEST2 - Mysterybox"
+      },
+      {
+       "name": "EU-WEST2 - Token Factory"
+      },
+      {
+       "name": "EU-WEST2 - Managed Service for MLflow"
+      },
+      {
+       "name": "EU-WEST2 - Managed Service for PostgreSQL\u00ae"
+      },
+      {
+       "name": "EU-WEST2 - Container Registry"
+      },
+      {
+       "name": "EU-WEST2 - Marketplace"
+      },
+      {
+       "name": "EU-WEST2 - Standalone Applications"
+      },
+      {
+       "name": "EU-WEST2 - Managed Soperator"
+      },
+      {
+       "name": "EU-WEST2 - Managed Service for SkyPilot"
+      },
+      {
+       "name": "EU-WEST2 - Serverless AI"
+      }
+     ]
+    },
+    {
+     "status": "monitoring",
+     "created_at": "2026-07-27T19:56:28.486Z",
+     "body": "A fix has been implemented and we are monitoring the results.",
+     "affected_components": [
+      {
+       "name": "EU-NORTH1 - Compute Cloud"
+      },
+      {
+       "name": "EU-NORTH1 - Network Block Storage"
+      },
+      {
+       "name": "EU-NORTH1 - Object Storage"
+      },
+      {
+       "name": "EU-NORTH1 - Virtual Private Cloud (Networking)"
+      },
+      {
+       "name": "EU-NORTH1 - Managed Service for Kubernetes\u00ae"
+      },
+      {
+       "name": "EU-NORTH1 - Identity and Access Management"
+      },
+      {
+       "name": "EU-NORTH1 - Billing"
+      },
+      {
+       "name": "EU-NORTH1 - API"
+      },
+      {
+       "name": "EU-NORTH1 - Management Console"
+      },
+      {
+       "name": "EU-NORTH1 - Monitoring"
+      },
+      {
+       "name": "EU-NORTH1 - Logging"
+      },
+      {
+       "name": "EU-NORTH1 - Audit Logs"
+      },
+      {
+       "name": "EU-NORTH1 - Mysterybox"
+      },
+      {
+       "name": "EU-NORTH1 - Token Factory"
+      },
+      {
+       "name": "EU-NORTH1 - Managed Service for MLflow"
+      },
+      {
+       "name": "EU-NORTH1 - Managed Service for PostgreSQL\u00ae"
+      },
+      {
+       "name": "EU-NORTH1 - Container Registry"
+      },
+      {
+       "name": "EU-NORTH1 - Marketplace"
+      },
+      {
+       "name": "EU-NORTH1 - Standalone Applications"
+      },
+      {
+       "name": "EU-NORTH1 - Managed Soperator"
+      },
+      {
+       "name": "EU-NORTH1 - Managed Service for SkyPilot"
+      },
+      {
+       "name": "EU-NORTH1 - Serverless AI"
+      },
+      {
+       "name": "EU-NORTH2 - Compute Cloud"
+      },
+      {
+       "name": "EU-NORTH2 - Network Block Storage"
+      },
+      {
+       "name": "EU-NORTH2 - Object Storage"
+      },
+      {
+       "name": "EU-NORTH2 - Virtual Private Cloud (Networking)"
+      },
+      {
+       "name": "EU-NORTH2 - Managed Service for Kubernetes\u00ae"
+      },
+      {
+       "name": "EU-NORTH2 - Identity and Access Management"
+      },
+      {
+       "name": "EU-NORTH2 - Billing"
+      },
+      {
+       "name": "EU-NORTH2 - API"
+      },
+      {
+       "name": "EU-NORTH2 - Management Console"
+      },
+      {
+       "name": "EU-NORTH2 - Monitoring"
+      },
+      {
+       "name": "EU-NORTH2 - Logging"
+      },
+      {
+       "name": "EU-NORTH2 - Audit Logs"
+      },
+      {
+       "name": "EU-NORTH2 - Mysterybox"
+      },
+      {
+       "name": "EU-NORTH2 - Token Factory"
+      },
+      {
+       "name": "EU-NORTH2 - Managed Service for MLflow"
+      },
+      {
+       "name": "EU-NORTH2 - Managed Service for PostgreSQL\u00ae"
+      },
+      {
+       "name": "EU-NORTH2 - Container Registry"
+      },
+      {
+       "name": "EU-NORTH2 - Marketplace"
+      },
+      {
+       "name": "EU-NORTH2 - Standalone Applications"
+      },
+      {
+       "name": "EU-NORTH2 - Managed Soperator"
+      },
+      {
+       "name": "EU-NORTH2 - Managed Service for SkyPilot"
+      },
+      {
+       "name": "EU-NORTH2 - Serverless AI"
+      },
+      {
+       "name": "EU-WEST1 - Compute Cloud"
+      },
+      {
+       "name": "EU-WEST1 - Network Block Storage"
+      },
+      {
+       "name": "EU-WEST1 - Object Storage"
+      },
+      {
+       "name": "EU-WEST1 - Virtual Private Cloud (Networking)"
+      },
+      {
+       "name": "EU-WEST1 - Managed Service for Kubernetes\u00ae"
+      },
+      {
+       "name": "EU-WEST1 - Identity and Access Management"
+      },
+      {
+       "name": "EU-WEST1 - Billing"
+      },
+      {
+       "name": "EU-WEST1 - API"
+      },
+      {
+       "name": "EU-WEST1 - Management Console"
+      },
+      {
+       "name": "EU-WEST1 - Monitoring"
+      },
+      {
+       "name": "EU-WEST1 - Logging"
+      },
+      {
+       "name": "EU-WEST1 - Audit Logs"
+      },
+      {
+       "name": "EU-WEST1 - Mysterybox"
+      },
+      {
+       "name": "EU-WEST1 - Token Factory"
+      },
+      {
+       "name": "EU-WEST1 - Managed Service for MLflow"
+      },
+      {
+       "name": "EU-WEST1 - Managed Service for PostgreSQL\u00ae"
+      },
+      {
+       "name": "EU-WEST1 - Container Registry"
+      },
+      {
+       "name": "EU-WEST1 - Marketplace"
+      },
+      {
+       "name": "EU-WEST1 - Standalone Applications"
+      },
+      {
+       "name": "EU-WEST1 - Managed Soperator"
+      },
+      {
+       "name": "EU-WEST1 - Managed Service for SkyPilot"
+      },
+      {
+       "name": "EU-WEST1 - Serverless AI"
+      },
+      {
+       "name": "US-CENTRAL1 - Compute Cloud"
+      },
+      {
+       "name": "US-CENTRAL1 - Network Block Storage"
+      },
+      {
+       "name": "US-CENTRAL1 - Object Storage"
+      },
+      {
+       "name": "US-CENTRAL1 - Virtual Private Cloud (Networking)"
+      },
+      {
+       "name": "US-CENTRAL1 - Managed Service for Kubernetes\u00ae"
+      },
+      {
+       "name": "US-CENTRAL1 - Identity and Access Management"
+      },
+      {
+       "name": "US-CENTRAL1 - Billing"
+      },
+      {
+       "name": "US-CENTRAL1 - API"
+      },
+      {
+       "name": "US-CENTRAL1 - Management Console"
+      },
+      {
+       "name": "US-CENTRAL1 - Monitoring"
+      },
+      {
+       "name": "US-CENTRAL1 - Logging"
+      },
+      {
+       "name": "US-CENTRAL1 - Audit Logs"
+      },
+      {
+       "name": "US-CENTRAL1 - Mysterybox"
+      },
+      {
+       "name": "US-CENTRAL1 - Token Factory"
+      },
+      {
+       "name": "US-CENTRAL1 - Managed Service for MLflow"
+      },
+      {
+       "name": "US-CENTRAL1 - Managed Service for PostgreSQL\u00ae"
+      },
+      {
+       "name": "US-CENTRAL1 - Container Registry"
+      },
+      {
+       "name": "US-CENTRAL1 - Marketplace"
+      },
+      {
+       "name": "US-CENTRAL1 - Standalone Applications"
+      },
+      {
+       "name": "US-CENTRAL1 - Managed Soperator"
+      },
+      {
+       "name": "US-CENTRAL1 - Managed Service for SkyPilot"
+      },
+      {
+       "name": "US-CENTRAL1 - Serverless AI"
+      },
+      {
+       "name": "ME-WEST1 - Compute Cloud"
+      },
+      {
+       "name": "ME-WEST1 - Network Block Storage"
+      },
+      {
+       "name": "ME-WEST1 - Object Storage"
+      },
+      {
+       "name": "ME-WEST1 - Virtual Private Cloud (Networking)"
+      },
+      {
+       "name": "ME-WEST1 - Managed Service for Kubernetes\u00ae"
+      },
+      {
+       "name": "ME-WEST1 - Identity and Access Management"
+      },
+      {
+       "name": "ME-WEST1 - Billing"
+      },
+      {
+       "name": "ME-WEST1 - API"
+      },
+      {
+       "name": "ME-WEST1 - Management Console"
+      },
+      {
+       "name": "ME-WEST1 - Monitoring"
+      },
+      {
+       "name": "ME-WEST1 - Logging"
+      },
+      {
+       "name": "ME-WEST1 - Audit Logs"
+      },
+      {
+       "name": "ME-WEST1 - Mysterybox"
+      },
+      {
+       "name": "ME-WEST1 - Token Factory"
+      },
+      {
+       "name": "ME-WEST1 - Managed Service for MLflow"
+      },
+      {
+       "name": "ME-WEST1 - Managed Service for PostgreSQL\u00ae"
+      },
+      {
+       "name": "ME-WEST1 - Container Registry"
+      },
+      {
+       "name": "ME-WEST1 - Marketplace"
+      },
+      {
+       "name": "ME-WEST1 - Standalone Applications"
+      },
+      {
+       "name": "ME-WEST1 - Managed Soperator"
+      },
+      {
+       "name": "ME-WEST1 - Managed Service for SkyPilot"
+      },
+      {
+       "name": "ME-WEST1 - Serverless AI"
+      },
+      {
+       "name": "EU-WEST2 - Compute Cloud"
+      },
+      {
+       "name": "EU-WEST2 - Network Block Storage"
+      },
+      {
+       "name": "EU-WEST2 - Object Storage"
+      },
+      {
+       "name": "EU-WEST2 - Virtual Private Cloud (Networking)"
+      },
+      {
+       "name": "EU-WEST2 - Managed Service for Kubernetes\u00ae"
+      },
+      {
+       "name": "EU-WEST2 - Identity and Access Management"
+      },
+      {
+       "name": "EU-WEST2 - Billing"
+      },
+      {
+       "name": "EU-WEST2 - API"
+      },
+      {
+       "name": "EU-WEST2 - Management Console"
+      },
+      {
+       "name": "EU-WEST2 - Monitoring"
+      },
+      {
+       "name": "EU-WEST2 - Logging"
+      },
+      {
+       "name": "EU-WEST2 - Audit Logs"
+      },
+      {
+       "name": "EU-WEST2 - Mysterybox"
+      },
+      {
+       "name": "EU-WEST2 - Token Factory"
+      },
+      {
+       "name": "EU-WEST2 - Managed Service for MLflow"
+      },
+      {
+       "name": "EU-WEST2 - Managed Service for PostgreSQL\u00ae"
+      },
+      {
+       "name": "EU-WEST2 - Container Registry"
+      },
+      {
+       "name": "EU-WEST2 - Marketplace"
+      },
+      {
+       "name": "EU-WEST2 - Standalone Applications"
+      },
+      {
+       "name": "EU-WEST2 - Managed Soperator"
+      },
+      {
+       "name": "EU-WEST2 - Managed Service for SkyPilot"
+      },
+      {
+       "name": "EU-WEST2 - Serverless AI"
+      }
+     ]
+    },
+    {
+     "status": "identified",
+     "created_at": "2026-07-27T19:09:59.212Z",
+     "body": "The issue has been identified and a fix is being implemented.",
+     "affected_components": [
+      {
+       "name": "EU-NORTH1 - Compute Cloud"
+      },
+      {
+       "name": "EU-NORTH1 - Network Block Storage"
+      },
+      {
+       "name": "EU-NORTH1 - Object Storage"
+      },
+      {
+       "name": "EU-NORTH1 - Virtual Private Cloud (Networking)"
+      },
+      {
+       "name": "EU-NORTH1 - Managed Service for Kubernetes\u00ae"
+      },
+      {
+       "name": "EU-NORTH1 - Identity and Access Management"
+      },
+      {
+       "name": "EU-NORTH1 - Billing"
+      },
+      {
+       "name": "EU-NORTH1 - API"
+      },
+      {
+       "name": "EU-NORTH1 - Management Console"
+      },
+      {
+       "name": "EU-NORTH1 - Monitoring"
+      },
+      {
+       "name": "EU-NORTH1 - Logging"
+      },
+      {
+       "name": "EU-NORTH1 - Audit Logs"
+      },
+      {
+       "name": "EU-NORTH1 - Mysterybox"
+      },
+      {
+       "name": "EU-NORTH1 - Token Factory"
+      },
+      {
+       "name": "EU-NORTH1 - Managed Service for MLflow"
+      },
+      {
+       "name": "EU-NORTH1 - Managed Service for PostgreSQL\u00ae"
+      },
+      {
+       "name": "EU-NORTH1 - Container Registry"
+      },
+      {
+       "name": "EU-NORTH1 - Marketplace"
+      },
+      {
+       "name": "EU-NORTH1 - Standalone Applications"
+      },
+      {
+       "name": "EU-NORTH1 - Managed Soperator"
+      },
+      {
+       "name": "EU-NORTH1 - Managed Service for SkyPilot"
+      },
+      {
+       "name": "EU-NORTH1 - Serverless AI"
+      },
+      {
+       "name": "EU-NORTH2 - Compute Cloud"
+      },
+      {
+       "name": "EU-NORTH2 - Network Block Storage"
+      },
+      {
+       "name": "EU-NORTH2 - Object Storage"
+      },
+      {
+       "name": "EU-NORTH2 - Virtual Private Cloud (Networking)"
+      },
+      {
+       "name": "EU-NORTH2 - Managed Service for Kubernetes\u00ae"
+      },
+      {
+       "name": "EU-NORTH2 - Identity and Access Management"
+      },
+      {
+       "name": "EU-NORTH2 - Billing"
+      },
+      {
+       "name": "EU-NORTH2 - API"
+      },
+      {
+       "name": "EU-NORTH2 - Management Console"
+      },
+      {
+       "name": "EU-NORTH2 - Monitoring"
+      },
+      {
+       "name": "EU-NORTH2 - Logging"
+      },
+      {
+       "name": "EU-NORTH2 - Audit Logs"
+      },
+      {
+       "name": "EU-NORTH2 - Mysterybox"
+      },
+      {
+       "name": "EU-NORTH2 - Token Factory"
+      },
+      {
+       "name": "EU-NORTH2 - Managed Service for MLflow"
+      },
+      {
+       "name": "EU-NORTH2 - Managed Service for PostgreSQL\u00ae"
+      },
+      {
+       "name": "EU-NORTH2 - Container Registry"
+      },
+      {
+       "name": "EU-NORTH2 - Marketplace"
+      },
+      {
+       "name": "EU-NORTH2 - Standalone Applications"
+      },
+      {
+       "name": "EU-NORTH2 - Managed Soperator"
+      },
+      {
+       "name": "EU-NORTH2 - Managed Service for SkyPilot"
+      },
+      {
+       "name": "EU-NORTH2 - Serverless AI"
+      },
+      {
+       "name": "EU-WEST1 - Compute Cloud"
+      },
+      {
+       "name": "EU-WEST1 - Network Block Storage"
+      },
+      {
+       "name": "EU-WEST1 - Object Storage"
+      },
+      {
+       "name": "EU-WEST1 - Virtual Private Cloud (Networking)"
+      },
+      {
+       "name": "EU-WEST1 - Managed Service for Kubernetes\u00ae"
+      },
+      {
+       "name": "EU-WEST1 - Identity and Access Management"
+      },
+      {
+       "name": "EU-WEST1 - Billing"
+      },
+      {
+       "name": "EU-WEST1 - API"
+      },
+      {
+       "name": "EU-WEST1 - Management Console"
+      },
+      {
+       "name": "EU-WEST1 - Monitoring"
+      },
+      {
+       "name": "EU-WEST1 - Logging"
+      },
+      {
+       "name": "EU-WEST1 - Audit Logs"
+      },
+      {
+       "name": "EU-WEST1 - Mysterybox"
+      },
+      {
+       "name": "EU-WEST1 - Token Factory"
+      },
+      {
+       "name": "EU-WEST1 - Managed Service for MLflow"
+      },
+      {
+       "name": "EU-WEST1 - Managed Service for PostgreSQL\u00ae"
+      },
+      {
+       "name": "EU-WEST1 - Container Registry"
+      },
+      {
+       "name": "EU-WEST1 - Marketplace"
+      },
+      {
+       "name": "EU-WEST1 - Standalone Applications"
+      },
+      {
+       "name": "EU-WEST1 - Managed Soperator"
+      },
+      {
+       "name": "EU-WEST1 - Managed Service for SkyPilot"
+      },
+      {
+       "name": "EU-WEST1 - Serverless AI"
+      },
+      {
+       "name": "US-CENTRAL1 - Compute Cloud"
+      },
+      {
+       "name": "US-CENTRAL1 - Network Block Storage"
+      },
+      {
+       "name": "US-CENTRAL1 - Object Storage"
+      },
+      {
+       "name": "US-CENTRAL1 - Virtual Private Cloud (Networking)"
+      },
+      {
+       "name": "US-CENTRAL1 - Managed Service for Kubernetes\u00ae"
+      },
+      {
+       "name": "US-CENTRAL1 - Identity and Access Management"
+      },
+      {
+       "name": "US-CENTRAL1 - Billing"
+      },
+      {
+       "name": "US-CENTRAL1 - API"
+      },
+      {
+       "name": "US-CENTRAL1 - Management Console"
+      },
+      {
+       "name": "US-CENTRAL1 - Monitoring"
+      },
+      {
+       "name": "US-CENTRAL1 - Logging"
+      },
+      {
+       "name": "US-CENTRAL1 - Audit Logs"
+      },
+      {
+       "name": "US-CENTRAL1 - Mysterybox"
+      },
+      {
+       "name": "US-CENTRAL1 - Token Factory"
+      },
+      {
+       "name": "US-CENTRAL1 - Managed Service for MLflow"
+      },
+      {
+       "name": "US-CENTRAL1 - Managed Service for PostgreSQL\u00ae"
+      },
+      {
+       "name": "US-CENTRAL1 - Container Registry"
+      },
+      {
+       "name": "US-CENTRAL1 - Marketplace"
+      },
+      {
+       "name": "US-CENTRAL1 - Standalone Applications"
+      },
+      {
+       "name": "US-CENTRAL1 - Managed Soperator"
+      },
+      {
+       "name": "US-CENTRAL1 - Managed Service for SkyPilot"
+      },
+      {
+       "name": "US-CENTRAL1 - Serverless AI"
+      },
+      {
+       "name": "ME-WEST1 - Compute Cloud"
+      },
+      {
+       "name": "ME-WEST1 - Network Block Storage"
+      },
+      {
+       "name": "ME-WEST1 - Object Storage"
+      },
+      {
+       "name": "ME-WEST1 - Virtual Private Cloud (Networking)"
+      },
+      {
+       "name": "ME-WEST1 - Managed Service for Kubernetes\u00ae"
+      },
+      {
+       "name": "ME-WEST1 - Identity and Access Management"
+      },
+      {
+       "name": "ME-WEST1 - Billing"
+      },
+      {
+       "name": "ME-WEST1 - API"
+      },
+      {
+       "name": "ME-WEST1 - Management Console"
+      },
+      {
+       "name": "ME-WEST1 - Monitoring"
+      },
+      {
+       "name": "ME-WEST1 - Logging"
+      },
+      {
+       "name": "ME-WEST1 - Audit Logs"
+      },
+      {
+       "name": "ME-WEST1 - Mysterybox"
+      },
+      {
+       "name": "ME-WEST1 - Token Factory"
+      },
+      {
+       "name": "ME-WEST1 - Managed Service for MLflow"
+      },
+      {
+       "name": "ME-WEST1 - Managed Service for PostgreSQL\u00ae"
+      },
+      {
+       "name": "ME-WEST1 - Container Registry"
+      },
+      {
+       "name": "ME-WEST1 - Marketplace"
+      },
+      {
+       "name": "ME-WEST1 - Standalone Applications"
+      },
+      {
+       "name": "ME-WEST1 - Managed Soperator"
+      },
+      {
+       "name": "ME-WEST1 - Managed Service for SkyPilot"
+      },
+      {
+       "name": "ME-WEST1 - Serverless AI"
+      },
+      {
+       "name": "EU-WEST2 - Compute Cloud"
+      },
+      {
+       "name": "EU-WEST2 - Network Block Storage"
+      },
+      {
+       "name": "EU-WEST2 - Object Storage"
+      },
+      {
+       "name": "EU-WEST2 - Virtual Private Cloud (Networking)"
+      },
+      {
+       "name": "EU-WEST2 - Managed Service for Kubernetes\u00ae"
+      },
+      {
+       "name": "EU-WEST2 - Identity and Access Management"
+      },
+      {
+       "name": "EU-WEST2 - Billing"
+      },
+      {
+       "name": "EU-WEST2 - API"
+      },
+      {
+       "name": "EU-WEST2 - Management Console"
+      },
+      {
+       "name": "EU-WEST2 - Monitoring"
+      },
+      {
+       "name": "EU-WEST2 - Logging"
+      },
+      {
+       "name": "EU-WEST2 - Audit Logs"
+      },
+      {
+       "name": "EU-WEST2 - Mysterybox"
+      },
+      {
+       "name": "EU-WEST2 - Token Factory"
+      },
+      {
+       "name": "EU-WEST2 - Managed Service for MLflow"
+      },
+      {
+       "name": "EU-WEST2 - Managed Service for PostgreSQL\u00ae"
+      },
+      {
+       "name": "EU-WEST2 - Container Registry"
+      },
+      {
+       "name": "EU-WEST2 - Marketplace"
+      },
+      {
+       "name": "EU-WEST2 - Standalone Applications"
+      },
+      {
+       "name": "EU-WEST2 - Managed Soperator"
+      },
+      {
+       "name": "EU-WEST2 - Managed Service for SkyPilot"
+      },
+      {
+       "name": "EU-WEST2 - Serverless AI"
+      }
+     ]
+    },
+    {
+     "status": "investigating",
+     "created_at": "2026-07-27T19:08:09.523Z",
+     "body": "We are currently investigating this issue.",
+     "affected_components": [
+      {
+       "name": "EU-NORTH1 - Compute Cloud"
+      },
+      {
+       "name": "EU-NORTH1 - Network Block Storage"
+      },
+      {
+       "name": "EU-NORTH1 - Object Storage"
+      },
+      {
+       "name": "EU-NORTH1 - Virtual Private Cloud (Networking)"
+      },
+      {
+       "name": "EU-NORTH1 - Managed Service for Kubernetes\u00ae"
+      },
+      {
+       "name": "EU-NORTH1 - Identity and Access Management"
+      },
+      {
+       "name": "EU-NORTH1 - Billing"
+      },
+      {
+       "name": "EU-NORTH1 - API"
+      },
+      {
+       "name": "EU-NORTH1 - Management Console"
+      },
+      {
+       "name": "EU-NORTH1 - Monitoring"
+      },
+      {
+       "name": "EU-NORTH1 - Logging"
+      },
+      {
+       "name": "EU-NORTH1 - Audit Logs"
+      },
+      {
+       "name": "EU-NORTH1 - Mysterybox"
+      },
+      {
+       "name": "EU-NORTH1 - Token Factory"
+      },
+      {
+       "name": "EU-NORTH1 - Managed Service for MLflow"
+      },
+      {
+       "name": "EU-NORTH1 - Managed Service for PostgreSQL\u00ae"
+      },
+      {
+       "name": "EU-NORTH1 - Container Registry"
+      },
+      {
+       "name": "EU-NORTH1 - Marketplace"
+      },
+      {
+       "name": "EU-NORTH1 - Standalone Applications"
+      },
+      {
+       "name": "EU-NORTH1 - Managed Soperator"
+      },
+      {
+       "name": "EU-NORTH1 - Managed Service for SkyPilot"
+      },
+      {
+       "name": "EU-NORTH1 - Serverless AI"
+      },
+      {
+       "name": "EU-NORTH2 - Compute Cloud"
+      },
+      {
+       "name": "EU-NORTH2 - Network Block Storage"
+      },
+      {
+       "name": "EU-NORTH2 - Object Storage"
+      },
+      {
+       "name": "EU-NORTH2 - Virtual Private Cloud (Networking)"
+      },
+      {
+       "name": "EU-NORTH2 - Managed Service for Kubernetes\u00ae"
+      },
+      {
+       "name": "EU-NORTH2 - Identity and Access Management"
+      },
+      {
+       "name": "EU-NORTH2 - Billing"
+      },
+      {
+       "name": "EU-NORTH2 - API"
+      },
+      {
+       "name": "EU-NORTH2 - Management Console"
+      },
+      {
+       "name": "EU-NORTH2 - Monitoring"
+      },
+      {
+       "name": "EU-NORTH2 - Logging"
+      },
+      {
+       "name": "EU-NORTH2 - Audit Logs"
+      },
+      {
+       "name": "EU-NORTH2 - Mysterybox"
+      },
+      {
+       "name": "EU-NORTH2 - Token Factory"
+      },
+      {
+       "name": "EU-NORTH2 - Managed Service for MLflow"
+      },
+      {
+       "name": "EU-NORTH2 - Managed Service for PostgreSQL\u00ae"
+      },
+      {
+       "name": "EU-NORTH2 - Container Registry"
+      },
+      {
+       "name": "EU-NORTH2 - Marketplace"
+      },
+      {
+       "name": "EU-NORTH2 - Standalone Applications"
+      },
+      {
+       "name": "EU-NORTH2 - Managed Soperator"
+      },
+      {
+       "name": "EU-NORTH2 - Managed Service for SkyPilot"
+      },
+      {
+       "name": "EU-NORTH2 - Serverless AI"
+      },
+      {
+       "name": "EU-WEST1 - Compute Cloud"
+      },
+      {
+       "name": "EU-WEST1 - Network Block Storage"
+      },
+      {
+       "name": "EU-WEST1 - Object Storage"
+      },
+      {
+       "name": "EU-WEST1 - Virtual Private Cloud (Networking)"
+      },
+      {
+       "name": "EU-WEST1 - Managed Service for Kubernetes\u00ae"
+      },
+      {
+       "name": "EU-WEST1 - Identity and Access Management"
+      },
+      {
+       "name": "EU-WEST1 - Billing"
+      },
+      {
+       "name": "EU-WEST1 - API"
+      },
+      {
+       "name": "EU-WEST1 - Management Console"
+      },
+      {
+       "name": "EU-WEST1 - Monitoring"
+      },
+      {
+       "name": "EU-WEST1 - Logging"
+      },
+      {
+       "name": "EU-WEST1 - Audit Logs"
+      },
+      {
+       "name": "EU-WEST1 - Mysterybox"
+      },
+      {
+       "name": "EU-WEST1 - Token Factory"
+      },
+      {
+       "name": "EU-WEST1 - Managed Service for MLflow"
+      },
+      {
+       "name": "EU-WEST1 - Managed Service for PostgreSQL\u00ae"
+      },
+      {
+       "name": "EU-WEST1 - Container Registry"
+      },
+      {
+       "name": "EU-WEST1 - Marketplace"
+      },
+      {
+       "name": "EU-WEST1 - Standalone Applications"
+      },
+      {
+       "name": "EU-WEST1 - Managed Soperator"
+      },
+      {
+       "name": "EU-WEST1 - Managed Service for SkyPilot"
+      },
+      {
+       "name": "EU-WEST1 - Serverless AI"
+      },
+      {
+       "name": "US-CENTRAL1 - Compute Cloud"
+      },
+      {
+       "name": "US-CENTRAL1 - Network Block Storage"
+      },
+      {
+       "name": "US-CENTRAL1 - Object Storage"
+      },
+      {
+       "name": "US-CENTRAL1 - Virtual Private Cloud (Networking)"
+      },
+      {
+       "name": "US-CENTRAL1 - Managed Service for Kubernetes\u00ae"
+      },
+      {
+       "name": "US-CENTRAL1 - Identity and Access Management"
+      },
+      {
+       "name": "US-CENTRAL1 - Billing"
+      },
+      {
+       "name": "US-CENTRAL1 - API"
+      },
+      {
+       "name": "US-CENTRAL1 - Management Console"
+      },
+      {
+       "name": "US-CENTRAL1 - Monitoring"
+      },
+      {
+       "name": "US-CENTRAL1 - Logging"
+      },
+      {
+       "name": "US-CENTRAL1 - Audit Logs"
+      },
+      {
+       "name": "US-CENTRAL1 - Mysterybox"
+      },
+      {
+       "name": "US-CENTRAL1 - Token Factory"
+      },
+      {
+       "name": "US-CENTRAL1 - Managed Service for MLflow"
+      },
+      {
+       "name": "US-CENTRAL1 - Managed Service for PostgreSQL\u00ae"
+      },
+      {
+       "name": "US-CENTRAL1 - Container Registry"
+      },
+      {
+       "name": "US-CENTRAL1 - Marketplace"
+      },
+      {
+       "name": "US-CENTRAL1 - Standalone Applications"
+      },
+      {
+       "name": "US-CENTRAL1 - Managed Soperator"
+      },
+      {
+       "name": "US-CENTRAL1 - Managed Service for SkyPilot"
+      },
+      {
+       "name": "US-CENTRAL1 - Serverless AI"
+      },
+      {
+       "name": "ME-WEST1 - Compute Cloud"
+      },
+      {
+       "name": "ME-WEST1 - Network Block Storage"
+      },
+      {
+       "name": "ME-WEST1 - Object Storage"
+      },
+      {
+       "name": "ME-WEST1 - Virtual Private Cloud (Networking)"
+      },
+      {
+       "name": "ME-WEST1 - Managed Service for Kubernetes\u00ae"
+      },
+      {
+       "name": "ME-WEST1 - Identity and Access Management"
+      },
+      {
+       "name": "ME-WEST1 - Billing"
+      },
+      {
+       "name": "ME-WEST1 - API"
+      },
+      {
+       "name": "ME-WEST1 - Management Console"
+      },
+      {
+       "name": "ME-WEST1 - Monitoring"
+      },
+      {
+       "name": "ME-WEST1 - Logging"
+      },
+      {
+       "name": "ME-WEST1 - Audit Logs"
+      },
+      {
+       "name": "ME-WEST1 - Mysterybox"
+      },
+      {
+       "name": "ME-WEST1 - Token Factory"
+      },
+      {
+       "name": "ME-WEST1 - Managed Service for MLflow"
+      },
+      {
+       "name": "ME-WEST1 - Managed Service for PostgreSQL\u00ae"
+      },
+      {
+       "name": "ME-WEST1 - Container Registry"
+      },
+      {
+       "name": "ME-WEST1 - Marketplace"
+      },
+      {
+       "name": "ME-WEST1 - Standalone Applications"
+      },
+      {
+       "name": "ME-WEST1 - Managed Soperator"
+      },
+      {
+       "name": "ME-WEST1 - Managed Service for SkyPilot"
+      },
+      {
+       "name": "ME-WEST1 - Serverless AI"
+      },
+      {
+       "name": "EU-WEST2 - Compute Cloud"
+      },
+      {
+       "name": "EU-WEST2 - Network Block Storage"
+      },
+      {
+       "name": "EU-WEST2 - Object Storage"
+      },
+      {
+       "name": "EU-WEST2 - Virtual Private Cloud (Networking)"
+      },
+      {
+       "name": "EU-WEST2 - Managed Service for Kubernetes\u00ae"
+      },
+      {
+       "name": "EU-WEST2 - Identity and Access Management"
+      },
+      {
+       "name": "EU-WEST2 - Billing"
+      },
+      {
+       "name": "EU-WEST2 - API"
+      },
+      {
+       "name": "EU-WEST2 - Management Console"
+      },
+      {
+       "name": "EU-WEST2 - Monitoring"
+      },
+      {
+       "name": "EU-WEST2 - Logging"
+      },
+      {
+       "name": "EU-WEST2 - Audit Logs"
+      },
+      {
+       "name": "EU-WEST2 - Mysterybox"
+      },
+      {
+       "name": "EU-WEST2 - Token Factory"
+      },
+      {
+       "name": "EU-WEST2 - Managed Service for MLflow"
+      },
+      {
+       "name": "EU-WEST2 - Managed Service for PostgreSQL\u00ae"
+      },
+      {
+       "name": "EU-WEST2 - Container Registry"
+      },
+      {
+       "name": "EU-WEST2 - Marketplace"
+      },
+      {
+       "name": "EU-WEST2 - Standalone Applications"
+      },
+      {
+       "name": "EU-WEST2 - Managed Soperator"
+      },
+      {
+       "name": "EU-WEST2 - Managed Service for SkyPilot"
+      },
+      {
+       "name": "EU-WEST2 - Serverless AI"
+      }
+     ]
+    }
+   ]
+  },
+  {
+   "id": "r3lxrr7vx3ns",
+   "name": "[eu-north1] Network timeouts affecting multiple services",
+   "status": "resolved",
+   "impact": "major",
+   "created_at": "2026-07-22T03:00:00.000Z",
+   "started_at": "2026-07-22T15:00:00.000Z",
+   "resolved_at": "2026-07-22T15:00:00.000Z",
+   "components": [],
+   "incident_updates": [
+    {
+     "status": "resolved",
+     "created_at": "2026-07-22T15:50:04.394Z",
+     "body": "The eu-north1 region experienced network issues that may have affected the operation of several services. The issue has been resolved, and all services are oper",
+     "affected_components": []
+    }
+   ]
+  },
+  {
+   "id": "7vddzqwz2f9w",
+   "name": "InfiniBand switch failure affecting GPU workloads in the eu-north1-c fabric in the eu-north1 region",
+   "status": "resolved",
+   "impact": "major",
+   "created_at": "2026-07-14T22:10:18.538Z",
+   "started_at": "2026-07-14T22:10:18.529Z",
+   "resolved_at": "2026-07-14T22:32:34.957Z",
+   "components": [
+    {
+     "name": "Compute Cloud"
+    }
+   ],
+   "incident_updates": [
+    {
+     "status": "resolved",
+     "created_at": "2026-07-14T22:32:34.957Z",
+     "body": "This incident has been resolved.",
+     "affected_components": [
+      {
+       "name": "EU-NORTH1 - Compute Cloud"
+      }
+     ]
+    },
+    {
+     "status": "investigating",
+     "created_at": "2026-07-14T22:10:18.606Z",
+     "body": "We are currently investigating this issue.",
+     "affected_components": [
+      {
+       "name": "EU-NORTH1 - Compute Cloud"
+      }
+     ]
+    }
+   ]
+  },
+  {
+   "id": "4t6ltlhbqvwc",
+   "name": "Managed SkyPilot OIDC Login is unavailable",
+   "status": "resolved",
+   "impact": "minor",
+   "created_at": "2026-07-03T14:50:15.186Z",
+   "started_at": "2026-07-03T14:50:15.162Z",
+   "resolved_at": "2026-07-03T14:50:15.248Z",
+   "components": [
+    {
+     "name": "Standalone Applications"
+    },
+    {
+     "name": "Standalone Applications"
+    },
+    {
+     "name": "Standalone Applications"
+    },
+    {
+     "name": "Standalone Applications"
+    },
+    {
+     "name": "Standalone Applications"
+    },
+    {
+     "name": "Standalone Applications"
+    }
+   ],
+   "incident_updates": [
+    {
+     "status": "resolved",
+     "created_at": "2026-07-03T14:50:15.248Z",
+     "body": "Managed SkyPilot OIDC Login was unavailable since 2 of July.\nThe problem has been identified and resolved.",
+     "affected_components": [
+      {
+       "name": "EU-NORTH1 - Standalone Applications"
+      },
+      {
+       "name": "EU-NORTH2 - Standalone Applications"
+      },
+      {
+       "name": "EU-WEST1 - Standalone Applications"
+      },
+      {
+       "name": "US-CENTRAL1 - Standalone Applications"
+      },
+      {
+       "name": "ME-WEST1 - Standalone Applications"
+      },
+      {
+       "name": "UK-SOUTH1 - Standalone Applications"
+      }
+     ]
+    }
+   ]
+  },
+  {
+   "id": "cpdt1h314kv0",
+   "name": "Monitoring, Object Storage and Token Factory services are partially unavailable",
+   "status": "resolved",
+   "impact": "major",
+   "created_at": "2026-07-01T22:33:53.000Z",
+   "started_at": "2026-07-01T22:33:53.000Z",
+   "resolved_at": "2026-07-02T00:17:26.513Z",
+   "components": [
+    {
+     "name": "Object Storage"
+    },
+    {
+     "name": "Monitoring"
+    },
+    {
+     "name": "Logging"
+    },
+    {
+     "name": "Token Factory"
+    }
+   ],
+   "incident_updates": [
+    {
+     "status": "resolved",
+     "created_at": "2026-07-02T00:17:26.513Z",
+     "body": "This incident has been resolved.",
+     "affected_components": [
+      {
+       "name": "US-CENTRAL1 - Object Storage"
+      },
+      {
+       "name": "US-CENTRAL1 - Monitoring"
+      },
+      {
+       "name": "US-CENTRAL1 - Logging"
+      },
+      {
+       "name": "US-CENTRAL1 - Token Factory"
+      }
+     ]
+    },
+    {
+     "status": "monitoring",
+     "created_at": "2026-07-01T23:57:53.427Z",
+     "body": "A fix has been implemented and we are monitoring results.",
+     "affected_components": [
+      {
+       "name": "US-CENTRAL1 - Object Storage"
+      },
+      {
+       "name": "US-CENTRAL1 - Monitoring"
+      },
+      {
+       "name": "US-CENTRAL1 - Logging"
+      },
+      {
+       "name": "US-CENTRAL1 - Token Factory"
+      }
+     ]
+    },
+    {
+     "status": "investigating",
+     "created_at": "2026-07-01T23:25:13.313Z",
+     "body": "We are continuing to investigate this issue.",
+     "affected_components": [
+      {
+       "name": "US-CENTRAL1 - Object Storage"
+      },
+      {
+       "name": "US-CENTRAL1 - Monitoring"
+      },
+      {
+       "name": "US-CENTRAL1 - Logging"
+      },
+      {
+       "name": "US-CENTRAL1 - Token Factory"
+      }
+     ]
+    },
+    {
+     "status": "investigating",
+     "created_at": "2026-07-01T23:09:49.758Z",
+     "body": "We are continuing to investigate this issue.",
+     "affected_components": [
+      {
+       "name": "US-CENTRAL1 - Object Storage"
+      },
+      {
+       "name": "US-CENTRAL1 - Monitoring"
+      },
+      {
+       "name": "US-CENTRAL1 - Logging"
+      },
+      {
+       "name": "US-CENTRAL1 - Token Factory"
+      }
+     ]
+    },
+    {
+     "status": "investigating",
+     "created_at": "2026-07-01T22:33:53.379Z",
+     "body": "We are currently experiencing partial unavailability of our Monitoring, Object Storage, Token Factory services. Our team is actively investigating the issue and",
+     "affected_components": [
+      {
+       "name": "US-CENTRAL1 - Object Storage"
+      },
+      {
+       "name": "US-CENTRAL1 - Monitoring"
+      },
+      {
+       "name": "US-CENTRAL1 - Logging"
+      }
+     ]
+    }
+   ]
+  },
+  {
+   "id": "fnqn1p9msjrg",
+   "name": "New virtual machines are not being created",
+   "status": "resolved",
+   "impact": "minor",
+   "created_at": "2026-06-30T13:24:15.800Z",
+   "started_at": "2026-06-30T13:24:15.786Z",
+   "resolved_at": "2026-06-30T13:28:29.589Z",
+   "components": [
+    {
+     "name": "Compute Cloud"
+    },
+    {
+     "name": "Network Block Storage"
+    }
+   ],
+   "incident_updates": [
+    {
+     "status": "resolved",
+     "created_at": "2026-06-30T13:28:29.589Z",
+     "body": "This incident has been resolved.",
+     "affected_components": [
+      {
+       "name": "ME-WEST1 - Compute Cloud"
+      },
+      {
+       "name": "ME-WEST1 - Network Block Storage"
+      }
+     ]
+    },
+    {
+     "status": "monitoring",
+     "created_at": "2026-06-30T13:27:19.481Z",
+     "body": "A fix has been implemented and we are monitoring the results.",
+     "affected_components": [
+      {
+       "name": "ME-WEST1 - Compute Cloud"
+      },
+      {
+       "name": "ME-WEST1 - Network Block Storage"
+      }
+     ]
+    },
+    {
+     "status": "identified",
+     "created_at": "2026-06-30T13:24:15.918Z",
+     "body": "The issue has been identified and a fix is being implemented.",
+     "affected_components": [
+      {
+       "name": "ME-WEST1 - Compute Cloud"
+      },
+      {
+       "name": "ME-WEST1 - Network Block Storage"
+      }
+     ]
+    }
+   ]
+  },
+  {
+   "id": "931cbw38myg9",
+   "name": "Object Storage service partially unavailable in US-CENTRAL1 region",
+   "status": "resolved",
+   "impact": "major",
+   "created_at": "2026-06-24T14:08:04.000Z",
+   "started_at": "2026-06-24T14:08:04.000Z",
+   "resolved_at": "2026-06-24T15:44:50.561Z",
+   "components": [
+    {
+     "name": "Object Storage"
+    }
+   ],
+   "incident_updates": [
+    {
+     "status": "resolved",
+     "created_at": "2026-06-24T15:44:50.561Z",
+     "body": "The Object Storage service in the US-CENTRAL1 region has been fully restored and is operating normally. The root cause has been identified, and corrective measu",
+     "affected_components": [
+      {
+       "name": "US-CENTRAL1 - Object Storage"
+      }
+     ]
+    },
+    {
+     "status": "monitoring",
+     "created_at": "2026-06-24T15:01:38.586Z",
+     "body": "The Object Storage service in the US-CENTRAL1 region has recovered and is operating normally. We are monitoring to confirm stability. Root cause analysis is ong",
+     "affected_components": [
+      {
+       "name": "US-CENTRAL1 - Object Storage"
+      }
+     ]
+    },
+    {
+     "status": "investigating",
+     "created_at": "2026-06-24T14:39:06.269Z",
+     "body": "We are continuing to investigate this issue.",
+     "affected_components": [
+      {
+       "name": "US-CENTRAL1 - Object Storage"
+      }
+     ]
+    },
+    {
+     "status": "investigating",
+     "created_at": "2026-06-24T14:34:04.726Z",
+     "body": "We are investigating an outage affecting the Object Storage service in the US-CENTRAL1 region.",
+     "affected_components": [
+      {
+       "name": "US-CENTRAL1 - Object Storage"
+      }
+     ]
+    }
+   ]
+  },
+  {
+   "id": "gl0qn1pjmr4w",
+   "name": "One InfiniBand switch failure",
+   "status": "resolved",
+   "impact": "minor",
+   "created_at": "2026-06-16T20:02:39.681Z",
+   "started_at": "2026-06-16T20:02:39.669Z",
+   "resolved_at": "2026-06-16T20:34:45.983Z",
+   "components": [
+    {
+     "name": "Compute Cloud"
+    }
+   ],
+   "incident_updates": [
+    {
+     "status": "resolved",
+     "created_at": "2026-06-16T20:34:45.983Z",
+     "body": "This incident has been resolved.",
+     "affected_components": [
+      {
+       "name": "EU-NORTH1 - Compute Cloud"
+      }
+     ]
+    },
+    {
+     "status": "identified",
+     "created_at": "2026-06-16T20:02:39.779Z",
+     "body": "One InfiniBand switch in the fabric-3 cluster is down.",
+     "affected_components": [
+      {
+       "name": "EU-NORTH1 - Compute Cloud"
+      }
+     ]
+    }
+   ]
+  },
+  {
+   "id": "cqxq24hm0r47",
+   "name": "Network Connectivity Issues",
+   "status": "resolved",
+   "impact": "minor",
+   "created_at": "2026-06-15T18:27:57.635Z",
+   "started_at": "2026-06-15T18:27:57.625Z",
+   "resolved_at": "2026-06-15T18:49:11.107Z",
+   "components": [
+    {
+     "name": "Virtual Private Cloud (Networking)"
+    }
+   ],
+   "incident_updates": [
+    {
+     "status": "resolved",
+     "created_at": "2026-06-15T18:49:11.107Z",
+     "body": "Connectivity issues are gone now. Intermittent failure is being investigated in the background with the uplink provider, while the Nebius Netowrking team contin",
+     "affected_components": [
+      {
+       "name": "EU-NORTH1 - Virtual Private Cloud (Networking)"
+      }
+     ]
+    },
+    {
+     "status": "investigating",
+     "created_at": "2026-06-15T18:27:57.716Z",
+     "body": "We have noticed that there have been problems with the connection latency to external addresses in eu-north1.",
+     "affected_components": [
+      {
+       "name": "EU-NORTH1 - Virtual Private Cloud (Networking)"
+      }
+     ]
+    }
+   ]
+  },
+  {
+   "id": "396w0qndykr0",
+   "name": "Compute instances startup issues",
+   "status": "resolved",
+   "impact": "none",
+   "created_at": "2026-06-10T20:56:13.667Z",
+   "started_at": "2026-06-10T20:56:13.657Z",
+   "resolved_at": "2026-06-10T23:28:59.777Z",
+   "components": [
+    {
+     "name": "Compute Cloud"
+    }
+   ],
+   "incident_updates": [
+    {
+     "status": "resolved",
+     "created_at": "2026-06-10T23:28:59.777Z",
+     "body": "This incident has been resolved.",
+     "affected_components": [
+      {
+       "name": "UK-SOUTH1 - Compute Cloud"
+      }
+     ]
+    },
+    {
+     "status": "investigating",
+     "created_at": "2026-06-10T20:56:13.739Z",
+     "body": "We're currently investigating an issue affecting Compute instances startup. Some requests to create or start instances may fail. Already-running instances are n",
+     "affected_components": [
+      {
+       "name": "UK-SOUTH1 - Compute Cloud"
+      }
+     ]
+    }
+   ]
+  },
+  {
+   "id": "848r48085rqp",
+   "name": "Some public IPs unreachable in eu-north1",
+   "status": "resolved",
+   "impact": "minor",
+   "created_at": "2026-06-09T10:30:00.000Z",
+   "started_at": "2026-06-09T13:25:11.453Z",
+   "resolved_at": "2026-06-09T10:30:00.000Z",
+   "components": [],
+   "incident_updates": [
+    {
+     "status": "resolved",
+     "created_at": "2026-06-09T13:25:11.506Z",
+     "body": "Some of public IPs became unreachable.",
+     "affected_components": []
+    }
+   ]
+  },
+  {
+   "id": "27vxqjc1x75b",
+   "name": "Network Connectivity Issues",
+   "status": "resolved",
+   "impact": "major",
+   "created_at": "2026-06-04T09:46:26.000Z",
+   "started_at": "2026-06-04T09:46:26.000Z",
+   "resolved_at": "2026-06-04T11:14:49.038Z",
+   "components": [
+    {
+     "name": "Object Storage"
+    },
+    {
+     "name": "Monitoring"
+    },
+    {
+     "name": "Logging"
+    }
+   ],
+   "incident_updates": [
+    {
+     "status": "resolved",
+     "created_at": "2026-06-04T11:14:49.038Z",
+     "body": "This incident has been resolved.",
+     "affected_components": [
+      {
+       "name": "ME-WEST1 - Object Storage"
+      },
+      {
+       "name": "ME-WEST1 - Monitoring"
+      },
+      {
+       "name": "ME-WEST1 - Logging"
+      }
+     ]
+    },
+    {
+     "status": "monitoring",
+     "created_at": "2026-06-04T10:29:52.479Z",
+     "body": "The issue has been resolved, and affected services have recovered.\nThe situation continues to be monitored to ensure service stability.",
+     "affected_components": [
+      {
+       "name": "ME-WEST1 - Object Storage"
+      },
+      {
+       "name": "ME-WEST1 - Monitoring"
+      },
+      {
+       "name": "ME-WEST1 - Logging"
+      }
+     ]
+    },
+    {
+     "status": "investigating",
+     "created_at": "2026-06-04T10:22:26.502Z",
+     "body": "An issue with Internet connectivity in the data center has been detected.\n\nImpact:\n- Logs and metrics from virtual machines are not being delivered.\n- Object St",
+     "affected_components": [
+      {
+       "name": "ME-WEST1 - Object Storage"
+      },
+      {
+       "name": "ME-WEST1 - Monitoring"
+      },
+      {
+       "name": "ME-WEST1 - Logging"
+      }
+     ]
+    }
+   ]
+  },
+  {
+   "id": "fh82wsfxcsbd",
+   "name": "Unable to allocate new public IPv4 addresses in eu-north1",
+   "status": "resolved",
+   "impact": "minor",
+   "created_at": "2026-06-02T10:53:19.037Z",
+   "started_at": "2026-06-02T10:53:19.027Z",
+   "resolved_at": "2026-06-03T11:06:18.624Z",
+   "components": [
+    {
+     "name": "Virtual Private Cloud (Networking)"
+    }
+   ],
+   "incident_updates": [
+    {
+     "status": "resolved",
+     "created_at": "2026-06-03T11:06:18.624Z",
+     "body": "This incident has been resolved.",
+     "affected_components": [
+      {
+       "name": "EU-NORTH1 - Virtual Private Cloud (Networking)"
+      }
+     ]
+    },
+    {
+     "status": "monitoring",
+     "created_at": "2026-06-02T12:36:00.806Z",
+     "body": "Public IPv4 address capacity has been restored in eu-north1, and new public IPv4 addresses can be allocated to workloads again. We are monitoring the service to",
+     "affected_components": [
+      {
+       "name": "EU-NORTH1 - Virtual Private Cloud (Networking)"
+      }
+     ]
+    },
+    {
+     "status": "identified",
+     "created_at": "2026-06-02T11:52:32.732Z",
+     "body": "We have identified the cause: the pool of available public IPv4 addresses in eu-north1 is currently exhausted, which is why new public IPv4 addresses cannot be ",
+     "affected_components": [
+      {
+       "name": "EU-NORTH1 - Virtual Private Cloud (Networking)"
+      }
+     ]
+    },
+    {
+     "status": "investigating",
+     "created_at": "2026-06-02T10:53:19.328Z",
+     "body": "We are investigating an issue in eu-north1 affecting Virtual Private Cloud (Networking). New public IPv4 addresses cannot currently be allocated to workloads. C",
+     "affected_components": [
+      {
+       "name": "EU-NORTH1 - Virtual Private Cloud (Networking)"
+      }
+     ]
+    }
+   ]
+  },
+  {
+   "id": "hp1nvrgvvhtp",
+   "name": "Power issues",
+   "status": "resolved",
+   "impact": "none",
+   "created_at": "2026-05-29T21:22:00.000Z",
+   "started_at": "2026-05-29T22:20:19.856Z",
+   "resolved_at": "2026-05-29T21:22:00.000Z",
+   "components": [],
+   "incident_updates": [
+    {
+     "status": "resolved",
+     "created_at": "2026-05-29T22:20:19.913Z",
+     "body": "Several servers were rebooted.",
+     "affected_components": []
+    }
+   ]
+  },
+  {
+   "id": "qw3zx3m84fz7",
+   "name": "Unable to perform operations on a small subset of virtual machines",
+   "status": "resolved",
+   "impact": "minor",
+   "created_at": "2026-05-19T13:45:19.000Z",
+   "started_at": "2026-05-19T13:45:19.000Z",
+   "resolved_at": "2026-05-19T15:40:15.899Z",
+   "components": [
+    {
+     "name": "Compute Cloud"
+    }
+   ],
+   "incident_updates": [
+    {
+     "status": "resolved",
+     "created_at": "2026-05-19T15:40:15.899Z",
+     "body": "This incident has been resolved.",
+     "affected_components": [
+      {
+       "name": "EU-WEST1 - Compute Cloud"
+      }
+     ]
+    },
+    {
+     "status": "monitoring",
+     "created_at": "2026-05-19T14:40:45.385Z",
+     "body": "A fix has been implemented and we are monitoring the results.",
+     "affected_components": [
+      {
+       "name": "EU-WEST1 - Compute Cloud"
+      }
+     ]
+    },
+    {
+     "status": "identified",
+     "created_at": "2026-05-19T14:30:19.175Z",
+     "body": "The issue has been identified and a fix is being implemented.",
+     "affected_components": [
+      {
+       "name": "EU-WEST1 - Compute Cloud"
+      }
+     ]
+    }
+   ]
+  },
+  {
+   "id": "m5xds61fs8z3",
+   "name": "InfiniBand performance degradation",
+   "status": "resolved",
+   "impact": "minor",
+   "created_at": "2026-05-13T18:45:28.000Z",
+   "started_at": "2026-05-13T18:45:28.000Z",
+   "resolved_at": "2026-05-13T21:05:05.516Z",
+   "components": [
+    {
+     "name": "Compute Cloud"
+    }
+   ],
+   "incident_updates": [
+    {
+     "status": "resolved",
+     "created_at": "2026-05-13T21:05:05.516Z",
+     "body": "This incident has been resolved.",
+     "affected_components": [
+      {
+       "name": "UK-SOUTH1 - Compute Cloud"
+      }
+     ]
+    },
+    {
+     "status": "investigating",
+     "created_at": "2026-05-13T20:22:28.450Z",
+     "body": "We are investigating reduced InfiniBand fabric performance affecting GPU workloads in the uk-south1 region. Customers may observe lower throughput and slower di",
+     "affected_components": [
+      {
+       "name": "UK-SOUTH1 - Compute Cloud"
+      }
+     ]
+    }
+   ]
+  },
+  {
+   "id": "cks4sy0gvw9b",
+   "name": "Nebius console is unavailable",
+   "status": "resolved",
+   "impact": "none",
+   "created_at": "2026-05-07T21:03:44.739Z",
+   "started_at": "2026-05-07T21:03:44.712Z",
+   "resolved_at": "2026-05-07T21:28:03.334Z",
+   "components": [
+    {
+     "name": "Management Console"
+    },
+    {
+     "name": "Management Console"
+    },
+    {
+     "name": "Management Console"
+    },
+    {
+     "name": "Management Console"
+    },
+    {
+     "name": "Management Console"
+    },
+    {
+     "name": "Management Console"
+    }
+   ],
+   "incident_updates": [
+    {
+     "status": "resolved",
+     "created_at": "2026-05-07T21:28:03.334Z",
+     "body": "Issue resolved 21:10.",
+     "affected_components": [
+      {
+       "name": "EU-NORTH1 - Management Console"
+      },
+      {
+       "name": "EU-NORTH2 - Management Console"
+      },
+      {
+       "name": "EU-WEST1 - Management Console"
+      },
+      {
+       "name": "US-CENTRAL1 - Management Console"
+      },
+      {
+       "name": "ME-WEST1 - Management Console"
+      },
+      {
+       "name": "UK-SOUTH1 - Management Console"
+      }
+     ]
+    },
+    {
+     "status": "investigating",
+     "created_at": "2026-05-07T21:26:23.255Z",
+     "body": "We are continuing to investigate this issue.",
+     "affected_components": [
+      {
+       "name": "EU-NORTH1 - Management Console"
+      },
+      {
+       "name": "EU-NORTH2 - Management Console"
+      },
+      {
+       "name": "EU-WEST1 - Management Console"
+      },
+      {
+       "name": "US-CENTRAL1 - Management Console"
+      },
+      {
+       "name": "ME-WEST1 - Management Console"
+      },
+      {
+       "name": "UK-SOUTH1 - Management Console"
+      }
+     ]
+    },
+    {
+     "status": "investigating",
+     "created_at": "2026-05-07T21:03:44.922Z",
+     "body": "Nebius console is unavailable",
+     "affected_components": [
+      {
+       "name": "EU-NORTH1 - Management Console"
+      },
+      {
+       "name": "EU-NORTH2 - Management Console"
+      },
+      {
+       "name": "EU-WEST1 - Management Console"
+      },
+      {
+       "name": "US-CENTRAL1 - Management Console"
+      },
+      {
+       "name": "ME-WEST1 - Management Console"
+      },
+      {
+       "name": "UK-SOUTH1 - Management Console"
+      }
+     ]
+    }
+   ]
+  },
+  {
+   "id": "k8l3262dldfj",
+   "name": "Managed Kubernetes operations can take longer than expected",
+   "status": "resolved",
+   "impact": "major",
+   "created_at": "2026-05-06T12:39:30.563Z",
+   "started_at": "2026-05-06T12:39:30.555Z",
+   "resolved_at": "2026-05-07T07:45:47.292Z",
+   "components": [
+    {
+     "name": "Managed Service for Kubernetes\u00ae"
+    }
+   ],
+   "incident_updates": [
+    {
+     "status": "resolved",
+     "created_at": "2026-05-07T07:45:47.292Z",
+     "body": "This incident has been resolved.",
+     "affected_components": [
+      {
+       "name": "US-CENTRAL1 - Managed Service for Kubernetes\u00ae"
+      }
+     ]
+    },
+    {
+     "status": "monitoring",
+     "created_at": "2026-05-06T15:42:02.146Z",
+     "body": "A fix has been implemented and we are monitoring the results.",
+     "affected_components": [
+      {
+       "name": "US-CENTRAL1 - Managed Service for Kubernetes\u00ae"
+      }
+     ]
+    },
+    {
+     "status": "identified",
+     "created_at": "2026-05-06T13:37:07.107Z",
+     "body": "The issue has been identified and the fix is being implemented",
+     "affected_components": [
+      {
+       "name": "US-CENTRAL1 - Managed Service for Kubernetes\u00ae"
+      }
+     ]
+    },
+    {
+     "status": "investigating",
+     "created_at": "2026-05-06T12:39:30.651Z",
+     "body": "Managed Kubernetes operations can take longer than expected, leading to delays or timeouts. Deletion operations are particularly impacted.\nThe team is currently",
+     "affected_components": [
+      {
+       "name": "US-CENTRAL1 - Managed Service for Kubernetes\u00ae"
+      }
+     ]
+    }
+   ]
+  },
+  {
+   "id": "mz40brb5n706",
+   "name": "Partial unavailability of external models in Token Factory",
+   "status": "resolved",
+   "impact": "major",
+   "created_at": "2026-04-29T15:36:38.858Z",
+   "started_at": "2026-04-29T15:36:38.852Z",
+   "resolved_at": "2026-04-30T08:05:26.569Z",
+   "components": [
+    {
+     "name": "Token Factory"
+    }
+   ],
+   "incident_updates": [
+    {
+     "status": "resolved",
+     "created_at": "2026-04-30T08:05:26.569Z",
+     "body": "The external provider has restored operations. All models are now available.",
+     "affected_components": [
+      {
+       "name": "US-CENTRAL1 - Token Factory"
+      }
+     ]
+    },
+    {
+     "status": "investigating",
+     "created_at": "2026-04-29T15:36:38.937Z",
+     "body": "The following serverless models are unavailable due to external provider downtime.\n\nQwen/Qwen3-235B-A22B-Thinking-2507-fast\nQwen/Qwen3-Next-80B-A3B-Thinking-fas",
+     "affected_components": [
+      {
+       "name": "US-CENTRAL1 - Token Factory"
+      }
+     ]
+    }
+   ]
+  }
+ ]
+}

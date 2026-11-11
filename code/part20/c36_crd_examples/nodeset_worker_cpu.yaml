@@ -1,0 +1,58 @@
+# CPU NodeSet from helm/nodesets
+# Source: nebius/soperator commit f10392e1264a (2026-11-10), `helm template` of the chart named below with default values, namespace slurm.
+# Labels added by Helm were removed. Validated with tools/check_crd_yaml.py against config/crd/bases.
+# FIXED vs the chart default: spool is `emptyDir: {}` (as in nebius-solutions-library flux_release_nodesets.yaml.tftpl, commit 3db4054d463d)
+# because the chart's default `volumeClaimTemplateSpec` under NodeSet spool is not in the NodeSet CRD schema (corev1.VolumeSource).
+apiVersion: slurm.nebius.ai/v1alpha1
+kind: NodeSet
+metadata:
+  name: worker-cpu
+  namespace: slurm
+  labels:
+    app.kubernetes.io/name: helm-nodesets
+    app.kubernetes.io/instance: t
+    app.kubernetes.io/version: 5.0.0
+spec:
+  replicas: 6
+  maxUnavailable: 500
+  updateStrategy: rollingUpdate
+  nodeConfig:
+    features:
+    - cpu
+    static: Boards=1 SocketsPerBoard=1 CoresPerSocket=4 ThreadsPerCore=1
+    dynamic: InstanceId={{ .PodName }}
+  slurmd:
+    image:
+      repository: cr.nebius.cloud/soperator/worker_slurmd
+      tag: 5.0.0-slurm26.05.4-nebius-1
+      pullPolicy: IfNotPresent
+    port: 6818
+    resources:
+      cpu: 500m
+      memory: 500Mi
+    volumes:
+      spool:
+        emptyDir: {}
+      jail:
+        persistentVolumeClaim:
+          claimName: jail-pvc
+    security:
+      limitsConfig: ''
+      appArmorProfile: unconfined
+      procMount: Default
+  munge:
+    image:
+      repository: cr.nebius.cloud/soperator/munge
+      tag: 5.0.0-slurm26.05.4-nebius-1
+      pullPolicy: IfNotPresent
+    resources:
+      cpu: 2000m
+      memory: 4Gi
+      ephemeral-storage: 5Gi
+    security:
+      limitsConfig: ''
+      appArmorProfile: unconfined
+  sssdDebugLevel: 0
+  priorityClass: soperator-worker-high-priority
+  nodeSelector:
+    slurm.nebius.ai/nodeset-name: worker-cpu

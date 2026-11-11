@@ -221,7 +221,7 @@ Print this section. Every row names the chapter it came from, and each fact was 
 | Ready below desired | Shrink, herd, slow load | Router backend list, load time | 20.18 |
 | Output complaints, infra green | Finish_reason drift, quantisation, version skew | `vllm:request_success_total` by finished reason | 20.18 |
 
-Three more facts for this table. A hang still returns 200 on `/health` in vLLM v0.32.0, so use the token rate (20.18). Xid 79 is the GPU falling off the bus, but 20.16 and 20.18 word the catalog action differently, so read the live NVIDIA catalog before quoting an action. 429 means this tenant is over its limit and another replica gives the same answer, while 503 means this server is overloaded or draining and one retry elsewhere is fine (20.21).
+Three more facts for this table. A hang still returns 200 on `/health` in vLLM v0.32.0, so use the token rate (20.18). Xid 79 is the GPU falling off the bus. The catalog's immediate action is to restart the bare metal node, and its investigatory action is to contact support (20.16 and 20.18 agree). Read the live NVIDIA catalog before quoting any other action. 429 means this tenant is over its limit and another replica gives the same answer, while 503 means this server is overloaded or draining and one retry elsewhere is fine (20.21).
 
 **Kubernetes debug order**
 
@@ -698,5 +698,5 @@ Not verified:
 
 - No Nebius round was observed. The plan is untested against a real loop.
 - The `--today` examples and the scheduling arithmetic were run. The mock round and the flashcard review were not.
-- The Xid 79 catalog action is worded differently in 20.16 and 20.18. The cheat sheet therefore omits the action. Check the live NVIDIA Xid catalog.
+- The Xid 79 catalog action (restart the bare metal node, then contact support) was checked against the NVIDIA Xid catalog on 2026-11-11 and 20.16 and 20.18 now agree. Check the live catalog before quoting other actions.
 - Chapters 20.1 and 20.2 were written by other authors in parallel. They are linked but were not reviewed for the cheat sheet.

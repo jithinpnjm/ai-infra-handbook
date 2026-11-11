@@ -1,0 +1,164 @@
+syntax = "proto3";
+
+package nebius.compute.v1;
+
+import "buf/validate/validate.proto";
+import "google/rpc/status.proto";
+import "nebius/annotations.proto";
+import "nebius/common/v1/metadata.proto";
+import "nebius/common/v1/operation.proto";
+import "nebius/common/v1/operation_service.proto";
+import "nebius/compute/v1/instance.proto";
+import "nebius/compute/v1/operation_service.proto";
+
+option go_package = "github.com/nebius/gosdk/proto/nebius/compute/v1";
+option java_multiple_files = true;
+option java_outer_classname = "InstanceServiceProto";
+option java_package = "ai.nebius.pub.compute.v1";
+
+service InstanceService {
+  option (api_service_name) = "compute";
+
+  // Retrieves detailed information about a specific VM instance by its ID.
+  rpc Get(GetInstanceRequest) returns (Instance);
+
+  // Retrieves detailed information about a specific VM instance by its parent and name.
+  rpc GetByName(common.v1.GetByNameRequest) returns (Instance);
+
+  // Retrieves detailed information about specific VMs by their IDs.
+  // If instance cannot be retrieved (e.g. not found) error is returned in place of instance instead.
+  rpc BatchGet(BatchGetRequest) returns (BatchGetResponse);
+
+  // Lists all VM instances within a specified parent.
+  rpc List(ListInstancesRequest) returns (ListInstancesResponse);
+
+  // Lists all VM instances that belong to the specified NVL instance group.
+  rpc ListInstancesByNVLInstanceGroup(ListInstancesByNVLInstanceGroupRequest) returns (ListInstancesResponse);
+
+  // Creates a new VM instance based on the provided specification.
+  // For details, see https://docs.nebius.com/compute/virtual-machines/manage
+  rpc Create(CreateInstanceRequest) returns (common.v1.Operation);
+
+  // Updates an existing VM instance with new configuration parameters.
+  rpc Update(UpdateInstanceRequest) returns (common.v1.Operation);
+
+  // Deletes a VM instance by its ID. Also deletes all the managed disks, declared in the instance spec.
+  // Fails if cannot delete any of the managed disks.
+  rpc Delete(DeleteInstanceRequest) returns (common.v1.Operation);
+
+  // Starts a stopped VM instance.
+  rpc Start(StartInstanceRequest) returns (common.v1.Operation);
+
+  // Stops a running VM instance.
+  rpc Stop(StopInstanceRequest) returns (common.v1.Operation);
+
+  // Lists all operations that were performed within a specific parent resource.
+  rpc ListOperationsByParent(ListOperationsByParentRequest) returns (common.v1.ListOperationsResponse) {
+    option (request_fields) = {
+      field_path: "parent_id"
+      nid: {
+        resource: ["*"]
+      }
+    };
+  }
+}
+
+message GetInstanceRequest {
+  string id = 1 [(nid) = {
+    resource: ["computeinstance"]
+  }];
+}
+
+message ListInstancesRequest {
+  string parent_id = 1 [(nid) = {
+    resource: ["project"]
+  }];
+
+  int64 page_size = 2;
+
+  string page_token = 3;
+}
+
+message CreateInstanceRequest {
+  common.v1.ResourceMetadata metadata = 1 [(nid) = {
+    parent_resource: ["project"]
+  }];
+
+  InstanceSpec spec = 2;
+}
+
+message UpdateInstanceRequest {
+  common.v1.ResourceMetadata metadata = 1 [(nid) = {
+    parent_resource: ["project"]
+  }];
+
+  InstanceSpec spec = 2;
+}
+
+message DeleteInstanceRequest {
+  string id = 1 [(nid) = {
+    resource: ["computeinstance"]
+  }];
+}
+
+message ListInstancesResponse {
+  repeated Instance items = 1;
+
+  string next_page_token = 2;
+}
+
+message StartInstanceRequest {
+  string id = 1 [(nid) = {
+    resource: ["computeinstance"]
+  }];
+}
+
+message StopInstanceRequest {
+  string id = 1 [(nid) = {
+    resource: ["computeinstance"]
+  }];
+}
+
+message ListInstancesByNVLInstanceGroupRequest {
+  // ID of the NVL instance group whose instances will be listed.
+  string nvl_instance_group_id = 1 [
+    (buf.validate.field).required = true,
+    (nid) = {
+      resource: ["computenvlinstancegroup"]
+    }
+  ];
+
+  // Maximum number of instances to return in a single page.
+  int64 page_size = 2;
+
+  // Page token returned by a previous call, used to fetch the next page.
+  string page_token = 3;
+}
+
+message BatchGetRequest {
+  // List of instances to fetch.
+  repeated string instance_ids = 1 [
+    (buf.validate.field) = {
+      repeated: {max_items: 1000}
+      required: true
+    },
+    (nid) = {
+      resource: ["computeinstance"]
+    }
+  ];
+}
+
+message BatchGetResponse {
+  message BatchGetResult {
+    oneof result {
+      // Will be set if we successfully fetched instance info.
+      Instance instance = 1;
+
+      // Will be set if any error happened during instance info fetch (not found, permission denied).
+      google.rpc.Status error = 2;
+    }
+  }
+
+  // Map where key is instance id from original request array.
+  map<string, BatchGetResult> items = 1;
+}

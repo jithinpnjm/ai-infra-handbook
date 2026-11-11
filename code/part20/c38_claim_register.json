@@ -1,0 +1,414 @@
+{
+  "description": "Claims about Nebius Token Factory inference, each with source, date, tag and (for vendor, third-party and report claims) the workload. Docs entries are dated by fetch day.",
+  "as_of": "2026-11-11",
+  "entries": [
+    {
+      "id": "O01",
+      "claim": "Two flavors, Base and Fast, give identical model outputs. Fast uses smaller batches, more compute and speculative decoding. Select it by appending -fast to the model name.",
+      "source_url": "https://docs.tokenfactory.nebius.com/ai-models-inference/overview",
+      "date": "2026-11-11",
+      "tag": "official"
+    },
+    {
+      "id": "O02",
+      "claim": "Documented optimisations: KV cache, paged attention, flash attention, quantization, continuous batching, context caching, speculative decoding. Engine and version are not named.",
+      "source_url": "https://docs.tokenfactory.nebius.com/ai-models-inference/overview",
+      "date": "2026-11-11",
+      "tag": "official"
+    },
+    {
+      "id": "O03",
+      "claim": "The API accepts the full set of vLLM parameters; the Playground only the common ones.",
+      "source_url": "https://docs.tokenfactory.nebius.com/ai-models-inference/overview",
+      "date": "2026-11-11",
+      "tag": "official"
+    },
+    {
+      "id": "O04",
+      "claim": "Dedicated endpoint fields: gpu_type, gpu_count per replica, region (eu-north1, eu-west1, us-central1), scaling.min_replicas and max_replicas, enabled. Total max GPUs is gpu_count times max_replicas.",
+      "source_url": "https://docs.tokenfactory.nebius.com/ai-models-inference/dedicated-endpoints/operating",
+      "date": "2026-11-11",
+      "tag": "official"
+    },
+    {
+      "id": "O05",
+      "claim": "Endpoint region cannot be updated after creation. Scaling changes can trigger provisioning of extra replicas with a warm-up period.",
+      "source_url": "https://docs.tokenfactory.nebius.com/ai-models-inference/dedicated-endpoints/operating",
+      "date": "2026-11-11",
+      "tag": "official"
+    },
+    {
+      "id": "O06",
+      "claim": "Minimum replicas are reserved and non-preemptible only while the endpoint is active. Scaling above minimum depends on burst capacity. Stopping releases GPUs to a shared pool. No formal SLA unless covered by contract.",
+      "source_url": "https://docs.tokenfactory.nebius.com/ai-models-inference/dedicated-endpoints/capacity-and-scaling",
+      "date": "2026-11-11",
+      "tag": "official"
+    },
+    {
+      "id": "O07",
+      "claim": "Custom model weights on dedicated endpoints are in beta and available on request.",
+      "source_url": "https://docs.tokenfactory.nebius.com/ai-models-inference/dedicated-endpoints/custom-weights",
+      "date": "2026-11-11",
+      "tag": "official"
+    },
+    {
+      "id": "O08",
+      "claim": "Fine-tuned models (LoRA or full) deploy only via Dedicated endpoints. MoE LoRA adapters must be merged into the exact base weights before deployment.",
+      "source_url": "https://docs.tokenfactory.nebius.com/post-training/merge-moe-lora-weights",
+      "date": "2026-11-11",
+      "tag": "official"
+    },
+    {
+      "id": "O09",
+      "claim": "Custom speculator jobs use method spec-draft. Architectures: eagle3 (Token Factory only) and eagle3_original (portable to vLLM). Losses kl, lk_alpha, lk_hybrid. Reported metrics include acceptance_rate and number_of_tokens per head.",
+      "source_url": "https://docs.tokenfactory.nebius.com/post-training/custom-speculator",
+      "date": "2026-11-11",
+      "tag": "official"
+    },
+    {
+      "id": "O10",
+      "claim": "A trained drafter is served in vLLM through --speculative-config. Eagle heads share weights, so num_speculative_tokens can be set from 1 to N and should be tuned to the observed acceptance.",
+      "source_url": "https://docs.tokenfactory.nebius.com/post-training/custom-speculator",
+      "date": "2026-11-11",
+      "tag": "official"
+    },
+    {
+      "id": "O11",
+      "claim": "Dynamic rate limits: rolling 15-minute windows, x1.2 at 80 percent usage or more, divide by 1.5 at 50 percent or less, hard ceiling 20x base. Over-limit requests may be served at lower priority with x-ratelimit-over-limit: yes.",
+      "source_url": "https://docs.tokenfactory.nebius.com/ai-models-inference/rate-limits",
+      "date": "2026-11-11",
+      "tag": "official"
+    },
+    {
+      "id": "O12",
+      "claim": "service_tier values: auto, default, over-limit, flex, no-limit. Flex does not consume rate-limit credits, runs at lower priority and can still return 429.",
+      "source_url": "https://docs.tokenfactory.nebius.com/api-reference/inference/create-chat-completion",
+      "date": "2026-11-11",
+      "tag": "official"
+    },
+    {
+      "id": "O13",
+      "claim": "Inference Observability metrics exist only for Dedicated Endpoints: traffic, KV-cache hit rate (local and external hits), p50/p90/p99 latency, TTFT on streaming only, active replicas, GPU utilisation average and busiest, errors by status code.",
+      "source_url": "https://docs.tokenfactory.nebius.com/ai-models-inference/observability",
+      "date": "2026-11-11",
+      "tag": "official"
+    },
+    {
+      "id": "O14",
+      "claim": "Observability data is collected in the region where inference runs but stored in eu-north. Metrics are exposed through a Prometheus federate endpoint on read.monitoring.api.nebius.cloud, scrape interval 15 seconds or more.",
+      "source_url": "https://docs.tokenfactory.nebius.com/ai-models-inference/observability-api-integrations",
+      "date": "2026-11-11",
+      "tag": "official"
+    },
+    {
+      "id": "O15",
+      "claim": "Cached tokens are best effort. A repeat request can return cached_tokens 0 after eviction, on a different replica, or after a model or service update. The value is rounded down to a block boundary.",
+      "source_url": "https://docs.tokenfactory.nebius.com/cached-tokens",
+      "date": "2026-11-11",
+      "tag": "official"
+    },
+    {
+      "id": "O16",
+      "claim": "On Serverless the cache is shared within a model across customers. On Dedicated Endpoints each customer has an isolated cache. prompt_cache_key only helps route to the server that holds the cache.",
+      "source_url": "https://docs.tokenfactory.nebius.com/cached-tokens",
+      "date": "2026-11-11",
+      "tag": "official"
+    },
+    {
+      "id": "O17",
+      "claim": "Public serverless shows region Global. Processing location can change at any time without notice. Not intended for production that needs a stable region.",
+      "source_url": "https://docs.tokenfactory.nebius.com/public-serverless",
+      "date": "2026-11-11",
+      "tag": "official"
+    },
+    {
+      "id": "O18",
+      "claim": "Dedicated endpoints use no multi-region routing, load balancing or automatic overflow or failover to other regions.",
+      "source_url": "https://docs.tokenfactory.nebius.com/legal/legal-quick-guide",
+      "date": "2026-11-11",
+      "tag": "official"
+    },
+    {
+      "id": "O19",
+      "claim": "By default inputs and outputs may be stored and used for speculative decoding, in Finland. Zero Data Retention opts out and may reduce inference speed.",
+      "source_url": "https://docs.tokenfactory.nebius.com/legal/legal-quick-guide",
+      "date": "2026-11-11",
+      "tag": "official"
+    },
+    {
+      "id": "O20",
+      "claim": "Serverless models are removed on fixed dates (2026-06-22, 2026-08-31, 2026-11-09) with no automatic rerouting. Dedicated endpoints for the same models are unaffected. June removals included several -fast variants.",
+      "source_url": "https://docs.tokenfactory.nebius.com/november-2026-deprecation-notice",
+      "date": "2026-11-11",
+      "tag": "official"
+    },
+    {
+      "id": "O21",
+      "claim": "Structured output supports json_object and json_schema. Support differs per model because of training data or inference engine limits.",
+      "source_url": "https://docs.tokenfactory.nebius.com/ai-models-inference/json",
+      "date": "2026-11-11",
+      "tag": "official"
+    },
+    {
+      "id": "O22",
+      "claim": "Function calling is controlled by tool_choice. Model support differs.",
+      "source_url": "https://docs.tokenfactory.nebius.com/ai-models-inference/function-calling",
+      "date": "2026-11-11",
+      "tag": "official"
+    },
+    {
+      "id": "O23",
+      "claim": "OpenAPI 20261109: ModelFlavor has a quantization field; GPU enum includes B200 and B300 variants; reservation_policy AUTO, FORBID, STRICT; routing_key starts with dedicated/ and is 12 to 128 characters.",
+      "source_url": "https://api.tokenfactory.nebius.com/openapi.json",
+      "date": "2026-11-11",
+      "tag": "official"
+    },
+    {
+      "id": "O24",
+      "claim": "Status enum starting, running, updating, stopping, stopped, error. Readiness enum ready, partially_ready, not_ready. The deployment object returns ready_replicas.",
+      "source_url": "https://api.tokenfactory.nebius.com/openapi.json",
+      "date": "2026-11-11",
+      "tag": "official"
+    },
+    {
+      "id": "O25",
+      "claim": "The rate-limit page points to a Batch API with higher limits and Data Lab lists batch inference outputs. The published OpenAPI has no /v1/batches path, so the batch contract is a documentation gap. Cached-token pricing excludes batch.",
+      "source_url": "https://docs.tokenfactory.nebius.com/ai-models-inference/rate-limits",
+      "date": "2026-11-11",
+      "tag": "official"
+    },
+    {
+      "id": "O26",
+      "claim": "Fine-tuning jobs support LoRA and full-parameter training. Checkpoints include adapter_config.json for LoRA.",
+      "source_url": "https://docs.tokenfactory.nebius.com/post-training/how-to-fine-tune",
+      "date": "2026-11-11",
+      "tag": "official"
+    },
+    {
+      "id": "O27",
+      "claim": "Data Lab collects inference logs (inputs and outputs) unless Zero Data Retention is enabled, and processes them in EU-North1.",
+      "source_url": "https://docs.tokenfactory.nebius.com/data-lab/data-processing",
+      "date": "2026-11-11",
+      "tag": "official"
+    },
+    {
+      "id": "O28",
+      "claim": "The 2026-08-19 us-central1 incident made Token Factory models in that region partially or fully unavailable from 10:37 UTC until 20:25 UTC. Capacity outside the region kept serving but depends on us-central1 for deployment and scaling operations.",
+      "source_url": "https://nebius.com/blog/posts/incident-post-mortem-analysis-us-central1-service-disruption-on-august-19",
+      "date": "2026-08-27",
+      "tag": "official"
+    },
+    {
+      "id": "V01",
+      "claim": "Cache-aware routing versus default Kubernetes ClusterIP routing: average step time 4.8 s against 9.0 s, p95 17 s against 70.8 s, token cache share about 95 percent against 62 percent. A standalone load-aware baseline was not tested.",
+      "source_url": "https://nebius.com/blog/posts/routing-is-the-difference-between-scaling-and-stalling",
+      "date": "2026-02-17",
+      "tag": "vendor",
+      "workload": "SWE-style agent trajectories, devstral-2-small-2512, 300 concurrent, 3 vLLM replicas, 6 runs"
+    },
+    {
+      "id": "V02",
+      "claim": "Chat proof of concept: cache hit rate rose from about 5 percent to 50 to 60 percent with cache-aware routing and larger per-GPU buffers; Nebius states about four times lower cost.",
+      "source_url": "https://nebius.com/blog/posts/the-invisible-architecture-behind-great-chat-apps",
+      "date": "2025-12-15",
+      "tag": "vendor",
+      "workload": "anonymised conversational platform, 70B chat model, mirrored production traffic"
+    },
+    {
+      "id": "V03",
+      "claim": "Chat proof of concept used prefill-specialised and decode-specialised workers, locality-first routing and backpressure; four B200 GPUs sustained about 10 RPS.",
+      "source_url": "https://nebius.com/blog/posts/the-invisible-architecture-behind-great-chat-apps",
+      "date": "2025-12-15",
+      "tag": "vendor",
+      "workload": "anonymised conversational platform, 70B chat model, controlled tests"
+    },
+    {
+      "id": "V04",
+      "claim": "Chat proof of concept failure classes: invalid decode-worker states, KV-cache corruption fixed by a TensorRT-LLM upgrade, retry storms, router queue saturation, aggressive liveness probes, logging overload.",
+      "source_url": "https://nebius.com/blog/posts/the-invisible-architecture-behind-great-chat-apps",
+      "date": "2025-12-15",
+      "tag": "vendor",
+      "workload": "anonymised conversational platform, pre-production proof of concept"
+    },
+    {
+      "id": "V05",
+      "claim": "An FP4 checkpoint changed chat behaviour (shorter replies, more repetition, empty outputs); Nebius re-quantised with real sessions and tested FP8 against BF16 KV cache. Chat-specific alerts cover tail TTFT, cache drops, finish_reason drift and decode error bursts.",
+      "source_url": "https://nebius.com/blog/posts/the-invisible-architecture-behind-great-chat-apps",
+      "date": "2025-12-15",
+      "tag": "vendor",
+      "workload": "anonymised conversational platform, 70B chat model, A/B signals"
+    },
+    {
+      "id": "V06",
+      "claim": "Same post states a 99.9 percent SLA for dedicated endpoints and zero-retention inference. The docs say no formal SLA without a contract and that retention is on by default.",
+      "source_url": "https://nebius.com/blog/posts/the-invisible-architecture-behind-great-chat-apps",
+      "date": "2025-12-15",
+      "tag": "vendor",
+      "workload": "anonymised conversational platform deployment under contract"
+    },
+    {
+      "id": "V07",
+      "claim": "Shared KV cache tier (WEKA Augmented Memory Grid over RDMA) against HBM-only: 93 percent against 40 percent hit rate, 2.4x requests served, TTFT p95 3.82 s against 23.12 s.",
+      "source_url": "https://nebius.com/blog/posts/nebius-weka-shared-kv-cache-benchmark-hgx-b300",
+      "date": "2026-09-24",
+      "tag": "vendor",
+      "workload": "8-hour replay of agentic coding sessions, DeepSeek-V4-Pro NVFP4, one 8x B300 node, vLLM v0.23, 512 active sessions"
+    },
+    {
+      "id": "V08",
+      "claim": "Sticky routing raised exact prefix reuse from 48 to about 96 percent (+17.1 percent throughput). FP8 KV storage gave +55.7 percent throughput. Cache offload cost 3.1 to 7.8 percent throughput.",
+      "source_url": "https://nebius.com/blog/posts/in-agentic-rl-faster-tokens-are-not-enough",
+      "date": "2026-09-28",
+      "tag": "vendor",
+      "workload": "agentic RL rollouts, GLM-5.2, four B300 nodes, 1,024 matched trajectories"
+    },
+    {
+      "id": "V09",
+      "claim": "LK losses train drafters to maximise acceptance rate directly instead of KL divergence, reported better across 8B to 685B targets.",
+      "source_url": "https://nebius.com/blog/posts/lk-losses",
+      "date": "2026-04-10",
+      "tag": "vendor",
+      "workload": "drafter training, MT-bench, HumanEval, GSM8K, vLLM with patched rejection sampling"
+    },
+    {
+      "id": "V10",
+      "claim": "SlimSpec cuts the drafter LM-head cost by 4 to 5x against the full projection while keeping acceptance competitive.",
+      "source_url": "https://nebius.com/blog/posts/slimspec-faster-speculative-decoding-without-cutting-the-vocabulary",
+      "date": "2026-07-20",
+      "tag": "vendor",
+      "workload": "EAGLE-3 drafters, Llama-3.1-8B, batch sizes 1 and 64, vLLM 0.17.1, H200"
+    },
+    {
+      "id": "V11",
+      "claim": "Custom Speculator Training launched 2026-06-25. Drafters attach to a Dedicated Endpoint and deployment is reviewed by solutions engineers at launch.",
+      "source_url": "https://nebius.com/blog/posts/train-the-draft-model-for-your-workload",
+      "date": "2026-06-25",
+      "tag": "vendor",
+      "workload": "workload-specific drafters on Dedicated Endpoints, launch announcement"
+    },
+    {
+      "id": "V12",
+      "claim": "Speculative decoding is argued to cut full-model decode steps and so tail latency for long-context non-streaming MoE use. No measured numbers given.",
+      "source_url": "https://nebius.com/blog/posts/moe-spec-decoding",
+      "date": "2026-01-14",
+      "tag": "vendor",
+      "workload": "large MoE models, long-context non-streaming products, conceptual argument"
+    },
+    {
+      "id": "V13",
+      "claim": "NVIDIA Groq 3 LPX is coming to Token Factory for a subset of models with the same autoscaling and observability. 3,400 output tokens per second single user, benchmarked by Artificial Analysis.",
+      "source_url": "https://nebius.com/blog/posts/nvidia-groq-3-lpx-nebius-token-factory",
+      "date": "2026-08-24",
+      "tag": "vendor",
+      "workload": "Gemma 4 31B, single user, Groq 3 LPX"
+    },
+    {
+      "id": "V14",
+      "claim": "Eigen AI co-develops optimised open models for Token Factory. Up to 911 output tokens per second per Artificial Analysis as of 2026-03-13.",
+      "source_url": "https://nebius.com/blog/posts/nebius-and-eigen-ai-partner-to-accelerate-frontier-open-source-ai-inference",
+      "date": "2026-03-17",
+      "tag": "vendor",
+      "workload": "GPT-OSS-120B output speed on Artificial Analysis, Eigen-optimised serving"
+    },
+    {
+      "id": "V15",
+      "claim": "Clarifai is described as strengthening the system layer: serving, orchestration, hardware support, reliability. Eigen AI strengthens the model and runtime layer.",
+      "source_url": "https://nebius.com/blog/posts/the-ai-cloud-will-be-won-at-the-software-layer",
+      "date": "2026-05-13",
+      "tag": "vendor",
+      "workload": "company strategy statement, no workload"
+    },
+    {
+      "id": "V16",
+      "claim": "MLPerf Inference v6.1: five first places in 20 entries; Vera Rubin NVL72 preview on DeepSeek R1 at 16,427 tokens/s per GPU (server). These measure Nebius AI Cloud systems, not the Token Factory data plane.",
+      "source_url": "https://nebius.com/blog/posts/mlperf-inference-v6-1-results",
+      "date": "2026-09-16",
+      "tag": "vendor",
+      "workload": "MLPerf Inference v6.1 server scenario, DeepSeek R1, 36 GPUs, preview category"
+    },
+    {
+      "id": "V17",
+      "claim": "MLPerf Inference v5.1: virtual GPU instances run without virtualising the GPU or ConnectX adapters, claimed to match bare metal.",
+      "source_url": "https://nebius.com/blog/posts/bare-metal-class-performance-mlperf-inference",
+      "date": "2025-09-10",
+      "tag": "vendor",
+      "workload": "MLPerf Inference v5.1, Llama 2 70B and Llama 3.1 405B, single host"
+    },
+    {
+      "id": "V18",
+      "claim": "Dedicated Endpoints: control plane API and region-specific data plane scale independently. Example 70B deployment on 2 H100 per replica, min 2, max 8.",
+      "source_url": "https://nebius.com/blog/posts/dedicated-endpoints-and-custom-weights-hub",
+      "date": "2026-02-26",
+      "tag": "vendor",
+      "workload": "illustrative 70B configuration, no measured result"
+    },
+    {
+      "id": "V19",
+      "claim": "Launch release lists a 99.9 percent SLA for dedicated endpoints, sub-second latency and up to 70 percent cost reduction through fine-tuning and distillation.",
+      "source_url": "https://www.hpcwire.com/off-the-wire/nebius-launches-token-factory-to-deliver-production-ai-inference-at-scale/",
+      "date": "2025-11-07",
+      "tag": "vendor",
+      "workload": "press release, no workload stated"
+    },
+    {
+      "id": "V20",
+      "claim": "Inference Frontier Program frames inference in three layers: engine, fleet, production reality. It names batching, KV and prefix caching, quantization, speculative decoding, routing, multi-tenant isolation.",
+      "source_url": "https://nebius.com/blog/posts/elevating-the-craft-introducing-the-inference-frontier-program",
+      "date": "2026-03-15",
+      "tag": "vendor",
+      "workload": "community programme announcement, no measurements"
+    },
+    {
+      "id": "S01",
+      "claim": "LK losses were contributed to SpecForge as a merged pull request (number 492).",
+      "source_url": "https://github.com/sgl-project/SpecForge/pull/492",
+      "date": "2026-03-06",
+      "tag": "source-code"
+    },
+    {
+      "id": "S02",
+      "claim": "Hugging Face org nebius publishes EAGLE3 drafters for Llama 3.1 8B, Llama 3.3 70B, gpt-oss-20b, gpt-oss-120b and Qwen3-235B, plus Medusa, MLP-Speculator and MTP variants.",
+      "source_url": "https://huggingface.co/nebius",
+      "date": "2026-11-11",
+      "tag": "source-code"
+    },
+    {
+      "id": "S03",
+      "claim": "The github.com/nebius org has no fork or repo of vLLM, SGLang, LMCache, llm-d, Dynamo or TensorRT-LLM. Inference-related repos are token-factory-cookbook, tokenfactory-rl and kvax.",
+      "source_url": "https://github.com/nebius",
+      "date": "2026-11-11",
+      "tag": "source-code"
+    },
+    {
+      "id": "S04",
+      "claim": "A Nebius-affiliated author (profile company @nebius) merged a vLLM docs guide for Nebius Serverless AI. This is the AI Cloud serverless product, not Token Factory.",
+      "source_url": "https://github.com/vllm-project/vllm/pull/56414",
+      "date": "2026-09-11",
+      "tag": "source-code"
+    },
+    {
+      "id": "T01",
+      "claim": "Open vLLM issue: nebius/EAGLE3-gpt-oss-20b gives corrupted greedy output at 5 or more speculative tokens, correct with --enforce-eager.",
+      "source_url": "https://github.com/vllm-project/vllm/issues/65611",
+      "date": "2026-11-04",
+      "tag": "third-party",
+      "workload": "gpt-oss-20b on AMD MI355X, vLLM, single reporter, unconfirmed by maintainers"
+    },
+    {
+      "id": "T02",
+      "claim": "SemiAnalysis InferenceX credits Nebius as a compute supporter. No Nebius-ranked inference result was found.",
+      "source_url": "https://inferencex.semianalysis.com/about",
+      "date": "2026-11-11",
+      "tag": "third-party",
+      "workload": "benchmark programme, web-search summary of the project README, page not read in full"
+    },
+    {
+      "id": "T03",
+      "claim": "A web search surfaced a job listing naming speculative decoding, prefix caching, chunked prefill, continuous batching and disaggregated prefill and decode as Token Factory work. Not fetched.",
+      "source_url": "https://ev.careers/jobs/755546417/apply",
+      "date": "2026-11-11",
+      "tag": "report",
+      "workload": "hiring signal from a search snippet, not verified"
+    }
+  ]
+}

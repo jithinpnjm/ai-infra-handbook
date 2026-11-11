@@ -65,13 +65,13 @@ An engineer on call sees "Xid 79" in the kernel log. What now? NVIDIA's Xid cata
 |---|---|---|
 | 13 | Graphics engine exception, usually an application fault | Restart the application |
 | 31 | GPU memory page fault, an illegal address access | Restart the application |
-| 43 | Application hit a software fault, GPU stays healthy | Ignore |
+| 43 | GPU stopped processing | Ignore (investigatory action: contact support) |
 | 45 | Preemptive cleanup after other errors | Depends on whether it is alone |
-| 48 | Double-bit ECC error | Reset the GPU |
+| 48 | Double-bit ECC error | Follow the catalog's Xid 48 workflow |
 | 63 | Row or page remapping event | Ignore |
 | 64 | Row or page remapping failure | Reset the GPU |
 | 74 | NVLink error to another GPU or NVSwitch | Decode the registers, then contact support |
-| 79 | GPU inaccessible over PCIe, "fallen off the bus" | Restart the bare metal node |
+| 79 | GPU inaccessible over PCIe, "fallen off the bus" | Restart the bare metal node (investigatory action: contact support) |
 | 94 | Contained memory error, one application | Restart the application |
 | 95 | Uncontained memory error | Reset the GPU |
 | 119, 120 | GSP timeout or error | Reset the GPU |

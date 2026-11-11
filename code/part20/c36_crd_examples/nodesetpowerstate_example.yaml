@@ -1,0 +1,11 @@
+apiVersion: slurm.nebius.ai/v1alpha1
+kind: NodeSetPowerState
+metadata:
+  name: worker-gpu-ephemeral
+  namespace: slurm
+spec:
+  nodeSetRef: worker-gpu-ephemeral
+  activeNodes:
+  - 0
+  - 3
+  - 5

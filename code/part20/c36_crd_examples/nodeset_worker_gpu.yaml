@@ -1,0 +1,116 @@
+# GPU NodeSet from helm/nodesets
+# Source: nebius/soperator commit f10392e1264a (2026-11-10), `helm template` of the chart named below with default values, namespace slurm.
+# Labels added by Helm were removed. Validated with tools/check_crd_yaml.py against config/crd/bases.
+# FIXED vs the chart default: spool is `emptyDir: {}` (as in nebius-solutions-library flux_release_nodesets.yaml.tftpl, commit 3db4054d463d)
+# because the chart's default `volumeClaimTemplateSpec` under NodeSet spool is not in the NodeSet CRD schema (corev1.VolumeSource).
+apiVersion: slurm.nebius.ai/v1alpha1
+kind: NodeSet
+metadata:
+  name: worker-gpu
+  namespace: slurm
+  labels:
+    app.kubernetes.io/name: helm-nodesets
+    app.kubernetes.io/instance: t
+    app.kubernetes.io/version: 5.0.0
+spec:
+  replicas: 3
+  maxUnavailable: 500
+  updateStrategy: rollingUpdate
+  initialNumberEphemeralNodes: 1
+  ephemeralTopologyWaitTimeout: 180
+  gpu:
+    enabled: true
+    nvidia:
+      gdrCopyEnabled: true
+  docker:
+    enabled: true
+  topology:
+    fabric: root
+  nodeConfig:
+    features:
+    - gpu
+    - cuda
+    autoResume: false
+    static: Boards=1 SocketsPerBoard=1 CoresPerSocket=8 ThreadsPerCore=1
+    dynamic: InstanceId={{ .PodName }}
+    gresConfig:
+    - AutoDetect=nvidia
+  slurmd:
+    image:
+      repository: cr.nebius.cloud/soperator/worker_slurmd
+      tag: 5.0.0-slurm26.05.4-nebius-1
+      pullPolicy: IfNotPresent
+    customEnv:
+    - name: NVIDIA_DRIVER_CAPABILITIES
+      value: compute,utility,video
+    port: 6818
+    resources:
+      cpu: 156000m
+      memory: 1220Gi
+      ephemeral-storage: 55Gi
+      nvidia.com/gpu: 8
+    volumes:
+      spool:
+        emptyDir: {}
+      jail:
+        persistentVolumeClaim:
+          claimName: jail-pvc
+      jailSubMounts:
+      - mountPath: /mnt/local/1
+        name: tmp1
+        readOnly: false
+        subPath: '1'
+        volumeSource:
+          emptyDir: {}
+      customVolumeMounts:
+      - mountPath: /mnt/local/foo
+        name: foo
+        readOnly: false
+        subPath: bar
+        volumeSource:
+          emptyDir: {}
+    security:
+      limitsConfig: ''
+      appArmorProfile: unconfined
+      procMount: Default
+  munge:
+    image:
+      repository: cr.nebius.cloud/soperator/munge
+      tag: 5.0.0-slurm26.05.4-nebius-1
+      pullPolicy: IfNotPresent
+    resources:
+      cpu: 2000m
+      memory: 4Gi
+      ephemeral-storage: 5Gi
+    security:
+      limitsConfig: ''
+      appArmorProfile: unconfined
+  sssdDebugLevel: 0
+  workerInitRandomDelaySeconds: 30
+  priorityClass: soperator-worker-high-priority
+  affinity:
+    nodeAffinity:
+      requiredDuringSchedulingIgnoredDuringExecution:
+        nodeSelectorTerms:
+        - matchExpressions:
+          - key: nebius.com/node-group-id
+            operator: In
+            values:
+            - gpu-node-group-id
+  tolerations:
+  - effect: NoSchedule
+    key: nvidia.com/gpu
+    operator: Exists
+  - effect: NoExecute
+    key: node.kubernetes.io/unreachable
+    operator: Exists
+    tolerationSeconds: 120
+  workerAnnotations:
+    prometheus.io/port: '9090'
+    prometheus.io/scrape: 'true'
+  customInitContainers:
+  - command:
+    - echo
+    - Hi!
+    image: cr.nebius.cloud/soperator-proxy-docker-io/library/busybox@sha256:fd7dc98638c8e305f4dc34e979f1c0fdfdcaeb0fbf8fcff77ae834b6da3d7e6e
+    name: say-hi

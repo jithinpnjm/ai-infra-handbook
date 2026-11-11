@@ -258,6 +258,7 @@ Nebius names Go as an acceptable language. If you are weaker in Go than Python, 
 The file below was run with Go 1.23.2. `go vet` and `go test` both passed. The Go test file has to end in `_test.go`, which is why it does not follow the `test_c08_` prefix.
 
 ```go
+# code/part20/c08_go/c08_toolkit.go
 // code/part20/c08_go/c08_toolkit.go
 // Go equivalents of the Python toolkit in chapter 20.8.
 package c08toolkit

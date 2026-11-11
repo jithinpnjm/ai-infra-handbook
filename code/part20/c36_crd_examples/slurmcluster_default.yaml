@@ -1,0 +1,377 @@
+# SlurmCluster from helm/slurm-cluster
+# Source: nebius/soperator commit f10392e1264a (2026-11-10), `helm template` of the chart named below with default values, namespace slurm.
+# Labels added by Helm were removed. Validated with tools/check_crd_yaml.py against config/crd/bases.
+apiVersion: slurm.nebius.ai/v1
+kind: SlurmCluster
+metadata:
+  namespace: slurm
+  name: slurm1
+  labels:
+    app.kubernetes.io/version: 5.0.0
+    app.kubernetes.io/name: slurm1
+    app.kubernetes.io/instance: t
+spec:
+  mpiConfig:
+    pmixEnv: OMPI_MCA_btl_tcp_if_include=eth0
+  slurmConfig:
+    completeWait: 0
+    defCpuPerGPU: 4
+    defMemPerNode: 0
+    epilog: /opt/slurm_scripts/epilog.sh
+    maxJobCount: 100000
+    messageTimeout: 60
+    minJobAge: 600
+    prolog: /opt/slurm_scripts/prolog.sh
+    resumeTimeout: 1800
+    suspendTimeout: 90
+    taskPluginParam: ''
+    taskProlog: /opt/slurm_scripts/task_prolog.sh
+    topologyParam: BlockAsNodeRank,SwitchAsNodeRank
+  pamSlurmAdopt:
+    enabled: false
+    exemptGroups: []
+    exemptUsers: []
+  namespaceConfig:
+    enabled: true
+  healthCheckConfig:
+    healthCheckInterval: 120
+    healthCheckProgram: /opt/slurm_scripts/hc_program.sh
+    healthCheckNodeState:
+    - state: ANY
+    - state: CYCLE
+  maintenance: none
+  podNamePrefix: disabled
+  crVersion: 5.0.0
+  partitionConfiguration:
+    configType: default
+  k8sNodeFilters:
+  - name: gpu
+    affinity:
+      nodeAffinity:
+        requiredDuringSchedulingIgnoredDuringExecution:
+          nodeSelectorTerms:
+          - matchExpressions:
+            - key: nebius.com/node-group-id
+              operator: In
+              values:
+              - node-group-id-here
+    tolerations:
+    - effect: NoSchedule
+      key: nvidia.com/gpu
+      operator: Exists
+  - name: no-gpu
+    affinity:
+      nodeAffinity:
+        requiredDuringSchedulingIgnoredDuringExecution:
+          nodeSelectorTerms:
+          - matchExpressions:
+            - key: nebius.com/node-group-id
+              operator: In
+              values:
+              - node-group-id-here
+  volumeSources:
+  - name: slurm-scripts
+    configMap:
+      name: slurm1-slurm-scripts
+      defaultMode: 493
+  - name: controller-spool
+    persistentVolumeClaim:
+      claimName: controller-spool-pvc
+      readOnly: false
+  - name: jail
+    persistentVolumeClaim:
+      claimName: jail-pvc
+      readOnly: false
+  secrets: {}
+  populateJail:
+    image: cr.nebius.cloud/soperator/populate_jail:5.0.0-slurm26.05.4-nebius-1-cuda13.0.2
+    imagePullPolicy: IfNotPresent
+    appArmorProfile: unconfined
+    k8sNodeFilterName: gpu
+    priorityClass: slurm1-slurm-populate-jail
+    overwrite: false
+  plugStackConfig:
+    customPlugins: []
+    ncclDebug:
+      enabled: true
+      logLevel: INFO
+      outputDirectory: /opt/soperator-outputs/local/nccl_logs
+      outputToFile: true
+      outputToStdOut: false
+      required: false
+    ncclInspectorPreConf:
+      dumpDir: /opt/soperator-outputs/shared/nccl_profiles/%j/%s
+      dumpThreadIntervalMicroseconds: 1000000
+      dumpVerbose: false
+      enabled: false
+      profilerPlugin: /usr/lib/x86_64-linux-gnu/libnccl-profiler-inspector.so
+      required: false
+    pyxis:
+      importerPath: /opt/slurm_scripts/pyxis_caching_importer.sh
+      required: true
+      useSquashfuse: false
+  slurmNodes:
+    accounting:
+      enabled: false
+      k8sNodeFilterName: no-gpu
+      priorityClass: slurm1-slurm-accounting
+      slurmConfig:
+        accountingStorageTRES: CPU,Mem,Node,VMem,Gres/gpu
+        jobAcctGatherFrequency: 0
+        jobAcctGatherType: jobacct_gather/none
+        priorityWeightAge: 0
+        priorityWeightFairshare: 0
+        priorityWeightQOS: 0
+      slurmdbdConfig:
+        archiveEvents: 'yes'
+        archiveJobs: 'yes'
+        archiveResvs: 'yes'
+        archiveSteps: 'no'
+        archiveSuspend: 'no'
+        archiveTXN: 'no'
+        archiveUsage: 'yes'
+        debugLevel: info
+        purgeEventAfter: 1month
+        purgeJobAfter: 12month
+        purgeResvAfter: 1month
+        purgeStepAfter: 1month
+        purgeSuspendAfter: 1month
+        purgeTXNAfter: 12month
+        purgeUsageAfter: 24month
+        tcpTimeout: 2
+      slurmdbd:
+        image: cr.nebius.cloud/soperator/controller_slurmdbd:5.0.0-slurm26.05.4-nebius-1
+        imagePullPolicy: IfNotPresent
+        appArmorProfile: unconfined
+    controller:
+      terminationGracePeriodSeconds: 120
+      k8sNodeFilterName: no-gpu
+      priorityClass: slurm1-slurm-controller
+      slurmctld:
+        image: cr.nebius.cloud/soperator/controller_slurmctld:5.0.0-slurm26.05.4-nebius-1
+        imagePullPolicy: IfNotPresent
+        appArmorProfile: unconfined
+        port: 6817
+        resources:
+          cpu: 1000m
+          memory: 3Gi
+          ephemeral-storage: 20Gi
+        livenessProbe:
+          failureThreshold: 5
+          httpGet:
+            path: /livez
+            port: 6817
+          initialDelaySeconds: 10
+          periodSeconds: 60
+          successThreshold: 1
+          timeoutSeconds: 10
+      munge:
+        image: cr.nebius.cloud/soperator/munge:5.0.0-slurm26.05.4-nebius-1
+        imagePullPolicy: IfNotPresent
+        appArmorProfile: unconfined
+        resources:
+          cpu: 1000m
+          memory: 1Gi
+          ephemeral-storage: 5Gi
+        livenessProbe:
+          exec:
+            command:
+            - /bin/sh
+            - -c
+            - /usr/bin/munge -n > /dev/null && exit 0 || exit 1
+          failureThreshold: 3
+          periodSeconds: 10
+          successThreshold: 1
+          timeoutSeconds: 1
+        readinessProbe:
+          exec:
+            command:
+            - /bin/sh
+            - -c
+            - test -S /run/munge/munge.socket.2
+          failureThreshold: 3
+          periodSeconds: 10
+          successThreshold: 1
+          timeoutSeconds: 1
+      sssdDebugLevel: 0
+      customInitContainers:
+      - name: pod-node-exporter
+        image: cr.nebius.cloud/soperator-proxy-docker-io/prom/node-exporter:v1.10.2
+        imagePullPolicy: IfNotPresent
+        restartPolicy: Always
+        args:
+        - --collector.disable-defaults
+        - --collector.netdev
+        - --collector.netstat
+        - --collector.sockstat
+        - --collector.conntrack
+        - --web.listen-address=:9100
+        ports:
+        - name: node-exporter
+          containerPort: 9100
+          protocol: TCP
+        resources:
+          requests:
+            cpu: 50m
+            memory: 64Mi
+            ephemeral-storage: 128Mi
+          limits:
+            memory: 64Mi
+            ephemeral-storage: 128Mi
+        securityContext:
+          allowPrivilegeEscalation: false
+          capabilities:
+            drop:
+            - ALL
+      serviceAccountName: slurm1-slurm-controller
+      volumes:
+        spool:
+          volumeClaimTemplateSpec:
+            accessModes:
+            - ReadWriteOnce
+            resources:
+              requests:
+                storage: 50Gi
+            storageClassName: compute-csi-network-ssd-ext4
+        jail:
+          volumeSourceName: jail
+      openMetrics:
+        enabled: true
+        serviceMonitor:
+          interval: 30s
+          scrapeTimeout: 28s
+    login:
+      updateStrategy: delayedRollout
+      updatePolicy:
+        minNotice: 720h
+      size: 2
+      k8sNodeFilterName: no-gpu
+      priorityClass: slurm1-slurm-login
+      sshd:
+        image: cr.nebius.cloud/soperator/login_sshd:5.0.0-slurm26.05.4-nebius-1
+        imagePullPolicy: IfNotPresent
+        appArmorProfile: unconfined
+        port: 22
+        resources:
+          cpu: 3000m
+          memory: 9Gi
+          ephemeral-storage: 30Gi
+        readinessProbe:
+          failureThreshold: 3
+          periodSeconds: 10
+          successThreshold: 1
+          tcpSocket:
+            port: 22
+          timeoutSeconds: 1
+      sshRootPublicKeys:
+      - ssh-ed25519 AAAAC3NzaC1lZDI1NTE5AAAAIKzxkjzPQ4EyZSjan4MLGFSA18idpZicoKW7Hfff
+        username1
+      - ssh-ed25519 AAAAC3NzaC1lZDI1NTE5AAAAICL8scMKnwu+Y9S6XDACacZ54+qu+YRo2y4Ieddd
+        username2
+      sshdServiceType: LoadBalancer
+      sshdServiceAnnotations: {}
+      munge:
+        image: cr.nebius.cloud/soperator/munge:5.0.0-slurm26.05.4-nebius-1
+        imagePullPolicy: IfNotPresent
+        appArmorProfile: unconfined
+        resources:
+          cpu: 500m
+          memory: 500Mi
+          ephemeral-storage: 5Gi
+        livenessProbe:
+          exec:
+            command:
+            - /bin/sh
+            - -c
+            - /usr/bin/munge -n > /dev/null && exit 0 || exit 1
+          failureThreshold: 3
+          periodSeconds: 10
+          successThreshold: 1
+          timeoutSeconds: 1
+        readinessProbe:
+          exec:
+            command:
+            - /bin/sh
+            - -c
+            - test -S /run/munge/munge.socket.2
+          failureThreshold: 3
+          periodSeconds: 10
+          successThreshold: 1
+          timeoutSeconds: 1
+      sssdDebugLevel: 0
+      customInitContainers: []
+      volumes:
+        jail:
+          volumeSourceName: jail
+        jailSubMounts: []
+        customMounts:
+        - name: slurm-scripts
+          mountPath: /opt/slurm_scripts/
+          volumeSourceName: slurm-scripts
+        - name: slurm-scripts-jail
+          mountPath: /mnt/jail.upper/opt/slurm_scripts/
+          volumeSourceName: slurm-scripts
+      userIsolation:
+        enabled: true
+        cpuWeight: 100
+      docker:
+        enabled: false
+    exporter:
+      enabled: true
+      size: 1
+      k8sNodeFilterName: no-gpu
+      priorityClass: slurm1-slurm-exporter
+      collectionInterval: 30s
+      maxCollectorInflight: 1
+      jobSource: controller
+      accountingJobsLookback: 1h
+      podMonitorConfig:
+        interval: 30s
+        jobLabel: slurm-exporter
+        scrapeTimeout: 28s
+      exporterContainer:
+        image: cr.nebius.cloud/soperator/soperator-exporter:5.0.0-slurm26.05.4-nebius-1
+        imagePullPolicy: IfNotPresent
+        appArmorProfile: unconfined
+      serviceAccountName: slurm1-exporter-sa
+    rest:
+      enabled: false
+      size: 2
+      k8sNodeFilterName: no-gpu
+      priorityClass: slurm1-slurm-rest
+      threadCount: 3
+      maxConnections: 10
+      customInitContainers: []
+      rest:
+        image: cr.nebius.cloud/soperator/slurmrestd:5.0.0-slurm26.05.4-nebius-1
+        imagePullPolicy: IfNotPresent
+        resources:
+          cpu: 2000m
+          memory: 8Gi
+          ephemeral-storage: 500Mi
+        livenessProbe:
+          failureThreshold: 5
+          initialDelaySeconds: 15
+          periodSeconds: 10
+          successThreshold: 1
+          tcpSocket:
+            port: 6820
+          timeoutSeconds: 1
+  sConfigController:
+    serviceAccountName: slurm1-sconfigcontroller
+    node:
+      size: 1
+      k8sNodeFilterName: system
+      priorityClass: slurm1-slurm-sconfigcontroller
+      customInitContainers: []
+    container:
+      image: cr.nebius.cloud/soperator/sconfigcontroller:5.0.0
+      imagePullPolicy: IfNotPresent
+      resources:
+        cpu: 250m
+        memory: 256Mi
+        ephemeral-storage: 500Mi
+    runAsUid: 1001
+    runAsGid: 1001
+    reconfigurePollInterval: 20s
+    reconfigureWaitTimeout: 5m
