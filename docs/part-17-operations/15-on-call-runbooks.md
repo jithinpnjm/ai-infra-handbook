@@ -582,84 +582,84 @@ If any answer takes more than 30 seconds, the on-call process is not yet ready f
 
 ## Checkpoint questions
 
-<details><summary>1. What 6 sections does the runbook template have?</summary>
-The six sections are: what the alert means, its symptoms, the diagnostic steps, the mitigation steps, the escalation path, and the post-mortem template. Every runbook needs all six, because together they form the agreement between the on-call engineer and the team.
+<details><summary>1. A page arrives and the runbook link opens an empty page. What likely happened, and what do you change?</summary>
+Nobody wrote a runbook for this alert, or the link points to the wrong place. Create the runbook and check the link. Then make a runbook part of creating every new alert, so the gap cannot return.
 </details>
 
-<details><summary>2. What are the escalation triggers?</summary>
-The example times are values your team should choose. A failed mitigation pages the secondary on-call after 30 minutes, declares SEV-2 and pages the IC after 1 hour, and declares SEV-1 and pages the VP Engineering after 2 hours. A customer escalation always declares SEV-1, and several incidents at once declare SEV-1 and an IC.
+<details><summary>2. The engineer follows the runbook exactly, but the mitigation no longer works and the incident escalates. What was the cause?</summary>
+The runbook was probably not updated after the last incident, or the fix has changed since. Update it, automate the freshness check, and review every runbook each quarter. Updates should happen right after an incident while the details are fresh.
 </details>
 
-<details><summary>3. What are the four escalation levels?</summary>
-The example policy has four levels. Level 1 is the secondary on-call, with a response time of 15 minutes. Level 2 is the incident commander at 30 minutes, level 3 is the VP Engineering at 1 hour, and level 4 is the CEO at 2 hours. These response times are example values, and each level climbs one step at a time.
+<details><summary>3. A new primary on-call starts a shift and does not know a SEV-3 is still open. What process was skipped?</summary>
+The handover. A handover moves context from the outgoing engineer to the incoming one, including current state, open incidents, and upcoming changes. Schedule it, use a written template, and tie the template to the runbook.
 </details>
 
-<details><summary>4. What is the on-call rotation schedule?</summary>
-The example rotation runs weekly, with the primary and secondary swapping roles each week. The schedule is published ahead of time, and the example publishes it quarterly. Each handover covers the current state and the open incidents.
+<details><summary>4. A mitigation on churn-model has failed for an hour. What does the example policy tell you to do, and what goes in the message?</summary>
+Declare SEV-2 and page the IC. The message states the severity, the impact, what you already tried, and what you need from the reader. The example reads 30 percent of requests affected and p99 at 800 ms against an SLO of 300 ms.
 </details>
 
-<details><summary>5. What is the handover process?</summary>
-A handover moves the context from the outgoing on-call engineer to the incoming one. It covers the current state, such as cluster health, SLO compliance, and the remaining error budget. It also lists the open incidents with their severity and status, the upcoming changes with their date, time, and CR ID, and any notes. The handover is the agreement between the two engineers.
+<details><summary>5. A customer escalates directly, and the technical impact looks small. What severity does the example table assign?</summary>
+SEV-1 regardless of impact. The table says a customer escalation declares SEV-1 no matter how the metrics look. Several incidents at once also declare SEV-1 and an IC.
 </details>
 
-<details><summary>6. What is the most common runbook failure?</summary>
-The runbook is missing. When you click the link, you find nothing, usually because nobody wrote a runbook for that alert. The fix is to create a runbook for every alert and check that each runbook URL works.
+<details><summary>6. The on-call has been paged 50 times in one week and cannot keep up. What does the chapter say is happening, and what do you do?</summary>
+Too many alerts bury the ones that matter and wear the engineers down. Production Kubernetes, Chapter 9, makes the same warning about burnout. Tune the alert routing, improve the runbooks, add on-call staff, and put the load on the quarterly review agenda.
 </details>
 
-<details><summary>7. What is the most common on-call rotation failure?</summary>
-The on-call does not know the rotation. The engineer gets paged without knowing they are on call, so they lack the context to respond. The rotation was not published. The fix is to publish the rotation quarterly and notify the on-call in advance.
+<details><summary>7. Why do diagnostic steps come before mitigation steps?</summary>
+They confirm the alert is real before anyone changes anything. Restarting a healthy workload because of a false alarm costs far more than a few minutes of checking. Each step also narrows the cause before you touch the workload.
 </details>
 
-<details><summary>8. What is the most common escalation failure?</summary>
-The escalation is not clear. You need to escalate, but you do not know whom to page or when. The escalation policy is not documented. The fix is to write down the policy and verify the contacts.
+<details><summary>8. Why should the symptoms section describe what users see rather than what metrics show?</summary>
+An alert can be real while users are fine, and the reverse can also happen. A symptom list written in user terms helps the engineer judge urgency and explain the impact. The engineer can also confirm each symptom in a minute.
 </details>
 
-<details><summary>9. What is the most common on-call burnout failure?</summary>
-The on-call is overwhelmed. In the example, the on-call is paged 50 times per week, cannot respond to every page, and burns out. The alert routing is too aggressive. The fix is to tune the routing, improve the runbooks, and hire more on-call engineers.
+<details><summary>9. Why does the example mitigation list put draining the node last?</summary>
+The list runs from the smallest change to the largest. Draining a node moves every workload on it, so it is the final option. Smaller steps like reducing the batch size or enabling gradient checkpointing come first.
 </details>
 
-<details><summary>10. What is the most common handover failure?</summary>
-The handover is missing. The rotation changes hands, and the incoming on-call has no context and cannot respond. The handover was not scheduled. The fix is to schedule the handover and write a handover template.
+<details><summary>10. Why add a runbook freshness check to CI?</summary>
+It fails when a runbook has not changed within the threshold, such as 90 days. A stale runbook is then caught during a normal change instead of in the middle of an incident. The check turns the review rule into an automatic test.
 </details>
 
-<details><summary>11. What is the difference between the runbook and the post-mortem?</summary>
-The runbook is the on-call engineer's guide during an incident. The post-mortem is the team's learning document after the incident. You use the runbook in the moment, while the post-mortem looks back.
+<details><summary>11. Why does the chapter recommend a dead man's switch alert?</summary>
+It is an alert that fires on a schedule. When it stops firing, the on-call hears that metrics or alerting have failed. Without it, a broken alerting system looks the same as a quiet, healthy one.
 </details>
 
-<details><summary>12. What is the difference between the primary and secondary on-call?</summary>
-The primary on-call is the first responder, and the secondary is the backup. The primary is paged for every alert, while the secondary is paged for SEV-1 and when the primary needs help. In the example, the primary responds within 5 minutes and the secondary within 15 minutes.
+<details><summary>12. Would you keep a weekly rotation or choose another length, and what do you give up?</summary>
+A weekly rotation is only an example. A larger or smaller team may choose a different length. Whatever you pick, publish it early and require a thorough handover, because short shifts mean more handovers and long shifts mean more load on each person.
 </details>
 
-<details><summary>13. What is the difference between the IC and the VP Engineering?</summary>
-The IC coordinates the incident, and the VP Engineering escalates it. The IC's authority is operational, while the VP's authority is organisational. The IC is paged for SEV-2 and SEV-1, and the VP Engineering is paged for extended SEV-1 incidents.
+<details><summary>13. A new alert is ready but has no runbook. Do you start paging on it or wait, and what do you give up?</summary>
+Wait until a runbook exists. Before adding someone to the rotation, every alert they receive needs a runbook. If you cannot explain the alert in one paragraph, it is probably not ready to page anyone. You give up early coverage for a page that someone can act on.
 </details>
 
-<details><summary>14. What is the difference between a runbook and a playbook?</summary>
-A runbook is the on-call engineer's guide for one specific alert. A playbook is the team's guide for a broader scenario, such as a regional outage or a ransomware attack. When you need the steps for one alert, use the runbook. When you need a scenario, use the playbook.
+<details><summary>14. Do you escalate to the secondary on-call early or try longer alone, and what are the costs?</summary>
+The example policy pages the secondary after 30 minutes of failed mitigation and the IC after 1 hour. Escalating early costs other people's time. Waiting risks a growing incident. The chapter asks you to agree the times with your team before the first incident.
 </details>
 
-<details><summary>15. Why is the runbook URL in the alert annotation important?</summary>
-You click the link in the PagerDuty alert, read the steps, and work through the mitigation. The link is the bridge between the alert and the recovery.
+<details><summary>15. Should every runbook change go straight into the wiki or through Git with review, and what do you give up?</summary>
+The chapter keeps runbooks in Git. The update script writes a commit and a reviewer checks the pull request. You give up the speed of editing a wiki page, but every change gets an owner and a record.
 </details>
 
-<details><summary>16. What is the most important runbook metric?</summary>
-The runbook freshness metric is one of the most useful runbook measures. It shows whether a runbook has been reviewed recently and needs attention. A stale runbook is a runbook that may no longer work.
+<details><summary>16. A handover starts with an error budget of 43.2 minutes and ends with 38 minutes left. How much was used?</summary>
+The budget used is 43.2 minus 38, which is 5.2 minutes. This matches a month where the target is 99.9 percent. The remaining budget is therefore about 88 percent of the original.
 </details>
 
-<details><summary>17. What is the most important on-call metric?</summary>
-The MTTA, or mean time to acknowledge, is a useful on-call metric. It shows how quickly the on-call engineer responds to pages. A high MTTA can mean the on-call is overloaded.
+<details><summary>17. The same handover reports 99.95 percent compliance and 38 minutes left. Do the two figures agree?</summary>
+Not clearly. 43.2 minutes is 0.1 percent, so 0.05 percent is 21.6 minutes of downtime. Using 5.2 minutes of budget would mean the compliance is higher than 99.95 percent. The chapter itself says the numbers do not clearly match.
 </details>
 
-<details><summary>18. Why is the on-call rotation a Tier 2 chapter?</summary>
-The rotation keeps the cluster running when an SLO is breached, and it is what the customer experiences during an incident. The platform team owns the rotation, and the on-call engineer follows it. A team without a rotation cannot respond well.
+<details><summary>18. The alert for page frequency fires above 30 pages per week and the escalation alert above 10 percent of pages. With 50 pages, how many escalations trip the second alert?</summary>
+The page count is 50, which is more than 30, so that alert fires. Ten percent of 50 is 5. More than 5 escalations trips the escalation alert.
 </details>
 
-<details><summary>19. What is the relationship between the runbook and the failure mode catalogue?</summary>
-The failure mode catalogue is the source of the runbooks. Every failure mode needs a runbook, and every runbook covers a failure mode. The catalogue is the taxonomy, and the runbook is the playbook.
+<details><summary>19. The GPU memory alert fires. What do you check first, second, third, and fourth?</summary>
+First run nvidia-smi inside the pod to verify HBM utilisation. Second check the pod's memory with kubectl top. Third search the logs for CUDA OOM. Fourth look at the DCGM framebuffer metric. Each step narrows the cause before you change anything.
 </details>
 
-<details><summary>20. What five questions should the on-call runbooks lab let you answer in five seconds each?</summary>
-You should be ready to answer five questions: the current primary on-call, the current secondary on-call, the page frequency per week, the current MTTA, and the most recent runbook update. In the example, an answer that takes more than 30 seconds means the process is not yet a production service.
+<details><summary>20. An incident is mitigated. What do you do after, in order?</summary>
+First write the post-mortem and fill in the prevention question before closing the ticket. Second update the runbook with the new mitigation. Third hand over to the next on-call with the open items.
 </details>
 
 ---

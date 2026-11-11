@@ -834,84 +834,84 @@ Try these after the lab. Each one extends something you have already built.
 
 ## Checkpoint questions
 
-<details><summary>1. What three properties of ML data make it harder to version than code?</summary>
-The three properties are size, mutability and partial sharing. Datasets run to hundreds of gigabytes or terabytes, which Git cannot hold. They also change through appends and re-partitioning, and models that share features inherit each other's data bugs. The fix is content-addressed storage plus a metadata layer, such as DVC, lakeFS, Pachyderm or Delta Lake, that keeps the hashes outside Git.
+<details><summary>1. It is 2 a.m., the live model is giving poor predictions, and last week's was fine. What is the first question, and which records must exist to answer it quickly?</summary>
+The first question is what is different between this run and last week's. You answer it from two run records. Each record must hold the code commit and image digest, the dataset id, the environment, the seed and hyperparameters, and the metrics. The tracker must also respond in seconds, or the on-call engineer is guessing.
 </details>
 
-<details><summary>2. What is the minimum data versioning contract?</summary>
-The contract has these fields: dataset id, content hash, source system, snapshot time, row count, schema hash, object-storage path, optional parents for lineage, and a retention-until date. The dataset id is the address, and the content hash is the proof. The path is only a convenience, so when you write the script, pass the id, not the path.
+<details><summary>2. A new teammate runs `dvc pull` and gets an HTTP 403 from GCS. The bucket was deleted in a cleanup sprint. What went wrong and what do you change?</summary>
+The DVC remote was a personal bucket, and no infrastructure-as-code declared it, so the cleanup saw nothing production-like. Move the bucket declaration into Terraform or Pulumi beside the other data infrastructure. Tag it `lifecycle=production`, and add a `dvc remote add` line to the team setup script that points at the project bucket.
 </details>
 
-<details><summary>3. Why does the training script take a dataset id and never a hard-coded path?</summary>
+<details><summary>3. During a hyperparameter sweep, training jobs fail with `OperationalError: too many connections` from MLflow. What is the cause and what are the fixes?</summary>
+Postgres was sized for the average day and not for the peak. Either no connection pooling exists or the pool is smaller than the number of jobs that run at once. Put a pooler such as PgBouncer in front of Postgres, and raise `max_connections` to cover the worst-case pool. Add the pool utilisation alert so you hear about the next case first.
+</details>
+
+<details><summary>4. The candidate beat the baseline on AUC in MLflow and the gate passed, yet 5xx errors climb after promotion. What did the gate miss and how do you fix it?</summary>
+The gate checked overall AUC and not any per-segment metric. The model regressed badly on one slice that the gate never looked at. The MLflow run already carries per-segment metrics, so make the gate check each one against a floor and refuse promotion when a segment falls too far.
+</details>
+
+<details><summary>5. A team moves from W&B Cloud to a self-hosted W&B Server. The runs show up but the artifacts cannot be found. What happened and how do you fix it?</summary>
+W&B Cloud kept the artifacts in its own bucket. The migration moved the run metadata but not the bytes, and the data scientist took the visible run records as proof that it was complete. Use the artifact-transfer tooling, or script a walk over the run records that copies each artifact to the new bucket. Then verify the content hashes and do not trust the success message alone.
+</details>
+
+<details><summary>6. A bank customer disputes a loan denial, and the regulator asks you to reproduce the decision. What must the run record show, and what extra fields turn it into a regulatory record?</summary>
+Machine Learning Platform Engineering, chapter 2, says reproducibility is a legal requirement in regulated fields. The record must answer which data, code, environment and version produced the decision. Add who had read access to the data at training time, the consent basis for any personal information, and the fairness audit result. Keep the records for the regulatory window, which the chapter gives as commonly seven years for financial-services models.
+</details>
+
+<details><summary>7. Why does the training script take a dataset id and never a hard-coded path?</summary>
 A path can move, be overwritten, or change its contents without notice. A dataset id, resolved through a metadata database, stays fixed. If the bytes at that address do not match the recorded hash, the script refuses to run. You see the failure at once, not three months later in production.
 </details>
 
-<details><summary>4. How does DVC store large files?</summary>
-DVC keeps the bytes in an S3-compatible object store and keeps `.dvc` files in Git that hold the content hashes. Git stays small because the object store carries the large files. Running `dvc pull` brings back the bytes that match a given Git commit.
+<details><summary>8. Why can a data scientist who can both write runs and move registry stages promote a model without the gate?</summary>
+The gate only works if it is the single path into the registry. A person who holds both permissions can call the stage transition directly. A training job with both can skip the gate too. So only the promotion pipeline holds the registry promoter role.
 </details>
 
-<details><summary>5. What seven questions must a run record answer?</summary>
-The seven answers are: the code (commit hash and image digest), the data (dataset id), the environment (CUDA, cuDNN, Python and cluster topology), the seed, the hyperparameters, the outcome per segment, and the artifact with its content hash. A run record that misses any one of them cannot be reproduced.
+<details><summary>9. Why keep the tracking server and the artifact store apart, instead of in one place?</summary>
+The tracking server holds small, hot metadata that is read all the time. The artifact store holds large, cold bytes. Put them together and one of them suffers. Apart, the Postgres backend can be sized for connections and the bucket for throughput, and artifact uploads go straight from the worker pods to the bucket.
 </details>
 
-<details><summary>6. Why is the run record an audit trail rather than a metric?</summary>
-A metric is a number, and the number may be wrong. The run record proves that the number came from one specific combination of code, data and environment. If you are the auditor, you can check the metric by re-running with the recorded inputs, but not from a printed number alone.
+<details><summary>10. Why should a high standard deviation of AUC across seeds make you refuse promotion?</summary>
+Seed stability is a property of the experiment record and not of the model. A model that wins on one seed and loses on another is one draw from a distribution and not a real result. The query selects runs that share a code commit and dataset id, groups them by seed, and computes the spread. A wide spread means the win is not reproducible.
 </details>
 
-<details><summary>7. What does "seed stability" mean and why does it matter?</summary>
-A model that wins on one seed and loses on another is one draw from a distribution, not a real result. Seed stability means the metric reproduces across seeds within a tolerance. The tracker shows it as the standard deviation of a metric across runs that share code and data but differ by seed, so you can spot an unstable model.
+<details><summary>11. Why is a signature check in an admission webhook a risk if the webhook is unavailable?</summary>
+The API server either admits or rejects the request, depending on whether the webhook fails open or closed. Production Kubernetes, chapter 8, warns that a check which fails closed must be built for high availability, or it becomes a bottleneck for the whole cluster. A check that fails open lets unsigned artifacts through during an outage. Pick the failure mode on purpose.
 </details>
 
-<details><summary>8. What is the handoff between the experiment tracker and the model registry?</summary>
-The promotion gate reads the run record, compares it with the baseline, and either advances the registry stage or blocks with a printed reason. The run id becomes the lineage record on the registry entry. The gate is the only path between the two systems, so they stay in agreement.
+<details><summary>12. Your data is a multi-petabyte lake used by Spark jobs. Do you stay on DVC, and what would you move to?</summary>
+DVC suits tabular and mid-size data and teams that already live in Git. A multi-petabyte lake may need something stronger. lakeFS fits petabyte lakes with Spark or Hive and adds a metadata database. Delta Lake fits Spark-native work with ACID on the lake and adds a transaction log. Pachyderm gives row-level lineage but adds a control plane. You trade DVC's simplicity for stronger consistency and more services to run.
 </details>
 
-<details><summary>9. What does the cluster boundary add on top of the registry?</summary>
-It adds a signature. The training pipeline signs the model artifact with cosign against an OIDC identity. The admission controller, either OPA Gatekeeper or Kyverno, refuses pods that mount an unsigned artifact, and the serving system verifies the signature on pull. No path from the registry to the cluster skips that check.
+<details><summary>13. When would you choose MLflow over Weights and Biases, and what do you give up?</summary>
+MLflow is open source and runs as a Deployment you control, so it is the lower-friction default for strict data-residency rules. You give up the richer interface and the built-in hyperparameter sweeps that W&B offers. W&B is cloud-hosted by default, and the self-hosted W&B Server takes real operational work. The two record runs under the same contract.
 </details>
 
-<details><summary>10. Why is DVC not a replacement for MLflow and vice versa?</summary>
-DVC's main job is data and pipeline versioning. MLflow's main job is experiment tracking and the model registry. The two overlap on artifact storage but not on data versioning. A team that uses DVC for data and MLflow for runs gets both strengths with little duplication, because the run record carries the data hash that DVC recorded.
+<details><summary>14. Signing every model artifact adds a step to each promotion. What do you get for it and what must you decide before enabling the check?</summary>
+A poisoned or swapped model artifact cannot reach the GPU through this path, because the admission controller refuses an unsigned one. Signing is still uncommon, because older Notary-style systems add servers and databases to run, and key rotation after a breach is hard. Decide who holds the signing keys and how you will rotate them before you turn the check on.
 </details>
 
-<details><summary>11. What are the four IAM roles in a tracking and registry deployment?</summary>
-The four roles are tracker writer, tracker reader, registry promoter and registry reader. Writers are the training service accounts and the orchestrator. Readers are data scientists and the platform team. Only the promotion pipeline is a promoter, while the serving system and data scientists are registry readers. Keeping writer and promoter apart is what enforces the gate.
+<details><summary>15. Should you switch a new image-signature policy straight to enforcement, or run it in audit mode first? What does each choice cost?</summary>
+Audit mode first. It shows what the policy would block before it blocks anything, and Gatekeeper's audit re-checks existing resources on a schedule. The cost is a period in which unsigned images still run. Switch on enforcement once the audit results look right.
 </details>
 
-<details><summary>12. What is the retention policy for run records and artifacts?</summary>
-Run records are kept indefinitely, because they form the audit trail. Artifacts follow a tiered policy. Failed runs are kept for 30 days, staging runs for 90 days, and promoted runs indefinitely. Retired runs are kept for one year and then moved to cold storage. Artifacts are soft-deleted and never overwritten in place.
+<details><summary>16. A sweep uses 3 seeds and 5 hyperparameter combinations. How many runs is that, and what is the reproducibility score with and without tracking?</summary>
+3 times 5 is 15 runs. With no tracking, the chapter's example scores 0 of 15, because only the engineer knows which seed and settings produced which number. With MLflow or W&B logging each run, it scores 15 of 15.
 </details>
 
-<details><summary>13. What is the SLO for an experiment tracking server?</summary>
-The chapter gives example targets: open-run latency p99 under 200 ms, log-metric latency p99 under 500 ms, and log-artifact latency p99 under 5 s. These are starting values, so measure your own baseline before you set targets. The tracker sits on the hot path of every job, and a slow tracker can time out your job.
+<details><summary>17. The example SLO for opening a run is a p99 under 200 ms, and the example alert fires above 500 ms. How many times the SLO is the alert, and why is that gap useful?</summary>
+500 divided by 200 is 2.5, so the alert fires at two and a half times the SLO. The gap keeps the alert from firing on every small miss. All of these are example values, so measure a normal week before you set your own.
 </details>
 
-<details><summary>14. What metric catches a tracker Postgres bottleneck?</summary>
-Postgres connection pool utilisation is the metric to watch. A tracker that is slow but not down usually has a pool sized for an average day, not the peak. The example alert in Section 5.4 fires above 80 percent utilisation.
+<details><summary>18. The baseline AUC on a segment is 0.90 and the candidate scores 0.84 on it. The example limit is a 5 percentage point drop. Does the gate pass?</summary>
+The drop is 0.90 minus 0.84, which is 0.06, or 6 percentage points. That is more than 5, so the gate blocks promotion and prints the segment name in the reason. The overall AUC could still look fine.
 </details>
 
-<details><summary>15. How does the promotion gate catch a per-segment regression that overall AUC misses?</summary>
-The gate queries per-segment metrics from the run record and refuses promotion if any segment falls by more than the configured limit. The overall metric can stay flat while one slice drops sharply. The per-segment check is what protects you from that silent regression.
+<details><summary>19. A registered model produces different outputs in serving than in offline evaluation, though the artifact URI is correct. What do you check first, second and third?</summary>
+First, hash the pulled artifact and compare it with the content hash in the registry entry. Second, check whether object versioning is on for the bucket and whether the object was re-uploaded, since `dvc push --force` overwrites. Third, find the cause, which the chapter lists as a write-after-read race, a misconfigured CDN or a re-upload. Then refuse to overwrite any object whose version is in the registry and run the hash check before weights reach GPU memory.
 </details>
 
-<details><summary>16. What is the difference between MLflow Tracking and MLflow Registry?</summary>
-Tracking records training runs, with their parameters, metrics, tags and artifacts. The registry records model versions, which are artifacts from promoted runs, with stages such as Staging, Production and Archived. It also records lineage through the run id, dataset id and commit. A run becomes a registered model only after it passes the promotion gate.
-</details>
-
-<details><summary>17. Why is object versioning important on the artifact bucket?</summary>
-Without versioning, a re-upload can overwrite the bytes the registry points to. The model the registry calls production is then not the model that was promoted. Object versioning keeps the old bytes, and the content-hash check at pull time catches any drift.
-</details>
-
-<details><summary>18. Why is W&B not always the right choice over MLflow?</summary>
-W&B is cloud-hosted by default, and running W&B Server yourself takes real operational work. MLflow is open source and runs as a Kubernetes Deployment that you control. For teams with strict data-residency rules, MLflow is usually the lower-friction default. For teams that want a richer interface and built-in sweeps, W&B is often the better fit.
-</details>
-
-<details><summary>19. What is the difference between data versioning and dataset cataloguing?</summary>
-Data versioning tracks the bytes, with content hashes and immutable snapshots. Dataset cataloguing tracks metadata such as descriptions, owners, tags, lineage and freshness. The two work together. A versioned dataset needs a catalogue entry so people can find it, and the entry needs versioning so its content can be reproduced.
-</details>
-
-<details><summary>20. Why is the "compare runs" query more important than the "log run" call?</summary>
-Tracking exists to support decisions, not just record-keeping. The comparison query is what the promotion gate runs, what a data scientist opens when debugging a regression, and what an auditor looks at. Logging a run is necessary, but on its own it is not enough.
+<details><summary>20. Every artifact is signed with cosign, but someone pushes an unsigned image and the serving system runs it. What do you check first, second and third?</summary>
+First, check whether the admission policy is enabled for the namespace where the serving pods run, because signatures are created but nothing may be checking them. Second, deploy an unsigned image and confirm it is rejected. Third, run the policy in audit mode and then switch on enforcement. The policy requires `cosign.sigstore.dev` on every image.
 </details>
 
 ---

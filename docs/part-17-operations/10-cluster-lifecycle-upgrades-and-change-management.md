@@ -705,87 +705,85 @@ Treat the 30-second limit as an example target that your team sets for itself. I
 
 ## Checkpoint questions
 
-<details><summary>1. What four upgrade types does the chapter walk through?</summary>
-In-place replaces software where it runs, so it is atomic but hard to undo, and it suits dev environments. Rolling replaces one node at a time for stateless work, blue/green shifts traffic between two environments for stateful work, and canary sends a small share to the new version first.
+<details><summary>1. A Saturday night upgrade leaves the GPU nodes stuck halfway and nobody knows which change caused it. What was missing?</summary>
+The team had no lifecycle process, so the first real test happened in production. A process makes every upgrade follow the same path. It needs a change request, a peer review, automated tests, a staging rollout, a production rollout, and a rollback plan. Write the process down before you upgrade anything.
 </details>
 
-<details><summary>2. What is the change management process?</summary>
-It is the routine that turns each change into a checked step with a way back. The routine runs a change request with what, why, risk, rollback, and test plans, then a peer review, automated tests, a staging rollout, a production rollout, verification, and an announcement.
+<details><summary>2. An upgrade breaks the SLO, the on-call rolls back, and the rollback fails. Why, and what do you do now?</summary>
+Nobody tested the rollback in staging, and it needs a manual step the on-call did not know about. Roll forward with a different fix if that is safer. Then add the rollback test to the staging suite and automate the steps people keep forgetting.
 </details>
 
-<details><summary>3. What is the upgrade window?</summary>
-The upgrade window is the time you choose for the change, and it balances upgrade risk against SLO risk. The example windows are Saturday 2-6 AM UTC, with low traffic, and Wednesday 2-4 AM UTC, with medium traffic. You announce the window in advance and verify the result after the upgrade.
+<details><summary>3. An upgrade starts at 2 AM on Saturday and customer traffic spikes at the same time. What went wrong?</summary>
+The window did not match the traffic pattern and nobody checked the forecast. A quiet hour for one product can be the peak for another. Reschedule, align the window with real traffic, and check the forecast before you book the slot.
 </details>
 
-<details><summary>4. What are the rollback triggers?</summary>
-The four signals are an SLO breach, an error rate spike, a workload failure, and a GPU failure. The example thresholds are inference latency p99 above the SLO for 10 minutes, an error rate above 0.1% for 5 minutes, OOM-killed pods above zero for 5 minutes, and dcgm_ecc_dbe_total above 0. Each signal feeds an alert that pages the on-call.
+<details><summary>4. After an upgrade the security team flags a known CVE in the new version. What do you do?</summary>
+Roll back. The CVE scan did not cover the new version, and the upgrade was rushed. Extend the CVE scan to the new version, for example with a Trivy step in CI, and retry once the CVE is fixed.
 </details>
 
-<details><summary>5. What is the difference between in-place and rolling upgrade?</summary>
-In-place replaces the software where the workload runs, restarts it, and rolls back by reverting the change. Rolling replaces the software one node at a time while the other nodes serve the old version, and it rolls back by stopping the rollout.
+<details><summary>5. A change reached production with no review and paged the on-call. How do you stop it happening again?</summary>
+Roll back first. Then make peer review a required step in the change request process, and automate the staging rollout so it cannot be skipped. A pull request gives the review a natural home and keeps a version history.
 </details>
 
-<details><summary>6. What is the difference between blue/green and canary upgrade?</summary>
-Blue/green runs two environments, blue for the current version and green for the new one, and it suits stateful workloads. Canary runs the new version on a small share of the cluster and widens it gradually, which suits production AI workloads where the SLO is critical.
+<details><summary>6. Midway through a GKE upgrade, the node pools misbehave after the control plane was already upgraded. What are your options?</summary>
+GKE does not offer a control plane downgrade after an upgrade, so treat that step as a point of no return. Plan the rollback around the node pools by recreating the pool from the previous image. Production Kubernetes also warns that rolling back everything late in an upgrade can be worse than fixing forward.
 </details>
 
-<details><summary>7. What is the most common upgrade failure?</summary>
-A common upgrade failure is that the upgrade breaks the SLO. The change completes, the SLO is breached, and the customer complains. The usual cause is an upgrade that skipped staging, was rushed, or had no ready rollback. If you see it, roll back, investigate, add the regression to the staging suite, and try again.
+<details><summary>7. Why does a rolling upgrade avoid a full outage, and why does it suit stateless workloads?</summary>
+It takes nodes one at a time, with drain, upgrade and uncordon for each. While one node is upgraded, the rest of the pool keeps serving the old version. A stateless Pod can move to another node without losing state, so users do not see a full outage.
 </details>
 
-<details><summary>8. What is the most common rollback failure?</summary>
-A common rollback failure is that the rollback itself does not work. The upgrade breaks the SLO, the on-call rolls back, and the rollback fails while the SLO keeps breaching. The cause is a rollback plan that was never tested in staging, or a manual step the on-call forgot. The fix is to roll forward with a different fix, add a rollback test to staging, and automate the rollback.
+<details><summary>8. Why is a blue/green rollback fast?</summary>
+Blue, the old version, is still running while green takes traffic. If green misbehaves, you shift traffic back to blue at the load balancer. For that reason retire blue only after green has run long enough that you trust it.
 </details>
 
-<details><summary>9. What is the most common change request failure?</summary>
-A common change request failure is approval without review. The change reaches production, breaks the SLO, and pages the on-call. The cause is an approval that skipped peer review and never went through staging. The fix is to roll back, enforce peer review in the change request process, and automate the staging rollout.
+<details><summary>9. Why does a canary limit the damage of a bad release?</summary>
+A small share of traffic reaches the new version first, so only a small group of users sees a problem. You watch the SLO and widen the share step by step. If the SLO does not hold, you stop while the damage is small. Give each step a clear pass condition.
 </details>
 
-<details><summary>10. What is the most common upgrade window failure?</summary>
-A common window failure is a window that clashes with traffic. For example, an upgrade set for 2 AM Saturday breaks customers when their traffic spikes at 2 AM Saturday. The cause is a window chosen without checking the traffic pattern. The fix is to reschedule, align the window with real traffic, and check the forecast first.
+<details><summary>10. Why does the chapter add a separate rollback-test stage to the automated tests?</summary>
+A rollback that has never been tested is only a hope. The stage runs the rollback against staging and checks that the SLO recovers. Without it, the first real test of the rollback happens during an outage.
 </details>
 
-<details><summary>11. What is the most common security failure?</summary>
-A common security failure is an upgrade that introduces a known vulnerability. The security team flags a known CVE in the new version after the upgrade is applied. The cause is a CVE scan that did not cover the new version, combined with a rushed upgrade. The fix is to roll back, update the scan, and retry after the CVE is fixed.
+<details><summary>11. Why verify an upgrade with a 24 hour SLO window and not a few minutes?</summary>
+A 24 hour window covers a full day of traffic. A problem that appears only at a daily peak would slip past a short check. Verify when the upgrade finishes, not only when it starts, and confirm the SLO held and the rollback path still works.
 </details>
 
-<details><summary>12. What is the most common process failure?</summary>
-A common process failure is that the team skips the process. People skip the change request, the peer review, and the staging rollout, and the upgrade breaks the SLO. The cause is a process that is written down but not enforced, and a team that was never trained on it. The fix is to train the team, enforce the steps with CI, and add the process to onboarding.
+<details><summary>12. When would you pick an in-place upgrade over a canary, and what do you give up?</summary>
+Use in-place for dev environments and non-critical workloads where a short outage is acceptable. It is simple, atomic and fast. You give up an easy rollback, since the old software is gone, and you accept downtime during the restart. Use a canary for production AI workloads where the SLO is critical.
 </details>
 
-<details><summary>13. What is the difference between a rollback plan and a rollback test?</summary>
-A rollback plan is the documented steps that revert the change. A rollback test is the CI step that checks, in staging, that those steps work. One tells you what to do, and the other shows you that it works.
+<details><summary>13. When would you replace the whole cluster instead of upgrading in place, and what do you give up?</summary>
+Cluster replacement carries the least risk, because you build a new cluster and move workloads across. It costs the most. An in-place upgrade has the lowest cost and the highest risk. The chapter's example replaces a 300-node cluster with a new one that starts at about 20 nodes and grows as workloads move.
 </details>
 
-<details><summary>14. What is the difference between a peer review and an automated test?</summary>
-A peer review is a human check of the change's correctness and its rollback plan. An automated test is a CI step that runs lint, unit, integration, benchmark, and rollback tests. The peer review catches judgement errors, and the automated test catches the errors a machine can check.
+<details><summary>14. When would you choose blue/green over a canary, and what do you give up?</summary>
+Blue/green suits stateful workloads and database upgrades, and it lets you switch back quickly. You give up simplicity, because you must build a whole green environment beside blue. A canary suits production AI workloads where the SLO is critical and you want to widen exposure gradually.
 </details>
 
-<details><summary>15. Why is the staging rollout the last line of defence?</summary>
-Staging is a full deployment in a production-like environment, so it shows problems that smaller checks miss. It is the last check before production, which means its results decide whether the production rollout is safe. A weak staging environment turns every production rollout into a gamble.
+<details><summary>15. How do you decide between rolling back and fixing forward late in an upgrade, and what do you prepare in advance?</summary>
+Find the points of no return before you start and write them into the plan. After such a point, rolling back every earlier change can be worse than fixing forward. Before the change begins, take backups, including etcd snapshots, Velero backups, and backups of your applications' persistent data.
 </details>
 
-<details><summary>16. What is the difference between the upgrade window and the upgrade cadence?</summary>
-The upgrade window is the time when an upgrade happens, for example Saturday 2-6 AM UTC. The upgrade cadence is how often you upgrade, for example every 2-4 weeks. The window answers when, and the cadence answers how often.
+<details><summary>16. A driver upgrade costs 5 minutes of downtime per node, one node at a time. How long do 40 nodes take?</summary>
+Forty nodes times 5 minutes is 200 minutes, or 3 hours and 20 minutes. A rollback has the same estimate of 5 minutes per node. The 5 minute figure is an estimate in the example change request, and the 40 nodes is an assumption.
 </details>
 
-<details><summary>17. What is the relationship between the change request and the audit log?</summary>
-The change request is the human-readable record of what changes, why, the risk, the rollback plan, and the test plan. The audit log is the machine-readable record of who changed what, when, and the SLO before and after. The request asks for the change, and the audit log shows you what happened.
+<details><summary>17. The test plan uses a canary node, then 10 percent of the cluster, then the remaining 90 percent. For 200 nodes, what are the stages and how long is monitoring?</summary>
+Ten percent of 200 is 20 nodes, and the remaining 90 percent is 180 nodes. The plan monitors the SLO for 24 hours after the 10 percent stage and for 7 days after the final stage. That is 24 hours plus 7 days, about 8 days of monitoring in total.
 </details>
 
-<details><summary>18. What is the difference between the change management process and the cluster lifecycle process?</summary>
-The change management process governs one change, from request through verification. The cluster lifecycle process governs how the cluster evolves over time, including upgrade cadence, upgrade windows, and rollback strategy. One is for a single change, and the other covers all of them.
+<details><summary>18. In a quarter there were 40 changes, 5 failed and 3 were rolled back. Which lifecycle alerts fire?</summary>
+The failure rate is 5 divided by 40, which is 12.5 percent, above the 10 percent alert. The rollback rate is 3 divided by 40, which is 7.5 percent, above the 5 percent alert. Both fire. The thresholds are example values to tune to your history.
 </details>
 
-<details><summary>19. Why is the cluster lifecycle a Tier 2 chapter?</summary>
-The tier is a planning label, and this chapter does not cite a source for why it has that tier. The lifecycle process itself keeps the cluster current without breaking SLOs, and the platform team owns it. Without that process, you will find upgrades easy to postpone.
+<details><summary>19. Right after an upgrade the SLO breaks. What do you do, in order?</summary>
+First roll back, following the plan you wrote before the change. Second find the cause, since the likely reasons are a skipped staging run, a rushed change or no ready rollback. Third add the regression to the staging tests and try again.
 </details>
 
-<details><summary>20. What five questions should the cluster lifecycle lab let you answer in five seconds each?</summary>
-The five questions are the current Kubernetes version, the most recent change request, the current change request failure rate, the current rollback rate, and the next scheduled upgrade. The 30-second limit is an example target that your team should set for itself. If answers take longer, the process is not yet ready to run as a production service.
+<details><summary>20. In what order should a change move through the process, and why can a peer review not be replaced by automated tests?</summary>
+The order is change request, peer review, automated tests including the rollback test, staging rollout, production rollout, then verification. A human reviewer catches gaps automated tests cannot see, such as a rollback plan that says too little. Do not move to production until staging passes.
 </details>
-
----
 
 ## Sources and review notes
 

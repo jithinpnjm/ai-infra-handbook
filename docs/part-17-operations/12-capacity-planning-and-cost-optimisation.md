@@ -492,84 +492,84 @@ If any answer takes longer than your limit, the stack is not yet a production se
 
 ## Checkpoint questions
 
-<details><summary>1. What is the capacity planning model?</summary>
-It is a model that forecasts the GPUs your team needs for the next quarter. It combines historical usage, a growth rate, and a buffer into one number. The chapter's default buffer is 30 percent, and you should tune it to the workload's spike pattern.
+<details><summary>1. Finance asks why the GPU bill keeps rising and nobody on the platform team can explain it. What should have existed, and what would it show?</summary>
+A FinOps dashboard, which is the platform team's picture of the cluster's economics. It shows cost per team, cost per model, and GPU hours per team this month, plus a 90-day cost trend. A team that cannot see its own cost has little reason to give GPUs back.
 </details>
 
-<details><summary>2. What is the FinOps dashboard?</summary>
-It is a Grafana dashboard that shows cost per team, cost per model, and cost per month. The platform team uses it to see how the cluster's money is spent. The chargeback reads from it, and it guides both capacity planning and cost work.
+<details><summary>2. Team A's chargeback is larger than team B's, the teams dispute it, and the CFO's office escalates. Where do you look?</summary>
+The chapter names three suspects, which are the cost attribution, the cost model, and the chargeback query. Test the query against spend you already know, and check the tags on each GPU. Then automate a chargeback audit so the next dispute is caught earlier.
 </details>
 
-<details><summary>3. What is the right-sizing exercise?</summary>
-It is an exercise that finds over-provisioned workloads, cuts their GPU count, and measures what that saved. The steps run in order: identify the workloads, reduce their GPU count, measure the savings, and track them on the FinOps dashboard.
+<details><summary>3. The forecast asked for 156 GPUs, but the team only used 100. What does that leave you with, and what may have gone wrong?</summary>
+It leaves 56 GPUs bought and idle. The growth rate, the buffer, or the history the model learned from may be wrong. Tune the model, add a confidence range to the forecast, and review it each quarter.
 </details>
 
-<details><summary>4. What is the reserved-instance strategy?</summary>
-It is a plan to commit to a set number of GPUs for a set period in return for a discount. The chapter's example discounts are 30 to 40 percent for one year, 50 to 60 percent for three years, and 50 to 70 percent for spot, so check them against your provider. Use one-year reserved capacity for steady work, three-year for long-term work, spot for training jobs, and on-demand for spikes.
+<details><summary>4. The team runs right-sizing every quarter, finds nothing, and the GPU bill keeps climbing. What does the chapter say may be wrong?</summary>
+The metrics may be wrong, the exercise may cover too few workloads, or the team may not be looking at all of them. Add the right metrics, widen the exercise to every workload, and train people on the method. A right-sizing savings rate below 10 percent per quarter is the alert that should have flagged this.
 </details>
 
-<details><summary>5. What is the most common capacity planning failure?</summary>
-The forecast is wrong. In the chapter's example, the forecast says 156 GPUs, but usage is 100, so 56 GPUs were over-provisioned. The likely causes are a wrong growth rate, a wrong buffer, or bad history. The fix is to tune the model, check the history, and add a confidence range.
+<details><summary>5. A 1-year commitment shows 80 percent utilisation, yet the bill is higher than on-demand would have been. What do you check first?</summary>
+Check how utilisation is measured. At a 30 percent discount a commitment breaks even at about 70 percent use, so 80 percent should save money. If it does not, the forecast was too optimistic, the spike pattern does not match the commitment, or the team did not adjust it.
 </details>
 
-<details><summary>6. What is the most common right-sizing failure?</summary>
-The right-sizing exercise finds nothing. It runs every quarter, flags no workloads, and the bill keeps growing. The usual cause is weak metrics or a scope that is too narrow. Add better metrics, and widen the exercise to every workload.
+<details><summary>6. Dashboards show the cluster fully busy, yet jobs finish slowly. Which idea from the chapter explains this, and what example supports it?</summary>
+Goodput, which is useful work completed per unit of time, is a better measure than raw busy time. The chapter cites Meta's "Revisiting Reliability" paper through AI Systems Performance Engineering, chapter 1. A cluster that looked fully used still lost 70 to 75 percent of its compute to communication delays, slow data supply, and failure recovery.
 </details>
 
-<details><summary>7. What is the most common reserved-instance failure?</summary>
-The commitment goes unused, or it costs more than on-demand would have. The forecast may have been too optimistic, or the spikes may not match the commitment. Adjust the commitment level, or move the work to on-demand or spot.
+<details><summary>7. Why does a 30 percent discount require about 70 percent utilisation to break even?</summary>
+With a 30 percent discount you pay 70 percent of the on-demand price for every committed hour, whether you use it or not. Using 70 percent of those hours matches what on-demand would have cost. Below that, the commitment costs more than on-demand.
 </details>
 
-<details><summary>8. What is the most common chargeback failure?</summary>
-The chargeback is wrong. Teams dispute the bill, and the CFO has to step in. Check the attribution, the cost model, and the query. Then automate an audit, so mistakes show up early.
+<details><summary>8. Why would closing the gap from 60 percent to 80 percent utilisation save 25 percent of GPU spend?</summary>
+The same work needs fewer GPUs when each one is busier. At 60 percent use the work needs 60 out of every 80 GPUs it would need at 80 percent, so 60 divided by 80 is 0.75. That is a 25 percent saving. The figures are the chapter's examples.
 </details>
 
-<details><summary>9. What is the most common GPU bill growth failure?</summary>
-The GPU bill grows without limit. The forecast is stale, the orders are uncapped, and right-sizing is not running. Update the forecast each quarter, cap the orders, and run right-sizing every quarter.
+<details><summary>9. Why does an untagged GPU hurt the cost process?</summary>
+Kubecost allocation and the FinOps dashboard both read the team, model, and cost centre tags. An untagged GPU has no team, so its cost belongs to nobody. It then cannot appear in a chargeback or be reviewed in right-sizing.
 </details>
 
-<details><summary>10. What is the most common cost optimisation failure?</summary>
-Cost work happens in ad-hoc bursts. People skip the right-sizing method and ignore the FinOps dashboard. The process exists on paper, but nobody enforces it. Train the team, and check the process during code review.
+<details><summary>10. Why can a service of type LoadBalancer make cost grow quietly, and what does an Ingress change?</summary>
+In a cloud cluster each LoadBalancer Service gets its own external load balancer, and those charges add up. An Ingress controller routes many services through one entry point. That keeps the number of load balancers, and the bill, down.
 </details>
 
-<details><summary>11. What is the difference between the capacity planning model and the FinOps dashboard?</summary>
-The capacity planning model looks forward. It estimates how many GPUs the team will need next quarter. The FinOps dashboard looks back at what the team used and what it cost. One is the forecast, and the other is the actual.
+<details><summary>11. Why does the chapter say a low right-sizing savings rate is the most important alert?</summary>
+A low rate suggests the team has stopped looking for waste. The bill then grows without a check, because nothing is pulling unused GPUs back. The example alert fires when savings fall below 10 percent per quarter.
 </details>
 
-<details><summary>12. What is the difference between the right-sizing exercise and the cost optimisation?</summary>
-Right-sizing is one specific activity. It finds over-provisioned workloads and cuts their GPU count. Cost optimisation is the wider goal of lowering the cluster's total cost, and right-sizing is one tool toward it.
+<details><summary>12. You must set a buffer. When would you pick 30 percent over 10 percent, and what do you give up?</summary>
+Pick 30 percent when missing the SLO during a spike costs more than idle GPUs. You give up some spend, because 10 percent has low waste but a high SLO breach risk. The chapter treats 30 percent as a balanced starting point and asks you to review it each quarter against your spike pattern.
 </details>
 
-<details><summary>13. What is the difference between reserved-instance and spot-instance?</summary>
-A reserved instance is a commitment to a set number of GPUs for a set time, in return for a discount. A spot instance can be taken back at any time. It is cheaper but less reliable. Reserve steady work, and use spot for training jobs that can handle interruption.
+<details><summary>13. A training workload is steady for three years and another is spiky. When would you choose 3-year reserved, 1-year reserved, on-demand, or spot, and what do you give up with each?</summary>
+Use 3-year reserved for long-term steady work, with a 50 to 60 percent discount and the least flexibility. Use 1-year reserved for steady-state work at 30 to 40 percent. Use on-demand for spikes at no discount, and spot for preemptible training jobs at 50 to 70 percent, where you accept being preempted at any time.
 </details>
 
-<details><summary>14. What is the difference between the capacity planning buffer and the error budget?</summary>
-The capacity planning buffer is extra GPU room that guards against running short. It trades wasted capacity against shortage. The error budget is the amount of unreliability a service may spend. It trades reliability against release speed. The buffer belongs to the cluster, and the error budget belongs to the service.
+<details><summary>14. Should the platform team charge each team per GPU-hour or keep GPUs in one shared budget, and what does each give up?</summary>
+A per-GPU-hour charge makes teams see the cost and value the hardware. AI Systems Performance Engineering, chapter 2, adds that it also covers electricity and depreciation. You give up simplicity, because you need tags, a cost model, and a chargeback query that teams will trust. A shared budget is easier but hides who uses what.
 </details>
 
-<details><summary>15. What is the relationship between the FinOps dashboard and the chargeback?</summary>
-The FinOps dashboard is the source of cost truth. It shows cost by team, model, and month. The chargeback reads that data, sums the cost by team, and sends it to billing. The dashboard supplies the data, and the chargeback consumes it.
+<details><summary>15. The workload's average utilisation looks low. Do you cut its GPUs straight away, or check first, and what do you risk either way?</summary>
+Review each recommendation first, because a low average can hide a workload that peaks at certain hours. Cutting immediately saves money but risks missing the SLO at the peak. Checking costs a little time and keeps the savings honest.
 </details>
 
-<details><summary>16. What is the difference between on-demand and reserved-instance cost?</summary>
-On-demand is pay-as-you-go, and it has the highest price per hour. A reserved instance has a lower price in return for a commitment. The chapter's example discounts run from 30 to 60 percent, depending on the term. Use on-demand for spikes, and reserve the capacity you know you will use.
+<details><summary>16. A team has 100 GPUs, growth of 20 percent, and a 30 percent buffer. What is the target fleet and the order?</summary>
+The forecast is current count times 1.20 times 1.30. That is 100 times 1.20 times 1.30, which is 156 GPUs. The order is 156 minus 100, so 56 more.
 </details>
 
-<details><summary>17. What is the most important cost metric?</summary>
-The chapter treats cost per team per month as the most important cost metric. It feeds the chargeback and the budget alerts. A team that can see this number can act on it. A team that cannot see it cannot optimise.
+<details><summary>17. A lab cluster has 4 GPUs, 20 percent growth, and a 30 percent buffer. What does the script print, and why?</summary>
+The raw result is 4 times 1.20 times 1.30, which is 6.24. You cannot buy a fraction of a GPU, so the target fleet is 7. The order is 7 minus 4, which is 3 more.
 </details>
 
-<details><summary>18. What is the difference between the FinOps dashboard and the cost-vs-latency trade-off?</summary>
-The FinOps dashboard shows what the team spent. The cost-vs-latency trade-off asks what the team should spend next quarter to meet its latency target. The dashboard holds the actual numbers, and the trade-off gives the forecast.
+<details><summary>18. In the right-sizing example, A drops from 8 to 5 GPUs and C from 4 to 2. At $3.20 per GPU-hour, what is the monthly saving?</summary>
+A frees 3 GPUs and C frees 2, which is 5 GPUs. Over 30 days that is 5 times 24 times 30, which is 3,600 GPU-hours. At $3.20 each the saving is 3,600 times 3.20, which is $11,520. The $3.20 is an assumed rate, so use your own.
 </details>
 
-<details><summary>19. Why is capacity planning a Tier 2 chapter?</summary>
-Capacity planning keeps the GPU bill predictable. The platform team owns the process, the CFO sees its results, and the procurement team negotiates from it. Without it, a team is likely to overpay for GPUs.
+<details><summary>19. The procurement script prints an order that looks far too high. What do you check first, second, and third?</summary>
+First check the current GPU count you fed in, because a wrong input gives a confident, wrong order. Second check the growth rate and the buffer against the last 90 days of history. Third work the formula by hand, as in 100 times 1.20 times 1.30, and compare it with the printed number.
 </details>
 
-<details><summary>20. What five questions should the capacity planning lab let you answer in five seconds each?</summary>
-The lab should let you answer five questions quickly. They are the current cost per team this month, the next quarter's GPU order, the current right-sizing savings rate, the current reserved-instance utilisation, and the next renewal date. The five-second target is an example. If any answer takes longer than your own limit, the stack is not yet a production service.
+<details><summary>20. A chargeback total for one month looks wrong. In what order do you verify it before finance reads it?</summary>
+First check one month's totals by hand against the four cost lines, which are compute, storage, network egress, and licensing. Second check that the cost attribution tags are present on the GPUs involved. Third test the query against spend you already know.
 </details>
 
 ---

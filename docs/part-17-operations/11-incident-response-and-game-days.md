@@ -635,84 +635,84 @@ Try these after you finish the lab. Each one turns a step in this chapter into a
 
 Answer each question in your head before you open it. If you cannot, reread the section it comes from.
 
-<details><summary>1. What three severity levels does the incident response process define?</summary>
-SEV-1 is a customer-facing outage. Its response is immediate, its resolution time is 4 hours, and its post-mortem is due within 5 business days. SEV-2 is a degraded service. Its response takes 15 minutes, its resolution time is 24 hours, and its post-mortem is due within 10 business days. SEV-3 is an internal issue. Its response takes 1 hour, its resolution time is 1 week, and its post-mortem is optional. Each level sets a response time, an escalation, a communication cadence, a resolution time, and a post-mortem timeline.
+<details><summary>1. A page arrives at 02:00. Customers cannot run inference at all and revenue has stopped. Which severity is it, and what clock starts?</summary>
+It is a SEV-1, because customers cannot use the service. The on-call is paged at once. The Incident Commander must be involved within 15 minutes, the VP Engineering within 30 minutes, and the CEO within 1 hour. Updates go out every 30 minutes.
 </details>
 
-<details><summary>2. What six stages does the incident response process have?</summary>
-Detection (the alert fires), triage (the on-call investigates), mitigation (the impact is reduced), resolution (the service is restored), communication (stakeholders are notified), and post-mortem (the team learns from the incident). Every incident passes through these stages in order, and each stage is documented.
+<details><summary>2. Inference latency is slow but every request still succeeds. The SLO is at risk. Which severity do you declare, and what cadence do you follow?</summary>
+It is a SEV-2, a degraded service. The on-call responds within 15 minutes and the IC joins within 30 minutes. Status updates go out every 2 hours. Resolution is expected within 24 hours and the post-mortem is due within 10 business days.
 </details>
 
-<details><summary>3. What is the Incident Commander role?</summary>
-The IC is the single point of contact during an incident. The IC coordinates the response, makes the decisions, and communicates with the stakeholders. The IC's four responsibilities are to coordinate, decide, communicate, and document. The IC can roll back a change, drain nodes, scale workloads, and change the SLO temporarily.
+<details><summary>3. Three engineers are all changing settings on a failing cluster at once, and the outage is getting longer. What is missing, and what should it do?</summary>
+There is no Incident Commander. The IC is the single point of contact and the single point of decision. They assign tasks, track progress, and decide the mitigation, rollback, and escalation. Everyone else reports to the IC so that changes stop colliding.
 </details>
 
-<details><summary>4. What is a game day?</summary>
-A game day is a planned failure that drills the team. It has a scenario, such as a GPU node failure. It has an injection, such as cordoning the node. It has an expected response, such as an alert within 1 minute. It has success criteria. Game days are scheduled quarterly, and each one ends with a post-mortem that produces action items.
+<details><summary>4. A SEV-1 has been open for four hours and stakeholders have heard nothing since the first page. What process gap is this, and how do you fix it?</summary>
+The communication cadence was never defined, so nobody knew it and nobody enforced it. Define a cadence per severity, train the team on it, and enforce it in the incident management tool. For a SEV-1 the cadence is every 30 minutes, and each update says what is known, what is not known, and when the next update arrives.
 </details>
 
-<details><summary>5. What is a blameless post-mortem?</summary>
-A blameless post-mortem focuses on the system, not the individual. It has a summary, an impact section, a timeline, a root cause, what worked, what did not work, and action items. It does not blame anyone, so the team can learn from it.
+<details><summary>5. The on-call opens the runbook during a page and finds the recovery step missing. What does the chapter say went wrong earlier, and what three changes does it recommend?</summary>
+The runbook was not updated after the last incident, so it has gaps, and the on-call was never trained on it. The fix is to update the runbook, train the on-call, and add an integration test that follows the runbook. The aim is that the next person on call can act without improvising.
 </details>
 
-<details><summary>6. What is the difference between SEV-1 and SEV-2?</summary>
-SEV-1 is a customer-facing outage. Customers cannot use the service, and the SLO is breached. The response is immediate, and the resolution time is 4 hours. SEV-2 is a degraded service. Customers can still use it, with reduced quality, and the SLO is at risk. The response takes 15 minutes, and the resolution time is 24 hours.
+<details><summary>6. A post-mortem draft says "engineer A pushed a bad config and caused the outage." What is wrong with it, and what happens to the next incident if it stands?</summary>
+It is not blameless. It names a person instead of describing what the system allowed and what would have caught the failure sooner. When people fear blame they hide details, and hidden details make the next incident harder to understand. Remove the blame language and ask what let the config reach production.
 </details>
 
-<details><summary>7. What is the difference between SEV-2 and SEV-3?</summary>
-SEV-2 affects customers. The service is degraded, the SLO is at risk, the response takes 15 minutes, and the resolution time is 24 hours. SEV-3 does not affect customers. It is an internal issue that can wait for business hours, with a 1-hour response and a 1-week resolution time.
+<details><summary>7. Why does the incident commander need authority to roll back or drain a node without a committee?</summary>
+During an incident every minute of debate extends customer impact. If the IC must ask permission, the response waits on whoever answers the page. The chapter says to agree the IC's powers before the incident starts. Then nobody has to argue about who may roll back production at three in the morning.
 </details>
 
-<details><summary>8. What is the difference between the triage and the mitigation?</summary>
-Triage is the on-call's investigation of the alert. The on-call reads the runbook, checks the dashboards, and determines the severity. Mitigation is the action that reduces the impact, such as a rollback, a node drain, or a scale-out. Triage helps you understand the problem. Mitigation is about acting on it.
+<details><summary>8. Why does the process put mitigation before the root cause is known?</summary>
+Mitigation buys time by reducing customer impact now. A rollback returns the workload to the version that was running before the change, so it often works without understanding the bug. Resolution comes after, once the root cause is found and a fix is applied and checked against the SLO.
 </details>
 
-<details><summary>9. What is the difference between the mitigation and the resolution?</summary>
-Mitigation reduces the impact quickly, but only temporarily. Resolution restores the service for good, and it takes longer. Mitigation stops the bleeding, and resolution heals the wound.
+<details><summary>9. Why does a team that drills with game days usually recover faster than one that does not?</summary>
+Nobody has to invent the steps during the outage. A game day tests the runbook, the escalation path, and the post-mortem, and it shows where the response stalls. Skipping drills for six months weakens muscle memory and slows the response.
 </details>
 
-<details><summary>10. What is the MTTA, MTTM, and MTTR?</summary>
-MTTA is the mean time from the alert firing to the on-call acknowledging it. MTTM is the mean time from the alert firing to a mitigation in place. MTTR is the mean time from the alert firing to the resolution in place. The team tracks all three on a dashboard, and uses them to decide where to improve.
+<details><summary>10. Why did a memory leak in the example post-mortem reach production even though staging looked fine?</summary>
+The staging traffic was too low to trigger the leak, and the promotion gate had no memory leak test. The cause was an unbounded KV cache in churn-model v7. The action items raise staging traffic to match production and add the leak test to the gate.
 </details>
 
-<details><summary>11. What is the difference between the IC's role and the on-call's role?</summary>
-The on-call responds to the page, investigates the alert, and applies the mitigation. The on-call does the work. The IC coordinates the response, makes the decisions, and communicates with the stakeholders. When you are on call, you are the doer; the IC coordinates.
+<details><summary>11. Why does the chapter require every post-mortem action item to have an owner and a due date?</summary>
+An item with no owner has nobody who will do it, and an item with no date has no point at which it can be checked. The review ranks items and tracks each one until it closes. Without that, the same incident comes back.
 </details>
 
-<details><summary>12. What is the difference between a game day and a fire drill?</summary>
-A game day is planned. It has a scenario, an injection, and success criteria. A fire drill is ad hoc. The team responds to a failure that has no scenario, no injection, and no success criteria.
+<details><summary>12. You must choose a severity for a new alert. A hard-to-fix bug affects only an internal dashboard. Do you pick the severity from how hard the fix is or from customer impact, and what do you give up?</summary>
+Pick it from customer impact. Customers do not notice an internal dashboard problem, so it is a SEV-3 with a response within 1 hour and resolution within 1 week. You give up fast attention on a bug that feels serious to engineers. In return the SEV-1 and SEV-2 paths stay reserved for problems customers feel.
 </details>
 
-<details><summary>13. What is the most common incident response failure?</summary>
-The on-call is paged but does not know what to do. The runbook is missing the recovery step, so the on-call is stuck. The diagnosis is that the runbook was not updated after the last incident. The fix is to update the runbook and train the on-call on it.
+<details><summary>13. A rollback is available but the root cause is unknown. Do you roll back first or investigate first, and what do you give up?</summary>
+Roll back first, because it is often the fastest way to cut impact. You give up some evidence of the broken state, and each mitigation option trades some risk for speed. That is why the chapter says to write down the choice. Then investigate the cause with the logs and the previous version.
 </details>
 
-<details><summary>14. What is the most common IC failure?</summary>
-The IC is missing. A SEV-1 has no declared IC, so the response is uncoordinated and the incident escalates. The diagnosis is that the IC role is not defined and there is no IC rotation. The fix is to define the role, set up the rotation, and train the team on it.
+<details><summary>14. When would you run a game day for a failure you have already handled in production, and what does it cost?</summary>
+Run it when the runbook may have drifted from the cluster, or when the team has not drilled for a long time. The chapter asks for a game day each quarter and flags more than 90 days since the last one. The cost is calendar time and a planned failure, and the gain is finding stale steps while nothing real is at stake.
 </details>
 
-<details><summary>15. What is the most common comms failure?</summary>
-The comms cadence is wrong. A SEV-1 gets updates only every 4 hours, so the stakeholders are not informed and the incident escalates. The diagnosis is that the cadence is not defined. The fix is to define the cadence and train the team on it.
+<details><summary>15. A page tool shows many critical alerts every week. Do you keep every alert critical or reduce them, and what is the trade-off?</summary>
+Reduce them. Too many critical alerts burn out the on-call and bury the real ones. You give up some early warning on lower-risk signals. Each alert should carry a description and runbook link so the engineer knows what to check first.
 </details>
 
-<details><summary>16. What is the most common post-mortem failure?</summary>
-The post-mortem is not written. The incident is resolved, the team does not learn from it, and it recurs. The diagnosis is that the template is missing, and people do not know how to write a post-mortem. The fix is to create the template and train the team on it.
+<details><summary>16. In the example post-mortem the latency SLO was exceeded at 13:50 and the alert fired at 13:55. How long was the detection delay, and how long after the first SLO breach was the service healthy again?</summary>
+The delay was 5 minutes, from 13:50 to 13:55. The SLO was met again at 14:35. That is 45 minutes after the breach, matching the post-mortem's statement of 45 minutes.
 </details>
 
-<details><summary>17. What is the most common game day failure?</summary>
-The game day is skipped. The team has not drilled in 6 months, its muscle memory is weak, and its response is slow. The diagnosis is that the schedule is missing and the team is too busy. The fix is to schedule the game day quarterly and automate the scheduling.
+<details><summary>17. In the example game day the drain was expected to take 5 minutes and took 10, and the SLO target of 30 minutes was met at 45. By how much did each miss?</summary>
+The drain missed by 5 minutes, since 10 minus 5 is 5. The SLO missed by 15 minutes, since 45 minus 30 is 15. The drain delay is only part of the gap, so the action items also investigate the drain duration and update the runbook with the real figure.
 </details>
 
-<details><summary>18. What is the most common blameless culture failure?</summary>
-The post-mortem is not blameless. It blames one individual, who loses motivation, and the team does not learn from the incident. The diagnosis is that the culture is not blameless. The fix is to train the team on blameless reviews, model the approach, and remove blame from the template.
+<details><summary>18. A SEV-1 has a 4-hour resolution target and a 30-minute update cadence. How many updates fit if the incident lasts the full 4 hours, and how many for a SEV-2 at 2-hour cadence over its 24-hour target?</summary>
+For the SEV-1, 4 hours is 240 minutes, and 240 divided by 30 is 8 updates. For the SEV-2, 24 divided by 2 is 12 updates. The figures are example targets from the chapter, so set your own from your SLOs and staffing.
 </details>
 
-<details><summary>19. Why is the incident response process a Tier 2 chapter?</summary>
-Because the process is what keeps the cluster running when the SLO is breached. The platform team owns it, the on-call follows it, and it shapes what customers see when the cluster is down. Without the process, you have a team that is afraid to respond.
+<details><summary>19. An alert fires and the on-call is not sure how bad it is. What do you check first, second, and third?</summary>
+First open the runbook linked in the alert annotations. Second check the dashboard, for example the p99 latency query, to see what is actually failing. Third decide the severity, because the chapter says to set it only after you have seen what is broken.
 </details>
 
-<details><summary>20. What five questions should the incident response lab let you answer in five seconds each?</summary>
-What is the current incident rate per week? What is the current MTTA? What is the current MTTR? When was the last game day? What is the most recent post-mortem, and what were its action items? If any answer takes you more than 30 seconds, the incident response process is not yet a production service.
+<details><summary>20. After a rollback, how do you decide the incident is resolved, and in what order do you check?</summary>
+First confirm the root cause is identified, for example in the previous container logs. Second apply the fix that addresses it. Third rerun the same triage query and confirm the SLO is met. Only then close the incident record and send the final update.
 </details>
 
 ---

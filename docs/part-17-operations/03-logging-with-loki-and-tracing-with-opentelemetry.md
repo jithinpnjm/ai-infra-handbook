@@ -806,84 +806,84 @@ The thresholds in these exercises are starting points. Tune them to your own clu
 
 ## Checkpoint questions
 
-<details><summary>1. What is Loki?</summary>
-Loki is a log aggregation system designed for Kubernetes. It indexes logs by label, stores the log chunks in object storage, and answers queries written in LogQL. Promtail or Alloy tails the logs, adds labels, and ships them to Loki, and Grafana then queries Loki.
+<details><summary>1. Loki ingest fails, logs stop flowing and the on-call cannot query them. What do you check and in what order?</summary>
+The object storage bucket is probably full. Check the bucket size and the chunk lifecycle policy first, since the lifecycle may not be pruning old data. Then shorten the retention period and add an alert on storage use.
 </details>
 
-<details><summary>2. What is LogQL?</summary>
-LogQL is the query language for Loki. You start with a label selector in braces, optionally add a text filter such as `|= "text"`, and then aggregate. The queries the on-call engineer runs during an incident are LogQL queries.
+<details><summary>2. A trace stops at the HTTP handler and the inference engine's child spans are missing. What is the cause and the fix?</summary>
+The header is not reaching the inference service, so the engine starts a new trace instead of a child span. Confirm the handler sets the `traceparent` header on every outgoing request and that the engine reads it. Add an integration test that checks a trace crosses both services.
 </details>
 
-<details><summary>3. What is the OpenTelemetry Collector?</summary>
-The Collector is a vendor-neutral process that receives, processes, and exports telemetry. It runs as a DaemonSet on every node, batches spans, and applies tail sampling. It exports to a backend such as Tempo, Jaeger, or a vendor's system.
+<details><summary>3. After an incident the on-call cannot find the trace for the failing requests. What is wrong with the sampling policy?</summary>
+The policy is too aggressive and drops traces you need. Keep 100 percent of error traces and 100 percent of slow traces. Then raise the share of healthy traces you keep so the baseline stays useful.
 </details>
 
-<details><summary>4. What is the W3C Trace Context?</summary>
-It is the standard for passing trace context from one service to the next. The `traceparent` header carries the trace ID and the parent span ID, from the client through the server and the database to the inference engine. Because each hop passes the header on, the trace stays end to end.
+<details><summary>4. The on-call cannot filter logs by field because the fields are not in the message. What do you change?</summary>
+The application writes unstructured text, so there is no schema to query against. Standardise on the OpenTelemetry log SDK, declare the schema and enforce it in CI. Then check the schema on production logs too.
 </details>
 
-<details><summary>5. What is tail sampling?</summary>
-Tail sampling decides which spans to keep after they have been collected. The decision uses the span's attributes and the trace's overall health. This chapter's example policy keeps 100% of error traces, keeps 100% of slow traces, and keeps 10% of healthy traces.
+<details><summary>5. The Collector restarts, spans are dropped and traces are incomplete. What do you do?</summary>
+The memory limit may be too low for the batch size, or propagation may create more spans than the Collector can hold. Raise the memory limit or lower the batch size, and add a memory limiter processor. Then check the trace context propagation rate.
 </details>
 
-<details><summary>6. What is the trace-to-logs link?</summary>
-The trace ID is the join key between Tempo and Loki. Every log line that belongs to a trace carries the trace ID. To use it, find a trace in Tempo, paste its trace ID into Loki, and Loki shows that trace's log lines.
+<details><summary>6. The on-call clicks a spike on a latency panel and no trace opens. Why, and what do you fix?</summary>
+The application does not emit exemplars, so nothing links the metric sample to a trace. Wire the OTel SDK to emit exemplars and test that metric samples carry one. Add an integration test for it.
 </details>
 
-<details><summary>7. What is the exemplar-to-trace link?</summary>
-A Prometheus exemplar links a metric sample to a trace ID. The application emits the trace ID with the metric, Prometheus stores it, and Grafana draws it as a link. Clicking a metric spike opens the trace that produced it.
+<details><summary>7. Why do customer IDs and request IDs belong in the JSON message and not in Loki labels?</summary>
+Each distinct combination of labels forms its own log stream, so a label with a new value per customer makes the index grow with your customer count. Written as fields in the JSON message, the values stay searchable without growing the index. Count how many values a label can take in a month before you add it.
 </details>
 
-<details><summary>8. What is the difference between Loki and Prometheus?</summary>
-Loki is for logs, which are discrete events with structured fields. Prometheus is for metrics, which are numeric time series with labels. The two complement each other, so this chapter's pattern uses both. Loki indexes only the labels of each log stream, not the text of the lines, and Prometheus indexes metric samples by label.
+<details><summary>8. Why does a LogQL query with a misspelled label return nothing and raise no error?</summary>
+The selector simply matches no streams, so the result is empty and not an error. An empty result can then look like a healthy system. That is why the chapter says to test each query against a known failure first.
 </details>
 
-<details><summary>9. What is the difference between Loki and Elasticsearch?</summary>
-Loki is designed for Kubernetes, indexes logs by label, and stores log chunks in object storage. Elasticsearch is designed for full-text search, indexes the entire log message, and stores logs on local disk or shared storage. Loki is cheaper to run, and Elasticsearch is more powerful for full-text search.
+<details><summary>9. Why does tail sampling keep failed and slow requests every time, when head sampling cannot?</summary>
+Tail sampling waits until a trace is complete before deciding, so the decision uses the whole trace. Head sampling decides at the start, before anyone knows how the request will end. So it may drop the very request that later fails.
 </details>
 
-<details><summary>10. What is the most common Loki failure mode?</summary>
-Running out of disk. The object storage bucket fills up, the chunk lifecycle is not pruning, or the retention period is too long. The fix is to check the bucket size and the lifecycle policy, shorten the retention period, and add a storage usage alert.
+<details><summary>10. Why does the chapter prefer alerting on a metric rather than on a log message?</summary>
+Log messages change more often than metrics do, and a small edit to the text can silently break an alert. Expose a metric that represents the behavior and write the alerting rule against it. Logs are best for investigating after the alert.
 </details>
 
-<details><summary>11. What is the most common OpenTelemetry failure mode?</summary>
-A broken trace context. The header does not reach the LLM inference service, which then starts a new trace instead of child spans. The fix is to confirm the W3C header is set on every outgoing request, confirm the inference service reads it, and add an integration test.
+<details><summary>11. Why does a trace-to-logs link need the trace ID inside each log line?</summary>
+The trace ID is the join key between traces and logs. If a line carries it, you can paste it into Loki and see every line from that request. Without the ID stamped on the line, there is nothing to join on.
 </details>
 
-<details><summary>12. What is the most common tail-sampling failure mode?</summary>
-Dropping the traces you need. The policy is too aggressive and removes interesting traces. The fix is to keep 100% of error traces, keep 100% of slow traces, and keep a larger share of healthy traces.
+<details><summary>12. Would you use application forwarding, a sidecar or a node agent to ship logs, and what do you give up with the winner?</summary>
+Use a node agent, which is by far the most common. You get one integration point with the backend, and filtering, metadata and forwarding are configured in one place. You give up isolation, because a node agent overloaded by one noisy workload can stop collecting logs for every other workload on that node.
 </details>
 
-<details><summary>13. What is the structured log schema?</summary>
-The schema that every log line follows. Every line is JSON, every JSON line has a schema, and the schema is documented. CI enforces the schema, so the queries keep working.
+<details><summary>13. Should you run Fluentd or Fluent Bit as the node agent, and when does the aggregator change the answer?</summary>
+Use Fluent Bit unless a Fluentd plug-in offers a feature you need. Fluent Bit is written in C, uses far less memory and has fewer plug-ins. If you need a Fluentd plug-in, keep Fluent Bit as the DaemonSet node agent and run Fluentd as a cluster-wide aggregator.
 </details>
 
-<details><summary>14. What is the difference between span and trace?</summary>
-A trace is a directed acyclic graph of spans, and it shows one request's path through the system. A span is one operation inside that trace. The trace gives you the end-to-end view, and the span gives you the single-step view.
+<details><summary>14. Should the Fluentd aggregator run as a Deployment or a StatefulSet, and what is the trade-off?</summary>
+As a Deployment it buffers logs in the Pod's ephemeral storage, so if the Pod is killed before it flushes, those logs are lost. As a StatefulSet the buffered logs stay safe when the Pod goes down. A centralized aggregator is still a single point of failure for the whole cluster.
 </details>
 
-<details><summary>15. What is the difference between the OTel SDK and the OTel Collector?</summary>
-The OTel SDK is the application-side library that creates spans and metrics, and it sends them to the Collector over OTLP. The Collector is the infrastructure-side process that receives and processes telemetry. It batches spans and applies tail sampling. The SDK runs per workload, and the Collector runs per cluster.
+<details><summary>15. Why would you drop `system:kube-proxy` watches from the audit policy while still logging secrets at `Metadata` level?</summary>
+An audit policy limits volume without losing the important data. The kube-proxy watches on endpoints and services are noisy, so the `None` level skips them. Secrets are logged at `Metadata`, which records who did what but leaves out the request and response bodies.
 </details>
 
-<details><summary>16. What is the difference between tail sampling and head sampling?</summary>
-Head sampling decides whether to keep a span when the span is created. Tail sampling decides after the entire trace is collected. Tail sampling is more accurate, because it sees the trace's overall health, but it costs more, because the Collector must wait for the trace to finish. This chapter's pattern uses tail sampling for accuracy.
+<details><summary>16. A 100-pod cluster has each pod emit between 10 MB and 100 MB of logs per hour. What is the range for the whole cluster?</summary>
+At the low end, 100 times 10 MB is 1,000 MB, which is about 1 GB per hour. At the high end, 100 times 100 MB is 10,000 MB, which is about 10 GB per hour. The chapter treats these as example values to replace with your own measurements.
 </details>
 
-<details><summary>17. Why is the trace context propagation rate the most important alert?</summary>
-A broken trace context leaves the trace incomplete, so the on-call cannot follow it end to end. The alert catches a new workload that stops passing the context. It is the platform team's main defense against the most common trace failure.
+<details><summary>17. A tail-sampling policy keeps all error traces, all traces over 500 ms and 10 percent of healthy traces. Out of 10,000 healthy, fast traces, how many are kept?</summary>
+Ten percent of 10,000 is 1,000 traces. The rest are dropped. Any trace with an error or a root span above 500 ms is kept whatever its share.
 </details>
 
-<details><summary>18. What is the difference between Loki's labels and the log message?</summary>
-Loki's labels are indexed, and LogQL uses them as the join keys for queries. The log message is stored as a chunk. You can search its text, but the text is not indexed. Keep the labels low cardinality, and put high-cardinality fields in the message as structured fields.
+<details><summary>18. An 800 ms inference splits into prefill 200 ms and decode 500 ms. How long is the remaining step, and which step would you inspect first?</summary>
+The rest is 800 minus 200 minus 500, which is 100 ms for feature fetch. Decode is the largest at 500 ms, so look there first. The numbers are illustrations, not measurements.
 </details>
 
-<details><summary>19. What is the difference between the OTel Collector and Fluent Bit?</summary>
-The OTel Collector handles traces, metrics, and logs, and it supports the OTLP protocol. Fluent Bit handles logs, and it supports syslog, journald, and tail inputs. This chapter's pattern uses Fluent Bit for logs and the Collector for traces.
+<details><summary>19. A new workload shows up with broken traces. What do you check first, second and third?</summary>
+First check the trace context propagation rate, which should hold at its baseline. Second send one request through the service and look for a child span. Third check whether the application's tracing client library is supported by the platform's tracing system, since an unsupported library means tracing does not work at all.
 </details>
 
-<details><summary>20. What five questions should the logs and traces lab let you answer in five seconds each?</summary>
-The five questions are the current Loki query latency p99, the current Collector export latency p99, the most recent error log, the most recent trace ID, and the current trace context propagation rate. This chapter sets five seconds as the target for each answer. An answer that takes more than 30 seconds means the stack is not yet a production service, though your team should set its own bar.
+<details><summary>20. An error rate per model jumped right after a deploy. In what order do you use the three pillars and which LogQL do you run first?</summary>
+Start with metrics to see the symptom. Then run the error rate query per model, `sum by (model) (rate({severity="error", namespace="mlops"}[5m]))`, which the chapter calls the first thing to run when a deploy goes wrong. Last open a trace for a slow or failing request to see where the time went.
 </details>
 
 ---

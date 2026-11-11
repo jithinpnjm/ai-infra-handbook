@@ -908,84 +908,84 @@ Work through these exercises after the lab, while the stack is still running. Ea
 
 ## Checkpoint questions
 
-<details><summary>1. What is Prometheus's architecture?</summary>
-Prometheus is a pull-based system: its server scrapes metrics from targets and stores them in a time-series database. Every workload exposes a `/metrics` endpoint in the Prometheus exposition format, Alertmanager evaluates the alert rules, and Grafana renders the dashboards.
+<details><summary>1. Prometheus is OOM-killed, the dashboards go stale and the alerts stop firing. What is the cause and what is the fix order?</summary>
+Cardinality has outgrown the memory budget, because someone added a metric with a high-cardinality label. Find the metric with `prometheus_tsdb_head_series`. Drop the label at its source or aggregate the metric before it reaches Prometheus, then add a cardinality alert.
 </details>
 
-<details><summary>2. What are the exporters for AI infrastructure?</summary>
-The DCGM exporter reports GPU utilization, memory, temperature, ECC, and Xid. cAdvisor reports container CPU, memory, network, and filesystem I/O, and kube-state-metrics reports Kubernetes object state. The node exporter covers host CPU, memory, disk, and network, the application exporter covers your own metrics, and the inference engine exporter covers Triton, vLLM, and NIM. Each exporter answers one concern.
+<details><summary>2. The on-call opens a dashboard and waits 30 seconds for it to load. What is the diagnosis and the fix?</summary>
+The dashboard has too many panels, each panel queries many series, and none of the queries is a recording rule. Cut the number of panels and record the expensive queries as recording rules. Use federation so each dashboard queries the right Prometheus server.
 </details>
 
-<details><summary>3. What is PromQL?</summary>
-PromQL is the query language for Prometheus. A query has the shape `metric_name{labels} operator value`, and it can aggregate with sum, avg, max, and min. It can also transform series with rate, increase, and irate, and join them with on and group_left. The queries the on-call engineer runs during an incident are the ones to publish as your team's library.
+<details><summary>3. Alertmanager pages the on-call, but the metric on the dashboard is green. What is the likely cause and how do you fix it?</summary>
+The alert rule has a typo in its PromQL and fires on a label combination the on-call does not care about. Test the rule before deploying it. Add a `for:` clause so it fires only when the condition holds for a set time, and tighten the expression to filter out cases you do not need.
 </details>
 
-<details><summary>4. What is a recording rule?</summary>
-A recording rule is a precomputed query that Prometheus evaluates on a schedule. It writes the result to a new time series, so dashboards read that series instead of the raw query. Recording rules are how the platform team keeps expensive queries affordable, and you should record any query that a dashboard runs often.
+<details><summary>4. The on-call needs data from 60 days ago, and Prometheus no longer has it. What do you change?</summary>
+The retention period is shorter than the age of the incident. Increase the retention period and use Thanos remote storage for long-term history. Document the retention period on the platform's status page.
 </details>
 
-<details><summary>5. What is the on-call dashboard?</summary>
-It is the most important dashboard in the platform. It has eight panels: cluster p99 inference latency, inference error rate per model, GPU pool utilization, GPU memory pressure, recent error logs, open incidents, cost per team this month, and model quality signals. It is the on-call engineer's home page.
+<details><summary>5. Prometheus is healthy, but long-term queries fail because history never reaches object storage. What do you check?</summary>
+Check the remote write endpoint, because it may be unhealthy. Then check the credentials and the network. Last, add an alert on remote write latency so the failure does not go unseen.
 </details>
 
-<details><summary>6. What is the retention period trade-off?</summary>
-The trade-off is storage cost against how far back you can look. The chapter's pattern is 30 days for operational dashboards, 90 days for capacity planning, and one year for the audit log. For longer retention, use Thanos remote storage, and let the query layer merge recent and historical data.
+<details><summary>6. Prometheus uses more memory than expected, yet the cardinality alert never fired. What went wrong?</summary>
+The alert threshold is set too high to catch a slow creep. Lower the threshold, add an alert on the cardinality growth rate, and review the budget every quarter.
 </details>
 
-<details><summary>7. What is the cardinality budget's enforcement mechanism?</summary>
-The budget is enforced by discipline, not by a tool. Every new metric declares its label cardinality, and the team rejects any metric that exceeds the budget. The team also publishes the budget on the platform's status page, and it watches `prometheus_tsdb_head_series` as the signal that the budget is under pressure.
+<details><summary>7. Why do applications never need to know anything about the metrics system behind Prometheus?</summary>
+Prometheus is pull-based, and the arrows point one way. Applications only expose a `/metrics` endpoint in the exposition format, and the server scrapes it. Each application needs to know the format and nothing more.
 </details>
 
-<details><summary>8. What is the difference between Prometheus and Thanos?</summary>
-Prometheus is the server that scrapes and stores recent metrics. Thanos is the long-term storage layer that Prometheus remote-writes to. The Thanos Querier merges recent data from Prometheus with historical data from object storage, and that combination is what makes 90-day retention affordable.
+<details><summary>8. Why does a dead man's switch alert exist, and how does it work?</summary>
+You cannot get an alert from a system that is itself down. The switch is an alert that fires on a regular schedule under normal operation. If it stops arriving, a critical alert reaches the on-call and says the metrics or alerting system is down.
 </details>
 
-<details><summary>9. What is the most common Prometheus failure mode?</summary>
-The most common failure is an out-of-memory crash caused by a high-cardinality label. A label with millions of unique values can exhaust memory, and then Prometheus stops ingesting and the dashboards go stale. The cardinality budget and the cardinality alert are the fix.
+<details><summary>9. Why do recording rules make an incident dashboard faster?</summary>
+Prometheus evaluates the rule on a schedule and writes the result to a new time series. The dashboard then reads that precomputed series instead of running the heavy query on every page load. The cost is paid once per interval and not once per viewer.
 </details>
 
-<details><summary>10. What is the TSDB?</summary>
-The TSDB is the time-series database that Prometheus uses to store metrics. It has three parts: the head block for recent data, the write-ahead log, and the compacted blocks for older data. It stores metrics on local disk, and for long-term retention, Prometheus can remote-write to Thanos.
+<details><summary>10. Why does Alertmanager group and deduplicate alerts, and what does it protect against?</summary>
+When one outage affects many replicas or components, each would fire its own alert. Grouping and deduplicating prevents a flood of pages. The chapter warns that excess critical alerts burn out on-call engineers and bury real events.
 </details>
 
-<details><summary>11. What is the W3C Trace Context's role in Prometheus?</summary>
-Prometheus is a metrics system, not a tracing system. The W3C Trace Context is the standard for passing trace context between services. Prometheus and Tempo, or Jaeger, work together, and metric exemplars link a metric to the traces that produced it.
+<details><summary>11. A batch job finishes before Prometheus scrapes it. Why does the Pushgateway help, and why is it the exception?</summary>
+The job pushes its metrics to the gateway, the gateway holds them, and Prometheus scrapes the gateway like any other target. It is the exception because most workloads fit the scraping model. If you deploy it, publish where it runs and how tenants use its HTTP API.
 </details>
 
-<details><summary>12. What is the difference between a recording rule and an alert rule?</summary>
-A recording rule precomputes a query and writes the result to a new time series, which dashboards read. An alert rule evaluates a query and fires when the query breaches a threshold, and Alertmanager sends the alert to PagerDuty. Recording rules make dashboards fast, while alert rules page the on-call engineer.
+<details><summary>12. When would you offer tenants a dedicated Prometheus server, and what do you give up?</summary>
+Offer it when a team's applications emit so many metrics that they overwhelm the shared servers. Its cost can count toward the team's resource budget. You give up simplicity, because dashboards, alerting, federation and long-term storage all get more complex.
 </details>
 
-<details><summary>13. Why is the cardinality budget a platform-team discipline?</summary>
-Every label you add multiplies the number of series, so label choices decide whether Prometheus can store the metrics. The chapter treats more than 1000 possible values as a rule of thumb, not a hard limit. A label above that should be dropped at the source, moved to a trace or log, or aggregated.
+<details><summary>13. Should tenants see metrics through federation or through several data sources in one Grafana dashboard?</summary>
+Federation moves the complexity into the Prometheus layer, and multiple data sources move it into Grafana configuration. Federation uses more resources. If that cost is acceptable, the choice is mostly a matter of preference. The goal is that tenants do not have to log in to many dashboards every day.
 </details>
 
-<details><summary>14. What is the most expensive PromQL query?</summary>
-It is a query that scans a high-cardinality metric with no recording rule behind it. The query runs on every dashboard load, so the page slows down. The fix is a recording rule that precomputes the query every 30 seconds, so the dashboard reads a ready value. If you see a slow panel, check for this pattern first.
+<details><summary>14. When would you charge by requests and when by consumption, and what does each give up?</summary>
+The requests method matches what the scheduler can assign, but a burst into unused capacity is effectively free. The consumption method charges for actual usage or requests, whichever is higher, which removes the incentive to set requests low. Its downside is that it can cause resource contention on overcommitted nodes.
 </details>
 
-<details><summary>15. What is the difference between a dashboard and a recording rule?</summary>
-A dashboard is a Grafana JSON file that renders panels. A recording rule is a Prometheus configuration that precomputes queries. The dashboard reads from the recording rule, which is fast, or from the raw metric, which is slow. The dashboard gives the on-call engineer situational awareness, and the recording rule is the platform team's performance optimization.
+<details><summary>15. A Deployment has 10 replicas that each request 1 CPU core. Under the requests method, how many cores are charged, and how many are left unattributed if each replica averages 1.5 cores?</summary>
+The requests method charges 10 times 1, which is 10 cores. Actual use is 10 times 1.5, which is 15 cores. The extra 5 cores are not attributed to the workload.
 </details>
 
-<details><summary>16. What is the on-call dashboard's most important panel?</summary>
-The cluster p99 inference latency panel is the one to read first. It answers the question "is the cluster meeting its SLO?" The on-call engineer checks it first when paged, and it is the view most likely to show customer impact.
+<details><summary>16. A workload uses 1 percent of cluster CPU and 3 percent of cluster memory. What share do you apply for showback, and why?</summary>
+Apply the higher of the two, which is 3 percent. A cluster that runs out of either CPU or memory cannot host more workloads. So the workload effectively uses 3 percent of the cluster.
 </details>
 
-<details><summary>17. What is the difference between scrape_interval and scrape_timeout?</summary>
-scrape_interval sets how often Prometheus scrapes a target. scrape_timeout sets how long Prometheus waits for a response. The default interval is 1 minute, and the default timeout is 10 seconds. The example configs in section 1.2 use scrape intervals of 10 to 15 seconds and leave the timeout at its default.
+<details><summary>17. A scrape job uses `scrape_interval: 15s`. How many samples does one series gain per day?</summary>
+A day has 24 times 60 times 60, which is 86,400 seconds. Divided by 15, that is 5,760 samples per series per day. A `10s` interval would give 8,640.
 </details>
 
-<details><summary>18. Why is the cardinality alert the most important alert?</summary>
-Prometheus OOM is a silent failure: Prometheus stops ingesting, the dashboards go stale, and the on-call does not know. The cardinality alert catches the spike first, so you have time to fix the metric before Prometheus crashes and the cluster stays healthy.
+<details><summary>18. Your retention is 30 days and you want 90 days for capacity planning. Using the chapter's illustrative table, how does storage per series change?</summary>
+The table gives 30 MB for 30 days and 90 MB for 90 days. That is a factor of 90 divided by 30, which is 3. The figures are illustrative, so measure your own before you set a budget.
 </details>
 
-<details><summary>19. What is the difference between the head block and the compacted blocks?</summary>
-The head block holds recent data in memory, and the compacted blocks hold older data on disk. Samples go to the write-ahead log as they arrive, so the head block can be rebuilt after a restart. Over time, the head block is compacted into immutable blocks, and queries read both as one logical time series.
+<details><summary>19. After a restart in the middle of an incident, what do you expect Prometheus to do and why does it not lose the last minutes?</summary>
+Each sample goes to the write-ahead log on disk and into the head block in memory. After a restart, Prometheus replays the log to rebuild the head block. Roughly every two hours the head block is compacted into an immutable block on disk.
 </details>
 
-<details><summary>20. What five questions should the metrics lab let you answer in five seconds each?</summary>
-The five questions are the current Prometheus scrape latency p99, the TSDB head series count, the inference p99 latency from the recording rule, the cost per team this month from the recording rule, and the cardinality per metric. If any answer takes more than 30 seconds, the stack is not yet a production service.
+<details><summary>20. A `gpu_pool:utilization:avg5m` query returns nothing after the lab. In what order do you check?</summary>
+First check that the DCGM exporter scrape works by querying `DCGM_FI_DEV_GPU_UTIL` and looking for a value per GPU. Second check that the recording rules were loaded and that Prometheus was reloaded. Third query the recording rule again. The lab names these steps as the way to confirm the series exists.
 </details>
 
 ---

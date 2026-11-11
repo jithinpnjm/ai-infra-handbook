@@ -624,84 +624,84 @@ Work through these in order, because each one assumes the earlier ones are in pl
 
 ## Checkpoint questions
 
-<details><summary>1. What is cosign?</summary>
-The Sigstore tool for signing and verifying container images. cosign signs the image at build time; cosign verifies the signature at deploy time; cosign stores the signature in the registry alongside the image. Every image is signed. Every image is verified.
+<details><summary>1. A scanner flags a serious flaw in a library on Monday and nobody can say which running pods contain it. What was missing and what do you build?</summary>
+The team has no stored list of what each image contains. Generate an SBOM for every image at build time from the same image reference you pushed. Store it next to the image, and scan the stored SBOM on a schedule so a new CVE can be matched to images without rebuilding anything.
 </details>
 
-<details><summary>2. What is the OPA Gatekeeper?</summary>
-The Open Policy Agent admission controller for Kubernetes. Gatekeeper verifies the image signature; Gatekeeper verifies the SBOM; Gatekeeper refuses to start pods with unverified images. Gatekeeper is the cluster's gatekeeper.
+<details><summary>2. A pod with an unsigned image starts anyway. What are the three likely causes and what do you do?</summary>
+The policy may be set to warn instead of enforce, the namespace may be excluded, or the controller may not be running. Set the policy to enforce, confirm the controller is running, and include the namespace. Then test again with an unsigned image, because a policy you never tested is a policy you cannot vouch for.
 </details>
 
-<details><summary>3. What is the SBOM?</summary>
-The Software Bill of Materials: the inventory of every component in the container image. The SBOM has the package name, the version, the license, the supplier, and the dependency relationship. The SBOM is the audit trail for the supply chain.
+<details><summary>3. The admission controller refuses a pod because signature verification fails. What could have happened and what do you do?</summary>
+The image may have changed after signing, the signing key may be compromised, or the signature may have been made with the wrong key. Sign again from a trusted build and rotate the key if you suspect compromise. Find out how the image changed before you trust the next one.
 </details>
 
-<details><summary>4. What is dependency confusion?</summary>
-The attack where a malicious package with the same name as a legitimate package is uploaded to a public registry. The build system pulls the malicious package instead of the legitimate package. The defence is dependency pinning with hashes.
+<details><summary>4. Your Kyverno policy requires the label `cosign.sigstore.dev/signed: "true"` on every Pod. A pod with an unsigned image carries that label. Does the policy stop it?</summary>
+No. The rule checks a label and never checks a signature, and nothing in the chapter sets that label. A pod that carries the label passes whether or not its image is signed. Replace the rule with one that verifies the signature itself before you count on it.
 </details>
 
-<details><summary>5. What is the most common supply chain failure?</summary>
-The image is not signed. A workload tries to deploy. The admission controller refuses the pod. The workload cannot run. The diagnosis is that the CI/CD pipeline does not sign the image. The fix is to add cosign signing to the CI/CD pipeline.
+<details><summary>5. A build that installs `myorg-common-lib` runs malicious code. What are the likely causes and the fix?</summary>
+Dependencies may not be pinned, the private registry may not be configured, or the build may still pull from the public index. An attacker can publish a package with the same name on the public index. Pin every dependency, configure the private registry, and confirm the build resolves each name from the registry you intended.
 </details>
 
-<details><summary>6. What is the most dangerous supply chain failure?</summary>
-The admission controller is bypassed. A pod with an unsigned image starts in the cluster. The diagnosis is that the admission controller is misconfigured. The fix is to set the policy to enforce; verify the controller is running.
+<details><summary>6. A core application's image gets a new CVE and your policy blocks pulls of it. A pod moves to a new node. What happens and what does that teach?</summary>
+The pod may not be able to pull the image, so the application loses availability. Security and availability pull in opposite directions here. Weigh the security gain against that cost and record the trade-off you choose.
 </details>
 
-<details><summary>7. What is the most common SBOM failure?</summary>
-The SBOM is missing. A vulnerability is reported. The SBOM is not available. The team cannot determine the affected components. The fix is to re-generate the SBOM; upload to the vulnerability database; verify the SBOM is auditable.
+<details><summary>7. Why is a signature better evidence than the tag `v1`?</summary>
+A tag can be overwritten after your review and the cluster would never notice. A signature lets a verifier check that the image came from a known key holder and has not changed since. The signature is stored in the registry next to the image, so the two travel together.
 </details>
 
-<details><summary>8. What is the most common vulnerability failure?</summary>
-The vulnerability is not patched. A HIGH or CRITICAL vulnerability is reported. The image is not patched. The workload continues to run with the vulnerability. The fix is to patch the base image; rebuild the workload image; redeploy.
+<details><summary>8. Why does a clean scan on build day not stay clean?</summary>
+New CVEs are published every week, so an image that was clean when built can become vulnerable without any change. Scan the stored SBOM on a schedule, not only once. The SBOM lets the same inventory be checked again against new vulnerability data.
 </details>
 
-<details><summary>9. What is the most common dependency confusion failure?</summary>
-The dependency is confused. A malicious package is pulled into the build. The build is compromised. The fix is to pin every dependency; configure the private registry; verify the build system uses the private registry.
+<details><summary>9. Why does keyless signing remove the key file problem, and what do you check before you depend on it?</summary>
+A key file must be stored, rotated, and protected. Keyless signing ties the signature to the builder's OIDC identity and issues a short-lived certificate from Fulcio. The signature is recorded in the Rekor transparency log. Check that your CI runners can reach the signing service before you depend on it.
 </details>
 
-<details><summary>10. What is the relationship between cosign and the admission controller?</summary>
-cosign signs the image. The admission controller verifies the signature. Together, they form the signature chain: cosign produces the signature. The admission controller consumes the signature. The signature chain is the foundation of the supply chain trust.
+<details><summary>10. Why does `pip install --require-hashes -r requirements.txt` stop a swapped package?</summary>
+The lockfile records the exact version and a hash for every package. The install step checks each downloaded file against its hash. A package that was swapped has a different hash, so the install fails.
 </details>
 
-<details><summary>11. What is the relationship between the SBOM and the vulnerability scanner?</summary>
-The SBOM is the inventory. The vulnerability scanner is the auditor. The scanner reads the SBOM. The scanner correlates with the CVE feeds. The scanner reports the vulnerabilities. The SBOM is the input. The scanner is the output.
+<details><summary>11. Why does an image that does not set a user raise the attack surface, and why set it in the image?</summary>
+Containers share the Linux kernel with the host. With no user set, the process usually runs as root, so an attacker who compromises the application and escapes the container could gain root on the host. Setting `USER` in the image makes the image document itself and gives developers the same user and group ID on their own machines.
 </details>
 
-<details><summary>12. What is the relationship between the lockfile and the dependency confusion defence?</summary>
-The lockfile pins every dependency with a hash. The build system verifies the hash. The lockfile is the input. The verification is the output. The lockfile is what makes the build reproducible. The verification is what makes the build safe.
+<details><summary>12. A CI job fails on every HIGH or CRITICAL finding and blocks a deploy the team already reviewed. When would you use an allowlist, and what do you give up?</summary>
+Use an allowlist for a CVE that has no fix yet or does not apply to your setup. Write the reason down. You give up a clean zero, because a known finding stays open on purpose. Weigh that against blocking a reviewed deploy.
 </details>
 
-<details><summary>13. What is the difference between Trivy and Grype?</summary>
-Trivy is the Aqua Security vulnerability scanner. Grype is the Anchore vulnerability scanner. Both scan the SBOM for vulnerabilities; both use the vulnerability database; both report the severity. The team's choice depends on the team's preference.
+<details><summary>13. Security wants one gold base image for every application. When would you instead reuse upstream images, and what do you give up?</summary>
+Ask what the gold image is for. Usually it is a required agent, no vulnerable libraries, or correct user permissions. Encode that reason as a pipeline check and keep reusing upstream images. You give up a fixed base operating system and the shared troubleshooting knowledge it brings, which the chapter says is a smaller benefit than it looks.
 </details>
 
-<details><summary>14. What is the most important supply chain metric?</summary>
-The vulnerability count (HIGH/CRITICAL). The metric tells the team which images have known vulnerabilities. Any HIGH or CRITICAL vulnerability is a security exposure that the team must address immediately. The alert fires when the count is non-zero.
+<details><summary>14. When would you let an automated system patch images and when would you alert people instead?</summary>
+Automatic remediation is tempting, but a new image can break the running application. Automated updates can also act outside your change process, which makes them hard to audit. Alerting needs more manual work, but you control when and how you patch. Send each patch through the normal pipeline so it is tested and auditable.
 </details>
 
-<details><summary>15. What is the difference between keyful and keyless signing?</summary>
-Keyful signing uses a private key stored locally. Keyless signing uses the Sigstore public-good Fulcio certificate authority to issue a short-lived certificate tied to the builder's OIDC identity, and records the signature in the Rekor transparency log. Keyless signing is auditable via Rekor; keyful signing does not require a third party.
+<details><summary>15. When would you choose blue/green over a canary release, and what do you give up?</summary>
+A canary sends a small share of traffic to the new version and grows it as confidence builds. Blue/green cuts all traffic over at once, and you move it back to blue if errors rise. You get a clean test of green before the cutover. You give up the gradual exposure, and applications that hold state or sessions need extra care.
 </details>
 
-<details><summary>16. What is the relationship between cosign and Rekor?</summary>
-cosign signs the image; Rekor stores the signature. Rekor is the transparency log; Rekor is auditable; Rekor is the evidence that the signature existed at a specific time. cosign + Rekor = signed image with transparency.
+<details><summary>16. Your pipeline built 50 images today and 47 are signed. What is the image signing rate and does the alert fire?</summary>
+The rate is 47 / 50 = 94 percent. The example alert fires when the rate is below 100 percent, so it fires. The three unsigned images are the ones the admission controller should refuse.
 </details>
 
-<details><summary>17. What is the difference between SBOM and CVE?</summary>
-The SBOM is the inventory of every component in the image. The CVE is the known vulnerability for a specific component. The SBOM is the input. The CVE is the output. The scanner reads the SBOM. The scanner correlates with the CVE feeds. The scanner reports the vulnerabilities.
+<details><summary>17. One image has 400 transitive dependencies and 360 are pinned with hashes. What is the pinning rate and how many are exposed?</summary>
+The rate is 360 / 400 = 90 percent. That leaves 400 - 360 = 40 dependencies that are not pinned. The example alert fires below 100 percent. The count of 400 is an example, so count the real dependencies in your own image.
 </details>
 
-<details><summary>18. Why is containers and supply chain a Tier 2 chapter?</summary>
-Because the supply chain integrity is the foundation of the workload's trust. Without the supply chain integrity, every other control is compromised. The supply chain integrity is what the platform team owns. The supply chain integrity is what the regulator sees. The supply chain integrity is what the auditor inspects.
+<details><summary>18. A scan of your SBOM reports 0 CRITICAL, 2 HIGH, and 14 MEDIUM findings. Does the CI job in the chapter pass?</summary>
+No. The job runs `trivy sbom --severity HIGH,CRITICAL --exit-code 1`, so it fails when any HIGH or CRITICAL finding exists. The 2 HIGH findings fail the job. The 14 MEDIUM findings do not count.
 </details>
 
-<details><summary>19. What is the difference between an image and an artefact?</summary>
-An image is a container image. An image is what runs in the cluster. An artefact is anything that is built and stored. An artefact includes images, models, datasets, and SBOMs. The supply chain integrity covers all artefacts.
+<details><summary>19. A deploy is refused by the admission controller. What do you check, in order?</summary>
+First read the Kubernetes event in the output of the failed apply, which gives the reason. Second list the signatures for the exact image reference with `cosign triangulate` and check that a signature exists. Third, if one exists but verification fails, check for a changed image, a compromised key, or a wrong key.
 </details>
 
-<details><summary>20. What five questions should the supply chain lab let you answer in five seconds each?</summary>
-What is the current image signing rate. What is the current image verification rate. What is the current SBOM freshness. What is the current vulnerability count HIGH/CRITICAL. What is the current dependency pinning rate. If any takes more than 30 seconds, the software supply chain integrity is not yet a production service.
+<details><summary>20. A malicious package shows up in your build. What do you check, in order?</summary>
+First check whether the dependencies are pinned with hashes. Second check whether the private registry is configured, for example with only `index-url` in `pip.conf`. Third check which index each package name actually resolves from, because a second public index is what dependency confusion exploits.
 </details>
 
 ---

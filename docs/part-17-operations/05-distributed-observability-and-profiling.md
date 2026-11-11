@@ -610,84 +610,84 @@ Do exercise 5 first. A broken correlation is the failure that costs the most tim
 
 ## Checkpoint questions
 
-<details><summary>1. What four profilers does the chapter walk through?</summary>
-The four are PyTorch Profiler for PyTorch operations, Nsight Systems for kernels, transfers, and GPU utilization, Nsight Compute for one kernel in depth, and NCCL Profiler for collectives. Start with PyTorch Profiler, then move to Nsight Systems and Nsight Compute, and run NCCL Profiler alongside them.
+<details><summary>1. A trace shows an inference request spent most of its time in the model call, and the trace stops there. What do you do next, and why?</summary>
+The trace cannot say which GPU kernel caused the delay, so you move to a profile. Start broad with PyTorch Profiler to see which operations are slow, then use Nsight Systems for the timeline. Go to Nsight Compute only if one kernel dominates. The order in an incident is metrics, then traces, then the profile.
 </details>
 
-<details><summary>2. What is the profile format?</summary>
-The Chrome Trace Event Format. The profile is JSON, so you can parse and query it in chrome://tracing, the PyTorch Profiler viewer, the Nsight Systems GUI, and Grafana's trace UI.
+<details><summary>2. A multi-node training job runs at half speed and every GPU seems to be waiting on the others. Which profiler fits, and how do you turn it on?</summary>
+Use the NCCL Profiler, because it shows which collective holds the job back. Run the job with `NCCL_DEBUG=INFO` set, send stderr to a file, and copy that file to object storage. Then look for the collective with the slow tail, for example in the p99 time per algorithm.
 </details>
 
-<details><summary>3. What does the PyTorch Profiler profile?</summary>
-It profiles PyTorch operations, including forward, backward, and optimizer work. The profiler is built into PyTorch and runs through `torch.profiler.profile`, which emits a trace in the Chrome Trace Event Format. Wrap the training step in that call so the profiler records CPU and CUDA activity.
+<details><summary>3. The on-call clicks a trace in Grafana and no profile appears. What is the likely cause, and what do you add afterwards?</summary>
+The NVTX range or the profile file name probably does not carry the trace ID, so the link breaks. Check that both include it. Afterwards add an integration test that fails when the correlation breaks, and alert on the trace-to-profile correlation rate.
 </details>
 
-<details><summary>4. What does Nsight Systems profile?</summary>
-It profiles CUDA kernels, memory transfers, GPU utilization, and API calls. You run it with `nsys`, which writes a `.nsys-rep` file. Wrap the workload's command in `nsys profile` so that it records the CUDA kernels and NVTX ranges.
+<details><summary>4. A profile write fails and the bucket is full. What went wrong and what is the fix?</summary>
+The profile is too verbose and captures every CUDA kernel, so each step can produce a very large file. Capture only the slow operations. Use `torch.profiler.schedule` to skip warm-up steps so the profile stays small.
 </details>
 
-<details><summary>5. What does Nsight Compute profile?</summary>
-It profiles a single CUDA kernel in detail. The report covers occupancy, register pressure, memory access patterns, and instruction-level metrics. You run it with `ncu`, which writes a `.ncu-rep` file. Wrap the workload's command in `ncu` so the profiler records that kernel's metrics.
+<details><summary>5. You run `ncu` with `--kernel-name regex:gemm_kernel` and the report does not contain the kernel you care about. What do you check?</summary>
+Either the `--kernel-name` value does not match the kernel's real name, or the kernel was inlined or optimised away. Check the name first. Then use `--launch-skip` to skip warm-up launches and `--launch-count` to limit how many launches are profiled.
 </details>
 
-<details><summary>6. What does the NCCL Profiler profile?</summary>
-It profiles NCCL collectives such as all-reduce, all-gather, reduce-scatter, and broadcast. Each entry records the collective's size, algorithm, protocol, and duration. The profiler is invoked with `NCCL_DEBUG=INFO`, and the output goes to stderr.
+<details><summary>6. The NCCL log from a job is huge, hard to query, and close to filling the disk. What do you change?</summary>
+The level is set to INFO, so every collective is logged in full. Use `NCCL_DEBUG=WARN` to cut the noise and set `NCCL_DEBUG_SUBSYS=COLL` to log only collective events. WARN also surfaces errors that would otherwise stay silent. Keep the detailed levels for short runs.
 </details>
 
-<details><summary>7. How is the profile correlated with the trace?</summary>
-The NVTX range includes the trace ID, and the profile file name includes it too. The profile can then be queried by trace ID in Grafana. The on-call clicks a trace in Grafana and sees the profile for that trace.
+<details><summary>7. Why does naming the exported profile after the trace ID let the on-call find it?</summary>
+The export function reads the trace ID from the active span and puts it in the file name. Any tool that can search the profile folder can then find the profile for a given trace. Test the link once in a staging run before you rely on it during an incident.
 </details>
 
-<details><summary>8. What is the most expensive profiling tool?</summary>
-Nsight Compute. It profiles one kernel in detail, and each kernel's report can be large. The platform team therefore uses it only after the high-level profile has identified a single slow kernel.
+<details><summary>8. Why does the profiler schedule use wait, warmup and active steps instead of recording every step?</summary>
+The example skips the first step, warms up for one step, and then records three active steps. Warm-up steps would distort the picture, and every recorded step adds to the profile. Profiles grow quickly, so recording only a few steps keeps storage and upload time under control.
 </details>
 
-<details><summary>9. What is the cardinality impact of the profiling stack?</summary>
-In the chapter's example values, one training step produces 10 GB of profile data, so a 100-step run produces 1 TB. The platform team's example policy keeps profiles for 7 days before archiving them. The chapter's deletion periods are unclear, so set your own.
+<details><summary>9. Why does Nsight Systems slow a workload more when the workload has many kernels?</summary>
+The profiler captures every kernel, so its overhead grows with the number of kernels. The chapter's fix is to capture only CUDA kernels with `nsys profile --trace=cuda` and to use the `--sample` flag to reduce the sampling rate.
 </details>
 
-<details><summary>10. What is the most common profiling failure mode?</summary>
-The first failure in Section 7 is that the profile is too large. The write fails, the bucket fills up, and the team runs out of storage. The fix is to reduce verbosity, capture only the slow operations, and use `torch.profiler.schedule` to skip warm-up steps.
+<details><summary>10. Why does the NCCL dashboard split all-reduce timings by size bucket and show p99 per algorithm instead of one average?</summary>
+A single average all-reduce time hides the difference between small and large messages. Splitting by size shows which messages are slow. A slow tail shows up in the p99 per algorithm before it shows in the average, so the p99 panel is the one to start with.
 </details>
 
-<details><summary>11. What is the most common correlation failure mode?</summary>
-The first correlation failure in Section 7 is that the profile is not correlated with the trace. The NVTX ranges and the file name both lack the trace ID, so the link breaks. The fix is to verify the trace ID in both places and add an integration test.
+<details><summary>11. Why is a profile from yesterday dangerous to trust?</summary>
+If the workload changed after the profile was taken, the profile describes an older version of the code. Regenerate the profile on every workload update, make that a CI step, and tag each profile with the workload's commit hash so you can see which code it came from.
 </details>
 
-<details><summary>12. What is the difference between Nsight Systems and Nsight Compute?</summary>
-Nsight Systems profiles the whole workload, including CUDA kernels, memory transfers, GPU utilization, and API calls. Nsight Compute profiles one CUDA kernel in detail, including occupancy, register pressure, memory access patterns, and instruction-level metrics. Use Nsight Systems first to find the slow kernel, then use Nsight Compute to profile it.
+<details><summary>12. When do you pick PyTorch Profiler, Nsight Systems or Nsight Compute, and what do you give up by starting broad?</summary>
+Start with PyTorch Profiler for the high-level view of operations. Use Nsight Systems when you need the timeline and the idle gaps. Use Nsight Compute only for one kernel in depth. You give up detail at first, but you avoid the cost and size of a deep capture until the broad view points at a cause.
 </details>
 
-<details><summary>13. What is the difference between PyTorch Profiler and Nsight Systems?</summary>
-PyTorch Profiler profiles PyTorch operations such as forward, backward, and optimizer steps. Nsight Systems profiles CUDA kernels and API calls, and it is a separate tool. Use PyTorch Profiler for the high-level view and Nsight Systems for the kernel-level view.
+<details><summary>13. For a live inference server, when would you choose Nsight Compute sampling over full tracing, and what do you give up?</summary>
+Choose sampling first, because it finds the hot instructions without full instrumentation and its overhead stays low. You give up completeness. Switch to full tracing only when a sample points to one kernel or phase.
 </details>
 
-<details><summary>14. What is the NCCL collective algorithm?</summary>
-The algorithm NCCL uses for the collective. Common algorithms include Ring, Tree, and NVLS. NCCL picks the algorithm from the collective size, the number of ranks, and the topology, and the choice affects latency and bandwidth.
+<details><summary>14. When would you set `NCCL_DEBUG_SUBSYS` to `INIT,COLL` instead of `ALL`, and what do you give up?</summary>
+The code comment says ALL is extremely verbose, while INIT and COLL are enough for most hangs. Choose INIT,COLL for normal debugging. You give up the log lines from the other subsystems, so use ALL only for a short run when those lines are needed.
 </details>
 
-<details><summary>15. What is the NCCL collective protocol?</summary>
-The protocol NCCL uses for the collective. Common protocols include Simple, LL, and LL128. The protocol is chosen from the collective size and the network bandwidth, and it affects latency and bandwidth.
+<details><summary>15. Should heavy profilers run all the time in production, or should you watch lightweight metrics?</summary>
+Production teams cannot run heavy profilers all the time. They watch lightweight metrics such as SM utilization and tail latency, and start a profile when those metrics look wrong. You give up kernel detail until you capture a profile. NVTX markers have very low overhead when no profiler is attached, so they can stay in production code.
 </details>
 
-<details><summary>16. What is the NCCL_DEBUG_SUBSYS environment variable?</summary>
-It controls which NCCL subsystems are logged. Common subsystems include INIT, COLL, P2P, NET, and ALL. The platform team uses `NCCL_DEBUG_SUBSYS=COLL` for collective-only profiling.
+<details><summary>16. One training step produces 10 GB of profile data in the chapter's example. How much do a 100-step run and a run that records only three active steps produce?</summary>
+A 100-step run is 100 times 10 GB, which is 1,000 GB or 1 TB. Three active steps are 3 times 10 GB, which is 30 GB. The 10 GB figure is an example value, so measure your own.
 </details>
 
-<details><summary>17. What is the NVTX range?</summary>
-NVIDIA Tools Extension, or NVTX, is a C-based API for annotating source code with named ranges and markers. Nsight Systems captures these ranges. A range that carries the trace ID can be correlated with the OpenTelemetry trace.
+<details><summary>17. An all-reduce of 1073741824 bytes takes 12.345 ms. What bandwidth is that?</summary>
+Bandwidth is bytes divided by time, which is 1,073,741,824 bytes divided by 0.012345 seconds. That is about 87 billion bytes per second, or about 87 GB per second. This matches the chapter's bandwidth query, which divides bytes by duration.
 </details>
 
-<details><summary>18. What is the chrome://tracing UI?</summary>
-It is the Chrome browser's built-in trace viewer. The viewer renders the Chrome Trace Event Format as a timeline of events, and on-call engineers use it to inspect profiles. You open it by typing `chrome://tracing` in the Chrome browser.
+<details><summary>18. In the chapter's example a multi-node job spends 20 to 40 percent of its time in NCCL collectives. For a 10 second step, how long is that?</summary>
+Twenty percent of 10 seconds is 2 seconds, and 40 percent is 4 seconds. So between 2 and 4 seconds of each step are in collectives. The percentages are example figures, not measurements, and the 10 second step is an assumption.
 </details>
 
-<details><summary>19. What is the difference between PyTorch Profiler and TensorBoard?</summary>
-PyTorch Profiler is built into PyTorch and emits the Chrome Trace Event Format. TensorBoard is a visualization tool that reads that output and renders the profile in its UI. PyTorch Profiler produces the profile, and TensorBoard displays it.
+<details><summary>19. A training step slowed down. In what order do you look, and why?</summary>
+First look at metrics from Chapter 17.2 to see that something is slow. Second look at traces from Chapter 17.3 to find the slow operation. Third open the profile, which names the GPU kernel or NCCL collective. Each step narrows the search so the expensive profile is read last.
 </details>
 
-<details><summary>20. What five questions should the profiling lab let you answer in five seconds each?</summary>
-The lab should let you answer five questions: the current PyTorch Profiler write latency p99, the current profile repository size, the current trace-to-profile correlation rate, the current slowest CUDA kernel, and the current slowest NCCL collective. The 30-second limit is an example value, so set your own. If any answer takes longer than your limit, the profiling stack is not yet a production service.
+<details><summary>20. The kernel-time panel in Grafana is empty. What do you check first, second and third?</summary>
+First confirm the exporter that publishes the profiler series is running, because this chapter does not set one up. Second confirm the series names in the query actually exist. Only then suspect the workload, since an empty panel usually means missing data, not a healthy job.
 </details>
 
 ## Sources and review notes

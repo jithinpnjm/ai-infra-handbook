@@ -561,87 +561,85 @@ Work through these on a lab cluster, not on production. Try to explain each resu
 
 ## Checkpoint questions
 
-<details><summary>1. What is an SLO?</summary>
-A Service Level Objective is the target that the platform team commits to meet. An SLO has three parts: a Service Level Indicator (SLI), a target, and a time window. To build one, you define the SLI, set the target, and choose the window. An alert then fires when the SLI stays past the target for longer than the window.
+<details><summary>1. The on-call receives 200 pages a day and has started ignoring them. What is wrong and what do you change?</summary>
+The routing is too aggressive. Alerts are not grouped or inhibited, and the severity labels are wrong. Tune the routing, group alerts by cluster and service, add inhibit rules, and review the severity labels. Page only for alerts the on-call can act on, so a page means someone must act now.
 </details>
 
-<details><summary>2. What is the error budget?</summary>
-The error budget is the team's SLO translated into an allowance. At 99.9% monthly availability, the budget is 43.2 minutes of downtime per month, assuming a 30-day month. Teams spend that budget on canary releases, chaos experiments, and rolling upgrades. When the budget runs out, a common policy is to pause new deployments.
+<details><summary>2. The cluster is down and the customer reports it before the on-call knows. What do you check?</summary>
+The critical alert may be misconfigured, inhibited by another alert, sent to the wrong route, or blocked by a broken PagerDuty integration. Simulate a cluster failure and confirm the critical alert fires and reaches PagerDuty. Then add an integration test so the path is checked again after every change.
 </details>
 
-<details><summary>3. What three Kubernetes health check primitives exist?</summary>
-The readiness probe asks whether the workload can take traffic, and a failure removes it from the load balancer. The liveness probe asks whether the workload is alive and restarts it on failure, while the startup probe holds off the liveness probe until a slow start finishes.
+<details><summary>3. The dashboard shows an SLO breach, but no alert fires. Where do you look?</summary>
+Look at the alert rule first. It may contain a PromQL typo, track the wrong SLI, or use the wrong time window. Compare the rule with the SLO field by field, confirm the SLI and window match, and add a test that catches any mismatch.
 </details>
 
-<details><summary>4. What does Alertmanager do?</summary>
-Alertmanager receives alerts from Prometheus and routes them to the right place. It removes duplicate alerts, groups related ones into one notification, and sends critical alerts to PagerDuty, warnings to Slack, and info alerts to email.
+<details><summary>4. A database outage restarts healthy model pods across the cluster. What mistake in the probes would explain this?</summary>
+The liveness probe probably calls the database. Kubernetes restarts a pod when liveness fails, so every healthy pod restarts when the database goes down. Keep the liveness check local. Let the readiness check reflect the dependency, so the pod leaves the load balancer instead of restarting.
 </details>
 
-<details><summary>5. What is alert inhibition?</summary>
-An inhibit rule stops one alert from suppressing another. In the example config, a non-critical alert in the same cluster is muted while a ClusterDown alert fires, and GPU Xid alerts on the same node are muted while a GPUNodeDown alert fires. These rules cut noise, so the on-call sees the most important alert first.
+<details><summary>5. The team spent its whole error budget but keeps deploying, and customers hit an outage nobody expected. What was missing?</summary>
+There was no budget alert, nobody tracked the budget on a dashboard, and nothing paused releases when the budget ran out. Add a budget alert that fires early, such as at 75 percent spent. Show the remaining budget on the team dashboard and pause new deployments when it is gone.
 </details>
 
-<details><summary>6. What is the runbook?</summary>
-The runbook is the on-call engineer's guide for each alert, with six sections: what the alert means, its symptoms, diagnostic steps, mitigation steps, escalation path, and post-mortem template. Each alert links to its runbook through the runbook_url annotation, so you can act from the page itself.
+<details><summary>6. A GPUMemoryPressure alert fires for a training pod. What do you do, in what order?</summary>
+The alert means HBM use has been above 90 percent for more than 5 minutes, so a CUDA OOM may be next. Confirm with `nvidia-smi` in the pod, check `kubectl top pod`, and search the logs for OOM. Then mitigate by reducing batch size or model size, or by enabling gradient checkpointing. Page the ML platform team if that fails within 30 minutes.
 </details>
 
-<details><summary>7. What is the burn rate?</summary>
-Burn rate is how fast the error budget is being used up. At 1x, the budget lasts exactly the window, while at 2x it runs out twice as fast and at 10x ten times as fast. As an example pattern, alert at 2x for one hour and page at 10x for five minutes, then tune both to your team.
+<details><summary>7. Why is the end-to-end availability of a request below every single service's target?</summary>
+A chain of services can never be more reliable than its weakest link. When a request passes through several services, each one can fail, so the combined availability ends up below any single target. Check the dependencies before you promise a customer-facing number.
 </details>
 
-<details><summary>8. What is the difference between readiness probe and liveness probe?</summary>
-The readiness probe asks whether the workload can serve traffic yet, such as whether the model has loaded. The liveness probe asks whether the workload is still alive, such as whether the process responds. A failed readiness check takes the pod out of rotation, while a failed liveness check restarts it.
+<details><summary>8. Why does the ClusterDown inhibit rule use `equal: ['cluster']`?</summary>
+The rule mutes only alerts that share the same cluster label as the firing ClusterDown alert. Without that match, it would mute alerts from healthy clusters too. If your exporters do not set the label, the rule never matches, so check the labels before you rely on it.
 </details>
 
-<details><summary>9. What is the difference between readiness probe and startup probe?</summary>
-The startup probe runs first, and the readiness probe takes over once startup succeeds. The startup probe disables the liveness probe until the workload has started, which suits models that take minutes to load. If you have slow starts, use the startup probe. For steady traffic, rely on the readiness probe.
+<details><summary>9. Why does adding a startup probe stop a slow-loading model from being restarted in a loop?</summary>
+The startup probe disables the liveness probe until startup completes. A model that needs a long time to load can therefore fail early liveness checks without being killed. Without it, the other probes run too early and restart the pod before the weights are loaded.
 </details>
 
-<details><summary>10. What is the difference between a critical alert and a warning alert?</summary>
-Critical alerts page the on-call right away. In the example config, they go to PagerDuty with a one-hour repeat. Warnings notify the team in Slack with a twelve-hour repeat, and the pattern is to page when an SLO is breached and post a warning when it is at risk.
+<details><summary>10. Why does the pod spec have a preStop hook that sleeps 10 seconds?</summary>
+The hook gives in-flight requests time to finish before Kubernetes sends SIGTERM. The sleep counts against the pod's graceful shutdown period, which defaults to 30 seconds and can be tuned with `terminationGracePeriodSeconds`. Set the timing from how long your model takes to drain.
 </details>
 
-<details><summary>11. What is the most common alerting failure mode?</summary>
-The most common failure is an on-call engineer paged so often, about 200 times a day in this example, that the pages get ignored. The fix is to tune routing, group related alerts, add inhibit rules, review severity labels, and alert only on what the on-call can act on.
+<details><summary>11. Why does the chapter add a node-level health script when pods already have probes?</summary>
+A probe inside a pod cannot see a broken GPU stack on the host. The script checks that the DCGM service and the DCGM exporter are active and that nvidia-smi answers. The third check only greps for the word GPU, so it is a weak signal and needs a real utilization query if you want certainty.
 </details>
 
-<details><summary>12. What is the most common health check failure mode?</summary>
-The most common failure is a readiness probe that fails, so Kubernetes restarts the pod in a loop and it never serves traffic. If you see it, fix it by raising the initial delay and timeout, letting the readiness check reflect dependencies while the liveness check stays local, and using a startup probe for slow starts.
+<details><summary>12. When would you mark an alert critical rather than warning, and what do you give up?</summary>
+Mark it critical only when someone must act now. Critical alerts go to PagerDuty and repeat every hour, while warnings go to Slack and repeat every 12 hours. You give up fast attention on warnings, because Slack may be read later. Excess critical alerts burn out the on-call and bury the real ones.
 </details>
 
-<details><summary>13. What is the preStop hook?</summary>
-The preStop hook is a Kubernetes lifecycle hook that runs before the pod is terminated. It gives the workload time to drain in-flight requests before Kubernetes sends SIGTERM, and that time counts against the pod's graceful shutdown period, which defaults to 30 seconds. A ten-second sleep, as in the example manifest, is a value you should tune for your own shutdown.
+<details><summary>13. You can alert at a 2x burn rate or only page at 10x. When do you choose each, and what do you give up?</summary>
+A 2x alert is a warning that shows a slow burn early but fires more often. A 10x page is rare and urgent. Choose thresholds that match how fast your team can respond. Both values are examples. Using only 10x gives less noise but a slower warning.
 </details>
 
-<details><summary>14. What is the alert severity hierarchy?</summary>
-Critical alerts page the on-call immediately, warnings notify the team without paging, and info alerts are logged without notifying anyone. When you choose a severity, use critical for alerts tied to a breached SLO, warning for an SLO at risk, and info for anything purely informational.
+<details><summary>14. Should a readiness probe check the database the model depends on, and what do you give up?</summary>
+Yes, let the readiness check reflect a dependency and keep the liveness check local. A failing readiness probe only removes the pod from the load balancer, while a failing liveness probe restarts it. You give up an automatic restart, but restarting a pod rarely fixes a dependency that is down.
 </details>
 
-<details><summary>15. What is the SLO composition pattern?</summary>
-The cluster SLOs form the base, the team SLOs depend on them, and the customer SLOs depend on the team SLOs. A customer SLO can be met only if the team SLO and the cluster SLO beneath it can also be met, so the SLOs compose.
+<details><summary>15. When the error budget runs out, would you pause deployments, and what do you give up?</summary>
+Pausing new deployments until the next window is a common policy, but it is a team choice that the SLO does not impose. You give up release speed and protect customers while the budget is spent. A team below target for the example hour should discuss it using the remaining budget.
 </details>
 
-<details><summary>16. Why is the alert routing a platform-team discipline?</summary>
-Every alert has a severity, every severity has a route, and every route has an on-call owner. The platform team owns both the routing and the rotation, so it is the only group that can keep this chain intact. A broken routing chain pages the on-call at the wrong moment, or leaves them silent while the cluster is down.
+<details><summary>16. A 99.95 percent monthly SLO for the model registry, on a 30-day month. What is the error budget?</summary>
+A 30-day month has 30 times 24 times 60, which is 43,200 minutes. The budget is 0.05 percent of that, which is 21.6 minutes. This is half the 43.2 minutes at 99.9 percent. The targets are examples.
 </details>
 
-<details><summary>17. What is the difference between a probe failure and an SLO breach?</summary>
-A probe failure is a Kubernetes event: the pod leaves the load balancer or gets restarted. An SLO breach is a customer-facing event, meaning the cluster is missing the promise it made. A probe failure can lead to an SLO breach if the team does not handle it quickly.
+<details><summary>17. At 99.9 percent monthly availability, a 10x burn starts. How many days until the budget is gone?</summary>
+The budget is 43.2 minutes. A 10x burn spends 14.4 minutes per day, which is 10 times the 1.44 minutes per day at 1x. So 43.2 divided by 14.4 gives 3 days.
 </details>
 
-<details><summary>18. What is the error budget's role in deployment velocity?</summary>
-The error budget is the price the team can pay for unreliability. The team spends it on improvements such as canary releases, chaos experiments, and rolling upgrades, and pauses new deployments once it runs out. The budget connects reliability to speed, because if you have no budget left, you have to slow down.
+<details><summary>18. The startup probe has `periodSeconds: 5` and `failureThreshold: 30`. How long can the model take to start?</summary>
+The pod can fail the probe 30 times, 5 seconds apart. That is 30 times 5, or 150 seconds. If the model takes longer to load, the pod will be restarted. The timing values are examples, so set them from your own load time.
 </details>
 
-<details><summary>19. Why is the runbook URL annotation important?</summary>
-The on-call clicks the URL in the page and follows the runbook from there, so the link turns an alert into a set of steps. An alert without a runbook URL is one the on-call may not be able to fix.
+<details><summary>19. A pod fails its probe repeatedly and never serves traffic. What do you check first, second and third?</summary>
+First check whether the probe is too aggressive for a slow start. Second check whether it tests a dependency that is not ready yet. Third check the timeout, which may be too short. The fixes are a longer initial delay and timeout and a startup probe for slow starts.
 </details>
 
-<details><summary>20. What five questions should the alerting and SLO lab let you answer in five seconds each?</summary>
-The lab should let you answer five questions quickly: the current Alertmanager latency p99, the alert firing rate, the error budget remaining, the SLO compliance per service, and the most recent critical alert with its runbook URL. The 30-second bar is an example. If your answers take longer than the bar you set, the stack is not yet a production service.
+<details><summary>20. You injected a synthetic critical alert in the lab. In what order do you confirm the page path works?</summary>
+First post the alert to the Alertmanager API with severity critical. Second port-forward to Alertmanager and list the alerts to confirm it arrived. Third confirm it was routed to the `pagerduty-critical` receiver. This follows the lab steps and shows where the path breaks.
 </details>
-
----
 
 ## Sources and review notes
 

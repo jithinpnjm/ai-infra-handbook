@@ -651,87 +651,85 @@ Aim for five seconds per answer, and treat 30 seconds as the upper limit. Those 
 
 ## Checkpoint questions
 
-<details><summary>1. What six categories of failure modes does the chapter walk through?</summary>
-The six groups are GPU hardware, network, storage, scheduler, container image, and model serving. GPU hardware covers ECC, Xid, thermal, and power problems. Network covers NCCL timeouts, RDMA errors, and partitions. Storage covers object storage 5xx errors and a full local disk. Scheduler covers GPU OOM, image pull failures, and pending pods. Container image covers signature mismatches, CVEs, and pull rate limits. Model serving covers model OOM, quality regression, and prompt injection. Each group has a detection signal and an alert, and you should be able to name the group from the symptom.
+<details><summary>1. A training step hangs and the logs show an NCCL timeout. The network team says the fabric looks fine. What do you check before blaming the network?</summary>
+Check the peer ranks. When one GPU rank hits an error, the other ranks can hang waiting for it, so a crashed rank looks like a network timeout. Search the logs for `WARN NCCL_COMM_FAILURE` and set `NCCL_DEBUG=WARN` so silent errors show. If every rank is healthy, investigate the network.
 </details>
 
-<details><summary>2. What is the most common GPU hardware failure?</summary>
-The ECC error storm. It starts with single-bit errors (SBEs), escalates to double-bit errors (DBEs), and ends with a GPU that must be replaced. An example policy alerts when the SBE rate passes 100 per hour, alerts on any DBE, and drains the node at once on a DBE.
+<details><summary>2. A GPU's single-bit ECC error rate climbs, and two hours later the first double-bit error appears. What do you do?</summary>
+A double-bit error cannot be corrected, so the GPU may be corrupting data. The example policy pages on any double-bit error and drains the node at once. Move the workload off that node and replace the GPU. Treat the rising single-bit rate as the earlier warning you should have acted on.
 </details>
 
-<details><summary>3. What is the most dangerous GPU failure?</summary>
-The GPU hang. Your workload still appears to run, the kernels sit in the queue, and the GPU makes no progress, so nothing crashes to flag it. The detection signal is the SM clock. If it stays non-zero for more than 10 seconds with no kernel progress, the check treats the GPU as hung. An example response is to alert, restart the workload, drain the node, and replace the GPU if the hang repeats.
+<details><summary>3. A multi-node job fails, and a ping between two nodes fails. How do you tell a network partition from a dead host?</summary>
+Run `ansible all -m ping` from a host on each side of the suspected split. In a partition, the set of unreachable hosts differs depending on where you run the check. A host that is simply down is unreachable from everywhere. Run it from a host you trust.
 </details>
 
-<details><summary>4. What is the most common network failure?</summary>
-The NCCL timeout. It fires when a collective operation misses the timeout you configured. The detection signal is the NCCL timeout error in the logs. An example policy sets the timeout to 600 seconds, alerts on any timeout, investigates the network, and restarts the workload if the timeout repeats.
+<details><summary>4. A churn model returns answers all day, no errors appear in the logs, and `model_quality_score` has fallen below 0.85. What do you do?</summary>
+This is a quality regression, which error logs cannot show. Retrain with recent data and check the drift detector. If the retrain does not recover the score, roll back to the previous model version. The 0.85 is an example, so set your own from the score the model had when it was approved.
 </details>
 
-<details><summary>5. What is the most dangerous network failure?</summary>
-The network partition. It splits the cluster into two halves, so multi-node training fails and the workload hangs. The detection signal is a failed ping between nodes. An example response is to alert on the ping failure, investigate the network fabric, and restart the affected workloads.
+<details><summary>5. A pod is killed with the reason `OOMKilled`. Does that prove the GPU ran out of memory?</summary>
+No. The Linux OOM killer is a cgroup limit on system memory, so `OOMKilled` points at host memory. Confirm the GPU side from the CUDA out-of-memory error in the workload's own logs. Then check the memory request, and raise it or shrink the model.
 </details>
 
-<details><summary>6. What is the most common storage failure?</summary>
-The object storage 5xx. It happens when the service is unavailable to your training job. The detection signal is the s3_errors_total metric. An example response alerts on any 5xx, investigates the storage service, and switches to a backup region if one is available.
+<details><summary>6. A pod will not start and the events show "Failed to verify signature". What do you do and what must you never do?</summary>
+Alert on any mismatch, investigate the signing pipeline, and rotate the signing key if you think it was exposed. Confirm the exact event text in your own cluster first. Never bypass the admission controller to get the pod running, because refusing the pod is the behaviour you want.
 </details>
 
-<details><summary>7. What is the most common scheduler failure?</summary>
-The GPU OOM. The workload asks for more GPU memory than the node has, and Kubernetes kills the workload. The detection signal is the OOMKilled reason in the pod status. An example response alerts on any OOMKilled, checks the GPU memory request, and raises the request or reduces the model size.
+<details><summary>7. Why does one crashed rank stall the whole training job, and what does the timeout setting change?</summary>
+Every GPU waits on each collective, so one missing rank blocks them all. The timeout is set on the process group, here 10 minutes, and PyTorch ignores an `NCCL_TIMEOUT` environment variable. With async error handling on, the job aborts after the timeout instead of hanging forever.
 </details>
 
-<details><summary>8. What is the most common container image failure?</summary>
-The image pull failure. You will see this when the image name is wrong, when the registry rate limit is hit, or when the pull times out on the network. The detection signal is the ImagePullBackOff reason in the pod status. An example response alerts after 5 minutes of ImagePullBackOff, checks the image name and tag, and checks the pull rate limit.
+<details><summary>8. Why does a GPU hang go unnoticed until the job stalls?</summary>
+Nothing crashes. The workload still runs, kernels sit in the queue, and the GPU makes no progress. The SM clock check treats the GPU as hung when the clock stays above zero for 10 seconds with no kernel progress, so it needs a second signal. Timeouts around calls make a hang fail fast.
 </details>
 
-<details><summary>9. What is the most dangerous container image failure?</summary>
-The image signature mismatch. The image is signed, but the signature does not match it, so the admission controller refuses to start the pod. An example response alerts on any mismatch, investigates the signing pipeline, and never bypasses the admission controller.
+<details><summary>9. Why must image scans repeat on a schedule?</summary>
+An image that passed its scan at pull time can gain new CVEs later, because new vulnerabilities are found after the image was built. A single scan at pull time cannot catch those. Run Trivy on every image in CI, repeat the scans, alert on HIGH severity or above, and rebuild on an updated base image.
 </details>
 
-<details><summary>10. What is the most common model serving failure?</summary>
-The model OOM. The model is too large for the GPU's memory, the inference engine's KV cache fills up, and a CUDA out-of-memory crash follows. You detect it with the inference_oom_total metric. An example response alerts on any inference OOM, shrinks the KV cache budget, or moves to a larger GPU.
+<details><summary>10. Why does a GPU failure turn into a cluster SLO breach, and what stops it?</summary>
+Without failure isolation, the failure travels along the dependency chain from the GPU to the node and then to the cluster. Drain the node when its GPU fails, add circuit breakers so workloads stop calling a failing service, and add bulkheads between teams. Anti-affinity limits the damage but cannot remove the disturbance.
 </details>
 
-<details><summary>11. What is the most dangerous model serving failure?</summary>
-The model quality regression. The request succeeds and the model returns an answer, but the answer is wrong. The detection signal is the model_quality_score metric. An example response alerts when the score drops below a threshold, retrains the model on recent data, checks the drift detector, and rolls back to the previous version if needed.
+<details><summary>11. Why is a model quality regression the hardest serving failure to detect?</summary>
+The request succeeds and the model returns an answer, so nothing appears in the error logs. The detection signal has to measure quality itself, which is the `model_quality_score` metric from Chapter 16.10. Without that metric the failure is invisible.
 </details>
 
-<details><summary>12. What is the failure mode catalogue?</summary>
-A structured document that the on-call engineer can search during an incident. Each failure mode has these fields: ID, name, symptom, root cause, detection signal, alert, runbook URL, last updated, and last incident. The catalogue is updated after every incident and reviewed quarterly.
+<details><summary>12. An alert fires on every small variation and the on-call ignores it. How far do you loosen it, and what do you give up?</summary>
+Tune the signal, raise the threshold, and add hysteresis. Then measure the alert's precision and recall. You give up some sensitivity, so a real failure could fire later. That is acceptable when too many alerts hide real events. Tune each alert until it is worth a page.
 </details>
 
-<details><summary>13. What is the cascade failure mode?</summary>
-A failure that spreads across multiple components. A GPU failure leads to a node failure, the node failure leads to a cluster failure, and the cluster SLO is breached. Your usual response is to isolate the failure. Drain the node when its GPU fails, add circuit breakers, and add bulkheads so one failure does not reach other teams.
+<details><summary>13. A GPU hang returns after a restart. When do you restart, drain or replace, and what does each cost?</summary>
+The suggested order is to alert, restart the workload, drain the node, and replace the GPU if the hang returns. A restart is cheap but does not fix hardware. Draining removes capacity until the repair. Replacing the GPU costs the most but is the only fix for a bad part.
 </details>
 
-<details><summary>14. What is the failure isolation pattern?</summary>
-The pattern that stops a failure from spreading. You drain the node when its GPU fails, so the workload reschedules onto a healthy node and other workloads stay unaffected. In practice, a Kubernetes controller watches GPU health and drains the node when the GPU is unhealthy.
+<details><summary>14. A model server hits OOM errors. When do you use backpressure and when do you change the deployment?</summary>
+Backpressure rejects new requests or reduces the batch size for a while, which gives the system room to recover during a spike. You give up some requests. The lasting fixes are to shrink the KV cache budget, move to a larger GPU, or lower the number of concurrent requests.
 </details>
 
-<details><summary>15. What is the circuit breaker pattern?</summary>
-A pattern that stops a workload from calling a failing service. The workload tracks the failure rate of that service. When the rate passes a threshold, the workload stops calling the service and returns a default response. The platform team configures the circuit breaker in the service mesh, such as Istio.
+<details><summary>15. The disk alert fires below 10 percent free space. When would you set a higher margin, and what do you give up?</summary>
+A node that writes large checkpoints may need more margin, because the disk can fill before anyone reacts. A higher margin gives earlier warning but fires more often and wastes usable space. The 10 percent is a starting point, so tune it to your workload.
 </details>
 
-<details><summary>16. What is the bulkhead pattern?</summary>
-A pattern that isolates a failure to one part of the workload. Resources are split into partitions, so a failure in one partition does not touch the others. The platform team sets up Kueue LocalQueues per team (Chapter 16.14), so one team's queue failure does not reach the other teams.
+<details><summary>16. In Meta's 54 days of Llama 3 405B pretraining, faulty GPUs caused 35.3 percent of interruptions and HBM3 memory 17.2 percent. What share is that together?</summary>
+Add the two shares, 35.3 plus 17.2, which is 52.5 percent. More than half of all interruptions came from GPU hardware. Network switches and cables added another 8.4 percent.
 </details>
 
-<details><summary>17. What is the failure mode review process?</summary>
-A quarterly review that flags failure modes unseen in the last 90 days, failure modes that keep coming back, and new failure modes from the latest vendor releases. The output is a report, and the platform team reviews it. The findings go into the next quarter's roadmap.
+<details><summary>17. The disk alert is `node_filesystem_avail_bytes / node_filesystem_size_bytes < 0.1`. At what free space does it fire on a 2 TB disk?</summary>
+The ratio is below 0.1 when free space is under 10 percent of 2 TB. Ten percent of 2,000 GB is 200 GB. So the alert fires when less than about 200 GB is free.
 </details>
 
-<details><summary>18. What is the difference between detection and alerting?</summary>
-Detection is the signal that catches the failure, such as a metric, log, trace, or probe. Alerting is the rule that fires when a detection signal crosses its threshold. If you have a detection signal without an alert, the failure stays silent. An alert without a detection signal is a false alarm.
+<details><summary>18. The example policy warns at 100 single-bit errors per hour. In the example storm, what does the warning miss?</summary>
+In the timeline, the single-bit rate reaches only 50 per hour at the first hour, and the first double-bit error appears at two hours. The rate never reaches 100, so the warning does not fire before the double-bit page. Measure your own fleet's normal rate before choosing a threshold.
 </details>
 
-<details><summary>19. Why is the failure mode catalogue a platform-team deliverable?</summary>
-The platform team owns the cluster, the detection signals, the alerts, and the runbooks. The data scientist consumes the catalogue, and the platform team produces it. The catalogue holds the platform team's institutional knowledge.
+<details><summary>19. Pods are stuck in `ImagePullBackOff`. What do you check first, second and third?</summary>
+First check the image name and tag, because that is the cheapest fix. Second check whether the registry is applying a pull rate limit, as Docker Hub does for anonymous pulls. Third configure an image pull secret if the registry requires authentication. A network timeout is the other common cause.
 </details>
 
-<details><summary>20. What five questions should the failure mode catalogue lab let you answer in five seconds each?</summary>
-The five questions cover the failure mode count, the stale count, the newest entry, the ECC error rate per GPU, and the alert firing rate. The five-second and 30-second times are example targets. If any answer takes longer than 30 seconds, the catalogue is not yet a production service.
+<details><summary>20. A real critical failure happened and the on-call never saw the alert. What do you check, in order?</summary>
+First read the inhibit rules, since a less important alert may be hiding the critical one. Second check that each rule matches only the alerts it should. Third add an integration test, and add an always-firing alert that pages when it goes quiet, so a failure of the alerting path becomes visible.
 </details>
-
----
 
 ## Sources and review notes
 

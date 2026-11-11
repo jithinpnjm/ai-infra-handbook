@@ -685,84 +685,84 @@ If any answer takes more than 30 seconds, the eval suite is not yet a production
 
 ## Checkpoint questions
 
-<details><summary>1. What three buckets of dimensions does an LLM evaluation cover?</summary>
-The three buckets are task-specific (accuracy, faithfulness, reasoning, format compliance, domain accuracy), safety (toxicity, bias, jailbreak resistance, PII leakage, factuality), and operational (latency, cost, throughput, reliability). Most teams start with the task and cost dimensions, then add the safety ones as the application matures.
+<details><summary>1. The eval suite passed on a new prompt and every threshold held. After release, customer-facing accuracy fell 8 points. Why, and what do you change?</summary>
+The eval set does not represent customer traffic. It is a sample and customer traffic is the full population. Add samples that reflect real traffic to the eval set. Also run the new prompt in shadow mode before promotion, for a period you choose such as 24 hours, because shadow metrics describe the population.
 </details>
 
-<details><summary>2. What are the three components of an eval set?</summary>
-The golden set holds 100 to 1,000 hand-labelled inputs for the main accuracy metric. The regression set holds 50 to 500 inputs for known failure modes, and the held-out production sample holds 1,000 to 10,000 inputs taken weekly to reveal drift. You keep the eval set in Git and version it like code.
+<details><summary>2. The judge scores answers highly but customers report low accuracy. The judge and the candidate come from the same model family. What is the bias and what do you do?</summary>
+This is self-preference. The judge favours answers in its own style. Use a different model family for the judge. Also check the judge against a small human-labelled sample on a schedule, such as quarterly, so you know it still agrees with people.
 </details>
 
-<details><summary>3. What is LLM-as-judge?</summary>
-A second model, often a stronger one, scores the first model's answer against the ground truth. The method is fast and cheap, but the judge carries its own bias. Reduce that bias by using a different model family for the judge, randomising the order in pairwise comparisons, and normalising scores by answer length.
+<details><summary>3. The safety filter rejects 20 percent of safe responses and customers say the model is censoring them. Which way do you move the threshold and how do you set it?</summary>
+Raise the threshold. In the chapter's code the filter rejects a response when its score is above the threshold, so a higher threshold blocks fewer responses. Tune it on the eval set. The example goal is to catch all unsafe responses at a false-positive rate of 1 to 5 percent. Publish the false-positive rate as a metric and page on-call at the alert level you chose, such as 5 percent.
 </details>
 
-<details><summary>4. What is the difference between BLEU, ROUGE, and F1?</summary>
-BLEU suits translations with reference translations, ROUGE suits summaries with reference summaries, and F1 suits token-set answers, but all three fail on open-ended answers. Use automated metrics as the first filter, LLM-as-judge as the second, and human evaluation only for the most expensive dimensions.
+<details><summary>4. A user posts a prompt online that bypasses your jailbreak classifier. What do you do?</summary>
+The classifier missed it, so its false-negative rate is not zero. Add the bypass to the regression set, retrain the classifier, and tune its threshold. The example policy is to turn each published jailbreak into a regression test within 24 hours. Set your own window.
 </details>
 
-<details><summary>5. What four guardrail classes does a production LLM application need?</summary>
-The four classes are safety (toxic, biased, or harmful content), PII (email, phone, SSN, addresses), jailbreak (prompt injection, system-prompt bypass), and factuality (hallucinations, unsupported claims). None of them is optional, and the platform team owns the runtime and its SLOs.
+<details><summary>5. A provider ships a model update overnight. Customer accuracy drops and nothing changed in your code. What is the fix?</summary>
+The update changed model behaviour, and the provider did not version it under a name you can pin. Pin the model version in the provider's API. Run the eval suite on every prompt against the pinned version and fail CI if the version moves. Treat pinning as a supply-chain control.
 </details>
 
-<details><summary>6. Why is the regression set more important than the golden set?</summary>
-The golden set measures accuracy on a sample, while the regression set catches known failure modes. A regression that breaks the golden set gets caught, and so does one that breaks a single user's case, but only if the regression set covers it. Coverage of the regression set is the suite's defence against failures nobody has seen yet.
+<details><summary>6. You ship a prompt that makes answers shorter. The accuracy test passes, but two weeks later support says answers no longer cite their sources. What went wrong and how do you stop it happening again?</summary>
+The suite measured accuracy and missed a dimension that regressed, here whether the answers stay grounded and cite their sources. A team that measures only one bucket of dimensions is blind to the others. Add a regression case for this failure, as you should each time production reveals a new failure mode. Then add the matching dimension to the suite, with its own threshold.
 </details>
 
-<details><summary>7. What is the bias of LLM-as-judge?</summary>
-The four biases are self-preference, position bias, verbosity bias, and anchoring. Self-preference means the judge favours answers in its own style, position bias means it favours the first of two answers, and verbosity bias means it favours longer ones. Anchoring means it clings to the ground truth. The fixes are a different model family for the judge, a random order for pairs, length normalisation, and asking whether the candidate answered the question, rather than whether it matched the ground truth.
+<details><summary>7. Why does the suite keep passing while accuracy on live traffic keeps falling, when the eval set is two years old?</summary>
+The eval set is a snapshot of what the application should do. The product adds features, the user base shifts, and regulations tighten. The application's expected behaviour changed and nobody refreshed the set, so the gate tests the old behaviour. Refresh it on a fixed schedule, such as quarterly.
 </details>
 
-<details><summary>8. Why is the eval set refreshed quarterly?</summary>
-The application's expected behaviour changes over time. New features ship, the user base shifts, and regulations tighten. Without a refresh, the eval set goes stale, and the suite stops being a reliable gate. The refresh belongs on the quarterly schedule, as a standing task.
+<details><summary>8. Why does the regression set protect you from failures nobody has seen yet, and why does the golden set not?</summary>
+A regression that breaks the golden set gets caught, because the golden set measures the main accuracy number. A regression that breaks a single user slips through unless a regression case covers it. So coverage of the regression set is the suite's defence against the unknown. That is why its pass rate alert is set at anything below 100 percent.
 </details>
 
-<details><summary>9. What is the difference between the safety filter and the PII filter?</summary>
-The safety filter catches toxic, biased, or harmful content, while the PII filter catches leaked personal data such as email addresses, phone numbers, SSNs, and street addresses. The safety filter is LLM-as-judge in this chapter, and the PII filter is regex plus named-entity recognition. Both run on every response, and both produce false positives that you pay for as the cost of safety.
+<details><summary>9. Why does a pairwise judge need the answer order randomised and the length capped?</summary>
+Position bias makes the judge prefer the first answer. Randomise the order and average across two passes. Verbosity bias makes it prefer longer answers. Cap the candidate length or normalise by length. None of the mitigations drops the bias to zero.
 </details>
 
-<details><summary>10. What is the jailbreak classifier's role?</summary>
-Its job is to score each prompt before the LLM sees it, and to reject prompt injection and system-prompt override attempts. It is the second line of defence, behind the system prompt. The example policy here is to retrain on every published jailbreak within 24 hours, and you should set your own window.
+<details><summary>10. Why does the jailbreak check run before generation while the safety and PII checks run after?</summary>
+A jailbreak is in the prompt, so the check scores the prompt before the LLM sees it and looks for override attempts. Toxic output and leaked PII exist only in the model's response, so those filters must run after generation. The factuality filter also runs after generation, with the retrieval context.
 </details>
 
-<details><summary>11. What is the factuality filter's role?</summary>
-Its job is to check that the answer is supported by the retrieved context in a RAG application, or by the training data otherwise. The filter is LLM-as-judge in this chapter, so every response costs a second model call. Use it only where hallucination is unacceptable, such as RAG applications.
+<details><summary>11. Why does the chapter recommend a dead man's switch for monitoring?</summary>
+If the monitoring itself fails, no alerts arrive and everything looks calm. A dead man's switch is an alert that fires on a schedule during normal operation. When those alerts stop arriving, a critical alert tells on-call that the monitoring has failed. Set it up before the first production run.
 </details>
 
-<details><summary>12. What is the most expensive dimension of LLM evaluation?</summary>
-Human evaluation is the most expensive, at $1 to $50 per input and with hours to days of latency. Review a small sample of production traffic every week, and let that sample feed the golden set. The cost is high, so keep the sample small.
+<details><summary>12. Choose between an automated metric, LLM-as-judge, and human evaluation for a nightly job that scores every answer. What do you give up?</summary>
+Use an automated metric where the answer has a known shape, such as JSON or a category. It costs nothing but is weak on meaning. Use LLM-as-judge for semantics, at about $0.001 to $0.05 per input and seconds of latency, and accept its bias. Reserve human review for the costliest dimensions such as brand voice and safety, since it costs $1 to $50 per input and takes hours to days.
 </details>
 
-<details><summary>13. What is the role of human evaluation?</summary>
-Humans check the LLM-as-judge, add new failure modes to the golden set, and measure brand voice, which no automated metric can measure. Teams treat human judgement as the reference that the automated scores are tuned against.
+<details><summary>13. A low safety threshold or a high one: which do you pick and what do you give up?</summary>
+A low threshold catches more unsafe output but blocks more safe output. A high threshold lets more unsafe output through. Pick by your product's risk, then tune on the eval set. The false-positive rate is the price you pay for safety.
 </details>
 
-<details><summary>14. What is the eval set drift pattern?</summary>
-The eval set captures what the application should do on the day it was written. As the expected behaviour changes, the eval set falls behind, and the suite's gate loses accuracy. The fix is a refresh on a regular schedule, such as quarterly.
+<details><summary>14. When is the factuality filter worth its cost?</summary>
+The filter is LLM-as-judge, so every response costs a second model call. Use it where a wrong answer is costly, such as RAG applications that must stay grounded in retrieved context. For general chat that cost is too high and some hallucination may be acceptable.
 </details>
 
-<details><summary>15. What is the eval suite's most important metric?</summary>
-The regression set pass rate matters most. A regression that breaks the golden set gets caught, while one that breaks a single user can slip through. Coverage is the suite's defence against failures nobody has seen yet.
+<details><summary>15. Is a bigger, better eval set enough, or do you also pay for shadow mode before promotion?</summary>
+A bigger eval set is still a sample. Shadow mode runs the new prompt alongside the live one on real traffic, so its metrics describe the population. The cost is time and a second serving path for the window you choose. Use shadow mode when a wrong promotion is expensive.
 </details>
 
-<details><summary>16. Why does the platform team own the eval suite's runtime?</summary>
-The eval suite is a CI gate, so its runtime, version, and cost are platform decisions. A data scientist reads the eval results. The platform team owns the infrastructure that produces them.
+<details><summary>16. A team reviews 100 to 500 inputs a week by hand at $1 to $50 per input. What is the weekly cost range?</summary>
+The low end is 100 times $1, which is $100 a week. The high end is 500 times $50, which is $25,000 a week. The range is wide, so keep the sample small and the rubric short.
 </details>
 
-<details><summary>17. What is the difference between a regression test and a golden test?</summary>
-A golden test measures accuracy on hand-labelled inputs. A regression test checks a small set of inputs for known failure modes. Golden tests give you the main accuracy number, and regression tests act as the safety net.
+<details><summary>17. LLM-as-judge costs $0.001 to $0.05 per input. What does it cost to judge a 1,000-input golden set and a 10,000-input production sample?</summary>
+The golden set costs 1,000 times $0.001 to 1,000 times $0.05, so $1 to $50. The production sample costs 10,000 times that, so $10 to $500. Check current provider prices before you budget, because these are rough ranges.
 </details>
 
-<details><summary>18. What is the difference between the safety classifier and the factuality filter?</summary>
-The safety classifier catches toxic, biased, or harmful content. The factuality filter catches hallucinations and unsupported claims. Both run on every response and both produce false positives, and this chapter describes both as LLM-as-judge.
+<details><summary>18. The safety filter blocks 20 percent of safe responses against a 1 to 5 percent target. For 10,000 safe responses, how many wrongly blocked responses is that, and what is the target range?</summary>
+At 20 percent it blocks 2,000 safe responses, since 10,000 times 0.20 is 2,000. The target of 1 to 5 percent is 100 to 500 blocked. So the filter blocks four to twenty times too many. The 10,000 figure is only an example volume.
 </details>
 
-<details><summary>19. Why does the platform team own the LLM provider's model version?</summary>
-A provider can ship a model update overnight, and that update can change behaviour on your production traffic. The provider may not version updates under a name you can pin. So you pin the model version in the provider's API, and CI fails whenever the version moves.
+<details><summary>19. Customer accuracy drops and no code changed. In what order do you check?</summary>
+First check whether the provider's model version moved, since a silent update changes behaviour and pinning stops it. Second check when the eval set was last refreshed, because a stale set hides regressions. Third check whether the eval set represents customer traffic, by comparing shadow metrics with the suite's scores.
 </details>
 
-<details><summary>20. What five questions should the eval suite lab let you answer in five seconds each?</summary>
-Be able to state the current golden set pass rate, the regression set pass rate, the safety filter false-positive rate, the jailbreak filter false-negative rate, and the date of the last eval-set refresh. Each answer should take five seconds, and if any takes more than 30 seconds, the eval suite is not yet a production service.
+<details><summary>20. The promotion gate blocks a model and prints a reason. What do you read first, second, and third?</summary>
+First read the printed reason, which says which threshold failed. Second open the golden and regression result files from that run. Third compare them with the thresholds file, using the prompt version, model version, and eval set version tags to see which change moved the number.
 </details>
 
 ---

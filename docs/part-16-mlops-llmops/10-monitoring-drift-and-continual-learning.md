@@ -570,84 +570,84 @@ Each exercise builds one piece of the loop from this chapter, and you can do the
 
 ## Checkpoint questions
 
-<details><summary>1. What four metric categories does a production ML system monitor?</summary>
-The four are operational, input, output, and feedback metrics. Operational covers latency, error rate, throughput, and availability. Input covers feature drift, schema drift, and null rate, while output covers prediction drift, class imbalance, and confidence distribution, and feedback covers label drift, live accuracy, business metric, and customer satisfaction. Each category maps to one of the four failure shapes from Chapter 16.1.
+<details><summary>1. The on-call engineer is paged every hour for drift. The team checks the model and it is fine, yet a new model trains and is no better. What is wrong and what do you change?</summary>
+The threshold is too tight, so the detector reacts to noise. Check your alert settings before you touch the model. Raise the threshold and tune it on production traffic. Page only on persistent drift, meaning the threshold stays breached for more than 1 hour in this example, not on a single scrape.
 </details>
 
-<details><summary>2. What is the difference between feature drift and concept drift?</summary>
-Feature drift means the inputs changed, while the link between features and target stayed the same. Concept drift means that link changed, while the inputs look the same. Drift detectors catch feature drift on the input, and performance triggers catch concept drift on the output.
+<details><summary>2. The retraining trigger fires every day, the cluster spends most of its time retraining, and no new model reaches production. What do you do?</summary>
+The detector is too sensitive, the schedule is too tight, or the cooldown is missing. Add a cooldown, raise the drift threshold, and reduce the schedule frequency, for example from daily to weekly. Retrain when a new model is likely to beat the old one, not every time the detector fires.
 </details>
 
-<details><summary>3. What is the KS test, and when is it the right drift detector?</summary>
-The Kolmogorov-Smirnov test compares two empirical distributions and gives you a p-value. It is cheap to run on a CPU and works well on continuous features. It fails on categorical features, where PSI is the better choice, and on high-dimensional embeddings, where learned embedding drift works better.
+<details><summary>3. Customer accuracy drops 10 points, the dashboards look fine, and the drift score has not moved. What is happening and what catches it?</summary>
+This is concept drift. The relationship between features and target changed while the inputs look the same, so an input-only drift detector cannot see it. Add performance-triggered retraining, which fires when live accuracy drops. Drift detection catches input changes and performance triggers catch concept drift.
 </details>
 
-<details><summary>4. What is the Population Stability Index (PSI), and when is it the right drift detector?</summary>
-PSI compares two histograms and gives you a single number. It is cheap to run on a CPU, it works on categorical features, and it tolerates the choice of bins. The example thresholds are 0.2 to page the on-call and 0.5 to consider rolling back.
+<details><summary>4. A drift-triggered retraining DAG ran and the new model passed the promotion gate, but customer accuracy fell after release. What do you add?</summary>
+The promotion gate missed the regression, and live traffic caught it after the canary had started. Add a production shadow stage. Shadow runs the new model on 100 percent of traffic for a set period, such as 24 hours, and its metrics are compared with the live model's. The canary starts only after the shadow passes.
 </details>
 
-<details><summary>5. What is the delayed ground truth problem?</summary>
-For many ML use cases, the ground truth arrives days or months after the prediction. A churn label can take weeks, and a fraud label can take months. Use the ground truth when it arrives, and estimate the missing part with proxy signals in the meantime.
+<details><summary>5. The drift detector is configured but its drift score is undefined and production traffic never passes through it. What is the cause and the rule that prevents it?</summary>
+The serving system does not emit prediction logs, so the detector has nothing to score. Make prediction log emission a condition for the InferenceService to be marked ready. The rule is no prediction log emission, no production traffic.
 </details>
 
-<details><summary>6. What is the difference between shadow mode, canary, and A/B testing?</summary>
-Shadow mode runs the new model on 100% of traffic, and its responses are thrown away. A canary serves real responses to 1-5% of traffic. A/B testing routes users by header or cohort. Combining them catches more failure modes than any one mechanism alone.
+<details><summary>6. The drift threshold is breached on a churn model, but live accuracy is undefined because the labels are weeks away. What do you do?</summary>
+The pipeline is waiting correctly for delayed ground truth. Use a proxy signal such as a cancellation page view or a customer service contact. A proxy is an estimate, not a measurement. Fire the drift trigger right away and fire the performance trigger once the proxy signal is available.
 </details>
 
-<details><summary>7. What are the three retraining trigger types?</summary>
-The three types are schedule-based, drift-triggered, and performance-triggered. Schedule-based fires every N days, weeks, or months. Drift-triggered fires when the drift detector's threshold is breached, and performance-triggered fires when live accuracy drops below a threshold. The schedule is the baseline, and the other two speed things up when the baseline is not enough.
+<details><summary>7. Why do you check feature drift first and use prediction drift as a second check?</summary>
+Feature drift is the cheapest signal. Concept drift can follow feature drift, and prediction drift can result from either one. So a feature shift is the earliest hint. Prediction drift then confirms what the feature signal suggested.
 </details>
 
-<details><summary>8. What is the retraining cooldown?</summary>
-The cooldown is the minimum time between two trigger fires. It stops thrashing when the drift detector is noisy. The chapter's example value is 24 hours, and the trigger enforces it before each fire.
+<details><summary>8. Why must every drift report name the reference version it used?</summary>
+A drift score means nothing without something to compare against. The reference is the feature statistics of the training set, and it is a versioned artifact like the model. When the training set changes you build a new reference. Naming the version lets an auditor see what the live data was compared against.
 </details>
 
-<details><summary>9. Why is a proxy signal necessary when the ground truth is delayed?</summary>
-You cannot wait weeks or months for ground truth before retraining. A proxy signal, such as a cancellation page view for churn or a chargeback for fraud, is an estimate that arrives in minutes or hours. It is enough to fire the trigger, and the ground truth later confirms whether the trigger was right.
+<details><summary>9. Why does a cooldown stop retraining from thrashing, and why should it be at least as long as your evaluation suite?</summary>
+A noisy detector can fire every hour. The cluster then retrains constantly and no new model reaches production. A cooldown blocks the trigger from firing again until a set time has passed since the last run. If it is at least as long as the evaluation suite, the new model gets evaluated before the next trigger can fire.
 </details>
 
-<details><summary>10. What is the difference between prediction drift and output class imbalance?</summary>
-Prediction drift is a change in the distribution of predictions. Output class imbalance is a skew in the same histogram, such as too many positives and too few negatives. Prediction drift catches any shift, while class imbalance catches one specific kind. You monitor both, and each has its own threshold.
+<details><summary>10. Why do you respond differently to a spike on one feature and a slow rise across many features?</summary>
+A spike on one feature usually means the upstream source changed, so you look at that pipeline. A slow rise across many features usually means the population is shifting. The first is closer to a data bug and the second is a change in who your users are. The drift score per feature is the metric that tells them apart.
 </details>
 
-<details><summary>11. What is the drift detector's reference distribution?</summary>
-The reference distribution is a versioned artifact that records each feature's mean, standard deviation, quantiles, minimum, and maximum from the training set. It is computed at training time, and it changes only when the training set changes. The drift detector's output names the reference version it used.
+<details><summary>11. Why are feedback metrics read for slow confirmation while input and output metrics give fast warnings?</summary>
+Feedback metrics depend on labels, and labels arrive late. A churn label can take weeks and a fraud label can take months. Input and output metrics are available the moment predictions are made. So most teams read the fast ones for warnings and the feedback ones to confirm.
 </details>
 
-<details><summary>12. Why does the platform team own the retraining trigger?</summary>
-Retraining fires a DAG that uses GPU hours, and the platform team owns both the GPU pool and the trigger policy. The data scientist consumes the new model, while the platform team owns the trigger that produces it.
+<details><summary>12. Your model starts drifting on a weekend and the weekly retraining job is still days away. Which trigger types would you combine and what does each cost?</summary>
+Keep the schedule as the baseline, because it makes GPU cost predictable. Add a drift trigger, which fires when the detector's threshold is breached and costs GPU time reactively. Add a performance trigger for models anchored to critical business metrics or SLAs. The drift and performance triggers are the accelerants that fire when the schedule is not enough.
 </details>
 
-<details><summary>13. What is the alert threshold for the drift detector?</summary>
-These are example starting points, not fixed rules. A KS statistic above 0.1 pages the on-call. A PSI above 0.2 pages, and above 0.5 means you should consider rolling back. Reconstruction error above 3 standard deviations pages, and above 5 means consider rolling back. Tune all of them on production traffic, so you catch drift before the customer does, without paging on noise.
+<details><summary>13. When do you choose the KS test, PSI, or learned embedding drift, and what do you give up?</summary>
+Use the Kolmogorov-Smirnov test for continuous features, PSI for categorical features, and learned embedding drift for embedding features. The first two are cheap on a CPU. Learned embedding drift needs a GPU and a model of its own, so it costs more. Start with the simple tests and move to heavier methods only when they fail to explain what you see.
 </details>
 
-<details><summary>14. What is the trigger-to-model latency?</summary>
-This is the time from the trigger firing to the new model reaching production. A useful example target is a run that finishes before the next scheduled run, such as within 7 days for weekly retraining. The right target depends on the trigger type and the training cost.
+<details><summary>14. When would you pick shadow mode over a canary, and what do you give up?</summary>
+Shadow mode serves the new model on 100 percent of traffic with responses discarded. It suits long-tail evaluation and high-risk changes. A canary serves 1 to 5 percent of traffic and the responses are served, so it suits SLO validation for low-risk changes. Shadow costs a second full serving path, and a canary exposes some real users to the new model.
 </details>
 
-<details><summary>15. What is the difference between a feature drift alert and a prediction drift alert?</summary>
-A feature drift alert catches a change in the inputs, and a prediction drift alert catches a change in the outputs. They catch different failures. A model can absorb input drift quietly, so a feature alert alone can miss it.
+<details><summary>15. What do you lose by setting a drift alert threshold too tight, and what by setting it too loose?</summary>
+Too tight, the detector reacts to noise, pages the on-call every hour, and wears them out. False positives can bury the real incident. Too loose, drift reaches the customer before you see it. The goal is to catch drift before the customer does without paging on noise, so tune on your own production traffic.
 </details>
 
-<details><summary>16. Why does the retraining pipeline produce a new model version rather than updating the existing one?</summary>
-The registry from Chapter 16.6 tracks every version as its own artifact, with its own lineage, so each one can be reversed. Overwriting a version would erase that lineage and remove your ability to roll back.
+<details><summary>16. A PSI score reads 0.34 and later 0.55. Using the chapter's example thresholds, what is the action each time?</summary>
+At 0.34, the score is above 0.2, so you page on-call and investigate. At 0.55, the score is above 0.5, so you page on-call and consider rolling back the model. These thresholds are examples to tune on your own traffic.
 </details>
 
-<details><summary>17. What is the live accuracy metric, and when is it available?</summary>
-Live accuracy is the accuracy measured on live traffic, using ground truth that arrives late. It becomes available only when the labels arrive, weeks or months after the prediction. Use the drift score as the fast signal and live accuracy as the slow one.
+<details><summary>17. A reconstruction error has a reference mean of 0.40 and a standard deviation of 0.05. At what values do the 3 and 5 standard deviation thresholds trigger?</summary>
+The 3 standard deviation threshold is 0.40 plus 3 times 0.05, which is 0.55, and it means page on-call and investigate. The 5 standard deviation threshold is 0.40 plus 5 times 0.05, which is 0.65, and it means page on-call and consider a rollback. The mean and standard deviation here are made-up example values.
 </details>
 
-<details><summary>18. What is the difference between operational drift and data drift?</summary>
-Operational drift is a change in how the serving system behaves, such as latency or error rate. Data drift is a change in the data the model sees. The two are independent, so a model can run smoothly while its data shifts, or the reverse.
+<details><summary>18. The availability target is 99.9 percent monthly. How much downtime does that allow in a 30-day month?</summary>
+A 30-day month has 30 times 24 times 60, which is 43,200 minutes. The allowed downtime is 0.1 percent of that, so 43.2 minutes. The target itself is an example, so choose one from what your customers need.
 </details>
 
-<details><summary>19. Why does the cooldown apply to all three trigger types?</summary>
-Any trigger type can fire too often if its signal is noisy. The cooldown gives the pipeline time to evaluate the new model before the next fire. The 24 hours here is an example, so set the cooldown to the time your own evaluation suite needs.
+<details><summary>19. The drift detector pages at night and the dashboard is blank. In what order do you look?</summary>
+First check whether the InferenceService emits prediction logs, since without them the detector has nothing to score and its drift score is undefined. Second check that the detector Deployment is running and can read the live features and the reference distribution. Third check whether the dead man's switch alert is still arriving. If it stopped, the monitoring itself has failed.
 </details>
 
-<details><summary>20. What five questions should the monitoring lab let you answer in five seconds each?</summary>
-You should be able to answer five questions. What is the drift score per feature, and what is the prediction drift per class? When did the last trigger fire, and why? What is the cooldown state, and what is the live accuracy when ground truth exists? If any answer takes more than 30 seconds, the monitoring pipeline is not yet a production service.
+<details><summary>20. A fraud model suddenly flags far more transactions. In what order do you check for drift?</summary>
+First check feature drift, because it is the cheapest signal and could point to a new customer segment. Second check prediction drift to confirm that the model is predicting more positives. Third check label drift and live accuracy, which show whether the target changed or a new fraud pattern is concept drift. Each cause needs a different response, so name the type first.
 </details>
 
 ---

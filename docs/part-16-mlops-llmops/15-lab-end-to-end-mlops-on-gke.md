@@ -667,84 +667,84 @@ The platform is built. Use the table as your checklist when you review it, and c
 
 ## Checkpoint questions
 
-<details><summary>1. What thirteen steps does the capstone walk through?</summary>
-The thirteen steps are: provision the cluster, deploy the MLOps stack, ingest the dataset, version the dataset, train the model, track the experiment, evaluate the model, promote the model, deploy the model, monitor the model, retrain the model, handle the right-to-be-forgotten request, and hand off to the team. Each step deploys one chapter's content end to end, so you can trace every step back to its chapter.
+<details><summary>1. The `train` stage of the Argo Workflow stays `Pending` and the events show `nvidia.com/gpu: 0 available`. What are the two likely causes and what do you change?</summary>
+Either your team used up its GPU quota, or other teams fill the pool. In both cases the Kueue LocalQueue has no room to admit the job. Lower the quota of teams that hog GPUs, add a borrowing queue, and add a per-team cost alert so a runaway job is caught early.
 </details>
 
-<details><summary>2. What is the data flow through the capstone?</summary>
-The data flows in one direction, from the warehouse to a dataset, then to a feature, a model, and a prediction. The audit log moves the other way, through lineage, audit, alert, and action. The two flows meet at the lineage graph, which is the artefact that connects them.
+<details><summary>2. The `register` stage fails with `PROMOTION BLOCKED: missing required tag data_hash`. What happened and how do you prevent it?</summary>
+Someone changed the training script and dropped the MLflow logging, so the run has no `data_hash` tag. The contract was not enforced where the run starts. Make the `mlflow.start_run` block fail when the data hash is empty, so a missing tag is an exception to fix right away.
 </details>
 
-<details><summary>3. What is the capstone as a CI test?</summary>
-A CI pipeline runs the capstone end to end on every change to the MLOps stack. The CI fails if any step fails, and it passes only when the model is in production, the SLOs are met, and the audit log is updated. The capstone is the integration test for the stack, so run it before you ship a change.
+<details><summary>3. A KServe InferenceService is in `Failed` state, the events say `cluster binding not found`, and the model URI looks right. What do you check?</summary>
+The `storageUri` may point to a bucket your team cannot read, because the team's IAM bindings were never set up. Check the IAM bindings on the bucket and confirm the team's service account can read it. Then redeploy the InferenceService.
 </details>
 
-<details><summary>4. What is the handoff at the end of the capstone?</summary>
-The handoff has three artifacts: onboarding documentation a new team can follow, a runbook, and an on-call rotation in PagerDuty. The runbook lists the rotation, escalation policy, common failure modes, and recovery steps, and the handoff moves the platform team from building to operating.
+<details><summary>4. The drift detector fires every hour, so the on-call engineer is paged every hour and retraining runs almost all the time. What is wrong and what do you change?</summary>
+The threshold is too tight, so the detector treats normal noise as drift. Raise the threshold after tuning it on production traffic. Add a cooldown so one noisy stretch does not restart retraining.
 </details>
 
-<details><summary>5. What is the most common failure mode in the capstone?</summary>
-The training stage crashes when the GPU node pool runs out, usually because one team holds most of the GPUs. The fix is to lower that team's GPU quota, add a borrowing queue, and add a per-team cost alert.
+<details><summary>5. A customer's data is erased, but the next prediction still reflects the old weights. What is missing in the erasure Job?</summary>
+The retraining DAG is not part of the erasure Job. The Job erases the data and stops, so the model keeps serving the old weights. Make retraining the final stage, and do not report success until the new model is in production.
 </details>
 
-<details><summary>6. What is the most important contract in the capstone?</summary>
-The promotion gate function. It is the only path from training to the registry. The gate is mechanical, and its exit code alone decides whether the registry stage advances. Without the gate, you could promote models that lack the required metadata.
+<details><summary>6. The regulator's query returns nothing because the audit log bucket is empty. What control was missing?</summary>
+Object lock was not enabled on the bucket, so a deletion removed the records. Enable object lock on the audit log bucket. The chapter's example policy reviews the setting every quarter.
 </details>
 
-<details><summary>7. What is the most important audit in the capstone?</summary>
-The audit log query. The log records each artifact's lineage, every promotion decision, and every right-to-be-forgotten request. The regulator's question, which data trained the model that decided on this customer, is answered by a four-step walk through the lineage graph.
+<details><summary>7. Why does a model that trains successfully still not go straight to Production in this lab?</summary>
+The promotion gate only moves it to Staging, after checking that four tags exist and that its AUC is not below the baseline's. Moving it to Production is a separate step handled by the GitOps loop. That split keeps the decision mechanical and recorded.
 </details>
 
-<details><summary>8. What is the most important SLO in the capstone?</summary>
-The InferenceService latency p99. Latency is the customer-facing SLO, and it is also the canary's success test and the trigger for rollback. If you do not measure p99 latency, you do not have a production service.
+<details><summary>8. Why does dropping the dataset ID and seed from the Argo parameters make a run hard to defend later?</summary>
+The dataset ID and the seed flow into the stages as parameters so the run is traceable. Without them, you cannot say which data or which seed produced a model. The MLflow run record should carry the data hash, the commit hash, the seed and the metrics.
 </details>
 
-<details><summary>9. What is the most important operational discipline in the capstone?</summary>
-The on-call rotation. The on-call engineer can reach the cluster, holds the runbook, and is the first responder to a production incident. Without an on-call rotation, you do not have a production service.
+<details><summary>9. Why does `dvc add` plus a Git commit make the dataset part of your code history?</summary>
+DVC adds a small pointer file to Git and pushes the data itself to a GCS bucket. The commit holds the pointer, which contains the content hash. The hash then travels with the code, and the pipeline records it with every run.
 </details>
 
-<details><summary>10. What is the most important platform-team deliverable?</summary>
-The onboarding documentation. If you make a team wait a long time for a namespace, it will build its own platform. Good onboarding makes the first model runnable quickly, and it is the team's first impression of the platform.
+<details><summary>10. Why does the chapter say a namespace is not a wall between teams on the worker nodes?</summary>
+A namespace is a label in the control plane. Without extra policy, pods from two namespaces can still land on the same node. If two teams must never share a node, add scheduling constraints.
 </details>
 
-<details><summary>11. What is the difference between the MLOps stack and the platform?</summary>
-The MLOps stack is the set of tools, such as MLflow, Feast, Argo, and KServe. The platform is the system those tools compose into, including the namespace, the IAM rules, the GPU quota, the audit log, and the FinOps dashboard. The team operates the platform, and the tools are what the platform exposes.
+<details><summary>11. Why is the capstone useful as a CI test and not only as a one-time lab?</summary>
+A change to a chart, a policy or an onboarding file can break a path that only the full run exercises. Running the capstone on pull requests that touch those paths catches the break before production. The cleanup step uses `if: always()` so it runs even when an earlier step fails.
 </details>
 
-<details><summary>12. What is the most expensive component in the capstone?</summary>
-The GPU pool. Each H100 has an hourly price, and a multi-tenant AI factory can run many of them at once. GPUs are the largest line item in the AI factory's budget. The FinOps dashboard is the feedback loop that keeps that cost from growing unnoticed.
+<details><summary>12. Would you pick a quick drift trigger with a short cooldown or a loose trigger with a long one, and what do you give up?</summary>
+A tight trigger catches drift sooner, but it risks paging the on-call engineer on noise and keeping retraining running almost all the time. A looser one with a cooldown is calmer, but real drift reaches customers for longer. The chapter says the goal is to catch real drift before the customer does, not to react to every small shift.
 </details>
 
-<details><summary>13. What is the most failure-prone component in the capstone?</summary>
-The drift detector. Its threshold trades off two risks: catching drift before the customer does, and paging the team on noise. A threshold that is too tight floods the on-call engineer, and one that is too loose misses drift until a customer complains. You should tune the threshold on real production traffic.
+<details><summary>13. The canary share is set to 10 percent. When would you advance it, and when would you roll it back?</summary>
+Advance the canary to 100 percent if it meets its SLO. Roll it back if it does not. The price of a small canary is that fewer requests test the new version, but a failure touches fewer customers.
 </details>
 
-<details><summary>14. What is the most regulated component in the capstone?</summary>
-The right-to-be-forgotten workflow. GDPR Article 17 requires erasure without undue delay, so set your own deadline and track it as an SLO. The workflow must erase the customer's data from every artifact, retrain the model on the cleaned data, and update the audit log. A failure to erase is a regulatory incident.
+<details><summary>14. Would you wait for real drift or inject it on purpose in the lab, and what is the cost of injecting it?</summary>
+Injecting drift lets you see the trigger fire without waiting for real drift. The cost is that the lab uses a crude `sleep 600` and an example threshold of 0.2, neither of which should be copied into production. In practice you would watch the trigger logs and tune the threshold on production traffic.
 </details>
 
-<details><summary>15. What is the most overlooked component in the capstone?</summary>
-The lineage graph. It is the artifact that connects the data flow to the audit flow, and it is how the regulator's questions get answered. A team that does not keep the lineage graph current cannot answer those questions.
+<details><summary>15. Why would you route the retraining DAG through the canary again, instead of sending the new model to full traffic?</summary>
+The retraining DAG registers the new model, and the canary tests it before it takes full traffic. A retrained model can still be worse than the one it replaces. The canary and its SLO decide whether it advances to Production or rolls back.
 </details>
 
-<details><summary>16. What is the most reproducible component in the capstone?</summary>
-The MLOps stack itself. Its Helm charts, onboarding module, and CI test are all versioned in Git. A team with the stack in Git can rebuild the platform from scratch. That reproducibility is the platform's insurance against loss.
+<details><summary>16. The canary spec sets `canaryTrafficPercent: 10`. If the service receives 1,000 requests per second, how many go to each revision?</summary>
+The canary gets 10 percent, which is 1,000 times 0.10, or 100 requests per second. The previous revision keeps the other 900. This follows the manifest, where 10 percent goes to the new spec and 90 percent stays on the previous revision.
 </details>
 
-<details><summary>17. What is the most portable component in the capstone?</summary>
-The capstone's data flow. The dataset is Parquet, the model is a pickle, the feature table and audit log live in BigQuery, and the registry entry is in MLflow. A team that owns its data can rebuild the platform anywhere, which is insurance against a cloud migration.
+<details><summary>17. The drift log says `TRIGGER FIRED: drift score 0.34 > 0.2`. By how much does the score pass the threshold, and as a fraction of the threshold?</summary>
+The score passes by 0.34 minus 0.2, which is 0.14. As a fraction of the threshold that is 0.14 divided by 0.2, or 0.7, so 70 percent over. The 0.2 threshold is an example value.
 </details>
 
-<details><summary>18. What is the most expensive mistake in the capstone?</summary>
-Deleting the audit log. The audit log proves that every other artifact is what it claims to be. Deleting it is the worst possible incident, and the runbook says to page the on-call engineer immediately and not investigate first.
+<details><summary>18. The capstone CI job has `timeout-minutes: 720`. How many hours is that, and how many GPUs can the GPU pool reach at most?</summary>
+720 minutes divided by 60 is 12 hours. The GPU node pool allows at most 8 nodes, and each node has one A100 from `count=1`. That gives at most 8 GPUs.
 </details>
 
-<details><summary>19. What is the most important documentation in the capstone?</summary>
-The runbook. It names the on-call rotation, the escalation policy, the common failure modes, and the recovery steps. If you have no runbook, you do not have a production service. An out-of-date runbook is worse than none, because the team trusts it and it is wrong.
+<details><summary>19. A first pipeline run stalls in training. In what order do you check the components, and why?</summary>
+First check the cluster, because a missing GPU pool leaves the training stage in `Pending`. Second check the quota and Kueue admission, since the LocalQueue may have no room. Third check the workflow stage and the MLflow run record. The chapter says a team that has run the whole chain can debug any failure by walking from the symptom back to the component.
 </details>
 
-<details><summary>20. What is the difference between a successful capstone and a failed capstone?</summary>
-A successful capstone ends with a model in production, a dashboard in Grafana, an audit log in BigQuery, and a team that knows how to operate the platform. A failed capstone ends with a model nobody knows how to debug, a dashboard nobody checks, an audit log nobody queries, and a team that does not know where the seams are. In short, success means the team can operate the platform, and failure means it cannot.
+<details><summary>20. After you inject drift, no retraining workflow appears. What do you check first, second and third?</summary>
+First read the logs of the retraining trigger, which should print the fired message and the drift score. Second run `argo list` to see whether a new workflow run exists. Third look at the canary with the Argo Rollouts command, to see whether the new model reached 10 percent traffic.
 </details>
 
 ---

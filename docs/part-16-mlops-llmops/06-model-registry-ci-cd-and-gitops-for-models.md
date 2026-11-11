@@ -677,84 +677,84 @@ Start with exercise 1, because the shadow stage closes a gap that the canary alo
 
 ## Checkpoint questions
 
-<details><summary>1. What is the minimum registered-model record?</summary>
-It holds a model id, version, stage, run id, artifact uri, data snapshot id, code commit, env image hash, input and output signature, overall and per-segment metrics, a description, a creator, a creation timestamp, lineage, and a signature id. Lineage records the parent model and run when the model is a fine-tune. The stage is what the deployment pipeline reads, the lineage is what the auditor reads, and the signature is what the cluster boundary checks.
+<details><summary>1. A regression reaches production and the audit log has no pull request for it. The data scientist says it was approved in a chat thread that is now gone. What failed and what do you change?</summary>
+The GitOps loop was not enforced. Someone moved the stage through a manual API call and bypassed the reconciler. Allow stage transitions only through the reconciler, make its identity the only one with that permission, and let policy forbid manual transitions. When a stage looks wrong, check the audit log first, because it shows what you can trust.
 </details>
 
-<details><summary>2. Why is the training image a release artefact?</summary>
-The training environment is the supply chain boundary, so the image is the thing to protect. You build the image once and sign it once, then store it in a signed-image registry. The promotion pipeline refuses to start a training job from an unsigned image. The same idea applies to the model artefact: sign it at build time and verify it at pull time.
+<details><summary>2. The promotion gate passed, but ten minutes into the canary the error rate is four times the baseline and the rollout rolls back. The team argues about retraining. What does this tell you and what do you add?</summary>
+The offline evaluation suite does not represent production traffic. The canary caught the problem and the rollback worked, so the team now has a feedback loop for improving the suite. Use the monitoring from Chapter 16.10 as the source of production-like metrics. Add a shadow stage before the canary, where the new model sees live traffic but returns no responses.
 </details>
 
-<details><summary>3. What is the GitOps loop for a model registry?</summary>
-The desired state lives in a Git repository, and the actual state lives in the registry. A reconciler, Argo CD or Flux, watches both and brings the actual state into line with the desired state. Only a pull request that changes the stage in Git can advance the registry. That pull request is also the audit record.
+<details><summary>3. A bad promotion is detected and the rollback takes 18 minutes instead of seconds. Why, and what do you change?</summary>
+The previous model was not kept warm. The registry marked it archived, the cluster evicted its container, and the next pull was cold. The artifact and the image both had to be pulled again, and the replicas had to cold-start. Keep the previous model under a warm tag with its artifact and image pre-pulled on the serving nodes. A rollback then becomes a tag change.
 </details>
 
-<details><summary>4. Why is the rollback path pre-staged?</summary>
-Rollback happens under time pressure, so you want the previous model kept ready rather than rebuilt. It stays warm in the registry, in object storage, and in the cluster's image cache. The rollback is a tag change, not a model download. The cost is one extra artefact in storage, and the benefit is a rollback that finishes in seconds.
+<details><summary>4. You are about to promote an LLM. What changes about the rollback check compared with a small classical model?</summary>
+The artifact is much larger, so a rollback takes longer. The model is also often served across several nodes and not one pod. Before you promote, check that the rollback target still loads within the time your SLO allows. The artifact store and the image registry must both handle multi-GB files.
 </details>
 
-<details><summary>5. What are the four IAM roles in a registry deployment?</summary>
-There are four roles. The writer, held by training service accounts, registers versions and uploads artefacts. The reader, held by data scientists, dashboards, and the serving system, reads versions and pulls artefacts. The promoter is the reconciler, which moves stages after a merged pull request. The admin, held by the platform team, defines schemas, manages secrets, and manages the reconciler. The split between writer and promoter is what enforces the promotion gate.
+<details><summary>5. The signature verification failure rate alert fires and stays above 0 for 5 minutes. What does it mean, who gets paged, and what does the runbook cover?</summary>
+A non-zero rate means something is trying to load an unsigned or wrongly signed artefact. The alert pages the platform on-call. The runbook walks through which signature failed, which pod tried to load it, and where the artefact came from. The alert is meant to catch a poisoning attempt.
 </details>
 
-<details><summary>6. What is the default for "I cannot see the SLO" during a canary?</summary>
-The default is to hold, not abort. When Prometheus is down, the canary pauses and the alert pages the on-call. The on-call either restores observability or approves the canary after reading the source. Aborting on an observability failure turns a short outage into a blocked deployment, and you lose a release for a problem that is not in the model.
+<details><summary>6. A reviewer on promotion pull requests approves everything within a minute. What risk does that create?</summary>
+A reviewer who approves everything gives you the same risk as having no review. The chapter's flow requires the data scientist named on the run record and a platform engineer whose team owns the registry. Decide who reviews before you turn the loop on, and make the pull request body carry the promotion decision.
 </details>
 
-<details><summary>7. What is the lineage record?</summary>
-Lineage is the record that turns a model into a registered model. It holds the dataset snapshot id, the code commit, the environment image hash, and the parent model and run ids. The lineage graph answers which data, which code, which environment, and which earlier version produced a model version. The lineage database, such as Atlas, Collibra, or DataHub, is a separate service, and the registry stores a `lineage_uri` that points to it.
+<details><summary>7. Why does splitting the writer role from the promoter role enforce the promotion gate?</summary>
+A training service account can register a version but cannot move it to staging or production. The reconciler is the only identity that can move stages, and it acts only on a merged pull request. So a stage change needs a merged PR that passed the gate. No other identity can do either job.
 </details>
 
-<details><summary>8. What is the difference between a canary and a blue/green deployment?</summary>
-A canary sends a small fraction of traffic to the new model first, watches the SLO, and only then shifts the rest. A blue/green runs the new model alongside the old one and cuts over in one step, through DNS or a load balancer swap. Use a canary when a bad prediction has a real cost. Use blue/green when the new model needs full validation before any cutover. If you are unsure, ask yourself how much a bad prediction would cost you in the first hour.
+<details><summary>8. Why does a training pod declare an image digest and not a tag?</summary>
+Tags can move, but digests cannot. If the image behind a tag changes, you can no longer prove what went into the model. The same pattern applies to the model artefact, where the serving system pulls by digest, checks the signature and refuses to load anything unsigned.
 </details>
 
-<details><summary>9. Why does the audit log need tamper-evident storage?</summary>
-The audit log proves that every other artefact is what it claims to be. Object lock on GCS, or an equivalent on another cloud, blocks deletion or overwrite for the retention window. Losing the audit log is the worst incident, and the runbook says to page the on-call immediately. Do not investigate first.
+<details><summary>9. Why is the pull request itself the audit record in the GitOps flow?</summary>
+It shows who approved the promotion, which gate criteria applied and what the canary found. The registry should never accept a promotion that is not in a merged pull request. So the Git history and the registry stage agree, and the reconciler converges the registry to Git.
 </details>
 
-<details><summary>10. Why is the reconciler the only identity that can transition stages?</summary>
-The reconciler's authority comes from a merged pull request, not from a request. If you let a training pipeline promote its own model, you have removed the gate. A training pipeline that could move its own model to production would bypass the promotion gate. The split between writer and promoter follows the same rule as the split between the training writer and the registry promoter in Chapter 16.2, Section 5.2.
+<details><summary>10. Why does object lock make the audit log tamper-evident?</summary>
+A bucket with a retention policy blocks deletion or overwrite for the length of the policy. An auditor can then check that no run record disappeared after the audit log was written. Without it, a careless or malicious deletion removes the records a regulator needs.
 </details>
 
-<details><summary>11. What is the difference between a model in staging and a model in production?</summary>
-A model in staging is signed, has all required run tags, and beats the baseline. A model in production has passed staging, and its canary has run for the configured window without an SLO breach. The promotion record is written to the audit log. The difference is the canary, not the artefact.
+<details><summary>11. Why does the registry store only a `lineage_uri`, and who reads the lineage graph?</summary>
+The lineage database is usually a separate service such as Atlas, Collibra, DataHub or Marquez, so the registry stores only a pointer. Three consumers read the graph. The promotion gate checks that a candidate descends from the baseline. The compliance auditor checks that every production model has a complete record. The retraining trigger decides whether new data needs a new run or a fine-tune is enough.
 </details>
 
-<details><summary>12. What does it mean for the registry to be the bridge between the experiment tracker and the serving cluster?</summary>
-The training pipeline writes the run record to the tracker, and the registry stores the artefact along with the run id. The serving system reads the artefact from the registry. The gate at registration is the only path into the registry, and the cluster boundary checks the signature before serving. A break in either link is a 2 a.m. page for you. Check both links before you trust a registry entry.
+<details><summary>12. Which deployment pattern do you pick for a loan-approval model, and for a cheap model in a non-production environment?</summary>
+Use a canary for the loan model, where a small slice of 1 to 5 percent sees the new model while you watch the SLO, and traffic shifts back in seconds. Blue/green fits models that need full validation before cutover, with a fast load balancer swap. Rolling suits stateful services. Recreate fits cheap or non-production models, but its rollback is slow because of the cold start.
 </details>
 
-<details><summary>13. What is the cost of pre-staging the previous model?</summary>
-The cost is storage for one extra artefact per version, plus the space that image caches take on the nodes. For a classical model, the cost is small. For a large LLM, the cost is real, but it is much smaller than a long outage while the model downloads again.
+<details><summary>13. Pre-staging the previous model costs storage. Why is it worth it?</summary>
+Each version keeps one more model file in object storage. The benefit is that rollback becomes a tag change and not a fresh model download. The previous model waits warm until the new one proves itself. A rollback target you have not checked is not a rollback path, so confirm before each release that it still has a signed artifact and a pullable image.
 </details>
 
-<details><summary>14. What is the production shadow stage?</summary>
-The shadow stage lets the new model serve 100% of traffic without returning responses to users. The example uses 24 hours. The shadow's metrics are compared with the live model's before the canary starts. The shadow can catch regressions that take hours to appear, without exposing any user to the new model's bad predictions.
+<details><summary>14. The canary queries Prometheus, Prometheus is down, and the canary aborts. Should it hold or abort, and what is the trade-off?</summary>
+The chapter's default recommendation is to hold, since failing to see the SLO is not evidence that the model is bad. The canary pauses and the alert pages the on-call. The on-call restores observability or approves the canary after reading the source. Some teams prefer to abort and page, especially for safety-critical systems, at the cost of aborting a healthy rollout.
 </details>
 
-<details><summary>15. Why is a model card required before promotion?</summary>
-The model card tells the next engineer and the auditor what the model is for, what data it trained on, what its fairness audit found, and how it should be used. A model without a card is a deployment that nobody can explain. A regulator cannot reconstruct the decision a customer is disputing without one, and you will be the one answering the question.
+<details><summary>15. When do you add a shadow stage before the canary?</summary>
+Add it when the offline suite may not represent production traffic. In shadow, the new model sees live traffic but returns no responses, and its metrics are compared with the live model's. It can catch a regression the offline suite missed before any user sees the new model. The example runs the shadow for 24 hours, but the length is your choice.
 </details>
 
-<details><summary>16. What is the difference between the artefact store and the registry store?</summary>
-The artefact store holds large, cold bytes, such as model weights and the serialized model. The registry store holds small, hot metadata, such as the model id, version, stage, and signature id. Keeping them in one place forces a compromise. Splitting them lets the registry stay fast and small, while the artefact store stays cheap and large.
+<details><summary>16. The example Argo Rollouts canary uses weights 5, 25, 50, 100 with a 10-minute pause between them. How long is the canary before it reaches 100 percent?</summary>
+There are three pauses of 10 minutes each, so it is 30 minutes. The analysis template queries Prometheus at each pause. If a threshold breaks, the rollout aborts and traffic returns to the stable service. The weights and pauses are a starting point, so set yours from traffic and the cost of an error.
 </details>
 
-<details><summary>17. Why is signature verification failure rate a P1 alert?</summary>
-A non-zero rate means someone is trying to load an unsigned or wrongly signed artefact. The likely causes are a broken training pipeline, a signature damaged in transit, or an active poisoning attempt. The alert pages the platform on-call, and the runbook guides the investigation.
+<details><summary>17. The canary error-rate threshold is 0.01. If the baseline error rate is 0.5 percent and the canary shows four times that, what happens?</summary>
+Four times 0.5 percent is 2 percent, which is 0.02. That is above the 0.01 threshold, so the analysis breaches and the rollout aborts. Traffic returns to the stable service. The 0.01 is an example, so set yours from your service's SLO.
 </details>
 
-<details><summary>18. Why is the promotion pipeline a CI step rather than a separate service?</summary>
-The promotion gate is the only path from training to the registry. Running it as a CI step keeps it inside the pipeline that built and signed the training image. A separate service would be another attack surface. The gate's exit code is the only thing that advances the registry stage, and its audit log is the only record of who approved what.
+<details><summary>18. The shadow example aborts the canary if the shadow's error rate is more than 1.5 times the live model's. The live error rate is 0.8 percent. What shadow rate triggers the abort?</summary>
+1.5 times 0.8 percent is 1.2 percent. A shadow error rate above 1.2 percent aborts the canary. The 1.5 factor is an example threshold, so choose your own after you look at your traffic.
 </details>
 
-<details><summary>19. What is the difference between a model rollback and a cluster rollback?</summary>
-A cluster rollback reverts the whole serving system to an earlier Kubernetes Deployment, and it is for a broken service. A model rollback reverts the artefact the serving system loads, and it is for a bad model. The two are independent. You can roll back a bad model without touching the service, and you can roll back a broken service without touching the model.
+<details><summary>19. The dashboard says v9 is in production but the cluster runs v6. What do you check first, second and third?</summary>
+First, check whether the serving system reads from a tag that never moved. Second, check whether the reconciler converged, using the reconciler drift metric, which alerts when drift stays above 0 for a minute. Third, make the serving system read the registry directly, refuse to mount a model from any other path, and add a sync alert for when the stage and the tag disagree.
 </details>
 
-<details><summary>20. What five questions should the registry lab let you answer in five seconds each?</summary>
-Which model version is in production? Which version came before it? What is the canary error budget, and what is the rollback path? What is the reconciler, and what is its IAM role? Where is the audit log, and how long is it kept? If any answer takes more than 30 seconds to find, treat the registry as not yet production-ready.
+<details><summary>20. A regulator asks for an old audit trail and the audit bucket, the run records and the Postgres backup are all gone. What do you do first, second and third?</summary>
+First, page the platform on-call at once, before anyone investigates, because losing the audit log is the most serious incident. Second, look for what can still be recovered, which depends on whether point-in-time recovery was enabled on Postgres. Third, put object lock on the audit log bucket so a deletion cannot happen again. Write the runbook that says to page first.
 </details>
 
 ---

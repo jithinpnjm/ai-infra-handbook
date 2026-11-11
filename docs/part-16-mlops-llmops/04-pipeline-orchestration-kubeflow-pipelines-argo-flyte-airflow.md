@@ -798,84 +798,84 @@ Each exercise asks you to change one part of the pipeline and check the result. 
 
 ## Checkpoint questions
 
-<details><summary>1. What four components does every orchestrator have?</summary>
-Every orchestrator has a DAG definition language, a scheduler, a runtime, and a metadata store. The scheduler respects dependencies and resources, and the runtime runs each stage as a container. The metadata store records runs and lineage. The tools differ in the language, the scheduler, the runtime, and the metadata store.
+<details><summary>1. A multi-GPU training job is stuck. `kubectl describe pod` shows two pods scheduled and six pending, and the cluster has free GPUs on other nodes. What happened and what is the fix?</summary>
+The default Kubernetes scheduler places pods one at a time and does not know the eight pods form a single job. It placed two greedily, and those two hold their GPUs while they wait. Adopt a gang scheduler such as Volcano, KAI or Kueue. Wrap the pods in a PodGroup with `minMember` set to eight, so the scheduler holds every pod until the group fits.
 </details>
 
-<details><summary>2. What is the difference between Argo Workflows and Kubeflow Pipelines?</summary>
-Argo is a Kubernetes-native orchestrator with YAML DAGs and a Postgres metadata store. KFP compiles Python DAGs to Argo Workflows under the hood. It adds a typed input and output system, a metadata-aware UI, and richer artefact handling. KFP suits teams already on Kubeflow, and Argo suits Kubernetes-native teams that want a lighter stack.
+<details><summary>2. Workflows start failing with a database error, the Postgres disk is at 100 percent and `kubectl` feels slow. What do you do now and what do you change afterwards?</summary>
+The metadata database was never vacuumed, and old workflow records are bloating its tables. Turn on autovacuum for the orchestrator's tables. Add a retention policy that archives completed workflows to object storage once they are old enough. The chapter's example archives after 90 days and alerts at 70 percent disk use, and you should pick your own values.
 </details>
 
-<details><summary>3. What is the difference between Argo, KFP and Flyte?</summary>
-Argo uses YAML and has pod-level caching. KFP uses Python with the KFP SDK and has step-level caching. Flyte uses Python with strong type annotations and has content-hash task-level caching. Of the three, Flyte has the strongest type system and cache key.
+<details><summary>3. A stage that writes a large model checkpoint times out on upload and the DAG fails. Where is the bottleneck and how do you remove it?</summary>
+The artefact travels through the orchestrator's pod-to-pod channel, so the pod's network bandwidth limits the upload. Upload to the artefact store directly. Argo Artifacts, KFP Artifacts, Flyte's blob store and Airflow's object-store hooks all skip that channel. For very large artefacts, a presigned URL lets the worker pod write straight to the bucket.
 </details>
 
-<details><summary>4. Why is Airflow still in the conversation?</summary>
-Airflow is the most widely adopted orchestrator outside Kubernetes-native teams. Its strength is its operators for Spark, BigQuery, Snowflake, and HTTP, along with its large community. The cost is that its Kubernetes integration sits on top of the original scheduler rather than being native to it.
+<details><summary>4. The training stage fails with `Permission denied` on a GCS bucket, and the error names a missing role. What is the cause and the lasting fix?</summary>
+The service account's IAM bindings are out of date, because the bucket was created after the service account. Manage the buckets and their IAM bindings as code with Terraform or Pulumi, owned by the platform team. Review the plan before each apply, since that is where a bucket without a binding should show up.
 </details>
 
-<details><summary>5. What is gang scheduling and why does the default scheduler not provide it?</summary>
-Gang scheduling starts all pods of a multi-pod job together. The default Kubernetes scheduler allocates pods one at a time, and it does not know that a multi-pod job is a single unit. That causes the "two pods got GPUs, six are pending" failure. A gang scheduler such as Volcano, KAI, or Kueue wraps the pods in a PodGroup and holds them until the group fits.
+<details><summary>5. A DAG has been in the running state for an hour with no stage progress and no error. What is the likely cause, and why does an alert on stage count miss it?</summary>
+The DAG has probably lost a pod or is waiting on a quota. An alert on elapsed time catches that case, because the stuck-workflow metric fires when it exceeds 0 for 30 minutes. An alert on stage count can miss it, since nothing fails and the count simply stops changing.
 </details>
 
-<details><summary>6. What three gang schedulers are in production today?</summary>
-Volcano is mature and supports gang, queue, fairshare, and priority. Kueue is queue-based, works with Volcano or scheduler plugins, and is native to Kubernetes. KAI Scheduler is NVIDIA-native and supports gang, topology, GPU fractions, and MIG. The choice is operational, so ask which one your team can run. All three are correct.
+<details><summary>6. A nightly job fails at 1 a.m. with an image pull error and succeeds when rerun a few minutes later. How should the retry policy treat this, and how would it treat a schema mismatch?</summary>
+An image pull rate limit is a transient error, so it deserves a few retries with backoff. A schema mismatch is a logic error that fails the same way every time. Do not retry it, and page the on-call engineer instead. An out-of-memory or NCCL timeout is a resource error and gets one retry after the pressure clears.
 </details>
 
-<details><summary>7. How does the orchestrator pass large artefacts between stages?</summary>
-It passes them through the orchestrator's artefact store, not the cluster's file system. Argo Artifacts use S3-backed storage, and KFP uses `dsl.Artifact` with the KFP metadata store. Flyte writes typed outputs to the blob store, and Airflow uses XCom for small values and object storage for large ones. The stage writes the bytes to object storage and passes a pointer, and the next stage resolves the pointer and downloads the bytes.
+<details><summary>7. Why do you set `minMember` to the number of pods the job cannot run without, and what happens when one pod fails?</summary>
+The scheduler holds all pods until the group fits, then starts them together. If one pod fails, the whole group fails with it. A value that is too low would let a partial group start, and a job that needs all eight would then run wedged.
 </details>
 
-<details><summary>8. What cache strategy does Flyte implement?</summary>
-Flyte implements content-hash caching at the task level. A task whose inputs have not changed since the last run is skipped, and its cached output is reused. The cache key is deterministic, and the cached output is stored in the configured blob store.
+<details><summary>8. Why does a stage pass a pointer to the next stage and not write the bytes to a shared file system?</summary>
+Writing a multi-gigabyte checkpoint to a shared disk means every byte crosses the storage system, so the pipeline speed ties to storage and slows as the data grows. With a pointer, the stage writes its output to the artefact store. The next stage resolves the pointer to a content hash, verifies it, and downloads the bytes only when it needs them.
 </details>
 
-<details><summary>9. What is the retry policy for a stage that fails on a transient error?</summary>
-The example policy allows three retries with exponential backoff. The backoff starts at one minute and doubles, and its cap is ten minutes. Logic errors, such as a schema mismatch or a code bug, get no retry. Resource errors, such as OOM or an NCCL timeout, get one retry after the pressure clears.
+<details><summary>9. Why tag the tracker run with the orchestrator execution id and tag the orchestrator run with the tracker id?</summary>
+Six months later someone asks which pipeline run produced a model. The double tag lets an operator move from the tracker to the orchestrator run and back again. Each system points at the other, so neither is a dead end.
 </details>
 
-<details><summary>10. What is the stuck-workflow metric?</summary>
-It is a Prometheus alert that fires when a workflow has not progressed in 30 minutes. The chapter's example rule is `time() - workflow_last_progress > 30m`. That rule catches DAGs that have lost a pod, are waiting on a quota, or have entered a state they cannot leave. The metric name is illustrative, so confirm the one your controller exposes.
+<details><summary>10. Why must a gang scheduler understand topology and not only count GPUs?</summary>
+An eight-GPU stage needs all eight at once, in the same NUMA domain, with NVLink between them. Machine Learning Platform Engineering chapter 5 says the scheduler must understand the pool's topology for multi-node training, such as NVLink domains and rack affinity. Without that, the pods can land on nodes without NVLink and NCCL initialisation fails.
 </details>
 
-<details><summary>11. Why is the resource request the contract with the scheduler?</summary>
-A stage that asks for eight GPUs is making a promise. The promise is that all eight GPUs are in the same NUMA domain, with NVLink between them, and that all of them arrive at once. The gang scheduler's job is to keep that promise, and the default scheduler cannot. In production, you declare the resource request, the scheduler name, and the gang-scheduling plugin in the pod spec.
+<details><summary>11. Why does the chapter say to cache feature engineering aggressively and training rarely, and what must be true for a cache to work?</summary>
+Feature engineering inputs are versioned and never change, so a rerun gives the same output. Training inputs, seeds and code usually change between runs, so a cache hit would be rare. A cache also works only if its key is deterministic. Ask of each stage whether its inputs can change, and cache only the stages where the answer is no.
 </details>
 
-<details><summary>12. Why is the artefact store separate from the metadata store?</summary>
-The metadata store holds small, hot records such as run records, stage statuses, and lineage. The artefact store holds large, cold bytes such as model weights, checkpoints, and datasets. Putting both in one place forces a compromise on one of them. Keeping them apart lets you keep the metadata store fast and small, and the artefact store cheap and large.
+<details><summary>12. A team that runs Kubernetes wants pipelines. When do you choose Argo, Kubeflow Pipelines or Flyte, and what do you give up?</summary>
+Argo suits Kubernetes-native teams with simple dependencies, and it keeps the stack small with YAML and no Python layer. Kubeflow Pipelines suits teams on Kubeflow that want typed artefacts and a rich UI, and it compiles to Argo. Flyte suits data-heavy ML with the strongest type system and dynamic workflows, and it adds a Python abstraction your team must absorb. The choice is rarely about features and mostly about who will run the tool.
 </details>
 
-<details><summary>13. What is the IAM pattern for a multi-tenant orchestrator?</summary>
-Use one namespace per team, one service account per pipeline, and one orchestrator Workflow or KFP pipeline per DAG. The service account's IAM bindings decide what the DAG can read and write. The namespace's resource quotas decide how much GPU the DAG can request. The platform team owns both.
+<details><summary>13. How do you choose between Volcano, Kueue and KAI Scheduler?</summary>
+Designing Machine Learning Systems says any of the three is a sound choice, and the decision comes down to ecosystem and operations. Volcano is mature and supports gang, queue, fairshare and priority. Kueue is queue-based and strong on GKE. KAI is NVIDIA-native and handles topology, GPU fractions and MIG, so check whether your jobs mixing GPU slices with CPU work need it. Ask which one the platform team can run.
 </details>
 
-<details><summary>14. How does the orchestrator integrate with the tracker?</summary>
-The orchestrator opens a tracker run at the start of the DAG and closes it at the end. The orchestrator's metadata, such as the workflow id, execution id, and namespace, becomes a tag in the tracker. The tracker's run id becomes a tag in the orchestrator's metadata. Those two tags let you move between the systems.
+<details><summary>14. Your data team already runs Airflow for nightly ETL. Do you add the ML training DAG there, and what is the cost?</summary>
+It can be the cheapest path, since the operator pattern runs Spark, BigQuery, Snowflake and HTTP tasks next to the Kubernetes pod. The cost is that Airflow's Kubernetes support sits on top of a scheduler that was not built around Kubernetes. It also has no built-in caching. GPU work goes through `KubernetesPodOperator`.
 </details>
 
-<details><summary>15. What is the difference between a DAG and a workflow?</summary>
-A DAG is the static definition, the YAML or Python file in Git. A workflow is one execution of that DAG, a Workflow object in the cluster. You can review the DAG, and you can observe the workflow. One DAG can produce many workflows, and each workflow has its own run record.
+<details><summary>15. A data scientist wants to write the training step in Python with no hand-written YAML. What does Kubeflow Pipelines give over a raw YAML DAG?</summary>
+You define components with the KFP SDK, and KFP compiles them to Argo Workflows and submits them. KFP adds a run UI, a metadata store for artefacts and typed inputs and outputs. The types catch a class of bugs at compile time, while a YAML DAG catches the same class only at run time. You give up the small stack that plain Argo offers.
 </details>
 
-<details><summary>16. Why does Airflow still beat Argo for some teams?</summary>
-Airflow has the largest ecosystem of operators, covering Spark, BigQuery, Snowflake, SageMaker, Vertex AI, HTTP, Slack, and email. A team that already runs Airflow for non-ML work can add an ML DAG to the same instance and operate one scheduler. Argo suits Kubernetes-native teams that do not want the overhead of the operator ecosystem.
+<details><summary>16. An Argo retry policy has a limit of 3, a first delay of 1 minute, a factor of 2 and a max duration of 10 minutes. How long does the stage wait in total before giving up?</summary>
+The delays are 1, 2 and 4 minutes, which is 7 minutes of backoff, and none reaches the 10-minute cap. The stage makes four attempts in all, the first run plus three retries. These values are examples, so choose yours from how long a stage takes and what a failed retry costs.
 </details>
 
-<details><summary>17. What is the difference between a Kubernetes Job and an orchestrator stage?</summary>
-A Kubernetes Job runs a single pod to completion. An orchestrator stage also runs a single pod, but it has explicit dependencies on prior stages, plus retries, caching, and artefact passing. The orchestrator schedules the Jobs, and the Jobs are the units of work. If you have a one-off batch task, a plain Kubernetes Job is fine. A DAG needs an orchestrator.
+<details><summary>17. A job needs 8 GPUs and the default scheduler placed 2 pods. How many GPUs are held idle and what fraction of the job is that?</summary>
+Two pods hold their GPUs and make no progress, because the other six are pending. That is 2 of 8, or 25 percent of the job. The cluster looks busy but the job makes no progress.
 </details>
 
-<details><summary>18. What is the operational cost of an orchestrator?</summary>
-The operator runs a Postgres database with automated backups and a point-in-time recovery window. The chapter's example window is seven days, which your team should set for itself. It also runs an object storage bucket with lifecycle policies, a Kubernetes Deployment with two or more replicas, and one service account per pipeline. Finally, it runs an observability stack with metrics, logs, and alerts. The platform team owns all of it.
+<details><summary>18. A stage normally takes 12 minutes. At what duration does the example alert fire, and how many runs must it happen on?</summary>
+The alert fires above 2 times the baseline, which is 24 minutes, and it must persist for 3 runs. That catches slow stages before they miss their SLA without paging on one slow run. The thresholds are examples, so set yours from your own baseline.
 </details>
 
-<details><summary>19. How does the orchestrator integrate with the feature store?</summary>
-The orchestrator runs the materialisation stage, and that stage calls the feature store's materialisation API. The feature store writes the offline and online views. The orchestrator's run record carries the feature table id, and the feature store's metadata carries the lineage. The integration is a stage in the DAG, not a side effect.
+<details><summary>19. A multi-node training job lands on nodes without NVLink, NCCL initialisation fails, and the job retries until it times out. What do you check first, second and third?</summary>
+First, check which nodes the pods landed on and whether they share an NVLink domain. Second, check which scheduler placed them, because the default Kubernetes scheduler does not understand GPU topology. Third, move to a topology-aware scheduler such as KAI or Volcano with its topology plugin, and declare the NVLink domain in the pod spec.
 </details>
 
-<details><summary>20. Why is the orchestrator a production service rather than a developer tool?</summary>
-Every ML pipeline run depends on the orchestrator. When it is down, every pipeline is down, and when it is slow, every pipeline is slow. The platform team runs it as a service with service levels, IAM, backups, and on-call support. Data scientists consume it, and when it fails, you call the platform team.
+<details><summary>20. The pipeline finished successfully, but the model trained on yesterday's data while serving reads today's. What do you check first, second and third?</summary>
+First, read the metadata database and compare the snapshot timestamp with your freshness target. Second, check whether the freshness check from Chapter 16.3 exists in the DAG or was switched off. Third, add it as the first stage so the DAG fails when the snapshot is too old, and connect it to an alert.
 </details>
 
 ---

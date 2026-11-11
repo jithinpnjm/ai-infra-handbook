@@ -516,84 +516,84 @@ Each exercise asks you to add one alert. Build it, then break the control on pur
 
 ## Checkpoint questions
 
-<details><summary>1. What is encryption at rest?</summary>
-Encryption at rest means data is encrypted while it sits on disk. It guards against stolen disks and unauthorised physical access, and it is the last line of defence. Every bucket and disk should use a customer-managed key, and every database should be encrypted at rest.
+<details><summary>1. A regulator asks which data trained the model that decided on a customer and the team cannot answer quickly. What is the likely cause and the fix?</summary>
+The lineage graph is not kept up to date, the edges are not recorded, or the query is slow. Build the graph and record every edge. Test that the query returns fast enough to use during an audit, and have it ready before the question arrives.
 </details>
 
-<details><summary>2. What is encryption in transit?</summary>
-Encryption in transit means data is encrypted while it crosses the network. It protects against eavesdropping and man-in-the-middle attacks. Every service should accept connections only over TLS 1.3.
+<details><summary>2. You find that the audit log can be changed or deleted. What is the likely cause and the fix?</summary>
+Object lock is off, the retention is not locked, or the bucket policy is wrong. Turn on object lock for the audit log bucket and lock the retention. Then confirm the log really is tamper-evident. A log that can be edited cannot be trusted by the regulator.
 </details>
 
-<details><summary>3. What is model watermarking?</summary>
-Model watermarking embeds a signature in the model's weights or outputs that is hard to notice. The watermark shows that the model came from your platform, and it helps detect theft. The mark is added at training time and checked at inference time.
+<details><summary>3. A service answers over plain HTTP. What are the likely causes and what do you set?</summary>
+The TLS configuration is missing or the NetworkPolicy is misconfigured. Set the minimum TLS version at the ingress or service mesh. Use a NetworkPolicy to limit traffic to the TLS port and alert on any HTTP-only endpoint.
 </details>
 
-<details><summary>4. What is DLP?</summary>
-DLP stands for Data Loss Prevention, which stops sensitive data from leaving your systems. It watches the data flows, blocks the ones that break policy, and alerts on suspicious ones. It is the control that keeps customer data inside the cluster, so check its rules before you trust it.
+<details><summary>4. A model went live without a watermark and a copy appears elsewhere. Why can you not trace it, and what do you change?</summary>
+The watermark step was skipped and the CI/CD pipeline does not require it. Without the mark a stolen copy cannot be traced back to you. Add the watermark step to the pipeline, verify the mark before deployment, and alert on any model that lacks one.
 </details>
 
-<details><summary>5. What is the tamper-evident audit log?</summary>
-A tamper-evident audit log is one that cannot be changed without someone noticing. It is append-only, signed, replicated, and auditable, so an independent auditor can check it. It is the evidence a regulator asks for.
+<details><summary>5. Sensitive data is leaving the cluster and nothing catches it. What is the likely cause and the fix?</summary>
+The DLP rules were never written or DLP is not watching the data flows. Write the rules, confirm they watch the flows, and alert on any suspected exfiltration. Give each rule a named owner and a way to test it.
 </details>
 
-<details><summary>6. What is the lineage graph?</summary>
-The lineage graph is the structured form of the lineage. Its nodes are data, models, and customers, and its edges are derived_from, trained_on, and served_to. The graph proves the chain and answers the regulator's question: which data trained the model that decided on this customer?
+<details><summary>6. An attacker defeats the firmware, the access controls, and the GPU sharing. What still protects the customer's data, and what shows the regulator that controls worked?</summary>
+Encryption at rest keeps the data on disk unreadable, so it is the last line of defence. The audit log is the evidence that the controls worked. This only holds when the keys are managed well, which is the part teams most often get wrong.
 </details>
 
-<details><summary>7. What is the most common data protection failure?</summary>
-The most common failure is that encryption at rest is not enabled. An unencrypted bucket or disk exposes its data to theft. Fix it by enabling encryption on every bucket and disk, and check that you can see it in place.
+<details><summary>7. Why does creating each audit entry as a new file with O_EXCL model an object-lock bucket?</summary>
+A second write to the same name fails instead of overwriting the first. So an entry can be added but never replaced, which is what an object-lock bucket does. The local code is a model of the bucket, not a replacement for it.
 </details>
 
-<details><summary>8. What is the most dangerous model protection failure?</summary>
-The most dangerous failure is a model with no watermark. A model shipped without one can be stolen without anyone noticing. If you ship models, add watermarking to the CI/CD pipeline and verify the mark before deployment.
+<details><summary>8. Each audit entry stores a hash of its event. Why does that not stop an attacker who can edit the file?</summary>
+`verify_entry` recomputes the hash, so it catches an edited event. It does not catch an attacker who rewrites both the event and its hash. The bucket lock does the real protection.
 </details>
 
-<details><summary>9. What is the relationship between encryption and the audit log?</summary>
-Encryption protects the data itself, while the audit log records who accessed it. Together they cover two needs: encryption provides confidentiality, and the audit log provides accountability.
+<details><summary>9. Why can a NetworkPolicy not give you TLS 1.3?</summary>
+A NetworkPolicy can only limit traffic to a port, for example TCP 8443 for the model API. It cannot enforce the TLS version. Set the minimum version at the ingress or the service mesh instead.
 </details>
 
-<details><summary>10. What is the relationship between watermarking and the model registry?</summary>
-Watermarking protects the origin of a model, and the model registry stores the model. Together they protect the intellectual property: the watermark provides provenance, and the registry provides storage control.
+<details><summary>10. Why does a KMS matter if the data is already encrypted?</summary>
+Encryption is only as strong as its keys. If the key sits next to the data, the lock protects nothing. A KMS keeps keys apart from the data, rotates them, and keeps a record you can audit.
 </details>
 
-<details><summary>11. What is the relationship between DLP and the lineage graph?</summary>
-DLP stops data from leaving the cluster, and the lineage graph shows where the data came from. Together, DLP is the exfiltration control and the lineage graph is the provenance control.
+<details><summary>11. Why do you need both lineage and the audit log for compliance?</summary>
+Lineage proves the chain from data to model to customer. The audit log proves that nobody changed the record. Every edge in the graph is recorded in the audit log, so the graph can be checked later.
 </details>
 
-<details><summary>12. What is the relationship between the audit log and the lineage graph?</summary>
-The audit log records every operation, and the lineage graph proves the chain between data and decisions. Together they form the compliance record: the audit log is the evidence, and the lineage graph is the structure.
+<details><summary>12. You need to protect Kubernetes Secrets in etcd. When would you start with the built-in encryption and when with a KMS plug-in?</summary>
+Production Kubernetes chapter 7 says the API server can encrypt Secret objects before they reach etcd. A KMS plug-in adds envelope encryption, where a key stored in the KMS protects the data keys. The book warns that KMS plug-ins are still immature, so start with the built-in options. You give up the KMS-held key until the plug-in matures.
 </details>
 
-<details><summary>13. What is the most important data protection metric?</summary>
-If you track one metric, track the audit log tamper-evident rate. It tells the team whether the log is still tamper-evident. A log that is not tamper-evident is one the regulator cannot trust.
+<details><summary>13. Several teams want to read the audit log. When would you restrict access and what do you give up?</summary>
+The security team, the regulator, and the post-mortem team all query the log. Production Kubernetes chapter 9 advises restricting who can read these logs because not everyone should see them. You give up easy self-service reading. Start each person with a narrow query such as one user's recent events.
 </details>
 
-<details><summary>14. What is the difference between at-rest and in-transit encryption?</summary>
-At-rest encryption protects stored data, and in-transit encryption protects data moving over the network. Together they cover the storage control and the network control. You need both, because each covers a gap the other leaves.
+<details><summary>14. Your cloud provider is trusted. Why still use a customer-managed key for encryption at rest?</summary>
+Production Kubernetes chapter 7 recommends treating encryption at rest as the default, even if you trust your cloud provider. A customer-managed key in KMS lets you rotate the key and audit its use yourself. The cost is that you must own the key lifecycle.
 </details>
 
-<details><summary>15. What is the difference between DLP and access control?</summary>
-Access control, covered in Chapter 18.4, decides who can do what. DLP decides what can leave the cluster. You need both: access control is the inbound control, and DLP is the outbound control.
+<details><summary>15. Access control already limits who can read a bucket. Why also add DLP?</summary>
+Access control decides who can do what. A legitimate job with correct access can still copy a training set into an outside bucket by mistake. DLP watches the data flows and blocks or alerts on what leaves the cluster. You need both, one for inbound access and one for outbound flows.
 </details>
 
-<details><summary>16. What is the relationship between watermarking and model theft detection?</summary>
-Watermarking embeds the signature, and theft detection checks for it. Together they protect intellectual property: the watermark is the proof, and detection is the check.
+<details><summary>16. An audit entry is written on 1 November under the example 90-day locked retention. When can it first be deleted?</summary>
+Count 90 days. 1 November plus 30 days is 1 December, plus 60 days is 31 December, and plus 90 days is 30 January. The retention is a starting value, so use the period your policy and regulator require.
 </details>
 
-<details><summary>17. What is the relationship between encryption and key management?</summary>
-Encryption protects the data, and key management protects the key you use to encrypt it. Together they form the cryptographic chain: encryption is the algorithm, and key management is the daily discipline that keeps it safe.
+<details><summary>17. You check 40 buckets and 38 are encrypted at rest. What is the rate and does the example alert fire?</summary>
+The rate is 38 / 40 = 95 percent. The example alert fires below 100 percent, so it fires. Two buckets hold data that anyone who gets the disk can read.
 </details>
 
-<details><summary>18. What is the relationship between data and model protection and the threat model?</summary>
-The threat model names the threats, such as T-005, a container image supply chain attack, T-006, GPU memory scraping, and data exfiltration. The controls in this chapter address the most advanced of those threats. They matter most for regulated industries and high-stakes deployments.
+<details><summary>18. The lineage diagram follows one customer. How many edges does it draw in total and how many of them go to the audit log?</summary>
+It draws Warehouse to Dataset, Dataset to Model, and Model to Customer, which is 3 edges. It also draws Dataset, Model, and Customer each to the audit log, which is 3 more. The total is 3 + 3 = 6 edges, and 3 go to the audit log.
 </details>
 
-<details><summary>19. Why is data and model protection a Tier 2 chapter?</summary>
-It is Tier 2 because this work produces the regulatory evidence. Regulators see it, auditors inspect it, and post-mortems read it.
+<details><summary>19. The lineage query cannot answer a regulator's question in time. What do you check, in order?</summary>
+First check whether the graph is kept up to date. Second check whether every edge is recorded. Third check whether the query is slow, and test that it returns fast enough to use during an audit.
 </details>
 
-<details><summary>20. What five questions should the data and model protection lab let you answer in five seconds each?</summary>
-The lab should let you answer five questions: the current encryption at rest rate, the encryption in transit rate, the model watermarking rate, the audit log tamper-evident rate, and the lineage queryability rate. The five-second and 30-second figures are examples, not standards. If an answer takes more than 30 seconds, the protection is not yet a production service.
+<details><summary>20. The audit log is found not to be tamper-evident. What do you check, in order?</summary>
+First check whether object lock is on. Second check whether the retention is locked. Third check the bucket policy. After the fix, confirm that the log really is tamper-evident.
 </details>
 
 ---

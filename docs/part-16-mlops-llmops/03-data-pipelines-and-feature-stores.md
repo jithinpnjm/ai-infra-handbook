@@ -889,84 +889,84 @@ Try each exercise yourself before you read the solution sketch. You will learn m
 
 ## Checkpoint questions
 
-<details><summary>1. What five stages are in an ML data pipeline?</summary>
-Ingestion lands raw bytes in object storage, transformation cleans and joins them, feature engineering computes features, materialisation writes the online and offline views, and publishing records the dataset and feature table IDs. You can check every stage output by its content hash, and every stage has a gate.
+<details><summary>1. A model trains cleanly and the offline metrics look strong, but accuracy collapses on day one in production. The run record shows the training feature table is 30 days older than the training date. What happened and what is the fix?</summary>
+The feature pipeline ran on a 30-day cycle, and the training script picked the most recent snapshot, which came from the start of that cycle. Those features are not what the model sees in production today. Run the feature pipeline daily with a freshness target. Make the training script refuse any snapshot older than that target, as a mechanical gate.
 </details>
 
-<details><summary>2. Why is a pipeline better than a notebook?</summary>
-A pipeline is a versioned graph with a run record, a feature store contract, and a freshness target. A notebook runs once. A pipeline can tell you where its data came from within seconds, but a notebook only answers as long as the engineer who wrote it remembers.
+<details><summary>2. A RAG app gave good answers for two weeks, then started returning truncated passages. The corpus and embedding model did not change. What do you suspect and what is the fix?</summary>
+Someone changed the chunking policy, for example from 512-token chunks with 64-token overlap to 1024-token chunks with no overlap. The change was committed but the index was never rebuilt, so serving still reads the old index. Bind the index snapshot ID to the chunking policy version. Refuse to serve when the policy version in the index metadata does not match the repo.
 </details>
 
-<details><summary>3. What is the difference between the online and offline views of a feature store?</summary>
-The offline view is a columnar file or table that keeps the full history of each entity's feature values, and training reads it as of the event time. The online view is a key-value store that returns the latest value for one entity ID, and serving reads it on every request. For the same entity at the same point in time, the two views must return bit-identical values.
+<details><summary>3. The ingestion stage fails with `KeyError: 'expected_column'` after six months of clean runs. What do you check first, and what stops the next one?</summary>
+Check the upstream schema first, because the upstream system removed the column without telling anyone. No schema check ran at ingestion, so the bad data moved on and the next stage crashed on it. Enable schema validation at every stage. Treat any schema change as a breaking change that needs a pull request to the pipeline definition.
 </details>
 
-<details><summary>4. What is point-in-time correctness?</summary>
-For any entity ID and event time, the offline view returns the feature value that was true at that event time, not the value that is true today. The online view usually returns only the latest value, because serving does not need history. Point-in-time correctness is what prevents label leakage in training.
+<details><summary>4. Online reads are fast for most users, but every read for one corporate account is slow, and the Redis cluster looks healthy. What is going on?</summary>
+That entity's feature is a very long list, and the online store fetches the whole list on every read. The data shape does not suit a key-value store. Aggregate during materialisation and store the summary value. Add a size check that rejects any feature whose online value grows past a limit you choose.
 </details>
 
-<details><summary>5. What four checks should every stage of the pipeline run?</summary>
-The four checks are the schema check (column names and types), the null-rate check (spikes in null values), the distribution check (shifts in mean, standard deviation, quantiles or category frequency), and the join-key check (cardinality and referential integrity). They are the cheapest insurance against silent regressions, and they catch the bugs that ruin production models.
+<details><summary>5. Two teams built separate feature stores, and they disagree about which customers are active. How do you fix it?</summary>
+No shared feature catalogue exists, so nobody owns the canonical definition. Make a shared catalogue a platform service. A feature cannot be registered in a team's private store until the catalogue declares it. The catalogue owns the definition, and each team's store reads from the catalogue's materialisation job.
 </details>
 
-<details><summary>6. What is data leakage and why is it the silent killer?</summary>
-Leakage is a feature that contains information from the future of the prediction target. A model trained on a leaked feature wins offline and loses in production. The fix is a mechanical check that you run on every training row, comparing its feature source timestamp with its event timestamp.
+<details><summary>6. Serving returns tier gold for a customer, and the offline report says silver. The model trained on the offline report loses accuracy in production. What is the cause?</summary>
+Different jobs filled the two stores. The offline store was rebuilt last night, but the online store was last rebuilt a week ago, so the views drifted apart. Use one materialisation job that writes both views. Run an hourly parity check on a sample of entities, and treat any drift as a high-priority incident.
 </details>
 
-<details><summary>7. What is the index snapshot ID?</summary>
-For a RAG application, the index snapshot ID is the content hash of the corpus hash, the embedding model ID, and the chunking policy version. It plays the role that a dataset ID plays for a classical model. An index without a snapshot ID cannot be reproduced, and an answer that cites such an index cannot be audited.
+<details><summary>7. Why must a training row use the feature value from when the event happened and not today's value?</summary>
+If a customer churned in March and the row uses today's value, the model learns from information it would not have had in March. That is the mistake point-in-time correctness prevents. The offline store keeps the history of every feature value, so it can answer what the value was as of a timestamp. The online store keeps only the latest value, because serving needs only that.
 </details>
 
-<details><summary>8. Why is the freshness SLO for a vector index different from the freshness SLO for a feature?</summary>
-A feature value stays true until its next computation, but a vector index goes stale when its corpus changes. So the index freshness target measures the index's age against the corpus, not against the last computation. Streaming indices need freshness in seconds to minutes, and static knowledge bases can accept days.
+<details><summary>8. Why does the model degrade with no error when offline and online paths compute `log(amount)` with different libraries?</summary>
+Parity breaks. Training sees one value for an entity and serving sees another, but nothing crashes, so the model quietly gets worse. The fix is one helper function that both views call, and that helper is versioned and signed. The materialisation job then writes both views from the same upstream pipeline.
 </details>
 
-<details><summary>9. What is offline-online parity and why is it the most important alert?</summary>
-Parity means the offline and online views return the same value for the same entity ID and timestamp. A sampling job checks this every hour by comparing both views. If you find drift, treat it as urgent, because every model that trained on the offline view is now wrong about the world.
+<details><summary>9. Why can a model with a leaked feature win offline and still fail in production?</summary>
+A leaked feature quietly contains information from after the event you want to predict. The offline test has that information, but production does not have it at prediction time. The check reads each feature as of the event time and verifies the source timestamp is no later than that time. Any feature with a violating row is refused.
 </details>
 
-<details><summary>10. What is the cheapest valid pipeline?</summary>
-A single Python script that reads, transforms, validates, and writes a dataset with a content hash is the cheapest valid pipeline. It grows into a DAG when its stages get slow, parallel, or shared. The most expensive mistake in ML data engineering is over-engineering the pipeline on day one.
+<details><summary>10. Why does a fraud model with a 1 to 3 month feedback loop need different handling from a click model?</summary>
+A short loop shows drift within an hour, so retraining can be drift-triggered. A fraud dispute window of 1 to 3 months means drift detection is slow and retraining runs on a fixed schedule. Mistakes show up months later, so you back-test a new model or A/B test it against the baseline before you promote it.
 </details>
 
-<details><summary>11. What runtime should you use for each pipeline stage?</summary>
-Run ingestion and transformation on Spark, Dataflow, or DuckDB. Run feature engineering on the same engines, plus Python user-defined functions. Run materialisation as a batch job that writes both views, and publish through a small Python or Go service that writes to the metadata database. The wrong runtime choice is the most expensive mistake.
+<details><summary>11. Why does an LLM data pipeline need both a recall check and a faithfulness check?</summary>
+The recall check catches a corrupted index, because the held-out query and chunk pairs should come back in the top K. The faithfulness check catches stale retrieval, because the answer should be supported by the retrieved context. A pipeline can finish with no errors while either one fails, and neither check covers the other.
 </details>
 
-<details><summary>12. What IAM model protects the feature store from drift?</summary>
-The writer role, held by pipeline service accounts, can read sources and write features. The reader role, held by data scientists and dashboards, lets you read features but never write them. The serving system gets its own online-reader role. A writer who can also read can produce a dataset that disagrees with what serving sees.
+<details><summary>12. A small metadata write and a large join are both in your pipeline. Why not run both on Spark, and what does the wrong choice cost?</summary>
+A small metadata write through Spark pays for cluster startup it does not need, so publishing should be a small Python or Go service. A large join does better on Spark, Dataflow or DuckDB on one big node, because columnar execution helps. An embedding feature job on CPU-only machines can run far longer than on GPUs. The exact cost depends on your data, so measure both options.
 </details>
 
-<details><summary>13. What is the difference between the online and offline backends?</summary>
-The online backend is a low-latency key-value store, such as Redis, Bigtable, or DynamoDB, that serves one entity ID at a time. The offline backend is a columnar file or table, such as BigQuery, Snowflake, or parquet, that serves batches. The materialisation job writes both from one upstream pipeline.
+<details><summary>13. Your team's first pipeline can be a single script or a full orchestrator with a DAG. Which do you start with and when do you change?</summary>
+Start with one script that writes a hash for each output. It is the seed of the pipeline. Split it into a DAG only when a real problem forces you to, such as stages getting slow, running in parallel or being shared across teams. You give up retries and run records from the orchestrator until then.
 </details>
 
-<details><summary>14. Why bind the chunking policy version into the index snapshot ID?</summary>
-A chunking policy is an artifact. If you change it without rebuilding the index, serving answers from chunks made under a different policy than the one the repo declares. Your fix is a CI check that refuses to serve when the policy version in the index does not match the repo.
+<details><summary>14. A static documentation index, a news index and a chat-log index need freshness. What rebuild approach fits each and what does it cost?</summary>
+A static knowledge base fits a scheduled rebuild with a target of 1 day to 1 week. A frequently updated corpus fits an event-driven rebuild of the changed partition, with a target of 1 hour to 1 day. A streaming corpus needs a streaming index update with a target of seconds to minutes. Streaming is the most current and the most expensive, and a daily rebuild is the cheapest default. Pick the cheapest rebuild that meets your target.
 </details>
 
-<details><summary>15. What is the cost of the four checks in Section 3?</summary>
-Schema checks and null-rate checks are cheap. Distribution checks are moderate, and join-key checks are cheap to moderate. Running all four at every stage costs little compared with one silent regression in production.
+<details><summary>15. You must pick a feature store product. How do you choose between Feast, Tecton, Vertex AI Feature Store and Databricks Feature Store?</summary>
+All four follow the same contract. Feast is open source, runs on GKE and has low operating cost. Tecton is managed, with an SLA and time travel, but it is not open source. Vertex AI Feature Store suits teams already on GCP, and Databricks Feature Store suits teams already on Databricks. Choose by your cloud and operations budget, then apply the same parity test to whichever you pick.
 </details>
 
-<details><summary>16. What does "Great Expectations" do and where does it run?</summary>
-Great Expectations runs a suite of expectations against a dataframe and reports a pass or fail for each one. You run it as a step in the orchestrator, after the transformation stage. The suite is a Python file kept in Git, and the data docs are published as a static site.
+<details><summary>16. A CSV file with 17,654 rows and 10 columns takes 14 MB, and the same data as Parquet takes 6 MB. How much smaller is Parquet, and what is the downside?</summary>
+14 divided by 6 is about 2.3 times smaller. The saving is 8 MB, which is about 57 percent of the CSV size. The downside is that point writes get slower, because each new row rewrites a column file. Note that the chapter's table says roughly 6 times less storage, which this example does not show.
 </details>
 
-<details><summary>17. What is a recall check for a vector index?</summary>
-A recall check uses a held-out set of query and chunk pairs. The index should return the chunk in the top K results for a target percentage of the queries. Run it after every rebuild, because a recall regression points to a broken embedding model or a corrupted corpus.
+<details><summary>17. You keep a reservoir of k = 100 items from a stream. After n = 10,000 items have passed, what is the chance that any one item is in the sample?</summary>
+Every item is in the sample with probability k divided by n. That is 100 divided by 10,000, which is 1 percent. This holds at any stopping point, so you can stop at any time without biasing the sample.
 </details>
 
-<details><summary>18. Why is freshness a metadata field rather than a computation?</summary>
-The freshness target tells the on-call engineer when the feature store is broken. If your target is not a metric, it cannot page anyone. A target that is not a contract cannot be enforced.
+<details><summary>18. The materialisation job target is 5 minutes, and the materialisation lag alert fires above 30 minutes. How many missed cycles is that, and what else must the job do?</summary>
+30 divided by 5 is 6, so the alert fires after about six missed cycles. A 5-minute target needs a job that runs at least that often. It must also retry on failure and page someone when the check fails. These are example values, so set your own from measured baselines.
 </details>
 
-<details><summary>19. What is the difference between data versioning and pipeline versioning?</summary>
-Data versioning tracks the bytes, using content hashes and immutable snapshots. Pipeline versioning tracks the DAG definition, which lives in Git as orchestration code. The two complement each other, and the pipeline definition plus the data hashes is what reproduces a training run.
+<details><summary>19. RAG answer quality drops and you do not know why. What do you check first, second and third?</summary>
+An answer depends on the prompt template, the embedding model and the index snapshot, and the index snapshot binds the corpus hash, embedding model ID and chunking policy version. First ask whether the corpus changed. Second ask whether the embedding model changed. Third ask whether the chunking policy changed. Comparing the snapshot ID inputs answers each one.
 </details>
 
-<details><summary>20. What is the difference between a feature store and a data warehouse?</summary>
-A data warehouse stores raw and curated data for general use. A feature store stores features that are ready for ML, with point-in-time correctness and online-offline parity. The feature store is built for ML training and serving, while the warehouse is general-purpose. The pipeline that feeds the feature store reads from the warehouse.
+<details><summary>20. A model gets slightly worse every week, the training code is unchanged, and you suspect an upstream rename. Which pipeline checks do you run, in what order, and why?</summary>
+Start with the cheapest. The schema check runs in milliseconds and catches a renamed column or a changed type. Then the null-rate check, which runs in seconds, then the distribution check, which takes seconds to minutes, and then the join-key check. Lineage from the live model back to its features tells you which stage to run them on.
 </details>
 
 ---

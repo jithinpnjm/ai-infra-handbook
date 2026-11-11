@@ -610,84 +610,84 @@ Work through these in order. Each one checks a single idea from the chapter.
 
 ## Checkpoint questions
 
-<details><summary>1. What three pillars of observability does the chapter walk through?</summary>
-Metrics are numeric time series with labels, and they answer how much, how fast, and how often. Logs are discrete events with structured fields, and they show what happened at one point in time. Traces are directed acyclic graphs of spans, and they show where the time went. Together, the three pillars let you debug a system.
+<details><summary>1. Prometheus crashes, the dashboards stop refreshing and the alerts stop firing, yet the cluster looks healthy from outside. What is the likely cause and how do you find it?</summary>
+Someone added a metric with a high-cardinality label, such as a request ID, a user ID or a timestamp. The series count grew past what Prometheus can hold in memory. Find the metric with `prometheus_tsdb_head_series`, drop the label at the source or aggregate before Prometheus, and set a hard limit on series per metric.
 </details>
 
-<details><summary>2. What is the RED method?</summary>
-Rate is the number of requests per second. Errors is the fraction of requests that failed. Duration is how long each request takes. RED suits serving systems, and every request-driven service emits these three metrics.
+<details><summary>2. The dashboard shows a healthy cluster but the on-call gets paged anyway. What went wrong and what alert would have caught it?</summary>
+Prometheus cannot scrape one or more targets, and the failure is silent, so the dashboard keeps drawing old data. Add an `up` metric alert for every Prometheus target, and alert when scrape latency grows too high. The source's example values are 5 minutes of downtime and 10 seconds of scrape latency.
 </details>
 
-<details><summary>3. What is the USE method?</summary>
-Utilisation is the fraction of the resource in use. Saturation is how much work is queued beyond what the resource can process. Errors is the rate of error events on the resource. USE suits resources, and every resource emits these three metrics.
+<details><summary>3. On-call can find one log line but cannot answer "what was the error rate per model in the last 5 minutes". What is wrong with the logs?</summary>
+The logs are plain text, so the fields the team wants to query sit inside the message and Loki cannot index them as labels. Move to structured JSON logs with a declared schema, and emit the labels as separate fields. Then a query such as `sum by (model) (rate(...[5m]))` works.
 </details>
 
-<details><summary>4. What is cardinality?</summary>
-Cardinality is the number of unique time series a metric produces. A metric with three labels and 10 values per label has 1,000 unique series. When you add a label, the cardinality budget tells you whether it is safe. By the chapter's rule of thumb, a label with more than 1,000 possible values is unsafe.
+<details><summary>4. A trace stops at the LLM inference span and the inference service's child spans are missing. What do you conclude and what do you check?</summary>
+The trace context does not reach the inference service, so it starts a new trace instead of adding child spans to the existing one. Confirm that the W3C Trace Context header leaves every outgoing request from the handler. Confirm that the inference service reads the header, and add an end-to-end integration test.
 </details>
 
-<details><summary>5. Why is the cardinality budget a platform-team concern?</summary>
-Every label the team adds raises the cardinality. The platform team's label choices decide whether Prometheus can store the metrics and whether dashboards can draw their panels. A bad budget runs Prometheus out of memory, metric ingestion stops, and the dashboards go stale.
+<details><summary>5. Customers complain about bad predictions while every operational metric is green. Which signal is missing?</summary>
+The model quality signal is not connected to the observability stack, so the model can degrade unseen. Send the live accuracy signal to Prometheus. Alert when it drops below a threshold your team chooses, and also when the signal goes missing for a period your team sets.
 </details>
 
-<details><summary>6. What is the W3C Trace Context?</summary>
-It is the standard for passing trace context between services. The traceparent header carries the trace ID and the parent span ID from the client through the server and the database to the inference engine. Because the standard is shared, the trace stays whole, and the on-call can follow one request from the HTTP handler to the LLM inference and the GPU kernel.
+<details><summary>6. Dashboards take 30 seconds to load, alert evaluation takes minutes and queries take a minute. What is the diagnosis and the fix?</summary>
+The observability stack is under-resourced, so it slows every debugging session. Right-size it and give it a dedicated node pool. For high-cardinality workloads, consider Prometheus sharding.
 </details>
 
-<details><summary>7. What is the model quality signal?</summary>
-It is the live accuracy of the model's predictions. It is what sets an AI factory apart from a generic web service. A model can be unhealthy while every metric is green, and this signal catches predictions that go bad while the serving system still works.
+<details><summary>7. Why does adding one label to a counter multiply storage instead of adding to it?</summary>
+Cardinality is the number of unique time series a metric produces. Each label multiplies the possible combinations with the values of the other labels. So a label with a million possible values can turn one metric into up to a million series, and you feel that in memory.
 </details>
 
-<details><summary>8. What are the four golden signals?</summary>
-They are latency (the duration of a successful request), traffic (the rate of requests), errors (the rate of failed requests), and saturation (how close the service is to its capacity). An AI factory adds GPU utilisation and model quality as its AI-specific signals.
+<details><summary>8. Why do metrics, logs and traces need to be used together during an incident, and in what order?</summary>
+Each answers a different question. Metrics show that something is wrong, logs show what the system was doing at that moment, and traces show where the time went inside one request. Start with metrics to find the symptom, then open the logs and traces for the same time window.
 </details>
 
-<details><summary>9. What is the structured JSON log format?</summary>
-It is a log format that carries a timestamp, a severity, a message, and structured fields. Because it is JSON, it can be parsed and queried. Loki indexes these logs by label, so you can query them by any structured field.
+<details><summary>9. Why does the chapter say to watch p95 and p99 latency and not only the median?</summary>
+A median hides the slow requests. Even a 0.1 percent outlier shows up often in a large cluster, so the tail matters more than the average. The chapter cites AI Systems Performance Engineering Chapter 16 for the same reasoning.
 </details>
 
-<details><summary>10. What is the difference between the RED method and the USE method?</summary>
-RED describes a service from the customer's side: rate, errors, and duration. USE describes a resource from the operator's side: utilisation, saturation, and errors. The two complement each other. A healthy service usually has good RED numbers, and a healthy resource has good USE numbers.
+<details><summary>10. Why does a slow data loader show up as a GPU problem in the dashboards, and which metric tells you the loader is the cause?</summary>
+A slow loader leaves the GPUs waiting, so GPU utilisation drops while you still pay for the hardware. The `data_loading_throughput` metric shows whether the loader is feeding the GPUs. That is why the chapter says to watch the loader as closely as the GPUs.
 </details>
 
-<details><summary>11. What is the consequence of getting cardinality wrong?</summary>
-There are three. Prometheus can run out of memory and stop ingesting metrics. Grafana dashboards load slowly, so the on-call loses situational awareness. The TSDB grows too fast, so storage costs balloon. The usual response is a hard limit on each metric.
+<details><summary>11. When would you choose RED metrics over USE metrics, and what does each give up?</summary>
+RED fits request-driven services such as an InferenceService, where you track rate, errors and duration. USE fits resources such as a GPU, a memory pool or a network link, where you track utilisation, saturation and errors. RED says nothing about whether a GPU is saturated, and USE says nothing about request latency, so an AI platform needs both.
 </details>
 
-<details><summary>12. Why is the trace context important for AI workloads?</summary>
-An LLM inference that takes 800 ms can be split into prefill, decode, and feature fetch. Without trace context, you cannot break down that latency. With it, you know where to look. The W3C Trace Context standard keeps that breakdown portable across services.
+<details><summary>12. A developer wants a `gpu_uuid` label across 1000 nodes with 8 GPUs each. How do you decide whether to allow it?</summary>
+Ask how many values the label could take as the system grows. The table marks `gpu_uuid` as safe only with care, and the 1,000-value rule of thumb is an inference from common practice. Compare the count with your series budget, and alert when a metric goes over it.
 </details>
 
-<details><summary>13. What is the difference between a metric and a log?</summary>
-A metric is a numeric time series with labels, and it answers how much, how fast, and how often. A log is a discrete event with structured fields, and it answers what happened at one point in time. Metrics are aggregated, while logs are discrete. When you are paged, metrics are the first signal, and logs are the drill-down.
+<details><summary>13. Short evaluation jobs finish before Prometheus scrapes them. What do you use, and what is the trade-off of Prometheus pulling by default?</summary>
+Use the Pushgateway, which accepts metrics a job pushes before it exits. By default Prometheus pulls from each endpoint on a schedule, so the application never has to push data anywhere. That pull model is simple, but a job shorter than the scrape interval can vanish unseen.
 </details>
 
-<details><summary>14. What is the difference between a log and a trace?</summary>
-A log is a single discrete event at one point in time. A trace is a directed acyclic graph of spans that shows the parent-child relationship between events. Logs show what happened, and traces show where the time went.
+<details><summary>14. Should you rely on a service mesh to give you complete traces?</summary>
+No. The chapter says a service mesh does not remove the instrumentation work, because the request headers must still pass from one service to the next. Your application has to inject and read the `traceparent` header. Without that, traces break at the first hop that drops it.
 </details>
 
-<details><summary>15. Why is the data shape an architectural decision?</summary>
-The metric format, log format, and trace format decide whether the team can debug the next incident. A team with unstructured logs cannot query by structured fields. A team with a non-standard trace format cannot carry trace context across services. The data shape is the base of debuggability.
+<details><summary>15. `http_requests_total` has three labels: `method` with 10 values, `status` with 10 values and `path` with 100 values. How many series can it produce?</summary>
+Multiply the values of the three labels. That is 10 times 10 times 100, which is 10,000 series. A label built from user IDs or request IDs could push it into the millions.
 </details>
 
-<details><summary>16. What is the most important observability metric for an AI factory?</summary>
-The model quality signal, which is the live accuracy of predictions. It sets an AI factory apart from a generic web service. It catches cases where the model predicts badly while the serving system runs fine. Without it, you cannot catch model regressions.
+<details><summary>16. An 800 ms request has 200 ms of prefill and 500 ms of decode. How much time is left for the other step in the worked example, and where do you look first?</summary>
+The rest is 800 minus 200 minus 500, which is 100 ms for feature fetch. Decode is the largest part at 500 ms, so that is where to look first. The numbers are an illustration, not measurements.
 </details>
 
-<details><summary>17. What is the most common observability failure mode?</summary>
-The chapter's lead example is Prometheus running out of memory because of a high-cardinality label. One metric with a label that has millions of values can exhaust Prometheus. Ingestion stops, the dashboards go stale, and the on-call may not notice. The fix is the cardinality budget and a cardinality alert.
+<details><summary>17. A metric already has 10,000 series. A developer adds a `model_name` label with 10 values. What is the worst-case series count, and does it fit a budget of 200,000?</summary>
+The count multiplies, so 10,000 times 10 is 100,000 series. That is under 200,000, which is the top of the example range for a mature cluster. But all other metrics share that budget, so check the total before approving.
 </details>
 
-<details><summary>18. What is the cardinality budget's rule of thumb?</summary>
-A label is safe if it has fewer than 1,000 possible values. A label above that line should be dropped at the source, moved into a trace or log, or aggregated before it reaches the metric. The source notes call this a starting point, not a fixed limit. The rule helps keep Prometheus within its memory.
+<details><summary>18. The TSDB disk usage alert is set at more than 80 percent for 1 hour. How much of a 1 TB disk is left when the alert fires, and what else do you check?</summary>
+At 80 percent used, 20 percent is left, which is 200 GB of 1 TB. Then check cardinality per metric, because too many series makes the TSDB grow fast. The thresholds in the chapter are example values.
 </details>
 
-<details><summary>19. Why is the AI factory's observability different from a generic web service?</summary>
-An AI factory emits metrics a web service does not, such as GPU utilisation, KV cache occupancy, NCCL collective timing, data-loading throughput, and model quality. The three pillars stay the same. The cardinality budget gets tighter, and the data shape changes. That difference is what makes an AI factory debuggable.
+<details><summary>19. You get paged for a slow endpoint. In what order do you look at the three pillars, and why?</summary>
+First metrics, to find the symptom such as p99 latency or error rate. Second logs for the same time window, to see what the system was doing. Third traces, to see where the time went inside one slow request.
 </details>
 
-<details><summary>20. What five questions should the observability lab let you answer in five seconds each?</summary>
-The five questions are the current Prometheus scrape latency p99, the current cardinality per metric, the current Loki query latency p99, the most recent error log, and the current p99 trace latency. If any takes more than 30 seconds to answer, the stack is not yet a production service.
+<details><summary>20. Dashboards are stale and you suspect Prometheus OOM. What do you check first, second and third?</summary>
+First check whether Prometheus is running and ingesting, because an out-of-memory failure is silent and the dashboards simply go stale. Second query `prometheus_tsdb_head_series` to find the metric with too many series. Third find the label responsible and drop it at the source or aggregate it.
 </details>
 
 ---

@@ -600,84 +600,84 @@ Start with exercise 3 if you have past incidents on hand. A decision tree that h
 
 ## Checkpoint questions
 
-<details><summary>1. What is the USE method?</summary>
-It is a method that asks you to check utilisation, saturation and errors for every resource. The bottleneck is whichever resource is most utilised, most saturated or most error-prone. The method was introduced by Brendan Gregg in *Systems Performance* Chapter 1.
+<details><summary>1. You are paged for a slow workload. Disk I/O shows 80 percent IOPS use, 60 percent bandwidth and a queue depth of 50, and every other resource looks fine. What is the bottleneck and the remedy?</summary>
+The disk is the bottleneck. Its saturation is high, because 50 requests are waiting at the same time, and that queue is the clue. The remedy is either faster storage or fewer, larger reads. The whole check took one pass over the metrics, before anyone opened a profiler.
 </details>
 
-<details><summary>2. What does the USE method measure for a GPU?</summary>
-For a GPU, utilisation means SM and memory use, saturation means queue depth and pending collectives, and errors means ECC and Xid errors. You apply the method, find the bottleneck, and then fix it.
+<details><summary>2. A training job that used to finish overnight now runs past the morning, the GPU graphs look busy, and a manager suggests adding nodes. What do you say?</summary>
+Busy time can mislead, because a GPU can look fully busy while it moves redundant data. Measure goodput, the useful work actually delivered, and run the USE method before buying capacity. Adding nodes without finding the bottleneck is guessing and may pay for capacity the workload never uses.
 </details>
 
-<details><summary>3. What is the roofline model?</summary>
-The roofline model says a kernel's performance is capped by the hardware peak and by its arithmetic intensity, meaning the operations per byte it moves. It predicts whether the kernel is memory-bound or compute-bound, which tells you where to look for a speedup.
+<details><summary>3. The decision tree says GPU utilisation is high, so the on-call tunes the GPU, and the job is still slow. What went wrong?</summary>
+The tree may be missing a branch for network or storage, its thresholds may be wrong for your workload, or the bottleneck may span more than one resource. Add the missing branches and tune the thresholds on your own data. Then replay the tree against past incidents to see whether it would have found the cause.
 </details>
 
-<details><summary>4. What is the arithmetic intensity?</summary>
-It is the ratio of floating-point operations to the bytes transferred. Written as a formula, I = FLOPs / Bytes. The kernel is memory-bound when I is below the ridge point, which is the compute peak divided by bandwidth, and compute-bound when I is above it.
+<details><summary>4. Inference GPU utilisation is lower than expected, GPU memory is nearly full, and copy-engine activity rises while SM utilisation falls. What is likely happening?</summary>
+The inference engine may be moving cache data to host memory or disk, and the GPUs sit idle while they wait. That is why you check GPU memory first when utilisation is low. The fix is to relieve memory pressure so the cache stays on the GPU.
 </details>
 
-<details><summary>5. What is the performance decision tree?</summary>
-It is a structured guide for finding the bottleneck. Each branch asks a yes or no question and moves you closer to the cause. You follow the tree from the top until it names the bottleneck. The tree is built as a Grafana dashboard, and the team updates it after every incident.
+<details><summary>5. The roofline predicts 989 TFLOPS for a kernel, but the measured run reaches 600 TFLOPS. How big is the gap and what explains it?</summary>
+The gap is 989 minus 600, which is 389 TFLOPS, about 39 percent. The roofline describes the kernel alone. The measured time also includes launch overhead, memory allocation and data transfer. Include launch overhead in the comparison and time the data transfers separately.
 </details>
 
-<details><summary>6. What is the cost-vs-latency trade-off?</summary>
-It is the performance decision that matters most. It asks how much latency you can save by adding GPUs. It also asks how much GPU spend you can save by accepting more latency. The trade-off dashboard makes both sides visible, so the team can pick the best option.
+<details><summary>6. The team runs the USE method and no resource stands out. Where can the bottleneck still hide?</summary>
+It may be a mix of resources, such as CPU and GPU together. It may sit below the alert threshold, as a CPU at 70 percent can hide an inefficient kernel. Or the limit may be the code itself, such as slow Python. Add a check for combinations, lower thresholds for suspects, and profile the kernel and the Python code.
 </details>
 
-<details><summary>7. What is the capacity planning model?</summary>
-It turns current usage into the GPU order for the next period. You forecast the next quarter's usage, add a margin for spikes, and then order the GPUs. A Grafana dashboard shows the same arithmetic, and finance reviews it before the purchase is signed.
+<details><summary>7. Why does the ridge point decide whether a kernel is memory-bound or compute-bound?</summary>
+The ridge point is the compute peak divided by the memory bandwidth, measured in FLOP per byte. A kernel with lower arithmetic intensity is left of it and waits on memory. A kernel with higher intensity is right of it and waits on arithmetic. The fix differs on each side, so compute the intensity first.
 </details>
 
-<details><summary>8. What is the ridge point?</summary>
-It is the arithmetic intensity where a kernel changes from memory-bound to compute-bound. You get it by dividing the compute peak by the bandwidth. For an H100 at FP16, that works out to 295 FLOP per byte.
+<details><summary>8. Why should you not trust the PyTorch profiler's FLOP counts for a roofline?</summary>
+They are formula-based estimates for a limited set of operators, not hardware counters. A roofline is only as good as the numbers fed into it. For measured values, run Nsight Compute on the kernel you care about.
 </details>
 
-<details><summary>9. What is the most common performance failure mode?</summary>
-The most common failure is that the team cannot find the bottleneck. The workload is slow, the team runs the USE method, and nothing stands out. The bottleneck may be a mix of resources, may sit below the threshold, or may be in the code itself. The fix is to add multi-resource analysis to the USE method.
+<details><summary>9. Why does the USE method tell you to measure again after fixing a resource?</summary>
+A fix often exposes the next limit. Once the worst resource is no longer the bottleneck, another resource becomes the one that stands out. Measuring again shows what limits the workload now, so you do not keep tuning something that no longer matters.
 </details>
 
-<details><summary>10. What is the most common roofline model failure?</summary>
-The roofline is too theoretical. The on-call computes the roofline, and the measured result comes in below the prediction. The roofline covers the kernel alone, while the measured time also includes kernel launch overhead and data transfer. The fix is to include the non-kernel overhead in the roofline.
+<details><summary>10. Why does the 80 percent utilisation in the capacity model not change the forecast?</summary>
+The model counts GPUs, not busy GPU hours, so the order is 100 times the growth times the buffer regardless of utilisation. If utilisation is low, the count alone will overstate the order. A better basis is the load where tail latency climbs sharply, which shows the practical limit.
 </details>
 
-<details><summary>11. What is the most common decision tree failure?</summary>
-The decision tree is too shallow. The on-call follows the tree, which says "GPU utilisation is high", so the on-call optimises the GPU, and the workload is still slow. The tree is probably missing branches for network or storage. The fix is to add the missing branches and tune the thresholds.
+<details><summary>11. Why does raising the batching wait help throughput and yet risk your service level?</summary>
+A longer wait lets more requests join a batch, which raises throughput. If the wait is too high, every request sits longer before it runs, which hurts tail latency. Tune the wait against your service level, not against throughput alone.
 </details>
 
-<details><summary>12. What is the most common cost-vs-latency failure?</summary>
-The trade-off is not explicit. The team orders GPUs without a trade-off analysis, and it optimises kernels without measuring the cost. The trade-off model is not part of the team's workflow. The fix is to add the trade-off dashboard to the team's procurement workflow.
+<details><summary>12. In the chapter's example, Option A doubles the GPUs, Option B optimises the kernel. When would you still pick A, and what do you give up?</summary>
+Option A cuts p99 from 500 to 250 ms but adds $32 per hour. Option B cuts it to 350 ms at no extra cost, so B has the best return. Pick A only if the service level needs the full 250 ms and B cannot reach it. You give up the extra $32 per hour. The figures are invented for illustration.
 </details>
 
-<details><summary>13. What is the most common capacity planning failure?</summary>
-The forecast is wrong. It says 156 GPUs, but actual usage is 100 GPUs, so the team over-provisioned. The forecast model, the growth rate or the buffer may be wrong. The fix is to tune the forecast model, review the historical data and add a confidence interval.
+<details><summary>13. Should you order 156 GPUs with the 30 percent buffer, or fewer, and what is the risk each way?</summary>
+The buffer covers spikes. A forecast that is too high wastes GPUs, and one that is too low puts service levels at risk. Rather than trust the count, watch where tail latency climbs as load rises and use that practical limit as the basis. The growth and buffer values are examples.
 </details>
 
-<details><summary>14. What is the difference between utilisation and saturation?</summary>
-Utilisation is the fraction of the resource that is in use, such as GPU SM utilisation of 80 percent. Saturation is how much work is queued beyond what the resource can process, such as a GPU queue depth of 50. Utilisation describes the current state, and saturation describes the queue.
+<details><summary>14. When would you use the decision tree and when the full USE table, and what do you give up with each?</summary>
+Under pressure, the tree is the shorter route, with yes or no questions that move you toward a likely cause. You give up completeness, because it can miss a branch. The USE table checks every resource and misses nothing it lists, but it takes longer. Walk the tree against last month's slow job to test it.
 </details>
 
-<details><summary>15. What is the difference between the USE method and the RED method?</summary>
-USE looks at a resource from the operator's side, through utilisation, saturation and errors. RED looks at a service from the customer's side, through rate, errors and duration. The two complement each other, since a healthy service shows good RED metrics and a healthy resource shows good USE metrics.
+<details><summary>15. Should you count a kernel's arithmetic intensity by hand or take it from Nsight Compute, and what do you give up?</summary>
+Nsight Compute reports the arithmetic intensity directly and plots each kernel against both roofs, so you do not count by hand. A wrong byte count changes the answer. You give up the quick estimate and need a profiling run on the kernel.
 </details>
 
-<details><summary>16. Why is the roofline model a platform-team discipline?</summary>
-The roofline model predicts kernel performance, and it shows the on-call where the optimisation opportunity sits. The platform team owns the methodology, the dashboards and the training. A team that does not use the roofline model tends to optimise ad hoc.
+<details><summary>16. With the H100 figures of 989 TFLOPS and 3,350 GB/s, what is the ridge point, and what performance does a kernel at 100 FLOP per byte reach?</summary>
+The ridge is 989 TFLOPS divided by 3,350 GB/s, about 295 FLOP per byte. At 100 FLOP per byte the kernel is left of the ridge, so it is memory-bound. Performance is bandwidth times intensity, 3,350 GB/s times 100, which is 335 TFLOPS.
 </details>
 
-<details><summary>17. What is the difference between the roofline model and the benchmarking methodology?</summary>
-The roofline model predicts kernel performance from first principles, using compute peak, bandwidth and arithmetic intensity. The benchmarking methodology measures actual performance against a baseline. The two complement each other, because the roofline predicts and the benchmark checks the prediction.
+<details><summary>17. Use the capacity model with 100 GPUs, 20 percent growth and a 30 percent buffer. What is the Q+1 order and hourly cost at 3.20 per GPU hour?</summary>
+The forecast is 100 times 1.20 times 1.30, which is 156 GPUs. At 3.20 per GPU hour the cost is 156 times 3.20, which is 499.20 per hour. The 3.20 is an example rate, so replace it with the rate in your contract.
 </details>
 
-<details><summary>18. What is the relationship between the decision tree and the failure mode catalogue?</summary>
-The decision tree is the on-call's guide for finding the bottleneck. The failure mode catalogue is the on-call's guide for naming the failure. The two complement each other: the tree shows where to look, and the catalogue gives the failure its name.
+<details><summary>18. The attention example has 6.87e10 FLOPs and 3.36e7 bytes. What is the intensity and which side of the 295 ridge is it?</summary>
+Divide 6.87e10 by 3.36e7, which gives about 2,045 FLOP per byte. That is far above 295, so the kernel is compute-bound. The suggested fixes are lower precision such as FP8 and fuller use of Tensor Cores. Check the counts first, because a wrong byte count changes the answer.
 </details>
 
-<details><summary>19. What is the relationship between capacity planning and the cost dashboard?</summary>
-The capacity planning model looks forward, while the cost dashboard looks back. The model uses historical cost data, and the dashboard is the source of that data. The cost dashboard shows what the GPUs cost, and the capacity planning model shows how many GPUs to buy.
+<details><summary>19. Following the decision tree, what do you check first, second and third when GPU utilisation is not above 90 percent?</summary>
+The first question is whether GPU utilisation is above 90 percent, and the answer is no. Second ask whether CPU utilisation is above 90 percent. Third, if it is not, ask whether the workload is network bound, then storage. Each answer moves you one step closer to a likely cause.
 </details>
 
-<details><summary>20. What five questions should the performance engineering lab let you answer in five seconds each?</summary>
-The five questions are: what is the current GPU utilisation per the USE method; what is the current roofline gap per the kernel profile; what is the current bottleneck per the decision tree; what is the current cost-vs-latency trade-off per the dashboard; and what is the current Q+1 GPU forecast per the capacity planning model. The five-second target is an example value, and an answer that takes over 30 seconds, another example limit, shows the stack is not yet a production service.
+<details><summary>20. The forecast says 156 GPUs but actual usage is 100, so the team over-provisioned by 56. What do you check, in order?</summary>
+Check the history behind the forecast first. Then check the growth rate and the buffer. Add a confidence range to the forecast and review it every quarter, writing down the error against the real GPU count.
 </details>
 
 ## Sources and review notes

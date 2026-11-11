@@ -497,84 +497,84 @@ Start with exercise 3, because a failing CVM attestation is the alert you need m
 
 ## Checkpoint questions
 
-<details><summary>1. What is the NVIDIA BlueField DPU?</summary>
-It is a data processing unit that takes infrastructure work off the host CPU. It has its own ARM cores, firmware, and root of trust. For the security functions it takes over, the BlueField is the root of trust.
+<details><summary>1. A BlueField card sits in the server but the DOCA services are not running and nothing is offloaded. What is the cause and the fix?</summary>
+The BlueField was never initialised, the DOCA services were never configured, or the platform policy was not applied. Initialise the card, configure the DOCA services, and confirm they run. Until then the host CPU still does the work.
 </details>
 
-<details><summary>2. What is DOCA?</summary>
-DOCA is the NVIDIA framework for building applications that run on the BlueField DPU. Its libraries cover network, storage, and security offload, plus host management. The security functions run on the DPU, and the hardware accelerates them.
+<details><summary>2. DOCA services run on the BlueField, yet the host CPU still performs the security work. What does that mean for trust and what do you do?</summary>
+The services are misconfigured, so the offload never happens and the host stays in the trust chain. Correct the configuration and confirm the offload works. Alert whenever a security function runs on the host.
 </details>
 
-<details><summary>3. What is a confidential VM?</summary>
-A confidential VM is a virtual machine whose memory and registers are encrypted. Neither the hypervisor nor the cloud operator can read its memory. It gives the strongest workload isolation, so it is the base for high-assurance deployments.
+<details><summary>3. A regulated workload runs in a normal VM. What can the hypervisor do and what is the fix?</summary>
+The workload's memory is not encrypted, so the hypervisor can read its data. The CVM was never enabled or the platform policy was not enforced. Enable the CVM, move the workload into it, and check that its memory is encrypted.
 </details>
 
-<details><summary>4. What is the attestation chain?</summary>
-The attestation chain is a series of attestations that prove a workload runs on trusted hardware. The order is TPM, DPU, CVM, GPU, then the workload. Each link produces a quote, and the next link verifies it.
+<details><summary>4. A CVM attestation alert fires in the middle of the night. How serious is it and who should it wake?</summary>
+A CVM that fails attestation may be running on hardware you cannot trust. The chapter calls this the alert that matters most, so it should page the on-call engineer right away. Then check the chain link by link.
 </details>
 
-<details><summary>5. What is GPU CC?</summary>
-GPU CC is NVIDIA's confidential computing feature for GPUs. It encrypts GPU memory, so the workload's data stays protected even from the GPU's operator.
+<details><summary>5. A workload runs in a confidential VM but GPU CC is off. What is exposed and what do you do?</summary>
+The CVM protects the CPU side only, and the data in GPU memory is not protected by it. GPU CC was never turned on and the workload started without it. Enable GPU CC, restart the workload, and confirm its GPU memory is encrypted.
 </details>
 
-<details><summary>6. What is the most common high-assurance failure?</summary>
-The most common failure is a BlueField that sits in the server but is not provisioned. Its DOCA services are not running, so nothing is offloaded. If you find this, fix it by initialising the BlueField, configuring the DOCA services, and verifying they run.
+<details><summary>6. A regulated workload runs without the high-assurance stack and nobody knows why. What is the likely cause and the fix?</summary>
+Nobody wrote down the workload's security requirements, so the platform policy never reached it. Document the requirements, deploy the stack for that workload, and confirm the workload uses it.
 </details>
 
-<details><summary>7. What is the second most common high-assurance failure?</summary>
-The second most common failure is services that run but do not offload. The DOCA services run on the BlueField while the host CPU still does the security work. Fix it by reconfiguring the services and confirming that the offload is happening.
+<details><summary>7. Why can a confidential VM resist an operator who has root on the host?</summary>
+The CVM encrypts its memory and registers with a key that only the CVM holds. The hypervisor cannot read the memory. The VM can also prove its initial state through remote attestation, so an outside party can check what started.
 </details>
 
-<details><summary>8. What is the most dangerous high-assurance failure?</summary>
-The most dangerous failure is a confidential VM that was never enabled. The workload runs in a regular VM, so its memory is not encrypted and the hypervisor can read its data. You fix it by enabling the CVM, moving the workload into it, and checking that its memory is encrypted.
+<details><summary>8. Why does a confidential VM alone not protect data in GPU memory?</summary>
+The CVM protects the CPU side. Without GPU CC the data in GPU memory is not protected by the CVM. GPU CC encrypts GPU memory, so together the two cover both halves of the workload's state.
 </details>
 
-<details><summary>9. What is the relationship between BlueField and confidential VMs?</summary>
-The BlueField takes security functions off the host CPU, and the confidential VM protects the workload's memory from the host. Together they form the high-assurance chain, where the BlueField is the security root and the CVM is the workload's trust anchor.
+<details><summary>9. Why does offloading security work to a BlueField remove the host CPU from the trust chain for those functions?</summary>
+The DPU has its own ARM cores, its own firmware, and its own root of trust. The offloaded function runs there, not on the host. So the host CPU does not touch it. This is why a function that still runs on the host means the offload has not happened.
 </details>
 
-<details><summary>10. What is the relationship between DOCA and the BlueField?</summary>
-DOCA is the framework for building applications on the BlueField. Its services run on the card and offload work from the host CPU. The security functions among them run on the BlueField as well.
+<details><summary>10. Why does the remote verifier run off the cluster?</summary>
+Keeping the verifier separate means a compromised node cannot vouch for itself. The verifier holds the public keys for the TPM, the DPU, and the CVM and decides whether the chain is valid.
 </details>
 
-<details><summary>11. What is the relationship between AMD SEV-SNP and Intel TDX?</summary>
-Both are confidential VM technologies, one from AMD and one from Intel. Both encrypt the VM's memory and provide attestation. Your host CPU decides which one you use: AMD EPYC runs SEV-SNP, and Intel Xeon runs TDX.
+<details><summary>11. Why does the attestation chain check one layer at a time instead of trusting a single quote?</summary>
+A single quote from one device cannot show that the whole stack started as approved. The order is the TPM, the DPU, the CVM, the GPU, and then the workload. Each link produces a quote and the next link verifies it before it passes trust along.
 </details>
 
-<details><summary>12. What is the relationship between GPU CC and the confidential VM?</summary>
-GPU CC protects GPU memory, while the confidential VM protects the workload's CPU memory. Together they cover both halves of the workload's state, which is what the high-assurance chain needs.
+<details><summary>12. Your team has strong controls. When would you still add DPUs and confidential VMs, and what does it cost?</summary>
+Add them for high-stakes work such as a regulated model that handles PII or patient records. Strong controls say what you configured, but only the DPU and CVM design lets you show that the host cannot quietly bypass them. The cost is that not every workload needs this design and not every team can afford it.
 </details>
 
-<details><summary>13. What is the difference between SEV-SNP and TDX?</summary>
-SEV-SNP is AMD's confidential VM technology. TDX is Intel's. Both encrypt VM memory and both provide attestation. The processor decides the choice: SEV-SNP runs on AMD EPYC, and TDX runs on Intel Xeon.
+<details><summary>13. You want to offload many security functions to the DPU. Do you move them all at once?</summary>
+No. Move one function at a time. Start with the work that costs the host CPU the most and test each change before moving the next one. The cost is a slower rollout, and the gain is that you can see which move caused any problem.
 </details>
 
-<details><summary>14. What is the most important high-assurance metric?</summary>
-The CVM attestation validity rate is the most important metric. It shows which CVMs run on trusted hardware. A CVM that fails attestation may be on untrusted hardware, so you want its alert to page the on-call engineer at once.
+<details><summary>14. A colleague says confidential computing means environment-variable secrets no longer matter. Is that right?</summary>
+No. Production Kubernetes chapter 7 warns that a secret passed as an environment variable can sometimes be read in plain text and that some debug modes write them into logs. Confidential computing guards against a different attacker, which is the host itself. The two practices work together.
 </details>
 
-<details><summary>15. What is the attestation chain in production?</summary>
-The chain is built at boot, checked on demand, and rechecked on a schedule. It links the TPM, DPU, CVM, GPU, and workload in that order. Each link produces a quote, and the next link verifies it.
+<details><summary>15. Why does the role model keep the people who change the stack apart from the people who approve it?</summary>
+Someone who can change the DPU configuration can also weaken the trust it provides. The writer role configures the DPU and CVM, and the admin role approves the stack and the attestation policy. Write down who can do what, enforce it, and review it on a schedule.
 </details>
 
-<details><summary>16. What is the relationship between the attestation chain and the workload?</summary>
-The attestation chain proves that the workload runs on trusted hardware. The workload reads the chain, verifies it, and continues only if the chain is valid. If you design the workload this way, the chain becomes the foundation of its trust.
+<details><summary>16. The chapter's example DPU has a 100 to 400 Gbps port. How many gigabytes per second is that?</summary>
+Divide by 8 bits per byte. 100 / 8 = 12.5 GB per second and 400 / 8 = 50 GB per second. The figures are examples, so check the datasheet of the card you buy.
 </details>
 
-<details><summary>17. What is the relationship between BlueField and the host CPU?</summary>
-The BlueField takes security functions off the host CPU, which frees the CPU for the workload. It has its own ARM cores, so the host CPU does not touch its security functions. In short, the BlueField is the security root, and the host CPU does the workload's compute.
+<details><summary>17. DPU firmware was last updated on 1 August and today is 11 November. Does the example firmware alert fire?</summary>
+Count the days. 1 August to 1 September is 31, to 1 October is 61, to 1 November is 92, and to 11 November is 102 days. The example alert fires above 90 days, so it fires. The 90 days is an example value.
 </details>
 
-<details><summary>18. What is the relationship between high-assurance and threat modeling?</summary>
-The threat model names threats such as T-005 (container image supply chain attack) and T-006 (GPU memory scraping). The high-assurance stack is the set of controls that address the most advanced of them. The threat model decides which workloads need that stack, because only the highest-risk ones do.
+<details><summary>18. The chain has five links but the verifier sketch takes three quotes. What is left unchecked and how should you read the sketch?</summary>
+The chain runs TPM, DPU, CVM, GPU, and workload, which is 5 links. The sketch verifies 3 quotes, so 5 - 3 = 2 links are not covered, which are the GPU and the workload. The chapter says to treat it as the shape of the check and not as a finished verifier.
 </details>
 
-<details><summary>19. Why is BlueField and confidential computing a Tier 2 chapter?</summary>
-It is the frontier of security controls, which is why it sits in Tier 2. It serves workloads that need the most secure deployment, and it is what regulators and auditors inspect.
+<details><summary>19. The attestation chain fails to verify. What do you check, in order?</summary>
+Check each link in order. First check whether the TPM is provisioned. Second check whether the DPU is configured. Third check whether the CVM is enabled. Then rebuild the chain and verify it again.
 </details>
 
-<details><summary>20. What five questions should the high-assurance lab let you answer in five seconds each?</summary>
-The five questions are: DPU firmware currency, DOCA services status, CVM attestation validity rate, GPU CC enabled rate, and attestation chain validity rate. The five-second target and the 30-second limit are example values from the lab. As an example, if you need more than 30 seconds for any answer, the stack is not yet a production service.
+<details><summary>20. You must check a new node from scratch with the lab. In what order do you go and why?</summary>
+Start with the hardware. If `lspci` does not list the BlueField, none of the later steps can work. Next check the DOCA services, then SEV-SNP or TDX in the kernel log, and then GPU CC, which is the last layer the workload uses. Launch a test CVM and verify the chain at the end.
 </details>
 
 ---

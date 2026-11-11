@@ -484,84 +484,84 @@ Work through these on your own cluster or in a sandbox, and write down what you 
 
 ## Checkpoint questions
 
-<details><summary>1. What is the reliability triangle?</summary>
-The triangle has three corners: the SLO (the commitment), the error budget (the cost of unreliability) and chaos engineering (the drill). Each corner checks the other two. Without one of them, the reliability claim is incomplete.
+<details><summary>1. The error budget is at 0 percent, yet deployments keep going out and the SLO stays breached. What went wrong and how do you fix it?</summary>
+The policy exists on paper but nobody enforces it, and the team may not even know the budget is gone. At 0 percent remaining the policy says all deployments freeze and the IC convenes a war room. Enforce the policy in CI, alert when the budget runs out, and train the team on what it requires.
 </details>
 
-<details><summary>2. What is the error budget?</summary>
-The error budget is the SLO turned into a budget. If you can do this arithmetic yourself, you can explain the budget to a manager. At 99.9% monthly availability, the budget is 43.2 minutes of downtime per month. The team spends that room on change, and it pauses change when the budget runs out.
+<details><summary>2. A chaos experiment takes down the cluster, the SLO is breached, and a customer complains. What does the chapter say went wrong?</summary>
+The blast radius was too large. Nothing contained the experiment, and nothing let the team reverse it quickly. Shrink the blast radius, add a rollback to every experiment, and rehearse in staging first.
 </details>
 
-<details><summary>3. What are the chaos engineering principles?</summary>
-The principles are: define the steady state, hypothesise, run experiments and minimise the blast radius. Defining the steady state means measuring the normal value of the SLI. The hypothesis says the SLI stays in that state during the experiment. The experiment injects a failure and watches the SLI, and the blast radius stays small, reversible and contained.
+<details><summary>3. A region fails and the failover to the second region fails too. The team had a spare region for a year. Why?</summary>
+The failover had never been run, so the redundancy existed only on paper. Nobody had drilled it or written down the steps. Run the failover as a chaos experiment every quarter, document each step, and test in staging first.
 </details>
 
-<details><summary>4. What are the redundancy patterns?</summary>
-The three patterns are N+1 GPU nodes, multi-region failover and active-active inference. N+1 keeps one spare for every N nodes the workload needs. Failover runs in one region and moves to a second when the first fails. Active-active runs in two regions at once, and the load balancer sends traffic to the nearest one.
+<details><summary>4. The dashboard shows an SLO breach, but nobody acts and the customer reports the problem first. What is missing?</summary>
+The SLO alert is missing, or nobody watches the dashboard, so the breach goes undetected. Add an SLO alert, name an owner for the dashboard, and add breach checks to the on-call routine.
 </details>
 
-<details><summary>5. What is the most common reliability failure?</summary>
-The most common failure is an exhausted error budget that the team keeps ignoring. The team keeps deploying, the SLO stays breached, and the policy goes unenforced. The fix is to enforce the policy in CI, alert on budget exhaustion and train the team on the policy.
+<details><summary>5. With the example policy, the error budget has 20 percent left. What happens to deployments?</summary>
+The remaining budget is below the 25 percent step, so the team freezes non-critical deployments. It has not yet reached 10 percent, where all deployments except critical security patches freeze. The percentages are example values that your team chooses and reviews.
 </details>
 
-<details><summary>6. What is the most common chaos engineering failure?</summary>
-The most common failure is an experiment that is too aggressive. Its blast radius was too large, nothing contained it, and it could not be reversed. The fix is a smaller blast radius, a rollback for every experiment and a first run in staging.
+<details><summary>6. The regular always-firing alert stops arriving while everything looks healthy. What should you do?</summary>
+Treat it as a critical notice, because your alerting may be down without anyone knowing. Production Kubernetes, Chapter 9, describes this alert. It fires on a schedule while the system is healthy, so its silence is the signal.
 </details>
 
-<details><summary>7. What is the most common redundancy failure?</summary>
-The most common failure is a redundancy pattern that nobody tests. The team has spare nodes and a second region, but the failover has never been run. The fix is to run the failover as a chaos experiment every quarter.
+<details><summary>7. Why does the error budget make the SLO commitment honest?</summary>
+The budget is the amount of unreliability the team is allowed, and the team spends it on change. When the budget runs out, the team stops changing things and works on stability. Without it, the SLO is a number nobody has to act on.
 </details>
 
-<details><summary>8. What is the most common SLO failure?</summary>
-The most common failure is a breach that nobody notices. The SLO alert is missing, and nobody watches the dashboard. The fix is to add the alert and watch the dashboard.
+<details><summary>8. Why does the chapter say a team with SLOs but no chaos engineering has never tested its SLOs?</summary>
+An SLO only describes what the team commits to. Chaos engineering injects a failure and watches whether the SLI stays in steady state. Without that drill, the commitment has never been put under stress.
 </details>
 
-<details><summary>9. What is the most common reliability metrics failure?</summary>
-The most common failure is that nobody tracks the reliability numbers. The team cannot see the current state or the trend. The fix is a reliability dashboard and a regular review.
+<details><summary>9. Why must you measure steady state before you inject a failure?</summary>
+The experiment's hypothesis is that the SLI will remain in steady state. You cannot say whether the SLI stayed there unless you measured its normal value first. The SLIs are measured continuously so that the baseline already exists.
 </details>
 
-<details><summary>10. What is the most common reliability discipline failure?</summary>
-The most common failure is a team that writes the rules and then skips them. It sets SLOs but does not track them, and it sets budgets but does not enforce them. The fix is training and enforcement in CI.
+<details><summary>10. Why does active-active inference avoid the delay that failover has?</summary>
+With failover, the secondary region has to start and then take traffic. With active-active, both regions already serve traffic, each with about half. If one fails, the load balancer routes to the other, which already handles requests.
 </details>
 
-<details><summary>11. What is the difference between SLO and SLI?</summary>
-The SLI is the measurement, and the SLO is the target that the platform team commits to meet. The SLI tells you what actually happened. The SLO says what you promised.
+<details><summary>11. Why does the chapter treat an uncorrectable ECC memory error as a critical alert?</summary>
+AI Systems Performance Engineering, Chapter 16, says such an error corrupts data and requires a reset. It is a hardware signal, so it belongs on the same alert list as the SLO signals. Waiting for a customer to notice would be too late.
 </details>
 
-<details><summary>12. What is the difference between the error budget and the cost dashboard?</summary>
-The error budget looks forward and shows how much unreliability the team can still afford. The cost dashboard looks back at what the team already spent. The error budget measures the cost of unreliability, and the cost dashboard measures the cost of reliability.
+<details><summary>12. A service is customer-facing and another is an internal tool. Which tier do you give each, and what do you give up?</summary>
+Give the customer-facing service Gold at 99.99 percent monthly and under 300 ms, and the internal tool Silver at 99.9 percent and under 500 ms. Higher tiers cost more to run, so you give up spend for the stronger commitment. The tier sets the SLO and the cost, so the platform team can charge accordingly.
 </details>
 
-<details><summary>13. What is the difference between chaos engineering and load testing?</summary>
-Load testing measures the system's behaviour under expected load, and it is used for capacity. Chaos engineering measures the system's behaviour under unexpected failure, and it is used for resilience.
+<details><summary>13. When would you choose N+1 nodes, multi-region failover, or active-active, and what do you give up with each?</summary>
+N+1 covers a single GPU node failure and costs about 11 percent in the 8-GPU example. Multi-region failover covers a whole region outage but doubles compute and takes time to switch. Active-active has no switch delay but also doubles compute, so choose it only when even a short outage costs too much.
 </details>
 
-<details><summary>14. What is the difference between N+1 and 2N redundancy?</summary>
-N+1 keeps N+1 components for every N needed, and the spare takes over on failure. 2N keeps two full sets of N components, and both run at the same time. N+1 costs less, and 2N gives higher availability. When you choose between them, ask how long you can afford to be down.
+<details><summary>14. Would you start chaos experiments in production or in staging, and what is the trade-off?</summary>
+Rehearse in staging first, with a small reversible blast radius. You give up the realism of production. In return a mistake does not breach the SLO or reach a customer, which is exactly what happened in the too-aggressive experiment.
 </details>
 
-<details><summary>15. What is the difference between failover and active-active?</summary>
-Failover runs the workload in one region at a time and moves it to the secondary when the primary fails. Active-active runs the workload in two regions at once, and the load balancer routes to the nearest one. Failover costs less, and active-active is more available.
+<details><summary>15. Do you freeze deployments at 25 percent budget left, or wait until 10 percent, and what do you give up?</summary>
+Freezing early protects the SLO but slows delivery. Waiting keeps velocity high but leaves little room if something breaks. The example policy freezes non-critical work at 25 percent and nearly everything at 10 percent. Your team chooses its own steps and reviews them each quarter.
 </details>
 
-<details><summary>16. What is the difference between the burn rate and the error rate?</summary>
-The error rate is the rate of failed requests at a single moment. The burn rate is the rate at which the error budget is consumed over a period. The error rate feeds the burn rate, which is its output.
+<details><summary>16. What is the error budget for a 99.9 percent monthly SLO in a 30-day month, and how much is that per day?</summary>
+A month has 30 times 24 times 60, which is 43,200 minutes. The allowance of 0.1 percent is 43.2 minutes. At a burn rate of 1x that is 43.2 divided by 30, or 1.44 minutes per day.
 </details>
 
-<details><summary>17. What is the relationship between the SLO and the SLA?</summary>
-The SLO is the engineering target the team aims for. The SLA is the customer-facing commitment, and it includes consequences for a breach, such as a service credit. The SLO is what the team works toward, and the SLA is what the customer is promised.
+<details><summary>17. At a 10x burn rate, how fast is the 43.2-minute budget gone?</summary>
+At 10x the team loses 14.4 minutes per day, since 1.44 times 10 is 14.4. The budget lasts 43.2 divided by 14.4, which is 3 days. That is why a 10x burn pages the on-call.
 </details>
 
-<details><summary>18. Why is reliability engineering a Tier 2 chapter?</summary>
-Reliability engineering makes the platform team's SLO commitments honest. The platform team owns the discipline, customers experience it, and finance sees its results. A team without the discipline is only hoping the service stays up.
+<details><summary>18. A workload needs 8 GPUs, and you add one spare. What is the overhead, and what does the second region add?</summary>
+The cluster is 9 GPUs. The spare is 1 out of 9, which is about 11 percent. A second region doubles the compute, so 9 GPUs becomes 18 in the example.
 </details>
 
-<details><summary>19. What is the difference between the reliability triangle and the reliability dashboard?</summary>
-The reliability triangle is the model: SLO, error budget and chaos engineering. The reliability dashboard puts that model into practice with the SLIs, the budget and the experiment results. The triangle is the concept, and the dashboard is the implementation.
+<details><summary>19. The burn rate alert fires. What do you look at first, second, and third?</summary>
+First check the error budget remaining, to see how much room is left. Second compare the 1-hour and 24-hour burn rates, to see whether the spend is a spike or a steady drain. Third read the end-of-month forecast, to decide whether to freeze deployments under the policy.
 </details>
 
-<details><summary>20. What five questions should the reliability engineering lab let you answer in five seconds each?</summary>
-The lab should let you answer the current error budget remaining, the one-hour burn rate, the most recent chaos experiment, the result of the most recent failover drill, and the current SLO compliance per service. The chapter sets 30 seconds as an example limit for any one of these answers. Pick your own limit, and if an answer takes longer, the stack is not yet a production service.
+<details><summary>20. A chaos experiment starts and the SLI leaves steady state. What do you do, in order?</summary>
+First watch the SLI against the steady state you measured. Second reverse the experiment, which is why each one needs a rollback and a small blast radius. Third write up what failed and shrink the blast radius before running it again.
 </details>
 
 ---

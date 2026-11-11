@@ -926,84 +926,84 @@ Each exercise builds on a section in this chapter, so check your work against th
 
 ## Checkpoint questions
 
-<details><summary>1. What is AI-assisted anomaly detection?</summary>
-It is a pattern that uses an ML model to spot unusual metric values. You train the model on historical metrics, and it predicts the expected value. An alert fires when the actual value strays from that prediction. In the example setup, the model is retrained daily and checked against confirmed anomalies.
+<details><summary>1. The anomaly detector fires on every small wobble, and the on-call engineer has stopped reading its alerts. What does the chapter say went wrong, and what do you change?</summary>
+The model is too sensitive, the threshold is too low, or the training data does not match production traffic. The real anomaly is then missed because people ignore the noise. Tune the model, raise the threshold, retrain on production traffic, and measure precision and recall.
 </details>
 
-<details><summary>2. What is LLM-based runbook generation?</summary>
-It is a pattern in which an LLM drafts a runbook from an incident transcript. The model reads the transcript and writes a runbook with six sections. The platform team reviews the draft before it is published. Your review is the safety net.
+<details><summary>2. The LLM drafts a runbook with no runnable commands, so the on-call cannot follow it. What are the likely causes?</summary>
+The prompt is vague, the context is too thin, or the validator misses the problem. Improve the prompt, add context, strengthen the validator, and keep a human reviewer in the loop. The validator only checks six headings and one known command, so it cannot prove the runbook works.
 </details>
 
-<details><summary>3. What is AI-assisted root cause analysis?</summary>
-It is a pattern in which an LLM proposes candidate causes for an incident. The model reads the traces, logs, and metrics, and proposes three candidate hypotheses. The on-call engineer reviews them and picks the most likely one.
+<details><summary>3. The AI root cause tool names a cause, the engineer chases it, and it is wrong. How does the chapter say to reduce the damage?</summary>
+Add context and tune on your production traffic. Use the confidence field to rank the hypotheses, and keep a human reviewer. A confidence score ranks hypotheses but proves none of them, because a model can sound certain and still be wrong.
 </details>
 
-<details><summary>4. What is capacity prediction?</summary>
-It is a pattern that forecasts the team's GPU needs for the next quarter. The model learns from historical usage and predicts the expected usage. A buffer is added, and the procurement order is the output. In the example setup, the model is retrained daily and the forecast is reviewed quarterly.
+<details><summary>4. The forecast said 100 GPUs and real usage reached 200. What do you verify?</summary>
+Verify the history, correct the growth rate, and add the workload forecast. The model may have used bad history, a wrong growth rate, or ignored known projects. Then review the prediction on a regular schedule.
 </details>
 
-<details><summary>5. What are the scaling challenges for very large clusters?</summary>
-The three challenges are multi-cluster scheduling, which spans several Kubernetes clusters, multi-region failover, which spans several regions, and multi-tenant isolation, which serves several teams. Each one gets its own tool, and the tools combine into a single platform.
+<details><summary>5. Region A has 100 GPUs available and region B has none, yet every job lands in A. What is the cause and the fix?</summary>
+A workload may be pinned to region A by an affinity rule while capacity is uneven. Add a region-affinity weighting, balance the GPU quota across regions, and set a fairness policy. The queue alone does not guarantee balance.
 </details>
 
-<details><summary>6. What is the most common AI-assisted operations failure?</summary>
-The most common failure is that the detector fires too many false positives. The usual causes are a model that is too sensitive, a threshold set too low, and training data that misses production traffic. To fix it, you tune the model, raise the threshold, and retrain on production traffic.
+<details><summary>6. A regional outage takes 2 hours to recover from and the objective is breached. What does the chapter suggest?</summary>
+The failover may not be automated, data replication may be slow, or the workload may take long to start. Automate the failover, replicate more often, and pre-warm the workloads in the second region. Prove it in a drill rather than assuming the queue handles it.
 </details>
 
-<details><summary>7. What is the most common LLM-based runbook generation failure?</summary>
-The most common failure is a runbook that cannot be followed. The prompt is too vague, the model lacks context, or the validator misses the problem. To fix it, you improve the prompt, add context, strengthen the validator, and keep a human reviewer.
+<details><summary>7. Why can anomaly detection catch a GPU memory use that creeps down overnight when a static threshold cannot?</summary>
+The value still sits inside the range that looks normal, so a fixed threshold never fires. The model learns what normal looks like from history and predicts the expected value now. It alerts when the gap between predicted and actual crosses a threshold.
 </details>
 
-<details><summary>8. What is the most common AI-assisted root cause analysis failure?</summary>
-The most common failure is an analysis that points at the wrong cause. The model is not given enough context, or it is not tuned on production traffic. To fix it, you add context, tune on production traffic, use the confidence score, and keep a human reviewer.
+<details><summary>8. Why does the chapter filter traces and logs in plain code before the model sees them?</summary>
+Code is cheaper and more predictable than asking the model to scan every span. The trace filter keeps only spans over one second. A smaller input also makes the model's answer easier to check.
 </details>
 
-<details><summary>9. What is the most common capacity prediction failure?</summary>
-The most common failure is a capacity prediction that is wrong. The historical data may be wrong, the growth rate may be wrong, or the model may ignore the workload forecast. The fix is to verify the historical data, tune the growth rate, and include the workload forecast in the model.
+<details><summary>9. Why does the runbook validator not replace a human review?</summary>
+It confirms that all six section headings appear and that at least one line is a command from a known list. It does not check escalation contacts, and it cannot tell whether a command actually works. A person must check both.
 </details>
 
-<details><summary>10. What is the most common multi-cluster queue failure?</summary>
-The multi-cluster queue is unbalanced. A workload's affinity rule pins it to one region, and the cluster's resource availability is uneven. The fix is to add a region-affinity weighting to the queue and balance the GPU quota across regions.
+<details><summary>10. Why does the root cause parser reject a reply that is not valid JSON instead of guessing?</summary>
+Guessing at what the model meant could turn a malformed answer into a confident but wrong hypothesis. The parser demands the required keys and an integer confidence from 1 to 5. Anything else raises an error that a person can see.
 </details>
 
-<details><summary>11. What is the most common multi-region failover failure?</summary>
-The multi-region failover is slow. The failover is not automated, the data replication is slow, or the workload takes a long time to start. The fix is to automate the failover, replicate more often, and pre-warm the workloads in the second region.
+<details><summary>11. Why did a verifier inside the generation loop help the reasoning model write a CUDA kernel?</summary>
+Each proposed kernel was checked for correctness and measured for efficiency. The feedback became a better prompt for the next attempt, so the cycle was generate, verify, feedback, iterate. The book says a robust test suite such as KernelBench is still needed so rare edge cases do not slip in.
 </details>
 
-<details><summary>12. What is the relationship between AI-assisted anomaly detection and the alert routing?</summary>
-Anomaly detection is the input to alert routing. The detector fires when the actual value deviates from the prediction, and the alert goes to the on-call engineer. Alert routing is the mechanism that turns a detected anomaly into a page.
+<details><summary>12. You must pick an anomaly model. When do you start with Prophet and when move to an LSTM autoencoder, and what do you give up?</summary>
+Start with Prophet, which is robust to missing data and handles seasonality, but is less accurate on non-seasonal data. Move to an LSTM autoencoder when your data volume justifies the extra compute. It captures complex patterns but needs more training data. Score either one against anomalies your team has already confirmed.
 </details>
 
-<details><summary>13. What is the relationship between LLM-based runbook generation and the on-call rotation?</summary>
-Runbook generation produces the runbook, and the on-call rotation uses it. The LLM is the producer, and the on-call engineer is the consumer. The human review is the bridge between them.
+<details><summary>13. Do you plan capacity against the forecast line or its upper bound, and what do you give up?</summary>
+Plan against the upper bound when running short costs more than holding spare hardware. You give up some idle GPUs and money. In return a surprise project does not find you short.
 </details>
 
-<details><summary>14. What is the relationship between AI-assisted root cause analysis and the post-mortem?</summary>
-Root cause analysis produces candidate hypotheses, and the post-mortem is the team's learning document after the incident. The analysis is the input, and the post-mortem is the output. A human review connects the two.
+<details><summary>14. A new team asks for a large GPU quota. Do you give it, or start small and raise it later?</summary>
+Start small and raise the quota when usage data supports the change. The team waits for more capacity at first. In return one team's runaway job cannot starve everyone else, because the ResourceQuota caps what it can use.
 </details>
 
-<details><summary>15. What is the relationship between capacity prediction and the FinOps dashboard?</summary>
-The capacity prediction is the forward-looking view of how many GPUs the team will need. The FinOps dashboard is the backward-looking view of how much the team spent. One is the forecast, and the other is the actual.
+<details><summary>15. Would you adopt a high-level compiler such as Triton or keep hand-tuning CUDA kernels, and what do you give up?</summary>
+The chapter advises using these tools rather than fighting them, because they know what the hardware can do. You give up some visibility, since they can look like black boxes. In return they hold a lot of hard-won performance knowledge, and you spend effort on new designs.
 </details>
 
-<details><summary>16. What is the human-in-the-loop pattern?</summary>
-It is a pattern that combines AI automation with human review. The AI writes the draft, a human reviews it, and a human publishes it. The AI does most of the work, and the human does the quality control. Your review is what makes the AI safe to use.
+<details><summary>16. A workload has 100 GPUs and a growth rate of 20 percent per 90 days. What does the forecast function project for 180 days?</summary>
+The growth rate compounds once per 90-day period, and 180 days is two periods. That is 100 times 1.2 times 1.2, which is 144 GPUs. The function handles the exponent as the horizon divided by 90.
 </details>
 
-<details><summary>17. What is the most important AI-assisted operations metric?</summary>
-The anomaly detection precision. This metric tells the team whether the model is accurate and whether it is useful. A low precision means the model fires too many false positives, and the on-call engineer starts ignoring the alerts.
+<details><summary>17. The multi-cluster queue has two flavors, each with a GPU quota of 64 and a CPU quota of 800. What is the total in the shared queue?</summary>
+GPUs add up to 64 plus 64, which is 128. CPUs add up to 800 plus 800, which is 1,600. These are example values, so size your own from the capacity you have.
 </details>
 
-<details><summary>18. Why is AI-assisted operations a Tier 2 chapter?</summary>
-The answer given here explains why the topic matters, not what the tier label means. AI-assisted operations is what keeps the scale survivable. The platform team owns it, the on-call engineer uses it, and customers feel it during an incident. Without it, a team at the thousand-GPU scale risks burning out its on-call engineers.
+<details><summary>18. If a future GPU carries 16 HBM stacks of 64 GB each, how much local memory is that, and what does it do to GPU counts in the book's example?</summary>
+Sixteen times 64 GB is 1,024 GB on one board. With that much local memory, a job that needed 8 GPUs might fit on one. A job that needed 100 GPUs might fit on 10.
 </details>
 
-<details><summary>19. What is the difference between AI-assisted operations and AIOps?</summary>
-AI-assisted operations is the broader discipline that covers anomaly detection, runbook generation, root cause analysis, and capacity prediction. AIOps is a vendor term that is often used for anomaly detection and alerting. AI-assisted operations is the umbrella, and AIOps is one tool under it.
+<details><summary>19. The anomaly detection precision alert fires at below 80 percent for the week. In what order do you check?</summary>
+First measure precision and recall against anomalies your team has already confirmed. Second look at the threshold, since one set too low causes false positives. Third compare the training data with production traffic, then retrain if they differ.
 </details>
 
-<details><summary>20. What five questions should the AI-assisted operations lab let you answer in five seconds each?</summary>
-What is the current anomaly detection precision. What is the most recent LLM-generated runbook. What was the most recent AI-assisted root cause analysis. What is the Q+1 GPU forecast per the capacity prediction. What is the current multi-cluster queue latency. The five-second and 30-second figures are examples, so choose limits that fit your process.
+<details><summary>20. A three-month training run fails halfway. What does the chapter say you read first, and what leads would each clue give?</summary>
+Read the error logs, the device statistics, and any memory dumps, and decide between a hardware fault, a numerical overflow, and a networking problem. Several ECC memory errors on one node just before the crash point to the GPU's HBM. A loss that turns NaN at one iteration points to an unstable gradient, where clipping may help. Treat each as a lead to verify, not a verdict.
 </details>
 
 ---

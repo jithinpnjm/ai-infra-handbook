@@ -639,84 +639,84 @@ Try these after the lab. If you get stuck, the solution sketch shows the shape o
 
 ## Checkpoint questions
 
-<details><summary>1. What is the InferenceService contract?</summary>
-It is one Kubernetes CRD with six fields: model URI, runtime, scaling, canary, explainer, and transformer. The platform team owns the CRD and its controller, and the model team fills in the model-specific fields. KServe, Seldon Core, and BentoML all use this same contract.
+<details><summary>1. A canary ran 10 minutes at 10 percent of traffic and the SLO held. The team promoted it to 100 percent and production breached the SLO within 30 minutes. What went wrong and what do you change?</summary>
+The canary window was too short. Some regressions take longer than 10 minutes to show, such as a cold code path most requests never reach or a downstream service with its own queue. Add a shadow stage before the canary. The chapter's example schedule is 24 hours in shadow, 10 minutes at 10 percent, 30 minutes at 50 percent, then 100 percent, and you should set your own durations from how long your real failures take to appear.
 </details>
 
-<details><summary>2. What is the difference between KServe, Seldon Core, and BentoML?</summary>
-KServe is Kubernetes-native and supports pluggable runtimes. Seldon Core offers first-class inference graphs and explainers. BentoML is Python-first and handles multiple models well. All three implement the same InferenceService contract, so the choice depends on operations and the ecosystem your team already uses.
+<details><summary>2. A model was scaled to zero. The first request after idle took 30 seconds and a user complained. The on-call set `minReplicas: 1`. What did that cost, and what else could you have done?</summary>
+Keeping one replica means paying for one idle replica per model. In return the cold-start penalty goes away. The other option is to shrink the cold start itself with a smaller artefact, faster storage, or a runtime with warm caches. The first request waits for the artefact pull, the HBM load, and the runtime warm-up, so each of those is a place to save time.
 </details>
 
-<details><summary>3. What is the transformer pattern?</summary>
-A transformer is a sidecar that runs before the predictor and after it. Before, it handles input work such as BPE tokenisation, normalisation, and JSON reshaping. After, it handles output work such as response shaping and schema validation. KServe calls it the transformer field, Seldon uses a transformer container, and BentoML uses Python pre- and post-processing functions.
+<details><summary>3. An alert fires because a served model has had GPU utilisation under 30 percent for 30 minutes. What does the alert tell you and what would you consider doing?</summary>
+It tells you the model is costing money without doing much work. If the model only gets a handful of requests a day, scale-to-zero with `minReplicas: 0` stops a GPU from sitting reserved all day. First check that the cold start fits the user-facing SLO. The 30 percent and 30 minute values are example thresholds, so set yours from your own SLOs.
 </details>
 
-<details><summary>4. What is the difference between canary, A/B testing, and shadow mode?</summary>
-A canary moves a slice of traffic to the new model to confirm it is safe under the SLO. A/B testing routes requests by header or cohort to compare two models. Shadow mode sends the new model all the traffic but discards its responses, which collects ground truth. Canary checks safety, A/B checks which model is better, and shadow collects evidence without users seeing it. If you are unsure which one to reach for, start with the canary.
+<details><summary>4. A newly promoted model version crash-loops. The events show "failed to pull artefact: 403 Forbidden" and the artefact is present in the registry. What is the cause and the fix?</summary>
+The artefact exists, but the serving service account cannot read it. Its IAM bindings have expired or were never set. The fix is to give that service account one role, read access to the registry's bucket. The platform team manages this binding in Terraform, and CI checks it before each promotion.
 </details>
 
-<details><summary>5. What is the scale-from-zero penalty?</summary>
-It is the cold-start delay on the first request after the replicas drop to zero. The delay covers pulling the artefact from object storage, loading it into HBM, and warming the runtime. A 50 GB model on a 10 Gbps link takes about 40 seconds, and a 500 GB LLM takes about 7 minutes. The platform team owns this budget. You must choose between low cost from scale-to-zero and low latency from reserved capacity.
+<details><summary>5. A model sat idle and the autoscaler scaled it to zero. A traffic spike arrived and requests returned 503. What happened and what setting can help?</summary>
+The scale-from-zero delay was longer than the spike. In the chapter's example the SLO is p99 under 200 ms and scale-from-zero takes 30 seconds, so the new replicas were not ready in time. Knative's `panic-mode` can help. When the autoscaler sees a sudden spike, it allocates extra capacity above the steady-state target.
 </details>
 
-<details><summary>6. Why is scale-to-zero not always the right answer?</summary>
-A cold start can break a user-facing SLO. For example, a 30-second wait on the first request may drive users away, and 30 seconds is only an example. Reserved capacity with minReplicas set to 1 avoids the cold start. You pay for one idle replica per model instead.
+<details><summary>6. A model team says their pod in `team-data-science` cannot call a public API on the internet. Nothing is wrong with the pod. What is the likely reason?</summary>
+The namespace's network policy blocks it. The example policy allows inbound traffic only from the ingress namespace and outbound traffic only to `kube-system`. So pods cannot reach other teams' pods and cannot reach the public internet. The platform team owns this policy, so the team must ask for a change there.
 </details>
 
-<details><summary>7. What is Knative's panic mode?</summary>
-Panic mode is a Knative scaling state for traffic spikes. The autoscaler detects the spike and opens a panic window. During that window it allocates extra capacity beyond the steady-state target, and it does so faster than the steady-state autoscaler would. You pay for spare capacity during the panic, and in return you avoid 503 errors during the spike.
+<details><summary>7. Why can a CPU-based trigger make the autoscaler scale out when traffic has not risen?</summary>
+A CPU spike at startup counts as load to the HPA. It then adds replicas even though no more requests arrived. *Production Kubernetes*, chapter 13, gives this warning. A custom metric such as request count follows the real traffic more closely.
 </details>
 
-<details><summary>8. What is the inference-graph deadlock failure?</summary>
-In this failure, a RAG pipeline's retriever slows down while its queue grows. The generator's queue grows too, and both components saturate. The fix is explicit timeouts on every edge of the graph and explicit queue sizes on every component. The platform team's runbook should name those timeouts.
+<details><summary>8. Why does the default Kubernetes HPA not work well for a GPU-bound LLM, and what supplies the missing signal?</summary>
+The default HPA does not know about GPU queue depth. For GPU-bound LLMs queue depth, KV cache use, or per-pod token throughput is the natural signal. KServe's custom metric adapter can supply that signal. The autoscaler then scales on it instead of on CPU.
 </details>
 
-<details><summary>9. What is the right concurrency target for a GPU-bound LLM?</summary>
-It depends on how much KV cache the model's replica can hold. The chapter's starting points are 2 to 4 concurrent requests per replica for a 70B model that is quantised or sharded across several H100 GPUs with 80 GB HBM3 each (70 billion parameters at 16 bits need about 140 GB for weights alone), and 8 to 16 for a 7B model on an L40S with 48 GB GDDR6. As a rule of thumb, you measure throughput per replica and set the target near 70 to 80 percent of peak, then check that against your own load.
+<details><summary>9. Why does ModelMesh let you serve hundreds of small models without hundreds of pods, and why does that force every model onto one runtime?</summary>
+ModelMesh keeps the models in a shared memory pool. Each request carries a model ID, and the controller routes it to the right model without starting a new pod. Because the models share that one pool and runtime, the runtime must support every model format in the catalogue. Adding a new format may mean adding it to the shared runtime first.
 </details>
 
-<details><summary>10. Why is multi-tenancy the first operational concern?</summary>
-A serving platform that is not multi-tenant becomes multi-tenant by accident. Teams end up sharing a namespace, a registry, an ingress, and IAM, so their traffic and SLOs collide. The platform team's first job is to set up the multi-tenant primitives: namespaces, service accounts, network policies, and per-team quotas.
+<details><summary>10. Why can KServe roll a canary back by editing one field, and who decides when to do it?</summary>
+The canary is a field on the same InferenceService, `canaryTrafficPercent`, not a separate resource. KServe keeps the last rolled-out revision serving the remaining traffic. Setting the percentage to 0 or restoring the old spec rolls back. KServe does not judge the canary itself, so your pipeline or a tool such as Argo Rollouts watches the SLO and makes the change.
 </details>
 
-<details><summary>11. What is the difference between a transformer and a pre-processor?</summary>
-A transformer is a serving-platform component that runs as a sidecar. A pre-processor is code that runs inside the inference engine. Use transformers for serving concerns such as schema validation and JSON reshaping. Use pre-processors for engine concerns such as BPE tokenisation and normalisation.
+<details><summary>11. Why does shadow mode catch failures that a short canary misses, and why is it safe for users?</summary>
+Shadow mode sends the new model all of the traffic, so rare paths and long-tail cases get exercised. The new model's responses are discarded and the live model answers the user. The platform's logs keep the canary's answers for offline review. A 10 percent canary for 10 minutes sees far fewer cases than 24 hours of full shadow traffic.
 </details>
 
-<details><summary>12. What is ModelMesh?</summary>
-ModelMesh is a KServe-adjacent project that serves many models through one endpoint. It keeps the models in a shared memory pool, and each request names its model. The controller routes the request without starting a new pod. The trade-off is that every model shares one runtime. If you run hundreds of small models, one Deployment can serve them all.
+<details><summary>12. When would you choose scale-to-zero over reserved capacity, and what do you give up?</summary>
+Choose scale-to-zero for low-traffic internal tools, periodic batch predictors, or a documentation assistant that sees one request a minute. You save the cost of an idle GPU. You give up fast first requests, because the cold start takes seconds, not milliseconds. Keep reserved capacity for customer-facing services with steady, heavy traffic. Images over 1 GB with long startup scripts are poor candidates for autoscaling.
 </details>
 
-<details><summary>13. What is the difference between HPA and Knative request-concurrency scaling?</summary>
-HPA watches CPU or memory utilisation and scales replicas toward a target percentage. Knative request-concurrency watches the number of in-flight requests per replica and scales toward a target count. If your latency matters, Knative is the better fit, because CPU utilisation lags behind the load.
+<details><summary>13. Your team has a retriever and a generator that must work as one RAG unit. Another team has many small models and prefers Python over YAML. Which platform would you pick for each and why?</summary>
+For the RAG unit, pick Seldon Core, because its `graph` field chains models, ensembles, and routers as a first-class feature. For the Python-first team with many small models, pick BentoML, because one Bento can hold several models. KServe is a sound default for Kubernetes-native teams that want pluggable runtimes, but its inference graph support is limited. All three expose the same contract, so the choice comes down to operations.
 </details>
 
-<details><summary>14. Why does the InferenceService CRD need a `canaryTrafficPercent` field?</summary>
-The canary is part of the serving contract, so the CRD needs a field for it. The model team declares the new version and the traffic split. The platform operator turns that into routing config, such as an Istio VirtualService or a Knative route. The platform then watches the SLO for the window. That makes canary a first-class operation, not a hand-built side configuration.
+<details><summary>14. You want to know whether a new model is better than the old one, not only safe. Which rollout pattern do you use, and how does it differ from a canary?</summary>
+Use A/B testing. The router splits requests on a header or cookie that names the variant, so you can compare the two models on one user group. A canary only tests whether the new version is safe under the SLO. Shadow mode is a third option when you want evidence without users seeing the new answers.
 </details>
 
-<details><summary>15. What is the difference between a transformer and an explainer?</summary>
-A transformer runs on every request and reshapes the input or output, so it sits on the critical path. An explainer runs on request and produces per-prediction explanations such as SHAP, LIME, or attention maps. It is off the critical path but sits on the audit path, since every explanation is logged for regulator review.
+<details><summary>15. When would you use ModelMesh instead of one InferenceService per model, and what do you give up?</summary>
+Use ModelMesh when you have hundreds or thousands of small models, such as one per tenant or user cohort. Separate replicas for each would waste most of the cluster. You give up runtime freedom, because every model shares one runtime and the platform must support every format in the catalogue.
 </details>
 
-<details><summary>16. What is the cold-pull artefact size limit?</summary>
-There is no hard limit. Cold-start latency grows with artefact size, so the platform team caps the size at storage bandwidth times the cold-start budget. A 100 Gbps pull with a 10-second budget supports a 125 GB artefact. If you only have a 1 Gbps pull with the same budget, you can support 1.25 GB.
+<details><summary>16. A 50 GB model artefact is pulled over a 10 Gbps link at full line rate. How long does the pull take?</summary>
+About 40 seconds. 50 GB is 400 gigabits, and 400 divided by 10 Gbps is 40 seconds. Loading into HBM and warming the runtime come on top of that.
 </details>
 
-<details><summary>17. What is the difference between KServe's autoscaling and Knative's autoscaling?</summary>
-KServe's autoscaling is a thin layer over Knative's. It adds custom metrics such as GPU utilisation and queue depth, along with InferenceService defaults. The core mechanism is still Knative's request-concurrency metric, and KServe adds the inference-specific settings.
+<details><summary>17. The same link pulls a 500 GB LLM. How long is the pull, and what does that mean for scale-to-zero?</summary>
+About 7 minutes. 500 GB is 4,000 gigabits, and 4,000 divided by 10 Gbps is 400 seconds, which is just under 7 minutes. A first request that waits that long breaks almost any user-facing SLO. Measure real pull and load time before you enable scale-to-zero for a large model.
 </details>
 
-<details><summary>18. What is the difference between an InferenceService and a Deployment?</summary>
-A Deployment runs a service, while an InferenceService runs a model. The InferenceService holds the model URI, runtime, canary, explainer, transformer, and autoscaler. A Deployment holds the container image, the replica count, and the resource requests. When you serve a model, use the InferenceService. Use the Deployment for everything else.
+<details><summary>18. A model has `scaleTarget: 4` and `maxReplicas: 8`. A load test holds 100 concurrent connections. How many requests can the service hold in flight, and how many replicas would it want?</summary>
+At the limit it holds 32 in flight, since 8 replicas times 4 requests is 32. For 100 concurrent requests at 4 per replica it would want 25 replicas, because 100 divided by 4 is 25. The cap of 8 stops it well short. So the extra requests queue and latency rises, unless you raise `maxReplicas` or lower the load.
 </details>
 
-<details><summary>19. Why does the platform team own the InferenceService CRD?</summary>
-The CRD is where the cluster and the model team meet. The platform team owns its schema, including required fields and defaults. It owns the controller that turns the CRD into Deployments, Services, and HPA objects. It also owns validation and the multi-tenant primitives, such as namespaces, RBAC, and quotas. The model team fills in the model-specific fields, and the platform team owns the rest. If you own the platform, you decide these defaults.
+<details><summary>19. p99 latency is 30 seconds while the average looks fine. What do you check first, second, and third?</summary>
+First, check GPU memory in Grafana, where 100 percent in the chapter's example shows the replicas are saturated. Second, compare `scaleTarget` with how many concurrent requests the memory left after the weights can hold, since each request's KV cache takes a share. Third, check whether the autoscaler's new replicas are overloaded in the same way. The fix is a lower `scaleTarget`, and you should measure your own numbers.
 </details>
 
-<details><summary>20. What five questions should the serving lab let you answer in five seconds each?</summary>
-The five questions cover what is running, how the autoscaler is set up, how long a cold start takes, how traffic is split, and how busy the GPUs and queues are. Each answer should come quickly. If any answer takes longer than your own limit, the platform is not yet production-ready, and 30 seconds is only an example limit.
+<details><summary>20. A RAG pipeline serves traffic but the generator times out and errors climb. In what order do you look?</summary>
+First, check whether the retriever is slow under load, since the generator waits on it. Second, check the generator's timeout on that edge and whether it is too short. Third, check the retriever's queue, which in the example has no bound and keeps growing. The fix is explicit timeouts on every edge and explicit queue sizes on every component, and the runbook should name them.
 </details>
 
 ---

@@ -609,84 +609,84 @@ Afterwards, you should be able to answer five questions quickly. Check the catal
 
 ## Checkpoint questions
 
-<details><summary>1. What six STRIDE categories does the chapter adapt for AI infrastructure?</summary>
-The six categories are Spoofing, Tampering, Repudiation, Information Disclosure, Denial of Service, and Elevation of Privilege. You can map each one to an AI-specific form: a fake model identity, poisoned training data, a denied prediction, stolen weights, GPU pool exhaustion, and a jump from a tenant namespace to cluster admin.
+<details><summary>1. At 2 a.m. an alert shows an unknown client pulling large volumes of responses from your inference API. Why can the on-call engineer judge quickly whether this is a traffic spike or model copying only if a threat model already exists?</summary>
+The chapter says the engineer can answer quickly only when the team has already written down what must be protected and how it could be attacked. That written list is the threat model. Without it, the engineer has to work out the assets and the attack paths during the incident.
 </details>
 
-<details><summary>2. What four attack surfaces does the chapter walk through?</summary>
-The four surfaces are the public API, the traffic between services, the artifacts such as images, weights and datasets, and the team members themselves. Each surface has its own threats and its own controls.
+<details><summary>2. A vulnerability report arrives on a Friday afternoon. Why does it matter that every threat in your catalogue uses the same fields?</summary>
+You need to know whether the catalogue already covers the report. Identical fields let you compare, sort, and search the threats quickly. Each threat in the template also carries a stable ID, an owner, and a review date, so you can see who answers for a match.
 </details>
 
-<details><summary>3. What categories does the asset inventory cover?</summary>
-The inventory covers models, weights, datasets, keys, audit logs, GPUs, and credentials. Every asset needs a value, a threat, and a control, which makes the inventory the starting point of the threat model.
+<details><summary>3. After the workshop your catalogue holds 500 threats and the team cannot decide what to work on first. What do you do?</summary>
+The workshop produced too many threats and nobody filtered them. Keep the top 10 to 20 threats, archive the rest, and review the top threats each quarter. A short list turns the catalogue back into a work order.
 </details>
 
-<details><summary>4. What is the risk matrix formula?</summary>
-The risk score is likelihood multiplied by impact. Both scales run from 1 (Very Low or Low) to 5 (Very High or High). In the example bands, 20 to 25 is Critical, 15 to 19 is High, 10 to 14 is Medium, 5 to 9 is Low, and 1 to 4 is accepted. These bands are examples that your team sets.
+<details><summary>4. Your threat model lists 30 threats, all generic, and the AI team says it misses what they worry about. What went wrong and how do you fix it?</summary>
+The workshop left out the data science team, so the AI-specific variants never came up. Bring that team into the workshop, add the AI-specific variants such as poisoned training data or exhausted GPU pools, and review the model with them.
 </details>
 
-<details><summary>5. What is the threat-model workshop?</summary>
-If you run the workshop, plan for a half-day session with the platform, security, data science, and compliance teams. It starts from a scope, which is the system being modelled, and it produces a threat catalogue, a risk matrix, and a mitigation status. The chapter suggests holding it quarterly, and its output becomes the threat model document.
+<details><summary>5. The security team has identified the risks and proposed fixes, but the budget request stalls with finance. What is the likely cause and what do you change?</summary>
+The request is not connected to business priorities, so finance does not see the value. Present the threat model to the people who approve spending. Show the budget against the risk scores and tie each fix to a business priority.
 </details>
 
-<details><summary>6. What is the most common threat-model failure?</summary>
-The most common failure is an out-of-date threat model. A new CVE appears, the model does not list it, and nobody realises it applies. The usual cause is that nobody reviews the model quarterly or watches CVE feeds. The fix is a scheduled quarterly workshop, automated CVE monitoring, and adding each relevant CVE to the catalogue.
+<details><summary>6. An auditor finds that controls are in place but no control points to a threat. What does this tell you about how the controls were designed and what rule do you adopt?</summary>
+The controls were designed ad hoc, so the threat model is not the source of truth for them. Adopt one rule. Every control must justify a threat, and every threat must have a control. Then "we have a firewall that addresses threats T1 through T7" becomes a statement you can defend.
 </details>
 
-<details><summary>7. What is the second most common threat-model failure?</summary>
-The second most common failure is a model that is too generic. It lists 30 generic threats and no AI-specific ones, so it misses the risks the AI team cares about. The workshop left out the AI team. The fix is to bring the data science team into the workshop and add AI-specific variants.
+<details><summary>7. Why can a permission check not help against a spoofing threat?</summary>
+Authentication establishes who a user or application is, and authorization decides what that identity may do. Spoofing attacks the first step. If the identity is faked, the permission check runs against the wrong identity and approves what that identity is allowed to do.
 </details>
 
-<details><summary>8. What is the most common threat-priority failure?</summary>
-The most common priority failure is a catalogue that is too long. A catalogue of 500 threats leaves the team unable to choose, so it cannot focus on the top 10. Keep the top 10 to 20 threats, archive the rest, and review the top threats quarterly.
+<details><summary>8. Why can a rare threat with severe impact score as high as a common threat with modest impact?</summary>
+The risk score multiplies likelihood by impact, so two different pairs can give the same product. In the grid, likelihood 2 with impact 5 gives 10, and likelihood 5 with impact 2 also gives 10. Read both numbers and not only the total.
 </details>
 
-<details><summary>9. What is the most common threat-driven control failure?</summary>
-The most common control failure is that the threat model is not used. The controls exist, but nobody can say which threat each one answers. If you want controls to hold up, make the threat model the source of truth. Every control must justify a threat, and every threat must have a control.
+<details><summary>9. Why is storing a key in a Kubernetes Secret not protection by itself?</summary>
+Secrets are base64 encoded, and base64 is encoding, not encryption. Anyone who can read the Secret can decode it. The real protection comes from RBAC, which decides who can read the Secret.
 </details>
 
-<details><summary>10. What is the most common risk-matrix-update failure?</summary>
-The risk matrix is not updated. The same likelihood and impact stay in place for a year, even though the real ones have changed. You should review the matrix quarterly, track real incidents, and update the scores from what actually happened.
+<details><summary>10. Why does running a container as root make container escape more dangerous?</summary>
+Production Kubernetes chapter 15 explains that root inside the container can become root on the host if the attacker breaks out. A non-root runtime user leaves the attacker with a weaker position after an escape. The chapter lists Pod Security Standards, seccomp, and AppArmor as the mitigations for container escape.
 </details>
 
-<details><summary>11. What is the relationship between the threat model and the controls?</summary>
-The threat model is the source of truth for the controls. Each control in Chapters 18.2 to 18.7 is justified by a threat in the model. Without a threat model, auditors cannot check the controls; with one, they can.
+<details><summary>11. Why does a rate limit per API key give little protection by itself?</summary>
+A rate limit is only as strong as the identity behind it. If one attacker can create many keys, each key gets its own allowance. The chapter lists per-tenant rate limiting next to per-key limiting for this reason.
 </details>
 
-<details><summary>12. What is the relationship between the threat model and the audit log?</summary>
-The threat model defines the threats, and the audit log records events that show whether those threats are happening. The audit log is the evidence that the controls work. Without a threat model, the log is just noise; with one, it becomes evidence.
+<details><summary>12. When would you run the workshop with four teams in the room instead of letting the platform team write the model alone, and what do you give up?</summary>
+Use the four-team workshop whenever the system has risks that only some teams can see. Platform, security, data science, and compliance each see different failure modes. You give up time, because the chapter's example is a half-day session. A model written by one team misses the risks other teams can see.
 </details>
 
-<details><summary>13. What is the relationship between the threat model and the SLO?</summary>
-The SLO is the commitment to the customer, and the threat model lists the threats to that commitment. Controls reduce those threats. The SLO is the promise the customer sees.
+<details><summary>13. A threat has likelihood 1 and impact 3. Would you spend money mitigating it, and what do you give up?</summary>
+The score is 1 × 3 = 3, which is in the 1 to 4 band that the example table says to accept. The example budget for that band is $0. You give up any protection against that threat, so the owner should record that the risk was accepted on purpose.
 </details>
 
-<details><summary>14. What is the relationship between the threat model and the compliance?</summary>
-Compliance is the regulatory commitment, and the threat model lists the threats to it. Controls reduce those threats. Compliance is the contract the regulator sees.
+<details><summary>14. In the example budget a Critical threat gets $100k or more and a Low threat gets under $1k. What does this rule give you and what does it cost?</summary>
+The money goes where the risk is highest, so the worst threats get fixed first. The cost is that Low threats wait up to a year and get little spending. The dollar figures are placeholders, so replace them with estimates from your own finance team.
 </details>
 
-<details><summary>15. What is the relationship between the threat model and the incident response?</summary>
-The threat model names the threats, and incident response handles the ones that actually happen. Incident response is the operational partner of the model. Without the model, response tends to be reactive; with it, the team can act earlier.
+<details><summary>15. The chapter suggests a quarterly review. When would you review more or less often, and what do you give up?</summary>
+The cadence is a practice you can adjust. A faster cadence keeps the model close to new CVEs and attack patterns but costs more meeting time. A slower cadence is cheaper, but a model that nobody revisits quickly falls behind the platform it describes.
 </details>
 
-<details><summary>16. What is the relationship between the threat model and the post-mortem?</summary>
-The post-mortem is the learning record after an incident, and the threat model is the catalogue of known threats. A post-mortem can reveal a new threat, which then goes into the model. The two documents form a loop: the post-mortem feeds the model, and the model feeds the controls.
+<details><summary>16. T-001 model weight exfiltration scores likelihood 3 and impact 5. What is its risk score, which band is that in the example table, and how fast should it be mitigated?</summary>
+The score is 3 × 5 = 15. In the example table 15 to 19 is High, and High means mitigation within 1 month. The chapter marks these bands as examples that your business can change.
 </details>
 
-<details><summary>17. What is the most important threat-model metric?</summary>
-The most important metric is the mitigation status of the top 10 threats. It tells you whether those threats have controls. Any unmitigated top-10 threat is a security incident waiting to happen, so the metric reflects the team's security posture.
+<details><summary>17. Compare T-004 model backdoor at 2 × 5 with T-008 model version rollback attack at 2 × 4. What are their scores and mitigation timelines?</summary>
+T-004 scores 2 × 5 = 10, which is Medium and gets mitigation within 1 quarter. T-008 scores 2 × 4 = 8, which is Low and gets mitigation within 1 year. One point of impact moves the threat across a band and changes the deadline by two quarters.
 </details>
 
-<details><summary>18. Why is threat modeling a Tier 2 chapter?</summary>
-The chapter gives the threat model a Tier 2 label because it is the foundation of the security controls. Without it, the controls are guesses. The platform team owns the model, and auditors and regulators inspect it.
+<details><summary>18. The sample asset inventory lists audit logs at 100 GB per day with 7-year retention. How much log data does that mean you must keep?</summary>
+Seven years is 7 × 365 = 2,555 days. At 100 GB per day that is 2,555 × 100 = 255,500 GB, or about 255 TB. The chapter calls these counts placeholders, so use your own log volume.
 </details>
 
-<details><summary>19. What is the difference between a threat model and a risk assessment?</summary>
-A risk assessment is a one-time evaluation of risks. A threat model is a living artifact, updated quarterly, that holds the asset inventory, attack surface, catalogue, risk matrix, and mitigation status. The assessment is a snapshot, and the threat model keeps changing.
+<details><summary>19. A new CVE is published, the threat model does not list it, and nobody noticed it applies. What do you check, in order?</summary>
+First check whether the quarterly workshop is scheduled, because the diagnosis says nobody reviews the model on a schedule. Second check whether anyone watches CVE feeds, because that is the other named cause. Third add the relevant CVE to the catalogue and check the catalogue freshness metric, which should alert when it is more than 90 days stale.
 </details>
 
-<details><summary>20. What five questions should the threat-model lab let you answer in five seconds each?</summary>
-You should answer five questions quickly: catalogue freshness, risk-driven budget use, top-10 mitigation status, the newest threat, and the next review date. The chapter's 30-second bar is an example, not a standard. A slow answer suggests the model is not yet run as a service.
+<details><summary>20. The likelihood and impact scores have not changed in a year although the real situation has. What do you check, in order?</summary>
+First check whether anyone reviews the matrix on a schedule. Second compare the scores with the incidents that actually happened. Third update the scores from what you observed and keep reviewing quarterly.
 </details>
 
 ---

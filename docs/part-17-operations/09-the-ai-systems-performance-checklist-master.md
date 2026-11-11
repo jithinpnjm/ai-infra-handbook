@@ -1109,87 +1109,85 @@ Try these on your own cluster, or on a lab cluster if you do not have one yet.
 
 ## Checkpoint questions
 
-<details><summary>1. What 10 categories does the master checklist cover?</summary>
-The master checklist covers ten categories: hardware (GPUs, CPUs, memory, and storage), software (the operating system, NVIDIA software, and cluster software), network (hardware and software), storage (object storage, the distributed filesystem, and local disks), model architecture (attention, the KV cache, and precision), training (mixed precision, distributed training, and optimizers), inference (continuous batching, PagedAttention, and tokenization), operations (SLOs, alerting, on-call, and post-mortems), security (signing, IAM, network policies, and the audit log), and observability (Prometheus, Grafana, Loki, Tempo, and exporters). The list holds 175-plus items in total, although the tables in this chapter count 207 rows.
+<details><summary>1. A training job slows overnight with no code change. DCGM shows a GPU at 86 degrees C and its clocks below maximum. What is happening and what do you do?</summary>
+The GPU is probably throttling from heat, since the checklist uses 85 degrees C as the limit and one weak card holds back every card in a distributed job. Run `nvidia-smi dmon` to confirm the clocks fall below their maximum. Then improve cooling, raise the fan speed, or lower the power limit slightly.
 </details>
 
-<details><summary>2. What is the target checklist score?</summary>
-The handbook gives 90 percent as an example target, not a published standard. Your score is the number of yes answers divided by the total number of items. Track it every quarter, since the score works as the team's scorecard.
+<details><summary>2. GPU utilisation sits near 70 percent with no errors anywhere. What do you suspect and how far can the fix go?</summary>
+Suspect the data pipeline, because storage problems often look like GPU problems. Check the loader workers, pinned memory, prefetching and storage speed. Fixes like these often lift utilisation from about 70 percent to over 95 percent on the same hardware. Fix input before buying more GPUs.
 </details>
 
-<details><summary>3. What is the most common checklist failure mode?</summary>
-The most common failure mode is that nobody uses the checklist. The team does not know what the items are, what the score is, or what to improve. The fix is to train the team on the checklist, add it to onboarding, and enforce it in code review.
+<details><summary>3. In a multi-GPU job, rank 0 is the slowest GPU. Why, and what do you change?</summary>
+Rank 0 often does extra work, such as gathering stats, so it becomes the slowest GPU and drags the rest. Profile every rank to see it. Move that work to the other ranks, for example by sharing I/O and logging duties, so equal work stops the slowest rank from holding back the others.
 </details>
 
-<details><summary>4. What is the difference between the checklist and the failure mode catalogue?</summary>
-The checklist is a forward-looking tool that asks whether you are doing everything you should. The failure mode catalogue looks backward, asking which failures you have seen and how you detect them. So the checklist is preventive, and the catalogue is reactive.
+<details><summary>4. GPU utilisation drops every five minutes like clockwork. What is the likely cause and fix?</summary>
+A dip at regular intervals usually has a cause, and a dip every five minutes may match checkpoint saves. Stagger the checkpoints and use asynchronous flushes. Write checkpoints asynchronously or to local disk first, then copy to network storage later.
 </details>
 
-<details><summary>5. What is the difference between the checklist and the runbook?</summary>
-The checklist asks the question: are we doing this? The runbook gives the answer for a failure: when this breaks, do this. So the checklist is preventive, and the runbook is reactive. You verify the checklist each quarter, and you open the runbook during an incident.
+<details><summary>5. All-reduce on an 8-GPU node is slow and the node has one 100 Gbps NIC. What is wrong?</summary>
+Eight GPUs can generate more than 200 Gbps during all-reduce, so one 100 Gbps NIC becomes the limit. Use several NICs per node, and 200 or 400 Gbps InfiniBand at scale. Also watch PCIe limits, because NICs and GPUs that share a root complex compete for bandwidth.
 </details>
 
-<details><summary>6. What is the difference between the checklist and the SLO?</summary>
-The SLO is the target the platform team commits to meet. The checklist confirms that the controls needed to meet that target are in place. So the SLO is the goal, and the checklist is the path to it.
+<details><summary>6. The checklist score is 100 percent, yet customers complain and the cluster is broken. Where do you look first?</summary>
+Look at the checklist before the cluster. It is missing critical items or measures the wrong things. Add the missing items, remove the ones that do not matter, review the list each quarter, and update it after every incident.
 </details>
 
-<details><summary>7. What is the most important category in the checklist?</summary>
-Hardware is the foundation of the list, because software, network, storage, and the other layers all depend on it. Hardware items are also the first to verify and the first to fail. The chapter ranks hardware as the most important category, but that ranking is the handbook's view rather than a published standard.
+<details><summary>7. Why do hot activations and the KV cache belong in HBM and not in Grace CPU memory?</summary>
+GPUs can read Grace LPDDR coherently over NVLink-C2C, which runs at 900 GB/s, but bandwidth and latency stay lower than HBM. Hot data in CPU memory could make the link the bottleneck. CPU memory works better as a cache for colder data, and only if you prefetch that data explicitly.
 </details>
 
-<details><summary>8. What is the second most important category in the checklist?</summary>
-Observability is the platform team's situational awareness. Without it, the team cannot detect failures or verify the other checklist items.
+<details><summary>8. Why must persistence mode stay on when you use MIG?</summary>
+Without persistence mode the MIG partitions reset with each job. Changing the layout on the fly also resets the GPU and can disrupt running work. So configure MIG at cluster boot, plan maintenance windows for changes, and use MIG Manager to recreate the layout after reboot.
 </details>
 
-<details><summary>9. What is the difference between the USE method and the checklist?</summary>
-The USE method is a real-time performance method that checks utilisation, saturation, and errors for every resource. The checklist is a quarterly check that every control is in place. You use the USE method during an incident, and you use the checklist in the quarterly review.
+<details><summary>9. Why do many tiny kernels slow a job, and what do you do about it?</summary>
+Each kernel launch costs tens of microseconds, so many tiny back-to-back kernels leave the GPU idle between them. Fuse them, and try `torch.compile(mode="reduce-overhead")` first. For a static loop that runs thousands of times, capture it as a CUDA Graph and launch the graph.
 </details>
 
-<details><summary>10. What is the difference between the roofline model and the checklist?</summary>
-The roofline model predicts performance from the compute peak, memory bandwidth, and arithmetic intensity. The checklist verifies that each control is in place. You use the roofline model while optimizing a kernel, and you use the checklist in the quarterly review.
+<details><summary>10. Why does a GPU process on the wrong NUMA node run slower?</summary>
+Cross-NUMA traffic can halve the effective PCIe or NVLink bandwidth. Pin each GPU process to the CPU cores of the NUMA node nearest its GPU with `numactl` or `taskset`. Bind memory with `numactl --membind` so DMA buffers come from nearby RAM, and bind NIC interrupts to the NIC's own node.
 </details>
 
-<details><summary>11. What is the difference between the decision tree and the checklist?</summary>
-The decision tree is a real-time guide for finding the bottleneck, whether it is the GPU, memory, CPU, network, or storage. The checklist is a quarterly check that every control is in place. You use the decision tree during an incident, and you use the checklist in the quarterly review.
+<details><summary>11. Why do millions of small training files hurt, and what is the fix?</summary>
+They overwhelm the metadata server, since every file costs an open and a check. Pack them into tar or RecordIO files, use ingestion libraries that batch reads, or enable metadata caching on clients. This cuts per-file overhead and shortens epoch startup.
 </details>
 
-<details><summary>12. What is the difference between the cost-vs-latency trade-off and the checklist?</summary>
-The cost-vs-latency trade-off is a decision tool for choosing between more GPUs and faster responses. The checklist is a quarterly check that every control is in place. You use the trade-off during procurement, and you use the checklist in the quarterly review.
+<details><summary>12. `torch.compile` meets your speed target. Do you still write a custom CUDA kernel?</summary>
+No. Choose the least intrusive fix that meets the goal. Heavy custom code can make a system brittle and costly to maintain. You give up the extra speed a custom kernel might bring, and escalate to deeper changes only when the simpler ones fall short.
 </details>
 
-<details><summary>13. What is the difference between the capacity planning model and the checklist?</summary>
-The capacity planning model is a forecast for the next quarter's GPU order. The checklist is a quarterly check that every control is in place. You use the model before procurement, and you use the checklist in the quarterly review.
+<details><summary>13. When would you set a power limit with `nvidia-smi -pl`, and what do you give up?</summary>
+Use it under a tight power budget. A slightly lower limit keeps the GPU in a stable thermal and power envelope. For some models an 80 percent limit gives nearly the same speed with 20 percent less power. You may give up some speed, so test several limits and compare throughput per watt.
 </details>
 
-<details><summary>14. What is the difference between the FinOps dashboard and the checklist?</summary>
-The FinOps dashboard is a real-time cost tool that shows spending per team and the cost-vs-latency trade-off. The checklist is a quarterly check that every control is in place. You watch the dashboard daily, and you run the checklist quarterly.
+<details><summary>14. Should you scale from N to 2N GPUs if utilisation will fall?</summary>
+Overheads grow as you add GPUs, so the speedup must justify the cost. Reaching about 95 percent utilisation on N GPUs is usually a better step than scaling to 2N at lower utilisation. Measure scaling efficiency on a few nodes before buying more.
 </details>
 
-<details><summary>15. What is the difference between the security checklist and the operations checklist?</summary>
-The security checklist covers the controls that protect the cluster, such as image signing, IAM, network policies, and the audit log. The operations checklist covers the controls that keep the cluster running, such as SLOs, alerting, on-call, and post-mortems. The two overlap, since the audit log appears in both, and they work best together.
+<details><summary>15. When do you choose MPS and when MIG for sharing one GPU, and what does each cost you?</summary>
+Use MPS when several processes each cannot fill the GPU, so their kernels overlap and total throughput rises. Use MIG to split a GPU into up to seven slices with guaranteed resources for jobs smaller than one GPU. MIG is wrong for tightly coupled parallel jobs, and changing its layout resets the GPU.
 </details>
 
-<details><summary>16. What is the difference between the model architecture checklist and the inference checklist?</summary>
-The model architecture checklist covers choices that shape the model's performance, such as attention pattern, KV cache size, and precision. The inference checklist covers the engine that serves the model, such as continuous batching, PagedAttention, and request batching. The architecture sets the model's potential, and the inference engine turns that potential into served traffic.
+<details><summary>16. Eight GPUs each consume 200 MB per second. What do one node and a hundred nodes need from storage?</summary>
+One node needs 8 times 200 MB per second, which is 1.6 GB per second. A hundred nodes need 100 times 1.6, which is 160 GB per second. Few central filesystems can sustain that, so shard data, add per-node caches, or preload to local disks.
 </details>
 
-<details><summary>17. What is the most common checklist staleness failure?</summary>
-The most common staleness failure is a checklist that names vendor products that have since changed. A team updates the product, but the checklist still names the old one. Update the checklist after every vendor release, and automate a freshness check.
+<details><summary>17. A 100 Gbps link is fully used. What rate in GB per second should it show, and how many such NICs does 200 Gbps of traffic need?</summary>
+Divide 100 Gb per second by 8 bits per byte, which gives 12.5 GB per second. The traffic is more than 200 Gbps, which is more than 25 GB per second. So you need more than two 100 Gbps NICs, and the chapter suggests several per node.
 </details>
 
-<details><summary>18. What is the most common checklist score failure?</summary>
-The most common score failure is a perfect score on a broken cluster. The checklist is not measuring what matters, or it is missing critical items. Add the missing items, remove the ones that do not matter, and update the list after every incident.
+<details><summary>18. A team answers yes to 150 items. What is its score using all 207 items in the tables, and what would the 175 in the formula wrongly give?</summary>
+The correct score is 150 divided by 207, which is 72.5 percent. Using 175 gives 150 divided by 175, which is 85.7 percent. That overstates the score by about 13 points. Replace 175 with the real count before you report a score.
 </details>
 
-<details><summary>19. Why is the master checklist a Tier 1 chapter?</summary>
-The master checklist is the platform team's reference for performance engineering, and this handbook marks it as a Tier 1 chapter. The CFO can look at it before a procurement order is signed, the on-call engineer uses it during an incident, and a new engineer sees it during onboarding. A team without it cannot easily tell what it does not know.
+<details><summary>19. Inference tail latency is high. What do you check first, second and third?</summary>
+First profile the latency distribution, not only the mean. Second look for unexpected CPU work, garbage-collection pauses and excessive context switches. Third pin the server to specific cores and isolate it from noisy neighbours, then try real-time scheduling if jitter remains.
 </details>
 
-<details><summary>20. What five questions should the master checklist lab let you answer in five seconds each?</summary>
-The lab should let you answer five questions in five seconds each. They are the current master checklist score, the score per category, the items marked no, the most recent checklist update, and the next scheduled review. The five-second and thirty-second limits are example targets, and if any answer takes longer than thirty seconds, the checklist is not yet a production service.
+<details><summary>20. GPUs are not near 100 percent utilisation and you suspect input. What do you do, in order?</summary>
+First confirm with `dstat` or DCGM that the GPUs wait on data. Second check how many MB per second you read and how busy the loader cores are. Third tune workers, prefetch buffers, network buffers and disk settings. If I/O is the limit, invest in faster storage or caching before more GPUs.
 </details>
-
----
 
 ## Sources and review notes
 

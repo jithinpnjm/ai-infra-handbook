@@ -929,84 +929,84 @@ These exercises extend the lab. Each one has a deliverable you can check by read
 
 ## Checkpoint questions
 
-<details><summary>1. What four failure shapes does MLOps exist to prevent?</summary>
-They are the works-on-my-machine problem, where the data cannot be reproduced, the magic seed problem, where no experiment record exists, the silent promotion problem, where no gate guards the release, and the stale model problem, where nothing triggers retraining. Each one has its own fix: data versioning, experiment tracking, a promotion gate function and a retraining trigger.
+<details><summary>1. A churn model's production AUC fell from 0.92 to 0.78 and you open the old notebook to retrain. A second engineer runs it and gets 0.86. What three things broke, and what record would have prevented each?</summary>
+The CSV was overwritten by a later pull, the encoding helper was edited in place, and the seed was hard-coded. A dataset ID with a content hash would have kept the data. A code commit stored in the run record would have kept the encoding logic. A logged seed and run record would have shown which number was the production one.
 </details>
 
-<details><summary>2. Why is "just be more careful" not a sufficient fix?</summary>
-A discipline has to survive deadlines, staff turnover and late-night pages. A mechanical control, such as a promotion gate that checks an exit code or an admission controller that refuses unsigned images, survives all three. A verbal rule does not.
+<details><summary>2. Offline AUC rose from 0.91 to 0.93, the canary breached its error budget, and the rollback took 18 minutes because someone had to find the old model. What do you change?</summary>
+The canary worked, so the gap is the rollback path. Keep the previous production model ready in the serving system. Let the serving system read its model from a tag or a registry stage. A rollback then becomes a tag change and not a hunt for the old artifact.
 </details>
 
-<details><summary>3. Name the four pillars of MLOps and the artifact each pillar produces.</summary>
-Data versioning gives you a content-hashed dataset ID. Code versioning gives you a pinned, signed container image. The model pillar gives you a registry entry, with its run ID, data ID, code commit, signature and metrics. Deployment gives you a tagged artifact in the serving system, with a clear rollback path.
+<details><summary>3. Two production models both use a feature called `user_tenure_days`, and their values differ by 6 percent. One team uses `signup_date` and the other uses `first_active_date`. What is the root cause and the fix?</summary>
+The cause is that no feature store exists, so each team recomputes the feature in its own pipeline. The fix is a feature store with one definition and one owner. It has two read paths, online for serving and offline for training. You then audit any consumer that bypasses the store.
 </details>
 
-<details><summary>4. What is the difference between MLOps Level 1 and Level 2?</summary>
-At Level 1, training, tracking, the registry and offline evaluation run automatically, but a person still deploys the model. At Level 2, promotion, canary deployment, retraining driven by monitoring, and rollback are all automated.
+<details><summary>4. An agent application made 800 LLM calls for one user request. The cost guardrail fired at 700 calls, yet the loop ran on to the hard limit. Why, and what do you change?</summary>
+The guardrail only reported and never blocked, and the loop had no iteration cap. Set a hard iteration cap and a hard cost cap per request in the runtime, and make both blocking. Add a loop detector that aborts after a run of identical tool calls. Choose the run length from your own traces.
 </details>
 
-<details><summary>5. What does a promotion gate function return, and what does the pipeline do with the return value?</summary>
-The function returns pass or fail, along with explicit reasons. The pipeline reads the exit code. A pass advances the registry stage, and a fail blocks the advance and logs the reasons. On the happy path, no human is involved.
+<details><summary>5. A model scores 0.94 AUC offline. A month after launch, users find that one pasted string makes it ignore its system prompt and print credentials. What did validation miss, and what do you add to the pipeline?</summary>
+Validation tested accuracy and never tested robustness, because nobody red-teamed the model. Add a red-team step on every promotion to staging. Make the red-team report a required artifact in the promotion gate, so no model reaches production without a pass.
 </details>
 
-<details><summary>6. What metadata must a registered model carry to be auditable?</summary>
-At minimum, the record needs the run ID that points to the experiment, the artifact URI in object storage, the data snapshot ID, the code commit and the environment image hash. It also needs the input and output signatures, the overall and per-segment metrics, the stage (staging, production or archived), the creator and the creation time. If the model is a fine-tune, its lineage field names the parent model and run.
+<details><summary>6. A user reports wrong answers from your RAG service, but the CPU, GPU and latency dashboards are all green. What do you ask for, and why do the dashboards not help?</summary>
+LLM failures such as prompt regression and retrieval staleness do not look like outages. The cluster is healthy and the model loads, but the answers are wrong. You need the prompt, the retrieved context and the agent trace for that request, because they explain the answer.
 </details>
 
-<details><summary>7. Why is Git not sufficient for dataset versioning?</summary>
-Git cannot hold data at that size, and it cannot show a useful diff of binary files. It also has no concept of content-addressed storage for large objects. Datasets are big, they change, and they are shared, so you need a metadata layer such as DVC, lakeFS or Pachyderm. That layer records content hashes and lineage, even when its small metadata files sit inside Git.
+<details><summary>7. Why does a Gatekeeper admission policy that refuses unsigned images still let an unsigned pod through during a policy engine outage?</summary>
+Production Kubernetes, chapter 8, warns that Gatekeeper fails open by default. A request is admitted when the policy engine cannot answer. So set the failure behaviour on purpose and test it, instead of assuming a gate that exists will also block.
 </details>
 
-<details><summary>8. What three new artifact types appear in LLMOps that are not central in classical MLOps?</summary>
-The first is the prompt template, versioned in Git. The second is the retrieval index, whose snapshot ID is tied to the corpus and the embedding model. The third is the agent trace of tool calls, intermediate prompts and decisions, sent to the observability backend.
-</details>
-
-<details><summary>9. What three new failure modes appear in LLMOps?</summary>
-Prompt regression happens when a prompt edit lowers accuracy for some users. Retrieval staleness happens when the corpus changes but the index does not. Agent runaway happens when an agent loops or spends more than anyone intended.
-</details>
-
-<details><summary>10. What is the cluster primitive that enforces the promotion gate?</summary>
-An admission controller, such as OPA Gatekeeper or Kyverno, refuses pods whose image is not signed by the registry. A Kubernetes Job runs the gate and writes to the registry only on a pass. The lifecycle defines the policy, and the cluster carries it out.
-</details>
-
-<details><summary>11. Why does the GPU node sit at the boundary between MLOps and the cluster?</summary>
-The GPU node enforces whatever the lifecycle says about a model. A pipeline that submits a training job without NUMA pinning, MIG slicing, queue assignment or scheduler limits turns a policy mistake into an overnight page. MLOps and the GPU platform therefore work as one system.
-</details>
-
-<details><summary>12. How does a canary deployment reduce the blast radius of a bad promotion?</summary>
-The new model serves a small share of traffic, often shown as 1 to 5 percent in examples, while the old model serves the rest. The platform team watches the error budget, latency and a key business metric. If the canary breaks the budget, traffic moves back to the old model quickly. If the canary stays healthy, traffic shifts to the new model on a schedule you define.
-</details>
-
-<details><summary>13. What is a feature store and why does it matter for multi-team ML?</summary>
-A feature store owns the definition of each feature and computes it once. It serves that feature through two read paths: an online path for low-latency serving and an offline path for batch training. For a team with several models, this matters, because without a store two teams can use the same feature name with slightly different definitions. Their models then disagree on the same data.
-</details>
-
-<details><summary>14. Why does the rollback path need to be pre-staged, not built on the fly?</summary>
-A rollback happens under time pressure, so it cannot wait for a build. The previous model must already sit in the serving system, with the same signature and the same observability hooks as the new one. Building that path during the incident adds delay and raises the risk of a second failure.
-</details>
-
-<details><summary>15. What is the minimum data versioning flow?</summary>
-Raw data lands in object storage with a content hash. The pipeline then writes a metadata record to a small database. That record holds the dataset ID, content hash, source system, snapshot time, row count and schema hash. The training script takes a dataset ID as an argument and never reads a hard-coded path. Every run records that ID, and deletion stays soft until a retention window passes.
-</details>
-
-<details><summary>16. What does it mean for a deployment to be "live in the registry and live in the cluster"?</summary>
-Two systems describe the live model. The registry says model X is in production, and the serving system is running model Y. Drift between them is the worst kind of incident. The contract requires both to agree, using a signed artifact and a tag-based image, so that re-pointing the tag reverts the deployment in one step.
-</details>
-
-<details><summary>17. Why is the promotion decision logged before the registry is written?</summary>
+<details><summary>8. Why is the promotion decision logged before the registry is written?</summary>
 The audit log is the record you trust if the registry is damaged. If the registry says promoted but the audit log says blocked, the audit log wins. Writing the log first means the decision survives even when the registry write fails halfway.
 </details>
 
-<details><summary>18. How do you detect retrieval staleness in a RAG application?</summary>
-Tie the index snapshot ID to the corpus snapshot ID, so the two can be compared. Alert when the index age passes a freshness threshold your team sets. Add a check in the retrieval pipeline that refuses to serve when the index is older than the policy window. Expose the index age as a metric, so the page fires before users notice poor answers.
+<details><summary>9. Why should a training run record the data hash and not the data path?</summary>
+A path can move, be overwritten or be unmounted, so it stops pointing at the data the model saw. A hash identifies the artifact itself. The hash also lets you trace a poisoned example to its source and exclude that snapshot from later runs.
 </details>
 
-<details><summary>19. What are the four storage systems that carry ML data through the lifecycle, and what is each for?</summary>
-Object storage (S3, GCS, MinIO) holds raw data, dataset versions, model weights and registry artifacts. A distributed filesystem (Lustre, Weka, BeeGFS, VAST) holds hot training data and the checkpoint workspace. A vector store (Milvus, Qdrant, pgvector) holds retrieval indices. The cluster's local NVMe serves as working scratch during a training run. Each one has different consistency, snapshot and performance characteristics.
+<details><summary>10. Why can the same training script with the same seed give different numbers on two clusters?</summary>
+Results can change with the CUDA, cuDNN or NCCL version. Classical CI pins only Python and operating system packages. MLOps also pins the CUDA driver, the cuDNN version, the container image hash and the cluster topology, so the environment is part of the record.
 </details>
 
-<details><summary>20. What five questions should the MLOps lab let you answer in five seconds each?</summary>
-The five questions are which dataset version trained the live model, which commit produced it, what the last promotion decision and its gate criteria were, what the rollback path is, and how fresh the training data is. Your team sets the time limit for each answer. The chapter uses 30 seconds as an example limit, and an answer slower than your limit means the lifecycle is still at Level 0.
+<details><summary>11. Why does a gate written as a function survive a deadline when a rule that says "be more careful" does not?</summary>
+A person under deadline pressure skips a verbal rule or approves in a chat thread, which is the HiPPO pattern. A function sits in the path of the artifact and returns an exit code that the pipeline checks. Nobody can bypass it without changing the code. A human approves the policy once and not every promotion.
+</details>
+
+<details><summary>12. GitOps for the registry, image-as-source and signed promotion all stop the registry and the serving system from disagreeing. When do you pick each one, and what do you give up?</summary>
+GitOps gives the most audit trail, because every promotion is a reviewed change. Image tags give the simplest rollback, because reverting a tag reverts the deployment. Signed promotion gives the strongest guarantee that what runs is what was approved. You pick the one your platform team can operate, and you accept that the other two strengths are weaker.
+</details>
+
+<details><summary>13. Your team can build either a promotion gate or a canary deployment this quarter. Which comes first, and what does the other one cost you meanwhile?</summary>
+Build the gate first. A gate without a deploy still keeps bad models out of the registry. A deploy without a gate only moves the failure from the registry to the cluster. Until the canary exists, a promoted model reaches all traffic at once.
+</details>
+
+<details><summary>14. A Level 0 team wants to buy a feature store and a Level 2 pipeline stack this quarter. Why is that a risky order, and what would you adopt first?</summary>
+A Level 0 team that installs Level 2 tooling finds that nobody can debug it, because nobody has run the manual flow first. Practical MLOps also warns that a platform without CI/CD collapses under hand-coordinated changes. If the pain is that you cannot reproduce an experiment, adopt tracking and data versioning first. The feature store comes ninth in the common order.
+</details>
+
+<details><summary>15. When do you automate red-team testing and when do you keep humans on it?</summary>
+Automate what you can with prompt-injection and jailbreak suites on every promotion. Keep humans on the high-stakes cases, such as personal data extraction and regulated prompts. Also staff the blue team at parity, because Engineering AI Systems says under-funded blue teams are the most common reason red-team findings never become model fixes.
+</details>
+
+<details><summary>16. In the churn story the AUC fell by 0.14 and two reruns differed by 0.06. How much of the drop could the seed alone explain?</summary>
+The drop is 0.92 minus 0.78, which is 0.14. The rerun gap is 0.92 minus 0.86, which is 0.06. That is 0.06 divided by 0.14, or about 43 percent of the drop. With no seed in the record you cannot tell real drift from noise.
+</details>
+
+<details><summary>17. An SLO says monthly availability of 99.9 percent. How many minutes of downtime does a 30-day month allow, and why does the SLO also need a budget?</summary>
+A 30-day month has 43,200 minutes, and 0.1 percent of that is 43.2 minutes. The budget says how long the SLO may be violated before the on-call engineer is paged. An SLO without a budget is a wish.
+</details>
+
+<details><summary>18. The chapter cites about 15 percent of enterprise models reaching production. Out of 200 models a company builds, how many ship, and what does the chapter say kills the rest?</summary>
+15 percent of 200 is 30 models. The other 170 die in notebooks, mostly for governance reasons and not accuracy reasons. This is a rough 2020 estimate quoted from a gem book, so treat it as a reality check and not a target.
+</details>
+
+<details><summary>19. The registry says version 12 is in production, but you suspect the serving system runs version 9. What do you check first, second and third?</summary>
+First, read what the serving system actually loads, which is the image tag or the model URI it points at. Second, compare that with the registry entry where `stage = production`. Third, find the promotion record, in the pull request or the audit log, to see who or what changed one side. The contract says the production-stage model must serve all traffic once any canary finishes.
+</details>
+
+<details><summary>20. A RAG app cites a document that was deleted last week. What do you check first, second and third?</summary>
+First, compare the index snapshot ID with the corpus snapshot ID, to confirm the index is older. Second, look at the rebuild job, because a weekly schedule leaves a long window of stale answers. Third, check whether the retrieval path has a freshness check that refuses to serve when the index is older than the policy window. The fix adds an index age alert and that check.
 </details>
 
 ---

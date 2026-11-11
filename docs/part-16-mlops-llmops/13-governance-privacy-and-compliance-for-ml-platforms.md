@@ -591,84 +591,84 @@ Work through these on your own platform, in order. Each one asks you to add or c
 
 ## Checkpoint questions
 
-<details><summary>1. What four regulatory regimes does the platform support?</summary>
-The platform supports GDPR for the EU, CCPA for California, HIPAA for US healthcare, the EU AI Act for the EU, SR 11-7 for US banking, and SOC2 and ISO 27001 as global standards. Because the regimes overlap, one control often serves several of them. A consent record satisfies GDPR and CCPA, while an audit log satisfies HIPAA, SOC2, and SR 11-7, and a model card satisfies the EU AI Act and SR 11-7.
+<details><summary>1. A regulator asks which data trained the model that declined customer 12345. Your query returns the model and the customer but no data snapshot. What went wrong and what do you change?</summary>
+The pipeline did not write to the lineage database at every step, so the lineage contract was not enforced. The chain from prediction to dataset has a missing edge. The fix is to make the promotion gate read the lineage database and refuse to register a model version when a required edge is absent.
 </details>
 
-<details><summary>2. What is the EU AI Act's risk classification?</summary>
-The EU AI Act sorts systems into four categories: unacceptable systems are banned, high-risk systems carry explicit duties, limited-risk systems need transparency, and minimal-risk systems have no obligations. Your platform's controls map directly onto the high-risk duties.
+<details><summary>2. An auditor asks for the fairness audit of a high-risk model, and the model card has no such section. How did the model reach production, and how do you stop it happening again?</summary>
+The promotion gate did not require the audit, so the model was promoted without one. Make the fairness audit a required field in the model card. The gate then refuses any model whose card is missing that section.
 </details>
 
-<details><summary>3. What is the lineage graph?</summary>
-It is a graph that traces the chain from data to prediction. It has four node types, which are source system, dataset, feature, and model, and three edge types, which are derived from, trained on, and used by. The pipeline updates it at every step, and it is the audit trail that satisfies GDPR Article 15 and SR 11-7.
+<details><summary>3. A customer asked for erasure, the application accepted the request, but weeks later the customer's data is still in the training set. The platform team never saw the request. What is the likely cause?</summary>
+The application is not connected to the erasure queue. The request reached the application, but nothing put it on the queue that the right-to-be-forgotten Job reads. The pattern is that the application writes to the queue and the platform team consumes from it.
 </details>
 
-<details><summary>4. What does the model card capture?</summary>
-It records the model name and version, intended use, out-of-scope use, architecture, training data summary, training environment, evaluation results, fairness audit, limitations, ethical considerations, contact information, and the date of the last update. You need a complete card before promotion, because the promotion gate refuses any model without one.
+<details><summary>4. An auditor asks for the audit log of a model that ran two years ago, and the bucket is empty. What do you tell the on-call engineer, and what was the missing control?</summary>
+The bucket had no object-lock, so a careless or malicious deletion could remove the records. The control to turn on is object-lock for the audit log bucket. The runbook says to page the on-call immediately and not to investigate first.
 </details>
 
-<details><summary>5. What is GDPR Article 17?</summary>
-It is the right to erasure, often called the right to be forgotten. The data controller must erase a customer's personal data "without undue delay" when the customer asks. Your platform team's pattern is a Kubernetes Job that erases the customer's data from every artifact and retrains the model on the cleaned data.
+<details><summary>5. A customer consented in 2020 and the application still processes their data four years later. Why did this happen and what is the fix?</summary>
+The consent record has no expiration date, and nobody asked the customer to refresh it. Add an expiration date to every consent, with one year as a common choice. Send a refresh request a set number of days before expiry and pause processing if the consent lapses.
 </details>
 
-<details><summary>6. What is the consent record?</summary>
-It is a record of the customer's consent to data processing. It holds the customer id, the data fields consented to, the purpose, the date and version, and the withdrawal date. The pipeline reads the record at training time, and it excludes customers who have withdrawn consent.
+<details><summary>6. A customer withdrew consent last week, yet the newest model was trained on a snapshot that still contains their rows. What check was missing in the pipeline?</summary>
+The pipeline did not read the consent record at training time. It trained on the latest data, which still included the customer. The fix is to treat the consent record as a join key, so the join drops every customer who withdrew.
 </details>
 
-<details><summary>7. What are the three privacy-preserving ML patterns?</summary>
-They are federated learning, which trains on the customer's device and aggregates gradients on the server, differential privacy, which adds noise to training to prevent memorisation, and homomorphic encryption, which trains on encrypted data. Each one matches a threat model. Federated learning suits mobile devices, differential privacy suits medical data, and homomorphic encryption suits highly sensitive financial data.
+<details><summary>7. Why does a missing edge in the lineage graph make the regulator's question impossible to answer in seconds?</summary>
+The answer is a walk along four links, from customer to prediction, to model, to dataset, to source snapshot. If one edge is absent, the walk stops there. The remaining answer then has to be rebuilt by hand from records, which is the weeks of searching the chapter warns about.
 </details>
 
-<details><summary>8. Why is the consent record a join key?</summary>
-The pipeline joins the training data to the consent record, and the join drops customers who have withdrawn consent. This is the same pattern as any other filter join, because the consent record is a normal column in the data warehouse.
+<details><summary>8. Why does a model card written after launch fail to control the model?</summary>
+A card written after launch only records what the model already is. Control comes from the promotion gate refusing a model whose card is missing or out of date. Only a card that exists before promotion can block a bad release.
 </details>
 
-<details><summary>9. What is the right-to-be-forgotten Job's amortisation pattern?</summary>
-You queue the erasure requests, and the Job runs one retraining per day that consumes the queue. This spreads the retraining cost across many requests, writes one audit entry per retraining, and notifies all the customers at once.
+<details><summary>9. Why does reading the consent record at training time, and not only at ingestion, matter for withdrawals?</summary>
+A customer can withdraw after the data has already been copied into a snapshot. The snapshot then still holds their rows. Reading the consent record before each training run is the step that drops them from the new model.
 </details>
 
-<details><summary>10. What is the privacy budget?</summary>
-The differential privacy budget is the trade-off between accuracy and privacy. The budget is the pair epsilon and delta, computed from the noise settings, the batch size and the number of steps. You publish it on the model card, because it is the parameter a regulator inspects.
+<details><summary>10. Why can one platform control serve several regulations at once?</summary>
+The regimes ask for overlapping records. A consent record answers both GDPR and CCPA. An audit log answers HIPAA, SOC2 and SR 11-7, and a model card answers the EU AI Act and SR 11-7. Listing every regime a control serves shows how much work that control saves.
 </details>
 
-<details><summary>11. What is the fairness audit?</summary>
-It is a set of metrics that compare the model's performance across protected groups: demographic parity, equalised odds, predictive parity, and calibration. The audit runs on every promotion. Its output is a row in the model card, and the promotion gate refuses any model whose fairness metrics breach the threshold.
+<details><summary>11. Why does the chapter say model weights are not personal data per se, and yet an erasure request still leads to retraining?</summary>
+The training data is personal data, and the model is derived from it. Erasure removes the customer from the warehouse, the feature store and the training data. The model is then retrained on the cleaned data, or retired if retraining is too expensive, so that the derived artefact no longer reflects the erased customer.
 </details>
 
-<details><summary>12. What is the lineage contract?</summary>
-It is the promise that every artifact writes its lineage at the moment it is created. Raw data writes its source system and snapshot time. Cleaned data writes its raw lineage and cleaning commit. A feature writes its cleaned data lineage and feature definition. A model writes its feature lineage, training commit, and environment image hash. A deployment writes its model lineage and deployment commit. A prediction writes its deployment lineage, customer id, and timestamp. Your pipeline enforces the contract, and your platform team audits it.
+<details><summary>12. Your retraining takes a long time and erasure requests arrive daily. When would you batch requests into one daily retraining, and what do you give up?</summary>
+Batching spreads the retraining cost across many requests and gives one audit entry and one customer notification. You give up speed, because a customer waits up to the batch interval. A longer wait can conflict with the "without undue delay" rule, so the interval must be set with legal review and not only with a cost estimate.
 </details>
 
-<details><summary>13. Why is the audit log tamper-evident?</summary>
-The audit log proves that every other artifact was what it claimed to be. Object-lock on the GCS bucket blocks deletion or overwrite for the retention window. A deleted audit log is the worst possible incident, so the runbook says to "page the on-call immediately".
+<details><summary>13. A team needs privacy for mobile-device data and another for medical data. Which patterns would you pick, and what does each cost?</summary>
+Federated learning fits mobile devices. It keeps data on the device, but it costs more edge compute and adds aggregation overhead. Differential privacy fits medical data. It stops the model memorising single examples, but it reduces accuracy and needs calibration.
 </details>
 
-<details><summary>14. What is the consent expiration pattern?</summary>
-You add an expiration date to each consent, and one year is a common choice. Your team sends a refresh request 30 days before expiry, and processing pauses if the consent lapses. The pattern satisfies GDPR Article 7 on conditions for consent, and CCPA's right to opt out.
+<details><summary>14. When would you choose homomorphic encryption over federated learning, and what is the caution about its cost?</summary>
+It fits highly sensitive financial data where the server must never see plaintext. The table gives a 10 to 100 times compute overhead. The chapter notes that this figure has no source in the chapter, so treat it as a rough estimate until it is checked.
 </details>
 
-<details><summary>15. What is the role of the consent record in the right-to-be-forgotten workflow?</summary>
-The Job reads the consent record to find customers who withdrew consent. It erases their data from every artifact, then retrains the model on the cleaned data. The consent record is the trigger, the erasure is the action, and the retraining is the consequence.
+<details><summary>15. Why would you publish the differential privacy budget on the model card, and which numbers make it up?</summary>
+The budget records the trade-off between accuracy and privacy, and a regulator will ask about it. It is the pair epsilon and delta. The library computes them from the noise settings, the batch size and the number of training steps.
 </details>
 
-<details><summary>16. Why is federated learning more expensive on the edge?</summary>
-Training runs on the customer's device, which has limited compute and battery, and gradient aggregation on the server adds overhead. In return, the server never sees the customer's data, so the customer's privacy is preserved.
+<details><summary>16. Retraining takes 12 hours and deployment takes 2 hours. Thirty erasure requests arrive in one day. Compare GPU time if you handle each request alone with doing one daily batch.</summary>
+Each request costs 12 plus 2, which is 14 hours of GPU time. Handled alone, 30 requests cost 30 times 14, which is 420 hours. One daily batch costs 14 hours, so the batch saves 406 hours.
 </details>
 
-<details><summary>17. What is the difference between federated learning and differential privacy?</summary>
-Federated learning moves training to the customer's device, so the data never leaves it. Differential privacy adds noise during training on the server, where the data sits, to stop memorisation of single examples. The two are complementary, and a serious privacy-preserving deployment often uses both.
+<details><summary>17. The fairness table uses a target difference below 5 percent. A model approves 62 percent of group A and 55 percent of group B. Does it pass demographic parity, and what happens next?</summary>
+The difference is 62 minus 55, which is 7 percentage points. That is above the 5 percent example target, so the audit fails. The promotion gate then refuses to advance the model. The chapter says the 5 percent figure is an example starting point and not a legal limit.
 </details>
 
-<details><summary>18. Why is the lineage graph updated at every step?</summary>
-The regulator's question, "which data trained the model that decided on this customer," needs a complete chain. A missing edge is an unanswered question. The pipeline writes the edge at every step, and the platform enforces the contract.
+<details><summary>18. A consent is valid for one year and you send a refresh request 30 days before expiry. On which day after consent is the refresh request sent?</summary>
+The refresh is sent 30 days before the end of the year. That is 365 minus 30, which is day 335 after the consent was given. If the customer does not refresh, processing pauses when the consent lapses.
 </details>
 
-<details><summary>19. What is the role of the model card in the EU AI Act?</summary>
-The model card is the artefact that meets the EU AI Act's transparency requirement. It documents the model's capabilities and limitations, the training data, the fairness audit, and the human oversight mechanism. High-risk systems need it.
+<details><summary>19. The right-to-be-forgotten latency alert fires. What do you check first, second and third?</summary>
+First check the erasure queue, to see whether requests are waiting and whether the application is writing to it. Second check the right-to-be-forgotten Job, to see whether it is running and consuming the queue. Third check the retraining step it triggers. The chapter says the on-call engineer investigates the queue and the Job when this alert fires.
 </details>
 
-<details><summary>20. What five questions should the governance lab let you answer in five seconds each?</summary>
-The first is the lineage edge between the model and the data. The second is the model card. The third is the most recent erasure event. The fourth is the consent record for a given customer. The fifth is the cost of the right-to-be-forgotten Job per request. If any takes longer than 30 seconds, the layer is not yet a production service, and the 30-second figure is an example threshold.
+<details><summary>20. An auditor's query returns an incomplete answer for a customer. In what order do you check the lineage chain, and why?</summary>
+Start with the prediction record, because it ties the customer to a deployment. Then check the deployment and model records, which should name the training dataset. Finally check the dataset record for its source snapshot. The contract table shows each artifact recording its upstream lineage, so the first missing link points to the stage that failed to write it.
 </details>
 
 ---

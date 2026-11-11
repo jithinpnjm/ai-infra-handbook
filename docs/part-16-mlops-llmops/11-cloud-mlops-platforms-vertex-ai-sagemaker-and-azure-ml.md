@@ -537,84 +537,84 @@ Try these after the lab. Each one changes the design, so you will see the trade-
 
 ## Checkpoint questions
 
-<details><summary>1. What are the three managed ML stacks?</summary>
-Vertex AI on GCP, SageMaker on AWS, and Azure Machine Learning on Azure. Each bundles a Studio (IDE), Pipelines (orchestrator), Feature Store, Model Registry, and Endpoints (serving). The abstractions differ, but the contract stays the same.
+<details><summary>1. The CFO asks why the managed stack costs far more than self-hosted for the same workload. What is the cause and what do you propose?</summary>
+The managed stack charges more per resource, so the team is paying for convenience and nobody has decided whether it is worth it. Move to the hybrid pattern. Keep Studio and Pipelines managed and run the GPU pool, the feature store, and the vector store yourself. The saving depends on your own prices, so measure the bill before and after.
 </details>
 
-<details><summary>2. What is the hybrid pattern?</summary>
-Managed Studio and Pipelines, with a self-hosted GPU pool, feature store, and vector store. You trade convenience for cost: the data scientist does not provision anything, but the GPU pool is yours to run. Many mature teams settle on this split.
+<details><summary>2. The company wants to move from one cloud to another and the move looks like a multi-year project. What was missing?</summary>
+The portability contract was never enforced. The data is in a vendor-specific format, the models sit in a vendor-specific registry, and the pipelines use a vendor-specific orchestrator. Keep data in Parquet or CSV, models in ONNX or PMML, and pipelines in Kubeflow or Argo format. With those in place the next migration is a much shorter project.
 </details>
 
-<details><summary>3. What is the portability contract?</summary>
-It is the discipline that lets you leave after a cloud migration. Keep data in portable formats (Parquet or CSV), models in portable formats (ONNX or PMML), pipelines in portable formats (Kubeflow or Argo), and feature definitions in portable formats (Feast). It is a discipline you keep up, not a decision you make once.
+<details><summary>3. A training job sits in a queue and the managed stack says the GPU quota is used up. What do you do?</summary>
+Managed stacks cap GPU usage with a quota, so the job waits until the quota is raised or resets. How and when depends on the provider, so check the rules for your account. Send overflow jobs to the self-hosted GPU pool, which is not subject to the managed quota.
 </details>
 
-<details><summary>4. What is the cost model for the managed stack?</summary>
-These are example prices: GPU compute at $2-5 per GPU-hour against $1 self-hosted, storage at $0.02-0.10 per GB-month against $0.01-0.02, and inference at $0.05-0.50 per endpoint-hour against $0.02-0.10. Treat these as examples and check your own price sheet. The managed stack costs more per resource but can cost less to staff.
+<details><summary>4. A managed endpoint shows high p99 latency and you cannot tune the autoscaler. Why not, and what is the fix?</summary>
+The managed autoscaler may not show you the queue depth, the load on each replica, or the cold-start time, and you can only tune what you can see. Move the endpoint to KServe on Kubernetes. Your platform team then controls the autoscaler and sees every metric.
 </details>
 
-<details><summary>5. What is the most Kubernetes-friendly managed stack?</summary>
-Vertex AI on GCP. Its pipelines and endpoints run on GKE, and its custom training jobs run there too. A platform team that already runs GKE has a head start. A team on EKS or AKS can still use Vertex AI, but it pays for cross-cloud networking.
+<details><summary>5. CI cannot promote a model because the managed registry is unavailable, and every release is blocked. How do you prevent a repeat?</summary>
+The managed registry is a single point of failure and the team has no fallback. Mirror it to a self-hosted MLflow registry. CI writes to both and the cluster reads from the self-hosted copy. The managed registry stays the source of truth for the audit log.
 </details>
 
-<details><summary>6. What is the most AWS-native managed stack?</summary>
-SageMaker. Studio, Pipelines, and Endpoints are AWS-managed services, and IAM, VPC, and KMS are AWS-native. The trade-off is that the abstractions are higher-level and less portable. The benefit is tight integration with AWS.
+<details><summary>6. A team of three data scientists with no platform engineers wants to ship a first model quickly. Managed or self-hosted, and why?</summary>
+Managed. Studio is provisioned in minutes, so the first model takes hours, where a self-hosted cluster takes days to weeks for provisioning and IAM setup. Such a team gains the most from a managed stack because nobody has to run it. The cost is a higher per-resource price and less customisation.
 </details>
 
-<details><summary>7. What is the most MLflow-friendly managed stack?</summary>
-Azure ML. Its Model Registry is MLflow-compatible, and its Pipelines support MLflow. A team already on MLflow has a smoother path to Azure.
+<details><summary>7. Why does the usual hybrid keep the GPU pool self-hosted?</summary>
+Managed GPU capacity costs more per hour, so GPUs are where the managed price gap is biggest. The team also owns those nodes, and the pool stays portable across clouds. The rule is to go managed for what is portable and common and to self-host what is expensive or hard to move.
 </details>
 
-<details><summary>8. What is the most aggressive self-hosted architecture?</summary>
-Managed IDE only, such as SageMaker Studio, Vertex AI Workbench, or Azure ML Studio. Everything else runs on your own Kubernetes: pipelines, registry, endpoints, feature store, and vector search. The rule is to go managed for what is portable and common, and self-host what is expensive and sticky.
+<details><summary>8. Why should model artefacts sit in object storage outside the managed stack in open formats?</summary>
+Then you can move the registry without moving the models. Open formats such as ONNX, PMML, SavedModel, or PyTorch JIT can be loaded elsewhere. A model stored only in a vendor registry in a vendor format is locked in with it.
 </details>
 
-<details><summary>9. What is the platform team's hardest problem in a multi-cloud setup?</summary>
-Cross-cloud IAM. A data scientist on AWS who needs GCP resources, or one on GCP who needs Azure resources, crosses two identity systems. A service mesh or an API gateway can hide that boundary.
+<details><summary>9. Why do you tag every managed job and model with the owning team and model name?</summary>
+The managed stack reports its cost, but the report is only useful if resources carry labels. The labels flow into the billing export, which is BigQuery for GCP, Cost and Usage Reports for AWS, and Cost Management for Azure. The FinOps dashboard can then group spend per team, per model, and per month.
 </details>
 
-<details><summary>10. What is the RTO for the managed stack?</summary>
-The cloud provider sets it, not you. Your job is to check that the provider's RTO meets your business's RTO. Keep a fallback ready for the case where it does not.
+<details><summary>10. Why is cross-cloud access the hardest part of managed IAM?</summary>
+A data scientist on AWS who needs a GCP resource crosses two identity systems. Each crossing is a place where permissions can go wrong. A service mesh or an API gateway can hide that boundary from the user.
 </details>
 
-<details><summary>11. Why is the managed stack's per-resource cost 2-5x self-hosted?</summary>
-The provider bundles Studio, Pipelines, the Registry, and Endpoints into one offering, and it charges for that integration. One likely reason is a managed-services margin on the GPU price. The 2-5x ratio is an example, so check the price sheets for your own case.
+<details><summary>11. Why do you federate managed metrics into Prometheus?</summary>
+Each stack has its own monitoring, namely Cloud Monitoring, CloudWatch, and Azure Monitor. Federating them means the team reads one set of dashboards instead of three. Managed metrics then sit next to the self-hosted ones, and SLOs do not depend on where a model happens to run.
 </details>
 
-<details><summary>12. What is the disaster recovery pattern for the managed stack?</summary>
-Mirror the critical parts, such as the model registry and the feature store, to a second cloud or a self-hosted copy. CI writes to both, and the cluster reads from the self-hosted registry. The managed registry remains the source of truth for the audit log.
+<details><summary>12. When would you choose a managed stack over self-hosted, and what do you give up?</summary>
+Choose managed when you have few platform engineers and want a fast first model. The chapter's example is 2 to 5 platform engineers against 5 to 15. You give up customisation, because you are limited to what the stack exposes. You also give up portability and you take on single-provider vendor risk. A compliance plus is that you inherit the provider's certifications.
 </details>
 
-<details><summary>13. Why is the GPU quota exhausted a failure mode?</summary>
-A managed stack caps GPU use with a quota, and jobs wait once the team reaches it. The fix is the self-hosted GPU pool, which handles the overflow. Check your provider's rules for when a quota is raised or resets.
+<details><summary>13. When would you use a managed vector search instead of running Milvus on GKE?</summary>
+Use the managed option, such as Vertex AI Vector Search, when you want convenience and no database to operate. The trade is convenience against cost. The managed index type is proprietary, so you also give up portability. Run Milvus yourself when the data plane should stay portable.
 </details>
 
-<details><summary>14. Why is the managed endpoint's slow latency a failure mode?</summary>
-The managed autoscaler may hide the queue depth, the per-replica load, and the cold-start time you need to tune it. The fix is to move the endpoint to KServe on Kubernetes, where your platform team owns the autoscaler.
+<details><summary>14. Which managed stack fits a team already on AWS, and which fits a team already on Azure that uses MLflow?</summary>
+The AWS team fits SageMaker, which is the most AWS-native, so IAM, VPC, KMS, and observability are familiar. The cost is that its pipelines do not carry over cleanly to other clouds. The Azure team fits Azure ML, which supports MLflow natively, so experiment tracking carries over.
 </details>
 
-<details><summary>15. What is the platform team's role in a managed stack deployment?</summary>
-The platform team owns the FinOps dashboard, and the managed stack is often the largest cost in the AI factory budget. It also owns the cross-cloud IAM, while data scientists use the per-team IAM.
+<details><summary>15. When would you choose the most aggressive self-hosted design with only the IDE managed, and what do you give up?</summary>
+Choose it when you want the most portability and have the staff for it. Pipelines, registry, endpoints, feature store, and vector search all run on your own Kubernetes cluster. You give up a light operations load. Some teams move to it only after they outgrow the managed stack, so plan the staffing before you start.
 </details>
 
-<details><summary>16. What is the difference between Vertex AI Vector Search and Milvus?</summary>
-Vertex AI Vector Search is managed, and the platform team does not see the index internals. Milvus is open source, so the platform team owns the index and runs it at its own cost.
+<details><summary>16. A training job uses 1,000 GPU-hours. Using the chapter's example prices, what is the gap between managed and self-hosted?</summary>
+Managed at $2 to $5 per GPU-hour costs $2,000 to $5,000. Self-hosted at $1 per GPU-hour costs $1,000. The gap is $1,000 to $4,000 for the job. The prices are examples, so check your own bill.
 </details>
 
-<details><summary>17. Why is the most aggressive self-hosted architecture the right answer for mature AI factories?</summary>
-It is not always the right answer. Self-hosting lowers the unit cost, but it needs more engineers than a managed stack does. The trade-off is cost against convenience, and teams with the skills to run Kubernetes often choose the lower cost.
+<details><summary>17. You store 10,000 GB of data. What is the monthly storage cost for managed and self-hosted at the chapter's example prices?</summary>
+Managed at $0.02 to $0.10 per GB-month costs $200 to $1,000. Self-hosted at $0.01 to $0.02 per GB-month costs $100 to $200. The ratio is therefore between 2 to 1 and 5 to 1.
 </details>
 
-<details><summary>18. What is the role of the model registry in the portability contract?</summary>
-The registry holds the model metadata, and the artefacts sit in portable formats (ONNX, PMML, SavedModel, or PyTorch JIT) in object storage outside the managed stack. This lets you migrate the registry without migrating the artefacts.
+<details><summary>18. One endpoint runs 24 hours a day for 720 hours in a month. What does it cost managed and self-hosted at the example hourly prices?</summary>
+Managed at $0.05 to $0.50 per hour costs $36 to $360. A self-hosted pod at $0.02 to $0.10 per hour costs $14.40 to $72. These are example ranges, so check your own bill.
 </details>
 
-<details><summary>19. What is the role of the pipeline definitions in the portability contract?</summary>
-The pipelines are written in portable formats (Kubeflow Pipelines YAML or Argo Workflows YAML). If you must leave, you can deploy them on self-hosted Kubeflow or Argo Workflows. You can change the orchestrator without rewriting the pipeline definitions.
+<details><summary>19. The FinOps dashboard cannot split the managed spend by team. In what order do you check?</summary>
+First check that each job and model carries the team, model, and cost center labels. Second check that the labels reach the billing export for your cloud, which is BigQuery, Cost and Usage Reports, or Cost Management. Third check the dashboard query that groups spend by those labels.
 </details>
 
-<details><summary>20. What five questions should the managed-stack lab let you answer in five seconds each?</summary>
-What is the current Workbench instance URL? What is the most recent Pipeline run id? What is the current Registry model version? What is the current Endpoint URL? What is the cost per service this month? The five-second target is an example. If you cannot answer one quickly, the stack is not yet ready for production.
+<details><summary>20. A cloud has a bad incident and your managed serving is down. What do you check, in what order?</summary>
+First check the recovery time and recovery point the business needs and compare them with the provider's recovery time, which is theirs, not yours. Second check whether the critical parts, the model registry and the feature store, are mirrored to a second cloud or a self-hosted copy. Third check that a fallback serving path is ready, such as KServe or an endpoint in another cloud.
 </details>
 
 ---

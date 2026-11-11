@@ -646,84 +646,84 @@ If any answer takes you too long, the NVAIE stack is not yet ready to run as a p
 
 ## Checkpoint questions
 
-<details><summary>1. What six layers does the NVAIE software stack have?</summary>
-The chapter's diagram shows five technical layers: application (NeMo, NIM, RAPIDS), framework (PyTorch, TensorFlow, TensorRT, Triton), runtime (CUDA, cuDNN, NCCL, TensorRT-LLM), driver (GPU driver, container toolkit, Fabric Manager), and hardware (H100, A100, L40S). The enterprise support contract ties them together.
+<details><summary>1. An auditor asks which GPUs run an NVAIE-licensed container, and you cannot answer quickly. What should you have built?</summary>
+An inventory before the audit. The audit needs a list of every GPU node, the license key for each node, the containers running on each node, and each license's expiry date. Most teams keep this in a CMDB that refreshes automatically. It reads license state from the NVAIE License Server, the GPU inventory from the cluster API, and the container list from the runtime.
 </details>
 
-<details><summary>2. What is the NGC catalog?</summary>
-A registry of pre-built containers (PyTorch, TensorFlow, Triton, NeMo, RAPIDS, TensorRT-LLM, NIM), pre-trained models (Llama, Mistral, SDXL, CLIP), and resources such as training scripts, notebooks, and Helm charts. It is free for evaluation. Production use of selected items needs an NVAIE subscription.
+<details><summary>2. NIM containers start and then fail with a license error that says the license has expired. What is the cause and what do you do?</summary>
+The renewal was missed and the audit did not catch it in time. Renew the license now and redeploy the NIM containers. Confirm the license state with the NVAIE License Server. Then add an expiration alert, for example 30 days before expiry, or a window you choose.
 </details>
 
-<details><summary>3. What is the NGC pull-through proxy?</summary>
-A Kubernetes service between the cluster and NGC. It caches images locally, authenticates to NGC with the team's API key, enforces licensing, and audits every pull. You point the cluster at the proxy, and only the proxy pulls from NGC.
+<details><summary>3. A NeMo fine-tuning pod crashes with `OOMKilled`. What does the chapter say the cause is, and what is the fix?</summary>
+The chapter says the model is too large for the GPU's memory, and that a 70B model needs parallelism across several GPUs. Raise the GPU count from 1 to 4 or 8. Turn on FSDP or DeepSpeed ZeRO-3, covered in Chapter 14.5. Check the memory budget before the next run.
 </details>
 
-<details><summary>4. What is NIM?</summary>
-A Docker image that bundles a model, an inference engine (TensorRT-LLM, vLLM, or Triton), and the runtime. NVIDIA signs it, licenses it, and supports it. The platform team deploys it as an InferenceService on Kubernetes.
+<details><summary>4. A traffic spike scales NIM replicas to 100, the GPU pool runs out, and other workloads cannot get GPUs. What went wrong?</summary>
+The autoscaler's `maxReplicas` is too high and the autoscaler does not respect your team's GPU quota. Lower `maxReplicas`. Bind the NIM to the team's Kueue LocalQueue, so the Kueue admission controller enforces the quota.
 </details>
 
-<details><summary>5. What is NeMo?</summary>
-NVIDIA's LLM framework. It supports pre-training, fine-tuning (SFT, LoRA, QLoRA, preference alignment), and inference (NeMo Retriever, NeMo Guardrails, NeMo Curator). The platform team uses it for LLM customization.
+<details><summary>5. The RAPIDS pipeline runs CUDA 12.2 and the training job runs CUDA 12.4. The data handoff fails. What is the fix?</summary>
+The two containers use different CUDA versions, and the chapter attributes the failure to a data format mismatch. Pin all GPU containers in the namespace to one CUDA version. The platform team's pattern is one CUDA version per namespace, declared in the namespace's ResourceQuota.
 </details>
 
-<details><summary>6. What is NeMo Guardrails?</summary>
-A runtime safety layer for LLM applications. Guardrails are programmable rules the model must follow. They cover topic boundaries, factuality, PII redaction, and jailbreak resistance. They run on every request, and their false-positive rate is the price of safety.
+<details><summary>6. Someone asks which NIM model runs in production, and your records do not match what is running. What was missed?</summary>
+The NIM deployment was not mirrored in the model registry, or the entry fell out of sync with the running NIMService. The platform team mirrors each deployment as a registry entry that records the image URI, GPU type, replica count, and signature. The deployment pipeline reads that entry and asks the NIM Operator to deploy. Keep the entry and the running NIMService in sync.
 </details>
 
-<details><summary>7. What is RAPIDS?</summary>
-A GPU-accelerated dataframe library. cuDF replaces pandas, cuML replaces scikit-learn, cuPy replaces NumPy, and cuGraph replaces NetworkX. Teams use it for feature pipelines that would otherwise bottleneck the CPU.
+<details><summary>7. Why does the cluster pull NGC images through a proxy instead of directly?</summary>
+Direct pulls waste bandwidth when every node fetches the same large image, and they depend on NGC being reachable. The proxy caches each image, so later pulls come from the cache. It is also the only service that holds the NGC API key, it enforces which images are licensed, and it audits every pull.
 </details>
 
-<details><summary>8. What is the NVAIE licensing model?</summary>
-The license is priced per GPU, per year. The price depends on the GPU class and the commitment length. The license is audited each year, so you need a current list of GPU nodes, license keys, running containers, and expiration dates.
+<details><summary>8. Why can image signature verification fail when the image comes from a cache?</summary>
+*Production Kubernetes*, chapter 15, says Notary signatures are tied to the registry name. A copy served from a cache has a different registry name, so verification can fail. Test your signing tool against the proxy address before you rely on it.
 </details>
 
-<details><summary>9. Why is the pull-through proxy the only service with the NGC API key?</summary>
-The proxy is the single point where NGC pulls cross the cluster boundary. Only the proxy authenticates against NGC. Pods authenticate to the proxy with a Kubernetes image pull secret, and the NGC key is rotated on a schedule. If you have read Chapter 16.6, this is the same boundary idea.
+<details><summary>9. Why does the NeMo fine-tuning Job use gang scheduling with `minAvailable: 8`?</summary>
+The job needs all of its GPUs at the same time. If only some are free, the job should wait rather than start and stall. With `minAvailable: 8` and eight tasks of one GPU each, nothing starts until all eight can start.
 </details>
 
-<details><summary>10. What is the license expiration alert?</summary>
-A Prometheus alert that fires before the NVAIE license expires. The chapter's example window is 30 days. The team renews the license and records the renewal in the audit log, so you do not find a missed renewal only when the cluster degrades.
+<details><summary>10. Why does the NIM deployment use a separate NIMCache resource alongside the NIMService?</summary>
+The model weights come from a separate NIMCache resource that the NIMService names. The NIMCache pulls the model from NGC into storage, which in the example is a 50Gi persistent volume claim. The Operator reads both resources and builds a Deployment with the right GPU binding, pull secret, model storage, and service.
 </details>
 
-<details><summary>11. What is the NIM Operator's role?</summary>
-The NIM Operator is a Kubernetes operator that reconciles the NIMService resource. That resource describes the model image, GPU pool, replica count, image pull secret, and service exposure. The operator does the deployment, and the platform team's GitOps loop manages the resource.
+<details><summary>11. Why must the admission webhook that verifies image signatures be highly available?</summary>
+It refuses unsigned images before they run, so it sits on the deploy path. If it is down, deployments cannot pass its check. *Production Kubernetes*, chapter 15, makes this point. The webhook is therefore a production service with its own availability target.
 </details>
 
-<details><summary>12. What is the difference between NeMo and NIM?</summary>
-NeMo trains and fine-tunes a model. NIM serves it. The two work together, because a fine-tune in NeMo can become a NIM in production.
+<details><summary>12. When would you buy the NVAIE subscription instead of assembling the stack from open source, and what do you give up?</summary>
+Buy the subscription when you want enterprise support, signed images, and the right to use licensed containers in production. NIM is proprietary and needs the production license. You pay per GPU per year. The alternative is to run PyTorch, TensorRT, Triton, NeMo, and RAPIDS from open source without the contract, and you pay engineers to maintain them.
 </details>
 
-<details><summary>13. What is the difference between TensorRT-LLM and Triton?</summary>
-TensorRT-LLM is an LLM-specific inference optimizer. It compiles an LLM into a TensorRT engine for high-throughput inference. Triton is a multi-model serving engine that can serve those engines alongside other model formats. The two complement each other.
+<details><summary>13. When would you fine-tune with LoRA instead of training from scratch, and what do you give up?</summary>
+Fine-tune an existing model when you want it to answer questions about your own material, such as company runbooks. Training a large model from scratch is expensive. LoRA keeps the training cost low. You give up the freedom of choosing the base model's design, because you start from someone else's model.
 </details>
 
-<details><summary>14. Why does the NIM autoscaler respect the team's GPU quota?</summary>
-The NIM autoscaler is bound to the team's Kueue LocalQueue. Kueue's admission controller enforces the quota, and the autoscaler reads it, so the autoscaler cannot exceed it. That keeps your NIM from starving other workloads.
+<details><summary>14. A team needs a chat model in production this week. When do you choose NIM over picking and tuning an engine yourself?</summary>
+Choose NIM when speed and support matter. It bundles a model, an inference engine such as TensorRT-LLM, vLLM, or Triton, and the runtime, and NVIDIA signs, licenses, and supports the image. You give up control over the engine choice and you need a production license, since NIM is proprietary.
 </details>
 
-<details><summary>15. Why is the NGC pull-through proxy caching important?</summary>
-Pods pull the same images many times. Without a cache, every pull is a round trip to NGC, which is slow, and the NGC rate limit can be hit. With a cache, only the first pull is slow, and later pulls come from the local cache.
+<details><summary>15. Your pandas feature pipeline blocks the data team. Do you move it to RAPIDS, and how do you decide?</summary>
+Time the CPU version and the GPU version on the same data first. Speedups depend on your data and your pipeline, so the chapter quotes none. The script barely changes, because `cudf` looks like pandas and the main change is where the work runs. The cost is that the pipeline now needs GPU nodes and a copy back to the CPU for downstream code.
 </details>
 
-<details><summary>16. What is the RAPIDS team's role in the data engineering cluster?</summary>
-RAPIDS runs on the GPU pool that the training jobs share. The data engineering cluster also has its own GPU pool, and the platform team schedules RAPIDS jobs into idle GPU capacity.
+<details><summary>16. The fine-tuning Job asks for eight tasks with one GPU each, and only six GPUs are free. What happens?</summary>
+Nothing starts. The Job has `minAvailable: 8`, so it waits until all eight GPUs can be given at once. Six running tasks would stall with two missing. The job starts when two more GPUs free up.
 </details>
 
-<details><summary>17. Why is the NVAIE licensing audit annual?</summary>
-NVIDIA audits the license state each year. You must keep a list of GPU nodes, license keys, running containers, and expiration dates. The CMDB should update that list automatically.
+<details><summary>17. Each NIM replica requests one GPU. A spike scales it to 100 replicas on a pool of 120 GPUs, and a fine-tuning job needs 8. What is left, and what is the result?</summary>
+The NIM takes 100 GPUs, which leaves 20. The 8-GPU fine-tuning job fits, but any workload that needs more than 20 more GPUs cannot start. The pool and sizes here are example numbers. The fix is a lower `maxReplicas` and a Kueue quota.
 </details>
 
-<details><summary>18. What is the difference between the open-source NeMo and the NVAIE NeMo?</summary>
-Both are open source. The NVAIE version is the same code with the enterprise support contract. The NGC container comes pre-built with CUDA, cuDNN, NCCL, and a supported NeMo version. If you run production workloads, use that container.
+<details><summary>18. The NGC API key is rotated quarterly. How many rotations a year is that, and if the last was on 1 February, when is the next?</summary>
+Quarterly means every three months, so 12 divided by 3 is 4 rotations a year. If the last was 1 February, the next is 1 May. The quarterly cadence is the chapter's example. If a key leaks, re-encrypting old data is not enough and the secret itself must be rotated.
 </details>
 
-<details><summary>19. What is the NeMo Retriever's role?</summary>
-NeMo Retriever is NVIDIA's retrieval-augmented generation library. It bundles an embedding model, a vector store, and a retriever. Teams that need NVIDIA's enterprise support use it for RAG applications.
+<details><summary>19. A NeMo job fails and the error points at the driver. In what order do you look?</summary>
+First name the layer the error comes from. Read the stack from the bottom up, because each layer depends on the one beneath it. Second check the driver layer, which holds the GPU driver, the Container Toolkit, and the Fabric Manager. Third check the runtime layer above it, such as CUDA, cuDNN, and NCCL.
 </details>
 
-<details><summary>20. What five questions should the NVAIE lab let you answer in five seconds each?</summary>
-The five questions are the current NIM InferenceService URL, and the latest NGC pull with the user who made it. They also cover the current NVAIE license expiration date, the latest NeMo fine-tuning run and its model, and the cost per licensed GPU per month. If you cannot answer any of them quickly, the stack is not yet production-ready.
+<details><summary>20. A pod is stuck in `ImagePullBackOff` with "unauthorized: authentication required". In what order do you check?</summary>
+First check the proxy's NGC API key and rotate it if it has expired. Second confirm the pod's image pull secret exists and is correct. Third confirm that the pod's namespace can reach the proxy. These are the three usual causes in the chapter.
 </details>
 
 ---

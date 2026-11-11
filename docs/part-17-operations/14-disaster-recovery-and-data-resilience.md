@@ -618,84 +618,84 @@ Start with exercise 1. A verification job tells you whether the rest of the plan
 
 ## Checkpoint questions
 
-<details><summary>1. What is the RTO?</summary>
-RTO stands for Recovery Time Objective, the longest a service may stay down after a disaster. It is the commitment between the platform team and the business. In the example targets, critical workloads get 1 hour, standard workloads get 4 hours, and development workloads get 24 hours.
+<details><summary>1. The primary region goes dark on a Tuesday afternoon and the inference service must still answer. What should already be in place?</summary>
+A secondary region with replicated object storage and model registry, and a pre-warmed inference service. A global load balancer can then send traffic to it. An air-gapped copy of immutable backups sits behind as the last resort.
 </details>
 
-<details><summary>2. What is the RPO?</summary>
-RPO stands for Recovery Point Objective, the most data you may lose after a disaster. It is a commitment between the platform team and the customer. The example targets are 1 minute for critical workloads, 1 hour for standard workloads, and 24 hours for development workloads.
+<details><summary>2. An attacker with admin rights tries to erase your backups before encrypting the data. Which defences stop that, and what do you check afterwards?</summary>
+Immutable backups with object lock cannot be changed or deleted until retention ends, and the storage service enforces that rule. An air-gapped copy sits outside what the cluster's credentials can reach. Afterwards query the audit log for backup deletions, and keep that log in locked storage so it cannot be edited.
 </details>
 
-<details><summary>3. What are the three backup types?</summary>
-A full backup copies the whole dataset, an incremental backup copies only the changes since the last backup, and point-in-time recovery restores the state at one chosen moment. The example schedule runs full backups weekly, incremental backups daily, and point-in-time recovery as needed, so balance each cost against your RPO.
+<details><summary>3. During a real recovery you find the backup is corrupted. What does the chapter say went wrong, and what is the fix?</summary>
+Nobody verified the backup, it lived on a single disk, and its checksum does not match. Verify backups on a schedule, keep copies on more than one disk, and check the checksum before you restore.
 </details>
 
-<details><summary>4. What is immutable backup?</summary>
-An immutable backup cannot be changed or deleted until its retention period runs out. The object storage service enforces that rule, for example through S3 Object Lock or GCS Bucket Lock. That protection makes immutable backups the main defence against ransomware.
+<details><summary>4. A drill post-mortem says "the RPO was met (5 minutes)" for a critical workload whose RPO is 1 minute. Is that statement correct?</summary>
+No. Five minutes of lost data is larger than a 1-minute target, so the RPO was missed. The lab's own sample output admits this, because the backup cadence has to improve before the target can be met. The post-mortem line contradicts the lab and should be treated as an error.
 </details>
 
-<details><summary>5. What is an air-gapped backup?</summary>
-An air-gapped backup lives in a separate environment with no live connection to the cluster. That gap stops a ransomware attack that has taken over the cluster from reaching the backup. Keep your most critical backups in an air-gapped bucket.
+<details><summary>5. Recovery finishes but customer records are missing because the data is older than the RPO. What do you look at?</summary>
+Backups may run too rarely, replication may lag too far behind, or the newest backup may be too old. Run backups more often, reduce the replication lag, and keep enough history to choose a good restore point.
 </details>
 
-<details><summary>6. What is the most common disaster recovery failure?</summary>
-A common failure is a corrupted backup, found only when someone tries to restore it. The usual cause is that nobody verified the backup, and it sat on a single disk. The fix is to verify backups on a schedule and store copies on more than one disk.
+<details><summary>6. A failover starts, fails partway, and the service stays down. What does the chapter say usually caused it?</summary>
+The failover was never tested, a dependency is missing in the secondary region, and the runbook is wrong. In the example drill the runbook was missing the failover procedure for the registry. Test the failover on a schedule, confirm every dependency exists in the secondary region, and correct the runbook after each test.
 </details>
 
-<details><summary>7. What is the most common RTO failure?</summary>
-A common RTO failure is a recovery that takes longer than the target allows. The usual cause is an inaccurate runbook, or a team that has never drilled it. The fix is to correct the runbook, drill it on a regular schedule, and automate the failover where you can.
+<details><summary>7. Why can a nightly job not meet a 1-minute RPO?</summary>
+The RPO sets how often you must back up or replicate. A 1-minute RPO means the copy has to be refreshed about every minute. A nightly job leaves up to a day of changes uncopied.
 </details>
 
-<details><summary>8. What is the most common RPO failure?</summary>
-A common RPO failure is data loss beyond what the RPO allows, found only after the disaster. Backups ran too rarely, or replication lagged too far behind. Run backups more often, reduce the replication lag, and keep enough history to pick a good restore point.
+<details><summary>8. Why does replication lag count against your RPO?</summary>
+Replication runs asynchronously, so the copy can trail the original. If the primary fails, everything written during that lag is missing from the copy. The lag is therefore data you would lose.
 </details>
 
-<details><summary>9. What is the most common ransomware failure?</summary>
-A common ransomware failure is an attack that deletes the backups along with the data. The usual cause is that the backups were not immutable. The fix is to turn on object lock and keep the most critical copies air-gapped.
+<details><summary>9. Why does the lab drain every node instead of only cordoning them?</summary>
+Cordon alone does not move running Pods. Drain evicts the workloads so they are rescheduled, which is what a regional outage forces. A drill that only cordoned would not test the failover.
 </details>
 
-<details><summary>10. What is the most common failover failure?</summary>
-A common failover failure is a failover that does not work when you need it. The usual cause is that nobody tested it. The fix is to test the failover on a regular schedule.
+<details><summary>10. Why is a bucket the cluster's own account can write to not truly air-gapped?</summary>
+An air gap is a boundary the attacker cannot cross from the cluster. If the same credentials reach the bucket, an attacker who controls the cluster may reach it too. The isolation has to be designed separately, with separate accounts or projects and separate credentials.
 </details>
 
-<details><summary>11. What is the difference between RTO and RPO?</summary>
-RTO is the recovery time objective, meaning how long the service may be down. RPO is the recovery point objective, meaning how much data you may lose. In short, RTO is about time, and RPO is about data.
+<details><summary>11. Why do you still need an etcd snapshot when etcd copies data between control-plane members?</summary>
+Replication means one failed member is survivable. A bad command is copied to every member as well, so all copies are damaged. A snapshot gives you a point to restore from.
 </details>
 
-<details><summary>12. What is the difference between full and incremental backups?</summary>
-A full backup captures the entire dataset, so it takes longer and needs more space. An incremental backup captures only the changes since the last backup, so it is faster and smaller. The example plan runs full backups weekly and incremental backups daily.
+<details><summary>12. A workload is customer-facing. Do you give it the 1-hour RTO tier or the 4-hour tier, and what do you give up?</summary>
+Give a critical customer-facing workload the 1-hour tier. The cost is that a short RTO usually needs a second region that is already running. Internal training pipelines fit the 4-hour tier and cost less. These values are examples.
 </details>
 
-<details><summary>13. What is the difference between point-in-time recovery and snapshot?</summary>
-A snapshot captures the state at a single moment. Point-in-time recovery, or PITR, uses snapshots together with the WAL, the write-ahead log, to restore any chosen timestamp. That makes PITR finer-grained than snapshots alone.
+<details><summary>13. Would you choose synchronous or asynchronous replication for the distributed filesystem, and what do you give up?</summary>
+Synchronous waits for the second copy before confirming a write, so it loses nothing but is slower. Asynchronous confirms first and copies later, so it is faster but can lose the newest writes if the primary fails. Choose from the RPO you committed to, and measure the lag you actually get.
 </details>
 
-<details><summary>14. What is the difference between synchronous and asynchronous replication?</summary>
-Synchronous replication waits for the replica to acknowledge a write before it continues. Asynchronous replication does not wait. Synchronous replication is more consistent, and asynchronous replication is faster.
+<details><summary>14. When would you pick a multi-region setup over a cold standby in the RTO and RPO matrix?</summary>
+Pick multi-region when you need an RTO of 1 hour and an RPO of 1 minute. A cold standby suits an RTO of 24 hours with a 1-minute RPO. You give up the running cost of a second region in exchange for speed. Show the matrix result to the business before you build.
 </details>
 
-<details><summary>15. What is the difference between multi-region failover and active-active?</summary>
-Failover runs in one region and switches to the other only when the first fails. Active-active runs in two regions at the same time. Failover costs less to run, while active-active gives you more availability.
+<details><summary>15. For copying a bucket to a second region, would you use an hourly Storage Transfer job or a dual-region bucket?</summary>
+An hourly job bounds the lag by its schedule, so the worst case is about an hour. A dual-region bucket replicates continuously. Measure the lag you actually get and compare it with your RPO before you decide.
 </details>
 
-<details><summary>16. Why is object-lock important for ransomware defence?</summary>
-Object lock stops anyone from deleting an object before its retention period ends. So when a ransomware attack tries to delete the backups, the attempt fails and the backups survive to restore from.
+<details><summary>16. A drill starts at 14:00 and workloads are healthy at 14:45. The critical RTO target is 1 hour. Was it met, and by how much?</summary>
+Yes. From 14:00 to 14:45 is 45 minutes. The target is 60 minutes, so the drill finished 15 minutes inside it.
 </details>
 
-<details><summary>17. What is the difference between a disaster recovery drill and a game day?</summary>
-A game day tests the response to a single failure mode, such as a GPU node failing. A disaster recovery drill tests the response to a regional disaster, such as a multi-region failover. Game days run more often, while drills run less often but cover more ground.
+<details><summary>17. The last backup was at 13:55 and the disaster at 14:00. The RPO target is 1 minute. By how much was it missed?</summary>
+The data loss window is 14:00 minus 13:55, which is 5 minutes. The target is 1 minute. It was missed by 4 minutes.
 </details>
 
-<details><summary>18. What is the most important disaster recovery metric?</summary>
-This chapter treats the RTO from the last drill as the key metric. It tells you whether the last drill met the RTO target, and so whether recovery is fast enough. The drill is the test, and the RTO is the commitment the test checks.
+<details><summary>18. A transfer job copies a bucket every hour and the RPO is 1 minute. How far off is the worst case?</summary>
+Data written just after a copy waits a full hour for the next one. That is 60 minutes against a 1-minute RPO, so 60 times too long. A schedule of this kind cannot meet that target.
 </details>
 
-<details><summary>19. Why is disaster recovery a Tier 2 chapter?</summary>
-The chapter is tier 2 because the disaster recovery plan is what the team falls back on when the normal playbook fails. The platform team owns the plan, and the business sees its effects during a disaster. A team without a plan is hoping the disaster never comes.
+<details><summary>19. You restore a backup into staging. What do you do first, second, and third to know it is usable?</summary>
+First restore it into staging. Second compare the result with the original and run the verification script against the expected RTO and RPO. Third measure how long the restore took and ask whether the team could meet the RTO with this exact procedure.
 </details>
 
-<details><summary>20. What five questions should the disaster recovery lab let you answer in five seconds each?</summary>
-First, what is the RTO target for each workload tier? Second, what is the RPO target for each tier? Third, when was the last backup verified? Fourth, what were the RTO and RPO in the last drill? Fifth, what is the object-lock retention on the backup bucket? If any answer takes more than 30 seconds, the process is not yet ready to run as a production service. The 30-second limit is one your team should choose for itself.
+<details><summary>20. You suspect backups are being deleted. In what order do you investigate?</summary>
+First query the audit log for delete actions on backup objects. Second check whether object lock still protects the backup bucket and how many days of retention remain. Third confirm the air-gapped copy is intact, since it is the last resort.
 </details>
 
 ---

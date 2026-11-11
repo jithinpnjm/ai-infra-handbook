@@ -566,84 +566,84 @@ These exercises turn the chapter's controls into alerts and pipelines. Build eac
 
 ## Checkpoint questions
 
-<details><summary>1. What is UEFI secure boot?</summary>
-It is the base of firmware trust. It checks that every firmware component (ROM, secure boot, firmware, bootloader, kernel, userspace) is signed by a trusted key. If any link fails, the boot stops. The goal is that every node has secure boot on, so you can trust every boot.
+<details><summary>1. You add a new GPU node and `mokutil --sb-state` does not report SecureBoot enabled. What do you do before it takes work?</summary>
+Keep the node away from GPU workloads until the check passes. The likely cause is a BIOS setting that changed and a policy that was not enforced. Turn secure boot back on, verify the boot chain, and alert on any node that boots with it off.
 </details>
 
-<details><summary>2. What is the TPM?</summary>
-A hardware chip that stores keys and measurements. It is the root of trust for the firmware. Its PCRs (Platform Configuration Registers) hold the boot measurements, and you can quote the PCRs to prove the boot state.
+<details><summary>2. A node has a TPM, but the attestation flow cannot get a quote from it. What is the likely cause and the fix?</summary>
+The TPM was never initialised, so it cannot generate quotes. Nobody set it up and the platform policy did not catch the gap. Initialise the TPM, confirm that attestation works, and alert on any node with an unprovisioned TPM.
 </details>
 
-<details><summary>3. What is measured boot?</summary>
-The process of recording a measurement of every boot component. The measurements go into the TPM's PCRs. The PCRs can be quoted, which means the TPM signs them with its attestation key, to prove the boot state. This is the base of remote attestation.
+<details><summary>3. A workload checks the GPU attestation and the check fails, so the workload cannot start. What could be behind it and what do you do?</summary>
+The GPU firmware may have been modified, the GPU may be counterfeit, or the GPU may be compromised. The failed check does not say which one, so investigation has to tell them apart. Replace the GPU if the investigation confirms a problem, and alert on every attestation failure.
 </details>
 
-<details><summary>4. What is remote attestation?</summary>
-It is the process of proving the boot state to a remote verifier. The verifier challenges the node, and the node asks its TPM for a quote that the TPM signs. The verifier checks that signature, and that check is what a workload relies on to trust the node.
+<details><summary>4. The FW BOM dashboard shows a node on firmware older than the 90-day example limit, and that firmware has a known CVE. What is the likely diagnosis and fix?</summary>
+The firmware update process is not running, so newer firmware is never tested and never reaches the node. Run the update process, confirm the firmware is current, and alert on any node past the age limit. The known CVE is an exposure to address, not a footnote.
 </details>
 
-<details><summary>5. What is the firmware bill of materials?</summary>
-The inventory of every firmware component on every node. It records the node ID, the component, the version, the vendor, the signature status, the attestation status, the last verified time, and the CVE list. It is the audit trail for firmware trust.
+<details><summary>5. A node fails to boot after a firmware update. What do you do?</summary>
+A boot failure is one of the three rollback triggers in the chapter. Roll the node back to the previous version with the rollback script and check that the node boots. A rollback you have never run is a guess, so the chapter says to test it in staging as well.
 </details>
 
-<details><summary>6. What is the most common firmware trust failure?</summary>
-Secure boot is off on a node, which leaves it open to firmware attacks. The cause is a changed BIOS setting that the platform policy did not catch. If you find secure boot off on a node, turn it back on, verify the boot chain, and alert on any node with it off.
+<details><summary>6. An auditor asks which firmware runs on gpu-node-1 and you find one component missing from its FW BOM record. What happened and how do you fix it?</summary>
+Either the FW BOM scan did not run or it missed a component. The inventory now has a hole exactly where you need it during an incident. Run the scan again, confirm that every component appears, and alert on any missing component.
 </details>
 
-<details><summary>7. What is the second most common firmware trust failure?</summary>
-The TPM is not provisioned, so it cannot generate quotes. The cause is that nobody initialised the TPM. The fix is to initialise it, verify attestation, and alert on any node with an unprovisioned TPM.
+<details><summary>7. Why does a compromised firmware make a model signing key on that host worthless?</summary>
+Firmware is the foundation of the boot chain. If it is compromised, the operating system is compromised, and then the workload is compromised. Every control above it, including a signing key, runs on a base the attacker controls.
 </details>
 
-<details><summary>8. What is the most dangerous firmware trust failure?</summary>
-The GPU attestation fails. The workload cannot verify the GPU, which may mean the GPU firmware was modified, the GPU is counterfeit, or the GPU is compromised. The fix is to investigate the GPU and replace it if the investigation confirms a problem.
+<details><summary>8. Secure boot already blocks unsigned code. Why do you also need measured boot?</summary>
+Secure boot stops code that is not signed, but it leaves no record of what booted. Measured boot stores a measurement of every boot component in the TPM's PCRs. You can later read the PCRs, or quote them, to see exactly what booted.
 </details>
 
-<details><summary>9. What is the most common firmware update failure?</summary>
-The firmware is out of date. A node on firmware older than the age limit may carry known CVEs. The cause is that the firmware update process is not running. If you see old firmware, run the process and confirm that the firmware is current.
+<details><summary>9. Why does remote attestation ask the TPM for a signed quote instead of accepting the node's own report?</summary>
+A node that is compromised could say anything in its own report. The verifier sends a challenge, the node asks its TPM for a quote, and the TPM signs it with its attestation key. The verifier checks that signature before it trusts the boot state.
 </details>
 
-<details><summary>10. What is the relationship between secure boot and TPM?</summary>
-Secure boot checks the signature of every firmware component. The TPM records a measurement of each one. Together they form the boot chain, and the boot chain is the base of firmware trust.
+<details><summary>10. A node passes its TPM quote. Why does that not prove its GPU is genuine?</summary>
+The TPM attests the host, including the firmware and bootloader. GPU attestation covers the GPU itself through its endorsement key, attestation key, and firmware measurement. The NVLink Switch and the BMC have their own attestations too, and the BMC sits outside the operating system, so those checks do not cover it.
 </details>
 
-<details><summary>11. What is the relationship between TPM attestation and remote attestation?</summary>
-TPM attestation is the local step of generating a quote. Remote attestation is the network step of sending that quote to a verifier. The verifier checks the quote and trusts the TPM's attestation key. Together they make up the attestation chain.
+<details><summary>11. A colleague says SPIRE node attestation already does what TPM remote attestation does. What is the confusion?</summary>
+Production Kubernetes chapter 10 describes SPIRE node attestation as the step where a SPIRE agent identifies its node so the server can issue it an identity. It is identification, not a check of the boot state. TPM remote attestation is the one that proves what booted.
 </details>
 
-<details><summary>12. What is the relationship between GPU attestation and workload trust?</summary>
-GPU attestation proves that the GPU is genuine and unmodified. The workload reads that attestation, checks it, and starts only if it is valid. Workload trust rests on that check.
+<details><summary>12. A vendor ships a security fix. When would you push it to every node at once, and when would you stage it?</summary>
+The chapter says to stage it. Test it in staging, then run it on a canary group, then roll it out to the fleet, and let each step pass before the next starts. You give up speed, and in return a bad update reaches only a few nodes at a time. The chapter's 10 percent canary and quarterly cycle are examples you can change.
 </details>
 
-<details><summary>13. What is the difference between TPM and GPU attestation?</summary>
-The TPM attests the host, including the CPU, the firmware, and the bootloader. GPU attestation covers the GPU itself. A workload needs both, because it must trust the host and the GPU before it starts.
+<details><summary>13. A firmware update caused a regression and you roll back. What do you give up by doing so?</summary>
+You return to the previous version, which does not carry the changes in the update you rolled back. Update again only after the vendor ships a fix for the regression. In the meantime you also need to find the cause of the regression.
 </details>
 
-<details><summary>14. What is the firmware update cycle?</summary>
-The cycle runs from vendor release, to a staging test, to a canary on 10 percent of nodes, to a full rollout on all nodes, and then to the vendor's next release. The chapter uses a quarterly cycle as an example. As you move through each stage, the update must pass before it goes to the next one.
+<details><summary>14. When would you alert on every firmware component and when only on the ones that matter most to your fleet?</summary>
+The chapter says to start by alerting on the components that matter most. A narrow start keeps the alerts readable and gives each one an owner who can act. The cost is that components outside the list can go unwatched until you widen it.
 </details>
 
-<details><summary>15. What is the firmware rollback?</summary>
-It is the process for reverting to the previous firmware version. This chapter lists three triggers: a boot failure, a performance regression, or a new CVE. A rollback should be automated, tested in staging, and documented.
+<details><summary>15. Why does the chapter split firmware access into reader, writer, and admin roles instead of one shared account, and what does it cost you?</summary>
+A single shared account that can both read and rewrite firmware records makes every change hard to trace. Separate roles let only the platform team lead approve an update or a rollback. The cost is more roles to map onto your identity system and to review on a schedule.
 </details>
 
-<details><summary>16. What is the most important firmware trust metric?</summary>
-Firmware with known CVEs. This metric shows which components carry known CVEs. Any such firmware is an exposure the team must address, so set the alert to fire whenever you see a non-empty field.
+<details><summary>16. The FW BOM scan last finished at 02:00 yesterday and it is now 03:30 today. Does the freshness alert fire?</summary>
+Yes. The age is 24 hours plus 1 hour 30 minutes, which is 25.5 hours. The alert fires when the FW BOM is more than 24 hours stale. The 24-hour limit is an example value.
 </details>
 
-<details><summary>17. What is the FW BOM cadence?</summary>
-The chapter's example scans the FW BOM daily, and the scan is automated and produces a structured record. The freshness target is under 24 hours, and an alert fires when the FW BOM is older than that. Both the daily scan and the 24-hour target are example values to set for your own team.
+<details><summary>17. A fleet has 300 GPU nodes and you use the chapter's 10 percent canary. How many nodes does the canary hold and how many are left for the full rollout?</summary>
+The canary is 10 percent of 300, which is 30 nodes. The full rollout then covers the other 300 - 30 = 270 nodes. The 300 nodes are an example size, and the 10 percent is an example canary.
 </details>
 
-<details><summary>18. What is the relationship between the FW BOM and the threat model?</summary>
-The threat model names threats to firmware, such as T-005 (container image supply chain attack) and T-006 (GPU memory scraping). The FW BOM is the audit trail for the controls that address those threats. It is the evidence that those controls work.
+<details><summary>18. A vendor publishes a CVE at 09:00 and your monitor alert reaches you at 10:20. Does it meet the example CVE alert target?</summary>
+No. The time from 09:00 to 10:20 is 1 hour 20 minutes, which is 80 minutes. The example target is under 1 hour, so the alert is 20 minutes late. The monitor should match each new CVE against the FW BOM and send the alert at once.
 </details>
 
-<details><summary>19. Why is hardware and firmware trust a Tier 2 chapter?</summary>
-Firmware trust underpins the other security controls, so if it fails, the rest cannot be relied on. The platform team owns it, and regulators and auditors look at it. The tier is a planning label in this handbook, and this reasoning is the chapter's own argument rather than a cited source.
+<details><summary>19. A new node fails to run GPU work and you do not know why. In what order do you run the lab checks, and why?</summary>
+Check secure boot first with `mokutil --sb-state`, because the lab calls it the simplest check. Then read the TPM with `tpm2_pcrread sha256`. Then read the GPU attestation with `nvidia-smi -q`. This follows the stack from the boot chain up to the GPU.
 </details>
 
-<details><summary>20. What five questions should the firmware trust lab let you answer in five seconds each?</summary>
-Answer these five questions. What is the current secure boot verification rate? What is the current TPM attestation verification rate? What is the current GPU attestation verification rate? What is the current firmware version? What is the current number of firmware CVEs? The chapter's example limit is 30 seconds per answer, and if your answer takes longer, your firmware trust is not yet ready to run as a production service.
+<details><summary>20. After a clean firmware install, workload latency rises. What do you check and do, in order?</summary>
+First roll the firmware back, since a performance regression is one of the three rollback triggers. Second check whether the update skipped staging, because that is the likely diagnosis. Third find the cause of the regression and update again only after the vendor ships a fix.
 </details>
 
 ---

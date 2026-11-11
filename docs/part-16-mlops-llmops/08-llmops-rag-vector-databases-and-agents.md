@@ -584,84 +584,84 @@ Work through these after the lab. Each exercise turns one rule from this chapter
 
 ## Checkpoint questions
 
-<details><summary>1. What five components does a RAG pipeline have?</summary>
-A RAG pipeline has five components: the corpus in an object store, the chunker with its policy version, the embedding model with its version, the vector index with its snapshot id, and the retriever-generator pipeline. Each is a production system with its own lifecycle, and the index snapshot id is bound to the corpus hash, the embedding model id, and the chunking policy version.
+<details><summary>1. Users report that answers cite documentation deleted in the source system last week. The rebuild job runs weekly. What is the real problem and what do you change?</summary>
+The index has no freshness signal, so nothing tells you it fell behind. Tie the index snapshot id to the corpus snapshot id so each answer shows how old its index is. Alert when the index age passes the freshness SLO. Add a check that refuses to serve when the index is older than the policy window.
 </details>
 
-<details><summary>2. What is the difference between Milvus, Qdrant, pgvector, and Pinecone?</summary>
-Milvus is open source, with petabyte scale and GPU acceleration. Qdrant is open source, with rich filtering and Rust performance. pgvector is a Postgres extension for small and medium deployments, and Pinecone is a managed serverless service with zero ops. Your choice depends on operations and ecosystem fit.
+<details><summary>2. An agent made 800 LLM calls for one request. The cost guardrail fired at call 700 but the loop ran on and the user got a half-formed answer. What was wrong?</summary>
+The runtime had a soft cap, which only warns. It kept calling the model after the cap fired. Use hard caps on iteration count and cost instead. Once a cap is reached, the runtime refuses to call the model again and returns a 429 with a "cost exceeded" message.
 </details>
 
-<details><summary>3. What is the ReAct loop?</summary>
-Most agents follow this pattern. They reason about the next action, call a tool, observe the result, and repeat. An iteration cap and a cost cap bound the loop, and the runtime refuses to go past either one.
+<details><summary>3. A small template change passed the eval suite, but accuracy on live customer traffic fell 8 points and you rolled back. Why did the suite miss it, and what do you add?</summary>
+The suite is a sample and live traffic is the whole population. It did not cover the case live traffic hit. Add samples that look like real customer traffic. Then run the new template in shadow mode alongside the live one before you promote it, for a window that covers your daily traffic pattern.
 </details>
 
-<details><summary>4. What is a tool schema?</summary>
-A tool schema is the JSON description of a tool the agent can call. It holds the tool name, a description, and the parameters with their types and required fields. Because the schema is an artifact, changing it changes the agent's contract with the runtime. The runtime checks every tool call against the schema and rejects any malformed call.
+<details><summary>4. At peak load the vector database returns out-of-memory errors, yet the cluster has free memory. What is the likely cause and fix?</summary>
+The database sits on its own node pool, so the free memory elsewhere is out of reach. It was sized for average load instead of peak. An HNSW index lives in memory and grows with the number of vectors. Size for peak load, and for indices too big for memory consider IVF, which can spill to disk.
 </details>
 
-<details><summary>5. What is the cost model for an LLM request?</summary>
-The cost of a request is the input tokens times their price, plus the output tokens times their price, plus embedding tokens, vector search, and agent tool costs. The platform team enforces per-request budgets on input tokens, output tokens, total tokens, dollar cost, iteration count, and latency. Every budget decision shows up in the trace.
+<details><summary>5. The cost dashboard shows $50,000 spent yesterday, up from $5,000 a day, and customer traffic did not change. What do you look for first and how do you stop a repeat?</summary>
+Look for a recent prompt template change. In the chapter's example a new template carried ten times the context, so each request cost about ten times more. The audit log shows which change caused the spike. To prevent a repeat, set cost budgets per request and per tenant, so a template that breaks the budget fails CI.
 </details>
 
-<details><summary>6. Why is the prompt template versioned in Git?</summary>
-The template is an artifact, and changing it changes how the model behaves. The template repository uses branch protection, so every pull request needs a review. CI runs the eval suite against the new template, and the pull request fails if accuracy drops.
+<details><summary>6. An agent sent a tool call with a parameter the schema does not allow. The runtime ran the tool, got an error, and the loop continued with a broken answer. What should the runtime have done?</summary>
+It should have validated the call against the tool schema before running it. A call that does not match is rejected and the model is told why. The model can then retry with a corrected call. The rule is to trust the model to suggest actions and never to execute them unchecked.
 </details>
 
-<details><summary>7. What is the freshness SLO for a vector index?</summary>
-The freshness SLO is the maximum age the index may reach compared with the corpus. As examples, a static knowledge base might tolerate days of lag, a frequently updated corpus hours, and a streaming corpus seconds. The SLO is the alert threshold, and the rebuild frequency is the budget you spend to meet it.
+<details><summary>7. Why is the index snapshot id a hash of the corpus hash, the embedding model id, and the chunking policy version?</summary>
+The same three inputs always produce the same id, so the id names exactly what built the index. Each artifact carries the ids of the inputs that produced it. When an answer goes wrong, that chain shows which input to check first. Logging the id with every answer lets you trace a bad answer back to its inputs.
 </details>
 
-<details><summary>8. Why are hard caps better than soft caps for agent loops?</summary>
-A soft cap only warns, so the loop keeps running and the cost grows without limit. A hard cap is structural. The runtime refuses to call the model after the cap, and it returns a 429 with a "cost exceeded" message. The difference between the two can decide whether a runaway agent costs a month of budget or a single day of it.
+<details><summary>8. Why does low retriever recall lead to wrong answers even when the generator is good?</summary>
+Recall tells you whether the right context reaches the model at all. If the relevant chunk is not in the top-K results, the generator never sees it. It then has to guess. The generator sets precision, which is whether the answer uses the context correctly, and it cannot fix missing context.
 </details>
 
-<details><summary>9. What is the difference between a single-agent and a multi-agent loop?</summary>
-A single-agent loop has one model that reasons and acts. A multi-agent loop has a coordinator that hands work to specialist agents, each with its own tools and system prompt. Multi-agent loops cost more, because every delegation is a round trip, but they can handle harder tasks. The platform team therefore enforces caps on each agent.
+<details><summary>9. Why does a multi-agent coordinator cost more than a single-agent loop?</summary>
+Every delegation to a specialist is a round trip, and every round trip costs tokens. So the coordinator pays for each hand-off on top of the work itself. That is why the platform team sets an iteration cap for each agent and a cost cap for each request. The coordinator's plan should be a fixed, bounded graph, not an open-ended chain.
 </details>
 
-<details><summary>10. What is the agent trace?</summary>
-The trace is the per-request record that the agent runtime emits. It holds the trace id, parent id, agent id, tool call, tool response, token count, cost, duration, and status. The eval suite, the cost dashboard, and incident response all read from it as an audit trail. Each trace is written to an immutable log.
+<details><summary>10. Why can adding a tenant label to a metric make Prometheus too expensive to run?</summary>
+A label multiplies the number of time series, because every label value creates its own series. *Production Kubernetes*, chapter 9, warns that too many labels can make Prometheus servers too expensive. Count the series a label creates before you add it.
 </details>
 
-<details><summary>11. What is the difference between recall and precision in a RAG application?</summary>
-Recall belongs to the retriever. It measures the share of queries whose top-K results include the relevant context. Precision belongs to the generator, and it measures how often the retrieved context leads to a correct answer. Example targets are recall above 0.9 at K=10 and p99 latency under 50 ms, but set your own for your use case.
+<details><summary>11. Why can a small template edit hurt one group of users while the overall eval score stays flat?</summary>
+An overall score averages over all requests, so a loss on one request type can be hidden by steady results elsewhere. This is prompt regression. If accuracy drops for only one kind of request, suspect it first. The fix is a regression set of inputs, and the eval suite checks that the new template still produces the expected outputs.
 </details>
 
-<details><summary>12. Why is schema validation on tool calls necessary?</summary>
-The model sometimes invents tool calls. A call with a parameter the schema does not allow is broken, so the runtime must reject it. The runtime must also tell the model about the rejection, so the model can retry with a corrected call. Keep the rule in mind: trust the model to suggest, never to execute.
+<details><summary>12. When would you choose pgvector over Milvus, and what do you give up?</summary>
+Choose pgvector when your team already runs Postgres and the deployment is small or medium. You add one extension and keep your existing backup, monitoring, and upgrade habits. You give up scale. When the table outgrows the Postgres server, Milvus or Qdrant is the better choice, so measure your table size and query rate first.
 </details>
 
-<details><summary>13. What is the right context size for a RAG prompt?</summary>
-Choose the context size that fits your per-request input budget and stops improving accuracy. The platform team measures accuracy against context size. The budget is the smallest size that still reaches the accuracy target.
+<details><summary>13. When would you choose an HNSW index over IVF, and what do you give up?</summary>
+HNSW is the most accurate and suits indices that fit in memory. You give up memory headroom, because its footprint grows with the number of vectors. IVF can spill to disk, so it suits indices too big for memory. IVF is the Milvus default.
 </details>
 
-<details><summary>14. What is the difference between pgvector and a dedicated vector database?</summary>
-pgvector is a Postgres extension that adds the `vector` type and the cosine-distance operator. The trade-off is scale, and the limit depends on your table and hardware, so measure it. Once the table outgrows that limit, Milvus or Qdrant is the better choice. For teams already on Postgres, pgvector is the lowest-operations path.
+<details><summary>14. When would you use a multi-agent setup instead of one agent, and what do you give up?</summary>
+Use several agents when a task is complex and needs specialists, each with its own tool set and system prompt. You give up cost and simplicity. Every delegation is a round trip that costs tokens. You also need caps on each agent and a cost cap for each request.
 </details>
 
-<details><summary>15. What is the right granularity for an agent's cost budget?</summary>
-Set the budget per request. A per-day budget lets one runaway agent use up the whole day, while a per-request budget stops that agent early. The agent runtime enforces the per-request budget, and the per-day figure serves as the alert threshold on the cost dashboard.
+<details><summary>15. You are tempted to raise K so the retriever returns more chunks. What do you weigh first?</summary>
+More chunks mean more input tokens, and every extra chunk adds to the cost of each request. You enforce a per-request input budget, and the assembler truncates the chunks to fit. Before raising K, measure what the extra context costs and whether accuracy improves at that size. The eval suite checks that accuracy holds at the truncation point.
 </details>
 
-<details><summary>16. What is the difference between an agent's iteration cap and its cost cap?</summary>
-The iteration cap limits the number of tool calls, and the cost cap limits dollars or tokens. An agent that calls cheap tools can stay under the cost cap and still break the iteration cap. An agent that calls expensive tools can do the reverse. The runtime enforces both caps as hard limits.
+<details><summary>16. At an example price of $3 per million input tokens, a 2,000-token context costs about $0.006 per request and a 20,000-token context about $0.06. What is the gap per hour at 1,000 requests per second?</summary>
+The gap per request is $0.054. At 1,000 requests per second that is $54 per second. Over 3,600 seconds it is $54 times 3,600, which is $194,400 per hour. Context size is a budget decision as much as a quality decision.
 </details>
 
-<details><summary>17. What is the right shape for an agent trace?</summary>
-A tree. The coordinator's trace is the root, each delegation to a specialist is a child, and each tool call is a leaf. That shape lets you read cost at every level. The eval suite can measure accuracy at every level too, and the cost dashboard can attribute spend the same way.
+<details><summary>17. Check the per-request prices in the last question. How do you get $0.006 and $0.06?</summary>
+Divide tokens by one million and multiply by $3. For 2,000 tokens that is 2,000 divided by 1,000,000, which is 0.002, and 0.002 times $3 is $0.006. For 20,000 tokens it is 0.02 times $3, which is $0.06. The context is ten times larger, so the cost is ten times larger.
 </details>
 
-<details><summary>18. Why does the LLM application need a per-tenant budget?</summary>
-One tenant's runaway cost becomes the platform's bill. Without per-tenant budgets, a single misconfigured application can use up the whole monthly GPU budget. The InferenceService enforces these budgets, and the cost dashboard shows how often each tenant exceeds its budget.
+<details><summary>18. Daily spend jumps from $5,000 to $50,000 after a template that carries ten times the context. How much extra do you pay per day and does the ratio match?</summary>
+The extra spend is $45,000 per day, since $50,000 minus $5,000 is $45,000. The ratio is 10 to 1. That matches ten times the context, because each request cost about ten times more and traffic stayed the same.
 </details>
 
-<details><summary>19. What is the difference between HNSW and IVF for vector indices?</summary>
-HNSW, short for Hierarchical Navigable Small World, lives in memory, so its footprint grows with the number of vectors. IVF, short for Inverted File, can be disk-backed and spill to disk for very large indices. Choose HNSW for small and medium indices with tight latency needs. Choose IVF when memory is the bottleneck in a very large index.
+<details><summary>19. Answer quality drops. In what order do you check the inputs behind the index?</summary>
+The serving system reads the index snapshot id on every request, and the audit log records the corpus hash and the embedding model id behind it. First read the snapshot id from the answer's log entry. Second check the corpus hash and the embedding model id. Third check the chunking policy version, since the snapshot binds all three. Also check the prompt template version, which is logged with each answer.
 </details>
 
-<details><summary>20. What five questions should the LLMOps lab let you answer in five seconds each?</summary>
-You should be able to answer five questions quickly. What is the index snapshot id, and which corpus hash does it bind to? What is the retriever's recall@10? What does one request cost, broken down by retriever and generator? What is the agent's iteration cap, and what is its actual distribution? What is the prompt template version, and what is its eval pass rate? If any answer takes more than 30 seconds to find, treat the stack as not yet production-ready, and remember that the five-second and 30-second limits are example targets.
+<details><summary>20. An agent loops and the bill climbs. What do you read in the trace, and in what order?</summary>
+Start with the status and the iteration count to see how many steps ran and where it stopped. Next read the tool call and tool response fields, to see which tool kept being called and what it returned. Then check the token count and cost per step. The trace is your audit trail, and when an agent loops it shows you where.
 </details>
 
 ---
