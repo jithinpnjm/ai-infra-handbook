@@ -45,6 +45,8 @@ LLM Autoscaling Physics and Reference Numbers (Volume 5 Ch. 3, Volume 12 Ch. 8-1
   Uncached cloud node boot (90-120 s) + 5 GB runtime image pull (20-60 s) + 140 GB weight load over shared storage (112-280 s) + CUDA Graph capture (8-20 s) = 2 to 8 minutes.
 ```
 
+> **dcgm-exporter 4.9.0 version note.** dcgm-exporter 4.9.0 (2026-11-06) renamed many default metrics and changed some units. For example `DCGM_FI_DEV_GPU_UTIL` (percent) became `DCGM_FI_DEV_GPU_UTIL_RATIO` (0 to 1), and `DCGM_FI_DEV_FB_USED` (MiB) became `DCGM_FI_DEV_FB_USED_BYTES`. The metric names in this chapter are the 4.8.x names. On a 4.9.0 exporter use the [full mapping in 17.4](../part-17-operations/04-dcgm-exporter-and-interpreting-gpu-metrics.md#14-what-dcgm-exporter-490-renamed), and change thresholds together with the unit.
+
 Wiring standard CPU, memory, or raw GPU utilization metrics into an untuned autoscaler triggers three severe production failures.
 
 - **Single-request thrashing and premature scale-out**: One request drives GPU activity near 100 percent, so an autoscaler watching raw GPU utilization scales the deployment to its maximum replica ceiling during light traffic. Conversely, a tiny queue threshold of 5 on a fast 8B model causes a brief burst of 50 requests to trigger eight new GPU pods. Those pods take 60 seconds to boot, long after the original two pods cleared the burst in under two seconds.
@@ -537,10 +539,12 @@ spec:
   targetPorts:
     - number: 8000
   selector:
-    app: vllm-llama3-8b-instruct
+    matchLabels:
+      app: vllm-llama3-8b-instruct
   endpointPickerRef:
     name: vllm-llama3-8b-epp
-    port: 9002
+    port:
+      number: 9002
     failureMode: FailClose
 ---
 apiVersion: inference.networking.x-k8s.io/v1alpha2
@@ -818,4 +822,4 @@ Primary Sources, Mapped Notes, and Corpus Books Cited in Chapter 15.15:
 ### Inferences and Verification Notes
 - The per-stage cold-start breakdown in `code/part15/autoscaling_inference_keda.py` is deterministically derived from the Llama-3-70B FP16 weight footprint, the Karpenter VM startup log, and the storage bandwidth ranges in our cited sources.
 - All mathematical models and self-checks in `code/part15/autoscaling_inference_keda_lab.py` were verified locally (`Summary: 28 passed, 0 failed`), while multi-node GKE and EKS manifests are marked as `untested` on live hardware.
-
+- Manifest checked against upstream CRDs on 2026-11-11 (versions: InferencePool inference.networking.k8s.io/v1 as shipped in the KServe main CRDs, 2026-11-11 clone).

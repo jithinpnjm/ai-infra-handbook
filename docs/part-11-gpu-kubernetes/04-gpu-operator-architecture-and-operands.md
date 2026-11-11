@@ -115,7 +115,7 @@ Read the diagram from the top. Nothing downstream of the driver check starts unt
 Platform engineers often check the ClusterPolicy resource status after a rollout. When you see `state: ready` there, it is tempting to assume the entire fleet is healthy. That top-level status only shows that the operator controller created its child DaemonSets and saw reconciliation converge. It does not guarantee that every individual GPU worker node in a twenty-five-node pool has a working device plugin right now.
 
 ```yaml
-$ kubectl get clusterpolicy cluster-policy -o yaml
+# kubectl get clusterpolicy cluster-policy -o yaml
 apiVersion: nvidia.com/v1
 kind: ClusterPolicy
 metadata:
@@ -123,6 +123,13 @@ metadata:
 spec:
   driver: {enabled: true, version: "550.90.07"}
   toolkit: {enabled: true}
+  operator: {defaultRuntime: containerd}
+  daemonsets: {}
+  dcgm: {}
+  dcgmExporter: {}
+  devicePlugin: {}
+  gfd: {}
+  nodeStatusExporter: {}
 status:
   namespace: gpu-operator
   state: ready
@@ -130,6 +137,8 @@ status:
   - type: Ready
     status: "True"
     reason: OperandsReady
+    message: ""
+    lastTransitionTime: "2026-11-11T09:00:00Z"
 ```
 
 Compare that top-level status with the live DaemonSet and Pod output below. The driver and container toolkit DaemonSets show all twenty-five nodes ready. The device plugin DaemonSet is one node short, because a single Pod is stuck in a crash loop.
@@ -345,6 +354,11 @@ spec:
       default: sharing
   mig:
     strategy: mixed
+  operator: {defaultRuntime: containerd}
+  daemonsets: {}
+  dcgm: {}
+  dcgmExporter: {}
+  nodeStatusExporter: {}
 ```
 
 Notice the `upgradePolicy` block, which controls how driver upgrades roll out across the nodes.
@@ -631,3 +645,5 @@ Deleting all operands at once wipes out the logs and init-container ordering evi
 | TOON-RAG Book Sources 2 & 3 | Roland Huß et al., *Generative AI on Kubernetes* (O'Reilly, 2026), Chapter 3 ("NVIDIA GPU Operator" and "Operator Configuration with ClusterPolicy" Examples 3-10 and 3-11); *Kubernetes for Generative AI Solutions* (Packt, 2025), Chapter 10 ("NVIDIA Data Center GPU Manager (DCGM)", GPU Operator vs standalone DCGM-Exporter) |
 | Migration Map & Local Lab | `nvidia-zero-to-hero/volume-10/chapter-06-gpu-operator-architecture.md`, `chapter-07-driver-containers-and-node-operands.md`, `volume-04/02-gpu-software-operator-masterclass.md`; `python3 code/part11/gpu_operator_and_operands_lab.py` (`25 passed, 0 failed out of 25 checks`) |
 | Explicit Inferences & Scope Notes | In Exercise 4, `maxUnavailable=3` (`3 * 8 = 24` GPUs offline across `ceil(40 / 3) = 14` batches × `6` min = `84` minutes, leaving `28 - 24 = 4` GPUs margin) is a direct evaluation of the `40`-node formula from `volume-10/chapter-07`; live cluster commands (`ClusterPolicy.spec`, `RuntimeClass`, `nodeSelector`, `kube-controller-manager`, `nvidia-device-plugin-daemonset-k2vqp`, `ListAndWatch`, `owner_operator`, `failing_layer`, `validator_pod_state`, `slo_safe=True`, `GAK` p. `134`, cross-referenced with Chapters `5.3`, `6.1`, `15.1`, and `15.2` and validated via `validate_chapter.py` and `check_coverage.py`) are marked `(untested here)`; OpenShift `DriverToolkit` RhCoreOS digest internals are out of corpus scope; API versions (`kueue.x-k8s.io/v1beta1`, `resource.k8s.io/v1`) vary by release |
+
+- Manifest checked against upstream CRDs on 2026-11-11 (versions: GPU Operator v26.7.2 ClusterPolicy; YAML parse error in the status example fixed).

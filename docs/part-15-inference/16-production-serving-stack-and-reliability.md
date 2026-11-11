@@ -387,6 +387,10 @@ XID Triage Tiers & Automated Node Remediation Reference (V12 Ch. 11, V19 Ch. 2, 
   -> NPD rule on DCGM_FI_DEV_XID_ERRORS ("Xid 62|Xid 79|Xid 92") triggers immediate CordonAndDrainNode.
 ```
 
+> **dcgm-exporter 4.9.0 version note.** dcgm-exporter 4.9.0 (2026-11-06) renamed many default metrics and changed some units. For example `DCGM_FI_DEV_GPU_UTIL` (percent) became `DCGM_FI_DEV_GPU_UTIL_RATIO` (0 to 1), and `DCGM_FI_DEV_FB_USED` (MiB) became `DCGM_FI_DEV_FB_USED_BYTES`. The metric names in this chapter are the 4.8.x names. On a 4.9.0 exporter use the [full mapping in 17.4](../part-17-operations/04-dcgm-exporter-and-interpreting-gpu-metrics.md#14-what-dcgm-exporter-490-renamed), and change thresholds together with the unit.
+>
+> **Xid 62 correction.** Where this chapter calls Xid 62 a double-bit ECC error, read it as the NVIDIA Xid catalog defines it: Xid 62 is `PMU_HALT_ERROR`, an internal micro-controller halt (immediate action `RESET_GPU`, investigatory `CONTACT_SUPPORT`). The double-bit ECC error is Xid 48.
+
 ---
 
 ## 5. Overload Protection: Circuit Breakers, Fallback Cascades, and Cost Resilience
@@ -591,10 +595,12 @@ spec:
   targetPorts:
     - number: 8000
   selector:
-    app: vllm-llama-3-70b
+    matchLabels:
+      app: vllm-llama-3-70b
   endpointPickerRef:
     name: vllm-llama-3-70b-epp
-    port: 9002
+    port:
+      number: 9002
     failureMode: FailClose
 ---
 apiVersion: inference.networking.x-k8s.io/v1alpha2
@@ -938,4 +944,4 @@ Primary Sources Read in Full and Cited:
 - **Verified against source text and self-checking code.** Every formula, latency budget, error budget, and state-machine transition in Sections 1 through 6 is verified by the 28 passing checks in `code/part15/production_serving_reliability_lab.py`. All claims are also logged in `planning/ledgers/15-16.md`.
 - **Labelled engineering synthesis.** The composite Endpoint Picker scoring function in `code/part15/production_serving_reliability.py` is a deterministic pedagogical model. It synthesizes the multi-signal EPP scoring criteria from *Generative AI on Kubernetes* Chapter 4 and *Distributed AI Systems* Chapter 9. Verify the exact plugin weights in your deployed Gateway API Inference Extension release.
 - **Hardware execution status.** The Kubernetes and GKE manifests in this chapter are validated structurally and marked `untested` on live multi-GPU hardware in this build environment.
-
+- Manifest checked against upstream CRDs on 2026-11-11 (versions: InferencePool inference.networking.k8s.io/v1 as shipped in the KServe main CRDs, 2026-11-11 clone).

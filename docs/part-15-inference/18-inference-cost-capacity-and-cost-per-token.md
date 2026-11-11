@@ -325,6 +325,10 @@ To minimize total spend across the diurnal curve, enterprise FinOps teams combin
 | **Tier 3: Scavenger / Batch Tier (`V19` Ch. 6, `V21` Ch. 12, `AIE` Ch. 9)** | Async batch inference, data labeling, fine-tuning, evals | Preemptible / Spot GPU instances (`$21/hr` vs `$60/hr` on `8x H100` = `$2.63` vs `$7.50/GPU/hr`) or Batch APIs | **`60%`–`70%` off** on Spot (`$35K/GPU/yr` saved); **`50%` off** on Batch APIs | Poll `169.254.169.254` Spot termination notice (`2`-min warning) or backfill overnight troughs on Tier 1 GPUs. |
 | **FinOps Reaper & MIG Partitioning (`V19` Ch. 3, 6, 7)** | Zombie Jupyter notebooks & lightweight dev/staging models (`< 5` GB) | Kubernetes Reaper kills pods with `DCGM_FI_PROF_SM_ACTIVE < 5%` for `4` hours; MIG `1g.10gb` / `1g.18gb` | Reclaims **`86%` stranded silicon** (`98%` K8s allocated vs `12%` SM active); avoids **`$5M` (`16`-node) CapEx** | Chargeback by namespace DCGM utilization rather than K8s allocation; use hardware MIG (`7` slices/GPU) across untrusted tenants. |
 
+> **dcgm-exporter 4.9.0 version note.** dcgm-exporter 4.9.0 (2026-11-06) renamed many default metrics and changed some units. For example `DCGM_FI_DEV_GPU_UTIL` (percent) became `DCGM_FI_DEV_GPU_UTIL_RATIO` (0 to 1), and `DCGM_FI_DEV_FB_USED` (MiB) became `DCGM_FI_DEV_FB_USED_BYTES`. The metric names in this chapter are the 4.8.x names. On a 4.9.0 exporter use the [full mapping in 17.4](../part-17-operations/04-dcgm-exporter-and-interpreting-gpu-metrics.md#14-what-dcgm-exporter-490-renamed), and change thresholds together with the unit.
+>
+> **Xid 62 correction.** Where this chapter calls Xid 62 a double-bit ECC error, read it as the NVIDIA Xid catalog defines it: Xid 62 is `PMU_HALT_ERROR`, an internal micro-controller halt (immediate action `RESET_GPU`, investigatory `CONTACT_SUPPORT`). The double-bit ECC error is Xid 48.
+
 ---
 
 ## 5. Comparing Accelerator Economics: L4, L40S, A100, H100, H200, B200, and GB200 NVL72

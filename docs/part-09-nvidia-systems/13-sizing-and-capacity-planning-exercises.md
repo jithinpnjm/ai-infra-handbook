@@ -31,6 +31,8 @@ Capacity planning for AI factories is unforgiving for three physical and financi
 2. The Allocation versus Utilization illusion, often called the Empty Hotel problem, hides massive waste inside Kubernetes clusters. Kubernetes `nvidia.com/gpu` allocation measures how many rooms are booked rather than how many GPUs are executing math. Without MIG partitioning, job bin-packing, and automated FinOps reaper bots driven by `DCGM_FI_PROF_SM_ACTIVE`, clusters routinely report 98% allocation. In reality, they sit at 12% physical silicon utilization.
 3. Facility power ceilings and exponential forecasting traps break naive spreadsheet projections. Extrapolating monthly growth blindly for three years asks for over eleven thousand GPUs while blowing through a 150 kW data center power wall in the tenth month.
 
+> **dcgm-exporter 4.9.0 version note.** dcgm-exporter 4.9.0 (2026-11-06) renamed many default metrics and changed some units. For example `DCGM_FI_DEV_GPU_UTIL` (percent) became `DCGM_FI_DEV_GPU_UTIL_RATIO` (0 to 1), and `DCGM_FI_DEV_FB_USED` (MiB) became `DCGM_FI_DEV_FB_USED_BYTES`. The metric names in this chapter are the 4.8.x names. On a 4.9.0 exporter use the [full mapping in 17.4](../part-17-operations/04-dcgm-exporter-and-interpreting-gpu-metrics.md#14-what-dcgm-exporter-490-renamed), and change thresholds together with the unit.
+
 :::info Corpus scope note
 This chapter synthesizes the architecture methodology, falsifiable PoC design, FinOps reclamation, multi-year TCO, and capacity-planning exercises from the sources listed below. Operational runbooks for Kubernetes upgrades, incident game-days, and multi-region serving are covered in later parts per `planning/MIGRATION_MAP.md`.
 

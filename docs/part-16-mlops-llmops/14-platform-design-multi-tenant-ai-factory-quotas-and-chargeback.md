@@ -302,45 +302,56 @@ Kueue holds a Job until the quota has room. You define one ClusterQueue per tier
 
 ```yaml
 # code/part16/cluster_queues.yaml
-apiVersion: kueue.x-k8s.io/v1beta1
+apiVersion: kueue.x-k8s.io/v1beta2
+kind: ResourceFlavor
+metadata:
+  name: h100-sxm5-80gb
+spec:
+  nodeLabels:
+    nvidia.com/gpu.product: NVIDIA-H100-80GB-HBM3
+---
+apiVersion: kueue.x-k8s.io/v1beta2
 kind: ClusterQueue
 metadata:
   name: cluster-queue-standard
 spec:
-  cohort: default
-  flavorQuotas:
-    - name: h100-sxm5-80gb
-      resources:
-        - name: cpu
-          nominalQuota: 200
-        - name: memory
-          nominalQuota: 1Ti
-        - name: nvidia.com/gpu
-          nominalQuota: 16
+  cohortName: default
+  namespaceSelector: {}
   resourceGroups:
     - coveredResources: ["cpu", "memory", "nvidia.com/gpu"]
-      flavors: ["h100-sxm5-80gb"]
+      flavors:
+        - name: h100-sxm5-80gb
+          resources:
+            - name: cpu
+              nominalQuota: 200
+            - name: memory
+              nominalQuota: 1Ti
+            - name: nvidia.com/gpu
+              nominalQuota: 16
 ---
-apiVersion: kueue.x-k8s.io/v1beta1
+apiVersion: kueue.x-k8s.io/v1beta2
 kind: ClusterQueue
 metadata:
   name: cluster-queue-production
 spec:
-  cohort: default
-  flavorQuotas:
-    - name: h100-sxm5-80gb
-      resources:
-        - name: cpu
-          nominalQuota: 800
-        - name: memory
-          nominalQuota: 4Ti
-        - name: nvidia.com/gpu
-          nominalQuota: 64
+  cohortName: default
+  namespaceSelector: {}
+  resourceGroups:
+    - coveredResources: ["cpu", "memory", "nvidia.com/gpu"]
+      flavors:
+        - name: h100-sxm5-80gb
+          resources:
+            - name: cpu
+              nominalQuota: 800
+            - name: memory
+              nominalQuota: 4Ti
+            - name: nvidia.com/gpu
+              nominalQuota: 64
 ```
 
 ```yaml
 # code/part16/local_queues.yaml
-apiVersion: kueue.x-k8s.io/v1beta1
+apiVersion: kueue.x-k8s.io/v1beta2
 kind: LocalQueue
 metadata:
   name: team-data-science-queue
@@ -997,3 +1008,4 @@ The AI factory overview, the chargeback integration, the GPU resource pools, and
 - The lab in Section 8 is **untested** against a live GKE cluster in this repository.
 - The Kueue, Kubecost, and GPU Operator versions assumed in the lab should be pinned against the current releases before production use.
 - The cost numbers in the lab are illustrative; production costs vary by usage pattern.
+- Manifest checked against upstream CRDs on 2026-11-11 (versions: Kueue v0.20.5, API kueue.x-k8s.io/v1beta2).

@@ -185,6 +185,8 @@ Six Operational Controls for Shared GPU Pools (volume-11/chapter-04):
 6. Dedicated escape hatch: Pre-approve a whole-GPU or MIG pool (kubectl set resources deployment/<name> --limits nvidia.com/gpu=1) for rapid evacuation.
 ```
 
+> **dcgm-exporter 4.9.0 version note.** dcgm-exporter 4.9.0 (2026-11-06) renamed many default metrics and changed some units. For example `DCGM_FI_DEV_GPU_UTIL` (percent) became `DCGM_FI_DEV_GPU_UTIL_RATIO` (0 to 1), and `DCGM_FI_DEV_FB_USED` (MiB) became `DCGM_FI_DEV_FB_USED_BYTES`. The metric names in this chapter are the 4.8.x names. On a 4.9.0 exporter use the [full mapping in 17.4](../part-17-operations/04-dcgm-exporter-and-interpreting-gpu-metrics.md#14-what-dcgm-exporter-490-renamed), and change thresholds together with the unit.
+
 The block above gives each control with the failure it prevents. Controls one and two work as a pair: the rename makes the shared pool visible in manifests, and the quota refuses shared requests in production. The manifest below puts the quota into practice.
 
 ```yaml

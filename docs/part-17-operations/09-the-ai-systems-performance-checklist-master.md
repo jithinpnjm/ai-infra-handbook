@@ -136,6 +136,8 @@ Suppose a training job slows down overnight, and nothing in the code has changed
 | HW-014 | GPU memory temperatures are within normal range | DCGM_FI_DEV_MEMORY_TEMP |
 | HW-015 | GPU power management state is P0 (maximum performance) | nvidia-smi -q -d POWER |
 
+> **dcgm-exporter 4.9.0 version note.** dcgm-exporter 4.9.0 (2026-11-06) renamed many default metrics and changed some units. For example `DCGM_FI_DEV_GPU_UTIL` (percent) became `DCGM_FI_DEV_GPU_UTIL_RATIO` (0 to 1), and `DCGM_FI_DEV_FB_USED` (MiB) became `DCGM_FI_DEV_FB_USED_BYTES`. The metric names in this chapter are the 4.8.x names. On a 4.9.0 exporter use the [full mapping in 17.4](04-dcgm-exporter-and-interpreting-gpu-metrics.md#14-what-dcgm-exporter-490-renamed), and change thresholds together with the unit.
+
 The limits in these tables are example values, not standards. Choose your own limits for your hardware, and write down why you chose them. The appendix of *AI Systems Performance Engineering* mentions 85°C as a thermal limit that GPUs can reach in some cases, so it is a reasonable place to start. The same appendix advises keeping ECC enabled on data center GPUs. ECC costs only a few percent of bandwidth and memory, and it catches memory errors that could otherwise corrupt results.
 
 ### 1.2 CPU hardware

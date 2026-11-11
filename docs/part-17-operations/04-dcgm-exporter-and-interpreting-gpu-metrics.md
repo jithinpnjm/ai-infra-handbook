@@ -123,20 +123,99 @@ The NVIDIA Zero-to-Hero Volume 16, chapter 3, and the DCGM exporter documentatio
 
 | Family | Examples | What it measures |
 |---|---|---|
-| **Utilization** | `DCGM_FI_DEV_GPU_UTIL`, `DCGM_FI_PROF_SM_ACTIVE`, `DCGM_FI_DEV_MEM_COPY_UTIL` | GPU SM utilisation, memory utilisation |
-| **Memory** | `DCGM_FI_DEV_FB_USED`, `DCGM_FI_DEV_FB_TOTAL`, `DCGM_FI_DEV_FB_FREE` | HBM used, total, free |
-| **Temperature** | `DCGM_FI_DEV_GPU_TEMP`, `DCGM_FI_DEV_MEMORY_TEMP` | GPU temperature |
-| **Power** | `DCGM_FI_DEV_POWER_USAGE`, `DCGM_FI_DEV_TOTAL_ENERGY_CONSUMPTION` | Power draw, energy |
-| **Clocks** | `DCGM_FI_DEV_SM_CLOCK`, `DCGM_FI_DEV_MEM_CLOCK` | SM clock, memory clock |
+| **Utilization** | `DCGM_FI_DEV_GPU_UTIL_RATIO`, `DCGM_FI_PROF_SM_UTIL_RATIO`, `DCGM_FI_DEV_MEMORY_UTIL_RATIO` | GPU SM utilisation, memory utilisation |
+| **Memory** | `DCGM_FI_DEV_FB_USED_BYTES`, `DCGM_FI_DEV_FB_CAPACITY_BYTES`, `DCGM_FI_DEV_FB_FREE_BYTES` | HBM used, total, free |
+| **Temperature** | `DCGM_FI_DEV_GPU_TEMP_CELSIUS`, `DCGM_FI_DEV_MEMORY_TEMP_CELSIUS` | GPU temperature |
+| **Power** | `DCGM_FI_DEV_BOARD_POWER_WATTS`, `DCGM_FI_DEV_GPU_ENERGY_JOULES_TOTAL` | Power draw, energy |
+| **Clocks** | `DCGM_FI_DEV_SM_CLOCK_HERTZ`, `DCGM_FI_DEV_MEMORY_CLOCK_HERTZ` | SM clock, memory clock |
 | **ECC** | `DCGM_FI_DEV_ECC_DBE_AGG_TOTAL`, `DCGM_FI_DEV_ECC_DBE_VOL_TOTAL`, `DCGM_FI_DEV_ECC_SBE_AGG_TOTAL` | Double-bit errors (DBE), single-bit errors (SBE) |
-| **Xid** | `DCGM_FI_DEV_XID_ERRORS` | NVIDIA Xid errors |
-| **Retired pages** | `DCGM_FI_DEV_RETIRED_PENDING`, `DCGM_FI_DEV_RETIRED_DBE`, `DCGM_FI_DEV_RETIRED_SBE` | Pages retired due to errors |
+| **Xid** | `DCGM_FI_DEV_XID_ERROR` | NVIDIA Xid errors |
+| **Retired pages** | `DCGM_FI_DEV_PAGE_RETIRED_PENDING`, `DCGM_FI_DEV_PAGE_RETIRED_DBE_TOTAL`, `DCGM_FI_DEV_PAGE_RETIRED_SBE_TOTAL` | Pages retired due to errors |
 | **NVLink** | `DCGM_FI_DEV_NVLINK_CRC_DATA_ERROR_TOTAL`, `DCGM_FI_DEV_NVLINK_CRC_DATA_ERROR_TOTAL` | NVLink CRC errors |
-| **PCIe** | `DCGM_FI_DEV_PCIE_REPLAY_COUNTER` | PCIe replay count |
+| **PCIe** | `DCGM_FI_DEV_PCIE_REPLAY_TOTAL` | PCIe replay count |
 
 Each family answers its own question. Utilisation and memory show how much capacity is in use. ECC and Xid show hardware and driver health. Temperature and power show heat, clocks show throttling, and NVLink and PCIe show whether the links are healthy.
 
-The field names were checked against the dcgm-exporter source, and that check turned up three points. `DCGM_FI_PROF_SM_ACTIVE` reports a ratio from 0 to 1, not a percentage, and not every exporter enables it by default. The retired-page family is `DCGM_FI_DEV_RETIRED_PENDING`, `DCGM_FI_DEV_RETIRED_DBE` and `DCGM_FI_DEV_RETIRED_SBE`. ECC counters end in `_TOTAL`, because an earlier draft used `_DEDUP` names that the exporter does not define.
+The field names were checked against the dcgm-exporter source, and that check turned up three points. `DCGM_FI_PROF_SM_UTIL_RATIO` (called `DCGM_FI_PROF_SM_ACTIVE` before 4.9.0, a naming link that is inferred, see 1.4) reports a ratio from 0 to 1, not a percentage, and is commented out in the default counters file. The retired-page family is `DCGM_FI_DEV_PAGE_RETIRED_PENDING`, `DCGM_FI_DEV_PAGE_RETIRED_DBE_TOTAL` and `DCGM_FI_DEV_PAGE_RETIRED_SBE_TOTAL`, also inferred and commented out by default. ECC counters end in `_TOTAL`, because an earlier draft used `_DEDUP` names that the exporter does not define.
+
+### 1.4 What dcgm-exporter 4.9.0 renamed
+
+dcgm-exporter 4.9.0 (released 2026-11-06) renames the default and profiling-preset fields that DCGM 4.7 deprecates. The GitHub release notes say 4.9.0 "renames default metrics and labels, changes some units, and changes the configuration and Helm values formats". Twenty-three default fields get new names, and eleven of those also change unit. Clocks move from MHz to hertz, energy from millijoules to joules, utilisation from a percentage to a 0 to 1 ratio, GPU memory from MiB to bytes, and NVLink throughput from MB/s to bytes per second. The driver-version label on every metric changes from `DCGM_FI_DRIVER_VERSION` to `DCGM_FI_SYSTEM_DRIVER_VERSION`.
+
+Three more facts from the release notes matter for queries. `DCGM_FI_DEV_FB_CAPACITY_BYTES` (total framebuffer, in bytes) is now collected by default. For Kubernetes pods the exporter adds up per-process GPU utilisation and memory and emits them under the new names and the old names, and a pod's utilisation ratio can be above 1.0. `dcp-metrics-included.csv` and `1.x-compatibility-metrics.csv` are deprecated, and `default-counters.csv` replaces them. The rest of this chapter uses the 4.9.0 names. A 4.8.x exporter still emits the old names, so rules that must run on both can join the two forms with `or`, as `code/part17/gpu_alerts.yaml` does.
+
+The table is built from `etc/default-counters.csv` at the 4.8.4 and 4.9.0 tags of the dcgm-exporter repository, row by row. The unit factors for clocks, energy, utilisation and memory match the conversions in the exporter's own signal catalog. The NVLink factor is not stated anywhere I could confirm: the release notes say only "MB/s to bytes per second", so the helper refuses to scale it.
+
+| 4.8.x name | 4.9.0 name | Unit change | New value = old value ... |
+|---|---|---|---|
+| `DCGM_FI_DEV_SM_CLOCK` | `DCGM_FI_DEV_SM_CLOCK_HERTZ` | MHz to Hz | x 1_000_000 |
+| `DCGM_FI_DEV_MEM_CLOCK` | `DCGM_FI_DEV_MEMORY_CLOCK_HERTZ` | MHz to Hz | x 1_000_000 |
+| `DCGM_FI_DEV_MEMORY_TEMP` | `DCGM_FI_DEV_MEMORY_TEMP_CELSIUS` | none | none |
+| `DCGM_FI_DEV_GPU_TEMP` | `DCGM_FI_DEV_GPU_TEMP_CELSIUS` | none | none |
+| `DCGM_FI_DEV_POWER_USAGE` | `DCGM_FI_DEV_BOARD_POWER_WATTS` | none | none |
+| `DCGM_FI_DEV_TOTAL_ENERGY_CONSUMPTION` | `DCGM_FI_DEV_GPU_ENERGY_JOULES_TOTAL` | mJ to J | / 1_000 |
+| `DCGM_FI_DEV_PCIE_REPLAY_TOTAL` | `DCGM_FI_DEV_PCIE_REPLAY_TOTAL` | none | none |
+| `DCGM_FI_DEV_GPU_UTIL` | `DCGM_FI_DEV_GPU_UTIL_RATIO` | percent 0-100 to ratio 0-1 | / 100 |
+| `DCGM_FI_DEV_MEM_COPY_UTIL` | `DCGM_FI_DEV_MEMORY_UTIL_RATIO` | percent 0-100 to ratio 0-1 | / 100 |
+| `DCGM_FI_DEV_ENC_UTIL` | `DCGM_FI_DEV_ENC_UTIL_RATIO` | percent 0-100 to ratio 0-1 | / 100 |
+| `DCGM_FI_DEV_DEC_UTIL` | `DCGM_FI_DEV_DEC_UTIL_RATIO` | percent 0-100 to ratio 0-1 | / 100 |
+| `DCGM_FI_DEV_XID_ERROR` | `DCGM_FI_DEV_XID_ERROR` | none | none |
+| `DCGM_FI_DEV_FB_FREE` | `DCGM_FI_DEV_FB_FREE_BYTES` | MiB to bytes | x 1_048_576 |
+| `DCGM_FI_DEV_FB_USED` | `DCGM_FI_DEV_FB_USED_BYTES` | MiB to bytes | x 1_048_576 |
+| `DCGM_FI_DEV_FB_RESERVED` | `DCGM_FI_DEV_FB_RESERVED_BYTES` | MiB to bytes | x 1_048_576 |
+| `DCGM_FI_DEV_NVLINK_BANDWIDTH_TOTAL` | `DCGM_FI_DEV_NVLINK_THROUGHPUT_BYTES_PER_SECOND` | MB/s to bytes/s | factor not confirmed |
+| `DCGM_FI_DEV_UNCORRECTABLE_REMAPPED_ROWS` | `DCGM_FI_DEV_ROW_REMAP_UNCORRECTABLE_TOTAL` | none | none |
+| `DCGM_FI_DEV_CORRECTABLE_REMAPPED_ROWS` | `DCGM_FI_DEV_ROW_REMAP_CORRECTABLE_TOTAL` | none | none |
+| `DCGM_FI_DEV_ROW_REMAP_FAILURE` | `DCGM_FI_DEV_ROW_REMAP_FAILED` | none | none |
+| `DCGM_FI_DRIVER_VERSION` | `DCGM_FI_SYSTEM_DRIVER_VERSION` | none | none |
+| `DCGM_FI_PROF_GR_ENGINE_ACTIVE` | `DCGM_FI_PROF_GR_ENGINE_UTIL_RATIO` | none | none |
+| `DCGM_FI_PROF_PIPE_TENSOR_ACTIVE` | `DCGM_FI_PROF_TENSOR_UTIL_RATIO` | none | none |
+| `DCGM_FI_PROF_DRAM_ACTIVE` | `DCGM_FI_PROF_DRAM_UTIL_RATIO` | none | none |
+
+The next rows come from commented-out optional rows in the same CSV files, matched by their help text and by the exporter's deprecated-field list. They are **inferred, not stated in the release notes**, so check them against your own counters file before relying on them.
+
+| 4.8.x name | 4.9.0 name | Unit change |
+|---|---|---|
+| `DCGM_FI_DEV_RETIRED_SBE` | `DCGM_FI_DEV_PAGE_RETIRED_SBE_TOTAL` | none |
+| `DCGM_FI_DEV_RETIRED_DBE` | `DCGM_FI_DEV_PAGE_RETIRED_DBE_TOTAL` | none |
+| `DCGM_FI_DEV_RETIRED_PENDING` | `DCGM_FI_DEV_PAGE_RETIRED_PENDING` | none |
+| `DCGM_FI_DEV_POWER_VIOLATION` | `DCGM_FI_DEV_GPU_POWER_THROTTLE_SECONDS_TOTAL` | ns to s |
+| `DCGM_FI_DEV_THERMAL_VIOLATION` | `DCGM_FI_DEV_GPU_THERMAL_THROTTLE_SECONDS_TOTAL` | ns to s |
+| `DCGM_FI_DEV_SYNC_BOOST_VIOLATION` | `DCGM_FI_DEV_GPU_SYNC_BOOST_THROTTLE_SECONDS_TOTAL` | ns to s |
+| `DCGM_FI_DEV_BOARD_LIMIT_VIOLATION` | `DCGM_FI_DEV_GPU_LIMIT_THROTTLE_SECONDS_TOTAL` | ns to s |
+| `DCGM_FI_DEV_LOW_UTIL_VIOLATION` | `DCGM_FI_DEV_GPU_LOW_UTIL_THROTTLE_SECONDS_TOTAL` | ns to s |
+| `DCGM_FI_DEV_RELIABILITY_VIOLATION` | `DCGM_FI_DEV_GPU_RELIABILITY_THROTTLE_SECONDS_TOTAL` | ns to s |
+| `DCGM_FI_DEV_FB_TOTAL` | `DCGM_FI_DEV_FB_CAPACITY_BYTES` | MiB to bytes |
+| `DCGM_FI_PROF_SM_ACTIVE` | `DCGM_FI_PROF_SM_UTIL_RATIO` | none |
+| `DCGM_FI_PROF_SM_OCCUPANCY` | `DCGM_FI_PROF_SM_OCCUPANCY_RATIO` | none |
+| `DCGM_FI_PROF_PIPE_FP64_ACTIVE` | `DCGM_FI_PROF_FP64_UTIL_RATIO` | none |
+| `DCGM_FI_PROF_PIPE_FP32_ACTIVE` | `DCGM_FI_PROF_FP32_UTIL_RATIO` | none |
+| `DCGM_FI_PROF_PIPE_FP16_ACTIVE` | `DCGM_FI_PROF_FP16_UTIL_RATIO` | none |
+| `DCGM_FI_NVML_VERSION` | `DCGM_FI_SYSTEM_NVML_VERSION` | none |
+| `DCGM_FI_DEV_BRAND` | `DCGM_FI_DEV_GPU_BRAND` | none |
+| `DCGM_FI_DEV_SERIAL` | `DCGM_FI_DEV_BOARD_SERIAL` | none |
+| `DCGM_FI_DEV_OEM_INFOROM_VER` | `DCGM_FI_DEV_INFOROM_OEM_VERSION` | none |
+| `DCGM_FI_DEV_ECC_INFOROM_VER` | `DCGM_FI_DEV_INFOROM_ECC_VERSION` | none |
+| `DCGM_FI_DEV_POWER_INFOROM_VER` | `DCGM_FI_DEV_INFOROM_POWER_VERSION` | none |
+| `DCGM_FI_DEV_INFOROM_IMAGE_VER` | `DCGM_FI_DEV_INFOROM_IMAGE_VERSION` | none |
+| `DCGM_FI_DEV_NVLINK_BANDWIDTH_L0 (L1 to L17 alike)` | `DCGM_FI_DEV_NVLINK_THROUGHPUT_L0_BYTES_PER_SECOND` | MB/s to bytes/s |
+| `DCGM_FI_DEV_FAN_SPEED` | `DCGM_FI_DEV_FAN_SPEED_RATIO` | unverified to ratio |
+
+Handbook names that appear in neither CSV (`DCGM_FI_DEV_CLOCK_THROTTLE_REASONS`, `DCGM_FI_DEV_GPU_TEMPERATURE`, `DCGM_FI_DEV_NVLINK_TX_BANDWIDTH_L*`, `DCGM_FI_DEV_NVLINK_RX_BANDWIDTH_L*`, `DCGM_FI_DEV_NVLINK_CRC_FLIT_ERROR_COUNT_TOTAL`) are **unverified**: no mapping can be confirmed for them.
+
+The machine-readable mapping is `code/part17/dcgm_exporter_4_9_rename.json`. The tested helper `code/part17/dcgm_names.py` converts a PromQL expression either way and keeps the old meaning by scaling the series:
+
+```python
+import dcgm_names as d
+d.convert("DCGM_FI_DEV_GPU_UTIL > 95")
+# '(DCGM_FI_DEV_GPU_UTIL_RATIO * 100) > 95'
+d.convert("rate(DCGM_FI_DEV_TOTAL_ENERGY_CONSUMPTION[5m])")
+# '(rate(DCGM_FI_DEV_GPU_ENERGY_JOULES_TOTAL[5m]) * 1000)'
+d.convert("DCGM_FI_DEV_GPU_UTIL_RATIO > 0.95", "new_to_old")
+# '(DCGM_FI_DEV_GPU_UTIL / 100) > 0.95'
+```
+
+The helper never rewrites thresholds. When you rewrite a rule by hand, change the threshold with the unit: `> 95` becomes `> 0.95` for utilisation, and `< 1400` becomes `< 1400e6` for the SM clock. The upgrade checklist in the NVIDIA release notes at https://docs.nvidia.com/datacenter/dcgm/latest/release-notes/dcgm-exporter.html did not list 4.9.0 when I fetched it on 2026-11-11, so the checklist items beyond the GitHub release notes are not covered here. The release also changes the YAML configuration and Helm values formats (`config`, `configMap`, `metrics[].fields`); read the GitHub release page before you upgrade a chart.
 
 ---
 
@@ -144,7 +223,7 @@ The field names were checked against the dcgm-exporter source, and that check tu
 
 ### 2.1 GPU utilisation
 
-A GPU you pay for by the hour should be busy, and utilisation tells you whether it is. The GPU utilisation is the fraction of the GPU's SMs (streaming multiprocessors) that are in use.
+A GPU you pay for by the hour should be busy, and utilisation tells you whether it is. The GPU utilisation is the fraction of time the GPU had at least one kernel running, as a ratio from 0 to 1 in 4.9.0 (a percentage before). Multiply by 100 to get a percentage.
 
 ```promql
 # The current GPU utilisation per GPU
@@ -157,7 +236,7 @@ avg(DCGM_FI_DEV_GPU_UTIL)
 avg_over_time(DCGM_FI_DEV_GPU_UTIL[5m])
 
 # The utilisation per team (via Kubernetes labels)
-sum by (team) (DCGM_FI_DEV_GPU_UTIL) by (gpu, team)
+sum by (team) (DCGM_FI_DEV_GPU_UTIL_RATIO)
 ```
 
 Read utilisation as a pattern over time, not as a single reading. *AI Systems Performance Engineering*, chapter 2, says training GPUs should sit near full utilisation most of the time. If they sit at 50 percent, something keeps them idle half the time, often a slow data loader or a synchronization point.
@@ -170,13 +249,13 @@ High-bandwidth memory (HBM) is the GPU's own memory. When it runs out, a CUDA jo
 
 ```promql
 # The GPU memory utilisation per GPU
-DCGM_FI_DEV_FB_USED / DCGM_FI_DEV_FB_TOTAL
+DCGM_FI_DEV_FB_USED_BYTES / DCGM_FI_DEV_FB_CAPACITY_BYTES
 
 # The GPU memory pressure (utilisation > 90%)
-DCGM_FI_DEV_FB_USED / DCGM_FI_DEV_FB_TOTAL > 0.9
+DCGM_FI_DEV_FB_USED_BYTES / DCGM_FI_DEV_FB_CAPACITY_BYTES > 0.9
 
 # The largest model in HBM
-max by (gpu) (DCGM_FI_DEV_FB_USED)
+max by (gpu) (DCGM_FI_DEV_FB_USED_BYTES)
 ```
 
 Watch the ratio rather than the raw number. The 90 percent line in the example is a starting point. Pick the level that leaves your team enough time to act before a job fails.
@@ -194,8 +273,8 @@ sum by (gpu) (increase(DCGM_FI_DEV_ECC_DBE_VOL_TOTAL[1h]))
 # The ECC single-bit errors (SBE) per GPU over the last hour
 sum by (gpu) (increase(DCGM_FI_DEV_ECC_SBE_VOL_TOTAL[1h]))
 
-# The retired pages (DBE) per GPU
-DCGM_FI_DEV_RETIRED_DBE
+# The retired pages (DBE) per GPU (optional field, enable it in the counters file)
+DCGM_FI_DEV_PAGE_RETIRED_DBE_TOTAL
 
 # The alert: any DBE in the last hour
 sum by (gpu) (increase(DCGM_FI_DEV_ECC_DBE_VOL_TOTAL[1h])) > 0
@@ -209,10 +288,10 @@ Xid errors are NVIDIA's driver-level error codes. Each code points to a class of
 
 ```promql
 # The Xid errors per GPU
-DCGM_FI_DEV_XID_ERRORS
+DCGM_FI_DEV_XID_ERROR
 
 # The distinct Xid codes per GPU
-count by (gpu) (DCGM_FI_DEV_XID_ERRORS)
+count by (gpu) (DCGM_FI_DEV_XID_ERROR)
 ```
 
 The draft alerts on every Xid error. Its common codes are 31 for a GPU memory page fault, 43 for a GPU that stopped responding, 48 for a double-bit ECC error and 63 for ECC page retirement. Whatever you alert on, the runbook should say what to do for each code.
@@ -223,30 +302,30 @@ Heat is a quiet cause of slow jobs. A GPU that runs hot lowers its clock to prot
 
 ```promql
 # The current GPU temperature
-DCGM_FI_DEV_GPU_TEMP
+DCGM_FI_DEV_GPU_TEMP_CELSIUS
 
-# The power usage
-DCGM_FI_DEV_POWER_USAGE
+# The power usage (watts)
+DCGM_FI_DEV_BOARD_POWER_WATTS
 
 # The thermal throttle indicator
-DCGM_FI_DEV_GPU_TEMP > 85
+DCGM_FI_DEV_GPU_TEMP_CELSIUS > 85
 ```
 
 The draft's example lines are 85 degrees for a warning, 90 for throttling and 95 for critical. They are example values, not manufacturer limits, so check your GPU's documented thresholds first. The draft also says power draw above the rated TDP for your GPU model points to power supply problems.
 
 ### 2.6 Clocks
 
-The clocks are the SM clock and the memory clock, and they show whether a GPU is running at the speed you expect. *AI Systems Performance Engineering*, chapter 3, explains that GPU Boost moves the core clock up and down to stay within power and thermal limits. A clock below base usually means the GPU is being held back by heat or power.
+The clocks are the SM clock and the memory clock (in hertz since 4.9.0), and they show whether a GPU is running at the speed you expect. *AI Systems Performance Engineering*, chapter 3, explains that GPU Boost moves the core clock up and down to stay within power and thermal limits. A clock below base usually means the GPU is being held back by heat or power.
 
 ```promql
-# The current SM clock
-DCGM_FI_DEV_SM_CLOCK
+# The current SM clock (hertz)
+DCGM_FI_DEV_SM_CLOCK_HERTZ
 
-# The memory clock
-DCGM_FI_DEV_MEM_CLOCK
+# The memory clock (hertz)
+DCGM_FI_DEV_MEMORY_CLOCK_HERTZ
 
 # The clock reduction (throttling indicator)
-DCGM_FI_DEV_SM_CLOCK < 1400  # H100 base clock is 1.4 GHz
+DCGM_FI_DEV_SM_CLOCK_HERTZ < 1400e6  # H100 base clock is 1.4 GHz; 4.9.0 reports hertz
 ```
 
 The 1400 threshold in the example is a base-clock value for one model. Confirm your model's base clock before you use it. The draft alerts when the clock stays below base for 10 minutes, and that duration is an example too.
@@ -263,12 +342,18 @@ Each rule has an expression, a `for` time that the condition must hold before th
 
 ```yaml
 # code/part17/gpu_alerts.yaml
+# dcgm-exporter 4.9.0 renamed these metrics and changed some units (see code/part17/dcgm_exporter_4_9_rename.json).
+# Each rule has a 4.9.0 leg and a 4.8.x leg joined with `or`, so it works on a mixed fleet during the rollout.
+# Drop the second leg of each expr once every exporter runs 4.9.0 or later.
+# 4.8.x memory leg uses used / (used + free): 4.8.4 does not collect FB_TOTAL by default.
 groups:
   - name: gpu_health
     interval: 30s
     rules:
       - alert: GPUHighUtilization
-        expr: avg by (gpu, node) (DCGM_FI_DEV_GPU_UTIL) > 95
+        expr: |
+          (avg by (gpu, node) (DCGM_FI_DEV_GPU_UTIL_RATIO) > 0.95)
+          or (avg by (gpu, node) (DCGM_FI_DEV_GPU_UTIL) > 95)
         for: 10m
         labels:
           severity: warning
@@ -276,7 +361,9 @@ groups:
           summary: "GPU {{ $labels.gpu }} on {{ $labels.node }} is over-utilised"
 
       - alert: GPUMemoryPressure
-        expr: DCGM_FI_DEV_FB_USED / DCGM_FI_DEV_FB_TOTAL > 0.9
+        expr: |
+          (DCGM_FI_DEV_FB_USED_BYTES / DCGM_FI_DEV_FB_CAPACITY_BYTES > 0.9)
+          or (DCGM_FI_DEV_FB_USED / (DCGM_FI_DEV_FB_USED + DCGM_FI_DEV_FB_FREE) > 0.9)
         for: 5m
         labels:
           severity: warning
@@ -298,14 +385,14 @@ groups:
           summary: "GPU {{ $labels.gpu }} on {{ $labels.node }} has SBE errors"
 
       - alert: GPUXidError
-        expr: DCGM_FI_DEV_XID_ERRORS > 0
+        expr: (DCGM_FI_DEV_XID_ERROR > 0) or (DCGM_FI_DEV_XID_ERRORS > 0)
         labels:
           severity: critical
         annotations:
           summary: "GPU {{ $labels.gpu }} on {{ $labels.node }} has Xid errors"
 
       - alert: GPUThermalThrottle
-        expr: DCGM_FI_DEV_GPU_TEMP > 85
+        expr: (DCGM_FI_DEV_GPU_TEMP_CELSIUS > 85) or (DCGM_FI_DEV_GPU_TEMP > 85)
         for: 10m
         labels:
           severity: warning
@@ -313,7 +400,7 @@ groups:
           summary: "GPU {{ $labels.gpu }} on {{ $labels.node }} is thermal-throttling"
 
       - alert: GPUClockThrottle
-        expr: DCGM_FI_DEV_SM_CLOCK < 1400
+        expr: (DCGM_FI_DEV_SM_CLOCK_HERTZ < 1400e6) or (DCGM_FI_DEV_SM_CLOCK < 1400)
         for: 10m
         labels:
           severity: warning
@@ -470,7 +557,7 @@ Open a port-forward to Prometheus and ask it for one metric. A value in the answ
 kubectl -n monitoring port-forward svc/prometheus-kube-prometheus-prometheus 9090:9090 &
 
 # Query the GPU utilisation
-curl -s 'http://localhost:9090/api/v1/query?query=DCGM_FI_DEV_GPU_UTIL' | jq .
+curl -s 'http://localhost:9090/api/v1/query?query=DCGM_FI_DEV_GPU_UTIL_RATIO' | jq .
 # expected: the GPU utilisation per GPU
 ```
 
@@ -543,9 +630,9 @@ If any answer takes more than 30 seconds, the GPU exporter is not yet a producti
 
 Try these after the lab. Each one asks you to build something you could use on your own cluster.
 
-1. **Add a GPU temperature dashboard.** Build a Grafana dashboard that shows temperature for each GPU. Alert when temperature passes a limit you choose. The draft's example is 85 degrees. *Solution sketch:* start from `DCGM_FI_DEV_GPU_TEMP`, add a Grafana panel, and write the alert rule.
+1. **Add a GPU temperature dashboard.** Build a Grafana dashboard that shows temperature for each GPU. Alert when temperature passes a limit you choose. The draft's example is 85 degrees. *Solution sketch:* start from `DCGM_FI_DEV_GPU_TEMP_CELSIUS`, add a Grafana panel, and write the alert rule.
 2. **Add a retired-GPUs list.** Keep a list of GPUs retired because of ECC errors, and alert when a GPU joins it. *Solution sketch:* store the list in a ConfigMap, then write a Prometheus alert that compares the running GPUs against it.
-3. **Add a per-team GPU cost.** Compute the GPU cost per team from the DCGM metrics, and feed the result into the FinOps dashboard from chapter 16.14. *Solution sketch:* multiply `DCGM_FI_DEV_GPU_UTIL` by `DCGM_FI_DEV_POWER_USAGE`, group the result by the team labels, and build the cost dashboard on top.
+3. **Add a per-team GPU cost.** Compute the GPU cost per team from the DCGM metrics, and feed the result into the FinOps dashboard from chapter 16.14. *Solution sketch:* multiply `DCGM_FI_DEV_GPU_UTIL_RATIO` by `DCGM_FI_DEV_BOARD_POWER_WATTS`, group the result by the team labels, and build the cost dashboard on top.
 4. **Add a GPU health check.** Add a Kubernetes health check that fails when the DCGM exporter is missing from a GPU node. *Solution sketch:* a Kubernetes probe that calls the exporter's `/health` endpoint.
 5. **Add a GPU utilisation histogram.** Emit GPU utilisation as a histogram, so the dashboards can show percentiles. *Solution sketch:* write a custom exporter that emits the histogram, then point the dashboards at it.
 6. **Add a GPU NVLink error alert.** Alert when NVLink CRC errors pass 100 in an hour, and treat 100 as an example value. *Solution sketch:* a Prometheus alert on the `DCGM_FI_DEV_NVLINK_CRC_DATA_ERROR_TOTAL` metric.

@@ -21,6 +21,8 @@ lab_venue: "GCP / GKE"
 | Sources used | Roland Huß et al., *Generative AI on Kubernetes* (O'Reilly, 2026, Ch. 7); `nvidia-zero-to-hero/volume-11/chapter-08-tenant-isolation-security-and-fairness.md`; `nvidia-zero-to-hero/volume-11/chapter-09-capacity-planning-and-chargeback.md`; `nvidia-zero-to-hero/volume-24/chapter-12-research-infrastructure-design.md`; Josh Rosso et al., *Production Kubernetes* (O'Reilly, 2021, Ch. 12) |
 | Coverage file | `planning/coverage/chapters/11-15.md` |
 
+> **Update, November 2026:** NVIDIA open-sourced the full Run:ai platform on 13 October 2026, under Apache 2.0, in addition to the KAI Scheduler that has been open since April 2025. A supported commercial release still exists. See [11.31](./31-nvidias-open-source-ai-factory-kubernetes-stack.md).
+
 ## Why this matters for AI infrastructure
 
 Picture a research team whose work sits in a pending queue. Across the cluster, dozens of GPUs sit idle inside another department's reserved quota. In a multi-tenant AI cluster, static quota without borrowing wastes expensive hardware. Borrowing without fast reclamation, on the other hand, destroys tenant trust.
@@ -183,6 +185,8 @@ Work through the example step by step. Start with demand of 40 allocations, and 
 
 Once sellable capacity is sized, you still have to decide how to bill GPU usage across competing teams. Do not bill reserved GPUs on compute utilization alone, such as `DCGM_FI_DEV_GPU_UTIL`. Picture a researcher who allocates half a GPU's memory in an interactive pod, then leaves compute utilization at zero percent over lunch. That memory stays locked, and no other team can use it.
 
+> **dcgm-exporter 4.9.0 version note.** dcgm-exporter 4.9.0 (2026-11-06) renamed many default metrics and changed some units. For example `DCGM_FI_DEV_GPU_UTIL` (percent) became `DCGM_FI_DEV_GPU_UTIL_RATIO` (0 to 1), and `DCGM_FI_DEV_FB_USED` (MiB) became `DCGM_FI_DEV_FB_USED_BYTES`. The metric names in this chapter are the 4.8.x names. On a 4.9.0 exporter use the [full mapping in 17.4](../part-17-operations/04-dcgm-exporter-and-interpreting-gpu-metrics.md#14-what-dcgm-exporter-490-renamed), and change thresholds together with the unit.
+
 Bill by the allocation contract instead. A tenant pays for the hardware share and service tier it reserves, for as long as the Pod holds the allocation. Start with a non-billed Showback dashboard, so teams can clean up idle notebooks before finance turns on hard Chargeback. The table below summarizes the allocation-contract billing rules for whole GPUs, MIG slices, and time-sliced pools.
 
 | Resource Shape or Queue Tier | Allocation-Contract Billing Rule | Rate Card and Worked Weekly Cost (`volume-11/chapter-09` & `volume-24/chapter-12`) |
@@ -230,10 +234,10 @@ Treat those eight points as the minimum for every service tier you publish.
 
 ### 1. Defining a two-level KAI Department-to-Project Queue hierarchy
 
-Intra-department borrowing has to come before inter-department lending, and this manifest sets that order up. You create a parent Department Queue, then attach child Project Queues with the `parentQueue` field. The manifest below gives the parent department queue sixteen nominal GPUs. It then splits that quota across two child team queues, with a two-to-one borrowing weight ratio.
+Intra-department borrowing has to come before inter-department lending, and this manifest sets that order up. You create a parent Department Queue, then attach child Project Queues with the `parentQueue` field. The manifest below gives the parent department queue sixteen nominal GPUs. It then splits that quota across two child team queues, with a two-to-one borrowing weight ratio. The Queue CRD counts CPU in millicores and memory in megabytes, so 128 cores is written 128000 and 1 TB is 1024000.
 
 ```yaml
-# kai-hierarchical-queues.yaml (untested here)
+# kai-hierarchical-queues.yaml. Queue units: gpu in devices, cpu in millicores, memory in MB.
 apiVersion: scheduling.run.ai/v2
 kind: Queue
 metadata:
@@ -245,11 +249,11 @@ spec:
       overQuotaWeight: 2
       limit: -1
     cpu:
-      quota: 128
+      quota: 128000
       overQuotaWeight: 2
       limit: -1
     memory:
-      quota: 1024Gi
+      quota: 1024000
       overQuotaWeight: 2
       limit: -1
 ---
@@ -265,11 +269,11 @@ spec:
       overQuotaWeight: 2
       limit: -1
     cpu:
-      quota: 64
+      quota: 64000
       overQuotaWeight: 2
       limit: -1
     memory:
-      quota: 512Gi
+      quota: 512000
       overQuotaWeight: 2
       limit: -1
 ---
@@ -285,11 +289,11 @@ spec:
       overQuotaWeight: 1
       limit: -1
     cpu:
-      quota: 64
+      quota: 64000
       overQuotaWeight: 1
       limit: -1
     memory:
-      quota: 512Gi
+      quota: 512000
       overQuotaWeight: 1
       limit: -1
 ```
@@ -592,3 +596,5 @@ Corrections to the author's notes:
     represents 7.1% of 10,752 two-week GPU-hours (~19.5% at typical group submission cadence), demonstrating why
     Level 3 Backfill is mandatory to achieve > 90% cluster utilization.
 ```
+
+- Manifest checked against upstream CRDs on 2026-11-11 (versions: KAI Scheduler v0.18.7, Queue scheduling.run.ai/v2).

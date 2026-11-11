@@ -83,6 +83,8 @@ Modern cloud GPU offerings fall into three distinct architectural models. Groupi
 | **Control Plane & Scheduler** | **NVIDIA Base Command / Mission Control**, **Run:ai**, and **Slurm** (with **BCM `Topograph`** topology discovery) | **CoreWeave:** K8s-native (`Kueue`, `Volcano`, `KAI`, `Run:ai`, `SUNK` Slurm-on-K8s)<br/>**Nebius:** Managed K8s, `Soperator` Slurm-on-K8s, or VM Slurm | **GKE** (`Dataplane V2`, `Kueue` + `DWS ProvisioningRequest`), or **Cluster Toolkit** Slurm on Compute Engine VMs |
 | **Scale-Out GPU Interconnect** | Cloud-hosted **InfiniBand / RoCE / EFA** (`p5.48xlarge`, OCI BM, GCP A3/A4) mapped into Slurm via `Topograph` | **Lossless InfiniBand RDMA** (`Quantum-2 400G NDR` / `Quantum-X800 800G XDR`) exposed via `gpu_cluster` or K8s node labels | **Multi-NIC VPCs (`MTU 8896`):** `GPUDirect-TCPX` (`A3` H100) and **`GPUDirect-RDMA` over RoCEv2 VPCs** (`A3 Ultra` H200, `A4` B200, `A4X` NVL72) |
 
+> **Update, November 2026:** The Run:ai platform named in this table is now also open source. NVIDIA released it under Apache 2.0 on 13 October 2026, and a supported commercial release still exists. See [11.31](../part-11-gpu-kubernetes/31-nvidias-open-source-ai-factory-kubernetes-stack.md).
+
 :::tip In one minute
 - Cloud GPU instances achieve bare-metal RDMA speed by bypassing hypervisor virtual switches through SR-IOV and hardware IOMMU PCIe passthrough.
 - Choose between Managed SuperPOD-as-a-Service on DGX Cloud, GPU-native neoclouds like CoreWeave and Nebius, and hyperscaler GPU families on GCP based on your operational needs.

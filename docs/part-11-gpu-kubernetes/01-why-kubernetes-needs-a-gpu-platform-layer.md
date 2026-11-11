@@ -245,6 +245,14 @@ kind: ClusterPolicy
 metadata:
   name: gpu-cluster-policy
 spec:
+  # The CRD requires these operand blocks. Empty blocks take the operator defaults.
+  operator: {defaultRuntime: containerd}
+  daemonsets: {}
+  driver: {}
+  toolkit: {}
+  dcgm: {}
+  dcgmExporter: {}
+  nodeStatusExporter: {}
   gfd:
     enabled: true
   devicePlugin:
@@ -304,6 +312,8 @@ Platform teams keep every new, rebooted, or upgraded GPU node tainted with `nvid
 | **Gate 3** | **Kubernetes Resource & Discovery** | Did the Device Plugin register with kubelet and did NFD and GFD apply node labels? | `status.allocatable["nvidia.com/gpu"]` matches the physical or MIG count (`> 0`), and `nvidia.com/gpu.product` and `nvidia.com/gpu.memory` labels exist. |
 | **Gate 4** | **Representative Workload Image** | Does the approved production framework image initialize CUDA and execute kernels on this `sm_` target? | Approved PyTorch or vLLM smoke test completes without `RuntimeError: CUDA error: no kernel image is available for execution on the device`. |
 | **Gate 5** | **Operational Telemetry & Alerts** | Can the platform observe and support this node in production? | Prometheus scrapes `dcgm-exporter` (`:9400/metrics`, `up == 1`), `DCGM_FI_DEV_GPU_TEMP` and ECC series are live, and change-record versions are logged. |
+
+> **dcgm-exporter 4.9.0 version note.** dcgm-exporter 4.9.0 (2026-11-06) renamed many default metrics and changed some units. For example `DCGM_FI_DEV_GPU_UTIL` (percent) became `DCGM_FI_DEV_GPU_UTIL_RATIO` (0 to 1), and `DCGM_FI_DEV_FB_USED` (MiB) became `DCGM_FI_DEV_FB_USED_BYTES`. The metric names in this chapter are the 4.8.x names. On a 4.9.0 exporter use the [full mapping in 17.4](../part-17-operations/04-dcgm-exporter-and-interpreting-gpu-metrics.md#14-what-dcgm-exporter-490-renamed), and change thresholds together with the unit.
 
 Run the gates in order, because each one assumes the gates before it have passed. Always drain a node before any maintenance change that unloads a kernel driver, resets a GPU, or restarts containerd. If you see any of the five gates fail on the canary node, halt the rollout right away. Roll back the entire coherent Node Profile as one unit. Do not revert individual driver or runtime packages on their own.
 
@@ -575,3 +585,4 @@ Related source files mapped in MIGRATION_MAP.md:
 
 - Validation pass 2026-10-25: `validate_chapter.py` and `check_coverage.py` pass. The YAML manifests and commands are marked untested and were not applied to a cluster. Custom resource API versions such as `kueue.x-k8s.io/v1beta1` and `resource.k8s.io/v1` change between releases, so check them against the version you install. Console outputs quoted from the Volume notes are illustrative unless the chapter says otherwise.
 - In *Generative AI on Kubernetes* Chapter 3 Example 3-9, `apiVersion: batch/v1` is printed for `kind: Deployment`. Standard Kubernetes Deployment resources use `apiVersion: apps/v1` as shown in Example 3-6.
+- Manifest checked against upstream CRDs on 2026-11-11 (versions: GPU Operator v26.7.2 ClusterPolicy).

@@ -47,8 +47,8 @@ def main() -> None:
     with tempfile.TemporaryDirectory() as tmpdir:
         bad_rules = Path(tmpdir) / "bad_alerts.yml"
         dcgm_csv = Path(tmpdir) / "default-counters.csv"
-        dcgm_csv.write_text("DCGM_FI_DEV_XID_ERRORS\nDCGM_FI_DEV_ROW_REMAP_FAILURE\nDCGM_FI_DEV_GPU_TEMP\nDCGM_FI_DEV_GPU_UTIL\n")
-        bad_text = rules_path.read_text().replace("DCGM_FI_DEV_GPU_TEMP > 85", "DCGM_FI_DEV_GPU_TEMPERATURE > (85")
+        dcgm_csv.write_text("DCGM_FI_DEV_XID_ERROR\nDCGM_FI_DEV_ROW_REMAP_FAILED\nDCGM_FI_DEV_GPU_TEMP_CELSIUS\nDCGM_FI_DEV_GPU_UTIL_RATIO\n")
+        bad_text = rules_path.read_text().replace("DCGM_FI_DEV_GPU_TEMP_CELSIUS > 85", "DCGM_FI_DEV_GPU_TEMPERATURE > (85")
         bad_rules.write_text(bad_text)
         rc_bad = check_alert_rules.main(str(bad_rules), str(dcgm_csv))
     check(

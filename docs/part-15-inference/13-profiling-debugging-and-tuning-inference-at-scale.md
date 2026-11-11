@@ -112,6 +112,10 @@ At the engine layer, track active queue depth via `vllm:num_requests_waiting`, K
 | PCIe Replay Errors | `>= 1` | Critical | Packet retries on host-device PCIe bus; check riser cards and NUMA socket affinity. |
 | Uncorrectable ECC Errors (`XID 62`) | `>= 1` | Critical | Double-bit HBM corruption; immediately cordon, drain, and reset GPU (`nvidia-smi --gpu-reset`). |
 
+> **dcgm-exporter 4.9.0 version note.** dcgm-exporter 4.9.0 (2026-11-06) renamed many default metrics and changed some units. For example `DCGM_FI_DEV_GPU_UTIL` (percent) became `DCGM_FI_DEV_GPU_UTIL_RATIO` (0 to 1), and `DCGM_FI_DEV_FB_USED` (MiB) became `DCGM_FI_DEV_FB_USED_BYTES`. The metric names in this chapter are the 4.8.x names. On a 4.9.0 exporter use the [full mapping in 17.4](../part-17-operations/04-dcgm-exporter-and-interpreting-gpu-metrics.md#14-what-dcgm-exporter-490-renamed), and change thresholds together with the unit.
+>
+> **Xid 62 correction.** Where this chapter calls Xid 62 a double-bit ECC error, read it as the NVIDIA Xid catalog defines it: Xid 62 is `PMU_HALT_ERROR`, an internal micro-controller halt (immediate action `RESET_GPU`, investigatory `CONTACT_SUPPORT`). The double-bit ECC error is Xid 48.
+
 Combining metrics exposes root causes that single counters miss. Suppose SM utilization drops below thirty percent while copy engine utilization spikes above eighty percent and framebuffer memory sits near ninety-five percent. The inference engine is not idle from low traffic. Instead, it is thrashing the PCIe bus by swapping KV cache pages between GPU HBM and host DRAM.
 
 ### 1.3 NVTX Instrumentation, CUPTI Projection, and Nsight Systems / Compute

@@ -93,7 +93,7 @@ spec:
       env:
         - { name: NCCL_DEBUG, value: WARN }
         - name: RANK_NODE
-          valueFrom: { fieldRef: { fieldPath: metadata.annotations['example.com/node-rank'] } }
+          valueFrom: { fieldRef: { fieldPath: "metadata.annotations['example.com/node-rank']" } }
         - name: HF_TOKEN
           valueFrom: { secretKeyRef: { name: hf, key: token } }
       envFrom:
@@ -1412,7 +1412,7 @@ Raw YAML works well at first. It gets hard once the same app runs in several pla
 
 A templated Deployment looks almost like a normal one. The replica count becomes a value you inject:
 
-```yaml
+```gotemplate
 apiVersion: apps/v1
 kind: Deployment
 metadata:
@@ -1824,3 +1824,4 @@ env:
 - **Run here:** `python3 code/part05/pod_qos_workload_validator_lab.py` (2 passed, 0 failed).
 - **Explicitly labelled inferences:** The `compute_pod_qos_and_effective_requests` and `validate_k8s_label` models in `code/part05/pod_qos_workload_validator.py` and the `trainer-0` Pod, `vllm-llama` Deployment + PDB, `qdrant` StatefulSet, `dcgm-exporter` DaemonSet, and `embed-corpus-142` Indexed Job manifests are the author's constructions synthesizing `KUR` Chapters 4–6, 9–12, 22 and `PK` Chapter 14 (plus original study items 21, 22, 23, 24, 25, 26, 27, 28, 29, 30, 31, 32, 33, 34, 35, 36, 37, 38, 39, and 40).
 - **Not verified on live hardware:** Live `kubectl` workload deployments and debugging commands (`terminationGracePeriodSeconds: 600` / `120` / `30`, UID `10001`, `cpu: "64", memory: 800Gi, nvidia.com/gpu: 8`, `failureThreshold: 120` / `180`, `sizeLimit: 64Gi` / `16Gi`, `253`/`63` chars, `oom_score_adj` `-997`/`1000`, `progressDeadlineSeconds: 1800`, `--tensor-parallel-size 4`, `--max-model-len 8192`, `minAvailable: 2`, `qdrant:v1.9.0`, `6333`, `200Gi`, `dcgm-exporter:3.3.5-3.4.1`, `9400`, `completions: 16`, `ttlSecondsAfterFinished: 86400`, exit code `42` / `137`, `140 GB` model) are marked (`untested here`) where not executed by `pod_qos_workload_validator_lab.py`.
+- Manifest checked against upstream CRDs on 2026-11-11 (versions: YAML parse errors fixed; no CRD involved).

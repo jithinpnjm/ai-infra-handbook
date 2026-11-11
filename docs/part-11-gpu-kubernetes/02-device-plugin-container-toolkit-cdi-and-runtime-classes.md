@@ -362,6 +362,8 @@ Inside the container, the workload runs in its own PID namespace, where the Pyth
 
 Never set `hostPID: true` on tenant workloads just to see process IDs, because that setting breaks container process isolation. Attribute GPU processes to Pods on the worker host instead, or scrape `dcgm-exporter` metrics on port 9400. The useful metrics are `DCGM_FI_DEV_GPU_UTIL`, `DCGM_FI_DEV_FB_USED`, and `DCGM_FI_DEV_MEM_COPY_UTIL`.
 
+> **dcgm-exporter 4.9.0 version note.** dcgm-exporter 4.9.0 (2026-11-06) renamed many default metrics and changed some units. For example `DCGM_FI_DEV_GPU_UTIL` (percent) became `DCGM_FI_DEV_GPU_UTIL_RATIO` (0 to 1), and `DCGM_FI_DEV_FB_USED` (MiB) became `DCGM_FI_DEV_FB_USED_BYTES`. The metric names in this chapter are the 4.8.x names. On a 4.9.0 exporter use the [full mapping in 17.4](../part-17-operations/04-dcgm-exporter-and-interpreting-gpu-metrics.md#14-what-dcgm-exporter-490-renamed), and change thresholds together with the unit.
+
 Use host-side attribution or DCGM metrics, so you can find which Pod is using the GPU.
 
 ## Commands and configurations that matter

@@ -449,6 +449,8 @@ The table pairs each diagnostic scenario with its telemetry and the action it ca
 | **Layer-by-Layer `750.00 ms` Step Breakdown** | `data_load_cpu`: `450.00 ms` (`60.0%`); `allreduce_network`: `150.00 ms` (`20.0%`); `backward_gpu`: `60.00 ms` (`8.0%`); `forward_gpu`: `30.00 ms` (`4.0%`); `data_transfer_pcie`: `10.00 ms` (`1.3%`); `optimizer_gpu`: `10.00 ms` (`1.3%`); `loss_gpu`: `8.00 ms` (`1.1%`) | Synchronize around each phase to expose the `60.0%` CPU data-loading bottleneck |
 | **Profiler Heisenbugs (`10%` to `50%` overhead)** | Uninstrumented baseline: `500 samples/sec`; `nvidia-smi` polling loop: `450 samples/sec` (`10.0%` overhead); full `nsys` tracing: `250 samples/sec` (`50.0%` overhead) | Start with `time.perf_counter()` (`< 1%` overhead) and verify fixes with profilers off |
 
+> **dcgm-exporter 4.9.0 version note.** dcgm-exporter 4.9.0 (2026-11-06) renamed many default metrics and changed some units. For example `DCGM_FI_DEV_GPU_UTIL` (percent) became `DCGM_FI_DEV_GPU_UTIL_RATIO` (0 to 1), and `DCGM_FI_DEV_FB_USED` (MiB) became `DCGM_FI_DEV_FB_USED_BYTES`. The metric names in this chapter are the 4.8.x names. On a 4.9.0 exporter use the [full mapping in 17.4](../part-17-operations/04-dcgm-exporter-and-interpreting-gpu-metrics.md#14-what-dcgm-exporter-490-renamed), and change thresholds together with the unit.
+
 ### 5.4 Layer 4 Fabric Verification: InfiniBand, RoCEv2 Lossless QoS, and SHARP
 
 Suppose `ncclras`, the Flight Recorder and `dmesg` confirm that every rank entered the same collective on healthy GPUs, the stall lies inside the inter-node RDMA fabric. At that point, chasing NCCL algorithm knobs only hides the network drop. Check the physical link counters, the RoCEv2 lossless QoS mapping and the SHARP daemon status first.

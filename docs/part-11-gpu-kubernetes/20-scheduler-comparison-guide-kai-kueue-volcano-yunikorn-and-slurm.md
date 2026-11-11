@@ -169,6 +169,8 @@ Cluster MTBF and Silent Straggler Math (volume-10/09):
   * Alerts when (avg by (instance) (DCGM_FI_PROF_PIPE_TENSOR_ACTIVE) - DCGM_FI_PROF_PIPE_TENSOR_ACTIVE) > 0.15 (15%) for 5m while DCGM_FI_DEV_GPU_UTIL > 80, or when IB PortXmitWait spikes > 3 sigma across peers.
 ```
 
+> **dcgm-exporter 4.9.0 version note.** dcgm-exporter 4.9.0 (2026-11-06) renamed many default metrics and changed some units. For example `DCGM_FI_DEV_GPU_UTIL` (percent) became `DCGM_FI_DEV_GPU_UTIL_RATIO` (0 to 1), and `DCGM_FI_DEV_FB_USED` (MiB) became `DCGM_FI_DEV_FB_USED_BYTES`. The metric names in this chapter are the 4.8.x names. On a 4.9.0 exporter use the [full mapping in 17.4](../part-17-operations/04-dcgm-exporter-and-interpreting-gpu-metrics.md#14-what-dcgm-exporter-490-renamed), and change thresholds together with the unit.
+
 The formula gives the expected interval between faults, and the straggler case shows how one slow GPU can hold back the whole job.
 
 Production Slurm clusters use three tiers of health gating to catch hard hardware faults and silent stragglers before they ruin a multi-node job. Tier 1 runs the Node Health Check daemon every 300 seconds in the background. Tier 2 runs a fast pre-job `Prolog` script in under 10 seconds, before job allocation. If any GPU, ECC, NVLink, or 400G InfiniBand check fails, that script drains the node and requeues the job. Tier 3 runs a post-job `Epilog` script. It cleans up residual processes, resets GPUs, and audits kernel logs against the NVIDIA Xid Catalog.

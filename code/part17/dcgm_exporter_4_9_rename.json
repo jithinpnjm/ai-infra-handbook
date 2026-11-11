@@ -1,0 +1,581 @@
+{
+  "schema": 1,
+  "exporter_old": "4.8.4",
+  "exporter_new": "4.9.0",
+  "released": "2026-11-06",
+  "sources": [
+    "https://github.com/NVIDIA/dcgm-exporter/releases/tag/4.9.0",
+    "https://docs.nvidia.com/datacenter/dcgm/latest/release-notes/dcgm-exporter.html (fetched 2026-11-11: newest section listed was 4.8.4, so the 4.9.0 upgrade checklist could not be read there)",
+    "dcgm-exporter git tags 4.8.4 and 4.9.0, etc/default-counters.csv",
+    "dcgm-exporter 4.9.0 internal/pkg/signalcatalog (unit conversions) and internal/pkg/counters/shipped_metric_names_test.go (deprecated-field list)"
+  ],
+  "summary": "23 default and profiling-preset fields renamed (incl. the driver-version label); 11 of them change unit. FB_CAPACITY_BYTES is a new default. Pod per-process GPU util and memory are emitted under both old and new names. dcp-metrics-included.csv and 1.x-compatibility-metrics.csv are deprecated in favour of default-counters.csv.",
+  "renamed": [
+    {
+      "old": "DCGM_FI_DEV_SM_CLOCK",
+      "new": "DCGM_FI_DEV_SM_CLOCK_HERTZ",
+      "kind": "gauge",
+      "unit_old": "MHz",
+      "unit_new": "Hz",
+      "status": "verified",
+      "source": "verified: etc/default-counters.csv 4.8.4 vs 4.9.0 aligned row by row; release notes (GitHub 4.9.0)",
+      "scale": {
+        "op": "multiply",
+        "factor": 1000000
+      }
+    },
+    {
+      "old": "DCGM_FI_DEV_MEM_CLOCK",
+      "new": "DCGM_FI_DEV_MEMORY_CLOCK_HERTZ",
+      "kind": "gauge",
+      "unit_old": "MHz",
+      "unit_new": "Hz",
+      "status": "verified",
+      "source": "verified: etc/default-counters.csv 4.8.4 vs 4.9.0 aligned row by row; release notes (GitHub 4.9.0)",
+      "scale": {
+        "op": "multiply",
+        "factor": 1000000
+      }
+    },
+    {
+      "old": "DCGM_FI_DEV_MEMORY_TEMP",
+      "new": "DCGM_FI_DEV_MEMORY_TEMP_CELSIUS",
+      "kind": "gauge",
+      "unit_old": "C",
+      "unit_new": "C",
+      "status": "verified",
+      "source": "verified: etc/default-counters.csv 4.8.4 vs 4.9.0 aligned row by row; release notes (GitHub 4.9.0)",
+      "scale": null
+    },
+    {
+      "old": "DCGM_FI_DEV_GPU_TEMP",
+      "new": "DCGM_FI_DEV_GPU_TEMP_CELSIUS",
+      "kind": "gauge",
+      "unit_old": "C",
+      "unit_new": "C",
+      "status": "verified",
+      "source": "verified: etc/default-counters.csv 4.8.4 vs 4.9.0 aligned row by row; release notes (GitHub 4.9.0)",
+      "scale": null
+    },
+    {
+      "old": "DCGM_FI_DEV_POWER_USAGE",
+      "new": "DCGM_FI_DEV_BOARD_POWER_WATTS",
+      "kind": "gauge",
+      "unit_old": "W",
+      "unit_new": "W",
+      "status": "verified",
+      "source": "verified: etc/default-counters.csv 4.8.4 vs 4.9.0 aligned row by row; release notes (GitHub 4.9.0)",
+      "scale": null
+    },
+    {
+      "old": "DCGM_FI_DEV_TOTAL_ENERGY_CONSUMPTION",
+      "new": "DCGM_FI_DEV_GPU_ENERGY_JOULES_TOTAL",
+      "kind": "counter",
+      "unit_old": "mJ",
+      "unit_new": "J",
+      "status": "verified",
+      "source": "verified: etc/default-counters.csv 4.8.4 vs 4.9.0 aligned row by row; release notes (GitHub 4.9.0)",
+      "scale": {
+        "op": "divide",
+        "factor": 1000
+      }
+    },
+    {
+      "old": "DCGM_FI_DEV_PCIE_REPLAY_COUNTER",
+      "new": "DCGM_FI_DEV_PCIE_REPLAY_TOTAL",
+      "kind": "counter",
+      "unit_old": "count",
+      "unit_new": "count",
+      "status": "verified",
+      "source": "verified: etc/default-counters.csv 4.8.4 vs 4.9.0 aligned row by row; release notes (GitHub 4.9.0)",
+      "scale": null
+    },
+    {
+      "old": "DCGM_FI_DEV_GPU_UTIL",
+      "new": "DCGM_FI_DEV_GPU_UTIL_RATIO",
+      "kind": "gauge",
+      "unit_old": "percent 0-100",
+      "unit_new": "ratio 0-1",
+      "status": "verified",
+      "source": "verified: etc/default-counters.csv 4.8.4 vs 4.9.0 aligned row by row; release notes (GitHub 4.9.0)",
+      "scale": {
+        "op": "divide",
+        "factor": 100
+      },
+      "note": "A Kubernetes pod's ratio can exceed 1.0 (per-process values are summed)."
+    },
+    {
+      "old": "DCGM_FI_DEV_MEM_COPY_UTIL",
+      "new": "DCGM_FI_DEV_MEMORY_UTIL_RATIO",
+      "kind": "gauge",
+      "unit_old": "percent 0-100",
+      "unit_new": "ratio 0-1",
+      "status": "verified",
+      "source": "verified: etc/default-counters.csv 4.8.4 vs 4.9.0 aligned row by row; release notes (GitHub 4.9.0)",
+      "scale": {
+        "op": "divide",
+        "factor": 100
+      }
+    },
+    {
+      "old": "DCGM_FI_DEV_ENC_UTIL",
+      "new": "DCGM_FI_DEV_ENC_UTIL_RATIO",
+      "kind": "gauge",
+      "unit_old": "percent 0-100",
+      "unit_new": "ratio 0-1",
+      "status": "verified",
+      "source": "verified: etc/default-counters.csv 4.8.4 vs 4.9.0 aligned row by row; release notes (GitHub 4.9.0)",
+      "scale": {
+        "op": "divide",
+        "factor": 100
+      }
+    },
+    {
+      "old": "DCGM_FI_DEV_DEC_UTIL",
+      "new": "DCGM_FI_DEV_DEC_UTIL_RATIO",
+      "kind": "gauge",
+      "unit_old": "percent 0-100",
+      "unit_new": "ratio 0-1",
+      "status": "verified",
+      "source": "verified: etc/default-counters.csv 4.8.4 vs 4.9.0 aligned row by row; release notes (GitHub 4.9.0)",
+      "scale": {
+        "op": "divide",
+        "factor": 100
+      }
+    },
+    {
+      "old": "DCGM_FI_DEV_XID_ERRORS",
+      "new": "DCGM_FI_DEV_XID_ERROR",
+      "kind": "gauge",
+      "unit_old": "Xid code",
+      "unit_new": "Xid code",
+      "status": "verified",
+      "source": "verified: etc/default-counters.csv 4.8.4 vs 4.9.0 aligned row by row; release notes (GitHub 4.9.0)",
+      "scale": null,
+      "note": "Singular in 4.9.0. Holds the LAST Xid seen."
+    },
+    {
+      "old": "DCGM_FI_DEV_FB_FREE",
+      "new": "DCGM_FI_DEV_FB_FREE_BYTES",
+      "kind": "gauge",
+      "unit_old": "MiB",
+      "unit_new": "bytes",
+      "status": "verified",
+      "source": "verified: etc/default-counters.csv 4.8.4 vs 4.9.0 aligned row by row; release notes (GitHub 4.9.0)",
+      "scale": {
+        "op": "multiply",
+        "factor": 1048576
+      }
+    },
+    {
+      "old": "DCGM_FI_DEV_FB_USED",
+      "new": "DCGM_FI_DEV_FB_USED_BYTES",
+      "kind": "gauge",
+      "unit_old": "MiB",
+      "unit_new": "bytes",
+      "status": "verified",
+      "source": "verified: etc/default-counters.csv 4.8.4 vs 4.9.0 aligned row by row; release notes (GitHub 4.9.0)",
+      "scale": {
+        "op": "multiply",
+        "factor": 1048576
+      }
+    },
+    {
+      "old": "DCGM_FI_DEV_FB_RESERVED",
+      "new": "DCGM_FI_DEV_FB_RESERVED_BYTES",
+      "kind": "gauge",
+      "unit_old": "MiB",
+      "unit_new": "bytes",
+      "status": "verified",
+      "source": "verified: etc/default-counters.csv 4.8.4 vs 4.9.0 aligned row by row; release notes (GitHub 4.9.0)",
+      "scale": {
+        "op": "multiply",
+        "factor": 1048576
+      }
+    },
+    {
+      "old": "DCGM_FI_DEV_NVLINK_BANDWIDTH_TOTAL",
+      "new": "DCGM_FI_DEV_NVLINK_THROUGHPUT_BYTES_PER_SECOND",
+      "kind": "gauge",
+      "unit_old": "MB/s",
+      "unit_new": "bytes/s",
+      "status": "verified",
+      "source": "verified: etc/default-counters.csv 4.8.4 vs 4.9.0 aligned row by row; release notes (GitHub 4.9.0)",
+      "scale": null,
+      "scale_status": "unverified",
+      "scale_note": "The release notes and CSV help text say MB/s becomes bytes per second, but the numeric factor (1e6 or 1048576) is not stated, and the exporter's OTLP catalog maps this field with an identity conversion. The helper refuses to scale it unless told to."
+    },
+    {
+      "old": "DCGM_FI_DEV_UNCORRECTABLE_REMAPPED_ROWS",
+      "new": "DCGM_FI_DEV_ROW_REMAP_UNCORRECTABLE_TOTAL",
+      "kind": "counter",
+      "unit_old": "rows",
+      "unit_new": "rows",
+      "status": "verified",
+      "source": "verified: etc/default-counters.csv 4.8.4 vs 4.9.0 aligned row by row; release notes (GitHub 4.9.0)",
+      "scale": null
+    },
+    {
+      "old": "DCGM_FI_DEV_CORRECTABLE_REMAPPED_ROWS",
+      "new": "DCGM_FI_DEV_ROW_REMAP_CORRECTABLE_TOTAL",
+      "kind": "counter",
+      "unit_old": "rows",
+      "unit_new": "rows",
+      "status": "verified",
+      "source": "verified: etc/default-counters.csv 4.8.4 vs 4.9.0 aligned row by row; release notes (GitHub 4.9.0)",
+      "scale": null
+    },
+    {
+      "old": "DCGM_FI_DEV_ROW_REMAP_FAILURE",
+      "new": "DCGM_FI_DEV_ROW_REMAP_FAILED",
+      "kind": "gauge",
+      "unit_old": "0/1",
+      "unit_new": "0/1",
+      "status": "verified",
+      "source": "verified: etc/default-counters.csv 4.8.4 vs 4.9.0 aligned row by row; release notes (GitHub 4.9.0)",
+      "scale": null
+    },
+    {
+      "old": "DCGM_FI_DRIVER_VERSION",
+      "new": "DCGM_FI_SYSTEM_DRIVER_VERSION",
+      "kind": "label",
+      "unit_old": "text",
+      "unit_new": "text",
+      "status": "verified",
+      "source": "verified: etc/default-counters.csv 4.8.4 vs 4.9.0 aligned row by row; release notes (GitHub 4.9.0)",
+      "scale": null,
+      "note": "Label on every metric. Helm installs did not carry it in 4.8.4 and now do."
+    },
+    {
+      "old": "DCGM_FI_PROF_GR_ENGINE_ACTIVE",
+      "new": "DCGM_FI_PROF_GR_ENGINE_UTIL_RATIO",
+      "kind": "gauge",
+      "unit_old": "ratio 0-1",
+      "unit_new": "ratio 0-1",
+      "status": "verified",
+      "source": "verified: etc/default-counters.csv 4.8.4 vs 4.9.0 aligned row by row; release notes (GitHub 4.9.0)",
+      "scale": null
+    },
+    {
+      "old": "DCGM_FI_PROF_PIPE_TENSOR_ACTIVE",
+      "new": "DCGM_FI_PROF_TENSOR_UTIL_RATIO",
+      "kind": "gauge",
+      "unit_old": "ratio 0-1",
+      "unit_new": "ratio 0-1",
+      "status": "verified",
+      "source": "verified: etc/default-counters.csv 4.8.4 vs 4.9.0 aligned row by row; release notes (GitHub 4.9.0)",
+      "scale": null
+    },
+    {
+      "old": "DCGM_FI_PROF_DRAM_ACTIVE",
+      "new": "DCGM_FI_PROF_DRAM_UTIL_RATIO",
+      "kind": "gauge",
+      "unit_old": "ratio 0-1",
+      "unit_new": "ratio 0-1",
+      "status": "verified",
+      "source": "verified: etc/default-counters.csv 4.8.4 vs 4.9.0 aligned row by row; release notes (GitHub 4.9.0)",
+      "scale": null
+    }
+  ],
+  "inferred_optional": [
+    {
+      "old": "DCGM_FI_DEV_RETIRED_SBE",
+      "new": "DCGM_FI_DEV_PAGE_RETIRED_SBE_TOTAL",
+      "kind": "counter",
+      "unit_old": "pages",
+      "unit_new": "pages",
+      "status": "inferred",
+      "source": "inferred: old commented row in 4.8.4 default-counters.csv and new commented row in 4.9.0 aligned by help text (and the exporter's deprecated-field test list); not in the release notes",
+      "scale": null
+    },
+    {
+      "old": "DCGM_FI_DEV_RETIRED_DBE",
+      "new": "DCGM_FI_DEV_PAGE_RETIRED_DBE_TOTAL",
+      "kind": "counter",
+      "unit_old": "pages",
+      "unit_new": "pages",
+      "status": "inferred",
+      "source": "inferred: old commented row in 4.8.4 default-counters.csv and new commented row in 4.9.0 aligned by help text (and the exporter's deprecated-field test list); not in the release notes",
+      "scale": null
+    },
+    {
+      "old": "DCGM_FI_DEV_RETIRED_PENDING",
+      "new": "DCGM_FI_DEV_PAGE_RETIRED_PENDING",
+      "kind": "gauge",
+      "unit_old": "0/1",
+      "unit_new": "0/1",
+      "status": "inferred",
+      "source": "inferred: old commented row in 4.8.4 default-counters.csv and new commented row in 4.9.0 aligned by help text (and the exporter's deprecated-field test list); not in the release notes",
+      "scale": null
+    },
+    {
+      "old": "DCGM_FI_DEV_POWER_VIOLATION",
+      "new": "DCGM_FI_DEV_GPU_POWER_THROTTLE_SECONDS_TOTAL",
+      "kind": "counter",
+      "unit_old": "ns",
+      "unit_new": "s",
+      "status": "inferred",
+      "source": "inferred: old commented row in 4.8.4 default-counters.csv and new commented row in 4.9.0 aligned by help text (and the exporter's deprecated-field test list); not in the release notes",
+      "scale": {
+        "op": "divide",
+        "factor": 1000000000
+      }
+    },
+    {
+      "old": "DCGM_FI_DEV_THERMAL_VIOLATION",
+      "new": "DCGM_FI_DEV_GPU_THERMAL_THROTTLE_SECONDS_TOTAL",
+      "kind": "counter",
+      "unit_old": "ns",
+      "unit_new": "s",
+      "status": "inferred",
+      "source": "inferred: old commented row in 4.8.4 default-counters.csv and new commented row in 4.9.0 aligned by help text (and the exporter's deprecated-field test list); not in the release notes",
+      "scale": {
+        "op": "divide",
+        "factor": 1000000000
+      }
+    },
+    {
+      "old": "DCGM_FI_DEV_SYNC_BOOST_VIOLATION",
+      "new": "DCGM_FI_DEV_GPU_SYNC_BOOST_THROTTLE_SECONDS_TOTAL",
+      "kind": "counter",
+      "unit_old": "ns",
+      "unit_new": "s",
+      "status": "inferred",
+      "source": "inferred: old commented row in 4.8.4 default-counters.csv and new commented row in 4.9.0 aligned by help text (and the exporter's deprecated-field test list); not in the release notes",
+      "scale": {
+        "op": "divide",
+        "factor": 1000000000
+      }
+    },
+    {
+      "old": "DCGM_FI_DEV_BOARD_LIMIT_VIOLATION",
+      "new": "DCGM_FI_DEV_GPU_LIMIT_THROTTLE_SECONDS_TOTAL",
+      "kind": "counter",
+      "unit_old": "ns",
+      "unit_new": "s",
+      "status": "inferred",
+      "source": "inferred: old commented row in 4.8.4 default-counters.csv and new commented row in 4.9.0 aligned by help text (and the exporter's deprecated-field test list); not in the release notes",
+      "scale": {
+        "op": "divide",
+        "factor": 1000000000
+      }
+    },
+    {
+      "old": "DCGM_FI_DEV_LOW_UTIL_VIOLATION",
+      "new": "DCGM_FI_DEV_GPU_LOW_UTIL_THROTTLE_SECONDS_TOTAL",
+      "kind": "counter",
+      "unit_old": "ns",
+      "unit_new": "s",
+      "status": "inferred",
+      "source": "inferred: old commented row in 4.8.4 default-counters.csv and new commented row in 4.9.0 aligned by help text (and the exporter's deprecated-field test list); not in the release notes",
+      "scale": {
+        "op": "divide",
+        "factor": 1000000000
+      }
+    },
+    {
+      "old": "DCGM_FI_DEV_RELIABILITY_VIOLATION",
+      "new": "DCGM_FI_DEV_GPU_RELIABILITY_THROTTLE_SECONDS_TOTAL",
+      "kind": "counter",
+      "unit_old": "ns",
+      "unit_new": "s",
+      "status": "inferred",
+      "source": "inferred: old commented row in 4.8.4 default-counters.csv and new commented row in 4.9.0 aligned by help text (and the exporter's deprecated-field test list); not in the release notes",
+      "scale": {
+        "op": "divide",
+        "factor": 1000000000
+      }
+    },
+    {
+      "old": "DCGM_FI_DEV_FB_TOTAL",
+      "new": "DCGM_FI_DEV_FB_CAPACITY_BYTES",
+      "kind": "gauge",
+      "unit_old": "MiB",
+      "unit_new": "bytes",
+      "status": "inferred",
+      "source": "inferred: old commented row in 4.8.4 default-counters.csv and new commented row in 4.9.0 aligned by help text (and the exporter's deprecated-field test list); not in the release notes",
+      "scale": {
+        "op": "multiply",
+        "factor": 1048576
+      }
+    },
+    {
+      "old": "DCGM_FI_PROF_SM_ACTIVE",
+      "new": "DCGM_FI_PROF_SM_UTIL_RATIO",
+      "kind": "gauge",
+      "unit_old": "ratio 0-1",
+      "unit_new": "ratio 0-1",
+      "status": "inferred",
+      "source": "inferred: old commented row in 4.8.4 default-counters.csv and new commented row in 4.9.0 aligned by help text (and the exporter's deprecated-field test list); not in the release notes",
+      "scale": null
+    },
+    {
+      "old": "DCGM_FI_PROF_SM_OCCUPANCY",
+      "new": "DCGM_FI_PROF_SM_OCCUPANCY_RATIO",
+      "kind": "gauge",
+      "unit_old": "ratio 0-1",
+      "unit_new": "ratio 0-1",
+      "status": "inferred",
+      "source": "inferred: old commented row in 4.8.4 default-counters.csv and new commented row in 4.9.0 aligned by help text (and the exporter's deprecated-field test list); not in the release notes",
+      "scale": null
+    },
+    {
+      "old": "DCGM_FI_PROF_PIPE_FP64_ACTIVE",
+      "new": "DCGM_FI_PROF_FP64_UTIL_RATIO",
+      "kind": "gauge",
+      "unit_old": "ratio 0-1",
+      "unit_new": "ratio 0-1",
+      "status": "inferred",
+      "source": "inferred: old commented row in 4.8.4 default-counters.csv and new commented row in 4.9.0 aligned by help text (and the exporter's deprecated-field test list); not in the release notes",
+      "scale": null
+    },
+    {
+      "old": "DCGM_FI_PROF_PIPE_FP32_ACTIVE",
+      "new": "DCGM_FI_PROF_FP32_UTIL_RATIO",
+      "kind": "gauge",
+      "unit_old": "ratio 0-1",
+      "unit_new": "ratio 0-1",
+      "status": "inferred",
+      "source": "inferred: old commented row in 4.8.4 default-counters.csv and new commented row in 4.9.0 aligned by help text (and the exporter's deprecated-field test list); not in the release notes",
+      "scale": null
+    },
+    {
+      "old": "DCGM_FI_PROF_PIPE_FP16_ACTIVE",
+      "new": "DCGM_FI_PROF_FP16_UTIL_RATIO",
+      "kind": "gauge",
+      "unit_old": "ratio 0-1",
+      "unit_new": "ratio 0-1",
+      "status": "inferred",
+      "source": "inferred: old commented row in 4.8.4 default-counters.csv and new commented row in 4.9.0 aligned by help text (and the exporter's deprecated-field test list); not in the release notes",
+      "scale": null
+    },
+    {
+      "old": "DCGM_FI_NVML_VERSION",
+      "new": "DCGM_FI_SYSTEM_NVML_VERSION",
+      "kind": "label",
+      "unit_old": "text",
+      "unit_new": "text",
+      "status": "inferred",
+      "source": "inferred: old commented row in 4.8.4 default-counters.csv and new commented row in 4.9.0 aligned by help text (and the exporter's deprecated-field test list); not in the release notes",
+      "scale": null
+    },
+    {
+      "old": "DCGM_FI_DEV_BRAND",
+      "new": "DCGM_FI_DEV_GPU_BRAND",
+      "kind": "label",
+      "unit_old": "text",
+      "unit_new": "text",
+      "status": "inferred",
+      "source": "inferred: old commented row in 4.8.4 default-counters.csv and new commented row in 4.9.0 aligned by help text (and the exporter's deprecated-field test list); not in the release notes",
+      "scale": null
+    },
+    {
+      "old": "DCGM_FI_DEV_SERIAL",
+      "new": "DCGM_FI_DEV_BOARD_SERIAL",
+      "kind": "label",
+      "unit_old": "text",
+      "unit_new": "text",
+      "status": "inferred",
+      "source": "inferred: old commented row in 4.8.4 default-counters.csv and new commented row in 4.9.0 aligned by help text (and the exporter's deprecated-field test list); not in the release notes",
+      "scale": null
+    },
+    {
+      "old": "DCGM_FI_DEV_OEM_INFOROM_VER",
+      "new": "DCGM_FI_DEV_INFOROM_OEM_VERSION",
+      "kind": "label",
+      "unit_old": "text",
+      "unit_new": "text",
+      "status": "inferred",
+      "source": "inferred: old commented row in 4.8.4 default-counters.csv and new commented row in 4.9.0 aligned by help text (and the exporter's deprecated-field test list); not in the release notes",
+      "scale": null
+    },
+    {
+      "old": "DCGM_FI_DEV_ECC_INFOROM_VER",
+      "new": "DCGM_FI_DEV_INFOROM_ECC_VERSION",
+      "kind": "label",
+      "unit_old": "text",
+      "unit_new": "text",
+      "status": "inferred",
+      "source": "inferred: old commented row in 4.8.4 default-counters.csv and new commented row in 4.9.0 aligned by help text (and the exporter's deprecated-field test list); not in the release notes",
+      "scale": null
+    },
+    {
+      "old": "DCGM_FI_DEV_POWER_INFOROM_VER",
+      "new": "DCGM_FI_DEV_INFOROM_POWER_VERSION",
+      "kind": "label",
+      "unit_old": "text",
+      "unit_new": "text",
+      "status": "inferred",
+      "source": "inferred: old commented row in 4.8.4 default-counters.csv and new commented row in 4.9.0 aligned by help text (and the exporter's deprecated-field test list); not in the release notes",
+      "scale": null
+    },
+    {
+      "old": "DCGM_FI_DEV_INFOROM_IMAGE_VER",
+      "new": "DCGM_FI_DEV_INFOROM_IMAGE_VERSION",
+      "kind": "label",
+      "unit_old": "text",
+      "unit_new": "text",
+      "status": "inferred",
+      "source": "inferred: old commented row in 4.8.4 default-counters.csv and new commented row in 4.9.0 aligned by help text (and the exporter's deprecated-field test list); not in the release notes",
+      "scale": null
+    },
+    {
+      "old": "DCGM_FI_DEV_NVLINK_BANDWIDTH_L0",
+      "new": "DCGM_FI_DEV_NVLINK_THROUGHPUT_L0_BYTES_PER_SECOND",
+      "kind": "gauge",
+      "unit_old": "MB/s",
+      "unit_new": "bytes/s",
+      "status": "inferred",
+      "source": "inferred: old commented row in 4.8.4 default-counters.csv and new commented row in 4.9.0 aligned by help text (and the exporter's deprecated-field test list); not in the release notes (also L1..L17 by the same pattern)",
+      "scale": null,
+      "scale_status": "unverified",
+      "scale_note": "same as the aggregate NVLink field"
+    },
+    {
+      "old": "DCGM_FI_DEV_FAN_SPEED",
+      "new": "DCGM_FI_DEV_FAN_SPEED_RATIO",
+      "kind": "gauge",
+      "unit_old": "unverified",
+      "unit_new": "ratio",
+      "status": "inferred",
+      "source": "old name is in the exporter's deprecated-field test list; new name is a commented row in 4.9.0 CSV",
+      "scale": null,
+      "scale_status": "unverified",
+      "scale_note": "old unit not stated in the 4.8.4 CSV; likely percent but unconfirmed"
+    }
+  ],
+  "new_in_4_9_0": [
+    {
+      "name": "DCGM_FI_DEV_FB_CAPACITY_BYTES",
+      "note": "collected by default; total framebuffer in bytes",
+      "source": "verified: etc/default-counters.csv 4.8.4 vs 4.9.0 aligned row by row; release notes (GitHub 4.9.0)"
+    }
+  ],
+  "unverified_handbook_names": {
+    "names": [
+      "DCGM_FI_DEV_CLOCK_THROTTLE_REASONS",
+      "DCGM_FI_DEV_GPU_TEMPERATURE",
+      "DCGM_FI_DEV_NVLINK_TX_BANDWIDTH_L",
+      "DCGM_FI_DEV_NVLINK_RX_BANDWIDTH_L",
+      "DCGM_FI_DEV_NVLINK_CRC_FLIT_ERROR_COUNT_TOTAL"
+    ],
+    "note": "Not present in the 4.8.4 or 4.9.0 default CSVs, so no mapping can be confirmed. Check them against your own custom counters file."
+  },
+  "unchanged_in_default": [
+    "DCGM_FI_PROF_PCIE_TX_BYTES",
+    "DCGM_FI_PROF_PCIE_RX_BYTES",
+    "DCGM_FI_DEV_VGPU_LICENSE_STATUS",
+    "DCGM_FI_DEV_ECC_SBE_VOL_TOTAL",
+    "DCGM_FI_DEV_ECC_DBE_VOL_TOTAL",
+    "DCGM_FI_DEV_ECC_SBE_AGG_TOTAL",
+    "DCGM_FI_DEV_ECC_DBE_AGG_TOTAL",
+    "DCGM_FI_DEV_NVLINK_CRC_ERROR_TOTAL"
+  ],
+  "file_changes": {
+    "deprecated": [
+      "etc/dcp-metrics-included.csv",
+      "etc/1.x-compatibility-metrics.csv"
+    ],
+    "use_instead": "etc/default-counters.csv"
+  }
+}

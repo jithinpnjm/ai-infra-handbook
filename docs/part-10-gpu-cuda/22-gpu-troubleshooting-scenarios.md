@@ -110,6 +110,8 @@ When a GPU's clock frequency drops in the middle of a training run, throughput c
 
 To separate thermal throttling from software power caps and hardware PSU brake events, always inspect the hardware throttle reason bitmask in `nvidia-smi -i 0 -q -d PERFORMANCE` and `DCGM_FI_DEV_CLOCK_THROTTLE_REASONS`.
 
+> **dcgm-exporter 4.9.0 version note.** dcgm-exporter 4.9.0 (2026-11-06) renamed many default metrics and changed some units. For example `DCGM_FI_DEV_GPU_UTIL` (percent) became `DCGM_FI_DEV_GPU_UTIL_RATIO` (0 to 1), and `DCGM_FI_DEV_FB_USED` (MiB) became `DCGM_FI_DEV_FB_USED_BYTES`. The metric names in this chapter are the 4.8.x names. On a 4.9.0 exporter use the [full mapping in 17.4](../part-17-operations/04-dcgm-exporter-and-interpreting-gpu-metrics.md#14-what-dcgm-exporter-490-renamed), and change thresholds together with the unit.
+
 ```text
 Performance State (nvidia-smi -i 0 -q -d PERFORMANCE, Volume 20 Chapter 6 & Lab 02 Ex 1)
     HW Slowdown                       : Not Active

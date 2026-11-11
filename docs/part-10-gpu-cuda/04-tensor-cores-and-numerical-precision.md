@@ -79,6 +79,8 @@ flowchart LR
     Check -->|"Tensor Pipe High + High Goodput"| Good["Genuinely Tensor-Core-Bound<br/>(Near Hardware Speed of Light)"]
 ```
 
+> **dcgm-exporter 4.9.0 version note.** dcgm-exporter 4.9.0 (2026-11-06) renamed many default metrics and changed some units. For example `DCGM_FI_DEV_GPU_UTIL` (percent) became `DCGM_FI_DEV_GPU_UTIL_RATIO` (0 to 1), and `DCGM_FI_DEV_FB_USED` (MiB) became `DCGM_FI_DEV_FB_USED_BYTES`. The metric names in this chapter are the 4.8.x names. On a 4.9.0 exporter use the [full mapping in 17.4](../part-17-operations/04-dcgm-exporter-and-interpreting-gpu-metrics.md#14-what-dcgm-exporter-490-renamed), and change thresholds together with the unit.
+
 | Execution engine | Primary operations | Where it is used in AI & HPC | Common operational misconception |
 |---|---|---|---|
 | **1. CUDA Cores** (FP32 / INT32 lanes) | Scalar/vector floating-point and integer math ($D = A \times B + C$ on single numbers), comparisons, indexing, reductions, bitwise logic. | Address calculation, activation functions (GeLU, SiLU), normalization (LayerNorm, RMSNorm), reductions, and custom non-matrix kernels. | **"More CUDA Cores = faster LLM."** CUDA Core counts are not comparable across generations and do not run dense transformer GEMMs on modern AI GPUs. |

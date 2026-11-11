@@ -395,6 +395,8 @@ options ndots:5
 The socket at `/var/lib/kubelet/pod-resources/kubelet.sock` is the kubelet's local, read-only gRPC interface, the PodResourcesLister. Hardware metrics on the host, such as `DCGM_FI_DEV_GPU_UTIL`, temperature, XID errors and NVLink bandwidth, are indexed by physical GPU UUID or minor number, such as `gpu=0..7`. The NVIDIA driver knows nothing about Kubernetes Pod names or namespaces. So `dcgm-exporter` calls the `List` RPC on that socket. It learns which `(namespace, pod_name, container_name)` owns each GPU device ID. It then adds `pod="..."`, `namespace="..."` and `container="..."` labels to every Prometheus metric series.
 </details>
 
+> **dcgm-exporter 4.9.0 version note.** dcgm-exporter 4.9.0 (2026-11-06) renamed many default metrics and changed some units. For example `DCGM_FI_DEV_GPU_UTIL` (percent) became `DCGM_FI_DEV_GPU_UTIL_RATIO` (0 to 1), and `DCGM_FI_DEV_FB_USED` (MiB) became `DCGM_FI_DEV_FB_USED_BYTES`. The metric names in this chapter are the 4.8.x names. On a 4.9.0 exporter use the [full mapping in 17.4](../part-17-operations/04-dcgm-exporter-and-interpreting-gpu-metrics.md#14-what-dcgm-exporter-490-renamed), and change thresholds together with the unit.
+
 <details>
 <summary>9. By default in `kubelet`, why does pulling one 25 GB training image block all other image pulls on the same node, and what setting controls this?</summary>
 

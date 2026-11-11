@@ -147,7 +147,7 @@ The table lists each component with its persona and its key fields. As you read 
 
 | Kubeflow Trainer Component | Persona | Key Fields and Values | Role in Execution |
 |---|---|---|---|
-| ClusterTrainingRuntime (`trainer.kubeflow.org/v1alpha1`) | Platform Administrator | `name: my-torch-distributed-runtime`, label `trainer.kubeflow.org/framework: torch` (supports `torch`, `deepspeed`, `mlx`, `mpi`), `mlPolicy.numNodes: 1`, `torch.numProcPerNode: auto`, `replicatedJobs: [{name: node}]`, label `trainer.kubeflow.org/trainjob-ancestor-step: trainer`, image `pytorch/pytorch:2.7.1-cuda12.8-cudnn9-runtime` | Reusable infrastructure blueprint governing images, schedulers, and JobSet topology |
+| ClusterTrainingRuntime (`trainer.kubeflow.org/v1alpha1`) | Platform Administrator | `name: my-torch-distributed-runtime`, label `trainer.kubeflow.org/framework: torch` (supports `torch`, `deepspeed`, `mlx`, `mpi`), `mlPolicy.numNodes: 1`, `mlPolicy.torch: {}` (the process count per node is set on the TrainJob as `trainer.numProcPerNode`), `replicatedJobs: [{name: node}]`, label `trainer.kubeflow.org/trainjob-ancestor-step: trainer`, image `pytorch/pytorch:2.7.1-cuda12.8-cudnn9-runtime` | Reusable infrastructure blueprint governing images, schedulers, and JobSet topology |
 | TrainJob via `CustomTrainer` / `BuiltinTrainer` | Data Scientist | `num_nodes=8`, `cpu: 4`, `memory: "64Gi"`, `nvidia.com/gpu: 1` (total 8 GPUs and 32 CPUs); `Llama-3.2-3B` on `openai/gsm8k` with `num_epochs: 3`, `learning_rate: 2.0e-4`, `checkpoint-100`; or DeepSpeed `dist_backend="nccl"`, `batch_size=16` | Embeds serialized Python function and hyperparameters without rebuilding container images |
 | KubeRay RayJob vs Katib / Ray Tune | Platform / MLOps Team | RayJob requires baking code into images or external mounts; Ray Tune and Kubeflow Katib run hyperparameter optimization such as Population Based Training | Distinguishes post-training model customization from hyperparameter sweeps |
 
@@ -300,8 +300,7 @@ metadata:
 spec:
   mlPolicy:
     numNodes: 1
-    torch:
-      numProcPerNode: auto
+    torch: {}
   template:
     spec:
       replicatedJobs:
@@ -674,3 +673,4 @@ FlashAttention provides hardware-aware, IO-optimized attention. Liger Kernel pro
 - Corpus coverage: JobSet and LeaderWorkerSet appear in the corpus only in passing. The manifests and field names for those two APIs come from working knowledge and were not verified against the upstream docs; check them against the controller version you install.
 - Validation pass 2026-10-25: `validate_chapter.py` and `check_coverage.py` pass. The YAML manifests and commands are marked untested and were not applied to a cluster. Custom resource API versions such as `kueue.x-k8s.io/v1beta1` and `resource.k8s.io/v1` change between releases, so check them against the version you install. Console outputs quoted from the Volume notes are illustrative unless the chapter says otherwise.
 - Earlier author note: all PyTorchJob, TrainJob, ClusterTrainingRuntime, JobSet, LeaderWorkerSet, and MPIJob specifications match the cited sources verbatim.
+- Manifest checked against upstream CRDs on 2026-11-11 (versions: Kubeflow Trainer main at commit a742313, 2026-11-06).

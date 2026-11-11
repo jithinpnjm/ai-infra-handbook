@@ -450,29 +450,48 @@ Imagine one cluster that is full while another has idle H100s. Multi-cluster sch
 
 ```yaml
 # code/part17/multi_cluster_queue.yaml
-apiVersion: kueue.x-k8s.io/v1beta1
+apiVersion: kueue.x-k8s.io/v1beta2
+kind: ResourceFlavor
+metadata:
+  name: h100-sxm5-80gb-us-central1
+spec:
+  nodeLabels:
+    nvidia.com/gpu.product: NVIDIA-H100-80GB-HBM3
+---
+apiVersion: kueue.x-k8s.io/v1beta2
+kind: ResourceFlavor
+metadata:
+  name: h100-sxm5-80gb-europe-west1
+spec:
+  nodeLabels:
+    nvidia.com/gpu.product: NVIDIA-H100-80GB-HBM3
+---
+apiVersion: kueue.x-k8s.io/v1beta2
 kind: ClusterQueue
 metadata:
   name: cluster-queue-multi-region
 spec:
-  cohort: multi-region
-  flavorQuotas:
-    - name: h100-sxm5-80gb-us-central1
-      resources:
-        - name: cpu
-          nominalQuota: 800
-        - name: memory
-          nominalQuota: 4Ti
-        - name: nvidia.com/gpu
-          nominalQuota: 64
-    - name: h100-sxm5-80gb-europe-west1
-      resources:
-        - name: cpu
-          nominalQuota: 800
-        - name: memory
-          nominalQuota: 4Ti
-        - name: nvidia.com/gpu
-          nominalQuota: 64
+  cohortName: multi-region
+  namespaceSelector: {}
+  resourceGroups:
+    - coveredResources: ["cpu", "memory", "nvidia.com/gpu"]
+      flavors:
+        - name: h100-sxm5-80gb-us-central1
+          resources:
+            - name: cpu
+              nominalQuota: 800
+            - name: memory
+              nominalQuota: 4Ti
+            - name: nvidia.com/gpu
+              nominalQuota: 64
+        - name: h100-sxm5-80gb-europe-west1
+          resources:
+            - name: cpu
+              nominalQuota: 800
+            - name: memory
+              nominalQuota: 4Ti
+            - name: nvidia.com/gpu
+              nominalQuota: 64
 ```
 
 The manifest lists one GPU flavor per region, each with its own CPU, memory, and GPU quota. The numbers are example values from the manifest, not a sizing guide. Size your own quotas from the capacity you actually have.
@@ -512,7 +531,7 @@ Thousands of teams sharing one cluster need walls between them. Without walls, o
 
 ```yaml
 # code/part17/multi_tenant_isolation.yaml
-apiVersion: kueue.x-k8s.io/v1beta1
+apiVersion: kueue.x-k8s.io/v1beta2
 kind: LocalQueue
 metadata:
   name: team-data-science-queue
@@ -1019,3 +1038,4 @@ The AI-assisted operations operational patterns draw on Volume 8 chapter 3 and t
 - The lab in Section 8 is **untested** against a live GKE cluster in this repository.
 - The LLM API key in the lab is a placeholder; production keys are rotated quarterly.
 - The Prophet model in the lab assumes the historical data is available; production deployments may need additional data engineering.
+- Manifest checked against upstream CRDs on 2026-11-11 (versions: Kueue v0.20.5, API kueue.x-k8s.io/v1beta2).

@@ -229,6 +229,8 @@ Monitoring pipeline and checkpoint recovery math (bcm_mission_control.py):
 - Steps lost to failure: 5243 - 5000 = 243 steps (worst-case loss <= 500 steps)
 ```
 
+> **dcgm-exporter 4.9.0 version note.** dcgm-exporter 4.9.0 (2026-11-06) renamed many default metrics and changed some units. For example `DCGM_FI_DEV_GPU_UTIL` (percent) became `DCGM_FI_DEV_GPU_UTIL_RATIO` (0 to 1), and `DCGM_FI_DEV_FB_USED` (MiB) became `DCGM_FI_DEV_FB_USED_BYTES`. The metric names in this chapter are the 4.8.x names. On a 4.9.0 exporter use the [full mapping in 17.4](../part-17-operations/04-dcgm-exporter-and-interpreting-gpu-metrics.md#14-what-dcgm-exporter-490-renamed), and change thresholds together with the unit.
+
 Take the block as a short story. The job saves a checkpoint every 500 steps, so the latest one before the failure is step-5000. The failure hits at step 5243, and the job resumes at step 5001. That loses 243 steps, which is the 5243 minus 5000 shown above. Checking the checkpoint interval tells you the worst-case loss before a failure happens.
 
 ## 3. NVIDIA Run:ai under BCM

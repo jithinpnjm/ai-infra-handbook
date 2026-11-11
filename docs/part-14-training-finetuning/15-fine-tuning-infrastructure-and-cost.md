@@ -491,8 +491,7 @@ metadata:
 spec:
   mlPolicy:
     numNodes: 1
-    torch:
-      numProcPerNode: auto
+    torch: {}
   template:
     spec:
       replicatedJobs:
@@ -557,6 +556,8 @@ Compute is the dominant line item in AI infrastructure. Cloud instances are bill
 ```text
    - **Kubecost, Goldilocks, and the DCGM FinOps Reaper:** Deploy Kubecost and the Goldilocks VPA Recommender to right-size Pod requests, and scrape `dcgm-exporter` on port 9400. In production clusters, 98 percent Kubernetes GPU allocation often hides 12 to 40 percent actual compute utilization because developers leave interactive notebooks open over the weekend. Enforce an automated **DCGM FinOps Reaper** that terminates interactive Pods whose `DCGM_FI_PROF_SM_ACTIVE` stays below 5 percent for 4 consecutive hours.
 ```
+
+> **dcgm-exporter 4.9.0 version note.** dcgm-exporter 4.9.0 (2026-11-06) renamed many default metrics and changed some units. For example `DCGM_FI_DEV_GPU_UTIL` (percent) became `DCGM_FI_DEV_GPU_UTIL_RATIO` (0 to 1), and `DCGM_FI_DEV_FB_USED` (MiB) became `DCGM_FI_DEV_FB_USED_BYTES`. The metric names in this chapter are the 4.8.x names. On a 4.9.0 exporter use the [full mapping in 17.4](../part-17-operations/04-dcgm-exporter-and-interpreting-gpu-metrics.md#14-what-dcgm-exporter-490-renamed), and change thresholds together with the unit.
 
 ```text
 3-Year Capacity, H200 MIG, & 1,000-GPU Cluster Reference (K8GS Ch. 10, V23 Ch. 9 & Ch. 10):
@@ -940,3 +941,4 @@ Kubernetes `nvidia.com/gpu` tracks **reservation**, not compute activity. In rea
 | Hardware runtime notes | Kubernetes `kubectl apply` manifests for Kubeflow Trainer v2 (`v2.1.0`), EKS Spot GPU node groups, and multi-GPU Unsloth/TRL/QLoRA training scripts are reference operational configurations from the cited sources and have not been executed on a live multi-GPU cloud cluster in this local build environment (`untested` on live hardware). |
 | Deterministic lab verification | All parameter counts, static and peak VRAM formulas across Full SFT / LoRA / QLoRA / DPO / GRPO / PPO, GPU `$/TFLOP` and node BOM tables, PCIe-vs-SXM bandwidth ratios (`14.06x`), token throughput and run cost derivations, multi-LoRA compression ratios (`71.91x`), prompt break-even query thresholds (`125,000` queries), and 3-year / `1,000`-GPU FinOps capacity models are verified deterministically by `code/part14/finetuning_infra_cost.py` and `code/part14/finetuning_infra_cost_lab.py` (`25 passed, 0 failed`). |
 
+- Manifest checked against upstream CRDs on 2026-11-11 (versions: Kubeflow Trainer main at commit a742313, 2026-11-06).

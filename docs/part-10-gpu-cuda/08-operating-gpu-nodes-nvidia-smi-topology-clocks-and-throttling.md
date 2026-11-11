@@ -119,6 +119,8 @@ flowchart TD
 
 In `nvidia-smi`, the `GPU-Util` column and the underlying `DCGM_FI_DEV_GPU_UTIL` metric have a strict hardware definition. They measure the percentage of time during the sampling window in which at least one Streaming Multiprocessor had at least one warp actively resident.
 
+> **dcgm-exporter 4.9.0 version note.** dcgm-exporter 4.9.0 (2026-11-06) renamed many default metrics and changed some units. For example `DCGM_FI_DEV_GPU_UTIL` (percent) became `DCGM_FI_DEV_GPU_UTIL_RATIO` (0 to 1), and `DCGM_FI_DEV_FB_USED` (MiB) became `DCGM_FI_DEV_FB_USED_BYTES`. The metric names in this chapter are the 4.8.x names. On a 4.9.0 exporter use the [full mapping in 17.4](../part-17-operations/04-dcgm-exporter-and-interpreting-gpu-metrics.md#14-what-dcgm-exporter-490-renamed), and change thresholds together with the unit.
+
 This definition ignores how many SMs are busy and whether those warps are doing useful work. Consider an H100 SXM5 with 132 SMs where a single thread on SM 0 spins inside a `while(flag == 0)` wait loop. Even if the other 131 SMs sit completely idle, `nvidia-smi` still reports 100% GPU utilization. Likewise, a memory-bound kernel whose execution units spend 90% of their cycles stalled waiting for HBM reads still reports high utilization because warps remain resident on the SMs.
 
 The table below shows the production incident from `nvidia-devops` Volume 16 Chapters 1 and 3 on a node with two A100-PCIE-40GB GPUs (`evaluate_utilization_regime()` in `code/part10/gpu_node_ops.py`).

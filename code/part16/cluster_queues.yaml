@@ -1,34 +1,45 @@
-apiVersion: kueue.x-k8s.io/v1beta1
+apiVersion: kueue.x-k8s.io/v1beta2
+kind: ResourceFlavor
+metadata:
+  name: h100-sxm5-80gb
+spec:
+  nodeLabels:
+    nvidia.com/gpu.product: NVIDIA-H100-80GB-HBM3
+---
+apiVersion: kueue.x-k8s.io/v1beta2
 kind: ClusterQueue
 metadata:
   name: cluster-queue-standard
 spec:
-  cohort: default
-  flavorQuotas:
-    - name: h100-sxm5-80gb
-      resources:
-        - name: cpu
-          nominalQuota: 200
-        - name: memory
-          nominalQuota: 1Ti
-        - name: nvidia.com/gpu
-          nominalQuota: 16
+  cohortName: default
+  namespaceSelector: {}
   resourceGroups:
     - coveredResources: ["cpu", "memory", "nvidia.com/gpu"]
-      flavors: ["h100-sxm5-80gb"]
+      flavors:
+        - name: h100-sxm5-80gb
+          resources:
+            - name: cpu
+              nominalQuota: 200
+            - name: memory
+              nominalQuota: 1Ti
+            - name: nvidia.com/gpu
+              nominalQuota: 16
 ---
-apiVersion: kueue.x-k8s.io/v1beta1
+apiVersion: kueue.x-k8s.io/v1beta2
 kind: ClusterQueue
 metadata:
   name: cluster-queue-production
 spec:
-  cohort: default
-  flavorQuotas:
-    - name: h100-sxm5-80gb
-      resources:
-        - name: cpu
-          nominalQuota: 800
-        - name: memory
-          nominalQuota: 4Ti
-        - name: nvidia.com/gpu
-          nominalQuota: 64
+  cohortName: default
+  namespaceSelector: {}
+  resourceGroups:
+    - coveredResources: ["cpu", "memory", "nvidia.com/gpu"]
+      flavors:
+        - name: h100-sxm5-80gb
+          resources:
+            - name: cpu
+              nominalQuota: 800
+            - name: memory
+              nominalQuota: 4Ti
+            - name: nvidia.com/gpu
+              nominalQuota: 64

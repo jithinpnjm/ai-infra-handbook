@@ -207,6 +207,8 @@ sum by (operation) (pytorch_profiler_memory_bytes)
 avg by (step) (DCGM_FI_DEV_GPU_UTIL)
 ```
 
+> **dcgm-exporter 4.9.0 version note.** dcgm-exporter 4.9.0 (2026-11-06) renamed many default metrics and changed some units. For example `DCGM_FI_DEV_GPU_UTIL` (percent) became `DCGM_FI_DEV_GPU_UTIL_RATIO` (0 to 1), and `DCGM_FI_DEV_FB_USED` (MiB) became `DCGM_FI_DEV_FB_USED_BYTES`. The metric names in this chapter are the 4.8.x names. On a 4.9.0 exporter use the [full mapping in 17.4](04-dcgm-exporter-and-interpreting-gpu-metrics.md#14-what-dcgm-exporter-490-renamed), and change thresholds together with the unit.
+
 Start with the kernel-time query when a step is slow, because it names the first kernel to investigate. If a panel is empty, confirm that the exporter runs before you blame the workload.
 
 ---

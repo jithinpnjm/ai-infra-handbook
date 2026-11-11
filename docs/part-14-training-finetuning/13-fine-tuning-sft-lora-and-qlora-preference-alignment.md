@@ -628,8 +628,7 @@ metadata:
 spec:
   mlPolicy:
     numNodes: 1
-    torch:
-      numProcPerNode: auto
+    torch: {}
   template:
     spec:
       replicatedJobs:
@@ -889,3 +888,4 @@ Use `merge_and_unload()` when a single fine-tuned model serves high sustained tr
 | Hardware runtime notes | The full-scale `Unsloth` / `TRL` `TwinLlama-3.1-8B` SFT and DPO training scripts and `Kubeflow Trainer` Kubernetes manifests in Section 6 are reference configurations from the cited books and have not been executed on live multi-node GPU hardware in this local build environment (`untested` on live GPU hardware here). |
 | Deterministic lab verification | All benchmark tables (Tables 7-1, 7-2, 7-5, 7-6, 7-7), break-even token economics, 16-bit and 16-byte/param memory formulas, LoRA/DoRA matrix parameter counts (`65,536`, `18,874,368`, `3,276,800`, `41,943,040`, `88,121,344`), QLoRA `NF4` quantile quantization and Double Quantization bit-budgets (`0.500 -> 0.127` bits/param, `3.03 GB` saved on 65B), sequence packing ratios (`23.93% -> 95.70%`), Bradley-Terry RM, DPO, and GRPO group advantage calculations, 8B alignment VRAM budgets (`160.0 GB` PPO vs `96.0 GB` GRPO vs `80.0 GB` Full DPO vs `16.64 GB` LoRA DPO), and SLERP/TIES/DARE/layer-stacking (`48` and `144` layers) models are verified deterministically by `code/part14/finetuning_lora_alignment.py` and `code/part14/finetuning_lora_alignment_lab.py` (`25 passed, 0 failed`). |
 
+- Manifest checked against upstream CRDs on 2026-11-11 (versions: Kubeflow Trainer main at commit a742313, 2026-11-06).

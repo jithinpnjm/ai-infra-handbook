@@ -238,6 +238,8 @@ In a thousand-GPU AI factory, waiting for a data scientist to message you on Sla
 
 ### 5.1 What to scrape in Prometheus and why DCGM_FI_DEV_GPU_UTIL is not enough
 
+> **dcgm-exporter 4.9.0 version note.** dcgm-exporter 4.9.0 (2026-11-06) renamed many default metrics and changed some units. For example `DCGM_FI_DEV_GPU_UTIL` (percent) became `DCGM_FI_DEV_GPU_UTIL_RATIO` (0 to 1), and `DCGM_FI_DEV_FB_USED` (MiB) became `DCGM_FI_DEV_FB_USED_BYTES`. The metric names in this chapter are the 4.8.x names. On a 4.9.0 exporter use the [full mapping in 17.4](../part-17-operations/04-dcgm-exporter-and-interpreting-gpu-metrics.md#14-what-dcgm-exporter-490-renamed), and change thresholds together with the unit.
+
 As detailed in Volume 21 Chapter 10, a production AI factory Prometheus server scrapes four exporter tiers at matched intervals.
 
 | Exporter Tier | Endpoint & Scrape Interval | Key Metrics & Operational Purpose |

@@ -13,11 +13,25 @@ spec:
         metadata:
           annotations:
             scheduling.volcano.sh/group-name: "churn-distributed"
-        spec: { ... }
+        spec:
+          containers:
+            - name: pytorch
+              image: registry.example.com/ml/churn-train:PINNED_TAG
+              command: ["torchrun", "train.py"]
+              resources:
+                limits:
+                  nvidia.com/gpu: 1
     Worker:
       replicas: 7
       template:
         metadata:
           annotations:
             scheduling.volcano.sh/group-name: "churn-distributed"
-        spec: { ... }
+        spec:
+          containers:
+            - name: pytorch
+              image: registry.example.com/ml/churn-train:PINNED_TAG
+              command: ["torchrun", "train.py"]
+              resources:
+                limits:
+                  nvidia.com/gpu: 1

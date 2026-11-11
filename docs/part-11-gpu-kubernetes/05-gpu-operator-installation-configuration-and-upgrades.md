@@ -148,6 +148,8 @@ Before a new or upgraded GPU node pool is marked eligible for production workloa
 | **6. DCGM telemetry & UUID identity match** | `curl -s http://dcgm-exporter.gpu-operator:9400/metrics \| grep 'DCGM_FI_DEV_GPU_UTIL{.*gpu_node04'` | `DCGM_FI_DEV_GPU_UTIL{gpu="0",UUID="GPU-3a91...",node="gpu-node-04"} 97` with matching UUID `GPU-3a91...` | `dcgm-exporter` lost access to host NVML socket (`0` series returned despite `1/1 Running` Pod) or MIG UUID misattribution |
 | **7. Drain, reboot, and return-to-service resilience** | `kubectl drain`, host reboot, wait for reconciliation | Node reboots, reloads driver, toolkit, and plugin automatically, and re-passes Criteria 1–6 without SSH repair | Non-persistent kernel module, missing precompiled image in mirror, or boot race condition |
 
+> **dcgm-exporter 4.9.0 version note.** dcgm-exporter 4.9.0 (2026-11-06) renamed many default metrics and changed some units. For example `DCGM_FI_DEV_GPU_UTIL` (percent) became `DCGM_FI_DEV_GPU_UTIL_RATIO` (0 to 1), and `DCGM_FI_DEV_FB_USED` (MiB) became `DCGM_FI_DEV_FB_USED_BYTES`. The metric names in this chapter are the 4.8.x names. On a 4.9.0 exporter use the [full mapping in 17.4](../part-17-operations/04-dcgm-exporter-and-interpreting-gpu-metrics.md#14-what-dcgm-exporter-490-renamed), and change thresholds together with the unit.
+
 Criteria 5 and 6 work as a pair. The workload log names the GPU and its UUID, and the metric on port 9400 must carry the same UUID. That match catches silent telemetry failures before production jobs arrive.
 
 ```text

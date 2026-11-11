@@ -4,7 +4,7 @@
     "panels": [
       {"title": "Current p99 latency", "type": "stat", "targets": [{"expr": "histogram_quantile(0.99, rate(inference_request_duration_seconds_bucket[5m]))"}]},
       {"title": "Current GPU cost per hour", "type": "stat", "targets": [{"expr": "sum(rate(kubecost_gpu_cost[1h]))"}]},
-      {"title": "Latency saved per GPU added (week over week)", "type": "table", "targets": [{"expr": "(inference:latency:p99:5m offset 7d - inference:latency:p99:5m) / (count(DCGM_FI_DEV_GPU_UTIL) - count(DCGM_FI_DEV_GPU_UTIL offset 7d))"}]},
+      {"title": "Latency saved per GPU added (week over week)", "type": "table", "targets": [{"expr": "(inference:latency:p99:5m offset 7d - inference:latency:p99:5m) / (count(DCGM_FI_DEV_GPU_UTIL_RATIO) - count(DCGM_FI_DEV_GPU_UTIL_RATIO offset 7d))"}]},
       {"title": "ROI per optimisation (metrics are illustrative: your FinOps tooling must export them)", "type": "table", "targets": [{"expr": "sum by (optimisation) (optimisation_saving_per_month) / sum by (optimisation) (optimisation_cost)"}]}
     ]
   }

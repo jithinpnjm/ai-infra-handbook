@@ -2,8 +2,8 @@
   "dashboard": {
     "title": "AI Factory - Performance Decision Tree",
     "panels": [
-      {"title": "Step 1: GPU utilisation > 90%?", "type": "stat", "targets": [{"expr": "DCGM_FI_DEV_GPU_UTIL > 90"}]},
-      {"title": "Step 2: Memory utilisation > 90%?", "type": "stat", "targets": [{"expr": "DCGM_FI_DEV_FB_USED / DCGM_FI_DEV_FB_TOTAL > 0.9"}]},
+      {"title": "Step 1: GPU utilisation > 90%?", "type": "stat", "targets": [{"expr": "DCGM_FI_DEV_GPU_UTIL_RATIO > 0.9"}]},
+      {"title": "Step 2: Memory utilisation > 90%?", "type": "stat", "targets": [{"expr": "DCGM_FI_DEV_FB_USED_BYTES / DCGM_FI_DEV_FB_CAPACITY_BYTES > 0.9"}]},
       {"title": "Step 5: CPU utilisation > 90%?", "type": "stat", "targets": [{"expr": "100 - avg by (instance) (rate(node_cpu_seconds_total{mode=\"idle\"}[5m])) * 100 > 90"}]},
       {"title": "Step 8: Network bound?", "type": "stat", "targets": [{"expr": "rate(node_network_transmit_bytes_total[5m]) > 1e9"}]},
       {"title": "Recommended fix", "type": "text", "options": {"content": "Based on the panels above, the recommended fix is..."}}

@@ -130,7 +130,7 @@ Checking these metrics by hand every time is slow, so put them on one screen. A 
   "dashboard": {
     "title": "AI Factory - USE Method",
     "panels": [
-      {"title": "GPU utilisation", "type": "timeseries", "targets": [{"expr": "DCGM_FI_DEV_GPU_UTIL"}]},
+      {"title": "GPU utilisation", "type": "timeseries", "targets": [{"expr": "DCGM_FI_DEV_GPU_UTIL_RATIO"}]},
       {"title": "GPU saturation (queue depth)", "type": "stat", "targets": [{"expr": "kube_pod_status_phase{phase=\"Pending\"}"}]},
       {"title": "GPU errors (ECC)", "type": "stat", "targets": [{"expr": "DCGM_FI_DEV_ECC_DBE_VOL_TOTAL"}]},
       {"title": "CPU utilisation", "type": "timeseries", "targets": [{"expr": "100 - avg by (instance) (rate(node_cpu_seconds_total{mode=\"idle\"}[5m])) * 100"}]},
@@ -269,8 +269,8 @@ The same questions can live on a Grafana dashboard, with one stat panel per ques
   "dashboard": {
     "title": "AI Factory - Performance Decision Tree",
     "panels": [
-      {"title": "Step 1: GPU utilisation > 90%?", "type": "stat", "targets": [{"expr": "DCGM_FI_DEV_GPU_UTIL > 90"}]},
-      {"title": "Step 2: Memory utilisation > 90%?", "type": "stat", "targets": [{"expr": "DCGM_FI_DEV_FB_USED / DCGM_FI_DEV_FB_TOTAL > 0.9"}]},
+      {"title": "Step 1: GPU utilisation > 90%?", "type": "stat", "targets": [{"expr": "DCGM_FI_DEV_GPU_UTIL_RATIO > 0.9"}]},
+      {"title": "Step 2: Memory utilisation > 90%?", "type": "stat", "targets": [{"expr": "DCGM_FI_DEV_FB_USED_BYTES / DCGM_FI_DEV_FB_CAPACITY_BYTES > 0.9"}]},
       {"title": "Step 5: CPU utilisation > 90%?", "type": "stat", "targets": [{"expr": "100 - avg by (instance) (rate(node_cpu_seconds_total{mode=\"idle\"}[5m])) * 100 > 90"}]},
       {"title": "Step 8: Network bound?", "type": "stat", "targets": [{"expr": "rate(node_network_transmit_bytes_total[5m]) > 1e9"}]},
       {"title": "Recommended fix", "type": "text", "options": {"content": "Based on the panels above, the recommended fix is..."}}
@@ -317,7 +317,7 @@ Put the trade-off on a dashboard, so every team looks at the same numbers. The l
     "panels": [
       {"title": "Current p99 latency", "type": "stat", "targets": [{"expr": "histogram_quantile(0.99, rate(inference_request_duration_seconds_bucket[5m]))"}]},
       {"title": "Current GPU cost per hour", "type": "stat", "targets": [{"expr": "sum(rate(kubecost_gpu_cost[1h]))"}]},
-      {"title": "Latency saved per GPU added (week over week)", "type": "table", "targets": [{"expr": "(inference:latency:p99:5m offset 7d - inference:latency:p99:5m) / (count(DCGM_FI_DEV_GPU_UTIL) - count(DCGM_FI_DEV_GPU_UTIL offset 7d))"}]},
+      {"title": "Latency saved per GPU added (week over week)", "type": "table", "targets": [{"expr": "(inference:latency:p99:5m offset 7d - inference:latency:p99:5m) / (count(DCGM_FI_DEV_GPU_UTIL_RATIO) - count(DCGM_FI_DEV_GPU_UTIL_RATIO offset 7d))"}]},
       {"title": "ROI per optimisation (metrics are illustrative: your FinOps tooling must export them)", "type": "table", "targets": [{"expr": "sum by (optimisation) (optimisation_saving_per_month) / sum by (optimisation) (optimisation_cost)"}]}
     ]
   }
@@ -355,11 +355,11 @@ Put the same arithmetic on a dashboard, so the forecast updates as the metrics c
   "dashboard": {
     "title": "AI Factory - Capacity Planning",
     "panels": [
-      {"title": "Current GPU pool utilisation", "type": "stat", "targets": [{"expr": "avg(DCGM_FI_DEV_GPU_UTIL)"}]},
-      {"title": "Current GPU count", "type": "stat", "targets": [{"expr": "count(DCGM_FI_DEV_GPU_UTIL)"}]},
-      {"title": "Forecast growth rate", "type": "stat", "targets": [{"expr": "(count(DCGM_FI_DEV_GPU_UTIL) - count(DCGM_FI_DEV_GPU_UTIL offset 30d)) / count(DCGM_FI_DEV_GPU_UTIL offset 30d) * 100"}]},
-      {"title": "Q+1 forecast GPU count", "type": "stat", "targets": [{"expr": "count(DCGM_FI_DEV_GPU_UTIL) * 1.20 * 1.30"}]},
-      {"title": "Q+1 forecast cost per hour", "type": "stat", "targets": [{"expr": "count(DCGM_FI_DEV_GPU_UTIL) * 1.20 * 1.30 * 3.20"}]}
+      {"title": "Current GPU pool utilisation", "type": "stat", "targets": [{"expr": "avg(DCGM_FI_DEV_GPU_UTIL_RATIO) * 100"}]},
+      {"title": "Current GPU count", "type": "stat", "targets": [{"expr": "count(DCGM_FI_DEV_GPU_UTIL_RATIO)"}]},
+      {"title": "Forecast growth rate", "type": "stat", "targets": [{"expr": "(count(DCGM_FI_DEV_GPU_UTIL_RATIO) - count(DCGM_FI_DEV_GPU_UTIL_RATIO offset 30d)) / count(DCGM_FI_DEV_GPU_UTIL_RATIO offset 30d) * 100"}]},
+      {"title": "Q+1 forecast GPU count", "type": "stat", "targets": [{"expr": "count(DCGM_FI_DEV_GPU_UTIL_RATIO) * 1.20 * 1.30"}]},
+      {"title": "Q+1 forecast cost per hour", "type": "stat", "targets": [{"expr": "count(DCGM_FI_DEV_GPU_UTIL_RATIO) * 1.20 * 1.30 * 3.20"}]}
     ]
   }
 }
@@ -572,6 +572,8 @@ curl -s 'http://prometheus.monitoring:9090/api/v1/query?query=count(DCGM_FI_DEV_
 curl -s 'http://prometheus.monitoring:9090/api/v1/query?query=count(DCGM_FI_DEV_GPU_UTIL)%20*%201.20%20*%201.30' | jq .
 # expected: the Q+1 forecast GPU count
 ```
+
+> **dcgm-exporter 4.9.0 version note.** dcgm-exporter 4.9.0 (2026-11-06) renamed many default metrics and changed some units. For example `DCGM_FI_DEV_GPU_UTIL` (percent) became `DCGM_FI_DEV_GPU_UTIL_RATIO` (0 to 1), and `DCGM_FI_DEV_FB_USED` (MiB) became `DCGM_FI_DEV_FB_USED_BYTES`. The metric names in this chapter are the 4.8.x names. On a 4.9.0 exporter use the [full mapping in 17.4](04-dcgm-exporter-and-interpreting-gpu-metrics.md#14-what-dcgm-exporter-490-renamed), and change thresholds together with the unit.
 
 ### 8.8 What to record
 

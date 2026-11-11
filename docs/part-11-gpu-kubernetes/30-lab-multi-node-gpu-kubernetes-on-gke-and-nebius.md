@@ -37,6 +37,8 @@ This capstone chapter ties every layer together into one four-phase workflow for
 | Phase 3: Multi-Dimensional GenAI Autoscaling | `K8GS` Ch. 6 | HPA (`1..5` replicas, `70%` CPU, `180s` scaleDown), VPA (`Off`, `Auto`, `Recreate`, `Initial`), KEDA (`http_requests_total > 10` & `DCGM_FI_DEV_GPU_UTIL > 70`), and Karpenter (`eks-gpu-np`, `~2 min` launch, `karpenter.sh/disrupted:NoSchedule`) | Prevents HPA+VPA replica thrashing and idle multi-thousand-dollar GPU node waste |
 | Phase 4: Cloud AI Networking Optimization | `K8GS` Ch. 8 | Native CNI (`IPv6` / secondary CIDRs), `aws-load-balancer-nlb-target-type: ip` + `/healthz`, Chatbot `NetworkPolicies` (`TCP/80` & Qdrant `TCP/6333`), `kube-proxy` `IPVS`, `NodeLocal DNSCache`, and `Cluster` Placement Groups + RDMA (`EFA` / GPUDirect) | Eliminates `NodePort` hops, `iptables` `O(N)` bottlenecks, CoreDNS egress blackholes, and slow inter-node TCP collectives |
 
+> **dcgm-exporter 4.9.0 version note.** dcgm-exporter 4.9.0 (2026-11-06) renamed many default metrics and changed some units. For example `DCGM_FI_DEV_GPU_UTIL` (percent) became `DCGM_FI_DEV_GPU_UTIL_RATIO` (0 to 1), and `DCGM_FI_DEV_FB_USED` (MiB) became `DCGM_FI_DEV_FB_USED_BYTES`. The metric names in this chapter are the 4.8.x names. On a 4.9.0 exporter use the [full mapping in 17.4](../part-17-operations/04-dcgm-exporter-and-interpreting-gpu-metrics.md#14-what-dcgm-exporter-490-renamed), and change thresholds together with the unit.
+
 Read the table as a map of the chapter. Each row names a phase, the source it draws on, the figures you will check, and the failure that phase is meant to catch. Start with Phase 1, because the later phases assume the VM layers already work.
 
 ## Prerequisites and outcomes
@@ -296,7 +298,7 @@ spec:
   template:
     spec:
       nodeClassRef:
-        group: karpenter.k8s.aws/v1
+        group: karpenter.k8s.aws
         kind: EC2NodeClass
         name: default-gpu
       requirements:
@@ -598,3 +600,4 @@ Vendor-specific Nebius Terraform provider resource names such as `nebius_mk8s_no
 
 - The 2026-10-25 validation pass confirmed that `validate_chapter.py` and `check_coverage.py` pass. Every YAML manifest and command is marked untested. Custom resource API versions, such as `kueue.x-k8s.io/v1beta1` or `resource.k8s.io/v1`, change between releases. If you copy these, verify them against your cluster version.
 - The Terraform versions, the KEDA, HPA, VPA, and Karpenter parameters, the NLB, NetworkPolicy, and IPVS manifests, and the lab verification outputs match *Kubernetes for Generative AI Solutions*, Volume 10, and Volume 25 word for word.
+- Manifest checked against upstream CRDs on 2026-11-11 (versions: Karpenter main, 2026-11-11 clone).

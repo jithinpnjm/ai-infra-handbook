@@ -302,18 +302,18 @@ Kueue, from SIG Scheduling, is a job queueing and quota controller that sits in 
 Kueue supports many job types. These include batch/v1 Job, JobSet, MPIJob, PyTorchJob and TFJob from the Kubeflow Training Operator, RayJob and RayCluster, plain Pods and groups, Deployments and StatefulSets (newer), and AppWrapper. Each framework integrates by suspending the job, which sets `spec.suspend: true`, until the job is admitted. Kueue then unsuspends it and injects node selectors from the flavor. Pods of a job are created only after quota is reserved, which avoids partial starts. For all-or-nothing readiness, `waitForPodsReady` can evict workloads whose pods do not become ready in time.
 
 ```yaml
-apiVersion: kueue.x-k8s.io/v1beta1
+apiVersion: kueue.x-k8s.io/v1beta2
 kind: ResourceFlavor
 metadata: { name: h100-ondemand }
 spec:
   nodeLabels: { nvidia.com/gpu.product: NVIDIA-H100-80GB-HBM3, pool: h100-ondemand }
   tolerations: [ { key: nvidia.com/gpu, operator: Exists, effect: NoSchedule } ]
 ---
-apiVersion: kueue.x-k8s.io/v1beta1
+apiVersion: kueue.x-k8s.io/v1beta2
 kind: ClusterQueue
 metadata: { name: research }
 spec:
-  cohort: gpu-fleet
+  cohortName: gpu-fleet
   namespaceSelector: { matchLabels: { team: research } }
   queueingStrategy: BestEffortFIFO
   preemption:
@@ -329,7 +329,7 @@ spec:
             - { name: memory,         nominalQuota: 8Ti }
             - { name: nvidia.com/gpu, nominalQuota: 128, borrowingLimit: 64, lendingLimit: 32 }
 ---
-apiVersion: kueue.x-k8s.io/v1beta1
+apiVersion: kueue.x-k8s.io/v1beta2
 kind: LocalQueue
 metadata: { name: research-gpu, namespace: research-ns }
 spec: { clusterQueue: research }
@@ -594,6 +594,8 @@ Work through the last question end to end, using the debugging steps in section 
 5. Using `allocate_dra_same_pcie_root()` in `code/part05/gpu_scheduler_simulator.py`, you trace the `four-gpus-same-root` `ResourceClaimTemplate` from section 6. Follow its `cel` selector and its `matchAttribute: "resource.kubernetes.io/pcieRoot"` constraint. Explain how DRA and `NodeResourceTopologyMatch` prevent post-scheduling `TopologyAffinityError` rejections on the node. This exercise also covers topology with rack, rail and NVLink labels, Kueue `TAS` and `DRA`.
 6. This exercise covers diagnosing `FailedScheduling` events and scaling the scheduler to 2,000+ nodes. You parse the multi-reason `FailedScheduling` message in section 8: `0/20 nodes are available: 8 Insufficient nvidia.com/gpu, 6 node(s) had untolerated taint, 6 node(s) didn't match Pod's node affinity`. Then explain why monitoring can show 0% GPU utilization (`DCGM_FI_DEV_GPU_UTIL`) while `kube-scheduler` reports `Insufficient nvidia.com/gpu`.
 
+> **dcgm-exporter 4.9.0 version note.** dcgm-exporter 4.9.0 (2026-11-06) renamed many default metrics and changed some units. For example `DCGM_FI_DEV_GPU_UTIL` (percent) became `DCGM_FI_DEV_GPU_UTIL_RATIO` (0 to 1), and `DCGM_FI_DEV_FB_USED` (MiB) became `DCGM_FI_DEV_FB_USED_BYTES`. The metric names in this chapter are the 4.8.x names. On a 4.9.0 exporter use the [full mapping in 17.4](../part-17-operations/04-dcgm-exporter-and-interpreting-gpu-metrics.md#14-what-dcgm-exporter-490-renamed), and change thresholds together with the unit.
+
 Work through exercise 6 last, since it draws on everything earlier in the chapter.
 
 ## Checkpoint questions (20)
@@ -796,3 +798,4 @@ Strictly exclude all batch and distributed GPU training Pods. Use `descheduler.a
 - **Run here:** `python3 code/part05/gpu_scheduler_simulator_lab.py` (3 passed, 0 failed).
 - **Explicitly labelled inferences:** The `simulate_gpu_placement_and_fragmentation`, `evaluate_kueue_cohort_gang_admission`, and `allocate_dra_same_pcie_root` models in `code/part05/gpu_scheduler_simulator.py` and the `KubeSchedulerConfiguration` (`gpu-binpack`), `PriorityClass`, Kueue `ResourceFlavor`/`ClusterQueue`/`LocalQueue`, and DRA `ResourceClaimTemplate` manifests are the author's constructions synthesizing Kubernetes: Up and Running and `volume-03` (plus original study items 21, 22, 23, 24, 25, 26, 27, 28, 29, 30, 31, 32, 33, 34, 35, 36, 37, 38, 39, and 40).
 - **Not verified on live hardware:** Live `kube-scheduler`, `Kueue`, `Volcano`, `DRA`, and `KWOK` executions (`5 min` unschedulable duration, `10 s` backoff, `percentageOfNodesToScore: 50`, `parallelism: 16`, `weight: 80` / `50`, `maxSkew: 1, minDomains: 3`, `tolerationSeconds: 60` / `300`, PriorityClass `1000000` / `1000` / `2000000000` / `2000001000`, `nominalQuota: 128, borrowingLimit: 64, lendingLimit: 32`, `2,000` nodes / `20,000` pods) are marked (`untested here`) where not executed by `gpu_scheduler_simulator_lab.py`.
+- Manifest checked against upstream CRDs on 2026-11-11 (versions: Kueue v0.20.5, API kueue.x-k8s.io/v1beta2).

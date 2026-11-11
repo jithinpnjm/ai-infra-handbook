@@ -102,6 +102,8 @@ Third, guard against the silent blind spot when a GPU detaches at runtime. Start
 | Xid Aggregation Window (`--xid-count-window-size`) | `300,000 ms` (`5 min`) | Aggregates Xid and clock-throttle events over a 5-minute rolling window so 30-second scrapes never miss transient faults. |
 | Runtime GPU Detach Behavior (DCGM `4.5+`, driver `590+`) | Marks detached GPU with `Status: <state>` and `(last known)` | Detached GPUs stop emitting health incidents; alert on `count(DCGM_FI_DEV_GPU_UTIL) < expected_gpus` and check `dcgmi discovery --list --all`. |
 
+> **dcgm-exporter 4.9.0 version note.** dcgm-exporter 4.9.0 (2026-11-06) renamed many default metrics and changed some units. For example `DCGM_FI_DEV_GPU_UTIL` (percent) became `DCGM_FI_DEV_GPU_UTIL_RATIO` (0 to 1), and `DCGM_FI_DEV_FB_USED` (MiB) became `DCGM_FI_DEV_FB_USED_BYTES`. The metric names in this chapter are the 4.8.x names. On a 4.9.0 exporter use the [full mapping in 17.4](../part-17-operations/04-dcgm-exporter-and-interpreting-gpu-metrics.md#14-what-dcgm-exporter-490-renamed), and change thresholds together with the unit.
+
 ### 1.2 Core DCGM fields, canonical field renames, and production alert thresholds
 
 Raw GPU metrics are easy to misread if operators do not know which fields require special container capabilities or which names changed in DCGM 4. Profiling counters such as Tensor Core activity require elevated permissions, while several legacy metric names have been renamed to include explicit physical units. Meanwhile, `dcgm-exporter` continues to map legacy Prometheus metric names in `/etc/dcgm-exporter/default-counters.csv` to the canonical DCGM 4 fields behind the scenes.

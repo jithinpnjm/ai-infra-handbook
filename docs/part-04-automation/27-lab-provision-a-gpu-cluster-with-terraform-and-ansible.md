@@ -369,6 +369,8 @@ esac
 4. **`munge_slurm`**: places the Munge key from the vault at mode `0400`, owned by `munge`. It renders `slurm.conf` and `gres.conf` from the inventory (the 4.7 Slurm node template uses `gpu_count`), starts `slurmctld` on `ctl01` and `slurmd` on the GPU nodes. Distro packages are fine for a lab, while production builds Slurm from source or packages, as Part 6 describes. Containers can fight `slurmd`, which may need `-D` flags or cgroup settings. If that happens, run Slurm in a single VM or use the lab's mock scheduler script and focus on the Ansible flow.
 5. **`node_validate`**: has task files `quick.yml` (inventory sanity) and `standard.yml` (a stub DCGM level-1 equivalent). They assert that the GPU count equals `gpu_count`, that services are active and that ports are open. The role writes a JSON report to the control node.
 
+> **dcgm-exporter 4.9.0 version note.** dcgm-exporter 4.9.0 (2026-11-06) renamed many default metrics and changed some units. For example `DCGM_FI_DEV_GPU_UTIL` (percent) became `DCGM_FI_DEV_GPU_UTIL_RATIO` (0 to 1), and `DCGM_FI_DEV_FB_USED` (MiB) became `DCGM_FI_DEV_FB_USED_BYTES`. The metric names in this chapter are the 4.8.x names. On a 4.9.0 exporter use the [full mapping in 17.4](../part-17-operations/04-dcgm-exporter-and-interpreting-gpu-metrics.md#14-what-dcgm-exporter-490-renamed), and change thresholds together with the unit.
+
 ### 2.3 Site playbook with ordering and safety
 
 The site playbook runs four plays in a deliberate order. The base configuration reaches every node first. Then the GPU workers are configured in small batches, so a bad driver stops the rollout after one node. The controller starts before the workers try to join, and the workers join only after they pass validation.

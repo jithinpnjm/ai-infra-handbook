@@ -21,6 +21,8 @@ lab_venue: "GCP / GKE"
 | Sources used | Roland Huß et al., *Generative AI on Kubernetes* (O'Reilly, 2026, Ch. 7); `nvidia-zero-to-hero/volume-24/chapter-07-kubernetes-gpu-scheduling.md`; `nvidia-zero-to-hero/volume-11/chapter-07-kubernetes-scheduling-for-shared-gpus.md`; `nvidia-zero-to-hero/volume-11/chapter-08-tenant-isolation-security-and-fairness.md`; *NVIDIA Base Command Manager 11 Containerization Manual* (`bcm11-containerization`, Ch. 6) |
 | Coverage file | `planning/coverage/chapters/11-14.md` |
 
+> **Update, November 2026:** NVIDIA open-sourced the full Run:ai platform on 13 October 2026, under Apache 2.0, in addition to the KAI Scheduler that has been open since April 2025. A supported commercial release still exists. See [11.31](./31-nvidias-open-source-ai-factory-kubernetes-stack.md).
+
 ## Why this matters for AI infrastructure
 
 In Chapter 11.13, we saw why the default Kubernetes scheduler struggles on shared GPU clusters. We also saw how the NVIDIA KAI Scheduler handles those problems with hierarchical quotas, gang scheduling, fractional GPU sharing, and NVLink or InfiniBand topology placement.
@@ -248,10 +250,10 @@ Before you promote a KAI version, run these five fixtures against it.
 
 ### 1. Defining PriorityClasses, KAI Queues, and a 60% Scoped Quota
 
-The manifest below comes from Volume 24, Chapter 7 and the KAI Scheduler Queue specification. It defines three PriorityClass tiers and the `training-queue` custom resource. Setting `quota: 4` and `limit: 4.8` guarantees the training team its baseline GPUs. It also caps the team's total burst usage at 60% of the cluster, which is 4.8 GPUs on an 8-GPU cluster.
+The manifest below comes from Volume 24, Chapter 7 and the KAI Scheduler Queue specification. It defines three PriorityClass tiers and the `training-queue` custom resource. KAI Queue units are devices for GPU, millicores for CPU and megabytes for memory, so the 32-core quota is written 32000 and the 256 GB quota is 256000. Setting `quota: 4` and `limit: 4.8` guarantees the training team its baseline GPUs. It also caps the team's total burst usage at 60% of the cluster, which is 4.8 GPUs on an 8-GPU cluster.
 
 ```yaml
-# kai-priority-and-queues.yaml (volume-24/chapter-07 + KAI Queue CRDs, untested here)
+# kai-priority-and-queues.yaml (volume-24/chapter-07 + KAI Queue CRDs). Queue units: gpu in devices, cpu in millicores, memory in MB.
 apiVersion: scheduling.k8s.io/v1
 kind: PriorityClass
 metadata:
@@ -288,11 +290,11 @@ spec:
       limit: 4.8
       overQuotaWeight: 2
     cpu:
-      quota: 32
-      limit: 64
+      quota: 32000
+      limit: 64000
     memory:
-      quota: 256Gi
-      limit: 320Gi
+      quota: 256000
+      limit: 320000
 ```
 
 When you read the values, notice that the tiers run from inference-critical down through training-high-priority to research-best-effort.
@@ -566,3 +568,4 @@ The local book corpus does not include internal Prometheus metric names for `pod
 ### Corrections to the author's notes
 - The validation pass on 2026-10-25 confirmed that `validate_chapter.py` and `check_coverage.py` pass. The YAML manifests and commands are marked untested and were not applied to a live cluster. They include `PodScheduled`, `pods/binding`, `MostAllocated`, `nodeAffinity`, `topologyConstraint`, `ml-team-b`, `GPU-0`, `2g.20gb`, and `Fractional/Time-Sliced`. They also include `nvidia.com/gpu-service-class=protected-mig:NoSchedule`, `30s` `SIGTERM` across `72`-hour jobs, and `005` IDs, cross-referenced with Chapter `11.15`. Custom resource API versions such as `kueue.x-k8s.io/v1beta1` and `resource.k8s.io/v1` change between releases, so check them against your installed release.
 - In `volume-24/chapter-07` Step 5, the illustrative ResourceQuota snippet writes `requests.nvidia.com/gpu: "4.8"` inside a standard Kubernetes ResourceQuota. Standard Kubernetes ResourceQuota and extended resources only accept whole integers for `nvidia.com/gpu` unless time-sliced shares are used. By contrast, KAI Scheduler's Queue custom resource natively enforces fractional GPU limits such as `limit: 4.8`.
+- Manifest checked against upstream CRDs on 2026-11-11 (versions: KAI Scheduler v0.18.7, Queue scheduling.run.ai/v2).

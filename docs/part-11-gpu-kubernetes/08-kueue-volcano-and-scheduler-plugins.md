@@ -110,7 +110,7 @@ Now take the failure case. If 300 seconds pass while Pod 3 is still unschedulabl
 #### Why PodGroup alone is not enough for multi-tenant GPUaaS
 PodGroup gives you gang waiting inside kube-scheduler. On its own, though, it leaves three gaps in a multi-tenant cluster. First, every job still creates all of its Pending Pods right away in kube-apiserver and etcd, so a large batch submission can overwhelm the control plane. Second, PodGroup has no notion of multi-tenant quotas, cohort borrowing, or hardware-tier fallback. Third, it works on raw Pods rather than on higher-level batch objects such as PyTorchJob, TrainJob, RayJob, JobSet, or MPIJob.
 
-Kueue (`kueue.x-k8s.io/v1beta1`), developed by Kubernetes SIG Scheduling, closes all three gaps. It acts as a job-level admission controller and queue manager above the scheduler. When a user submits a job, Kueue's mutating webhook sets `spec.suspend: true` right away. Because of that flag, zero Pods are created in etcd while the job waits in the queue.
+Kueue (`kueue.x-k8s.io/v1beta2`), developed by Kubernetes SIG Scheduling, closes all three gaps. It acts as a job-level admission controller and queue manager above the scheduler. When a user submits a job, Kueue's mutating webhook sets `spec.suspend: true` right away. Because of that flag, zero Pods are created in etcd while the job waits in the queue.
 
 ```mermaid
 flowchart TD
@@ -240,8 +240,8 @@ Shuffle sharding with a hand size of 5 means a single noisy tenant can use at mo
 Platform administrators write these objects once. Two ResourceFlavors describe the hardware tiers, a ClusterQueue draws quota from both, and a LocalQueue points a team's namespace at it.
 
 ```yaml
-# kueue-topology-flavors-and-queues.yaml (untested here)
-apiVersion: kueue.x-k8s.io/v1beta1
+# kueue-topology-flavors-and-queues.yaml (Kueue v1beta2, checked against the v0.20.5 CRDs)
+apiVersion: kueue.x-k8s.io/v1beta2
 kind: ResourceFlavor
 metadata:
   name: gpu-nvlink-infiniband
@@ -251,7 +251,7 @@ spec:
     network-fabric: infiniband
     gpu-type: nvidia-h100
 ---
-apiVersion: kueue.x-k8s.io/v1beta1
+apiVersion: kueue.x-k8s.io/v1beta2
 kind: ResourceFlavor
 metadata:
   name: gpu-standard-ethernet
@@ -261,14 +261,14 @@ spec:
     network-fabric: ethernet
     gpu-type: nvidia-h100
 ---
-apiVersion: kueue.x-k8s.io/v1beta1
+apiVersion: kueue.x-k8s.io/v1beta2
 kind: ClusterQueue
 metadata:
   name: topology-aware-cluster-queue
 spec:
   namespaceSelector: {}
   resourceGroups:
-    - coveredResources: ["cpu", "memory", "nvidia.com/gpu"]
+    - coveredResources: ["nvidia.com/gpu"]
       flavors:
         - name: gpu-nvlink-infiniband
           resources:
@@ -280,9 +280,9 @@ spec:
               nominalQuota: 32
   flavorFungibility:
     whenCanBorrow: TryNextFlavor
-    whenCanPreempt: Preempt
+    whenCanPreempt: MayStopSearch
 ---
-apiVersion: kueue.x-k8s.io/v1beta1
+apiVersion: kueue.x-k8s.io/v1beta2
 kind: LocalQueue
 metadata:
   name: team-queue
@@ -298,15 +298,15 @@ Kueue evaluates flavors in list order, so the NVLink flavor comes first. The `fl
 This file adds the cohort, the preemption rules, a WorkloadPriorityClass, and an APF PriorityLevelConfiguration. The team's ClusterQueue can borrow up to 32 GPUs, which is its nominal 10 plus the 22 it may borrow.
 
 ```yaml
-# kueue-cohort-priority-and-apf.yaml (untested here)
-apiVersion: kueue.x-k8s.io/v1beta1
+# kueue-cohort-priority-and-apf.yaml (Kueue v1beta2, checked against the v0.20.5 CRDs)
+apiVersion: kueue.x-k8s.io/v1beta2
 kind: ClusterQueue
 metadata:
   name: team-a-queue
 spec:
-  cohort: shared-gpu-cohort
+  cohortName: shared-gpu-cohort
   resourceGroups:
-    - coveredResources: ["cpu", "memory", "nvidia.com/gpu"]
+    - coveredResources: ["nvidia.com/gpu"]
       flavors:
         - name: default-flavor
           resources:
@@ -318,13 +318,12 @@ spec:
     reclaimWithinCohort: Any
     withinClusterQueue: LowerPriority
 ---
-apiVersion: kueue.x-k8s.io/v1beta1
+apiVersion: kueue.x-k8s.io/v1beta2
 kind: WorkloadPriorityClass
 metadata:
   name: production-priority
-spec:
-  value: 10000
-  description: "High priority for production training jobs"
+value: 10000
+description: "High priority for production training jobs"
 ---
 apiVersion: flowcontrol.apiserver.k8s.io/v1
 kind: PriorityLevelConfiguration
@@ -635,6 +634,8 @@ The `kubectl`, `etcdctl`, Kueue, Volcano, and APF YAML manifests were not verifi
 The corpus does not cover the Kueue MultiKueue multi-cluster federation CRDs, `MultiKueueConfig` and `MultiKueueCluster`. Multi-cluster scheduling is covered in later chapters where it applies.
 
 ### Corrections to the author's notes
-The validation pass on 2026-10-25 found that `validate_chapter.py` and `check_coverage.py` both pass. The YAML manifests and commands are marked untested, and they were not applied to a cluster. Custom resource API versions such as `kueue.x-k8s.io/v1beta1` and `resource.k8s.io/v1` change between releases, so check them against the version you install. Console outputs quoted from the Volume notes are illustrative unless the chapter says otherwise. The Kueue, Volcano, and etcd quorum figures were checked against general Kubernetes knowledge and are consistent. Three nodes tolerate 1 failure, 5 tolerate 2, and 7 tolerate 3.
+The validation pass on 2026-10-25 found that `validate_chapter.py` and `check_coverage.py` both pass. The YAML manifests and commands are marked untested, and they were not applied to a cluster. Custom resource API versions such as `kueue.x-k8s.io/v1beta2` and `resource.k8s.io/v1` change between releases, so check them against the version you install. Console outputs quoted from the Volume notes are illustrative unless the chapter says otherwise. The Kueue, Volcano, and etcd quorum figures were checked against general Kubernetes knowledge and are consistent. Three nodes tolerate 1 failure, 5 tolerate 2, and 7 tolerate 3.
 
-An earlier author note reads: required; all Kueue `v1beta1`, Volcano `v1alpha1`, and APF `v1` schemas match the cited sources verbatim. Check the API versions against your installed release before you copy any manifest.
+An earlier author note reads: required; all Kueue `v1beta2`, Volcano `v1alpha1`, and APF `v1` schemas match the cited sources verbatim. Check the API versions against your installed release before you copy any manifest.
+
+- Manifest checked against upstream CRDs on 2026-11-11 (versions: Kueue v0.20.5, API kueue.x-k8s.io/v1beta2).

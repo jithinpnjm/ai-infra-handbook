@@ -536,10 +536,12 @@ spec:
   targetPorts:
     - number: 8000
   selector:
-    app: vllm-llama3-8b-instruct
+    matchLabels:
+      app: vllm-llama3-8b-instruct
   endpointPickerRef:
     name: vllm-llama3-8b-epp
-    port: 9002
+    port:
+      number: 9002
     failureMode: FailClose
 ---
 apiVersion: inference.networking.x-k8s.io/v1alpha2
@@ -898,3 +900,4 @@ The three well-lit paths are:, 1, Intelligent Inference Scheduling, prefix- and 
 | Hardware runtime notes | Multi-node NVIDIA Dynamo, NIXL C++ / UCX RDMA, `nsys profile` InfiniBand switch counter traces, and Kubernetes `llm-d` `InferencePool` manifests are reference production patterns from the cited sources and have not been executed on live multi-node GPU hardware in this local build environment (`untested` on live hardware). |
 | Deterministic lab verification | All DistServe 2P1D goodput calculations (`1.6 RPS/GPU` vs `3.33` / `3.3 RPS/GPU`), Smart Router conditional offload rules and 5-factor composite latency costs (`6.0` vs `0.0`), GPU Planner autoscale transitions and `QoSController` admission checks (`675.0 ms > 500.0 ms`), NIXL page collation ratios (`469` vs `59` WQEs, `20.0 ms -> 8.0 ms`), 4-tier KV cache capacities (`327.7 GB` FP16 / `163.8 GB` FP8, `14x` / `28x` TTFT, `16x` throughput), `TP_p -> TP_d` layout transpose plans, and `llm-d` EPP scoring rules are verified deterministically by `code/part15/dynamo_disaggregated_serving.py` and `code/part15/dynamo_disaggregated_serving_lab.py` (`25 passed, 0 failed`). |
 
+- Manifest checked against upstream CRDs on 2026-11-11 (versions: InferencePool inference.networking.k8s.io/v1 as shipped in the KServe main CRDs, 2026-11-11 clone).

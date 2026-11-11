@@ -27,6 +27,8 @@ A platform team that serves dozens of research groups soon hits problems that no
 
 In Chapters 11.13 through 11.18, we examined the open-source NVIDIA KAI Scheduler. NVIDIA released that core scheduling engine under the Apache 2.0 license in early 2025, after acquiring Run:ai. KAI Scheduler handles Pod placement inside one cluster, along with gang scheduling and queue priorities. The commercial NVIDIA Run:ai platform sits above that engine. It adds multi-cluster fleet management, single sign-on, departmental showback, and self-service workload templates.
 
+> **Update, November 2026.** The enterprise control plane described in this chapter is no longer closed. NVIDIA published the Run:ai platform as open source on 2026-10-13 in the `dsx-ai-factory/run-ai` repository, and a separate support-entitled release is the commercial path with enterprise support. The architecture below still holds. Chapter 11.31 covers what is open, what remains commercial, and how Run:ai fits with the other NVIDIA open-source Kubernetes projects. It also records what was not verified, such as a feature comparison between the community and support-entitled releases.
+
 Architecture reviews often make one mistake: they treat Run:ai as a hardware GPU-sharing mechanism. Run:ai is an orchestration, queueing, fairness, and quota layer that sits above Kubernetes. It does not slice silicon, and it does not replace hardware Multi-Instance GPU (MIG) partitions or device-plugin time-slicing. Instead, it schedules workloads across whole GPUs, MIG slices, and fractional reservations, while enforcing multi-tenant fairness and preemption.
 
 ```text

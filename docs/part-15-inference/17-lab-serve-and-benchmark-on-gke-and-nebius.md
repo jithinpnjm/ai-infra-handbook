@@ -119,6 +119,8 @@ flowchart TB
     end
 ```
 
+> **dcgm-exporter 4.9.0 version note.** dcgm-exporter 4.9.0 (2026-11-06) renamed many default metrics and changed some units. For example `DCGM_FI_DEV_GPU_UTIL` (percent) became `DCGM_FI_DEV_GPU_UTIL_RATIO` (0 to 1), and `DCGM_FI_DEV_FB_USED` (MiB) became `DCGM_FI_DEV_FB_USED_BYTES`. The metric names in this chapter are the 4.8.x names. On a 4.9.0 exporter use the [full mapping in 17.4](../part-17-operations/04-dcgm-exporter-and-interpreting-gpu-metrics.md#14-what-dcgm-exporter-490-renamed), and change thresholds together with the unit.
+
 Always run `nvidia-smi` inside a diagnostic pod before starting a benchmark. That check confirms the GPU is idle in performance state P8 with zero stale processes and transitions cleanly to P0 or P1 under load.
 
 ```bash
@@ -338,10 +340,12 @@ spec:
   targetPorts:
     - number: 8000
   selector:
-    app: vllm-qwen3-14b-awq
+    matchLabels:
+      app: vllm-qwen3-14b-awq
   endpointPickerRef:
     name: vllm-qwen3-14b-epp
-    port: 9002
+    port:
+      number: 9002
     failureMode: FailClose
 ---
 apiVersion: inference.networking.x-k8s.io/v1alpha2
@@ -768,4 +772,4 @@ Primary Book Sources (Local TOON-RAG Corpus):
 - **Verified against source text and self-checking code.** All tables, formulas, and numerical examples in Sections 1 through 7 are verified by the twenty-eight passing checks in `code/part15/serve_benchmark_gke_nebius_lab.py` and traced in `planning/ledgers/15-17.md`.
 - **Labelled engineering synthesis.** The 28 GB weight streaming comparison across 500 Mbps internet versus 2.5 GB/s GCS Fuse and 6.0 GB/s NVMe with Run:ai Model Streamer, the EndpointPicker scoring instantiation, and the 512 MB KV block transfer across 10 Gbps Ethernet versus 600 Gbps RoCEv2 and 800 Gbps InfiniBand are deterministic first-principles calculations implemented in `code/part15/serve_benchmark_gke_nebius.py`.
 - **Hardware execution status.** The GKE and Nebius MK8s Kubernetes manifests and CLI commands in Sections 1 through 5 are production reference templates and were **not run on live GPU hardware** during this documentation build. The Python verification lab in `code/part15/serve_benchmark_gke_nebius_lab.py` was executed and verified locally with 28 passed and 0 failed checks.
-
+- Manifest checked against upstream CRDs on 2026-11-11 (versions: InferencePool inference.networking.k8s.io/v1 as shipped in the KServe main CRDs, 2026-11-11 clone).

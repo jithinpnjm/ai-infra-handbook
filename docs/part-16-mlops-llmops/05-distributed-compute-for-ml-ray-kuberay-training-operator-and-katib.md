@@ -296,14 +296,28 @@ spec:
         metadata:
           annotations:
             scheduling.volcano.sh/group-name: "churn-distributed"
-        spec: { ... }
+        spec:
+          containers:
+            - name: pytorch
+              image: registry.example.com/ml/churn-train:PINNED_TAG
+              command: ["torchrun", "train.py"]
+              resources:
+                limits:
+                  nvidia.com/gpu: 1
     Worker:
       replicas: 7
       template:
         metadata:
           annotations:
             scheduling.volcano.sh/group-name: "churn-distributed"
-        spec: { ... }
+        spec:
+          containers:
+            - name: pytorch
+              image: registry.example.com/ml/churn-train:PINNED_TAG
+              command: ["torchrun", "train.py"]
+              resources:
+                limits:
+                  nvidia.com/gpu: 1
 ```
 
 The annotations tell Volcano to treat all eight pods as one gang. The scheduler holds every pod until the group can be satisfied, and then starts them together. The pods also fail together when any one of them fails.
@@ -435,7 +449,7 @@ When several teams share one GPU cluster, one team's job can take every GPU. Kue
 
 ```yaml
 # code/part16/local_queue.yaml
-apiVersion: kueue.x-k8s.io/v1beta1
+apiVersion: kueue.x-k8s.io/v1beta2
 kind: LocalQueue
 metadata:
   name: team-data-science
@@ -873,3 +887,4 @@ The multi-node distributed training patterns, the checkpoint-restart loop, and t
 - The lab in Section 7 is **untested** against a live GKE cluster in this repository.
 - The Ray, KubeRay, Training Operator, and Katib versions assumed in the lab should be pinned against the current releases before production use.
 - The Volcano, KAI Scheduler and Kueue integration patterns assumed in the lab may change as the projects evolve; verify against the current documentation.
+- Manifest checked against upstream CRDs on 2026-11-11 (versions: Kueue v0.20.5, API kueue.x-k8s.io/v1beta2; Training Operator v1.9.4 PyTorchJob).
