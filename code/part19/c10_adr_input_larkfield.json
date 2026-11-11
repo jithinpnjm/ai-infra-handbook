@@ -1,0 +1,16 @@
+{
+  "_note": "FICTIONAL customer Larkfield Mutual. Invented for the chapter.",
+  "title": "Serve the claims summariser from self-hosted open-weight models on a dedicated on-premises GPU pool",
+  "status": "proposed",
+  "date": "2026-11-10",
+  "context": "Claim data contains personal information and must stay on premises. The team has three platform engineers and no GPU operations history. The pilot is due in 16 weeks and approval takes 10 weeks. Peak load is about six times the average.",
+  "drivers": ["Data residency on premises", "Small team with no GPU experience", "Peak six times average", "Budget is a range, not a fixed number"],
+  "options": [
+    {"name": "Hosted API", "pros": ["Fastest to start", "No GPU operations"], "cons": ["Conflicts with the residency requirement", "Cost grows with token volume"]},
+    {"name": "Self-hosted on a managed GPU Kubernetes service", "pros": ["Keeps data under customer control", "Vendor handles node lifecycle"], "cons": ["Needs a region that meets residency", "Team still owns serving and monitoring"]},
+    {"name": "Self-hosted on customer-owned hardware", "pros": ["Data never leaves the site", "Predictable cost at steady load"], "cons": ["Lead time for hardware", "Team must learn GPU failure handling", "Capacity fixed against a peak six times the average"]}
+  ],
+  "decision": "Self-hosted on customer-owned hardware",
+  "consequences": ["Order lead time starts the clock before the PoC ends, so the PoC must run on rented capacity first", "A GPU operations training and runbook workstream is added to the plan", "Peak handling needs a queue or degraded mode, to be agreed with the business"],
+  "revisit_when": ["The PoC misses a must criterion", "Hardware lead time exceeds 12 weeks", "The residency rule changes"]
+}

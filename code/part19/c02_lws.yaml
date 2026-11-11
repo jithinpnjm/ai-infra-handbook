@@ -1,0 +1,35 @@
+# One two-pod group sharing a model, 2 GPUs per pod = 4 GPUs, the serving queue's quota.
+# Replace the image placeholder with a pinned serving image you built or pulled.
+apiVersion: leaderworkerset.x-k8s.io/v1
+kind: LeaderWorkerSet
+metadata:
+  name: sharded-serving
+  namespace: team-ml-platform
+  labels:
+    kueue.x-k8s.io/queue-name: team-ml-platform-queue
+spec:
+  replicas: 1
+  leaderWorkerTemplate:
+    size: 2
+    restartPolicy: RecreateGroupOnPodRestart
+    leaderTemplate:
+      metadata:
+        labels:
+          role: leader
+      spec:
+        priorityClassName: inference-critical
+        containers:
+          - name: serve-leader
+            image: us-docker.pkg.dev/PROJECT/serving/sharded-server:PINNED_TAG
+            resources:
+              limits:
+                nvidia.com/gpu: "2"
+    workerTemplate:
+      spec:
+        priorityClassName: inference-critical
+        containers:
+          - name: serve-worker
+            image: us-docker.pkg.dev/PROJECT/serving/sharded-server:PINNED_TAG
+            resources:
+              limits:
+                nvidia.com/gpu: "2"

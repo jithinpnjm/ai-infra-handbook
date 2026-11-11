@@ -1,0 +1,41 @@
+# code/part19/c12_inference_scaling_batch.yaml
+# KEDA ScaledObject for the batch model, which may scale to zero. gateway_queue_depth is a metric our own
+# gateway would export. It is an example name, not a vLLM metric, and it was not run.
+apiVersion: keda.sh/v1alpha1
+kind: ScaledObject
+metadata:
+  name: vllm-docsum
+  namespace: llm
+spec:
+  scaleTargetRef:
+    name: vllm-docsum
+  pollingInterval: 15
+  minReplicaCount: 0
+  maxReplicaCount: 8
+  advanced:
+    horizontalPodAutoscalerConfig:
+      behavior:
+        scaleUp:
+          stabilizationWindowSeconds: 0
+          policies:
+          - type: Percent
+            value: 100
+            periodSeconds: 60
+        scaleDown:
+          stabilizationWindowSeconds: 300
+          selectPolicy: Min
+          policies:
+          - type: Percent
+            value: 100
+            periodSeconds: 60
+  triggers:
+  - type: prometheus
+    name: queue
+    metricType: AverageValue
+    metadata:
+      serverAddress: http://prometheus.monitoring.svc:9090
+      query: sum(gateway_queue_depth{model="docsum"})
+      threshold: '22'
+      activationThreshold: '1'
+      ignoreNullValues: 'true'
+  cooldownPeriod: 300

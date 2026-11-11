@@ -1,0 +1,58 @@
+apiVersion: serving.kserve.io/v1beta1
+kind: InferenceService
+metadata:
+  name: llama31-8b
+  namespace: inference
+  annotations:
+    serving.kserve.io/deploymentMode: Standard
+    serving.kserve.io/autoscalerClass: keda
+spec:
+  predictor:
+    minReplicas: 1
+    maxReplicas: 2
+    # Two GPUs in the pool, two replicas at most. A rolling update must not ask for a third GPU.
+    deploymentStrategy:
+      type: RollingUpdate
+      rollingUpdate:
+        maxSurge: 0
+        maxUnavailable: 1
+    nodeSelector:
+      cloud.google.com/gke-accelerator: nvidia-tesla-a100
+    model:
+      modelFormat:
+        name: vLLM
+      runtime: vllm-llama31-8b
+      args:
+        - meta-llama/Llama-3.1-8B-Instruct
+        - --dtype=bfloat16
+        - --max-model-len=16384
+        - --max-num-seqs=64
+        - --gpu-memory-utilization=0.90
+      env:
+        - name: HF_TOKEN
+          valueFrom:
+            secretKeyRef:
+              name: hf-token
+              key: token
+      resources:
+        requests:
+          cpu: "6"
+          memory: 32Gi
+          nvidia.com/gpu: "1"
+        limits:
+          cpu: "8"
+          memory: 48Gi
+          nvidia.com/gpu: "1"
+    # Standard mode plus KEDA: scale on in-flight work, not on CPU.
+    # target.value is the TOTAL across replicas that one replica should carry (starting value, replace it).
+    autoScaling:
+      metrics:
+        - type: External
+          external:
+            metric:
+              backend: prometheus
+              serverAddress: http://prometheus-operated.monitoring.svc:9090
+              query: sum(vllm:num_requests_running{model_name="llama31-8b"}) + sum(vllm:num_requests_waiting{model_name="llama31-8b"})
+            target:
+              type: Value
+              value: "8"

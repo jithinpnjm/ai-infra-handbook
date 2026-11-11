@@ -1,0 +1,27 @@
+{
+  "scheduler_profile": {
+    "dedicated_training": true, "shared_with_services": false,
+    "team_slurm_skill": true, "team_k8s_skill": true, "tenants": 3,
+    "demand_exceeds_supply": true, "needs_borrow_reclaim": false,
+    "needs_gpu_fractions": false
+  },
+  "scheduler_profile_alt": {
+    "dedicated_training": false, "shared_with_services": true,
+    "team_slurm_skill": false, "team_k8s_skill": true, "tenants": 8,
+    "demand_exceeds_supply": false, "needs_borrow_reclaim": true,
+    "needs_gpu_fractions": true
+  },
+  "design": {
+    "workload": {"params": 70e9, "tokens": 2e12, "days": 30},
+    "pool": {"gpus": 368, "peak_tflops": 2250, "mfu": 0.40},
+    "memory": {"state_gb_per_gpu": 3.04, "hbm_gb": 192},
+    "fabric": {"leaf_oversub": 1},
+    "rack": {"nodes_per_rack": 2, "node_kw": 14.3, "rack_limit_kw": 28.6},
+    "spares": {"have": 2, "nodes": 46, "node_mtbf_h": 6250, "repair_h": 24},
+    "storage": {"ckpt_write_s": 21.8, "ckpt_interval_s": 1800},
+    "scheduler": {"choice": "Slurm", "reasons": ["batch training only", "team runs Slurm", "queue is oversubscribed"]},
+    "observability": ["gpu_xid", "nccl_busbw", "ib_link_errors", "step_time", "checkpoint_age"],
+    "tenants": {"pretrain": 256, "post_training": 80, "research": 32},
+    "failure_plan": {"health_check": "prolog and periodic GPU and IB checks", "auto_restart": "requeue from last checkpoint"}
+  }
+}

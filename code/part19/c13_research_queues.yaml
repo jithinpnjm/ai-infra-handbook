@@ -1,0 +1,125 @@
+# Kueue v1beta2 objects for the research platform (Kueue v0.20.5, the version used in chapter 19.2).
+# Pool: 64 GPUs = 56 batch + 8 notebook (see c13_notebook_quota.yaml). Four teams own 14 batch GPUs each. Idle quota is lent inside the cohort and taken back by preemption.
+apiVersion: kueue.x-k8s.io/v1beta2
+kind: ResourceFlavor
+metadata:
+  name: gpu-pool
+spec:
+  nodeLabels:
+    research.example.com/pool: gpu
+---
+apiVersion: kueue.x-k8s.io/v1beta2
+kind: ClusterQueue
+metadata:
+  name: cq-team-a
+spec:
+  cohortName: research
+  namespaceSelector:
+    matchLabels:
+      research.example.com/team: team-a
+  queueingStrategy: BestEffortFIFO
+  resourceGroups:
+    - coveredResources: ["nvidia.com/gpu"]
+      flavors:
+        - name: gpu-pool
+          resources:
+            - name: nvidia.com/gpu
+              nominalQuota: 14
+  preemption:
+    reclaimWithinCohort: Any
+    withinClusterQueue: LowerPriority
+---
+apiVersion: kueue.x-k8s.io/v1beta2
+kind: LocalQueue
+metadata:
+  name: batch
+  namespace: team-a
+spec:
+  clusterQueue: cq-team-a
+---
+apiVersion: kueue.x-k8s.io/v1beta2
+kind: ClusterQueue
+metadata:
+  name: cq-team-b
+spec:
+  cohortName: research
+  namespaceSelector:
+    matchLabels:
+      research.example.com/team: team-b
+  queueingStrategy: BestEffortFIFO
+  resourceGroups:
+    - coveredResources: ["nvidia.com/gpu"]
+      flavors:
+        - name: gpu-pool
+          resources:
+            - name: nvidia.com/gpu
+              nominalQuota: 14
+  preemption:
+    reclaimWithinCohort: Any
+    withinClusterQueue: LowerPriority
+---
+apiVersion: kueue.x-k8s.io/v1beta2
+kind: LocalQueue
+metadata:
+  name: batch
+  namespace: team-b
+spec:
+  clusterQueue: cq-team-b
+---
+apiVersion: kueue.x-k8s.io/v1beta2
+kind: ClusterQueue
+metadata:
+  name: cq-team-c
+spec:
+  cohortName: research
+  namespaceSelector:
+    matchLabels:
+      research.example.com/team: team-c
+  queueingStrategy: BestEffortFIFO
+  resourceGroups:
+    - coveredResources: ["nvidia.com/gpu"]
+      flavors:
+        - name: gpu-pool
+          resources:
+            - name: nvidia.com/gpu
+              nominalQuota: 14
+  preemption:
+    reclaimWithinCohort: Any
+    withinClusterQueue: LowerPriority
+---
+apiVersion: kueue.x-k8s.io/v1beta2
+kind: LocalQueue
+metadata:
+  name: batch
+  namespace: team-c
+spec:
+  clusterQueue: cq-team-c
+---
+apiVersion: kueue.x-k8s.io/v1beta2
+kind: ClusterQueue
+metadata:
+  name: cq-team-d
+spec:
+  cohortName: research
+  namespaceSelector:
+    matchLabels:
+      research.example.com/team: team-d
+  queueingStrategy: BestEffortFIFO
+  resourceGroups:
+    - coveredResources: ["nvidia.com/gpu"]
+      flavors:
+        - name: gpu-pool
+          resources:
+            - name: nvidia.com/gpu
+              nominalQuota: 14
+  preemption:
+    reclaimWithinCohort: Any
+    withinClusterQueue: LowerPriority
+---
+apiVersion: kueue.x-k8s.io/v1beta2
+kind: LocalQueue
+metadata:
+  name: batch
+  namespace: team-d
+spec:
+  clusterQueue: cq-team-d

@@ -1,0 +1,25 @@
+# One GPU through the queue. The queue-name label is what puts the Job under Kueue quota.
+apiVersion: batch/v1
+kind: Job
+metadata:
+  name: single-gpu-run
+  namespace: team-data-science
+  labels:
+    kueue.x-k8s.io/queue-name: team-data-science-queue
+spec:
+  backoffLimit: 0
+  template:
+    spec:
+      priorityClassName: training-standard
+      restartPolicy: Never
+      tolerations:
+        - key: nvidia.com/gpu
+          operator: Exists
+          effect: NoSchedule
+      containers:
+        - name: train
+          image: nvcr.io/nvidia/pytorch:24.08-py3
+          command: ["python", "-c", "import torch; print(torch.cuda.device_count())"]
+          resources:
+            limits:
+              nvidia.com/gpu: 1

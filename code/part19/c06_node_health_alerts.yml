@@ -1,0 +1,172 @@
+# Node-health alert rules for the capstone (chapter 19.6).
+# Metric names: dcgm-exporter 4.9.0 etc/default-counters.csv; every name used here is
+# listed in c06_dcgm_counters.csv, which turns on the counters that are off by default.
+# Thresholds marked "start value" are this chapter's choices, not vendor figures.
+# Xid classes come from the NVIDIA Xid catalog "immediate action" column.
+groups:
+  - name: gpu-xid
+    rules:
+      # Catalog immediate action RESET_GPU or RESTART_BM: 48, 62, 64, 79, 95, 119, 120.
+      # DCGM_FI_DEV_XID_ERROR holds the LAST Xid seen, so it stays at the same value
+      # until another Xid replaces it or the exporter restarts.
+      - alert: GpuXidNeedsReset
+        expr: |
+          DCGM_FI_DEV_XID_ERROR == 48 or DCGM_FI_DEV_XID_ERROR == 62
+          or DCGM_FI_DEV_XID_ERROR == 64 or DCGM_FI_DEV_XID_ERROR == 79
+          or DCGM_FI_DEV_XID_ERROR == 95 or DCGM_FI_DEV_XID_ERROR == 119
+          or DCGM_FI_DEV_XID_ERROR == 120
+        for: 0m
+        labels:
+          severity: critical
+          event_class: unrecoverable
+        annotations:
+          summary: "GPU {{ $labels.gpu }} on {{ $labels.instance }} reports Xid {{ $value }}, which the catalog resolves with a GPU reset or node restart"
+          runbook: "https://runbooks.example.com/xid-reset-class"
+
+      # Xid 74 is an NVLink error; the catalog sends it down its own workflow.
+      - alert: GpuXidNvlink
+        expr: DCGM_FI_DEV_XID_ERROR == 74
+        for: 0m
+        labels:
+          severity: warning
+          event_class: interconnect
+        annotations:
+          summary: "GPU {{ $labels.gpu }} on {{ $labels.instance }} reports Xid 74, an NVLink error"
+          runbook: "https://runbooks.example.com/xid-74-nvlink"
+
+      # Several GPUs in the reset class at once points at a shared cause, not hardware.
+      - alert: FleetWideXid
+        expr: |
+          count(
+            DCGM_FI_DEV_XID_ERROR == 48 or DCGM_FI_DEV_XID_ERROR == 62
+            or DCGM_FI_DEV_XID_ERROR == 64 or DCGM_FI_DEV_XID_ERROR == 79
+            or DCGM_FI_DEV_XID_ERROR == 95 or DCGM_FI_DEV_XID_ERROR == 119
+            or DCGM_FI_DEV_XID_ERROR == 120
+          ) >= 3
+        for: 0m
+        labels:
+          severity: critical
+          event_class: fleet
+        annotations:
+          summary: "Three or more GPUs report reset-class Xids together; freeze automation and look for a shared cause"
+          runbook: "https://runbooks.example.com/fleet-wide-fault"
+
+  - name: gpu-reliability
+    rules:
+      - alert: GpuDoubleBitEcc
+        expr: increase(DCGM_FI_DEV_ECC_DBE_VOL_TOTAL[1h]) > 0
+        for: 0m
+        labels:
+          severity: critical
+          event_class: unrecoverable
+        annotations:
+          summary: "Uncorrectable ECC error on GPU {{ $labels.gpu }} of {{ $labels.instance }}; review the jobs that ran there"
+          runbook: "https://runbooks.example.com/xid-reset-class"
+
+      - alert: GpuRowRemapFailed
+        expr: DCGM_FI_DEV_ROW_REMAP_FAILED == 1
+        for: 0m
+        labels:
+          severity: critical
+          event_class: unrecoverable
+        annotations:
+          summary: "Row remapping failed on GPU {{ $labels.gpu }} of {{ $labels.instance }}"
+          runbook: "https://runbooks.example.com/xid-reset-class"
+
+      # Start value: 100 corrected errors per hour.
+      - alert: GpuSingleBitEccRate
+        expr: increase(DCGM_FI_DEV_ECC_SBE_VOL_TOTAL[1h]) > 100
+        for: 10m
+        labels:
+          severity: warning
+          event_class: self_healing
+        annotations:
+          summary: "Corrected ECC errors above 100 per hour on GPU {{ $labels.gpu }} of {{ $labels.instance }}"
+
+      - alert: GpuPcieReplays
+        expr: increase(DCGM_FI_DEV_PCIE_REPLAY_TOTAL[1h]) > 10
+        for: 10m
+        labels:
+          severity: warning
+          event_class: interconnect
+        annotations:
+          summary: "PCIe retries climbing on GPU {{ $labels.gpu }} of {{ $labels.instance }}"
+
+      # Start value: 1000 CRC errors in 6 hours. Hopper counter; older GPUs use other names.
+      - alert: GpuNvlinkCrcRising
+        expr: increase(DCGM_FI_DEV_NVLINK_CRC_ERROR_TOTAL[6h]) > 1000
+        for: 30m
+        labels:
+          severity: warning
+          event_class: interconnect
+        annotations:
+          summary: "NVLink CRC errors rising on GPU {{ $labels.gpu }} of {{ $labels.instance }}"
+          runbook: "https://runbooks.example.com/xid-74-nvlink"
+
+  - name: gpu-thermal-power
+    rules:
+      # Start value: more than 60 seconds below application clocks in 15 minutes.
+      - alert: GpuThermalThrottle
+        expr: increase(DCGM_FI_DEV_GPU_THERMAL_THROTTLE_SECONDS_TOTAL[15m]) > 60
+        for: 5m
+        labels:
+          severity: warning
+          event_class: thermal_power
+        annotations:
+          summary: "GPU {{ $labels.gpu }} of {{ $labels.instance }} is throttled by heat; check cooling"
+
+      - alert: GpuPowerThrottle
+        expr: increase(DCGM_FI_DEV_GPU_POWER_THROTTLE_SECONDS_TOTAL[15m]) > 60
+        for: 5m
+        labels:
+          severity: warning
+          event_class: thermal_power
+        annotations:
+          summary: "GPU {{ $labels.gpu }} of {{ $labels.instance }} is throttled by the power policy"
+
+      # Rate of rise, not a level: the nvidia-devops fan-failure chapter lists
+      # 2 to 3 degrees per minute under load as a symptom. Start value: 2 per minute.
+      - alert: GpuTemperatureRisingFast
+        expr: deriv(DCGM_FI_DEV_GPU_TEMP_CELSIUS[5m]) * 60 > 2
+        for: 5m
+        labels:
+          severity: warning
+          event_class: thermal_power
+        annotations:
+          summary: "GPU {{ $labels.gpu }} of {{ $labels.instance }} is heating faster than 2 degrees per minute"
+
+  - name: gpu-detection
+    rules:
+      - alert: GpuExporterDown
+        expr: up{job="dcgm-exporter"} == 0
+        for: 5m
+        labels:
+          severity: critical
+          event_class: detection_blind_spot
+        annotations:
+          summary: "No GPU telemetry from {{ $labels.instance }}; silence is not health, and automation must not cordon on it"
+          runbook: "https://runbooks.example.com/exporter-down"
+
+      # The 8 is the GPU count of this chapter's node type. Change it per pool.
+      - alert: GpuCountMismatch
+        expr: count by (instance) (DCGM_FI_DEV_GPU_TEMP_CELSIUS) < 8
+        for: 10m
+        labels:
+          severity: critical
+          event_class: detection_blind_spot
+        annotations:
+          summary: "{{ $labels.instance }} reports fewer than 8 GPUs; a detached GPU produces no series"
+          runbook: "https://runbooks.example.com/exporter-down"
+
+  - name: node-capacity
+    rules:
+      # kube-state-metrics node metric; the same name is used in chapter 20.16.
+      - alert: NodeCordonedTooLong
+        expr: kube_node_spec_unschedulable == 1
+        for: 24h
+        labels:
+          severity: warning
+          event_class: silent_capacity_loss
+        annotations:
+          summary: "{{ $labels.node }} has been cordoned for 24 hours; find its owner"
+          runbook: "https://runbooks.example.com/cordon-owner"

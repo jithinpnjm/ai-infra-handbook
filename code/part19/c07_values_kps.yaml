@@ -1,0 +1,66 @@
+# kube-prometheus-stack 93.1.1 (app v0.95.1). Namespace: monitoring. Release: kps.
+# Chart facts checked against the chart's own values.yaml and CRDs, 2026-11-10.
+# Install:
+#   helm install kps prometheus-community/kube-prometheus-stack --version 93.1.1 \
+#     -n monitoring --create-namespace -f c07_values_kps.yaml
+fullnameOverride: kps
+
+defaultRules:
+  create: true
+
+prometheus:
+  prometheusSpec:
+    # Pick up ServiceMonitor, PodMonitor and PrometheusRule objects from any
+    # namespace and without the Helm release label.
+    serviceMonitorSelectorNilUsesHelmValues: false
+    podMonitorSelectorNilUsesHelmValues: false
+    ruleSelectorNilUsesHelmValues: false
+    scrapeInterval: 30s
+    evaluationInterval: 30s
+    retention: 15d
+    retentionSize: 80GB
+    # Cardinality guard 1: a scrape that returns more samples than this fails.
+    enforcedSampleLimit: 100000
+    # Cardinality guard 2: a scrape with more labels on one series than this fails.
+    enforcedLabelLimit: 30
+    resources:
+      requests:
+        cpu: "1"
+        memory: 8Gi
+      limits:
+        memory: 8Gi
+    storageSpec:
+      volumeClaimTemplate:
+        spec:
+          accessModes: ["ReadWriteOnce"]
+          resources:
+            requests:
+              storage: 100Gi
+
+alertmanager:
+  alertmanagerSpec:
+    replicas: 2
+    # Secret in the monitoring namespace with the key alertmanager.yaml.
+    # Create it from c07_alertmanager.yaml (see the lab). Other keys in the
+    # Secret are copied into /etc/alertmanager/config.
+    configSecret: alertmanager-gpu-platform
+    # Secrets listed here are mounted under /etc/alertmanager/secrets/<name>/.
+    secrets:
+      - alertmanager-receivers
+
+grafana:
+  admin:
+    # Secret with keys admin-user and admin-password. Create it yourself.
+    existingSecret: grafana-admin
+  sidecar:
+    dashboards:
+      enabled: true
+      label: grafana_dashboard
+      labelValue: "1"
+      searchNamespace: ALL
+  additionalDataSources:
+    - name: Loki
+      uid: loki
+      type: loki
+      access: proxy
+      url: http://loki.monitoring.svc.cluster.local:3100

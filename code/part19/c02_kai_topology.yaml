@@ -1,0 +1,9 @@
+# KAI Topology (kai.scheduler/v1alpha1, cluster scoped). Levels run from coarse to fine.
+apiVersion: kai.scheduler/v1alpha1
+kind: Topology
+metadata:
+  name: capstone-topology
+spec:
+  levels:
+    - nodeLabel: topology.kubernetes.io/zone
+    - nodeLabel: kubernetes.io/hostname

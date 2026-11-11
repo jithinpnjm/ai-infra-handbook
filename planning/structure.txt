@@ -413,16 +413,16 @@
 
 @PART 19 | capstones-interview | Part 19: Capstones, design and interview readiness | 2 | N
 01 | Capstone: a Slurm GPU cluster | A | SCL 15; V19 2,3,9,12; V24 4,5,6,9; V16 1; V20 2; Part 6 | N | 1
-02 | Capstone: a Kubernetes GPU platform with KAI and Kueue | A | V24 P7 | G | 1
+02 | Capstone: a Kubernetes GPU platform with KAI and Kueue | A | V24 P7; V10 1-11; GAK 7; K8GS 10; PK 12; SKI 3 | G | 1
 03 | Capstone: inference on GKE with vLLM, Triton, TensorRT-LLM, NIM and KServe | A | V24 P11 | G | 1
-04 | Capstone: multi-node training with fault tolerance | A | V24 P3 | N | 1
+04 | Capstone: multi-node training with fault tolerance | A | V24 P3; DAI 4,8; ASP 4; SCL 15; MLPE 4,8; AIF 7,9; Part 14 | N | 1
 05 | Capstone: an nccl-tests fabric lab | A | V24 P2 | N | 1
-06 | Capstone: node-health automation with DCGM and an operator | A | V24 P5 | G | 1
-07 | Capstone: an observability platform | A | V24 P4 | G
-08 | Capstone: MIG multi-tenancy | A | V24 P6 | N
-09 | Capstone: capacity planning | A | V24 P9 | -
-10 | Customer workshops and the consulting method | I | V22; EAS 12,13,14; VL8 ch4; VL10 ch12 | - | 3
-11 | System design: a training cluster | A | V23 ch10; VL8 ch1 | -
+06 | Capstone: node-health automation with DCGM and an operator | A | V24 P5; V16; V20; PK 14; KPG 11; SCL 3; SP 2; AF 5 | G | 1
+07 | Capstone: an observability platform | A | V24 P4; PK 9; SP 2,4; LLP 3; SKI 4; AF 9; Part 17 ch 1-6; Part 20 ch 15,19,25 | G
+08 | Capstone: MIG multi-tenancy | A | V24 P6; ASP 3; PK 12; K8GS 10; SCL 15; AF | N
+09 | Capstone: capacity planning | B | DAI 2; ASP 1,16; SP 2,11; HLS 5; LLP 3; MLPE 13; AF 9 | -
+10 | Customer workshops and the consulting method | I | EAS 12,13,14; PK 1; MLPE 1; AIE 10; AF 11 | - | 3
+11 | System design: a training cluster | A | V23 ch10; VL8 ch1; SPB200; SPGB300; DAI 2,5; ADC 3; SCL 3,13; ASP 3; AF | -
 12 | System design: inference serving | A | V23 ch11 | -
 13 | System design: research infrastructure | A | V23 ch12 | -
 14 | Interview question bank by topic | all | V23; V26; VCORE; VL9 | - | 1

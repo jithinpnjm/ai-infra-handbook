@@ -1,0 +1,5 @@
+{
+  "b04": "I assume a GPU pod. First I read the events with describe. Node allocatable shows whether 8 GPUs are free, but a taint without a toleration can also block it.",
+  "b10": "I would first check the catalog action for Xid 79, which says restart the node. Three nodes at once is a pattern, so I suspect a shared cause such as a driver rollout. I cordon and drain one node, but a rate limit and breaker stop a fleet-wide drain.",
+  "b09": "Alert on burn rate, not raw errors. Page at 14.4 with a 1 h long window and a 5 min short window. Page at 6 for 6 h and 30 min. Open a ticket at burn 1 over 3 days."
+}

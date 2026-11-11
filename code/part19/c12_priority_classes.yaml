@@ -1,0 +1,20 @@
+# code/part19/c12_priority_classes.yaml
+# Two priority classes for the shared pool. Interactive pods may preempt batch pods when GPUs run out.
+# Values are examples. Batch pods must set priorityClassName: llm-batch, interactive pods llm-interactive.
+apiVersion: scheduling.k8s.io/v1
+kind: PriorityClass
+metadata:
+  name: llm-interactive
+value: 1000
+preemptionPolicy: PreemptLowerPriority
+globalDefault: false
+description: "Interactive LLM engines. They may preempt llm-batch pods."
+---
+apiVersion: scheduling.k8s.io/v1
+kind: PriorityClass
+metadata:
+  name: llm-batch
+value: 100
+preemptionPolicy: Never
+globalDefault: false
+description: "Batch LLM engines. They wait for free GPUs and never preempt anyone."

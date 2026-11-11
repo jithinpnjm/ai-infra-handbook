@@ -1,0 +1,193 @@
+# Run: promtool test rules c07_rules_test.yaml   (from code/part19)
+# Unit tests for c07_stack_rules.yaml. Every alert has a firing case and a quiet case.
+rule_files:
+  - c07_stack_rules.yaml
+evaluation_interval: 30s
+
+tests:
+  - name: xid error on one GPU raises a ticket, a clean GPU does not
+    interval: 30s
+    input_series:
+      - series: 'DCGM_FI_DEV_XID_ERROR{node="n1", gpu="0", instance="10.0.0.1:9400"}'
+        values: '0 0 79 79 79 79'
+      - series: 'DCGM_FI_DEV_XID_ERROR{node="n1", gpu="1", instance="10.0.0.1:9400"}'
+        values: '0 0 0 0 0 0'
+    alert_rule_test:
+      - eval_time: 30s
+        alertname: GPUXidError
+        exp_alerts: []
+      - eval_time: 2m
+        alertname: GPUXidError
+        exp_alerts:
+          - exp_labels: {node: n1, gpu: "0", severity: ticket, area: gpu}
+            exp_annotations:
+              summary: "GPU 0 on n1 reported Xid 79"
+              runbook: "runbooks/gpu-xid.md"
+
+  - name: temperature must stay high for ten minutes before a ticket
+    interval: 30s
+    input_series:
+      - series: 'DCGM_FI_DEV_GPU_TEMP_CELSIUS{node="n1", gpu="0"}'
+        values: '90x40'
+      - series: 'DCGM_FI_DEV_GPU_TEMP_CELSIUS{node="n2", gpu="0"}'
+        values: '80x40'
+    alert_rule_test:
+      - eval_time: 9m
+        alertname: GPUTemperatureHigh
+        exp_alerts: []
+      - eval_time: 11m
+        alertname: GPUTemperatureHigh
+        exp_alerts:
+          - exp_labels: {node: n1, gpu: "0", severity: ticket, area: gpu}
+            exp_annotations:
+              summary: "GPU 0 on n1 is above 85 C for 10 minutes"
+              runbook: "runbooks/gpu-thermal.md"
+
+  - name: a failed row remap raises a ticket
+    interval: 30s
+    input_series:
+      - series: 'DCGM_FI_DEV_ROW_REMAP_FAILED{node="n3", gpu="5"}'
+        values: '0 0 1 1'
+    alert_rule_test:
+      - eval_time: 30s
+        alertname: GPURowRemapFailed
+        exp_alerts: []
+      - eval_time: 1m30s
+        alertname: GPURowRemapFailed
+        exp_alerts:
+          - exp_labels: {node: n3, gpu: "5", severity: ticket, area: gpu}
+            exp_annotations:
+              summary: "GPU 5 on n3 failed a memory row remap"
+              runbook: "runbooks/gpu-rma.md"
+
+  - name: missing DCGM series is caught by absent after ten minutes
+    interval: 30s
+    input_series:
+      - series: 'up{job="other", namespace="monitoring", instance="x"}'
+        values: '1x40'
+    alert_rule_test:
+      - eval_time: 5m
+        alertname: DCGMMetricsMissing
+        exp_alerts: []
+      - eval_time: 11m
+        alertname: DCGMMetricsMissing
+        exp_alerts:
+          - exp_labels: {severity: ticket, area: pipeline}
+            exp_annotations:
+              summary: "No DCGM GPU utilisation series for 10 minutes"
+              runbook: "runbooks/dcgm-missing.md"
+
+  - name: present DCGM series keeps the missing-metrics alert quiet
+    interval: 30s
+    input_series:
+      - series: 'DCGM_FI_DEV_GPU_UTIL_RATIO{node="n1", gpu="0"}'
+        values: '0.5x40'
+    alert_rule_test:
+      - eval_time: 11m
+        alertname: DCGMMetricsMissing
+        exp_alerts: []
+
+  - name: a monitoring target that stays down for five minutes raises a ticket
+    interval: 30s
+    input_series:
+      - series: 'up{job="dcgm-exporter", namespace="monitoring", instance="10.0.0.1:9400"}'
+        values: '0x20'
+      - series: 'up{job="loki", namespace="monitoring", instance="10.0.0.9:3100"}'
+        values: '1x20'
+    alert_rule_test:
+      - eval_time: 4m
+        alertname: ObservabilityTargetDown
+        exp_alerts: []
+      - eval_time: 6m
+        alertname: ObservabilityTargetDown
+        exp_alerts:
+          - exp_labels: {job: dcgm-exporter, namespace: monitoring, instance: "10.0.0.1:9400", severity: ticket, area: pipeline}
+            exp_annotations:
+              summary: "Scrape target dcgm-exporter 10.0.0.1:9400 is down"
+              runbook: "runbooks/target-down.md"
+
+  - name: head series over 1.6 million for fifteen minutes is a cardinality ticket
+    interval: 30s
+    input_series:
+      - series: 'prometheus_tsdb_head_series{job="prometheus", instance="p0"}'
+        values: '1700000x60'
+      - series: 'prometheus_tsdb_head_series{job="prometheus", instance="p1"}'
+        values: '900000x60'
+    alert_rule_test:
+      - eval_time: 14m
+        alertname: TSDBHeadSeriesNearBudget
+        exp_alerts: []
+      - eval_time: 16m
+        alertname: TSDBHeadSeriesNearBudget
+        exp_alerts:
+          - exp_labels: {job: prometheus, instance: p0, severity: ticket, area: cardinality}
+            exp_annotations:
+              summary: "Prometheus head series passed 80 percent of the 2,000,000 budget"
+              runbook: "runbooks/cardinality.md"
+
+  - name: a rejected scrape fires the sample-limit ticket and stays quiet when flat
+    interval: 30s
+    input_series:
+      - series: 'prometheus_target_scrapes_exceeded_sample_limit_total{job="prometheus", instance="p0"}'
+        values: '0 0 0 1 1 1 1 1'
+    alert_rule_test:
+      - eval_time: 3m
+        alertname: ScrapeSampleLimitHit
+        exp_alerts:
+          - exp_labels: {job: prometheus, instance: p0, severity: ticket, area: cardinality}
+            exp_annotations:
+              summary: "A scrape was rejected for exceeding the sample limit"
+              runbook: "runbooks/cardinality.md"
+      - eval_time: 30s
+        alertname: ScrapeSampleLimitHit
+        exp_alerts: []
+
+  - name: collector refusing logs raises a ticket, accepted-only traffic does not
+    interval: 30s
+    input_series:
+      - series: 'otelcol_receiver_refused_log_records{receiver="otlp", transport="http", pod="a"}'
+        values: '0+10x40'
+      - series: 'otelcol_receiver_accepted_log_records{receiver="otlp", transport="http", pod="a"}'
+        values: '0+1000x40'
+    alert_rule_test:
+      - eval_time: 4m
+        alertname: OtelCollectorRefusingData
+        exp_alerts: []
+      - eval_time: 8m
+        alertname: OtelCollectorRefusingData
+        exp_alerts:
+          - exp_labels: {severity: ticket, area: pipeline}
+            exp_annotations:
+              summary: "An OpenTelemetry Collector is refusing logs or spans"
+              runbook: "runbooks/otel-refusing.md"
+
+  - name: healthy collector with zero refusals stays quiet
+    interval: 30s
+    input_series:
+      - series: 'otelcol_receiver_refused_log_records{receiver="otlp", transport="http", pod="a"}'
+        values: '0x40'
+    alert_rule_test:
+      - eval_time: 10m
+        alertname: OtelCollectorRefusingData
+        exp_alerts: []
+
+  - name: failed exports are grouped by exporter
+    interval: 30s
+    input_series:
+      - series: 'otelcol_exporter_send_failed_log_records{exporter="otlphttp/loki", server_port="3100", pod="a"}'
+        values: '0+5x40'
+      - series: 'otelcol_exporter_send_failed_log_records{exporter="otlphttp/loki", server_port="3100", pod="b"}'
+        values: '0+5x40'
+      - series: 'otelcol_exporter_send_failed_spans{exporter="otlp/tempo", pod="a"}'
+        values: '0x40'
+    alert_rule_test:
+      - eval_time: 4m
+        alertname: OtelCollectorExportFailing
+        exp_alerts: []
+      - eval_time: 8m
+        alertname: OtelCollectorExportFailing
+        exp_alerts:
+          - exp_labels: {exporter: otlphttp/loki, severity: ticket, area: pipeline}
+            exp_annotations:
+              summary: "OpenTelemetry exporter otlphttp/loki is failing to send"
+              runbook: "runbooks/otel-export.md"

@@ -1,0 +1,70 @@
+# Kueue v1beta2 (v1beta1 is no longer served in Kueue v0.20.5). 16 GPUs in the pool: 12 training + 4 serving.
+apiVersion: kueue.x-k8s.io/v1beta2
+kind: ResourceFlavor
+metadata:
+  name: h100
+spec:
+  nodeLabels:
+    cloud.google.com/gke-accelerator: nvidia-h100-80gb
+---
+apiVersion: kueue.x-k8s.io/v1beta2
+kind: ClusterQueue
+metadata:
+  name: cq-training
+spec:
+  cohortName: ml-platform-cohort
+  namespaceSelector: {}
+  queueingStrategy: BestEffortFIFO
+  resourceGroups:
+    - coveredResources: ["nvidia.com/gpu"]
+      flavors:
+        - name: h100
+          resources:
+            - name: nvidia.com/gpu
+              nominalQuota: 12
+  preemption:
+    reclaimWithinCohort: Any
+    withinClusterQueue: LowerPriority
+---
+apiVersion: kueue.x-k8s.io/v1beta2
+kind: ClusterQueue
+metadata:
+  name: cq-serving
+spec:
+  cohortName: ml-platform-cohort
+  namespaceSelector: {}
+  queueingStrategy: StrictFIFO
+  resourceGroups:
+    - coveredResources: ["nvidia.com/gpu"]
+      flavors:
+        - name: h100
+          resources:
+            - name: nvidia.com/gpu
+              nominalQuota: 4
+  preemption:
+    reclaimWithinCohort: Any
+    withinClusterQueue: LowerPriority
+---
+apiVersion: kueue.x-k8s.io/v1beta2
+kind: LocalQueue
+metadata:
+  name: team-data-science-queue
+  namespace: team-data-science
+spec:
+  clusterQueue: cq-training
+---
+apiVersion: kueue.x-k8s.io/v1beta2
+kind: LocalQueue
+metadata:
+  name: team-research-queue
+  namespace: team-research
+spec:
+  clusterQueue: cq-training
+---
+apiVersion: kueue.x-k8s.io/v1beta2
+kind: LocalQueue
+metadata:
+  name: team-ml-platform-queue
+  namespace: team-ml-platform
+spec:
+  clusterQueue: cq-serving

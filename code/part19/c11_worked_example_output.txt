@@ -1,0 +1,31 @@
+FLOPs: 8.400e+23
+ideal GPUs: 360.1
+checkpoint bytes: 980 GB, write 21.8 s at 45 GB/s
+cluster MTBF: 135.9 h, Young interval: 4616 s
+inflation: 1.0107
+training nodes 46 (368 GPUs), spares 2, total nodes 48 (384 GPUs)
+state floor: 8 GPUs at 16 B/param on 192 GB at 80 percent
+dataset read: 3.1 MB/s
+sync stall at 1800 s: 1.21 percent
+write bandwidth for 3 percent at 1800 s: 18.1 GB/s
+retained 5 checkpoints: 4.90 TB
+run cost at 8.50 per GPU-hour, 368 GPUs, 30 days: 2252160 USD
+sync checkpoint stall costs: 27248 USD
+one more MFU point saves 8.8 GPUs, 53749 USD
+fabric (64-port): {"tiers": 2, "leaf": 12, "spine": 6, "super_spine": 0, "switches": 18, "endpoint_cables": 384, "leaf_spine_cables": 384, "spine_super_cables": 0, "leaf_oversub": 1, "top_oversub": 1}
+max two-tier endpoints at 64 ports: 2048
+scale-up to scale-out ratio, 1800 GB/s vs 400 Gb/s: 36
+racks at 2 nodes each: 24, power 686.4 kW
+scheduler: Slurm (slurm 4, k8s 1)
+alternative profile: Kubernetes with KAI (slurm 0, k8s 4)
+requirements   PASS workload stated
+compute        PASS pool delivers 8.58e+23 FLOPs, job needs 8.40e+23
+memory         PASS state 3.0 GB of 192 GB HBM (80 percent rule)
+fabric         PASS leaf oversubscription 1:1
+power          PASS rack draws 28.6 kW of 28.6 kW
+spares         PASS 2 spare nodes, rule asks for 2
+checkpoint     PASS synchronous stall 1.21 percent, budget 3 percent
+scheduler      PASS scheduler named with reasons
+observability  PASS all signals present
+quota          PASS quotas total 368 GPUs of 368
+failure_plan   PASS health check and automatic restart named

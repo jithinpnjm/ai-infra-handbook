@@ -1,0 +1,25 @@
+# Three tiers. KAI treats a value of 100 or more as non-preemptible and in-quota only,
+# so training sits below that line (docs/priority in KAI Scheduler v0.18.7).
+apiVersion: scheduling.k8s.io/v1
+kind: PriorityClass
+metadata:
+  name: inference-critical
+value: 1000
+globalDefault: false
+description: "Critical priority for inference SLOs"
+---
+apiVersion: scheduling.k8s.io/v1
+kind: PriorityClass
+metadata:
+  name: training-standard
+value: 50
+globalDefault: false
+description: "Preemptible training jobs"
+---
+apiVersion: scheduling.k8s.io/v1
+kind: PriorityClass
+metadata:
+  name: research-best-effort
+value: 0
+globalDefault: false
+description: "Best effort for research jobs"

@@ -1,0 +1,13 @@
+# Custom collector file for the node-health capstone (chapter 19.6).
+# Three columns: DCGM field, Prometheus metric type, help message.
+# Names and help text are copied from dcgm-exporter 4.9.0 etc/default-counters.csv.
+# In the GPU Operator this file replaces the shipped CSV, so it lists every field the alerts use.
+DCGM_FI_DEV_GPU_TEMP_CELSIUS, gauge, GPU temperature (in C).
+DCGM_FI_DEV_XID_ERROR, gauge, Value of the last XID error encountered.
+DCGM_FI_DEV_PCIE_REPLAY_TOTAL, counter, Total number of PCIe retries.
+DCGM_FI_DEV_ROW_REMAP_FAILED, gauge, Whether remapping of rows has failed
+DCGM_FI_DEV_ECC_SBE_VOL_TOTAL, counter, Total number of single-bit volatile ECC errors.
+DCGM_FI_DEV_ECC_DBE_VOL_TOTAL, counter, Total number of double-bit volatile ECC errors.
+DCGM_FI_DEV_GPU_THERMAL_THROTTLE_SECONDS_TOTAL, counter, Time below application clocks due to thermal policy in seconds.
+DCGM_FI_DEV_GPU_POWER_THROTTLE_SECONDS_TOTAL, counter, Time below application clocks due to power policy in seconds.
+DCGM_FI_DEV_NVLINK_CRC_ERROR_TOTAL, counter, Total number of NVLink data-link CRC errors.

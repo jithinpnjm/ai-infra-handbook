@@ -1,0 +1,22 @@
+{
+  "_note": "FICTIONAL customer Larkfield Mutual. Scores and evidence are invented for the chapter.",
+  "targets": {"ml.evaluation": 3, "sec.isolation": 3},
+  "scores": {
+    "inf.gpu_inventory": {"score": 0, "evidence": "Fictional: no GPUs installed. Confirmed on the site walk."},
+    "inf.network_storage": {"score": 1, "evidence": "Fictional: storage array known, no throughput test ever run."},
+    "inf.scheduler": {"score": 2, "evidence": "Fictional: production Kubernetes for web services, no accelerator support."},
+    "sec.identity": {"score": 3, "evidence": "Fictional: single sign-on with role mapping, reviewed quarterly."},
+    "sec.isolation": {"score": 2, "evidence": "Fictional: network zones exist, no per-workload policy for new namespaces."},
+    "sec.secrets": {"score": 2, "evidence": "Fictional: vault in use, two legacy services still use files."},
+    "ml.data_versioning": {"score": 1, "evidence": "Fictional: claim samples live in a shared folder with dated names."},
+    "ml.evaluation": {"score": 0, "evidence": "Fictional: no scored sample exists, confirmed in workshop."},
+    "ml.deploy_pipeline": {"score": 1, "evidence": "Fictional: web releases are automated, nothing for models."},
+    "ml.monitoring": {"score": 1, "evidence": "Fictional: web latency dashboards only."},
+    "tm.k8s": {"score": 2, "evidence": "Fictional: three engineers run the production cluster."},
+    "tm.gpu_ops": {"score": 0, "evidence": "Fictional: no one has handled a driver or Xid fault."},
+    "tm.on_call": {"score": 2, "evidence": "Fictional: rota and runbooks exist for web services."},
+    "gov.audit": {"score": 2, "evidence": "Fictional: access logs kept 12 months for web tier."},
+    "gov.data_lineage": {"score": 1, "evidence": "Fictional: owners named, lineage not recorded."},
+    "gov.approval": {"score": 2, "evidence": "Fictional: change board meets weekly."}
+  }
+}

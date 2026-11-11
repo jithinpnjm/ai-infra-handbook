@@ -1,0 +1,75 @@
+# Platform alert rules for the observability capstone (Chapter 19.7).
+# GPU metric names are the dcgm-exporter 4.9.0 names (suffixes _CELSIUS, _RATIO, _BYTES).
+# SLO burn-rate rules are not repeated here: they live in code/part20 and the
+# acceptance tests load them from there (slo_recording_rules.yaml and
+# slo_burn_alerts_availability.yaml).
+# Severity policy: only burn-rate alerts page. Everything here is a ticket.
+groups:
+  - name: c07_gpu_health
+    interval: 30s
+    rules:
+      - alert: GPUXidError
+        expr: max by (node, gpu) (DCGM_FI_DEV_XID_ERROR) > 0
+        labels: {severity: ticket, area: gpu}
+        annotations:
+          summary: "GPU {{ $labels.gpu }} on {{ $labels.node }} reported Xid {{ $value }}"
+          runbook: "runbooks/gpu-xid.md"
+      - alert: GPUTemperatureHigh
+        expr: max by (node, gpu) (DCGM_FI_DEV_GPU_TEMP_CELSIUS) > 85
+        for: 10m
+        labels: {severity: ticket, area: gpu}
+        annotations:
+          summary: "GPU {{ $labels.gpu }} on {{ $labels.node }} is above 85 C for 10 minutes"
+          runbook: "runbooks/gpu-thermal.md"
+      - alert: GPURowRemapFailed
+        expr: max by (node, gpu) (DCGM_FI_DEV_ROW_REMAP_FAILED) > 0
+        labels: {severity: ticket, area: gpu}
+        annotations:
+          summary: "GPU {{ $labels.gpu }} on {{ $labels.node }} failed a memory row remap"
+          runbook: "runbooks/gpu-rma.md"
+      - alert: DCGMMetricsMissing
+        expr: absent(DCGM_FI_DEV_GPU_UTIL_RATIO)
+        for: 10m
+        labels: {severity: ticket, area: pipeline}
+        annotations:
+          summary: "No DCGM GPU utilisation series for 10 minutes"
+          runbook: "runbooks/dcgm-missing.md"
+
+  - name: c07_observability_pipeline
+    interval: 30s
+    rules:
+      - alert: ObservabilityTargetDown
+        expr: up{namespace="monitoring"} == 0
+        for: 5m
+        labels: {severity: ticket, area: pipeline}
+        annotations:
+          summary: "Scrape target {{ $labels.job }} {{ $labels.instance }} is down"
+          runbook: "runbooks/target-down.md"
+      # Budget: 2,000,000 head series per Prometheus shard. Alert at 80 percent.
+      - alert: TSDBHeadSeriesNearBudget
+        expr: prometheus_tsdb_head_series > 1600000
+        for: 15m
+        labels: {severity: ticket, area: cardinality}
+        annotations:
+          summary: "Prometheus head series passed 80 percent of the 2,000,000 budget"
+          runbook: "runbooks/cardinality.md"
+      - alert: ScrapeSampleLimitHit
+        expr: increase(prometheus_target_scrapes_exceeded_sample_limit_total[10m]) > 0
+        labels: {severity: ticket, area: cardinality}
+        annotations:
+          summary: "A scrape was rejected for exceeding the sample limit"
+          runbook: "runbooks/cardinality.md"
+      - alert: OtelCollectorRefusingData
+        expr: sum(rate({__name__=~"otelcol_receiver_refused_(log_records|spans)"}[5m])) > 0
+        for: 5m
+        labels: {severity: ticket, area: pipeline}
+        annotations:
+          summary: "An OpenTelemetry Collector is refusing logs or spans"
+          runbook: "runbooks/otel-refusing.md"
+      - alert: OtelCollectorExportFailing
+        expr: sum by (exporter) (rate({__name__=~"otelcol_exporter_send_failed_(log_records|spans)"}[5m])) > 0
+        for: 5m
+        labels: {severity: ticket, area: pipeline}
+        annotations:
+          summary: "OpenTelemetry exporter {{ $labels.exporter }} is failing to send"
+          runbook: "runbooks/otel-export.md"

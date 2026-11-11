@@ -1,0 +1,20 @@
+# Source: NVIDIA Xid Errors, "Analyzing Xid Errors with the Xid Catalog", fetched 2026-11-10 (page footer: last updated Nov 04, 2026).
+# Columns copied from the catalog: Xid, description, immediate action, investigatory action. Workflow names are expanded in the note.
+xid,description,immediate_action,investigatory_action,note
+13,Graphics Engine Exception,RESTART_APP,WORKFLOW_XID_13,
+31,GPU memory page fault,RESTART_APP,WORKFLOW_XID_31,
+32,Invalid or corrupted push buffer stream,RESTART_APP,CHECK_APP/CUDA,
+43,GPU stopped processing,IGNORE,CONTACT_SUPPORT,
+45,Preemptive cleanup due to previous errors,WORKFLOW_XID_45,see note,Solo: RESTART_FM. Not solo: IGNORE and follow the other Xid.
+48,Double Bit ECC Error,WORKFLOW_XID_48,WORKFLOW_XID_48,Immediate solo: RESET_GPU. With 63 or 64: DRAIN_AND_RESET. Investigatory solo: RUN_FIELDDIAG.
+61,Unused,N/A,N/A,Listed as unused in the catalog.
+62,Internal micro-controller halt (newer drivers),RESET_GPU,CONTACT_SUPPORT,
+63,GPU memory remapping event,IGNORE,IGNORE,
+64,GPU memory remapping failure,RESET_GPU,CONTACT_SUPPORT,
+74,NVLINK Error,WORKFLOW_NVLINK_ERR,CONTACT_SUPPORT,The catalog says a GPU reset or node reboot is needed to clear it.
+79,GPU has fallen off the bus,RESTART_BM,CONTACT_SUPPORT,
+92,High single-bit ECC error rate,IGNORE,CONTACT_SUPPORT,
+94,Contained memory error,RESTART_APP,IGNORE (sympathetic),The catalog recommends a GPU reset when convenient.
+95,Uncontained memory error,RESET_GPU,IGNORE (sympathetic),
+119,GSP RPC Timeout,RESET_GPU,INVESTIGATE_SW,
+120,GSP Error,RESET_GPU,INVESTIGATE_SW,

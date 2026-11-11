@@ -1,0 +1,28 @@
+# Alertmanager routing for node health (chapter 19.6).
+# Secrets are read from files that a Kubernetes Secret mounts, never written here.
+# Mount them at /etc/alertmanager/secrets with mode 0400, owned by the Alertmanager user.
+route:
+  receiver: node-health-default
+  group_by: [alertname, instance]
+  routes:
+    # A fleet-wide event pages first and is never grouped away.
+    - matchers:
+        - event_class="fleet"
+      receiver: pagerduty-node-health
+      repeat_interval: 30m
+    - matchers:
+        - severity="critical"
+      receiver: pagerduty-node-health
+      repeat_interval: 1h
+    - matchers:
+        - severity="warning"
+      receiver: slack-node-health
+receivers:
+  - name: node-health-default
+  - name: pagerduty-node-health
+    pagerduty_configs:
+      - routing_key_file: /etc/alertmanager/secrets/pagerduty-routing-key
+  - name: slack-node-health
+    slack_configs:
+      - api_url_file: /etc/alertmanager/secrets/slack-webhook-url
+        channel: "#node-health"

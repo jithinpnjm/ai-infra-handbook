@@ -1,0 +1,1546 @@
+{
+ "source": {
+  "title": "NVIDIA Multi-Instance GPU User Guide, Supported MIG Profiles",
+  "url": "https://docs.nvidia.com/datacenter/tesla/mig-user-guide/supported-mig-profiles.html",
+  "page_last_updated": "2026-11-04",
+  "fetched": "2026-11-10",
+  "note": "Rows are extracted from the HTML tables by script and counted by a test. Profile names, fractions and counts are as printed in the guide. A100-SXM4-80GB is not a separate table: the guide says its names follow the memory proportion (1g.10gb, 1g.20gb, 2g.20gb, 3g.40gb, 4g.40gb, 7g.80gb)."
+ },
+ "tables": [
+  {
+   "product": "GB300 (DGX Station)",
+   "gpu_memory_gb": 252,
+   "rows": [
+    {
+     "profile": "1g.31gb",
+     "memory_fraction": "1/8",
+     "sm_fraction": "1/7",
+     "nvdec": 1,
+     "jpeg": 1,
+     "ofa": 0,
+     "l2_fraction": "1/8",
+     "copy_engines": 2,
+     "max_instances": 7
+    },
+    {
+     "profile": "1g.31gb+me",
+     "memory_fraction": "1/8",
+     "sm_fraction": "1/7",
+     "nvdec": 1,
+     "jpeg": 1,
+     "ofa": 1,
+     "l2_fraction": "1/8",
+     "copy_engines": 2,
+     "max_instances": 1,
+     "instances_note": "A single 1g profile can include media extensions"
+    },
+    {
+     "profile": "1g.63gb",
+     "memory_fraction": "2/8",
+     "sm_fraction": "1/7",
+     "nvdec": 1,
+     "jpeg": 1,
+     "ofa": 0,
+     "l2_fraction": "2/8",
+     "copy_engines": 2,
+     "max_instances": 4
+    },
+    {
+     "profile": "2g.63gb",
+     "memory_fraction": "2/8",
+     "sm_fraction": "2/7",
+     "nvdec": 2,
+     "jpeg": 2,
+     "ofa": 0,
+     "l2_fraction": "2/8",
+     "copy_engines": 4,
+     "max_instances": 3
+    },
+    {
+     "profile": "3g.126gb",
+     "memory_fraction": "4/8",
+     "sm_fraction": "3/7",
+     "nvdec": 3,
+     "jpeg": 3,
+     "ofa": 0,
+     "l2_fraction": "4/8",
+     "copy_engines": 6,
+     "max_instances": 2
+    },
+    {
+     "profile": "4g.126gb",
+     "memory_fraction": "4/8",
+     "sm_fraction": "4/7",
+     "nvdec": 4,
+     "jpeg": 4,
+     "ofa": 1,
+     "l2_fraction": "4/8",
+     "copy_engines": 8,
+     "max_instances": 1
+    },
+    {
+     "profile": "7g.251gb",
+     "memory_fraction": "Full",
+     "sm_fraction": "Full",
+     "nvdec": 7,
+     "jpeg": 7,
+     "ofa": 2,
+     "l2_fraction": "Full",
+     "copy_engines": 16,
+     "max_instances": 1
+    }
+   ]
+  },
+  {
+   "product": "B300",
+   "gpu_memory_gb": 288,
+   "rows": [
+    {
+     "profile": "1g.34gb",
+     "memory_fraction": "1/8",
+     "sm_fraction": "1/7",
+     "nvdec": 1,
+     "jpeg": 1,
+     "ofa": 0,
+     "l2_fraction": "1/8",
+     "copy_engines": 2,
+     "max_instances": 7
+    },
+    {
+     "profile": "1g.34gb+me",
+     "memory_fraction": "1/8",
+     "sm_fraction": "1/7",
+     "nvdec": 1,
+     "jpeg": 1,
+     "ofa": 1,
+     "l2_fraction": "1/8",
+     "copy_engines": 2,
+     "max_instances": 1,
+     "instances_note": "A single 1g profile can include media extensions"
+    },
+    {
+     "profile": "1g.67gb",
+     "memory_fraction": "2/8",
+     "sm_fraction": "1/7",
+     "nvdec": 1,
+     "jpeg": 1,
+     "ofa": 0,
+     "l2_fraction": "2/8",
+     "copy_engines": 2,
+     "max_instances": 4
+    },
+    {
+     "profile": "2g.67gb",
+     "memory_fraction": "2/8",
+     "sm_fraction": "2/7",
+     "nvdec": 2,
+     "jpeg": 2,
+     "ofa": 0,
+     "l2_fraction": "2/8",
+     "copy_engines": 4,
+     "max_instances": 3
+    },
+    {
+     "profile": "3g.135gb",
+     "memory_fraction": "4/8",
+     "sm_fraction": "3/7",
+     "nvdec": 3,
+     "jpeg": 3,
+     "ofa": 0,
+     "l2_fraction": "4/8",
+     "copy_engines": 6,
+     "max_instances": 2
+    },
+    {
+     "profile": "4g.135gb",
+     "memory_fraction": "4/8",
+     "sm_fraction": "4/7",
+     "nvdec": 4,
+     "jpeg": 4,
+     "ofa": 0,
+     "l2_fraction": "4/8",
+     "copy_engines": 8,
+     "max_instances": 1
+    },
+    {
+     "profile": "7g.269gb",
+     "memory_fraction": "Full",
+     "sm_fraction": "Full",
+     "nvdec": 7,
+     "jpeg": 7,
+     "ofa": 1,
+     "l2_fraction": "Full",
+     "copy_engines": 16,
+     "max_instances": 1
+    }
+   ]
+  },
+  {
+   "product": "GB200",
+   "gpu_memory_gb": 186,
+   "rows": [
+    {
+     "profile": "1g.23gb",
+     "memory_fraction": "1/8",
+     "sm_fraction": "1/7",
+     "nvdec": 1,
+     "jpeg": 1,
+     "ofa": 0,
+     "l2_fraction": "1/8",
+     "copy_engines": 2,
+     "max_instances": 7
+    },
+    {
+     "profile": "1g.23gb+me",
+     "memory_fraction": "1/8",
+     "sm_fraction": "1/7",
+     "nvdec": 1,
+     "jpeg": 1,
+     "ofa": 1,
+     "l2_fraction": "1/8",
+     "copy_engines": 2,
+     "max_instances": 1,
+     "instances_note": "A single 1g profile can include media extensions"
+    },
+    {
+     "profile": "1g.47gb",
+     "memory_fraction": "2/8",
+     "sm_fraction": "1/7",
+     "nvdec": 1,
+     "jpeg": 1,
+     "ofa": 0,
+     "l2_fraction": "2/8",
+     "copy_engines": 2,
+     "max_instances": 4
+    },
+    {
+     "profile": "2g.47gb",
+     "memory_fraction": "2/8",
+     "sm_fraction": "2/7",
+     "nvdec": 2,
+     "jpeg": 2,
+     "ofa": 0,
+     "l2_fraction": "2/8",
+     "copy_engines": 4,
+     "max_instances": 3
+    },
+    {
+     "profile": "3g.93gb",
+     "memory_fraction": "4/8",
+     "sm_fraction": "3/7",
+     "nvdec": 3,
+     "jpeg": 3,
+     "ofa": 0,
+     "l2_fraction": "4/8",
+     "copy_engines": 6,
+     "max_instances": 2
+    },
+    {
+     "profile": "4g.93gb",
+     "memory_fraction": "4/8",
+     "sm_fraction": "4/7",
+     "nvdec": 4,
+     "jpeg": 4,
+     "ofa": 1,
+     "l2_fraction": "4/8",
+     "copy_engines": 8,
+     "max_instances": 1
+    },
+    {
+     "profile": "7g.186gb",
+     "memory_fraction": "Full",
+     "sm_fraction": "Full",
+     "nvdec": 7,
+     "jpeg": 7,
+     "ofa": 2,
+     "l2_fraction": "Full",
+     "copy_engines": 16,
+     "max_instances": 1
+    }
+   ]
+  },
+  {
+   "product": "B200",
+   "gpu_memory_gb": 180,
+   "rows": [
+    {
+     "profile": "1g.23gb",
+     "memory_fraction": "1/8",
+     "sm_fraction": "1/7",
+     "nvdec": 1,
+     "jpeg": 1,
+     "ofa": 0,
+     "l2_fraction": "1/8",
+     "copy_engines": 2,
+     "max_instances": 7
+    },
+    {
+     "profile": "1g.23gb+me",
+     "memory_fraction": "1/8",
+     "sm_fraction": "1/7",
+     "nvdec": 1,
+     "jpeg": 1,
+     "ofa": 1,
+     "l2_fraction": "1/8",
+     "copy_engines": 2,
+     "max_instances": 1,
+     "instances_note": "A single 1g profile can include media extensions"
+    },
+    {
+     "profile": "1g.45gb",
+     "memory_fraction": "2/8",
+     "sm_fraction": "1/7",
+     "nvdec": 1,
+     "jpeg": 1,
+     "ofa": 0,
+     "l2_fraction": "2/8",
+     "copy_engines": 2,
+     "max_instances": 4
+    },
+    {
+     "profile": "2g.45gb",
+     "memory_fraction": "2/8",
+     "sm_fraction": "2/7",
+     "nvdec": 1,
+     "jpeg": 1,
+     "ofa": 0,
+     "l2_fraction": "2/8",
+     "copy_engines": 3,
+     "max_instances": 3
+    },
+    {
+     "profile": "3g.90gb",
+     "memory_fraction": "4/8",
+     "sm_fraction": "3/7",
+     "nvdec": 1,
+     "jpeg": 1,
+     "ofa": 0,
+     "l2_fraction": "4/8",
+     "copy_engines": 6,
+     "max_instances": 2
+    },
+    {
+     "profile": "4g.90gb",
+     "memory_fraction": "4/8",
+     "sm_fraction": "4/7",
+     "nvdec": 1,
+     "jpeg": 1,
+     "ofa": 0,
+     "l2_fraction": "4/8",
+     "copy_engines": 8,
+     "max_instances": 1
+    },
+    {
+     "profile": "7g.180gb",
+     "memory_fraction": "Full",
+     "sm_fraction": "Full",
+     "nvdec": 1,
+     "jpeg": 1,
+     "ofa": 1,
+     "l2_fraction": "Full",
+     "copy_engines": 16,
+     "max_instances": 1
+    }
+   ]
+  },
+  {
+   "product": "RTX PRO 6000 Blackwell (Workstation, Max-Q Workstation and Server Edition)",
+   "gpu_memory_gb": 96,
+   "rows": [
+    {
+     "profile": "1g.24gb",
+     "memory_fraction": "1/4",
+     "sm_fraction": "1/4",
+     "nvdec": 1,
+     "nvenc": 1,
+     "jpeg": 1,
+     "ofa": 0,
+     "l2_fraction": "1/4",
+     "copy_engines": 1,
+     "max_instances": 4
+    },
+    {
+     "profile": "1g.24gb+me",
+     "memory_fraction": "1/4",
+     "sm_fraction": "1/4",
+     "nvdec": 1,
+     "nvenc": 1,
+     "jpeg": 1,
+     "ofa": 1,
+     "l2_fraction": "1/4",
+     "copy_engines": 1,
+     "max_instances": 1
+    },
+    {
+     "profile": "1g.24gb+gfx",
+     "memory_fraction": "1/4",
+     "sm_fraction": "1/4",
+     "nvdec": 1,
+     "nvenc": 1,
+     "jpeg": 1,
+     "ofa": 0,
+     "l2_fraction": "1/4",
+     "copy_engines": 1,
+     "max_instances": 4
+    },
+    {
+     "profile": "1g.24gb+me.all",
+     "memory_fraction": "1/4",
+     "sm_fraction": "1/4",
+     "nvdec": 4,
+     "nvenc": 4,
+     "jpeg": 4,
+     "ofa": 1,
+     "l2_fraction": "1/4",
+     "copy_engines": 1,
+     "max_instances": 1
+    },
+    {
+     "profile": "1g.24gb-me",
+     "memory_fraction": "1/4",
+     "sm_fraction": "1/4",
+     "nvdec": 0,
+     "nvenc": 0,
+     "jpeg": 0,
+     "ofa": 0,
+     "l2_fraction": "1/4",
+     "copy_engines": 1,
+     "max_instances": 4
+    },
+    {
+     "profile": "2g.48gb",
+     "memory_fraction": "1/2",
+     "sm_fraction": "1/2",
+     "nvdec": 2,
+     "nvenc": 2,
+     "jpeg": 2,
+     "ofa": 0,
+     "l2_fraction": "1/2",
+     "copy_engines": 2,
+     "max_instances": 2
+    },
+    {
+     "profile": "2g.48gb+gfx",
+     "memory_fraction": "1/2",
+     "sm_fraction": "1/2",
+     "nvdec": 2,
+     "nvenc": 2,
+     "jpeg": 2,
+     "ofa": 0,
+     "l2_fraction": "1/2",
+     "copy_engines": 2,
+     "max_instances": 2
+    },
+    {
+     "profile": "2g.48gb+me.all",
+     "memory_fraction": "1/2",
+     "sm_fraction": "1/2",
+     "nvdec": 4,
+     "nvenc": 4,
+     "jpeg": 4,
+     "ofa": 1,
+     "l2_fraction": "1/2",
+     "copy_engines": 2,
+     "max_instances": 1
+    },
+    {
+     "profile": "2g.48gb-me",
+     "memory_fraction": "1/2",
+     "sm_fraction": "1/2",
+     "nvdec": 0,
+     "nvenc": 0,
+     "jpeg": 0,
+     "ofa": 0,
+     "l2_fraction": "1/2",
+     "copy_engines": 2,
+     "max_instances": 2
+    },
+    {
+     "profile": "4g.96gb",
+     "memory_fraction": "Full",
+     "sm_fraction": "Full",
+     "nvdec": 4,
+     "nvenc": 4,
+     "jpeg": 4,
+     "ofa": 1,
+     "l2_fraction": "Full",
+     "copy_engines": 4,
+     "max_instances": 1
+    },
+    {
+     "profile": "4g.96gb+gfx",
+     "memory_fraction": "Full",
+     "sm_fraction": "Full",
+     "nvdec": 4,
+     "nvenc": 4,
+     "jpeg": 4,
+     "ofa": 1,
+     "l2_fraction": "Full",
+     "copy_engines": 4,
+     "max_instances": 1
+    }
+   ]
+  },
+  {
+   "product": "RTX PRO 5000 Blackwell",
+   "gpu_memory_gb": 48,
+   "rows": [
+    {
+     "profile": "1g.24gb",
+     "memory_fraction": "1/2",
+     "sm_fraction": "1/2",
+     "nvdec": 1,
+     "nvenc": 1,
+     "jpeg": 0,
+     "ofa": 0,
+     "l2_fraction": "1/2",
+     "copy_engines": 1,
+     "max_instances": 2
+    },
+    {
+     "profile": "1g.24gb+me",
+     "memory_fraction": "1/2",
+     "sm_fraction": "1/2",
+     "nvdec": 1,
+     "nvenc": 1,
+     "jpeg": 1,
+     "ofa": 1,
+     "l2_fraction": "1/2",
+     "copy_engines": 1,
+     "max_instances": 1
+    },
+    {
+     "profile": "1g.24gb+gfx",
+     "memory_fraction": "1/2",
+     "sm_fraction": "1/2",
+     "nvdec": 1,
+     "nvenc": 1,
+     "jpeg": 0,
+     "ofa": 0,
+     "l2_fraction": "1/2",
+     "copy_engines": 1,
+     "max_instances": 2
+    },
+    {
+     "profile": "1g.24gb+me.all",
+     "memory_fraction": "1/2",
+     "sm_fraction": "1/2",
+     "nvdec": 3,
+     "nvenc": 3,
+     "jpeg": 1,
+     "ofa": 1,
+     "l2_fraction": "1/2",
+     "copy_engines": 1,
+     "max_instances": 1
+    },
+    {
+     "profile": "1g.24gb-me",
+     "memory_fraction": "1/2",
+     "sm_fraction": "1/2",
+     "nvdec": 0,
+     "nvenc": 0,
+     "jpeg": 0,
+     "ofa": 0,
+     "l2_fraction": "1/2",
+     "copy_engines": 1,
+     "max_instances": 2
+    },
+    {
+     "profile": "2g.48gb",
+     "memory_fraction": "Full",
+     "sm_fraction": "Full",
+     "nvdec": 3,
+     "nvenc": 3,
+     "jpeg": 1,
+     "ofa": 1,
+     "l2_fraction": "Full",
+     "copy_engines": 4,
+     "max_instances": 1
+    },
+    {
+     "profile": "2g.48gb+gfx",
+     "memory_fraction": "Full",
+     "sm_fraction": "Full",
+     "nvdec": 3,
+     "nvenc": 3,
+     "jpeg": 1,
+     "ofa": 1,
+     "l2_fraction": "Full",
+     "copy_engines": 4,
+     "max_instances": 1
+    }
+   ]
+  },
+  {
+   "product": "RTX PRO 4500 Blackwell",
+   "gpu_memory_gb": 32,
+   "rows": [
+    {
+     "profile": "1g.16gb",
+     "memory_fraction": "1/2",
+     "sm_fraction": "1/2",
+     "nvdec": 1,
+     "nvenc": 1,
+     "jpeg": 1,
+     "ofa": 0,
+     "l2_fraction": "1/2",
+     "copy_engines": 1,
+     "max_instances": 2
+    },
+    {
+     "profile": "1g.16gb+gfx",
+     "memory_fraction": "1/2",
+     "sm_fraction": "1/2",
+     "nvdec": 1,
+     "nvenc": 1,
+     "jpeg": 1,
+     "ofa": 0,
+     "l2_fraction": "1/2",
+     "copy_engines": 1,
+     "max_instances": 2
+    },
+    {
+     "profile": "1g.16gb+me.all",
+     "memory_fraction": "1/2",
+     "sm_fraction": "1/2",
+     "nvdec": 3,
+     "nvenc": 3,
+     "jpeg": 2,
+     "ofa": 1,
+     "l2_fraction": "1/2",
+     "copy_engines": 1,
+     "max_instances": 1
+    },
+    {
+     "profile": "1g.16gb-me",
+     "memory_fraction": "1/2",
+     "sm_fraction": "1/2",
+     "nvdec": 0,
+     "nvenc": 0,
+     "jpeg": 0,
+     "ofa": 0,
+     "l2_fraction": "1/2",
+     "copy_engines": 1,
+     "max_instances": 2
+    },
+    {
+     "profile": "2g.32gb",
+     "memory_fraction": "Full",
+     "sm_fraction": "Full",
+     "nvdec": 3,
+     "nvenc": 3,
+     "jpeg": 2,
+     "ofa": 1,
+     "l2_fraction": "Full",
+     "copy_engines": 2,
+     "max_instances": 1
+    },
+    {
+     "profile": "2g.32gb+gfx",
+     "memory_fraction": "Full",
+     "sm_fraction": "Full",
+     "nvdec": 3,
+     "nvenc": 3,
+     "jpeg": 2,
+     "ofa": 1,
+     "l2_fraction": "Full",
+     "copy_engines": 2,
+     "max_instances": 1
+    }
+   ]
+  },
+  {
+   "product": "Thor iGPU (GB10B)",
+   "gpu_memory_gb": 0,
+   "rows": [
+    {
+     "profile": "1g.0gb+me",
+     "memory_fraction": "N/A",
+     "sm_fraction": "~1/3",
+     "nvdec": 1,
+     "nvenc": 1,
+     "jpeg": 1,
+     "ofa": 1,
+     "l2_fraction": "~1/3",
+     "copy_engines": 1,
+     "max_instances": 1
+    },
+    {
+     "profile": "1g.0gb",
+     "memory_fraction": "N/A",
+     "sm_fraction": "~1/3",
+     "nvdec": 1,
+     "nvenc": 1,
+     "jpeg": 1,
+     "ofa": 0,
+     "l2_fraction": "~1/3",
+     "copy_engines": 1,
+     "max_instances": 1
+    },
+    {
+     "profile": "1g.0gb+gfx",
+     "memory_fraction": "N/A",
+     "sm_fraction": "~1/3",
+     "nvdec": 1,
+     "nvenc": 1,
+     "jpeg": 1,
+     "ofa": 0,
+     "l2_fraction": "~1/3",
+     "copy_engines": 1,
+     "max_instances": 1
+    },
+    {
+     "profile": "2g.0gb",
+     "memory_fraction": "N/A",
+     "sm_fraction": "~2/3",
+     "nvdec": 1,
+     "nvenc": 1,
+     "jpeg": 1,
+     "ofa": 0,
+     "l2_fraction": "~2/3",
+     "copy_engines": 1,
+     "max_instances": 1
+    },
+    {
+     "profile": "2g.0gb+gfx",
+     "memory_fraction": "N/A",
+     "sm_fraction": "~2/3",
+     "nvdec": 1,
+     "nvenc": 1,
+     "jpeg": 1,
+     "ofa": 0,
+     "l2_fraction": "~2/3",
+     "copy_engines": 1,
+     "max_instances": 1
+    },
+    {
+     "profile": "3g.0gb",
+     "memory_fraction": "N/A",
+     "sm_fraction": "Full",
+     "nvdec": 2,
+     "nvenc": 2,
+     "jpeg": 2,
+     "ofa": 1,
+     "l2_fraction": "Full",
+     "copy_engines": 1,
+     "max_instances": 1
+    },
+    {
+     "profile": "3g.0gb+gfx",
+     "memory_fraction": "N/A",
+     "sm_fraction": "Full",
+     "nvdec": 2,
+     "nvenc": 2,
+     "jpeg": 2,
+     "ofa": 1,
+     "l2_fraction": "Full",
+     "copy_engines": 1,
+     "max_instances": 1
+    }
+   ]
+  },
+  {
+   "product": "H100 80GB (PCIe and SXM5)",
+   "gpu_memory_gb": 80,
+   "rows": [
+    {
+     "profile": "1g.10gb",
+     "memory_fraction": "1/8",
+     "sm_fraction": "1/7",
+     "hardware_units_as_printed": "1 NVDEC /1 JPEG /0 OFA",
+     "nvdec": 1,
+     "jpeg": 1,
+     "ofa": 0,
+     "l2_fraction": "1/8",
+     "copy_engines": 1,
+     "max_instances": 7
+    },
+    {
+     "profile": "1g.10gb+me",
+     "memory_fraction": "1/8",
+     "sm_fraction": "1/7",
+     "hardware_units_as_printed": "1 NVDEC /1 JPEG /1 OFA",
+     "nvdec": 1,
+     "jpeg": 1,
+     "ofa": 1,
+     "l2_fraction": "1/8",
+     "copy_engines": 1,
+     "max_instances": 1,
+     "instances_note": "A single 1g profile can include media extensions"
+    },
+    {
+     "profile": "1g.20gb",
+     "memory_fraction": "1/4",
+     "sm_fraction": "1/7",
+     "hardware_units_as_printed": "1 NVDEC /1 JPEG /0 OFA",
+     "nvdec": 1,
+     "jpeg": 1,
+     "ofa": 0,
+     "l2_fraction": "1/8",
+     "copy_engines": 1,
+     "max_instances": 4
+    },
+    {
+     "profile": "2g.20gb",
+     "memory_fraction": "2/8",
+     "sm_fraction": "2/7",
+     "hardware_units_as_printed": "2 NVDECs /2 JPEG /0 OFA",
+     "nvdec": 2,
+     "jpeg": 2,
+     "ofa": 0,
+     "l2_fraction": "2/8",
+     "copy_engines": 2,
+     "max_instances": 3
+    },
+    {
+     "profile": "3g.40gb",
+     "memory_fraction": "4/8",
+     "sm_fraction": "3/7",
+     "hardware_units_as_printed": "3 NVDECs /3 JPEG /0 OFA",
+     "nvdec": 3,
+     "jpeg": 3,
+     "ofa": 0,
+     "l2_fraction": "4/8",
+     "copy_engines": 3,
+     "max_instances": 2
+    },
+    {
+     "profile": "4g.40gb",
+     "memory_fraction": "4/8",
+     "sm_fraction": "4/7",
+     "hardware_units_as_printed": "4 NVDECs /4 JPEG /0 OFA",
+     "nvdec": 4,
+     "jpeg": 4,
+     "ofa": 0,
+     "l2_fraction": "4/8",
+     "copy_engines": 4,
+     "max_instances": 1
+    },
+    {
+     "profile": "7g.80gb",
+     "memory_fraction": "Full",
+     "sm_fraction": "7/7",
+     "hardware_units_as_printed": "7 NVDECs /7 JPEG /1 OFA",
+     "nvdec": 7,
+     "jpeg": 7,
+     "ofa": 1,
+     "l2_fraction": "Full",
+     "copy_engines": 8,
+     "max_instances": 1
+    }
+   ]
+  },
+  {
+   "product": "H100 94GB (PCIe and SXM5)",
+   "gpu_memory_gb": 94,
+   "rows": [
+    {
+     "profile": "1g.12gb",
+     "memory_fraction": "1/8",
+     "sm_fraction": "1/7",
+     "hardware_units_as_printed": "1 NVDEC /1 JPEG /0 OFA",
+     "nvdec": 1,
+     "jpeg": 1,
+     "ofa": 0,
+     "l2_fraction": "1/8",
+     "copy_engines": 1,
+     "max_instances": 7
+    },
+    {
+     "profile": "1g.12gb+me",
+     "memory_fraction": "1/8",
+     "sm_fraction": "1/7",
+     "hardware_units_as_printed": "1 NVDEC /1 JPEG /1 OFA",
+     "nvdec": 1,
+     "jpeg": 1,
+     "ofa": 1,
+     "l2_fraction": "1/8",
+     "copy_engines": 1,
+     "max_instances": 1,
+     "instances_note": "A single 1g profile can include media extensions"
+    },
+    {
+     "profile": "1g.24gb",
+     "memory_fraction": "1/4",
+     "sm_fraction": "1/7",
+     "hardware_units_as_printed": "1 NVDEC /1 JPEG /0 OFA",
+     "nvdec": 1,
+     "jpeg": 1,
+     "ofa": 0,
+     "l2_fraction": "1/8",
+     "copy_engines": 1,
+     "max_instances": 4
+    },
+    {
+     "profile": "2g.24gb",
+     "memory_fraction": "2/8",
+     "sm_fraction": "2/7",
+     "hardware_units_as_printed": "2 NVDECs /2 JPEG /0 OFA",
+     "nvdec": 2,
+     "jpeg": 2,
+     "ofa": 0,
+     "l2_fraction": "2/8",
+     "copy_engines": 2,
+     "max_instances": 3
+    },
+    {
+     "profile": "3g.47gb",
+     "memory_fraction": "4/8",
+     "sm_fraction": "3/7",
+     "hardware_units_as_printed": "3 NVDECs /3 JPEG /0 OFA",
+     "nvdec": 3,
+     "jpeg": 3,
+     "ofa": 0,
+     "l2_fraction": "4/8",
+     "copy_engines": 3,
+     "max_instances": 2
+    },
+    {
+     "profile": "4g.47gb",
+     "memory_fraction": "4/8",
+     "sm_fraction": "4/7",
+     "hardware_units_as_printed": "4 NVDECs /4 JPEG /0 OFA",
+     "nvdec": 4,
+     "jpeg": 4,
+     "ofa": 0,
+     "l2_fraction": "4/8",
+     "copy_engines": 4,
+     "max_instances": 1
+    },
+    {
+     "profile": "7g.94gb",
+     "memory_fraction": "Full",
+     "sm_fraction": "7/7",
+     "hardware_units_as_printed": "7 NVDECs /7 JPEG /1 OFA",
+     "nvdec": 7,
+     "jpeg": 7,
+     "ofa": 1,
+     "l2_fraction": "Full",
+     "copy_engines": 8,
+     "max_instances": 1
+    }
+   ]
+  },
+  {
+   "product": "H100 96GB (H100 on GH200)",
+   "gpu_memory_gb": 96,
+   "rows": [
+    {
+     "profile": "1g.12gb",
+     "memory_fraction": "1/8",
+     "sm_fraction": "1/7",
+     "hardware_units_as_printed": "1 NVDEC /1 JPEG /0 OFA",
+     "nvdec": 1,
+     "jpeg": 1,
+     "ofa": 0,
+     "l2_fraction": "1/8",
+     "copy_engines": 1,
+     "max_instances": 7
+    },
+    {
+     "profile": "1g.12gb+me",
+     "memory_fraction": "1/8",
+     "sm_fraction": "1/7",
+     "hardware_units_as_printed": "1 NVDEC /1 JPEG /1 OFA",
+     "nvdec": 1,
+     "jpeg": 1,
+     "ofa": 1,
+     "l2_fraction": "1/8",
+     "copy_engines": 1,
+     "max_instances": 1,
+     "instances_note": "A single 1g profile can include media extensions"
+    },
+    {
+     "profile": "1g.24gb",
+     "memory_fraction": "1/4",
+     "sm_fraction": "1/7",
+     "hardware_units_as_printed": "1 NVDEC /1 JPEG /0 OFA",
+     "nvdec": 1,
+     "jpeg": 1,
+     "ofa": 0,
+     "l2_fraction": "1/8",
+     "copy_engines": 1,
+     "max_instances": 4
+    },
+    {
+     "profile": "2g.24gb",
+     "memory_fraction": "2/8",
+     "sm_fraction": "2/7",
+     "hardware_units_as_printed": "2 NVDECs /2 JPEG /0 OFA",
+     "nvdec": 2,
+     "jpeg": 2,
+     "ofa": 0,
+     "l2_fraction": "2/8",
+     "copy_engines": 2,
+     "max_instances": 3
+    },
+    {
+     "profile": "3g.48gb",
+     "memory_fraction": "4/8",
+     "sm_fraction": "3/7",
+     "hardware_units_as_printed": "3 NVDECs /3 JPEG /0 OFA",
+     "nvdec": 3,
+     "jpeg": 3,
+     "ofa": 0,
+     "l2_fraction": "4/8",
+     "copy_engines": 3,
+     "max_instances": 2
+    },
+    {
+     "profile": "4g.48gb",
+     "memory_fraction": "4/8",
+     "sm_fraction": "4/7",
+     "hardware_units_as_printed": "4 NVDECs /4 JPEG /0 OFA",
+     "nvdec": 4,
+     "jpeg": 4,
+     "ofa": 0,
+     "l2_fraction": "4/8",
+     "copy_engines": 4,
+     "max_instances": 1
+    },
+    {
+     "profile": "7g.96gb",
+     "memory_fraction": "Full",
+     "sm_fraction": "7/7",
+     "hardware_units_as_printed": "7 NVDECs /7 JPEG /1 OFA",
+     "nvdec": 7,
+     "jpeg": 7,
+     "ofa": 1,
+     "l2_fraction": "Full",
+     "copy_engines": 8,
+     "max_instances": 1
+    }
+   ]
+  },
+  {
+   "product": "H200 141GB",
+   "gpu_memory_gb": 141,
+   "rows": [
+    {
+     "profile": "1g.18gb",
+     "memory_fraction": "1/8",
+     "sm_fraction": "1/7",
+     "hardware_units_as_printed": "1 NVDECs /1 JPEG /0 OFA",
+     "nvdec": 1,
+     "jpeg": 1,
+     "ofa": 0,
+     "l2_fraction": "1/8",
+     "copy_engines": 1,
+     "max_instances": 7
+    },
+    {
+     "profile": "1g.18gb+me",
+     "memory_fraction": "1/8",
+     "sm_fraction": "1/7",
+     "hardware_units_as_printed": "1 NVDEC /1 JPEG /1 OFA",
+     "nvdec": 1,
+     "jpeg": 1,
+     "ofa": 1,
+     "l2_fraction": "1/8",
+     "copy_engines": 1,
+     "max_instances": 1,
+     "instances_note": "A single 1g profile can include media extensions"
+    },
+    {
+     "profile": "1g.35gb",
+     "memory_fraction": "1/4",
+     "sm_fraction": "1/7",
+     "hardware_units_as_printed": "1 NVDECs /1 JPEG /0 OFA",
+     "nvdec": 1,
+     "jpeg": 1,
+     "ofa": 0,
+     "l2_fraction": "1/8",
+     "copy_engines": 1,
+     "max_instances": 4
+    },
+    {
+     "profile": "2g.35gb",
+     "memory_fraction": "2/8",
+     "sm_fraction": "2/7",
+     "hardware_units_as_printed": "2 NVDECs /2 JPEG /0 OFA",
+     "nvdec": 2,
+     "jpeg": 2,
+     "ofa": 0,
+     "l2_fraction": "2/8",
+     "copy_engines": 2,
+     "max_instances": 3
+    },
+    {
+     "profile": "3g.71gb",
+     "memory_fraction": "4/8",
+     "sm_fraction": "3/7",
+     "hardware_units_as_printed": "3 NVDECs /3 JPEG /0 OFA",
+     "nvdec": 3,
+     "jpeg": 3,
+     "ofa": 0,
+     "l2_fraction": "4/8",
+     "copy_engines": 3,
+     "max_instances": 2
+    },
+    {
+     "profile": "4g.71gb",
+     "memory_fraction": "4/8",
+     "sm_fraction": "4/7",
+     "hardware_units_as_printed": "4 NVDECs /4 JPEG /0 OFA",
+     "nvdec": 4,
+     "jpeg": 4,
+     "ofa": 0,
+     "l2_fraction": "4/8",
+     "copy_engines": 4,
+     "max_instances": 1
+    },
+    {
+     "profile": "7g.141gb",
+     "memory_fraction": "Full",
+     "sm_fraction": "7/7",
+     "hardware_units_as_printed": "7 NVDECs /7 JPEG /1 OFA",
+     "nvdec": 7,
+     "jpeg": 7,
+     "ofa": 1,
+     "l2_fraction": "Full",
+     "copy_engines": 8,
+     "max_instances": 1
+    }
+   ]
+  },
+  {
+   "product": "A100-SXM4-40GB",
+   "gpu_memory_gb": 40,
+   "rows": [
+    {
+     "profile": "1g.5gb",
+     "memory_fraction": "1/8",
+     "sm_fraction": "1/7",
+     "hardware_units_as_printed": "0 NVDECs /0 JPEG /0 OFA",
+     "nvdec": 0,
+     "jpeg": 0,
+     "ofa": 0,
+     "l2_fraction": "1/8",
+     "copy_engines": 1,
+     "max_instances": 7
+    },
+    {
+     "profile": "1g.5gb+me",
+     "memory_fraction": "1/8",
+     "sm_fraction": "1/7",
+     "hardware_units_as_printed": "1 NVDEC /1 JPEG /1 OFA",
+     "nvdec": 1,
+     "jpeg": 1,
+     "ofa": 1,
+     "l2_fraction": "1/8",
+     "copy_engines": 1,
+     "max_instances": 1,
+     "instances_note": "A single 1g profile can include media extensions"
+    },
+    {
+     "profile": "1g.10gb",
+     "memory_fraction": "2/8",
+     "sm_fraction": "1/7",
+     "hardware_units_as_printed": "1 NVDEC /0 JPEG /0 OFA",
+     "nvdec": 1,
+     "jpeg": 0,
+     "ofa": 0,
+     "l2_fraction": "2/8",
+     "copy_engines": 1,
+     "max_instances": 4
+    },
+    {
+     "profile": "2g.10gb",
+     "memory_fraction": "2/8",
+     "sm_fraction": "2/7",
+     "hardware_units_as_printed": "1 NVDEC /0 JPEG /0 OFA",
+     "nvdec": 1,
+     "jpeg": 0,
+     "ofa": 0,
+     "l2_fraction": "2/8",
+     "copy_engines": 2,
+     "max_instances": 3
+    },
+    {
+     "profile": "3g.20gb",
+     "memory_fraction": "4/8",
+     "sm_fraction": "3/7",
+     "hardware_units_as_printed": "2 NVDECs /0 JPEG /0 OFA",
+     "nvdec": 2,
+     "jpeg": 0,
+     "ofa": 0,
+     "l2_fraction": "4/8",
+     "copy_engines": 3,
+     "max_instances": 2
+    },
+    {
+     "profile": "4g.20gb",
+     "memory_fraction": "4/8",
+     "sm_fraction": "4/7",
+     "hardware_units_as_printed": "2 NVDECs /0 JPEG /0 OFA",
+     "nvdec": 2,
+     "jpeg": 0,
+     "ofa": 0,
+     "l2_fraction": "4/8",
+     "copy_engines": 4,
+     "max_instances": 1
+    },
+    {
+     "profile": "7g.40gb",
+     "memory_fraction": "Full",
+     "sm_fraction": "7/7",
+     "hardware_units_as_printed": "5 NVDECs /1 JPEG /1 OFA",
+     "nvdec": 5,
+     "jpeg": 1,
+     "ofa": 1,
+     "l2_fraction": "Full",
+     "copy_engines": 7,
+     "max_instances": 1
+    }
+   ]
+  },
+  {
+   "product": "A30 24GB",
+   "gpu_memory_gb": 24,
+   "rows": [
+    {
+     "profile": "1g.6gb",
+     "memory_fraction": "1/4",
+     "sm_fraction": "1/4",
+     "hardware_units_as_printed": "0 NVDECs /0 JPEG /0 OFA",
+     "nvdec": 0,
+     "jpeg": 0,
+     "ofa": 0,
+     "l2_fraction": "1/4",
+     "copy_engines": 1,
+     "max_instances": 4
+    },
+    {
+     "profile": "1g.6gb+me",
+     "memory_fraction": "1/4",
+     "sm_fraction": "1/4",
+     "hardware_units_as_printed": "1 NVDEC /1 JPEG /1 OFA",
+     "nvdec": 1,
+     "jpeg": 1,
+     "ofa": 1,
+     "l2_fraction": "1/4",
+     "copy_engines": 1,
+     "max_instances": 1,
+     "instances_note": "A single 1g profile can include media extensions"
+    },
+    {
+     "profile": "2g.12gb",
+     "memory_fraction": "2/4",
+     "sm_fraction": "2/4",
+     "hardware_units_as_printed": "2 NVDECs /0 JPEG /0 OFA",
+     "nvdec": 2,
+     "jpeg": 0,
+     "ofa": 0,
+     "l2_fraction": "2/4",
+     "copy_engines": 2,
+     "max_instances": 2
+    },
+    {
+     "profile": "2g.12gb+me",
+     "memory_fraction": "2/4",
+     "sm_fraction": "2/4",
+     "hardware_units_as_printed": "2 NVDECs /1 JPEG /1 OFA",
+     "nvdec": 2,
+     "jpeg": 1,
+     "ofa": 1,
+     "l2_fraction": "2/4",
+     "copy_engines": 2,
+     "max_instances": 1,
+     "instances_note": "A single 2g profile can include media extensions"
+    },
+    {
+     "profile": "4g.24gb",
+     "memory_fraction": "Full",
+     "sm_fraction": "4/4",
+     "hardware_units_as_printed": "4 NVDECs /1 JPEG /1 OFA",
+     "nvdec": 4,
+     "jpeg": 1,
+     "ofa": 1,
+     "l2_fraction": "Full",
+     "copy_engines": 4,
+     "max_instances": 1
+    }
+   ]
+  }
+ ],
+ "a100_80gb_name_note": {
+  "source_page": "supported-mig-profiles.html and concepts.html",
+  "names": [
+   "1g.10gb",
+   "1g.10gb+me",
+   "1g.20gb",
+   "2g.20gb",
+   "3g.40gb",
+   "4g.40gb",
+   "7g.80gb"
+  ]
+ },
+ "a100_40gb_lgip": {
+  "source": "Getting Started with MIG, List GPU Instance Profiles (nvidia-smi mig -lgip on A100-SXM4-40GB, driver 450.80.02 era output)",
+  "columns": [
+   "profile",
+   "profile_id",
+   "instances_total",
+   "memory_gib",
+   "p2p",
+   "sm_count",
+   "copy_engines"
+  ],
+  "rows": [
+   [
+    "1g.5gb",
+    19,
+    7,
+    4.75,
+    "No",
+    14,
+    1
+   ],
+   [
+    "1g.5gb+me",
+    20,
+    1,
+    4.75,
+    "No",
+    14,
+    1
+   ],
+   [
+    "1g.10gb",
+    15,
+    4,
+    9.62,
+    "No",
+    14,
+    1
+   ],
+   [
+    "2g.10gb",
+    14,
+    3,
+    9.62,
+    "No",
+    28,
+    2
+   ],
+   [
+    "3g.20gb",
+    9,
+    2,
+    19.5,
+    "No",
+    42,
+    3
+   ],
+   [
+    "4g.20gb",
+    5,
+    1,
+    19.5,
+    "No",
+    56,
+    4
+   ],
+   [
+    "7g.40gb",
+    0,
+    1,
+    39.25,
+    "No",
+    98,
+    7
+   ]
+  ]
+ },
+ "a100_40gb_lgipp": {
+  "source": "Getting Started with MIG, List GPU Instance Profiles (nvidia-smi mig -lgipp). Syntax {start,...}:size where size counts GPU slices (memory slices).",
+  "placements": {
+   "1g.5gb": {
+    "starts": [
+     0,
+     1,
+     2,
+     3,
+     4,
+     5,
+     6
+    ],
+    "size": 1
+   },
+   "1g.5gb+me": {
+    "starts": [
+     0,
+     1,
+     2,
+     3,
+     4,
+     5,
+     6
+    ],
+    "size": 1
+   },
+   "1g.10gb": {
+    "starts": [
+     0,
+     2,
+     4,
+     6
+    ],
+    "size": 2
+   },
+   "2g.10gb": {
+    "starts": [
+     0,
+     2,
+     4
+    ],
+    "size": 2
+   },
+   "3g.20gb": {
+    "starts": [
+     0,
+     4
+    ],
+    "size": 4
+   },
+   "4g.20gb": {
+    "starts": [
+     0
+    ],
+    "size": 4
+   },
+   "7g.40gb": {
+    "starts": [
+     0
+    ],
+    "size": 8
+   }
+  }
+ },
+ "seven_slice_valid_configs_figure": {
+  "source": "Supported MIG Profiles, Figure 17 Profiles on H100 (image _images/h100-profiles-v1.png), configs 1 to 19, transcribed by hand. Each entry lists compute-slice sizes left to right across GPC slices 0 to 6; 0 marks a GPC slice that stays unused.",
+  "configs": [
+   [
+    7
+   ],
+   [
+    4,
+    3
+   ],
+   [
+    4,
+    2,
+    1
+   ],
+   [
+    4,
+    1,
+    1,
+    1
+   ],
+   [
+    3,
+    3,
+    0
+   ],
+   [
+    3,
+    2,
+    1,
+    0
+   ],
+   [
+    3,
+    1,
+    1,
+    1,
+    0
+   ],
+   [
+    2,
+    2,
+    3
+   ],
+   [
+    2,
+    1,
+    1,
+    3
+   ],
+   [
+    1,
+    1,
+    2,
+    3
+   ],
+   [
+    1,
+    1,
+    1,
+    1,
+    3
+   ],
+   [
+    2,
+    2,
+    2,
+    1
+   ],
+   [
+    2,
+    1,
+    1,
+    2,
+    1
+   ],
+   [
+    1,
+    1,
+    2,
+    2,
+    1
+   ],
+   [
+    2,
+    1,
+    1,
+    1,
+    1,
+    1
+   ],
+   [
+    1,
+    1,
+    2,
+    1,
+    1,
+    1
+   ],
+   [
+    1,
+    1,
+    1,
+    1,
+    2,
+    1
+   ],
+   [
+    1,
+    1,
+    1,
+    1,
+    1,
+    2
+   ],
+   [
+    1,
+    1,
+    1,
+    1,
+    1,
+    1,
+    1
+   ]
+  ]
+ }
+}

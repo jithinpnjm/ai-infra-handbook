@@ -1,0 +1,31 @@
+{
+  "code": {
+    "git_commit": "3f2a9c1d8e7b6a5f4e3d2c1b0a9f8e7d6c5b4a39",
+    "git_dirty": true
+  },
+  "environment": {
+    "image": "registry.research.example.com/research/train:latest",
+    "lockfile_sha256": "aaaabbbbccccddddeeeeffff0000111122223333444455556666777788889999"
+  },
+  "data": {
+    "datasets": [
+      {
+        "name": "web-text-v3",
+        "version": "dvc:rev-9d41"
+      }
+    ]
+  },
+  "randomness": {
+    "seed": null,
+    "deterministic_algorithms": false
+  },
+  "run": {
+    "command": "python train.py --config configs/base.yaml",
+    "mlflow_run_id": "run-0001",
+    "config_artifact": "configs/base.yaml"
+  },
+  "hardware": {
+    "gpu_model": "NVIDIA H100 80GB HBM3",
+    "driver": "driver-version-recorded-at-run-time"
+  }
+}

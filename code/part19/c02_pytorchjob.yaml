@@ -1,0 +1,51 @@
+# Two-node gang: Master and Worker each take all eight GPUs of one a3-highgpu-8g node.
+# Kueue admits it through the queue-name label. KAI gang-schedules it through schedulerName and the queue label.
+apiVersion: kubeflow.org/v1
+kind: PyTorchJob
+metadata:
+  name: pretrain-2node
+  namespace: team-data-science
+  labels:
+    kueue.x-k8s.io/queue-name: team-data-science-queue
+    kai.scheduler/queue: team-data-science
+  annotations:
+    kai.scheduler/topology: capstone-topology
+    kai.scheduler/topology-required-placement: topology.kubernetes.io/zone
+spec:
+  pytorchReplicaSpecs:
+    Master:
+      replicas: 1
+      restartPolicy: OnFailure
+      template:
+        spec:
+          schedulerName: kai-scheduler
+          priorityClassName: training-standard
+          tolerations:
+            - key: nvidia.com/gpu
+              operator: Exists
+              effect: NoSchedule
+          containers:
+            - name: pytorch
+              image: nvcr.io/nvidia/pytorch:24.08-py3
+              command: ["python", "-c", "import torch; print(torch.cuda.device_count())"]
+              resources:
+                limits:
+                  nvidia.com/gpu: 8
+    Worker:
+      replicas: 1
+      restartPolicy: OnFailure
+      template:
+        spec:
+          schedulerName: kai-scheduler
+          priorityClassName: training-standard
+          tolerations:
+            - key: nvidia.com/gpu
+              operator: Exists
+              effect: NoSchedule
+          containers:
+            - name: pytorch
+              image: nvcr.io/nvidia/pytorch:24.08-py3
+              command: ["python", "-c", "import torch; print(torch.cuda.device_count())"]
+              resources:
+                limits:
+                  nvidia.com/gpu: 8

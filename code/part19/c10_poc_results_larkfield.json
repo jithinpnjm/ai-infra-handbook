@@ -1,0 +1,13 @@
+{
+  "_note": "FICTIONAL results for the fictional Larkfield PoC. Invented for the chapter. Not measured on any system.",
+  "metrics": {
+    "acceptable_answer_rate": {"value": 0.84, "runs": 3},
+    "p95_latency_s": {"value": 7.2, "runs": 5},
+    "unsupported_claim_rate": {"value": 0.04, "runs": 3},
+    "cost_per_1000_requests": {"value": 2.4, "runs": 3},
+    "adjuster_minutes_saved": {"value": 12, "runs": 1},
+    "weeks_elapsed": {"value": 5, "runs": 1},
+    "gpu_hours_used": {"value": 900, "runs": 1},
+    "security_blockers_open": {"value": 0, "runs": 1}
+  }
+}

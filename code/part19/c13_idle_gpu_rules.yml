@@ -1,0 +1,17 @@
+# Prometheus rules: find GPUs that are allocated to a pod but doing nothing.
+# DCGM_FI_DEV_GPU_UTIL_RATIO is a default counter in dcgm-exporter 4.9.0 (etc/default-counters.csv).
+# ASSUMPTION, not verified on a live cluster: dcgm-exporter was started with Kubernetes pod mapping
+# so each series carries the `namespace` and `pod` labels. Without them, join on the node and GPU.
+groups:
+  - name: research-idle-gpu
+    rules:
+      - record: research:gpu_util_ratio:avg30m
+        expr: avg_over_time(DCGM_FI_DEV_GPU_UTIL_RATIO{namespace!=""}[30m])
+      - alert: ResearchGpuHeldIdle
+        expr: research:gpu_util_ratio:avg30m < 0.05
+        for: 30m
+        labels:
+          severity: ticket
+        annotations:
+          summary: "GPU held by {{ $labels.pod }} in {{ $labels.namespace }} averaged under 5% for an hour"
+          description: "Notebook culling tracks kernel activity, not GPU use. Ask the owner or reclaim the pod."

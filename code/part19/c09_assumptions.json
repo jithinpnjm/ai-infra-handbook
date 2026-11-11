@@ -1,0 +1,75 @@
+{
+  "note": "Every price, failure rate, lead time and demand figure below is a PLACEHOLDER chosen for the worked example. Replace them with your own contracts and measurements.",
+  "base": {
+    "gpu": "h100",
+    "gpus_per_node": 8,
+    "horizon_months": 12,
+    "batch_util": 0.85,
+    "inference": {
+      "model": "qwen3-8b",
+      "in_tokens": 2000,
+      "out_tokens": 500,
+      "batch": 64,
+      "mfu": 0.4,
+      "target_util": 0.9,
+      "spares": 1,
+      "qps_history": [20, 22, 23, 26, 27, 31, 32, 36, 40],
+      "planning_percentile": "p90",
+      "qps_multiplier": 1.0
+    },
+    "training": {
+      "params": 13e9,
+      "tokens": 2e12,
+      "token_multiplier": 1.0,
+      "deadline_h": 1080,
+      "mfu": 0.4,
+      "ckpt_bytes_per_param": 6,
+      "write_gb_per_s": 20,
+      "ckpt_interval_s": 3600,
+      "restart_s": 900,
+      "gpu_mtbf_h": 30000,
+      "active_fraction_by_month": [1, 0.5, 0, 1, 0.5, 0, 1, 0.5, 0, 1, 0.5, 0]
+    },
+    "finetune": {"runs_per_month": 10, "params": 13e9, "tokens": 1e10, "mfu": 0.4},
+    "notebooks": {"users": 60, "peak_concurrency": 0.3, "sessions_per_gpu": 2},
+    "spares": {"annual_failure_rate": 0.1, "mttr_hours": 72, "coverage": 0.999},
+    "prices": {
+      "on_demand_per_gpu_hour": 5.0,
+      "reserved_discount": 0.35,
+      "own_capex_per_gpu": 40000,
+      "own_life_years": 4,
+      "own_opex_per_gpu_hour": 1.5
+    },
+    "lead_days": {"on_demand": 1, "reserved": 14, "buy": 120},
+    "uncertainty": {
+      "inference.qps_multiplier": [0.8, 1.0, 1.6],
+      "training.token_multiplier": [0.8, 1.0, 1.5],
+      "training.mfu": [0.3, 0.4, 0.5],
+      "notebooks.users": [40, 60, 100]
+    }
+  },
+  "scenarios": {
+    "base": {},
+    "demand_surge": {"inference.qps_multiplier": 1.6, "notebooks.users": 100},
+    "bigger_training_run": {"training.token_multiplier": 1.5},
+    "poor_mfu": {"training.mfu": 0.3, "finetune.mfu": 0.3},
+    "slow_repair": {"spares.mttr_hours": 336},
+    "price_shock": {"prices.on_demand_per_gpu_hour": 7.5},
+    "pricey_hardware": {"prices.own_capex_per_gpu": 80000, "prices.own_opex_per_gpu_hour": 2.5}
+  },
+  "sensitivity": {
+    "swing": 0.2,
+    "params": [
+      "inference.qps_multiplier",
+      "training.token_multiplier",
+      "training.mfu",
+      "training.deadline_h",
+      "batch_util",
+      "inference.target_util",
+      "prices.on_demand_per_gpu_hour",
+      "prices.reserved_discount",
+      "prices.own_capex_per_gpu",
+      "spares.mttr_hours"
+    ]
+  }
+}

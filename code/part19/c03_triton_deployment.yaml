@@ -1,0 +1,59 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: triton-multimodel
+  namespace: inference
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: triton-multimodel
+  template:
+    metadata:
+      labels:
+        app: triton-multimodel
+    spec:
+      nodeSelector:
+        cloud.google.com/gke-accelerator: nvidia-tesla-a100
+      volumes:
+        - name: models
+          persistentVolumeClaim:
+            claimName: triton-models
+      containers:
+        - name: triton
+          # Replace <YY.MM> with a tag from the NGC catalog for the Triton release you chose.
+          image: nvcr.io/nvidia/tritonserver:<YY.MM>-py3
+          command: ["tritonserver"]
+          args:
+            - --model-repository=/models
+            - --model-control-mode=poll
+            - --repository-poll-secs=30
+          ports:
+            - containerPort: 8000
+              name: http
+            - containerPort: 8001
+              name: grpc
+            - containerPort: 8002
+              name: metrics
+          volumeMounts:
+            - name: models
+              mountPath: /models
+          resources:
+            limits:
+              nvidia.com/gpu: 1
+          startupProbe:
+            httpGet:
+              path: /v2/health/ready
+              port: http
+            periodSeconds: 10
+            failureThreshold: 60
+          readinessProbe:
+            httpGet:
+              path: /v2/health/ready
+              port: http
+            periodSeconds: 10
+          livenessProbe:
+            httpGet:
+              path: /v2/health/live
+              port: http
+            periodSeconds: 20

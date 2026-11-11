@@ -3,7 +3,7 @@ id: "c19-05"
 title: "19.5 Capstone: an nccl-tests fabric lab"
 sidebar_label: "19.5 Capstone: nccl-tests fabric lab"
 sidebar_position: 5
-description: "End-to-end nccl-tests fabric validation capstone: the layered test ladder from nvbandwidth to nccl-tests, the single-node NVLink baseline, the multi-node RDMA baseline, reading algbw versus busbw, the failure catalogue for hangs, timeouts and stragglers, and the certification gates that turn fabric readiness into signed evidence."
+description: "A capstone lab that validates a GPU fabric layer by layer: link audit, perftest wire checks, nccl-tests collectives, algbw versus busbw, the failure signatures, and certification gates, with a tested Python analyser for nccl-tests output."
 status: "drafted"
 tier: "1"
 level: "A"
@@ -18,678 +18,758 @@ lab_venue: "On-prem"
 | Priority tier | 1 |
 | Lab venue | On-prem |
 | Part | Part 19: Capstones, design and interview readiness |
-| Primary sources | nvidia-devops Zero-to-Hero Volume 24, Project 2 "AllReduce Algorithm Design"; Volume 07 "GPU networking and data paths" ch. 2, 3, 4, 5, 7, 8, 9, 10 and Lab 03; handbook Part 12 (12.15-12.18) and Part 14 (14.10) |
-| Cross-references | Chapter 12.15 (NCCL collectives and algorithms); 12.16 (topology, channels, transports); 12.17 (nccl-tests and fabric benchmarking); 12.18 (NCCL debugging); 14.10 (multi-node training) |
+| Primary sources | nccl-tests README and doc/PERFORMANCE.md (master, commit afd59ab, read 2026-11-10); NCCL user guide environment variables, RAS and diagnostics pages (documentation set that describes NCCL up to 2.32, mirrored in nvidia-devops); *AI Systems Performance Engineering* ch. 4; *Distributed AI Systems* ch. 2; *Supercomputers for Linux SysAdmins* ch. 5; *AI Data Center Network Design and Technologies* ch. 10; NVIDIA Base Command Manager 11 administrator manual (real nccl-tests table); nvidia-devops Volume 07 and Volume 24 |
+| Cross-references | [12.15](../part-12-ai-networking/15-nccl-collectives-and-algorithms.md), [12.16](../part-12-ai-networking/16-nccl-topology-channels-transports-and-environment-variables.md), [12.17](../part-12-ai-networking/17-nccl-tests-and-fabric-benchmarking.md), [12.18](../part-12-ai-networking/18-nccl-debugging-hangs-timeouts-and-errors.md), [12.19](../part-12-ai-networking/19-gpudirect-rdma-and-gpudirect-storage.md), [12.23](../part-12-ai-networking/23-fabric-validation-and-capacity-planning.md), [10.6](../part-10-gpu-cuda/06-gpu-interconnects-pcie-nvlink-nvswitch-and-nvlink-c2c.md), [10.8](../part-10-gpu-cuda/08-operating-gpu-nodes-nvidia-smi-topology-clocks-and-throttling.md), [14.10](../part-14-training-finetuning/10-multi-node-training-architecture.md) |
+| Code | `code/part19/c05_*` (shell scripts, `c05_nccl_parse.py`, `test_c05_nccl_parse.py`, `c05_fixtures/`) |
 | Coverage file | `planning/coverage/chapters/19-05.md` |
 | Claim & number ledger | `planning/ledgers/19-05.md` |
 
 ## Why this matters for AI infrastructure
 
-It is 2 a.m. A 64-GPU pretraining run has just timed out, and the on-call engineer is staring at a dashboard that looks healthy. Every InfiniBand port reports active. Every error counter reads zero. The utilization graphs show all 64 cards busy, and yet the run's gradient synchronization is 40 percent slower than the same job on the same cluster three months ago. The dashboards are telling the truth, which is the problem: they describe the state of the links, not the bandwidth of the data path. A fabric is not a state you can observe. It is a number you must measure, layer by layer, or the cluster pays for the gap in GPU-hours.
+It is 2 a.m. A 64-GPU pretraining run has slowed down, and the dashboard looks healthy. Every InfiniBand port reports active and every error counter reads zero. Yet gradient synchronization takes much longer than it did three months ago. The dashboard is truthful. It describes the state of the links, not the bandwidth of the data path.
 
-Every piece of that story has its own chapter. The NVLink and PCIe data paths live in the networking volumes, the NCCL collectives in 12.15, the topology and transports in 12.16, the test tooling in 12.17, and the debugging ladders in 12.18. The training workloads that consume all of it arrive in Part 14. A team that has read all of them can describe each piece in isolation. The capstone exists to answer the harder question: what holds the pieces together when a multi-node run times out?
+A fabric is not a state you can observe. It is a number you must measure, layer by layer, and then keep. Without a saved number, nobody can say whether the fabric changed or the workload did. The argument then runs on opinions while GPUs sit idle.
 
-The answer is the fabric lab. It runs the same collectives production training runs, at message sizes small enough to expose latency and large enough to expose bandwidth. It builds a single-node baseline over NVLink and a multi-node baseline over RDMA. It reads the two bandwidth columns that nccl-tests reports, and it knows which one is comparable to the spec sheet. Then it applies a set of pass/fail gates, so that fabric readiness becomes a signed artifact instead of a dashboard impression.
+This capstone builds the measurement. It runs the same collectives that training runs, at sizes small enough to show latency and large enough to show bandwidth. It reads the two bandwidth columns that nccl-tests prints and knows which one to compare with a link rate. It ends with gates, so that "the fabric is ready" becomes a signed set of tables instead of an impression.
 
-This capstone is also the interview anchor. When an interviewer asks how you would validate an AI fabric, the answer is not a list of tools; it is this layered picture, told in the order a real validation proceeds. It is the reference the platform team uses when commissioning a new fabric, and the evidence pack the on-call engineer diffs against when something gets slower.
-
-**Before a team can claim its fabric is ready, it must have run this capstone. A team that has not run it has validated link state, which is not the same thing.**
+**The lab needs a GPU cluster. It was not run for this chapter.** What was run here is the analyser: `c05_nccl_parse.py` has 24 passing tests, including one real nccl-tests table taken from an NVIDIA manual. Every other command in the lab is untested in this repository, and the text says so at each step.
 
 ## Prerequisites and outcomes
 
 ### Prerequisites
 
-- Chapter 12.15: NCCL collectives and algorithms.
-- Chapter 12.16: NCCL topology, channels, transports, and environment variables.
-- Chapter 12.17: nccl-tests and fabric benchmarking.
-- Chapter 12.18: NCCL debugging, hangs, timeouts, and errors.
-- Chapter 14.10 for the multi-node training context the fabric exists to serve.
-- Basic RDMA fluency: verbs, queue pairs, and GPUDirect RDMA from the earlier chapters of Part 12.
+- [12.15](../part-12-ai-networking/15-nccl-collectives-and-algorithms.md) and [12.16](../part-12-ai-networking/16-nccl-topology-channels-transports-and-environment-variables.md) for collectives, algorithms and transports.
+- [12.17](../part-12-ai-networking/17-nccl-tests-and-fabric-benchmarking.md) for the benchmarking method this chapter applies end to end.
+- [12.18](../part-12-ai-networking/18-nccl-debugging-hangs-timeouts-and-errors.md) for hangs and timeouts.
+- RDMA basics from [12.2](../part-12-ai-networking/02-rdma-fundamentals-verbs-queue-pairs-and-memory-registration.md) and GPU topology reading from [10.8](../part-10-gpu-cuda/08-operating-gpu-nodes-nvidia-smi-topology-clocks-and-throttling.md).
+- For the scheduler side of a cluster like this, see capstone 19.1 (Slurm GPU cluster). This lab launches with `mpirun` and works the same under `srun`.
 
 ### Outcomes
 
-After completing this capstone you will be able to:
+After this capstone you can:
 
-1. Audit the GPU-to-NIC topology and the RDMA port counters before any benchmark is launched.
-2. Run the single-node NVLink baseline and interpret its bus bandwidth against the interconnect rating.
-3. Run the multi-node RDMA baseline and verify which transport NCCL actually selected.
-4. Convert algorithmic bandwidth to bus bandwidth for every collective and verify the arithmetic of a sweep.
-5. Isolate a straggler node in logarithmic time and name the degraded rail.
-6. Apply the certification gates and assemble the evidence pack that certifies the fabric.
+1. Audit GPU-to-NIC topology, port state and error counters before any benchmark runs.
+2. Run a single-node and a multi-node AllReduce sweep and verify from the log which transport NCCL used.
+3. Convert algbw to busbw for each collective and check a table's arithmetic.
+4. Run the analyser and name the failure signature it raises.
+5. Isolate a slow node by bisection and apply the certification gates.
 
 ---
 
-## 1. Why fabric labs exist: the validation ladder
+## 1. The validation ladder
 
-### The commissioning that passed on link state
+The new fabric was handed over on a Tuesday after the link-state checklist passed. Three weeks later the first multi-node run took twice as long as the capacity model predicted. Nobody could say where the time went, because nobody had measured anything. The fabric had been watched and never measured.
 
-The new fabric arrived on a Tuesday, and the commissioning checklist stopped at link state. Every port trained at full speed, the switch telemetry showed no errors, and the team signed the handover that afternoon. Three weeks later, the first multi-node training run takes twice as long as the capacity model predicted, and no one can say where the time went. The fabric was never measured; it was only watched. The rest of this chapter converts that watching into numbers, in the order a senior engineer runs them.
+"The cluster is slow" has several physical answers that look the same on a dashboard. A dirty connector can cause retransmissions. A NIC can train at half width. GPUDirect RDMA can be switched off, so every transfer bounces through host memory. The framework hides all three, so you test the layers one at a time with small tools.
 
-### The ticket that has three physical answers
+Do not start with `iperf3`. It sends through the kernel TCP stack, and the training job does not. RDMA lets the NIC move memory without the kernel in the data path. The perftest tools such as `ib_write_bw` exercise that path, and nccl-tests exercises the collectives on top of it.
 
-"The cluster is slow" is the most terrifying ticket a senior infrastructure engineer can receive. In traditional IT you check CPU, memory, and disk, and if they are fine you blame the database. In a distributed AI cluster, "slow" has three physical answers that look identical from the dashboard. A dirty optical connector can cause signal errors, link retraining, and retransmissions. A single PCIe lane out of sixteen can fail on one NIC, dropping its bandwidth from 64 to 32 GB/s. A developer can have disabled GPUDirect RDMA, and every transfer now bounces through host memory. None of these faults is visible while a PyTorch job runs, because the framework abstracts the hardware away. The senior engineer isolates the hardware layers and benchmarks them sequentially with low-level binaries.
-
-### Why iperf3 cannot answer the question
-
-Engineers coming from web infrastructure reach for `iperf3` first, and then are surprised when it misses the problem. `iperf3` pushes its packets through the kernel TCP/IP socket stack, with context switches, socket buffer copies, and software interrupts. That stack bottlenecks the host CPU cores long before it saturates a 400G link. RDMA is built precisely to avoid that path: the NIC posts work queue entries directly, DMA moves the memory, and the kernel on both servers is out of the data path. The perftest suite, with `ib_write_bw` and `ib_write_lat`, exercises that kernel-bypass path. So the wire test always uses perftest, and the collective test always uses nccl-tests. `iperf3` is for management-network reachability checks, nothing more.
-
-### The ladder
-
-The full validation runs in four tiers, from the physical silicon up to the framework. Each tier starts only after the tier below it passes, so the first failing tier names the layer to fix. A senior engineer never skips to tier three: if you run the NCCL tests first and they fail, you cannot tell whether the fault is a dirty cable, a downtrained PCIe link, or a NUMA misalignment.
+The ladder below runs from silicon up to the framework. Each tier starts only when the tier below has passed, so the first failing tier names the layer to fix.
 
 ```mermaid
 flowchart TD
-    T1["Tier 1: Intra-node bus<br/>nvbandwidth, nvidia-smi topo -m"] --> T2A["Tier 2a: Host RDMA wire<br/>ib_write_bw, ib_write_lat"]
-    T2A --> T2B["Tier 2b: GPUDirect RDMA path<br/>ib_write_bw --use_cuda"]
-    T2B --> T3A["Tier 3a: Single-node NCCL<br/>all_reduce_perf on 8 GPUs"]
-    T3A --> T3B["Tier 3b: Multi-node NCCL<br/>mpirun all_reduce_perf"]
-    T3B --> T4["Tier 4: Application profile<br/>nsys, torch profiler"]
+    T1["Tier 1: node bus and topology<br/>nvidia-smi topo -m, nvbandwidth"] --> T2A["Tier 2a: host RDMA wire<br/>ib_write_bw, ib_write_lat"]
+    T2A --> T2B["Tier 2b: GPUDirect RDMA path<br/>ib_write_bw with --use_cuda"]
+    T2B --> T3A["Tier 3a: single-node collectives<br/>all_reduce_perf on all GPUs"]
+    T3A --> T3B["Tier 3b: multi-node collectives<br/>mpirun all_reduce_perf"]
+    T3B --> T4["Tier 4: application profile<br/>Nsight Systems, PyTorch profiler"]
 ```
 
-The table below gives each tier's tool, its healthy reference, and the failure signature you look for when a number falls short.
-
-| Validation tier | Primary binary | Healthy reference | Failure signature |
+| Tier | Tool | What a pass means | Typical failure signature |
 |---|---|---|---|
-| **1: Intra-node bus** | `nvbandwidth`, `nvidia-smi topo -m`, `nvidia-smi nvlink --status` | 50-60 GB/s device-to-host on PCIe Gen5 x16; NV18 links active | 25-30 GB/s means the link downtrained from x16 to x8 |
-| **2a: Host RDMA wire** | `ib_write_bw`, `ib_write_lat` | ~390 Gbps sustained on 400G NDR; 1-5 microseconds latency | ~195 Gbps means width or rate downtrain on the link |
-| **2b: GPUDirect path** | `ib_write_bw --use_cuda` | Matches tier 2a on a PIX-paired GPU and NIC | Host RDMA healthy but GPU-buffer transfer collapses: peermem, ACS, or SYS pairing |
-| **3a: Single-node collectives** | `all_reduce_perf` on 8 GPUs | busbw in the 750-800 GB/s range at large sizes on H100 SXM | Stuck at 20-90 GB/s: fabric manager down or P2P/SHM disabled |
-| **3b: Multi-node collectives** | `mpirun` or `srun` of nccl-tests | busbw at least 80% of the local or per-rail baseline | 2.0 GB/s instead of ~100 GB/s: NET/Socket TCP fallback |
-| **4: Application** | `nsys`, `torch.profiler` | Collective time hidden under backward compute | Wire passes at 1 GiB but training is 40% slow: microscopic buckets |
+| 1 | `nvidia-smi topo -m`, `nvbandwidth` | NVLink between GPUs, local GPU-NIC pairs, PCIe at full width | Host-to-device copy at about half the Gen5 x16 figure, which suggests a narrower link |
+| 2a | `ib_write_bw`, `ib_write_lat` | Throughput close to the port rate, flat error counters | About half the port rate, which suggests a lane or speed downshift |
+| 2b | `ib_write_bw --use_cuda` | GPU-memory number close to the host-memory number | Host healthy, GPU path collapsed: peermem module, ACS or a far GPU-NIC pair |
+| 3a | `all_reduce_perf`, one node | busbw at your own commissioning baseline, `#wrong` zero | Far below baseline after a reboot, often a down NVSwitch fabric manager or disabled P2P |
+| 3b | `mpirun all_reduce_perf` | busbw near the per-GPU link rate or your baseline, NET/IB in the log | Under 1 GB/s with `NET/Socket` in the log, as in the real table in Section 5 |
+| 4 | `nsys`, `torch.profiler` | Collective time hidden under backward compute | Wire passes, training is slow: many small buckets |
 
-### What the lab produces
+The reference numbers in this table are deliberately loose. The only hard anchors come from sources. A 4x NDR InfiniBand link carries 400 Gbps, which is 50 GB/s (*Supercomputers for Linux SysAdmins*, Table 5-1; the division by eight is arithmetic). A PCIe Gen5 x16 slot gives roughly 64 GB/s per direction (*Distributed AI Systems*, ch. 2). Everything else is judged against a baseline that you capture on your own healthy fabric.
 
-The lab produces three artifacts, and all three are standing services rather than one-time exercises. The first is a baseline per tier, captured on a healthy fabric and stored with the versions that produced it. The second is a gate per tier: a pass/fail criterion that turns a number into a decision. The third is the evidence pack that ties the two together, so that when a firmware rollout, a cable swap, or a node replacement lands, the team re-runs the lab and diffs the new pack against the baseline. A fabric lab is how a platform team answers the question "is the fabric ready?" with a document instead of an opinion.
+The lab produces three standing artifacts. The first is a baseline per tier, saved with the versions that produced it. The second is a pass or fail gate per tier. The third is an evidence pack that ties both together, so a firmware change or a cable swap becomes a diff against the pack.
 
-**Decision rule:** never benchmark a layer until the layer below it has passed, because a slow number above a broken layer carries no information.
+**Decision rule:** never benchmark a layer until the layer below has passed, because a slow number above a broken layer says nothing.
 
-**In one minute:** "The cluster is slow" has three physical answers: a degraded wire, a downtrained PCIe link, or a disabled GPU-direct path. `iperf3` tests a path the training job never uses, so validation proceeds in tiers: intra-node bus, host RDMA wire, GPUDirect path, single-node collectives, multi-node collectives, and finally the application profile. Each tier starts only after the tier below passes, and the first failing tier names the layer to fix.
+**In one minute:** "slow" can mean a degraded wire, a narrow PCIe link or a disabled GPU path, and dashboards show none of them. Validate in tiers from the node bus up to the application. Judge each tier against a baseline from your own healthy fabric, and let the first failing tier name the layer to fix.
 
 ---
 
-## 2. Anatomy of a test: collectives, algorithms, and message sizes
+## 2. Anatomy of a test: collectives, factors and sizes
 
-### The ticket filed against a healthy fabric
+A new engineer reads the nccl-tests output and files a ticket against every NIC in the rack. The AllReduce shows 24 GB/s in the algbw column, and the rails are rated at 400 Gbps. That looks like half the line rate. The busbw column on the same row says 45 GB/s, which is the number to compare with the link. The fabric was fine and the ticket was wrong.
 
-A new engineer reads the nccl-tests output and files an RMA ticket on every NIC in the rack. The AllReduce algorithmic bandwidth reads 183.55 GB/s, and the rails are rated at 400 Gbps, which is 50 GB/s per port. The fabric looks half dead, and the ticket is convincing. The bus bandwidth column, which is the number that is actually comparable to the spec sheet, reads 361.36 GB/s, about 90 percent of line rate. The fabric is fine. The ticket is not, and this section teaches you which column to read and why the other one exists.
+Each nccl-tests binary times one collective in a loop, with no framework around it. Data-parallel training ends each step with an AllReduce. Fully sharded training runs an AllGather before a layer and a ReduceScatter after it. Mixture-of-experts dispatch uses AllToAll. The binaries are `all_reduce_perf`, `reduce_scatter_perf`, `all_gather_perf`, `alltoall_perf`, `broadcast_perf` and `reduce_perf`.
 
-### What each collective does
+### algbw and busbw
 
-In data-parallel training, every GPU computes gradients over its own data shard, and the step ends with an AllReduce that returns the summed, averaged gradient to every GPU. Fully sharded data parallelism decomposes the step differently: it runs an AllGather before each layer's compute pass and a ReduceScatter after the backward pass. Tensor parallelism runs an AllReduce on every layer. Mixture-of-experts token dispatch runs an AllToAll. The nccl-tests suite ships one standalone binary per family, and each binary times the collective in a tight loop with no framework overhead.
+The nccl-tests Performance page defines algbw as the data size divided by the time. That number depends on the rank count, so it cannot be compared with hardware. The page therefore applies a correction factor to get busbw, "a number which reflects how optimally the hardware is used". The page states the factors below.
 
-| Binary | Collective | Every rank ends with | busbw factor |
-|---|---|---|---|
-| `all_reduce_perf` | AllReduce | the reduced tensor on every rank | 2(n-1)/n |
-| `reduce_scatter_perf` | ReduceScatter | one reduced shard of S/n | (n-1)/n |
-| `all_gather_perf` | AllGather | the full concatenated tensor | (n-1)/n |
-| `alltoall_perf` | AllToAll | its transposed chunk set | (n-1)/n |
-| `broadcast_perf` | Broadcast | the root's tensor replicated | 1.0 |
-| `reduce_perf` | Reduce | the reduced tensor on the root | 1.0 |
+| Collective | busbw factor | At 8 ranks | At 16 ranks | At 64 ranks |
+|---|---|---|---|---|
+| AllReduce | 2(n-1)/n | 1.75 | 1.875 | 1.96875 |
+| ReduceScatter | (n-1)/n | 0.875 | 0.9375 | 0.984375 |
+| AllGather | (n-1)/n | 0.875 | 0.9375 | 0.984375 |
+| AlltoAll | (n-1)/n | 0.875 | 0.9375 | 0.984375 |
+| Broadcast | 1 | 1 | 1 | 1 |
+| Reduce | 1 | 1 | 1 | 1 |
 
-AllReduce is mathematically identical to a ReduceScatter followed by an AllGather. That identity is what makes it pipelinable, and it is why the AllReduce factor is the largest in the table: two passes over the data instead of one.
+The derivation for AllReduce is short. Each element needs n-1 additions and n assignments, which is 2(n-1) transfers. With n links of bandwidth B, the best time is `t = S/B * 2(n-1)/n`. Solving for B gives `B = algbw * 2(n-1)/n`. That is where the factor comes from, and the page states that the bottleneck being compared is "NVLink, PCI, QPI, or network".
 
-### Which algorithm NCCL picks
+The worked rows below come from `c05_worked_example.py`. The times are constructed to practise the formulas. They are not measurements.
 
-NCCL does not run one algorithm for everything; it scores the physical topology at initialization and selects per message size. The **ring** arranges the GPUs in a logical circle so that every GPU sends and receives about the same amount of data, which balances link utilization beautifully. Its weakness is latency: the data takes one hop per GPU, so a 1,000-GPU ring is 1,000 hops. The **tree** organizes the GPUs hierarchically, so the hop count drops logarithmically as the cluster grows. **NVLS** moves the reduction itself into the NVSwitch ASIC on Hopper and later, cutting the data each endpoint must send by a factor of 1/(N-1). **SHARP**, or CollNet in NCCL, does the in-network reduction inside the Quantum InfiniBand switch ASIC instead. SHARP needs supported switches and the NCCL plugin, and it only helps some collectives at some message sizes, so you measure it before you rely on it.
+| Case | Size | Time | algbw | busbw |
+|---|---|---|---|---|
+| 8 ranks, one node | 64 MiB | 1653.1 us | 40.60 GB/s | 71.04 GB/s |
+| 16 ranks, two nodes | 1 GiB | 44739.2 us | 24.00 GB/s | 45.00 GB/s |
+| 64 ranks, eight nodes | 1 GiB | 46970.0 us | 22.86 GB/s | 45.01 GB/s |
 
-The AllReduce algorithm design project in the source material makes the comparison concrete on an 8-GPU cluster. A naive all-to-all broadcast, where each GPU sends its tensor to every other GPU one at a time, takes N(N-1) link hops, which is 56 hops for 8 GPUs, and it serializes the network. The ring takes 2(N-1) hops, or 14, with every step pipelined, and it completes 40 percent faster. A carefully hand-tuned ring reaches about 54 percent of peak bandwidth; NCCL's auto-tuned implementation reaches 81 percent. NCCL wins because it adapts to the topology you actually have, which is exactly why the fabric lab measures NCCL behavior instead of re-deriving it.
+The same 1 GiB takes almost the same time on 16 and 64 ranks, while algbw barely moves and busbw stays at 45. That is the point of busbw. It stays flat when the cluster grows and the fabric is healthy. In the 64-rank case the algbw is below half of the link rate, and no fault is involved. A 400 Gbps link is 50 GB/s, and 45 GB/s of busbw is 90 percent of it.
 
-### Message sizes decide what you measure
+One caution applies to every comparison with a link rate. busbw is only a hard ceiling in simple cases. Algorithms that move reduction into the fabric, such as SHARP or NVLS, can change what the network carries. Treat "busbw above the NIC rate" as information, not as a measurement error, and always compare with your own baseline first.
 
-The sizes you sweep decide what the run exposes. Small messages from 4 KiB to 64 KiB are dominated by launch and hop latency, not by link bandwidth, so they give you the latency floor. Mid-size messages from 1 MiB to 64 MiB show the transition where bandwidth starts to dominate. Large messages from 128 MiB upward exercise sustained bandwidth, and the acceptance runs in this capstone use 1 GiB as the certification size. A sweep that only covers the small end tells you about latency and misses a congested rail; a sweep that only covers the large end tells you about bandwidth and misses a slow handshake.
+### Algorithms, protocols and sizes
 
-### The flags
+NCCL chooses among algorithms and protocols itself. The environment guide lists `NCCL_ALGO` values such as Ring and Tree, and `NCCL_PROTO` values `LL`, `LL128` and `Simple`. The guide discourages setting `NCCL_PROTO`, and warns that enabling LL128 on a platform that does not support it can corrupt data. The right use of both variables is to turn one off for an A/B test.
 
-The table below lists the flags the lab uses, each with its operational meaning.
+Sizes decide what a run exposes. Small messages are dominated by fixed latency, so the time column matters and the bandwidth columns do not. The Performance page says this directly: on small sizes the time measures constant overhead, and on large sizes it is linear in size. Large messages show sustained bandwidth. The sweep in this lab runs from 8 MiB to 1 GiB, which shows the rise and the plateau. Add small sizes when you care about latency.
 
-| Flag | Meaning |
+### The flags the lab uses
+
+These flags are from the nccl-tests README at the commit named above.
+
+| Flag | Meaning and default |
 |---|---|
-| `-b <bytes>` | minimum message size, with K/M/G suffixes |
-| `-e <bytes>` | maximum message size |
-| `-f <int>` | multiplicative step factor between sizes; 2 doubles each row |
-| `-g <int>` | GPUs per process; 8 for a single-process local run, 1 when one process is launched per GPU |
-| `-w <int>` | untimed warmup iterations before the clock starts |
-| `-n <int>` | timed iterations averaged per row |
-| `-c <int>` | data-integrity checks; 1 compares the reduced output and fills the `#wrong` column |
-| `-d <type>` | element datatype, such as `float`, `half`, or `bfloat16` |
-| `-o <op>` | reduction operator, sum by default |
-| `-R <int>` | persistent buffer registration to exercise zero-copy paths |
+| `-b`, `-e` | Minimum and maximum size in bytes, with K, M, G suffixes. Both default to 32M |
+| `-f` | Multiplication factor between sizes, so `-f 2` doubles each row |
+| `-g` | GPUs per thread. Default 1. Use 8 for one process on an 8-GPU node |
+| `-w` | Untimed warmup iterations. Default 1 |
+| `-n` | Timed iterations. Default 20 |
+| `-c` | Iterations that check correctness. Default 1, so the check is on unless you turn it off |
+| `-a` | How ranks are averaged in the report, MPI builds only: 0 rank 0, 1 average, 2 minimum, 3 maximum. Default 1 |
+| `-R` | Buffer registration: 1 local, 2 symmetric. Default 0 |
+| `-T` | Timeout in seconds per test. Disabled by default |
+| `-J` | Write JSON output to a file |
 
-Warmup matters because the first iteration pays lazy initialization and handle setup costs. A production burn-in uses `-w 10 -n 100`; the lab's matrix runs use `-w 5 -n 50`.
+The total rank count is processes times threads times GPUs per thread. With MPI, the process count comes from `mpirun`, and the tests need a build with `MPI=1`. The README example for 64 GPUs is `mpirun -np 64 -N 8 ./build/all_reduce_perf -b 8 -e 8G -f 2 -g 1`.
 
-**Decision rule:** pick the message size to match the question, latency or bandwidth, and keep the same size when you compare any two baselines.
+**Decision rule:** choose the size for the question you ask, latency or bandwidth, and keep it the same whenever two runs are compared.
 
-**In one minute:** each nccl-tests binary times one collective family. AllReduce is a ReduceScatter plus an AllGather, which is why its busbw factor is 2(n-1)/n and its busbw is the number comparable to the spec sheet, not the algbw. NCCL picks ring, tree, NVLS, or SHARP per message size and topology. Small sizes expose latency, large sizes expose bandwidth, and the flags set both the sweep shape and the rigor.
+**In one minute:** each binary times one collective. busbw equals algbw times a factor stated on the nccl-tests Performance page, and it is the number that compares with a link rate. Small sizes expose latency and large sizes expose bandwidth. The check flag `-c` defaults to 1.
 
 ---
 
 ## 3. The single-node baseline: the NVLink domain
 
-### The node that came back from reboot
+A node came back from a firmware reboot on Monday, and its first single-node sweep ran at a fraction of the bandwidth it had before. Every GPU still reported its links. The host looked fine in every place anyone checked. The NVSwitch fabric manager had not come back after the reboot. The fix was one service restart and one re-run.
 
-The node came back from a firmware reboot on Monday, and the first single-node sweep ran at a tenth of its expected bandwidth. Every GPU still reported its links, and the host looked fine in every place anyone thought to look. The fabric manager daemon had not survived the reboot, and the NVSwitch domain was down. The fix was one daemon restart and one re-run. The lesson is the value of the baseline: the single-node run is the cheapest probe you have, and it catches the most common silent failure in an NVSwitch fleet.
+On an 8-GPU node with NVSwitch, the GPUs talk to each other over NVLink and not over PCIe. In `nvidia-smi topo -m` that shows as entries such as `NV18`. *Distributed AI Systems* (ch. 2) gives per-GPU NVLink bandwidth as 900 GB/s on Hopper, up to 1.8 TB/s on Blackwell B200, aggregate bidirectional. Those are link ratings. They are not targets for busbw.
 
-### The NVLink domain
+There is no honest sourced busbw target for a single node in this chapter. Earlier drafts quoted a "750 to 800 GB/s" range for H100 nodes, and that figure is not in any source this chapter uses, so it is removed. NVLS can also change the data path. The single-node gate is therefore your own commissioning baseline, plus two integrity conditions: `#wrong` is zero and the link entries show NVLink.
 
-On an 8-GPU HGX or DGX node, the GPUs are not talking over PCIe at all. Each H100 carries 18 NVLink connections, the baseboard routes them down into four NVSwitch chips, and the result is a fully non-blocking all-to-all mesh. Every GPU can talk to every other GPU at 900 GB/s, with no hops, no PCIe transfers, and no CPU involvement. In the topology matrix that shows up as `NV18`, meaning 18 bonded fourth-generation NVLinks. The NVLink generations give you the per-GPU rating for each architecture:
+The PCIe side is separate. A host-to-device copy leaves the node through PCIe, and a Gen5 x16 slot gives roughly 64 GB/s per direction. If `nvbandwidth` reads about half of what the slot should give, suspect a link that trained at x8, and confirm the negotiated width with `lspci -vv`. The exact `nvbandwidth` thresholds in earlier drafts were from memory and are removed. Compare with the same node's baseline.
 
-| Generation | GPU era | Per-GPU bandwidth |
-|---|---|---|
-| NVLink 1.0 | Pascal P100 | 160 GB/s |
-| NVLink 2.0 | Volta V100 | 300 GB/s |
-| NVLink 3.0 | Ampere A100 | 600 GB/s |
-| NVLink 4.0 | Hopper H100 | 900 GB/s |
-| NVLink 5.0 | Blackwell B200 | 1.8 TB/s |
+The run itself is one script.
 
-### The PCIe floor
-
-The GPU's memory runs at 3,350 GB/s on an H100, and its PCIe Gen5 x16 path out of the node is about 64 GB/s per direction. That is the straw the firehose flows through whenever data leaves the node, and it is why the single-node test separates two numbers. Intra-GPU traffic uses NVLink; NIC-bound traffic uses PCIe. You verify the PCIe side with `nvbandwidth`: a healthy device-to-host copy on Gen5 x16 lands at 50 to 60 GB/s, and a reading of 25 to 30 GB/s means the link downtrained from x16 to x8, which you confirm with `lspci -vv` and the LnkSta field.
-
-### The run
+File: `code/part19/c05_run_single_node.sh`
 
 ```bash
-# Tier 1: PCIe and NVLink sanity on the node
-nvbandwidth -t device_to_host_memcpy_ce
-nvidia-smi topo -m
-nvidia-smi nvlink --status
+#!/usr/bin/env bash
+# Single-node baseline: one process, all GPUs, AllReduce sweep with the check on.
+# Usage: LAB_DIR=... [NGPUS=8] [NCCL_TESTS=$HOME/nccl-tests] c05_run_single_node.sh
+# Not run in this repository (needs GPUs).
+set -euo pipefail
+LAB_DIR="${LAB_DIR:?set LAB_DIR}"
+NGPUS="${NGPUS:-8}"
+BIN="${NCCL_TESTS:-$HOME/nccl-tests}/build"
+mkdir -p "$LAB_DIR"
 
-# Tier 3a: single-node 8-GPU AllReduce sweep
-./build/all_reduce_perf -b 8M -e 1G -f 2 -g 8 -w 5 -n 50 -c 1
+NCCL_DEBUG=INFO "$BIN/all_reduce_perf" -b 8M -e 1G -f 2 -g "$NGPUS" -w 5 -n 50 -c 1 \
+  | tee "$LAB_DIR/single-node-allreduce.txt"
 ```
 
-On an 8-GPU H100 SXM node, the large-size bus bandwidth should land in the 750 to 800 GB/s range. The reference row from the benchmarking chapter is 1 GiB in 2,480 microseconds, which gives an algorithmic bandwidth of 432.96 GB/s and a bus bandwidth of 757.68 GB/s. On a PCIe-only node without an NVSwitch mesh, the same sweep runs an order of magnitude lower; a hybrid PCIe baseline measured 95.18 GB/s at 512 MiB. That contrast is the whole point of the tier: the number tells you which interconnect the collective actually used, and the `NV18` row in the topology matrix confirms it.
+Two environment variables turn the NVLink path off, and both are meant only for diagnosis. `NCCL_P2P_DISABLE=1` disables the peer-to-peer transport, which uses NVLink or PCIe direct access. `NCCL_SHM_DISABLE=1` disables the shared-memory transport that NCCL uses when peer-to-peer is not possible. *AI Systems Performance Engineering* (ch. 4) warns that leaving either one set can cut bandwidth from hundreds of GB/s to tens of GB/s. A single-node run far below its baseline therefore has two quick checks: is the fabric manager running, and is either variable set in the shell or the container?
 
-**Decision rule:** do not launch the multi-node baseline until the single-node anchor passes on every node that will join it, because one weak NVSwitch domain drags the whole ring down.
+**Decision rule:** do not start the multi-node baseline until every node that will join it has passed its own single-node run.
 
-**In one minute:** the single-node baseline benchmarks the densest part of the fabric, the NVLink domain. H100 nodes run an NV18 all-to-all mesh at 900 GB/s per GPU through four NVSwitches, and `nvbandwidth` verifies the PCIe floor at 50-60 GB/s per x16 lane group. The 8-GPU `all_reduce_perf` sweep should reach 750-800 GB/s bus bandwidth at large sizes on SXM nodes, and a result a tenth of that usually means the fabric manager is down.
+**In one minute:** the single-node run measures the NVLink domain. There is no sourced absolute target, so the gate is your own baseline with `#wrong` zero. A large drop after a reboot points at the NVSwitch fabric manager or at `NCCL_P2P_DISABLE` and `NCCL_SHM_DISABLE`. The PCIe floor is checked separately.
 
 ---
 
 ## 4. The multi-node baseline: the RDMA fabric
 
-### Two identical servers, twice the time
+Two servers have the same GPUs, the same NICs and the same switch. A job runs at full speed on one and at half speed on the other. The difference was the slot population. On the slow node, the job's GPUs sat on the CPU socket that did not own the NIC, so each byte crossed the link between sockets. The multi-node baseline starts with an audit because this class of fault never shows in a link-state check.
 
-Two identical servers, the same GPUs, the same NICs, the same switch. On node A the training job runs at full speed. On node B it takes twice as long. The hardware is identical; the PCIe slot population is not. The NIC is wired to CPU 0, and on node B the job's GPUs live on CPU 1, so every byte of gradient crosses the inter-socket link between the sockets. The multi-node baseline exists to make that difference a number instead of a rumor, and the first step is auditing the topology before anything is measured.
+### The lab fabric
 
-### The fabric of the lab
-
-The lab runs on two nodes, node-a and node-b. Each carries 8 H100 80 GB SXM GPUs connected in an NV18 NVSwitch domain, and one ConnectX-7 NDR400 adapter per GPU, enumerated `mlx5_0` through `mlx5_7`. A 400 Gb/s port is 50 GB/s of line rate, and the rails are aligned: GPU k on node-a talks to GPU k on node-b over the same physical rail, so the eight rails share the load evenly.
+The lab uses two nodes named `node-a` and `node-b`. Each has 8 GPUs in one NVLink domain and 8 ConnectX-7 NDR adapters, `mlx5_0` to `mlx5_7`. This is a lab assumption chosen so the arithmetic is easy. Rails are aligned: GPU k on one node meets GPU k on the other over rail k.
 
 ```mermaid
 flowchart LR
     subgraph A["node-a"]
-        GA["8x H100 SXM<br/>NV18 NVSwitch domain"]
-        RA["8x ConnectX-7 NDR400<br/>mlx5_0 through mlx5_7"]
+        GA["8 GPUs, one NVLink domain"]
+        RA["8 NDR adapters, mlx5_0 to mlx5_7"]
         GA --- RA
     end
     subgraph B["node-b"]
-        GB["8x H100 SXM<br/>NV18 NVSwitch domain"]
-        RB["8x ConnectX-7 NDR400<br/>mlx5_0 through mlx5_7"]
+        GB["8 GPUs, one NVLink domain"]
+        RB["8 NDR adapters, mlx5_0 to mlx5_7"]
         GB --- RB
     end
-    SW["InfiniBand leaf switch<br/>NDR400, 8 aligned rails"]
-    RA -->|rail k to rail k| SW
-    RB -->|rail k to rail k| SW
+    SW["InfiniBand leaf switch, 8 aligned rails"]
+    RA -->|"rail k"| SW
+    RB -->|"rail k"| SW
 ```
 
-| Item | Value |
-|---|---|
-| Nodes | node-a, node-b; 8x H100 80 GB SXM each |
-| NICs per node | 8x ConnectX-7 NDR400, one per GPU, `mlx5_0` to `mlx5_7` |
-| Line rate per rail | 400 Gb/s, which is 50 GB/s |
-| Rail alignment | GPU k on node-a to GPU k on node-b over rail k |
-| Intra-node fabric | NV18 NVLink domain, 900 GB/s per GPU |
-
-Generation pairing matters as much as the fabric itself. The ConnectX line steps with the GPU generation:
-
-| Generation | Max per port | Bus | Form factor |
-|---|---|---|---|
-| ConnectX-6 | 200 Gbps HDR | PCIe Gen4 x16 | QSFP56 |
-| ConnectX-7 | 400 Gbps NDR | PCIe Gen5 x16 | OSFP |
-| ConnectX-8 | 800 Gbps XDR | PCIe Gen6 | see product brief |
-
-The reference design is one 400G ConnectX-7 per H100. A 400G port needs 50 GB/s of PCIe, and a Gen5 x16 slot provides about 64 GB/s per direction, so the NIC fits under the bus ceiling with little headroom. Watch for the cost-saving spec that says "dual 200G NICs per GPU for 400G total." Arithmetically it looks right and architecturally it is not: you need software bonding to combine two Gen4 ports, and a GPU that is not locally attached to both NICs loses the direct PCIe path to at least one of them. Verify pairing with the topology matrix before you accept the hardware.
+| Item | Lab value | Source |
+|---|---|---|
+| Ranks | 16, one process per GPU | lab design |
+| NIC rate | 400 Gbps per rail, which is 50 GB/s | NDR 4x: *Supercomputers*, Table 5-1; division is arithmetic |
+| Check for a healthy run | busbw plateau near 45 GB/s, at least 80 percent of 50 | 80 percent is my reasoning, see Section 7 |
 
 ### The pre-benchmark audit
 
-No benchmark starts before three things are captured on every participating node. The first is the topology matrix from `nvidia-smi topo -m`. The token that matters for the network tests is the GPU-to-NIC relationship: `PIX` means the GPU and NIC sit behind at most one PCIe switch on the same NUMA node, which is the gold standard for GPUDirect RDMA. `SYS` means the path crosses the inter-socket link, which is the worst case on the host. On a reference 8-GPU node, GPU0 to `mlx5_0` is `PIX`, while GPU0 to `mlx5_7` is `SYS`. You use the PIX pairing for the GPU-direct test, because pairing a GPU with its remote NIC would work but would not represent the node's real capability.
+No benchmark runs before three things are saved from every node. The first is `nvidia-smi topo -m`. The token that matters is the GPU-to-NIC relation. `PIX` means the two devices sit behind at most one PCIe switch. `SYS` means the path crosses the link between CPU sockets. Pair a GPU with a `PIX` NIC for the GPUDirect test, because a far pair would not show what the node can do.
 
-The second capture is the port state from `ibstat`. You want `State: Active` together with `Physical state: LinkUp` and `Rate: 400`. The two states mean different things: the physical state is the electrical lock between transceiver and cable, while the logical state is what the subnet manager assigns. A port stuck at `LinkUp` but `Initializing` after boot means the subnet manager has not finished, not that the cable is bad. A rate below 400 on an NDR400 port means a physical lane or speed downshift.
+The second is the port state from `ibstat`. *Supercomputers for Linux SysAdmins* (ch. 5) describes `ibstat` as showing the status of all ports, and it also covers `perfquery` for counters and `mlxlink` for deeper detail. Look for `State: Active`, `Physical state: LinkUp` and a `Rate` that matches the port, 400 for NDR. A lower rate means a speed or width downshift. Check cable reach too: the DGX B200 data-center guide gives up to 3 meters for passive copper at 400 Gb and up to 30 meters for active optical cable, so a copper cable that is too long can cause errors by itself.
 
-The third capture is a snapshot of the error counters from sysfs. The fields you record are `symbol_error`, `link_error_recovery`, `port_rcv_errors`, and `VL15_dropped`. The data counters will obviously climb under load, but those four error counters must stay at their pre-test baseline through the whole sweep. A rising error counter routes you to a degraded fabric branch even when the throughput number itself looks acceptable.
+The third is a snapshot of the sysfs counters. The error counters to watch are `symbol_error`, `link_error_recovery`, `port_rcv_errors` and `VL15_dropped`. Those names are the usual files under `/sys/class/infiniband/<dev>/ports/<n>/counters/`, but this chapter did not verify them on hardware, so check that your kernel exposes them. The data counters will rise under load. The error counters must not.
 
-### The wire, then the GPU memory path
-
-With the audit captured, you benchmark the wire first, pinned to the local NUMA node so the CPU side of the path is also controlled.
+File: `code/part19/c05_audit_node.sh`
 
 ```bash
-# node-a, the server
-numactl --cpunodebind=0 --membind=0 ib_write_bw -d mlx5_0 -i 1 --report_gbits --duration 30
-# node-b, the client
-numactl --cpunodebind=0 --membind=0 ib_write_bw -d mlx5_0 -i 1 --report_gbits --duration 30 node-a
-numactl --cpunodebind=0 --membind=0 ib_write_lat -d mlx5_0 -i 1 -a node-a
+#!/usr/bin/env bash
+# Pre-benchmark audit of one node: topology, port state, modules, error counters.
+# Usage: LAB_DIR=$HOME/fabric-lab-<stamp> c05_audit_node.sh
+# Run once per node. Not run in this repository (needs GPUs and InfiniBand).
+set -euo pipefail
+here="$(cd "$(dirname "$0")" && pwd)"
+LAB_DIR="${LAB_DIR:?set LAB_DIR}"
+host="$(hostname -s)"
+mkdir -p "$LAB_DIR/$host"
+
+nvidia-smi topo -m          | tee "$LAB_DIR/$host/topology.txt"
+nvidia-smi nvlink --status  | tee "$LAB_DIR/$host/nvlink-status.txt"
+ibstat                      | tee "$LAB_DIR/$host/ibstat.txt"
+rdma link show              | tee "$LAB_DIR/$host/rdma-links.txt"
+lsmod | grep -Ei 'nvidia|peermem|rdma' | tee "$LAB_DIR/$host/modules.txt" || true
+"$here/c05_counters.sh" "$LAB_DIR/$host/counters-before.txt"
 ```
 
-On a 400G NDR fabric you expect roughly 390 Gbps after warm-up and a few-microsecond latency. A result of about half the expected rate points at a downtrained link width, and you confirm the negotiated width and speed with `ibstat` or `mlxlink`; a dirty connector, a damaged cable, or a configuration or PCIe limitation can all cause the train-down.
-
-Then you test the same wire with GPU memory on both ends.
+File: `code/part19/c05_counters.sh`
 
 ```bash
-lsmod | grep -Ei 'nvidia|peermem|rdma'
-ib_write_bw -d mlx5_0 --use_cuda=0 --report_gbits --duration 30
-ib_write_bw -d mlx5_0 --use_cuda=0 --report_gbits --duration 30 node-a
+#!/usr/bin/env bash
+# Dump every InfiniBand port counter under /sys/class/infiniband to one file.
+# Usage: c05_counters.sh OUTFILE
+set -euo pipefail
+out="${1:?usage: c05_counters.sh OUTFILE}"
+for dev in /sys/class/infiniband/*/ports/*/counters; do
+  [ -d "$dev" ] || continue
+  echo "### $dev"
+  grep -H . "$dev"/* 2>/dev/null || true
+done > "$out"
+echo "wrote $(wc -l < "$out") lines to $out"
 ```
 
-GPUDirect RDMA lets the NIC read and write the GPU's HBM straight over the PCIe bus, with the host CPU and system RAM out of the data path. It is governed by physical motherboard topology, not just software flags. The GPU and NIC must share a local PCIe switch for the fast path; across a `SYS` boundary, NCCL excludes GPUDirect by default. The usual culprits when the GPU-buffer number collapses while the host number is healthy are a missing `nvidia_peermem` kernel module, PCIe ACS or IOMMU settings that block peer-to-peer traffic, and on non-DGX hardware a BIOS without large-BAR and Above-4G Decoding support, so the GPU cannot expose enough of its HBM through BAR1.
+### The wire, then GPU memory
+
+With the audit saved, test the wire from host memory, then from GPU memory. A NIC that works from host memory and collapses with GPU buffers has a GPUDirect problem and not a fabric problem. *AI Systems Performance Engineering* (ch. 4) gives the checks: confirm `nvidia_peermem` is loaded with `lsmod`, look at `dmesg`, then run the perftest tools with `--use_cuda`.
+
+File: `code/part19/c05_wire_bench.sh`
+
+```bash
+#!/usr/bin/env bash
+# perftest wire benchmark between two nodes, host memory or GPU memory.
+# Usage on the server node:  ROLE=server c05_wire_bench.sh
+#        on the client node: ROLE=client SERVER=node-a c05_wire_bench.sh
+# Optional: HCA (default mlx5_0), NUMA (default 0), GPU (set to test GPU memory).
+# Not run in this repository. Check the flags against `ib_write_bw -h` on your build.
+set -euo pipefail
+ROLE="${ROLE:?ROLE=server or client}"
+HCA="${HCA:-mlx5_0}"
+NUMA="${NUMA:-0}"
+DUR="${DUR:-30}"
+
+cuda=()
+[ -n "${GPU:-}" ] && cuda=("--use_cuda=$GPU")
+
+cmd=(ib_write_bw -d "$HCA" -i 1 --report_gbits --duration "$DUR" "${cuda[@]}")
+case "$ROLE" in
+  server) exec numactl --cpunodebind="$NUMA" --membind="$NUMA" "${cmd[@]}" ;;
+  client) exec numactl --cpunodebind="$NUMA" --membind="$NUMA" "${cmd[@]}" "${SERVER:?set SERVER}" ;;
+  *) echo "ROLE must be server or client" >&2; exit 2 ;;
+esac
+```
+
+NCCL's own diagnostics use the same idea. The network bandwidth check in NCCL 2.31 and later runs `ib_write_bw` between nodes and reports minimum, median and maximum rates. The documentation example shows a median of 391.5 Gbit/s on a 400G link. That is the only source in this chapter for "about 390", and it is an example in the NCCL guide, not a promise. The same example flags a rank more than 30 percent off the median, which is the rule the analyser reuses for slow members.
+
+GPUDirect RDMA depends on physical layout. NCCL's `NCCL_NET_GDR_LEVEL` variable sets the maximum distance between NIC and GPU for which GPUDirect is used. `PIX` allows it only on the same PCI switch. When no level is set, NCCL picks one from the architecture. The common causes of a collapse are the missing module, PCIe ACS settings that block peer traffic, and a far GPU-NIC pair. The ACS and BIOS causes come from the nvidia-devops Volume 07 chapter on GPUDirect and are not re-verified here.
 
 ### The transport check
 
-The multi-node NCCL run carries its own transport evidence. You launch with debug on:
+The multi-node run carries its own evidence. Set `NCCL_DEBUG=INFO` and look at the lines NCCL prints. Two lines matter: `Using network IB` and `Using network Socket`. `NCCL_NET` accepts the names `IB` and `Socket` on Linux, and its documentation says it forces NCCL to a specific network. Whether a forced `IB` makes initialization fail when no HCA is usable is my expectation and not a documented guarantee, so test it before relying on it.
+
+| Variable | What the documentation says | Use in this lab |
+|---|---|---|
+| `NCCL_DEBUG` | `VERSION`, `WARN`, `INFO`, `TRACE`; `ATTN` since 2.32 | `INFO` to see transports |
+| `NCCL_SOCKET_IFNAME` | Prefix list; `^` excludes; `=` matches exactly | `^docker,lo` keeps bootstrap off bridges |
+| `NCCL_IB_HCA` | List of `<hca>[:<port>]` entries; `^` excludes | Pin one rail per run |
+| `NCCL_IB_DISABLE` | Set to 1 to stop the IB transport; NCCL falls back, for example to sockets | Must not be set |
+| `NCCL_NET` | Forces a network by name, since 2.10 | Optional |
+| `NCCL_P2P_DISABLE`, `NCCL_SHM_DISABLE` | Set to 1 to disable the peer-to-peer or shared-memory transport | Must not be set |
+| `NCCL_TOPO_DUMP_FILE` | Writes the detected XML topology, since 2.6 | Save with the evidence pack |
+| `NCCL_ALGO`, `NCCL_PROTO` | Restrict algorithms or protocols | A/B tests only |
+
+The run script forwards the debug variables to every rank and saves the topology file.
+
+File: `code/part19/c05_run_multi_node.sh`
 
 ```bash
+#!/usr/bin/env bash
+# Multi-node baseline: one MPI process per GPU, NCCL INFO log kept with the table.
+# Usage: LAB_DIR=... HOSTS=node-a:8,node-b:8 NP=16 c05_run_multi_node.sh
+# Not run in this repository (needs GPUs, InfiniBand and MPI).
+set -euo pipefail
+LAB_DIR="${LAB_DIR:?set LAB_DIR}"
+HOSTS="${HOSTS:-node-a:8,node-b:8}"
+NP="${NP:-16}"
+BIN="${NCCL_TESTS:-$HOME/nccl-tests}/build"
+mkdir -p "$LAB_DIR"
+
 export NCCL_DEBUG=INFO
 export NCCL_DEBUG_SUBSYS=INIT,NET,GRAPH
+export NCCL_TOPO_DUMP_FILE="$LAB_DIR/nccl-topo.xml"
+
+mpirun -np "$NP" -H "$HOSTS" \
+  -x NCCL_DEBUG -x NCCL_DEBUG_SUBSYS -x NCCL_TOPO_DUMP_FILE \
+  "$BIN/all_reduce_perf" -b 8M -e 1G -f 2 -g 1 -w 5 -n 100 -c 1 \
+  2>&1 | tee "$LAB_DIR/multi-node-allreduce.txt"
 ```
 
-The INFO log states which transport NCCL established on each link. `NET/IB` is the RDMA path you paid for. `NET/Socket` is the TCP/IP fallback that reads about 2.0 GB/s where the RDMA path reads about 100 GB/s, a fifty-fold collapse that still lets the job run without crashing. If NCCL has miscalculated the topology, you can force it with an explicit `NCCL_TOPO_FILE` describing the exact PCIe layout, and you keep the bootstrap traffic off docker bridge interfaces with `NCCL_SOCKET_IFNAME=^docker,lo`. On a Kubernetes deployment, the kubelet's Topology Manager in `single-numa-node` mode adds a second line of defense: it admits a pod only when its GPUs, exclusive cores, and NIC fit on one NUMA node, and it rejects the pod with a TopologyAffinityError when they do not.
+The reference for a healthy result is a busbw plateau near the per-rail rate and no `Socket` line. That judgment is the analyser's job, and the next section shows how it works on a real table.
 
-### The multi-node run
+**Decision rule:** read the transport from the log and never from throughput alone, because a slow number over `NET/IB` and a slow number over `NET/Socket` are different failures.
 
-```bash
-mpirun -np 16 -H node-a:8,node-b:8 \
-  -x NCCL_DEBUG -x NCCL_DEBUG_SUBSYS \
-  ./build/all_reduce_perf -b 8M -e 1G -f 2 -g 1 -w 5 -n 100 -c 1
-```
-
-One process per GPU, 16 processes total, with the debug variables forwarded so every rank logs its transport. The reference for the fabric generation is the multi-node row from the benchmarking chapter: 1 GiB across 8 nodes of 8x400G NDR completes in 5,850 microseconds, giving a bus bandwidth of 361.36 GB/s. That is about 45.17 GB/s per rail, or 90.34 percent of the 50 GB/s line rate. Your two-node lab does not need to match that cluster number exactly; it needs to clear the gate, which compares your bus bandwidth against the single-node anchor on the same nodes and against the per-rail reference for your generation.
-
-**Decision rule:** verify the transport from the log, never from throughput alone; a plausible bus bandwidth over NET/Socket is a different failure than a slow bus bandwidth over NET/IB.
-
-**In one minute:** the multi-node baseline audits the GPU-to-NIC topology, the port state, and the error counters before it measures anything. It benchmarks the host RDMA wire at about 390 Gbps, then the same wire with GPU buffers to prove GPUDirect RDMA, then runs the NCCL collective with debug on so the transport choice is evidence. The gate compares bus bandwidth against the single-node anchor and the per-rail reference, and a PIX pairing is required for the GPU-direct path to be fast.
+**In one minute:** audit topology, port state and counters first, then test the wire from host memory and from GPU memory, then run the collective with `NCCL_DEBUG=INFO`. The log proves the transport, and the table proves the bandwidth. `PIX` pairs are needed for the GPUDirect check, and the ratio to the 50 GB/s rail rate is the efficiency.
 
 ---
 
-## 5. Reading the results: algbw, busbw, and the integrity column
+## 5. Reading results with the analyser
 
-### The record that corrupted the model
+A sweep finishes and the team celebrates a record busbw. Nobody had turned the check on, so nobody noticed the reduced values were wrong. A collective can finish fast and still corrupt data. The model that trains on those gradients is quietly broken, and the failure appears months later as a model that will not converge. A bandwidth number is only as good as the check behind it.
 
-The sweep finishes, and the team celebrates a record bus bandwidth. Nobody had the integrity check turned on, so nobody notices that the reduced output is wrong. A collective can finish fast and still corrupt floating-point values in transit, and the model that trains on those gradients is quietly broken. The failure shows up months later as a model that does not converge, not as a benchmark. A bandwidth number is only as good as the check behind it, and the lab enables the check on every run.
+The analyser `c05_nccl_parse.py` reads a saved table, so the judgments do not depend on someone's eyes at 2 a.m. It handles both column layouts: the older one with `error` and no root column, and the newer one with `root` and `#wrong`. It recognises rows by shape and not by header text, so a changed header does not break it.
 
-### The two bandwidth columns
+The code is in `code/part19/c05_nccl_parse.py`, with tests in `test_c05_nccl_parse.py`. It uses only the standard library. The table lists the pieces you will call.
 
-For a collective that works on a buffer of S bytes across n ranks and finishes in t seconds, nccl-tests reports two columns. The algorithmic bandwidth, `algbw`, is simply S divided by t: the apparent rate at which the logical tensor is processed. The bus bandwidth, `busbw`, multiplies algbw by the per-rank byte volume an optimal ring must move. That normalization makes busbw directly comparable with the hardware's rated link speed, whatever the cluster size. The factor depends on the collective:
+| Piece | What it does |
+|---|---|
+| `parse(text)` | Reads a table and the log lines around it into rows, the transports seen, and the summary lines |
+| `busbw_factor(collective, n)` | The factor from the Performance page |
+| `check_arithmetic(run, ranks, collective)` | Rows where algbw or busbw disagree with size, time and the factor |
+| `analyse(run, ranks, link_gbps, ...)` | Returns a summary and the list of flags |
+| `find_slow_members(busbw_by_member)` | Names members more than 30 percent under the median |
+| command line | `c05_nccl_parse.py FILE --ranks N [--link-gbps R] [--baseline FILE] [--json]`, exit status 1 when any flag is raised |
 
-| Collective | Per-rank bytes moved | busbw factor |
-|---|---|---|
-| AllReduce | 2(n-1)/n times S | 2(n-1)/n |
-| ReduceScatter | (n-1)/n times S | (n-1)/n |
-| AllGather | (n-1)/n times S | (n-1)/n |
-| AllToAll | (n-1)/n times S | (n-1)/n |
-| Broadcast | S | 1.0 |
-| Reduce | S | 1.0 |
+### A real table, a real fault
 
-At 8 ranks the AllReduce factor is 1.75, the gather-family factor is 0.875, and Broadcast and Reduce stay at 1.0. At 64 ranks the AllReduce factor is 1.96875, and at 72 ranks it is 142/72. As the rank count grows, the AllReduce factor approaches 2, which means algorithmic bandwidth can never exceed half of the physical bottleneck link at scale. That is the arithmetic behind the RMA ticket in Section 2, and it is why you never compare algbw to the spec sheet.
+The fixture `c05_fixtures/c05_fixture_bcm_socket.txt` is a table from the NVIDIA Base Command Manager 11 administrator manual (pages 370 and 371). It is a two-node, one-GPU-per-node `all_reduce_perf` run on V100 GPUs, launched with `NCCL_IB_DISABLE=1`. The manual's text extraction split every field onto its own line, so the rows were joined back together. The numbers are unchanged. The log lines `NCCL_IB_DISABLE set by environment to 1` and `Using network Socket` are in the fixture.
 
-### Worked rows
+The analyser run on it, with 2 ranks and a 400 Gbps link, reports these facts:
 
-The table below is the reference sweep the lab reproduces, and every row's arithmetic holds.
+| Check | Result on the real table |
+|---|---|
+| Rows parsed | 13 sizes, 1 MiB to 4 GiB |
+| algbw equals size over time | Holds on every row, with GB as 1e9 bytes, and busbw equals algbw because the 2-rank factor is 1 |
+| Plateau busbw | about 0.8 GB/s, under 2 percent of a 50 GB/s link |
+| Transport | `Socket`, and `NCCL_IB_DISABLE` set by the environment |
+| Flags raised | `PLATEAU_BELOW_LINK_RATE`, `SOCKET_TRANSPORT` |
 
-| Run | Size | Time | algbw, GB/s | busbw, GB/s |
-|---|---|---|---|---|
-| 8-GPU sweep, hybrid PCIe node | 8 MiB | 412.3 us | 20.35 | 35.61 |
-| 8-GPU sweep, hybrid PCIe node | 64 MiB | 1,653.1 us | 40.60 | 71.05 |
-| 8-GPU sweep, hybrid PCIe node | 512 MiB | 9,871.4 us | 54.39 | 95.18 |
-| 8x H100 SXM, NVLink4 | 1 GiB | 2,480.0 us | 432.96 | 757.68 |
-| 64 GPUs, 8x400G NDR cluster | 1 GiB | 5,850.0 us | 183.55 | 361.36 |
+This is the signature of the silent fallback. The job did not crash. It ran, and finished, at under a fiftieth of the line rate. Only the timing and the log line gave it away. Note that this fixture is a deliberate test of the Ethernet path in a manual, so it is a signature, not a fault in the manual's cluster.
 
-Take the 64 MiB row: 67,108,864 bytes in 1,653.1 microseconds gives an algbw of 40.60 GB/s, and multiplying by the 8-rank AllReduce factor of 1.75 gives 71.05 GB/s of bus bandwidth. The multi-node row multiplies 183.55 by the 64-rank factor of 1.96875 to land on 361.36 GB/s, which is 45.17 GB/s per rail. Note the shape of the numbers: the same fabric produces a bus bandwidth of 757.68 GB/s inside one node and 361.36 GB/s across the cluster, because the inter-node rails are the bottleneck link, not the NVLink domain.
+### The signatures the analyser raises
 
-One more reading rule. In out-of-place mode the send and receive buffers are separate allocations; in in-place mode the reduced output overwrites the input buffer, which is the mode that matches PyTorch's gradient buckets. Both modes appear in the output table, and both must pass.
+The other signatures have no real fixture here. They are tested on synthetic tables, built in the test file from the same layout, with invented numbers. Those tests prove the analyser's logic, and they do not prove anything about real fabrics.
 
-### The shape of the sweep
-
-Read the sweep as a curve, not as a list of rows. The small rows sit on a low, nearly flat shelf: the time is launch and hop latency, and bandwidth barely matters. The middle rows rise as the message size amortizes that latency. The large rows plateau at the fabric's sustained bandwidth, and the height of that plateau is your baseline. A collapse in the middle of the curve is its own signature: in the mixed-fabric project runs, bandwidth jumped to the intra-node rate and then collapsed as the ring crossed the inter-node links, because the slow fabric link got congested mid-collective. The fix there is structural, minimizing inter-node messages or letting NCCL use a hierarchical algorithm, not a cable swap.
-
-### Variance and versions
-
-One run is an anecdote. The lab repeats each size, reports the median, and records the coefficient of variation so that a future diff can tell a regression from jitter. And no result is published without the context that produced it: the driver, the NCCL build, the NIC firmware, the switch, and the topology matrix. A bus bandwidth number detached from its stack is a rumor with units.
-
-**Decision rule:** do not report a bandwidth number from any run whose `#wrong` column is not zero; fix the corruption first and re-measure.
-
-**In one minute:** nccl-tests reports algbw, the logical tensor rate, and busbw, the per-link rate comparable to the spec sheet. busbw is algbw times a factor that depends on the collective and the rank count, and at scale the AllReduce factor approaches 2. The sweep shape tells you what you are measuring: flat at small sizes means latency, plateau at large sizes means bandwidth, and a mid-curve collapse means a congested inter-node link. Every reported number carries `#wrong` zero, a variance figure, and the versions that produced it.
-
----
-
-## 6. Failure modes: hangs, timeouts, and stragglers
-
-### The timeout that blamed the healthy ranks
-
-The watchdog fires at 3 a.m. on most of the ranks, and the log makes it look like the network failed. The ranks that printed the timeout are the healthy ones. A collective is a barrier, so they arrived on time and then waited until the process-group watchdog gave up and aborted the job. The real fault sits on the one rank that never entered the collective, or on the hardware that kept that rank late. A fabric lab without a failure catalogue is a benchmark; with one, it is a diagnostic tool.
-
-### What scale looks like
-
-The pretraining runs that train frontier models make the stakes concrete. A 54-day run on 16,384 H100 GPUs logged 419 unexpected interruptions, which averages out to one interruption every 3.09 hours. Of those interruptions, 64 percent were GPU silicon and memory faults, while switches, cables, and NICs combined accounted for 10 percent. One faulty GPU stalls the other 16,383 inside the barrier. The lesson for the fabric lab is that most of what looks like a network failure is a GPU or software failure, and the layered evidence is what separates the two.
-
-### The catalogue
-
-The table below is the on-call guide. Each row gives the symptom you see, the root cause behind it, the fix, and the evidence that proves the fix worked.
-
-| Failure mode | Symptom | Root cause | Fix and verification |
+| Flag | Trigger | Usual cause | First check |
 |---|---|---|---|
-| **Silent TCP fallback** | AllReduce at 2.0 GB/s instead of ~100 GB/s; CPU pegged | Container lacks `/dev/infiniband`; `NCCL_IB_DISABLE=1` left set; wrong backend | `NCCL_NET=IB`; verify `Using network IB` in the log |
-| **Host bounce buffer** | Host RDMA ~390 Gbps; GPU-buffer transfer a quarter of that | `nvidia_peermem` unloaded; PCIe ACS enabled; SYS pairing | Load peermem, fix ACS, use PIX pairs; re-run `--use_cuda` |
-| **Dead NVLink domain** | Single-node busbw drops from ~800 to ~90 GB/s after reboot | `nvidia-fabricmanager` down; `NCCL_P2P_DISABLE=1` or `NCCL_SHM_DISABLE=1` left set | Restart fabricmanager, unset variables; confirm `NV18` in topo |
-| **Bootstrap hang** | Job stuck at communicator init; connection timeout or QP failure | Unroutable bridge interface; port exhaustion; `memlock` limit | `NCCL_SOCKET_IFNAME=^docker,lo`; widen port range; raise memlock |
-| **Microscopic buckets** | Wire and 1 GiB nccl-tests pass; training 40% slow | Thousands of 256 KB AllReduce calls; handshake latency dominates | Raise DDP `bucket_cap_mb` from 25 to 50 MB; verify in nsys |
-| **Straggler rank** | One rank 10x late entering the collective | Dataloader imbalance; thermal throttle; degraded rail | Pre-collective timers; check clocks, ECC, counters |
+| `WRONG_NONZERO` | any `#wrong` above 0, or a non-zero "Out of bounds values" line | corruption: hardware fault or a protocol or algorithm problem | rerun with 2 ranks, then `NCCL_RUN_DIAGNOSTICS=1` |
+| `PLATEAU_BELOW_LINK_RATE` | mean of the three largest busbw values under 80 percent of the link rate | downtrained link, `Socket` transport, GPUDirect off, far NIC | `ibstat` rate, then the log |
+| `MID_CURVE_COLLAPSE` | a size falls under 60 percent of the best earlier size | congestion or an algorithm switch at one size | compare against the sweep before the change |
+| `HIGH_SMALL_MESSAGE_LATENCY` | smallest-size time above a threshold you pass | slow path, sockets, host bounce | `ib_write_lat`, then the log |
+| `SOCKET_TRANSPORT` | any rank prints `Using network Socket` | `NCCL_IB_DISABLE`, no `/dev/infiniband` in a container, missing HCA | env and device nodes |
+| `ARITHMETIC_MISMATCH` | table disagrees with size, time or the factor | wrong `--ranks`, truncated or edited output | recheck the rank count |
+| `BELOW_BASELINE` | plateau under 80 percent of a saved baseline | regression after a change | diff the evidence pack |
 
-The first row is the one to remember. The job runs without crashing, so nothing pages anyone; only the timings give the fallback away, and a 50x throughput collapse hides behind a job that is merely slow.
+The 80 percent and 60 percent thresholds are my reasoning. Chapter 12.17 states an 80 percent rule for multi-node versus the baseline, and no NVIDIA document in this chapter's sources sets it. The latency flag has no default threshold because no source gives one. Calibrate each threshold on your own healthy run and record it.
 
-### Failure modes inside the algorithm
+The slow-rank signature needs a different tool. One nccl-tests table is an average across ranks unless you pass `-a`, and it cannot name a rank. Run the same size on each node, or on each pair, and give the busbw per member to `find_slow_members`. Members more than 30 percent under the median are returned, which mirrors the NCCL 2.31 network diagnostic. It needs at least three members.
 
-The AllReduce project material contributes four algorithm-level failure modes that the hardware catalogue does not cover. If your ring is no faster than a tree, the sends and receives are serialized: the ring is not being pipelined, so you check that every GPU is sending and receiving simultaneously with non-blocking calls. If bandwidth collapses mid-run, the ring crosses the slow inter-node link every round, and the fix is to restructure the ring to minimize cross-node messages. If the results diverge across ranks, rank 0 has X and rank 7 has X plus a small epsilon, that is floating-point order-of-operations, because addition is not associative; verify with two ranks first, then use a double-precision check for correctness. And if the test hangs indefinitely after a few steps, blocking sends and receives have deadlocked; the fix is pipelined non-blocking communication with buffer space that cannot fill.
+**Decision rule:** do not report any bandwidth from a run whose `#wrong` is not zero, and judge each run by its flags before reading its numbers.
 
-### The diagnostic toolbox
-
-Modern NCCL ships two built-in diagnostics that name the fault directly. `NCCL_RUN_DIAGNOSTICS=1`, available from NCCL 2.31 onward, runs active hardware and peer-access checks during communicator initialization, before any workload starts. An 8-GPU node verifies 56 directed peer pairs, and a result of 52 out of 56 means four GPU-to-GPU links failed verification, which is an init-time hardware fault you fix before anything else. The `ncclras` daemon, available from NCCL 2.24 onward, listens on port 28028 while a job runs. Its `MISMATCH` status lists the ranks whose collective operation counts lag, which names a straggler; its `INCOMPLETE` status names a dead or unresponsive rank, which names a hardware failure.
-
-When the whole cluster is slow and every rank enters the collectives on time, you isolate the bad node by bisection instead of by linear search. Split the node list in half and run the test on each half; the half with the degraded bus bandwidth holds the straggler, and the other half becomes your known-good partner. Repeat until one node is left. That takes the ceiling of log2 N split runs: 3 for 8 nodes, 6 for 64, 7 for 128. Then test each rail on that node separately by pinning the HCA, one `NCCL_IB_HCA=mlx5_0:1` run per rail, or `ib_write_bw` per device alongside the switch counters. NVLink evidence lives in the same place: a link reporting `DEGRADED` at 5 GB/s against a 25 GB/s baseline, or `FAILED` at zero, is the one-line proof.
-
-One discipline closes the section: always check the first rank to fail. The errors that follow it are usually consequences, and chasing a consequence is how an incident outlives its root cause.
-
-**Decision rule:** in a hung collective, the ranks that report the error are the healthy ones; hunt the rank that never arrived, with pre-collective timers or `ncclras`.
-
-**In one minute:** collective timeouts are misdiagnosed by default because the ranks that print them arrived on time and then waited. At 16,384-GPU scale, most interruptions are GPU silicon faults rather than network faults, so the evidence chain decides which class you are in. The catalogue covers the silent TCP fallback, the host bounce buffer, the dead NVLink domain, the bootstrap hang, the microscopic DDP buckets, and the straggler rank. The toolbox is init-time diagnostics, the ncclras daemon on port 28028, bisection in log2 N runs, and per-rail HCA pinning.
+**In one minute:** the analyser parses both nccl-tests layouts, checks that algbw and busbw follow from size, time and the factor, and raises named flags. It was proven on a real table with a Socket fallback and on synthetic tables for the rest. Thresholds are mine and must be calibrated. Slow ranks come from subset runs, not from a single table.
 
 ---
 
-## 7. Certification gates: what "fabric ready" means
+## 6. Failure modes: hangs, timeouts and stragglers
 
-### The month with no baseline
+At 3 a.m. the watchdog fires on most ranks, and the log makes the network look guilty. The ranks that printed the timeout are the healthy ones. They arrived on time and waited. The real fault is on the one rank that never entered the collective, or on the hardware that made it late.
 
-A month after commissioning, the platform team is told that training is 40 percent slower than it should be. Nobody can answer the only question that matters: did the fabric change, or did the workload change? The commissioning checklist signed off on link state, and nobody saved a bandwidth baseline, so the argument runs for weeks on opinions. The gates below exist to turn fabric readiness into a signed artifact: a table of numbers, each with the evidence that produced it and the change window in which it is valid.
+*AI Systems Performance Engineering* (ch. 4, Table 4-4) lists root causes of unexpected interruptions during a 54-day Llama 3 405B pretraining run. As printed, faulty GPU is 30.1 percent, GPU HBM3 memory 17.2 percent, software bug 12.9 percent, network switch or cable 8.4 percent, and NIC 1.7 percent. The lesson for a fabric lab is that many incidents that look like network faults are GPU or software faults, so layered evidence matters.
 
-### The gate table
+| Failure | Symptom | Cause | Fix and proof |
+|---|---|---|---|
+| Silent TCP fallback | busbw under 1 GB/s, `Using network Socket` | `NCCL_IB_DISABLE=1`, container without InfiniBand devices | unset the variable, check for `Using network IB` |
+| Host bounce buffer | host `ib_write_bw` healthy, `--use_cuda` low | peermem not loaded, ACS, far GPU-NIC pair | load `nvidia_peermem`, use `PIX` pairs |
+| Disabled NVLink path | single-node busbw far under baseline | fabric manager down, `NCCL_P2P_DISABLE` or `NCCL_SHM_DISABLE` set | restart the service, unset the variables |
+| Bootstrap hang | stuck at communicator init | bootstrap on an unroutable interface | `NCCL_SOCKET_IFNAME=^docker,lo` |
+| Small buckets | wire and 1 GiB test pass, training slow | many small AllReduce calls | raise DDP bucket size above its default of 25 MB, then check in Nsight Systems |
+| Straggler | one node or rail slower | throttle, bad rail, dataloader skew | subset runs and counters |
+
+The first four rows are the transport and path problems this lab can reproduce. The default DDP bucket size of 25 MB is from *AI Systems Performance Engineering*. The book says larger buckets can help models with very large layers, and I did not verify any specific speedup.
+
+### Built-in diagnostics
+
+NCCL 2.31 added diagnostics that name faults directly. Active diagnostics are off by default and run during communicator initialization when `NCCL_RUN_DIAGNOSTICS=1` is set. The report goes to rank 0's standard output, with lines prefixed `NCCL DIAG`. Their P2P check validates data between GPU pairs. The documentation example shows 56 peer accesses on 8 ranks, and a partial result as `only 52/56 GPU-to-GPU peer accesses passed verification`. Diagnostics are informational: a reported issue does not abort initialization.
+
+The RAS subsystem has existed since NCCL 2.24. It listens on `localhost` port 28028 by default, and the `ncclras` client queries it. A `MISMATCH` status in the documentation example means communicator ranks have different collective operation counts, and the ranks that lag are listed by rank and node. An `INCOMPLETE` status means communicator data is missing from a rank or process, for example a rank that does not answer. Use RAS to find the rank that did not arrive.
+
+### Finding the bad node
+
+When the whole cluster is slow, bisect. Split the node list in half, run the same test on each half, and keep the slower half. The half that is fine becomes your known-good partner. With N nodes this takes the ceiling of log2 N split rounds, which is 3 for 8 nodes and 7 for 128. This is a counting argument and does not depend on any source. Then pin one HCA per run with `NCCL_IB_HCA=mlx5_0:1`, then `mlx5_1:1`, and so on, to find the bad rail.
+
+One discipline finishes the section. Find the first rank that failed. Errors on other ranks are usually consequences, and chasing one is how an incident outlives its cause.
+
+**Decision rule:** in a hung collective, the ranks that print errors are the healthy ones, so hunt the rank that never arrived with RAS or pre-collective timers.
+
+**In one minute:** timeouts are misread because the healthy ranks report them. Many incidents in a published large-run table are GPU or software faults. The catalogue maps each symptom to a cause and a proof. NCCL 2.31 diagnostics and RAS since 2.24 name faulty links and lagging ranks, and bisection finds a bad node in log2 N rounds.
+
+---
+
+## 7. Certification gates
+
+A month after commissioning, the platform team hears that training is slower than it should be. Nobody can say whether the fabric changed or the workload did. The commissioning checklist signed off on link state and kept no bandwidth baseline. The gates below turn readiness into a signed set of tables.
 
 | Gate | Check | Pass criterion | Artifact |
 |---|---|---|---|
-| **1: Intra-node topology** | `nvidia-smi topo -m` | NV18 across the GPU matrix; PIX pairing for every GPU-NIC rail | `topology.txt` |
-| **2: Intra-node bus** | `nvbandwidth` device-to-host; `nvidia-smi nvlink --status` | 50-60 GB/s on PCIe Gen5 x16; all NVLink links active | nvbandwidth log |
-| **3: Wire** | `ibstat`; `ib_write_bw` | State Active, Rate 400; ~390 Gbps sustained; error counters flat | counter snapshots before and after |
-| **4: Single-node collective** | `all_reduce_perf` on 8 GPUs at 1 GiB | busbw in the 750-800 GB/s range on H100 SXM; `#wrong` zero on every row | sweep table |
-| **5: Multi-node collective** | `mpirun all_reduce_perf` at 1 GiB | busbw at least 80% of the local or per-rail baseline; transport is NET/IB; GDR active on PIX pairs | sweep table plus INFO log |
-| **6: Latency budget** | `ib_write_lat`; small-message allreduce | 1-5 microseconds point-to-point; 100 MB AllReduce on 8 GPUs within 5 ms | latency rows |
-| **7: Integrity and diagnostics** | `-c 1`; `NCCL_RUN_DIAGNOSTICS=1` | `#wrong` zero on every row; 56 of 56 peer pairs verified on an 8-GPU node | diagnostic lines |
+| 1 Topology | `nvidia-smi topo -m` | NVLink between GPUs; `PIX` for every GPU-NIC pair you test | `topology.txt` |
+| 2 Port state | `ibstat`, counters before and after | `Active`, `LinkUp`, rate matches the port, error counters flat | counter files |
+| 3 Wire | `ib_write_bw` host and GPU memory | within your baseline; GPU number close to host number | perftest logs |
+| 4 Single node | `all_reduce_perf`, all GPUs | `#wrong` zero; no flags; at least 80 percent of baseline | table |
+| 5 Multi node | `mpirun all_reduce_perf` | no flags; `Using network IB`; plateau at least 80 percent of link rate | table and INFO log |
+| 6 Integrity | `-c 1`, `NCCL_RUN_DIAGNOSTICS=1` | `#wrong` zero; no `[INFO]` lines from the P2P check | diagnostic lines |
 
-Gate 5 carries the standing policy from the benchmarking chapter: a multi-node run must reach at least 80 percent of the corresponding single-node or per-rail baseline. The example that shows why the gate is strict: a node whose 512 MiB single-node bus bandwidth measured 95.18 GB/s sets the gate at 76.14 GB/s, and an observed multi-node result of 58.2 GB/s, which is 61.15 percent of the local baseline, fails. Gate 6 pairs the wire latency with the collective latency budget: the AllReduce project's success criterion for a hand-tuned ring is 100 MB on 8 GPUs within 5 ms, against roughly 8 ms for the naive algorithm, and the reference anchors for training hold intra-node AllReduce under 1 ms and inter-node under 5 ms at typical gradient sizes.
+The 80 percent figure appears in chapter 12.17 as a multi-node policy against the single-node or per-rail baseline. I did not find it in an NVIDIA source, so it is a starting point to tune. A gate with a number you cannot defend is worse than a gate that says "equal to the baseline within recorded variance".
 
-### The evidence pack
+The evidence pack holds the artifacts plus their context. That means the topology file, counters before and after, the INFO log with the transport lines, the tables, and the pinned versions of the driver, NCCL, nccl-tests commit, NIC firmware and switch. Date it and sign it. Recertify after a firmware or driver change, a cable or transceiver swap, or a node replacement. That cadence is an operating policy, not a rule from a source.
 
-Every gate leaves an artifact, and the pack is the artifacts plus the context: the topology matrix, the counter snapshots before and after, the NCCL INFO log with the transport lines, the bus bandwidth table, and the pinned versions of the driver, the NCCL build, the NIC firmware, and the switch model. The pack is dated and signed by the engineer who ran it. Re-certification happens on a schedule defined by change, not by calendar: after a firmware rollout, a driver update, a cable or transceiver swap, or a node replacement. The re-run diffs the new pack against the baseline and reports the median and the coefficient of variation per row. A fabric that cannot reproduce its baseline inside its recorded variance is not ready, and the diff names the gate that moved.
+To compare runs, repeat each size several times and keep the median and spread. One run is an anecdote.
 
-**Decision rule:** certify the fabric on the signed evidence pack, not on link state; any change that fails to reproduce the baseline is a regression until the diff says otherwise.
+The script `c05_certify.sh` applies the analyser to the saved tables and exits non-zero on any flag.
 
-**In one minute:** certification is seven gates, from the intra-node topology matrix to the multi-node bus bandwidth, each with a pass criterion and an artifact. The multi-node gate is 80 percent of the local or per-rail baseline, the integrity gate requires `#wrong` zero and a full peer-pair verification, and the latency gate bounds both wire and collective latency. The signed evidence pack with pinned versions is what makes a future slowdown a diff instead of an argument.
+File: `code/part19/c05_certify.sh`
+
+```bash
+#!/usr/bin/env bash
+# Run the analyser over the saved tables. Exit status is non-zero on any flag.
+# Usage: LAB_DIR=... LINK_GBPS=400 SINGLE_RANKS=8 MULTI_RANKS=16 c05_certify.sh
+set -uo pipefail
+here="$(cd "$(dirname "$0")" && pwd)"
+LAB_DIR="${LAB_DIR:?set LAB_DIR}"
+LINK_GBPS="${LINK_GBPS:-400}"
+SINGLE_RANKS="${SINGLE_RANKS:-8}"
+MULTI_RANKS="${MULTI_RANKS:-16}"
+
+rc=0
+# The single-node run is bounded by NVLink, not the NIC, so the link-rate check is
+# left out and the baseline comparison, when a baseline exists, does the work.
+python3 "$here/c05_nccl_parse.py" "$LAB_DIR/single-node-allreduce.txt" \
+  --ranks "$SINGLE_RANKS" ${BASELINE_SINGLE:+--baseline "$BASELINE_SINGLE"} || rc=1
+python3 "$here/c05_nccl_parse.py" "$LAB_DIR/multi-node-allreduce.txt" \
+  --ranks "$MULTI_RANKS" --link-gbps "$LINK_GBPS" ${BASELINE_MULTI:+--baseline "$BASELINE_MULTI"} || rc=1
+exit "$rc"
+```
+
+**Decision rule:** certify on the saved evidence pack and not on link state, and treat any change that cannot reproduce the baseline as a regression until a diff says otherwise.
+
+**In one minute:** six gates run from topology to integrity. Each has a pass criterion and an artifact. The 80 percent threshold is a tunable policy, not a source fact. A dated and signed pack with pinned versions turns a later slowdown into a diff.
 
 ---
 
 ## 8. Hands-on lab
 
-The on-call engineer wants one ticket per month, the one that says training is slower than it should be. This lab is the standing answer: run it when the fabric is healthy, save the numbers, and every future slowdown becomes a diff against a known baseline. It runs on a two-node on-prem cluster and is **untested** in this repository.
+On-call wants one fewer ticket a month, the one that says training got slower. This lab is the standing answer. Run it when the fabric is healthy, save the numbers, and every later slowdown becomes a diff.
+
+**Status of this lab.** It needs two GPU nodes with InfiniBand and was not run for this chapter. The shell scripts pass `bash -n` and nothing more. The analyser and the counter-diff script were run here under pytest. No output below was captured from a cluster, and each "expected shape" is a description, not a recording.
 
 ### 8.1 Prerequisites
 
-- Two GPU nodes, 8 GPUs each; H100 80 GB SXM or equivalent NVSwitch-connected nodes.
-- One 400G NDR ConnectX-7 adapter per GPU, `mlx5_0` through `mlx5_7`, rail-aligned to the leaf.
-- Working InfiniBand fabric with the subnet manager; rdma-core and the perftest suite installed.
-- CUDA, NCCL, and an MPI distribution on both nodes.
+- Two nodes with 8 NVSwitch-connected GPUs each and one NDR adapter per GPU, rail-aligned. Other shapes work if you change `NGPUS`, `HOSTS`, `NP`, `MULTI_RANKS` and `LINK_GBPS`.
+- A working subnet manager, rdma-core, perftest, `numactl`, CUDA, NCCL and an MPI install.
+- The same paths on both nodes. Record NCCL, driver, firmware and MPI versions.
 
-### 8.2 Step 1: build the test binaries
+### 8.2 Step 1: build nccl-tests
+
+File: `code/part19/c05_build_nccl_tests.sh`
 
 ```bash
-# Both nodes
-git clone https://github.com/NVIDIA/nccl-tests.git
-make -C nccl-tests MPI=1 MPI_HOME=/usr/mpi/gcc/openmpi-4.1.7a1 CUDA_HOME=/usr/local/cuda
+#!/usr/bin/env bash
+# Build nccl-tests with MPI support. Run on every node, with the same paths.
+# Needs a GPU host with CUDA, NCCL and an MPI install. Not run in this repository.
+set -euo pipefail
+
+: "${MPI_HOME:?set MPI_HOME to your MPI install, for example /opt/openmpi}"
+: "${CUDA_HOME:=/usr/local/cuda}"
+: "${NCCL_HOME:=}"                       # leave empty to use the system NCCL
+SRC="${SRC:-$HOME/nccl-tests}"
+
+[ -d "$SRC/.git" ] || git clone https://github.com/NVIDIA/nccl-tests.git "$SRC"
+
+args=(MPI=1 "MPI_HOME=$MPI_HOME" "CUDA_HOME=$CUDA_HOME")
+[ -n "$NCCL_HOME" ] && args+=("NCCL_HOME=$NCCL_HOME")
+make -C "$SRC" -j "${args[@]}"
+
+# Record exactly what was built, for the evidence pack.
+git -C "$SRC" rev-parse HEAD | tee "$SRC/build/COMMIT"
+ls "$SRC/build"/*_perf
 ```
 
-The binaries land in `nccl-tests/build`. Pin the commit and the NCCL version in the evidence pack.
+Expected shape: a list of `*_perf` binaries and a commit hash saved next to them. Record both.
 
-### 8.3 Step 2: audit the topology and snapshot counters
+### 8.3 Step 2: audit every node
 
-```bash
-LAB_DIR="$HOME/fabric-lab-$(date +%Y%m%d-%H%M%S)"; mkdir -p "$LAB_DIR"
-nvidia-smi topo -m | tee "$LAB_DIR/topology.txt"
-ibstat mlx5_0 | tee "$LAB_DIR/ibstat.txt"
-rdma link show | tee -a "$LAB_DIR/rdma-links.txt"
-lsmod | grep -Ei 'nvidia|peermem|rdma' | tee "$LAB_DIR/modules.txt"
-for dev in /sys/class/infiniband/*/ports/*/counters; do
-  echo "### $dev"
-  grep -H . "$dev"/* 2>/dev/null
-done | tee "$LAB_DIR/counters-before.txt"
-```
+Run `c05_audit_node.sh` on both nodes with the same `LAB_DIR` on shared storage, or collect the folders afterwards. Expected shape: NVLink between GPUs, `PIX` for local GPU-NIC pairs, `State: Active` and the expected rate on every port.
 
-Expected: NV18 across the GPU matrix, PIX on every GPU-NIC local pair, State Active with Rate 400, and `nvidia_peermem` loaded.
+### 8.4 Step 3: wire, host memory and GPU memory
 
-### 8.4 Step 3: benchmark the host-memory wire
+Start `ROLE=server c05_wire_bench.sh` on `node-a` and `ROLE=client SERVER=node-a c05_wire_bench.sh` on `node-b`. Repeat with `GPU=0` for GPU memory, and on at least two rails by changing `HCA`. Expected shape: throughput close to the port rate in both cases, and a GPU number near the host number on a `PIX` pair. Judge against your baseline.
 
-```bash
-# node-a, the server
-numactl --cpunodebind=0 --membind=0 ib_write_bw -d mlx5_0 -i 1 --report_gbits --duration 30
-# node-b, the client
-numactl --cpunodebind=0 --membind=0 ib_write_bw -d mlx5_0 -i 1 --report_gbits --duration 30 node-a
-numactl --cpunodebind=0 --membind=0 ib_write_lat -d mlx5_0 -i 1 -a node-a
-```
+### 8.5 Step 4: the single-node sweep
 
-Expected: roughly 390 Gbps after warm-up and 1-5 microsecond latency. Spot-check at least two rails, for example `mlx5_0` and `mlx5_7`.
+Run `c05_run_single_node.sh` on each node. Expected shape: a table that rises with size and flattens, `#wrong` zero on every row. Save the first healthy run as that node's baseline.
 
-### 8.5 Step 4: benchmark the GPU-memory path
+### 8.6 Step 5: the multi-node sweep
+
+Run `c05_run_multi_node.sh` from `node-a`. Expected shape: `Using network IB` in the log, no `Socket` line, a plateau near 45 GB/s on this lab shape, and `nccl-topo.xml` written. Treat 45 as a hypothesis from the lab arithmetic, not as a promise.
+
+### 8.7 Step 6: the other collectives
+
+Run `c05_run_matrix.sh` on one node.
+
+File: `code/part19/c05_run_matrix.sh`
 
 ```bash
-ib_write_bw -d mlx5_0 --use_cuda=0 --report_gbits --duration 30
-ib_write_bw -d mlx5_0 --use_cuda=0 --report_gbits --duration 30 node-a
-```
+#!/usr/bin/env bash
+# One sweep per remaining collective on a single node.
+# Usage: LAB_DIR=... [NGPUS=8] c05_run_matrix.sh
+# Not run in this repository (needs GPUs).
+set -euo pipefail
+LAB_DIR="${LAB_DIR:?set LAB_DIR}"
+NGPUS="${NGPUS:-8}"
+BIN="${NCCL_TESTS:-$HOME/nccl-tests}/build"
+mkdir -p "$LAB_DIR"
 
-Expected: the GPU-buffer number matches the host-memory number on the PIX pair. A collapse here means peermem, ACS, or pairing, not the fabric.
-
-### 8.6 Step 5: the single-node baseline
-
-```bash
-./build/all_reduce_perf -b 8M -e 1G -f 2 -g 8 -w 5 -n 50 -c 1 \
-  | tee "$LAB_DIR/single-node-allreduce.txt"
-```
-
-Expected: `#wrong` zero on every row, and large-size bus bandwidth in the 750-800 GB/s range on an H100 SXM node.
-
-### 8.7 Step 6: the multi-node baseline with transport evidence
-
-```bash
-export NCCL_DEBUG=INFO
-export NCCL_DEBUG_SUBSYS=INIT,NET,GRAPH
-mpirun -np 16 -H node-a:8,node-b:8 \
-  -x NCCL_DEBUG -x NCCL_DEBUG_SUBSYS \
-  ./build/all_reduce_perf -b 8M -e 1G -f 2 -g 1 -w 5 -n 100 -c 1 \
-  | tee "$LAB_DIR/multi-node-allreduce.txt"
-```
-
-Expected: NET/IB on every rail and no NET/Socket line; 1 GiB bus bandwidth clearing the 80 percent gate against the single-node anchor.
-
-### 8.8 Step 7: the full collective matrix
-
-```bash
-for t in reduce_scatter_perf all_gather_perf alltoall_perf broadcast_perf; do
-  ./build/$t -b 8M -e 1G -f 2 -g 8 -w 5 -n 50 -c 1 | tee "$LAB_DIR/single-node-$t.txt"
+for t in reduce_scatter_perf all_gather_perf alltoall_perf broadcast_perf reduce_perf; do
+  "$BIN/$t" -b 8M -e 1G -f 2 -g "$NGPUS" -w 5 -n 50 -c 1 | tee "$LAB_DIR/single-node-$t.txt"
 done
 ```
 
-The single-node matrix is enough for the remaining collectives, because the multi-node run already proved the wire path; the matrix confirms the per-collective factors and the integrity column.
+Expected shape: one table per collective. The busbw factor differs per collective, so compare each with its own baseline.
 
-### 8.9 Step 8: diff the counters and certify
+### 8.8 Step 7: diff the counters and certify
+
+Run `c05_counters.sh` again to a `counters-after.txt` file, then compare.
+
+File: `code/part19/c05_diff_counters.sh`
 
 ```bash
-for dev in /sys/class/infiniband/*/ports/*/counters; do
-  echo "### $dev"
-  grep -H . "$dev"/* 2>/dev/null
-done > "$LAB_DIR/counters-after.txt"
-diff "$LAB_DIR/counters-before.txt" "$LAB_DIR/counters-after.txt" \
-  | grep -v -E 'port_(rcv|xmit)_(data|packets)'
+#!/usr/bin/env bash
+# Compare the counters taken before and after the sweeps and show only what moved,
+# leaving out the data and packet counters that climb under any load.
+# Usage: c05_diff_counters.sh BEFORE AFTER
+# Exit status is 1 when a line other than data or packet counters changed.
+set -euo pipefail
+before="${1:?usage: c05_diff_counters.sh BEFORE AFTER}"
+after="${2:?usage: c05_diff_counters.sh BEFORE AFTER}"
+
+moved="$(diff "$before" "$after" | grep -E '^[<>]' | grep -v -E 'port_(rcv|xmit)_(data|packets)|unicast|multicast' || true)"
+if [ -z "$moved" ]; then
+  echo "error counters flat"
+else
+  echo "$moved"
+  exit 1
+fi
 ```
 
-Expected: only the data counters moved; the error counters are flat. Then fill in the Section 7 gate table, sign the pack, and archive `LAB_DIR`.
+Then run `c05_certify.sh`. Expected shape: error counters flat, no flags, exit status 0.
+
+### 8.9 Step 8: inject faults and watch the flags
+
+Only on a cluster where you may do this. Set `NCCL_IB_DISABLE=1` for one multi-node run and expect `SOCKET_TRANSPORT` and a very low plateau, like the real table in Section 5. Set `NCCL_P2P_DISABLE=1` on the single-node run and expect a large drop against the baseline. Unset both afterwards.
 
 ### 8.10 What to record
 
-After the lab, you should be able to answer five questions in five seconds each:
-
-1. What was the single-node bus bandwidth at 1 GiB, and which gate did it satisfy?
-2. What was the multi-node bus bandwidth at 1 GiB, and did it clear the 80 percent gate?
-3. Which transport did NCCL pick on each node, and was GPUDirect RDMA active?
-4. Which error counters moved during the sweep, and by how much?
-5. If one gate failed, what is the first piece of evidence you would read, and why?
-
-If any of them takes longer, the fabric is not yet a validated service; go back to the section that owns the gap. The lab is **untested** against a live cluster in this repository.
+1. The single-node plateau and the multi-node plateau, with the commit and NCCL version.
+2. The transport lines from the INFO log.
+3. Which counters moved, and by how much.
+4. The flags the analyser raised, with thresholds used.
+5. The first gate that failed, if any, and the first piece of evidence you read.
 
 ---
 
 ## Exercises
 
-1. **Verify the bus bandwidth math.** Given an 8-GPU run where 64 MiB AllReduce completes in 1,653.1 microseconds with an algbw of 40.60 GB/s, derive the bus bandwidth of 71.05 GB/s. Then, for a 64-GPU run where 1 GiB completes in 5,850.0 microseconds with an algbw of 183.55 GB/s, state the AllReduce factor and derive the bus bandwidth of 361.36 GB/s. *Solution sketch:* the 8-rank factor is 2(8-1)/8 = 1.75, so 40.60 times 1.75 = 71.05. The 64-rank factor is 2(63)/64 = 1.96875, so 183.55 times 1.96875 = 361.36.
+1. **Check the arithmetic.** A 16-rank AllReduce moves 1 GiB in 44,739.2 microseconds. Compute algbw, busbw and efficiency against a 400 Gbps link. *Solution sketch:* algbw is 1,073,741,824 bytes divided by 44,739.2 microseconds, which is 24.0 GB/s. The factor is 2 times 15 over 16, which is 1.875, so busbw is 45.0 GB/s. A 400 Gbps link is 50 GB/s, so efficiency is 0.90.
 
-2. **Read the transport from the log.** A multi-node run prints `NCCL INFO Using network Socket` instead of IB, and the bus bandwidth reads about 2 GB/s. Identify the failure class, list the two environment settings you would apply first, and state the log line you would look for after the fix. *Solution sketch:* this is the silent TCP fallback. Set `NCCL_NET=IB` so NCCL fails fast instead of falling back, and set `NCCL_SOCKET_IFNAME=^docker,lo` so the bootstrap stays off the bridge interface. After the fix, look for `Using network IB` in the INFO log.
+2. **Read the transport.** A run prints `NCCL INFO NCCL_IB_DISABLE set by environment to 1` and `Using network Socket`. Name the failure and the analyser flags to expect. *Solution sketch:* it is the silent fallback. Expect `SOCKET_TRANSPORT`, and `PLATEAU_BELOW_LINK_RATE` when the link rate is given. The fix is to unset the variable and look for `Using network IB`.
 
-3. **Bisect the straggler.** A 128-node cluster runs well below its baseline bus bandwidth, and you suspect one node. How many split runs does bisection take, how many total runs including the initial full-cluster test, and how does that compare with a linear search? Then write the per-rail commands that isolate the degraded rail on the suspect node. *Solution sketch:* the ceiling of log2 128 is 7 split steps, or 8 total runs, versus 128 linear runs. Then pin each rail in turn with `NCCL_IB_HCA=mlx5_0:1` through `NCCL_IB_HCA=mlx5_7:1`, one run per rail, and the rail whose bus bandwidth drops is the degraded one.
+3. **Bisect a straggler.** A 64-node cluster runs under baseline. How many split rounds does bisection need, and what do you do at the end? *Solution sketch:* ceiling of log2 64 is 6 rounds. With one node left, pin each rail with `NCCL_IB_HCA=mlx5_k:1` and compare busbw, or run `ib_write_bw` per device. `find_slow_members` flags any member below 70 percent of the median.
 
-4. **Pair the GPU and the NIC.** On an 8-GPU node, the topology matrix shows GPU0 to `mlx5_0` as PIX, GPU0 to `mlx5_7` as SYS, and every GPU pair as NV18. Pick the pairing for a `--use_cuda=0` test on GPU 0, explain why the other pairing is excluded, and state what the NCCL log would show if it used it anyway. *Solution sketch:* pair GPU0 with `mlx5_0`, because PIX shares at most one PCIe switch and is the gold-standard GPUDirect path. The SYS pairing crosses the inter-socket link, and NCCL excludes GPUDirect across SYS by default. If it were used anyway, the INFO log would show host-staged transfers instead of the GPUDirect lines, and the number would not represent the node's real capability.
+4. **Pick the pair.** `nvidia-smi topo -m` shows GPU0 to `mlx5_0` as `PIX` and GPU0 to `mlx5_7` as `SYS`. Which pair do you use for a GPU-memory wire test? *Solution sketch:* use `mlx5_0`. A `SYS` pair crosses the CPU interconnect and would not show what the node can do. `NCCL_NET_GDR_LEVEL` controls the allowed GPU-NIC distance, and `PIX` means the same PCI switch.
 
-5. **Attribute the failing tier.** Host `ib_write_bw` reads 390 Gbps, `ib_write_bw --use_cuda=0` reads 110 Gbps, and multi-node `all_reduce_perf` reads 24 GB/s. Which tier failed, which module or setting do you check first, and what result would move the diagnosis to a different tier? *Solution sketch:* the GPUDirect tier failed, because the host wire is healthy and the GPU-buffer path collapsed. Check `nvidia_peermem` first, then PCIe ACS and the GPU-NIC locality. If `--use_cuda` recovers to the host number after the fix, the remaining fault sits in the multi-node NCCL path, not the local GPU path.
+5. **Find the failing tier.** Host `ib_write_bw` is near the port rate, `--use_cuda` is far lower, and multi-node busbw is low. Which tier fails first and what do you check? *Solution sketch:* tier 2b. Check that `nvidia_peermem` is loaded, then ACS, then the GPU-NIC pair. Fix tier 2b before touching tier 3.
 
-6. **Write the gate table for an older generation.** An A100 node has NVLink 3 at 600 GB/s per GPU and one ConnectX-6 200G HDR rail per GPU. List the three gates this lab would apply to that fabric, and state where each pass number comes from. *Solution sketch:* the intra-node gate expects a 1 GiB AllReduce bus bandwidth below the NVLink 3 rating of 600 GB/s with `#wrong` zero. The wire gate expects `ib_write_bw` sustained near the 200 Gbps HDR rating with flat error counters. The multi-node gate keeps the standing 80 percent rule against the local or per-rail baseline, over NET/IB. The generation figures come from the NVLink and ConnectX tables, and the 80 percent gate is the standing policy.
+6. **Extend the analyser.** Add a flag for in-place results that are much slower than out-of-place results. *Solution sketch:* the `Row` class already holds both halves. Compare plateau busbw of `oop` against `inplace`, choose a ratio, and write a synthetic table test that raises it and a healthy table test that does not. The threshold would be your own reasoning, so label it.
 
 ---
 
 ## Checkpoint questions (20)
 
-<details><summary>1. Why is fabric validation a layered ladder instead of one big benchmark?</summary>
-One symptom, a slow AllReduce, can come from many layers: a downtrained PCIe link, a dirty optical, a missing peer-memory module, a TCP fallback. If you skip the lower tiers, a failing nccl-tests number cannot tell you which layer is at fault, so the ladder starts at the intra-node bus and moves up, with the first failing tier naming the layer to fix.
+<details><summary>1. Why can dashboards show a healthy fabric that is slow?</summary>
+They show link state and error counters, not the bandwidth of the data path. Only a benchmark measures that.
 </details>
 
-<details><summary>2. What does a 25 to 30 GB/s reading from nvbandwidth device-to-host mean on a PCIe Gen5 x16 node?</summary>
-A healthy link delivers 50 to 60 GB/s, against a raw ceiling of about 64 GB/s per direction. A 25 to 30 GB/s reading means the link downtrained from x16 to x8, or from Gen5 to Gen4. Confirm which one with the LnkSta field in `lspci -vv`, and reseat the card, the riser, or the retimer.
+<details><summary>2. Why not use iperf3 to validate an RDMA fabric?</summary>
+iperf3 goes through the kernel TCP stack, which training does not use. perftest and nccl-tests exercise the RDMA and collective paths.
 </details>
 
-<details><summary>3. Why is iperf3 unsuitable for validating a 400G AI fabric?</summary>
-It pushes data through the kernel TCP/IP stack, which brings socket buffer copies, context switches, and interrupt overhead, so the host CPU bottlenecks well below 400 Gbps. The perftest binaries post RDMA work queue entries directly to the HCA and bypass the kernel, which is the path the training job actually uses.
+<details><summary>3. What does the validation ladder guarantee?</summary>
+Each tier starts only after the tier below passes, so the first failing tier names the layer to fix.
 </details>
 
-<details><summary>4. What are the bus bandwidth conversion factors for AllReduce, ReduceScatter, AllToAll, and Broadcast at 8 ranks?</summary>
-AllReduce is 2(8-1)/8 = 1.75. ReduceScatter, AllGather, and AllToAll are (8-1)/8 = 0.875. Broadcast and Reduce stay at 1.0 whatever the rank count. AllReduce carries the largest factor because it runs two passes, reduce-scatter plus all-gather, and the factor approaches 2 as the rank count grows.
+<details><summary>4. Define algbw.</summary>
+Data size divided by time. It is not comparable with hardware because it depends on the rank count.
 </details>
 
-<details><summary>5. An 8-GPU run reduces 64 MiB in 1,653.1 microseconds and reports an algbw of 40.60 GB/s. What is the bus bandwidth?</summary>
-Multiply the algbw by the 8-rank AllReduce factor of 1.75: 40.60 times 1.75 = 71.05 GB/s. The bus bandwidth is the column comparable to the interconnect spec sheet, and the algbw is the one that misleads.
+<details><summary>5. Define busbw and why it exists.</summary>
+It is algbw times a collective-specific factor. It reflects how well the hardware bottleneck is used and does not depend on the rank count.
 </details>
 
-<details><summary>6. What are the two phases of a ring AllReduce, and how many steps does each take on 8 GPUs?</summary>
-Phase 1 is reduce-scatter, which leaves each rank with one reduced shard. Phase 2 is all-gather, which leaves each rank with the full sum. Each phase takes N-1 steps, so 7 steps each on 8 GPUs, for a total of 2(N-1) = 14 hop-loads per rank instead of the 56 that a naive broadcast would move.
+<details><summary>6. What is the AllReduce busbw factor at 16 ranks?</summary>
+2(n-1)/n with n of 16 gives 1.875.
 </details>
 
-<details><summary>7. When does NCCL prefer a tree over a ring, and what does NVLS add?</summary>
-Ring latency grows linearly with hop count, so on large clusters the tree wins with its logarithmic hop count. NVLS moves the reduction into the NVSwitch ASIC, cutting the data each endpoint sends by a factor of 1/(N-1). NCCL scores the physical topology at initialization and selects per message size, and you read the choice in the INFO log.
+<details><summary>7. Which collectives use a factor of 1?</summary>
+Broadcast and Reduce, because all data passes through the root's link.
 </details>
 
-<details><summary>8. What do the -b, -e, -f, -g, -w, -n, and -c flags control in nccl-tests?</summary>
--b is the minimum message size, -e the maximum, -f the multiplicative step factor between sizes, -g the number of GPUs per process, -w the untimed warmup iterations, -n the timed iterations averaged per row, and -c the data-integrity check that fills the `#wrong` column. Together they set the sweep shape and the rigor.
+<details><summary>8. A table shows algbw 24 GB/s and busbw 45 GB/s on 16 ranks and a 400 Gbps link. Is it healthy?</summary>
+Efficiency is 45 over 50, which is 0.90, so it is healthy by this chapter's gate. The low algbw is expected.
 </details>
 
-<details><summary>9. What does a non-zero value in the #wrong column mean, and what do you do with that run's bandwidth?</summary>
-It means the collective completed but corrupted floating-point values in transit, possibly from faulty HBM, bad SRAM, or broken buffer registration. A fast run with errors is a failed run, so you do not report its bandwidth until the corruption is found and fixed, and you re-measure.
+<details><summary>9. What does the default of -c tell you?</summary>
+The correctness check runs once by default, so the check is on unless you change it. Always confirm the `#wrong` column is zero.
 </details>
 
-<details><summary>10. What are the reference bus bandwidth numbers for a single-node 8x H100 SXM AllReduce at 1 GiB, and for a multi-node 8x400G NDR cluster?</summary>
-The single-node reference is 1 GiB in 2,480 microseconds, giving an algbw of 432.96 GB/s and a bus bandwidth of 757.68 GB/s. The multi-node reference across 8 nodes is 1 GiB in 5,850 microseconds, giving a bus bandwidth of 361.36 GB/s, about 45.17 GB/s per rail, or 90.34 percent of line rate.
+<details><summary>10. Why is there no absolute busbw target for one NVLink node here?</summary>
+No source this chapter uses gives one, and algorithms such as NVLS can change the data path. The gate is your own baseline.
 </details>
 
-<details><summary>11. What do PIX and SYS mean in nvidia-smi topo -m, and why does that matter for GPUDirect RDMA?</summary>
-PIX means the GPU and NIC sit behind at most one PCIe switch on the same NUMA node, which is the gold-standard GPUDirect pairing. SYS means the path crosses the inter-socket link between NUMA nodes, and NCCL excludes GPUDirect across it by default. Pair each GPU with its local NIC, or the transfer is host-staged and the number understates the node.
+<details><summary>11. What do NCCL_P2P_DISABLE and NCCL_SHM_DISABLE do?</summary>
+They disable the peer-to-peer and shared-memory transports. Left set, they can cut bandwidth sharply, so use them only to diagnose.
 </details>
 
-<details><summary>12. What is the 80 percent multi-node gate, and what does the 95.18 to 58.2 example show?</summary>
-A multi-node run must reach at least 80 percent of the corresponding single-node or per-rail baseline. A node whose 512 MiB single-node bus bandwidth measured 95.18 GB/s sets the gate at 76.14 GB/s. An observed multi-node result of 58.2 GB/s is 61.15 percent of the local baseline, so the fabric fails the gate and the run is not certifiable.
+<details><summary>12. Which log line proves RDMA was used and which proves a fallback?</summary>
+`Using network IB` for RDMA, and `Using network Socket` for the TCP fallback.
 </details>
 
-<details><summary>13. In a timed-out AllReduce, which ranks are at fault?</summary>
-Almost never the ones that printed the timeout. A collective is a barrier, so the ranks that timed out arrived on time and waited for the slow one. The fault sits on the rank that never entered the collective, or on the hardware that kept that rank late, and you check the first rank to fail because later errors are usually consequences.
+<details><summary>13. What does PIX mean in the topology matrix?</summary>
+The two devices are behind at most one PCIe switch. It is the preferred relation for a GPU and its NIC.
 </details>
 
-<details><summary>14. What are NCCL_RUN_DIAGNOSTICS and ncclras, and in which NCCL versions do they appear?</summary>
-NCCL_RUN_DIAGNOSTICS=1 runs active hardware and peer-access checks during communicator initialization, introduced in NCCL 2.31. ncclras is a background reliability daemon on port 28028, introduced in NCCL 2.24. Its MISMATCH status names lagging ranks, and its INCOMPLETE status names dead or unresponsive ranks.
+<details><summary>14. Which flags does the real Base Command Manager table raise?</summary>
+`PLATEAU_BELOW_LINK_RATE` and `SOCKET_TRANSPORT`, because busbw is about 0.8 GB/s over sockets.
 </details>
 
-<details><summary>15. How many benchmark runs does bisection take to isolate one slow node among 128, and why is that better than testing one by one?</summary>
-Split the suspect set in half, and the half with the degraded bus bandwidth contains the straggler. That takes 7 split steps, or 8 total runs including the initial full-cluster test, instead of 128 linear runs. The savings grow with cluster size, and the final step is per-rail isolation on the suspect node.
+<details><summary>15. Why can one nccl-tests table not name a slow rank?</summary>
+The reported figures are averages across ranks by default. Subset runs and `find_slow_members` are needed.
 </details>
 
-<details><summary>16. Why does timing each rank immediately after dist.all_reduce fail to find a straggler?</summary>
-The all_reduce is a barrier, so fast ranks block inside the collective until the slow rank arrives, and every rank then reports the same total time. The straggler disappears from the data. Record each timestamp before entering the collective, after synchronizing the GPU, and the slow rank shows up in its own number.
+<details><summary>16. What does NCCL_RUN_DIAGNOSTICS=1 do, and from which NCCL version?</summary>
+It runs active checks such as P2P verification during communicator initialization, from NCCL 2.31. Results are informational.
 </details>
 
-<details><summary>17. What does a 52/56 peer-access result from the init diagnostics mean on an 8-GPU node?</summary>
-An 8-GPU node has 8 times 7 = 56 directed peer pairs to verify, and 52 passing means 4 GPU-to-GPU links failed verification, likely a degraded NVLink or a broken peer path. It is an init-time hardware fault that you fix before any workload starts, because every collective on those links would inherit the damage.
+<details><summary>17. What does the RAS MISMATCH status mean?</summary>
+Ranks of a communicator have different collective operation counts. The lagging ranks are listed.
 </details>
 
-<details><summary>18. Which error counters must stay flat during a benchmark, and why?</summary>
-symbol_error, link_error_recovery, port_rcv_errors, and VL15_dropped must show no delta between the before and after snapshots. A rising error counter means the fabric is retraining or dropping traffic, and the throughput number from that run is not a baseline, whatever it reads, so it routes you to the degraded-fabric branch.
+<details><summary>18. How many split rounds find one bad node among 128?</summary>
+The ceiling of log2 128, which is 7.
 </details>
 
-<details><summary>19. Why must the evidence pack pin the software and hardware versions?</summary>
-A bus bandwidth number is reproducible only with the stack that produced it: the driver, the NCCL build, the NIC firmware, and the switch. Without the versions, a future diff cannot separate a fabric regression from a driver change, and the baseline stops being a gate. The versions are what make the pack an artifact instead of a memo.
+<details><summary>19. Which thresholds in this chapter are not from a source?</summary>
+The 80 percent efficiency gate and the 60 percent collapse ratio. They are my reasoning and must be calibrated on your fabric.
 </details>
 
-<details><summary>20. What are the five questions the lab's What to record checklist answers?</summary>
-The single-node bus bandwidth at 1 GiB and its gate. The multi-node bus bandwidth at 1 GiB and the 80 percent gate. The transport NCCL picked on each node, and whether GPUDirect RDMA was active. Which error counters moved during the sweep, and by how much. And, if a gate failed, the first piece of evidence to read and why. If any takes more than five seconds, the fabric is not yet a validated service.
+<details><summary>20. What goes into the evidence pack?</summary>
+Topology, counters before and after, the INFO log, the tables, and pinned versions of driver, NCCL, nccl-tests commit, firmware and switch.
 </details>
-
----
 
 ## Sources and review notes
 
-- nvidia-devops Zero-to-Hero Volume 24, Project 2 "AllReduce Algorithm Design": the naive, tree, and ring AllReduce comparison; the 2(N-1) hop math and the 40 percent speedup over naive; NCCL auto-tuning at 81 percent of peak versus a hand-coded ring at 54 percent; the 100 MB tensor scenario; the ResNet-50 step-time arithmetic; and the production troubleshooting table covering serialized sends, mixed-fabric collapse, floating-point divergence, and MPI deadlock hangs.
-- nvidia-devops Zero-to-Hero Volume 07, "GPU networking and data paths": ch. 2 PCIe, NUMA, and host data paths, including the H100 3,350 GB/s memory figure, the PCIe Gen5 x16 ceiling, and the cross-NUMA performance scenario; ch. 3 NVLink and NVSwitch, the generational bandwidth table, the 18-link HGX mesh, and NV18; ch. 4 DMA, RDMA, and peer-to-peer, the kernel-bypass data path; ch. 5 GPUDirect RDMA, including `nvidia_peermem`, PCIe ACS, the same-switch requirement, and the BAR1/BIOS prerequisites; ch. 7 ConnectX generations, the 400 Gbps to 50 GB/s conversion, and the dual-200G cost-cutting scenario; ch. 8 topology-aware placement, the `single-numa-node` policy; ch. 9 multi-node collectives and NCCL paths, ring versus tree, SHARP, `NCCL_TOPO_FILE`, and NET/IB versus NET/Socket; ch. 10 performance bottlenecks and benchmarking, the nvbandwidth-to-perftest-to-nccl-tests ladder, the 390 Gbps NDR reference, and the DDP bucket size fix.
-- nvidia-devops Zero-to-Hero Volume 07, Lab 03 "Benchmark RDMA and GPUDirect paths": the `ibstat` State/Physical state/Rate reading, the sysfs counter snapshot fields, the PIX versus SYS reference topology matrix, the message-size reporting bands, the counter-diff discipline, and the mpirun sweep command.
-- Handbook Part 12: ch. 12.15 for the collective math, the algorithm trade-offs, and the latency anchors; ch. 12.16 for the topology distance levels, the SYS path penalty, and transport selection; ch. 12.17 for the nccl-tests flag table, the algbw-to-busbw factors, the single-node and multi-node reference rows, the 80 percent gate, the failure matrix, the binary-search bisection, and the NCCL diagnostics; ch. 12.18 for the watchdog semantics and the Llama 3 405B interruption statistics.
-- Handbook Part 14: ch. 14.10 for the multi-node training architecture this fabric exists to serve.
+### Sources
+
+- nccl-tests `README.md` and `doc/PERFORMANCE.md`, https://github.com/NVIDIA/nccl-tests, master at commit `afd59abab774a6a4b492eb344bd0c845a0b7bb4d` dated 2026-10-05, fetched 2026-11-10. Used for the argument list and defaults, the algbw definition, the busbw derivation and the correction factors. Neither page contains an example output table or an expected-bandwidth table for any hardware.
+- NCCL user guide, environment variables page, diagnostics page and RAS page, documentation set that describes features up to NCCL 2.32 and is mirrored under `tools/nvidia-ingest/data/md/nccl/` in nvidia-devops, read 2026-11-10. Version tags are quoted where the pages state them: `NCCL_NET` since 2.10, `NCCL_TOPO_DUMP_FILE` since 2.6, RAS since 2.24, diagnostics from 2.31, `NCCL_DEBUG=ATTN` since 2.32.
+- NVIDIA Base Command Manager 11 Administrator Manual, Pyxis and Enroot validation example, pages 370 and 371 (mirrored as `tools/nvidia-ingest/data/md/bcm11-admin/doc.md`). Source of the real nccl-tests table used as fixture.
+- *AI Systems Performance Engineering*, ch. 4 "Tuning Distributed Networking Communication": GPUDirect RDMA checks, `NCCL_DEBUG`, `NCCL_SOCKET_IFNAME`, `NCCL_P2P_DISABLE`, `NCCL_SHM_DISABLE`, DDP bucket default, Table 4-4.
+- *Distributed AI Systems*, ch. 2: NVLink per-GPU figures, PCIe Gen5 x16 figure, topology matrix reading.
+- *Supercomputers for Linux SysAdmins*, ch. 5 "InfiniBand": NDR data rate table, `ibstat`, `perfquery`, `mlxlink`.
+- *AI Data Center Network Design and Technologies*, ch. 10 "AI Network Performance KPIs": job completion time as the headline metric, which motivates measuring and not watching.
+- *Data Center Best Practices with DGX B200* (superpod-b200-dc), cabling slides: passive DAC reach of up to 3 meters at 400 Gb and up to 30 meters for active optical cables.
+- *AI Networking Cookbook*: chapter list reviewed, nothing used. Its recipes are about LLM applications for network engineers, not fabric validation.
 
 ### Cross-references to other handbook chapters
 
-- Chapter 12.15 for the NCCL collectives, algorithms, and the ring/tree/NVLS trade-offs.
-- Chapter 12.16 for topology discovery, the PIX-to-SYS distance levels, transports, and environment variables.
-- Chapter 12.17 for the nccl-tests tooling, the algbw/busbw math, and the straggler isolation.
-- Chapter 12.18 for the debugging ladder, the watchdog, and the RAS diagnostics.
-- Chapter 14.10 for the multi-node training context.
+Chapters 12.15, 12.16, 12.17, 12.18, 12.19, 12.23, 10.6, 10.8 and 14.10, linked in the metadata table. Capstone 19.1 covers the Slurm side.
 
 ### Migrated from `nvidia-devops`
 
 - `nvidia-zero-to-hero/volume-24/chapter-02-allreduce-algorithm-design.md`
 - `nvidia-zero-to-hero/volume-07/chapter-02-pcie-numa-and-host-data-paths.md`
 - `nvidia-zero-to-hero/volume-07/chapter-03-nvlink-and-nvswitch.md`
-- `nvidia-zero-to-hero/volume-07/chapter-04-dma-rdma-and-peer-to-peer.md`
 - `nvidia-zero-to-hero/volume-07/chapter-05-gpudirect-rdma.md`
-- `nvidia-zero-to-hero/volume-07/chapter-07-connectx-and-gpu-network-adapters.md`
-- `nvidia-zero-to-hero/volume-07/chapter-08-topology-aware-placement.md`
 - `nvidia-zero-to-hero/volume-07/chapter-09-multi-node-collectives-and-nccl-paths.md`
 - `nvidia-zero-to-hero/volume-07/chapter-10-performance-bottlenecks-and-benchmarking.md`
 - `nvidia-zero-to-hero/volume-07/labs/lab-03-benchmark-rdma-and-gpudirect-paths.md`
+- Mirrored vendor docs: `tools/nvidia-ingest/data/md/nccl/` and `tools/nvidia-ingest/data/md/bcm11-admin/doc.md`
 
-The wording has been rewritten in the handbook's voice; no verbatim passages were carried over.
+The earlier draft took wording from these volumes. Facts from them that could not be confirmed against a source are removed or labelled below.
 
 ### Explicitly labelled inferences
 
-- The five-question "What to record" checklist is an author synthesis of the operating skills this chapter covers.
-- The two-node, 16-GPU lab scale is a starting point; the gates scale to any node count, and the per-rail references are for 400G NDR, to be re-derived for other generations.
-- The re-certification cadence, tied to firmware rollouts, cable swaps, and node replacements, is operational policy, not a source-mandated value.
-- The "three weeks later" and "2 a.m." incident framing is narrative color, not a sourced incident.
+- The 80 percent efficiency gate, the 60 percent collapse ratio and the 70 percent slow-member ratio are my reasoning. The slow-member ratio copies the 30 percent rule in the NCCL 2.31 network diagnostic.
+- The lab fabric of two nodes with 8 NDR adapters each is a design choice. The 45 GB/s expectation is lab arithmetic.
+- Whether `NCCL_NET=IB` makes initialization fail when no HCA works is my expectation.
+- The re-certification cadence is operating policy.
+- The 2 a.m. and 3 a.m. stories are narrative framing, not incidents.
 
-### Not verified on live hardware
+### Not verified or not run
 
-- The hands-on lab in Section 8 is **untested** against a live cluster in this repository; it assumes a working InfiniBand fabric, current drivers, and an MPI distribution on both nodes.
-- All command output quoted as "expected" is illustrative, drawn from the source material; production runs must record their own values.
-- The 1 GiB reference rows of 757.68 GB/s and 361.36 GB/s are taken from the handbook's Part 12 benchmarking chapter and were not reproduced on live hardware in this repository.
+- The whole lab (Section 8) is untested on hardware: no GPUs, no InfiniBand and no MPI exist on the authoring machine. Shell scripts pass `bash -n` only. There is no `shellcheck` here.
+- The `ib_write_bw`, `ib_write_lat` and `nvbandwidth` flags were not checked against the tools' own help on a cluster.
+- The sysfs counter names are the usual ones and were not verified on hardware.
+- The ACS and BIOS causes of a GPUDirect collapse come from nvidia-devops Volume 07 and were not independently confirmed.
+- The synthetic fixture `c05_fixture_synth_healthy.txt` and every synthetic table in the tests are invented. The real table is old (NCCL 2.11.4 on V100), so the exact header of current nccl-tests output with `root` and `#wrong` is not confirmed by a source. The parser relies on row shape for that reason.
+- Removed from the earlier draft because no source supports them: the H100 busbw range, the "hybrid PCIe 95.18 GB/s" row, the "5,850 microseconds at 361.36 GB/s" cluster row and its per-rail percentage, the ConnectX generation table, NVLink generations before Hopper, the Kubernetes Topology Manager paragraph, the 54 and 81 percent AllReduce project figures, the 100 MB within 5 ms gate, and the 64 percent GPU-fault statistic.
+- Possible problem in neighbouring chapter 12.17: it quotes a 361.36 GB/s multi-node row on 64 GPUs as a reference with per-rail 90 percent. A 361 GB/s busbw is far above one 50 GB/s NIC, so the row looks like arithmetic practice and not a measurement.
+
+### Verification log
+
+| Item | Count |
+|---|---|
+| Claims checked | 76 |
+| Confirmed against a source or a test run | 46 |
+| Corrected | 7 |
+| Removed | 14 |
+| Still unverified and labelled | 9 |

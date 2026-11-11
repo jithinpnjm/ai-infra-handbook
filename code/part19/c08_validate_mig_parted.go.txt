@@ -1,0 +1,29 @@
+package main
+
+import (
+	"fmt"
+	"os"
+
+	v1 "github.com/NVIDIA/mig-parted/api/spec/v1"
+	"sigs.k8s.io/yaml"
+)
+
+func main() {
+	rc := 0
+	for _, p := range os.Args[1:] {
+		b, err := os.ReadFile(p)
+		if err != nil {
+			fmt.Println("ERR", p, err)
+			rc = 1
+			continue
+		}
+		var s v1.Spec
+		if err := yaml.Unmarshal(b, &s); err != nil {
+			fmt.Println("INVALID", p, err)
+			rc = 1
+			continue
+		}
+		fmt.Printf("OK %s version=%s configs=%d\n", p, s.Version, len(s.MigConfigs))
+	}
+	os.Exit(rc)
+}

@@ -1,0 +1,15 @@
+# GPUHealthPolicy for the 4-node, 32-GPU training pool (chapter 19.6).
+# CRD: code/gpuhealth/config/crd/platform.example.com_gpuhealthpolicies.yaml
+apiVersion: platform.example.com/v1alpha1
+kind: GPUHealthPolicy
+metadata:
+  name: training-pool
+spec:
+  nodeSelector:
+    nvidia.com/gpu.present: "true"
+  conditionType: GPUHealthy
+  unhealthyFor: 2m
+  healthyFor: 5m
+  action: CordonAndDrain
+  maxUnavailableNodes: 10%
+  dryRun: false

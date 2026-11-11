@@ -1,0 +1,57 @@
+# code/part19/c04_pytorchjob.yaml
+# Elastic PyTorchJob, 2 to 4 nodes x 8 GPUs. Image and claim names are placeholders.
+# Validated against the Kubeflow Training Operator v1.9.4 CRD (kubeflow.org/v1).
+apiVersion: kubeflow.org/v1
+kind: PyTorchJob
+metadata:
+  name: c04-train
+spec:
+  elasticPolicy:
+    rdzvBackend: c10d
+    minReplicas: 2
+    maxReplicas: 4
+    maxRestarts: 5
+  nprocPerNode: "8"
+  runPolicy:
+    backoffLimit: 5
+    cleanPodPolicy: None
+  pytorchReplicaSpecs:
+    Worker:
+      replicas: 4
+      restartPolicy: OnFailure
+      template:
+        spec:
+          terminationGracePeriodSeconds: 180
+          containers:
+            - name: pytorch
+              image: registry.example.com/c04-train:1.0
+              command: ["python"]
+              args:
+                - /app/c04_train.py
+                - --ckpt-dir=/shared/c04/ckpt
+                - --metrics-dir=/shared/c04/metrics
+                - --steps=100000
+                - --ckpt-every=500
+                - --async-ckpt
+              env:
+                - name: TORCH_NCCL_ENABLE_MONITORING
+                  value: "1"
+                - name: TORCH_NCCL_HEARTBEAT_TIMEOUT_SEC
+                  value: "300"
+                - name: TORCH_NCCL_TRACE_BUFFER_SIZE
+                  value: "2000"
+              resources:
+                limits:
+                  nvidia.com/gpu: 8
+              volumeMounts:
+                - name: shared
+                  mountPath: /shared
+                - name: dshm
+                  mountPath: /dev/shm
+          volumes:
+            - name: shared
+              persistentVolumeClaim:
+                claimName: c04-shared
+            - name: dshm
+              emptyDir:
+                medium: Memory

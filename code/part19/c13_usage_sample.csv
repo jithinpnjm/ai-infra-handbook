@@ -1,0 +1,9 @@
+team,project,pool,gpu_hours_allocated,gpu_hours_busy,storage_tb
+team-a,sweeps-llm,batch,9800,8100,12.0
+team-a,notebooks,notebook,610,240,1.5
+team-b,pretrain-7b,batch,7400,6900,30.0
+team-b,notebooks,notebook,420,150,1.0
+team-c,vision-eval,batch,5200,4300,18.0
+team-c,notebooks,notebook,520,190,1.2
+team-d,rlhf,batch,2100,1800,6.0
+team-d,notebooks,notebook,330,100,0.8

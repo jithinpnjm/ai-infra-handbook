@@ -1,0 +1,9 @@
+{
+  "_comment": "ILLUSTRATIVE numbers for the worked example. Not a quote from any cloud or vendor.",
+  "gpus": 64,
+  "hours_in_month": 720,
+  "gpu_hour_price": "2.50",
+  "storage_price_per_tb_month": "20.00",
+  "platform_fixed_per_month": "6000.00",
+  "quota_share": {"team-a": "0.25", "team-b": "0.25", "team-c": "0.25", "team-d": "0.25"}
+}

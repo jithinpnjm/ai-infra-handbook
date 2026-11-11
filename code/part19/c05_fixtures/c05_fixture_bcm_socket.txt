@@ -1,0 +1,29 @@
+# nThread 1 nGpus 1 minBytes 1048576 maxBytes 4294967296 step: 2(factor) warmup iters: 5 iters: 20 validation: 1
+#
+# Using devices
+#   Rank  0 Pid 175945 on node001 device  0 [0x00] Tesla V100-SXM3-32GB
+#   Rank  1 Pid 180379 on node002 device  0 [0x00] Tesla V100-SXM3-32GB
+node001:175945:175945 [0] NCCL INFO NCCL_IB_DISABLE set by environment to 1.
+node001:175945:175945 [0] NCCL INFO NET/Socket : Using [0]ens3:10.141.0.5<0>
+node001:175945:175945 [0] NCCL INFO Using network Socket
+NCCL version 2.11.4+cuda11.6
+node001:175945:177561 [0] NCCL INFO Channel 00 : 1[60] -> 0[60] [receive] via NET/Socket/0
+#
+#                                                       out-of-place                       in-place
+#       size         count      type   redop     time   algbw   busbw  error     time   algbw   busbw  error
+#        (B)    (elements)                       (us)  (GB/s)  (GB/s)            (us)  (GB/s)  (GB/s)
+     1048576        262144     float     sum   1491.5    0.70    0.70  0e+00   1421.3    0.74    0.74  0e+00
+     2097152        524288     float     sum   3077.5    0.68    0.68  0e+00   2568.8    0.82    0.82  0e+00
+     4194304       1048576     float     sum   4617.3    0.91    0.91  0e+00   4622.5    0.91    0.91  0e+00
+     8388608       2097152     float     sum   9483.1    0.88    0.88  0e+00   8911.9    0.94    0.94  0e+00
+    16777216       4194304     float     sum    17516    0.96    0.96  0e+00    18613    0.90    0.90  0e+00
+    33554432       8388608     float     sum    34799    0.96    0.96  0e+00    41837    0.80    0.80  0e+00
+    67108864      16777216     float     sum    99790    0.67    0.67  0e+00    83126    0.81    0.81  0e+00
+   134217728      33554432     float     sum   204614    0.66    0.66  0e+00   199530    0.67    0.67  0e+00
+   268435456      67108864     float     sum   319701    0.84    0.84  0e+00   341630    0.79    0.79  0e+00
+   536870912     134217728     float     sum   608809    0.88    0.88  0e+00   683016    0.79    0.79  0e+00
+  1073741824     268435456     float     sum  1337187    0.80    0.80  0e+00  1247369    0.86    0.86  0e+00
+  2147483648     536870912     float     sum  2638741    0.81    0.81  0e+00  2743454    0.78    0.78  0e+00
+  4294967296    1073741824     float     sum  5996381    0.72    0.72  0e+00  5430549    0.79    0.79  0e+00
+# Out of bounds values : 0 OK
+# Avg bus bandwidth    : 0.810575

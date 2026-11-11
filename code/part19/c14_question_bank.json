@@ -1,0 +1,3754 @@
+{
+ "version": 1,
+ "purpose": "Interview question bank for DevOps, SRE and solutions-architect candidates on AI infrastructure roles. A question of this kind may be asked; no company is claimed to ask any of them.",
+ "volume20_drills": {
+  "note": "Nebius-specific drill questions live in Volume 20 and are not repeated here.",
+  "path": "docs/part-20-nebius-sre-interview",
+  "chapters": [
+   "03",
+   "05",
+   "06",
+   "13",
+   "14",
+   "17",
+   "18",
+   "19",
+   "20",
+   "21",
+   "22",
+   "23",
+   "24",
+   "25",
+   "26",
+   "27",
+   "28"
+  ]
+ },
+ "chapters": {
+  "1.8": {
+   "title": "1.8 Processes, signals and job control",
+   "path": "docs/part-01-linux/08-processes-signals-and-job-control.md",
+   "sources": [
+    "How Linux Works",
+    "Systems Performance",
+    "Supercomputers for Linux SysAdmins"
+   ]
+  },
+  "1.12": {
+   "title": "1.12 Disks, partitions and filesystems",
+   "path": "docs/part-01-linux/12-disks-partitions-and-filesystems.md",
+   "sources": [
+    "How Linux Works",
+    "Systems Performance",
+    "Supercomputers for Linux SysAdmins"
+   ]
+  },
+  "1.15": {
+   "title": "1.15 systemd: units, targets, timers, journald",
+   "path": "docs/part-01-linux/15-systemd-units-targets-timers-journald.md",
+   "sources": [
+    "How Linux Works",
+    "Supercomputers for Linux SysAdmins"
+   ]
+  },
+  "1.17": {
+   "title": "1.17 Memory management: virtual memory, NUMA, huge pages, OOM",
+   "path": "docs/part-01-linux/17-memory-management-virtual-memory-numa-huge-pages-oom.md",
+   "sources": [
+    "Systems Performance"
+   ]
+  },
+  "1.18": {
+   "title": "1.18 CPU scheduling and cgroups v1 and v2",
+   "path": "docs/part-01-linux/18-cpu-scheduling-and-cgroups-v1-and-v2.md",
+   "sources": [
+    "How Linux Works",
+    "Systems Performance"
+   ]
+  },
+  "1.19": {
+   "title": "1.19 Namespaces: the kernel feature behind containers",
+   "path": "docs/part-01-linux/19-namespaces-the-kernel-feature-behind-containers.md",
+   "sources": [
+    "How Linux Works",
+    "Systems Performance"
+   ]
+  },
+  "1.21": {
+   "title": "1.21 Linux security: capabilities, SELinux, AppArmor, seccomp, PAM, SSH hardening",
+   "path": "docs/part-01-linux/21-linux-security-capabilities-selinux-apparmor-seccomp-pam-ssh-hardening.md",
+   "sources": [
+    "How Linux Works",
+    "Production Kubernetes",
+    "Supercomputers for Linux SysAdmins"
+   ]
+  },
+  "2.6": {
+   "title": "2.6 TCP in depth: handshake, windows, congestion control, tuning and troubleshooting",
+   "path": "docs/part-02-networking/06-tcp-in-depth-handshake-windows-congestion-control-retransmission.md",
+   "sources": [
+    "How Linux Works",
+    "Systems Performance",
+    "Computer Networking Problems and Solutions"
+   ]
+  },
+  "2.8": {
+   "title": "2.8 DNS in depth: resolution, records, resolvers and caching",
+   "path": "docs/part-02-networking/08-dns-in-depth-resolution-records-resolvers-and-caching.md",
+   "sources": [
+    "How Linux Works",
+    "Computer Networking Problems and Solutions"
+   ]
+  },
+  "2.9": {
+   "title": "2.9 DHCP, NAT and PAT",
+   "path": "docs/part-02-networking/09-dhcp-nat-and-pat.md",
+   "sources": [
+    "How Linux Works",
+    "Computer Networking Problems and Solutions"
+   ]
+  },
+  "2.20": {
+   "title": "2.20 Load balancing: L4, L7, ECMP hashing, proxies and inference traffic",
+   "path": "docs/part-02-networking/20-load-balancing-l4-l7-ecmp-hashing-and-proxies.md",
+   "sources": [
+    "How Linux Works",
+    "Computer Networking Problems and Solutions",
+    "Production Kubernetes",
+    "AI Data Center Network Design and Technologies"
+   ]
+  },
+  "2.21": {
+   "title": "2.21 Network security: threat models, firewalls, SSH, zero trust and securing AI clusters",
+   "path": "docs/part-02-networking/21-network-security-firewalls-tls-and-zero-trust.md",
+   "sources": [
+    "How Linux Works",
+    "Computer Networking Problems and Solutions",
+    "Production Kubernetes"
+   ]
+  },
+  "2.22": {
+   "title": "2.22 Linux networking I: inspecting state with ip, ss, counters and the observability toolkit",
+   "path": "docs/part-02-networking/22-linux-networking-inspecting-state-with-ip-ss-and-counters.md",
+   "sources": [
+    "How Linux Works",
+    "Systems Performance"
+   ]
+  },
+  "2.30": {
+   "title": "2.30 Network troubleshooting: method, models and case studies",
+   "path": "docs/part-02-networking/30-network-troubleshooting-method-and-case-studies.md",
+   "sources": [
+    "Systems Performance",
+    "Computer Networking Problems and Solutions"
+   ]
+  },
+  "3.5": {
+   "title": "3.5 Errors, files, text and bytes, subprocess and system scripting",
+   "path": "docs/part-03-python/05-errors-files-text-and-bytes-subprocess-and-system-scripting.md",
+   "sources": [
+    "How Linux Works",
+    "Learning Python",
+    "Fluent Python"
+   ]
+  },
+  "3.6": {
+   "title": "3.6 Concurrency: threads, processes and asyncio",
+   "path": "docs/part-03-python/06-concurrency-threads-processes-and-asyncio.md",
+   "sources": [
+    "Learning Python",
+    "Fluent Python"
+   ]
+  },
+  "3.9": {
+   "title": "3.9 Testing, quality and CI for Python tooling",
+   "path": "docs/part-03-python/09-testing-quality-and-ci-for-python-tooling.md",
+   "sources": [
+    "Learning Python",
+    "Ansible: Up and Running",
+    "Engineering AI Systems"
+   ]
+  },
+  "4.2": {
+   "title": "4.2 CI/CD pipelines: concepts and design",
+   "path": "docs/part-04-automation/02-ci-cd-pipelines-concepts-and-design.md",
+   "sources": [
+    "Ansible: Up and Running",
+    "Network Programmability and Automation"
+   ]
+  },
+  "4.6": {
+   "title": "4.6 Ansible playbooks: tasks, modules, idempotency and check mode",
+   "path": "docs/part-04-automation/06-ansible-playbooks-tasks-modules-idempotency-and-check-mode.md",
+   "sources": [
+    "Ansible: Up and Running"
+   ]
+  },
+  "4.12": {
+   "title": "4.12 Ansible Vault and secrets management",
+   "path": "docs/part-04-automation/12-ansible-vault-and-secrets-management.md",
+   "sources": [
+    "Ansible: Up and Running"
+   ]
+  },
+  "4.17": {
+   "title": "4.17 Ansible for GPU nodes and clusters",
+   "path": "docs/part-04-automation/17-ansible-for-gpu-nodes-and-clusters.md",
+   "sources": [
+    "Systems Performance",
+    "AI Systems Performance Engineering",
+    "Ansible: Up and Running"
+   ]
+  },
+  "4.19": {
+   "title": "4.19 Terraform state in depth: backends, locking and drift",
+   "path": "docs/part-04-automation/19-terraform-state-in-depth-backends-locking-and-drift.md",
+   "sources": [
+    "Terraform: Up and Running"
+   ]
+  },
+  "4.26": {
+   "title": "4.26 GitOps with Argo CD and Flux",
+   "path": "docs/part-04-automation/26-gitops-with-argo-cd-and-flux.md",
+   "sources": [
+    "Production Kubernetes",
+    "Kubernetes: Up and Running"
+   ]
+  },
+  "5.3": {
+   "title": "5.3 Kubernetes architecture overview: components and what talks to what",
+   "path": "docs/part-05-kubernetes/03-kubernetes-architecture-overview-components-and-what-talks-to-what.md",
+   "sources": [
+    "Production Kubernetes",
+    "Kubernetes: Up and Running"
+   ]
+  },
+  "5.5": {
+   "title": "5.5 The API server and etcd: how a request becomes cluster state",
+   "path": "docs/part-05-kubernetes/05-the-api-server-and-etcd-how-a-request-becomes-cluster-state.md",
+   "sources": [
+    "Production Kubernetes",
+    "Kubernetes: Up and Running"
+   ]
+  },
+  "5.6": {
+   "title": "5.6 Controllers and the reconcile loop: how Kubernetes thinks",
+   "path": "docs/part-05-kubernetes/06-controllers-and-the-reconcile-loop-how-kubernetes-thinks.md",
+   "sources": [
+    "Kubernetes: Up and Running"
+   ]
+  },
+  "5.9": {
+   "title": "5.9 The kubelet and the node: CRI, cgroups, QoS classes, probes and eviction",
+   "path": "docs/part-05-kubernetes/09-the-kubelet-and-the-node-cri-cgroups-qos-classes-probes-and-eviction.md",
+   "sources": [
+    "Production Kubernetes",
+    "Kubernetes: Up and Running"
+   ]
+  },
+  "5.10": {
+   "title": "5.10 Services, endpoints and kube-proxy: the life of a Service",
+   "path": "docs/part-05-kubernetes/10-services-endpoints-and-kube-proxy-the-life-of-a-service.md",
+   "sources": [
+    "Production Kubernetes",
+    "Kubernetes: Up and Running"
+   ]
+  },
+  "5.16": {
+   "title": "5.16 Configuration, secrets and RBAC",
+   "path": "docs/part-05-kubernetes/16-configuration-secrets-and-rbac.md",
+   "sources": [
+    "Production Kubernetes",
+    "Kubernetes: Up and Running"
+   ]
+  },
+  "5.18": {
+   "title": "5.18 Scheduling in depth: kube-scheduler, affinity, taints, priority and preemption",
+   "path": "docs/part-05-kubernetes/18-scheduling-in-depth-kube-scheduler-affinity-taints-priority-and-preemp.md",
+   "sources": [
+    "Production Kubernetes",
+    "Kubernetes: Up and Running"
+   ]
+  },
+  "5.20": {
+   "title": "5.20 Upgrades, etcd backup and restore, and disaster recovery",
+   "path": "docs/part-05-kubernetes/20-upgrades-etcd-backup-and-restore-and-disaster-recovery.md",
+   "sources": [
+    "Production Kubernetes",
+    "Kubernetes: Up and Running"
+   ]
+  },
+  "5.21": {
+   "title": "5.21 Certificates, identity, admission control and policy",
+   "path": "docs/part-05-kubernetes/21-certificates-identity-admission-control-and-policy.md",
+   "sources": [
+    "Production Kubernetes",
+    "Kubernetes: Up and Running"
+   ]
+  },
+  "5.22": {
+   "title": "5.22 Multitenancy and platform services",
+   "path": "docs/part-05-kubernetes/22-multitenancy-and-platform-services.md",
+   "sources": [
+    "Production Kubernetes",
+    "Kubernetes: Up and Running"
+   ]
+  },
+  "5.23": {
+   "title": "5.23 Autoscaling: HPA, VPA, KEDA and the cluster autoscaler",
+   "path": "docs/part-05-kubernetes/23-autoscaling-hpa-vpa-keda-and-the-cluster-autoscaler.md",
+   "sources": [
+    "Production Kubernetes"
+   ]
+  },
+  "5.24": {
+   "title": "5.24 Observability for Kubernetes",
+   "path": "docs/part-05-kubernetes/24-observability-for-kubernetes.md",
+   "sources": [
+    "Production Kubernetes"
+   ]
+  },
+  "5.25": {
+   "title": "5.25 Troubleshooting Kubernetes from the node: crictl, nsenter, tcpdump and ip",
+   "path": "docs/part-05-kubernetes/25-troubleshooting-kubernetes-from-the-node-crictl-nsenter-tcpdump-and-ip.md",
+   "sources": [
+    "Production Kubernetes",
+    "Kubernetes: Up and Running"
+   ]
+  },
+  "5.27": {
+   "title": "5.27 Software supply chain security",
+   "path": "docs/part-05-kubernetes/27-software-supply-chain-security.md",
+   "sources": [
+    "Production Kubernetes"
+   ]
+  },
+  "6.9": {
+   "title": "6.9 Slurm accounting and scheduling policy: QOS, fair-share, backfill, preemption",
+   "path": "docs/part-06-hpc-slurm/09-slurm-accounting-and-scheduling-policy-qos-fairshare-backfill-preempti.md",
+   "sources": [
+    "nvidia-devops corpus, named in the chapter's Sources section"
+   ]
+  },
+  "6.10": {
+   "title": "6.10 Slurm GPU scheduling: GRES, NVML autodetect, MIG and device constraints",
+   "path": "docs/part-06-hpc-slurm/10-slurm-gpu-scheduling-gres-nvml-autodetect-mig-and-device-constraints.md",
+   "sources": [
+    "Distributed AI Systems",
+    "Supercomputers for Linux SysAdmins"
+   ]
+  },
+  "6.14": {
+   "title": "6.14 Slurm operations: prolog, epilog, health checks, drain, reason codes, troubleshooting",
+   "path": "docs/part-06-hpc-slurm/14-slurm-operations-prolog-epilog-health-checks-drain-reason-codes-troubl.md",
+   "sources": [
+    "Supercomputers for Linux SysAdmins"
+   ]
+  },
+  "6.15": {
+   "title": "6.15 Slurm high availability, upgrades and scaling",
+   "path": "docs/part-06-hpc-slurm/15-slurm-high-availability-upgrades-and-scaling.md",
+   "sources": [
+    "Supercomputers for Linux SysAdmins"
+   ]
+  },
+  "8.5": {
+   "title": "8.5 cmsh and Base View: administering the cluster",
+   "path": "docs/part-08-bcm/05-cmsh-and-base-view-administering-the-cluster.md",
+   "sources": [
+    "BCM 11 Administrator Manual"
+   ]
+  },
+  "9.6": {
+   "title": "9.6 DGX SuperPOD concepts: scalable units, fabrics and tiers",
+   "path": "docs/part-09-nvidia-systems/06-dgx-superpod-concepts-scalable-units-fabrics-and-tiers.md",
+   "sources": [
+    "AI Factory"
+   ]
+  },
+  "9.13": {
+   "title": "9.13 Sizing and capacity-planning exercises",
+   "path": "docs/part-09-nvidia-systems/13-sizing-and-capacity-planning-exercises.md",
+   "sources": [
+    "Systems Performance",
+    "AI Systems Performance Engineering"
+   ]
+  },
+  "10.2": {
+   "title": "10.2 The execution model: threads, warps, blocks and SMs",
+   "path": "docs/part-10-gpu-cuda/02-the-execution-model-threads-warps-blocks-and-sms.md",
+   "sources": [
+    "Systems Performance",
+    "AI Systems Performance Engineering"
+   ]
+  },
+  "10.3": {
+   "title": "10.3 The GPU memory hierarchy",
+   "path": "docs/part-10-gpu-cuda/03-the-gpu-memory-hierarchy.md",
+   "sources": [
+    "Systems Performance",
+    "AI Systems Performance Engineering"
+   ]
+  },
+  "10.6": {
+   "title": "10.6 GPU interconnects: PCIe, NVLink, NVSwitch and NVLink-C2C",
+   "path": "docs/part-10-gpu-cuda/06-gpu-interconnects-pcie-nvlink-nvswitch-and-nvlink-c2c.md",
+   "sources": [
+    "Systems Performance",
+    "AI Systems Performance Engineering",
+    "Distributed AI Systems",
+    "AI Data Center Network Design and Technologies"
+   ]
+  },
+  "10.8": {
+   "title": "10.8 Operating GPU nodes: nvidia-smi, topology, clocks and throttling",
+   "path": "docs/part-10-gpu-cuda/08-operating-gpu-nodes-nvidia-smi-topology-clocks-and-throttling.md",
+   "sources": [
+    "Systems Performance",
+    "AI Systems Performance Engineering"
+   ]
+  },
+  "10.20": {
+   "title": "10.20 Profiling tools: Nsight Systems, Nsight Compute, PyTorch profiler",
+   "path": "docs/part-10-gpu-cuda/20-profiling-tools-nsight-systems-nsight-compute-pytorch-profiler.md",
+   "sources": [
+    "Systems Performance",
+    "AI Systems Performance Engineering"
+   ]
+  },
+  "10.21": {
+   "title": "10.21 GPU health: DCGM, ECC, row remapping and Xid",
+   "path": "docs/part-10-gpu-cuda/21-gpu-health-dcgm-ecc-row-remapping-and-xid.md",
+   "sources": [
+    "Systems Performance",
+    "AI Systems Performance Engineering"
+   ]
+  },
+  "10.22": {
+   "title": "10.22 GPU troubleshooting scenarios",
+   "path": "docs/part-10-gpu-cuda/22-gpu-troubleshooting-scenarios.md",
+   "sources": [
+    "Systems Performance",
+    "AI Systems Performance Engineering"
+   ]
+  },
+  "11.2": {
+   "title": "11.2 Device plugin, container toolkit, CDI and runtime classes",
+   "path": "docs/part-11-gpu-kubernetes/02-device-plugin-container-toolkit-cdi-and-runtime-classes.md",
+   "sources": [
+    "Generative AI on Kubernetes"
+   ]
+  },
+  "11.7": {
+   "title": "11.7 Multi-node jobs: why a pod cannot span nodes, and gang scheduling concepts",
+   "path": "docs/part-11-gpu-kubernetes/07-multi-node-jobs-why-a-pod-cannot-span-nodes-and-gang-scheduling-concep.md",
+   "sources": [
+    "Systems Performance",
+    "AI Systems Performance Engineering",
+    "Generative AI on Kubernetes"
+   ]
+  },
+  "11.8": {
+   "title": "11.8 Kueue, Volcano and scheduler plugins",
+   "path": "docs/part-11-gpu-kubernetes/08-kueue-volcano-and-scheduler-plugins.md",
+   "sources": [
+    "Generative AI on Kubernetes",
+    "Scalable Kubernetes Infrastructure for AI Platforms"
+   ]
+  },
+  "11.12": {
+   "title": "11.12 Dynamic Resource Allocation (DRA)",
+   "path": "docs/part-11-gpu-kubernetes/12-dynamic-resource-allocation-dra.md",
+   "sources": [
+    "Production Kubernetes",
+    "Generative AI on Kubernetes"
+   ]
+  },
+  "11.24": {
+   "title": "11.24 MIG in depth",
+   "path": "docs/part-11-gpu-kubernetes/24-mig-in-depth.md",
+   "sources": [
+    "Generative AI on Kubernetes"
+   ]
+  },
+  "11.25": {
+   "title": "11.25 Time-slicing, MPS and oversubscription",
+   "path": "docs/part-11-gpu-kubernetes/25-time-slicing-mps-and-oversubscription.md",
+   "sources": [
+    "Generative AI on Kubernetes"
+   ]
+  },
+  "11.26": {
+   "title": "11.26 Choosing a GPU sharing model",
+   "path": "docs/part-11-gpu-kubernetes/26-choosing-a-gpu-sharing-model.md",
+   "sources": [
+    "nvidia-devops corpus, named in the chapter's Sources section"
+   ]
+  },
+  "11.29": {
+   "title": "11.29 Multi-tenancy, quotas, fault tolerance and health on GPU clusters",
+   "path": "docs/part-11-gpu-kubernetes/29-multi-tenancy-quotas-fault-tolerance-and-health-on-gpu-clusters.md",
+   "sources": [
+    "Scalable Kubernetes Infrastructure for AI Platforms"
+   ]
+  },
+  "12.3": {
+   "title": "12.3 RoCEv2 transport and congestion management",
+   "path": "docs/part-12-ai-networking/03-rocev2-transport-and-congestion-management.md",
+   "sources": [
+    "AI Data Center Network Design and Technologies"
+   ]
+  },
+  "12.4": {
+   "title": "12.4 PFC, ECN and DCQCN in depth",
+   "path": "docs/part-12-ai-networking/04-pfc-ecn-and-dcqcn-in-depth.md",
+   "sources": [
+    "AI Data Center Network Design and Technologies"
+   ]
+  },
+  "12.12": {
+   "title": "12.12 Ethernet versus InfiniBand: a design decision guide",
+   "path": "docs/part-12-ai-networking/12-ethernet-versus-infiniband-a-design-decision-guide.md",
+   "sources": [
+    "AI Data Center Network Design and Technologies"
+   ]
+  },
+  "12.15": {
+   "title": "12.15 NCCL: collectives and algorithms",
+   "path": "docs/part-12-ai-networking/15-nccl-collectives-and-algorithms.md",
+   "sources": [
+    "Systems Performance",
+    "AI Systems Performance Engineering",
+    "Distributed AI Systems"
+   ]
+  },
+  "12.18": {
+   "title": "12.18 NCCL debugging: hangs, timeouts and errors",
+   "path": "docs/part-12-ai-networking/18-nccl-debugging-hangs-timeouts-and-errors.md",
+   "sources": [
+    "Systems Performance",
+    "AI Systems Performance Engineering",
+    "Distributed AI Systems"
+   ]
+  },
+  "12.19": {
+   "title": "12.19 GPUDirect RDMA and GPUDirect Storage",
+   "path": "docs/part-12-ai-networking/19-gpudirect-rdma-and-gpudirect-storage.md",
+   "sources": [
+    "Systems Performance",
+    "AI Systems Performance Engineering",
+    "AI Data Center Network Design and Technologies"
+   ]
+  },
+  "13.6": {
+   "title": "13.6 Data loading, small files and metadata",
+   "path": "docs/part-13-ai-storage/06-data-loading-small-files-and-metadata.md",
+   "sources": [
+    "Systems Performance",
+    "AI Systems Performance Engineering"
+   ]
+  },
+  "13.7": {
+   "title": "13.7 Checkpoint architecture and recovery",
+   "path": "docs/part-13-ai-storage/07-checkpoint-architecture-and-recovery.md",
+   "sources": [
+    "Systems Performance",
+    "AI Systems Performance Engineering"
+   ]
+  },
+  "13.8": {
+   "title": "13.8 Capacity, performance and cost planning",
+   "path": "docs/part-13-ai-storage/08-capacity-performance-and-cost-planning.md",
+   "sources": [
+    "Systems Performance",
+    "AI Systems Performance Engineering",
+    "AI Factory"
+   ]
+  },
+  "14.3": {
+   "title": "14.3 Training memory and compute anatomy",
+   "path": "docs/part-14-training-finetuning/03-training-memory-and-compute-anatomy.md",
+   "sources": [
+    "Systems Performance",
+    "AI Systems Performance Engineering",
+    "Distributed AI Systems"
+   ]
+  },
+  "14.4": {
+   "title": "14.4 Data parallelism and DDP",
+   "path": "docs/part-14-training-finetuning/04-data-parallelism-and-ddp.md",
+   "sources": [
+    "Systems Performance",
+    "AI Systems Performance Engineering",
+    "Distributed AI Systems"
+   ]
+  },
+  "14.5": {
+   "title": "14.5 FSDP and parameter sharding",
+   "path": "docs/part-14-training-finetuning/05-fsdp-and-parameter-sharding.md",
+   "sources": [
+    "Systems Performance",
+    "AI Systems Performance Engineering",
+    "Distributed AI Systems"
+   ]
+  },
+  "14.7": {
+   "title": "14.7 Tensor, pipeline and expert parallelism; Megatron",
+   "path": "docs/part-14-training-finetuning/07-tensor-pipeline-and-expert-parallelism-megatron.md",
+   "sources": [
+    "Systems Performance",
+    "AI Systems Performance Engineering",
+    "Distributed AI Systems"
+   ]
+  },
+  "14.11": {
+   "title": "14.11 Checkpointing, fault tolerance and elastic training",
+   "path": "docs/part-14-training-finetuning/11-checkpointing-fault-tolerance-and-elastic-training.md",
+   "sources": [
+    "Distributed AI Systems"
+   ]
+  },
+  "14.12": {
+   "title": "14.12 Training performance engineering and troubleshooting",
+   "path": "docs/part-14-training-finetuning/12-training-performance-engineering-and-troubleshooting.md",
+   "sources": [
+    "Systems Performance",
+    "AI Systems Performance Engineering",
+    "Distributed AI Systems"
+   ]
+  },
+  "15.2": {
+   "title": "15.2 Batching, the KV cache and quantization fundamentals",
+   "path": "docs/part-15-inference/02-batching-the-kv-cache-and-quantization-fundamentals.md",
+   "sources": [
+    "nvidia-devops corpus, named in the chapter's Sources section"
+   ]
+  },
+  "15.3": {
+   "title": "15.3 vLLM in depth",
+   "path": "docs/part-15-inference/03-vllm-in-depth.md",
+   "sources": [
+    "Systems Performance",
+    "AI Systems Performance Engineering",
+    "Distributed AI Systems",
+    "Generative AI on Kubernetes"
+   ]
+  },
+  "15.8": {
+   "title": "15.8 NVIDIA Dynamo, llm-d and disaggregated serving",
+   "path": "docs/part-15-inference/08-nvidia-dynamo-llm-d-and-disaggregated-serving.md",
+   "sources": [
+    "Systems Performance",
+    "AI Systems Performance Engineering",
+    "Distributed AI Systems",
+    "Generative AI on Kubernetes"
+   ]
+  },
+  "15.10": {
+   "title": "15.10 Prefill and decode disaggregation",
+   "path": "docs/part-15-inference/10-prefill-and-decode-disaggregation.md",
+   "sources": [
+    "Systems Performance",
+    "AI Systems Performance Engineering",
+    "Distributed AI Systems"
+   ]
+  },
+  "15.14": {
+   "title": "15.14 Benchmarking: genai-perf, latency percentiles and goodput",
+   "path": "docs/part-15-inference/14-benchmarking-genai-perf-latency-percentiles-and-goodput.md",
+   "sources": [
+    "Systems Performance",
+    "AI Systems Performance Engineering",
+    "Distributed AI Systems",
+    "AI Engineering"
+   ]
+  },
+  "15.16": {
+   "title": "15.16 Production serving stack and reliability",
+   "path": "docs/part-15-inference/16-production-serving-stack-and-reliability.md",
+   "sources": [
+    "Distributed AI Systems",
+    "Generative AI on Kubernetes"
+   ]
+  },
+  "15.18": {
+   "title": "15.18 Inference cost, capacity and cost per token",
+   "path": "docs/part-15-inference/18-inference-cost-capacity-and-cost-per-token.md",
+   "sources": [
+    "Systems Performance",
+    "AI Systems Performance Engineering",
+    "Distributed AI Systems",
+    "AI Engineering"
+   ]
+  },
+  "16.2": {
+   "title": "16.2 Data versioning and experiment tracking: DVC, MLflow, Weights and Biases",
+   "path": "docs/part-16-mlops-llmops/02-data-versioning-and-experiment-tracking-dvc-mlflow-weights-and-biases.md",
+   "sources": [
+    "Practical MLOps",
+    "Designing Machine Learning Systems",
+    "Machine Learning Platform Engineering"
+   ]
+  },
+  "16.6": {
+   "title": "16.6 Model registry, CI/CD and GitOps for models",
+   "path": "docs/part-16-mlops-llmops/06-model-registry-ci-cd-and-gitops-for-models.md",
+   "sources": [
+    "Production Kubernetes",
+    "Practical MLOps",
+    "Designing Machine Learning Systems",
+    "Machine Learning Platform Engineering"
+   ]
+  },
+  "16.9": {
+   "title": "16.9 LLM evaluation and guardrails",
+   "path": "docs/part-16-mlops-llmops/09-llm-evaluation-and-guardrails.md",
+   "sources": [
+    "AI Engineering",
+    "LLM Engineer's Handbook",
+    "Engineering AI Systems"
+   ]
+  },
+  "16.10": {
+   "title": "16.10 Monitoring, drift and continual learning",
+   "path": "docs/part-16-mlops-llmops/10-monitoring-drift-and-continual-learning.md",
+   "sources": [
+    "Practical MLOps",
+    "Designing Machine Learning Systems"
+   ]
+  },
+  "17.6": {
+   "title": "17.6 Alerting, SLOs and health checks for GPU clusters",
+   "path": "docs/part-17-operations/06-alerting-slos-and-health-checks-for-gpu-clusters.md",
+   "sources": [
+    "Production Kubernetes",
+    "Practical MLOps"
+   ]
+  },
+  "17.11": {
+   "title": "17.11 Incident response and game days",
+   "path": "docs/part-17-operations/11-incident-response-and-game-days.md",
+   "sources": [
+    "Engineering AI Systems"
+   ]
+  },
+  "17.13": {
+   "title": "17.13 Reliability engineering for AI infrastructure",
+   "path": "docs/part-17-operations/13-reliability-engineering-for-ai-infrastructure.md",
+   "sources": [
+    "Production Kubernetes",
+    "Engineering AI Systems"
+   ]
+  },
+  "17.14": {
+   "title": "17.14 Disaster recovery and data resilience",
+   "path": "docs/part-17-operations/14-disaster-recovery-and-data-resilience.md",
+   "sources": [
+    "Production Kubernetes"
+   ]
+  },
+  "20.28": {
+   "title": "20.28 The project deep dive and the final round",
+   "path": "docs/part-20-nebius-sre-interview/28-the-project-deep-dive-and-the-final-round.md",
+   "sources": [
+    "Systems Performance",
+    "Production Kubernetes",
+    "AI Factory"
+   ]
+  }
+ },
+ "questions": [
+  {
+   "id": "LNX-01",
+   "topic": "linux",
+   "difficulty": "core",
+   "question": "A training pod ignores SIGTERM for 30 seconds and then dies with exit code 137. Why, and what is the fix?",
+   "chapter": "1.8",
+   "link": "docs/part-01-linux/08-processes-signals-and-job-control.md",
+   "model_answer": "Kubernetes sends SIGTERM only to the process with PID 1 in the container. When the entrypoint is a shell script, the shell is PID 1 and it does not pass the signal on to python. After the grace period of 30 seconds Kubernetes sends SIGKILL, and the exit code is 137. The fix is to end the script with exec python train.py so python becomes PID 1. Running under tini or docker --init also reaps orphaned data-loader workers.",
+   "strong_answer_contains": [
+    "Names PID 1 as the only signal receiver",
+    "Connects 137 to 128 plus signal 9",
+    "Gives the exec fix and mentions an init process"
+   ],
+   "weak_answer": "Says to raise terminationGracePeriodSeconds, which only delays the kill.",
+   "follow_up": "How would the same job save a checkpoint when it does receive SIGTERM?",
+   "basis": "chapter checkpoint answer, paraphrased"
+  },
+  {
+   "id": "LNX-02",
+   "topic": "linux",
+   "difficulty": "core",
+   "question": "Why must memlock and nofile limits be raised on a GPU compute node, and why does editing limits.conf not fix a systemd service?",
+   "chapter": "1.8",
+   "link": "docs/part-01-linux/08-processes-signals-and-job-control.md",
+   "model_answer": "RDMA and CUDA pinned host memory lock large buffers in RAM, so the node needs memlock unlimited. Distributed training opens many sockets and shard files, so it needs a high nofile value. PAM applies /etc/security/limits.conf only to login sessions. A systemd service ignores that file, so the unit file needs LimitMEMLOCK=infinity and LimitNOFILE.",
+   "strong_answer_contains": [
+    "Links memlock to RDMA and pinned memory",
+    "Knows PAM applies limits.conf only to logins",
+    "Puts the fix in the unit file"
+   ],
+   "weak_answer": "Says to run ulimit -n in the shell before starting the service and does not know why it fails under systemd.",
+   "follow_up": "How do you check the limits a running process really has?",
+   "basis": "chapter checkpoint answer, paraphrased"
+  },
+  {
+   "id": "LNX-03",
+   "topic": "linux",
+   "difficulty": "core",
+   "question": "Service A needs service B. You wrote Requires=B.service and A still starts before B is ready. Why?",
+   "chapter": "1.15",
+   "link": "docs/part-01-linux/15-systemd-units-targets-timers-journald.md",
+   "model_answer": "Requires= and Wants= say only what must be started. Ordering is a separate setting. Without After=B.service, systemd starts both units at the same moment. You need the dependency line and the ordering line together.",
+   "strong_answer_contains": [
+    "Separates dependency from ordering",
+    "Names After= or Before= as the ordering keys",
+    "Notes the two lines are usually written as a pair"
+   ],
+   "weak_answer": "Believes Requires= implies start order.",
+   "follow_up": "What changes if B only starts a socket and the real daemon comes later?",
+   "basis": "chapter checkpoint answer, paraphrased"
+  },
+  {
+   "id": "LNX-04",
+   "topic": "linux",
+   "difficulty": "senior",
+   "question": "How do you stop a runaway GPU job from taking sshd and kubelet down with it, and why must MemoryMax never be set on system.slice?",
+   "chapter": "1.15",
+   "link": "docs/part-01-linux/15-systemd-units-targets-timers-journald.md",
+   "model_answer": "system.slice holds sshd, kubelet, containerd, slurmd and journald. A MemoryMax there makes the kernel throttle or kill the very daemons you need to recover the node. Protect them with a CPU weight and a memory low setting on system.slice and a strongly negative OOMScoreAdjust on sshd and kubelet. Enforce hard memory limits on the job slices, not on the system slice.",
+   "strong_answer_contains": [
+    "Names the daemons in system.slice",
+    "Uses protection settings, not a hard cap, on system.slice",
+    "Puts the hard limit on the job side"
+   ],
+   "weak_answer": "Sets a large MemoryMax on system.slice to be safe.",
+   "follow_up": "How would you confirm after the change that the OOM killer picks the job first?",
+   "basis": "chapter checkpoint answer, paraphrased"
+  },
+  {
+   "id": "LNX-05",
+   "topic": "linux",
+   "difficulty": "core",
+   "question": "A data-loader runs on socket 0 and feeds a GPU on socket 1. What is the first-touch rule and how does it hurt here?",
+   "chapter": "1.17",
+   "link": "docs/part-01-linux/17-memory-management-virtual-memory-numa-huge-pages-oom.md",
+   "model_answer": "Under the default local policy a page is placed on the NUMA node of the core that first writes it. A loader on socket 0 faults its batch buffers there, so every host-to-device copy crosses the link between sockets. The fix is to start each rank bound to the NUMA node of its GPU, using numactl with both cpunodebind and membind.",
+   "strong_answer_contains": [
+    "Defines first touch",
+    "Connects it to cross-socket DMA",
+    "Binds both CPU and memory to the GPU's node"
+   ],
+   "weak_answer": "Says to add more loader workers.",
+   "follow_up": "How do you find which NUMA node a GPU belongs to?",
+   "basis": "chapter checkpoint answer, paraphrased"
+  },
+  {
+   "id": "LNX-06",
+   "topic": "linux",
+   "difficulty": "senior",
+   "question": "What is the recommended Transparent Huge Pages policy for training nodes versus latency-sensitive services, and why?",
+   "chapter": "1.17",
+   "link": "docs/part-01-linux/17-memory-management-virtual-memory-numa-huge-pages-oom.md",
+   "model_answer": "Explicit huge pages come from a reserved pool and applications opt in. Transparent Huge Pages back memory with 2 MiB pages automatically in always, madvise or never mode. Throughput-oriented training benefits from fewer TLB misses, so always or madvise suits it. Latency-sensitive services can suffer stalls from background compaction, so the chapter points to madvise or never for them. Check the actual default on your distribution before changing it.",
+   "strong_answer_contains": [
+    "Distinguishes hugetlbfs from THP",
+    "Ties the policy to the workload type",
+    "Mentions checking the current mode"
+   ],
+   "weak_answer": "Says THP should always be turned off.",
+   "follow_up": "What would you measure to prove THP caused a latency spike?",
+   "basis": "chapter checkpoint answer, paraphrased"
+  },
+  {
+   "id": "LNX-07",
+   "topic": "linux",
+   "difficulty": "stretch",
+   "question": "Why does a forked PyTorch DataLoader use more and more RAM when the dataset is a Python list?",
+   "chapter": "1.17",
+   "link": "docs/part-01-linux/17-memory-management-virtual-memory-numa-huge-pages-oom.md",
+   "model_answer": "fork shares the parent's pages copy-on-write. Reading a Python object still writes its reference count, and that write copies the whole 4 KiB page into the worker. Over an epoch each worker copies most of the list. Store the data in NumPy arrays, Arrow tables or memory-mapped files, which have no per-item reference counts.",
+   "strong_answer_contains": [
+    "Explains reference counts as hidden writes",
+    "Names copy-on-write as the mechanism",
+    "Offers a layout without per-object counts"
+   ],
+   "weak_answer": "Blames a memory leak in PyTorch.",
+   "follow_up": "How would you show the sharing is working using PSS rather than RSS?",
+   "basis": "chapter checkpoint answer, paraphrased"
+  },
+  {
+   "id": "LNX-08",
+   "topic": "linux",
+   "difficulty": "core",
+   "question": "NIC and NVMe interrupts are slowing your GPU data loaders. How do you see it and how do you isolate it?",
+   "chapter": "1.18",
+   "link": "docs/part-01-linux/18-cpu-scheduling-and-cgroups-v1-and-v2.md",
+   "model_answer": "Interrupts and their softirqs preempt user threads on the core they are routed to. You see them as irq and soft time in mpstat per CPU and in /proc/interrupts. You steer them away by setting smp_affinity_list per IRQ or the irqaffinity boot parameter, and you stop irqbalance from moving them back.",
+   "strong_answer_contains": [
+    "Names mpstat and /proc/interrupts as the evidence",
+    "Sets IRQ affinity to housekeeping cores",
+    "Stops irqbalance undoing the change"
+   ],
+   "weak_answer": "Pins the training process to cores but leaves interrupts where they are.",
+   "follow_up": "Which cores would you keep as housekeeping on a two-socket node?",
+   "basis": "chapter checkpoint answer, paraphrased"
+  },
+  {
+   "id": "LNX-09",
+   "topic": "linux",
+   "difficulty": "core",
+   "question": "Is there a container object in the Linux kernel? What actually makes a container?",
+   "chapter": "1.19",
+   "link": "docs/part-01-linux/19-namespaces-the-kernel-feature-behind-containers.md",
+   "model_answer": "No, there is no container object. A container is an ordinary process tree. Namespaces limit what it can see. Cgroups limit what it can use. A root filesystem gives it its own view of the file tree, and capabilities, seccomp and security modules limit what it can do. All of it runs on the one host kernel.",
+   "strong_answer_contains": [
+    "Says there is no kernel container object",
+    "Splits visibility from resource limits",
+    "Mentions the shared host kernel"
+   ],
+   "weak_answer": "Describes a container as a lightweight virtual machine.",
+   "follow_up": "What does that shared kernel mean for security between tenants?",
+   "basis": "chapter checkpoint answer, paraphrased"
+  },
+  {
+   "id": "LNX-10",
+   "topic": "linux",
+   "difficulty": "core",
+   "question": "You delete a secret file in a later Dockerfile RUN step. Is the secret gone from the image?",
+   "chapter": "1.19",
+   "link": "docs/part-01-linux/19-namespaces-the-kernel-feature-behind-containers.md",
+   "model_answer": "No. OverlayFS records a delete as a whiteout in the upper layer, which only hides the name. The bytes stay in the earlier read-only layer, and anyone who pulls the image can read them. Keep secrets out of build layers, use build secrets or multi-stage builds, and rotate any secret that was baked in.",
+   "strong_answer_contains": [
+    "Explains whiteouts",
+    "Knows the lower layer keeps the bytes",
+    "Gives a build-time fix and says to rotate"
+   ],
+   "weak_answer": "Says the file is deleted because it no longer appears in the container.",
+   "follow_up": "How would you find which layer contains the file?",
+   "basis": "chapter checkpoint answer, paraphrased"
+  },
+  {
+   "id": "LNX-11",
+   "topic": "linux",
+   "difficulty": "senior",
+   "question": "What must a container runtime do to give a container a GPU, and why must you never bake libcuda into the image?",
+   "chapter": "1.19",
+   "link": "docs/part-01-linux/19-namespaces-the-kernel-feature-behind-containers.md",
+   "model_answer": "It exposes the /dev/nvidia device nodes in the container, allows their major and minor numbers in the devices cgroup, and bind-mounts the host's user-space driver libraries and nvidia-smi. A libcuda baked into the image can disagree with the host kernel driver and fail with a version mismatch. Keeping the user-space driver on the host keeps the pair matched.",
+   "strong_answer_contains": [
+    "Lists devices, cgroup allow and library mounts",
+    "Explains the driver version pairing",
+    "Knows the container carries only the toolkit-level CUDA libraries"
+   ],
+   "weak_answer": "Says the image should carry the full driver so it is portable.",
+   "follow_up": "What does CDI change about how this injection is described?",
+   "basis": "chapter checkpoint answer, paraphrased"
+  },
+  {
+   "id": "LNX-12",
+   "topic": "linux",
+   "difficulty": "stretch",
+   "question": "How do you replace a critical metadata or checkpoint-index file so a crash never leaves it half written?",
+   "chapter": "1.12",
+   "link": "docs/part-01-linux/12-disks-partitions-and-filesystems.md",
+   "model_answer": "Write the new content to a temporary file in the same directory so it is on the same filesystem. Call fsync on that file. Rename it over the target name, which is atomic. Then call fsync on the parent directory so the rename itself is durable. A reader then sees either the old file or the new one, never a mix.",
+   "strong_answer_contains": [
+    "Same directory for the temp file",
+    "Four steps in order",
+    "Explains why the directory fsync matters"
+   ],
+   "weak_answer": "Opens the target with truncate and writes in place.",
+   "follow_up": "Where does this pattern appear in checkpoint publishing for training?",
+   "basis": "chapter checkpoint answer, paraphrased"
+  },
+  {
+   "id": "NET-01",
+   "topic": "networking",
+   "difficulty": "core",
+   "question": "What are the two queues behind listen(), and how do you tell which one is overflowing?",
+   "chapter": "2.6",
+   "link": "docs/part-02-networking/06-tcp-in-depth-handshake-windows-congestion-control-retransmission.md",
+   "model_answer": "The SYN queue holds half-open connections that wait for the final ACK. The accept queue holds finished connections that wait for the application to call accept. Its size is the smaller of the backlog argument and net.core.somaxconn. When the accept queue is full the kernel drops or refuses new connections, and the listen-overflow counters rise. Check ss on the listening socket and the TCP extended counters from nstat.",
+   "strong_answer_contains": [
+    "Names both queues and their size knobs",
+    "Points to ss and nstat counters",
+    "Notes a slow accept loop is the usual cause"
+   ],
+   "weak_answer": "Says to raise somaxconn without checking why the application is slow to accept.",
+   "follow_up": "What does tcp_syncookies change about the SYN queue?",
+   "basis": "chapter checkpoint answer, paraphrased"
+  },
+  {
+   "id": "NET-02",
+   "topic": "networking",
+   "difficulty": "core",
+   "question": "Contrast TIME_WAIT and CLOSE_WAIT. Which one points to a bug in your server?",
+   "chapter": "2.6",
+   "link": "docs/part-02-networking/06-tcp-in-depth-handshake-windows-congestion-control-retransmission.md",
+   "model_answer": "The side that sends the first FIN enters TIME_WAIT after its final ACK and stays there for twice the maximum segment lifetime. That is normal protocol hygiene. The side that receives the FIN and has ACKed it enters CLOSE_WAIT and stays until its own application closes the socket. Many CLOSE_WAIT sockets mean the server code is not closing connections.",
+   "strong_answer_contains": [
+    "Says which side enters each state",
+    "Calls TIME_WAIT normal",
+    "Calls a pile of CLOSE_WAIT an application bug"
+   ],
+   "weak_answer": "Treats TIME_WAIT as the leak and tunes the kernel to shorten it.",
+   "follow_up": "When can many TIME_WAIT sockets still cause real trouble?",
+   "basis": "chapter checkpoint answer, paraphrased"
+  },
+  {
+   "id": "NET-03",
+   "topic": "networking",
+   "difficulty": "senior",
+   "question": "An RPC call has a steady 40 ms delay. What is the likely cause and the fix?",
+   "chapter": "2.6",
+   "link": "docs/part-02-networking/06-tcp-in-depth-handshake-windows-congestion-control-retransmission.md",
+   "model_answer": "Nagle's algorithm holds a small write while earlier data is unacknowledged. Delayed ACK holds the receiver's acknowledgement for up to about 40 ms. If the client writes a header and then a body, the body waits for the ACK of the header. The fix is to send the request in one write or set TCP_NODELAY on the socket.",
+   "strong_answer_contains": [
+    "Names Nagle plus delayed ACK together",
+    "Recognises the round number as a timer",
+    "Gives a one-write or TCP_NODELAY fix"
+   ],
+   "weak_answer": "Blames the network path and asks for a faster link.",
+   "follow_up": "How would you prove it from a packet capture?",
+   "basis": "chapter checkpoint answer, paraphrased"
+  },
+  {
+   "id": "NET-04",
+   "topic": "networking",
+   "difficulty": "core",
+   "question": "Define the bandwidth-delay product and use it to explain why one TCP stream over a long link is slow.",
+   "chapter": "2.6",
+   "link": "docs/part-02-networking/06-tcp-in-depth-handshake-windows-congestion-control-retransmission.md",
+   "model_answer": "The bandwidth-delay product is bandwidth times round-trip time. It is the amount of data that must be in flight to keep the pipe full. At 10 Gb per second and 70 ms it is 87.5 MB. A single connection with a 4 MB window can send at most window divided by RTT, about 57 MB per second, which is far below the link rate. So you need window scaling, bigger buffers or several streams.",
+   "strong_answer_contains": [
+    "States the formula",
+    "Does the arithmetic",
+    "Names window size as the limiter"
+   ],
+   "weak_answer": "Says TCP is slow over distance without a reason.",
+   "follow_up": "Which sysctls bound the receive window on Linux?",
+   "basis": "chapter checkpoint answer, paraphrased"
+  },
+  {
+   "id": "NET-05",
+   "topic": "networking",
+   "difficulty": "senior",
+   "question": "Why do external DNS lookups from a Kubernetes pod feel slow and load CoreDNS heavily?",
+   "chapter": "2.8",
+   "link": "docs/part-02-networking/08-dns-in-depth-resolution-records-resolvers-and-caching.md",
+   "model_answer": "Pods get ndots:5 so short in-cluster names match the search list. An external name with fewer than five dots is tried with each search suffix first, and each try is a failed query. One lookup becomes several. Use fully qualified names with a trailing dot, lower ndots for the pod, or run a node-local DNS cache.",
+   "strong_answer_contains": [
+    "Explains ndots and the search list",
+    "Counts the extra failed queries",
+    "Offers FQDN, ndots or node-local cache"
+   ],
+   "weak_answer": "Says CoreDNS needs more replicas and stops there.",
+   "follow_up": "How would you see the extra queries in a capture?",
+   "basis": "chapter checkpoint answer, paraphrased"
+  },
+  {
+   "id": "NET-06",
+   "topic": "networking",
+   "difficulty": "core",
+   "question": "Pods see random 5-second DNS delays. What is the cause and what fixes it?",
+   "chapter": "2.8",
+   "link": "docs/part-02-networking/08-dns-in-depth-resolution-records-resolvers-and-caching.md",
+   "model_answer": "A pod sends the A and AAAA queries in parallel from one socket, so both share the same five-tuple. Both go to the cluster DNS Service address and race in the connection-tracking NAT table. One packet is dropped, and the resolver waits five seconds before it retries. A node-local DNS cache avoids the Service NAT path for those queries.",
+   "strong_answer_contains": [
+    "Names the parallel A and AAAA queries",
+    "Names the conntrack race",
+    "Gives node-local cache as the fix"
+   ],
+   "weak_answer": "Says DNS is unreliable and adds retries.",
+   "follow_up": "What counter would show the conntrack insert failures?",
+   "basis": "chapter checkpoint answer, paraphrased"
+  },
+  {
+   "id": "NET-07",
+   "topic": "networking",
+   "difficulty": "senior",
+   "question": "500 GPU nodes pull images through one NAT gateway and new connections fail. What happened?",
+   "chapter": "2.9",
+   "link": "docs/part-02-networking/09-dhcp-nat-and-pat.md",
+   "model_answer": "A single public address has only about sixty thousand source ports for each remote address and port. Hundreds of parallel streams from 500 nodes to one registry address use them up, and sockets in TIME_WAIT make it worse. Fixes are more NAT addresses, a regional registry mirror or cache inside the network, and fewer parallel pulls.",
+   "strong_answer_contains": [
+    "States the per-destination port limit",
+    "Links it to the registry fan-in",
+    "Gives address, cache and pull-limit fixes"
+   ],
+   "weak_answer": "Says the registry is slow.",
+   "follow_up": "How would a cluster-wide image-pull stampede be avoided at start of a job?",
+   "basis": "chapter checkpoint answer, paraphrased"
+  },
+  {
+   "id": "NET-08",
+   "topic": "networking",
+   "difficulty": "core",
+   "question": "Why must NAT never sit inside an InfiniBand or RoCE v2 training fabric?",
+   "chapter": "2.9",
+   "link": "docs/part-02-networking/09-dhcp-nat-and-pat.md",
+   "model_answer": "During queue-pair setup the ranks exchange addresses and queue-pair numbers and program them into the network card. A middlebox that rewrites addresses or ports in flight makes that state wrong. It also breaks hardware offload and adds a stateful bottleneck. The back-end fabric should be routed, not translated.",
+   "strong_answer_contains": [
+    "Explains addresses are programmed into hardware",
+    "Notes offload and bottleneck cost",
+    "States routed fabric as the design"
+   ],
+   "weak_answer": "Says NAT is fine if the table is large.",
+   "follow_up": "Where does NAT belong in an AI cluster instead?",
+   "basis": "chapter checkpoint answer, paraphrased"
+  },
+  {
+   "id": "NET-09",
+   "topic": "networking",
+   "difficulty": "senior",
+   "question": "Why does a layer 4 load balancer spread gRPC traffic badly, and how do you fix it?",
+   "chapter": "2.20",
+   "link": "docs/part-02-networking/20-load-balancing-l4-l7-ecmp-hashing-and-proxies.md",
+   "model_answer": "gRPC multiplexes many calls over one long-lived HTTP/2 connection. A layer 4 balancer chooses a backend once, at connection setup. All the calls from that client then go to one backend. Fix it with a layer 7 proxy that balances per call, client-side balancing, or connection limits that force regular reconnects.",
+   "strong_answer_contains": [
+    "Explains multiplexing on one connection",
+    "Says the choice is made once",
+    "Gives three fixes"
+   ],
+   "weak_answer": "Suggests round robin on connections as the fix.",
+   "follow_up": "What changes for long streaming token responses?",
+   "basis": "chapter checkpoint answer, paraphrased"
+  },
+  {
+   "id": "NET-10",
+   "topic": "networking",
+   "difficulty": "senior",
+   "question": "Why is active connection count a poor load signal for LLM backends, and what should the router use?",
+   "chapter": "2.20",
+   "link": "docs/part-02-networking/20-load-balancing-l4-l7-ecmp-hashing-and-proxies.md",
+   "model_answer": "A 32,000-token prompt uses far more compute and cache memory than a 50-token prompt, yet both count as one request. A router should look at queue depth, cache usage and, where supported, prefix-cache match. Weighted by actual work, it avoids sending heavy requests to a saturated backend.",
+   "strong_answer_contains": [
+    "Shows one request is not one unit of work",
+    "Names queue and cache metrics",
+    "Mentions prefix-cache aware routing"
+   ],
+   "weak_answer": "Uses least connections and adds replicas.",
+   "follow_up": "How would you stop prefix-cache routing from overloading one pod?",
+   "basis": "chapter checkpoint answer, paraphrased"
+  },
+  {
+   "id": "NET-11",
+   "topic": "networking",
+   "difficulty": "senior",
+   "question": "Packets are being lost on a Linux host. How do you tell a link problem from a ring-buffer, backlog or socket-buffer drop?",
+   "chapter": "2.22",
+   "link": "docs/part-02-networking/22-linux-networking-inspecting-state-with-ip-ss-and-counters.md",
+   "model_answer": "Link errors show as CRC and frame errors in ethtool statistics and in ip -s link. Ring-buffer exhaustion shows as missed or no-buffer counters in the same ethtool output. Backlog drops show in the softnet statistics. Socket-buffer drops show in the protocol counters and in ss. Each layer has its own counter, so you read them in order from the wire upward.",
+   "strong_answer_contains": [
+    "Names a counter per layer",
+    "Reads bottom up",
+    "Uses ethtool, softnet and ss"
+   ],
+   "weak_answer": "Runs ping and concludes the network is fine.",
+   "follow_up": "Which of these would point at a bad optic?",
+   "basis": "chapter checkpoint answer, paraphrased"
+  },
+  {
+   "id": "NET-12",
+   "topic": "networking",
+   "difficulty": "stretch",
+   "question": "A stall lasts exactly 5 seconds, or exactly 60. What do you suspect first?",
+   "chapter": "2.30",
+   "link": "docs/part-02-networking/30-network-troubleshooting-method-and-case-studies.md",
+   "model_answer": "Hardware faults do not keep to round durations. A round time is a software or protocol timer. About 40 ms suggests delayed ACK with Nagle. 200 ms matches the minimum retransmission timeout. One, three or seven seconds match SYN retransmission backoff, which hints at a full accept queue or a drop. Five seconds fits the DNS retry. Match the number to the timer.",
+   "strong_answer_contains": [
+    "Reasons from the round number",
+    "Maps several numbers to timers",
+    "Then captures to confirm"
+   ],
+   "weak_answer": "Starts replacing cables.",
+   "follow_up": "Which timer fits a stall of about one minute?",
+   "basis": "chapter checkpoint answer, paraphrased"
+  },
+  {
+   "id": "PYA-01",
+   "topic": "python_automation",
+   "difficulty": "core",
+   "question": "What makes an operational script such as a node-drain tool safe to run at 3 a.m.?",
+   "chapter": "3.5",
+   "link": "docs/part-03-python/05-errors-files-text-and-bytes-subprocess-and-system-scripting.md",
+   "model_answer": "It is idempotent, so running it again on a node that is already drained changes nothing. It has a dry-run mode that prints each destructive command without running it. It isolates errors per item and stops after a failure budget. It logs what it did and exits with a clear status code. These properties let a tired engineer run it without fear.",
+   "strong_answer_contains": [
+    "Idempotent re-run",
+    "Dry-run mode",
+    "Per-item error isolation with a failure budget"
+   ],
+   "weak_answer": "Says it is safe because it was tested once.",
+   "follow_up": "How would you test the dry-run path without a cluster?",
+   "basis": "chapter checkpoint answer, paraphrased"
+  },
+  {
+   "id": "PYA-02",
+   "topic": "python_automation",
+   "difficulty": "core",
+   "question": "Why pass subprocess.run an argument list instead of shell=True, and what do check, timeout and stdin do?",
+   "chapter": "3.5",
+   "link": "docs/part-03-python/05-errors-files-text-and-bytes-subprocess-and-system-scripting.md",
+   "model_answer": "A list calls the program directly with no shell, so a hostname containing a semicolon or a command substitution stays a plain string. check=True raises an error on a non-zero exit. timeout stops a hung child from blocking the script. Closing stdin stops a child from waiting on a prompt that no one can answer.",
+   "strong_answer_contains": [
+    "Explains injection through the shell",
+    "Covers check and timeout",
+    "Covers the hung-prompt case"
+   ],
+   "weak_answer": "Uses shell=True for convenience and quotes the input by hand.",
+   "follow_up": "What goes wrong with a pipe deadlock on Popen?",
+   "basis": "chapter checkpoint answer, paraphrased"
+  },
+  {
+   "id": "PYA-03",
+   "topic": "python_automation",
+   "difficulty": "senior",
+   "question": "A script submits ten million tasks to a thread pool and runs out of memory. Why, and what is the fix?",
+   "chapter": "3.6",
+   "link": "docs/part-03-python/06-concurrency-threads-processes-and-asyncio.md",
+   "model_answer": "Submitting everything first creates ten million future objects and queue entries before the workers drain any. The fix is bounded submission. Seed the pool with a limited number of in-flight futures and add one new task each time one finishes. Memory then depends on the window, not on the input size.",
+   "strong_answer_contains": [
+    "Names the future-object cost",
+    "Gives bounded in-flight work",
+    "Mentions memory depends on the window"
+   ],
+   "weak_answer": "Adds more workers.",
+   "follow_up": "How would you apply the same bound in asyncio?",
+   "basis": "chapter checkpoint answer, paraphrased"
+  },
+  {
+   "id": "PYA-04",
+   "topic": "python_automation",
+   "difficulty": "core",
+   "question": "1,000 clients retry a recovering service on a fixed schedule and keep knocking it over. What do you change?",
+   "chapter": "3.6",
+   "link": "docs/part-03-python/06-concurrency-threads-processes-and-asyncio.md",
+   "model_answer": "Fixed retry times line the clients up, so each wave hits the server at the same instant. Use exponential backoff with full jitter. Each client waits a random time between zero and a growing cap. The retries spread out, and the server can recover. Add a retry budget so total retries stay bounded.",
+   "strong_answer_contains": [
+    "Names the retry storm",
+    "Gives backoff with full jitter",
+    "Adds a cap or retry budget"
+   ],
+   "weak_answer": "Shortens the retry interval so clients recover faster.",
+   "follow_up": "Where else in a platform does the same herd effect show up?",
+   "basis": "chapter checkpoint answer, paraphrased"
+  },
+  {
+   "id": "PYA-05",
+   "topic": "python_automation",
+   "difficulty": "senior",
+   "question": "Why prefer a fake with dependency injection over heavy mock patching when testing cluster tools?",
+   "chapter": "3.9",
+   "link": "docs/part-03-python/09-testing-quality-and-ci-for-python-tooling.md",
+   "model_answer": "A fake is a small working in-memory version of the dependency. The tool receives it through its constructor, so the test exercises real logic and checks the outcome. Patching ties tests to how the code looks up names and breaks when the code is refactored. Fakes also let you simulate failures such as a node that will not drain.",
+   "strong_answer_contains": [
+    "Defines stub, fake, spy and mock",
+    "Prefers fakes for behaviour",
+    "Mentions injected failures"
+   ],
+   "weak_answer": "Mocks every call and asserts they were made in order.",
+   "follow_up": "How do you test code that reads /proc or /sys on a laptop?",
+   "basis": "chapter checkpoint answer, paraphrased"
+  },
+  {
+   "id": "PYA-06",
+   "topic": "python_automation",
+   "difficulty": "core",
+   "question": "Why must a Terraform pipeline apply the exact plan file that was reviewed?",
+   "chapter": "4.2",
+   "link": "docs/part-04-automation/02-ci-cd-pipelines-concepts-and-design.md",
+   "model_answer": "If the pipeline plans for review and then runs a new apply after the merge, anything that changed in between is applied unreviewed. That could be a change in state, in the cloud, or in a data source. Saving the plan with the out option and applying that file means the reviewed change is the applied change. A stale plan is refused.",
+   "strong_answer_contains": [
+    "Names the gap between plan and apply",
+    "Uses a saved plan file",
+    "Notes a stale plan is rejected"
+   ],
+   "weak_answer": "Says apply with auto-approve is fine because tests passed.",
+   "follow_up": "How do you keep two pipelines from applying at once?",
+   "basis": "chapter checkpoint answer, paraphrased"
+  },
+  {
+   "id": "PYA-07",
+   "topic": "python_automation",
+   "difficulty": "core",
+   "question": "What makes an Ansible task idempotent, and what breaks it?",
+   "chapter": "4.6",
+   "link": "docs/part-04-automation/06-ansible-playbooks-tasks-modules-idempotency-and-check-mode.md",
+   "model_answer": "A task is idempotent when a second run on a host already in the right state changes nothing and reports ok. A template that embeds a timestamp or random value renders a different file every run, so the task always reports changed and restarts services. Use modules with state, and use creates, changed_when and checks for commands.",
+   "strong_answer_contains": [
+    "Defines changed equals zero on re-run",
+    "Gives the timestamp-template example",
+    "Mentions changed_when for commands"
+   ],
+   "weak_answer": "Says idempotent means the playbook can be run twice without errors.",
+   "follow_up": "How does check mode help prove idempotency?",
+   "basis": "chapter checkpoint answer, paraphrased"
+  },
+  {
+   "id": "PYA-08",
+   "topic": "python_automation",
+   "difficulty": "senior",
+   "question": "How do you roll an Ansible change across 1,000 GPU nodes safely?",
+   "chapter": "4.6",
+   "link": "docs/part-04-automation/06-ansible-playbooks-tasks-modules-idempotency-and-check-mode.md",
+   "model_answer": "Use serial with growing batches, for example one host, then ten percent, then all. The first host is a canary. Set a maximum failure percentage so a bad change stops early. Run a health check after each batch before moving on. Keep the change reversible and the inventory split so you can pause.",
+   "strong_answer_contains": [
+    "Canary then growing batches",
+    "Failure percentage stop",
+    "Health check between batches"
+   ],
+   "weak_answer": "Runs the playbook on all nodes at once with a high fork count.",
+   "follow_up": "How would you add a rollback step?",
+   "basis": "chapter checkpoint answer, paraphrased"
+  },
+  {
+   "id": "PYA-09",
+   "topic": "python_automation",
+   "difficulty": "core",
+   "question": "Why must secret-handling tasks set both no_log and diff off?",
+   "chapter": "4.12",
+   "link": "docs/part-04-automation/12-ansible-vault-and-secrets-management.md",
+   "model_answer": "no_log hides the task arguments and result from the normal output, verbose output and callback logs. Diff mode can still print the before and after content of a file or template. A task that writes a secret into a file would leak it through the diff. Set both, and avoid passing secrets on command lines.",
+   "strong_answer_contains": [
+    "Explains what no_log hides",
+    "Explains the diff leak",
+    "Mentions command-line arguments"
+   ],
+   "weak_answer": "Sets no_log only.",
+   "follow_up": "How would you debug such a task without leaking the secret?",
+   "basis": "chapter checkpoint answer, paraphrased"
+  },
+  {
+   "id": "PYA-10",
+   "topic": "python_automation",
+   "difficulty": "senior",
+   "question": "Someone deleted the Terraform state file from the bucket. What do you do?",
+   "chapter": "4.19",
+   "link": "docs/part-04-automation/19-terraform-state-in-depth-backends-locking-and-drift.md",
+   "model_answer": "If the bucket has versioning, list the object versions and restore the version just before the current one. Then run a plan, which should show no changes. Without versioning you must rebuild the state by importing resources, which is slow and risky. That is why state buckets need versioning, locking and restricted access.",
+   "strong_answer_contains": [
+    "Restores from object versioning",
+    "Verifies with a clean plan",
+    "Notes the import fallback and prevention"
+   ],
+   "weak_answer": "Re-runs apply and lets Terraform recreate everything.",
+   "follow_up": "Why must state never be stored in Git?",
+   "basis": "chapter checkpoint answer, paraphrased"
+  },
+  {
+   "id": "PYA-11",
+   "topic": "python_automation",
+   "difficulty": "senior",
+   "question": "You need a quick kubectl hotfix but GitOps self-heal is on. What happens and what is the right procedure?",
+   "chapter": "4.26",
+   "link": "docs/part-04-automation/26-gitops-with-argo-cd-and-flux.md",
+   "model_answer": "Self-heal overwrites a manual edit within seconds. In an emergency you first pause automatic sync for that application, then apply the hotfix and verify it. Afterward you put the same change into Git and resume sync. Record the break-glass action so the audit trail is complete.",
+   "strong_answer_contains": [
+    "Knows self-heal reverts manual edits",
+    "Pauses sync first",
+    "Commits the fix back to Git"
+   ],
+   "weak_answer": "Disables the GitOps controller for the whole cluster and forgets to turn it back on.",
+   "follow_up": "How do you handle an HPA that makes Argo show out of sync?",
+   "basis": "chapter checkpoint answer, paraphrased"
+  },
+  {
+   "id": "PYA-12",
+   "topic": "python_automation",
+   "difficulty": "senior",
+   "question": "Why must the RDMA driver stack go in before the GPU driver and the peer-memory module on a node?",
+   "chapter": "4.17",
+   "link": "docs/part-04-automation/17-ansible-for-gpu-nodes-and-clusters.md",
+   "model_answer": "The peer-memory module registers GPU memory pages with the RDMA core using symbols from the matching network driver. If the GPU driver is built before the right OFED or DOCA stack is present, the module is missing or built against the wrong symbols. GPUDirect RDMA then silently falls back to a slower path. Order the roles and verify the module loads.",
+   "strong_answer_contains": [
+    "Explains the symbol dependency",
+    "Notes the silent fallback",
+    "Verifies the module is loaded"
+   ],
+   "weak_answer": "Installs in any order and reboots until it works.",
+   "follow_up": "How would Ansible verify GPUDirect RDMA is active after the roles run?",
+   "basis": "chapter checkpoint answer, paraphrased"
+  },
+  {
+   "id": "PYA-13",
+   "topic": "python_automation",
+   "difficulty": "stretch",
+   "question": "An upgrade playbook hangs forever on 256 GPU nodes. What are the usual causes?",
+   "chapter": "4.17",
+   "link": "docs/part-04-automation/17-ansible-for-gpu-nodes-and-clusters.md",
+   "model_answer": "The package manager can stop at a prompt about a modified configuration file with no terminal attached. It can also wait on a lock held by an automatic update service. Use non-interactive settings, keep the old config option, wait for the lock with a timeout, disable automatic updates during the window, and set a task timeout.",
+   "strong_answer_contains": [
+    "Names the config-file prompt",
+    "Names the package lock",
+    "Gives non-interactive and timeout settings"
+   ],
+   "weak_answer": "Re-runs the playbook until it passes.",
+   "follow_up": "What stops automatic kernel updates from breaking DKMS modules?",
+   "basis": "chapter checkpoint answer, paraphrased"
+  },
+  {
+   "id": "K8S-01",
+   "topic": "kubernetes",
+   "difficulty": "core",
+   "question": "The API server and etcd go down during a multi-node training run. What happens to the running pods?",
+   "chapter": "5.3",
+   "link": "docs/part-05-kubernetes/03-kubernetes-architecture-overview-components-and-what-talks-to-what.md",
+   "model_answer": "Running pods keep running. The containers are managed locally by the container runtime and the kubelet, and the network rules stay programmed in the node kernels. So the training job continues. What stops is anything that needs the API: new pods, scaling, rescheduling and status updates. A node that fails during the outage cannot be replaced until the control plane returns.",
+   "strong_answer_contains": [
+    "Separates running state from control actions",
+    "Names the kubelet and runtime as local owners",
+    "Says what cannot happen during the outage"
+   ],
+   "weak_answer": "Says all pods are killed because the control plane is gone.",
+   "follow_up": "What happens when the kubelet stops heartbeating but the API is healthy?",
+   "basis": "chapter checkpoint answer, paraphrased"
+  },
+  {
+   "id": "K8S-02",
+   "topic": "kubernetes",
+   "difficulty": "senior",
+   "question": "Trace the timeline when a worker node stops heartbeating.",
+   "chapter": "5.3",
+   "link": "docs/part-05-kubernetes/03-kubernetes-architecture-overview-components-and-what-talks-to-what.md",
+   "model_answer": "The kubelet renews a lease about every ten seconds. After the node-monitor grace period, which defaults to forty seconds, the node lifecycle controller marks the node unknown and adds taints. Pods then become eligible for eviction after their toleration time. Only then are replacements scheduled. A stateful or gang job may need extra steps, so recovery is slower than people expect.",
+   "strong_answer_contains": [
+    "Names the lease and grace period",
+    "Names taints and toleration time",
+    "Notes replacement is not instant"
+   ],
+   "weak_answer": "Says pods move at once when a node dies.",
+   "follow_up": "How would you make GPU job recovery faster and still safe?",
+   "basis": "chapter checkpoint answer, paraphrased"
+  },
+  {
+   "id": "K8S-03",
+   "topic": "kubernetes",
+   "difficulty": "core",
+   "question": "etcd reports a no-space alarm and every write fails. What is going on and how do you recover?",
+   "chapter": "5.5",
+   "link": "docs/part-05-kubernetes/05-the-api-server-and-etcd-how-a-request-becomes-cluster-state.md",
+   "model_answer": "When the database reaches its size quota, etcd raises an alarm and the cluster becomes read-only. Writes fail with a database-space-exceeded error. Compact old revisions, defragment each member, then disarm the alarm. Find what filled the database, such as an event storm or a controller writing in a loop.",
+   "strong_answer_contains": [
+    "Names quota and read-only mode",
+    "Compact, defrag, disarm in order",
+    "Looks for the cause"
+   ],
+   "weak_answer": "Raises the quota and moves on.",
+   "follow_up": "Why do large clusters keep events in a separate etcd?",
+   "basis": "chapter checkpoint answer, paraphrased"
+  },
+  {
+   "id": "K8S-04",
+   "topic": "kubernetes",
+   "difficulty": "stretch",
+   "question": "You restore etcd from a snapshot taken two hours ago. What is lost and what surprises do you get?",
+   "chapter": "5.5",
+   "link": "docs/part-05-kubernetes/05-the-api-server-and-etcd-how-a-request-becomes-cluster-state.md",
+   "model_answer": "The restore rewinds desired state to the snapshot time. Anything created in the last two hours disappears from the API. Kubelets then find running pods the API does not know and may delete them. Objects deleted since the snapshot come back. Plan the restore with all control-plane components stopped and tell users what window is lost.",
+   "strong_answer_contains": [
+    "States the rewind",
+    "Names the orphaned-pod effect",
+    "Mentions coordinated stop and communication"
+   ],
+   "weak_answer": "Says a restore is harmless because the data is backed up.",
+   "follow_up": "Which files besides the snapshot do you need for a full control-plane recovery?",
+   "basis": "chapter checkpoint answer, paraphrased"
+  },
+  {
+   "id": "K8S-05",
+   "topic": "kubernetes",
+   "difficulty": "senior",
+   "question": "A node-health controller finds 80 percent of nodes unhealthy at once. Why must it have a concurrency budget?",
+   "chapter": "5.6",
+   "link": "docs/part-05-kubernetes/06-controllers-and-the-reconcile-loop-how-kubernetes-thinks.md",
+   "model_answer": "A bad configuration, a faulty exporter upgrade or a power event can raise the same alert on most nodes together. Without a limit the controller would cordon and drain most of the cluster and turn a monitoring fault into an outage. A cap on concurrent actions and a pause when too many nodes are bad limits the blast radius.",
+   "strong_answer_contains": [
+    "Gives a plausible common-cause failure",
+    "Names blast radius",
+    "Adds a pause or escalation for mass failure"
+   ],
+   "weak_answer": "Says the controller should act on every unhealthy node immediately.",
+   "follow_up": "What signal separates a real fleet fault from a bad alert?",
+   "basis": "chapter checkpoint answer, paraphrased"
+  },
+  {
+   "id": "K8S-06",
+   "topic": "kubernetes",
+   "difficulty": "senior",
+   "question": "How does the kubelet decide memory pressure, and why is that not the same as free in meminfo?",
+   "chapter": "5.9",
+   "link": "docs/part-05-kubernetes/09-the-kubelet-and-the-node-cri-cgroups-qos-classes-probes-and-eviction.md",
+   "model_answer": "Free memory is mostly used for page cache, so MemFree is near zero on a busy node even when plenty is reclaimable. The kubelet reads the cgroup memory statistics and subtracts the inactive file cache from usage to compute an available figure. Eviction thresholds apply to that number. Look at that number, not at free.",
+   "strong_answer_contains": [
+    "Explains the page cache effect",
+    "Names the cgroup-based calculation",
+    "Says to watch available, not free"
+   ],
+   "weak_answer": "Alerts on low MemFree.",
+   "follow_up": "In what order does the kubelet pick pods to evict?",
+   "basis": "chapter checkpoint answer, paraphrased"
+  },
+  {
+   "id": "K8S-07",
+   "topic": "kubernetes",
+   "difficulty": "senior",
+   "question": "A container with a CPU limit fails its liveness probe even though the application is fine. Why?",
+   "chapter": "5.9",
+   "link": "docs/part-05-kubernetes/09-the-kubelet-and-the-node-cri-cgroups-qos-classes-probes-and-eviction.md",
+   "model_answer": "A strict CPU quota throttles every thread in the container for the rest of the period during a burst. The probe handler is throttled too and times out. The throttle counters in cpu.stat rise. The fix is a more generous or no CPU limit, a longer probe timeout, or a startup probe. Do not treat the probe failure as an application bug.",
+   "strong_answer_contains": [
+    "Links the quota to the probe timeout",
+    "Mentions the throttle counters",
+    "Gives limit or probe-timing fixes"
+   ],
+   "weak_answer": "Restarts the pod and hopes.",
+   "follow_up": "Why do GPU pods often run without CPU limits?",
+   "basis": "chapter checkpoint answer, paraphrased"
+  },
+  {
+   "id": "K8S-08",
+   "topic": "kubernetes",
+   "difficulty": "core",
+   "question": "A gRPC client sends 10,000 requests through a ClusterIP Service and one vLLM pod gets all of them. Why?",
+   "chapter": "5.10",
+   "link": "docs/part-05-kubernetes/10-services-endpoints-and-kube-proxy-the-life-of-a-service.md",
+   "model_answer": "Service balancing works per TCP connection at layer 4. The backend is chosen once at connect time, and every call on that long-lived HTTP/2 connection follows it. Use a headless Service with client-side balancing, a layer 7 proxy or an inference-aware gateway, and limit connection age so clients reconnect.",
+   "strong_answer_contains": [
+    "Per-connection layer 4 choice",
+    "Long-lived HTTP/2 connection",
+    "Gives a layer 7 or client-side fix"
+   ],
+   "weak_answer": "Adds more replicas.",
+   "follow_up": "How does a prefix-aware router change this?",
+   "basis": "chapter checkpoint answer, paraphrased"
+  },
+  {
+   "id": "K8S-09",
+   "topic": "kubernetes",
+   "difficulty": "core",
+   "question": "The scheduler says 20 nodes have insufficient GPU, but Grafana shows many of them idle. Why?",
+   "chapter": "5.18",
+   "link": "docs/part-05-kubernetes/18-scheduling-in-depth-kube-scheduler-affinity-taints-priority-and-preemp.md",
+   "model_answer": "The scheduler works from resource requests compared with node allocatable, never from live utilisation. An idle notebook or a stuck job can hold GPU requests without using them. Look at what holds the allocations on each node. Then reclaim them or add quota and idle-timeout policies.",
+   "strong_answer_contains": [
+    "Requests versus utilisation",
+    "Finds the holder of the allocation",
+    "Offers policy to reclaim"
+   ],
+   "weak_answer": "Says the scheduler is broken or the metrics are wrong.",
+   "follow_up": "Which event text distinguishes a capacity shortage from an affinity mismatch?",
+   "basis": "chapter checkpoint answer, paraphrased"
+  },
+  {
+   "id": "K8S-10",
+   "topic": "kubernetes",
+   "difficulty": "senior",
+   "question": "Two 4-pod training jobs are submitted to a cluster with 6 free nodes. What deadlock can occur and how do you avoid it?",
+   "chapter": "5.18",
+   "link": "docs/part-05-kubernetes/18-scheduling-in-depth-kube-scheduler-affinity-taints-priority-and-preemp.md",
+   "model_answer": "The default scheduler places pods one at a time. Three pods of each job may land on the six nodes. Each job waits for its fourth rank and holds its nodes, so neither can start. This is hold and wait. A queueing layer or gang scheduler admits a job only when all its pods can be placed.",
+   "strong_answer_contains": [
+    "Walks the 3 plus 3 split",
+    "Names hold and wait",
+    "Names admission-based or gang scheduling"
+   ],
+   "weak_answer": "Says the cluster simply needs more nodes.",
+   "follow_up": "How does Kueue prevent this without replacing the scheduler?",
+   "basis": "chapter checkpoint answer, paraphrased"
+  },
+  {
+   "id": "K8S-11",
+   "topic": "kubernetes",
+   "difficulty": "senior",
+   "question": "All kubeadm certificates expired because the cluster was not upgraded for 13 months. What happens and how do you recover?",
+   "chapter": "5.20",
+   "link": "docs/part-05-kubernetes/20-upgrades-etcd-backup-and-restore-and-disaster-recovery.md",
+   "model_answer": "Kubectl and the kubelet fail with certificate-expired errors, and the control-plane parts cannot talk to each other. Running containers keep running. Renew the certificates with kubeadm, restart the control-plane static pods and refresh the kubeconfig files. Then add expiry monitoring and a calendar so it does not repeat.",
+   "strong_answer_contains": [
+    "Running pods survive",
+    "Uses kubeadm renewal",
+    "Adds monitoring to prevent a repeat"
+   ],
+   "weak_answer": "Rebuilds the cluster.",
+   "follow_up": "What else expires on a similar clock?",
+   "basis": "chapter checkpoint answer, paraphrased"
+  },
+  {
+   "id": "K8S-12",
+   "topic": "kubernetes",
+   "difficulty": "stretch",
+   "question": "Why is raw GPU utilisation a poor autoscaling signal for LLM serving, and what do you scale on instead?",
+   "chapter": "5.23",
+   "link": "docs/part-05-kubernetes/23-autoscaling-hpa-vpa-keda-and-the-cluster-autoscaler.md",
+   "model_answer": "The utilisation metric shows the share of time at least one kernel ran. A single request keeps the GPU busy about as much as a full batch. It does not tell you queue pressure. Scale on queue depth or time in queue, cache usage and latency measures from the server, and combine with a slow-start-aware policy.",
+   "strong_answer_contains": [
+    "Explains what the metric really measures",
+    "Names queue and cache signals",
+    "Mentions slow model load"
+   ],
+   "weak_answer": "Scales at 80 percent GPU utilisation.",
+   "follow_up": "How do you stop the autoscaler overshooting while pods load weights?",
+   "basis": "chapter checkpoint answer, paraphrased"
+  },
+  {
+   "id": "K8S-13",
+   "topic": "kubernetes",
+   "difficulty": "senior",
+   "question": "Pod A cannot reach Service B. Describe a bisection.",
+   "chapter": "5.25",
+   "link": "docs/part-05-kubernetes/25-troubleshooting-kubernetes-from-the-node-crictl-nsenter-tcpdump-and-ip.md",
+   "model_answer": "Test in hops from the client pod. First a backend pod on the same node by pod IP. Then a backend on another node by pod IP. Then the Service by cluster IP. Then the Service by DNS name. The first hop that fails tells you the layer: application, pod network, service rules or DNS. Capture in the right network namespace to confirm.",
+   "strong_answer_contains": [
+    "Four ordered hops",
+    "Maps failure to layer",
+    "Uses nsenter or similar for capture"
+   ],
+   "weak_answer": "Restarts kube-proxy first.",
+   "follow_up": "How do you check conntrack exhaustion on the node?",
+   "basis": "chapter checkpoint answer, paraphrased"
+  },
+  {
+   "id": "K8S-14",
+   "topic": "kubernetes",
+   "difficulty": "senior",
+   "question": "A multi-node job hangs right after NCCL prints its bootstrap interface. How do you debug?",
+   "chapter": "5.25",
+   "link": "docs/part-05-kubernetes/25-troubleshooting-kubernetes-from-the-node-crictl-nsenter-tcpdump-and-ip.md",
+   "model_answer": "The bootstrap ring uses the socket interface and then the ranks exchange fabric information. A hang here usually means a wrong interface, a blocked port, a missing device or an unreachable peer. Check NCCL_SOCKET_IFNAME, run with NCCL debug output, test reachability between pods and check the RDMA devices are visible in the pod.",
+   "strong_answer_contains": [
+    "Knows two phases of init",
+    "Checks interface selection",
+    "Uses debug output and reachability"
+   ],
+   "weak_answer": "Reboots the nodes.",
+   "follow_up": "Which volume setting do multi-GPU pods often need?",
+   "basis": "chapter checkpoint answer, paraphrased"
+  },
+  {
+   "id": "K8S-15",
+   "topic": "kubernetes",
+   "difficulty": "core",
+   "question": "Why is create on pods almost the same as read access to secrets in a namespace?",
+   "chapter": "5.16",
+   "link": "docs/part-05-kubernetes/16-configuration-secrets-and-rbac.md",
+   "model_answer": "A user who can create a pod can mount any secret in that namespace as a volume, or run the pod under a powerful service account, and then print the contents. So pod-creation rights reach the secrets. Limit who can create pods, enforce admission policy and separate sensitive namespaces.",
+   "strong_answer_contains": [
+    "Explains the mount and service-account path",
+    "Calls it privilege escalation by design",
+    "Names admission policy as the control"
+   ],
+   "weak_answer": "Says secrets are protected by a separate permission.",
+   "follow_up": "How does Pod Security Admission limit what such a pod can do?",
+   "basis": "chapter checkpoint answer, paraphrased"
+  },
+  {
+   "id": "GPU-01",
+   "topic": "gpu_cuda",
+   "difficulty": "core",
+   "question": "A 13B model in FP16 sits on an 80 GB H100. What is the lower bound on decode latency per token at batch one?",
+   "chapter": "10.3",
+   "link": "docs/part-10-gpu-cuda/03-the-gpu-memory-hierarchy.md",
+   "model_answer": "The weights take 13 billion times two bytes, which is 26 GB. At batch one every token reads all the weights once. With 3,350 GB per second of memory bandwidth the floor is about 7.76 ms per token. The free memory does not lower this floor. Only more bandwidth, smaller weights or larger batches do.",
+   "strong_answer_contains": [
+    "Computes 26 GB",
+    "Divides by bandwidth",
+    "Says spare memory does not help"
+   ],
+   "weak_answer": "Quotes the compute rate in FLOPS as the limit.",
+   "follow_up": "How does batching change the picture?",
+   "basis": "chapter checkpoint answer, paraphrased"
+  },
+  {
+   "id": "GPU-02",
+   "topic": "gpu_cuda",
+   "difficulty": "core",
+   "question": "Four L40S GPUs run a 70B model with tensor parallelism and latency is bad despite strong FP8 compute. Why?",
+   "chapter": "10.6",
+   "link": "docs/part-10-gpu-cuda/06-gpu-interconnects-pcie-nvlink-nvswitch-and-nvlink-c2c.md",
+   "model_answer": "The L40S has no NVLink. Tensor parallelism runs an all-reduce on every layer, so every step crosses the PCIe bus. The Tensor Cores wait for data. Use NVLink-connected GPUs for tensor parallelism, or reduce the parallel degree.",
+   "strong_answer_contains": [
+    "Notes the missing NVLink",
+    "Knows all-reduce happens per layer",
+    "Matches interconnect to parallel strategy"
+   ],
+   "weak_answer": "Says FP8 should have made it fast.",
+   "follow_up": "How do you read nvidia-smi topo -m to check this on a node?",
+   "basis": "chapter checkpoint answer, paraphrased"
+  },
+  {
+   "id": "GPU-03",
+   "topic": "gpu_cuda",
+   "difficulty": "stretch",
+   "question": "topo -m shows NV18 for every pair, yet one pair has a third of the expected bandwidth. How do you find out why?",
+   "chapter": "10.6",
+   "link": "docs/part-10-gpu-cuda/06-gpu-interconnects-pcie-nvlink-nvswitch-and-nvlink-c2c.md",
+   "model_answer": "The topology command shows static discovery only. A link can be down or noisy. Check nvlink status for a dead sub-link and the error counters for replay and CRC errors, and run a point-to-point bandwidth test per pair. A failing link points to hardware service.",
+   "strong_answer_contains": [
+    "Static versus live state",
+    "Names nvlink status and error counters",
+    "Tests pair by pair"
+   ],
+   "weak_answer": "Reboots the node and retests.",
+   "follow_up": "What would the NCCL result look like on that node?",
+   "basis": "chapter checkpoint answer, paraphrased"
+  },
+  {
+   "id": "GPU-04",
+   "topic": "gpu_cuda",
+   "difficulty": "core",
+   "question": "Why can nvidia-smi show 100 percent utilisation while the GPU does almost no useful math?",
+   "chapter": "10.8",
+   "link": "docs/part-10-gpu-cuda/08-operating-gpu-nodes-nvidia-smi-topology-clocks-and-throttling.md",
+   "model_answer": "The metric says that at least one kernel was running during the sample period. One warp spinning on one multiprocessor counts. The tensor cores can be idle. Use SM activity and tensor-core activity from DCGM, and throughput of the job itself.",
+   "strong_answer_contains": [
+    "States the definition",
+    "Gives the spin-loop example",
+    "Names finer metrics"
+   ],
+   "weak_answer": "Treats 100 percent as healthy.",
+   "follow_up": "How do you tell compute-bound, memory-bound and stalled apart?",
+   "basis": "chapter checkpoint answer, paraphrased"
+  },
+  {
+   "id": "GPU-05",
+   "topic": "gpu_cuda",
+   "difficulty": "core",
+   "question": "What does persistence mode do, and what happens without it?",
+   "chapter": "10.8",
+   "link": "docs/part-10-gpu-cuda/08-operating-gpu-nodes-nvidia-smi-topology-clocks-and-throttling.md",
+   "model_answer": "With no process holding the device open the driver can tear down its state. The next job waits for device initialisation, and power or clock settings reset. Persistence mode, normally via the persistence daemon, keeps the state loaded and removes that start-up stall.",
+   "strong_answer_contains": [
+    "Describes the teardown",
+    "Notes the start-up delay",
+    "Names the daemon"
+   ],
+   "weak_answer": "Says it is only a power saving feature.",
+   "follow_up": "Where would you enable it in a node bring-up playbook?",
+   "basis": "chapter checkpoint answer, paraphrased"
+  },
+  {
+   "id": "GPU-06",
+   "topic": "gpu_cuda",
+   "difficulty": "core",
+   "question": "Explain how you would use DCGM, Nsight Systems and Nsight Compute together on a slow job.",
+   "chapter": "10.20",
+   "link": "docs/part-10-gpu-cuda/20-profiling-tools-nsight-systems-nsight-compute-pytorch-profiler.md",
+   "model_answer": "Use them in layers. DCGM and nvidia-smi give always-on telemetry and tell you something is wrong. Nsight Systems gives a timeline across CPU, I/O, copies and GPU streams and shows where gaps are. Nsight Compute inspects one kernel at a time. Go from the cheap broad view to the expensive narrow view only as needed.",
+   "strong_answer_contains": [
+    "Three layers",
+    "Cost rises as scope narrows",
+    "Starts with the cheap tool"
+   ],
+   "weak_answer": "Starts with Nsight Compute on the whole job.",
+   "follow_up": "What overhead should you expect from each?",
+   "basis": "chapter checkpoint answer, paraphrased"
+  },
+  {
+   "id": "GPU-07",
+   "topic": "gpu_cuda",
+   "difficulty": "core",
+   "question": "Contrast a single-bit and a double-bit ECC error, and volatile and aggregate counters.",
+   "chapter": "10.21",
+   "link": "docs/part-10-gpu-cuda/21-gpu-health-dcgm-ecc-row-remapping-and-xid.md",
+   "model_answer": "A single-bit error is corrected by hardware and the job continues. A double-bit error cannot be corrected, raises a serious Xid and halts the work. Volatile counters reset on a GPU reset or reboot. Aggregate counters persist over the life of the device. Trend the corrected errors, because a rising rate suggests a failing part.",
+   "strong_answer_contains": [
+    "Correctable versus not",
+    "Volatile versus aggregate",
+    "Trend corrected errors"
+   ],
+   "weak_answer": "Says any ECC error means replace the GPU.",
+   "follow_up": "How does row remapping change the response on newer GPUs?",
+   "basis": "chapter checkpoint answer, paraphrased"
+  },
+  {
+   "id": "GPU-08",
+   "topic": "gpu_cuda",
+   "difficulty": "senior",
+   "question": "What is the difference between Xid 63 and Xid 64?",
+   "chapter": "10.21",
+   "link": "docs/part-10-gpu-cuda/21-gpu-health-dcgm-ecc-row-remapping-and-xid.md",
+   "model_answer": "Xid 63 is informational. It records a normal page retirement or row remap after a correctable event. Xid 64 is a failure of that mechanism, for example when spare rows run out. That is a hardware fault, so cordon the node and start a replacement. Triage Xids in tiers so you do not page for informational ones.",
+   "strong_answer_contains": [
+    "Informational versus failure",
+    "Action for 64",
+    "Tiered triage"
+   ],
+   "weak_answer": "Treats all Xids the same.",
+   "follow_up": "Which Xid tier drains a node automatically?",
+   "basis": "chapter checkpoint answer, paraphrased"
+  },
+  {
+   "id": "GPU-09",
+   "topic": "gpu_cuda",
+   "difficulty": "senior",
+   "question": "After an Xid 79 you want to recover the GPU without rebooting the host. What are the steps and the gate?",
+   "chapter": "10.21",
+   "link": "docs/part-10-gpu-cuda/21-gpu-health-dcgm-ecc-row-remapping-and-xid.md",
+   "model_answer": "Cordon and drain the node first. Remove the PCIe device and rescan the bus through sysfs. Confirm the GPU comes back at full link width and speed. Reload the driver if needed. Only a passing level-three diagnostic from DCGM lets you uncordon. If it fails, the node goes to hardware repair.",
+   "strong_answer_contains": [
+    "Drain first",
+    "Rescan and check link",
+    "Diagnostic gate before uncordon"
+   ],
+   "weak_answer": "Resets the GPU under a running job.",
+   "follow_up": "Why check link width after recovery?",
+   "basis": "chapter checkpoint answer, paraphrased"
+  },
+  {
+   "id": "GPU-10",
+   "topic": "gpu_cuda",
+   "difficulty": "stretch",
+   "question": "Kubernetes GPU pods work but Slurm container jobs report no devices after an image update. Why?",
+   "chapter": "10.22",
+   "link": "docs/part-10-gpu-cuda/22-gpu-troubleshooting-scenarios.md",
+   "model_answer": "Kubernetes uses the container toolkit or CDI path. Slurm with Enroot and Pyxis relies on hook scripts that bind-mount the driver libraries and devices. If the hook file is missing after the image change, the GPU variables are unset inside the container. Compare the hook directory and the environment on a good node and a bad node.",
+   "strong_answer_contains": [
+    "Two different injection paths",
+    "Names the hook mechanism",
+    "Compares good and bad nodes"
+   ],
+   "weak_answer": "Reinstalls the driver.",
+   "follow_up": "What other node-image changes silently break GPU access?",
+   "basis": "chapter checkpoint answer, paraphrased"
+  },
+  {
+   "id": "GPU-11",
+   "topic": "gpu_cuda",
+   "difficulty": "senior",
+   "question": "Clocks swing between 1,980 and 800 MHz at 65 C with no throttle reason. What is happening?",
+   "chapter": "10.22",
+   "link": "docs/part-10-gpu-cuda/22-gpu-troubleshooting-scenarios.md",
+   "model_answer": "Short idle gaps between data-loader batches let firmware drop to lower power states. The clock then has to ramp up again. Enable persistence mode, set the CPU governor to performance and consider locking clocks. The better fix is also to remove the gaps by feeding data faster.",
+   "strong_answer_contains": [
+    "Names power-state downshifts",
+    "Gives governor and clock lock",
+    "Addresses the data gaps"
+   ],
+   "weak_answer": "Blames thermal throttling.",
+   "follow_up": "What does a throttle-reason bitmask tell you?",
+   "basis": "chapter checkpoint answer, paraphrased"
+  },
+  {
+   "id": "GPU-12",
+   "topic": "gpu_cuda",
+   "difficulty": "stretch",
+   "question": "Compute theoretical occupancy for 256-thread blocks at 40 and at 56 registers per thread on a 65,536-register multiprocessor.",
+   "chapter": "10.2",
+   "link": "docs/part-10-gpu-cuda/02-the-execution-model-threads-warps-blocks-and-sms.md",
+   "model_answer": "At 40 registers the file holds 1,638 threads, which is six whole blocks or 48 warps, so 75 percent. At 56 registers it holds 1,170 threads, which is four whole blocks or 32 warps, so 50 percent. Only whole blocks count. More registers per thread cost occupancy.",
+   "strong_answer_contains": [
+    "Divides the register file",
+    "Rounds down to whole blocks",
+    "States the two percentages"
+   ],
+   "weak_answer": "Ignores whole-block rounding.",
+   "follow_up": "What does the compiler flag for register and spill reporting show?",
+   "basis": "chapter checkpoint answer, paraphrased"
+  },
+  {
+   "id": "GKS-01",
+   "topic": "gpu_on_kubernetes",
+   "difficulty": "core",
+   "question": "Why does adding a RuntimeClass not make a GPU workload schedulable?",
+   "chapter": "11.2",
+   "link": "docs/part-11-gpu-kubernetes/02-device-plugin-container-toolkit-cdi-and-runtime-classes.md",
+   "model_answer": "A RuntimeClass only tells the kubelet which runtime handler to use for the pod sandbox. It knows nothing about GPU inventory. A GPU becomes schedulable only after the device plugin advertises it as an extended resource on the node and the pod requests it.",
+   "strong_answer_contains": [
+    "States what RuntimeClass does",
+    "Names the device plugin as the source of inventory",
+    "Mentions the resource request"
+   ],
+   "weak_answer": "Says the runtime class gives the pod a GPU.",
+   "follow_up": "What do the toolkit and the plugin each do at pod start?",
+   "basis": "chapter checkpoint answer, paraphrased"
+  },
+  {
+   "id": "GKS-02",
+   "topic": "gpu_on_kubernetes",
+   "difficulty": "core",
+   "question": "Why enable the fail-on-init-error option on the device plugin in production?",
+   "chapter": "11.2",
+   "link": "docs/part-11-gpu-kubernetes/02-device-plugin-container-toolkit-cdi-and-runtime-classes.md",
+   "model_answer": "If NVML fails to start, the plugin with that option on exits and crash-loops, which raises restart alerts at once. With it off, the container stays running and silently reports zero GPUs. The node then looks healthy while it cannot serve GPU pods. A loud failure is better.",
+   "strong_answer_contains": [
+    "Loud failure over silent",
+    "Names the zero-GPU state",
+    "Links it to alerting"
+   ],
+   "weak_answer": "Leaves it off to avoid restarts.",
+   "follow_up": "How would you alert on a node with GPUs present but zero allocatable?",
+   "basis": "chapter checkpoint answer, paraphrased"
+  },
+  {
+   "id": "GKS-03",
+   "topic": "gpu_on_kubernetes",
+   "difficulty": "core",
+   "question": "A pod fails with an nvidia-container-cli mount error for a device file. At which stage did it fail?",
+   "chapter": "11.2",
+   "link": "docs/part-11-gpu-kubernetes/02-device-plugin-container-toolkit-cdi-and-runtime-classes.md",
+   "model_answer": "It failed during runtime sandbox creation, before the entrypoint. Scheduling and device allocation had already succeeded. The runtime hook could not find or mount the device node on the host. Look at the driver state and device files on that node, not at the scheduler.",
+   "strong_answer_contains": [
+    "Places the failure after scheduling",
+    "Names the runtime hook",
+    "Looks at the node, not the scheduler"
+   ],
+   "weak_answer": "Says the scheduler picked a bad node.",
+   "follow_up": "Which tool shows what the runtime injected into the container?",
+   "basis": "chapter checkpoint answer, paraphrased"
+  },
+  {
+   "id": "GKS-04",
+   "topic": "gpu_on_kubernetes",
+   "difficulty": "core",
+   "question": "Why can a single pod never span two nodes, and what do you use for a 16-GPU job on 8-GPU nodes?",
+   "chapter": "11.7",
+   "link": "docs/part-11-gpu-kubernetes/07-multi-node-jobs-why-a-pod-cannot-span-nodes-and-gang-scheduling-concep.md",
+   "model_answer": "A pod is bound to one node and its containers share that node's kernel resources. A pod asking for more GPUs than one node has stays pending. A multi-node job is several pods, one or more per node, that coordinate through the application, for example through a distributed training framework over the fast network.",
+   "strong_answer_contains": [
+    "Pod is one-node by design",
+    "Multi-node means several pods",
+    "Application layer coordinates"
+   ],
+   "weak_answer": "Says Kubernetes will spread the pod.",
+   "follow_up": "What does rendezvous do in such a job?",
+   "basis": "chapter checkpoint answer, paraphrased"
+  },
+  {
+   "id": "GKS-05",
+   "topic": "gpu_on_kubernetes",
+   "difficulty": "senior",
+   "question": "Two 8-node jobs share a 12-node cluster without gang scheduling. What can happen?",
+   "chapter": "11.7",
+   "link": "docs/part-11-gpu-kubernetes/07-multi-node-jobs-why-a-pod-cannot-span-nodes-and-gang-scheduling-concep.md",
+   "model_answer": "Pods of both jobs are placed as capacity appears, say six nodes each. Both jobs wait for the two missing nodes and neither starts, while all the GPUs sit allocated and idle. Gang scheduling or queued admission means a job starts only when all its pods fit.",
+   "strong_answer_contains": [
+    "Six and six split",
+    "Both stuck at the barrier",
+    "Names gang or queue admission"
+   ],
+   "weak_answer": "Calls it a rare bug.",
+   "follow_up": "How does Kueue admit a whole job?",
+   "basis": "chapter checkpoint answer, paraphrased"
+  },
+  {
+   "id": "GKS-06",
+   "topic": "gpu_on_kubernetes",
+   "difficulty": "senior",
+   "question": "Why does a plain ResourceQuota waste GPUs, and how do Kueue cohorts help?",
+   "chapter": "11.8",
+   "link": "docs/part-11-gpu-kubernetes/08-kueue-volcano-and-scheduler-plugins.md",
+   "model_answer": "A ResourceQuota is a hard static ceiling per namespace. A team at its cap cannot use GPUs that other teams leave idle. Kueue cohorts let queues borrow unused quota from each other and reclaim it when the owner needs it back, so the cluster stays busy and each team keeps its guaranteed share.",
+   "strong_answer_contains": [
+    "Static cap problem",
+    "Borrow and reclaim",
+    "Guaranteed share kept"
+   ],
+   "weak_answer": "Raises the quota for everyone.",
+   "follow_up": "What does preemption do when a lender wants capacity back?",
+   "basis": "chapter checkpoint answer, paraphrased"
+  },
+  {
+   "id": "GKS-07",
+   "topic": "gpu_on_kubernetes",
+   "difficulty": "senior",
+   "question": "What does BestEffortFIFO do when the head job cannot fit?",
+   "chapter": "11.8",
+   "link": "docs/part-11-gpu-kubernetes/08-kueue-volcano-and-scheduler-plugins.md",
+   "model_answer": "Strict FIFO blocks every job behind the head job, even small ones that would fit. Best-effort FIFO keeps the large job queued and admits smaller jobs that fit now. It improves utilisation, at the risk of starving the large job, so teams add backfill rules or priorities.",
+   "strong_answer_contains": [
+    "Contrasts with strict FIFO",
+    "States the utilisation gain",
+    "Notes the starvation risk"
+   ],
+   "weak_answer": "Says it is the same as strict FIFO.",
+   "follow_up": "How do you stop starvation of large jobs?",
+   "basis": "chapter checkpoint answer, paraphrased"
+  },
+  {
+   "id": "GKS-08",
+   "topic": "gpu_on_kubernetes",
+   "difficulty": "core",
+   "question": "What limits of the device plugin model led to Dynamic Resource Allocation?",
+   "chapter": "11.12",
+   "link": "docs/part-11-gpu-kubernetes/12-dynamic-resource-allocation-dra.md",
+   "model_answer": "The plugin exposes integer counts, so a request cannot say which model, memory size or MIG state it wants. The scheduler cannot see how devices relate, for example a GPU and a NIC on the same PCIe switch. Allocation is static per container. DRA adds device classes and claims with attributes and selectors. Check the feature status for your Kubernetes version before relying on it.",
+   "strong_answer_contains": [
+    "Counts only",
+    "No relationship awareness",
+    "Names claims and device classes"
+   ],
+   "weak_answer": "Says DRA replaces the plugin everywhere already.",
+   "follow_up": "How does a ResourceClaim differ from a limit on nvidia.com/gpu?",
+   "basis": "chapter checkpoint answer, paraphrased"
+  },
+  {
+   "id": "GKS-09",
+   "topic": "gpu_on_kubernetes",
+   "difficulty": "stretch",
+   "question": "What is the difference between a GPU instance and a compute instance in MIG?",
+   "chapter": "11.24",
+   "link": "docs/part-11-gpu-kubernetes/24-mig-in-depth.md",
+   "model_answer": "A GPU instance is the hardware partition that isolates memory, memory controllers and cache slices. A compute instance sits inside a GPU instance and allocates some of its multiprocessors. Several compute instances in one GPU instance share that instance's memory.",
+   "strong_answer_contains": [
+    "Memory isolation lives in the GI",
+    "CI divides compute inside it",
+    "Sharing inside a GI"
+   ],
+   "weak_answer": "Treats them as the same thing.",
+   "follow_up": "What stays shared across all MIG slices on a card?",
+   "basis": "chapter checkpoint answer, paraphrased"
+  },
+  {
+   "id": "GKS-10",
+   "topic": "gpu_on_kubernetes",
+   "difficulty": "senior",
+   "question": "A 7 GB model failed on a 1g.10gb MIG slice under load. Why, and what do you do?",
+   "chapter": "11.24",
+   "link": "docs/part-11-gpu-kubernetes/24-mig-in-depth.md",
+   "model_answer": "Weights, cold start and steady state fit, but many concurrent sequences with long context push peak memory over ten gigabytes. The hardware wall is hard, so the process runs out of memory. Size the slice for peak, including cache, or pick a larger profile, and test at production concurrency.",
+   "strong_answer_contains": [
+    "Includes cache growth in the sizing",
+    "Hard memory wall",
+    "Tests at peak"
+   ],
+   "weak_answer": "Sizes the slice from weight size alone.",
+   "follow_up": "Why is aggregate free GPU memory a bad capacity metric on a MIG cluster?",
+   "basis": "chapter checkpoint answer, paraphrased"
+  },
+  {
+   "id": "GKS-11",
+   "topic": "gpu_on_kubernetes",
+   "difficulty": "senior",
+   "question": "Ten pods share one 16 GB GPU by time-slicing and one pod leaks memory. Why do the cgroups not protect the others?",
+   "chapter": "11.25",
+   "link": "docs/part-11-gpu-kubernetes/25-time-slicing-mps-and-oversubscription.md",
+   "model_answer": "Memory cgroups track host RAM, not memory inside the GPU. All pods see the same device and draw from the same pool. Time-slicing shares time but gives no memory isolation, so one leak can crash the others. Use MIG or MPS limits where isolation matters, or limit tenants to trusted workloads.",
+   "strong_answer_contains": [
+    "Cgroups cover host RAM only",
+    "Same device pool",
+    "Names MIG or MPS limits"
+   ],
+   "weak_answer": "Says set a memory limit on each pod.",
+   "follow_up": "How does MPS differ from time-slicing?",
+   "basis": "chapter checkpoint answer, paraphrased"
+  },
+  {
+   "id": "GKS-12",
+   "topic": "gpu_on_kubernetes",
+   "difficulty": "senior",
+   "question": "Walk through how you pick a GPU sharing model.",
+   "chapter": "11.26",
+   "link": "docs/part-11-gpu-kubernetes/26-choosing-a-gpu-sharing-model.md",
+   "model_answer": "Start with whether you need a virtual machine boundary, which points to vGPU. Next ask whether you need hardware-enforced memory and compute isolation, which points to MIG. Then ask whether workloads are trusted and cooperative, which allows MPS or time-slicing. Otherwise give whole GPUs. Offer few classes in the catalogue.",
+   "strong_answer_contains": [
+    "Decision order",
+    "Maps each answer to a model",
+    "Prefers few service classes"
+   ],
+   "weak_answer": "Picks time-slicing because it gives the most replicas.",
+   "follow_up": "What goes wrong when a workload moves from time-sliced to MIG?",
+   "basis": "chapter checkpoint answer, paraphrased"
+  },
+  {
+   "id": "AIN-01",
+   "topic": "ai_networking",
+   "difficulty": "senior",
+   "question": "Why does one dropped packet hurt a 400 Gbps RoCEv2 link so much?",
+   "chapter": "12.3",
+   "link": "docs/part-12-ai-networking/03-rocev2-transport-and-congestion-management.md",
+   "model_answer": "At that speed and a round trip of about twenty microseconds, roughly 250 packets are in flight. With go-back-n recovery the receiver discards every packet after the lost one and the sender repeats them all. Selective repeat would resend only the lost packet. That is why RoCE fabrics aim to be lossless and why loss shows up as a large throughput drop.",
+   "strong_answer_contains": [
+    "States packets in flight",
+    "Contrasts go-back-n and selective repeat",
+    "Links to lossless design"
+   ],
+   "weak_answer": "Says a single drop costs one packet.",
+   "follow_up": "What does PFC do to keep the fabric lossless, and what can go wrong?",
+   "basis": "chapter checkpoint answer, paraphrased"
+  },
+  {
+   "id": "AIN-02",
+   "topic": "ai_networking",
+   "difficulty": "senior",
+   "question": "Throughput is low, drops are zero. Which counters show congestion control is throttling the job?",
+   "chapter": "12.3",
+   "link": "docs/part-12-ai-networking/03-rocev2-transport-and-congestion-management.md",
+   "model_answer": "Read per-second changes in the ECN-marked, congestion-event and PFC counters on the switch and the NIC, and the RDMA counters for congestion notifications handled. Zero drops with these rising means DCQCN and PFC are slowing the sender. Compare deltas, not totals.",
+   "strong_answer_contains": [
+    "Zero drops plus rising marks",
+    "Names counter families",
+    "Uses deltas"
+   ],
+   "weak_answer": "Concludes the network is healthy because nothing is dropped.",
+   "follow_up": "What would a healthy DCQCN loop look like in the counters?",
+   "basis": "chapter checkpoint answer, paraphrased"
+  },
+  {
+   "id": "AIN-03",
+   "topic": "ai_networking",
+   "difficulty": "stretch",
+   "question": "Why must the DCQCN thresholds be ordered XON below K-min below K-max below XOFF below the buffer size?",
+   "chapter": "12.4",
+   "link": "docs/part-12-ai-networking/04-pfc-ecn-and-dcqcn-in-depth.md",
+   "model_answer": "ECN marking has to start early and reach its maximum before the buffer reaches the PFC pause threshold. That gives the sender time to slow down before a pause frame is needed. The pause threshold must sit below the buffer limit to preserve losslessness. If the order is wrong, PFC fires first and spreads pauses.",
+   "strong_answer_contains": [
+    "Marking before pausing",
+    "Pause below buffer",
+    "Notes what breaks if inverted"
+   ],
+   "weak_answer": "Sets ECN thresholds higher than the pause threshold.",
+   "follow_up": "What is a PFC storm and how does the watchdog help?",
+   "basis": "chapter checkpoint answer, paraphrased"
+  },
+  {
+   "id": "AIN-04",
+   "topic": "ai_networking",
+   "difficulty": "senior",
+   "question": "On a leaf switch one port shows heavy transmitted and received pause frames and a full queue, while another shows many ECN marks and no transmitted pauses. Where is the bottleneck?",
+   "chapter": "12.4",
+   "link": "docs/part-12-ai-networking/04-pfc-ecn-and-dcqcn-in-depth.md",
+   "model_answer": "The first port is a middle hop. It receives pause from downstream and passes it upstream. The second port sits nearest the receiver and shows congestion at the edge. The fix belongs at the receiver-side bottleneck, such as incast to one host, not at the middle hop.",
+   "strong_answer_contains": [
+    "Reads direction of pause",
+    "Locates the edge hotspot",
+    "Fixes the source of congestion"
+   ],
+   "weak_answer": "Tunes the busiest-looking port.",
+   "follow_up": "How would you confirm incast from the application side?",
+   "basis": "chapter checkpoint answer, paraphrased"
+  },
+  {
+   "id": "AIN-05",
+   "topic": "ai_networking",
+   "difficulty": "senior",
+   "question": "SSH sessions stall during training bursts. The QoS output shows PFC on priorities 0 and 3. What is wrong?",
+   "chapter": "12.4",
+   "link": "docs/part-12-ai-networking/04-pfc-ecn-and-dcqcn-in-depth.md",
+   "model_answer": "PFC is on priority 0, which carries default traffic such as management. Backpressure from training can pause it. Enable PFC only on the RoCE priority. Re-run a congestion test and confirm pause counters on priority 0 stay at zero.",
+   "strong_answer_contains": [
+    "Spots the extra priority",
+    "Limits PFC to the RoCE class",
+    "Verifies with counters"
+   ],
+   "weak_answer": "Raises the SSH timeout.",
+   "follow_up": "Which DSCP and class settings does the chapter give as lossless RoCE defaults?",
+   "basis": "chapter checkpoint answer, paraphrased"
+  },
+  {
+   "id": "AIN-06",
+   "topic": "ai_networking",
+   "difficulty": "stretch",
+   "question": "Why does standard RoCEv2 balance badly across equal-cost paths in AI training?",
+   "chapter": "12.12",
+   "link": "docs/part-12-ai-networking/12-ethernet-versus-infiniband-a-design-decision-guide.md",
+   "model_answer": "Traffic between rail-aligned GPUs uses few distinct addresses, and every frame has the same UDP destination port. A small number of long-lived flows have the same hash inputs, so they land on the same links. That is low entropy. Remedies include dynamic or per-packet load balancing, more queue pairs and careful source-port use.",
+   "strong_answer_contains": [
+    "Names low entropy",
+    "Few flows, many bytes",
+    "Gives balancing remedies"
+   ],
+   "weak_answer": "Says ECMP always spreads load evenly.",
+   "follow_up": "How does adaptive routing on InfiniBand differ?",
+   "basis": "chapter checkpoint answer, paraphrased"
+  },
+  {
+   "id": "AIN-07",
+   "topic": "ai_networking",
+   "difficulty": "senior",
+   "question": "A 400 Gbps port reports link up, yet the host sees about 16 GB per second. Why?",
+   "chapter": "12.12",
+   "link": "docs/part-12-ai-networking/12-ethernet-versus-infiniband-a-design-decision-guide.md",
+   "model_answer": "The PCIe link may have trained down, for example to a narrower width, because of riser wiring or bifurcation. The slot then caps DMA throughput regardless of the network speed. lspci shows the link capability next to the link status. Reseat or fix the slot and retrain.",
+   "strong_answer_contains": [
+    "Network speed is not host speed",
+    "lspci capability versus status",
+    "Names a hardware fix"
+   ],
+   "weak_answer": "Blames the switch.",
+   "follow_up": "How does this show up in an nccl-tests result?",
+   "basis": "chapter checkpoint answer, paraphrased"
+  },
+  {
+   "id": "AIN-08",
+   "topic": "ai_networking",
+   "difficulty": "senior",
+   "question": "Why is AllReduce equal to ReduceScatter followed by AllGather, and who uses this?",
+   "chapter": "12.15",
+   "link": "docs/part-12-ai-networking/15-nccl-collectives-and-algorithms.md",
+   "model_answer": "ReduceScatter leaves each rank with its reduced shard of the data. AllGather then circulates the shards so every rank has the full result. Fully sharded data parallel uses the two halves separately: it gathers parameters before use and reduces-scatters gradients after the backward pass.",
+   "strong_answer_contains": [
+    "States the decomposition",
+    "Each rank holds one shard in the middle",
+    "Names the FSDP use"
+   ],
+   "weak_answer": "Calls them unrelated operations.",
+   "follow_up": "Which has more bytes on the wire per rank in a ring?",
+   "basis": "chapter checkpoint answer, paraphrased"
+  },
+  {
+   "id": "AIN-09",
+   "topic": "ai_networking",
+   "difficulty": "stretch",
+   "question": "Why bind ranks to NUMA nodes and set NCCL_IGNORE_CPU_AFFINITY?",
+   "chapter": "12.15",
+   "link": "docs/part-12-ai-networking/15-nccl-collectives-and-algorithms.md",
+   "model_answer": "A launcher or taskset that pins a rank to a narrow CPU mask is inherited by NCCL's helper threads. They can collapse onto one core and slow the network path. Bind each rank to the NUMA domain of its GPU, and tell NCCL to ignore the inherited affinity so its threads spread across that domain.",
+   "strong_answer_contains": [
+    "Inherited narrow mask",
+    "Per-GPU NUMA binding",
+    "Setting the variable"
+   ],
+   "weak_answer": "Pins each rank to a single core for stability.",
+   "follow_up": "How do you check the GPU-to-NUMA map?",
+   "basis": "chapter checkpoint answer, paraphrased"
+  },
+  {
+   "id": "AIN-10",
+   "topic": "ai_networking",
+   "difficulty": "core",
+   "question": "An NCCL timeout is logged by a healthy rank. Why is it the wrong rank to blame?",
+   "chapter": "12.18",
+   "link": "docs/part-12-ai-networking/18-nccl-debugging-hangs-timeouts-and-errors.md",
+   "model_answer": "Collectives act as barriers. Healthy ranks finish their work, enter the collective first and start their watchdog timers. They time out while waiting for the slow or dead rank. So the first log line points at a waiting rank. Find which rank is behind using flight-recorder data or the NCCL RAS tool, then check that node.",
+   "strong_answer_contains": [
+    "Barrier semantics",
+    "Waiters log first",
+    "Finds the lagging rank with tools"
+   ],
+   "weak_answer": "Replaces the node that logged the error.",
+   "follow_up": "What does a mismatch in operation counts tell you?",
+   "basis": "chapter checkpoint answer, paraphrased"
+  },
+  {
+   "id": "AIN-11",
+   "topic": "ai_networking",
+   "difficulty": "senior",
+   "question": "NCCL fails with a system error about no space in /dev/shm in a container. Why, and how do you size it?",
+   "chapter": "12.18",
+   "link": "docs/part-12-ai-networking/18-nccl-debugging-hangs-timeouts-and-errors.md",
+   "model_answer": "The default shared-memory size of 64 MiB is too small for an 8-GPU node, because NCCL places buffers there. The chapter's worked example needs over a gigabyte. Set a larger shared memory size for the pod, using a memory-backed volume, and check the NCCL buffer settings.",
+   "strong_answer_contains": [
+    "Names the 64 MiB default",
+    "Says shared memory carries NCCL buffers",
+    "Gives the pod-level fix"
+   ],
+   "weak_answer": "Increases the host disk.",
+   "follow_up": "Which memlock failure looks similar at start-up?",
+   "basis": "chapter checkpoint answer, paraphrased"
+  },
+  {
+   "id": "AIN-12",
+   "topic": "ai_networking",
+   "difficulty": "core",
+   "question": "Explain how GPUDirect RDMA works and what the peer-memory module does.",
+   "chapter": "12.19",
+   "link": "docs/part-12-ai-networking/19-gpudirect-rdma-and-gpudirect-storage.md",
+   "model_answer": "Without it, data from GPU memory is copied to host memory and then sent by the NIC. With it, the NIC reads GPU memory directly across PCIe. The peer-memory module registers GPU pages with the RDMA core so the NIC can address them. Freeing a registered buffer triggers invalidation, so memory registrations must be managed with care.",
+   "strong_answer_contains": [
+    "Removes the host bounce",
+    "Registers GPU pages with RDMA core",
+    "Notes the free-while-registered hazard"
+   ],
+   "weak_answer": "Says it makes the network faster by itself.",
+   "follow_up": "How does PCIe ACS get in the way?",
+   "basis": "chapter checkpoint answer, paraphrased"
+  },
+  {
+   "id": "STO-01",
+   "topic": "storage",
+   "difficulty": "core",
+   "question": "In the 1.2 million image benchmark, where does the per-file time go, and what does that tell you about the fix?",
+   "chapter": "13.6",
+   "link": "docs/part-13-ai-storage/06-data-loading-small-files-and-metadata.md",
+   "model_answer": "The chapter's benchmark spends 4 ms per file on metadata and read syscalls and 15 ms on CPU decode and augmentation. So CPU work dominates in that case, and a faster file system alone would not fix it. Measure first, then decide between sharded formats for the metadata part and more workers or GPU decode for the CPU part.",
+   "strong_answer_contains": [
+    "Splits time into storage and CPU",
+    "Says measure before fixing",
+    "Matches fix to the dominant part"
+   ],
+   "weak_answer": "Buys faster storage first.",
+   "follow_up": "How do you separate loader overhead from storage time experimentally?",
+   "basis": "chapter checkpoint answer, paraphrased"
+  },
+  {
+   "id": "STO-02",
+   "topic": "storage",
+   "difficulty": "senior",
+   "question": "When random reads cannot be avoided, what do you change about read-ahead and I/O calls?",
+   "chapter": "13.6",
+   "link": "docs/part-13-ai-storage/06-data-loading-small-files-and-metadata.md",
+   "model_answer": "Large read-ahead wastes bandwidth on random reads and fills the page cache with blocks nobody uses. Turn it down. Use positional reads or batched asynchronous I/O with registered buffers and direct I/O to cut syscall cost and hide latency. Test on your data, because the right setting depends on the access pattern.",
+   "strong_answer_contains": [
+    "Read-ahead harms random access",
+    "Positional or async I/O",
+    "Test on real data"
+   ],
+   "weak_answer": "Increases read-ahead for speed.",
+   "follow_up": "How do WebDataset style shards avoid random reads?",
+   "basis": "chapter checkpoint answer, paraphrased"
+  },
+  {
+   "id": "STO-03",
+   "topic": "storage",
+   "difficulty": "senior",
+   "question": "Why is a sharded checkpoint write so much faster than gathering to rank 0?",
+   "chapter": "13.7",
+   "link": "docs/part-13-ai-storage/07-checkpoint-architecture-and-recovery.md",
+   "model_answer": "Gathering moves the whole payload to one rank and writes it from one node. In the chapter's 70B example that takes about 269 seconds. A sharded write has each GPU write its own shard in parallel, so the time shrinks with the number of writers until the storage limit. It also avoids a memory spike on rank 0.",
+   "strong_answer_contains": [
+    "Serial versus parallel",
+    "Rank 0 memory spike",
+    "Bounded by storage bandwidth"
+   ],
+   "weak_answer": "Says compression is the main gain.",
+   "follow_up": "How does the load side handle a different GPU count?",
+   "basis": "chapter checkpoint answer, paraphrased"
+  },
+  {
+   "id": "STO-04",
+   "topic": "storage",
+   "difficulty": "stretch",
+   "question": "State Young's and Daly's formulas for checkpoint interval and say what the variables mean.",
+   "chapter": "13.7",
+   "link": "docs/part-13-ai-storage/07-checkpoint-architecture-and-recovery.md",
+   "model_answer": "Young's interval is the square root of two times the write time times the cluster mean time between failures. Daly's adjusted version subtracts the write time from that. The cluster MTBF is the node MTBF divided by the number of nodes. Longer write time or lower MTBF changes the interval, so shortening the write pays twice.",
+   "strong_answer_contains": [
+    "Both formulas",
+    "Cluster MTBF definition",
+    "Shorter write helps"
+   ],
+   "weak_answer": "Picks a round interval such as every hour.",
+   "follow_up": "What is the interval for 8 hours MTBF and 180 seconds write?",
+   "basis": "chapter checkpoint answer, paraphrased"
+  },
+  {
+   "id": "STO-05",
+   "topic": "storage",
+   "difficulty": "senior",
+   "question": "Asynchronous checkpointing causes host out-of-memory kills. Why and what is the fix?",
+   "chapter": "13.7",
+   "link": "docs/part-13-ai-storage/07-checkpoint-architecture-and-recovery.md",
+   "model_answer": "The snapshot is staged in pinned host memory. If several unflushed snapshots stack up next to worker memory, the node can run out and the OOM killer fires. Allow only one snapshot in flight, wait for the previous flush before starting the next, and budget host memory for it.",
+   "strong_answer_contains": [
+    "Pinned host staging",
+    "Snapshots stacking",
+    "One in flight"
+   ],
+   "weak_answer": "Adds swap.",
+   "follow_up": "What does async checkpointing do to the training pause?",
+   "basis": "chapter checkpoint answer, paraphrased"
+  },
+  {
+   "id": "STO-06",
+   "topic": "storage",
+   "difficulty": "senior",
+   "question": "Why publish a checkpoint through a temporary directory and an atomic rename?",
+   "chapter": "13.7",
+   "link": "docs/part-13-ai-storage/07-checkpoint-architecture-and-recovery.md",
+   "model_answer": "A crash during a direct write leaves truncated or mismatched shards in the final directory, and a restart may load them. Write into a temporary directory, flush, verify hashes, then rename it into place in one atomic step. Readers see a complete checkpoint or none.",
+   "strong_answer_contains": [
+    "Names the partial-write failure",
+    "Verify then rename",
+    "Atomic visibility"
+   ],
+   "weak_answer": "Writes directly and checks on load.",
+   "follow_up": "How would a restart choose the latest good checkpoint?",
+   "basis": "chapter checkpoint answer, paraphrased"
+  },
+  {
+   "id": "STO-07",
+   "topic": "storage",
+   "difficulty": "senior",
+   "question": "Why reserve about 30 percent free space on a parallel file system?",
+   "chapter": "13.8",
+   "link": "docs/part-13-ai-storage/08-capacity-performance-and-cost-planning.md",
+   "model_answer": "Parallel file systems slow down as they fill. Extents fragment, allocator contention grows and targets become uneven near 90 percent. Keeping headroom holds steady-state fill well below that and avoids multi-minute checkpoint stalls. It also leaves room for rebuilds.",
+   "strong_answer_contains": [
+    "Names fragmentation and skew",
+    "Gives a headroom target",
+    "Mentions rebuild room"
+   ],
+   "weak_answer": "Fills to 95 percent to save cost.",
+   "follow_up": "How do you size usable capacity from raw flash?",
+   "basis": "chapter checkpoint answer, paraphrased"
+  },
+  {
+   "id": "STO-08",
+   "topic": "storage",
+   "difficulty": "core",
+   "question": "Estimate read bandwidth for 200 MB per second per GPU on 8 GPUs, 64 GPUs and a 72-GPU rack.",
+   "chapter": "13.8",
+   "link": "docs/part-13-ai-storage/08-capacity-performance-and-cost-planning.md",
+   "model_answer": "Multiply per-GPU demand by the GPU count. Eight GPUs need 1.6 GB per second, 64 need 12.8 GB per second, and 72 need 14.4 GB per second. State the per-GPU assumption and add headroom for bursts and for several jobs starting together.",
+   "strong_answer_contains": [
+    "Simple multiplication",
+    "States the assumption",
+    "Adds headroom"
+   ],
+   "weak_answer": "Quotes the storage vendor peak figure.",
+   "follow_up": "Why is text pre-tokenised pretraining not read-bound?",
+   "basis": "chapter checkpoint answer, paraphrased"
+  },
+  {
+   "id": "STO-09",
+   "topic": "storage",
+   "difficulty": "senior",
+   "question": "A checkpoint that took 90 seconds now takes 12 minutes with nothing changed in the job. What do you check?",
+   "chapter": "14.11",
+   "link": "docs/part-14-training-finetuning/11-checkpointing-fault-tolerance-and-elastic-training.md",
+   "model_answer": "Look at shared-file-system contention from other tenants, a single degraded storage target that slows striped writes, and a changed configuration such as stripe count or network path. Compare per-rank write times to find a slow rank or target. Check the file system's own metrics, not only the node.",
+   "strong_answer_contains": [
+    "Contention",
+    "Degraded target",
+    "Per-rank comparison"
+   ],
+   "weak_answer": "Assumes the model got bigger.",
+   "follow_up": "How would staggering writes or using local NVMe first help?",
+   "basis": "chapter checkpoint answer, paraphrased"
+  },
+  {
+   "id": "TRN-01",
+   "topic": "training",
+   "difficulty": "core",
+   "question": "Why does static training memory come to 16 bytes per parameter in mixed precision, and 14 on disk?",
+   "chapter": "14.3",
+   "link": "docs/part-14-training-finetuning/03-training-memory-and-compute-anatomy.md",
+   "model_answer": "In pure FP32 Adam, weights, gradients, momentum and variance take four bytes each, which is 16 bytes per parameter. In mixed precision, BF16 weights and gradients save space but a FP32 master copy is added, so the total is again about 16 bytes. A checkpoint stores weights and optimizer state but not gradients, which gives the 14 bytes figure the chapter uses. Activations come on top.",
+   "strong_answer_contains": [
+    "Counts the four terms",
+    "Master weights offset the saving",
+    "Checkpoint omits gradients"
+   ],
+   "weak_answer": "Says only weights count.",
+   "follow_up": "What does sharding change in that budget?",
+   "basis": "chapter checkpoint answer, paraphrased"
+  },
+  {
+   "id": "TRN-02",
+   "topic": "training",
+   "difficulty": "core",
+   "question": "Training quality falls but nothing errors, and every epoch sees the same batch order. What did the author forget?",
+   "chapter": "14.4",
+   "link": "docs/part-14-training-finetuning/04-data-parallelism-and-ddp.md",
+   "model_answer": "The distributed sampler seeds its shuffle from the seed plus the epoch. If set_epoch is never called, the epoch stays zero and every epoch uses the same shuffle. Call set_epoch at the start of each epoch. Never pass shuffle to the loader when a distributed sampler is used.",
+   "strong_answer_contains": [
+    "Names the sampler seed",
+    "Names set_epoch",
+    "No double shuffling"
+   ],
+   "weak_answer": "Blames the learning rate.",
+   "follow_up": "What does the sampler do when the dataset does not divide evenly?",
+   "basis": "chapter checkpoint answer, paraphrased"
+  },
+  {
+   "id": "TRN-03",
+   "topic": "training",
+   "difficulty": "senior",
+   "question": "DDP hangs when a conditional branch leaves a parameter unused. Why and what are the options?",
+   "chapter": "14.4",
+   "link": "docs/part-14-training-finetuning/04-data-parallelism-and-ddp.md",
+   "model_answer": "An unused parameter never fires its gradient hook, so its bucket never becomes ready and the all-reduce never starts on some ranks. Setting find unused parameters makes DDP scan the graph every step, which costs time. If the graph is fixed, static graph is cheaper. The best fix is to make every parameter participate.",
+   "strong_answer_contains": [
+    "Hook never fires",
+    "find_unused cost",
+    "static graph option"
+   ],
+   "weak_answer": "Increases the timeout.",
+   "follow_up": "How do you set collective timeouts in current PyTorch?",
+   "basis": "chapter checkpoint answer, paraphrased"
+  },
+  {
+   "id": "TRN-04",
+   "topic": "training",
+   "difficulty": "stretch",
+   "question": "Compare per-GPU memory for a 70B model under DDP and the three sharding stages.",
+   "chapter": "14.5",
+   "link": "docs/part-14-training-finetuning/05-fsdp-and-parameter-sharding.md",
+   "model_answer": "The chapter counts 12 bytes per parameter for the state, so 840 GB in all. DDP holds all of it on each GPU. Stage 1 shards the optimizer state, stage 2 also shards gradients, and stage 3 shards the weights too. Across eight GPUs that is 350, 227 and about 105 GB respectively, before activations. Larger groups cut it further.",
+   "strong_answer_contains": [
+    "12 bytes per parameter basis",
+    "Which stage shards what",
+    "Activations are extra"
+   ],
+   "weak_answer": "Says FSDP shards activations too.",
+   "follow_up": "What communication does stage 3 add?",
+   "basis": "chapter checkpoint answer, paraphrased"
+  },
+  {
+   "id": "TRN-05",
+   "topic": "training",
+   "difficulty": "senior",
+   "question": "Saving an FSDP checkpoint with the default state dict crashes rank 0 with out of memory. Why?",
+   "chapter": "14.5",
+   "link": "docs/part-14-training-finetuning/05-fsdp-and-parameter-sharding.md",
+   "model_answer": "The default full state dict gathers every shard onto rank 0. For a 70B model that is far more than one GPU can hold. Use the distributed checkpoint API with sharded state and optional CPU offload, so each rank writes its own shard.",
+   "strong_answer_contains": [
+    "Gather to rank 0",
+    "Size mismatch",
+    "Sharded distributed checkpoint"
+   ],
+   "weak_answer": "Adds more memory to rank 0.",
+   "follow_up": "How do you reload onto a different number of GPUs?",
+   "basis": "chapter checkpoint answer, paraphrased"
+  },
+  {
+   "id": "TRN-06",
+   "topic": "training",
+   "difficulty": "stretch",
+   "question": "Why did tensor parallelism of 32 across two nodes cause a large slowdown?",
+   "chapter": "14.7",
+   "link": "docs/part-14-training-finetuning/07-tensor-pipeline-and-expert-parallelism-megatron.md",
+   "model_answer": "Tensor parallelism runs collectives on every layer. Stretching it across nodes puts those on the inter-node network instead of NVLink, so each collective is many times slower. Keep tensor parallelism inside a node, and use pipeline or data parallelism across nodes.",
+   "strong_answer_contains": [
+    "Per-layer collectives",
+    "NVLink versus network",
+    "Rule of thumb for placement"
+   ],
+   "weak_answer": "Says more GPUs always means faster.",
+   "follow_up": "What is the pipeline bubble and how is it reduced?",
+   "basis": "chapter checkpoint answer, paraphrased"
+  },
+  {
+   "id": "TRN-07",
+   "topic": "training",
+   "difficulty": "senior",
+   "question": "Compute the Young-Daly checkpoint interval for 8 hours MTBF and a 180-second write.",
+   "chapter": "14.11",
+   "link": "docs/part-14-training-finetuning/11-checkpointing-fault-tolerance-and-elastic-training.md",
+   "model_answer": "Take the square root of two times 28,800 seconds times 180 seconds, which is about 3,220 seconds. Subtract the write time of 180 seconds. The result is about 3,040 seconds, or roughly 51 minutes. The value is an estimate, so round it and review it when the failure rate changes.",
+   "strong_answer_contains": [
+    "Correct arithmetic",
+    "Units",
+    "Notes it is an estimate"
+   ],
+   "weak_answer": "Checkpoints every 5 minutes to be safe.",
+   "follow_up": "How does async checkpointing change the optimum?",
+   "basis": "chapter checkpoint answer, paraphrased"
+  },
+  {
+   "id": "TRN-08",
+   "topic": "training",
+   "difficulty": "senior",
+   "question": "Why can a try and except loop in Python not recover a distributed step when one rank dies?",
+   "chapter": "14.11",
+   "link": "docs/part-14-training-finetuning/11-checkpointing-fault-tolerance-and-elastic-training.md",
+   "model_answer": "Collectives need every rank in lockstep. When one rank dies, the communicator state is broken and the others hang in the collective until the watchdog fires. Recovery means tearing down the process group and restarting from a checkpoint, usually through the launcher's restart or an elastic setup.",
+   "strong_answer_contains": [
+    "Lockstep",
+    "Hang until watchdog",
+    "Restart from checkpoint"
+   ],
+   "weak_answer": "Catches the exception and continues.",
+   "follow_up": "How does elastic training change the batch size and loss behaviour?",
+   "basis": "chapter checkpoint answer, paraphrased"
+  },
+  {
+   "id": "TRN-09",
+   "topic": "training",
+   "difficulty": "core",
+   "question": "Why can a GPU show 100 percent utilisation and only 15 to 22 percent MFU?",
+   "chapter": "14.12",
+   "link": "docs/part-14-training-finetuning/12-training-performance-engineering-and-troubleshooting.md",
+   "model_answer": "Utilisation says a kernel was active, not how much of the hardware it used. Many tiny memory-bound kernels, waiting on data or communication, keep the GPU busy but do little tensor-core work. MFU compares achieved model FLOPs with the peak, so it shows real efficiency.",
+   "strong_answer_contains": [
+    "Definition of utilisation",
+    "What MFU measures",
+    "Cause of the gap"
+   ],
+   "weak_answer": "Treats 100 percent as proof of efficiency.",
+   "follow_up": "How do you compute MFU for a 70B model on 8 H100s?",
+   "basis": "chapter checkpoint answer, paraphrased"
+  },
+  {
+   "id": "TRN-10",
+   "topic": "training",
+   "difficulty": "senior",
+   "question": "MFU is steady at 45 percent for hours and then slides to 28 percent with no change. What do you suspect?",
+   "chapter": "14.12",
+   "link": "docs/part-14-training-finetuning/12-training-performance-engineering-and-troubleshooting.md",
+   "model_answer": "A slow slide points to a changing environment, not a configuration error. Thermal clock throttling is the prime suspect as temperatures rise. Check temperatures, clocks and throttle reasons, and look at data-cache decay or a growing straggler. Compare with a cool node.",
+   "strong_answer_contains": [
+    "Gradual means environmental",
+    "Thermal throttle",
+    "Verification with clocks and reasons"
+   ],
+   "weak_answer": "Restarts the job.",
+   "follow_up": "How do you tell power capping from thermal throttling?",
+   "basis": "chapter checkpoint answer, paraphrased"
+  },
+  {
+   "id": "TRN-11",
+   "topic": "training",
+   "difficulty": "senior",
+   "question": "After a node reboot throughput drops from 950 to 310 tokens per second and all-reduce bandwidth collapses. What happened?",
+   "chapter": "14.12",
+   "link": "docs/part-14-training-finetuning/12-training-performance-engineering-and-troubleshooting.md",
+   "model_answer": "NCCL probably fell back from NVLink to PCIe. Typical causes are the fabric manager not starting after reboot, an NVLink that failed to train, or a BIOS setting like ACS enabled. Check the fabric manager service, the NVLink status and the NCCL topology log. Fix and re-run the bandwidth test before returning the node.",
+   "strong_answer_contains": [
+    "Names fallback to PCIe",
+    "Fabric manager first",
+    "Re-test before return"
+   ],
+   "weak_answer": "Retunes the batch size.",
+   "follow_up": "Which test proves the node is healthy again?",
+   "basis": "chapter checkpoint answer, paraphrased"
+  },
+  {
+   "id": "INF-01",
+   "topic": "inference",
+   "difficulty": "core",
+   "question": "Why does LLM inference need a KV cache and training does not?",
+   "chapter": "15.2",
+   "link": "docs/part-15-inference/02-batching-the-kv-cache-and-quantization-fundamentals.md",
+   "model_answer": "In training the whole target sequence is known, so attention over all tokens runs in one parallel pass. In generation the tokens come one at a time. Without a cache, every new token would recompute keys and values for all earlier tokens. The cache stores them, so each step computes only the new token. The cost is memory that grows with context length and batch size.",
+   "strong_answer_contains": [
+    "Parallel training pass versus sequential generation",
+    "Cache avoids recompute",
+    "Names the memory cost"
+   ],
+   "weak_answer": "Says the cache stores the model outputs for repeat questions.",
+   "follow_up": "How do you compute the cache size per token?",
+   "basis": "chapter checkpoint answer, paraphrased"
+  },
+  {
+   "id": "INF-02",
+   "topic": "inference",
+   "difficulty": "senior",
+   "question": "Give the per-token KV cache formula and explain why Llama-3-70B uses about 8 times less than a 70B model with full multi-head attention.",
+   "chapter": "15.2",
+   "link": "docs/part-15-inference/02-batching-the-kv-cache-and-quantization-fundamentals.md",
+   "model_answer": "Per token it is two, for keys and values, times the layer count, times the number of key-value heads, times the head dimension, times bytes per element. Llama-3-70B uses grouped-query attention with 8 key-value heads instead of 64, so the cache is one eighth. That allows many more concurrent sequences.",
+   "strong_answer_contains": [
+    "Formula with the factor of two",
+    "Names grouped-query attention",
+    "Links to concurrency"
+   ],
+   "weak_answer": "Says the 70B model is just smaller.",
+   "follow_up": "What does doubling tensor parallelism do to the number of sequences that fit?",
+   "basis": "chapter checkpoint answer, paraphrased"
+  },
+  {
+   "id": "INF-03",
+   "topic": "inference",
+   "difficulty": "senior",
+   "question": "Why does 4-bit weight quantisation win at low concurrency and 8-bit with 8-bit activations win at high concurrency?",
+   "chapter": "15.2",
+   "link": "docs/part-15-inference/02-batching-the-kv-cache-and-quantization-fundamentals.md",
+   "model_answer": "At low concurrency decode is limited by memory bandwidth, so smaller weights help most. At high concurrency or long prefill the work becomes compute-bound, and 8-bit math units give more compute throughput than 4-bit weights that must be dequantised. Always check accuracy on your task too.",
+   "strong_answer_contains": [
+    "Memory-bound versus compute-bound",
+    "Matches format to regime",
+    "Mentions accuracy checking"
+   ],
+   "weak_answer": "Says 4-bit is always faster.",
+   "follow_up": "When is quantisation-aware training needed?",
+   "basis": "chapter checkpoint answer, paraphrased"
+  },
+  {
+   "id": "INF-04",
+   "topic": "inference",
+   "difficulty": "core",
+   "question": "How does PagedAttention reduce memory waste?",
+   "chapter": "15.3",
+   "link": "docs/part-15-inference/03-vllm-in-depth.md",
+   "model_answer": "It splits the KV cache into small fixed-size blocks and maps each sequence's logical blocks to any free physical block through a block table. There is no need for contiguous memory, so external fragmentation disappears, and waste is limited to the last partly filled block. More sequences fit, which raises throughput.",
+   "strong_answer_contains": [
+    "Fixed blocks and a block table",
+    "No contiguity needed",
+    "Waste bounded to the last block"
+   ],
+   "weak_answer": "Describes it as a faster attention kernel.",
+   "follow_up": "How does prefix caching reuse blocks?",
+   "basis": "chapter checkpoint answer, paraphrased"
+  },
+  {
+   "id": "INF-05",
+   "topic": "inference",
+   "difficulty": "core",
+   "question": "Which metrics do you watch on every production vLLM deployment?",
+   "chapter": "15.3",
+   "link": "docs/part-15-inference/03-vllm-in-depth.md",
+   "model_answer": "Cache usage, because high values lead to preemption. Preemption count. Queue depth and running requests. Time to first token and time per output token. GPU health from DCGM. The chapter gives example thresholds, for instance alerting on cache usage above 95 percent for two minutes, so treat them as starting points for your own load.",
+   "strong_answer_contains": [
+    "Cache usage and preemptions",
+    "Queue and latency",
+    "Thresholds are starting points"
+   ],
+   "weak_answer": "Watches only GPU utilisation.",
+   "follow_up": "Why must swap space be zero for latency-critical serving?",
+   "basis": "chapter checkpoint answer, paraphrased"
+  },
+  {
+   "id": "INF-06",
+   "topic": "inference",
+   "difficulty": "senior",
+   "question": "Define goodput. Why did the colocated GPU in the DistServe example reach 3 RPS on TTFT yet only 1.6 RPS goodput?",
+   "chapter": "15.8",
+   "link": "docs/part-15-inference/08-nvidia-dynamo-llm-d-and-disaggregated-serving.md",
+   "model_answer": "Goodput counts only requests that meet both the time-to-first-token and time-per-output-token targets. When prefill and decode share a GPU, long prompts delay running decodes, so the per-token target is missed even when first-token latency is fine. Counting only requests that meet both targets gives 1.6.",
+   "strong_answer_contains": [
+    "Both SLOs together",
+    "Interference between phases",
+    "Numbers 3.0 versus 1.6"
+   ],
+   "weak_answer": "Quotes raw throughput as the headline number.",
+   "follow_up": "How does separating prefill and decode change goodput?",
+   "basis": "chapter checkpoint answer, paraphrased"
+  },
+  {
+   "id": "INF-07",
+   "topic": "inference",
+   "difficulty": "stretch",
+   "question": "Chunked prefill exists. Why might you still disaggregate prefill and decode?",
+   "chapter": "15.10",
+   "link": "docs/part-15-inference/10-prefill-and-decode-disaggregation.md",
+   "model_answer": "Even with chunking, a prefill chunk in the same batch stretches every step, which delays all decode streams during prompt ingestion. Very small chunks add overhead. Separate pools let each phase use its own parallelism and hardware and be scaled on its own. The cost is moving the KV cache over the network, so it pays off for long prompts and strict latency targets.",
+   "strong_answer_contains": [
+    "Residual interference",
+    "Independent scaling",
+    "Network cost of KV transfer"
+   ],
+   "weak_answer": "Says disaggregation is always better.",
+   "follow_up": "How do you size the prefill-to-decode ratio?",
+   "basis": "chapter checkpoint answer, paraphrased"
+  },
+  {
+   "id": "INF-08",
+   "topic": "inference",
+   "difficulty": "senior",
+   "question": "How do you size the ratio of prefill workers to decode workers?",
+   "chapter": "15.10",
+   "link": "docs/part-15-inference/10-prefill-and-decode-disaggregation.md",
+   "model_answer": "Prefill workers equal arrival rate times uncached input tokens divided by prefill throughput, rounded up. Decode workers equal arrival rate times output tokens divided by decode throughput. The ratio follows the input-to-output token ratio and the throughput ratio. Chat, retrieval and reasoning workloads therefore need different ratios.",
+   "strong_answer_contains": [
+    "Two formulas",
+    "Ratio depends on workload",
+    "Use measured throughputs"
+   ],
+   "weak_answer": "Splits the GPUs evenly.",
+   "follow_up": "Why must you use uncached input tokens?",
+   "basis": "chapter checkpoint answer, paraphrased"
+  },
+  {
+   "id": "INF-09",
+   "topic": "inference",
+   "difficulty": "stretch",
+   "question": "Why do commercial APIs price output tokens higher, and how do TTFT and inter-token latency differ?",
+   "chapter": "15.14",
+   "link": "docs/part-15-inference/14-benchmarking-genai-perf-latency-percentiles-and-goodput.md",
+   "model_answer": "Time to first token is set by prefill, which is compute-bound. Inter-token latency is set by decode, which is memory-bandwidth-bound and handles one token per step per sequence. Decode uses the GPU less efficiently per token, so output tokens cost more. Targets also differ, with first-token targets in hundreds of milliseconds for chat.",
+   "strong_answer_contains": [
+    "Compute versus memory bound",
+    "Different SLOs",
+    "Cost consequence"
+   ],
+   "weak_answer": "Says output is pricier only because it is longer.",
+   "follow_up": "How do you compute end-to-end latency from these?",
+   "basis": "chapter checkpoint answer, paraphrased"
+  },
+  {
+   "id": "INF-10",
+   "topic": "inference",
+   "difficulty": "senior",
+   "question": "Why does a closed-loop load test hide overload, and what should you use?",
+   "chapter": "15.14",
+   "link": "docs/part-15-inference/14-benchmarking-genai-perf-latency-percentiles-and-goodput.md",
+   "model_answer": "A closed-loop test has a fixed number of clients, each waiting for its reply before sending the next request. When the server slows, the arrival rate drops automatically, so queues never build and the test looks healthy. An open-loop test sends at a set rate regardless of replies and shows the queue and the tail growing. Use it to find the real limit.",
+   "strong_answer_contains": [
+    "Feedback hides queue growth",
+    "Open-loop at fixed rate",
+    "Reports percentiles and goodput"
+   ],
+   "weak_answer": "Reports the average latency at a fixed concurrency.",
+   "follow_up": "Which tool flags control the load pattern?",
+   "basis": "chapter checkpoint answer, paraphrased"
+  },
+  {
+   "id": "INF-11",
+   "topic": "inference",
+   "difficulty": "senior",
+   "question": "How do you stop 503 errors when a model pod is terminated or reloaded?",
+   "chapter": "15.16",
+   "link": "docs/part-15-inference/16-production-serving-stack-and-reliability.md",
+   "model_answer": "First fail the readiness check so the pod is removed from endpoints. Then wait in a pre-stop hook long enough for the proxies to notice, and give the engine a long grace period to finish streams. Use a disruption budget for planned changes. Test it with a streaming load while rolling the deployment.",
+   "strong_answer_contains": [
+    "Readiness first",
+    "Pre-stop delay and grace period",
+    "Test under streaming load"
+   ],
+   "weak_answer": "Raises the replica count only.",
+   "follow_up": "What about requests that stream for five minutes?",
+   "basis": "chapter checkpoint answer, paraphrased"
+  },
+  {
+   "id": "INF-12",
+   "topic": "inference",
+   "difficulty": "core",
+   "question": "How do you turn hourly hardware cost and throughput into a cost per million tokens?",
+   "chapter": "15.18",
+   "link": "docs/part-15-inference/18-inference-cost-capacity-and-cost-per-token.md",
+   "model_answer": "Divide the total hourly cost, hardware plus operations, by the millions of tokens produced per hour at realised utilisation. Tokens per second times 3,600 divided by a million gives millions per hour. Use realised utilisation, not peak, and count only tokens that meet your latency targets.",
+   "strong_answer_contains": [
+    "Formula",
+    "Realised utilisation",
+    "Goodput-based counting"
+   ],
+   "weak_answer": "Uses vendor peak throughput.",
+   "follow_up": "Why does doubling tensor parallelism more than double concurrent sequences?",
+   "basis": "chapter checkpoint answer, paraphrased"
+  },
+  {
+   "id": "MLO-01",
+   "topic": "mlops",
+   "difficulty": "core",
+   "question": "What makes ML data harder to version than code, and what is the minimum versioning contract?",
+   "chapter": "16.2",
+   "link": "docs/part-16-mlops-llmops/02-data-versioning-and-experiment-tracking-dvc-mlflow-weights-and-biases.md",
+   "model_answer": "Datasets are large, they change by appends and repartitioning, and models inherit each other's data bugs. Git cannot hold them. Use content-addressed storage plus a small record per dataset: dataset id, content hash, source, snapshot time, row count, schema hash, storage path, parents and retention date. The id is the address and the hash is the proof.",
+   "strong_answer_contains": [
+    "Size, mutability and sharing",
+    "Content-addressed storage",
+    "Lists the record fields"
+   ],
+   "weak_answer": "Says put the dataset in Git LFS and tag it.",
+   "follow_up": "How does a training script refer to a dataset?",
+   "basis": "chapter checkpoint answer, paraphrased; chapter is an unremediated draft, treat thresholds as chapter examples"
+  },
+  {
+   "id": "MLO-02",
+   "topic": "mlops",
+   "difficulty": "senior",
+   "question": "The overall AUC is flat but one customer segment got much worse. How does a promotion gate catch that?",
+   "chapter": "16.2",
+   "link": "docs/part-16-mlops-llmops/02-data-versioning-and-experiment-tracking-dvc-mlflow-weights-and-biases.md",
+   "model_answer": "The gate reads per-segment metrics from the run record and refuses promotion when any segment drops by more than a set limit. The overall number can hide a sharp fall in one slice, so the gate checks slices, not just the average.",
+   "strong_answer_contains": [
+    "Per-segment metrics",
+    "Configured limit",
+    "Average hides slices"
+   ],
+   "weak_answer": "Trusts the overall metric.",
+   "follow_up": "Who owns the list of segments?",
+   "basis": "chapter checkpoint answer, paraphrased; chapter is an unremediated draft, treat thresholds as chapter examples"
+  },
+  {
+   "id": "MLO-03",
+   "topic": "mlops",
+   "difficulty": "senior",
+   "question": "Why treat the training image as a release artefact?",
+   "chapter": "16.6",
+   "link": "docs/part-16-mlops-llmops/06-model-registry-ci-cd-and-gitops-for-models.md",
+   "model_answer": "The training environment is part of the supply chain. Build the image once, sign it, and store it in a registry that checks signatures. The pipeline refuses to start training from an unsigned image. Then a model's lineage includes a known, reproducible environment.",
+   "strong_answer_contains": [
+    "Single build and signature",
+    "Gate on signature",
+    "Lineage includes the image"
+   ],
+   "weak_answer": "Builds the image at the start of each job.",
+   "follow_up": "What goes into a lineage record?",
+   "basis": "chapter checkpoint answer, paraphrased; chapter is an unremediated draft, treat thresholds as chapter examples"
+  },
+  {
+   "id": "MLO-04",
+   "topic": "mlops",
+   "difficulty": "senior",
+   "question": "Why stage the previous model for rollback in advance?",
+   "chapter": "16.6",
+   "link": "docs/part-16-mlops-llmops/06-model-registry-ci-cd-and-gitops-for-models.md",
+   "model_answer": "Rollback happens under time pressure, so you want a tag change, not a model download or rebuild. Keep the previous version warm in the registry, in object storage and in the cluster's image cache. The cost is one extra artefact. Test the rollback path regularly.",
+   "strong_answer_contains": [
+    "Time pressure",
+    "Tag change not rebuild",
+    "Practice the rollback"
+   ],
+   "weak_answer": "Plans to retrain if the new model fails.",
+   "follow_up": "What is the difference between a model rollback and a cluster rollback?",
+   "basis": "chapter checkpoint answer, paraphrased; chapter is an unremediated draft, treat thresholds as chapter examples"
+  },
+  {
+   "id": "MLO-05",
+   "topic": "mlops",
+   "difficulty": "core",
+   "question": "What does a lineage record contain, and what question does it answer?",
+   "chapter": "16.6",
+   "link": "docs/part-16-mlops-llmops/06-model-registry-ci-cd-and-gitops-for-models.md",
+   "model_answer": "It holds the dataset snapshot id, the code commit, the environment image hash, and the parent model and run ids. It answers which data, code and environment produced this model, and which earlier version it came from. That supports audits, reproduction and the decision to roll back.",
+   "strong_answer_contains": [
+    "Four items",
+    "Reproduction and audit",
+    "Parent links"
+   ],
+   "weak_answer": "Says lineage is the model's version number.",
+   "follow_up": "How would you use it during an incident?",
+   "basis": "chapter checkpoint answer, paraphrased; chapter is an unremediated draft, treat thresholds as chapter examples"
+  },
+  {
+   "id": "MLO-06",
+   "topic": "mlops",
+   "difficulty": "senior",
+   "question": "What biases does an LLM judge have, and how do you reduce them?",
+   "chapter": "16.9",
+   "link": "docs/part-16-mlops-llmops/09-llm-evaluation-and-guardrails.md",
+   "model_answer": "A judge model can prefer answers in its own style, prefer the first of two answers, prefer longer answers, and anchor on earlier scores. Reduce the bias with a different model family for the judge, a randomised answer order, length controls, and spot checks by humans. Do not treat judge scores as ground truth.",
+   "strong_answer_contains": [
+    "Names several biases",
+    "Gives mitigations",
+    "Humans spot-check"
+   ],
+   "weak_answer": "Treats the judge as ground truth.",
+   "follow_up": "What does the regression set add over the golden set?",
+   "basis": "chapter checkpoint answer, paraphrased; chapter is an unremediated draft, treat thresholds as chapter examples"
+  },
+  {
+   "id": "MLO-07",
+   "topic": "mlops",
+   "difficulty": "senior",
+   "question": "Why is the regression set more important than the golden set?",
+   "chapter": "16.9",
+   "link": "docs/part-16-mlops-llmops/09-llm-evaluation-and-guardrails.md",
+   "model_answer": "The golden set measures overall quality on a sample. The regression set holds known failure cases, so a change that breaks one of them is caught even if the average looks fine. Its value depends on coverage, so add every production failure to it.",
+   "strong_answer_contains": [
+    "Different purposes",
+    "Known failures",
+    "Grow it from incidents"
+   ],
+   "weak_answer": "Says the golden set is enough.",
+   "follow_up": "How often should the eval set be refreshed?",
+   "basis": "chapter checkpoint answer, paraphrased; chapter is an unremediated draft, treat thresholds as chapter examples"
+  },
+  {
+   "id": "MLO-08",
+   "topic": "mlops",
+   "difficulty": "core",
+   "question": "What is the difference between feature drift and concept drift?",
+   "chapter": "16.10",
+   "link": "docs/part-16-mlops-llmops/10-monitoring-drift-and-continual-learning.md",
+   "model_answer": "Feature drift means the input distribution changed while the relation between inputs and target did not. Concept drift means the relation itself changed even if inputs look the same. Input monitoring catches the first. Performance monitoring, which needs labels, catches the second.",
+   "strong_answer_contains": [
+    "Definitions",
+    "Which monitor catches which",
+    "Labels needed for concept drift"
+   ],
+   "weak_answer": "Treats them as the same thing.",
+   "follow_up": "What do you do when labels arrive weeks late?",
+   "basis": "chapter checkpoint answer, paraphrased; chapter is an unremediated draft, treat thresholds as chapter examples"
+  },
+  {
+   "id": "MLO-09",
+   "topic": "mlops",
+   "difficulty": "stretch",
+   "question": "What is the population stability index and what are its limits as a drift alert?",
+   "chapter": "16.10",
+   "link": "docs/part-16-mlops-llmops/10-monitoring-drift-and-continual-learning.md",
+   "model_answer": "It compares two histograms and returns one number, is cheap, and works on binned numeric and categorical features. The thresholds in the chapter, 0.2 to page and 0.5 to consider rollback, are the chapter's example values and not universal. Set your own from history, and pair it with a performance signal.",
+   "strong_answer_contains": [
+    "What it compares",
+    "Cheap and simple",
+    "Thresholds are not universal"
+   ],
+   "weak_answer": "Pages on any non-zero value.",
+   "follow_up": "When would you prefer a KS test?",
+   "basis": "chapter checkpoint answer, paraphrased; chapter is an unremediated draft, treat thresholds as chapter examples"
+  },
+  {
+   "id": "MLO-10",
+   "topic": "mlops",
+   "difficulty": "core",
+   "question": "Name the retraining trigger types and when each is right.",
+   "chapter": "16.10",
+   "link": "docs/part-16-mlops-llmops/10-monitoring-drift-and-continual-learning.md",
+   "model_answer": "Schedule-based retraining runs every fixed period and suits stable domains. Drift-triggered retraining fires when a drift detector crosses a threshold and suits fast-changing inputs. Performance-triggered retraining fires when live accuracy falls and needs labels. Add a cooldown so triggers cannot cause a retrain loop, and always produce a new model version.",
+   "strong_answer_contains": [
+    "Three triggers",
+    "Fit to context",
+    "Cooldown and new version"
+   ],
+   "weak_answer": "Retrains on every alert.",
+   "follow_up": "Who should own the trigger?",
+   "basis": "chapter checkpoint answer, paraphrased; chapter is an unremediated draft, treat thresholds as chapter examples"
+  },
+  {
+   "id": "OBS-01",
+   "topic": "observability_ops",
+   "difficulty": "senior",
+   "question": "Explain a multi-window, multi-burn-rate alert for a 99.5 percent 30-day SLO.",
+   "chapter": "5.24",
+   "link": "docs/part-05-kubernetes/24-observability-for-kubernetes.md",
+   "model_answer": "The error budget is 0.5 percent of requests over the window. A burn rate of one uses exactly the whole budget by the end of the window. A burn rate of 14.4 uses it in about two days, so you page when it holds over both a long window and a short one, for example one hour and five minutes. The long window shows it matters and the short one shows it is still happening. Slower burns raise a ticket instead.",
+   "strong_answer_contains": [
+    "Budget arithmetic",
+    "Two windows",
+    "Page versus ticket"
+   ],
+   "weak_answer": "Alerts on any error above the SLO.",
+   "follow_up": "What does a burn rate of 6 over six hours mean?",
+   "basis": "chapter checkpoint answer, paraphrased"
+  },
+  {
+   "id": "OBS-02",
+   "topic": "observability_ops",
+   "difficulty": "core",
+   "question": "In Alertmanager, what do grouping, inhibition and silences do, and what is a watchdog alert?",
+   "chapter": "5.24",
+   "link": "docs/part-05-kubernetes/24-observability-for-kubernetes.md",
+   "model_answer": "Grouping collapses many alerts from one outage into one notification. Inhibition suppresses symptom alerts while a root-cause alert is firing. A silence mutes alerts for a set time, usually during planned work. A watchdog alert fires all the time, so its absence tells you the alerting pipeline itself is broken.",
+   "strong_answer_contains": [
+    "Each concept in one line",
+    "Noise reduction purpose",
+    "Dead man's switch idea"
+   ],
+   "weak_answer": "Says to delete noisy alerts.",
+   "follow_up": "How would you reduce 500 alerts a day?",
+   "basis": "chapter checkpoint answer, paraphrased"
+  },
+  {
+   "id": "OBS-03",
+   "topic": "observability_ops",
+   "difficulty": "core",
+   "question": "Why must you not put request ids or user ids into Loki stream labels?",
+   "chapter": "5.24",
+   "link": "docs/part-05-kubernetes/24-observability-for-kubernetes.md",
+   "model_answer": "Loki indexes only the stream labels and keeps the log lines compressed in object storage. A label with unbounded values creates a huge number of streams and ruins both the index and the query speed. Keep labels few and stable, and search the id with a line filter or structured metadata.",
+   "strong_answer_contains": [
+    "Index only labels",
+    "Unbounded values hurt",
+    "Where to put the id"
+   ],
+   "weak_answer": "Adds every field as a label for easy search.",
+   "follow_up": "How do exemplars link a metric to a trace?",
+   "basis": "chapter checkpoint answer, paraphrased"
+  },
+  {
+   "id": "OBS-04",
+   "topic": "observability_ops",
+   "difficulty": "senior",
+   "question": "What causes a Prometheus cardinality explosion and how do you stop it quickly?",
+   "chapter": "5.24",
+   "link": "docs/part-05-kubernetes/24-observability-for-kubernetes.md",
+   "model_answer": "Series count is the product of the distinct values of all labels. One unbounded label, like a user id or a raw URL path, multiplies it. Find the culprit with the top-series queries on the server, then drop or relabel the label at scrape time, or normalise the path. Fix the source in code afterwards.",
+   "strong_answer_contains": [
+    "Product of label values",
+    "Finds the culprit",
+    "Relabel at scrape then fix source"
+   ],
+   "weak_answer": "Restarts Prometheus to free memory.",
+   "follow_up": "How would you budget cardinality in advance?",
+   "basis": "chapter checkpoint answer, paraphrased"
+  },
+  {
+   "id": "OBS-05",
+   "topic": "observability_ops",
+   "difficulty": "core",
+   "question": "What is an error budget and how is it used?",
+   "chapter": "17.6",
+   "link": "docs/part-17-operations/06-alerting-slos-and-health-checks-for-gpu-clusters.md",
+   "model_answer": "The error budget is the SLO turned into an allowance. At 99.9 percent monthly availability it is about 43 minutes in a 30-day month. The team spends it on releases, experiments and upgrades, and slows change down when it is used up. It turns reliability into a shared decision.",
+   "strong_answer_contains": [
+    "Computes 43 minutes",
+    "Spent on change",
+    "Used to pause releases"
+   ],
+   "weak_answer": "Says it is the number of incidents allowed.",
+   "follow_up": "How does burn rate relate to it?",
+   "basis": "chapter checkpoint answer, paraphrased; chapter is an unremediated draft, treat thresholds as chapter examples"
+  },
+  {
+   "id": "OBS-06",
+   "topic": "observability_ops",
+   "difficulty": "core",
+   "question": "Define RTO and RPO and say why they must be agreed with the business.",
+   "chapter": "17.14",
+   "link": "docs/part-17-operations/14-disaster-recovery-and-data-resilience.md",
+   "model_answer": "The recovery time objective is how long a service may be down after a disaster. The recovery point objective is how much data you may lose. They set cost, because shorter targets need replication and standby capacity. The chapter gives example tiers, but the real values come from the business and must be tested.",
+   "strong_answer_contains": [
+    "Two definitions",
+    "Cost driver",
+    "Test them"
+   ],
+   "weak_answer": "Says RPO is how fast you recover.",
+   "follow_up": "What does a restore drill measure?",
+   "basis": "chapter checkpoint answer, paraphrased; chapter is an unremediated draft, treat thresholds as chapter examples"
+  },
+  {
+   "id": "OBS-07",
+   "topic": "observability_ops",
+   "difficulty": "senior",
+   "question": "Why do immutable or object-locked backups matter against ransomware?",
+   "chapter": "17.14",
+   "link": "docs/part-17-operations/14-disaster-recovery-and-data-resilience.md",
+   "model_answer": "Object lock prevents deletion before the retention period ends, so an attacker with credentials cannot delete the backups. A separate account or an air-gapped copy adds more protection. Backups are only useful if you test the restore.",
+   "strong_answer_contains": [
+    "No deletion during retention",
+    "Separate account or air gap",
+    "Restore is tested"
+   ],
+   "weak_answer": "Relies on daily backups in the same account.",
+   "follow_up": "What does a DR game day cover?",
+   "basis": "chapter checkpoint answer, paraphrased; chapter is an unremediated draft, treat thresholds as chapter examples"
+  },
+  {
+   "id": "OBS-08",
+   "topic": "observability_ops",
+   "difficulty": "core",
+   "question": "What do MTTA, MTTM and MTTR measure, and which matters most to users?",
+   "chapter": "17.11",
+   "link": "docs/part-17-operations/11-incident-response-and-game-days.md",
+   "model_answer": "Mean time to acknowledge is alert to human response. Mean time to mitigate is alert to reduced impact. Mean time to resolve is alert to full fix. Users feel the time to mitigate most, so a runbook that gets to a safe state quickly matters more than a perfect fix.",
+   "strong_answer_contains": [
+    "Three definitions",
+    "Mitigation first",
+    "Runbooks help"
+   ],
+   "weak_answer": "Optimises MTTR only.",
+   "follow_up": "Who runs the incident and who does the technical work?",
+   "basis": "chapter checkpoint answer, paraphrased; chapter is an unremediated draft, treat thresholds as chapter examples"
+  },
+  {
+   "id": "OBS-09",
+   "topic": "observability_ops",
+   "difficulty": "senior",
+   "question": "Compare N+1 and 2N redundancy.",
+   "chapter": "17.13",
+   "link": "docs/part-17-operations/13-reliability-engineering-for-ai-infrastructure.md",
+   "model_answer": "N+1 keeps one spare for every N needed components and the spare takes over on failure. 2N keeps two full sets running together. N+1 costs less and 2N gives higher availability and simpler failover. Choose by how long you can afford to be down and how much the capacity costs.",
+   "strong_answer_contains": [
+    "Definitions",
+    "Cost versus availability",
+    "Choose from the downtime target"
+   ],
+   "weak_answer": "Picks 2N for everything.",
+   "follow_up": "Where does a GPU cluster use each?",
+   "basis": "chapter checkpoint answer, paraphrased; chapter is an unremediated draft, treat thresholds as chapter examples"
+  },
+  {
+   "id": "SEC-01",
+   "topic": "security",
+   "difficulty": "core",
+   "question": "What do the three Pod Security Standards profiles allow, and how is Pod Security Admission turned on for a namespace?",
+   "chapter": "5.21",
+   "link": "docs/part-05-kubernetes/21-certificates-identity-admission-control-and-policy.md",
+   "model_answer": "Privileged is unrestricted and is for trusted system components. Baseline blocks known host escapes such as host networking, privileged containers and host paths. Restricted adds hardening such as non-root users and dropped capabilities. You apply them with labels on the namespace that set enforce, audit and warn modes. Start with audit and warn, then enforce.",
+   "strong_answer_contains": [
+    "Three cumulative profiles",
+    "Namespace labels and modes",
+    "Gradual rollout"
+   ],
+   "weak_answer": "Says it is a per-pod setting inside the pod spec only.",
+   "follow_up": "Which namespaces would need privileged?",
+   "basis": "chapter checkpoint answer, paraphrased"
+  },
+  {
+   "id": "SEC-02",
+   "topic": "security",
+   "difficulty": "senior",
+   "question": "GPU RDMA pods need IPC_LOCK. How do you fit that with the restricted profile?",
+   "chapter": "5.21",
+   "link": "docs/part-05-kubernetes/21-certificates-identity-admission-control-and-policy.md",
+   "model_answer": "Restricted does not allow extra capabilities, and baseline does not include IPC_LOCK. Do not relax the whole cluster. Run RDMA training in a dedicated namespace with a documented exception, or raise the memlock limit through the runtime so the capability is not needed, and back it with admission policy that limits who can use it.",
+   "strong_answer_contains": [
+    "Names the conflict",
+    "Narrow exception",
+    "Policy to constrain the exception"
+   ],
+   "weak_answer": "Runs the pods as privileged.",
+   "follow_up": "What else does a pinned-memory limit control?",
+   "basis": "chapter checkpoint answer, paraphrased"
+  },
+  {
+   "id": "SEC-03",
+   "topic": "security",
+   "difficulty": "senior",
+   "question": "Why should a multi-tenant cluster deny tenant pods that set nodeName?",
+   "chapter": "5.21",
+   "link": "docs/part-05-kubernetes/21-certificates-identity-admission-control-and-policy.md",
+   "model_answer": "A pod with nodeName set skips the scheduler and is bound straight to that node. A tenant could then avoid taints, quota checks and node selectors and land on a dedicated or control-plane node. An admission rule that denies nodeName on tenant pods closes this path.",
+   "strong_answer_contains": [
+    "Bypasses the scheduler",
+    "Bypasses taints and quota",
+    "Admission rule"
+   ],
+   "weak_answer": "Says taints are enough.",
+   "follow_up": "What other fields let a pod escape the intended placement?",
+   "basis": "chapter checkpoint answer, paraphrased"
+  },
+  {
+   "id": "SEC-04",
+   "topic": "security",
+   "difficulty": "stretch",
+   "question": "Explain keyless image signing in CI and the policy mistake that defeats it.",
+   "chapter": "5.27",
+   "link": "docs/part-05-kubernetes/27-software-supply-chain-security.md",
+   "model_answer": "The CI job gets a short-lived identity token from its provider. A certificate authority issues a short-lived certificate tied to that identity, the image is signed, and the signature goes to a transparency log. Verification must pin the identity, meaning the repository and workflow. If the policy only checks that some valid signature exists, anyone with an account can sign an image and pass.",
+   "strong_answer_contains": [
+    "Token, certificate, log",
+    "Identity pinning",
+    "Names the any-signature mistake"
+   ],
+   "weak_answer": "Says a valid signature is enough.",
+   "follow_up": "How do you verify initContainers and ephemeral containers too?",
+   "basis": "chapter checkpoint answer, paraphrased"
+  },
+  {
+   "id": "SEC-05",
+   "topic": "security",
+   "difficulty": "senior",
+   "question": "Why is loading a PyTorch checkpoint with the default loader risky, and what are safer options?",
+   "chapter": "5.27",
+   "link": "docs/part-05-kubernetes/27-software-supply-chain-security.md",
+   "model_answer": "Those files are Python pickle streams. A pickle can name any callable to run on load, so loading an untrusted file can execute code. Safer options are weight-only loading modes, tensor formats that carry no code such as safetensors, and verifying signatures or hashes of model files. Treat third-party weights as untrusted input.",
+   "strong_answer_contains": [
+    "Pickle executes code",
+    "Safe formats",
+    "Signature or hash checks"
+   ],
+   "weak_answer": "Says weights are just data.",
+   "follow_up": "What does trust_remote_code do in model loading?",
+   "basis": "chapter checkpoint answer, paraphrased"
+  },
+  {
+   "id": "SEC-06",
+   "topic": "security",
+   "difficulty": "senior",
+   "question": "What controls does a multi-tenant notebook service on a GPU cluster need?",
+   "chapter": "5.22",
+   "link": "docs/part-05-kubernetes/22-multitenancy-and-platform-services.md",
+   "model_answer": "Notebooks run whatever users type, so treat them as untrusted. Use restricted pod security, non-root users, resource quotas and idle culling, default-deny network policy with controlled egress, no cluster credentials in the pod, scoped storage, and audit logging. Add GPU limits so one user cannot hold the cluster.",
+   "strong_answer_contains": [
+    "Untrusted code",
+    "Several layered controls",
+    "Idle culling and quota"
+   ],
+   "weak_answer": "Trusts users because they are employees.",
+   "follow_up": "Which GPU sharing mode do you use for notebooks and why?",
+   "basis": "chapter checkpoint answer, paraphrased"
+  },
+  {
+   "id": "SEC-07",
+   "topic": "security",
+   "difficulty": "senior",
+   "question": "Which three isolation pillars let departments share a GPU cluster?",
+   "chapter": "11.29",
+   "link": "docs/part-11-gpu-kubernetes/29-multi-tenancy-quotas-fault-tolerance-and-health-on-gpu-clusters.md",
+   "model_answer": "Compute isolation, using MIG slices or dedicated nodes with taints. Network isolation, using default-deny network policies and, on the fabric, partitioning such as SR-IOV virtual functions and partition keys. Storage isolation, using separate volumes or paths with quotas and access control. Add audit logging so you can prove it. The chapter's customer scenario is a worked example.",
+   "strong_answer_contains": [
+    "Compute, network, storage",
+    "Names concrete mechanisms",
+    "Auditability"
+   ],
+   "weak_answer": "Relies on namespaces alone.",
+   "follow_up": "What does MIG isolate and what does it share?",
+   "basis": "chapter checkpoint answer, paraphrased"
+  },
+  {
+   "id": "SEC-08",
+   "topic": "security",
+   "difficulty": "core",
+   "question": "Why does egress filtering matter as much as ingress on GPU nodes?",
+   "chapter": "2.21",
+   "link": "docs/part-02-networking/21-network-security-firewalls-tls-and-zero-trust.md",
+   "model_answer": "If a container or dependency is compromised, the attacker needs to call home, fetch more tools and send out data such as model weights or datasets. Default-deny egress with an allow list stops those steps even if the first break-in succeeds. Registry and package access go through controlled proxies.",
+   "strong_answer_contains": [
+    "Post-compromise steps",
+    "Default deny",
+    "Controlled proxies"
+   ],
+   "weak_answer": "Says the firewall at the edge is enough.",
+   "follow_up": "How do you let nodes reach a registry safely?",
+   "basis": "chapter checkpoint answer, paraphrased"
+  },
+  {
+   "id": "SEC-09",
+   "topic": "security",
+   "difficulty": "stretch",
+   "question": "How does InfiniBand partitioning isolate tenants?",
+   "chapter": "2.21",
+   "link": "docs/part-02-networking/21-network-security-firewalls-tls-and-zero-trust.md",
+   "model_answer": "The subnet manager programs partition keys into each port. Traffic is accepted only between ports that share a key, and full or limited membership controls who can talk to whom. It is enforced by the hardware, so it isolates tenants on the fabric below IP. Protect the subnet manager and management keys too.",
+   "strong_answer_contains": [
+    "Partition keys in the HCA",
+    "Full versus limited",
+    "Protect the SM"
+   ],
+   "weak_answer": "Says use VLANs on the IB network.",
+   "follow_up": "How do BlueField DPUs add to this isolation?",
+   "basis": "chapter checkpoint answer, paraphrased"
+  },
+  {
+   "id": "SEC-10",
+   "topic": "security",
+   "difficulty": "core",
+   "question": "List the Linux capability sets and say why CAP_SYS_ADMIN is called the new root.",
+   "chapter": "1.21",
+   "link": "docs/part-01-linux/21-linux-security-capabilities-selinux-apparmor-seccomp-pam-ssh-hardening.md",
+   "model_answer": "Each thread has permitted, effective, inheritable, bounding and ambient sets. Effective is what the kernel checks. The bounding set limits what can ever be gained. CAP_SYS_ADMIN covers a very broad set of privileged operations, so granting it is nearly the same as granting root. Give containers the smallest set they need, and inspect them with the proc status fields.",
+   "strong_answer_contains": [
+    "Names the sets",
+    "Effective is checked",
+    "Least privilege"
+   ],
+   "weak_answer": "Says capabilities are the same as UIDs.",
+   "follow_up": "How do seccomp and AppArmor add to capabilities?",
+   "basis": "chapter checkpoint answer, paraphrased"
+  },
+  {
+   "id": "HPC-01",
+   "topic": "slurm_hpc_hardware",
+   "difficulty": "senior",
+   "question": "How does Slurm backfill let small jobs run without starving a large multi-node job?",
+   "chapter": "6.9",
+   "link": "docs/part-06-hpc-slurm/09-slurm-accounting-and-scheduling-policy-qos-fairshare-backfill-preempti.md",
+   "model_answer": "When the top job cannot start, backfill uses the time limits of running jobs to work out the earliest time the large job can start and reserves nodes for it from then. It then starts lower-priority jobs only if they finish before that time. Accurate time limits on small jobs make backfill work, so very loose limits hurt everyone.",
+   "strong_answer_contains": [
+    "Reservation for the big job",
+    "Fits only jobs that end in time",
+    "Time limits matter"
+   ],
+   "weak_answer": "Says backfill just runs small jobs whenever there is space.",
+   "follow_up": "Which scheduler parameters tune the backfill window?",
+   "basis": "chapter checkpoint answer, paraphrased"
+  },
+  {
+   "id": "HPC-02",
+   "topic": "slurm_hpc_hardware",
+   "difficulty": "core",
+   "question": "A researcher says their job is stuck in PENDING. How do you read the reason?",
+   "chapter": "6.9",
+   "link": "docs/part-06-hpc-slurm/09-slurm-accounting-and-scheduling-policy-qos-fairshare-backfill-preempti.md",
+   "model_answer": "Show the reason with squeue for that job, then match it. Priority means higher-priority jobs are ahead, so look at the priority factors and fairshare. Resources means it is at the top and waiting for nodes. A limit reason such as an association group limit means a quota is hit. A node-not-available reason points to a reservation or a drained node. A time-limit reason means the request exceeds the partition limit.",
+   "strong_answer_contains": [
+    "Uses squeue reason",
+    "Maps several reasons",
+    "Checks the right tool for each"
+   ],
+   "weak_answer": "Tells the user to resubmit.",
+   "follow_up": "How do you check fairshare for the account?",
+   "basis": "chapter checkpoint answer, paraphrased"
+  },
+  {
+   "id": "HPC-03",
+   "topic": "slurm_hpc_hardware",
+   "difficulty": "senior",
+   "question": "Compare --gres=gpu:4, --gpus-per-node=4, --gpus=8 and --gpus-per-task=1 for a 2-node job.",
+   "chapter": "6.10",
+   "link": "docs/part-06-hpc-slurm/10-slurm-gpu-scheduling-gres-nvml-autodetect-mig-and-device-constraints.md",
+   "model_answer": "The first two ask for four GPUs on each node, which is eight in total and symmetric, which suits NCCL. Asking for eight GPUs for the job lets Slurm pack them unevenly, which can hurt collectives. GPUs per task ties GPUs to ranks. State nodes, GPUs, CPUs and tasks explicitly in batch scripts.",
+   "strong_answer_contains": [
+    "Symmetric versus total",
+    "Uneven packing risk",
+    "State all dimensions"
+   ],
+   "weak_answer": "Treats them as identical.",
+   "follow_up": "How do GPU binding options change rank placement?",
+   "basis": "chapter checkpoint answer, paraphrased"
+  },
+  {
+   "id": "HPC-04",
+   "topic": "slurm_hpc_hardware",
+   "difficulty": "senior",
+   "question": "After a reboot a node is drained with gres/gpu count too low. What happened and how do you fix it?",
+   "chapter": "6.10",
+   "link": "docs/part-06-hpc-slurm/10-slurm-gpu-scheduling-gres-nvml-autodetect-mig-and-device-constraints.md",
+   "model_answer": "slurmd may have started before the driver, the NVML library or the MIG layout was ready, or a GPU may have dropped off the bus, which shows as an Xid in the kernel log. Check that all GPUs appear in nvidia-smi, fix the cause, and order the services so slurmd starts after the GPU stack. Resume the node only after a health check passes.",
+   "strong_answer_contains": [
+    "Start-up order",
+    "GPU missing from bus",
+    "Health check before resume"
+   ],
+   "weak_answer": "Resumes the node straight away.",
+   "follow_up": "How does a health-check program help?",
+   "basis": "chapter checkpoint answer, paraphrased"
+  },
+  {
+   "id": "HPC-05",
+   "topic": "slurm_hpc_hardware",
+   "difficulty": "core",
+   "question": "What happens to a node and its job when a prolog or epilog fails?",
+   "chapter": "6.14",
+   "link": "docs/part-06-hpc-slurm/14-slurm-operations-prolog-epilog-health-checks-drain-reason-codes-troubl.md",
+   "model_answer": "If the prolog fails, the node is drained and the job is requeued, and held unless a parameter says otherwise. If the epilog fails, the node is drained. This is useful, because a node with a broken environment stops taking jobs. It also means a flaky script can drain many nodes, so test them and keep them short.",
+   "strong_answer_contains": [
+    "Drain on failure",
+    "Requeue behaviour",
+    "Risk of a flaky script"
+   ],
+   "weak_answer": "Believes failed prologs are ignored.",
+   "follow_up": "How should an epilog clean up user processes safely?",
+   "basis": "chapter checkpoint answer, paraphrased"
+  },
+  {
+   "id": "HPC-06",
+   "topic": "slurm_hpc_hardware",
+   "difficulty": "core",
+   "question": "Compare DRAINING, DRAINED and DOWN. When do you use drain and when down?",
+   "chapter": "6.14",
+   "link": "docs/part-06-hpc-slurm/14-slurm-operations-prolog-epilog-health-checks-drain-reason-codes-troubl.md",
+   "model_answer": "Draining marks a node so it takes no new jobs while running jobs finish. Drained means the node is empty and stays out until resumed. Down means the node is unusable now. Use drain for planned work or a suspect node, so running jobs can complete. Use down when the node is dead or must be treated as lost.",
+   "strong_answer_contains": [
+    "Three states",
+    "Planned versus failed",
+    "Resume step"
+   ],
+   "weak_answer": "Says they are the same.",
+   "follow_up": "What does ReturnToService do?",
+   "basis": "chapter checkpoint answer, paraphrased"
+  },
+  {
+   "id": "HPC-07",
+   "topic": "slurm_hpc_hardware",
+   "difficulty": "stretch",
+   "question": "slurmctld crashes during a large run. What happens to running jobs?",
+   "chapter": "6.15",
+   "link": "docs/part-06-hpc-slurm/15-slurm-high-availability-upgrades-and-scaling.md",
+   "model_answer": "Running jobs keep going, because the step daemon on each node manages them. New jobs cannot start and commands fail or block until the controller returns. Completion messages queue on the nodes. With a standby controller, takeover needs the shared state directory to be reachable and consistent. If slurmdbd is down the controller keeps a cache and queues accounting records.",
+   "strong_answer_contains": [
+    "Jobs survive",
+    "What stops",
+    "State directory and slurmdbd"
+   ],
+   "weak_answer": "Says all jobs are killed.",
+   "follow_up": "Why is the state directory the real single point of failure?",
+   "basis": "chapter checkpoint answer, paraphrased"
+  },
+  {
+   "id": "HPC-08",
+   "topic": "slurm_hpc_hardware",
+   "difficulty": "senior",
+   "question": "Why must Pyxis be rebuilt when Slurm is upgraded?",
+   "chapter": "6.15",
+   "link": "docs/part-06-hpc-slurm/15-slurm-high-availability-upgrades-and-scaling.md",
+   "model_answer": "Pyxis is a plug-in that links against Slurm internals. Those change across major releases, so a plug-in built for an older release will not load. Include the rebuild and redeploy in the upgrade plan, and hold the Slurm packages from automatic updates.",
+   "strong_answer_contains": [
+    "Plug-in ABI",
+    "Rebuild on every node",
+    "Package hold"
+   ],
+   "weak_answer": "Upgrades Slurm and sees if jobs fail.",
+   "follow_up": "What is the correct upgrade order for Slurm components?",
+   "basis": "chapter checkpoint answer, paraphrased"
+  },
+  {
+   "id": "HPC-09",
+   "topic": "slurm_hpc_hardware",
+   "difficulty": "stretch",
+   "question": "Why does a one-scalable-unit DGX B200 SuperPOD have 31 servers and not 32?",
+   "chapter": "9.6",
+   "link": "docs/part-09-nvidia-systems/06-dgx-superpod-concepts-scalable-units-fabrics-and-tiers.md",
+   "model_answer": "In the reference design a management appliance for the fabric takes the place of one server in the first unit. So the counts are 31, 63, 95 and 127 for one to four units. Quote the reference document for your exact generation and check the current version.",
+   "strong_answer_contains": [
+    "Names the displacement",
+    "Gives the series",
+    "Cites the reference"
+   ],
+   "weak_answer": "Says nodes are missing or faulty.",
+   "follow_up": "What is the partial-unit fabric rule?",
+   "basis": "chapter checkpoint answer, paraphrased"
+  },
+  {
+   "id": "HPC-10",
+   "topic": "slurm_hpc_hardware",
+   "difficulty": "senior",
+   "question": "Which port and authentication does the Base Command Manager daemon use for cmsh and the web GUI?",
+   "chapter": "8.5",
+   "link": "docs/part-08-bcm/05-cmsh-and-base-view-administering-the-cluster.md",
+   "model_answer": "The management daemon accepts connections over SSL on port 8081, set in its configuration file. Clients authenticate with X.509 client certificates kept under the administrator's home directory. The plain port is used only during initial setup. Check your version's documentation before relying on the numbers.",
+   "strong_answer_contains": [
+    "Port and TLS",
+    "Client certificates",
+    "Version check"
+   ],
+   "weak_answer": "Says it uses a shared password.",
+   "follow_up": "Where do you see node state in BCM?",
+   "basis": "chapter checkpoint answer, paraphrased"
+  },
+  {
+   "id": "SYS-01",
+   "topic": "system_design",
+   "difficulty": "core",
+   "question": "Five jobs ask for 8, 4, 4, 8 and 4 GPUs on 8-GPU nodes. How many nodes with and without bin-packing?",
+   "chapter": "9.13",
+   "link": "docs/part-09-nvidia-systems/13-sizing-and-capacity-planning-exercises.md",
+   "model_answer": "Without packing, one job per node needs five nodes and uses 28 of 40 GPUs, which is 70 percent. With packing, the two 4-GPU jobs share a node, and the third 4-GPU job takes its own, so four nodes are enough with 28 of 32 GPUs, which is 87.5 percent. Packing improves utilisation, but it needs isolation between jobs on one node.",
+   "strong_answer_contains": [
+    "Counts correctly",
+    "States the percentages",
+    "Mentions isolation cost"
+   ],
+   "weak_answer": "Gives one node per job without checking packing.",
+   "follow_up": "How does GPU fragmentation arise in the default scheduler?",
+   "basis": "chapter checkpoint answer, paraphrased"
+  },
+  {
+   "id": "SYS-02",
+   "topic": "system_design",
+   "difficulty": "senior",
+   "question": "Nominal capacity is 100,000 tokens per second, with 40 percent utilisation and 80 percent availability. What is effective capacity and why use it?",
+   "chapter": "9.13",
+   "link": "docs/part-09-nvidia-systems/13-sizing-and-capacity-planning-exercises.md",
+   "model_answer": "Effective capacity is nominal times expected utilisation times availability, so 100,000 times 0.4 times 0.8 is 32,000 tokens per second. It is what you can plan around. Quote the assumptions, since utilisation and availability are the numbers most often wrong.",
+   "strong_answer_contains": [
+    "Formula",
+    "32,000 result",
+    "Assumptions stated"
+   ],
+   "weak_answer": "Plans on the nominal figure.",
+   "follow_up": "Which of the three numbers would you measure first?",
+   "basis": "chapter checkpoint answer, paraphrased"
+  },
+  {
+   "id": "SYS-03",
+   "topic": "system_design",
+   "difficulty": "stretch",
+   "question": "Walk through a three-year TCO and cost per GPU-year for a staged build.",
+   "chapter": "9.13",
+   "link": "docs/part-09-nvidia-systems/13-sizing-and-capacity-planning-exercises.md",
+   "model_answer": "Add capital cost for each stage and operating cost for each year to get total cost. Count active GPU-years as GPUs times years in service per stage. Divide. In the chapter's example, 464 GPUs in year one plus 60 and 100 later give 1,612 GPU-years, and the total of 28.8 million dollars gives about 17.9 thousand dollars per GPU-year. State that the inputs are the chapter's example.",
+   "strong_answer_contains": [
+    "Capex plus opex",
+    "GPU-years by stage",
+    "Division and caveats"
+   ],
+   "weak_answer": "Divides the purchase price by three.",
+   "follow_up": "What changes if GPUs are leased?",
+   "basis": "chapter checkpoint answer, paraphrased"
+  },
+  {
+   "id": "SYS-04",
+   "topic": "system_design",
+   "difficulty": "senior",
+   "question": "Self-hosting costs $12.40 an hour for 2,100 tokens per second at peak. A managed API costs $4 per million tokens. What is the break-even?",
+   "chapter": "15.18",
+   "link": "docs/part-15-inference/18-inference-cost-capacity-and-cost-per-token.md",
+   "model_answer": "At full use the replica makes 7.56 million tokens an hour, so it costs about $1.64 per million. Divided by the API price, break-even utilisation is about 41 percent. That is roughly 74 million tokens a day. Below that volume the API is cheaper. Include operations cost and the latency targets.",
+   "strong_answer_contains": [
+    "Full-utilisation cost",
+    "Break-even ratio",
+    "Daily volume and caveats"
+   ],
+   "weak_answer": "Says self-hosting is always cheaper.",
+   "follow_up": "How would burstiness change the answer?",
+   "basis": "chapter checkpoint answer, paraphrased"
+  },
+  {
+   "id": "SYS-05",
+   "topic": "system_design",
+   "difficulty": "core",
+   "question": "Soft and hard multi-tenancy in Kubernetes: which do you build and when?",
+   "chapter": "5.22",
+   "link": "docs/part-05-kubernetes/22-multitenancy-and-platform-services.md",
+   "model_answer": "Soft multi-tenancy assumes cooperating teams and protects against accidents. It uses namespaces, quotas, RBAC, network policy and admission rules in one cluster. Hard multi-tenancy assumes hostile tenants and needs stronger boundaries such as separate clusters, virtual clusters or isolated node pools and hardware isolation. Choose by the trust level and compliance needs, and say what you give up in cost.",
+   "strong_answer_contains": [
+    "Defines both",
+    "Mechanisms for each",
+    "Trust-based choice"
+   ],
+   "weak_answer": "Says namespaces are enough for any tenant.",
+   "follow_up": "How would you offer GPU quotas to many teams?",
+   "basis": "chapter checkpoint answer, paraphrased"
+  },
+  {
+   "id": "SYS-06",
+   "topic": "system_design",
+   "difficulty": "senior",
+   "question": "Design GPU queueing for three teams with guaranteed shares and borrowing.",
+   "chapter": "5.18",
+   "link": "docs/part-05-kubernetes/18-scheduling-in-depth-kube-scheduler-affinity-taints-priority-and-preemp.md",
+   "model_answer": "Define resource flavours for hardware tiers, a namespaced local queue per team, and a cluster queue per team with a nominal quota. Put the queues in a cohort so unused quota can be borrowed, with limits for borrowing and lending. Add priorities and preemption rules, gang admission for multi-node jobs and a clear policy for fairness. Monitor wait time per queue.",
+   "strong_answer_contains": [
+    "Flavours, local and cluster queues",
+    "Cohort with limits",
+    "Priority, preemption, monitoring"
+   ],
+   "weak_answer": "Uses a namespace quota per team.",
+   "follow_up": "What happens when a lender needs its quota back?",
+   "basis": "chapter checkpoint answer, paraphrased"
+  },
+  {
+   "id": "SYS-07",
+   "topic": "system_design",
+   "difficulty": "senior",
+   "question": "GPUs sit idle during distributed training. How do you separate host CPU, storage and parallelism or network causes?",
+   "chapter": "11.29",
+   "link": "docs/part-11-gpu-kubernetes/29-multi-tenancy-quotas-fault-tolerance-and-health-on-gpu-clusters.md",
+   "model_answer": "Check host CPU first, because decode or tokenisation can peg the cores. If CPUs are idle and I/O wait is high, storage is the limit. If both are fine, look at communication: the share of step time in collectives, and whether the parallel layout fits the topology. Take one measurement at a time and change one thing.",
+   "strong_answer_contains": [
+    "Three checks in order",
+    "Evidence for each",
+    "One change at a time"
+   ],
+   "weak_answer": "Adds more GPUs.",
+   "follow_up": "Which tools do you use for each check?",
+   "basis": "chapter checkpoint answer, paraphrased"
+  },
+  {
+   "id": "SYS-08",
+   "topic": "system_design",
+   "difficulty": "senior",
+   "question": "How do you size a training cluster from a model size and a time target?",
+   "chapter": "9.13",
+   "link": "docs/part-09-nvidia-systems/13-sizing-and-capacity-planning-exercises.md",
+   "model_answer": "Start from the model and token budget to get total compute, then from the achieved utilisation to get GPU-hours, then from the deadline to get GPU count. Add the node count, the network design to fit it, the checkpoint size and write bandwidth, and failure and restart overhead. State each assumption and give a range. Verify with a small run before you commit.",
+   "strong_answer_contains": [
+    "Compute to GPU-hours to GPUs",
+    "Network, storage and failure terms",
+    "Assumptions and a pilot"
+   ],
+   "weak_answer": "Names a cluster size from experience.",
+   "follow_up": "What would you measure in a pilot?",
+   "basis": "chapter checkpoint answer, paraphrased"
+  },
+  {
+   "id": "SYS-09",
+   "topic": "system_design",
+   "difficulty": "stretch",
+   "question": "What does a good 128-GPU cluster TCO comparison between InfiniBand and Ethernet need to include?",
+   "chapter": "12.12",
+   "link": "docs/part-12-ai-networking/12-ethernet-versus-infiniband-a-design-decision-guide.md",
+   "model_answer": "Include the capital cost of nodes, fabric, racks and install, plus yearly power, support and staff. Convert to a cost per GPU-hour. Then add the cost of lost throughput from a slower fabric, since a small percent loss of a large cluster is large money. Be honest that vendor price and performance inputs are assumptions to verify.",
+   "strong_answer_contains": [
+    "Capex and opex",
+    "Cost per GPU-hour",
+    "Throughput loss term"
+   ],
+   "weak_answer": "Compares only switch prices.",
+   "follow_up": "How would a pilot cluster settle the question?",
+   "basis": "chapter checkpoint answer, paraphrased"
+  },
+  {
+   "id": "BEH-01",
+   "topic": "behavioural",
+   "difficulty": "core",
+   "question": "How do you make a proof of concept falsifiable?",
+   "chapter": "9.13",
+   "link": "docs/part-09-nvidia-systems/13-sizing-and-capacity-planning-exercises.md",
+   "model_answer": "Write down, before the test, the numeric result that would count as failure, for example a latency percentile at a given load. Without it the proof of concept is a demo. Agree the measure, the data and the owner with the customer in advance, and report against that line.",
+   "strong_answer_contains": [
+    "Pre-agreed numeric failure",
+    "Names measure and owner",
+    "Reports against the line"
+   ],
+   "weak_answer": "Runs a demo and asks if the customer is happy.",
+   "follow_up": "Why measure p95 or p99 and not the average?",
+   "basis": "chapter checkpoint answer, paraphrased"
+  },
+  {
+   "id": "BEH-02",
+   "topic": "behavioural",
+   "difficulty": "core",
+   "question": "Describe the stages of your architecture method when a customer asks for a design.",
+   "chapter": "9.13",
+   "link": "docs/part-09-nvidia-systems/13-sizing-and-capacity-planning-exercises.md",
+   "model_answer": "Discover the requirements and constraints. Model the data and request path, control, trust, state, failure domains and observability. Compare options with their trade-offs. Recommend one and say why. Validate with a falsifiable test. Adopt with a plan for operation. Keep requirements, assumptions, constraints and trade-offs separate in the write-up.",
+   "strong_answer_contains": [
+    "Six stages",
+    "Six paths to model",
+    "Separates assumptions from constraints"
+   ],
+   "weak_answer": "Jumps to a product list.",
+   "follow_up": "Which stage do people most often skip?",
+   "basis": "chapter checkpoint answer, paraphrased"
+  },
+  {
+   "id": "BEH-03",
+   "topic": "behavioural",
+   "difficulty": "senior",
+   "question": "Tell me about an incident you led. How do you structure your answer?",
+   "chapter": "17.11",
+   "link": "docs/part-17-operations/11-incident-response-and-game-days.md",
+   "model_answer": "Use situation, impact, detection, actions and result. Name your role, whether commander or responder, and what you decided. Give the timeline and the mitigation before the root cause. Say what you changed afterward and what the follow-up items were. Do not invent numbers, and be honest about what went badly.",
+   "strong_answer_contains": [
+    "Role is clear",
+    "Mitigation before root cause",
+    "Follow-ups"
+   ],
+   "weak_answer": "Tells a story where nothing went wrong.",
+   "follow_up": "What would you do differently?",
+   "basis": "my reasoning, structure only; no source claim"
+  },
+  {
+   "id": "BEH-04",
+   "topic": "behavioural",
+   "difficulty": "senior",
+   "question": "What are the core elements of a blameless post-incident review?",
+   "chapter": "5.25",
+   "link": "docs/part-05-kubernetes/25-troubleshooting-kubernetes-from-the-node-crictl-nsenter-tcpdump-and-ip.md",
+   "model_answer": "A factual timeline, the impact, the contributing factors and the detection gap. It asks how the system allowed the error, not who made it. It lists action items with owners and dates, and it records what went well. Share it widely. Without follow-through on the items, the review changes nothing.",
+   "strong_answer_contains": [
+    "Timeline and impact",
+    "System focus",
+    "Owned action items"
+   ],
+   "weak_answer": "Names the engineer at fault.",
+   "follow_up": "How do you track action items to completion?",
+   "basis": "chapter checkpoint answer, paraphrased"
+  },
+  {
+   "id": "BEH-05",
+   "topic": "behavioural",
+   "difficulty": "senior",
+   "question": "A customer asks for a cluster design, but their requirements are vague. What do you do first?",
+   "chapter": "9.13",
+   "link": "docs/part-09-nvidia-systems/13-sizing-and-capacity-planning-exercises.md",
+   "model_answer": "Ask questions to find the workload, scale, deadlines, data size, security and budget. Write down what you learn as requirements and what you assume as assumptions. Offer two or three options with trade-offs, and propose a small test. Do not promise numbers you cannot support. Leave an action list at the end of the meeting.",
+   "strong_answer_contains": [
+    "Questions first",
+    "Separates assumptions",
+    "Small test and follow-up"
+   ],
+   "weak_answer": "Presents a favourite architecture at once.",
+   "follow_up": "How do you handle a requirement that cannot be met?",
+   "basis": "chapter checkpoint answer, paraphrased"
+  },
+  {
+   "id": "BEH-06",
+   "topic": "behavioural",
+   "difficulty": "senior",
+   "question": "Describe a time you pushed back on a risky change. How do you frame it?",
+   "chapter": "17.13",
+   "link": "docs/part-17-operations/13-reliability-engineering-for-ai-infrastructure.md",
+   "model_answer": "State the risk in terms of impact and likelihood and tie it to a measure such as the error budget. Offer a safer path, for example a canary or a staged rollout. Agree on what evidence would change your mind. Keep it about the system, then accept the decision and help with the rollout. Use a real example only.",
+   "strong_answer_contains": [
+    "Risk in numbers",
+    "Alternative path",
+    "Respect the decision"
+   ],
+   "weak_answer": "Says no without an alternative.",
+   "follow_up": "What if you were overruled and it failed?",
+   "basis": "my reasoning, structure only; no source claim"
+  },
+  {
+   "id": "BEH-07",
+   "topic": "behavioural",
+   "difficulty": "senior",
+   "question": "How do you explain GPU cost and utilisation to a non-technical executive?",
+   "chapter": "11.26",
+   "link": "docs/part-11-gpu-kubernetes/26-choosing-a-gpu-sharing-model.md",
+   "model_answer": "Use one measure they can act on, such as cost per useful GPU-hour or cost per million tokens. Separate allocated from used. Show where the gap is, for example idle reservations, and what each fix would save. Avoid jargon, say what you are unsure of, and end with a decision you need from them.",
+   "strong_answer_contains": [
+    "One simple measure",
+    "Allocation versus use",
+    "A concrete ask"
+   ],
+   "weak_answer": "Shows a wall of dashboards.",
+   "follow_up": "How would chargeback change team behaviour?",
+   "basis": "my reasoning, structure only; no source claim"
+  },
+  {
+   "id": "BEH-08",
+   "topic": "behavioural",
+   "difficulty": "core",
+   "question": "What do you do when you do not know the answer in an interview?",
+   "chapter": "20.28",
+   "link": "docs/part-20-nebius-sre-interview/28-the-project-deep-dive-and-the-final-round.md",
+   "model_answer": "Say what you do know and what you would check. Give the first measurement you would take. State your assumptions out loud and ask a clarifying question. A clear reasoning path scores better than a guess. Never invent a number or a flag. The Volume 20 chapters on the final round and the cheat sheet give practice for this.",
+   "strong_answer_contains": [
+    "Says what is known",
+    "First measurement",
+    "No invention"
+   ],
+   "weak_answer": "Guesses confidently.",
+   "follow_up": "How would you recover from a wrong turn midway?",
+   "basis": "my reasoning, structure only; no source claim"
+  }
+ ]
+}

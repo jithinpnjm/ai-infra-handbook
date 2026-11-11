@@ -1,0 +1,52 @@
+# Prometheus rules for the MIG capstone (Chapter 19.8). Checked with: promtool check rules
+# Prices are ILLUSTRATIVE (see c08_finops.py). Replace them with your contract price.
+groups:
+  - name: c08-mig-price
+    rules:
+      - record: c08:mig_slice_price_per_hour
+        expr: vector(0.5357)
+        labels:
+          resource: "nvidia.com/mig-1g.10gb"
+      - record: c08:mig_slice_price_per_hour
+        expr: vector(0.7857)
+        labels:
+          resource: "nvidia.com/mig-1g.20gb"
+      - record: c08:mig_slice_price_per_hour
+        expr: vector(1.0714)
+        labels:
+          resource: "nvidia.com/mig-2g.20gb"
+      - record: c08:mig_slice_price_per_hour
+        expr: vector(1.8571)
+        labels:
+          resource: "nvidia.com/mig-3g.40gb"
+      - record: c08:mig_slice_price_per_hour
+        expr: vector(2.1429)
+        labels:
+          resource: "nvidia.com/mig-4g.40gb"
+      - record: c08:mig_slice_price_per_hour
+        expr: vector(4.0)
+        labels:
+          resource: "nvidia.com/mig-7g.80gb"
+  - name: c08-mig-alerts
+    rules:
+      - alert: C08MigSliceReservedButIdle
+        expr: avg_over_time(DCGM_FI_PROF_GR_ENGINE_UTIL_RATIO{GPU_I_PROFILE!=""}[6h]) < 0.05
+        for: 30m
+        labels:
+          severity: info
+        annotations:
+          summary: "MIG instance {{ $labels.GPU_I_PROFILE }} on GPU {{ $labels.gpu }} has been almost idle for 6 hours"
+      - alert: C08MigInstanceMemoryNearFull
+        expr: DCGM_FI_DEV_FB_USED_BYTES{GPU_I_PROFILE!=""} / (DCGM_FI_DEV_FB_USED_BYTES{GPU_I_PROFILE!=""} + DCGM_FI_DEV_FB_FREE_BYTES{GPU_I_PROFILE!=""}) > 0.9
+        for: 10m
+        labels:
+          severity: warning
+        annotations:
+          summary: "MIG instance {{ $labels.GPU_I_PROFILE }} on GPU {{ $labels.gpu }} is above 90 percent of its memory"
+      - alert: C08MigWorkloadsPendingWhileSlicesFree
+        expr: sum by (cluster_queue) (kueue_pending_workloads{status="active"}) > 0 and on () (sum(kube_node_status_allocatable{resource=~"nvidia_com_mig_.*"}) - sum(kube_pod_container_resource_requests{resource=~"nvidia_com_mig_.*"})) > 0
+        for: 15m
+        labels:
+          severity: warning
+        annotations:
+          summary: "Queue {{ $labels.cluster_queue }} has pending workloads while MIG slices of some profile are free: check profile mismatch and fragmentation"

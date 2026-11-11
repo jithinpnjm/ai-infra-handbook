@@ -1,0 +1,21 @@
+# The notebook namespace is shared by every researcher, so one ResourceQuota caps total notebook GPUs.
+# For extended resources only requests.<name> is allowed in a quota (Kubernetes docs, resource quotas).
+# 8 of the 64 GPUs are the notebook pool. Everything else goes through Kueue.
+apiVersion: v1
+kind: Namespace
+metadata:
+  name: research-notebooks
+  labels:
+    research.example.com/tenant: "true"
+---
+apiVersion: v1
+kind: ResourceQuota
+metadata:
+  name: notebook-gpus
+  namespace: research-notebooks
+spec:
+  hard:
+    requests.nvidia.com/gpu: "8"
+    requests.cpu: "400"
+    requests.memory: 1600Gi
+    persistentvolumeclaims: "150"

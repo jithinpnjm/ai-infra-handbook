@@ -1,0 +1,26 @@
+# dcgm-exporter chart 4.9.0 (app 4.9.0). Metric names are the 4.9.0 names.
+# Install:
+#   helm repo add gpu-helm-charts https://nvidia.github.io/dcgm-exporter/helm-charts
+#   helm install dcgm-exporter gpu-helm-charts/dcgm-exporter --version 4.9.0 \
+#     -n monitoring -f c07_values_dcgm.yaml
+fullnameOverride: dcgm-exporter
+
+# Run only on nodes where GPU Feature Discovery found a GPU (Chapter 11.3).
+nodeSelector:
+  nvidia.com/gpu.present: "true"
+# The chart default tolerates only the control-plane taint. A list here
+# replaces it. The GPU taint key below is the common cloud default and is
+# an assumption: check the taint on your GPU nodes.
+tolerations:
+  - key: nvidia.com/gpu
+    operator: Exists
+    effect: NoSchedule
+
+serviceMonitor:
+  enabled: true
+  interval: 30s
+  scrapeTimeout: 25s
+  # The platform rules and the dashboard group by the label "node".
+  relabelings:
+    - sourceLabels: [__meta_kubernetes_pod_node_name]
+      targetLabel: node

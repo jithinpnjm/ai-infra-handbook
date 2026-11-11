@@ -1,0 +1,21 @@
+{
+  "_note": "FICTIONAL customer Larkfield Mutual. Criteria are agreed in writing before the PoC starts. Thresholds are invented for the chapter.",
+  "poc": "Larkfield claims summariser PoC",
+  "success": [
+    {"id": "S1", "metric": "acceptable_answer_rate", "op": ">=", "threshold": 0.80, "priority": "must", "min_runs": 3,
+     "why": "Share of 200 scored claim questions that adjusters mark acceptable, three scoring runs."},
+    {"id": "S2", "metric": "p95_latency_s", "op": "<=", "threshold": 8, "priority": "must", "min_runs": 5,
+     "why": "95th percentile response time at 40 concurrent requests, five load runs."},
+    {"id": "S3", "metric": "unsupported_claim_rate", "op": "<=", "threshold": 0.05, "priority": "must", "min_runs": 3,
+     "why": "Share of summaries that state a fact not in the claim file."},
+    {"id": "S4", "metric": "cost_per_1000_requests", "op": "<=", "threshold": 2.0, "priority": "should", "min_runs": 3,
+     "why": "Placeholder cost unit agreed with finance."},
+    {"id": "S5", "metric": "adjuster_minutes_saved", "op": ">=", "threshold": 10, "priority": "should", "min_runs": 1,
+     "why": "Minutes saved per claim file, from a timed adjuster session."}
+  ],
+  "exit": [
+    {"id": "X1", "metric": "weeks_elapsed", "op": ">", "threshold": 6, "action": "Stop and decide. The agreed window is over."},
+    {"id": "X2", "metric": "gpu_hours_used", "op": ">", "threshold": 1200, "action": "Stop. The agreed compute budget is spent."},
+    {"id": "X3", "metric": "security_blockers_open", "op": ">=", "threshold": 1, "action": "Pause. Real data cannot be used until the blocker is closed."}
+  ]
+}

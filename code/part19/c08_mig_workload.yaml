@@ -1,0 +1,25 @@
+# A Kueue-managed Job that asks for one 3g.40gb slice (Chapter 19.8).
+# The queue label hands admission to Kueue. The image is the vectorAdd sample used in NVIDIA's GPU Operator MIG guide.
+apiVersion: batch/v1
+kind: Job
+metadata:
+  name: chat-llm-smoke
+  namespace: team-chat
+  labels:
+    kueue.x-k8s.io/queue-name: main
+spec:
+  parallelism: 1
+  completions: 1
+  backoffLimit: 0
+  template:
+    spec:
+      restartPolicy: Never
+      containers:
+        - name: vectoradd
+          image: nvidia/samples:vectoradd-cuda11.2.1
+          resources:
+            requests:
+              cpu: "2"
+              memory: 4Gi
+            limits:
+              nvidia.com/mig-3g.40gb: 1

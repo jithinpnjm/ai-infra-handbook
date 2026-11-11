@@ -1,0 +1,42 @@
+# Alertmanager configuration for the GPU platform. Loaded from the Secret
+# alertmanager-gpu-platform (key alertmanager.yaml), see c07_values_kps.yaml.
+# Secret files are mounted by the operator at /etc/alertmanager/secrets/<secret>/
+# and are created outside Git, mode 0400 inside the Secret volume.
+route:
+  receiver: ticket-queue
+  group_by: [alertname, model, node]
+  group_wait: 30s
+  group_interval: 5m
+  repeat_interval: 4h
+  routes:
+    # The always-firing Watchdog goes to a dead man's switch, never to humans.
+    - matchers: [alertname="Watchdog"]
+      receiver: deadman
+      group_wait: 0s
+      group_interval: 1m
+      repeat_interval: 1m
+    - matchers: [severity="page"]
+      receiver: oncall-page
+      group_wait: 10s
+      repeat_interval: 1h
+    - matchers: [severity="ticket"]
+      receiver: ticket-queue
+      repeat_interval: 12h
+
+inhibit_rules:
+  # A node that is not ready explains every GPU alert on it.
+  - source_matchers: [alertname="KubeNodeNotReady"]
+    target_matchers: [area="gpu"]
+    equal: [node]
+
+receivers:
+  - name: oncall-page
+    pagerduty_configs:
+      - routing_key_file: /etc/alertmanager/secrets/alertmanager-receivers/pagerduty-routing-key
+  - name: ticket-queue
+    webhook_configs:
+      - url_file: /etc/alertmanager/secrets/alertmanager-receivers/ticket-webhook-url
+  - name: deadman
+    webhook_configs:
+      - url_file: /etc/alertmanager/secrets/alertmanager-receivers/deadman-url
+        send_resolved: false

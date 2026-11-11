@@ -1,0 +1,309 @@
+{
+  "title": "AI Factory - MIG FinOps and per-instance health",
+  "uid": "c08-mig-finops",
+  "schemaVersion": 39,
+  "version": 1,
+  "editable": true,
+  "tags": [
+    "mig",
+    "finops",
+    "capstone"
+  ],
+  "time": {
+    "from": "now-24h",
+    "to": "now"
+  },
+  "templating": {
+    "list": [
+      {
+        "name": "datasource",
+        "type": "datasource",
+        "query": "prometheus",
+        "label": "Data source"
+      }
+    ]
+  },
+  "panels": [
+    {
+      "id": 1,
+      "title": "Cost per tenant, USD per hour (reserved slices)",
+      "type": "bargauge",
+      "description": "Needs metrics.enableClusterQueueResources in the Kueue manager config. Price rules come from c08_mig_rules.yml.",
+      "gridPos": {
+        "x": 0,
+        "y": 0,
+        "w": 12,
+        "h": 8
+      },
+      "datasource": {
+        "type": "prometheus",
+        "uid": "${datasource}"
+      },
+      "fieldConfig": {
+        "defaults": {
+          "unit": "currencyUSD"
+        },
+        "overrides": []
+      },
+      "targets": [
+        {
+          "refId": "A",
+          "expr": "sum by (cluster_queue) (kueue_cluster_queue_resource_reservation{resource=~\"nvidia.com/mig-.*\"} * on (resource) group_left () c08:mig_slice_price_per_hour)",
+          "legendFormat": "{{cluster_queue}}"
+        }
+      ]
+    },
+    {
+      "id": 2,
+      "title": "Reserved slices per tenant and profile",
+      "type": "timeseries",
+      "description": "",
+      "gridPos": {
+        "x": 12,
+        "y": 0,
+        "w": 12,
+        "h": 8
+      },
+      "datasource": {
+        "type": "prometheus",
+        "uid": "${datasource}"
+      },
+      "fieldConfig": {
+        "defaults": {},
+        "overrides": []
+      },
+      "targets": [
+        {
+          "refId": "A",
+          "expr": "sum by (cluster_queue, resource) (kueue_cluster_queue_resource_reservation{resource=~\"nvidia.com/mig-.*\"})",
+          "legendFormat": "{{cluster_queue}} {{resource}}"
+        }
+      ]
+    },
+    {
+      "id": 3,
+      "title": "Nominal quota versus reservation per profile",
+      "type": "timeseries",
+      "description": "Positive means quota that nobody holds. Compare with the free slices in the next panel.",
+      "gridPos": {
+        "x": 0,
+        "y": 8,
+        "w": 12,
+        "h": 8
+      },
+      "datasource": {
+        "type": "prometheus",
+        "uid": "${datasource}"
+      },
+      "fieldConfig": {
+        "defaults": {},
+        "overrides": []
+      },
+      "targets": [
+        {
+          "refId": "A",
+          "expr": "sum by (resource) (kueue_cluster_queue_nominal_quota{resource=~\"nvidia.com/mig-.*\"}) - sum by (resource) (kueue_cluster_queue_resource_reservation{resource=~\"nvidia.com/mig-.*\"})",
+          "legendFormat": "{{resource}}"
+        }
+      ]
+    },
+    {
+      "id": 4,
+      "title": "Free slices per profile (allocatable minus requested)",
+      "type": "timeseries",
+      "description": "kube-state-metrics sanitises resource names: nvidia.com/mig-1g.10gb appears as nvidia_com_mig_1g_10gb.",
+      "gridPos": {
+        "x": 12,
+        "y": 8,
+        "w": 12,
+        "h": 8
+      },
+      "datasource": {
+        "type": "prometheus",
+        "uid": "${datasource}"
+      },
+      "fieldConfig": {
+        "defaults": {},
+        "overrides": []
+      },
+      "targets": [
+        {
+          "refId": "A",
+          "expr": "sum by (resource) (kube_node_status_allocatable{resource=~\"nvidia_com_mig_.*\"}) - sum by (resource) (kube_pod_container_resource_requests{resource=~\"nvidia_com_mig_.*\"})",
+          "legendFormat": "{{resource}}"
+        }
+      ]
+    },
+    {
+      "id": 5,
+      "title": "SM activity per MIG instance",
+      "type": "timeseries",
+      "description": "",
+      "gridPos": {
+        "x": 0,
+        "y": 16,
+        "w": 12,
+        "h": 8
+      },
+      "datasource": {
+        "type": "prometheus",
+        "uid": "${datasource}"
+      },
+      "fieldConfig": {
+        "defaults": {
+          "unit": "percentunit"
+        },
+        "overrides": []
+      },
+      "targets": [
+        {
+          "refId": "A",
+          "expr": "avg by (gpu, GPU_I_ID, GPU_I_PROFILE) (DCGM_FI_PROF_GR_ENGINE_UTIL_RATIO{GPU_I_PROFILE!=\"\"})",
+          "legendFormat": "gpu {{gpu}} gi {{GPU_I_ID}} {{GPU_I_PROFILE}}"
+        }
+      ]
+    },
+    {
+      "id": 6,
+      "title": "Memory used per MIG instance",
+      "type": "timeseries",
+      "description": "",
+      "gridPos": {
+        "x": 12,
+        "y": 16,
+        "w": 12,
+        "h": 8
+      },
+      "datasource": {
+        "type": "prometheus",
+        "uid": "${datasource}"
+      },
+      "fieldConfig": {
+        "defaults": {
+          "unit": "bytes"
+        },
+        "overrides": []
+      },
+      "targets": [
+        {
+          "refId": "A",
+          "expr": "DCGM_FI_DEV_FB_USED_BYTES{GPU_I_PROFILE!=\"\"}",
+          "legendFormat": "gpu {{gpu}} gi {{GPU_I_ID}} {{GPU_I_PROFILE}}"
+        }
+      ]
+    },
+    {
+      "id": 7,
+      "title": "Memory pressure per MIG instance",
+      "type": "timeseries",
+      "description": "",
+      "gridPos": {
+        "x": 0,
+        "y": 24,
+        "w": 12,
+        "h": 8
+      },
+      "datasource": {
+        "type": "prometheus",
+        "uid": "${datasource}"
+      },
+      "fieldConfig": {
+        "defaults": {
+          "unit": "percentunit"
+        },
+        "overrides": []
+      },
+      "targets": [
+        {
+          "refId": "A",
+          "expr": "DCGM_FI_DEV_FB_USED_BYTES{GPU_I_PROFILE!=\"\"} / (DCGM_FI_DEV_FB_USED_BYTES{GPU_I_PROFILE!=\"\"} + DCGM_FI_DEV_FB_FREE_BYTES{GPU_I_PROFILE!=\"\"})",
+          "legendFormat": "gpu {{gpu}} gi {{GPU_I_ID}} {{GPU_I_PROFILE}}"
+        }
+      ]
+    },
+    {
+      "id": 8,
+      "title": "Pending workloads per queue",
+      "type": "timeseries",
+      "description": "",
+      "gridPos": {
+        "x": 12,
+        "y": 24,
+        "w": 12,
+        "h": 8
+      },
+      "datasource": {
+        "type": "prometheus",
+        "uid": "${datasource}"
+      },
+      "fieldConfig": {
+        "defaults": {},
+        "overrides": []
+      },
+      "targets": [
+        {
+          "refId": "A",
+          "expr": "sum by (cluster_queue, status) (kueue_pending_workloads)",
+          "legendFormat": "{{cluster_queue}} {{status}}"
+        }
+      ]
+    },
+    {
+      "id": 9,
+      "title": "Weighted share per queue (above 0 means borrowing)",
+      "type": "timeseries",
+      "description": "",
+      "gridPos": {
+        "x": 0,
+        "y": 32,
+        "w": 12,
+        "h": 8
+      },
+      "datasource": {
+        "type": "prometheus",
+        "uid": "${datasource}"
+      },
+      "fieldConfig": {
+        "defaults": {},
+        "overrides": []
+      },
+      "targets": [
+        {
+          "refId": "A",
+          "expr": "kueue_cluster_queue_weighted_share",
+          "legendFormat": "{{cluster_queue}}"
+        }
+      ]
+    },
+    {
+      "id": 10,
+      "title": "Monthly cost of idle slices, USD",
+      "type": "stat",
+      "description": "Quota that exists but is not reserved, priced per slice.",
+      "gridPos": {
+        "x": 12,
+        "y": 32,
+        "w": 12,
+        "h": 8
+      },
+      "datasource": {
+        "type": "prometheus",
+        "uid": "${datasource}"
+      },
+      "fieldConfig": {
+        "defaults": {
+          "unit": "currencyUSD"
+        },
+        "overrides": []
+      },
+      "targets": [
+        {
+          "refId": "A",
+          "expr": "sum(((sum by (resource) (kueue_cluster_queue_nominal_quota{resource=~\"nvidia.com/mig-.*\"}) - sum by (resource) (kueue_cluster_queue_resource_reservation{resource=~\"nvidia.com/mig-.*\"})) * on (resource) group_left () c08:mig_slice_price_per_hour)) * 730",
+          "legendFormat": "idle"
+        }
+      ]
+    }
+  ],
+  "_comment": "Prices in c08_mig_rules.yml are illustrative. Panels were checked for PromQL syntax only; not run against live data."
+}

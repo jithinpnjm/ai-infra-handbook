@@ -1,0 +1,12 @@
+# A disruption budget for a four-replica inference service. A drain that would
+# leave fewer than three replicas ready is refused with HTTP 429 and retried.
+apiVersion: policy/v1
+kind: PodDisruptionBudget
+metadata:
+  name: llm-serving
+  namespace: inference
+spec:
+  minAvailable: 3
+  selector:
+    matchLabels:
+      app: llm-serving

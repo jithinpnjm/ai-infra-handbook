@@ -1,0 +1,68 @@
+# code/part19/c04_jobset.yaml
+# 4 pods x 8 GPUs. Image and claim names are placeholders. Validated against the JobSet v0.13.0 CRD.
+apiVersion: jobset.x-k8s.io/v1alpha2
+kind: JobSet
+metadata:
+  name: c04-train
+spec:
+  failurePolicy:
+    maxRestarts: 5
+    restartStrategy: Recreate
+  network:
+    enableDNSHostnames: true
+  replicatedJobs:
+    - name: workers
+      replicas: 1
+      template:
+        spec:
+          parallelism: 4
+          completions: 4
+          completionMode: Indexed
+          backoffLimit: 0
+          template:
+            spec:
+              restartPolicy: Never
+              terminationGracePeriodSeconds: 180
+              containers:
+                - name: trainer
+                  image: registry.example.com/c04-train:1.0
+                  command: ["torchrun"]
+                  args:
+                    - --nnodes=4
+                    - --nproc-per-node=8
+                    - --max-restarts=2
+                    - --rdzv-id=c04-train
+                    - --rdzv-backend=c10d
+                    - --rdzv-endpoint=c04-train-workers-0-0.c04-train:29400
+                    - /app/c04_train.py
+                    - --ckpt-dir=/shared/c04/ckpt
+                    - --metrics-dir=/shared/c04/metrics
+                    - --steps=100000
+                    - --ckpt-every=500
+                    - --async-ckpt
+                  env:
+                    - name: TORCH_NCCL_ENABLE_MONITORING
+                      value: "1"
+                    - name: TORCH_NCCL_HEARTBEAT_TIMEOUT_SEC
+                      value: "300"
+                    - name: TORCH_NCCL_TRACE_BUFFER_SIZE
+                      value: "2000"
+                    - name: TORCH_NCCL_DUMP_ON_TIMEOUT
+                      value: "1"
+                    - name: TORCH_NCCL_DEBUG_INFO_TEMP_FILE
+                      value: /shared/c04/fr/rank_
+                  resources:
+                    limits:
+                      nvidia.com/gpu: 8
+                  volumeMounts:
+                    - name: shared
+                      mountPath: /shared
+                    - name: dshm
+                      mountPath: /dev/shm
+              volumes:
+                - name: shared
+                  persistentVolumeClaim:
+                    claimName: c04-shared
+                - name: dshm
+                  emptyDir:
+                    medium: Memory

@@ -1,0 +1,175 @@
+# Kueue objects for the MIG tenant mix (Chapter 19.8).
+# Validated against the Kueue v0.20.5 CRDs (kueue.x-k8s.io/v1beta2) by tools/check_crd_yaml.py.
+# cpu and memory quotas are placeholders: size them from your node pool.
+apiVersion: kueue.x-k8s.io/v1beta2
+kind: ResourceFlavor
+metadata:
+  name: h100-mig-tenant-mix
+spec:
+  nodeLabels:
+    nvidia.com/mig.config: tenant-mix-v1
+---
+apiVersion: kueue.x-k8s.io/v1beta2
+kind: ClusterQueue
+metadata:
+  name: cq-search
+spec:
+  cohortName: gpu-mig-pool
+  namespaceSelector:
+    matchLabels:
+      kubernetes.io/metadata.name: team-search
+  resourceGroups:
+    - coveredResources: ["cpu", "memory", "nvidia.com/mig-1g.10gb"]
+      flavors:
+        - name: h100-mig-tenant-mix
+          resources:
+            - name: cpu
+              nominalQuota: 32
+            - name: memory
+              nominalQuota: 128Gi
+            - name: nvidia.com/mig-1g.10gb
+              nominalQuota: 10
+              borrowingLimit: 6
+---
+apiVersion: kueue.x-k8s.io/v1beta2
+kind: ClusterQueue
+metadata:
+  name: cq-chat
+spec:
+  cohortName: gpu-mig-pool
+  namespaceSelector:
+    matchLabels:
+      kubernetes.io/metadata.name: team-chat
+  resourceGroups:
+    - coveredResources: ["cpu", "memory", "nvidia.com/mig-3g.40gb"]
+      flavors:
+        - name: h100-mig-tenant-mix
+          resources:
+            - name: cpu
+              nominalQuota: 64
+            - name: memory
+              nominalQuota: 256Gi
+            - name: nvidia.com/mig-3g.40gb
+              nominalQuota: 4
+---
+apiVersion: kueue.x-k8s.io/v1beta2
+kind: ClusterQueue
+metadata:
+  name: cq-notebooks
+spec:
+  cohortName: gpu-mig-pool
+  namespaceSelector:
+    matchLabels:
+      kubernetes.io/metadata.name: team-notebooks
+  resourceGroups:
+    - coveredResources: ["cpu", "memory", "nvidia.com/mig-2g.20gb"]
+      flavors:
+        - name: h100-mig-tenant-mix
+          resources:
+            - name: cpu
+              nominalQuota: 48
+            - name: memory
+              nominalQuota: 192Gi
+            - name: nvidia.com/mig-2g.20gb
+              nominalQuota: 6
+---
+apiVersion: kueue.x-k8s.io/v1beta2
+kind: ClusterQueue
+metadata:
+  name: cq-finetune
+spec:
+  cohortName: gpu-mig-pool
+  namespaceSelector:
+    matchLabels:
+      kubernetes.io/metadata.name: team-finetune
+  resourceGroups:
+    - coveredResources: ["cpu", "memory", "nvidia.com/mig-4g.40gb"]
+      flavors:
+        - name: h100-mig-tenant-mix
+          resources:
+            - name: cpu
+              nominalQuota: 64
+            - name: memory
+              nominalQuota: 256Gi
+            - name: nvidia.com/mig-4g.40gb
+              nominalQuota: 2
+---
+apiVersion: kueue.x-k8s.io/v1beta2
+kind: ClusterQueue
+metadata:
+  name: cq-batch
+spec:
+  cohortName: gpu-mig-pool
+  namespaceSelector:
+    matchLabels:
+      kubernetes.io/metadata.name: team-batch
+  resourceGroups:
+    - coveredResources: ["cpu", "memory", "nvidia.com/mig-7g.80gb"]
+      flavors:
+        - name: h100-mig-tenant-mix
+          resources:
+            - name: cpu
+              nominalQuota: 32
+            - name: memory
+              nominalQuota: 128Gi
+            - name: nvidia.com/mig-7g.80gb
+              nominalQuota: 1
+---
+# Holds the spare 1g.10gb slices and lends them to the cohort. No workload uses it directly.
+apiVersion: kueue.x-k8s.io/v1beta2
+kind: ClusterQueue
+metadata:
+  name: cq-platform-spare
+spec:
+  cohortName: gpu-mig-pool
+  namespaceSelector:
+    matchLabels:
+      kubernetes.io/metadata.name: gpu-platform
+  resourceGroups:
+    - coveredResources: ["nvidia.com/mig-1g.10gb"]
+      flavors:
+        - name: h100-mig-tenant-mix
+          resources:
+            - name: nvidia.com/mig-1g.10gb
+              nominalQuota: 6
+              lendingLimit: 6
+---
+apiVersion: kueue.x-k8s.io/v1beta2
+kind: LocalQueue
+metadata:
+  name: main
+  namespace: team-search
+spec:
+  clusterQueue: cq-search
+---
+apiVersion: kueue.x-k8s.io/v1beta2
+kind: LocalQueue
+metadata:
+  name: main
+  namespace: team-chat
+spec:
+  clusterQueue: cq-chat
+---
+apiVersion: kueue.x-k8s.io/v1beta2
+kind: LocalQueue
+metadata:
+  name: main
+  namespace: team-notebooks
+spec:
+  clusterQueue: cq-notebooks
+---
+apiVersion: kueue.x-k8s.io/v1beta2
+kind: LocalQueue
+metadata:
+  name: main
+  namespace: team-finetune
+spec:
+  clusterQueue: cq-finetune
+---
+apiVersion: kueue.x-k8s.io/v1beta2
+kind: LocalQueue
+metadata:
+  name: main
+  namespace: team-batch
+spec:
+  clusterQueue: cq-batch

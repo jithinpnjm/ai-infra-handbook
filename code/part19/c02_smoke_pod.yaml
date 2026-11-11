@@ -1,0 +1,20 @@
+# Execution-path check: a container that must see a GPU through the runtime, not just an allocatable count.
+apiVersion: v1
+kind: Pod
+metadata:
+  name: nvidia-smi-check
+spec:
+  restartPolicy: Never
+  nodeSelector:
+    pool: h100
+  tolerations:
+    - key: nvidia.com/gpu
+      operator: Exists
+      effect: NoSchedule
+  containers:
+    - name: c
+      image: nvidia/cuda:12.4.1-base-ubuntu22.04
+      command: ["nvidia-smi"]
+      resources:
+        limits:
+          nvidia.com/gpu: 1

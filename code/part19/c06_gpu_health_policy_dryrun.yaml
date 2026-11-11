@@ -1,0 +1,14 @@
+# First rollout of the policy: report what would happen, change nothing.
+apiVersion: platform.example.com/v1alpha1
+kind: GPUHealthPolicy
+metadata:
+  name: training-pool
+spec:
+  nodeSelector:
+    nvidia.com/gpu.present: "true"
+  conditionType: GPUHealthy
+  unhealthyFor: 2m
+  healthyFor: 5m
+  action: Cordon
+  maxUnavailableNodes: 1
+  dryRun: true

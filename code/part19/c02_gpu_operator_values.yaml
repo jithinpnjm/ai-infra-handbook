@@ -1,0 +1,21 @@
+# Helm values for the NVIDIA GPU Operator on GKE with the Google driver installer.
+# Keys follow the NVIDIA GPU Operator GKE page; checked against the v26.7.2 chart and ClusterPolicy CRD.
+driver:
+  enabled: false                     # the Google driver installer owns the driver
+hostPaths:
+  driverInstallDir: /home/kubernetes/bin/nvidia
+toolkit:
+  enabled: true
+  installDir: /home/kubernetes/bin/nvidia
+  env:
+    - name: RUNTIME_CONFIG_SOURCE    # needed on GKE 1.33 and later, per the NVIDIA GKE page
+      value: file
+cdi:
+  enabled: true
+  default: true
+devicePlugin:
+  enabled: true
+gfd:
+  enabled: true
+dcgmExporter:
+  enabled: true

@@ -1,0 +1,12 @@
+# SYNTHETIC FIXTURE: invented times in the column layout with root and #wrong. Not measured on any cluster.
+# 16 ranks, AllReduce, busbw = algbw * 2(n-1)/n = algbw * 1.875
+#                                                              out-of-place                       in-place
+#       size         count      type   redop    root     time   algbw   busbw #wrong     time   algbw   busbw #wrong
+#        (B)    (elements)                               (us)  (GB/s)  (GB/s)            (us)  (GB/s)  (GB/s)
+     8388608       2097152     float     sum      -1    786.4   10.67   20.00      0    786.4   10.67   20.00      0
+    33554432       8388608     float     sum      -1   1906.5   17.60   33.00      0   1906.5   17.60   33.00      0
+   134217728      33554432     float     sum      -1   6138.0   21.87   41.00      0   6138.0   21.87   41.00      0
+   536870912     134217728     float     sum      -1  22621.0   23.73   44.50      0  22621.0   23.73   44.50      0
+  1073741824     268435456     float     sum      -1  44739.2   24.00   45.00      0  44739.2   24.00   45.00      0
+# Out of bounds values : 0 OK
+# Avg bus bandwidth    : 36.7

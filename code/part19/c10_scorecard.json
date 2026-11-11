@@ -1,0 +1,24 @@
+{
+  "version": 1,
+  "note": "Author's recommended scorecard. Categories follow the common review areas: infrastructure, security, MLOps, team and governance. The 0 to 3 scale, weights and default target are the author's heuristics.",
+  "scale": {"0": "absent", "1": "ad hoc, person-dependent", "2": "defined and repeatable", "3": "measured and automated"},
+  "default_target": 2,
+  "criteria": [
+    {"id": "inf.gpu_inventory", "category": "infrastructure", "weight": 2, "text": "GPU and node inventory exists and utilisation is measured"},
+    {"id": "inf.network_storage", "category": "infrastructure", "weight": 2, "text": "Network and storage paths for the workload are known and tested"},
+    {"id": "inf.scheduler", "category": "infrastructure", "weight": 2, "text": "A scheduler or orchestrator places workloads on accelerators"},
+    {"id": "sec.identity", "category": "security", "weight": 3, "text": "Identity and access control for users and services"},
+    {"id": "sec.isolation", "category": "security", "weight": 3, "text": "Tenant, network and data isolation"},
+    {"id": "sec.secrets", "category": "security", "weight": 2, "text": "Secrets are managed outside code and images"},
+    {"id": "ml.data_versioning", "category": "mlops", "weight": 2, "text": "Datasets and prompts are versioned"},
+    {"id": "ml.evaluation", "category": "mlops", "weight": 3, "text": "Quality is evaluated against a scored sample before release"},
+    {"id": "ml.deploy_pipeline", "category": "mlops", "weight": 2, "text": "A pipeline deploys and rolls back model changes"},
+    {"id": "ml.monitoring", "category": "mlops", "weight": 3, "text": "Latency, errors and quality are monitored in production"},
+    {"id": "tm.k8s", "category": "team", "weight": 2, "text": "Team can operate Kubernetes in production"},
+    {"id": "tm.gpu_ops", "category": "team", "weight": 3, "text": "Team can diagnose GPU and driver failures"},
+    {"id": "tm.on_call", "category": "team", "weight": 2, "text": "On-call rotation and runbooks exist"},
+    {"id": "gov.audit", "category": "governance", "weight": 2, "text": "Audit trail of access and model changes"},
+    {"id": "gov.data_lineage", "category": "governance", "weight": 2, "text": "Data lineage and ownership are recorded"},
+    {"id": "gov.approval", "category": "governance", "weight": 1, "text": "Change and release approval process is defined"}
+  ]
+}

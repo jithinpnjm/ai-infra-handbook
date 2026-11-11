@@ -1,0 +1,9 @@
+[project]
+name = "research-env"
+version = "2026.11.0"
+description = "Pinned research environment: the same lock file builds the notebook image and the batch image."
+requires-python = ">=3.12,<3.13"
+dependencies = [
+    "numpy>=2.0",
+    "mlflow-skinny>=3.18,<3.19",
+]

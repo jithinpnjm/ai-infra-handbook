@@ -1,0 +1,14 @@
+# Scrape the Operator's DCGM exporter with Google Managed Service for Prometheus.
+# The exporter container port is named metrics (assets/state-dcgm-exporter in GPU Operator v26.7.2).
+apiVersion: monitoring.googleapis.com/v1
+kind: PodMonitoring
+metadata:
+  name: nvidia-dcgm-exporter
+  namespace: gpu-operator
+spec:
+  selector:
+    matchLabels:
+      app: nvidia-dcgm-exporter
+  endpoints:
+    - port: metrics
+      interval: 30s

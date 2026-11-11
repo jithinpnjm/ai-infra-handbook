@@ -1,0 +1,139 @@
+# MLflow tracking server for the research platform (MLflow 3.18.0).
+# Backend store: PostgreSQL, reached through a Secret named mlflow-db with key uri
+#   (created by the platform engineer, mode 600 file or sealed secret, never in git).
+# Artifacts: the server proxies uploads to an S3-compatible bucket (--serve-artifacts).
+#   Researchers need no bucket credentials. The server pod reads them from Secret mlflow-s3.
+apiVersion: v1
+kind: Namespace
+metadata:
+  name: research-platform
+---
+apiVersion: v1
+kind: ServiceAccount
+metadata:
+  name: mlflow
+  namespace: research-platform
+automountServiceAccountToken: false
+---
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: mlflow
+  namespace: research-platform
+  labels:
+    app.kubernetes.io/name: mlflow
+spec:
+  replicas: 2
+  selector:
+    matchLabels:
+      app.kubernetes.io/name: mlflow
+  template:
+    metadata:
+      labels:
+        app.kubernetes.io/name: mlflow
+    spec:
+      serviceAccountName: mlflow
+      automountServiceAccountToken: false
+      securityContext:
+        runAsNonRoot: true
+        runAsUser: 10001
+        seccompProfile:
+          type: RuntimeDefault
+      containers:
+        - name: mlflow
+          image: registry.research.example.com/research/mlflow:3.18.0
+          command: ["mlflow", "server"]
+          args:
+            - --host=0.0.0.0
+            - --port=5000
+            - --workers=4
+            - --serve-artifacts
+            - --artifacts-destination=s3://research-mlflow-artifacts/runs
+            - --allowed-hosts=mlflow.research.example.com,mlflow.research-platform.svc.cluster.local:5000
+          env:
+            - name: MLFLOW_BACKEND_STORE_URI
+              valueFrom:
+                secretKeyRef:
+                  name: mlflow-db
+                  key: uri
+            - name: MLFLOW_S3_ENDPOINT_URL
+              value: https://s3.research.example.com
+            - name: AWS_ACCESS_KEY_ID
+              valueFrom:
+                secretKeyRef:
+                  name: mlflow-s3
+                  key: access-key-id
+            - name: AWS_SECRET_ACCESS_KEY
+              valueFrom:
+                secretKeyRef:
+                  name: mlflow-s3
+                  key: secret-access-key
+          ports:
+            - name: http
+              containerPort: 5000
+          readinessProbe:
+            httpGet:
+              path: /health
+              port: http
+            periodSeconds: 10
+          livenessProbe:
+            httpGet:
+              path: /health
+              port: http
+            initialDelaySeconds: 30
+            periodSeconds: 20
+            failureThreshold: 6
+          resources:
+            requests:
+              cpu: "1"
+              memory: 2Gi
+            limits:
+              memory: 4Gi
+          securityContext:
+            allowPrivilegeEscalation: false
+            capabilities:
+              drop: ["ALL"]
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: mlflow
+  namespace: research-platform
+spec:
+  selector:
+    app.kubernetes.io/name: mlflow
+  ports:
+    - name: http
+      port: 5000
+      targetPort: http
+---
+apiVersion: policy/v1
+kind: PodDisruptionBudget
+metadata:
+  name: mlflow
+  namespace: research-platform
+spec:
+  minAvailable: 1
+  selector:
+    matchLabels:
+      app.kubernetes.io/name: mlflow
+---
+# Only pods in namespaces labelled research.example.com/tenant=true may call the server.
+apiVersion: networking.k8s.io/v1
+kind: NetworkPolicy
+metadata:
+  name: mlflow-ingress
+  namespace: research-platform
+spec:
+  podSelector:
+    matchLabels:
+      app.kubernetes.io/name: mlflow
+  policyTypes: ["Ingress"]
+  ingress:
+    - from:
+        - namespaceSelector:
+            matchLabels:
+              research.example.com/tenant: "true"
+      ports:
+        - protocol: TCP
+          port: 5000

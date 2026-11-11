@@ -3,7 +3,7 @@ id: "c19-04"
 title: "19.4 Capstone: multi-node training with fault tolerance"
 sidebar_label: "19.4 Capstone: multi-node training"
 sidebar_position: 4
-description: "End-to-end multi-node training capstone: FSDP, checkpoint strategy (in-memory, local, cross-region), PyTorch Elastic, NCCL debugging, observability for distributed training, and the incident response for stuck training."
+description: "A capstone for keeping a multi-node PyTorch job alive for weeks: how long runs fail, checkpoint cadence maths (Young and Daly), sharded versus full checkpoints, async saves, resume validation, torchrun elastic limits, the NCCL watchdog, straggler detection, and how to run and recover the job on Slurm and on Kubernetes. Tested checkpoint manager, interval calculator, straggler detector, FSDP2 and DCP training script, and validated JobSet and PyTorchJob manifests."
 status: "drafted"
 tier: "1"
 level: "A"
@@ -16,489 +16,1238 @@ lab_venue: "GCP / GKE"
 |---|---|
 | Level | Advanced |
 | Priority tier | 1 |
-| Lab venue | GCP / GKE |
+| Lab venue | GCP / GKE (the parts that run here need only Docker and a CPU) |
 | Part | Part 19: Capstones, design and interview readiness |
-| Primary sources | NVIDIA Zero-to-Hero Volume 24 (Multi-node training capstone); Part 14 (Distributed training); Part 16 (MLOps) |
-| Cross-references | Chapter 14.5 (FSDP); Chapter 14.10 (Multi-node training); Chapter 14.11 (Checkpointing); Chapter 12.15 (NCCL collectives); Chapter 17.11 (Incident response) |
+| Pinned versions | PyTorch 2.15 documentation and 2.15.0 CPU wheel; Slurm documentation 26.05; JobSet v0.13.0 CRD; Kubeflow Training Operator v1.9.4 CRD; NCCL 2.32.3 documentation. All fetched 2026-11-10. |
+| Primary sources | Distributed AI Systems (Ch. 4, 8); AI Systems Performance Engineering (Ch. 4); Supercomputers for Linux SysAdmins (Ch. 15); upstream PyTorch, Slurm, JobSet and Kubeflow documentation; nvidia-devops Zero-to-Hero Volume 24, Chapter 3 |
+| Cross-references | Chapters 14.5, 14.10, 14.11, 12.16, 12.18, 11.9, 6.12, 6.14, 13.7, 16.5, 17.7, 17.11 |
+| Code | `code/part19/c04_*` and `code/part19/test_c04_*` |
 | Coverage file | `planning/coverage/chapters/19-04.md` |
 | Claim & number ledger | `planning/ledgers/19-04.md` |
 
 ## Why this matters for AI infrastructure
 
-Multi-node training is the production shape of foundation-model training. The capstone ties together FSDP (the parallelism strategy), checkpoint strategy (in-memory, local, cross-region), PyTorch Elastic (the elasticity layer), NCCL debugging (the network layer), observability (the visibility layer), and incident response (the on-call layer). A team that has read every chapter in Part 14 can describe each piece; a team that has run this capstone knows how the pieces fit together.
+It is 03:10 and a training run that started nine days ago has stopped moving. The loss curve ends in a flat line, GPU utilisation reads zero on every node, and the job is still listed as running. Somebody has to decide whether to wait, restart, or page the network team. Whatever they decide, the last good checkpoint is the only thing that stands between the team and nine days of lost compute.
 
-The multi-node training capstone is what the candidate is asked about in an interview. The capstone is what the platform team uses as a reference design. The capstone is what the on-call engineer uses when a 100-GPU training run is stuck at 3 a.m.
+That checkpoint is a bigger risk than most teams admit. A checkpoint that was half written when a node died looks fine in a directory listing. A resume that loads it will either crash or, worse, continue from corrupt weights. The work in this chapter is mostly about making sure that never happens, and about making the other failures cheap enough to ignore.
 
-```text
-Why the multi-node training capstone matters (V24; Part 14):
-- A multi-node training job is the production shape of foundation-model
-  training. The capstone is what ties FSDP, checkpointing, Elastic, NCCL,
-  observability, and incident response together.
-- The capstone has three perspectives: the platform engineer's view (how
-  to provision the cluster and the queues); the ML engineer's view (how
-  to launch the job and read the output); the on-call engineer's view
-  (how to debug a stuck training).
-- The capstone is the reference design. Every chapter in Part 14 maps to
-  a section of the capstone.
-```
+Long jobs fail for five different reasons, and each one needs a different tool. A lost node needs a restart. A stuck collective needs a watchdog. A slow node needs a metric. A starved data loader needs a different metric. A damaged checkpoint needs a checksum. This chapter takes each in turn and builds the pieces that deal with it, using one reference job throughout.
 
-Three operational realities make this capstone a platform-team deliverable rather than a tutorial:
-
-1. **The capstone is the reference design.** The platform team references the capstone when launching a new training job; the platform team references the capstone when debugging a stuck training.
-2. **The capstone is the interview anchor.** The candidate is asked "how would you run multi-node training at scale?"; the candidate points at this capstone.
-3. **The capstone is the on-call reference.** The on-call engineer follows the runbook; the runbook points at the capstone; the on-call engineer fixes the training.
-
-**Before a team can claim they have run multi-node training at scale, the team must have run this capstone. A team that has not run the capstone has not integrated the pieces.**
+The reference job is deliberately small enough to reason about. It trains an 8-billion-parameter model on 4 nodes with 8 GPUs each, using FSDP2 and PyTorch Distributed Checkpoint. The same pieces run on Slurm and on Kubernetes, and the chapter shows both. This is a capstone because it joins Part 14 on training, Part 12 on NCCL, Part 6 on Slurm, Part 11 on GPU Kubernetes and Part 17 on operations into one job that you can actually operate.
 
 ## Prerequisites and outcomes
 
 ### Prerequisites
 
-- Chapter 14 (Distributed training) for FSDP, checkpointing, Elastic, NCCL.
-- Chapter 12 (AI networking) for NCCL tuning.
-- Chapter 17 (Operations) for monitoring and incident response.
+- Chapter 14.5 on FSDP and parameter sharding, and 14.10 on multi-node training architecture.
+- Chapter 14.11 on checkpointing, fault tolerance and elastic training. This chapter reuses its ideas and adds a tested implementation.
+- Chapter 12.16 and 12.18 on NCCL environment variables and on hangs and timeouts.
+- Chapter 6.12 and 6.14 on multi-node training on Slurm and on Slurm operations, and chapter 11.9 on JobSet and PyTorchJob.
+- Python 3.12 with pytest. Docker is optional and is used for the CPU smoke test.
 
 ### Outcomes
 
 After completing this capstone you will be able to:
 
-1. Launch a multi-node training job with FSDP on the GPU node pool.
-2. Implement checkpoint strategy: in-memory (DDP), local (per-node), cross-region (object storage).
-3. Configure PyTorch Elastic for elastic recovery from node failures.
-4. Debug NCCL collectives: log analysis, timeout tuning, topology-aware scheduling.
-5. Wire observability for distributed training: training loss, throughput, GPU utilisation, NCCL timing.
-6. Operate the training with on-call runbooks for stuck training, OOM, and NCCL timeouts.
+1. Name the five ways a long training job fails and say which tool catches each one.
+2. Compute a checkpoint interval from a measured failure rate and checkpoint cost, and say when the formula stops being trustworthy.
+3. Choose between sharded and full checkpoints, and explain what changes when the node count changes at resume.
+4. Write and test a checkpoint manager that publishes atomically, verifies checksums and resumes from the newest valid checkpoint.
+5. Configure `torchrun` elastic restarts and the NCCL watchdog, and state what they cannot do.
+6. Detect a straggler from per-rank step-time records without blaming the wrong rank.
+7. Run the job on Slurm with requeue and signals, and on Kubernetes with JobSet or PyTorchJob.
+8. Hand an on-call engineer a runbook that maps each symptom to a first check and an action.
 
 ---
 
-## 1. The training stack
+## 1. How a long training job fails
 
-### 1.1 The training architecture
+### Interruptions every three hours
 
-The training architecture is the layered stack from the user script to the GPU kernel. The stack has the parallelism strategy (FSDP), the checkpoint strategy, the elasticity layer (PyTorch Elastic), the network layer (NCCL), and the GPU runtime.
+A team trains for 54 days on thousands of GPUs. Meta's report of its Llama 3 405B run, reproduced in AI Systems Performance Engineering, counted 419 unexpected interruptions over those 54 days. That is one stop about every three hours. Nobody on that team could have operated the run by hand.
+
+The cause of each stop was different. The table in the book lists 148 faulty GPUs, 72 GPU memory faults, 54 software bugs, 35 network switch or cable faults, and 32 host maintenance events. It also lists 7 NCCL watchdog timeouts and 6 silent data corruption cases. The percentages printed in the book table do not equal each count divided by 419, so this chapter uses the counts only.
+
+Most of these stops are not a single dead machine. A GPU memory fault usually kills one process on one node. Every other rank is then stuck in a collective that can never finish. The job does not fail. It waits. That distinction drives the whole design, because waiting needs a detector and dying needs a restart.
+
+### Five failure shapes
+
+Think of a long job as a chain of ranks that must all arrive at every collective. Anything that stops one rank stops all of them. The five shapes below cover almost every incident, and each has a different first signal.
+
+| Shape | What you see | First detector | First response |
+|---|---|---|---|
+| Node or process loss | One pod or task exits, others hang or exit | Scheduler event, torchrun exit report | Restart from checkpoint, replace the node |
+| NCCL hang | All ranks idle, no process has exited | Watchdog timeout, heartbeat monitor | Dump traces, kill, restart, find the rank |
+| Slow node | Steps take longer, no error | Per-rank step-time record | Drain the node, restart without it |
+| Data stall | One rank waits for its next batch | Per-rank data wait time | Fix the storage path or the loader |
+| Checkpoint damage | Resume crashes or loss jumps | Manifest checksum at resume | Fall back to the previous checkpoint |
+
+The first two rows are loud once you notice them. The last three are quiet. A slow node can cost a day of throughput before anyone sees a failed pod, and a damaged checkpoint stays invisible until the next restart needs it.
 
 ```mermaid
-flowchart LR
-    Script[PyTorch script<br/>FSDP] --> Elastic[PyTorch Elastic<br/>rdzv backend]
-    Elastic --> Nodes[Worker nodes]
-    Nodes --> Ckpt[Checkpoint<br/>local + cross-region]
-    Nodes --> NCCL[NCCL<br/>collectives]
-    NCCL --> GPU[H100 GPU]
+flowchart TD
+    A["Long-running job with 32 ranks across 4 nodes"] --> B{"What changed?"}
+    B -->|"A process or node exited"| C["Scheduler or torchrun restarts the job"]
+    B -->|"All ranks idle, none exited"| D["NCCL watchdog or heartbeat monitor kills the process"]
+    B -->|"Steps slower, no error"| E["Step-time detector names a rank or a host"]
+    B -->|"Resume fails or loss jumps"| F["Manifest check skips the bad checkpoint"]
+    C --> G["Every restart path ends the same way: load the newest valid checkpoint"]
+    D --> G
+    E --> H["Drain the node, then restart without it"]
+    H --> G
+    F --> G
 ```
 
-The pattern is: the script declares the parallelism and the checkpoint strategy; Elastic handles the elastic recovery; NCCL handles the collectives; the GPU runtime handles the kernels.
+| Node in the diagram | Meaning |
+|---|---|
+| Restart paths | Scheduler restarts, torchrun restarts and watchdog kills all end in a new process group. |
+| Newest valid checkpoint | The one step that every recovery depends on, and the reason section 5 exists. |
+| Drain | Marking a node so that no new work lands on it, covered in sections 9 and 10. |
 
-### 1.2 The launch command
+### What is tested and what is not
 
-The launch command starts the multi-node training. The launch command specifies the nodes, the rendezvous backend, the parallelism, the checkpoint directory.
+Everything here is tested, with one honest limit. The host for this chapter has no GPU. The checkpoint, resume, restart and signal logic ran on a two-process CPU job with the gloo backend. NCCL, GPU memory behaviour and real network faults did not run, and the chapter says so wherever it matters.
 
-```bash
-# Launch a multi-node training job with FSDP and Elastic
-torchrun \
-  --nnodes=2:4 \
-  --nproc-per-node=8 \
-  --rdzv-backend=c10d \
-  --rdzv-endpoint=trainer-0:29500 \
-  --max-restarts=3 \
-  --monitor-interval=30 \
-  train.py --fsdp --checkpoint-dir=/checkpoint
-```
+**Decision rule:** classify every training incident into one of the five shapes before you touch anything, because each shape has a different first check and a wrong first move wastes the restart.
 
-The pattern is: `torchrun` launches the script on every node; the rendezvous backend coordinates the nodes; Elastic handles the restarts.
+**In one minute:** a synchronous job fails by stopping, not only by crashing. A dead rank leaves the others waiting, so you need a restart path for exits, a watchdog for hangs, a metric for slow nodes and a checksum for checkpoints. At large scale interruptions arrive every few hours, so recovery has to be automatic.
 
 ---
 
-## 2. FSDP (Fully Sharded Data Parallel)
+## 2. Checkpoint cadence maths
 
-### 2.1 The FSDP configuration
+### The checkpoint nobody could afford
 
-FSDP shards the model parameters, gradients, and optimiser state across the GPUs. FSDP reduces the memory footprint per GPU; FSDP enables training larger models.
+An engineer sets the checkpoint interval to five minutes because losing five minutes sounds acceptable. The job spends a growing share of every hour writing to storage. A second engineer sets it to four hours to protect throughput, and then a node fails at hour three and a half. Both choices felt safe. Neither was computed.
 
-```python
-# code/part19/fsdp_config.py (shape only)
-import torch
-from torch.distributed.fsdp import FullyShardedDataParallel as FSDP
-from torch.distributed.fsdp import MixedPrecision
+There is a real optimum, and two people found it long ago. John Young gave a first-order answer in 1974. John Daly refined it in a paper on restart dumps in Future Generation Computer Systems. Both treat the job as running until something interrupts it, with interruptions arriving at random at a steady average rate. Checkpointing too often wastes time writing. Checkpointing too rarely wastes time redoing work.
 
-model = build_model()
-model = FSDP(
-    model,
-    sharding_strategy=ShardingStrategy.FULL_SHARD,
-    mixed_precision=MixedPrecision(
-        param_dtype=torch.bfloat16,
-        reduce_dtype=torch.float32,
-        buffer_dtype=torch.float32,
-    ),
-    auto_wrap_policy=auto_wrap,
-)
-```
+### The formula, with its limits
 
-The pattern is: the model is wrapped in FSDP; the parameters are sharded; the optimiser state is sharded; the gradient all-reduce is automatic.
-
-### 2.2 The FSDP memory savings
-
-FSDP saves memory by sharding the parameters. The savings are proportional to the number of GPUs.
+Three quantities matter. The first is the mean time between interruptions of the whole job, written M. The second is the time the job is blocked while one checkpoint is written, written C. The third is the compute time between checkpoints, written tau. Young's interval and Daly's rule are below.
 
 ```text
-FSDP memory savings (approximate):
-- 8 GPUs: model memory / 8
-- 16 GPUs: model memory / 16
-- 64 GPUs: model memory / 64
-- 256 GPUs: model memory / 256
+Young (1974):       tau = sqrt(2 * C * M)
+Daly rule:          tau = sqrt(2 * C * M) - C     if C < M / 2
+                    tau = M                       otherwise
 ```
 
-The pattern is: the more GPUs, the more memory savings; the more GPUs, the larger the model that fits.
+Daly's paper also gives a longer series for the exact optimum. The rule above is the practical form that Adrian Colyer's summary of the paper reports, and the paper itself was not readable here, so treat the rule as secondhand. A 2013 analysis by Aupy and coauthors uses a slightly different convention. It puts the checkpoint inside the period and writes the interval as the square root plus C. Both forms agree when C is much smaller than M, and the calculator below shows they land within two percent of a numeric optimum.
+
+The numeric check uses the waste model from that same Aupy paper. Waste is the share of wall-clock time that does not advance the job. Let T be the full period, which is tau plus C. Waste from checkpointing alone is C divided by T. Waste from faults is the downtime, the restart time and half a period, all divided by M. The two combine as one minus the product of what each leaves over.
+
+The formula assumes failures are memoryless and independent. Real clusters break that assumption. A hot aisle or a bad firmware roll fails many nodes close together. Chapter 14.11 makes the same point and rounds the optimum down in production. Treat the formula as a starting value and measure your own interruption rate.
+
+### Where M comes from
+
+M is not a vendor number. It is the mean gap between interruptions that stop your job, measured from your own logs. When you have no history, you can scale a published rate. The Llama 3 figures give 54 days times 24 hours times 16,384 GPUs, divided by 419 interruptions. That is about 50,700 GPU-hours per interruption.
+
+Scaling that to your job assumes failures are independent and add up linearly with GPU count. That is my reasoning, not a measurement, and it ignores that software bugs and maintenance events scale with job size differently from hardware faults. Use it for a first guess and replace it with measurements as soon as you have a month of data.
+
+### The reference job and two larger ones
+
+The reference job has 32 GPUs and an 8.03-billion-parameter model. Chapter 14.11 counts 14 bytes per parameter for a mixed-precision checkpoint with BF16 weights, FP32 master weights and FP32 Adam state. That gives about 112 GB. A shared file system that absorbs 5 GB per second, which is my assumption for this example, writes it in about 22.5 seconds.
+
+| GPUs | Job MTBF | Checkpoint cost | Daly interval | Waste at that interval |
+|---|---|---|---|---|
+| 32 | 1,584 hours | 22.5 s | 15,995 s | 0.29 percent |
+| 1,024 | 49.5 hours | 22.5 s | 2,809 s | 1.92 percent |
+| 16,384 | 3.09 hours | 22.5 s | 685 s | 11.47 percent |
+| 16,384 | 3.09 hours | 2.0 s, async | 209 s | 7.22 percent |
+
+All rows assume 600 seconds to restart the job. The script that produced them is `code/part19/c04_checkpoint_interval.py`, and its tests pin every number in the table. The table tells a clear story. At 32 GPUs the interval is hours and the waste is tiny, so a checkpoint every 15 to 30 minutes is already far more careful than the maths demands. At 16,384 GPUs the interval is about eleven minutes, and the job spends a tenth of its life on faults and checkpoints no matter what you do.
+
+The last row shows why async checkpointing exists. Cutting the blocking cost from 22.5 to 2 seconds takes waste at that scale from 11.5 to 7.2 percent. Section 4 shows how.
+
+### Choosing a number you can defend
+
+**Decision rule:** compute the interval from a measured interruption rate and a measured blocking checkpoint cost, then round toward shorter, and re-run the calculation whenever the node count or the checkpoint size changes.
+
+**In one minute:** Young's interval is the square root of twice the cost times the mean time between interruptions. Daly subtracts the cost once. For the reference 32-GPU job the answer is hours, for a 16,384-GPU job it is about eleven minutes. The formula assumes independent random failures, so measure your own and round down.
 
 ---
 
-## 3. Checkpoint strategy
+## 3. Sharded versus full checkpoints
 
-### 3.1 The checkpoint types
+### The checkpoint that ate rank zero
 
-The checkpoint types are: in-memory (DDP), local (per-node), and cross-region (object storage).
+A team moves from 8 GPUs to 64. Their save code gathers every parameter onto rank zero and calls `torch.save`. It worked for months. At 64 GPUs the save takes minutes, rank zero runs out of host memory, and the job dies in the one step that was supposed to protect it.
 
-| Checkpoint type | What it captures | When to use |
+A full checkpoint is a single file holding every tensor, assembled in one place. A sharded checkpoint is many files, each holding the part of the state that one rank owns. The first is easy to read and easy to share. The second scales, because every rank writes in parallel and nobody gathers anything.
+
+### What PyTorch gives you
+
+FSDP2 stores each parameter as a DTensor sharded along its first dimension. The PyTorch 2.15 documentation says it does not support full state dicts directly. You either reshard the DTensors yourself or use the Distributed Checkpoint library, usually called DCP. DCP writes many files per checkpoint, at least one per rank, and loads in place into storage that the model has already allocated.
+
+DCP also handles load-time resharding. The documentation describes this as saving in one cluster topology and loading in another. That matters for elastic jobs, because the world size can change between runs. The training script in this chapter proves it on a small job. A checkpoint written by two processes loaded cleanly into one process, and the run continued from the same step.
+
+A DCP checkpoint is a directory. In the smoke run, a 2-process save produced two shard files named `__0_0.distcp` and `__1_0.distcp` plus a file named `.metadata`. The documentation describes the global `.metadata` file as the record of how the pieces fit together and says its write marks the checkpoint as successful. Treat a directory without it as incomplete.
+
+| Property | Sharded (DCP) | Full (single file) |
 |---|---|---|
-| **In-memory** | Model state in GPU memory | Debugging; small models |
-| **Local** | Model state on the node's local disk | Frequent checkpoints; fast recovery |
-| **Cross-region** | Model state in object storage | Disaster recovery; compliance |
+| Who writes | Every rank, in parallel | One rank after a gather |
+| Memory spike | None beyond the local shard | Whole model on one rank |
+| Reload on a different world size | Supported by DCP resharding | Trivially, it is one file |
+| Use for serving or sharing | Convert first | Direct |
+| Failure surface | Many files, one missing shard breaks it | One file |
 
-The pattern is: every job checkpoints at least every 15 minutes; every checkpoint goes to object storage; the object storage is replicated across regions.
+### Getting a full checkpoint when you need one
 
-### 3.2 The checkpoint code
+You still need a full file for evaluation, export and hand-off. DCP offers `dcp_to_torch_save` for converting a finished checkpoint, and `StateDictOptions` with `full_state_dict=True` and `cpu_offload=True` for gathering in memory. The documentation says that with both set, only rank zero receives the state, which avoids a host-memory spike on every other rank.
 
-The checkpoint code saves the model state to the local disk and to the object storage. The checkpoint code is invoked periodically; the checkpoint code is idempotent.
+### Which FSDP2 sharding to choose
+
+FSDP1 named its modes. FSDP2 expresses the same choices through the mesh and one flag. The mapping below is my reading of the two documentation pages, not a table from the PyTorch authors.
+
+| FSDP1 name | FSDP2 setting in `c04_fsdp_config.py` | Effect |
+|---|---|---|
+| FULL_SHARD | 1D mesh, `reshard_after_forward=True` | Parameters resharded after forward, gathered again in backward |
+| SHARD_GRAD_OP | 1D mesh, `reshard_after_forward=False` | Parameters stay unsharded after forward, saving the backward gather |
+| HYBRID_SHARD | 2D mesh with replicate and shard dimensions | All-gathers stay inside one shard group, usually a node |
+
+The documentation adds that FSDP2 has no bucket size setting. Communication groups follow the modules you wrap, so you apply `fully_shard` to each block first and then to the root. The config file below does that, and it is short enough to read whole.
 
 ```python
-# code/part19/checkpoint.py (shape only)
-import torch
-import boto3
+# code/part19/c04_fsdp_config.py
+"""FSDP2 (fully_shard) configuration for the capstone training job.
 
-def save_checkpoint(model, step, local_dir, s3_bucket):
-    """Save the checkpoint to local disk and to S3."""
-    state = model.state_dict()
-    local_path = f"{local_dir}/checkpoint-{step}.pt"
-    torch.save(state, local_path)
-    s3 = boto3.client("s3")
-    s3.upload_file(local_path, s3_bucket, f"checkpoints/checkpoint-{step}.pt")
+Sharding choices expressed with the FSDP2 API (PyTorch 2.15 documentation):
+    "full"        1D mesh, reshard_after_forward=True   -> like FSDP1 FULL_SHARD
+    "shard_grad"  1D mesh, reshard_after_forward=False  -> like FSDP1 SHARD_GRAD_OP
+    "hybrid"      2D mesh (replicate, shard)            -> like FSDP1 HYBRID_SHARD
+The mapping from FSDP1 names is my reading of the two docs pages, not a statement
+from the PyTorch documentation.
+"""
+from dataclasses import dataclass
+
+import torch
+from torch.distributed.device_mesh import init_device_mesh
+from torch.distributed.fsdp import MixedPrecisionPolicy, fully_shard
+
+
+@dataclass
+class ShardConfig:
+    strategy: str = "full"          # full | shard_grad | hybrid
+    shard_size: int = 0             # hybrid only: ranks per shard group (usually GPUs per node)
+    param_dtype: str = "bfloat16"   # "float32" disables mixed precision
+    reduce_dtype: str = "float32"
+
+
+def build_mesh(device_type, world_size, cfg):
+    if cfg.strategy == "hybrid":
+        if cfg.shard_size < 2 or world_size % cfg.shard_size:
+            raise ValueError("hybrid needs shard_size >= 2 that divides world_size")
+        return init_device_mesh(
+            device_type, (world_size // cfg.shard_size, cfg.shard_size),
+            mesh_dim_names=("replicate", "shard"))
+    return init_device_mesh(device_type, (world_size,), mesh_dim_names=("shard",))
+
+
+def mixed_precision(cfg):
+    if cfg.param_dtype == "float32":
+        return MixedPrecisionPolicy()
+    return MixedPrecisionPolicy(
+        param_dtype=getattr(torch, cfg.param_dtype),
+        reduce_dtype=getattr(torch, cfg.reduce_dtype))
+
+
+def shard_model(model, mesh, cfg, blocks):
+    """Apply fully_shard bottom-up: every block first, then the root.
+
+    blocks is the list of submodules that each get their own all-gather group.
+    """
+    kwargs = {"mesh": mesh, "mp_policy": mixed_precision(cfg)}
+    if cfg.strategy == "shard_grad":
+        kwargs["reshard_after_forward"] = False
+    for block in blocks:
+        fully_shard(block, **kwargs)
+    fully_shard(model, **kwargs)
+    return model
 ```
 
-The pattern is: every checkpoint is saved locally; every checkpoint is uploaded to object storage; every checkpoint is verified.
+Hybrid sharding changes what a checkpoint contains. Replicas hold identical shards. The default save planner has a `dedup_replicated_tensors` option, and I did not test what it does for hybrid sharding. The smoke test does not exercise hybrid mode, and the NCCL behaviour of a 2D mesh was not run here.
 
-### 3.3 The checkpoint recovery
+**Decision rule:** write sharded checkpoints with DCP on the training path, convert to a full file offline when you need one, and prove that a checkpoint written at one world size loads at another before you rely on elasticity.
 
-The checkpoint recovery loads the most recent checkpoint. The checkpoint recovery is invoked on job restart; the checkpoint recovery is automatic.
+**In one minute:** gathering to rank zero fails as the job grows. DCP writes one file per rank plus a metadata file and reshards at load. FSDP2 does not give you full state dicts directly, so convert offline. FSDP1's named modes map to a mesh shape and `reshard_after_forward`.
+
+---
+
+## 4. Async checkpointing
+
+### Two seconds that cost twenty-two
+
+A job writes 112 GB every 15 minutes. Each write blocks the GPUs for 22 seconds. Over a day that is about 35 minutes of idle GPUs, a bill nobody sees because it is spread over ninety-six small pauses.
+
+Async checkpointing splits the write in two. First the job copies state from GPU memory to a staging area, which is CPU memory by default. Then a background thread writes the staged copy to storage while training continues. Only the copy blocks the GPUs.
+
+### The PyTorch API and what it costs you
+
+The function is `dcp.async_save`. The 2.15 documentation says it first de-stages the state dict onto staging storage, defaulting to CPU memory, and then calls the save in a separate thread. It returns a future. The documentation marks the feature experimental and subject to change, so pin your PyTorch version and re-run the tests on every upgrade.
+
+Staging has a memory cost. The staged copy lives in host RAM next to the training process, so a 112 GB checkpoint across 32 GPUs adds about 3.5 GB per GPU of host memory. Check the arithmetic against your host RAM before enabling it. The stager can use pinned and shared memory, which speeds the copy and raises the pressure on the host.
+
+An async save is not committed until the background write finishes. That is the trap. If you publish the checkpoint when the call returns, you publish something that is still being written. The training script waits on the future, then runs a barrier on a separate gloo group, and only then lets rank zero commit the manifest. If the job dies in between, the directory stays a staging directory and the resume logic ignores it.
+
+The script also keeps checkpoint control traffic off the NCCL group. It creates a second process group with the gloo backend for barriers and for DCP coordination. A checkpoint barrier then cannot interfere with a training collective that is still in flight.
+
+### Timing and overlap
+
+The smoke tests prove one thing here. An async run with two processes produced committed, verified checkpoints. They do not measure how long the GPUs blocked, because the CPU job has no real staging cost. That measurement needs GPUs and is listed under not run.
+
+**Decision rule:** use async saves once the blocking write passes a few seconds, never publish a checkpoint before its background write finishes, and size host memory for the staged copy.
+
+**In one minute:** async checkpointing copies state to the host and writes it in a thread, so only the copy blocks the GPUs. The API is experimental in PyTorch 2.15. Commit only after the future completes and a barrier passes. Staging costs host memory.
+
+---
+
+## 5. Resume validation
+
+### The checkpoint that looked fine
+
+A node loses power during a checkpoint write. The directory exists. Most of its files are there. One shard is 40 percent short. The scheduler restarts the job, the script picks the newest directory, and the load fails with an error about tensor sizes. A second restart does the same. The job is now in a restart loop that no amount of retrying can fix.
+
+Atomic publication, a manifest, and a fallback rule turn that incident into a log line. The rest of this section builds them in plain Python so they can be tested without GPUs.
+
+### Design in four rules
+
+Rule one: nothing is visible until it is complete. Writers fill a staging directory ending in `.tmp`. A final rename inside one directory is atomic on a POSIX file system, so a reader sees either no checkpoint or a whole one. The PyTorch documentation for its file writer also assumes file creation is atomic.
+
+Rule two: completeness is recorded by the last file written. The manager writes `MANIFEST.json` after every payload file, with each file's size and SHA-256. A directory without a manifest is incomplete by definition.
+
+Rule three: verify before you trust. Resume re-reads the manifest, checks every size, and optionally checks every hash. A size check is cheap and catches truncation. A hash check catches a flipped byte and costs a full read of the checkpoint.
+
+Rule four: fall back, and keep the evidence. Resume walks from the newest checkpoint to the oldest and uses the first that verifies. It can rename failures to `.corrupt` so they are never tried again and a later save at the same step cannot collide with them.
+
+The manager also prunes. It keeps the newest N checkpoints that pass the cheap check, so a corrupt newest checkpoint cannot push the last good one out of the window. Pruning counts only checkpoints that pass the cheap check and never deletes the evidence of corrupt ones.
 
 ```python
-# code/part19/checkpoint_recovery.py (shape only)
-import torch
-import boto3
+# code/part19/c04_checkpoint_manager.py
+"""Checkpoint manager: atomic publish, checksum manifest, keep-N, resume-latest-valid.
 
-def load_checkpoint(local_dir, s3_bucket, step):
-    """Load the checkpoint from local disk or from S3."""
-    local_path = f"{local_dir}/checkpoint-{step}.pt"
+Plain Python, standard library only. A checkpoint is a directory of files.
+Writers put files into a staging directory, then commit() writes a manifest
+(size and sha256 of every file), flushes it to disk and renames the staging
+directory to its final name. A rename inside one directory is atomic on a
+POSIX file system, so a reader never sees a half-written checkpoint under the
+final name.
+
+Layout under root:
+    step_00000100/            committed checkpoint
+        MANIFEST.json         written last; its presence marks "complete"
+        <payload files>
+    step_00000200.tmp/        staging directory (ignored by readers)
+"""
+import hashlib
+import json
+import os
+import shutil
+from dataclasses import dataclass, field
+
+MANIFEST = "MANIFEST.json"
+PREFIX = "step_"
+TMP_SUFFIX = ".tmp"
+CORRUPT_SUFFIX = ".corrupt"
+
+
+def _sha256(path, chunk=1 << 20):
+    h = hashlib.sha256()
+    with open(path, "rb") as f:
+        while True:
+            block = f.read(chunk)
+            if not block:
+                break
+            h.update(block)
+    return h.hexdigest()
+
+
+def _fsync_path(path):
+    fd = os.open(path, os.O_RDONLY)
     try:
-        return torch.load(local_path)
-    except FileNotFoundError:
-        s3 = boto3.client("s3")
-        s3.download_file(s3_bucket, f"checkpoints/checkpoint-{step}.pt", local_path)
-        return torch.load(local_path)
+        os.fsync(fd)
+    finally:
+        os.close(fd)
+
+
+def _step_name(step):
+    return f"{PREFIX}{step:08d}"
+
+
+def _parse_step(name):
+    if not name.startswith(PREFIX):
+        return None
+    body = name[len(PREFIX):]
+    return int(body) if body.isdigit() else None
+
+
+@dataclass
+class Verdict:
+    ok: bool
+    step: int
+    problems: list = field(default_factory=list)
+
+
+class CheckpointManager:
+    def __init__(self, root, keep=3):
+        if keep < 1:
+            raise ValueError("keep must be at least 1")
+        self.root = root
+        self.keep = keep
+        os.makedirs(root, exist_ok=True)
+
+    # ---- writing -------------------------------------------------------
+    def begin(self, step):
+        """Create and return an empty staging directory for this step."""
+        tmp = os.path.join(self.root, _step_name(step) + TMP_SUFFIX)
+        if os.path.exists(tmp):
+            shutil.rmtree(tmp)  # leftover from a crash of the same step
+        os.makedirs(tmp)
+        return tmp
+
+    def commit(self, step, meta=None):
+        """Write the manifest, flush everything, rename into place, prune."""
+        tmp = os.path.join(self.root, _step_name(step) + TMP_SUFFIX)
+        final = os.path.join(self.root, _step_name(step))
+        if not os.path.isdir(tmp):
+            raise FileNotFoundError(f"no staging directory for step {step}")
+        if os.path.exists(final):
+            raise FileExistsError(f"step {step} is already committed")
+        files = {}
+        for dirpath, _, names in os.walk(tmp):
+            for n in sorted(names):
+                full = os.path.join(dirpath, n)
+                rel = os.path.relpath(full, tmp)
+                if rel == MANIFEST:
+                    continue
+                _fsync_path(full)
+                files[rel] = {"size": os.path.getsize(full), "sha256": _sha256(full)}
+        manifest = {"step": step, "meta": meta or {}, "files": files}
+        mpath = os.path.join(tmp, MANIFEST)
+        with open(mpath, "w") as f:
+            json.dump(manifest, f, sort_keys=True)
+            f.flush()
+            os.fsync(f.fileno())
+        _fsync_path(tmp)
+        os.rename(tmp, final)
+        _fsync_path(self.root)
+        self.prune()
+        return final
+
+    def save_files(self, step, files, meta=None):
+        """Convenience for single-process use: files maps name -> bytes."""
+        tmp = self.begin(step)
+        for name, data in files.items():
+            with open(os.path.join(tmp, name), "wb") as f:
+                f.write(data)
+        return self.commit(step, meta)
+
+    # ---- reading -------------------------------------------------------
+    def committed_steps(self):
+        steps = []
+        for name in os.listdir(self.root):
+            s = _parse_step(name)
+            if s is not None and os.path.isdir(os.path.join(self.root, name)):
+                steps.append(s)
+        return sorted(steps)
+
+    def path_for(self, step):
+        return os.path.join(self.root, _step_name(step))
+
+    def verify(self, step, full=True):
+        """Check one committed checkpoint. full=False skips the sha256 pass."""
+        d = self.path_for(step)
+        problems = []
+        mpath = os.path.join(d, MANIFEST)
+        if not os.path.isfile(mpath):
+            return Verdict(False, step, ["manifest missing"])
+        try:
+            with open(mpath) as f:
+                manifest = json.load(f)
+        except (OSError, ValueError) as e:
+            return Verdict(False, step, [f"manifest unreadable: {e}"])
+        if manifest.get("step") != step:
+            problems.append("manifest step does not match directory name")
+        files = manifest.get("files")
+        if not isinstance(files, dict) or not files:
+            problems.append("manifest lists no files")
+            files = {}
+        for rel, info in files.items():
+            p = os.path.join(d, rel)
+            if not os.path.isfile(p):
+                problems.append(f"missing file {rel}")
+                continue
+            if os.path.getsize(p) != info["size"]:
+                problems.append(f"size mismatch {rel}")
+                continue
+            if full and _sha256(p) != info["sha256"]:
+                problems.append(f"checksum mismatch {rel}")
+        return Verdict(not problems, step, problems)
+
+    def latest_valid(self, full=True, quarantine=False):
+        """Return (step, path, skipped) for the newest checkpoint that verifies.
+
+        skipped lists (step, problems) for newer checkpoints that failed.
+        Returns (None, None, skipped) when nothing is usable.
+        """
+        skipped = []
+        for step in reversed(self.committed_steps()):
+            v = self.verify(step, full=full)
+            if v.ok:
+                return step, self.path_for(step), skipped
+            skipped.append((step, v.problems))
+            if quarantine:
+                src = self.path_for(step)
+                os.rename(src, src + CORRUPT_SUFFIX)
+        return None, None, skipped
+
+    def manifest_meta(self, step):
+        with open(os.path.join(self.path_for(step), MANIFEST)) as f:
+            return json.load(f).get("meta", {})
+
+    # ---- housekeeping --------------------------------------------------
+    def prune(self):
+        """Keep the newest self.keep committed checkpoints that verify cheaply.
+
+        A corrupt newest checkpoint must not push the last good one out, so
+        pruning counts only checkpoints that pass the size check.
+        """
+        good = [s for s in self.committed_steps() if self.verify(s, full=False).ok]
+        for step in good[:-self.keep]:
+            shutil.rmtree(self.path_for(step))
+        for name in os.listdir(self.root):
+            if name.endswith(TMP_SUFFIX):
+                s = _parse_step(name[: -len(TMP_SUFFIX)])
+                # stale staging directories older than the newest good step
+                if s is not None and good and s < good[-1]:
+                    shutil.rmtree(os.path.join(self.root, name))
 ```
 
-The pattern is: the recovery prefers the local checkpoint; the recovery falls back to the object storage checkpoint; the recovery is automatic.
+### What the tests prove
+
+There are 13 tests in `test_c04_checkpoint_manager.py`. The ones that matter most are listed here. A writer that dies before commit leaves no visible checkpoint. One flipped byte at the same file size passes the size check and fails the hash check. A truncated file fails the size check. A missing manifest marks the checkpoint incomplete. When the newest checkpoint is corrupt, resume returns the previous one and reports why it skipped the newer one. When every checkpoint is corrupt, resume returns nothing instead of guessing.
+
+A real bug turned up in the integration run, not in the unit tests. After a corrupt step-12 checkpoint was skipped, the job resumed at step 8 and tried to write a new step 12. The commit refused, because a directory with that name already existed. The restart loop then repeated until `torchrun` ran out of restarts. The fix was to quarantine corrupt checkpoints at resume time by renaming them. The smoke test `test_corrupt_newest_checkpoint_is_skipped_and_quarantined` now covers that path.
+
+### What the manager does not check
+
+The checksums prove the bytes on disk match the bytes the writer saw. They do not prove the weights are good. A silent data corruption event on a GPU can produce a checkpoint that verifies perfectly and holds garbage. Meta's table lists six such events in its 54 days. A hash cannot catch them. Loss spikes, NaN checks and a periodic evaluation against a held-out set can.
+
+The training script saves only the model, the optimizer and the step. Chapter 14.11 lists five components a deterministic resume needs, which also include the scheduler state, the data loader position and the random number state. The script's data generator is re-seeded on each run, so a resume is not bit-for-bit reproducible. Exercise 4 adds the missing pieces.
+
+**Decision rule:** publish checkpoints by atomic rename after writing a manifest, verify on resume, fall back to the newest checkpoint that verifies, and quarantine the ones that do not.
+
+**In one minute:** write into a staging directory, write the manifest last, rename into place, and prune only around checkpoints that still verify. Resume picks the newest valid one and skips corrupt ones with a log line. Checksums catch damage, not bad weights.
 
 ---
 
-## 4. PyTorch Elastic
+## 6. Elastic restarts and their limits
 
-### 4.1 The Elastic configuration
+### The node that did not come back
 
-PyTorch Elastic handles the elastic recovery from node failures. Elastic monitors the worker nodes; Elastic restarts the workers when a node fails; Elastic requeues the work.
+A node loses its network card at 14:00. The pod on it goes away. The three remaining nodes sit in a collective that cannot finish. A configuration that says "elastic" on the tin gives the on-call engineer a false sense of safety, because elasticity only helps when something can start new workers.
 
-```bash
-# Launch with Elastic
-torchrun \
-  --nnodes=2:4 \
-  --nproc-per-node=8 \
-  --rdzv-backend=c10d \
-  --rdzv-endpoint=trainer-0:29500 \
-  --max-restarts=3 \
-  --monitor-interval=30 \
-  train.py
-```
+`torchrun` is a launcher that runs an elastic agent on every node. The agent starts the local workers, watches them, and takes part in a rendezvous with the other agents. The PyTorch documentation lists the failure rules plainly. If any worker fails, all workers stop and restart, up to `--max-restarts`. If an agent fails, its local workers fail with it, and the job manager decides whether to fail the whole job or replace the node.
 
-The pattern is: `--max-restarts=3` allows Elastic to restart the workers up to 3 times; `--monitor-interval=30` checks the workers every 30 seconds.
+That last rule is the important one. The agent cannot conjure a replacement machine. Slurm or Kubernetes does that. `torchrun` only handles what happens inside the machines that are still alive.
 
-### 4.2 The Elastic recovery
+### What happens to rank numbers
 
-When a node fails, Elastic detects the failure; Elastic restarts the workers on the remaining nodes; Elastic requeues the work.
+When membership changes, every worker stops and a new group forms. Each gets a new rank and world size. The documentation says rank is not stable between restarts, and tells you never to hard-code assumptions about it. A script that writes per-rank state under a rank number and expects the same rank to read it back will fail after a restart.
 
-```text
-Elastic recovery:
-1. Worker on node-3 fails
-2. Elastic detects the failure within 30 seconds
-3. Elastic restarts the workers on node-1, node-2, node-4
-4. The training resumes from the most recent checkpoint
-5. The job continues with the surviving workers
-```
+The documentation says elasticity needs `--nnodes` as a range, for example 2:4. With min equal to max the job is fault tolerant but not elastic. It restarts at the same size. With a range it can continue at a smaller size when a node leaves, and grow back when one arrives.
 
-The pattern is: Elastic detects the failure; Elastic restarts the workers; the training resumes from the checkpoint.
+The documentation also says the module supports only a homogeneous local world size, so every node must run the same number of workers. Rendezvous backends are `c10d`, `etcd-v2` and legacy `etcd`. The documentation recommends `c10d`. The `c10d` rendezvous runs on a TCP store hosted on one of the nodes, so pick a node with good bandwidth, as the documentation advises.
+
+### The limits to write on the wall
+
+- Surviving workers are killed on every membership change. The documentation says to checkpoint your progress, and says the frequency depends on your tolerance for lost work.
+- Restarts are capped. After `--max-restarts` failures the launcher exits non-zero and hands the decision back to the scheduler.
+- The default is not what older articles say. The agent's own default for the monitor interval is 0.1 seconds, not the 30 seconds that appeared in an earlier draft of this chapter.
+- Elastic restarts re-run the rendezvous, create new communicators and reload the checkpoint. That is not free. A restart on a large job takes minutes, so the restart time R in section 2 is real.
+- Node loss is a scheduler problem. On Kubernetes the pod controller or JobSet replaces it. On Slurm you requeue the job.
+
+### What ran
+
+The smoke test starts two workers with `--max-restarts=6`, raises an error at step 6 on the first attempt, and checks that the second attempt resumes from step 4 and finishes at step 12. It passed. Three launches in the container went wrong at startup. Two failed with a gloo connection refused error, apparently because one worker tried to connect before the other was listening. The third hung until I stopped it. I did not root-cause any of them, and the smoke helper allows extra restarts to absorb the first kind. It shows why a restart budget above zero is useful even for a clean job, and it is a CPU-only artifact that may not appear with NCCL.
+
+**Decision rule:** set `--nnodes` as a range only if you also have a scheduler that provides replacement nodes and a checkpoint format that reloads at a different world size, and otherwise use a fixed size with a restart budget and let the scheduler replace failed nodes.
+
+**In one minute:** `torchrun` restarts workers on every failure and every membership change, killing the survivors first. Ranks change between restarts. It cannot replace a dead node, only the scheduler can. Always checkpoint, cap restarts, and read the restart count.
 
 ---
 
-## 5. NCCL debugging
+## 7. Hang detection with the NCCL watchdog
 
-### 5.1 The NCCL configuration
+### The job that was alive and idle
 
-NCCL debugging is the art of finding the bottleneck in the collective operations. NCCL_DEBUG=INFO logs every collective; NCCL_DEBUG_SUBSYS=ALL logs every subsystem.
+All 32 ranks show zero GPU utilisation. No process has exited. The job has been "running" for 40 minutes. The scheduler considers it healthy because the pods are up. Nothing will ever happen unless something kills it.
 
-```bash
-# Run with NCCL debugging
-NCCL_DEBUG=INFO NCCL_DEBUG_SUBSYS=ALL \
-  torchrun --nnodes=2:4 --nproc-per-node=8 train.py
-# expected: the NCCL logs show every collective; the logs identify the bottleneck
-```
+PyTorch's NCCL backend has two layers that do. The watchdog is a background thread in each process that watches the collectives it launched. The monitor thread watches the watchdog. Both come from PyTorch's `ProcessGroupNCCL`, not from NCCL itself, so searching the NCCL documentation for a watchdog variable finds nothing. The earlier draft of this chapter named an `NCCL_TIMEOUT` variable. The NCCL environment variable documentation for version 2.32.3 has no such variable, and that item was removed.
 
-The pattern is: enable NCCL_DEBUG only for debugging; disable NCCL_DEBUG for production.
+### The collective timeout
 
-### 5.2 The common NCCL issues
+The first control is the timeout passed to `init_process_group`. The 2.15 documentation gives the default as 10 minutes for NCCL and 30 minutes for other backends. It says that when it expires, collectives are aborted asynchronously and the process crashes. The reason given is that CUDA execution is asynchronous and continuing after a failed collective could run later kernels on corrupted data.
 
-| Issue | Symptom | Fix |
+Ten minutes is long for a job that expects a collective every second. It is short for a job that checkpoints inside a collective-heavy phase or starts slowly. The training script takes the timeout from `--timeout-s`, so you can set it deliberately. The documentation also describes `dist.set_timeout`, which changes the default for future operations on a group. Use a long timeout around start-up and checkpoint code and a short one in steady state.
+
+### The watchdog variables
+
+The PyTorch 2.15 documentation has a table of `ProcessGroupNCCL` environment variables. The ones that matter for hangs are below. The values in the last column are my choices for the reference job, not documented defaults.
+
+| Variable | What the documentation says | Value in this chapter |
 |---|---|---|
-| **NCCL timeout** | All-reduce hangs | Increase `NCCL_TIMEOUT` |
-| **Wrong interface** | All-reduce fails | Set `NCCL_SOCKET_IFNAME` |
-| **Topology mismatch** | Performance is poor | Verify `NCCL_IB_HCA` and `NCCL_TOPO_FILE` |
-| **GPU direct RDMA** | Performance is poor | Verify `NCCL_NET` is set to `IB` |
+| `TORCH_NCCL_ENABLE_MONITORING` | Enables a monitor that aborts the process when the watchdog gets stuck and no heartbeat arrives within the timeout | `1` |
+| `TORCH_NCCL_HEARTBEAT_TIMEOUT_SEC` | The heartbeat timeout after which the monitor aborts the process | `300` |
+| `TORCH_NCCL_TRACE_BUFFER_SIZE` | Maximum events kept in the flight recorder ring buffer; `0` disables it | `2000` |
+| `TORCH_NCCL_DUMP_ON_TIMEOUT` | Dump debug info on a watchdog timeout; needs a trace buffer size above zero | `1` |
+| `TORCH_NCCL_DEBUG_INFO_TEMP_FILE` | File the debug info is written to | a path on shared storage |
+| `TORCH_NCCL_ASYNC_ERROR_HANDLING` | `0` none, `1` abort and tear down, `2` abort only, `3` tear down only; default `3` | leave at the default |
+| `TORCH_NCCL_DESYNC_DEBUG` | Helps find the culprit rank of a desync | off unless debugging |
 
-The pattern is: identify the NCCL issue from the log; apply the fix; verify the fix.
+The docs describe the monitor as useful for stopping jobs that would otherwise sit tying up cluster resources. That is exactly the 40-minute scene above. The 2.15 distributed documentation also mentions `TORCH_FR_BUFFER_SIZE` as an alternative name for the buffer size in the TorchComms path. Chapter 12.18 treats the flight recorder in depth, so this chapter only sets it up.
 
----
+A flight recorder dump is the artefact you want for a hang. It lists, for each rank, the collectives that started and finished. The rank whose last completed collective differs from the others is where to look first. Read it before you restart, because restarting removes the evidence.
 
-## 6. Day-2 operations
+### Two other timeouts
 
-### 6.1 The training observability
+`NCCL_DEBUG` has levels from `VERSION` through `WARN`, `INFO` and `TRACE`. Level `ATTN` exists in newer NCCL releases. Keep `WARN` in production because `INFO` is noisy and costs time. Chapter 12.16 lists the NCCL variables in full.
 
-The training observability includes: training loss, training throughput, GPU utilisation, NCCL collective timing.
+### A detector outside the process
 
-```bash
-# Query Prometheus for training metrics
-curl 'http://prometheus/api/v1/query?query=training_loss'
-# expected: the training loss is displayed
-```
+If a process is truly wedged, in-process timers may not fire. A cheap external check helps. Each rank writes a step record every step, as the straggler detector in section 8 expects. A health check that sees no new record for a few minutes can fail a liveness probe or flag the job for a restart. The detector has a `--stale-seconds` option for this. It exits with code 2 when the newest record is older than the limit.
 
-The pattern is: every training job emits its metrics; the metrics are scraped by Prometheus; the metrics are displayed in Grafana.
+This is a safety net, not a replacement for the watchdog. A stale log also appears during a long checkpoint or an evaluation phase, so give it a margin larger than your longest legitimate pause.
 
-### 6.2 The training incident response
+**Decision rule:** set the collective timeout on purpose, enable the heartbeat monitor and the flight recorder with a dump file on shared storage, and add an external staleness check that does not depend on the training process being healthy.
 
-The training incident response is the pattern for responding to a stuck or failed training.
-
-```text
-Training incident response:
-1. Detect: alert (training loss is NaN, GPU OOM, NCCL timeout)
-2. Triage: kubectl logs, NCCL_DEBUG, GPU utilisation
-3. Mitigate: restart the training from the latest checkpoint; reduce the batch size
-4. Resolve: root cause analysis, runbook update, post-mortem
-```
-
-The pattern is: detect, triage, mitigate, resolve. The runbook is the on-call's guide.
+**In one minute:** the watchdog and its monitor are PyTorch features. The default collective timeout is 10 minutes for NCCL. Turn on the monitor and the trace buffer so a hang produces a dump and a killed process instead of an idle cluster. There is no `NCCL_TIMEOUT` variable.
 
 ---
 
-## 7. Hands-on lab
+## 8. Straggler detection from step-time metrics
 
-This lab walks through the multi-node training capstone: FSDP, checkpoint, Elastic, NCCL. The lab is **untested** in this repository.
+### The slow node that nobody blamed
 
-### 7.1 Prerequisites
+Throughput drops 12 percent on Thursday. No alert fires. Every GPU shows busy and every pod is ready. Two days later someone notices one node has been throttling. It cost nearly a day of 32-GPU compute.
 
-- A GKE cluster with at least 16 H100 GPUs across 2 nodes.
-- PyTorch 2.1+, NCCL 2.18+, torchrun installed.
-- An object storage bucket for checkpoints.
+In a synchronous job the slowest rank sets the pace. AI Systems Performance Engineering lists this as a pitfall, and suggests homogeneous hardware, DCGM and InfiniBand counters, and PyTorch's `monitored_barrier` for spotting it. The harder question is how to see it from step times.
 
-### 7.2 Step 1: launch the multi-node training
+### Why the step time lies
 
-```bash
-torchrun \
-  --nnodes=2:4 \
-  --nproc-per-node=8 \
-  --rdzv-backend=c10d \
-  --rdzv-endpoint=trainer-0:29500 \
-  --max-restarts=3 \
-  --monitor-interval=30 \
-  train.py --fsdp --checkpoint-dir=/checkpoint
-# expected: the training launches on all nodes; the training loss decreases
-```
+Every rank leaves each collective at about the same moment. So the full step time on a slow rank looks almost the same as on a fast one. The slow rank's penalty is hidden in everyone else's waiting. If you only record total step time, you will see the whole job slow down and no culprit.
 
-### 7.3 Step 2: verify the FSDP sharding
+The record needs time that lies outside collectives. Two measures work. The first is the time a rank waits for its next batch. The second is the time for work that involves no collective, such as the optimizer step on local shards. The training script records both. This is my reasoning and not a vendor recommendation, and a throttled GPU may show only in the second measure, which is small. Use DCGM clock and temperature metrics alongside.
 
-```bash
-# Check the GPU memory usage per node
-kubectl exec -it trainer-0 -- nvidia-smi
-# expected: the GPU memory is reduced; FSDP is sharding the model
-```
+### The detector
 
-### 7.4 Step 3: verify the checkpoint
+`c04_straggler_detector.py` reads records with the columns `ts`, `step`, `rank`, `host`, `data_s` and `compute_s`. For each of the last 20 steps it compares every rank with the median of that step. A rank is flagged when it is more than 15 percent above the median in at least 80 percent of those steps. These thresholds are starting points, not tuned values. Tune them against your own healthy baseline.
 
-```bash
-# Check the local checkpoint directory
-kubectl exec -it trainer-0 -- ls /checkpoint
-# expected: the checkpoint files are present; the checkpoints are timestamped
+It then groups the findings. If at least half of a host's ranks are flagged, it reports the host and not the individual ranks. If the median across all ranks has risen more than 30 percent over the early baseline, it reports a global slowdown and withholds all per-rank blame. A global slowdown points to storage, the network or a code change, not to one machine.
 
-# Check the object storage checkpoint
-gsutil ls gs://my-bucket/checkpoints/
-# expected: the checkpoints are uploaded to object storage
-```
+| Fixture | What it contains | Expected verdict |
+|---|---|---|
+| `healthy.csv` | 32 ranks, 4 hosts, 100 steps, small noise | Nothing flagged |
+| `slow_gpu.csv` | Rank 19 compute 35 percent slower | Rank 19 on `trainer-2`, kind compute |
+| `slow_host.csv` | Every rank on `trainer-1` waits 0.4 s for data | Host `trainer-1`, ranks 8 to 15, kind data |
+| `spike.csv` | Rank 3 doubles for 3 steps | Nothing flagged |
+| `global_slowdown.csv` | All ranks 1.5 times slower from step 50 | Global slowdown, no rank named |
 
-### 7.5 Step 4: simulate a node failure
+The fixtures are synthetic and generated with a fixed seed. A test confirms the committed files equal what the generator writes. The values were chosen to exercise each branch, not measured on hardware. The detector has not seen real GPU traffic.
 
-```bash
-# Cordon and drain a node
-kubectl cordon trainer-1
-kubectl drain trainer-1 --ignore-daemonsets
-# expected: Elastic restarts the workers on the remaining nodes
-```
+### What the detector will miss
 
-### 7.6 Step 5: verify the recovery
+It also needs enough history. With fewer than 20 steps it returns no verdict. Short checkpoints and evaluation pauses inflate the data wait for every rank at once, which the global rule absorbs. A pause on one rank, such as a Python garbage collection, can create a false flag if it persists, so require persistence, as the detector does.
+
+**Decision rule:** record data wait and a collective-free compute time per rank per step, flag only persistent outliers against the per-step median, report a host when half its ranks are flagged, and never blame a rank when the whole job slowed down together.
+
+**In one minute:** total step time hides stragglers because collectives equalise it. Record time outside collectives per rank, compare each rank to the median of its step, and require persistence. Group by host, and treat a uniform slowdown as a global problem.
+
+---
+
+## 9. Running the job on Slurm
+
+### The job that hit its time limit
+
+A 24-hour allocation ends in the middle of a step. SIGKILL arrives. The last checkpoint is 14 minutes old, and the job restarts from there next time, losing the 14 minutes. Nobody asked the job to save before it died.
+
+Slurm can tell the job in advance. Supercomputers for Linux SysAdmins (Chapter 15) lists the preemption modes, including requeue, and the job states that matter for failure such as `NODE_FAIL`. Distributed AI Systems (Chapter 8) shows the `--signal` pattern with a trap. The script below puts those together for the reference job.
+
+### The batch script
 
 ```bash
-# Check the training status
-kubectl logs trainer-0 -c trainer --tail=100
-# expected: the training resumed from the latest checkpoint
+#!/bin/bash
+# code/part19/c04_slurm_train.sh
+# 4 nodes x 8 GPUs. The paths under /shared are placeholders for your shared file system.
+#SBATCH --job-name=c04-train
+#SBATCH --nodes=4
+#SBATCH --ntasks-per-node=1
+#SBATCH --gpus-per-node=8
+#SBATCH --time=24:00:00
+#SBATCH --signal=B:USR1@180
+#SBATCH --requeue
+#SBATCH --open-mode=append
+#SBATCH --output=/shared/logs/%x-%j.out
+
+set -u
+CODE=/shared/ai-infra-handbook/code/part19
+CKPT=/shared/c04/ckpt
+METRICS=/shared/c04/metrics
+MAX_REQUEUES=5
+
+# Watchdog settings (names from the PyTorch 2.15 ProcessGroupNCCL table; values are my choices).
+export TORCH_NCCL_ENABLE_MONITORING=1
+export TORCH_NCCL_HEARTBEAT_TIMEOUT_SEC=300
+export TORCH_NCCL_TRACE_BUFFER_SIZE=2000
+export TORCH_NCCL_DUMP_ON_TIMEOUT=1
+export TORCH_NCCL_DEBUG_INFO_TEMP_FILE=/shared/c04/fr/${SLURM_JOB_ID}_rank_
+export NCCL_DEBUG=WARN
+
+HEAD=$(scontrol show hostnames "$SLURM_JOB_NODELIST" | head -n 1)
+GOT_SIGNAL=0
+
+# The batch shell cannot run a trap while a foreground command runs, so srun goes to the
+# background and the shell waits. A signal sent to srun is forwarded to the tasks (srun man page).
+on_usr1() {
+    GOT_SIGNAL=1
+    echo "[batch] SIGUSR1: asking torchrun to checkpoint and stop"
+    kill -TERM "$SRUN_PID"
+}
+trap on_usr1 USR1
+
+srun --kill-on-bad-exit=1 torchrun \
+    --nnodes="$SLURM_NNODES" --nproc-per-node=8 --max-restarts=2 \
+    --rdzv-id="$SLURM_JOB_ID" --rdzv-backend=c10d --rdzv-endpoint="$HEAD:29400" \
+    "$CODE/c04_train.py" --ckpt-dir "$CKPT" --metrics-dir "$METRICS" \
+    --steps 100000 --ckpt-every 500 --async-ckpt &
+SRUN_PID=$!
+
+wait "$SRUN_PID"
+RC=$?
+if [ "$GOT_SIGNAL" = 1 ]; then
+    wait "$SRUN_PID"   # the first wait returned because of the trap; collect the real exit code
+    RC=$?
+    if [ "${SLURM_RESTART_COUNT:-0}" -lt "$MAX_REQUEUES" ]; then
+        echo "[batch] requeueing job $SLURM_JOB_ID (restart count ${SLURM_RESTART_COUNT:-0})"
+        scontrol requeue "$SLURM_JOB_ID"
+        exit 0
+    fi
+    echo "[batch] restart limit reached, not requeueing"
+fi
+exit "$RC"
 ```
 
-### 7.7 What to record
+Read the script in four parts. The `#SBATCH` lines request 4 nodes with 8 GPUs each, allow requeue, append to the same log across restarts, and ask Slurm to send SIGUSR1 to the batch shell 180 seconds before the time limit. The environment lines set the watchdog variables from section 7. The `srun` line runs `torchrun` on every node, using the first node in the list as the rendezvous host. The final block handles the signal.
 
-After the lab, you should be able to answer five questions in five seconds each:
+### Why the script is shaped this way
 
-1. What is the current training loss?
-2. What is the current GPU memory utilisation?
-3. What is the most recent checkpoint time?
-4. What is the most recent NCCL collective time?
-5. What is the current node count?
+The `--signal` option takes an optional `B:` prefix. Slurm's `sbatch` page says that by default all job steps are signalled but not the batch shell, and that `B:` signals only the batch shell. It also says the signal can arrive up to 60 seconds early, and that with no time given the default is 60 seconds. The script asks for 180 seconds, so the effective warning lies between 180 and 240 seconds.
 
-If any takes more than 30 seconds, the multi-node training is not yet a production service. The lab is **untested** against a live cluster.
+The `scancel` page explains the hazard. Most shells cannot handle a signal while a foreground command is running. That is why the script starts `srun` in the background and waits on it. The `srun` page says signals sent to `srun` are forwarded to the tasks it controls. The trap therefore sends SIGTERM to `srun`, which reaches `torchrun` on each node.
+
+The training script treats SIGTERM and SIGUSR1 the same way. On either signal it sets a flag. At the next step boundary the ranks agree on the flag with an all-reduce, write a final checkpoint and exit. In the container, a SIGTERM sent to `torchrun` was forwarded to both workers. They saved at step 99 and exited, and `torchrun` exited with status 1 and a `SignalException` trace. The script ignores that status after a signal, because it knows it asked for the stop.
+
+After the stop, the script calls `scontrol requeue`. Slurm's `sbatch` page says a requeued batch job restarts its script from the beginning with the same job ID. The training script then finds the newest valid checkpoint on its own. `SLURM_RESTART_COUNT` carries the number of restarts, and the script stops requeueing after five. Without that cap, a job that fails right after resume would loop forever.
+
+### What the tests cover
+
+`test_c04_slurm_script.py` runs the real batch script with a fake `srun` and a fake `scontrol`. It does not touch a scheduler. It proves three things. A SIGUSR1 to the batch shell becomes SIGTERM for the step and one `scontrol requeue`. At the restart cap the script stops requeueing. And a normal failure exit code passes through without a requeue.
+
+### Slurm behaviours to know
+
+- A node failure ends the job by default. The `sbatch` page says `--no-kill` stops that, and then fault tolerance becomes your responsibility. The reference job leaves the default.
+- `--no-requeue` prevents recovery from node failure or preemption, because the page says it stops administrators from restarting the job. Do not use it for long training.
+- `JobRequeue` in `slurm.conf` sets the cluster default for requeue. The book notes that preempted jobs are requeued only with `--requeue` or `JobRequeue=1`.
+- Use `--open-mode=append` so the log from before the requeue is not overwritten.
+- A failed prologue drains the node and requeues or cancels the job, per the book. A good health check turns a sick GPU into a drain before the next job lands on it.
+
+### Draining a bad node
+
+When the straggler detector or an Xid error points at one host, take it out of service before restarting. The command is `scontrol update nodename=NODE state=drain reason="straggler"`. The `scontrol` page says drain stops new jobs from starting there while existing jobs run on. After repair, `scontrol update nodename=NODE state=resume` returns it. To keep one job off a node without touching the node's state, use `sbatch --exclude=NODE` on the resubmit.
+
+Chapter 6.14 covers drain reasons and health checks in detail. Chapter 6.12 covers the multi-node launch itself. Chapter 6.21 covers parallel I/O patterns that matter for where `/shared/c04/ckpt` should live.
+
+**Decision rule:** on Slurm, ask for a signal ahead of the time limit, run the step in the background so the batch shell can trap it, checkpoint on signal, requeue with a cap, and drain nodes that the detectors name.
+
+**In one minute:** `--signal=B:USR1@180` warns the batch shell. The shell forwards SIGTERM to `srun`, the training script checkpoints and exits, and `scontrol requeue` restarts the same job ID from its beginning. Cap the restart count. Drain suspect nodes before the restart.
+
+---
+
+## 10. Running the job on Kubernetes
+
+### The pod that was evicted at lunch
+
+A node drain evicts one of four trainer pods. Kubernetes starts a replacement, but the other three keep waiting for a peer that no longer exists. A plain Job would see one failed pod and keep waiting, while the training state on the other pods is useless. The job needs a controller that restarts all four together.
+
+Two controllers do that. JobSet is a Kubernetes SIG project that groups Jobs and restarts them as a unit. The Kubeflow Training Operator provides `PyTorchJob`, which wraps `torchrun` semantics including an elastic policy. Chapter 11.9 introduces both. Here the focus is on the fault tolerance fields, which I verified against the upstream CRDs.
+
+### Verified against the upstream CRDs
+
+I cloned the upstream repositories on 2026-11-10 and read the CRD schemas. The JobSet CRD at tag v0.13.0 serves `jobset.x-k8s.io/v1alpha2`. The Kubeflow Training Operator CRD at tag v1.9.4 serves `kubeflow.org/v1` for `PyTorchJob`. The validator rejects unknown fields, and a negative test with a misspelled field failed as it should.
+
+The upstream repository at `github.com/kubeflow/training-operator` has changed. Its main branch now has a README titled Kubeflow Trainer and a `VERSION` file reading v2.4.0, and its CRD is `TrainJob` at `trainer.kubeflow.org/v1alpha1`. The `PyTorchJob` API in this chapter belongs to the v1.9 line. If you start a new platform, evaluate Trainer v2. I did not write or validate a `TrainJob` manifest.
+
+### JobSet
+
+```yaml
+# code/part19/c04_jobset.yaml
+# 4 pods x 8 GPUs. Image and claim names are placeholders. Validated against the JobSet v0.13.0 CRD.
+apiVersion: jobset.x-k8s.io/v1alpha2
+kind: JobSet
+metadata:
+  name: c04-train
+spec:
+  failurePolicy:
+    maxRestarts: 5
+    restartStrategy: Recreate
+  network:
+    enableDNSHostnames: true
+  replicatedJobs:
+    - name: workers
+      replicas: 1
+      template:
+        spec:
+          parallelism: 4
+          completions: 4
+          completionMode: Indexed
+          backoffLimit: 0
+          template:
+            spec:
+              restartPolicy: Never
+              terminationGracePeriodSeconds: 180
+              containers:
+                - name: trainer
+                  image: registry.example.com/c04-train:1.0
+                  command: ["torchrun"]
+                  args:
+                    - --nnodes=4
+                    - --nproc-per-node=8
+                    - --max-restarts=2
+                    - --rdzv-id=c04-train
+                    - --rdzv-backend=c10d
+                    - --rdzv-endpoint=c04-train-workers-0-0.c04-train:29400
+                    - /app/c04_train.py
+                    - --ckpt-dir=/shared/c04/ckpt
+                    - --metrics-dir=/shared/c04/metrics
+                    - --steps=100000
+                    - --ckpt-every=500
+                    - --async-ckpt
+                  env:
+                    - name: TORCH_NCCL_ENABLE_MONITORING
+                      value: "1"
+                    - name: TORCH_NCCL_HEARTBEAT_TIMEOUT_SEC
+                      value: "300"
+                    - name: TORCH_NCCL_TRACE_BUFFER_SIZE
+                      value: "2000"
+                    - name: TORCH_NCCL_DUMP_ON_TIMEOUT
+                      value: "1"
+                    - name: TORCH_NCCL_DEBUG_INFO_TEMP_FILE
+                      value: /shared/c04/fr/rank_
+                  resources:
+                    limits:
+                      nvidia.com/gpu: 8
+                  volumeMounts:
+                    - name: shared
+                      mountPath: /shared
+                    - name: dshm
+                      mountPath: /dev/shm
+              volumes:
+                - name: shared
+                  persistentVolumeClaim:
+                    claimName: c04-shared
+                - name: dshm
+                  emptyDir:
+                    medium: Memory
+```
+
+The fields that matter for fault tolerance are in `spec.failurePolicy`. The CRD describes `maxRestarts` as the limit on JobSet restarts. It describes `restartStrategy` as `Recreate` by default, with `BlockingRecreate` and `InPlaceRestart` as the other values. The CRD does not describe the strategies further, so I did not verify exactly how `Recreate` replaces the Jobs. The intent is that every pod restarts together and rejoins the rendezvous.
+
+The inner Job uses `backoffLimit: 0`, so one pod failure fails that Job at once and JobSet takes over the restart. The pod's `restartPolicy` is `Never` for the same reason. `network.enableDNSHostnames` gives each pod a stable name. The CRD describes the format as the JobSet name, the replicated job name, the job index and the pod index, followed by the subdomain. The torchrun endpoint in the manifest uses that name for pod 0 of job 0.
+
+The CRD also offers `failurePolicy.rules`, with actions such as `FailJobSet`, `RestartJobSet` and `RestartJob`, selected by failure reason. That lets you fail fast on an application error and restart on a node loss. The manifest here does not use rules. I did not test rule behaviour on a cluster.
+
+The pod sets `terminationGracePeriodSeconds: 180`. The Kubernetes documentation says deletion sends SIGTERM to the main process of each container, and SIGKILL after the grace period. `torchrun` as the container's main process forwards SIGTERM to the workers, as the CPU test showed for the signal case. The grace period must be longer than a checkpoint takes, or the kill arrives mid-write and the manager's staging rule has to catch it.
+
+### PyTorchJob
+
+```yaml
+# code/part19/c04_pytorchjob.yaml
+# Elastic PyTorchJob, 2 to 4 nodes x 8 GPUs. Image and claim names are placeholders.
+# Validated against the Kubeflow Training Operator v1.9.4 CRD (kubeflow.org/v1).
+apiVersion: kubeflow.org/v1
+kind: PyTorchJob
+metadata:
+  name: c04-train
+spec:
+  elasticPolicy:
+    rdzvBackend: c10d
+    minReplicas: 2
+    maxReplicas: 4
+    maxRestarts: 5
+  nprocPerNode: "8"
+  runPolicy:
+    backoffLimit: 5
+    cleanPodPolicy: None
+  pytorchReplicaSpecs:
+    Worker:
+      replicas: 4
+      restartPolicy: OnFailure
+      template:
+        spec:
+          terminationGracePeriodSeconds: 180
+          containers:
+            - name: pytorch
+              image: registry.example.com/c04-train:1.0
+              command: ["python"]
+              args:
+                - /app/c04_train.py
+                - --ckpt-dir=/shared/c04/ckpt
+                - --metrics-dir=/shared/c04/metrics
+                - --steps=100000
+                - --ckpt-every=500
+                - --async-ckpt
+              env:
+                - name: TORCH_NCCL_ENABLE_MONITORING
+                  value: "1"
+                - name: TORCH_NCCL_HEARTBEAT_TIMEOUT_SEC
+                  value: "300"
+                - name: TORCH_NCCL_TRACE_BUFFER_SIZE
+                  value: "2000"
+              resources:
+                limits:
+                  nvidia.com/gpu: 8
+              volumeMounts:
+                - name: shared
+                  mountPath: /shared
+                - name: dshm
+                  mountPath: /dev/shm
+          volumes:
+            - name: shared
+              persistentVolumeClaim:
+                claimName: c04-shared
+            - name: dshm
+              emptyDir:
+                medium: Memory
+```
+
+`elasticPolicy` holds `minReplicas`, `maxReplicas`, `maxRestarts` and `rdzvBackend`. The CRD describes `minReplicas` as the lower limit to which the job can scale down. It describes `runPolicy.backoffLimit` as the number of retries before the job is marked failed. The top-level `nprocPerNode` is a string. The CRD says the same field inside `elasticPolicy` is deprecated since v1.7, so this manifest does not use it.
+
+The container runs the Python script directly, which assumes the operator launches it through `torchrun` and supplies the rendezvous settings from the elastic policy. I read only the CRD, not the operator code, so that assumption is not verified. Check the operator's behaviour on your version before relying on elastic scale-down.
+
+### The same loop on both platforms
+
+Both manifests give the same recovery loop. A failure stops the pods. A controller recreates them. `torchrun` rendezvouses. The training script finds the newest valid checkpoint and resumes. Because the checkpoint path is on a shared claim, any pod can read what the previous pods wrote. The checkpoint manager's rename assumes one shared file system with atomic rename, as with a parallel file system or a well-behaved NFS. Object stores do not offer atomic directory rename, so the manifest-last rule needs a different commit marker there. Chapter 13.7 covers checkpoint storage options.
+
+**Decision rule:** on Kubernetes, use a controller that restarts the whole group, set the inner Job to fail fast, give pods a grace period longer than a checkpoint, and keep checkpoints on storage every pod can read.
+
+**In one minute:** JobSet restarts all Jobs on failure, bounded by `failurePolicy.maxRestarts`. PyTorchJob wraps an elastic policy. Both manifests validate against the upstream CRDs at the versions pinned above. The newer Trainer v2 uses `TrainJob`, which this chapter does not cover.
+
+---
+
+## 11. Day-2 runbook
+
+### The page at 03:10
+
+The alert says the job has made no progress for 20 minutes. The runbook below is for the person who gets it. Every row names a first check and a first action, and each action is safe to take before you understand the cause.
+
+| Symptom | First check | First action |
+|---|---|---|
+| No step records for 20 minutes | Is any pod or task still running? Does the newest record in the metrics directory have a recent timestamp? | If processes are up, collect flight recorder dumps, then kill and restart |
+| Pods or tasks gone, job restarted by itself | Restart count in `TORCHELASTIC_RESTART_COUNT`, JobSet restart count or `SLURM_RESTART_COUNT` | Confirm the log says resumed from a step, then look at what failed |
+| Job restarting in a loop | Did it resume and fail at the same step? | Stop auto-restarts, inspect the skipped checkpoints in the resume log |
+| Resume log says skipped step N | Which problem: manifest missing, size, checksum? | Keep the `.corrupt` directory, check storage health, find the failed writer |
+| Throughput down, nothing failed | Run the straggler detector on the last 20 steps | Named rank or host: drain and restart. Global: check storage and network |
+| Loss spike or NaN after resume | Did the resume log list all five state components? | Roll back to an earlier checkpoint and compare the loss |
+| Collective timeout in the log | NCCL variables and the flight recorder dump | Find the rank whose last collective differs, check that host |
+| Checkpoint writes slower each time | Storage throughput, async future lag | Lengthen the interval or fix storage |
+
+### Rules for the person on call
+
+1. Read before you restart. A restart destroys the process state that explains a hang. Take the flight recorder dump and the last 200 log lines first.
+2. Never delete a checkpoint during an incident. Rename suspicious ones. The resume code already does.
+3. Restart from the checkpoint, not by hand-editing state. The manifest tells you which checkpoint is valid.
+4. If the job restarts and fails again at the same step, stop the loop. Auto-restart past a deterministic failure only burns restart budget.
+5. Write down the cause class from section 1 in the incident record. A pattern across weeks tells you which tool to invest in.
+
+### What to record after the incident
+
+**Decision rule:** keep one table that maps each symptom to a first check and a safe first action, and make every action read-only or reversible until the cause class is known.
+
+**In one minute:** most pages are one of eight symptoms. Read the dump before restarting, rename suspect checkpoints instead of deleting them, stop restart loops, and log the cause class so the interval maths gets better data.
+
+---
+
+## 12. Hands-on lab
+
+This lab exercises everything that can run without GPUs. Steps 1 to 4 ran on the host for this chapter. Step 5 ran in a container. Steps 6 to 8 need a cluster and were not run. Where a step shows output, it is output I saw, and where it does not, the output is described as the expected shape.
+
+### Prerequisites
+
+- Python 3.12 with pytest and PyYAML on the host.
+- Docker running, for the CPU smoke test. The container downloads the PyTorch 2.15.0 CPU wheel from `download.pytorch.org`.
+- Clones of the JobSet repository at tag v0.13.0 and the Training Operator repository at tag v1.9.4, for their CRD files.
+- For steps 6 to 8, a Slurm cluster or a Kubernetes cluster with at least 4 nodes of 8 GPUs and a shared file system.
+
+### Step 1: unit tests and calculator
+
+The first block runs the unit tests, the interval calculation, the detector fixtures and the manifest validation. The files that do the work are described in the sections above.
+
+```bash
+#!/bin/bash
+# code/part19/c04_lab.sh
+# Host-side lab steps for chapter 19.4. Run from the repository root. Needs python3 with pytest.
+set -eu
+
+# Step 1: unit tests for the manager, calculator, detector and Slurm script logic
+python3 -m pytest code/part19/test_c04_checkpoint_manager.py code/part19/test_c04_checkpoint_interval.py \
+    code/part19/test_c04_straggler_detector.py code/part19/test_c04_slurm_script.py -q
+
+# Step 2: checkpoint interval for the reference job (32 GPUs, 112 GB checkpoint at 5 GB/s)
+python3 code/part19/c04_checkpoint_interval.py --node-mtbf-hours 6334.6 --nodes 4 \
+    --checkpoint-gb 112.4 --write-gb-per-s 5 --restart-seconds 600
+
+# Step 3: straggler detector on the fixtures (exit code 1 means a finding)
+for f in healthy slow_gpu slow_host spike global_slowdown; do
+    python3 code/part19/c04_straggler_detector.py code/part19/c04_fixtures/$f.csv || true
+done
+
+# Step 4: validate the manifests against the upstream CRDs cloned into $CRD_DIR
+python3 -I tools/check_crd_yaml.py "$CRD_DIR/jobset.x-k8s.io_jobsets.yaml" \
+    "$CRD_DIR/pytorchjobs.yaml" -- code/part19/c04_jobset.yaml code/part19/c04_pytorchjob.yaml
+```
+
+Expected result: 46 tests pass on the host. The smoke test module, which needs torch, is skipped there when you run the whole directory. The calculator prints a Daly interval close to 16,000 seconds and waste under half a percent. The detector prints nothing flagged for `healthy`, rank 19 for `slow_gpu`, host `trainer-1` for `slow_host`, nothing for `spike`, and a global slowdown for `global_slowdown`. The manifest validation prints `checked 2 resources, 0 problems`.
+
+What to record: the interval for your own measured cost and failure rate, and which fixture exercised which branch.
+
+What was run here: all of step 1 on a macOS arm64 host. What was not run: the detector on real GPU step times.
+
+### Step 2: validate that the validator can fail
+
+Edit a copy of `c04_jobset.yaml` and misspell `restartStrategy`. Run the validation again. It should report an unexpected property. I ran this and the validator reported the unknown field. This step matters because a validator that cannot fail proves nothing.
+
+What to record: the exact message, and the field you broke.
+
+### Step 3: the CPU smoke test
+
+The second block creates a throwaway container, installs the CPU wheel, copies the code and runs the smoke tests. It then runs one manual training job with a failure injected at step 6.
+
+```bash
+#!/bin/bash
+# code/part19/c04_lab_container.sh
+# CPU smoke test in a throwaway container: 2 processes, gloo backend, FSDP2 and DCP. No GPU needed.
+# Run from the repository root with Docker running. Downloads PyTorch 2.15.0 (CPU wheel).
+set -eu
+docker run -d --name c04lab python:3.12-slim sleep 3600
+docker exec c04lab pip install --no-cache-dir torch==2.15.0 --index-url https://download.pytorch.org/whl/cpu
+docker exec c04lab pip install --no-cache-dir numpy pytest
+docker exec c04lab mkdir /w
+docker cp code/part19 c04lab:/w/part19
+
+# Run the CPU smoke tests: failure injection, async save, corrupt checkpoint, 2-to-1 reshard, SIGTERM
+docker exec c04lab sh -c "cd /w/part19 && python -m pytest test_c04_train_smoke.py -q -p no:cacheprovider"
+
+# Or drive it by hand: train 12 steps, inject a failure at step 6, watch the resume
+docker exec c04lab sh -c "cd /w/part19 && python -m torch.distributed.run --nproc-per-node=2 --max-restarts=3 \
+    c04_train.py --ckpt-dir /w/ck --steps 12 --ckpt-every 4 --fail-at-step 6 2>&1 | grep -E 'resumed|done'"
+
+docker rm -f c04lab
+```
+
+Expected result: six smoke tests pass. The manual run prints two `resumed from step 4` lines with a restart count of 1 and then `done step 12`. In the session for this chapter all 52 c04 tests passed in the container in about a minute with torch 2.15.0+cpu. One earlier run of the same script failed one smoke test on the startup race described in section 6, which is why the smoke helper allows six restarts.
+
+What to record: which checkpoint steps exist after each run, and the content of the manifest for the last one.
+
+What was run here: all of step 3 on Docker with an arm64 Linux container. What was not run: the NCCL backend, FSDP2 on GPUs, real storage latency.
+
+### Step 4: corrupt a checkpoint on purpose
+
+After a run, flip one byte in a shard of the newest checkpoint with any editor, then run again with a higher `--steps`. The log should show `[resume] skipped step N` with a checksum mismatch, resume from the previous step and rename the bad directory to `.corrupt`. This is the path that `test_corrupt_newest_checkpoint_is_skipped_and_quarantined` automates.
+
+What to record: the skip line, and the directory listing before and after.
+
+### Step 5: reshard on resume
+
+Run a 2-process job to write checkpoints, then resume with `--nproc-per-node=1`. It should resume from the newest step and carry on. I ran this and it worked on CPU. This shows DCP resharding on a tiny model, not on a 32-GPU FSDP2 job.
+
+What to record: the world size stored in the manifest and the world size of the resume.
+
+### Step 6: Slurm run, not run
+
+On a Slurm cluster, copy `c04_slurm_train.sh` and adjust the paths. Submit with `sbatch`. After the job starts, send the warning by hand with `scancel --batch --signal=USR1 JOBID`. Expected shape of the output: the log shows the batch shell message, a checkpoint line from the training script, and the job appears again in the queue with the same job ID and a restart count of 1. This was not run, because no Slurm cluster was available.
+
+What to record: the time between the signal and the committed checkpoint, which must be shorter than the signal lead time.
+
+### Step 7: Kubernetes run, not run
+
+Apply `c04_jobset.yaml` after replacing the image and claim names. Delete one pod. Expected shape: all four pods restart, the new pods log `resumed from step N`, and the JobSet restart count increases by one. Repeat with the PyTorchJob manifest. This was not run, because no GPU cluster was available.
+
+What to record: time from pod deletion to the first resumed step.
+
+### Step 8: hang drill, not run
+
+On a real cluster, make one rank stall, for example by sending SIGSTOP to one worker. Expected shape: after the configured timeout, the watchdog or the heartbeat monitor kills the process and a flight recorder dump appears under the configured path. This was not run, because no GPU cluster was available.
+
+What to record: the time from stall to kill, and which rank the dump names.
+
+### What to record overall
+
+**Decision rule:** do not call a training job fault tolerant until you have killed a worker, a node and a checkpoint on purpose and watched it recover each time.
+
+**In one minute:** the checkpoint, resume, restart and signal logic is tested on CPU. The manifests validate against upstream CRDs. Everything that needs NCCL, GPUs or a scheduler is listed as not run, with the expected shape of its output.
 
 ---
 
 ## Exercises
 
-1. **Add a checkpoint schedule.** Configure a checkpoint every 15 minutes. *Solution sketch:* the checkpoint callback in the training loop.
-2. **Add FSDP mixed precision.** Configure BF16 for parameters and FP32 for reductions. *Solution sketch:* the FSDP mixed precision config.
-3. **Add Elastic node failure recovery.** Configure Elastic to recover from node failures. *Solution sketch:* the torchrun command with `--max-restarts`.
-4. **Add NCCL debugging.** Enable NCCL_DEBUG for the training job. *Solution sketch:* the NCCL_DEBUG environment variable.
-5. **Add training observability.** Emit the training loss and throughput to Prometheus. *Solution sketch:* the Prometheus exporter for the training script.
-6. **Add a checkpoint integrity check.** Verify the checkpoint hash before resuming. *Solution sketch:* the hash verification in the recovery code.
-
----
+1. **Compute your interval.** A 256-GPU job has a 400 GB checkpoint, a 10 GB per second file system and a measured interruption every 20 hours. Compute the Daly interval and the waste with a 900-second restart. *Solution sketch:* cost is 400 divided by 10, so 40 seconds. Run `c04_checkpoint_interval.py --mtbf-hours 20 --cost-seconds 40 --restart-seconds 900`. The interval is 2,360 seconds and the waste is about 4.5 percent. Round it down to a whole number of steps and recompute the waste at that value.
+2. **Break the cost assumption.** Raise the checkpoint cost until the Daly rule falls back to the MTBF. *Solution sketch:* the rule switches when C reaches half of M. With M at 20 hours the switch is at 10 hours, which is a sign that checkpointing is no longer a useful tool at that cost.
+3. **Add a hash cache.** Make `latest_valid` skip re-hashing a checkpoint whose manifest was verified an hour ago. *Solution sketch:* write a `VERIFIED` marker with the manifest hash and a timestamp, check the marker first, and add a test that tampering after the marker is still caught by the size check.
+4. **Save the other three components.** Add the scheduler, the data loader position and the random number state to `AppState`. *Solution sketch:* add `lr_scheduler.state_dict()` under its own key, store the per-rank RNG state with `torch.get_rng_state` and the loader cursor in a small per-rank file inside the staging directory, and add a smoke test that compares the loss after a failure injection with the loss of an uninterrupted run.
+5. **Make the straggler detector stream.** Change it to run continuously over the live CSV files. *Solution sketch:* tail the last 20 steps with a deque per rank, re-run `analyze` every N steps, and export the flagged hosts as a Prometheus gauge so chapter 17 alerts can fire on it.
+6. **Add JobSet failure rules.** Fail the JobSet immediately on an application error and restart it on a node loss. *Solution sketch:* add `failurePolicy.rules` with action `FailJobSet` for the failure reason that matches your application's exit and `RestartJobSet` for the pod-failure reasons. Check the exact reason strings in the JobSet and Kubernetes documentation for your versions, and validate with `check_crd_yaml.py`.
 
 ## Checkpoint questions
 
-<details><summary>1. What is FSDP?</summary>
-Fully Sharded Data Parallel: the PyTorch parallelism strategy that shards the model parameters, gradients, and optimiser state across GPUs. FSDP reduces the memory footprint per GPU; FSDP enables training larger models on the same GPU pool.
+<details><summary>1. Why does a dead rank often leave a synchronous job hanging instead of failing?</summary>
+Every other rank is blocked in a collective that can never complete, and nothing has exited. The job needs a watchdog to turn that wait into a failure.
 </details>
 
-<details><summary>2. What is PyTorch Elastic?</summary>
-The PyTorch library for elastic training. Elastic monitors the worker nodes; Elastic restarts the workers when a node fails; Elastic requeues the work. Elastic is the foundation of fault-tolerant multi-node training.
+<details><summary>2. Name the five failure shapes in this chapter.</summary>
+Node or process loss, NCCL hang, slow node, data stall and checkpoint damage.
 </details>
 
-<details><summary>3. What is the difference between FSDP and DDP?</summary>
-DDP (Distributed Data Parallel) replicates the model on every GPU. FSDP shards the model across the GPUs. FSDP saves memory; DDP does not. FSDP enables training larger models on the same GPU pool.
+<details><summary>3. What does the Young interval depend on?</summary>
+The square root of twice the checkpoint cost times the mean time between interruptions.
 </details>
 
-<details><summary>4. What is the difference between local and cross-region checkpoints?</summary>
-A local checkpoint is stored on the node's local disk. A cross-region checkpoint is stored in object storage across regions. Cross-region checkpoints survive regional outages; local checkpoints do not.
+<details><summary>4. What does Daly's rule change, and when does it stop applying?</summary>
+It subtracts the checkpoint cost once from the Young interval. When the cost is at least half the mean time between interruptions the rule says to use the mean time itself.
 </details>
 
-<details><summary>5. What is the most common multi-node training failure?</summary>
-NCCL timeout. The collective operation does not complete within the configured timeout. The fix is to increase the NCCL_TIMEOUT; verify the network; verify the topology.
+<details><summary>5. Why round a computed interval down in practice?</summary>
+The formula assumes independent random failures. Real failures cluster, so a shorter interval is safer.
 </details>
 
-<details><summary>6. What is the most dangerous multi-node training failure?</summary>
-GPU OOM. The model is too large for the available memory. The training crashes. The fix is to reduce the model size, enable gradient checkpointing, or scale up the GPU pool.
+<details><summary>6. Why is gathering a full checkpoint to rank zero a poor choice at scale?</summary>
+It needs the whole model in one rank's memory and serialises the write, so memory and time both grow with the job.
 </details>
 
-<details><summary>7. What is the difference between rendezvous backends in torchrun?</summary>
-c10d is the c10d backend (recommended for most clusters). etcd-v2 is the etcd backend (for very large clusters). The rendezvous backend coordinates the worker nodes at startup.
+<details><summary>7. What does DCP write for a 2-rank FSDP2 job?</summary>
+A directory with at least one file per rank and a global `.metadata` file.
 </details>
 
-<details><summary>8. What is the most important multi-node training metric?</summary>
-GPU utilisation rate per node. The metric tells the team whether the GPUs are doing useful work. A low utilisation rate indicates data loading or collective bottlenecks.
+<details><summary>8. What does load-time resharding allow?</summary>
+Saving at one world size and loading at another, as shown by loading a 2-process checkpoint into 1 process.
 </details>
 
-<details><summary>9. What is the relationship between checkpoint frequency and recovery time?</summary>
-Higher checkpoint frequency means shorter recovery time (less work lost). Lower checkpoint frequency means longer recovery time (more work lost). The trade-off is between checkpoint overhead and recovery time.
+<details><summary>9. What blocks the GPUs during an async save?</summary>
+Only the copy from GPU memory to the staging area. The write to storage happens in a background thread.
 </details>
 
-<details><summary>10. What is the relationship between FSDP and NCCL?</summary>
-FSDP uses NCCL for collective operations (all-gather, reduce-scatter). The performance of FSDP depends on the performance of NCCL; the optimisation of NCCL depends on the network topology.
+<details><summary>10. When is an async checkpoint safe to publish?</summary>
+After the future has completed and a barrier across ranks has passed. Before that it is still being written.
 </details>
 
-<details><summary>11. What is the relationship between Elastic and Kubernetes?</summary>
-Elastic is the PyTorch layer; Kubernetes is the orchestration layer. Elastic handles the in-job restarts; Kubernetes handles the pod-level restarts. Together, they form the elastic training chain.
+<details><summary>11. Why write the manifest last?</summary>
+Its presence then means every payload file was written, so a directory without it is incomplete by definition.
 </details>
 
-<details><summary>12. What is the most common FSDP failure?</summary>
-Memory imbalance. One GPU runs out of memory while others have plenty. The fix is to use FSDP's automatic memory balancing; the fix is to reduce the per-GPU batch size.
+<details><summary>12. Which damage does a size check catch and which needs a hash?</summary>
+Truncation shows in the size. A flipped byte that keeps the size needs the hash.
 </details>
 
-<details><summary>13. What is the most common NCCL failure?</summary>
-Topology mismatch. The NCCL algorithm does not match the network topology. The fix is to set the NCCL_IB_HCA and NCCL_TOPO_FILE; verify the topology with NCCL_DEBUG.
+<details><summary>13. What bug appeared when a corrupt checkpoint was skipped but left in place?</summary>
+The resumed job tried to commit a new checkpoint at the same step and the commit refused, so the job looped until it ran out of restarts. Quarantining the corrupt directory fixed it.
 </details>
 
-<details><summary>14. What is the most common checkpoint failure?</summary>
-Out of disk space. The local disk fills up; the checkpoint write fails. The fix is to clean up old checkpoints; the fix is to upload to object storage; the fix is to expand the local disk.
+<details><summary>14. What does `torchrun` do when one worker fails?</summary>
+It stops all workers and restarts them, up to `--max-restarts`.
 </details>
 
-<details><summary>15. What is the difference between synchronous and asynchronous checkpointing?</summary>
-Synchronous checkpointing pauses the training; asynchronous checkpointing runs the checkpoint in parallel. Synchronous is simpler; asynchronous is faster. The choice depends on the model's tolerance for memory duplication.
+<details><summary>15. Why can `torchrun` not replace a dead node?</summary>
+The agent only manages workers on its own machine. The scheduler, Slurm or Kubernetes, must provide the replacement.
 </details>
 
-<details><summary>16. What is the most expensive part of multi-node training?</summary>
-The all-reduce collectives. The collectives require every node to participate; the collectives are bandwidth-limited; the collectives dominate the training time for communication-heavy models.
+<details><summary>16. What is the default NCCL collective timeout in PyTorch 2.15 and what happens at expiry?</summary>
+It is 10 minutes. The collective is aborted asynchronously and the process crashes.
 </details>
 
-<details><summary>17. What is the most expensive part of the network stack?</summary>
-The inter-node network. The inter-node network has higher latency than the intra-node network (NVLink). The inter-node network is the bottleneck for multi-node training; the network must be tuned for the workload.
+<details><summary>17. Which variables make a hang produce a dump and a kill?</summary>
+`TORCH_NCCL_ENABLE_MONITORING`, `TORCH_NCCL_HEARTBEAT_TIMEOUT_SEC`, `TORCH_NCCL_TRACE_BUFFER_SIZE` and `TORCH_NCCL_DUMP_ON_TIMEOUT`.
 </details>
 
-<details><summary>18. What is the relationship between the training capstone and the Kubernetes capstone?</summary>
-The training capstone runs on the Kubernetes platform from the Kubernetes capstone. The training capstone uses the Kueue ClusterQueues for GPU scheduling; the training capstone uses the GPU Operator for driver management; the training capstone uses the observability stack for monitoring.
+<details><summary>18. Why does total step time hide a straggler?</summary>
+Collectives equalise the leaving time of every rank, so the slow rank's delay shows up as everyone else's waiting.
 </details>
 
-<details><summary>19. Why is the multi-node training capstone a Tier 1 chapter?</summary>
-Because the multi-node training capstone is the reference design for foundation-model training. The capstone is what the platform team references; the capstone is what the interview candidate points at; the capstone is what the on-call engineer follows.
+<details><summary>19. Why does the batch script run `srun` in the background?</summary>
+The batch shell cannot run a trap while a foreground command runs, so it waits on a background `srun` and forwards the signal.
 </details>
 
-<details><summary>20. What five questions should the multi-node training capstone lab let you answer in five seconds each?</summary>
-What is the current training loss. What is the current GPU memory utilisation. What is the most recent checkpoint time. What is the most recent NCCL collective time. What is the current node count. If any takes more than 30 seconds, the multi-node training is not yet a production service.
+<details><summary>20. Which JobSet fields bound and shape restarts?</summary>
+`spec.failurePolicy.maxRestarts` bounds them and `restartStrategy` chooses `Recreate`, `BlockingRecreate` or `InPlaceRestart`.
 </details>
-
----
 
 ## Sources and review notes
 
-- NVIDIA Zero-to-Hero Volume 24 (Multi-node training capstone). Source for the FSDP, checkpoint, Elastic, and NCCL patterns. The wording has been rewritten in the handbook's voice.
-- Part 14 (Distributed training) for the parallelism, checkpointing, Elastic, and NCCL patterns.
+All upstream pages were fetched on 2026-11-10.
+
+### Books
+
+- **Distributed AI Systems**, Chapter 4 (FSDP2, DCP save and load, multi-node checkpointing) and Chapter 8 (Slurm launch, `--signal=SIGUSR1@90`, trap, checkpoint rotation).
+- **AI Systems Performance Engineering**, Chapter 4 (Pitfall 5 on stragglers, Pitfall 6 on communicator hangs, Table 4-4 on Llama 3 405B interruptions).
+- **Supercomputers for Linux SysAdmins**, Chapter 15 (Slurm preemption modes, requeue, drain with reason, `NODE_FAIL`, prologue failure behaviour, health check program).
+
+- **Machine Learning Platform Engineering** (Chapters 4, 8) and **AI Factory** (Chapters 7, 9) were read. Neither covers distributed training fault tolerance, so nothing from them is cited in the text.
+
+### Upstream documentation
+
+- PyTorch 2.15 documentation: `torch.distributed.fsdp.fully_shard`, `torch.distributed.checkpoint`, `torchrun`, `torch.distributed.elastic` agent and rendezvous, `torch.distributed` (init timeout, `monitored_barrier`), and the ProcessGroupNCCL environment variable table (the table file is `docs/source/torch_nccl_environment_variables.md` at tag v2.15.0). The FSDP1 `ShardingStrategy` text is from the 2.15 FSDP page.
+- NCCL 2.32.3 documentation, Environment Variables: `NCCL_DEBUG`, `NCCL_IB_TIMEOUT`, `NCCL_IB_RETRY_CNT`, `NCCL_SOCKET_IFNAME`.
+- Slurm documentation 26.05: `sbatch` (`--signal`, `--requeue`, `--no-requeue`, `--open-mode`, `--no-kill`, `SLURM_RESTART_COUNT`), `srun` (signal forwarding, `--kill-on-bad-exit`), `scancel` (`--batch`), `scontrol` (`requeue`, node `State=DRAIN`).
+- Kubernetes documentation, Pod lifecycle, termination of Pods.
+- JobSet v0.13.0 CRD `jobset.x-k8s.io_jobsets.yaml`; Kubeflow Training Operator v1.9.4 CRD `kubeflow.org_pytorchjobs.yaml`; Kubeflow Trainer v2.4.0 `trainer.kubeflow.org_trainjobs.yaml` (read for the existence of `TrainJob` only).
+- J. W. Young, "A first order approximation to the optimum checkpoint interval", CACM 17(9), 1974, as cited by Aupy et al.
+- J. T. Daly, "A higher order estimate of the optimum checkpoint interval for restart dumps", Future Generation Computer Systems 22(3), pp. 303-312 (Aupy et al. cite the year as 2004, the volume is dated 2006). Not readable here; the rule is taken from Adrian Colyer's summary at blog.acolyer.org.
+- G. Aupy, Y. Robert, F. Vivien, D. Zaidouni, "Checkpointing algorithms and fault prediction", arXiv 1302.3752. Source for the waste model.
 
 ### Cross-references to other handbook chapters
 
-- Chapter 14.5 for the FSDP configuration.
-- Chapter 14.10 for the multi-node training architecture.
-- Chapter 14.11 for the checkpointing strategies.
-- Chapter 12.15 for the NCCL collectives.
-- Chapter 17.11 for the incident response.
+- 14.5 FSDP and parameter sharding, 14.10 Multi-node training architecture, 14.11 Checkpointing, fault tolerance and elastic training.
+- 12.16 NCCL environment variables, 12.18 NCCL debugging, hangs, timeouts and errors.
+- 6.12 Multi-node training on Slurm, 6.14 Slurm operations, 6.21 Parallel I/O and checkpoint patterns.
+- 11.7 Multi-node jobs and gang scheduling, 11.8 Kueue, Volcano and scheduler plugins, 11.9 JobSet, LeaderWorkerSet, PyTorchJob and the MPI operator.
+- 13.7 Checkpoint architecture and recovery, 16.5 Distributed compute for ML.
+- 17.7 Failure modes and detection, 17.11 Incident response and game days.
 
 ### Migrated from `nvidia-devops`
 
-The multi-node training capstone operational patterns draw on Volume 24. The wording has been rewritten in the handbook's voice.
+- `nvidia-zero-to-hero/volume-24/chapter-03-distributed-training-fault-tolerance.md`: the capstone framing, the atomic-write advice and the failure-mode table. Its claim that the elastic launcher waits 30 seconds before restarting, and its picture of a replacement GPU being spun up, are not in the PyTorch documentation and were not carried over.
+- The previous draft of this chapter, which cited `code/part19/checkpoint.py`, `checkpoint_recovery.py` and `fsdp_config.py` as files that did not exist. Those names are replaced by the tested `c04_*` files.
 
 ### Explicitly labelled inferences
 
-- The node count (2-4) is a starting point; specific counts depend on the model size.
-- The checkpoint frequency (15 minutes) is a starting point; specific frequencies depend on the value of the work.
-- The NCCL timeout (600 seconds) is a starting point; specific timeouts depend on the network latency.
+- Scaling the Llama 3 interruption rate linearly to 32 and 1,024 GPUs.
+- The 5 GB per second write bandwidth, the 600-second restart time and the 2-second async blocking time used in the interval table.
+- The mapping from FSDP1 sharding names to FSDP2 mesh and `reshard_after_forward` settings.
+- Why `compute_s` is measured on the optimizer step, and the straggler thresholds of 20 steps, 15 percent, 80 percent and 30 percent.
+- The values of the watchdog variables in the reference job.
+- The 180-second signal lead and the 180-second grace period.
 
 ### Not verified on live hardware
 
-- The lab in Section 7 is **untested** against a live GKE cluster in this repository.
-- The torchrun command assumes a working GPU operator and c10d rendezvous.
-- The checkpoint paths assume the nodes have shared or replicated storage.
+- Nothing in this chapter ran on a GPU, with NCCL, on a Slurm scheduler or on a Kubernetes cluster. The torch smoke tests used the gloo backend on CPU in a Linux arm64 container with torch 2.15.0+cpu.
+- Async checkpoint blocking time, staging memory use and hybrid sharding on a 2D mesh.
+- The watchdog and heartbeat monitor behaviour, and flight recorder dump contents.
+- Slurm behaviour of `--signal=B:USR1@180` and `scontrol requeue` on a real controller. The batch script was tested only against fake `srun` and `scontrol`.
+- JobSet and PyTorchJob controller behaviour. Only the schemas were validated.
+- The gloo connection-refused failure and the one hang seen at startup in the container were not root-caused.
+- The Daly higher-order formula and the exact equation numbers in the Aupy paper.
+
+### Verification log
+
+- Claims checked against a source or a run: 63.
+- Confirmed: 57.
+- Corrected: 4. The 30-second monitor interval, the `NCCL_TIMEOUT` variable, the claim that `torchrun` spins up a replacement GPU, and the Llama 3 percentages (reported as counts only).
+@@REMOVED@@
+- Still unverified: 7, listed above under inferences and not verified.

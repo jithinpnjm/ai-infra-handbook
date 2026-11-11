@@ -1,0 +1,93 @@
+# JupyterHub for the research platform. Helm values for the jupyterhub chart 4.4.5 (app 5.5.5).
+# Validated against that chart's values.schema.json and rendered with `helm template`.
+# Secrets are NOT in this file. The OAuth client secret goes in a separate values file,
+# mode 600, owned by the platform engineer who runs helm, and is never committed.
+hub:
+  config:
+    JupyterHub:
+      authenticator_class: github
+    GitHubOAuthenticator:
+      client_id: REPLACE_WITH_OAUTH_CLIENT_ID
+      oauth_callback_url: https://hub.research.example.com/hub/oauth_callback
+      allowed_organizations:
+        - example-research-org
+      scope:
+        - read:org
+  # One hub pod, state in a PVC (the chart default is sqlite-pvc). The hub is not highly available.
+  db:
+    type: sqlite-pvc
+    pvc:
+      storage: 1Gi
+  concurrentSpawnLimit: 32
+  activeServerLimit: 60
+  namedServerLimitPerUser: 2
+
+singleuser:
+  image:
+    name: registry.research.example.com/research/notebook
+    tag: "2026.11.0"
+  cpu:
+    guarantee: 1
+    limit: 4
+  memory:
+    guarantee: 4G
+    limit: 16G
+  storage:
+    type: dynamic
+    capacity: 20Gi
+    homeMountPath: /home/jovyan
+    dynamic:
+      storageClass: standard-rwo
+      storageAccessModes:
+        - ReadWriteOnce
+    # /dev/shm is 64MB by default. PyTorch DataLoader workers need more.
+    extraVolumes:
+      - name: shm-volume
+        emptyDir:
+          medium: Memory
+    extraVolumeMounts:
+      - name: shm-volume
+        mountPath: /dev/shm
+  # The kernel manager culls idle kernels so the server can look idle to the hub culler.
+  extraFiles:
+    jupyter_server_config.json:
+      mountPath: /etc/jupyter/jupyter_server_config.json
+      data:
+        MappingKernelManager:
+          cull_idle_timeout: 1200
+          cull_interval: 120
+          cull_connected: true
+          cull_busy: false
+  startTimeout: 600
+  profileList:
+    - display_name: "CPU notebook (default)"
+      description: "4 CPU, 16 GB. No GPU. Use this for editing and small data work."
+      default: true
+    - display_name: "1 GPU notebook"
+      description: "One GPU for debugging. Culled after 30 minutes idle."
+      kubespawner_override:
+        extra_resource_limits:
+          nvidia.com/gpu: "1"
+    - display_name: "GPU slice notebook (MIG 1g.10gb)"
+      description: "A MIG slice for small experiments. Cheapest GPU option."
+      kubespawner_override:
+        extra_resource_limits:
+          nvidia.com/mig-1g.10gb: "1"
+
+# Keep two spare notebook-sized slots warm so the autoscaler adds nodes before users arrive.
+scheduling:
+  podPriority:
+    enabled: true
+  userPlaceholder:
+    enabled: true
+    replicas: 2
+
+cull:
+  enabled: true
+  timeout: 1800
+  every: 300
+  maxAge: 0
+  users: false
+  adminUsers: true
+  removeNamedServers: false
+  concurrency: 10

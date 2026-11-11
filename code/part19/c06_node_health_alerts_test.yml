@@ -1,0 +1,230 @@
+# promtool unit tests for c06_node_health_alerts.yml
+# Run: promtool test rules c06_node_health_alerts_test.yml
+rule_files:
+  - c06_node_health_alerts.yml
+evaluation_interval: 1m
+tests:
+  # Xid 79 on one GPU fires at once with the reset-class event label.
+  - interval: 1m
+    input_series:
+      - series: 'DCGM_FI_DEV_XID_ERROR{instance="node-03:9400",gpu="2"}'
+        values: '0 0 79 79 79'
+    alert_rule_test:
+      - eval_time: 1m
+        alertname: GpuXidNeedsReset
+        exp_alerts: []
+      - eval_time: 3m
+        alertname: GpuXidNeedsReset
+        exp_alerts:
+          - exp_labels:
+              severity: critical
+              event_class: unrecoverable
+              instance: "node-03:9400"
+              gpu: "2"
+            exp_annotations:
+              summary: "GPU 2 on node-03:9400 reports Xid 79, which the catalog resolves with a GPU reset or node restart"
+              runbook: "https://runbooks.example.com/xid-reset-class"
+
+  # Xid 63 (remap event, catalog action IGNORE) and Xid 13 (application fault) never fire the reset-class rule.
+  - interval: 1m
+    input_series:
+      - series: 'DCGM_FI_DEV_XID_ERROR{instance="node-01:9400",gpu="0"}'
+        values: '63 63 63 63'
+      - series: 'DCGM_FI_DEV_XID_ERROR{instance="node-01:9400",gpu="1"}'
+        values: '13 13 13 13'
+    alert_rule_test:
+      - eval_time: 3m
+        alertname: GpuXidNeedsReset
+        exp_alerts: []
+      - eval_time: 3m
+        alertname: GpuXidNvlink
+        exp_alerts: []
+
+  # Xid 74 goes to the interconnect rule, not the reset class.
+  - interval: 1m
+    input_series:
+      - series: 'DCGM_FI_DEV_XID_ERROR{instance="node-02:9400",gpu="5"}'
+        values: '74 74 74'
+    alert_rule_test:
+      - eval_time: 2m
+        alertname: GpuXidNvlink
+        exp_alerts:
+          - exp_labels:
+              severity: warning
+              event_class: interconnect
+              instance: "node-02:9400"
+              gpu: "5"
+            exp_annotations:
+              summary: "GPU 5 on node-02:9400 reports Xid 74, an NVLink error"
+              runbook: "https://runbooks.example.com/xid-74-nvlink"
+      - eval_time: 2m
+        alertname: GpuXidNeedsReset
+        exp_alerts: []
+
+  # Three nodes with Xid 79 trip the fleet-wide rule; two do not.
+  - interval: 1m
+    input_series:
+      - series: 'DCGM_FI_DEV_XID_ERROR{instance="node-01:9400",gpu="0"}'
+        values: '79 79 79'
+      - series: 'DCGM_FI_DEV_XID_ERROR{instance="node-02:9400",gpu="0"}'
+        values: '0 79 79'
+      - series: 'DCGM_FI_DEV_XID_ERROR{instance="node-03:9400",gpu="0"}'
+        values: '0 0 79'
+    alert_rule_test:
+      - eval_time: 1m
+        alertname: FleetWideXid
+        exp_alerts: []
+      - eval_time: 2m
+        alertname: FleetWideXid
+        exp_alerts:
+          - exp_labels:
+              severity: critical
+              event_class: fleet
+            exp_annotations:
+              summary: "Three or more GPUs report reset-class Xids together; freeze automation and look for a shared cause"
+              runbook: "https://runbooks.example.com/fleet-wide-fault"
+
+  # A double-bit ECC counter that moves fires; a flat counter does not.
+  - interval: 1m
+    input_series:
+      - series: 'DCGM_FI_DEV_ECC_DBE_VOL_TOTAL{instance="node-04:9400",gpu="1"}'
+        values: '0 0 1 1 1'
+      - series: 'DCGM_FI_DEV_ECC_DBE_VOL_TOTAL{instance="node-04:9400",gpu="2"}'
+        values: '0 0 0 0 0'
+    alert_rule_test:
+      - eval_time: 4m
+        alertname: GpuDoubleBitEcc
+        exp_alerts:
+          - exp_labels:
+              severity: critical
+              event_class: unrecoverable
+              instance: "node-04:9400"
+              gpu: "1"
+            exp_annotations:
+              summary: "Uncorrectable ECC error on GPU 1 of node-04:9400; review the jobs that ran there"
+              runbook: "https://runbooks.example.com/xid-reset-class"
+
+  # A node that reports 7 of 8 GPUs fires after 10 minutes; a node with 8 does not.
+  - interval: 1m
+    input_series:
+      - series: 'DCGM_FI_DEV_GPU_TEMP_CELSIUS{instance="node-05:9400",gpu="0"}'
+        values: '60x15'
+      - series: 'DCGM_FI_DEV_GPU_TEMP_CELSIUS{instance="node-05:9400",gpu="1"}'
+        values: '60x15'
+      - series: 'DCGM_FI_DEV_GPU_TEMP_CELSIUS{instance="node-05:9400",gpu="2"}'
+        values: '60x15'
+      - series: 'DCGM_FI_DEV_GPU_TEMP_CELSIUS{instance="node-05:9400",gpu="3"}'
+        values: '60x15'
+      - series: 'DCGM_FI_DEV_GPU_TEMP_CELSIUS{instance="node-05:9400",gpu="4"}'
+        values: '60x15'
+      - series: 'DCGM_FI_DEV_GPU_TEMP_CELSIUS{instance="node-05:9400",gpu="5"}'
+        values: '60x15'
+      - series: 'DCGM_FI_DEV_GPU_TEMP_CELSIUS{instance="node-05:9400",gpu="6"}'
+        values: '60x15'
+      - series: 'DCGM_FI_DEV_GPU_TEMP_CELSIUS{instance="node-06:9400",gpu="0"}'
+        values: '60x15'
+      - series: 'DCGM_FI_DEV_GPU_TEMP_CELSIUS{instance="node-06:9400",gpu="1"}'
+        values: '60x15'
+      - series: 'DCGM_FI_DEV_GPU_TEMP_CELSIUS{instance="node-06:9400",gpu="2"}'
+        values: '60x15'
+      - series: 'DCGM_FI_DEV_GPU_TEMP_CELSIUS{instance="node-06:9400",gpu="3"}'
+        values: '60x15'
+      - series: 'DCGM_FI_DEV_GPU_TEMP_CELSIUS{instance="node-06:9400",gpu="4"}'
+        values: '60x15'
+      - series: 'DCGM_FI_DEV_GPU_TEMP_CELSIUS{instance="node-06:9400",gpu="5"}'
+        values: '60x15'
+      - series: 'DCGM_FI_DEV_GPU_TEMP_CELSIUS{instance="node-06:9400",gpu="6"}'
+        values: '60x15'
+      - series: 'DCGM_FI_DEV_GPU_TEMP_CELSIUS{instance="node-06:9400",gpu="7"}'
+        values: '60x15'
+    alert_rule_test:
+      - eval_time: 5m
+        alertname: GpuCountMismatch
+        exp_alerts: []
+      - eval_time: 11m
+        alertname: GpuCountMismatch
+        exp_alerts:
+          - exp_labels:
+              severity: critical
+              event_class: detection_blind_spot
+              instance: "node-05:9400"
+            exp_annotations:
+              summary: "node-05:9400 reports fewer than 8 GPUs; a detached GPU produces no series"
+              runbook: "https://runbooks.example.com/exporter-down"
+
+  # An exporter that stops answering fires after 5 minutes.
+  - interval: 1m
+    input_series:
+      - series: 'up{job="dcgm-exporter",instance="node-07:9400"}'
+        values: '1 1 0 0 0 0 0 0 0'
+    alert_rule_test:
+      - eval_time: 4m
+        alertname: GpuExporterDown
+        exp_alerts: []
+      - eval_time: 8m
+        alertname: GpuExporterDown
+        exp_alerts:
+          - exp_labels:
+              severity: critical
+              event_class: detection_blind_spot
+              job: dcgm-exporter
+              instance: "node-07:9400"
+            exp_annotations:
+              summary: "No GPU telemetry from node-07:9400; silence is not health, and automation must not cordon on it"
+              runbook: "https://runbooks.example.com/exporter-down"
+
+  # A temperature that climbs 3 degrees per minute fires; a flat 80 degrees does not.
+  - interval: 1m
+    input_series:
+      - series: 'DCGM_FI_DEV_GPU_TEMP_CELSIUS{instance="node-08:9400",gpu="0"}'
+        values: '50+3x14'
+      - series: 'DCGM_FI_DEV_GPU_TEMP_CELSIUS{instance="node-08:9400",gpu="1"}'
+        values: '80x14'
+    alert_rule_test:
+      - eval_time: 12m
+        alertname: GpuTemperatureRisingFast
+        exp_alerts:
+          - exp_labels:
+              severity: warning
+              event_class: thermal_power
+              instance: "node-08:9400"
+              gpu: "0"
+            exp_annotations:
+              summary: "GPU 0 of node-08:9400 is heating faster than 2 degrees per minute"
+
+  # Thermal throttle seconds that grow 5 per minute fire after the for clause.
+  - interval: 1m
+    input_series:
+      - series: 'DCGM_FI_DEV_GPU_THERMAL_THROTTLE_SECONDS_TOTAL{instance="node-09:9400",gpu="3"}'
+        values: '0+5x20'
+    alert_rule_test:
+      - eval_time: 18m
+        alertname: GpuThermalThrottle
+        exp_alerts:
+          - exp_labels:
+              severity: warning
+              event_class: thermal_power
+              instance: "node-09:9400"
+              gpu: "3"
+            exp_annotations:
+              summary: "GPU 3 of node-09:9400 is throttled by heat; check cooling"
+
+  # A cordon older than 24 hours fires.
+  - interval: 1m
+    input_series:
+      - series: 'kube_node_spec_unschedulable{node="gpu-node-02"}'
+        values: '1x1600'
+    alert_rule_test:
+      - eval_time: 23h
+        alertname: NodeCordonedTooLong
+        exp_alerts: []
+      - eval_time: 26h
+        alertname: NodeCordonedTooLong
+        exp_alerts:
+          - exp_labels:
+              severity: warning
+              event_class: silent_capacity_loss
+              node: gpu-node-02
+            exp_annotations:
+              summary: "gpu-node-02 has been cordoned for 24 hours; find its owner"
+              runbook: "https://runbooks.example.com/cordon-owner"

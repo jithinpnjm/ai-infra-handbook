@@ -3,7 +3,7 @@ id: "c19-02"
 title: "19.2 Capstone: a Kubernetes GPU platform with KAI and Kueue"
 sidebar_label: "19.2 Capstone: Kubernetes GPU platform"
 sidebar_position: 2
-description: "End-to-end Kubernetes GPU platform capstone on GCP/GKE: the GPU node pool and driver ownership, the GPU Operator stack with device plugin, toolkit, NFD/GFD and DCGM, priority and preemption policy, the Kueue multi-tenant queue hierarchy, KAI gang scheduling and topology-aware placement, JobSet and LeaderWorkerSet for multi-node jobs, DCGM health gating, and day-2 upgrades, quotas and the FinOps view. Integrates Part 5 (GKE), Part 11 (GPU Kubernetes) and Part 16 (platform design)."
+description: "Capstone lab on GCP/GKE: a GPU node pool with one owner per layer, the NVIDIA GPU Operator, priority and preemption, Kueue queues with cohort borrowing, KAI Scheduler gang scheduling and topology placement, LeaderWorkerSet, DCGM health gating, and day-2 upgrades. Every manifest is validated against upstream schemas and the queue arithmetic is tested."
 status: "drafted"
 tier: "1"
 level: "A"
@@ -16,83 +16,69 @@ lab_venue: "GCP / GKE"
 |---|---|
 | Level | Advanced |
 | Priority tier | 1 |
-| Lab venue | GCP / GKE |
+| Lab venue | GCP / GKE (needs H100 quota; not run here) |
 | Part | Part 19: Capstones, design and interview readiness |
-| Primary sources | nvidia-devops Zero-to-Hero Volume 24, Project 7 (Kubernetes GPU Scheduling); Volume 10 (Kubernetes GPU Platform, chapters 1–11); handbook Part 5 ch. 5.34 (GKE for GPU workloads), Part 11 ch. 11.1–11.9, 11.13–11.18, 11.20, Part 16 ch. 16.14 |
-| Cross-references | Chapter 5.34 (GKE node pools and quotas); 11.1–11.9 (platform layer, GPU Operator, scheduling, Kueue, JobSet); 11.13–11.18 (KAI Scheduler); 11.20 (scheduler comparison); 16.14 (multi-tenant platform design and chargeback); 17.4 (DCGM exporter); 17.11 (incident response); 19.1 (the Slurm capstone); 19.3 (inference serving on GKE) |
+| Primary sources | Gem books: *Generative AI on Kubernetes* ch. 7; *Kubernetes for Generative AI Solutions* ch. 10; *Production Kubernetes* ch. 12. Upstream docs and CRDs for Kueue, KAI Scheduler, NVIDIA GPU Operator, DCGM exporter, GKE. nvidia-devops Volumes 10 and 24. |
+| Cross-references | 5.34 (GKE node pools); 11.1 to 11.9 (platform layer, Kueue, JobSet); 11.13 to 11.18 (KAI); 11.20 (scheduler comparison); 16.14 (tenancy and chargeback); 17.4 (DCGM exporter); 17.11 (incidents); 19.1 (Slurm capstone); 19.3 (inference on GKE) |
+| Code | `code/part19/c02_*` (manifests, scripts, `c02_queue_math.py` and its tests) |
 | Coverage file | `planning/coverage/chapters/19-02.md` |
-| Claim & number ledger | `planning/ledgers/19-02.md` |
+| Claim and number ledger | `planning/ledgers/19-02.md` |
 
 ## Why this matters for AI infrastructure
 
-A team submits a two-node training job to a cluster that looks healthy on every dashboard. The nodes report `Ready`. The GPUs are advertised as schedulable resources. The queue manager says the team is within quota. Yet for the rest of the afternoon the job sits half-scheduled: one node's pods run, the other node's pods wait, and the job makes zero training steps while the fleet shows itself full. In the same cluster, a serving endpoint loses its SLO because a batch sweep consumed the GPUs that were supposed to be reserved for it. Nothing is broken. The pieces are simply not integrated.
+A team submits a two-node training job to a cluster that looks healthy on every dashboard. The nodes report `Ready`. The GPUs are advertised as schedulable. The queue says the team is within quota. Yet the job sits half-scheduled for the afternoon, one node busy and the other waiting, and no training step runs. In the same cluster a serving endpoint misses its latency target because a batch sweep holds the GPUs it needed.
 
-Every piece in that story has its own chapter. The node pool and driver decisions live in 5.34, the platform layer and its two paths in 11.1, the device plugin and runtime injection in 11.2, feature discovery in 11.3, the GPU Operator in 11.4 and 11.5, topology-aware scheduling in 11.6, the mechanics of multi-node jobs in 11.7 and 11.9, Kueue in 11.8, and the KAI Scheduler in 11.13 through 11.18. A team that has read all of them can describe each piece in isolation. The capstone exists to answer the harder question, which is what holds the pieces together.
+Nothing in that story is broken. The pieces were never integrated. The node pool, the GPU software, the queues, the gang scheduler and the health signal each have their own chapter in Parts 5, 11, 16 and 17. This capstone shows what holds them together.
 
-The answer is five integration surfaces. One is the node plane: the driver, the runtime injection path, the device plugin, and the discovery labels, all owned by exactly one system each. The second is the queue hierarchy that turns a shared fleet into multi-tenant capacity with real quotas. The third is the gang and topology layer that makes a two-node job start atomically on verified hardware. The fourth is the health gate that takes a dying GPU out of service before the scheduler assigns it another job. The fifth is a day-2 rhythm of canary upgrades, incident response, and a FinOps view that shows each team what its share of the fleet costs. This chapter walks the whole platform through those five surfaces.
+The answer is five integration surfaces. The node plane has one owner per layer. The queue hierarchy turns a shared fleet into tenants with quotas. The gang and topology layer starts a two-node job atomically. The health gate removes a dying GPU before it receives more work. The day-2 rhythm covers canary upgrades, incidents and a cost view.
 
-The capstone is also the interview anchor. When an interviewer asks how you would build and operate a Kubernetes GPU platform, the answer is not a list of operators; it is this integrated picture, told in the order a real build proceeds: node pool first, then the stack, then the queues, then gang scheduling, then health and day-2. The same picture is the platform team's reference design and the on-call engineer's reference when the cluster is on fire.
+The capstone is also the interview anchor. When asked how you would build and run a Kubernetes GPU platform, tell this picture in build order: pool, stack, queues, gangs, health, day 2. This chapter says what the topic tests. It does not claim any company asks a particular question.
 
 ## Prerequisites and outcomes
 
 ### Prerequisites
 
-- Chapter 11.1: why Kubernetes needs a GPU platform layer; the two-path model.
-- Chapter 11.2: device plugin, container toolkit, CDI, and runtime classes.
-- Chapter 11.3: Node Feature Discovery and GPU Feature Discovery.
-- Chapter 11.4 and 11.5: GPU Operator architecture, operands, installation, and upgrades.
-- Chapter 11.6: scheduling GPUs, Topology Manager, CPU and NUMA alignment.
-- Chapter 11.7: why a Pod cannot span nodes, and gang scheduling concepts.
-- Chapter 11.8: Kueue, Volcano, and scheduler plugins.
-- Chapter 11.9: JobSet, LeaderWorkerSet, PyTorchJob, and the MPI Operator.
-- Chapter 11.13 through 11.18: the KAI Scheduler in depth.
-- Chapter 11.20: the scheduler comparison guide.
-- Chapter 5.34: GKE for GPU workloads, node pools, and quotas.
-- Chapter 16.14: multi-tenant platform design, quotas, and chargeback.
-- Part 14 for distributed training and checkpointing; Chapter 17.4 for the DCGM exporter; Chapter 17.11 for incident response.
+- 11.1 to 11.5: the platform layer, device plugin, toolkit, CDI, feature discovery and the GPU Operator.
+- 11.6 to 11.9: scheduling GPUs, why a Pod cannot span nodes, Kueue, JobSet and LeaderWorkerSet.
+- 11.13 to 11.18: the KAI Scheduler. 11.20: the scheduler comparison.
+- 5.34: GKE node pools and quotas. 16.14: multi-tenant design. 17.4 and 17.11: DCGM and incident response.
 
 ### Outcomes
 
-After completing this capstone you will be able to:
+After this capstone you will be able to:
 
-1. Lay out the platform topology and explain why the allocation path and the execution path must both be proven before a node accepts work.
-2. Create the GPU node pool on GKE and decide who owns the driver, with the ownership boundary written down.
-3. Install and validate the GPU Operator stack: device plugin, toolkit, NFD/GFD, and DCGM, using the evidence chain instead of DaemonSet status.
-4. Configure the scheduling baseline: priority classes, preemption, guaranteed capacity for SLO-bound work, and fairness caps.
-5. Configure the Kueue queue hierarchy: ResourceFlavors, ClusterQueues, LocalQueues, cohort borrowing, and preemption rules.
-6. Configure KAI gang scheduling and topology-aware placement, and launch multi-node jobs with JobSet or a PyTorchJob.
-7. Operate the platform: DCGM health gating, canary upgrades, incident response, quotas, and the FinOps view.
-
----
+1. Draw the platform and prove both the allocation path and the execution path before a node takes work.
+2. Create a GKE GPU pool and write down who owns the driver, the device plugin and the metrics exporter.
+3. Install the GPU Operator with the GKE settings NVIDIA documents, and accept a node with an evidence chain.
+4. Set priority classes that work with both the default scheduler and KAI.
+5. Configure Kueue flavors, cohort queues, borrowing and reclaim, using the current v1beta2 API.
+6. Configure KAI queues and a Topology, and run a two-node PyTorchJob as a gang.
+7. Gate nodes on DCGM signals, run a canary upgrade, and compute blast radius in GPUs.
 
 ## 1. The platform topology: two paths, one platform
 
-### The pool that looks Ready and refuses to train
+After a node-image refresh, half a GPU pool rejoins the cluster as `Ready`. Training pods on the refreshed nodes fail during container creation, while the older pool trains fine. `nvidia-smi` works on every host. The on-call engineer suspects the scheduler, because the pods look rejected. The real fault is in the container runtime configuration, and it takes an hour to find because nobody asked the right first question.
 
-After a node-image refresh, half a GPU pool reboots and rejoins the cluster reporting `Ready`. The CPU services come back immediately, and the node dashboards look green. But the training pods on the refreshed pool fail during container creation, while the sibling pool, which was not refreshed, trains normally. `nvidia-smi` works on the host of every node. The on-call engineer's first instinct is to blame the scheduler, because the pods look like they are being rejected for placement. The evidence says otherwise, and finding it took an hour that the right first question would have saved.
+That question separates two paths. The allocation path runs from the host driver to the device plugin, which registers `nvidia.com/gpu` with the kubelet, to an allocatable count on the node. The execution path runs through the container runtime, which uses the NVIDIA Container Toolkit or a CDI spec to put device files and driver libraries into one container, so that CUDA starts inside it. A node can pass the first path and fail the second. The refreshed pool did exactly that.
 
-The split that this capstone keeps returning to is the split between two paths. The first is the allocation path: the host driver is loaded, the device plugin registers `nvidia.com/gpu` with the kubelet, and the node publishes an allocatable count. The second is the execution path: the container runtime, with the NVIDIA Container Toolkit or a CDI spec, injects the selected device nodes and driver libraries into the specific container's sandbox, and CUDA initializes inside it. A node can be `Ready` on the allocation path and broken on the execution path. The refreshed pool failed at runtime injection: the node image change had altered the runtime configuration, so the sandbox never received the device it had been allocated. The scheduler did nothing wrong.
+A platform therefore cannot treat `Ready` as GPU-ready. Acceptance needs two yes answers. The node advertises capacity, and a real workload runs on it. The diagram draws the platform that way.
 
-The consequence for design is that a platform team cannot treat `Ready` as GPU-ready. The acceptance question has two answers, and both must be yes: can the node advertise capacity, and can a representative workload actually execute on it. This is why the topology below is drawn as two columns of evidence rather than one stack of components.
-
-### The capstone cluster
-
-The capstone platform is a regional GKE Standard cluster with a managed control plane. The GPU node pool holds two `a3-highgpu-8g` nodes, each carrying eight H100 accelerators. On top of that node plane sit three control-plane components: the GPU Operator, which reconciles the per-node GPU stack; Kueue, which manages the multi-tenant queue hierarchy; and the KAI Scheduler, which performs gang scheduling and topology-aware placement for multi-node training. Observability runs on the DCGM exporter on every GPU node feeding Prometheus, with Grafana on top.
+The capstone is a zonal GKE Standard cluster. A small CPU pool runs system components. The GPU pool holds two `a3-highgpu-8g` nodes with eight H100 GPUs each, 16 GPUs in total. Three controllers sit on top: the GPU Operator, Kueue and the KAI Scheduler.
 
 ```mermaid
 flowchart TB
-    subgraph CP["GKE managed control plane"]
-        API["API server, etcd, default scheduler"]
+    subgraph CP["Control plane and controllers"]
+        API["GKE API server and default scheduler"]
         KQ["Kueue: flavors, ClusterQueues, LocalQueues"]
-        KA["KAI: queues, PodGroups, Topology"]
+        KA["KAI: Queues, PodGroups, Topology"]
         GO["GPU Operator controller"]
     end
-    subgraph NP["GPU node pool: 2 nodes x 8 H100"]
-        N1["node-1: driver, device plugin, DCGM, NFD/GFD"]
-        N2["node-2: driver, device plugin, DCGM, NFD/GFD"]
+    subgraph NP["GPU pool: 2 nodes x 8 H100"]
+        N1["node 1: driver, device plugin, DCGM exporter, GFD"]
+        N2["node 2: driver, device plugin, DCGM exporter, GFD"]
     end
     W["Training and serving workloads"]
-    OBS["Prometheus and Grafana"]
+    OBS["Managed Prometheus"]
     W --> KQ
     KQ --> KA
     KQ --> API
@@ -100,187 +86,201 @@ flowchart TB
     KA --> N2
     GO --> N1
     GO --> N2
-    API --> N1
-    API --> N2
     N1 --> OBS
     N2 --> OBS
 ```
 
-| Component | Lives | Owns | Does not own |
+| Component | Namespace | Owns | Does not own |
 |---|---|---|---|
-| GKE control plane | Managed by Google | API server, etcd, default scheduler, cluster upgrade | GPU software on the nodes |
-| GPU node plane | The node pool | Driver, toolkit, device plugin, DCGM exporter, discovery | Which workloads may run |
-| GPU Operator | `gpu-operator` namespace | Reconciliation of the node-plane operands | Kernel compatibility, registry access |
-| Kueue | `kueue-system` namespace | Quotas, queue admission, borrowing | Gang placement, device selection |
-| KAI Scheduler | `kai-scheduler` namespace | Atomic gang binding, topology placement, fair share | Tenant quotas at the admission gate |
-| Observability | Managed Prometheus | Scrape, alerts, dashboards | GPU health itself |
+| GKE control plane | managed | API server, default scheduler, cluster upgrades | GPU software on nodes |
+| Google driver installer | `kube-system` (DaemonSet from Google's manifest) | NVIDIA kernel driver | Device plugin, metrics |
+| GPU Operator | `gpu-operator` | Toolkit, device plugin, GFD, DCGM exporter | The driver in this design |
+| Kueue | `kueue-system` | Quota, admission, borrowing, reclaim | Gang placement, device choice |
+| KAI Scheduler | `kai-scheduler` | Gang binding, topology placement, fair share | Admission against Kueue quota |
+| Managed Prometheus | managed | Scrape and storage | GPU health decisions |
 
-### Why the platform must name its pools
+The namespace for the driver installer is an assumption: Google's manifest decides it, so check it after you apply the file.
 
-The temptation with a GPU fleet is to let every workload share one undifferentiated pool. A pool that carries three workload classes, training, distributed inference, and general batch, needs the boundaries made explicit or the classes will contend in ways no dashboard shows. Picture a 32-GPU pool split by policy into three pools: a 16-GPU training pool restricted to jobs that need adjacent GPU sets, an 8-GPU inference pool, and an 8-GPU general pool with no constraint. A new four-GPU job with no topology requirement can only land in the general pool, even though 24 other GPUs in the cluster are physically idle. The taints make them ineligible, not unavailable. If the general pool already runs one four-GPU job, it shows four of eight allocatable, and the cluster-wide idle figure reads 75 percent. Reporting that figure without naming the pool is exactly the number a customer misreads as spare capacity when none of it is reachable by their request.
+**Decision rule:** admit a node only after both paths have evidence, and never read `Ready` as proof of either.
 
-Every hard constraint buys predictability at the price of fragmentation. The platform therefore keeps the catalog small: a training class, a serving class, and a general class, each with a documented reason for existing. Review the classes after changes; a constraint that provides no measurable benefit is operational debt.
-
-**Decision rule:** treat the GPU platform as two independent paths, allocation and execution, and admit a node to service only after both paths have been proven with evidence.
-
-**In one minute:** the capstone is a GKE Standard cluster with a two-node H100 pool. The allocation path is driver, device plugin, and kubelet advert capacity; the execution path is runtime injection and CUDA initialization inside the container. `Ready` proves neither path. Kueue sits in front as the admission gate, KAI performs gang and topology placement, and DCGM feeds Prometheus. Pools and classes are named deliberately, because an unnamed pool fragments invisibly.
-
----
+**In one minute:** the allocation path ends in an allocatable count. The execution path ends in CUDA running inside a container. `Ready` proves neither. Kueue admits, KAI places, and DCGM feeds the health signal.
 
 ## 2. The GPU node pool: hardware, driver, and ownership
 
-### The node pool with two drivers
+A team creates a GPU pool with GKE's automatic driver, then installs the GPU Operator with its own driver enabled. Two reconcilers now manage one kernel module. The pool flaps for days, CUDA jobs die with version mismatch errors, and nobody can say which system is in charge. Neither product has a bug. An ownership decision was never made.
 
-A team stands up a GKE GPU node pool with the driver set to `latest`, and separately deploys the GPU Operator with its driver operand enabled. Both systems now believe they manage the same kernel module. The node pool flaps for days: one reconciler loads a driver, the other reloads its own version, CUDA jobs die with driver and library version mismatch errors, and the incident ticket grows longer because nobody can say which system is in charge. The root cause is not a bug in either product. It is an ownership decision that was never made.
+NVIDIA's GKE page gives two supported ways to use the Operator on GKE. With the Google driver installer, Google manages the driver and the Operator manages everything else. With the NVIDIA Driver Manager, the Operator manages the driver too, on Ubuntu nodes. Both need the GKE device plugin turned off, because the Operator ships its own.
 
-This is the first architectural decision of the capstone, and it must be written down before any hardware is bought. The options are the ones from the platform-layer material.
-
-| Ownership model | Appropriate when | Principal trade-off |
+| Ownership model | Fits when | Trade-off |
 |---|---|---|
-| Host-managed driver and runtime | A node-image or OS team owns the complete host lifecycle | Desired state and diagnosis partly live outside Kubernetes |
-| Operator-managed node stack | Kubernetes is the primary lifecycle control plane and node images are deliberate | Operator, kernel, driver, and runtime versions must be qualified together |
-| Hybrid with a written boundary | Enterprise controls require host ownership of selected layers | The boundary must be documented; two systems must never reconcile the same setting |
+| Host-managed driver and runtime | An image team owns the whole host | Desired state lives outside Kubernetes |
+| Operator-managed node stack | Kubernetes controls the lifecycle | Operator, kernel and driver must be qualified together |
+| Hybrid with a written boundary | Policy requires host ownership of some layers | Two systems must never reconcile one setting |
 
-The capstone uses the hybrid. GKE owns the driver and the node image: the node pool is created with `gpu-driver-version=latest`, and GKE runs its own driver DaemonSet on the GPU nodes. The GPU Operator owns everything else on the node: the device plugin, the DCGM exporter, and feature discovery, with its driver operand disabled. One owner per layer. The boundary is written into the values file and reviewed in the same pull request as the node pool definition.
+The capstone uses the hybrid with the Google driver installer. Google's DaemonSet owns the driver on Container-Optimized OS. The Operator owns the toolkit, device plugin, feature discovery and DCGM exporter. The boundary sits in the Helm values file and is reviewed in the same pull request as the pool definition.
 
-### Creating the pool
-
-The cluster starts as a Standard cluster with a small CPU-only pool for system components, and the GPU pool is added separately.
+An earlier draft of this chapter used `gpu-driver-version=latest` together with the Operator's device plugin. NVIDIA's page says to disable the GKE device plugin and the automatic driver. It lists these as GKE features the Operator does not support. The script below follows NVIDIA's page.
 
 ```bash
-export PROJECT=my-project REGION=us-central1 ZONE=us-central1-a CLUSTER=ml-platform
+#!/usr/bin/env bash
+# Chapter 19.2 step 1: zonal GKE Standard cluster plus an H100 pool set up for the GPU Operator path.
+# Flags checked against gcloud 592.0.0 --help (2026-11-10). Needs GPU quota; not run here.
+set -euo pipefail
+: "${PROJECT:?set PROJECT}"
+ZONE="${ZONE:-us-central1-a}"
+CLUSTER="${CLUSTER:-ml-platform}"
 
+# System pool: CPU only. GKE adds the nvidia.com/gpu=present:NoSchedule taint to GPU nodes
+# only when the cluster already has a non-GPU pool, so keep this pool.
 gcloud container clusters create "$CLUSTER" \
   --project "$PROJECT" --zone "$ZONE" \
   --release-channel regular \
   --num-nodes 1 --machine-type e2-standard-4 \
   --workload-pool "${PROJECT}.svc.id.goog" \
   --enable-managed-prometheus \
-  --monitoring SYSTEM,DCGM
+  --monitoring SYSTEM
 
+# GPU pool: the node label turns off the GKE device plugin and gpu-driver-version=disabled
+# turns off the automatic driver, as the NVIDIA GPU Operator GKE page requires when the
+# Operator owns the device plugin. The Google driver installer is applied separately.
 gcloud container node-pools create h100-pool \
-  --cluster "$CLUSTER" --zone "$ZONE" \
+  --project "$PROJECT" --cluster "$CLUSTER" --zone "$ZONE" \
   --machine-type a3-highgpu-8g \
-  --accelerator type=nvidia-h100-80gb,count=8,gpu-driver-version=latest \
+  --accelerator type=nvidia-h100-80gb,count=8,gpu-driver-version=disabled \
   --num-nodes 2 \
-  --node-labels pool=h100 \
+  --node-labels pool=h100,gke-no-default-nvidia-gpu-device-plugin=true \
   --placement-type COMPACT
+
+gcloud container clusters get-credentials "$CLUSTER" --project "$PROJECT" --zone "$ZONE"
 ```
 
-Two decisions are worth naming. The compact placement policy keeps the two GPU nodes in the same zone, which the topology work in Section 6 relies on. The `gpu-driver-version=latest` flag is the ownership decision made concrete: because it is not `disabled`, GKE installs and manages the driver DaemonSet. If you instead want the GPU Operator to install the driver, set that flag to `disabled` and enable the operator's driver operand. You must not leave both enabled.
+Three details matter. The node label `gke-no-default-nvidia-gpu-device-plugin=true` turns off Google's device plugin. The setting `gpu-driver-version=disabled` skips the automatic driver, so you install Google's installer yourself in Section 3. Compact placement asks GKE to put the nodes close together and, per the gcloud help, limits the pool size.
 
-When the pool is up, GKE labels the nodes with the accelerator type and taints them so only GPU-requesting pods land there.
+GKE adds the `nvidia.com/gpu=present:NoSchedule` taint to GPU nodes only when the cluster already has a non-GPU pool. That is why the script creates the CPU pool first. The Operator's own tolerations include this key. Workloads in this chapter carry a toleration for it as well, so they do not depend on admission behavior.
 
-```bash
-kubectl get nodes -L cloud.google.com/gke-accelerator
-kubectl describe node $(kubectl get nodes -l pool=h100 -o name | head -1) \
-  | grep -A8 -i "taints\|nvidia.com/gpu"
-```
+Capacity failures on GKE come in two kinds. `QUOTA_EXCEEDED` means the project allowance is too low and you ask for more. `ZONE_RESOURCE_POOL_EXHAUSTED` means Google has no free hardware in that zone, and you try another zone, a reservation or later. GPU nodes cannot live-migrate during maintenance, so checkpointing from Part 14 is part of the platform contract.
 
-The default taint is `nvidia.com/gpu=present:NoSchedule`, and a built-in admission step adds the matching toleration to pods that request `nvidia.com/gpu`. If you add your own taints to isolate a team, you must add the tolerations yourself, and the workloads in Sections 5 and 6 carry them.
+**Decision rule:** name the owner of the driver, the device plugin and the metrics exporter before the pool exists, and give each exactly one.
 
-### Quotas, reservations, and consumption models
-
-Capacity failures on GKE come in two kinds that look similar but need different fixes. A `QUOTA_EXCEEDED` error means the project allowance for that GPU model in that region is too low, and the fix is a quota increase request. A `ZONE_RESOURCE_POOL_EXHAUSTED` error means the quota is fine but Google has no free hardware in the zone, and the fix is another zone, another machine type, a reservation, or waiting. Read the message before you act.
-
-The consumption models, in order of certainty, are reservations, committed-use discounts, on-demand, Spot, and flex-start. A reservation gives guaranteed capacity at a committed price and is what large training clusters run on. Spot is deeply discounted but can be preempted with roughly a 25 to 30 second notice, which is shorter than most checkpoint intervals, so it suits fault-tolerant batch work with healthy checkpoints. One more property matters for upgrades: GPU nodes cannot live-migrate, so host maintenance terminates them. The checkpointing discipline from Part 14 is what makes that survivable.
-
-**Decision rule:** decide the driver owner before the pool exists, write the boundary into the values file, and never let two reconcilers manage the same layer on the same node.
-
-**In one minute:** the capstone pool is two `a3-highgpu-8g` nodes with eight H100s each, compact placement, GKE-managed driver via `gpu-driver-version=latest`, and the GPU Operator's driver operand disabled. GKE taints GPU nodes with `nvidia.com/gpu=present:NoSchedule`. Quota errors and stockout errors need different fixes. GPU nodes terminate on maintenance, so checkpointing is part of the platform contract.
-
----
+**In one minute:** the pool is two `a3-highgpu-8g` nodes. Google's installer owns the driver. The Operator owns everything else on the node. GKE's device plugin and automatic driver are disabled, as NVIDIA's GKE page requires.
 
 ## 3. The GPU Operator stack: from driver to advertised capacity
 
-### The install that said deployed
+A platform team runs `helm install` for the GPU Operator and sees `STATUS: deployed`. Twenty minutes later the training queue is empty and the ClusterPolicy reports `notReady`. Five of six canary nodes are healthy. On the sixth, the driver pod crash-loops with a Secure Boot signing error. Helm said success because the API server accepted the objects. It said nothing about a kernel module.
 
-A platform team runs `helm install` for the GPU Operator, and the command reports `STATUS: deployed`. The standup meeting moves on. Twenty minutes later the training queue is empty, and the ClusterPolicy reports `notReady`. The aggregate view shows five of six canary nodes healthy. The sixth node's driver DaemonSet is crash-looping with a Secure Boot signing error: the kernel module the driver container compiled is unsigned for that machine's owner key database. The fleet looks healthy in the aggregate and broken on one node, and the node that is broken is the one a large job just landed on.
+So Helm success is one data point. The acceptance gate is an evidence chain, walked in order.
 
-The lesson is that Helm success is one data point, not the acceptance gate. `deployed` means the API server accepted the manifests and the objects it knows how to wait on reached a ready state. It says nothing about whether a kernel module loaded, whether the runtime injects devices, or whether the kubelet advertises the resource on every node in the pool. The rest of this section is the acceptance discipline that replaces the single command.
+1. The node is in the intended pool and can run the operands.
+2. The driver is healthy: the installer pod is running and `nvidia-smi` on the node lists all eight GPUs.
+3. The runtime can start a GPU container, shown by a small CUDA pod running `nvidia-smi`.
+4. The node shows `nvidia.com/gpu` allocatable equal to the physical count.
+5. Labels and taints match the intended service class.
+6. A representative workload and the telemetry path pass.
 
-### The operands and the evidence chain
+The Operator reconciles most operands as DaemonSets, and they retry independently. A downstream pod may therefore show a louder symptom than the upstream fault. Walking the chain in order avoids chasing the loud symptom. The Operator places operands on nodes where it finds NVIDIA hardware and sets the `nvidia.com/gpu.present` label, so nothing lands on the CPU pool.
 
-The operator reconciles a set of node-facing operands, most of them DaemonSets because their work is tied to local hardware and the kubelet. In the capstone, with the driver owned by GKE, the operator owns the device plugin, the container toolkit configuration where applicable, the feature-discovery workers, and the DCGM exporter. Reconciliation is not a serial installer: the DaemonSets retry independently, and a downstream operand may show a more visible symptom than the upstream failure it actually depends on. So the platform does not wait for every pod to appear `Running`. It walks an evidence chain, in order:
-
-1. The node is in the intended pool and can run the required operands.
-2. The driver interface is healthy, which on this platform means the GKE driver DaemonSet reports a working driver and `nvidia-smi` on the node enumerates all eight GPUs.
-3. The runtime can create a GPU-enabled container, proven by a minimal CUDA container that runs `nvidia-smi` inside the pod.
-4. The device plugin advertises the expected allocatable resource, so the node status shows `nvidia.com/gpu` equal to the physical count.
-5. Discovery labels and the pool taints match the intended service class.
-6. A representative workload and the telemetry path pass on the node.
-
-The operator configuration for the capstone is small and deliberate.
+Install uses a values file. It is the Helm form of the ClusterPolicy settings. Rendering the chart with this file produces one ClusterPolicy that passes the upstream CRD schema.
 
 ```yaml
-# clusterpolicy-gke.yaml (shape from the 11.4 production example; untested)
-apiVersion: nvidia.com/v1
-kind: ClusterPolicy
-metadata:
-  name: gpu-cluster-policy
-spec:
-  driver:
-    enabled: false          # GKE owns the driver (Section 2)
-  toolkit:
-    enabled: true
-  gfd:
-    enabled: true
-  devicePlugin:
-    enabled: true
+# Helm values for the NVIDIA GPU Operator on GKE with the Google driver installer.
+# Keys follow the NVIDIA GPU Operator GKE page; checked against the v26.7.2 chart and ClusterPolicy CRD.
+driver:
+  enabled: false                     # the Google driver installer owns the driver
+hostPaths:
+  driverInstallDir: /home/kubernetes/bin/nvidia
+toolkit:
+  enabled: true
+  installDir: /home/kubernetes/bin/nvidia
+  env:
+    - name: RUNTIME_CONFIG_SOURCE    # needed on GKE 1.33 and later, per the NVIDIA GKE page
+      value: file
+cdi:
+  enabled: true
+  default: true
+devicePlugin:
+  enabled: true
+gfd:
+  enabled: true
+dcgmExporter:
+  enabled: true
 ```
 
-Install it pinned, scoped to the node pool, and review the rendered manifests before applying.
+Each key comes from NVIDIA's GKE page or the chart. The driver install path `/home/kubernetes/bin/nvidia` is, per NVIDIA, a writable and stateful location on GKE node images. The `RUNTIME_CONFIG_SOURCE` environment variable is NVIDIA's workaround for a known toolkit issue on GKE 1.33 and later. The CDI settings follow the same page. GKE also limits system-critical pods per namespace unless a quota exists, so apply this first.
+
+```yaml
+# From the NVIDIA GPU Operator GKE page: GKE limits system-critical pods per namespace unless a quota exists.
+apiVersion: v1
+kind: ResourceQuota
+metadata:
+  name: gpu-operator-quota
+spec:
+  hard:
+    pods: "100"
+  scopeSelector:
+    matchExpressions:
+      - operator: In
+        scopeName: PriorityClass
+        values:
+          - system-node-critical
+          - system-cluster-critical
+```
 
 ```bash
+#!/usr/bin/env bash
+# Chapter 19.2 steps 3 and 4: driver installer, GPU Operator, Kueue, KAI Scheduler. Not run here.
+# Versions are the ones the chapter's YAML was validated against (see the chapter's verification log).
+set -euo pipefail
+GPU_OPERATOR_VERSION="${GPU_OPERATOR_VERSION:-v26.7.2}"
+KUEUE_VERSION="${KUEUE_VERSION:-0.20.5}"
+KAI_VERSION="${KAI_VERSION:-v0.18.7}"
+HERE="$(cd "$(dirname "$0")" && pwd)"
+
+# Google driver installer for Container-Optimized OS (manifest named on the NVIDIA GKE page).
+kubectl apply -f https://raw.githubusercontent.com/GoogleCloudPlatform/container-engine-accelerators/master/nvidia-driver-installer/cos/daemonset-preloaded.yaml
+
+kubectl create namespace gpu-operator --dry-run=client -o yaml | kubectl apply -f -
+kubectl apply -n gpu-operator -f "$HERE/c02_gpu_operator_quota.yaml"
 helm repo add nvidia https://helm.ngc.nvidia.com/nvidia
-export GPU_OPERATOR_VERSION='v26.3.0'
-helm template gpu-operator nvidia/gpu-operator \
-  --namespace gpu-operator --create-namespace \
-  --version "$GPU_OPERATOR_VERSION" -f target-values.yaml > evidence/manifest-target.yaml
+helm repo update
 helm upgrade --install gpu-operator nvidia/gpu-operator \
-  --namespace gpu-operator --create-namespace \
-  --version "$GPU_OPERATOR_VERSION" -f target-values.yaml \
-  --wait --timeout 15m
-kubectl get clusterpolicy
-kubectl get pods,daemonsets -n gpu-operator -o wide
+  --namespace gpu-operator --version "$GPU_OPERATOR_VERSION" \
+  -f "$HERE/c02_gpu_operator_values.yaml" --wait --timeout 15m
+
+helm upgrade --install kueue oci://registry.k8s.io/kueue/charts/kueue \
+  --version "$KUEUE_VERSION" --namespace kueue-system --create-namespace \
+  -f "$HERE/c02_kueue_values.yaml" --wait
+
+helm upgrade --install kai-scheduler oci://ghcr.io/kai-scheduler/kai-scheduler/kai-scheduler \
+  --namespace kai-scheduler --create-namespace --version "$KAI_VERSION" --wait
 ```
 
-The node selector in `target-values.yaml` restricts every operand to the `pool=h100` label, so no operand lands on the CPU system pool. After reconciliation, the per-node check is the capacity versus allocatable comparison. If capacity reads eight and allocatable reads eight, the device plugin registered a healthy set of devices. If allocatable reads zero while capacity still reads eight, the plugin lost contact with the driver after boot, and the fix lives in the driver layer, not the plugin.
+After reconciliation, compare capacity with allocatable on each GPU node. Both read eight when the device plugin registered a healthy set. If allocatable is zero while capacity is eight, the plugin lost contact with the driver after boot, and the fix lives in the driver layer. In the lab, `c02_smoke_pod.yaml` is the execution-path check from step 3 of the chain.
 
-### The label contract
+Feature discovery turns host facts into node labels. The Operator's source uses `feature.node.kubernetes.io/pci-10de.present` to find NVIDIA hardware and reads `nvidia.com/gpu.product` for the model. Treat these as observations. They are not promises about lifecycle or service.
 
-Feature discovery converts host facts into node labels. The NFD worker reads PCIe and CPU evidence and publishes labels such as `feature.node.kubernetes.io/pci-10de.present`. The GFD worker queries the driver through NVML and publishes `nvidia.com/gpu.product`, `nvidia.com/gpu.count`, `nvidia.com/gpu.memory`, and the MIG state labels. These are discovered facts, observed at a point in time. They are not lifecycle assertions and not service classes.
-
-The capstone keeps three kinds of labels separate, because they have different owners and different lifetimes.
-
-| Kind | Example | Authoritative writer | Consumer |
+| Kind | Example | Writer | Reader |
 |---|---|---|---|
-| Discovered fact | `nvidia.com/gpu.product=NVIDIA-H100-80GB-HBM3` | GFD/NFD workers | Platform automation, audits |
-| Lifecycle assertion | `gpu-validation=passed` | The acceptance gate controller | Admission, node affinity |
-| Service class | `gpu.platform.example/class=training-topology` | Platform engineering | Workload manifests |
+| Discovered fact | `nvidia.com/gpu.product` | GFD and NFD | Audits, automation |
+| Lifecycle assertion | `gpu-validation=passed` (our name) | Acceptance gate | Admission, affinity |
+| Service class | `gpu.platform.example/class=training` (our name) | Platform team | Workload manifests |
 
-Workloads select on service classes, never on SKU strings. When the platform retires one hardware generation and replaces it with another behind the same class, zero application manifests change. When manifests hard-select a product label, the same retirement becomes a coordinated manifest migration under a deadline. The lifecycle assertion is the one that gates admission: it is set only after the evidence chain from the previous subsection passes, and it is removed during any disruptive change.
+Workloads select service classes, never product strings. When a hardware generation retires behind a class, no manifest changes. A label that is present is also not a label that is current. After a driver update or GPU swap, rerun discovery and compare labels with the change record.
 
-A warning about staleness belongs here. A label that is present is not the same claim as a label that is current. After a driver update, a GPU replacement, or a MIG reconfiguration, the discovery workers must re-run, and the platform must compare the labels against the change record. A stale label produces a confident but wrong placement decision with no error logged anywhere, which is exactly why the maintenance workflow revalidates the class before the node re-enters the pool.
+One more option belongs here. The device plugin can share a GPU by time-slicing. Its README says nothing isolates the workloads, they can read each other's GPU memory, and one crash takes them all down. The setting applies to every GPU on a node, so the H100 pool stays whole-GPU in this capstone.
 
-**Decision rule:** accept a node on the strength of the evidence chain, not on DaemonSet status, and keep discovered facts, lifecycle assertions, and service classes owned by three different writers.
+**Decision rule:** accept a node on the evidence chain, not on DaemonSet status, and let three different writers own facts, assertions and classes.
 
-**In one minute:** `helm deployed` is not acceptance. The operator reconciles the device plugin, toolkit, GFD, and DCGM exporter, while GKE owns the driver. Admission requires the six-step evidence chain ending in a validated workload and telemetry. Labels come in three kinds with different owners, workloads select on service classes, and the acceptance label is removed during disruptive change.
-
----
+**In one minute:** `deployed` is not acceptance. The values file disables the Operator's driver and points the toolkit at GKE's install path. The six-step chain ends in a validated workload. Time-slicing gives no isolation, so the pool stays whole-GPU.
 
 ## 4. Priority, preemption, and fairness: protecting the inference SLO
 
-### The inference API that was stuck
+An eight-GPU cluster runs a large batch training job and a real-time inference API submitted at the same time. The training job takes all eight GPUs. The API stays `Pending` and users complain. The scheduler is doing what it was told, which was nothing about priority.
 
-An 8-GPU cluster has a large batch training job and a real-time inference API, and both are submitted at the same time. The batch training job consumes all eight GPUs. The inference API is stuck in `Pending`, and the users are furious. Nothing in the cluster is malfunctioning. The scheduler is doing exactly what it was told, and it was told nothing. This is the failure mode that priority classes and guaranteed capacity exist to prevent, and it is the first policy layer the capstone installs.
-
-### The three priority tiers
-
-The capstone defines three `PriorityClass` objects, taken from the Project 7 starter set.
+The capstone defines three PriorityClass objects.
 
 ```yaml
-# priority-classes.yaml (untested)
+# Three tiers. KAI treats a value of 100 or more as non-preemptible and in-quota only,
+# so training sits below that line (docs/priority in KAI Scheduler v0.18.7).
 apiVersion: scheduling.k8s.io/v1
 kind: PriorityClass
 metadata:
@@ -292,10 +292,10 @@ description: "Critical priority for inference SLOs"
 apiVersion: scheduling.k8s.io/v1
 kind: PriorityClass
 metadata:
-  name: training-high-priority
-value: 100
+  name: training-standard
+value: 50
 globalDefault: false
-description: "High priority for training jobs"
+description: "Preemptible training jobs"
 ---
 apiVersion: scheduling.k8s.io/v1
 kind: PriorityClass
@@ -306,41 +306,29 @@ globalDefault: false
 description: "Best effort for research jobs"
 ```
 
-The tiers run from serving down through training to research. When a high-priority pod arrives and no GPU is free, the scheduler looks for lower-priority pods to displace. It sends a termination signal to the lowest-priority candidate, the job gets the default 30-second grace period to shut down, and if it does not finish, it is killed. The high-priority pod then schedules onto the freed GPU. That 30-second number matters for training: a preempted job that cannot checkpoint within the grace window loses its progress, which is why checkpoint intervals are set shorter than the grace behavior they rely on, a point the multi-node material in Section 6 returns to.
+Serving sits at 1000, training at 50 and research at 0. When a pending pod cannot fit, the default scheduler looks for lower-priority pods to evict. Victims get their graceful termination period, which defaults to 30 seconds in the Kubernetes pod lifecycle docs. A training job that cannot checkpoint inside that window loses progress, so checkpoint intervals must be shorter than the window.
 
-### Guaranteed capacity for the SLO
+Training is 50 on purpose. An earlier draft used 100, and KAI treats a priority of 100 or more as non-preemptible. Such workloads may use only in-quota resources. A training class at 100 would never borrow idle GPUs and could never be preempted by KAI. KAI also ships `train` at 50 and `inference` at 125. Our class names are ours, so check that the number lands on the right side of 100.
 
-Priority alone is not enough, because a high-priority job still has to wait for a free GPU. The serving class in the capstone gets capacity it can always reach. The working rule from the Project 7 material is that SLO-bound work holds a small guaranteed slice, and the rest of the cluster is shared. On an 8-GPU cluster the rule of thumb is reserving two to three GPUs for inference; on the 16-GPU capstone pool the platform reserves four GPUs for the serving class. The reservation is implemented as a dedicated ClusterQueue in Section 5 plus the `inference-critical` priority, so that when the four reserved GPUs are occupied by lower-priority training work, the serving pod preempts its way in.
+Priority alone does not create free GPUs. The serving class needs capacity it can always reach. The capstone sets aside four of the 16 GPUs through a separate Kueue ClusterQueue in Section 5. Four is a policy choice, not a source-mandated value. Fairness then comes from quota and reclaim rules, not from hope.
 
-Fairness gets the same treatment as policy, not as hope. The Project 7 constraint set says no workload class may consume more than 60 percent of cluster resources over an observation window. On an 8-GPU cluster that caps training at 4.8 GPUs. The capstone enforces the same principle through the Kueue quota in Section 5, where the serving queue holds its four guaranteed GPUs and the training queue, while larger, can be preempted back into that space. The mechanism differs from the raw `ResourceQuota` example in the source, but the property is identical: no class holds the fleet indefinitely.
+Starvation needs a metric. Measure pending time per class and alert when it passes the team's own expectation. A `Pending` pod hides three different faults: no capacity, an untolerated taint and a stale label. The scheduler events name which check rejected each node.
 
-### Starvation and the monitoring answer
+**Decision rule:** give every class a priority, keep preemptible classes under 100 for KAI, and give SLO-bound classes quota they can reclaim.
 
-Best-effort research work must still make progress, or the platform has a class that is silently dead. The practical answer is to measure pending time per class and alert when it crosses the team's own expectation, for example a research job that should start within a bounded window. The scheduler's events name which predicate rejected each node, so a pending pod is diagnosable in one read: insufficient capacity, an untolerated taint, or a stale label are three different failures that the same `Pending` status hides.
-
-One honesty note for the capstone: GPU sharing by time-slicing advertises integer units, so a pod requesting `nvidia.com/gpu: 1` with time-slicing configured consumes one share, roughly one of N of the device, with no memory or fault isolation. Sharing is a policy you configure per pool, and the capstone keeps the H100 pool whole-GPU only. Trust your tenants before you slice their GPUs.
-
-**Decision rule:** give every workload class a priority value, give SLO-bound classes guaranteed capacity they can preempt into, and treat the fairness cap as a quota, not a suggestion.
-
-**In one minute:** three tiers, serving at 1000, training at 100, research at 0. Preemption fires when high-priority work cannot fit, with the default 30-second grace. The serving class holds a reserved slice of four GPUs on the 16-GPU pool. No class holds more than its share indefinitely, and pending time per class is the starvation metric.
-
----
+**In one minute:** three classes at 1000, 50 and 0. Preemption honors the 30-second default grace. Four GPUs are reserved for serving through Kueue. Pending time per class is the starvation metric.
 
 ## 5. The Kueue queue hierarchy: multi-tenant admission
 
-### The team that outran its quota
+A team complains the queue is unfair. Their large jobs run while others wait, yet the quota was meant to cap them. The platform engineer finds the jobs have no queue label. Kueue only manages work that enters through a LocalQueue, so unlabeled jobs bypass every quota. The cure was a one-line label and a process change.
 
-A team complains that the queue is unfair: their large jobs run while other teams wait, and the quota was supposed to cap each team at eight GPUs. The platform engineer checks and finds the team submitted its jobs without the queue label at all. Kueue only manages work that enters through a LocalQueue. Unlabeled pods bypass every quota the platform configured and run under the raw scheduler rules. The complaint about unfairness was really a complaint that the queue was not being used, and the fix was a one-line label plus a process change, not a new scheduler feature.
+Kueue has three objects. A ResourceFlavor names a hardware tier through node labels. A ClusterQueue is cluster-scoped and carries quota, cohort, queueing strategy and preemption rules. A LocalQueue lives in a namespace and points a team at a ClusterQueue. A ClusterQueue tries its flavors in order and uses the first with room.
 
-### ResourceFlavor, ClusterQueue, LocalQueue
-
-Kueue's hierarchy has three objects. A `ResourceFlavor` names a hardware tier with node labels, so a quota can be attached to a specific kind of node rather than to the cluster as a whole. A `ClusterQueue` is cluster-scoped and carries the quota, the cohort it belongs to, the queueing strategy, and the preemption rules. A `LocalQueue` is namespace-scoped and points a team at the ClusterQueue it may draw from. The flavor list inside a ClusterQueue is evaluated in order, which is how the platform expresses preferences such as a topology-validated tier before a general tier.
-
-The capstone configuration defines one H100 flavor, a training queue that can in principle use the whole pool, and a serving queue that holds four guaranteed GPUs. Both queues share a cohort, which is the unit that borrowing and reclamation operate on.
+An earlier draft used `kueue.x-k8s.io/v1beta1`. In Kueue v0.20.5 that version is no longer served, and `v1beta2` renames the cohort field to `cohortName`. The same draft set `withinClusterQueue: Any`. The CRD allows only `Never`, `LowerPriority` and `LowerOrNewerEqualPriority`, so the schema check rejected it.
 
 ```yaml
-# kueue-flavors-queues.yaml (untested)
-apiVersion: kueue.x-k8s.io/v1beta1
+# Kueue v1beta2 (v1beta1 is no longer served in Kueue v0.20.5). 16 GPUs in the pool: 12 training + 4 serving.
+apiVersion: kueue.x-k8s.io/v1beta2
 kind: ResourceFlavor
 metadata:
   name: h100
@@ -348,36 +336,33 @@ spec:
   nodeLabels:
     cloud.google.com/gke-accelerator: nvidia-h100-80gb
 ---
-apiVersion: kueue.x-k8s.io/v1beta1
+apiVersion: kueue.x-k8s.io/v1beta2
 kind: ClusterQueue
 metadata:
   name: cq-training
 spec:
-  cohort: ml-platform-cohort
+  cohortName: ml-platform-cohort
   namespaceSelector: {}
+  queueingStrategy: BestEffortFIFO
   resourceGroups:
-    - coveredResources: ["cpu", "memory", "nvidia.com/gpu"]
+    - coveredResources: ["nvidia.com/gpu"]
       flavors:
         - name: h100
           resources:
-            - name: cpu
-              nominalQuota: 256
-            - name: memory
-              nominalQuota: 1Ti
             - name: nvidia.com/gpu
-              nominalQuota: 16
-  queueingStrategy: BestEffortFIFO
+              nominalQuota: 12
   preemption:
     reclaimWithinCohort: Any
     withinClusterQueue: LowerPriority
 ---
-apiVersion: kueue.x-k8s.io/v1beta1
+apiVersion: kueue.x-k8s.io/v1beta2
 kind: ClusterQueue
 metadata:
   name: cq-serving
 spec:
-  cohort: ml-platform-cohort
+  cohortName: ml-platform-cohort
   namespaceSelector: {}
+  queueingStrategy: StrictFIFO
   resourceGroups:
     - coveredResources: ["nvidia.com/gpu"]
       flavors:
@@ -387,9 +372,9 @@ spec:
               nominalQuota: 4
   preemption:
     reclaimWithinCohort: Any
-    withinClusterQueue: Any
+    withinClusterQueue: LowerPriority
 ---
-apiVersion: kueue.x-k8s.io/v1beta1
+apiVersion: kueue.x-k8s.io/v1beta2
 kind: LocalQueue
 metadata:
   name: team-data-science-queue
@@ -397,7 +382,15 @@ metadata:
 spec:
   clusterQueue: cq-training
 ---
-apiVersion: kueue.x-k8s.io/v1beta1
+apiVersion: kueue.x-k8s.io/v1beta2
+kind: LocalQueue
+metadata:
+  name: team-research-queue
+  namespace: team-research
+spec:
+  clusterQueue: cq-training
+---
+apiVersion: kueue.x-k8s.io/v1beta2
 kind: LocalQueue
 metadata:
   name: team-ml-platform-queue
@@ -406,23 +399,60 @@ spec:
   clusterQueue: cq-serving
 ```
 
-Read the preemption blocks carefully, because they are the difference between a quota and a guarantee. `reclaimWithinCohort: Any` lets a queue take back GPUs it lent to other queues in the same cohort when it needs its own quota. `withinClusterQueue: Any` on the serving queue means a serving workload can displace any lower-priority work admitted through that queue, which is how the four reserved GPUs stay reachable by the serving SLO even when training has borrowed the capacity. The training queue uses `LowerPriority`, which only allows its high-priority jobs to displace its own lower-priority jobs.
+The nominal quotas now sum to the hardware: 12 for training and 4 for serving, 16 in total. A draft gave training 16 and serving 4. Kueue allows quotas above the hardware, but then the serving reserve is a hope, not a guarantee. Only GPUs are covered. By default Kueue does not account for resources that no ClusterQueue declares. The config key `resources.quotaCheckStrategy: BlockUndeclared` changes that.
 
-Two semantics are worth being precise about. A `nominalQuota` limits admission, not physical reservation. The cluster can admit work up to the quota even if the physical pool is smaller, and the two queues' nominal quotas can therefore sum to more than the hardware. And a cohort is a borrowing domain: when the serving queue has idle quota, the training queue can borrow it, and the reclaim rule is what makes the lending reversible. The combination is what the raw scheduler layer in Section 4 cannot express: fair multi-tenant admission with reversible lending and SLO-protected reclamation.
+Borrowing works inside a cohort. Kueue's docs say a workload is admitted if it fits unused nominal quota. Otherwise it may borrow unused quota from other queues in the cohort, up to its `borrowingLimit`, and only what each lender allows through `lendingLimit`. A 16-GPU gang from training therefore fits only by borrowing the four serving GPUs. `c02_queue_math.py` computes this, and also shows that `lendingLimit: 0` on serving would block it.
 
-### Admission in action
+`reclaimWithinCohort: Any` is what makes lending reversible. When a pending workload fits inside its queue's nominal quota, Kueue may preempt workloads in other queues that use more than their nominal quota, whatever their priority. When serving needs its four GPUs back, the borrowed training workload is evicted. Preemption evicts a whole Workload, so the training gang stops, and checkpoints decide what is lost.
 
-A workload enters the queue with a label on its pods. Kueue creates a `Workload` object, holds it until quota and preemption rules allow, and admits it by reserving quota and unsuspending the pods.
-
-```bash
-kubectl get workloads -n team-data-science
-kubectl get workload <name> -n team-data-science -o yaml
-```
-
-When admitted, the workload status records the ClusterQueue and the flavor chosen for each pod set. That admission section is the audit trail the FinOps review in Section 8 reads: which queue admitted which job, on which hardware tier, and when. Production work can be elevated with a `WorkloadPriorityClass`, which Kueue uses for its own preemption ordering, in addition to the pod `PriorityClass` from Section 4.
+The queue label has a counterpart in configuration. By default Kueue manages only labeled jobs. The setting `manageJobsWithoutQueueName: true` makes unlabeled jobs wait for a queue. The values file below also enables the PyTorchJob integration, which is commented out in the chart defaults, and excludes system namespaces.
 
 ```yaml
-# queue-labelled single-GPU job (untested)
+# Helm values for the Kueue chart (v0.20.5). The default frameworks list leaves kubeflow.org/pytorchjob
+# commented out, so the capstone enables it. manageJobsWithoutQueueName makes unlabeled Jobs wait for a queue.
+managerConfig:
+  controllerManagerConfigYaml: |-
+    apiVersion: config.kueue.x-k8s.io/v1beta2
+    kind: Configuration
+    health:
+      healthProbeBindAddress: :8081
+    metrics:
+      bindAddress: :8443
+    webhook:
+      port: 9443
+    leaderElection:
+      leaderElect: true
+      resourceName: c1f6bfd2.kueue.x-k8s.io
+    controller:
+      groupKindConcurrency:
+        Job.batch: 5
+        Pod: 5
+        Workload.kueue.x-k8s.io: 10
+        LocalQueue.kueue.x-k8s.io: 5
+        Cohort.kueue.x-k8s.io: 1
+        ClusterQueue.kueue.x-k8s.io: 5
+        ResourceFlavor.kueue.x-k8s.io: 1
+    clientConnection:
+      qps: 300
+      burst: 500
+    manageJobsWithoutQueueName: true
+    managedJobsNamespaceSelector:
+      matchExpressions:
+        - key: kubernetes.io/metadata.name
+          operator: NotIn
+          values: [kube-system, kueue-system, gpu-operator, kai-scheduler]
+    integrations:
+      frameworks:
+        - "batch/job"
+        - "kubeflow.org/pytorchjob"
+        - "jobset.x-k8s.io/jobset"
+        - "leaderworkerset.x-k8s.io/leaderworkerset"
+```
+
+A workload enters with a label. Kueue creates a Workload object, holds it until quota and preemption rules allow, then admits it and unsuspends the job. For a Kubeflow v1 PyTorchJob, Kueue's docs say its webhook sets `runPolicy.suspend` to true. The admitted Workload records the ClusterQueue and flavor, which is the audit trail the cost review reads in Section 8.
+
+```yaml
+# One GPU through the queue. The queue-name label is what puts the Job under Kueue quota.
 apiVersion: batch/v1
 kind: Job
 metadata:
@@ -431,10 +461,10 @@ metadata:
   labels:
     kueue.x-k8s.io/queue-name: team-data-science-queue
 spec:
-  backoffLimit: 3
+  backoffLimit: 0
   template:
     spec:
-      priorityClassName: training-high-priority
+      priorityClassName: training-standard
       restartPolicy: Never
       tolerations:
         - key: nvidia.com/gpu
@@ -443,49 +473,38 @@ spec:
       containers:
         - name: train
           image: nvcr.io/nvidia/pytorch:24.08-py3
-          command: ["python", "train_resnet.py", "--epochs", "1"]
+          command: ["python", "-c", "import torch; print(torch.cuda.device_count())"]
           resources:
             limits:
               nvidia.com/gpu: 1
 ```
 
-**Decision rule:** no job runs on the GPU pool without a LocalQueue label, because unlabeled work bypasses every quota you configured.
+**Decision rule:** no job runs on the GPU pool without a LocalQueue, and quotas should add up to the hardware unless you accept unreserved guarantees.
 
-**In one minute:** Kueue has three objects: the ResourceFlavor names hardware tiers with node labels, the ClusterQueue carries quota, cohort, and preemption rules, and the LocalQueue ties a team's namespace to a queue. Quotas limit admission, cohorts enable reversible borrowing, and `reclaimWithinCohort: Any` is how the serving queue takes its four GPUs back. The Workload object's admission section is the audit trail.
-
----
+**In one minute:** flavors name hardware, ClusterQueues hold quota, LocalQueues bind teams. Use `v1beta2` and `cohortName`. Training borrows idle serving GPUs and serving reclaims them with `reclaimWithinCohort: Any`.
 
 ## 6. KAI: gang scheduling and topology-aware placement
 
-### The job that reserved half the cluster and trained nothing
+A team submits a two-node training job when only one node is free. The default scheduler places the first pod, which takes eight GPUs and waits at the PyTorch rendezvous for a peer that never arrives. The second pod stays `Pending`. Those eight GPUs sit at zero compute, and no other team can use that node.
 
-A team submits a two-node training job to the capstone cluster when only one of the two GPU nodes is free. The default scheduler places the first pod, with all eight GPUs on the free node, and the second pod waits in `Pending`. The running pod blocks at the PyTorch rendezvous barrier waiting for its peer, so eight GPUs sit at zero compute utilization. And no other team's single-node eight-GPU job can use the waiting node either, because that node is already committed to the half-scheduled job. Scale the same picture to a 12-node, 96-GPU cluster where two teams each submit an eight-node job, and neither job can ever reach eight nodes: six plus six consumes all twelve, and both jobs deadlock until an operator deletes one of them. The cluster is allocated and the work is not happening.
+Scale the picture up. In a 12-node cluster, two teams each submit an eight-node job. A default scheduler places pods one at a time, so each job gets six nodes and neither can finish. `c02_queue_math.py` reproduces this: with the default behavior, 12 nodes are stranded, and with a gang the first job runs.
 
-This is the failure gang scheduling exists to prevent. A multi-node job is not a set of independent pods. It is one job that must start together or not at all, and the scheduler has to hold the whole group pending until the full minimum fits, rather than placing what it can and stranding the rest.
+Gang scheduling holds the whole group pending until the minimum fits. The KAI Scheduler, which NVIDIA open-sourced from Run:ai, does this with a PodGroup. Its README requires the GPU Operator for GPU workloads and installs into `kai-scheduler` with Helm from an OCI registry. Workloads opt in by setting `schedulerName: kai-scheduler`. Its docs say to submit workloads from another namespace.
 
-### The KAI queue and the PodGroup
-
-The capstone installs the KAI Scheduler, which NVIDIA open-sourced from Run:ai, in its own namespace. Its control plane runs a small set of microservices: an admission webhook, a pod grouper, a queue controller, the scheduler engine, and a binder. The scheduler name is `kai-scheduler`, and a workload opts in by setting that name on its pods. The admission webhook validates the queue and injects the scheduler name, the pod grouper synthesizes the `PodGroup` that defines the gang, and the engine works in periodic sessions: it snapshots state, reclaims lent capacity, preempts where policy allows, allocates, and writes `BindRequest` objects that the binder commits as pod bindings.
-
-KAI keeps its own fair-share structure, a hierarchy of `Queue` resources from department down to project. Only leaf queues run jobs.
+KAI keeps a hierarchy of Queue objects. Only leaf queues run jobs. The Queue API is `scheduling.run.ai/v2`, and units differ from Kubernetes: GPU in devices, CPU in millicores and memory in megabytes. A draft wrote `1Ti` for memory, which the CRD rejects because the field is a number.
 
 ```yaml
-# kai-queues.yaml (untested)
+# KAI Queue (scheduling.run.ai/v2). Units: gpu in devices, cpu in millicores, memory in MB.
+# Only leaf queues run jobs. Children quotas sum to the parent: 8 + 4 = 12, the Kueue training quota.
 apiVersion: scheduling.run.ai/v2
 kind: Queue
 metadata:
   name: ml-platform
 spec:
   resources:
-    gpu:
-      quota: 16
-      overQuotaWeight: 1
-    cpu:
-      quota: 256
-      overQuotaWeight: 1
-    memory:
-      quota: 1Ti
-      overQuotaWeight: 1
+    gpu: {quota: 12, limit: -1, overQuotaWeight: 1}
+    cpu: {quota: 0, limit: -1, overQuotaWeight: 1}
+    memory: {quota: 0, limit: -1, overQuotaWeight: 1}
 ---
 apiVersion: scheduling.run.ai/v2
 kind: Queue
@@ -494,25 +513,32 @@ metadata:
 spec:
   parentQueue: ml-platform
   resources:
-    gpu:
-      quota: 8
-      overQuotaWeight: 1
-    cpu:
-      quota: 128
-      overQuotaWeight: 1
-    memory:
-      quota: 512Gi
-      overQuotaWeight: 1
+    gpu: {quota: 8, limit: -1, overQuotaWeight: 1}
+    cpu: {quota: 0, limit: -1, overQuotaWeight: 1}
+    memory: {quota: 0, limit: -1, overQuotaWeight: 1}
+---
+apiVersion: scheduling.run.ai/v2
+kind: Queue
+metadata:
+  name: team-research
+spec:
+  parentQueue: ml-platform
+  resources:
+    gpu: {quota: 4, limit: -1, overQuotaWeight: 1}
+    cpu: {quota: 0, limit: -1, overQuotaWeight: 1}
+    memory: {quota: 0, limit: -1, overQuotaWeight: 1}
 ```
 
-The two project quotas sum to the department's sixteen GPUs. Fair share gives each queue its deserved quota first, then divides the surplus by the `overQuotaWeight`. Keep these quotas consistent with the Kueue ClusterQueues from Section 5: Kueue is the platform-wide admission gate, and KAI is the executor for the work that asks for it by scheduler name. The comparison material in 11.20 is explicit that teams usually pick one admission owner per workload class, and the capstone's division of labor is that Kueue decides which job is admitted and which hardware tier it may consume, while KAI handles the atomic gang binding and placement once the job is admitted.
+The two team queues sum to the parent's 12 GPUs, which equals Kueue's training quota. KAI's docs describe fair share in two phases. Each queue gets min(quota, request). Surplus then goes to the highest queue priority first and is split by `overQuotaWeight` inside a priority. The CPU and memory entries set `limit: -1` as in KAI's quickstart, because the docs say an unset limit means no additional resources are allowed.
 
-### Topology-aware placement
+Two upstream rules matter for the capstone. KAI preemption happens inside one queue, between workloads of strictly different priority. Across queues KAI uses reclaim, which takes only over-quota resources by default. KAI cannot see Kueue's quota, so keep the numbers consistent by hand. The test file in `code/part19` asserts that they match.
 
-Capacity, eligibility, locality, and coordination are four separate placement questions, and gang admission answers only the last one. The capstone's H100 pool is a single NVLink island per node, so the binding constraint for a two-node job is that both nodes live in the zone the job was approved for, with the verified fabric in between. KAI expresses the placement hierarchy as a `Topology` resource whose levels are node labels, from coarse to fine.
+Division of labor follows *Generative AI on Kubernetes* ch. 7. Kueue admits, and a GPU-aware scheduler such as KAI places. The book calls this combination common and recommended. KAI's own docs do not describe running both on one workload, so treat the pairing as not verified on a live cluster. One open question is how KAI counts GPUs that serving pods hold under the default scheduler.
+
+Capacity, eligibility, locality and coordination are four separate placement questions, and gang admission answers only the last. KAI expresses locality with a Topology resource that lists node labels from coarse to fine.
 
 ```yaml
-# kai-topology.yaml (untested)
+# KAI Topology (kai.scheduler/v1alpha1, cluster scoped). Levels run from coarse to fine.
 apiVersion: kai.scheduler/v1alpha1
 kind: Topology
 metadata:
@@ -523,10 +549,11 @@ spec:
     - nodeLabel: kubernetes.io/hostname
 ```
 
-A job attaches to the topology with annotations that mark which level is required and which is preferred. A required level is a hard constraint: the job cannot leave it. A preferred level is a scoring preference: the scheduler falls back to a different placement when it has to. The capstone marks the zone as required and omits the preferred level, because both nodes in the pool are equivalent. On a larger fleet with its own InfiniBand fabric, the preferred level would name the fabric leaf switch so that a multi-node job lands under one switch when it can.
+A job attaches through annotations. A required level is a hard limit. A preferred level is a soft one inside the required boundary. The capstone requires the zone and omits a preferred level, because both nodes are equivalent. On a fabric with rack or block labels, name those as preferred so pods land close together.
 
 ```yaml
-# pytorchjob-gang.yaml (untested)
+# Two-node gang: Master and Worker each take all eight GPUs of one a3-highgpu-8g node.
+# Kueue admits it through the queue-name label. KAI gang-schedules it through schedulerName and the queue label.
 apiVersion: kubeflow.org/v1
 kind: PyTorchJob
 metadata:
@@ -542,10 +569,11 @@ spec:
   pytorchReplicaSpecs:
     Master:
       replicas: 1
+      restartPolicy: OnFailure
       template:
         spec:
           schedulerName: kai-scheduler
-          priorityClassName: training-high-priority
+          priorityClassName: training-standard
           tolerations:
             - key: nvidia.com/gpu
               operator: Exists
@@ -553,15 +581,17 @@ spec:
           containers:
             - name: pytorch
               image: nvcr.io/nvidia/pytorch:24.08-py3
+              command: ["python", "-c", "import torch; print(torch.cuda.device_count())"]
               resources:
                 limits:
                   nvidia.com/gpu: 8
     Worker:
       replicas: 1
+      restartPolicy: OnFailure
       template:
         spec:
           schedulerName: kai-scheduler
-          priorityClassName: training-high-priority
+          priorityClassName: training-standard
           tolerations:
             - key: nvidia.com/gpu
               operator: Exists
@@ -569,28 +599,26 @@ spec:
           containers:
             - name: pytorch
               image: nvcr.io/nvidia/pytorch:24.08-py3
+              command: ["python", "-c", "import torch; print(torch.cuda.device_count())"]
               resources:
                 limits:
                   nvidia.com/gpu: 8
 ```
 
-The PyTorchJob controller creates the headless service, injects `MASTER_ADDR`, `MASTER_PORT`, `WORLD_SIZE`, and `RANK` into every pod, and coordinates with the scheduler so the whole replica group restarts cleanly on failure. A job that stalls at startup is checked against those injected values first.
+The Master and Worker each take eight GPUs, so this job needs the whole pool. That is possible only because the training queue can borrow serving's idle quota. The PyTorchJob controller injects the rendezvous environment into each pod. KAI's docs require the Kubeflow Training Operator v1 for this kind. The current Trainer project replaces PyTorchJob with TrainJob, so pin the v1 operator.
 
-### JobSet and LeaderWorkerSet
-
-A pod cannot span nodes: one kubelet on one node manages it, and its containers share one network namespace. So any workload that needs more GPUs than one server holds runs as multiple pods, one per node, each claiming the node's eight GPUs and coordinating over the network. The workload operators express that group.
-
-JobSet is the general building block. It manages a coordinated group of indexed jobs under `spec.replicatedJobs`, creates one shared headless service across all of them, gives every pod a deterministic DNS name, sets the startup order so an initializer finishes before the trainers launch, and treats the whole set as a single failure domain: if any child job fails beyond its backoff limit, JobSet tears down and recreates all children together, which keeps distributed ranks from drifting out of sync.
-
-LeaderWorkerSet serves the sharded-inference shape: a leader plus a fixed number of workers per replica group, where the whole group is the restart unit.
+A Pod cannot span nodes. Anything needing more GPUs than one server holds runs as several pods that coordinate over the network. JobSet manages groups of Jobs. Per its docs, one failed child counts as a JobSet failure, and `spec.failurePolicy.maxRestarts` sets how many times the controller recreates all children. LeaderWorkerSet serves the sharded-inference shape, where the group is the restart unit.
 
 ```yaml
-# lws-sharded-inference.yaml (untested)
+# One two-pod group sharing a model, 2 GPUs per pod = 4 GPUs, the serving queue's quota.
+# Replace the image placeholder with a pinned serving image you built or pulled.
 apiVersion: leaderworkerset.x-k8s.io/v1
 kind: LeaderWorkerSet
 metadata:
-  name: vllm-sharded
+  name: sharded-serving
   namespace: team-ml-platform
+  labels:
+    kueue.x-k8s.io/queue-name: team-ml-platform-queue
 spec:
   replicas: 1
   leaderWorkerTemplate:
@@ -601,191 +629,124 @@ spec:
         labels:
           role: leader
       spec:
+        priorityClassName: inference-critical
         containers:
-          - name: vllm-leader
-            image: vllm/vllm-openai:latest
+          - name: serve-leader
+            image: us-docker.pkg.dev/PROJECT/serving/sharded-server:PINNED_TAG
             resources:
               limits:
-                nvidia.com/gpu: "8"
+                nvidia.com/gpu: "2"
     workerTemplate:
       spec:
+        priorityClassName: inference-critical
         containers:
-          - name: vllm-worker
-            image: vllm/vllm-openai:latest
+          - name: serve-worker
+            image: us-docker.pkg.dev/PROJECT/serving/sharded-server:PINNED_TAG
             resources:
               limits:
-                nvidia.com/gpu: "8"
+                nvidia.com/gpu: "2"
 ```
 
-The `RecreateGroupOnPodRestart` line is the operational point: when one pod in the group dies, the group is recreated, not the single pod, because a sharded model cannot keep serving with one shard missing.
+The restart policy `RecreateGroupOnPodRestart` is the operational point. When one pod dies, the whole group is recreated, because a sharded model cannot serve with a shard missing. The group uses two GPUs per pod so its four GPUs match the serving quota. The image is a placeholder you must replace. The Kueue values file enables the LeaderWorkerSet integration, so the label routes it to the serving queue.
 
-**Decision rule:** use gang admission only for workloads where a partial start costs real money, and bind the topology levels to labels the fleet actually publishes.
+**Decision rule:** use gang admission where a partial start costs real money, and bind topology levels to labels the fleet actually publishes.
 
-**In one minute:** the default scheduler places what it can, which for multi-node jobs means stranded GPUs and deadlocked rendezvous barriers. KAI holds the whole `PodGroup` pending until the minimum fits, binds it atomically through `BindRequest` objects, and places it along a `Topology` level list where required levels are hard and preferred levels are soft. Kueue stays the admission gate; KAI is the executor for admitted multi-node work. JobSet is the single-failure-domain building block, and LeaderWorkerSet restarts its whole group.
-
----
+**In one minute:** the default scheduler strands GPUs. KAI holds the PodGroup until the whole gang fits. Queue quotas match Kueue by hand. Required topology is hard, preferred is soft. LeaderWorkerSet recreates its whole group.
 
 ## 7. DCGM health gating and observability
 
-### The GPU that fell off the bus while still selling capacity
+A GPU dies with an Xid 79 event, which NVIDIA's catalog describes as the GPU falling off the bus. The kubelet still reports eight allocatable GPUs because nothing told the device plugin to withdraw capacity. New pods land on the dead GPU and fail at CUDA start. The node dashboard looks fine. The node is alive as a process and dead as a machine.
 
-A GPU dies with an Xid 79 event: the device has fallen off the bus. The node's kubelet keeps reporting eight allocatable GPUs, because the failure lives in the driver layer and nothing has told the device plugin to withdraw capacity. New pods land on the dead GPU and fail at CUDA initialization, while the node dashboard still shows the node healthy and the queue still schedules onto it. The node is a zombie: alive as a process, dead as a machine, and the platform has no idea until a workload's failure is attributed to the wrong layer.
+The health signal must gate as well as report. A node with a reliability event leaves the eligible pool until acceptance evidence returns.
 
-This is the failure the health gate exists to catch, and the design rule that prevents it is the one people most often miss: the health signal is not allowed to only report. It has to gate, by keeping the node out of the eligible pool until the acceptance evidence is back.
+The Operator runs the DCGM exporter as a DaemonSet with the label `app=nvidia-dcgm-exporter`. Its container listens on port 9400 and names it `metrics`. The Operator also creates a Service whose port is named `gpu-metrics`. The chart version used here ships exporter 4.6.1-4.8.4, and the metrics below exist in that release.
 
-### The exporter and the join key
+We scrape with Managed Prometheus through a PodMonitoring. The GKE-managed DCGM option needs GKE-managed drivers, so it does not apply to this pool, and Google warns that running two DCGM collectors duplicates metrics.
 
-The telemetry path runs DCGM on the host, the DCGM exporter as a DaemonSet on port 9400, and Prometheus scraping it. On GKE the same cluster is created with `--monitoring SYSTEM,DCGM`, which requires managed Prometheus, so the platform gets device metrics into the backend without running its own scrape fleet. The exporter tags each series with the GPU UUID alongside the more convenient device index, and with node, pod, and namespace labels where the integration can resolve the mapping.
-
-The UUID is the durable join key. Device indexes are convenient for a human reading one node, but they can be renumbered after a reboot, a reset, or an inventory change. A recording rule or an incident correlation that keys on the index can silently start pointing at a different physical card.
-
-```bash
-curl -s localhost:9400/metrics | grep -E 'DCGM_FI_DEV_(GPU_UTIL|POWER_USAGE|XID_ERRORS)' | grep -v '^#'
+```yaml
+# Scrape the Operator's DCGM exporter with Google Managed Service for Prometheus.
+# The exporter container port is named metrics (assets/state-dcgm-exporter in GPU Operator v26.7.2).
+apiVersion: monitoring.googleapis.com/v1
+kind: PodMonitoring
+metadata:
+  name: nvidia-dcgm-exporter
+  namespace: gpu-operator
+spec:
+  selector:
+    matchLabels:
+      app: nvidia-dcgm-exporter
+  endpoints:
+    - port: metrics
+      interval: 30s
 ```
 
-A representative scrape for one GPU looks like this:
+The exporter labels each series with the GPU UUID next to the device index. Use the UUID as the join key. Indexes can change after a reboot or reset, and a rule keyed on an index may point at a different card.
 
-```
-DCGM_FI_DEV_GPU_UTIL{gpu="0",UUID="GPU-3a1e9f2b-...",Hostname="node-1",pod="train-worker-0",namespace="team-data-science"} 91
-DCGM_FI_DEV_POWER_USAGE{gpu="0",UUID="GPU-3a1e9f2b-...",Hostname="node-1",pod="train-worker-0",namespace="team-data-science"} 312.4
-DCGM_FI_DEV_XID_ERRORS{gpu="0",UUID="GPU-3a1e9f2b-...",Hostname="node-1",pod="train-worker-0",namespace="team-data-science"} 0
-```
+Three series matter in this release: `DCGM_FI_DEV_GPU_UTIL`, `DCGM_FI_DEV_POWER_USAGE` and `DCGM_FI_DEV_XID_ERRORS`. The last one holds the value of the most recent Xid code, per the counters file, so zero means none and 79 means the last event was Xid 79. Newer exporter releases rename several metrics, for example to `DCGM_FI_DEV_GPU_UTIL_RATIO`. Check the counters file of the exporter image you deploy before you write alerts.
 
-The `XID_ERRORS` series at zero is the reliability signal. Nonzero, even briefly, is an actionable condition: it names the UUID of the affected device, and the kernel log on the same node names the event. Pairing the two turns an alert into a fault class. Xid 79 is one of the small set of codes that means the device itself needs escalation, not a workload retry.
+Expected shape of the scrape, not run here: one line per GPU per metric, with `gpu`, `UUID`, `container`, `namespace` and `pod` labels. Pod labels appear only when the mapper can resolve the assignment.
 
-### A monitoring contract, not a dashboard
+A production pool needs a small monitoring contract. Every accepted node is scraped, and a missing target alerts. A dashboard pivots from workload to node to GPU UUID. Each alert states its cause, owner, first checks and safe mitigation. Raw data stays long enough to compare a regression with a maintenance window. Labels stay bounded.
 
-A production GPU pool needs a small, explicit contract, and the capstone holds itself to it.
+Page when someone must stop work: lost schedulable capacity, an actionable hardware event, sustained throttling with measured impact, or lost monitoring. Do not page on low utilization. A zero reading is ambiguous until you check the exporter target is alive.
 
-1. Coverage: every accepted GPU node is scraped, and the platform alerts when an expected target disappears or its data goes stale.
-2. Identity: a dashboard can pivot from a workload to its node and GPU UUID, then to node events and driver evidence.
-3. Semantics: each alert states the triggering condition, the likely blast radius, the owner, the first checks, and the safe mitigation.
-4. Retention: raw data is kept long enough to compare a workload regression against the deployment or maintenance window that caused it.
-5. Cost control: labels are bounded, because per-process or highly dynamic labels turn a useful dashboard into an expensive and unreliable scrape target.
+On a reliability event, cordon the node, drain it when the recovery plan allows, and capture node events, driver logs, GPU identity and DCGM data before any reboot. The node returns only after the Section 3 chain passes again. GKE auto-repair covers infrastructure failures. The DCGM gate covers GPU health that GKE does not see.
 
-The paging rule follows the contract. Page when somebody must interrupt their work: loss of a schedulable GPU, an actionable hardware or driver event, sustained throttling with a measured service impact, or loss of monitoring coverage itself. Do not page on low utilization. A low-utilization alert trains the on-call rotation to ignore it, and a zero utilization reading is ambiguous until you check whether the exporter is alive at all. The first move on any GPU question is the scrape target health. If the exporter target is down, every DCGM-derived number for that node is stale, and the correct response is to restore the scrape, not to investigate why the GPU looks idle.
+**Decision rule:** page on capacity loss and hardware events, never on utilization, and keep a node out of the pool until acceptance evidence returns.
 
-### Gating admission
-
-The health signal closes the loop on node admission. A reliability event on a GPU, or a missing exporter, takes the node out of the eligible pool: cordon it, drain it when the workload recovery plan allows, and capture the volatile evidence, node events, driver logs, device identity, and DCGM observations, before a reboot or replacement erases it. The node returns to service only after the acceptance gate from Section 3 passes again, which includes a fresh validation workload and a working telemetry path. On GKE, the node auto-repair machinery covers infrastructure-level failures, and the platform's DCGM gate covers GPU-specific health that GKE's checks do not see. A node that fails driver validation, loses the device plugin, or stops exporting must not silently re-enter the general pool.
-
-**Decision rule:** page on reliability events and capacity loss, not on utilization, and keep a node out of the eligible pool until the acceptance evidence is back.
-
-**In one minute:** DCGM feeds the exporter on 9400, and GKE's managed monitoring with DCGM enabled puts it into Prometheus. The UUID is the join key, not the device index. The monitoring contract has five parts: coverage, identity, semantics, retention, cost control. Pages go out for lost capacity, hardware events, sustained throttling with impact, and lost coverage. A reliability event cordons the node, evidence is captured before any reboot, and the acceptance gate gates re-entry.
-
----
+**In one minute:** the Operator's exporter feeds Managed Prometheus through a PodMonitoring. UUID is the join key. The Xid series holds the last code. Events cordon the node, and evidence is captured before reboot.
 
 ## 8. Day-2: upgrades, incidents, quotas, and the FinOps view
 
-### The Friday upgrade that froze half the fleet
+On Friday a team bumps one shared driver value. The change reaches the whole pool roughly in parallel. If an incompatible kernel hits 35 of 60 nodes, 58 percent of GPU capacity is degraded before the first validation failure appears. The same change on a three-node canary pool caps the damage at 5 percent. That ratio is the argument for pool separation.
 
-A platform team changes one shared value to bump the driver, and the DaemonSet controller reconciles the change across the entire GPU node pool roughly in parallel. In a 60-node fleet with no pool separation, that single value change can put a meaningful fraction of the fleet into a driver-reload state within minutes, long before the first validation failure is observed. If the incompatible kernel channel affects 35 of the 60 nodes, that is roughly 58 percent of GPU capacity degraded, discovered only when workloads start failing to schedule. The same change applied to a three-node canary pool first caps the worst case at five percent of capacity while validation runs, and the other nodes are never touched until the canary passes a representative workload. The ratio between those two numbers is the entire argument for pool separation, stated as a number instead of a warning.
+An upgrade changes a compatibility set: the Kubernetes version, node image and kernel, driver, runtime, Operator chart, operand images and workload images. The release record lists old and new values, the pools, the window, the workload owners and who may pause or roll back. The canary must match the pool it stands for in hardware batch, image, driver ownership and workload class.
 
-### The canary discipline
+Blast radius is counted in GPUs. A bad change that reaches a 24-node batch in a 120-node fleet removes 192 of 960 GPUs, which is 20 percent. That sentence belongs in the incident summary, not "some nodes are affected". `c02_queue_math.py` computes all three figures. They are illustrative sizes, not figures from a real fleet.
 
-An upgrade changes a compatibility set, not a single component: the Kubernetes version, the node image and kernel, the driver, the runtime, the operator chart and operand images, and the workload images. The release record states the prior and proposed values for each, names the node pools, the maintenance window, the workload owners, and the decision authority for pause or rollback.
+Each batch gates on execution evidence. Allocatable equals the baseline, a fresh validation pod completes CUDA start, and DCGM series are present with stable UUIDs. A green Operator status is not enough.
 
-The canary must represent the pool it stands in for: same hardware batch, same node image, same driver ownership model, same workload class. A useful sizing pattern from the upgrade material, for a 120-node fleet across hardware batches, is a canary of two nodes per hardware batch, roughly seven percent of the fleet, then a first batch of about ten percent, then doubling each batch while the observation window stays clean. The blast-radius arithmetic belongs in GPUs, not nodes: if a bad change reaches a 24-node batch before detection, that is 192 GPUs unavailable out of a 960-GPU fleet, twenty percent of capacity. That is the number that goes in the incident summary, not "some nodes are affected."
-
-Each batch gates on execution evidence: the allocatable count equals the baseline, a fresh validation workload completes CUDA initialization, and the DCGM series are present with stable device identity. A green operator status is not enough.
-
-On GKE the cluster-level upgrade runs through the release channel:
+On GKE, run cluster upgrades through the release channel with `gcloud container clusters upgrade`, and upgrade the control plane and a node pool in separate commands. The Operator upgrade follows a scoped procedure. Archive the recoverable baseline first, drain the canary, upgrade, then validate.
 
 ```bash
-gcloud container clusters upgrade "$CLUSTER" --master --node-pools h100-pool
-```
+#!/usr/bin/env bash
+# Chapter 19.2 section 8: GPU Operator upgrade on one canary node, with an evidence archive. Not run here.
+set -euo pipefail
+: "${TARGET_VERSION:?set TARGET_VERSION, for example v26.7.2}"
+: "${CANARY_NODE:?set CANARY_NODE to a node name from kubectl get nodes}"
+HERE="$(cd "$(dirname "$0")" && pwd)"
+EVID=gpu-upgrade-evidence
+mkdir -p "$EVID"
 
-And the GPU Operator upgrade follows the scoped procedure. Archive the recoverable baseline first.
-
-```bash
-export TARGET_VERSION='v26.3.0'
-export CANARY_NODE='node-1'
-mkdir -p gpu-upgrade-evidence
-helm history gpu-operator -n gpu-operator > gpu-upgrade-evidence/helm-history-before.txt
-helm get values gpu-operator -n gpu-operator -a > gpu-upgrade-evidence/values-before.yaml
-helm get manifest gpu-operator -n gpu-operator > gpu-upgrade-evidence/manifest-before.yaml
-kubectl get node "$CANARY_NODE" -o yaml > gpu-upgrade-evidence/canary-before.yaml
+helm history gpu-operator -n gpu-operator > "$EVID/helm-history-before.txt"
+helm get values gpu-operator -n gpu-operator -a > "$EVID/values-before.yaml"
+helm get manifest gpu-operator -n gpu-operator > "$EVID/manifest-before.yaml"
+kubectl get node "$CANARY_NODE" -o yaml > "$EVID/canary-before.yaml"
 
 kubectl cordon "$CANARY_NODE"
 kubectl drain "$CANARY_NODE" --ignore-daemonsets --delete-emptydir-data --grace-period=120 --timeout=20m
 helm upgrade gpu-operator nvidia/gpu-operator \
   --namespace gpu-operator --version "$TARGET_VERSION" \
-  -f target-values.yaml --wait --timeout 20m
+  -f "$HERE/c02_gpu_operator_values.yaml" --wait --timeout 20m
 
 kubectl get node "$CANARY_NODE" \
   -o jsonpath='{.status.capacity.nvidia\.com/gpu}{" capacity\n"}{.status.allocatable.nvidia\.com/gpu}{" allocatable\n"}'
-kubectl apply -f gpu-upgrade-validation.yaml
+kubectl apply -f "$HERE/c02_upgrade_validation.yaml"
 kubectl wait --for=jsonpath='{.status.phase}'=Succeeded pod/gpu-upgrade-validation --timeout=5m
+kubectl delete -f "$HERE/c02_upgrade_validation.yaml"
 kubectl uncordon "$CANARY_NODE"
 ```
 
-The sizing of the drain discipline is arithmetic, not taste. Each drained node takes eight GPUs offline. If the serving SLO needs four GPUs of headroom during the window, one node at a time is the ceiling on this two-node pool, and the upgrade waits until the other node has enough free capacity to absorb the serving work. The general pattern: compute the GPUs-offline-at-once number before setting the rollout parameter, not after an incident caused by it.
-
-### Rollback and incident response
-
-Rollback has to restore a compatible set, and a chart rollback is not always one. Returning Helm values reverts control-plane configuration, but it cannot necessarily revert a driver module, a kernel, or a runtime configuration that already changed on the host. When host state changed, the tested node-image and reboot path is the rollback, not a Helm command. After either rollback or forward recovery, rerun the full acceptance suite.
-
-When the canary fails, the first action is to stop the rollout and protect the healthy comparison pool, then pull time-correlated evidence to find the first failed layer. Walk the layers in dependency order: hardware and driver, then runtime injection, then device plugin registration and allocatable state, then labels and policy, then the workload itself. This order prevents a scheduler investigation from hiding a driver failure, and it prevents a hardware replacement from becoming the default answer to an application image regression.
-
-Incident command structure follows the pattern from 17.11: an incident commander owns the timeline and decisions, a subject-matter engineer owns the diagnosis, and a communications lead owns the status updates to the teams whose jobs are stuck. The escalation package, when the vendor is involved, contains the scope and business impact, a timestamped change timeline, cluster and operator versions, node kernel and runtime details, GPU and firmware inventory, operand state, the relevant logs, node labels and allocatable resources, a minimal reproducer, and the DCGM evidence. Redact tenant data, but do not omit the version and time correlation.
-
-### Quotas, chargeback, and the FinOps view
-
-Day-2 also includes the money view. The standing numbers come from the queue layer and the cost layer. Per-team quota utilization is read from the Kueue workloads and queue usage, and the platform alerts when a team's quota utilization stays above 80 percent for a day, which is the early signal that the capacity review conversation needs to start. Per-team cost per month comes from the cost analyzer, Kubecost or OpenCost, joined against the same Prometheus backend that carries the DCGM and Kubernetes metrics, so that GPU cost and GPU utilization can be read in the same view.
-
-The capacity review asks the fragmentation question from Section 1 per class: what is the queue time per class, and how much capacity is stranded by a constraint? A constraint that provides no measurable benefit is operational debt, and the review is where it gets retired. The onboarding contract stays the tier model from 16.14: each team subscribes to a tier at onboarding, the tier maps to a ClusterQueue with the matching quota, and a team that outgrows its tier asks for an upgrade with the utilization history as the evidence.
-
-**Decision rule:** upgrade the compatibility set as a unit, gate every batch on execution evidence, roll back node state when the driver changed, and keep the FinOps numbers, per-team utilization and per-team cost, in the same view.
-
-**In one minute:** one value change without a canary can degrade most of a fleet; with a canary it caps at a small percentage. Batch sizes grow while the observation window stays clean, and blast radius is computed in GPUs. Rollback restores a coherent set, which sometimes means a node image, not a chart. Incidents run on three roles and a layered diagnosis. The FinOps view pairs per-team quota utilization with per-team cost, and the capacity review retires constraints that earn no measurable benefit.
-
----
-
-## 9. Hands-on lab
-
-This lab builds the capstone platform on GCP/GKE: the cluster, the two-node H100 pool, the GPU Operator stack, the Kueue queue hierarchy, the KAI gang scheduler, and the DCGM health view. It is **untested** in this repository and assumes a project with H100 GPU quota; request the quota before you start.
-
-### 9.1 Prerequisites
-
-- A GCP project with billing enabled, `gcloud` and `kubectl` installed, and Workload Identity set up.
-- H100 GPU quota in the chosen zone for at least 16 GPUs.
-- An image registry reachable from the cluster, such as Artifact Registry in the same region.
-
-### 9.2 Step 1: create the cluster and the GPU node pool
-
-```bash
-export PROJECT=my-project REGION=us-central1 ZONE=us-central1-a CLUSTER=ml-platform
-
-gcloud container clusters create "$CLUSTER" \
-  --project "$PROJECT" --zone "$ZONE" \
-  --release-channel regular \
-  --num-nodes 1 --machine-type e2-standard-4 \
-  --workload-pool "${PROJECT}.svc.id.goog" \
-  --enable-managed-prometheus \
-  --monitoring SYSTEM,DCGM
-
-gcloud container node-pools create h100-pool \
-  --cluster "$CLUSTER" --zone "$ZONE" \
-  --machine-type a3-highgpu-8g \
-  --accelerator type=nvidia-h100-80gb,count=8,gpu-driver-version=latest \
-  --num-nodes 2 \
-  --node-labels pool=h100 \
-  --placement-type COMPACT
-
-gcloud container clusters get-credentials "$CLUSTER" --zone "$ZONE"
-```
-
-### 9.3 Step 2: verify the node plane
-
-```bash
-kubectl get nodes -L cloud.google.com/gke-accelerator
-kubectl apply -f - <<'YAML'
+```yaml
+# Post-upgrade validation pod: must complete CUDA initialization on the canary node.
 apiVersion: v1
 kind: Pod
 metadata:
-  name: nvidia-smi-check
+  name: gpu-upgrade-validation
 spec:
   restartPolicy: Never
+  nodeSelector:
+    pool: h100
   tolerations:
     - key: nvidia.com/gpu
       operator: Exists
@@ -797,256 +758,234 @@ spec:
       resources:
         limits:
           nvidia.com/gpu: 1
-YAML
+```
+
+The drain size is arithmetic. Each drained node removes eight GPUs. With serving needing four protected GPUs on a 16-GPU pool, `max_parallel_drain` returns one node. A second drain waits until capacity returns. Compute this number before you set the rollout parameter.
+
+A chart rollback restores control-plane configuration. It may not restore a driver module, kernel or runtime setting already changed on the host. When host state changed, the tested node-image and reboot path is the rollback. Afterward, rerun the full acceptance suite.
+
+When a canary fails, stop the rollout and protect the healthy pool. Then walk the layers in dependency order: hardware and driver, runtime injection, device plugin and allocatable, labels and policy, workload. This order keeps a scheduler hunt from hiding a driver failure. Roles follow 17.11: a commander, a diagnosing engineer and a communications lead. A vendor escalation package carries scope, a timestamped change timeline, versions, kernel and runtime details, GPU and firmware inventory, operand state, logs, labels, a minimal reproducer and DCGM evidence. Redact tenant data and keep versions and times.
+
+The money view comes from the queue layer and a cost tool. Per-team quota utilization comes from Kueue Workloads and queue usage. A sustained level above 80 percent for a day is our own alert threshold, an inference, and it starts the capacity conversation. Cost per team comes from a tool such as Kubecost or OpenCost, joined to the same Prometheus data as DCGM so cost and utilization sit in one view. The tier model from 16.14 maps a tier to a ClusterQueue quota.
+
+**Decision rule:** upgrade the compatibility set as a unit, gate every batch on execution evidence, and roll back node state when the driver changed.
+
+**In one minute:** a canary caps blast radius, and blast radius is computed in GPUs. Drain size follows protected capacity. Rollback may mean a node image. Cost and utilization share one view.
+
+## 9. Hands-on lab
+
+The lab builds the platform on GKE. It was not run for this chapter, because it needs H100 quota and a Google Cloud project. What was run here: schema validation of every manifest, a Helm render of the Operator and Kueue charts, and the tests of the queue arithmetic. Everything else is not verified on a live cluster. No output below was captured, and the expected results describe shape only.
+
+Prerequisites: a project with billing, `gcloud`, `kubectl` and `helm`, quota for 16 H100 GPUs in the zone, and Workload Identity.
+
+```bash
+#!/usr/bin/env bash
+# Chapter 19.2 lab checks, run after c02_install_stack.sh. Not run here (needs a GPU cluster).
+set -euo pipefail
+HERE="$(cd "$(dirname "$0")" && pwd)"
+
+echo "== node plane: allocatable GPUs and the execution-path check"
+kubectl get nodes -L cloud.google.com/gke-accelerator
+kubectl get nodes -l pool=h100 -o custom-columns=NAME:.metadata.name,ALLOC:.status.allocatable.nvidia\\.com/gpu
+kubectl apply -f "$HERE/c02_smoke_pod.yaml"
+kubectl wait --for=jsonpath='{.status.phase}'=Succeeded pod/nvidia-smi-check --timeout=5m
 kubectl logs nvidia-smi-check
-# expected: eight GPUs listed on the node the pod landed on
-```
+kubectl delete -f "$HERE/c02_smoke_pod.yaml"
 
-### 9.4 Step 3: install the GPU Operator, driver operand disabled
-
-```bash
-helm repo add nvidia https://helm.ngc.nvidia.com/nvidia
-export GPU_OPERATOR_VERSION='v26.3.0'
-helm upgrade --install gpu-operator nvidia/gpu-operator \
-  --namespace gpu-operator --create-namespace \
-  --version "$GPU_OPERATOR_VERSION" -f target-values.yaml \
-  --wait --timeout 15m
-
-kubectl get clusterpolicy
-kubectl get pods,daemonsets -n gpu-operator -o wide
-# expected: device plugin and DCGM exporter DaemonSets Ready on both GPU nodes
-kubectl get node -o custom-columns=NAME:.metadata.name,ALLOC:.status.allocatable.nvidia\\.com/gpu
-# expected: 8 on each GPU node
-curl -s node-1:9400/metrics | grep -c DCGM_FI_DEV_GPU_UTIL
-# expected: nonzero series count
-```
-
-### 9.5 Step 4: install Kueue and the KAI Scheduler
-
-```bash
-# Kueue (pin the release you use; untested here)
-kubectl create namespace kueue-system
-kubectl apply -k "https://github.com/kubernetes-sigs/kueue/releases/download/v0.9.0/manifests?ref=v0.9.0"
-# KAI Scheduler (pin the release you use; untested here)
-kubectl create namespace kai-scheduler
-kubectl apply -f kai-scheduler-release.yaml
-
-kubectl get pods -n kueue-system
-kubectl get pods -n kai-scheduler
-```
-
-### 9.6 Step 5: create the teams and the queue hierarchy
-
-```bash
-kubectl create namespace team-data-science
-kubectl create namespace team-ml-platform
-kubectl apply -f kueue-flavors-queues.yaml   # Section 5
-kubectl apply -f kai-queues.yaml             # Section 6
+echo "== teams, priorities and queues"
+for ns in team-data-science team-research team-ml-platform; do
+  kubectl create namespace "$ns" --dry-run=client -o yaml | kubectl apply -f -
+done
+kubectl apply -f "$HERE/c02_priority_classes.yaml"
+kubectl apply -f "$HERE/c02_kueue_queues.yaml"
+kubectl apply -f "$HERE/c02_kai_queues.yaml"
+kubectl apply -f "$HERE/c02_kai_topology.yaml"
 kubectl get clusterqueues
-kubectl get queues -o wide
-# expected: cq-training and cq-serving; ml-platform with team leaf queues
-```
+kubectl get queues.scheduling.run.ai
 
-### 9.7 Step 6: run a single-GPU job through the queue
-
-Apply the queue-labelled Job from Section 5, then:
-
-```bash
+echo "== single-GPU job through Kueue"
+kubectl apply -f "$HERE/c02_kueue_job.yaml"
 kubectl get workloads -n team-data-science
-# expected: the Workload admitted, admission naming cq-training and the h100 flavor
+
+echo "== two-node gang through Kueue and KAI"
+kubectl apply -f "$HERE/c02_pytorchjob.yaml"
+kubectl get podgroups.scheduling.run.ai -n team-data-science
+kubectl get bindrequests.scheduling.run.ai -n team-data-science
 kubectl get pods -n team-data-science -o wide
-# expected: the pod Running on a GPU node
-```
 
-### 9.8 Step 7: run the two-node gang job
+echo "== serving group and reclaim"
+kubectl apply -f "$HERE/c02_lws.yaml"
+kubectl get workloads -A
 
-Apply the PyTorchJob from Section 6, then watch the KAI objects:
-
-```bash
-kubectl get podgroups -n team-data-science
-kubectl get bindrequests -n team-data-science
-kubectl get pods -n team-data-science -o wide
-# expected: both pods bound to their nodes in the same scheduling session
-```
-
-### 9.9 Step 8: exercise the health gate
-
-```bash
+echo "== health gate: exporter pods, Xid series, cordon"
+kubectl apply -f "$HERE/c02_dcgm_podmonitoring.yaml"
 kubectl get pods -n gpu-operator -l app=nvidia-dcgm-exporter -o wide
-kubectl logs -n gpu-operator $(kubectl get pods -n gpu-operator -l app=nvidia-dcgm-exporter -o name | head -1) | head
-curl -s node-1:9400/metrics | grep DCGM_FI_DEV_XID_ERRORS
-# expected: XID_ERRORS series at 0 for every GPU UUID
-kubectl cordon node-1
-# expected: new work no longer lands on node-1; a queued two-node gang stays pending
-kubectl uncordon node-1
+POD=$(kubectl get pods -n gpu-operator -l app=nvidia-dcgm-exporter -o name | head -1)
+kubectl port-forward -n gpu-operator "$POD" 9400:9400 &
+PF=$!
+sleep 3
+curl -s localhost:9400/metrics | grep DCGM_FI_DEV_XID_ERRORS || true
+kill "$PF"
+NODE=$(kubectl get nodes -l pool=h100 -o name | head -1)
+kubectl cordon "$NODE"
+kubectl get "$NODE"
+kubectl uncordon "$NODE"
 ```
 
-### 9.10 What to record
+Step 1: create the cluster and pool with `c02_create_cluster.sh`. Expected: two GPU nodes labeled `pool=h100`. What to record: the GKE version and the driver installer pod status. Run here: no.
 
-After the lab, you should be able to answer five questions in five seconds each:
+Step 2: install the driver installer, Operator, Kueue and KAI with `c02_install_stack.sh`. Expected: Operator pods ready on both nodes, `kueue-system` and `kai-scheduler` pods running. What to record: chart versions and the ClusterPolicy state. Run here: no, but the chart renders were checked.
 
-1. What is the allocatable GPU count per node, and how many GPUs are admitted by Kueue right now?
-2. Which ClusterQueue protects the serving SLO, and which preemption rule lets it take its GPUs back?
-3. What topology level does the training job bind to as required?
-4. Which DCGM series proves the exporter on each node is fresh?
-5. What is the upgrade order for this platform, and what do you back up first?
+Step 3: run the node-plane section of `c02_lab_checks.sh`. Expected: `nvidia-smi` in the smoke pod lists eight GPUs, and allocatable is 8 on each node. What to record: the node name and the driver version shown. Run here: no.
 
-If any of them takes longer, the platform is not yet an operating service; go back to the section that owns the gap. The lab is **untested** against a live GKE cluster in this repository.
+Step 4: run the queue and single-GPU sections of the same script. Expected: a Workload admitted by `cq-training` on flavor `h100`. What to record: the admission time. Run here: schema only.
 
----
+Step 5: run the two-node PyTorchJob. Expected: Kueue admits it by borrowing, KAI creates a PodGroup, and both pods bind in one session. What to record: whether both pods started within the same scheduling cycle. Run here: no.
+
+Step 6: start the serving group and watch reclaim. Expected: Kueue evicts the training Workload to free four GPUs. What to record: the eviction message and how long serving waited. Run here: no.
+
+Step 7: exercise the health gate. Expected: the Xid series reads 0, and a cordoned node receives no new work. What to record: the UUIDs scraped. Run here: no.
+
+After the lab you should answer five questions in five seconds each. What is the allocatable count per node, and how many GPUs does Kueue show admitted? Which ClusterQueue protects serving, and which rule lets it reclaim? Which topology level is required? Which series proves each exporter is fresh? What do you archive before an upgrade?
 
 ## Exercises
 
-1. **Onboard a new team.** Create a `team-finance` namespace with a ResourceQuota, a LocalQueue pointed at `cq-training`, and verify the team can submit a one-GPU job that Kueue admits. *Solution sketch:* `kubectl create namespace team-finance`, apply a `ResourceQuota` with `nvidia.com/gpu: "2"`, apply a `LocalQueue` with `clusterQueue: cq-training`, submit a Job labelled `kueue.x-k8s.io/queue-name: team-finance-queue`, and confirm the Workload is admitted.
-
-2. **Add a second hardware tier.** Add an L40S node pool, an `l40s` ResourceFlavor keyed on its accelerator label, and a third ClusterQueue in the same cohort for batch work, and verify the flavor shows up in an admitted workload's `podSetAssignments`. *Solution sketch:* create the pool with `--machine-type a2-highgpu-1g --accelerator type=nvidia-l40s,count=8`, add the ResourceFlavor, add `cq-batch` with `nominalQuota` for the L40S flavor, and read `kubectl get workload -o yaml`.
-
-3. **Protect the serving SLO under contention.** Fill the training quota with single-GPU jobs, then submit a serving workload on `cq-serving` with `inference-critical` priority, and verify Kueue and the scheduler displace training work to reach the serving quota. *Solution sketch:* submit the training Jobs, watch the serving Workload's admission flip to `Admitted`, and check the pod events on the displaced training pods for the preemption eviction; the 30-second default grace period governs the shutdown window.
-
-4. **Define and attach a topology.** Create a three-level `Topology` resource with zone, a fabric leaf label you add to your nodes, and hostname, mark the zone required and the fabric level preferred, and verify the job's placement respects both levels. *Solution sketch:* extend `capstone-topology` with a third `nodeLabel`, annotate the PyTorchJob with `kai.scheduler/topology-preferred-placement`, and compare the bound nodes' labels against the levels.
-
-5. **Deploy sharded inference as a group.** Deploy the LeaderWorkerSet from Section 6 with `size: 2` and one replica, kill one worker pod, and verify the whole group, not the single pod, is recreated. *Solution sketch:* `kubectl delete pod <worker-pod>`, then `kubectl get pods -w` shows the leader and the worker both restarting under `RecreateGroupOnPodRestart`.
-
-6. **Run one upgrade wave.** Perform the full canary cycle from Section 8 on `node-1`: archive the baseline, cordon and drain, run the version-pinned operator upgrade, verify capacity and allocatable equal eight, run the validation pod, and uncordon. *Solution sketch:* the `gpu-upgrade-evidence` archive first, then the cordon, drain, `helm upgrade --version` sequence, the allocatable check, the validation pod wait, and the uncordon; record the wall-clock time and the GPUs-offline number.
-
----
+1. **Onboard a team.** Add a `team-finance` namespace, a LocalQueue on `cq-training` and a KAI leaf queue with 2 GPUs taken from `team-research`. Verify the quotas still sum. *Solution sketch:* edit `c02_kueue_queues.yaml` and `c02_kai_queues.yaml`, set research to 2 and finance to 2, then extend `test_c02_queue_math.py` and run `c02_validate.sh`.
+2. **Block borrowing.** Set `lendingLimit: 0` on `cq-serving`, then decide whether the 16-GPU job can still run. *Solution sketch:* it cannot, because 16 exceeds 12 and nothing may be borrowed. `can_admit` returns false, and the job needs two smaller halves or a reduced size.
+3. **Cap training borrowing.** Add `borrowingLimit: 2` to `cq-training`. Compute the largest gang that still fits. *Solution sketch:* 12 plus 2 is 14, so a 16-GPU gang is blocked and a 14-GPU one passes.
+4. **Add a preferred topology level.** Add a rack label to a second pool, a third `levels` entry and the preferred annotation. *Solution sketch:* the required zone stays the boundary, and the preferred rack steers pods under one rack when possible.
+5. **Test the sharded group.** Kill one worker pod of the LeaderWorkerSet. *Solution sketch:* with `RecreateGroupOnPodRestart` the leader and worker both restart, and the group is unavailable until both are back.
+6. **Size a drain.** A pool has 6 nodes of 8 GPUs and serving protects 16 GPUs. How many nodes may drain at once, and what blast radius would a bad batch of 2 nodes cause? *Solution sketch:* `max_parallel_drain(6, 8, 16)` is 4, and 2 nodes remove 16 of 48 GPUs, which is 33 percent.
 
 ## Checkpoint questions (20)
 
-<details><summary>1. Why is a `Ready` GPU node not necessarily a usable GPU node?</summary>
-`Ready` reflects kubelet heartbeats and basic node health, none of which touch the GPU driver, the device plugin, or the runtime injection path. A node can be `Ready` while the driver failed to load after a reboot, or while a node-image change broke container device injection. Admission requires the allocation path and the execution path to be proven separately.
+<details><summary>1. Why is a `Ready` GPU node not necessarily usable?</summary>
+`Ready` reflects kubelet health, which does not touch the driver, device plugin or runtime injection. A node can be `Ready` with a broken device path. Acceptance needs both the allocation path and the execution path proven.
 </details>
 
-<details><summary>2. What are the two paths of the GPU platform, and what evidence proves each?</summary>
-The allocation path runs from the host driver through the device plugin to the kubelet, and it is proven by the node advertising a nonzero allocatable `nvidia.com/gpu`. The execution path runs through the container runtime, toolkit, or CDI spec into the specific container, and it is proven only by `nvidia-smi` succeeding inside the container of the allocated pod, not by the pod reaching `Running`.
+<details><summary>2. What are the two paths, and what proves each?</summary>
+The allocation path runs from driver to device plugin to an allocatable count, proven by a nonzero `nvidia.com/gpu`. The execution path runs through the runtime into one container, proven by `nvidia-smi` succeeding inside the pod.
 </details>
 
-<details><summary>3. What is the dual-driver failure mode on GKE, and how do you prevent it?</summary>
-If the node pool has `gpu-driver-version` set to something other than `disabled` and the GPU Operator's driver operand is also enabled, two reconcilers manage the same kernel module and the node flaps between driver versions. The prevention is an ownership decision written into the values file: either GKE owns the driver and the operator's driver operand is disabled, or the flag is `disabled` and the operator installs the driver.
+<details><summary>3. What is the dual-owner failure on GKE, and how do you prevent it?</summary>
+GKE's automatic driver or device plugin and the Operator both manage the same layer, so they fight. NVIDIA's GKE page says to disable the GKE device plugin and the automatic driver when using the Operator. Write one owner per layer into the values file.
 </details>
 
-<details><summary>4. What does GKE do automatically for GPU nodes, and when do you turn it off?</summary>
-GKE installs a driver DaemonSet on GPU nodes when `gpu-driver-version` is not `disabled`, taints the nodes with `nvidia.com/gpu=present:NoSchedule`, and labels them with the accelerator type. You turn it off, with `gpu-driver-version=disabled`, when you want the GPU Operator to own the driver instead. You never leave both on.
+<details><summary>4. Which pool settings does the Operator path require?</summary>
+The node label `gke-no-default-nvidia-gpu-device-plugin=true` and `gpu-driver-version=disabled`. With the Google installer you then apply its DaemonSet yourself.
 </details>
 
-<details><summary>5. What is the difference between `QUOTA_EXCEEDED` and `ZONE_RESOURCE_POOL_EXHAUSTED`?</summary>
-`QUOTA_EXCEEDED` means the project's allowance for that GPU model in that region is too low, and the fix is a quota increase request. `ZONE_RESOURCE_POOL_EXHAUSTED` is a stockout: the allowance is fine but there is no free hardware in the zone, and the fix is another zone, another machine type, a reservation, or waiting. The two need different responses, so read the message before acting.
+<details><summary>5. Why is the CPU pool created first?</summary>
+GKE adds the `nvidia.com/gpu=present:NoSchedule` taint to GPU nodes only when the cluster already has a non-GPU pool. Workloads still carry the toleration explicitly.
 </details>
 
-<details><summary>6. Why can GPU nodes not live-migrate, and what does that imply for upgrades?</summary>
-GPU nodes are terminated rather than live-migrated when host maintenance happens. That means a node pool upgrade or a driver change can interrupt running workloads with no graceful host-side migration, so the platform must plan drains, checkpoint intervals, and spare capacity as part of every upgrade, and must treat checkpointing as part of the platform contract for multi-node training.
+<details><summary>6. How do `QUOTA_EXCEEDED` and `ZONE_RESOURCE_POOL_EXHAUSTED` differ?</summary>
+The first means the project allowance is too low, so request more quota. The second means no free hardware in the zone, so change zone or machine type, use a reservation, or wait.
 </details>
 
-<details><summary>7. Why does `helm deployed` not prove a GPU platform is working?</summary>
-`deployed` means the API server accepted the manifests and the objects the installer knows how to wait on reached a ready state. It does not say whether a kernel module loaded, whether the runtime injects devices, or whether every node advertises the resource. The acceptance gate is the evidence chain: operand health, capacity and allocatable per node, a validated workload, and working telemetry.
+<details><summary>7. Why does `helm deployed` not prove the platform works?</summary>
+It means the objects were accepted and reached the states Helm waits on. It says nothing about a loaded kernel module, runtime injection or allocatable counts on every node.
 </details>
 
-<details><summary>8. What is the node acceptance evidence chain, in order?</summary>
-The node is in the intended pool; the driver interface is healthy; the runtime can create a GPU-enabled container, proven by a minimal CUDA container; the device plugin advertises the expected allocatable resource; the discovery labels and pool taints match the intended service class; and a representative workload plus the telemetry path pass. Only the last step clears the node for production work.
+<details><summary>8. What is the node evidence chain?</summary>
+Right pool, healthy driver, a working GPU container, expected allocatable count, matching labels and taints, then a representative workload and telemetry. Only the last step clears the node for production work.
 </details>
 
-<details><summary>9. What are the three kinds of node labels, and who writes each?</summary>
-Discovered facts such as the GPU product label are written by the NFD and GFD workers and consumed by platform automation. Lifecycle assertions such as a validation-passed label are written by the acceptance gate controller and consumed by admission. Service classes are written by platform engineering and consumed by workload manifests. Mixing the owners is how a raw inventory label gets mistaken for proof that a node is safe for a workload.
+<details><summary>9. What do allocatable zero and capacity eight mean?</summary>
+The device plugin registered earlier but lost contact with the driver or crashed. The fault is in the driver or registration layer, not the scheduler.
 </details>
 
-<details><summary>10. Why do workloads select on service classes rather than SKU labels?</summary>
-Selecting on a product label binds every manifest to a specific hardware generation. When the platform retires one generation and replaces it behind the same class, zero application manifests change. With SKU-level selectors, the same retirement becomes a coordinated manifest migration under a deadline, and a refresh that should be a platform config change becomes an incident.
+<details><summary>10. Why is training priority 50 and not 100?</summary>
+KAI treats priority 100 or higher as non-preemptible and in-quota only. At 50 a training job can use surplus and can be preempted by higher-priority work in its queue.
 </details>
 
-<details><summary>11. What do Capacity, Allocatable, and Allocated each mean, and what does Allocatable of zero with Capacity of eight indicate?</summary>
-Capacity is what the device plugin discovered as present, allocatable is what the kubelet offers to scheduling right now, and allocated is what bound pods have consumed. Allocatable of zero with capacity still at eight means the plugin registered in the past but has since lost contact with the driver or crashed. The fault is in the driver or registration layer, not in the scheduler.
+<details><summary>11. What happens during preemption, and what is the default grace period?</summary>
+The scheduler evicts lower-priority pods, which get their graceful termination period, 30 seconds by default. Training must checkpoint inside that window or lose progress.
 </details>
 
-<details><summary>12. What are the three priority tiers in the capstone, and what does the value do?</summary>
-Serving at 1000, training at 100, and research at 0. The value orders pods for scheduling and for preemption: when a higher-priority pod cannot fit, the scheduler displaces the lowest-priority candidates it can find, which is why serving work reaches GPUs that training work is holding.
+<details><summary>12. Why does an SLO class need reserved quota and not only priority?</summary>
+Priority orders work but creates no free GPUs. A reserved ClusterQueue with reclaim gives serving a slice it can always take back.
 </details>
 
-<details><summary>13. What happens during a preemption, and what is the default grace period?</summary>
-The scheduler selects lower-priority pods to evict, sends them a termination signal, gives them the default 30-second grace period to shut down, and kills any that have not finished. The high-priority pod then schedules onto the freed GPU. For training jobs, that 30-second window is the reason checkpoint intervals are set shorter than the grace behavior they rely on.
+<details><summary>13. What do the three Kueue objects do?</summary>
+A ResourceFlavor names a hardware tier with node labels. A ClusterQueue holds quota, cohort and preemption rules. A LocalQueue ties a namespace to a ClusterQueue.
 </details>
 
-<details><summary>14. Why does an SLO-bound class need guaranteed capacity, not just high priority?</summary>
-A high-priority job still has to wait for a free GPU, and priority alone does not create free GPUs. Guaranteed capacity, implemented in the capstone as a dedicated serving ClusterQueue with reclamation rules, means the serving class always has a reachable slice of the fleet. Without it, a burst of training work can hold the whole pool and the serving SLO degrades until something gives.
+<details><summary>14. What changed from Kueue v1beta1 to v1beta2 in this capstone?</summary>
+In v0.20.5 `v1beta1` is no longer served. The cohort field is `cohortName`. The earlier `withinClusterQueue: Any` was never valid, because the enum has three other values.
 </details>
 
-<details><summary>15. What do ResourceFlavor, ClusterQueue, and LocalQueue each do in Kueue?</summary>
-The ResourceFlavor names a hardware tier with node labels, so a quota attaches to a specific kind of node. The ClusterQueue is cluster-scoped and carries the quota, the cohort, the queueing strategy, and the preemption rules. The LocalQueue is namespace-scoped and ties a team's namespace to the ClusterQueue it may draw from. Work enters through the LocalQueue label.
+<details><summary>15. How does cohort borrowing work?</summary>
+A workload fits unused nominal quota, or borrows unused quota from other cohort members up to its `borrowingLimit` and each lender's `lendingLimit`. Borrowed capacity can be reclaimed.
 </details>
 
-<details><summary>16. What does cohort borrowing do, and when does `reclaimWithinCohort: Any` fire?</summary>
-A cohort is a borrowing domain: when one queue in the cohort has idle quota, another queue can borrow it. `reclaimWithinCohort: Any` fires when the lending queue needs its own quota back, and it takes the GPUs regardless of which other queue is using them. That rule is how the serving queue keeps its four guaranteed GPUs reachable even after training has borrowed the capacity.
+<details><summary>16. What does `reclaimWithinCohort: Any` do?</summary>
+When a pending workload fits its queue's nominal quota, Kueue may preempt workloads in other queues that use more than their nominal quota, whatever their priority.
 </details>
 
-<details><summary>17. Why must a job carry the queue label, and what happens without it?</summary>
-Kueue only manages work that enters through a LocalQueue, which is how quotas, fair sharing, and preemption apply. A pod without the label bypasses every quota the platform configured and runs under the raw scheduler rules. A team that outruns its quota is usually a team that skipped the label, which is a one-line fix plus a process change.
+<details><summary>17. Why must a job carry the queue label?</summary>
+Kueue manages only work that enters through a LocalQueue. Unlabeled jobs bypass quota. The setting `manageJobsWithoutQueueName: true` makes them wait for a queue instead.
 </details>
 
-<details><summary>18. What is the partial-placement deadlock, and how much does it cost?</summary>
-The default scheduler places what it can, so a multi-node job gets some pods running while the rest wait pending. The running pods block at the rendezvous barrier, the stranded node is committed and unusable by anyone else, and the whole job makes zero progress while paying for allocated GPUs. In a cluster where two large jobs each hold more than they can complete, neither can ever reach its full node count, and both deadlock until an operator intervenes.
+<details><summary>18. What is the partial-placement deadlock?</summary>
+A scheduler that places pods one at a time gives two big jobs part of the nodes each. Neither can start, and both hold nodes. A gang scheduler starts one whole job instead.
 </details>
 
-<details><summary>19. What are required and preferred topology placements, and how are they expressed?</summary>
-They are annotations on the workload that reference levels of a KAI `Topology` resource. A required placement is a hard constraint: the job cannot leave that level. A preferred placement is a scoring preference: the scheduler falls back when it has to. The capstone marks the zone as required and omits the preferred level, because both pool nodes are equivalent.
+<details><summary>19. How do required and preferred topology placement differ in KAI?</summary>
+Required is a hard boundary at a Topology level. Preferred is a soft steer inside that boundary, with fallback to a higher level when needed.
 </details>
 
-<details><summary>20. When does the platform use Kueue admission together with the KAI scheduler?</summary>
-For multi-node training. Kueue is the platform-wide admission gate for all work and decides which job is admitted and which hardware tier it may consume. For training, the admitted pods carry `schedulerName: kai-scheduler`, so KAI performs the atomic gang binding, the fair share among training teams, and the topology placement. Serving and single-node batch work stay on the default scheduler with priority classes.
+<details><summary>20. How do Kueue and KAI divide the work?</summary>
+Kueue admits against quota and chooses the flavor. KAI performs gang binding, fair share and topology placement for pods that set its scheduler name. The pairing follows a gem book and is not verified on a live cluster.
 </details>
-
----
 
 ## Sources and review notes
 
-- nvidia-devops Zero-to-Hero Volume 24, Project 7 "Kubernetes GPU Scheduling": the scheduling scenario and PriorityClass tiers, preemption with the default grace period, the 60 percent fairness cap and the 4.8-GPU training cap, guaranteed inference capacity, time-slicing integer semantics, and the SLO and starvation constraints. Corpus folder: `nvidia-zero-to-hero/volume-24`.
-- nvidia-devops Zero-to-Hero Volume 10 "Kubernetes GPU Platform", chapters 1–11: the two-path model and pool fragmentation, the software lifecycle and qualification matrix, the container toolkit and CDI boundary, the device plugin and kubelet contract, NFD/GFD labels and the label contract, GPU Operator architecture and blast radius, driver containers and the five acceptance gates, scheduling and topology, DCGM observability, production installation, and upgrades with canary sizing.
-- Handbook Part 5, Chapter 5.34 (GKE for GPU workloads): cluster and node pool creation flags, `a3-highgpu-8g` and `nvidia-h100-80gb`, `gpu-driver-version` values, GPU node taints, quota versus stockout errors, consumption models including Spot and flex-start, compact placement, and managed DCGM monitoring.
-- Handbook Part 11: Chapters 11.1 through 11.9 for the platform layer, device plugin and runtime, feature discovery, GPU Operator architecture and upgrades, topology-aware scheduling, multi-node job mechanics, Kueue configuration, and JobSet/LeaderWorkerSet; Chapters 11.13 through 11.18 for the KAI Scheduler microservices, queues, PodGroup and BindRequest, gang scheduling, topology resources, and operations; Chapter 11.20 for the scheduler comparison and the division of labor between Kueue and KAI.
-- Handbook Part 16, Chapter 16.14 (multi-tenant platform design): the quota tiers, Kueue ClusterQueue per tier, namespace ResourceQuota, per-team cost alerting, and the chargeback view used in Section 8.
-- Handbook Part 17: Chapter 17.4 for the DCGM exporter build and Chapter 17.11 for incident response roles, cross-referenced from Sections 7 and 8.
+Sources are cited by book and chapter or by URL. Upstream versions and fetch dates are in the verification log.
+
+- *Generative AI on Kubernetes*, ch. 7 "Job Scheduling Optimization": gang scheduling, Kueue admission, KAI, LeaderWorkerSet, topology awareness.
+- *Kubernetes for Generative AI Solutions*, ch. 10 "Optimizing GPU Resources": GPU sharing and scheduling context. *Production Kubernetes*, ch. 12 "Multitenancy": quotas and tenancy. *Scalable Kubernetes Infrastructure for AI Platforms*, ch. 3: repeatable training context. These were read for background. Nothing from them changed a manifest.
+- Kueue docs: ClusterQueue concepts, installation, "Run a PyTorchJob" (kueue.sigs.k8s.io, fetched 2026-11-10). Kueue v0.20.5 CRDs and chart values.
+- KAI Scheduler repository at v0.18.7: README, docs for queues, priority, fairness, batch, topology, scheduling deep dive, and CRDs.
+- NVIDIA GPU Operator docs "NVIDIA GPU Operator with Google GKE" and the v26.7.2 chart, CRD and assets. NVIDIA k8s-device-plugin README for time-slicing. DCGM exporter 4.6.0-4.8.3 and 4.9.0 counters. NVIDIA Xid catalog.
+- GKE docs "Run GPUs in Standard node pools" and "Collect and view DCGM metrics". `gcloud` 592.0.0 built-in help. Kubernetes docs on pod lifecycle and preemption. JobSet and LeaderWorkerSet docs.
 
 ### Cross-references to other handbook chapters
 
-- Chapter 5.34 for the GKE node pool, driver ownership, and consumption models used in Section 2.
-- Chapter 11.1 through 11.5 for the platform layer and GPU Operator this capstone integrates.
-- Chapter 11.6 through 11.7 for topology-aware scheduling and the multi-node failure mechanics.
-- Chapter 11.8 for the Kueue configuration patterns; Chapter 11.9 for JobSet, PyTorchJob, and LeaderWorkerSet.
-- Chapter 11.13 through 11.18 for the KAI Scheduler in depth; Chapter 11.20 for the scheduler comparison.
-- Chapter 16.14 for the multi-tenant quota tiers and chargeback view.
-- Chapter 17.4 for the DCGM exporter; Chapter 17.11 for incident response roles.
-- Chapter 19.1 for the Slurm variant of the capstone; Chapter 19.3 for the inference serving capstone that shares this node pool.
+- 5.34 for node pools and quotas. 11.1 to 11.9 for the platform layer, Kueue and JobSet. 11.13 to 11.18 and 11.20 for KAI and the scheduler comparison.
+- 16.14 for tiers and chargeback. 17.4 for the DCGM exporter. 17.11 for incidents.
+- 19.1 for the Slurm variant. 19.3 for inference on GKE, which can share this pool.
 
 ### Migrated from `nvidia-devops`
 
-- `nvidia-zero-to-hero/volume-24/chapter-07-kubernetes-gpu-scheduling.md`
-- `nvidia-zero-to-hero/volume-10/chapter-01-why-kubernetes-needs-a-gpu-platform-layer.md`
-- `nvidia-zero-to-hero/volume-10/chapter-02-gpu-software-lifecycle-in-kubernetes.md`
-- `nvidia-zero-to-hero/volume-10/chapter-03-container-toolkit-runtimeclass-and-cdi.md`
-- `nvidia-zero-to-hero/volume-10/chapter-04-device-plugin-and-kubernetes-resource-model.md`
-- `nvidia-zero-to-hero/volume-10/chapter-05-node-and-gpu-feature-discovery.md`
-- `nvidia-zero-to-hero/volume-10/chapter-06-gpu-operator-architecture.md`
-- `nvidia-zero-to-hero/volume-10/chapter-07-driver-containers-and-node-operands.md`
-- `nvidia-zero-to-hero/volume-10/chapter-08-gpu-scheduling-and-topology.md`
-- `nvidia-zero-to-hero/volume-10/chapter-09-gpu-observability-with-dcgm.md`
-- `nvidia-zero-to-hero/volume-10/chapter-10-production-installation-and-configuration.md`
-- `nvidia-zero-to-hero/volume-10/chapter-11-upgrades-and-production-troubleshooting.md`
-
-The wording has been rewritten in the handbook's voice; no verbatim passages were carried over.
+- `nvidia-zero-to-hero/volume-24/chapter-07-kubernetes-gpu-scheduling.md` for the starting scenario and PriorityClass tiers. The 60 percent fairness cap in that source was dropped, because neither Kueue nor KAI implements it.
+- `nvidia-zero-to-hero/volume-10/chapter-01-why-kubernetes-needs-a-gpu-platform-layer.md` through `chapter-11-upgrades-and-production-troubleshooting.md` for the two-path model, the evidence chain, label kinds and canary discipline.
 
 ### Explicitly labelled inferences
 
-- The capstone fleet size, two nodes with eight H100s each for 16 GPUs total, is an author choice sized to the `a3-highgpu-8g` machine type; the 8-GPU and 60 percent fairness figures quoted from Project 7 are kept at the source's own cluster scale and adapted to this pool by the Kueue quota design in Section 5.
-- The four-GPU serving reservation on the 16-GPU pool, the ClusterQueue nominal quotas (16 training, 4 serving, 256 CPU, 1Ti memory), and the KAI department/project quota split are policy starting points in the spirit of the source material, not source-mandated values.
-- The upgrade window arithmetic (one node at a time, serving headroom of four GPUs) is an author adaptation of the source's `maxUnavailable` sizing pattern to the two-node pool.
-- The lab's five-question checklist and the specific chart and release versions in the lab are author choices; pin against current releases before production use.
+- The fleet of two nodes, the 12 and 4 GPU split, the KAI queue split of 8 and 4, and the 80 percent utilization alert are author choices.
+- The blast radius examples, 35 of 60 nodes and 24 of 120 nodes, are illustrative sizes. The arithmetic is tested.
+- The label names `gpu-validation` and `gpu.platform.example/class` are ours.
+- Running Kueue and KAI together on one PyTorchJob follows a gem book. Upstream KAI docs do not describe it.
 
-### Not verified on live hardware
+### Not verified or not run
 
-- The hands-on lab in Section 9 is **untested** against a live GKE cluster in this repository; it assumes H100 quota, current chart releases, and a reachable image registry.
-- All `kubectl get` and `curl` output shown as "expected" is illustrative; no GPU node, operator install, queue, or upgrade was executed for this chapter.
-- The KAI microservice behavior (session loop, `BindRequest` flow) is described from the source material and handbook chapters 11.13 through 11.18, not from a live scheduler trace in this repository.
-- GKE driver DaemonSet behavior after `gpu-driver-version=latest` is documented behavior from the source material and was not verified on a live pool in this repository.
+- Not run: cluster creation, driver install, Operator install, any queue behavior, preemption, reclaim, KAI binding and the health gate. Reason: no GPUs and no cloud project here.
+- Not verified: how KAI counts GPUs held by pods under the default scheduler. Whether Kueue's `manageJobsWithoutQueueName` interacts well with KAI pods. The Google driver installer URL tracks the `master` branch, so pin it.
+- Not verified: the 1.33 toolkit workaround on this machine type, which comes from NVIDIA's page.
 
+### Verification log
 
-
-
-
+| Item | Result |
+|---|---|
+| Manifests extracted to `code/part19/c02_*` | 13 custom resources and 7 core resources, all in the chapter |
+| Schema checks | 13 of 13 custom resources pass `tools/check_crd_yaml.py`. 7 of 7 core resources pass `kubeconform -strict`. The rendered ClusterPolicy passes its CRD. The Kueue chart renders with the values file |
+| Upstream versions, fetched 2026-11-10 | Kueue v0.20.5, KAI Scheduler v0.18.7, GPU Operator v26.7.2, Training Operator v1.9.4, JobSet v0.13.0, LeaderWorkerSet v1.0.0, Prometheus engine at main, DCGM exporter 4.6.0-4.8.3 and 4.9.0, gcloud 592.0.0 |
+| Claims checked | 52 |
+| Confirmed | 38 |
+| Corrected | 10 |
+| Removed | 4 |
+| Still unverified | 3 |
+| Corrections | Kueue API version and cohort field. `withinClusterQueue: Any`. KAI memory and CPU units. Training priority 100 to 50. Quotas that summed above the hardware. GKE device plugin and driver settings. Managed DCGM requirements. "Regional" to zonal. Operand node selector claim. Kueue install version v0.9.0 to v0.20.5 and Helm |
+| Removed | The 25 to 30 second Spot notice, the 60 percent cap, GFD labels for count and memory, and the `kai-scheduler-release.yaml` install |
+| Tests | `python3 -m pytest code/part19/test_c02_queue_math.py` runs 27 tests, including failure cases |

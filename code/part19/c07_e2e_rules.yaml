@@ -1,0 +1,12 @@
+# Used only by the end-to-end acceptance test (c07_e2e.py). Not for production.
+# The synthetic exporter sets c07_synthetic_probe to 1 on request. This proves
+# the path rule -> Alertmanager -> page receiver without waiting for a real burn.
+groups:
+  - name: c07_e2e
+    interval: 5s
+    rules:
+      - alert: SyntheticProbeFiring
+        expr: c07_synthetic_probe == 1
+        labels: {severity: page, area: probe}
+        annotations:
+          summary: "Synthetic probe is on"
