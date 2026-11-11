@@ -120,3 +120,6 @@ All chapters 20.1 to 20.29 are drafted (gates: 648 tests, 289 code files clean, 
 - 20.26 trimmed to about 7,500 words with all ten incidents kept.
 - Gates: 673 tests pass, 293 code files clean, 765 Mermaid diagrams clean, site build passes.
 - Still open: human read of every chapter; Part 19 rebuild; Triton KV metrics, Ray queue-time histogram, SRE book 2nd edition currency, Nebius pricing (client-rendered page).
+
+## 8. Scope decision (2026-11-11)
+The reader asked for technical Nebius architecture only, with no general company or hiring-context chapters. Chapters 20.39 (company history) and 20.40 (job family) were cancelled before any file was written. The Nebius architecture block is 20.30 to 20.38; recommended reading order is in chapter 20.1. NVIDIA's open-source Kubernetes stack (Run:ai, KAI, Grove, NVKE, NVKR, NVSentinel, AICR) is chapter 11.31. Part 19 was rebuilt (19.1 to 19.15) and committed. Open: human read of every chapter; trim 11.31 (about 13,000 words) and 19.4; chapters 11.13 and 11.19 reviewed for Run:ai wording.

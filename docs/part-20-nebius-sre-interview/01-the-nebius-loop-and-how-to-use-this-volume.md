@@ -265,6 +265,16 @@ The fifth is leaving logistics to the last minute. The sixth is ignoring the rec
 - [17.11 Incident response and game days](../part-17-operations/11-incident-response-and-game-days.md) and [1.23 Performance methodology](../part-01-linux/23-performance-methodology-use-workload-characterisation-drill-down.md) are the earlier-part anchors for the method.
 - The eight-week plan is chapter 20.29 and was being written by another author when this chapter was drafted.
 
+### The Nebius architecture block, chapters 20.30 to 20.38
+
+These nine chapters answer one question: how does the platform you would operate actually work? They use only public Nebius documentation, source code and incident write-ups, and they mark what Nebius has not published. Read them in this order if you have little time.
+
+First read [20.38 Token Factory inference engineering](38-token-factory-inference-engineering-everything-nebius-has-published.md). It collects everything public about the inference platform and is the chapter closest to your role. Then read [20.30 the architecture map](30-nebius-ai-factory-to-token-factory-architecture.md), which shows where Token Factory sits on top of AI Cloud, and [20.32 model lifecycle, serving and economics](32-token-factory-model-lifecycle-serving-and-economics.md).
+
+Next read the operations chapters. [20.37 observability and status](37-observability-status-and-operations-on-nebius.md) covers what is visible from outside and the incidents Nebius has actually had. [20.36 Managed Kubernetes and Soperator](36-managed-kubernetes-and-soperator-how-nebius-runs-kubernetes-and-slurm.md) covers how the Kubernetes and Slurm layers heal and fail. [20.33 HA and recovery](33-ai-factory-solution-architecture-ha-and-recovery.md) covers what is and is not promised.
+
+Read the rest when you have time. [20.35 the API surface](35-the-nebius-api-surface-grpc-cli-sdks-iam-and-terraform.md) covers automation against the real protobuf API. [20.34 hardware and failure domains](34-nebius-hardware-data-centers-and-the-gpu-fleet.md) and [20.31 the AI Cloud foundation](31-nebius-ai-cloud-foundation-gpu-fabric-and-platform-choices.md) cover the layers underneath. For NVIDIA's own open-source Kubernetes stack, including NVKE announced on 2026-11-10, see chapter 11.31 in Part 11.
+
 ## Sources and review notes
 
 Sources and dates fetched, all on 2026-11-09:
