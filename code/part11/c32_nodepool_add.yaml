@@ -1,0 +1,10 @@
+clusterID: 8ef5e56a-9b0d-4265-b39c-dcda0547fe97
+name: gpu-workers-b
+nodeNamePrefix: gb
+desiredNodeCount: 4
+recycleBudget: 1
+nico:
+  instanceTypeID: 00000000-0000-4000-8000-000000000006
+  release: example-ubuntu-24.04-amd64
+  vpcPrefixIDs:
+    - 00000000-0000-4000-8000-000000000004

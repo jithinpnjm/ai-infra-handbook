@@ -1,0 +1,50 @@
+name: tenant-a
+controlPlaneKubernetesVersion: 1.36.3
+cniPlugin: ovn-kubernetes
+etcdEncrypted: true
+controlPlaneVIP: 10.20.0.50
+network:
+  podCIDR: 192.168.0.0/16
+  serviceCIDR: 10.96.0.0/12
+nico:
+  orgID: example-org
+  siteID: 00000000-0000-4000-8000-000000000001
+  vpcID: 00000000-0000-4000-8000-000000000002
+controlPlaneConfig:
+  desiredCount: 3
+  maxSurge: 1
+  systemReservedMemory: 16Gi
+  nico:
+    instanceTypePreference:
+      - 00000000-0000-4000-8000-000000000003
+    vpcPrefixIDs:
+      - 00000000-0000-4000-8000-000000000004
+    sshKeyGroupIDs:
+      - 00000000-0000-4000-8000-000000000005
+    release: example-ubuntu-24.04-amd64
+nodePools:
+  - name: gpu-h100
+    nodeNamePrefix: h
+    desiredNodeCount: 4
+    recycleBudget: 1
+    nodeLabels:
+      example.com/accelerator: h100
+    nodeTaints:
+      - key: example.com/gpu
+        value: "true"
+        effect: NoSchedule
+    nico:
+      instanceTypeID: 00000000-0000-4000-8000-000000000006
+      vpcPrefixIDs:
+        - 00000000-0000-4000-8000-000000000004
+      sshKeyGroupIDs:
+        - 00000000-0000-4000-8000-000000000005
+      release: example-ubuntu-24.04-amd64
+  - name: cpu-system
+    nodeNamePrefix: c
+    desiredNodeCount: 2
+    nico:
+      instanceTypeID: 00000000-0000-4000-8000-000000000007
+      vpcPrefixIDs:
+        - 00000000-0000-4000-8000-000000000004
+      release: example-ubuntu-24.04-amd64

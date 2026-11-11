@@ -1,0 +1,16 @@
+apiAuth:
+  enabled: true
+  permissive: true
+  configMap:
+    create: true
+  config:
+    audiences: ["https://nvke.example.internal"]
+    issuers:
+      - name: example-idp
+        issuer: "https://idp.example.com/realms/example"
+        jwks:
+          uri: "https://idp.example.com/realms/example/protocol/openid-connect/certs"
+        algorithms: [RS256]
+        admit:
+          groups:
+            - nvke-operators

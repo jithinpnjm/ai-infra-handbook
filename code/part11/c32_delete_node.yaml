@@ -1,0 +1,4 @@
+machineHealthIssue:
+  category: Hardware
+  summary: Node reports 7 of 8 GPUs
+forceUnreachable: false
