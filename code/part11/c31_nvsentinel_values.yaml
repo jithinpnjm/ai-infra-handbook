@@ -1,0 +1,13 @@
+global:
+  dryRun: true
+  mongodbStore:
+    enabled: true
+  faultQuarantine:
+    enabled: true
+  nodeDrainer:
+    enabled: true
+fault-quarantine:
+  circuitBreaker:
+    enabled: true
+    percentage: 50
+    duration: "5m"

@@ -1,0 +1,3 @@
+config:
+  topologyAwareScheduling:
+    enabled: true

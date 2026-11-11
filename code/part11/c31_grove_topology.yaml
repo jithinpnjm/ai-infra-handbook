@@ -1,0 +1,12 @@
+apiVersion: grove.io/v1beta1
+kind: ClusterTopologyBinding
+metadata:
+  name: gpu-fabric
+spec:
+  levels:
+    - domain: zone
+      key: topology.kubernetes.io/zone
+    - domain: rack
+      key: topology.kubernetes.io/rack
+    - domain: host
+      key: kubernetes.io/hostname

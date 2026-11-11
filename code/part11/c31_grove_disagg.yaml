@@ -1,0 +1,83 @@
+apiVersion: grove.io/v1beta1
+kind: PodCliqueSet
+metadata:
+  name: llm-disagg
+  namespace: serving
+spec:
+  replicas: 1
+  template:
+    cliqueStartupType: CliqueStartupTypeExplicit
+    terminationDelay: 10m
+    topologyConstraint:
+      topologyName: gpu-fabric
+      pack:
+        required: rack
+    cliques:
+      - name: frontend
+        spec:
+          roleName: frontend
+          replicas: 2
+          startsAfter: [prefill-leader, decode-leader]
+          podSpec:
+            containers:
+              - name: frontend
+                image: registry.example.com/llm-frontend:1.0
+                resources:
+                  requests:
+                    cpu: "2"
+                    memory: 4Gi
+      - name: prefill-leader
+        spec:
+          roleName: prefill-leader
+          replicas: 1
+          podSpec:
+            containers:
+              - name: server
+                image: registry.example.com/llm-server:1.0
+                resources:
+                  limits:
+                    nvidia.com/gpu: "8"
+      - name: prefill-worker
+        spec:
+          roleName: prefill-worker
+          replicas: 3
+          startsAfter: [prefill-leader]
+          podSpec:
+            containers:
+              - name: server
+                image: registry.example.com/llm-server:1.0
+                resources:
+                  limits:
+                    nvidia.com/gpu: "8"
+      - name: decode-leader
+        spec:
+          roleName: decode-leader
+          replicas: 1
+          podSpec:
+            containers:
+              - name: server
+                image: registry.example.com/llm-server:1.0
+                resources:
+                  limits:
+                    nvidia.com/gpu: "8"
+      - name: decode-worker
+        spec:
+          roleName: decode-worker
+          replicas: 1
+          startsAfter: [decode-leader]
+          podSpec:
+            containers:
+              - name: server
+                image: registry.example.com/llm-server:1.0
+                resources:
+                  limits:
+                    nvidia.com/gpu: "8"
+    podCliqueScalingGroups:
+      - name: prefill
+        cliqueNames: [prefill-leader, prefill-worker]
+        replicas: 1
+        minAvailable: 1
+      - name: decode
+        cliqueNames: [decode-leader, decode-worker]
+        replicas: 2
+        minAvailable: 1

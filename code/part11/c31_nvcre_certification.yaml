@@ -1,0 +1,15 @@
+apiVersion: nvcre.nvidia.com/v1alpha1
+kind: Certification
+metadata:
+  name: gpu-cluster-cert
+  namespace: default
+spec:
+  target:
+    nodeSelector:
+      nvidia.com/gpu.present: "true"
+  nodesPerJob: 4
+  thresholds:
+    busBandwidthGBps: "value >= 300"
+  categories:
+    - domain: communication
+      variant: nccl-all-reduce

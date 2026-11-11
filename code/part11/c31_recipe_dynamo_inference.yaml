@@ -1,0 +1,39 @@
+kind: RecipeMetadata
+apiVersion: aicr.run/v1beta1
+metadata:
+  name: handbook-h100-eks-inference-dynamo
+spec:
+  criteria:
+    service: eks
+    accelerator: h100
+    os: ubuntu
+    intent: inference
+    platform: dynamo
+  componentRefs:
+    - name: cert-manager
+      type: Helm
+    - name: prometheus-operator-crds
+      type: Helm
+    - name: gpu-operator
+      type: Helm
+      dependencyRefs: [cert-manager]
+    - name: nvsentinel
+      type: Helm
+      dependencyRefs: [gpu-operator, cert-manager]
+    - name: kai-scheduler
+      type: Helm
+      source: oci://ghcr.io/kai-scheduler/kai-scheduler
+      dependencyRefs: [gpu-operator]
+    - name: grove
+      type: Helm
+      source: oci://ghcr.io/ai-dynamo/grove
+      dependencyRefs: [prometheus-operator-crds]
+    - name: dynamo-platform
+      type: Helm
+      source: https://helm.ngc.nvidia.com/nvidia/ai-dynamo
+      dependencyRefs:
+        - grove
+        - cert-manager
+        - prometheus-operator-crds
+        - gpu-operator
+        - kai-scheduler
