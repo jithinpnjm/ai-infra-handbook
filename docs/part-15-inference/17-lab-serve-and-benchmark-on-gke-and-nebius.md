@@ -68,7 +68,7 @@ After completing this lab chapter, you will be able to:
 - Eliminate multi-minute pod cold starts by caching model weights on GKE GCS Fuse PVCs or Nebius Shared Filesystems with local NVMe caching. You will also stream weights into HBM using Run:ai Model Streamer.
 - Deploy vLLM, SGLang, and TensorRT-LLM or NIM with exact VRAM budgets. You will also demonstrate how 4-bit AWQ quantization expands KV cache capacity and token throughput on a single GPU.
 - Expose inference pools through the Kubernetes Gateway API Inference Extension with an Envoy Endpoint Picker. You will also scrape vLLM and DCGM Exporter metrics with Prometheus and verify KEDA autoscaling.
-- Execute reproducible concurrency sweeps using `vllm bench serve`, `genai-bench`, `GuideLLM`, and `GenAI-Perf`, and execute a zero-leak teardown checklist on GKE and Nebius.
+- Execute reproducible concurrency sweeps using `vllm bench serve`, `genai-bench`, `GuideLLM`, and `GenAI-Perf` (being phased out; use AIPerf for new runs), and execute a zero-leak teardown checklist on GKE and Nebius.
 
 ---
 
@@ -773,3 +773,5 @@ Primary Book Sources (Local TOON-RAG Corpus):
 - **Labelled engineering synthesis.** The 28 GB weight streaming comparison across 500 Mbps internet versus 2.5 GB/s GCS Fuse and 6.0 GB/s NVMe with Run:ai Model Streamer, the EndpointPicker scoring instantiation, and the 512 MB KV block transfer across 10 Gbps Ethernet versus 600 Gbps RoCEv2 and 800 Gbps InfiniBand are deterministic first-principles calculations implemented in `code/part15/serve_benchmark_gke_nebius.py`.
 - **Hardware execution status.** The GKE and Nebius MK8s Kubernetes manifests and CLI commands in Sections 1 through 5 are production reference templates and were **not run on live GPU hardware** during this documentation build. The Python verification lab in `code/part15/serve_benchmark_gke_nebius_lab.py` was executed and verified locally with 28 passed and 0 failed checks.
 - Manifest checked against upstream CRDs on 2026-11-11 (versions: InferencePool inference.networking.k8s.io/v1 as shipped in the KServe main CRDs, 2026-11-11 clone).
+
+corrected 2026-11-11: GenAI-Perf is being phased out and NVIDIA points new benchmarking to AIPerf (`aiperf profile`); source GenAI-Perf README (triton-inference-server/perf_analyzer) and AIPerf README plus docs/cli-options.md (ai-dynamo/aiperf), read 2026-11-11.

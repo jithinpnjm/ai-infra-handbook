@@ -411,7 +411,7 @@ def evaluate_asp_ch4_tables_and_pitfalls() -> Dict[str, object]:
 
     # Table 4-4 Meta Llama 3 405B 54-day interruption breakdown on 16,384 H100 GPUs
     llama3_table_4_4 = [
-        ("Faulty GPU", "GPU", 148, 30.1),
+        ("Faulty GPU", "GPU", 148, 35.3),
         ("GPU HBM3 memory", "GPU", 72, 17.2),
         ("Software bug", "Dependency", 54, 12.9),
         ("Network switch/cable", "Network", 35, 8.4),
@@ -473,7 +473,7 @@ def evaluate_asp_ch4_tables_and_pitfalls() -> Dict[str, object]:
         "table_4_4_gpu_category_count": gpu_category_count,
         "table_4_4_gpu_category_pct": gpu_category_pct,
         "table_4_4_faulty_gpu_count": 148,
-        "table_4_4_faulty_gpu_pct": 30.1,
+        "table_4_4_faulty_gpu_pct": 35.3,
         "table_4_4_hbm3_count": 72,
         "table_4_4_hbm3_pct": 17.2,
         "table_4_4_sw_bug_count": 54,

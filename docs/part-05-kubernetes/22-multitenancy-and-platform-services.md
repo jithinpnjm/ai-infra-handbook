@@ -208,7 +208,7 @@ In a multitenant setup, the pipeline creates Namespaces and their related object
 - **Network policies**: let the application talk to itself and to shared cluster services, but not to other applications, where that is required.
 - **Quotas**: limit how many resources one Namespace may use. That reduces the risk of a noisy neighbor.
 - **Limit ranges**: set sensible defaults for objects created in the Namespace.
-- **Pod Security Policies**: keep workloads on safe defaults, such as not running as the root user.
+- **Pod Security Admission labels**: keep workloads on safe defaults, such as not running as the root user. The source book names Pod Security Policies here, but those were removed in Kubernetes 1.25.
 
 Not every item is needed in every case. Together, though, they let platform teams onboard a new team without manual steps.
 
@@ -883,3 +883,5 @@ Operating the platform as a product means you stop treating the cluster as a tic
 - **Run here:** `python3 code/part05/multitenancy_quota_reconciler_lab.py` (3 passed, 0 failed).
 - **Explicitly labelled inferences:** The `evaluate_resource_quota_and_limitrange`, `reconcile_acme_namespace_operator`, and `compute_tenant_gpu_cost_and_waste` models in `code/part05/multitenancy_quota_reconciler.py` and the `team-a-compute` `ResourceQuota`, `defaults` `LimitRange`, and `tenants/team-a.yaml` onboarding spec are the author's constructions synthesizing *Production Kubernetes* Chapters 11, 12, and 16 (plus original study items 21, 22, 23, 24, 25, 26, 27, 28, 29, 30, 31, 32, 33, 34, and 35).
 - **Not verified on live hardware:** Live `Capsule`, `HNC`, `vCluster`, `OpenCost`, and `Kueue` executions (`512` CPUs, `4Ti` RAM, `32` GPUs, `20Ti`/`100Ti` storage, `50` PVCs, `500` jobs, `2000` pods, `budgetMonthlyUsd: 120000`, `pods: "50", storage: "300Gi"`, `8080`, `350` lines vs `25` lines) are marked (`untested here`) where not executed by `multitenancy_quota_reconciler_lab.py`.
+
+corrected 2026-11-11: PodSecurityPolicy was deprecated in Kubernetes v1.21 and removed in v1.25; use Pod Security Admission (or a policy engine); source Kubernetes docs, Concepts > Security > Pod Security Policies (Removed feature).

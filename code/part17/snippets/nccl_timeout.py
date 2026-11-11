@@ -7,7 +7,7 @@ import torch
 import torch.distributed as dist
 from opentelemetry import trace
 
-os.environ.setdefault("TORCH_NCCL_ASYNC_ERROR_HANDLING", "1")   # abort the job instead of hanging on a timed-out collective
+os.environ.setdefault("TORCH_NCCL_ASYNC_ERROR_HANDLING", "1")   # PyTorch 2.15 default is 3 (tear down only); 1 also aborts the communicator
 dist.init_process_group(backend="nccl", timeout=timedelta(minutes=10))
 tracer = trace.get_tracer(__name__)
 

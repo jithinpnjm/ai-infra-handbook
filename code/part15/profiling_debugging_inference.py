@@ -452,7 +452,7 @@ def diagnose_nccl_cuda_graph_and_xid_faults(
         "readiness_timeout_s": 5,
         "broken_readiness_timeout_s": 1,
         "nfs_stall_latency_s": 1.2,
-        "xid_db_ecc_code": 62,
+        "xid_pmu_halt_code": 62,
         "blackhole_traffic_pct": blackhole_traffic_pct,
     }
 

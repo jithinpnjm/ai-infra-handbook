@@ -77,7 +77,7 @@
 | In a hung collective the ranks that print timeouts are the healthy ones. Find the rank that never arrived | 19.5 | <!--a: never arrived-->
 | Bisect a slow cluster: ceil(log2 N) rounds, 3 for 8 nodes, 7 for 128 | 19.5 | <!--a: log2 n-->
 | Default DDP gradient bucket is 25 MB. Many small buckets make training slow while the wire test passes | 19.5 | <!--a: 25 mb-->
-| 54-day Llama 3 405B run: faulty GPU 30.1 percent of interruptions, HBM3 17.2, software 12.9, switch or cable 8.4, NIC 1.7 | 19.5 | <!--a: 30.1 percent-->
+| 54-day Llama 3 405B run: faulty GPU 30.1 percent of interruptions as printed in the paper (its own counts give 148 of 419, which is 35.3 percent), HBM3 17.2, software 12.9, switch or cable 8.4, NIC 1.7 | 19.5 | <!--a: 30.1 percent-->
 
 ## F. Training numbers
 

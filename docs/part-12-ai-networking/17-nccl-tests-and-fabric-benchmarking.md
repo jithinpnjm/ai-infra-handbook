@@ -77,7 +77,7 @@ Each row of the table below is one tier. It gives the tool to run, the healthy b
 | **Tier 2a: Physical RDMA wire (Host RAM)** | `ib_write_bw --report_gbits --duration 30`, `ib_write_lat`, `ib_send_lat`, `ibstat`, `mlxlink` | HCA (`mlx5_0..mlx5_7`), optical transceivers, cables, and switch ASICs | `~390 Gbps` (`48.75 GB/s`, `97.5%` of `400G NDR` `50 GB/s` line rate); stable few-microsecond latency (`1–5 µs`) and zero counter deltas | `~195 Gbps` (`~200 Gbps`) indicates link width downtrained (`4x` $\rightarrow$ `2x`) or rate downshift; rising `symbol_error` or `PortXmitWait` |
 | **Tier 2b: GPUDirect RDMA wire (GPU HBM)** | `ib_write_bw -d mlx5_0 --use_cuda=0`, `lsmod \| grep nvidia_peermem` | GPU BAR1 to NIC DMA across shared PCIe switch (`PIX`) | Matches Tier 2a (`~385–390 Gbps` on `400G NDR`) when GPU and NIC share a local PCIe switch (`PIX`, same NUMA node) | Host RDMA is `390 Gbps` but `--use_cuda` drops to `80–120 Gbps`: `nvidia_peermem` unloaded, PCIe ACS enabled, or `SYS` cross-socket pairing |
 | **Tier 3a: Single-node collectives** | `./build/all_reduce_perf -b 8M -e 8G -f 2 -g 8` | Intra-node NCCL P2P/SHM/NVLS channels and NVSwitch routing | `busbw` approaches NVLink rating at `>= 32 MiB–512 MiB` (e.g., `95.18 GB/s` on PCIe/hybrid baseline; `750–800+ GB/s` on 8x H100 NVSwitch) | `busbw` stuck at `20–90 GB/s` on an NVSwitch node: `nvidia-fabricmanager` down, ACS enabled, or `NCCL_P2P_DISABLE=1` / `NCCL_SHM_DISABLE=1` left set |
-| **Tier 3b: Multi-node collectives** | `mpirun` / `srun` `all_reduce_perf`, `all_gather_perf`, `reduce_scatter_perf`, `alltoall_perf` | Multi-rail NCCL rings/trees, SHARP/CollNet, RoCEv2 GID/PFC/ECN | Multi-node `busbw >= 80%` of single-rail-implied or local-node baseline (e.g., `~361.36 GB/s` across `8 x 400G` NDR rails) | Multi-node `busbw` drops to `58.2 GB/s` (`61.15%` of `95.18 GB/s`, failing `80%` gate) or `2.0 GB/s` (`NET/Socket` TCP fallback instead of `NET/IB`) |
+| **Tier 3b: Multi-node collectives** | `mpirun` / `srun` `all_reduce_perf`, `all_gather_perf`, `reduce_scatter_perf`, `alltoall_perf` | Multi-rail NCCL rings/trees, SHARP/CollNet, RoCEv2 GID/PFC/ECN | Multi-node `busbw` at or near your own saved baseline; the `80%` figure is a tunable policy, not a vendor number (illustrative worked example only: `~361.36 GB/s` across `8 x 400G` NDR rails) | Multi-node `busbw` drops to `58.2 GB/s` (`61.15%` of `95.18 GB/s`, failing `80%` gate) or `2.0 GB/s` (`NET/Socket` TCP fallback instead of `NET/IB`) |
 | **Tier 4: Framework & application loop** | `torch.profiler`, `nsys profile --trace=cuda,nvtx,osrt`, `ncu`, `TrainingBenchmark` | DDP `bucket_cap_mb` (`25 MB` default), stream overlap, dataloader `num_workers` | `> 80%` GPU utilization, `40%–60%` MFU (`43.48%` / `48%`), `70%–90%+` scaling efficiency, `< 10%` dataloader time | Tiers 1–3 pass at `1 GiB`, but training is `40%` slow: model issues thousands of `256 KB` AllReduce calls (fix `bucket_cap_mb` `25 MB` $\rightarrow$ `50 MB`) |
 
 The table shows the order of the work. Each tier adds one more layer on top of the one below it, so the first failing row names the layer to fix.
@@ -192,7 +192,7 @@ For example, the same `algbw` gives a different `busbw` at each size of $n$, bec
 
 ### Annotating an `all_reduce_perf` output table
 
-When a benchmark finishes, check three things. First, the arithmetic between elapsed time, `algbw` and `busbw` must hold. Second, the `#wrong` column must stay at zero. Third, multi-node bus bandwidth must reach at least 80% of the single-node or per-rail baseline. The output below comes from an eight-GPU sweep from 8 MiB to 512 MiB, followed by single-node and multi-node 1 GiB acceptance checks.
+When a benchmark finishes, check three things. First, the arithmetic between elapsed time, `algbw` and `busbw` must hold. Second, the `#wrong` column must stay at zero. Third, multi-node bus bandwidth should stay close to your own saved baseline. This chapter uses 80 percent of that baseline as a starting policy. No NVIDIA document sets that number, so calibrate it on your own healthy run. The output below is an illustrative worked example, not a measurement. It follows an eight-GPU sweep from 8 MiB to 512 MiB, then single-node and multi-node 1 GiB checks, so you can practise the arithmetic.
 
 ```text
 #                                                              out-of-place                       in-place
@@ -218,6 +218,8 @@ Single-node and multi-node acceptance gates:
 - 1 GiB (1,073,741,824 B) on 8-node (64-GPU) 8x400G NDR IB cluster in 5,850.0 us (factor = 1.96875):
   algbw = 183.55 GB/s; busbw = 361.36 GB/s (~45.17 GB/s per 50 GB/s rail, or 90.34% of line rate)
 ```
+
+Every figure in this block, including the 58.2 GB/s multi-node row and the 361.36 GB/s row with its 90 percent per-rail share, comes from the handbook's own arithmetic practice and not from a run on real hardware. Treat the 80 percent gate as unsourced policy. For what is sourced, see the nccl-tests lab in chapter 19.5.
 
 In out-of-place mode, the send and receive buffers are separate GPU allocations. In in-place mode, the reduced output overwrites the input buffer, which matches PyTorch DDP gradient buckets. The `#wrong` column must be zero on every row. A non-zero count means the collective finished but corrupted floating-point values in transit. The cause may be faulty HBM, bad SRAM or broken buffer registration. Either way, that corruption makes the throughput figure worthless.
 
@@ -642,7 +644,7 @@ export NCCL_SOCKET_IFNAME=^docker,lo
 export NCCL_P2P_DISABLE=0
 export NCCL_SHM_DISABLE=0
 export NCCL_ASYNC_ERROR_HANDLING=1
-export TORCH_NCCL_ASYNC_ERROR_HANDLING=1
+export TORCH_NCCL_ASYNC_ERROR_HANDLING=1   # default is 3; 1 also aborts the communicator
 
 srun --mpi=pmix /shared/nccl-tests/build/all_reduce_perf \
     -b 1G -e 10G -f 2 -g 1 -c 1 -w 10 -n 100
@@ -725,7 +727,7 @@ The last line should read `Summary: 27 passed, 0 failed`. If a line shows `[FAIL
 
 Each of the six mistakes below produces a number that looks plausible, which is why it is easy to miss. Read each one as a warning sign you can check in your own results.
 
-1. Comparing algorithmic bandwidth with the hardware spec. At $n = 64$ GPUs, AllReduce `busbw` is $1.96875 \times \text\{algbw\}$. If you read an `algbw` of 183.55 GB/s and conclude that an 8x400G NDR node runs under 50% utilization, you have ignored the $2(n-1)/n$ ring multiplier. The actual bus bandwidth is 361.36 GB/s, which is 90.34% of line rate. The ring multiplier is the step that turns one into the other, so never skip it.
+1. Comparing algorithmic bandwidth with the hardware spec. At $n = 64$ GPUs, AllReduce `busbw` is $1.96875 \times \text\{algbw\}$. If you read an `algbw` of 183.55 GB/s and conclude that an 8x400G NDR node runs under 50% utilization, you have ignored the $2(n-1)/n$ ring multiplier. The bus bandwidth in this illustrative example is 361.36 GB/s, which would be 90.34% of line rate. The ring multiplier is the step that turns one into the other, so never skip it.
 
 2. Judging fabric health from small messages, or ignoring data-integrity errors. Small collectives from 8 B to 64 KiB are dominated by kernel launch and network hop latency, not by link bandwidth. The reverse trap is also real. A high bus bandwidth at 1 GiB with `#wrong > 0` means the fabric or GPU memory is corrupting tensors. A fast result with errors is a failed result, however good the bandwidth looks.
 
@@ -988,3 +990,7 @@ Primary Sources Cited:
 
 - Multi-GPU and multi-node shell commands such as `nvbandwidth`, `ib_write_bw` (`ib_read_bw`, `ib_send_bw`, `195.0ms` / `2045.0ms`), `all_reduce_perf` (`NCCL_SOCKET_IFNAME=eth0`, `2.21` / `4.00ms` / `45.0ms` / `100.0GB/s`, `decode_ms`, `CDF` percentiles), `mpirun`, `srun`, `ncclras`, and `nsys` are marked `untested here`. This authoring workspace does not have physical H100 or Blackwell GPUs or InfiniBand HCAs attached.
 - All mathematical formulas, `all_reduce_perf` table rows, three-tier bottleneck attributions, and $\lceil \log_2 N \rceil$ straggler bisections are verified by `python3 -B code/part12/nccl_tests_benchmarking_lab.py`. That script also verifies all scaling efficiency, fleet waste, and inference percentile SLA calculations.
+
+corrected 2026-11-11: the 361.36 GB/s multi-node row, its 90 percent per-rail share and the 80 percent gate are relabelled as an illustrative worked example and unsourced policy; source docs/part-19-capstone/05-capstone-an-nccl-tests-fabric-lab.md (sections 7 and sources), which found no NVIDIA document that sets these numbers.
+
+corrected 2026-11-11: TORCH_NCCL_ASYNC_ERROR_HANDLING defaults to 3 in PyTorch 2.15 and 1 is a deliberate non-default choice (abort the communicator, then tear down); source PyTorch 2.15 docs, ProcessGroupNCCL environment variables.

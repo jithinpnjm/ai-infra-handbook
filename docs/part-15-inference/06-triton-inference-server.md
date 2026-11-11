@@ -489,7 +489,7 @@ Derived Operational KPIs (for 1,000 requests across 50 execution batches on resn
 Manually testing every combination of maximum batch size, preferred batch size, queue delay, and instance group count takes days. NVIDIA provides three complementary benchmarking tools in the Triton SDK container.
 - **Perf Analyzer (`perf_analyzer`):** Sweeps client concurrency or open-loop arrival rates against a single loaded model configuration. It decomposes client latency into send, network plus server queue, server compute input, server compute infer, and receive phases.
 - **Model Analyzer (`model-analyzer`):** Wraps `perf_analyzer` and automatically generates, loads, and profiles dozens of `config.pbtxt` permutations across instance counts and batch sizes. It filters out configurations that violate your latency budget SLO or GPU VRAM limit and plots the **Latency-Throughput Pareto Frontier** so you can pick the highest-RPS configuration that meets your p99 target.
-- **GenAI-Perf (`genai-perf`):** Evaluates streaming LLM endpoints using realistic input and output token distributions or ShareGPT traces to measure TTFT, ITL, and Generated Tokens Per Second, as covered in Chapter 15.14.
+- **GenAI-Perf (`genai-perf`, being phased out in favour of AIPerf):** Evaluates streaming LLM endpoints using realistic input and output token distributions or ShareGPT traces to measure TTFT, ITL, and Generated Tokens Per Second, as covered in Chapter 15.14.
 
 ```bash
 # 1. Sweep concurrency C=1..64 on a single model with perf_analyzer and export CSV
@@ -854,3 +854,5 @@ Bind the liveness probe to `/v2/health/live` and bind the readiness probe to `/v
 
 - All mathematical models, configuration validators, latency decompositions, and Pareto frontier calculations in `code/part15/triton_inference_server.py` and `code/part15/triton_inference_server_lab.py` (`25/25` checks passing) are derived directly from the Volume 12 source files and verified locally.
 - The Docker GPU deployment and `perf_analyzer` commands in Section 7.3 represent standard production workflows from Volume 12 Labs 01 and 02. They are marked `untested` on live GPU hardware in this local build environment.
+
+corrected 2026-11-11: GenAI-Perf is being phased out and NVIDIA points new benchmarking to AIPerf (`aiperf profile`); source GenAI-Perf README (triton-inference-server/perf_analyzer) and AIPerf README (ai-dynamo/aiperf), read 2026-11-11.

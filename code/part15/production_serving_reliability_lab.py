@@ -232,7 +232,7 @@ def run_lab() -> int:
         and probes["good_probe_5s_survives_nfs_spike"] is True,
     )
     check(
-        "18. V12 Scenario 2: GPU 3 XID 62 DB-ECC in TP=8 pegs GPU 3 at 100% while 7 peers sit at 0% in ncclAllReduce, blackholing 12.5% (1/8) of cluster traffic",
+        "18. V12 Scenario 2: GPU 3 XID 62 PMU halt in TP=8 pegs GPU 3 at 100% while 7 peers sit at 0% in ncclAllReduce, blackholing 12.5% (1/8) of cluster traffic",
         probes["xid_62_tp_gpu_util_pct"] == [0, 0, 0, 100, 0, 0, 0, 0]
         and probes["xid_62_cluster_timeout_pct"] == 12.5
         and probes["npd_remediation_xids"] == (48, 62, 79, 92),
@@ -258,7 +258,7 @@ def run_lab() -> int:
         cb_hold["next_state"] == "OPEN" and cb_reset["next_state"] == "CLOSED",
     )
     check(
-        "21. Enabling CPU swap (--swap-space 32) degrades ITL by 4,150% (20 ms -> 850 ms/tok), while 50% Spot + 50% On-Demand saves 35.0% GPU cost",
+        "21. Enabling CPU swap (--swap-space 32 on vLLM before v0.18) degrades ITL by 4,150% (20 ms -> 850 ms/tok), while 50% Spot + 50% On-Demand saves 35.0% GPU cost",
         cb_safe["swap_space_recommended_gb"] == 0
         and cb_safe["swap_thrashing_itl_ms"] == (20.0, 850.0)
         and cb_safe["swap_degradation_pct"] == 4150.0

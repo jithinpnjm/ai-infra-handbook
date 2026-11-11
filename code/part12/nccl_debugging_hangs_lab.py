@@ -254,9 +254,9 @@ def main() -> int:
         and asp["table_4_4_mtbi_hours"] == 3.09,
     )
     check(
-        "ASP Ch 4 Table 4-4 GPU breakdown: Faulty GPU 148 (30.1%), HBM3 72 (17.2%), SRAM 19 (4.5%), GSP 17 (4.1%), SDC 6 (1.4%), Thermal 6 (1.4%) = 268 (64.0%)",
+        "ASP Ch 4 Table 4-4 GPU breakdown: Faulty GPU 148 (35.3%), HBM3 72 (17.2%), SRAM 19 (4.5%), GSP 17 (4.1%), SDC 6 (1.4%), Thermal 6 (1.4%) = 268 (64.0%)",
         asp["table_4_4_faulty_gpu_count"] == 148
-        and asp["table_4_4_faulty_gpu_pct"] == 30.1
+        and asp["table_4_4_faulty_gpu_pct"] == 35.3
         and asp["table_4_4_hbm3_count"] == 72
         and asp["table_4_4_hbm3_pct"] == 17.2
         and asp["table_4_4_sram_count"] == 19

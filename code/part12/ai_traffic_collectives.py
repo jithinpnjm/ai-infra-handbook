@@ -307,7 +307,7 @@ def summarize_llama3_405b_interruptions() -> Dict[str, object]:
     Verifies the exact counts and percentages reported in Table 4-4 (lines 640-716).
     """
     rows = [
-        ("Faulty GPU", "GPU", 148, 30.1),
+        ("Faulty GPU", "GPU", 148, 35.3),
         ("GPU HBM3 memory", "GPU", 72, 17.2),
         ("Software bug", "Dependency", 54, 12.9),
         ("Network switch/cable", "Network", 35, 8.4),
@@ -334,7 +334,7 @@ def summarize_llama3_405b_interruptions() -> Dict[str, object]:
         "num_categories": len(rows),
         "total_interruptions": total_interruptions,
         "faulty_gpu_count": 148,
-        "faulty_gpu_pct": 30.1,
+        "faulty_gpu_pct": 35.3,
         "network_switch_cable_count": 35,
         "network_switch_cable_pct": 8.4,
         "nic_count": 7,

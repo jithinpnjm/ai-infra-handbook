@@ -137,7 +137,7 @@ This chapter starts at 30 percent, and that is only a starting point. Review the
 
 ### 1.3 The procurement order
 
-The procurement order is what the model produces: the GPU count to request for next quarter. The script below writes that count to a file. A person should read the script and its output before anyone signs the order.
+The model produces two numbers: the target fleet for next quarter, and the order, which is how many GPUs to add to reach it. The script below prints both and writes them to a file. A person should read the script and its output before anyone signs the order.
 
 ```bash
 # Compute the Q+1 GPU order
@@ -146,7 +146,7 @@ python code/part17/capacity_plan.py \
   --growth-rate 0.20 \
   --buffer 0.30 \
   --output procurement_order.md
-# expected: the Q+1 GPU order is 156 GPUs (rounded up)
+# expected: target fleet 156 GPUs (order 56 more)
 ```
 
 Before you trust the output, check the current GPU count you fed in. A wrong input produces a confident, wrong order.
@@ -439,7 +439,7 @@ python code/part17/capacity_plan.py \
   --growth-rate 0.20 \
   --buffer 0.30 \
   --output procurement_order.md
-# expected: the Q+1 target fleet is 7 GPUs (6.24 rounded up)
+# expected: target fleet 7 GPUs (order 3 more; 6.24 rounded up)
 ```
 
 ### 7.5 Step 4: run the right-sizing exercise
@@ -604,3 +604,5 @@ The capacity planning and cost optimisation patterns draw on Volume 19 chapters 
 - The lab in Section 7 is **untested** against a live GKE cluster in this repository.
 - The Kubecost version assumed in the lab should be pinned against the current releases before production use.
 - The cost numbers in the lab are illustrative; production costs vary by usage pattern, region, and commitment.
+
+corrected 2026-11-11: no quarterly_review.py exists and none is used here; the capacity_plan.py commands use its real flags (--current-gpu-count, --growth-rate, --buffer, --output), and the expected output now matches what the script prints (target fleet and order); source code/part17/capacity_plan.py, run 2026-11-11.

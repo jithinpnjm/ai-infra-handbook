@@ -322,7 +322,7 @@ Preemption Policy Math: Host-Device PCIe Swap vs GPU Prefill Recompute (V12 Ch. 
   (On PCIe Gen4 x16 at 64 GB/s, swapping a 4 GB KV tensor one-way takes 4 GB / 64 GB/s = 62.5 ms, or 125 ms round-trip)
 - Recompute Time (rerunning prompt prefill on GPU Tensor Cores):
   t_recompute = (2 * L * S^2 * H + 12 * L * S * H^2) / T_GPU
-- Crossover Rule: On modern GPUs (e.g., H100 at 989 TFLOPS FP16 vs 64 GB/s PCIe), t_recompute < t_swap for all short-to-medium sequences (S < 8,192 tokens). Always set --swap-space 0 and preemption_mode="recompute" for real-time serving!
+- Crossover Rule: On modern GPUs (e.g., H100 at 989 TFLOPS FP16 vs 64 GB/s PCIe), t_recompute < t_swap for all short-to-medium sequences (S < 8,192 tokens). Always set --swap-space 0 on vLLM before v0.18 for real-time serving!
 ```
 
 Table 15.2.3 provides the concurrency capacity planning matrix for **Llama-3-70B** in BF16 precision across 4-GPU and 8-GPU 80 GB clusters.
@@ -332,7 +332,7 @@ Table 15.2.3 provides the concurrency capacity planning matrix for **Llama-3-70B
 | 4x A100-80GB or 4x H100-80GB (TP=4) | 320 GB | 288 GB | 140 GB | 140 GB | 218 requests | 54 requests | 13 requests |
 | 8x A100-80GB or 8x H100-80GB (TP=8) | 640 GB | 576 GB | 140 GB | 428 GB | 668 requests | 167 requests | 41 requests |
 
-Doubling Tensor Parallelism from 4 to 8 GPUs does not merely double KV Cache capacity. It more than triples maximum concurrency from 218 to 668 sequences because the 140 GB model weights are stored only once across the 8-GPU NVLink domain. That leaves 428 GB of HBM free for KV Cache pages. When burst traffic exceeds capacity and exhausts free blocks, the scheduler must preempt active sequences. PCIe Gen4 and Gen5 buses transfer only 64 to 128 GB/s, which is orders of magnitude slower than H100 Tensor Core compute. Swapping KV blocks to host CPU RAM saturates the PCIe bus and stalls kernel launches. Always configure `--swap-space 0` and rely on recomputation and ingress queue admission control for real-time x86 PCIe servers.
+Doubling Tensor Parallelism from 4 to 8 GPUs does not merely double KV Cache capacity. It more than triples maximum concurrency from 218 to 668 sequences because the 140 GB model weights are stored only once across the 8-GPU NVLink domain. That leaves 428 GB of HBM free for KV Cache pages. When burst traffic exceeds capacity and exhausts free blocks, the scheduler must preempt active sequences. PCIe Gen4 and Gen5 buses transfer only 64 to 128 GB/s, which is orders of magnitude slower than H100 Tensor Core compute. Swapping KV blocks to host CPU RAM saturates the PCIe bus and stalls kernel launches. Always configure recompute-only preemption (`--swap-space 0` on vLLM before v0.18) and rely on recomputation and ingress queue admission control for real-time x86 PCIe servers.
 
 ---
 
@@ -465,7 +465,6 @@ python3 -m vllm.entrypoints.openai.api_server \
   --enable-chunked-prefill \
   --max-num-batched-tokens 2048 \
   --enable-prefix-caching \
-  --swap-space 0 \
   --port 8000
 ```
 
@@ -573,7 +572,7 @@ Always gate production promotion of any quantized artifact on an automated `lm_e
 | Failure Mode | Production Symptom & Telemetry | Root Cause | Diagnostic Command | Remediation |
 |---|---|---|---|---|
 | **1. Unbounded Context & Prefill Workspace OOM** | HTTP 500 errors spike to 42%; worker pods crash with `torch.cuda.OutOfMemoryError: Tried to allocate 1.42 GiB (75.12 GiB allocated; 1.10 GiB free)` and `SIGSEGV (Exit code 139)`. | `--gpu-memory-utilization` set too high (0.98, leaving only 1.6 GB headroom), `--max-model-len` left at 131072, and chunked prefill disabled; a burst of 28k–32k token prompts exhausts intermediate prefill workspace. | `nvidia-smi --query-gpu=memory.used,memory.free --format=csv -l 1` and `curl -s localhost:8000/metrics \| grep vllm:gpu_cache_usage_perc` | Lower `--gpu-memory-utilization` to 0.85–0.90, cap `--max-model-len 16384`, enable `--enable-chunked-prefill` with `--max-num-batched-tokens 2048`, and enforce API gateway prompt limits (12,000 tokens). |
-| **2. PCIe Bus Thrashing from KV Cache Swapping** | Average ITL degrades by 4,000% (20 ms/tok -> 850 ms/tok) or GPU utilization drops to 0% for 4–8 s while PCIe bandwidth (`dcgm_pcie_tx_throughput`) saturates at 64 GB/s (99.4%). | `--swap-space 32` (`PreemptionMode.SWAP`) enabled; when KV blocks fill up (`vllm:gpu_cache_usage_perc=99.8%`, `cpu_cache_usage_perc=88.4%`), the scheduler swaps 28+ GB of KV blocks across PCIe (4.2 preemptions/s). | `curl -s localhost:8000/metrics \| grep -E "vllm:cpu_cache_usage_perc\|vllm:num_preempted_requests_total"` | Set `--swap-space 0` and `preemption_mode="recompute"`, enable `--enable-prefix-caching`, and scale horizontally or shed load when `vllm:gpu_cache_usage_perc` exceeds 85%. |
+| **2. PCIe Bus Thrashing from KV Cache Swapping** | Average ITL degrades by 4,000% (20 ms/tok -> 850 ms/tok) or GPU utilization drops to 0% for 4–8 s while PCIe bandwidth (`dcgm_pcie_tx_throughput`) saturates at 64 GB/s (99.4%). | `--swap-space 32` on vLLM before v0.18 (`PreemptionMode.SWAP`) enabled; when KV blocks fill up (`vllm:gpu_cache_usage_perc=99.8%`, `cpu_cache_usage_perc=88.4%`), the scheduler swaps 28+ GB of KV blocks across PCIe (4.2 preemptions/s). | `curl -s localhost:8000/metrics \| grep -E "vllm:cpu_cache_usage_perc\|vllm:num_preempted_requests_total"` | Set recompute-only preemption (`--swap-space 0` on vLLM before v0.18) and `preemption_mode="recompute"`, enable `--enable-prefix-caching`, and scale horizontally or shed load when `vllm:gpu_cache_usage_perc` exceeds 85%. |
 | **3. Prefill Bubble Stalling Decode Streams** | Average ITL is 18 ms, but p99 ITL spikes to 340 ms whenever long RAG documents (12,288 tokens) arrive, causing real-time voice/chat streams to stutter. | Continuous batching is active (`max_num_seqs=128`), but `enable_chunked_prefill` is disabled; a single 12,288-token prefill GEMM monopolizes SMs for 320 ms, blocking 45 active decode streams. | `curl -s localhost:8000/metrics \| grep -E "iteration_duration_ms\|vllm:time_per_output_token_seconds"` | Enable `--enable-chunked-prefill` and set `--max-num-batched-tokens 2048` (slices 12,288 tokens into 24 chunks of 512 tokens, bounding p99 ITL to 21.4 ms). |
 | **4. Oversized KV Block Internal Fragmentation** | `[TRT-LLM][ERROR] Out of memory during KVCache block allocation` above 64 sessions on 4x A100 (TP=4), even though effective KV utilization is only 52%. | `tokens_per_block` set to 128 with FP16 KV Cache; a 129-token sequence allocates 2 full blocks (256 tokens), wasting 49.6% (~50%) of KV memory on internal fragmentation. | Inspect `KvCacheConfig` block size and `vllm:gpu_cache_usage_perc` vs active token count. | Reduce `tokens_per_block` (`--block-size`) to 16 or 32 tokens, enable FP8 KV Cache quantization (50% savings), and set `free_gpu_memory_fraction=0.85` (expands capacity from 64 to 210 sessions at 91% utilization). |
 | **5. INT8 PTQ Accuracy Collapse from Narrow Calibration** | Quantized INT8 model passes synthetic latency tests (11.3 ms), but production accuracy collapses (e.g., Word Error Rate jumps from 3.2% FP16 baseline to 24.8%, or LLM perplexity spikes). | `IInt8EntropyCalibrator2` was run on non-representative short/clean samples (1.2 s vs 8.5 s noisy production inputs) or without SmoothQuant, deriving overly narrow clipping thresholds that clamp high-amplitude activation outliers. | Compare layer-by-layer activation histograms and run `lm_eval` / domain validation set before and after PTQ. | Rebuild the engine using 500–1,000 representative production calibration samples matching the 99th percentile sequence length, apply SmoothQuant (alpha = 0.5–0.8) or switch to native FP8 E4M3 / AWQ W4A16. |
@@ -648,8 +647,7 @@ docker run -d --name vllm_server \
   --max-model-len 4096 \
   --dtype float16 \
   --enable-chunked-prefill \
-  --max-num-batched-tokens 2048 \
-  --swap-space 0
+  --max-num-batched-tokens 2048
 
 # 2. Run GuideLLM or Triton perf_analyzer concurrency sweep to measure TTFT, ITL, and Goodput
 guidellm benchmark \
@@ -672,7 +670,7 @@ Always record `vllm:gpu_cache_usage_perc` alongside p99 TTFT and p99 ITL during 
 - **Continuous Batching and Chunked Prefill eliminate padding waste and prefill bubbles:** Request-level dynamic batching wastes over 65 percent of compute on padding tokens and traps finished short requests behind the longest sequence. Continuous batching evicts finished sequences immediately at each token step with 0 percent padding waste. Chunked Prefill slices long prompts into bounded chunks via `--max-num-batched-tokens` so active decode streams never stall.
 - **Attention head sharing and low-rank compression slash KV Cache memory:** Moving from Multi-Head Attention to 8 to 1 Grouped-Query Attention reduces KV Cache footprint by 87.5 percent. DeepSeek Multi-Head Latent Attention caches a 576-element joint latent vector per layer, matching GQA with 2.25 groups while outperforming MHA accuracy.
 - **PagedAttention eliminates external fragmentation and bounds internal waste under 4 percent:** By dividing the KV Cache into fixed 16- or 32-token non-contiguous physical pages mapped via per-sequence Block Tables, PagedAttention raises effective KV memory utilization from under 38 percent to over 96 percent. It also unlocks zero-recomputation Prefix Caching that cuts TTFT by 75 to 90 percent.
-- **Match the quantization scheme to your hardware and concurrency regime:** Weight-only W4A16 with AWQ or GPTQ and Marlin or Machete kernels shrinks weights by 75 percent and delivers up to 300 percent speedup at low concurrency. Weight-and-activation W8A8 in FP8 E4M3 or SmoothQuant INT8 shrinks weights by 50 percent, doubles Tensor Core TFLOPS, and outperforms W4A16 at high concurrency and long-context prefill. Combining W8A8 with FP8 KV Cache quantization and `--swap-space 0` maximizes concurrent sessions without PCIe thrashing.
+- **Match the quantization scheme to your hardware and concurrency regime:** Weight-only W4A16 with AWQ or GPTQ and Marlin or Machete kernels shrinks weights by 75 percent and delivers up to 300 percent speedup at low concurrency. Weight-and-activation W8A8 in FP8 E4M3 or SmoothQuant INT8 shrinks weights by 50 percent, doubles Tensor Core TFLOPS, and outperforms W4A16 at high concurrency and long-context prefill. Combining W8A8 with FP8 KV Cache quantization and recompute-only preemption (`--swap-space 0` on vLLM before v0.18) maximizes concurrent sessions without PCIe thrashing.
 
 ---
 
@@ -879,3 +877,4 @@ Serving engines pre-allocate 85 to 90 percent of GPU HBM for weights and the Pag
 - All mathematical models, Roofline ridge points, KV Cache footprints, PagedAttention concurrency tables, preemption crossover calculations, and quantization transformations are deterministically verified by `code/part15/batching_kv_quantization.py` and `code/part15/batching_kv_quantization_lab.py`.
 - Live container deployment and benchmarking commands in Section 4 and Section 6 Part B are derived from the cited source labs and have not been executed on live GPU hardware in this local build environment, so they are marked `untested`.
 
+corrected 2026-11-11: `--swap-space` (swap_space) is no longer a vLLM option; vllm/config/cache.py has it at v0.17.0 and not at v0.18.0 or v0.32.0, and the v0.32.0 docs/configuration/optimization.md says V1 preempts by recompute rather than swap. The swap-thrashing figures in this chapter come from the nvidia-devops material and describe vLLM before v0.18. Sources: vllm-project/vllm tags v0.17.0, v0.18.0, v0.32.0.

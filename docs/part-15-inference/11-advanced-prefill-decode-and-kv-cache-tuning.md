@@ -609,7 +609,6 @@ export LMCACHE_LOCAL_DISK="local_kv_cache/"
 export LMCACHE_MAX_LOCAL_DISK_SIZE=120.0
 
 vllm serve Qwen/Qwen3-14B \
-  --disable-log-requests \
   --kv-transfer-config '{"kv_connector":"LMCacheConnectorV1","kv_role":"kv_both"}' \
   --max-model-len 40960 \
   --gpu-memory-utilization 0.90 \
@@ -651,7 +650,7 @@ def select_hqq_cache_config(used_mem_ema: float, threshold: float = 0.90) -> dic
 | **3. Chunked Prefill Breaking Prefix-Cache Hits (`V12` Ch. 8)** | Prefix-cache hit ratio drops `5.6x` from `45%` to `8%` immediately after enabling chunked prefill | Whole-sequence prefix hash lookup fails when prompts are sliced into partial chunks | `curl -s localhost:8002/metrics \| grep prefix_cache_hit_ratio` | Align prefix matching to chunk/block boundaries (`16`/`64`/`512` tokens) or use `SGLang` `RadixAttention` |
 | **4. Large Block Internal Fragmentation & FP16 KV OOM (`V12` Ch. 5)** | `[TRT-LLM][ERROR] Out of memory during KVCache block allocation` above `64` sessions (`52%` effective KV util) | `tokens_per_block=128` wastes `127/256` slots (`49.61%`) on `129`-token sequences; `0.95` fraction starves workspace | `engine.kv_cache_manager.print_fragmentation_report()` | Set `tokens_per_block=32` (`19.38%` waste at `129` tokens), enable `FP8` KV cache, and set fraction to `0.85` (`64 -> 210` sessions, `91%` util) |
 | **5. Uncollated Small-Page RDMA Handoff Bottleneck (`ASP` Ch. 18)** | Disaggregated `7,500`-token KV transfer takes `20 ms` over InfiniBand RDMA, inflating `TTFT` | Posting `469` (`~470`) separate `16`-token PagedAttention RDMA writes saturates NIC WQE processing | `nsys profile --trace=cuda,nvtx,ucx` and `ucx_info -f` | Collate pages into `>= 128`-token slabs (`59` transfers -> `8 ms`), set `UCX_RNDV_THRESH=16384` and `PYTHONHASHSEED=0` |
-| **6. Synchronous PCIe Swap Thrashing Under Saturation (`V12` Ch. 7 & 8)** | `p99` ITL jumps `20 ms -> 850 ms` (`42.5x`), GPU util drops to `18%`, PCIe bus saturates at `64 GB/s` | `swap_space=32` evicts `28 GB` (`12` sequences) over PCIe (`4.2` preemptions/s) instead of async LMCache/NIXL or recompute | `curl -s localhost:8000/metrics \| grep -E "cpu_cache_usage\|num_preempted"` | Set `--swap-space 0` with `preemption_mode="recompute"` for `S < 8,192`, or use async pinned `NIXL`/`LMCache` prefetching + Mooncake early rejection |
+| **6. Synchronous PCIe Swap Thrashing Under Saturation (`V12` Ch. 7 & 8)** | `p99` ITL jumps `20 ms -> 850 ms` (`42.5x`), GPU util drops to `18%`, PCIe bus saturates at `64 GB/s` | `swap_space=32` evicts `28 GB` (`12` sequences) over PCIe (`4.2` preemptions/s) instead of async LMCache/NIXL or recompute | `curl -s localhost:8000/metrics \| grep -E "cpu_cache_usage\|num_preempted"` | Set recompute-only preemption (`--swap-space 0` on vLLM before v0.18) with `preemption_mode="recompute"` for `S < 8,192`, or use async pinned `NIXL`/`LMCache` prefetching + Mooncake early rejection |
 
 ---
 
@@ -894,3 +893,6 @@ Primary Sources Cited in Chapter 15.11:
    - All multi-node InfiniBand NIXL and GPUDirect Storage CLI workflows are reference configurations from ASP Chapters 4, 5, and 18 and HLS Chapter 7; they have not been run on live multi-node GPU hardware in this environment, and all numerical claims are verified deterministically by code/part15/advanced_kv_cache_tuning_lab.py.
 ```
 
+corrected 2026-11-11: `--swap-space` (swap_space) is no longer a vLLM option; vllm/config/cache.py has it at v0.17.0 and not at v0.18.0 or v0.32.0, and the v0.32.0 docs/configuration/optimization.md says V1 preempts by recompute rather than swap. The swap-thrashing figures in this chapter come from the nvidia-devops material and describe vLLM before v0.18. Sources: vllm-project/vllm tags v0.17.0, v0.18.0, v0.32.0.
+
+corrected 2026-11-11: vLLM CLI flags checked against the v0.32.0 source (vllm/engine/arg_utils.py, vllm/config/compilation.py); `--disable-log-requests` and `--max-seq-len-to-capture` do not appear there, so they are removed or marked as older-version flags. Source vllm-project/vllm tag v0.32.0.

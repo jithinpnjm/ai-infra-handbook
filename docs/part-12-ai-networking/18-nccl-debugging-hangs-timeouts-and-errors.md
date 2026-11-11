@@ -40,7 +40,7 @@ The table below shows the kinds of failure behind those interruptions and what e
 | Metric or Failure Scenario | Observed Value or Breakdown | Operational Impact |
 |---|---|---|
 | Llama 3 405B 54-day run on 16,384 H100 GPUs | 419 unexpected interruptions over 1,296 hours | Mean time between interruptions `MTBI` of 3.09 hours (`54 * 24 / 419`) |
-| GPU hardware fault share | 268 interruptions (`64.0%` of 419 total) | Faulty GPUs (`148`, `30.1%`), HBM3 (`72`, `17.2%`), SRAM (`19`, `4.5%`), GSP (`17`, `4.1%`), SDC (`6`, `1.4%`), thermal (`6`, `1.4%`) |
+| GPU hardware fault share | 268 interruptions (`64.0%` of 419 total) | Faulty GPUs (`148`, `35.3%`), HBM3 (`72`, `17.2%`), SRAM (`19`, `4.5%`), GSP (`17`, `4.1%`), SDC (`6`, `1.4%`), thermal (`6`, `1.4%`) |
 | Software, network, and host share | Software bugs `54` (`12.9%`), switches/cables `35` (`8.4%`), host maintenance `32` (`7.6%`), NICs `7` (`1.7%`), watchdog `7` (`1.7%`) | 49 interruptions (`11.7%`) across switches/cables, NICs, and unclassified watchdog timeouts combined (`42` or `10.0%` switch+NIC) |
 | CPU-staged Gloo vs NCCL on 800 Gb/s (`100 GB/s`) InfiniBand | 400.0 MB (`100M` floats) AllReduce: `4.00 ms` (`100.0 GB/s`) on NCCL vs `200.00 ms` (`2.0 GB/s`) on Gloo | 50x slowdown with near-100% host CPU utilization when Gloo is used by mistake |
 | Repeated `dist.init_process_group` and `dist.destroy_process_group` in loop | `48.0 ms` handshake/buffer overhead added to a `0.5 ms` 1-element AllReduce (`48.5 ms` vs `0.5 ms` initialized once) | `98.97%` iteration-time reduction when communicator initialization is moved outside the training loop |
@@ -88,7 +88,7 @@ Meta's 54-day pretraining run of Llama 3 405B on 16,384 H100 GPUs shows why syst
 
 | Component | Category | Interruption Count | % of Interruptions (`419` Total) | Operational Signature in `NCCL` & System Logs |
 |---|---|---|---|---|
-| **Faulty GPU** | GPU | `148` | `30.1%` | `Xid 79` (fallen off bus), `Xid 61`/`62` (microcontroller halt), `ncclUnhandledCudaError=1` or peer `ncclRemoteError=6` |
+| **Faulty GPU** | GPU | `148` | `35.3%` | `Xid 79` (fallen off bus), `Xid 61`/`62` (microcontroller halt), `ncclUnhandledCudaError=1` or peer `ncclRemoteError=6` |
 | **GPU HBM3 memory** | GPU | `72` | `17.2%` | `Xid 48` (double-bit UEC), `Xid 94`/`95` (contained/uncontained ECC), `Xid 63`/`64` (row remap event/failure) |
 | **Software bug** | Dependency | `54` | `12.9%` | Rank collective desync, OOM, or `ncclInvalidUsage=5` / `ncclInvalidArgument=4` |
 | **Network switch/cable** | Network | `35` | `8.4%` | `SymbolErrorCounter` / `LinkDownedCounter` rising, `local_ack_timeout_err`, all ranks stuck on identical `SeqNum` |
@@ -230,7 +230,7 @@ The settings below control how the watchdog behaves and how it reports a hang.
 | Setting or Variable | Default or Recommended Value | Mechanism and Purpose |
 |---|---|---|
 | `timeout` in `dist.init_process_group` | `datetime.timedelta(seconds=600)` (`600,000 ms` / 10 min default; displays `timeout=None` in PyTorch 2.14+ signature) | Maximum elapsed time for an enqueued `WorkNCCL` CUDA event before the watchdog fires |
-| `TORCH_NCCL_ASYNC_ERROR_HANDLING=1` | `1` (preferred over legacy `NCCL_ASYNC_ERROR_HANDLING=1`; set both in runbooks) | Enables asynchronous abort of the NCCL communicator when a timeout or error occurs |
+| `TORCH_NCCL_ASYNC_ERROR_HANDLING` | `0` none, `1` abort the communicator and tear down, `2` abort only, `3` tear down only; default `3` in PyTorch 2.15 | Controls what the watchdog does after a timeout or error. Set `1` only if you want the communicator aborted as well |
 | `TORCH_NCCL_ENABLE_MONITORING=1` | `1` | Spawns an independent monitoring thread that watches the watchdog heartbeat and terminates the OS process cleanly if `ncclCommAbort` wedges inside the CUDA driver |
 | `TORCH_NCCL_HEARTBEAT_TIMEOUT_SEC` | `180` or `300` seconds | Maximum seconds between heartbeats before the monitoring thread dumps traces and forces process exit |
 
@@ -320,7 +320,7 @@ When you scale distributed training across nodes, six recurring infrastructure p
 2. **Multinode Pitfall 2 — Mismatched NCCL Versions Across PyTorch and System Libraries:** Mixing library versions causes trouble. If PyTorch's bundled NCCL runs against a different system `libnccl.so`, you can get `ncclInternalError=3`, protocol fallbacks, or ring setup hangs. Check `torch.cuda.nccl.version()`, and pin identical NCCL and PyTorch versions on every node.
 3. **Multinode Pitfall 3 — TCP Ephemeral Port Exhaustion During Bootstrap:** A narrow `/proc/sys/net/ipv4/ip_local_port_range` stalls out-of-band TCP handshakes on large clusters. Pin a wide range that the firewall permits, such as 50000 to 51000.
 4. **Multinode Pitfall 4 — Insufficient Network Bandwidth, Misconfigured NICs, and the 64-Socket Limit:** A single 400 Gb/s link saturates easily on Hopper and Blackwell nodes. Production clusters therefore pair several 800 Gb/s NICs in multirail topologies. On RDMA fabrics, tune `NCCL_IB_HCA`, `NCCL_IB_TC` and `NCCL_IB_QPS_PER_CONNECTION`, and leave `NCCL_IB_GID_INDEX` at AUTO. On Socket or TCP transports, raise `NCCL_SOCKET_NTHREADS` and `NCCL_NSOCKS_PERTHREAD` gradually. Never exceed the 64-socket per-communicator ceiling.
-5. **Multinode Pitfall 5 — Straggler Nodes or Processes:** Synchronous collectives move at the speed of the slowest rank. A flapping NIC, bad VM placement or thermal throttling therefore slows the entire cluster. Combine `torch.distributed.monitored_barrier`, `TORCH_NCCL_ASYNC_ERROR_HANDLING=1`, and pre-collective `torch.cuda.synchronize()` timing to isolate the slow rank.
+5. **Multinode Pitfall 5 — Straggler Nodes or Processes:** Synchronous collectives move at the speed of the slowest rank. A flapping NIC, bad VM placement or thermal throttling therefore slows the entire cluster. Combine `torch.distributed.monitored_barrier`, `TORCH_NCCL_ASYNC_ERROR_HANDLING` (default 3), and pre-collective `torch.cuda.synchronize()` timing to isolate the slow rank.
 6. **Multinode Pitfall 6 — GPU Memory Fragmentation Under UCX and RDMA:** PyTorch's caching allocator keeps freed GPU blocks across iterations. It does not return them to the OS or to the UCX and RDMA registration pool. If you allocate and free temporary tensors beside a registered buffer, reserved memory climbs. That growth can exhaust `ibv_reg_mr` pins or cause sudden latency cliffs. Pre-allocate persistent buffers, and avoid dynamic per-step tensor shapes.
 
 Each pitfall leaves a measurable signature. The block below gives the numbers to compare against your own runs.
@@ -356,7 +356,7 @@ The table lists six gotchas, each with the bad configuration, its measured impac
 | **Gotcha #3: Leaving Debugging Overrides Enabled in Production** | Forgetting `NCCL_P2P_DISABLE=1`, `NCCL_SHM_DISABLE=1`, `NCCL_DEBUG=DEBUG`, or oversized `NCCL_BUFFSIZE` in launch scripts | `NCCL_P2P_DISABLE=1` forces intra-node NVLink (`hundreds of GB/s`, `few µs`) onto CPU host bounce buffers (`tens of GB/s`, `tens of µs`); oversized `NCCL_BUFFSIZE` evicts model working sets | Leave `NCCL_P2P_DISABLE=0` and `NCCL_SHM_DISABLE=0`; start `NCCL_BUFFSIZE` at **`4 MiB` (`4,194,304 B`)** and step up only while monitoring VRAM; use `NCCL_DEBUG=WARN` in production |
 | **Gotcha #4: Narrow CPU Affinity Mask Collapsing `NCCL` Threads** | Pinning a rank process with `taskset` to `1` core without letting `NCCL` spread its proxy/polling threads across the local NUMA node | All `NCCL` background proxy and network polling threads collapse onto a single core, starving kernel dispatch and RDMA polling | Bind ranks `0–3` to `NUMA 0` cores and ranks `4–7` to `NUMA 1` cores (`numactl` / `--cpu-bind`), then set **`NCCL_IGNORE_CPU_AFFINITY=1`** so `NCCL` spreads its threads freely within the local NUMA domain |
 | **Gotcha #5: Ignoring `NCCL WARN` and `INFO` Fallback Logs** | Ignoring `"unable to enable P2P, falling back to copy"` or `NCCL INFO NET/Socket: using Ethernet interface eth0` | Silent `10x–50x` throughput drop over cross-root-complex PCIe (`SYS`) or a `10 GbE` management NIC instead of `400G`/`800G` RDMA | Alert on any `falling back to copy` or `NET/Socket` log line; remap GPU pairs onto the same NUMA/NVSwitch domain and pin `NCCL_SOCKET_IFNAME=ib0` |
-| **Gotcha #6: Relying on Implicit Version-Dependent Defaults** | Omitting `TORCH_NCCL_ASYNC_ERROR_HANDLING=1` or hard-coding legacy `NCCL_ALGO=CollNet` / `NCCL_IB_GID_INDEX=3` across upgrades | From `NCCL 2.14+`, CollNet algorithms are `CollnetDirect` and `CollnetChain`; from `NCCL 2.24+`, invalid `NCCL_ALGO` tokens warn and fail with no implicit fallback to `ring` | Pin `TORCH_NCCL_ASYNC_ERROR_HANDLING=1` explicitly; let `NCCL_IB_GID_INDEX` default to `AUTO` (`NCCL 2.21+`/`2.32u1+`); re-benchmark on every `NCCL` upgrade |
+| **Gotcha #6: Relying on Implicit Version-Dependent Defaults** | Leaving `TORCH_NCCL_ASYNC_ERROR_HANDLING` implicit or hard-coding legacy `NCCL_ALGO=CollNet` / `NCCL_IB_GID_INDEX=3` across upgrades | From `NCCL 2.14+`, CollNet algorithms are `CollnetDirect` and `CollnetChain`; from `NCCL 2.24+`, invalid `NCCL_ALGO` tokens warn and fail with no implicit fallback to `ring` | Know that `TORCH_NCCL_ASYNC_ERROR_HANDLING` defaults to `3` in PyTorch 2.15 and pin it only if you want another value; let `NCCL_IB_GID_INDEX` default to `AUTO` (`NCCL 2.21+`/`2.32u1+`); re-benchmark on every `NCCL` upgrade |
 
 Gotcha 3 is easy to miss, because you may not think of debugging settings as harmful in a launch script. Check your scripts for them before every production run.
 
@@ -488,8 +488,7 @@ Layer 4 InfiniBand, RoCEv2, and SHARP reference specifications:
 export NCCL_DEBUG=WARN                                   # Use INFO only when diagnosing; WARN in prod
 export NCCL_DEBUG_SUBSYS=INIT,GRAPH,ENV,COLL             # Subsystem filter when NCCL_DEBUG=INFO
 export NCCL_SOCKET_IFNAME=^docker,lo,virbr               # Exclude unreachable local bridges
-export TORCH_NCCL_ASYNC_ERROR_HANDLING=1                 # Explicit PyTorch watchdog abort on error
-export NCCL_ASYNC_ERROR_HANDLING=1                       # Explicit NCCL-level fallback variable
+export TORCH_NCCL_ASYNC_ERROR_HANDLING=1                 # Default is 3 (tear down only); 1 also aborts the communicator
 export TORCH_NCCL_ENABLE_MONITORING=1                    # Enable heartbeat monitor thread
 export TORCH_NCCL_HEARTBEAT_TIMEOUT_SEC=180              # Kill wedged process after 180s heartbeat loss
 export TORCH_FR_BUFFER_SIZE=2000                         # Keep 2,000 collectives in Flight Recorder
@@ -589,7 +588,7 @@ The output should look like this:
   [PASS] ASP Ch 4 Tables 4-1 & 4-2 & DDP: 22.0->12.0 ms (45.45%), 100.0->70.0 ms (30.0%, SM 60%->90%), DP 45.0->DDP 30.0 ms (33.33%, 25 MiB bucket)
   [PASS] ASP Ch 4 Multinode Pitfalls #3, #4, #6: ephemeral ports 50000..51000, 64 socket cap (2x2=4), UCX reserved 0.800->1.040->1.240 GB
   [PASS] ASP Ch 4 Table 4-4: Meta Llama 3 405B 54-day run on 16,384 H100s had 419 interruptions (MTBI = 3.09 h)
-  [PASS] ASP Ch 4 Table 4-4 GPU breakdown: Faulty GPU 148 (30.1%), HBM3 72 (17.2%), SRAM 19 (4.5%), GSP 17 (4.1%), SDC 6 (1.4%), Thermal 6 (1.4%) = 268 (64.0%)
+  [PASS] ASP Ch 4 Table 4-4 GPU breakdown: Faulty GPU 148 (35.3%), HBM3 72 (17.2%), SRAM 19 (4.5%), GSP 17 (4.1%), SDC 6 (1.4%), Thermal 6 (1.4%) = 268 (64.0%)
   [PASS] ASP Ch 4 Table 4-4 Network/Software/Watchdog breakdown: SW bug 54 (12.9%), Switch/cable 35 (8.4%), Host maint 32 (7.6%), NIC 7 (1.7%), NCCL watchdog 7 (1.7%)
   [PASS] ASP Ch 4 NCCL Profiler Plugin API defines 5 callbacks and 32-bit event activation mask
   [PASS] Volume 20 Ch 2, 4, 5, 7: Xid 3-tier classification (Tier 1: 45,63,92; Tier 2: 13,31,32,43,94; Tier 3: 48,61,62,64,79,95; NVLink: 74)
@@ -764,9 +763,9 @@ NCCL_SOCKET_IFNAME matching rules:
 ```
 </details>
 
-<details><summary>**7. Does NCCL have an `NCCL_TIMEOUT` or `NCCL_WATCHDOG_DUMP` variable? How do `TORCH_NCCL_ASYNC_ERROR_HANDLING=1`, `TORCH_NCCL_ENABLE_MONITORING=1`, and `TORCH_NCCL_HEARTBEAT_TIMEOUT_SEC` work?**</summary>
+<details><summary>**7. Does NCCL have an `NCCL_TIMEOUT` or `NCCL_WATCHDOG_DUMP` variable? How do `TORCH_NCCL_ASYNC_ERROR_HANDLING`, `TORCH_NCCL_ENABLE_MONITORING=1`, and `TORCH_NCCL_HEARTBEAT_TIMEOUT_SEC` work?**</summary>
 
-No, NCCL has neither variable. Collective timeouts belong to the framework, which sets them through `dist.init_process_group`. In PyTorch's ProcessGroupNCCL, `TORCH_NCCL_ASYNC_ERROR_HANDLING=1` aborts the communicator asynchronously when an error occurs. `TORCH_NCCL_ENABLE_MONITORING=1` and `TORCH_NCCL_HEARTBEAT_TIMEOUT_SEC` start a separate heartbeat thread. That thread kills wedged processes if the CUDA driver hangs during an abort.
+No, NCCL has neither variable. Collective timeouts belong to the framework, which sets them through `dist.init_process_group`. In PyTorch's ProcessGroupNCCL, `TORCH_NCCL_ASYNC_ERROR_HANDLING` decides what the watchdog does when an error occurs. The default `3` tears down the process without aborting the communicator, and `1` aborts the communicator and then tears down. `TORCH_NCCL_ENABLE_MONITORING=1` and `TORCH_NCCL_HEARTBEAT_TIMEOUT_SEC` start a separate heartbeat thread. That thread kills wedged processes if the CUDA driver hangs during an abort.
 </details>
 
 <details><summary>**8. How does PyTorch's Flight Recorder (`TORCH_FR_BUFFER_SIZE`) distinguish a missing or starved rank from a code-level collective desynchronization and a true fabric stall?**</summary>
@@ -809,7 +808,7 @@ The run had 419 unexpected interruptions over 1,296 hours, which gives an MTBI o
 ```text
 Total interruptions over 54 days (1,296 hours): 419 (MTBI = 3.09 hours)
 Top 5 categories:
-1. Faulty GPU                : 148 (30.1%)
+1. Faulty GPU                : 148 (35.3%)
 2. GPU HBM3 memory           :  72 (17.2%)
 3. Software bug              :  54 (12.9%)
 4. Network switch/cable      :  35 ( 8.4%)
@@ -935,3 +934,7 @@ Primary book sources, mapped `nvidia-devops` source chapters, and verification s
    - volume-10/15-senior-deep-dive-3-mpi-and-nccl-joint-debugging.md (and 15-nccl-and-distributed-training-failures.md legacy alias: 4-layer ladder, pids.max, memlock unlimited, srun --mpi=pmix, NCCL_SOCKET_IFNAME, 50000 51000, NCCL_RUN_DIAGNOSTICS=1 52/56 P2P check, ncclras -v on localhost:28028, TORCH_FR_BUFFER_SIZE, Xid 79, ibstat/sminfo/perfquery/ibdiagnet/ib_write_bw/rdma statistic/mlxlink, Cumulus Linux 5.12 RoCE PFC 3, DSCP 26 -> TC 3, CNP DSCP 48 -> TC 6, UDP 4791, NCCL_IB_GID_INDEX=AUTO, CollnetDirect/CollnetChain + UFM 6.19.1)
    - Verification note: Companion model and 27 self-checks in code/part12/nccl_debugging_hangs.py and code/part12/nccl_debugging_hangs_lab.py verified locally (Summary: 27 passed, 0 failed). Multi-node Slurm/Kubernetes, ncclras, nccl-tests, ibstat, perfquery, and nv show qos roce commands require live cluster hardware and are marked (untested here) where not run on live hardware.
 ```
+
+corrected 2026-11-11: TORCH_NCCL_ASYNC_ERROR_HANDLING defaults to 3 (tear down the process without aborting the communicator) in PyTorch 2.15, and 1 is a deliberate non-default choice that aborts the communicator and tears down; source PyTorch 2.15 docs, ProcessGroupNCCL environment variables.
+
+corrected 2026-11-11: Meta Llama 3 paper (arXiv 2407.21783, Table 5) counts sum to 419, so shares are computed as count over 419: faulty GPU 148 is 35.3 percent and faulty GPU plus HBM3 is 220 or 52.5 percent. The paper prints 30.1 percent for the faulty-GPU row and 58.7 percent for all GPU issues, and neither matches its own counts; the 64.0 percent for 268 GPU-category interruptions does match.

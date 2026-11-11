@@ -368,7 +368,7 @@ def analyze_nccl_collectives_and_stragglers() -> Dict[str, object]:
 def summarize_llama3_405b_interruptions() -> Dict[str, object]:
     """Summarizes Meta's 54-day Llama 3 405B unexpected interruption root causes (`ASP` Ch. 4 Table 4-4)."""
     rows: List[Tuple[str, str, int, float]] = [
-        ("Faulty GPU", "GPU", 148, 30.1),
+        ("Faulty GPU", "GPU", 148, 35.3),
         ("GPU HBM3 memory", "GPU", 72, 17.2),
         ("Software bug", "Dependency", 54, 12.9),
         ("Network switch/cable", "Network", 35, 8.4),
@@ -391,7 +391,7 @@ def summarize_llama3_405b_interruptions() -> Dict[str, object]:
     gpu_category_count = sum(c for _, cat, c, _ in rows if cat == "GPU")
     gpu_category_pct = 100.0 * gpu_category_count / total_count
     top_two_gpu_count = 148 + 72
-    top_two_gpu_pct = 30.1 + 17.2
+    top_two_gpu_pct = 35.3 + 17.2
 
     return {
         "duration_days": 54,

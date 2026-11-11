@@ -178,7 +178,7 @@ Once the default is in place, tenants open the holes they need with their own po
 
 ### 1.5 Pod security policies
 
-Network isolation does not stop a workload from misusing the node it runs on. Without a Pod security control, a workload can run as privileged, mount host volumes, or bind to the host's network. Pod Security Policies control these settings at runtime.
+Network isolation does not stop a workload from misusing the node it runs on. Without a Pod security control, a workload can run as privileged, mount host volumes, or bind to the host's network. Pod Security Policies controlled these settings in older clusters, and they were removed in Kubernetes 1.25. On a current cluster, Pod Security Admission does this job.
 
 A warning before you copy anything from this section. The PodSecurityPolicy resource described here was removed from Kubernetes in version 1.25. The book this section draws on predates that removal. On a current cluster, use Pod Security Admission or a ValidatingAdmissionPolicy instead, as Chapter 18.4 shows. Read the policy below as a description of what a restrictive default must forbid, not as a manifest to apply.
 
@@ -272,7 +272,7 @@ The platform team usually creates these policies and decides who may use them. F
 
 Some workloads need more privilege than the default allows. Decide whether the risk is tolerable inside the same cluster. If it is, create a policy for that workload alone. Grant only the privileges it needs, and authorize only its service account to use the policy.
 
-The Kubernetes community is discussing removal of the PodSecurityPolicy API from the core project. If that happens, a policy engine such as Open Policy Agent or Kyverno can provide similar controls.
+The book says the community was discussing removal of the PodSecurityPolicy API. That removal happened in Kubernetes 1.25. Pod Security Admission, or a policy engine such as Open Policy Agent or Kyverno, now provides the controls.
 
 ---
 
@@ -1009,3 +1009,5 @@ The AI factory overview, the chargeback integration, the GPU resource pools, and
 - The Kueue, Kubecost, and GPU Operator versions assumed in the lab should be pinned against the current releases before production use.
 - The cost numbers in the lab are illustrative; production costs vary by usage pattern.
 - Manifest checked against upstream CRDs on 2026-11-11 (versions: Kueue v0.20.5, API kueue.x-k8s.io/v1beta2).
+
+corrected 2026-11-11: PodSecurityPolicy was deprecated in Kubernetes v1.21 and removed in v1.25; use Pod Security Admission (or a policy engine); source Kubernetes docs, Concepts > Security > Pod Security Policies (Removed feature).

@@ -191,12 +191,12 @@ def main() -> int:
         f"across {llama_stats['num_categories']} categories; network+NIC+watchdog={llama_stats['network_nic_watchdog_total']}"
     )
     check(
-        "ASP Ch4 Table 4-4: Meta 54-day Llama 3 405B run recorded 419 total interruptions across 18 categories (148 Faulty GPU = 30.1%, 72 HBM3 = 17.2%)",
+        "ASP Ch4 Table 4-4: Meta 54-day Llama 3 405B run recorded 419 total interruptions across 18 categories (148 Faulty GPU = 35.3%, 72 HBM3 = 17.2%)",
         llama_stats["duration_days"] == 54
         and llama_stats["num_categories"] == 18
         and llama_stats["total_interruptions"] == 419
         and llama_stats["faulty_gpu_count"] == 148
-        and llama_stats["faulty_gpu_pct"] == 30.1,
+        and llama_stats["faulty_gpu_pct"] == 35.3,
     )
     check(
         "ASP Ch4 Table 4-4: Network switches/cables caused 35 interruptions (8.4%), NICs 7 (1.7%), and NCCL watchdog timeouts 7 (1.7%), totaling 49 events",

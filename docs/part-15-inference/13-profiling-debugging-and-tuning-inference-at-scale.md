@@ -47,7 +47,7 @@ Production Inference Profiling and Tuning Reference Benchmarks (ASP Chapters 13 
   20K prompt chunked prefill (4 x 5K chunks): attention QK ops [12.5M, 37.5M, 62.5M, 87.5M] sum to 200M (exact T(20K) = 200,010,000); bounds max stall per step without changing total FLOPs
   Latency-aware scheduling on 2 GPUs for [6K, 2K, 6K, 2K, 2K, 2K]: cuts critical-path QK ops from 38,007,000 (FIFO) to 22,005,000 (42.10% reduction)
   PCIe Gen4 (64 GB/s) 4 GB KV swap: 62.5 ms one-way / 125.0 ms round-trip, spiking p99 ITL from 20.0 ms to 850.0 ms (42.5x); recompute wins for S < 8,192
-  80-layer Llama-3-70B TP=8: 160 AllReduces/token (8,000/s at 50 tok/s); NVSwitch ITL = 18.4 ms vs 115.0 ms naive (6.25x); XID 62 DB-ECC deadlock blackholes 12.5% (1/8) of traffic
+  80-layer Llama-3-70B TP=8: 160 AllReduces/token (8,000/s at 50 tok/s); NVSwitch ITL = 18.4 ms vs 115.0 ms naive (6.25x); XID 62 PMU-halt deadlock blackholes 12.5% (1/8) of traffic
 ```
 
 **Metrics, hardware counters, and timeline traces are the only ground truth in a production inference cluster.** Operating at scale requires a disciplined observe-hypothesize-tune loop. That workflow connects high-level Prometheus alerts to framework operator breakdowns and microarchitectural GPU counters. Before changing batch sizes, quantization formats, or parallelism degrees, profile the end-to-end request path to prove which stage actually owns the latency budget.
@@ -110,7 +110,7 @@ At the engine layer, track active queue depth via `vllm:num_requests_waiting`, K
 | NVLink Replay / Recovery Errors | `>= 1` | Critical | Physical link retry on NVSwitch fabric; inspect `nvidia-smi nvlink` and reseat or drain node. |
 | NVLink CRC Errors | `> 100 errors/sec` | Critical | High cyclic redundancy check failure rate degrading TP AllReduce tail latency. |
 | PCIe Replay Errors | `>= 1` | Critical | Packet retries on host-device PCIe bus; check riser cards and NUMA socket affinity. |
-| Uncorrectable ECC Errors (`XID 62`) | `>= 1` | Critical | Double-bit HBM corruption; immediately cordon, drain, and reset GPU (`nvidia-smi --gpu-reset`). |
+| Uncorrectable ECC Errors (`XID 48`) | `>= 1` | Critical | Double-bit HBM corruption; immediately cordon, drain, and reset GPU (`nvidia-smi --gpu-reset`). |
 
 > **dcgm-exporter 4.9.0 version note.** dcgm-exporter 4.9.0 (2026-11-06) renamed many default metrics and changed some units. For example `DCGM_FI_DEV_GPU_UTIL` (percent) became `DCGM_FI_DEV_GPU_UTIL_RATIO` (0 to 1), and `DCGM_FI_DEV_FB_USED` (MiB) became `DCGM_FI_DEV_FB_USED_BYTES`. The metric names in this chapter are the 4.8.x names. On a 4.9.0 exporter use the [full mapping in 17.4](../part-17-operations/04-dcgm-exporter-and-interpreting-gpu-metrics.md#14-what-dcgm-exporter-490-renamed), and change thresholds together with the unit.
 >
@@ -504,7 +504,7 @@ In an LLM serving cluster, High-Bandwidth Memory is shared between static model 
 
 When concurrent sequences grow longer than expected and `vllm:gpu_cache_usage_perc` reaches one hundred percent, the continuous batching scheduler can no longer allocate new physical blocks for the next decode token. To prevent a hard CUDA Out-of-Memory crash, the scheduler preempts the lowest-priority running request using one of two policies.
 1. **Recomputation:** Evicts the victim request's KV blocks immediately via `PreemptionMode.RECOMPUTE` and returns the request to the waiting queue. When memory frees up, the engine re-runs the full prefill forward pass on the original prompt plus all previously generated tokens.
-2. **Host-Device Swapping:** Copies the victim request's KV blocks across the PCIe bus into pinned host CPU RAM via `--swap-space` and pages them back into GPU HBM when the sequence resumes.
+2. **Host-Device Swapping:** Copies the victim request's KV blocks across the PCIe bus into pinned host CPU RAM via `--swap-space` (removed in vLLM v0.18.0) and pages them back into GPU HBM when the sequence resumes.
 
 ```text
 Production Log and Telemetry Evidence for KV Preemption and Prefix Routing (ASP Chapter 16; Volume 12 Chapters 7 & 8):
@@ -516,7 +516,7 @@ Production Log and Telemetry Evidence for KV Preemption and Prefix Routing (ASP 
 2. PCIe Swap Thrashing Math on 4 GB Evicted KV Cache (PCIe Gen4 x16 = 64 GB/s):
    - One-way swap-out latency:   4.0 GB / 64.0 GB/s =  62.5 ms
    - Round-trip swap-out + in:   2 * 4.0 GB / 64.0 GB/s = 125.0 ms per preemption cycle
-   - Production Impact (Volume 12 Ch. 8): At 4.2 preemptions/s with --swap-space 32,
+   - Production Impact (Volume 12 Ch. 8): At 4.2 preemptions/s with --swap-space 32 on vLLM before v0.18,
      DCGM_FI_DEV_MEM_COPY_UTIL saturates while p99 ITL spikes from 20.0 ms to 850.0 ms (42.5x degradation)!
    - Recompute vs Swap Crossover: For sequence lengths S < 8,192 tokens on Hopper H100 (989 TFLOPS),
      recomputing prefill in Tensor Cores is faster than round-trip PCIe swapping.
@@ -648,7 +648,7 @@ While CUDA Graphs eliminate host launch gaps, improper stream isolation or dynam
 
 ### 5.3 The Zombie Pod Problem: Hardware XID 62 Deadlocks and Kubernetes Probes
 
-The most dangerous failure mode in production LLM serving is the **Zombie Pod**. In our production reliability case study, an eight-GPU HGX node serving a seventy-billion-parameter model with eight-way Tensor Parallelism suffered an uncorrectable Double-Bit ECC memory error, **NVIDIA XID 62**, on the fourth GPU. The hardware fault deadlocked the CUDA context on that GPU. That single deadlocked device caused the remaining seven GPUs to spin forever at zero useful throughput inside their synchronous NCCL AllReduce barrier.
+The most dangerous failure mode in production LLM serving is the **Zombie Pod**. In our production reliability case study, an eight-GPU HGX node serving a seventy-billion-parameter model with eight-way Tensor Parallelism suffered an internal micro-controller halt, **NVIDIA XID 62** (`PMU_HALT_ERROR`), on the fourth GPU. The hardware fault deadlocked the CUDA context on that GPU. That single deadlocked device caused the remaining seven GPUs to spin forever at zero useful throughput inside their synchronous NCCL AllReduce barrier.
 
 Because the Python HTTP server runs on the host CPU, it remained completely unaffected and kept returning HTTP success codes to naive Kubernetes health checks. The cluster load balancer continued sending **12.5%**, or one in eight, of all customer requests into that deadlocked pod until client connections timed out. Conversely, in our scaling incident, expanding a deployment from four to twelve replicas saturated shared NFS weight storage and added a 1.2-second I/O delay. That storage stall caused an aggressive one-second readiness probe on `/v1/models` to fail with a timeout, evicting all four healthy pods and causing a **cluster-wide outage**.
 
@@ -1074,7 +1074,7 @@ The companion script `code/part15/profiling_debugging_inference_lab.py` determin
   [PASS] 19. 80-layer Llama-3-70B TP=8 executes 160 AllReduces/token (8,000/s at 50 tok/s) across 14 ring steps moving 28,672 B per call for B=1, H=8192 FP16
   [PASS] 20. TensorRT-LLM TP=8 over NVSwitch cuts ITL from 115.0 ms to 18.4 ms (6.25x); degraded RoCEv2 link (TX_DROPPED: 428, RX_ERRORS: 156) stalls AllReduce to 45,000 us
   [PASS] 21. MoE AllToAll > 5.0 ms straggler mitigation: capacity factor CF = 1.2 to 1.5 expands 32-token base cap to 38-48 tokens; SHARP adds 10%-20% throughput
-  [PASS] 22. V12 Ch. 11 Zombie Pod XID 62 DB-ECC deadlock blackholes 12.5% (1/8) of requests; startupProbe allows 60 * 10 s = 600 s and readinessProbe uses 5 s timeout
+  [PASS] 22. V12 Ch. 11 Zombie Pod XID 62 PMU-halt deadlock blackholes 12.5% (1/8) of requests; startupProbe allows 60 * 10 s = 600 s and readinessProbe uses 5 s timeout
   [PASS] 23. Quantization tiers: FP8 (0.50x mem, 1.5x speed), GPTQ/AWQ W4A16 (0.25x mem, ~2.0x speed, 99%+ acc), W4A8 INT4+FP8 (0.25x mem, 1.8x speed), NVFP4 Block-32 (1.8x vs FP8, 3.5x vs FP16)
   [PASS] 24. PTQ calibration uses 1,000 representative prompts and SmoothQuant W8A8 preserves accuracy within < 1.0% loss
   [PASS] 25. Prompt compression at 75% context threshold (12,000 / 16,000) summarizes oldest 25% (3,000 -> 300 tokens), cutting active prompt to 9,300 tokens and saving 39.94% triangular attention
@@ -1193,7 +1193,7 @@ The capture error occurs when code dynamically allocates GPU memory, calls `.ite
 <details>
 <summary>18. What is the Zombie Pod problem during an NVIDIA XID 62 fault, and how should Kubernetes health probes and node detectors be configured to prevent it?</summary>
 
-An uncorrectable Double-Bit ECC error (`XID 62`) on one GPU deadlocks all eight GPUs in a Tensor Parallel NCCL AllReduce group while the CPU HTTP server keeps returning success codes, blackholing 12.5% of cluster traffic. Prevent this by pairing DCGM Exporter with Kubernetes Node Problem Detector to auto-cordon and drain faulted nodes. Also separate the 600-second startup probe, the 5-second `/health` readiness probe, and the `/ping` liveness probe.
+An internal micro-controller halt (`XID 62`, `PMU_HALT_ERROR`) on one GPU deadlocks all eight GPUs in a Tensor Parallel NCCL AllReduce group while the CPU HTTP server keeps returning success codes, blackholing 12.5% of cluster traffic. Prevent this by pairing DCGM Exporter with Kubernetes Node Problem Detector to auto-cordon and drain faulted nodes. Also separate the 600-second startup probe, the 5-second `/health` readiness probe, and the `/ping` liveness probe.
 </details>
 
 <details>
@@ -1259,7 +1259,7 @@ NVIDIA Zero-to-Hero Volume 12 Sources (nvidia-devops/docs/nvidia-zero-to-hero/vo
 - index.md & chapter-12-volume-12-summary.md (KPI targets: TTFT < 200 ms, ITL < 25 ms/tok, TPOT < 30 ms/tok, P99 Queue < 50 ms, KV Cache Util 70%-85%, Model Load < 30 s).
 - labs/lab-04-troubleshoot-a-slow-inference-pipeline.md (200 requests, concurrency=8: unfixed single-threaded CPU pipeline 14.85 s, 13.47 RPS, total p99 = 1,410.20 ms, CPU p99 = 1,395.80 ms, Triton GPU p99 = 18.10 ms at <20% SM util and Core 0 100% %usr in mpstat -> ProcessPoolExecutor fix 1.92 s, 104.17 RPS [7.73x], total p99 = 44.80 ms [31.48x], CPU p99 = 31.00 ms, Triton p99 = 13.50 ms; --cpus="0.5" CFS quota <3 RPS and >3,500 ms p99).
 - chapter-01-why-inference-infrastructure-is-different.md & chapter-02-the-end-to-end-inference-request-path.md (Up to 60% latency outside GPU; Python GIL 320 ms [77.1% of 415 ms] at 120 RPS -> 16-thread Rust tokenizer 1.4 ms and 780 RPS; pageable malloc 10-14 GB/s [12.0 GB/s] vs pinned cudaHostAlloc 55-62 GB/s [58.5 GB/s] on PCIe Gen5 64 GB/s; Nginx proxy_buffering off and tcp_nodelay on fixing 600 ms / 4 KB SSE stalls).
-- chapter-05-tensorrt-llm-and-llm-execution.md, chapter-06-vllm-tgi-sglang-and-lmdeploy.md, chapter-07-continuous-and-dynamic-batching.md, chapter-08-kv-cache-memory-and-concurrency.md, chapter-09-scaling-multi-gpu-and-multi-node-inference.md, chapter-10-performance-metrics-and-benchmarking.md, & chapter-11-production-reliability-and-troubleshooting.md (Llama-3-70B TP=8 160 AllReduces/tok, ITL 115.0 ms -> 18.4 ms, 327,680 B/tok FP16 vs 163,840 B/tok FP8 KV cache; 12,288-token prefill spiking 45 decode streams p99 ITL 18 -> 340 ms fixed to 21.4 ms at chunk=2048 vs 512 over-chunking 450 switches/s, 45 ms ITL, 320 ms TTFT; 4 GB PCIe swap 62.5 ms one-way / 125.0 ms round-trip spiking ITL 20 -> 850 ms vs recompute S < 8,192; SGLang radix thrashing 400% TTFT spike -> 22 ms; 45,000 us RoCEv2 AllReduce with TX_DROPPED: 428, RX_ERRORS: 156; Zombie Pod XID 62 DB-ECC deadlock blackholing 12.5% traffic, 600 s startupProbe, 5 s /health readinessProbe vs 1 s NFS 504 storm, /ping livenessProbe, and expandable_segments:True).
+- chapter-05-tensorrt-llm-and-llm-execution.md, chapter-06-vllm-tgi-sglang-and-lmdeploy.md, chapter-07-continuous-and-dynamic-batching.md, chapter-08-kv-cache-memory-and-concurrency.md, chapter-09-scaling-multi-gpu-and-multi-node-inference.md, chapter-10-performance-metrics-and-benchmarking.md, & chapter-11-production-reliability-and-troubleshooting.md (Llama-3-70B TP=8 160 AllReduces/tok, ITL 115.0 ms -> 18.4 ms, 327,680 B/tok FP16 vs 163,840 B/tok FP8 KV cache; 12,288-token prefill spiking 45 decode streams p99 ITL 18 -> 340 ms fixed to 21.4 ms at chunk=2048 vs 512 over-chunking 450 switches/s, 45 ms ITL, 320 ms TTFT; 4 GB PCIe swap 62.5 ms one-way / 125.0 ms round-trip spiking ITL 20 -> 850 ms vs recompute S < 8,192; SGLang radix thrashing 400% TTFT spike -> 22 ms; 45,000 us RoCEv2 AllReduce with TX_DROPPED: 428, RX_ERRORS: 156; Zombie Pod XID 62 PMU-halt deadlock blackholing 12.5% traffic, 600 s startupProbe, 5 s /health readinessProbe vs 1 s NFS 504 storm, /ping livenessProbe, and expandable_segments:True).
 ```
 
 ### Inferences and Verification Notes
@@ -1268,3 +1268,6 @@ NVIDIA Zero-to-Hero Volume 12 Sources (nvidia-devops/docs/nvidia-zero-to-hero/vo
 - **Labelled engineering synthesis.** The exact triangular attention savings of 39.94% under the prompt compression policy and the sequential fallback latency of 260.0 ms in the model cascade are deterministic first-principles calculations. Both models are implemented in `code/part15/profiling_debugging_inference.py` from the rules in *AI Systems Performance Engineering* Chapter 16.
 - **Hardware execution status.** The `nsys`, `ncu`, `perf`, and `nvidia-smi dmon` CLI commands in the lab section are production reference templates and were **not run on live GPU hardware** during this documentation build. The Python verification lab in `code/part15/profiling_debugging_inference_lab.py` was executed and verified locally with 28 passed and 0 failed checks.
 
+corrected 2026-11-11: `--swap-space` (swap_space) is no longer a vLLM option; vllm/config/cache.py has it at v0.17.0 and not at v0.18.0 or v0.32.0, and the v0.32.0 docs/configuration/optimization.md says V1 preempts by recompute rather than swap. The swap-thrashing figures in this chapter come from the nvidia-devops material and describe vLLM before v0.18. Sources: vllm-project/vllm tags v0.17.0, v0.18.0, v0.32.0.
+
+corrected 2026-11-11: Xid 62 is PMU_HALT_ERROR (internal micro-controller halt, resolution RESET_GPU / CONTACT_SUPPORT), not a double-bit ECC error; Xid 48 is the double-bit ECC error. Source NVIDIA Xid catalog, https://docs.nvidia.com/deploy/xid-errors/analyzing-xid-catalog.html, read 2026-11-11.

@@ -218,8 +218,8 @@ def run_lab() -> int:
         and nccl["sharp_alltoall_gain_pct_range"] == (10, 20),
     )
     check(
-        "22. V12 Ch. 11 Zombie Pod XID 62 DB-ECC deadlock blackholes 12.5% (1/8) of requests; startupProbe allows 60 * 10 s = 600 s and readinessProbe uses 5 s timeout",
-        nccl["xid_db_ecc_code"] == 62
+        "22. V12 Ch. 11 Zombie Pod XID 62 PMU-halt deadlock blackholes 12.5% (1/8) of requests; startupProbe allows 60 * 10 s = 600 s and readinessProbe uses 5 s timeout",
+        nccl["xid_pmu_halt_code"] == 62
         and nccl["blackhole_traffic_pct"] == 12.5
         and nccl["max_startup_window_s"] == 600
         and nccl["readiness_timeout_s"] == 5

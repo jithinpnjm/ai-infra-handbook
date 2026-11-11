@@ -11,7 +11,7 @@ Covers:
 4. Kubernetes 3-probe (`startupProbe`, `readinessProbe`, `livenessProbe`) validation,
    probe-induced cascading outage simulation, and XID 62 zombie pod blackhole math.
 5. Circuit breaker state machine (`CLOSED` / `OPEN` / `HALF_OPEN`), fallback model
-   cascades, `--swap-space 0` vs PCIe thrashing, and Spot + On-Demand pool economics.
+   cascades, recompute-only preemption (`--swap-space 0` on vLLM before v0.18) vs PCIe thrashing, and Spot + On-Demand pool economics.
 6. OpenTelemetry 6-span trace waterfall decomposition, CPU vs GPU bottleneck triage,
    Prometheus SLO error budgets, and RAG retrieval (`MRR`, `MAP`, `F1`) + NPS metrics.
 """

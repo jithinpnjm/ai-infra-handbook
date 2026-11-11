@@ -435,7 +435,7 @@ export NCCL_DEBUG=INFO
 export NCCL_DEBUG_SUBSYS=INIT,GRAPH,ENV,TUNING
 export NCCL_TOPO_DUMP_FILE=/tmp/nccl_topo_detected.xml
 # export NCCL_TOPO_FILE=/etc/nccl/topology.xml
-export TORCH_NCCL_ASYNC_ERROR_HANDLING=1
+export TORCH_NCCL_ASYNC_ERROR_HANDLING=1   # default is 3; 1 also aborts the communicator
 export NCCL_ASYNC_ERROR_HANDLING=1
 ```
 
@@ -533,7 +533,7 @@ Picture a large synchronous training job. One degraded cable, one bad NIC, or on
 ```text
 Llama 3 405B 54-Day Pretraining Interruption Breakdown on 16,384 H100 GPUs (ASP Ch. 4 Table 4-4):
 - Total unexpected interruptions: 419 across 54 days
-- Faulty GPUs:                   148 (30.1%)
+- Faulty GPUs:                   148 (35.3%)
 - GPU HBM3 memory errors:         72 (17.2%)
 - Software bugs:                  54 (12.9%)
 - Network switch / cable faults:  35 (8.4%)
@@ -787,7 +787,7 @@ PyTorch's caching allocator keeps freed GPU blocks in its reserved pool, so `tor
 
 <details><summary>**18. In Meta's `54`-day `Llama 3 405B` pretraining study (`419` unexpected interruptions), what share of failures came from GPUs vs network switches/cables, NICs, and `NCCL` watchdog timeouts?**</summary>
 
-Out of 419 unexpected interruptions, faulty GPUs caused 148, or 30.1%. GPU HBM3 caused 72, or 17.2%, and software bugs caused 54, or 12.9%. Network switches and cables caused 35, or 8.4%. Unplanned host maintenance caused 32, or 7.6%. GPU SRAM caused 19, or 4.5%, and GPU system processors caused 17, or 4.1%. NICs caused 7, or 1.7%, and NCCL watchdog timeouts caused 7, or 1.7%. Because NCCL collectives are synchronous, one degraded cable or GPU stalls every rank until `TORCH_NCCL_ASYNC_ERROR_HANDLING=1` aborts the job.
+Out of 419 unexpected interruptions, faulty GPUs caused 148, or 35.3%. GPU HBM3 caused 72, or 17.2%, and software bugs caused 54, or 12.9%. Network switches and cables caused 35, or 8.4%. Unplanned host maintenance caused 32, or 7.6%. GPU SRAM caused 19, or 4.5%, and GPU system processors caused 17, or 4.1%. NICs caused 7, or 1.7%, and NCCL watchdog timeouts caused 7, or 1.7%. Because NCCL collectives are synchronous, one degraded cable or GPU stalls every rank until `TORCH_NCCL_ASYNC_ERROR_HANDLING=1` aborts the job.
 </details>
 
 <details><summary>**19. How does `4`-wave scheduling (`18` GPUs/wave) prevent `NVSwitch` congestion during a `72`-GPU `AllToAll` on `GB200 NVL72`?**</summary>
@@ -819,3 +819,7 @@ The primary book sources and migrated technical references used in this chapter 
 ```
 
 The companion simulation and its 29 self-checks (`code/part12/nccl_collectives_algorithms.py` and `code/part12/nccl_collectives_algorithms_lab.py`) were executed and verified locally (`29 passed, 0 failed`). Multi-GPU `torchrun` (`dist.init_process_group` `1800`s timeout), `nccl-tests`, `ncclCommRegister`, `Quantum-2` / `Quantum-X800` vs RoCEv2 (`PFC`, `ECN`, `DCQCN` on UDP `4791`), `64-bit` pointers, `37`B active MoE parameters, and NIXL C++ snippets (`devId`, `NIXL_SUCCESS`) require CUDA GPUs and RDMA or NVSwitch hardware. They are marked `(untested here)` where not run on live hardware in this build environment.
+
+corrected 2026-11-11: TORCH_NCCL_ASYNC_ERROR_HANDLING defaults to 3 in PyTorch 2.15 and 1 is a deliberate non-default choice (abort the communicator, then tear down); source PyTorch 2.15 docs, ProcessGroupNCCL environment variables.
+
+corrected 2026-11-11: Meta Llama 3 paper (arXiv 2407.21783, Table 5) counts sum to 419, so shares are computed as count over 419: faulty GPU 148 is 35.3 percent and faulty GPU plus HBM3 is 220 or 52.5 percent. The paper prints 30.1 percent for the faulty-GPU row and 58.7 percent for all GPU issues, and neither matches its own counts; the 64.0 percent for 268 GPU-category interruptions does match.

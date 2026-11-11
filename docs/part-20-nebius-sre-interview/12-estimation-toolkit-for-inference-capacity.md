@@ -333,9 +333,9 @@ The interviewer asks for the GPU count for an 8-billion-parameter model on H100s
 6. Prefill: 24,134 tokens per second, so 0.0829 s per prompt.
 7. Per GPU: 1 / (0.0829 + 0.0933) equals 5.68 requests per second.
 8. Replicas: 40 / (5.68 x 0.9) equals 7.83, so 8, plus 1 spare is 9.
-9. Cost: $4.50 / (2,839 x 3,600) x 1e6 equals $0.44 per million output tokens at full utilisation.
+9. Cost, using the Nebius list price of $4.50 fetched 2026-11-09: $4.50 / (2,839 x 3,600) x 1e6 equals $0.44 per million output tokens at full utilisation.
 
-The answer is nine H100s, about $29,565 per month, which is 9 GPUs times $4.50 times 730 hours. State that it assumes 40 percent prefill efficiency and 5 GB of overhead, and that a benchmark replaces both. You can reproduce it with the command in the lab.
+The answer is nine H100s, about $29,565 per month, which is 9 GPUs times $4.50 times 730 hours. The $4.50 is the Nebius on-demand list price fetched on 2026-11-09, so replace it with your own contract rate. State that it assumes 40 percent prefill efficiency and 5 GB of overhead, and that a benchmark replaces both. You can reproduce it with the command in the lab.
 
 ### Scenario 2: the long-context customer
 
@@ -360,7 +360,7 @@ The planned figure was 2,500 tokens. Live requests carry more than twice that, s
 
 ### Scenario 4: is the cheaper GPU cheaper per token?
 
-The L40S from Nebius starts at $1.55 per GPU-hour, against $4.50 for the H100. A colleague says it is three times cheaper. Test it with the same Qwen3-8B workload at a batch of 32 on both.
+The L40S from Nebius starts at $1.55 per GPU-hour, against $4.50 for the H100, both list prices from nebius.com/prices fetched on 2026-11-09. A colleague says it is three times cheaper. Test it with the same Qwen3-8B workload at a batch of 32 on both.
 
 The L40S has 48 GB at 864 GB/s and about 362 dense BF16 TFLOPS, from the NVIDIA L40S page. Weights fit with a budget of 48 x 0.9 - 16.4 - 5 equals 21.8 GB, which is 59 requests.
 
@@ -739,3 +739,5 @@ Not verified:
 ### Verification log
 
 Re-fetched 2026-11-09: the NVIDIA H100, H200, L40S and DGX B200 pages, the NVIDIA Hopper blog, `config.json` and the model cards for both Qwen models, nebius.com/prices, the vLLM source at three tags, and the gem book chapters cited. I re-derived every worked figure with an independent script, and `capacity_estimator.py` output and its 13 tests agree. Claims checked: 41. Confirmed: 37 (all datasheet figures, model architecture numbers, prices, ridge points, all worked tables and scenarios, the 90 percent headroom rule, the DistServe numbers, Table 5-6 and 5-10 figures). Corrected: 3 (older vLLM default, the book's Table 5-7 digits, the KV-usage metric name). Removed: 0. Still unverified: 3. They are the four-bit scale overhead, the FP8 KV-cache quality effect, and the 40 percent prefill efficiency and 5 GB overhead, which remain labelled assumptions. No code changed. Nothing was benchmarked on a GPU.
+
+corrected 2026-11-11: every $4.50 H100 figure is the Nebius on-demand list price from nebius.com/prices fetched 2026-11-09 and is labelled as such where it is used; replace it with your contract rate; source the Nebius price page, with the date.

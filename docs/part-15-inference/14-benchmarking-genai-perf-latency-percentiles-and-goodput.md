@@ -250,6 +250,8 @@ Always use closed-loop concurrency sweeps to map raw hardware scaling across bat
 
 To standardize load testing across Triton Inference Server, TensorRT-LLM, vLLM, SGLang, and NVIDIA NIM endpoints, NVIDIA provides **GenAI-Perf** (`genai-perf`) and its next-generation successor **AIPerf** (`aiperf`). AIPerf is an open-source, multiprocess Python benchmarking toolkit designed for disaggregated and multimodal AI endpoints. Unlike traditional HTTP load testers that only time complete responses, GenAI-Perf and AIPerf parse Server-Sent Events token by token to compute exact TTFT, ITL, TPOT, and token throughput percentiles.
 
+**GenAI-Perf is being phased out.** Its README says NVIDIA no longer develops new features for it and tells new users to use AIPerf instead. The two commands below are the legacy GenAI-Perf form, kept because existing dashboards and runbooks still use it. The AIPerf form follows them.
+
 ```bash
 # 1. Closed-loop concurrency sweep with synthetic prompt/output normal distributions (Volume 12 Chapter 10)
 genai-perf profile \
@@ -282,7 +284,25 @@ genai-perf profile \
     --extra-inputs "ignore_eos:true"
 ```
 
-When benchmarking fixed-output targets, pass `--extra-inputs "ignore_eos:true"` so the serving engine does not stop early on an end-of-sequence token. Early termination would otherwise skew decode throughput calculations. GenAI-Perf writes structured JSON and CSV artifacts (`profile_export_genai_perf.json` and `profile_export_genai_perf.csv`) plus latency-versus-throughput plots inside the `artifacts/` directory.
+For new work, use AIPerf. Its CLI reference accepts the same flag names for the arguments below as aliases, so the open-loop example moves over with a new command name. The `--service-type`, `--measurement-interval` and `--generate-plots` flags are not in the AIPerf CLI reference, so drop them. The AIPerf README shows `aiperf profile` with `--streaming`, `--endpoint-type chat`, `--tokenizer`, `--url` and `--concurrency`. This handbook did not run AIPerf, so check the flags against `aiperf profile --help` for your installed version.
+
+```bash
+# AIPerf form of example 2 (flags from the AIPerf CLI reference; not run here)
+aiperf profile \
+    --model meta-llama/Meta-Llama-3-70B-Instruct \
+    --endpoint-type chat \
+    --url http://127.0.0.1:8000 \
+    --streaming \
+    --request-rate 15.0 \
+    --synthetic-input-tokens-mean 4096 \
+    --synthetic-input-tokens-stddev 512 \
+    --output-tokens-mean 256 \
+    --output-tokens-stddev 32 \
+    --num-prompts 1000 \
+    --extra-inputs ignore_eos:true
+```
+
+When benchmarking fixed-output targets, pass `--extra-inputs "ignore_eos:true"` so the serving engine does not stop early on an end-of-sequence token. Early termination would otherwise skew decode throughput calculations. GenAI-Perf writes structured JSON and CSV artifacts (`profile_export_genai_perf.json` and `profile_export_genai_perf.csv`). AIPerf names its exports `profile_export_aiperf.json` and `profile_export_aiperf.csv` plus latency-versus-throughput plots inside the `artifacts/` directory.
 
 | GenAI-Perf / AIPerf Flag | Parameter Purpose | Production Guidance |
 |---|---|---|
@@ -295,7 +315,7 @@ When benchmarking fixed-output targets, pass `--extra-inputs "ignore_eos:true"` 
 
 ### 3.2 Triton Perf Analyzer (`perf_analyzer`)
 
-Under the hood, `genai-perf` drives **Triton Perf Analyzer** (`perf_analyzer`). You can also invoke `perf_analyzer` directly for vision, embedding, reranking, or decoupled TensorRT-LLM backends over HTTP or gRPC. Perf Analyzer breaks down total client latency into network transport plus three server-side phases reported by Triton. Those phases are queue wait time, compute input H2D copy time, and compute infer GPU kernel execution time.
+Under the hood, the legacy `genai-perf` drives **Triton Perf Analyzer** (`perf_analyzer`). You can also invoke `perf_analyzer` directly for vision, embedding, reranking, or decoupled TensorRT-LLM backends over HTTP or gRPC. Perf Analyzer breaks down total client latency into network transport plus three server-side phases reported by Triton. Those phases are queue wait time, compute input H2D copy time, and compute infer GPU kernel execution time.
 
 ```bash
 # Sweep concurrency 1..64 and compare against open-loop mode on Triton gRPC (:8001)
@@ -855,3 +875,4 @@ Exercise Input Parameters and Verification Targets (code/part15/benchmarking_gen
 - **Analytical M/M/1 and Pareto sweep models.** The worked M/M/1 queueing progression at service capacity 25.0 RPS in Section 2.1 and the six-point concurrency Pareto sweep peaking in Goodput at concurrency 32 in Section 4.2 are analytical queueing and Roofline-batching models constructed in `code/part15/benchmarking_genai_perf_goodput.py` to illustrate Little's Law and Goodput cutoffs. They are labeled as analytical models and verified deterministically by `code/part15/benchmarking_genai_perf_goodput_lab.py` with 25 passed and 0 failed checks.
 - **Hardware execution status.** The multi-GPU `vllm bench serve`, `genai-perf`, and `perf_analyzer` CLI commands in Sections 3, 5, and 6 are production reference templates from the cited sources and were not executed on live GPU hardware (`untested` on live GPUs) during this build.
 
+corrected 2026-11-11: GenAI-Perf is being phased out and NVIDIA points new benchmarking to AIPerf (`aiperf profile`); source GenAI-Perf README (triton-inference-server/perf_analyzer) and AIPerf README plus docs/cli-options.md (ai-dynamo/aiperf), read 2026-11-11.

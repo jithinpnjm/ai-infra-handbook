@@ -130,7 +130,7 @@ After completing this chapter, you will be able to:
 
 ### 1.1 The GPU failure catalogue
 
-GPU hardware causes a large share of training interruptions. In Meta's record of 54 days of Llama 3 405B pretraining, faulty GPUs caused 30.1 percent of the interruptions, and GPU HBM3 memory caused another 17.2 percent. AI Systems Performance Engineering, chapter 4, reports those figures. NVIDIA Zero-to-Hero Volume 16 chapter 8 and Volume 20 catalogue the same kinds of failure in more detail.
+GPU hardware causes a large share of training interruptions. In Meta's record of 54 days of Llama 3 405B pretraining, faulty GPUs caused 35.3 percent of the interruptions, and GPU HBM3 memory caused another 17.2 percent. AI Systems Performance Engineering, chapter 4, reports those figures. NVIDIA Zero-to-Hero Volume 16 chapter 8 and Volume 20 catalogue the same kinds of failure in more detail.
 
 The table gives each failure a symptom, a likely root cause, a detection signal, and an alert level. Treat it as a starting list.
 
@@ -221,7 +221,7 @@ import torch
 import torch.distributed as dist
 from opentelemetry import trace
 
-os.environ.setdefault("TORCH_NCCL_ASYNC_ERROR_HANDLING", "1")   # abort the job instead of hanging on a timed-out collective
+os.environ.setdefault("TORCH_NCCL_ASYNC_ERROR_HANDLING", "1")   # PyTorch 2.15 default is 3 (tear down only); 1 also aborts the communicator
 dist.init_process_group(backend="nccl", timeout=timedelta(minutes=10))
 tracer = trace.get_tracer(__name__)
 
@@ -761,3 +761,7 @@ The failure mode catalogue operational patterns draw on Volume 16 chapter 8 and 
 - The lab in Section 9 is **untested** against a live GKE cluster in this repository.
 - The catalogue YAML in the lab is illustrative; production catalogues are larger and more detailed.
 - The detection signals in the lab assume the exporters from earlier chapters are installed.
+
+corrected 2026-11-11: TORCH_NCCL_ASYNC_ERROR_HANDLING defaults to 3 in PyTorch 2.15 and 1 is a deliberate non-default choice; source PyTorch 2.15 docs, ProcessGroupNCCL environment variables.
+
+corrected 2026-11-11: Meta Llama 3 paper (arXiv 2407.21783, Table 5) counts sum to 419, so shares are computed as count over 419: faulty GPU 148 is 35.3 percent and faulty GPU plus HBM3 is 220 or 52.5 percent. The paper prints 30.1 percent for the faulty-GPU row and 58.7 percent for all GPU issues, and neither matches its own counts; the 64.0 percent for 268 GPU-category interruptions does match.

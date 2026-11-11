@@ -444,7 +444,7 @@ The fourth pitfall involves multi-rail servers. They need proper channel tuning,
 
 Communicator lifecycle mistakes inside the training script do just as much damage. Creating and destroying an NCCL process group inside the training loop adds tens of milliseconds of all-to-all handshake overhead to every step. Initialize communicators once, outside the loop, and batch sub-communicator creation inside `ncclGroupStart()` and `ncclGroupEnd()`. Never leave troubleshooting overrides such as `NCCL_P2P_DISABLE=1`, `NCCL_SHM_DISABLE=1`, or verbose debug logging enabled in production. Set `NCCL_IGNORE_CPU_AFFINITY=1`, so proxy threads do not collapse onto a single CPU core.
 
-Hardware faults are constant at scale. Meta's 54-day pretraining run of Llama 3 405B is summarized in `summarize_llama3_405b_interruptions()`. Across 419 unexpected interruptions, faulty GPUs and HBM3 memory were the largest categories. Network switches, cables, NICs, and NCCL watchdog timeouts together accounted for 49 interruptions. Production jobs should set `TORCH_NCCL_ASYNC_ERROR_HANDLING=1` and attach the NCCL Profiler Plugin API, so you can find the exact rank and link where a collective stalls.
+Hardware faults are constant at scale. Meta's 54-day pretraining run of Llama 3 405B is summarized in `summarize_llama3_405b_interruptions()`. Across 419 unexpected interruptions, faulty GPUs and HBM3 memory were the largest categories. Network switches, cables, NICs, and NCCL watchdog timeouts together accounted for 49 interruptions. Production jobs should keep the watchdog on, which is the default value 3 of `TORCH_NCCL_ASYNC_ERROR_HANDLING` in PyTorch 2.15, and attach the NCCL Profiler Plugin API, so you can find the exact rank and link where a collective stalls.
 
 ```text
 Six Multi-Node Pitfalls, Six NCCL Lifecycle Gotchas, and Llama 3 405B Interruptions (ASP Ch 4, Chapters 2.24 & 6.12):
@@ -467,12 +467,12 @@ Six Multi-Node Pitfalls, Six NCCL Lifecycle Gotchas, and Llama 3 405B Interrupti
      4. Collapsed CPU affinity: set NCCL_IGNORE_CPU_AFFINITY=1 with NUMA-aligned numactl / --cpu-bind
      5. Ignoring fallback logs: watch for "unable to enable P2P, falling back to copy" or "NCCL INFO NET/Socket: using Ethernet interface eth0"
      6. Meta 54-day Llama 3 405B Pretraining Interruptions (Table 4-4: 419 total across 18 categories):
-        - Faulty GPU: 148 (30.1%) | GPU HBM3 memory: 72 (17.2%) | Software bug: 54 (12.9%) | Network switch/cable: 35 (8.4%)
+        - Faulty GPU: 148 (35.3%) | GPU HBM3 memory: 72 (17.2%) | Software bug: 54 (12.9%) | Network switch/cable: 35 (8.4%)
         - Host maintenance: 32 (7.6%) | GPU SRAM memory: 19 (4.5%) | GPU system processor: 17 (4.1%) | NIC: 7 (1.7%) | NCCL watchdog: 7 (1.7%)
         - Silent data corruption: 6 (1.4%) | GPU thermal interface/sensor: 6 (1.4%) | SSD: 3 (0.7%) | Power supply: 3 (0.7%)
         - Server chassis, IO expansion board, Dependency, CPU, System memory: 2 each (0.5% each)
         - Combined Network switch/cable (35) + NIC (7) + NCCL watchdog timeouts (7) = 49 interruptions (11.7%)
-        - Always set TORCH_NCCL_ASYNC_ERROR_HANDLING=1 and use NCCL_PROFILER_PLUGIN (32-bit event mask, 5 callbacks: init, startEvent, stopEvent, recordEventState, finalize)
+        - Know that TORCH_NCCL_ASYNC_ERROR_HANDLING defaults to 3 (set 1 only to also abort the communicator) and use NCCL_PROFILER_PLUGIN (32-bit event mask, 5 callbacks: init, startEvent, stopEvent, recordEventState, finalize)
 ```
 
 The block above lists each pitfall with its measured numbers, and the Llama 3 405B breakdown sits at the end of it. Use it as the checklist for a new cluster.
@@ -542,7 +542,7 @@ ib_write_bw -d mlx5_0 --use_cuda=0 --report_gbits <Server_A_IP>
 # (untested here) Step 3: Multi-node NCCL collective verification with explicit RDMA & SHARP/NVLS logging
 export NCCL_DEBUG=INFO
 export NCCL_ASYNC_ERROR_HANDLING=1
-export TORCH_NCCL_ASYNC_ERROR_HANDLING=1
+export TORCH_NCCL_ASYNC_ERROR_HANDLING=1   # default is 3; 1 also aborts the communicator
 export NCCL_SOCKET_IFNAME=ib0
 export NCCL_IGNORE_CPU_AFFINITY=1
 mpirun -np 16 -H node01:8,node02:8 \
@@ -630,7 +630,7 @@ If the output matches the block below, every check in the chapter has passed on 
   [PASS] ASP Ch4 p.299 & p.617: NCCL_SOCKET_NTHREADS=2 * NCCL_NSOCKS_PERTHREAD=2 = 4 connections (<= 64 limit)
   [PASS] ASP Ch4 p.617: NCCL_SOCKET_NTHREADS=16 * NCCL_NSOCKS_PERTHREAD=8 = 128 connections violates the 64-connection ceiling
   [INFO] ASP Ch4 Table 4-4 (Llama 3 405B 54-day run): total=419 interruptions across 18 categories; network+NIC+watchdog=49
-  [PASS] ASP Ch4 Table 4-4: Meta 54-day Llama 3 405B run recorded 419 total interruptions across 18 categories (148 Faulty GPU = 30.1%, 72 HBM3 = 17.2%)
+  [PASS] ASP Ch4 Table 4-4: Meta 54-day Llama 3 405B run recorded 419 total interruptions across 18 categories (148 Faulty GPU = 35.3%, 72 HBM3 = 17.2%)
   [PASS] ASP Ch4 Table 4-4: Network switches/cables caused 35 interruptions (8.4%), NICs 7 (1.7%), and NCCL watchdog timeouts 7 (1.7%), totaling 49 events
   [PASS] ADC Ch2 Fig 2-3: Four-tier load-balancing pyramid orders SLB (1) < DLB (2) < GLB (3) < sDLB (4)
   [PASS] ADC Ch1/Ch2 & V7 Ch11: RoCEv2 port 4791 + GLB/sDLB + DCQCN (ECN+PFC) + 1:1 non-blocking + isolated storage plane passes audit
@@ -683,7 +683,7 @@ Exercise Input Parameters and Verification Targets:
   - Ex 1: n = 10 tasks, t_normal = 1.0 ms (0.001 s), straggler taskX = 1,000.0 ms (1.0 s) -> book serial = 1.010 s (1,010.0 ms), strict = 1,009.0 ms (1.009 s), parallel wait = 999.0 ms, JCT = 1,000.0 ms (1,000.0x); 10,000 GPUs at 2.0 ms compute / 50.0 ms sync -> 4.0% ratio (3.85% of 52.0 ms step)
   - Ex 2: 10.0 ms compute + 12.0 ms all_reduce -> 22.0 ms serial vs 12.0 ms ideal overlap (45.45% reduction); 100.0 ms step (40.0 ms compute + 60.0 ms comm) at 50% overlap (25 MB buckets) -> 70.0 ms (30.0% faster), SM busy 60% -> 90%; DDP (30.00 ms) vs DP (45.00 ms) on 512 batch (2 x 256) -> 33.33% faster (1.5x)
   - Ex 3: B = 100 MB (100,000,000 bytes) across n = 8 GPUs -> chunk B/n = 12.5 MB, Ring RS = 87.5 MB (7 steps), Ring AR = 175.0 MB (14 steps), SHARP/NVLS RS = 12.5 MB (1/7 of Ring); at n = 1,024 GPUs (1 GiB tensor), Ring AR = 2,046 steps O(N) vs Tree AR = 20 steps O(log N) (102.3x fewer), SHARP factor = 1/1,023
-  - Ex 4: 400.0 MB AllReduce on 800 Gb/s IB -> Gloo = 200.00 ms (2.0 GB/s) vs NCCL = 4.00 ms (100.0 GB/s, 50.0x speedup); 48.0 ms init + 0.5 ms all_reduce = 48.5 ms -> 0.5 ms (98.97% reduction); NCCL_SOCKET_NTHREADS=16 * NCCL_NSOCKS_PERTHREAD=8 = 128 (> 64 limit, invalid); Llama 3 405B 54-day run = 419 total across 18 categories, 148 Faulty GPU (30.1%), 35 switch/cable + 7 NIC + 7 watchdog = 49 (11.7%)
+  - Ex 4: 400.0 MB AllReduce on 800 Gb/s IB -> Gloo = 200.00 ms (2.0 GB/s) vs NCCL = 4.00 ms (100.0 GB/s, 50.0x speedup); 48.0 ms init + 0.5 ms all_reduce = 48.5 ms -> 0.5 ms (98.97% reduction); NCCL_SOCKET_NTHREADS=16 * NCCL_NSOCKS_PERTHREAD=8 = 128 (> 64 limit, invalid); Llama 3 405B 54-day run = 419 total across 18 categories, 148 Faulty GPU (35.3%), 35 switch/cable + 7 NIC + 7 watchdog = 49 (11.7%)
   - Ex 5: RoCEv2 UDP port 4791 + IB BTH; SLB (1) -> DLB (2) -> GLB (3, NNH) -> sDLB (4, BTH Read/Write opcodes); DCQCN ECN = 11 -> CNP (IP ECN = 01) -> NIC rate cut + PFC pause quanta
   - Ex 6: 128 DGX H100 servers (8 NICs/server = 1,024 GPUs) on 64-port Quantum-2 NDR switches -> 32 downlinks / 32 uplinks per Leaf, 32 servers (256 GPUs) per 8-Leaf Group, 4 Leaf Groups = 32 Leaf switches (1,024 downlinks, 1,024 uplinks) + 16 Spine switches (1:1 non-blocking)
 ```
@@ -865,7 +865,7 @@ If you tune the socket settings, check this first. The product of `NCCL_SOCKET_N
 ```text
 Meta 54-Day Llama 3 405B Interruption Summary (ASP Ch 4 Table 4-4):
   - Total: 419 unexpected interruptions across 18 root-cause categories
-  - Top 4 causes: Faulty GPU = 148 (30.1%), GPU HBM3 memory = 72 (17.2%), Software bug = 54 (12.9%), Network switch/cable = 35 (8.4%)
+  - Top 4 causes: Faulty GPU = 148 (35.3%), GPU HBM3 memory = 72 (17.2%), Software bug = 54 (12.9%), Network switch/cable = 35 (8.4%)
   - Combined network/fabric share: 35 switch/cable + 7 NIC (1.7%) + 7 NCCL watchdog timeouts (1.7%) = 49 events (11.7%)
 ```
 </details>
@@ -940,3 +940,9 @@ Primary Sources Read in Full for Chapter 12.1:
 ### Not verified on live hardware
 
 - Multi-node InfiniBand and RoCEv2 switches were not attached during this build, so all `ibstat`, `nvbandwidth`, `ib_write_bw`, `all_reduce_perf`, and `cmsh` commands (`NCCL_NVLS_ENABLE=1`, `NCCL_SHARP_DISABLE=1`, `NVSM`, `cudaStreamSynchronize`, `compute_ms` and `comm_sync_ms`, `srcAgent` and `dstAgent` in NIXL, and `1.0s`, `2.0ms`, `10.0ms`, `12.0ms`, `22.0ms`, `52.0ms` timing examples) in `Commands and configurations that matter` are marked `(untested here)`.
+
+corrected 2026-11-11: TORCH_NCCL_ASYNC_ERROR_HANDLING defaults to 3 in PyTorch 2.15 and 1 is a deliberate non-default choice; source PyTorch 2.15 docs, ProcessGroupNCCL environment variables.
+
+corrected 2026-11-11: TORCH_NCCL_ASYNC_ERROR_HANDLING defaults to 3 in PyTorch 2.15 and 1 is a deliberate non-default choice (abort the communicator, then tear down); source PyTorch 2.15 docs, ProcessGroupNCCL environment variables.
+
+corrected 2026-11-11: Meta Llama 3 paper (arXiv 2407.21783, Table 5) counts sum to 419, so shares are computed as count over 419: faulty GPU 148 is 35.3 percent and faulty GPU plus HBM3 is 220 or 52.5 percent. The paper prints 30.1 percent for the faulty-GPU row and 58.7 percent for all GPU issues, and neither matches its own counts; the 64.0 percent for 268 GPU-category interruptions does match.

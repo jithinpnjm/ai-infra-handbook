@@ -143,7 +143,7 @@ Picture an eighty-gigabyte H100 as a fluid bucket of memory, and your capacity p
 
 Here is how that plays out. Four `1g.10gb` instances on incompatible slots make the driver reject a `4g.40gb` request. On paper, three compute slices and forty gigabytes still look free.
 
-Seven `1g.10gb` slices give seventy gigabytes of usable memory, not eighty. Roughly ten gigabytes go to system and ECC overhead.
+Seven `1g.10gb` slices give seventy gigabytes of usable memory, not eighty. The cause is geometry, not overhead. The H100 has eight memory slices of ten gigabytes but only seven compute slices, and each `1g.10gb` instance takes one of each. Seven instances therefore use seven memory slices, and the eighth memory slice has no compute slice left to pair with it.
 
 The practical answer is to standardize the fleet on two or three static node layouts. The GPU Operator's `mig-manager` and `mig-parted` can apply those layouts declaratively, which removes runtime reconfiguration drains.
 
@@ -459,7 +459,7 @@ The six phases run in order: Plan, Notify, Prepare, Apply, Validate and Release.
 <details>
 <summary>**5. In Volume 11 Chapter 3, what do the two numbers in an H100 MIG profile name like 2g.20gb represent, and why do seven 1g.10gb instances total 70 GB instead of 80 GB?**</summary>
 
-When you read `2g.20gb`, the first token is the compute share, two-sevenths of the H100 compute slices. The second token is the dedicated HBM3 memory, here twenty gigabytes. Seven ten-gigabyte slices add up to 70 GB, not 80 GB. The difference of about ten gigabytes goes to system and ECC overhead.
+When you read `2g.20gb`, the first token is the compute share, two-sevenths of the H100 compute slices. The second token is the dedicated HBM3 memory, here twenty gigabytes. Seven ten-gigabyte slices add up to 70 GB, not 80 GB. The missing ten gigabytes is the eighth memory slice, which no seven-slice layout can use.
 </details>
 
 <details>
@@ -662,3 +662,5 @@ If you copy a console output from the Volume notes, remember it is illustrative 
 The MIG layouts were verified arithmetically on an `80 GB` H100. Valid placements on real hardware are listed by `nvidia-smi mig -lgip`.
 
 This chapter keeps the corrections noted in Volume 11, chapter 3, on the seven MIG compute slices and multi-node HA for `3g.40gb` Chat LLM instances. It also keeps the Volume 4, chapter 3 distinctions for `XID 43`, `XID 79`, `XID 62` and GSP `XID 119`/`120`.
+
+corrected 2026-11-11: the 70 GB for seven 1g.10gb slices is memory-slice geometry (8 memory slices, 7 compute slices), not system or ECC overhead; source NVIDIA MIG User Guide, Concepts and Supported MIG Profiles pages (the guide lists 1g.10gb at 1/8 of memory, max 7 instances, and does not itself name a cause for the leftover slice).

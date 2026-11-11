@@ -361,7 +361,7 @@ Distributed AI Systems also separates canary from A/B tests. A canary is about s
 
 Finance reads the bill and asks why the GPUs cost so much when the dashboards show them mostly idle. The truthful answer is that they pay for the peak of the busiest hour, all day.
 
-The script prices three designs with an assumed $4.50 per GPU-hour, the H100 rate that chapter 20.12 used. Use your own contract rate. A month has 30 days.
+The script prices three designs with an assumed $4.50 per GPU-hour. That is the Nebius on-demand H100 list price that chapter 20.12 cites from nebius.com/prices, fetched 2026-11-09, so treat it as a placeholder. Use your own contract rate. A month has 30 days.
 
 | Design | GPUs paid | Utilisation | Cost per month |
 |---|---|---|---|
@@ -674,3 +674,5 @@ Not verified or not run:
 - Removed: the old draft's multi-region failover and unsourced cost statements.
 - Still unverified: 4, listed above.
 - Gates run on 2026-11-11: pytest for `code/part19`, `check_code_files.py`, `chain_gate.py`, `check_mermaid.mjs`, `validate_chapter.py 19.12` and `check_provenance.py 19.12`. Results are in the final report.
+
+corrected 2026-11-11: the $4.50 per GPU-hour is labelled as a placeholder equal to the Nebius list price cited in chapter 20.12 (nebius.com/prices, fetched 2026-11-09).

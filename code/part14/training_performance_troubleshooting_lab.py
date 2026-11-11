@@ -202,11 +202,11 @@ def run_lab() -> int:
     # 8. Llama 3 405B 54-Day Reliability & Hardware Degradation / CI Gates (`ASP` Ch. 4 Table 4-4, `V13` Ch. 8, 11, 12)
     llama = summarize_llama3_405b_interruptions()
     check(
-        "22. Meta's 54-day Llama 3 405B run recorded 419 unexpected interruptions, with Faulty GPU (148, 30.1%) + HBM3 (72, 17.2%) = 220 (47.3%) and all GPU categories = 268 (64.0%)",
+        "22. Meta's 54-day Llama 3 405B run recorded 419 unexpected interruptions, with Faulty GPU (148, 35.3%) + HBM3 (72, 17.2%) = 220 (52.5%) and all GPU categories = 268 (64.0%)",
         llama["duration_days"] == 54
         and llama["total_interruptions"] == 419
         and llama["top_two_gpu_count"] == 220
-        and llama["top_two_gpu_pct"] == 47.3
+        and llama["top_two_gpu_pct"] == 52.5
         and llama["gpu_category_count"] == 268
         and llama["gpu_category_pct"] == 64.0,
     )

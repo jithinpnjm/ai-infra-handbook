@@ -158,7 +158,7 @@ Stages L3, L4, and L5 Quantitative Gate Benchmarks (V8 Ch. 6 & V9 Ch. 10):
   - Static routing polarization on leaf uplinks (PortXmitData 4-octet words):
     ports 5–6 carry 21,474,836,480 and 21,489,234,432 words (~21.48 GB) vs ports 7–8 at 1,073,741,824 and 1,081,654,272 words (~1.08 GB) -> 19.9:1 (~20:1) imbalance
 - Stage L4 Full-Scale Collectives (all_reduce_perf, reduce_scatter_perf, all_gather_perf, alltoall_perf, -b 8M -e 8G -f 2 -g 1 -c 1 -n 100):
-  - Requires #wrong = 0 (fail example: #wrong = 3 silent data corruption) and 1 GiB+ busbw >= 340–361.36 GB/s on 8 x 400G NDR (85%–90%+ of 8 x 50 = 400 GB/s)
+  - Requires #wrong = 0 (fail example: #wrong = 3 silent data corruption) and 1 GiB+ busbw >= 340–361.36 GB/s on 8 x 400G NDR (85%–90%+ of 8 x 50 = 400 GB/s; illustrative policy, not a vendor figure, calibrate on your own baseline)
 - Stage L5 Burn-In & N-1 Drain (24–72 h HPL/NeMo + fio/gdsio):
   - 0 link flaps, 0 WJH tail drops (vs 38,210 drops on unvalidated 4:1 rack), 0 Xid/SXid/CQE timeouts over 12–72 h, p99 step within <= 5%, N-1 drain verified (4.00:1 -> 4.57:1)
 ```
@@ -843,3 +843,5 @@ Primary sources cited:
    - Hardware CLI commands (ibstat, sminfo, iblinkinfo, ibnetdiscover, ibroute, ibqueryerrors, ib_write_lat, ib_write_bw, ethtool, nv, netq, srun, cmsh) are marked (untested here) because no physical switches or GPUs are attached here.
    - All L1–L5 gates, 2-tier/3-tier BOMs, DGX B200/GB300 tables, normal/N-1 cut models, and Topograph/cable-matrix diffs are verified by python3 -B code/part12/fabric_validation_capacity_lab.py (26 passed, 0 failed).
 ```
+
+corrected 2026-11-11: the 340 to 361.36 GB/s busbw gate is labelled an illustrative policy and not a vendor figure; source docs/part-19-capstone/05-capstone-an-nccl-tests-fabric-lab.md.
