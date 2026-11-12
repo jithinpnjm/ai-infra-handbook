@@ -344,7 +344,7 @@ Ten rules cover most of the choices. Start with the first one, because every lat
 
 ## 8. Hands-on lab: a small GCP network and failure drills
 
-Start with the Python lab, which you can run for free. It runs on your own machine at zero cloud cost, and it checks the capacity arithmetic and the rules from this chapter. The lab covers three things. First, GKE VPC-native capacity: a `/20` node subnet plus a `/14` pod range gives `1,024` maximum nodes and `4,096` Services. Second, VPC Network Peering non-transitivity and CIDR overlap checks. Third, validation of the load balancer health-check firewall ranges, `35.191.0.0/16` and `130.211.0.0/22`.
+Start with the Python lab, which you can run for free. It runs on your own machine at zero cloud cost, and it checks the capacity arithmetic and the rules from this chapter. The lab covers three things. First, GKE VPC-native capacity. The `/14` pod range, cut into one `/24` per node, allows `1,024` nodes, and the `/20` Services range holds `4,096` Services. Second, VPC Network Peering non-transitivity and CIDR overlap checks. Third, validation of the load balancer health-check firewall ranges, `35.191.0.0/16` and `130.211.0.0/22`.
 
 ```bash
 python3 code/part02/cloud_vpc_gke_networking_lab.py
@@ -372,7 +372,7 @@ The mistakes below come up often enough to be worth a checklist.
 - You may assume VPC peering is transitive, which is a mistake. Forgetting route and firewall changes on both sides is another.
 - Giving every VM an external IP, or having no NAT or private access strategy, leads to NAT port exhaustion.
 - Forgetting the health-check firewall rules for load balancers is common. So is using short backend timeouts for streaming inference.
-- MTU mismatches across VPN, Interconnect or GKE are a classic trap. Assuming jumbo frames work end to end is another.
+- MTU mismatches across VPN, Interconnect or GKE are a common trap. Assuming jumbo frames work end to end is another.
 - Ignoring egress and inter-zone costs in architecture decisions.
 - Relying on a single Interconnect or VPN with no redundancy, no BFD, or asymmetric routing through stateful firewalls.
 - Undersized GKE pod ranges, no default-deny policies, or unmonitored quotas.
@@ -396,12 +396,15 @@ These questions test whether you can reason about a design, not just recite prod
 
 ## Exercises
 
-1. Start with the cloud computing models. Contrast IaaS, PaaS, FaaS and SaaS across public, private, hybrid and multicloud deployments, using chapter 28 of *Computer Networking Problems and Solutions*. Then explain the five operational trade-offs and the two business trade-offs of public clouds. Define data gravity, and explain why moving a 500 TB training dataset across clouds or regions again and again is an architectural anti-pattern.
-2. Compare how the three clouds structure their virtual networks, using chapter 6 of *Networking and Kubernetes*. Look at AWS (VPC, per-AZ subnets, ENIs, stateful security groups versus stateless NACLs, NAT gateway, Transit Gateway), Azure (VNet, NSGs, UDRs, Virtual WAN) and GCP (global VPC, regional subnets, service-account firewall rules, Cloud Router, Cloud NAT, NCC).
-3. Use `evaluate_vpc_peering_reachability()` in `code/part02/cloud_vpc_gke_networking.py` to prove that if VPC A peers with VPC B, and VPC B peers with VPC C, then VPC A cannot reach VPC C through B. Compare VPC Network Peering, Shared VPC, Network Connectivity Center (NCC) and Private Service Connect (PSC). Then design a 99.99% SLA hybrid connection between an on-prem data centre and GCP. Use Dedicated or Partner Interconnect (or HA VPN), with Cloud Router running eBGP and BFD.
-4. Using `check_gcp_lb_health_check_firewall()`, explain why every backend VM or GKE node must allow ingress from `35.191.0.0/16` and `130.211.0.0/22`. Compare the Global External Application LB (L7 Envoy with Cloud Armor) with the Regional Passthrough Network LB (L4 Maglev DSR). Then explain how Container-Native Load Balancing with NEGs removes the kube-proxy double-NAT hops.
-5. Use `plan_gke_vpc_native_capacity("10.100.0.0/20", "10.104.0.0/14", "10.108.0.0/20", 24)` to work out the maximum number of nodes (1,024) and Services (4,096) that the subnet's primary and secondary ranges support. Then explain what happens if a GKE Pod tries to reach an on-prem database, when the Pod secondary range (`10.104.0.0/14`) is not advertised as a custom route on Cloud Router.
-6. Compare the multi-NIC GPU networking designs of three clouds. On GCP, look at A3 with GPUDirect-TCPX, A3 Mega with GPUDirect-TCPXO at about 1.8 Tbps, and A3 Ultra or A4 with 400G RoCE RDMA across dedicated GPU VPCs, with compact placement and MTU 8244 or 8896. On AWS, look at P5 EFA at 3.2 Tbps with SRD and aws-ofi-nccl. On Azure, look at NDv5 NDR InfiniBand with SR-IOV.
+1. Your team plans to copy a 500 TB training dataset to a second cloud every week. Explain why this is an architectural anti-pattern, and define data gravity in your answer. Use chapter 28 of *Computer Networking Problems and Solutions*.
+2. A colleague knows AWS and must now build on GCP. List three differences between a GCP global VPC and an AWS VPC that will surprise them. Use chapter 6 of *Networking and Kubernetes*.
+3. VPC A peers with VPC B, and VPC B peers with VPC C. Use `evaluate_vpc_peering_reachability()` in `code/part02/cloud_vpc_gke_networking.py` to show that A cannot reach C through B. Then name the option you would use instead if A, B and C all need to talk.
+4. Design a hybrid link between an on-prem data centre and GCP that meets a 99.99% availability target. Say which connection type you would choose, and which routing and failure-detection protocols run over it.
+5. Use `plan_gke_vpc_native_capacity("10.100.0.0/20", "10.104.0.0/14", "10.108.0.0/20", 24)` to find the maximum number of nodes and Services. The answer is 1,024 nodes and 4,096 Services. Then explain which of the three ranges sets each limit.
+6. A GKE Pod cannot reach an on-prem database, although the node VMs can. Explain why, and say what you would advertise from Cloud Router to fix it. The Pod secondary range is `10.104.0.0/14`.
+7. Backend VMs behind a load balancer show as unhealthy. Use `check_gcp_lb_health_check_firewall()` to explain why every backend must allow ingress from `35.191.0.0/16` and `130.211.0.0/22`.
+8. Choose between the Global External Application Load Balancer and the Regional Passthrough Network Load Balancer for a gRPC API that needs Cloud Armor. Explain how Container-Native Load Balancing with NEGs changes the path to the Pod.
+9. Compare how GCP, AWS and Azure give a GPU VM its high-speed network. Name the technology each cloud uses, such as GPUDirect-TCPX on GCP, EFA on AWS and InfiniBand on Azure. Then say why the GCP designs ask for compact placement.
 
 Start with exercise 5 if you want the arithmetic before the design questions. Write your answers as you go, so you can check them against the chapter.
 

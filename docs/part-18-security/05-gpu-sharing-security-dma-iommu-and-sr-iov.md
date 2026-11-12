@@ -142,7 +142,7 @@ If the expected line does not match what you see, do not assume the IOMMU is off
 
 ### 1.3 The IOMMU in production
 
-On modern hardware, the IOMMU is enabled by default, so the real work is watching it. You verify it on every node, monitor its translations, and respond when faults appear. A page fault is a signal to investigate, not noise to ignore.
+Do not assume the IOMMU is on just because the hardware supports it. Many servers ship with it off in the BIOS or leave the kernel option unset. So the real work is verifying it on every node, watching its translations, and responding when faults appear. A page fault is a signal to investigate, not noise to ignore.
 
 ```bash
 # Monitor the IOMMU translations
@@ -150,7 +150,7 @@ perf stat -e iommu.io_page_walk.cycles,iommu.io_page_fault.cycles
 # expected: the IOMMU page walks are tracked; the IOMMU page faults are tracked
 ```
 
-Alert on IOMMU page faults, and make sure the on-call engineer knows to investigate each one. Check the IOMMU state on each node before you admit it to the GPU pool.
+The event names in the command depend on the CPU and the kernel, so list the events your system offers with `perf list` first. Alert on IOMMU page faults, and make sure the on-call engineer knows to investigate each one. Check the IOMMU state on each node before you admit it to the GPU pool.
 
 ---
 
@@ -160,14 +160,15 @@ Alert on IOMMU page faults, and make sure the on-call engineer knows to investig
 
 Suppose two teams each need only a small slice of a GPU. Without MIG, they must share the whole card and trust software to keep them apart. MIG, which stands for Multi-Instance GPU, divides one GPU into separate instances. Each instance gets its own compute, memory, and bandwidth, and the instances cannot read each other's memory.
 
-The layout below shows example partition profiles. Check the profiles your GPU model supports before you configure anything.
+The layout below shows example partition profiles. A GPU has seven compute slices, and every instance uses some of them, so the instances you create must fit inside that budget. Check the profiles your GPU model supports with `nvidia-smi mig -lgip` before you configure anything.
 
 ```text
 MIG partitioning:
-- A100 80GB: 7 instances (1x 5g.40gb, 1x 4g.40gb, 2x 3g.20gb, 4x 1g.10gb)
-- H100 80GB: 7 instances (similar)
+- A100 80GB: up to 7 instances, for example seven 1g.10gb instances
+  or one 3g.40gb instance plus three 1g.10gb instances
+- H100 80GB: up to 7 instances, with similar profile names
 - Each instance has dedicated compute, memory, bandwidth
-- Instances are hardware-isolated (IOMMU enforced)
+- Instances are hardware-isolated
 ```
 
 ### 2.2 The MIG configuration
@@ -188,7 +189,7 @@ nvidia-smi -L
 # expected: the MIG instances are listed; each instance has a unique ID
 ```
 
-Compare the listing with the layout you planned before any workload starts.
+The numbers after `-cgi` are profile IDs, and the IDs differ between GPU models. List them with `nvidia-smi mig -lgip` and substitute the ones for your plan. Compare the final listing with the layout you planned before any workload starts.
 
 ### 2.3 The MIG in Kubernetes
 
@@ -209,7 +210,7 @@ spec:
           nvidia.com/mig-1g.5gb: 1
 ```
 
-The cluster schedules the Pod onto a node that has that partition, and the workload runs inside it. Request the smallest partition that fits the workload. Then check the resource name against what your device plugin advertises.
+The cluster schedules the Pod onto a node that has that partition, and the workload runs inside it. The profile name in the example belongs to a 40 GB card. An 80 GB card names its smallest slice `1g.10gb`. Request the smallest partition that fits the workload, and check the resource name against what the node advertises.
 
 ---
 
@@ -244,7 +245,7 @@ nvidia-smi -L
 # expected: the vGPU partitions are listed; each partition has a unique ID
 ```
 
-Run the listing command to confirm that the partitions exist. If the enable command fails on your driver, consult the vGPU manager documentation rather than guessing at flags.
+Run the listing command to confirm that the partitions exist. The enable step for vGPU depends on the vGPU manager release installed on the host, and the command above has not been tested here. If it fails on your driver, follow the vGPU manager documentation rather than guessing at flags.
 
 ### 3.3 The SR-IOV vs MIG
 
@@ -277,7 +278,7 @@ Time-slicing:
 - Cycle continues
 ```
 
-The GPU is shared in turns, not at the same time. This chapter treats the memory as not shared between tenants, while the compute is shared. Keep that split in mind as you read the table below.
+The GPU is shared in turns, not at the same time. The turns separate the tenants in time only. They do not give each tenant its own protected memory, and the table below shows what that costs.
 
 ### 4.2 The security implications
 
@@ -360,7 +361,7 @@ Five components have to keep working on every GPU node. Each one has a backing s
 
 | Component | Where it runs | Backing store | SLO |
 |---|---|---|---|
-| IOMMU | Every GPU node | TPM | IOMMU enabled |
+| IOMMU | Every GPU node | BIOS and kernel settings | IOMMU enabled |
 | MIG | Every GPU node | GPU driver | MIG partitions enforced |
 | SR-IOV | Every GPU node | GPU driver | VFs isolated |
 | Time-slicing | Every GPU node | GPU device plugin | Time-slicing configured |
@@ -378,7 +379,7 @@ Access to GPU sharing settings needs its own roles. The pattern has three of the
 | `gpusharing.writer` | The platform team | Configure MIG and SR-IOV |
 | `gpusharing.admin` | The platform team lead | Approve MIG partitions and SR-IOV virtual functions |
 
-A written role model only helps if people follow it and someone checks. The chapter suggests a quarterly review. Pick the review schedule your team can keep.
+A written role model only helps if people follow it and someone checks. A quarterly review is a reasonable starting point. Pick the review schedule your team can keep.
 
 ### 6.3 Observability
 
@@ -392,61 +393,37 @@ Five metrics show whether the boundaries still hold. Each row explains why its m
 | GPU memory anomalies | Memory scraping detection | > 0 |
 | GPU sharing mode (time-slicing/MIG/SR-IOV) | Sharing configuration | Wrong mode |
 
-The GPU memory anomalies alert matters most. An anomalous pattern can mean one workload is reading another tenant's memory. For example, the alert could page the on-call engineer right away.
+The GPU memory anomalies alert matters most. An anomalous pattern can mean one workload is reading another tenant's memory, so this alert should page the on-call engineer right away.
 
 ---
 
 ## 7. How it fails
 
-Six failure modes come up again and again. Each one has a symptom, a diagnosis, and a fix. Start from the symptom you see, then find the matching section below.
+Six failure modes come up again and again. Start from the symptom you see, then find the matching section below.
 
 ### 7.1 "The IOMMU is disabled"
 
-**Symptom:** The GPU can read any system memory, including another tenant's data.
-
-**Diagnosis:** The IOMMU is disabled in the BIOS, so the platform's policy is not enforced.
-
-**Fix:** Enable the IOMMU in the BIOS, verify that it is in use, and alert on any node where it is off.
+A node with the IOMMU off lets the GPU read any system memory, including another tenant's data. The usual cause is a BIOS setting that nobody turned on, so the platform's policy is not enforced. Enable the IOMMU in the BIOS, verify that the kernel uses it, and alert on any node where it is off.
 
 ### 7.2 "The MIG is not configured"
 
-**Symptom:** The GPU runs without MIG partitions, so multiple tenants share its full memory and can read each other's data.
-
-**Diagnosis:** MIG is not enabled, the partitions were never created, and the platform's policy is not enforced.
-
-**Fix:** Enable MIG, create the partitions, and verify that they are enforced.
+Suppose a GPU runs with no MIG partitions. Every tenant on it shares the full card memory and can read each other's data. MIG mode was never enabled, or the instances were never created. Enable MIG, create the partitions, and check that they are enforced.
 
 ### 7.3 "The SR-IOV is not configured"
 
-**Symptom:** The GPU runs without SR-IOV, so multiple tenants share the PCIe config space and can read each other's config.
-
-**Diagnosis:** SR-IOV is not enabled, the VFs were never created, and the platform's policy is not enforced.
-
-**Fix:** Enable SR-IOV, create the VFs, and verify that they are isolated.
+When SR-IOV is off, the tenants that were meant to get separate virtual functions share one device. The virtual functions were never created, so the PCIe-level boundary does not exist. Enable SR-IOV, create the VFs, and verify that they are isolated.
 
 ### 7.4 "The GPU memory scraping is detected"
 
-**Symptom:** The memory monitoring flags an anomalous pattern, and the on-call engineer is paged.
-
-**Diagnosis:** The workload may be reading another tenant's memory, which means it could be compromised.
-
-**Fix:** Cordon the workload, investigate it, notify the other tenants, and run your incident response.
+Here the memory monitor flags an anomalous pattern and the on-call engineer is paged. The workload may be reading another tenant's memory, which would mean it is compromised. Cordon the workload, investigate it, notify the other tenants, and run your incident response.
 
 ### 7.5 "The time-slicing is not configured"
 
-**Symptom:** The GPU runs without time-slicing settings, so tenants share it without a defined schedule and can interfere with each other.
-
-**Diagnosis:** The time-slicing is not configured, or the GPU device plugin is misconfigured.
-
-**Fix:** Configure time-slicing, confirm that it is in effect, and alert on any GPU that lacks it.
+A GPU without time-slicing settings has no defined schedule, so tenants can interfere with each other. Either the time-slicing configuration was never applied, or the GPU device plugin is misconfigured. Configure time-slicing, confirm that it is in effect, and alert on any GPU that lacks it.
 
 ### 7.6 "The GPU sharing mode is wrong for the workload"
 
-**Symptom:** A workload runs with time-slicing when it needs MIG, or with MIG when time-slicing would do. Either way, its isolation is wrong.
-
-**Diagnosis:** The workload's isolation requirements were never written down, so the mode was picked ad hoc.
-
-**Fix:** Write down each workload's isolation needs, choose the mode for it, and review the choice on a schedule. The chapter suggests quarterly.
+A workload may run on time-slicing when it needs MIG, or on MIG when time-slicing would do. In both cases its isolation does not match its needs. The cause is usually that nobody wrote down the workload's isolation requirements, so the mode was picked ad hoc. Write the requirements down, choose the mode from them, and review the choice on a schedule.
 
 Most of these failures trace back to a setting nobody wrote down. When you start an investigation, check the configuration against the plan first.
 
@@ -530,20 +507,20 @@ After the lab, you should be able to answer five questions quickly:
 4. What is the current GPU memory anomalies count?
 5. What is the current GPU sharing mode per workload?
 
-The chapter uses five seconds per answer and 30 seconds as example limits. Set the limit your own on-call process can meet. If your team cannot answer within that limit, the GPU sharing security is not yet a production service. The lab is **untested** against a live GKE cluster.
+Use five seconds per answer and 30 seconds in total as example limits. Set the limits your own on-call process can meet. If your team cannot answer within that limit, the GPU sharing security is not yet a production service. The lab is **untested** against a live GKE cluster.
 
 ---
 
 ## Exercises
 
-Try each exercise yourself before you read its solution sketch. Your answers should name the layer or resource each one touches.
+Try each exercise yourself before you read its solution sketch. Each one uses a different layer of the chapter.
 
-1. **Add an IOMMU enforcement alert.** Write an alert that fires whenever a node's IOMMU is disabled, so the gap never goes unnoticed. *Solution sketch:* a Prometheus exporter for the IOMMU state, plus an alert that fires when the state is not "enabled".
-2. **Add a MIG partition enforcement alert.** Write an alert that fires when a MIG partition is not enforced. *Solution sketch:* a Prometheus exporter for the MIG state, plus an alert that fires when the state is not "enforced".
-3. **Add a GPU memory anomaly alert.** Write an alert that fires when GPU memory access looks anomalous. *Solution sketch:* a Prometheus exporter for GPU memory, plus an alert that fires when the pattern is anomalous.
-4. **Add a per-workload GPU sharing mode policy.** Decide which workloads use time-slicing, MIG, or SR-IOV, and write the rule down. *Solution sketch:* a policy document, plus a Kubernetes admission controller that enforces it.
-5. **Add a GPU sharing security dashboard.** Build a Grafana dashboard that shows the IOMMU state, the MIG partitions, the SR-IOV VFs, and the GPU memory metrics. *Solution sketch:* a Grafana dashboard with those panels and their data sources.
-6. **Add a GPU memory scraping incident response runbook.** Write the steps for responding to a GPU memory scraping attack, along with the escalation contacts. *Solution sketch:* a Markdown runbook with the response steps and the contacts.
+1. A node is about to join the GPU pool. Write a shell check that fails when the kernel log has no IOMMU line, or when `/sys/kernel/iommu_groups` is empty. *Solution sketch:* test `dmesg | grep -i iommu` and count the entries in the groups directory. Exit non-zero if either test fails, and run it before the node is labelled for tenants.
+2. One 80 GB GPU must serve a team that needs 40 GB and three teams that need 10 GB each. Choose MIG profiles for them. *Solution sketch:* one 3g.40gb instance plus three 1g.10gb instances uses six of the seven compute slices. Confirm the placement with `nvidia-smi mig -lgip` before you create anything.
+3. You host a trusted team's notebooks, an inference service for two paying customers, and virtual desktops for staff. Pick a sharing mode for each and give one reason. *Solution sketch:* time-slicing is acceptable for the notebooks, because the users trust each other. MIG suits the two customers, who need memory isolation. SR-IOV through vGPU suits the desktops.
+4. Assume an exporter publishes a metric `node_iommu_enabled` that is 1 when the IOMMU is on. Write a Prometheus alert rule that fires when any GPU node reports 0 for five minutes. *Solution sketch:* the rule compares the metric with 0 and uses a `for: 5m` clause, with a label that names the node.
+5. A Pod that asks for `nvidia.com/mig-1g.5gb` stays Pending on an 80 GB node. Explain why and what you would check. *Solution sketch:* that node advertises `1g.10gb`, not `1g.5gb`, so no resource matches. Run `kubectl describe node` and read the allocatable resources, then fix the request.
+6. The memory monitor shows one tenant's pod reading far more GPU memory than its limit allows. Put the first five response actions in order, and say which evidence you must keep. *Solution sketch:* cordon the node, keep the pod and its logs instead of deleting them, notify the other tenants on that GPU, and escalate to the security team. Record the memory samples and the IOMMU state at that moment.
 
 ---
 

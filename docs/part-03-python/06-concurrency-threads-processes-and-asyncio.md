@@ -352,7 +352,7 @@ async def poll_all(nodes):
 
 In `poll_all`, the `except*` clause handles the `TimeoutError` exceptions that the group collects. Then the function returns `results`.
 
-Use `await asyncio.wait_for(coro, timeout)` or the `async with asyncio.timeout(10):` block, available from 3.11. Every network await needs a timeout. Without one, you get the classic silent hang, where a half-open connection waits forever.
+Use `await asyncio.wait_for(coro, timeout)` or the `async with asyncio.timeout(10):` block, available from 3.11. Every network await needs a timeout. Without one, you get a silent hang, where a half-open connection waits forever.
 
 `task.cancel()` raises `asyncio.CancelledError` at the task's current `await`. Clean up in a `finally` block and re-raise `CancelledError`. Never swallow it. Use `asyncio.shield()` to protect critical sections. Timeouts and `TaskGroup` both rely on cancellation.
 
@@ -555,14 +555,19 @@ Each question below tests a different part of the chapter. Answer it aloud befor
 
 ## Exercises
 
-Work through these six exercises, and check your reasoning against the code as you go. Each one asks you to explain a mechanism from the chapter, using the named functions and files.
+Work through these exercises and check your reasoning against the code. Each one has a single situation.
 
-1. Using `is_prime()`, `run_thread_spinner_demo()` and `run_async_spinner_cancellation_demo()` in `code/part03/python_concurrency_models.py`, along with the spinner examples from *Fluent Python*, Chapter 19, explain two things. First, explain Rob Pike's distinction between concurrency and parallelism, what the CPython GIL protects, and when it is released. Second, explain why replacing `sleep(3)` with `is_prime(5_000_111_000_222_021)` lets `spinner_thread.py` and `spinner_proc.py` keep spinning, using the `5 ms` `sys.getswitchinterval()`, while `spinner_async.py` freezes.
-2. Work on thread synchronisation, producer and consumer backpressure, and `ThreadPoolExecutor`. First, explain why `counter += 1` is not thread-safe despite the GIL. Explain how `threading.Event` and a bounded `queue.Queue(maxsize=100)` with sentinel objects work, and how to prevent deadlocks. Second, using `run_threadpool_to_do_map()` and `bounded_map()`, compare `executor.map`, including why `proc_pool.py` stalls on `9999999999999917`, with `executor.submit` plus `as_completed(to_do_map)`. Then show how `bounded_map` gives backpressure through `max_inflight`.
-3. Look at multiprocessing with `ProcessPoolExecutor`, the start methods, pickling and `SharedMemory`. First, explain why `procs.py` drops the 20-prime benchmark from `40.81s` to `10.39s` on a 6-core machine, and how poison-pill shutdown works on `SimpleQueue`. Second, explain why `fork` after initialising CUDA or threads hangs or crashes. Explain why `spawn` requires `if __name__ == "__main__":` and picklable top-level functions. Then explain how `multiprocessing.shared_memory.SharedMemory` and `gc.freeze()` avoid memory duplication.
-4. Work on the asyncio core, as *Fluent Python*, Chapter 21 and *Learning Python*, Chapter 20 cover it. Using `run_async_semaphore_and_comprehension_demo()`, explain two things. First, explain how `asyncio.Semaphore(concur_req)` bounds concurrent requests, how `asyncio.gather` differs from Python 3.11's `asyncio.TaskGroup` with `except*`, and why `CancelledError` must be re-raised. Second, explain why `flags_asyncio.py` wraps `save_flag` in `await asyncio.to_thread(save_flag, image, f'{cc}.gif')`.
-5. Work on asynchronous iterators, async generators and PEP 530 async comprehensions, as *Learning Python*, Chapter 20 and *Fluent Python*, Chapter 21 cover them. Using `AsyncRange` and `multi_probe_async_gen()` in `code/part03/python_concurrency_models.py`, contrast `__aiter__` and `__anext__`, which raises `StopAsyncIteration`, with `async def` plus `yield` async generators. Then explain the difference between sequential `async for` iteration and concurrent `asyncio.as_completed` or `asyncio.gather`.
-6. Work on production fan-out patterns. First, trace how `run_pool()` combines a bounded `asyncio.Queue(maxsize=queue_size)`, fixed worker tasks, `wait_for(..., timeout=30)` and `loop.add_signal_handler(sig, stop.set)` for a graceful `SIGTERM` drain. Second, write the full-jitter exponential backoff formula, `random.uniform(0, min(cap, base * 2 ** i))`, and list the tools for diagnosing a hung or throttled Python service: `PYTHONASYNCIODEBUG=1`, `faulthandler`, `py-spy dump` and `len(os.sched_getaffinity(0))`.
+1. A spinner script keeps spinning while a thread computes `is_prime(5_000_111_000_222_021)`. The async version freezes on the same call. Explain why. Use `run_thread_spinner_demo()` and `run_async_spinner_cancellation_demo()` in `code/part03/python_concurrency_models.py`, and the spinner examples from *Fluent Python*, Chapter 19.
+2. Two threads each run `counter += 1` a million times, and the total comes out wrong. Explain why the GIL does not prevent this, and fix it with a lock.
+3. Write a producer and a consumer that share `queue.Queue(maxsize=100)`. Show how a sentinel object stops the consumer cleanly and how the bounded queue gives backpressure.
+4. A job submits ten million futures to a `ThreadPoolExecutor` and runs out of memory. Use `bounded_map()` and its `max_inflight` argument to keep memory flat. Explain what `run_threadpool_to_do_map()` shows about `as_completed` compared with `executor.map`.
+5. A `ProcessPoolExecutor` drops a 20-prime benchmark from 40.81 s to 10.39 s on a 6-core machine. Explain why processes help here when threads do not. Then explain why `spawn` needs `if __name__ == "__main__":` and top-level picklable functions.
+6. A worker forks after CUDA was initialised and hangs. Explain why, and say which start method you would use instead. Then explain how `SharedMemory` and `gc.freeze()` each avoid copying memory between processes.
+7. Run `run_async_semaphore_and_comprehension_demo()` and explain how `asyncio.Semaphore(concur_req)` limits concurrent requests. Then compare `asyncio.gather` with `asyncio.TaskGroup` and `except*`, and say why `CancelledError` must be re-raised. Use *Fluent Python*, Chapter 21 and *Learning Python*, Chapter 20.
+8. A coroutine saves files with a blocking function and stalls the event loop. Show how `await asyncio.to_thread(save_flag, image, f'{cc}.gif')` fixes it.
+9. Use `AsyncRange` and `multi_probe_async_gen()` to contrast a class with `__aiter__` and `__anext__` against an `async def` generator that uses `yield`. Then say when sequential `async for` is the wrong choice and `asyncio.gather` is the right one.
+10. Trace how `run_pool()` combines a bounded `asyncio.Queue`, fixed worker tasks and `wait_for(..., timeout=30)`. Explain how `loop.add_signal_handler(sig, stop.set)` gives a graceful drain on `SIGTERM`.
+11. Write the full-jitter backoff formula `random.uniform(0, min(cap, base * 2 ** i))` as a function. Then name two ways to find out why a Python service hangs, such as `faulthandler` or `py-spy dump`.
 
 ## Checkpoint questions (20)
 

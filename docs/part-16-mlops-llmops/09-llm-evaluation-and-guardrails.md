@@ -382,7 +382,7 @@ def pii_filter(response: str) -> tuple[str, bool]:
     return (redacted, False) if n else (response, True)
 ```
 
-The filters are LLM-as-judge for the safety classifier, and regex plus a named-entity recogniser for the PII detector. The platform team runs both on every response.
+The code above uses simple rule-based stand-ins so that it runs anywhere. In production the safety filter is usually a trained classifier or an LLM-as-judge, and the PII detector combines regular expressions with a named-entity recogniser. The platform team runs both on every response.
 
 Thresholds involve a trade-off. A low threshold catches more unsafe output, but it also blocks more safe output. A high threshold lets more unsafe output through. Tune the threshold on the eval set. The example goal in this chapter is to catch every unsafe output in the eval set while keeping the false-positive rate between 1 and 5 percent. Set your own target, based on your product's risk. The false-positive rate is the price you pay for safety.
 
@@ -407,9 +407,9 @@ def jailbreak_filter(prompt: str, threshold: float = 0.8) -> bool:
     return jailbreak_classifier.score(prompt) < threshold
 ```
 
-The jailbreak classifier is trained on a held-out set of jailbreak attempts, and the eval set serves as the regression test for that classifier. Run the classifier on every prompt. A jailbreak that gets past it, a false negative, is the security risk to watch most closely.
+The code above is a rule-based stand-in. A production classifier is trained on collected jailbreak attempts, and a separate held-out set of attempts serves as its regression test. Run the classifier on every prompt. A jailbreak that gets past it, a false negative, is the security risk to watch most closely.
 
-The system prompt is the most effective jailbreak defence you have. It declares what the LLM may and may not do, and the LLM is fine-tuned to follow it. The classifier is the second line of defence, and the system prompt is the first.
+The system prompt is the first layer of defence, but it is not enough on its own. It declares what the LLM may and may not do, and the model is trained to follow it. A determined user can still talk the model out of those instructions. That is why the classifier on the input and the filters on the output sit around the model as separate layers.
 
 ### 4.4 Factuality and hallucination detection
 
@@ -511,7 +511,7 @@ The audit log records every eval run, every judge score, and every safety filter
 | PII filter false-positive rate | Affects user experience | > 5% for 1 hour |
 | Jailbreak filter false-negative rate | Affects security | > 0 for 1 hour |
 
-The alert levels in this table are example values, so tune them against your own traffic. If you can afford only one alert, make it the regression set pass rate. The regression set pass rate matters most. A regression that breaks the golden set is one the eval suite catches. A regression that breaks a single user is one the suite misses, unless the regression set covers it. Coverage is therefore the suite's defence against the unknown.
+The alert levels in this table are example values, so tune them against your own traffic. If you can afford only one alert, make it the regression set pass rate. The golden set catches broad drops in quality. The regression set holds the specific failures you have already seen, so a drop in its pass rate means an old bug is back. A failure that affects only a few users reaches neither set unless someone adds it, so keep adding cases from incidents.
 
 Production Kubernetes, chapter 9, warns against over-alerting. Too many critical alerts wear out on-call engineers, and false positives can bury a real incident. The same chapter recommends a dead man's switch: an alert that fires on a schedule during normal operation. If those alerts stop arriving, a critical alert tells on-call that the monitoring itself has failed. Set up that switch before the first production run.
 

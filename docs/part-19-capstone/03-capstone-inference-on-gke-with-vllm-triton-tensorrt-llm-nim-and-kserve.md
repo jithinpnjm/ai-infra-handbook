@@ -34,7 +34,7 @@ Most inference outages are not caused by the engine. They come from the glue aro
 
 This chapter builds one stack end to end. The cluster is a GKE Standard cluster called `ai-serving` with two A100 40 GB nodes. The model is Llama 3.1 8B Instruct, served by vLLM through KServe. Triton, TensorRT-LLM and NIM are placed beside it so you can compare them on facts, not on reputation.
 
-The chapter also fixes several errors from its earlier draft. The old node pool used a machine type that cannot carry an A100. It used a Kubernetes kind that does not exist. It claimed a Triton mode gave zero-downtime reloads when the documentation says otherwise. The verification log at the end lists every correction.
+Every version, flag and name in the chapter is checked against vendor documentation or source, and the verification log at the end lists what was checked and what was not. Three details are easy to get wrong. An A100 needs an A2 machine type, not an N1 type. The KServe autoscaling kind must be one that exists in the cluster. And Triton's poll mode, not its explicit mode, is the one that reloads a model without downtime.
 
 Nothing here ran on a GPU. The manifests were validated against upstream schemas, the Python was tested, and a mock server exercised the load generator. Every GKE and GPU step is marked "Not run".
 
@@ -105,7 +105,7 @@ Second, the book and the upstream docs disagree about TensorRT-LLM. The book say
 
 Third, TensorRT-LLM v1.2.1 is the latest stable release. Releases numbered 1.3 and 1.4 exist only as release candidates, so do not plan a production rollout on them.
 
-Fourth, NVIDIA's own benchmarking tool changed. The GenAI-Perf README now says it is being phased out and points to AIPerf. The old chapter used genai-perf. Section 6 uses the vLLM benchmark command and a tested stdlib harness instead, and names AIPerf as the NVIDIA option.
+Fourth, NVIDIA's own benchmarking tool changed. The GenAI-Perf README now says it is being phased out and points to AIPerf. Section 6 therefore uses the vLLM benchmark command and a tested standard-library harness, and names AIPerf as the NVIDIA option.
 
 How do you choose? The book gives a method, and it fits on one page. Write down your objectives for time to first token, throughput, cost and availability. Analyse real prompts for length and shape. Compare contenders with the same model, precision and settings. Measure operability: start-up time, observability, autoscaling and upgrade friction. Weigh vendor lock-in. Plan for change by keeping an exit path.
 
@@ -119,7 +119,7 @@ For this capstone the choice is vLLM, for reasons that are mine, not the book's.
 
 Consider a pod stuck in `Pending` with the message `Insufficient nvidia.com/gpu`. The team argues about quota. The cluster has GPUs, but the scheduler cannot see them, because the node never reported the resource. This is again an illustration. The real lesson is that GPU capacity has to be verified at the node before anything else is deployed.
 
-The first correction in this chapter is the machine type. The earlier draft paired `n1-standard-32` with an A100. Google's documentation says the `nvidia-tesla-a100` type is the A2 standard machine type, and that N1 machines take T4, P4 and V100 GPUs. One A100 40 GB is the `a2-highgpu-1g` machine type, with 12 vCPUs and 85 GB of memory.
+The first detail to get right is the machine type. A common mistake is to pair `n1-standard-32` with an A100. Google's documentation says the `nvidia-tesla-a100` type is the A2 standard machine type, and that N1 machines take T4, P4 and V100 GPUs. One A100 40 GB is the `a2-highgpu-1g` machine type, with 12 vCPUs and 85 GB of memory.
 
 ```bash
 #!/usr/bin/env bash
@@ -159,9 +159,9 @@ kubectl get nodes \
 
 The accelerator flag has three keys. The key `type` names the GPU. The key `count` must match the GPU count of the machine type. The key `gpu-driver-version` can be `default`, which installs the default driver for the node GKE version, or `latest`, which is only available on Container-Optimized OS nodes. The documentation spells the third value `disabled`, and Terraform uses `INSTALLATION_DISABLED`. The driver flag needs GKE 1.27.2-gke.1200 or later.
 
-The node pool command uses `--cluster`, not `--cluster-name`. The old draft used the wrong flag.
+The node pool command uses `--cluster`, not `--cluster-name`.
 
-GKE also handles taints for you. It adds the taint `nvidia.com/gpu=present:NoSchedule` to GPU nodes, but only when the cluster has at least one non-GPU node pool. A toleration is added automatically to Pods that request a GPU. For that reason the script creates a small CPU pool first, and the old manual taint step is gone.
+GKE also handles taints for you. It adds the taint `nvidia.com/gpu=present:NoSchedule` to GPU nodes, but only when the cluster has at least one non-GPU node pool. A toleration is added automatically to Pods that request a GPU. For that reason the script creates a small CPU pool first, and no manual taint step is needed.
 
 Autopilot works differently. A Pod asks for a GPU with node selectors, and Autopilot creates the node. The documentation lists `nvidia-tesla-a100` as the A100 40 GB type and says you can choose the driver with a `cloud.google.com/gke-gpu-driver-version` selector. The next file is a smoke Pod for that path. It is validated as a Pod, but not run.
 
@@ -187,7 +187,7 @@ spec:
           nvidia.com/gpu: 1
 ```
 
-This capstone uses Standard clusters. That is my reasoning, not a rule: the NIM and DCGM steps are simpler to follow on a pool you control. The Autopilot Pod is there so you know the selector names.
+This capstone uses Standard clusters. That is a teaching choice, not a rule: the NIM and DCGM steps are simpler to follow on a pool you control. The Autopilot Pod is there so you know the selector names.
 
 Two failure classes come out of this layer. If the driver is absent, the node reports no GPU and Pods wait in `Pending`. If the driver is present but too old for the CUDA version inside the image, the Pod starts and then fails when it first allocates GPU memory. Chapter 5.34 keeps the troubleshooting table.
 
@@ -219,7 +219,7 @@ Grouped query attention matters here. With 8 KV heads instead of 32 query heads,
 
 The last row is not a flaw to hide. It says that 64 users all pasting maximum-length prompts exceed the cache, and vLLM will preempt. If your traffic looks like that, lower the sequence cap or add a GPU. The book Generative AI on Kubernetes, chapter 4, shows the start-up log lines that report weight size and KV cache size, so you can replace the assumption with the real value.
 
-The old draft chose Llama 3 8B and a context cap of 16,384. That model's configuration allows 8,192 positions, so the server would have refused to start. Llama 3.1 8B allows 131,072, which is why this chapter uses it.
+A context cap of 16,384 does not work with Llama 3 8B. That model's configuration allows 8,192 positions, so the server would refuse to start. Llama 3.1 8B allows 131,072, which is why this chapter uses it.
 
 The runtime holds what stays the same across models: the image, the port, the probes and the shared memory volume. KServe appends the InferenceService arguments to the runtime arguments, so the model name and the memory caps live in the InferenceService.
 
@@ -285,7 +285,7 @@ spec:
         failureThreshold: 6
 ```
 
-Three choices in that file need a reason. The image is pinned to v0.32.0, because the book warns that a floating tag can change under you. The startup probe allows 900 seconds, which is my reasoning for a first download of about 16 GB plus a load. Replace it with a measured time. And `/health` is used for all three probes, which is what the vLLM Kubernetes guide does. That endpoint proves the engine process is alive. It does not prove a good answer, a short queue or free KV cache.
+Three choices in that file need a reason. The image is pinned to v0.32.0, because the book warns that a floating tag can change under you. The startup probe allows 900 seconds, which is a planning figure for a first download of about 16 GB plus a load. Replace it with a measured time. And `/health` is used for all three probes, which is what the vLLM Kubernetes guide does. That endpoint proves the engine process is alive. It does not prove a good answer, a short queue or free KV cache.
 
 KServe's own `kserve-vllmserver` runtime uses `/v1/models` for readiness and allows about 30 minutes to start. It is a useful point of comparison, and it is in the KServe v0.21.0 repository.
 
@@ -350,9 +350,9 @@ spec:
               value: "8"
 ```
 
-Several fields in the InferenceService are corrections. The annotation `serving.kserve.io/deploymentMode: Standard` is the current name, which replaced `RawDeployment`, according to the book Generative AI on Kubernetes. The `autoscalerClass` annotation set to `keda` is required to use KEDA, and KServe rejects `scaleMetric` in that mode. The `maxReplicas` value is 2, not 4, because the pool has two GPUs. The `deploymentStrategy` has `maxSurge: 0`, because a rolling update that wants a third Pod needs a third GPU, and it would wait forever.
+Several fields in the InferenceService are easy to get wrong. The annotation `serving.kserve.io/deploymentMode: Standard` is the current name, which replaced `RawDeployment`, according to the book Generative AI on Kubernetes. The `autoscalerClass` annotation set to `keda` is required to use KEDA, and KServe rejects `scaleMetric` in that mode. The `maxReplicas` value is 2, not 4, because the pool has two GPUs. The `deploymentStrategy` has `maxSurge: 0`, because a rolling update that wants a third Pod needs a third GPU, and it would wait forever.
 
-The engine caps are `--max-model-len=16384`, `--max-num-seqs=64` and `--gpu-memory-utilization=0.90`. They are starting values from the arithmetic above, not constants. The v0.32.0 defaults on an A100 are 256 for `--max-num-seqs` and 2048 for `--max-num-batched-tokens`, and 0.92 for the memory fraction. The old draft also set `--swap-space=0`. That flag was removed in v0.32.0, so it is gone.
+The engine caps are `--max-model-len=16384`, `--max-num-seqs=64` and `--gpu-memory-utilization=0.90`. They are starting values from the arithmetic above, not constants. The v0.32.0 defaults on an A100 are 256 for `--max-num-seqs` and 2048 for `--max-num-batched-tokens`, and 0.92 for the memory fraction. Do not set `--swap-space`. That flag was removed in v0.32.0.
 
 The model comes from Hugging Face at start-up, using the secret created in the lab. The book calls direct download from Hugging Face inefficient, because it often takes many minutes. It recommends a persistent volume, an OCI image, or the KServe local model cache. This chapter takes the simple path first and measures the cost in the lab.
 
@@ -366,7 +366,7 @@ Suppose the product team adds a reranker and a classifier next week. One vLLM De
 
 Triton reads a model repository, a directory with one folder per model. Each model has a configuration file named `config.pbtxt`. The documented keys for classic models include `max_batch_size`, a `dynamic_batching` block with `preferred_batch_size` and `max_queue_delay_microseconds`, and an `instance_group` that places model copies on GPUs. The chapter does not paste a configuration file, because no tool here can validate it.
 
-Two earlier claims were wrong. The ports were reversed: in the Triton quickstart, HTTP is 8000, gRPC is 8001 and metrics are 8002. And the earlier draft said explicit model control gives zero-downtime reloads. The v2.74.0 documentation says that in explicit mode you must unload a loaded model before loading its update. It is poll mode that says a successful reload replaces the model without loss of availability, and a failed reload leaves the old model loaded. The manifest below uses poll mode.
+Two details need care. The first is the ports. In the Triton quickstart, HTTP is 8000, gRPC is 8001 and metrics are 8002. The second is reloading. Explicit model control does not give zero-downtime reloads. The v2.74.0 documentation says that in explicit mode you must unload a loaded model before loading its update. It is poll mode that says a successful reload replaces the model without loss of availability, and a failed reload leaves the old model loaded. The manifest below uses poll mode.
 
 ```yaml
 apiVersion: apps/v1
@@ -436,7 +436,7 @@ TensorRT-LLM has no shipped KServe runtime in v0.21.0. The book says it integrat
 
 NIM is a different shape. The NIM Operator gives you two objects. A NIMCache downloads and stores the model on a volume. A NIMService runs it. The book says the cache means the model is downloaded once and later replicas do not download it again.
 
-NIM has three requirements that the old draft skipped. You need an NGC API key, stored in a secret under the key `NGC_API_KEY`, which the operator reads through `authSecret`. You need a registry pull secret for `nvcr.io`, with the user name set to the literal string `$oauthtoken`. And you need a volume for the cache. The operator samples use a ReadWriteOnce claim, which can pin Pods to one node, and suggest ReadWriteMany if your storage supports it.
+NIM has three requirements that are easy to miss. You need an NGC API key, stored in a secret under the key `NGC_API_KEY`, which the operator reads through `authSecret`. You need a registry pull secret for `nvcr.io`, with the user name set to the literal string `$oauthtoken`. And you need a volume for the cache. The operator samples use a ReadWriteOnce claim, which can pin Pods to one node, and suggest ReadWriteMany if your storage supports it.
 
 GPU profile selection works through the cache. The NIMCache fields `engine`, `tensorParallelism` and `gpus` filter the available profiles. A `profiles` list overrides them. In the NIMService, `storage.nimCache.profile` sets the environment variable `NIM_MODEL_PROFILE`.
 
@@ -494,7 +494,7 @@ spec:
       port: 8000
 ```
 
-The image tag `1.15.5` comes from the operator's samples README, which lists it as the latest 1.x tag for the Llama 3.1 8B Instruct NIM. The old draft used a name and tag that I could not find in any source. Whether the A100 40 GB has a matching profile is not verified here. Check the model's support matrix before you request GPUs.
+The image tag `1.15.5` comes from the operator's samples README, which lists it as the latest 1.x tag for the Llama 3.1 8B Instruct NIM. Whether the A100 40 GB has a matching profile is not verified here. Check the model's support matrix before you request GPUs.
 
 **Decision rule:** keep one engine on the critical path. Add Triton only when a second model type must share the server, and add NIM only when you accept an NGC key, a cache volume and a fixed image.
 
@@ -536,7 +536,7 @@ python3 c03_decision.py "${OUT}" --slo-ttft-ms 100 --slo-tpot-ms 10 \
   --peak-rps 5 --max-replicas 2 || true
 ```
 
-I ran that script on 2026-11-10 on a laptop. The sweep below is from the mock and says nothing about a GPU. It shows the shape you should look for: flat latency up to the slot count, then a sharp rise in time to first token as requests queue.
+The script was run on 2026-11-10 on a laptop. The sweep below is from the mock and says nothing about a GPU. It shows the shape you should look for: flat latency up to the slot count, then a sharp rise in time to first token as requests queue.
 
 | Concurrency | p95 TTFT | p95 TPOT | Share meeting both objectives | Result |
 |---|---|---|---|---|
@@ -582,7 +582,7 @@ vllm bench serve \
   --goodput ttft:200 tpot:25
 ```
 
-AIPerf is the NVIDIA tool that replaced GenAI-Perf. Its README shows `aiperf profile` with `--streaming`, `--endpoint-type chat`, `--url` and `--concurrency`. I did not run it and do not give a full command, because I checked only those flags.
+AIPerf is the NVIDIA tool that replaced GenAI-Perf. Its README shows `aiperf profile` with `--streaming`, `--endpoint-type chat`, `--url` and `--concurrency`. This chapter does not give a full command, because only those flags were checked and the tool was not run.
 
 Now the decision. The rule has five steps and it is written in the file `c03_decision.py`.
 
@@ -590,7 +590,7 @@ Now the decision. The rule has five steps and it is written in the file `c03_dec
 |---|---|
 | 1 | A level passes when p95 TTFT and p95 TPOT meet the objectives, errors stay under a limit, and enough requests meet every objective |
 | 2 | The operating point is the highest level in the unbroken run of passes that starts at the lowest level |
-| 3 | The scale target is the operating point times a headroom factor of 0.8, which is my reasoning |
+| 3 | The scale target is the operating point times a headroom factor of 0.8, which is a planning choice, not a sourced figure |
 | 4 | Peak concurrency is the peak request rate times mean end-to-end time, by Little's law |
 | 5 | GO only if the replicas needed fit in the GPUs you can run |
 
@@ -626,13 +626,13 @@ Suppose one GPU in a node throws a hardware error. The server process stays up a
 
 The reliability layer has four parts, and each one should be triggered on purpose in staging.
 
-A canary limits the damage of a bad release. In KServe v0.21.0 the `canaryTrafficPercent` field is reconciled in the Knative code path, and I found no use of it in the Standard path. In Standard mode, plan on two InferenceServices and a weighted route at the gateway. The promote and rollback thresholds are your own policy. I give no numbers, because the old draft's values came from a corpus chapter I could not confirm.
+A canary limits the damage of a bad release. In KServe v0.21.0 the `canaryTrafficPercent` field is reconciled in the Knative code path, and the source shows no use of it in the Standard path. In Standard mode, plan on two InferenceServices and a weighted route at the gateway. The promote and rollback thresholds are your own policy, and this chapter gives no numbers for them.
 
 Load shedding limits the damage of overload. The book Hands-On LLM Serving and Optimization, chapter 4, shows rate limiting at the gateway with Nginx or Envoy. Generative AI on Kubernetes adds that token-based limits fit LLM traffic better than request counts, because one request can generate many tokens. Choose a queue length from your sweep, and have the gateway return 429 past it.
 
 Probes keep traffic away from a pod that is loading or wedged. Section 4 set them. Remember that `/health` is shallow. The TensorRT-LLM `/health_generate` and SGLang health checks run a real generation, which is deeper but slower under load.
 
-GPU fault detection reads driver error codes. NVIDIA's XID catalog gives each code and a recommended action. The earlier draft called XID 62 a double-bit ECC error and sorted codes into fatal and precursor classes. The catalog says otherwise, as the table shows.
+GPU fault detection reads driver error codes. NVIDIA's XID catalog gives each code and a recommended action. XID 62 is sometimes described as a double-bit ECC error, and codes are sometimes sorted into fatal and precursor classes. The catalog says otherwise, as the table shows.
 
 | XID | Catalog description | Recommended action in the catalog |
 |---|---|---|
@@ -647,7 +647,7 @@ GPU fault detection reads driver error codes. NVIDIA's XID catalog gives each co
 
 The catalog says a GPU reset or node reboot clears XID 48. It says the affected GPU must be reset after XID 95 before applications can restart. Use the catalog as the source of truth and read it again before you write alert rules.
 
-Kubernetes for Generative AI Solutions, chapter 13, recommends the Node Problem Detector as a DaemonSet that surfaces node problems to the cluster. It describes EKS node auto repair replacing a node after ten minutes when Xid errors appear. I did not verify the equivalent on GKE, so check GKE node auto repair before relying on it. Chapters 17.4, 17.6 and 17.7 cover the DCGM exporter and alert rules.
+Kubernetes for Generative AI Solutions, chapter 13, recommends the Node Problem Detector as a DaemonSet that surfaces node problems to the cluster. It describes EKS node auto repair replacing a node after ten minutes when Xid errors appear. The equivalent on GKE is not verified here, so check GKE node auto repair before relying on it. Chapters 17.4, 17.6 and 17.7 cover the DCGM exporter and alert rules.
 
 ```mermaid
 flowchart TB
@@ -801,8 +801,8 @@ The tokenizer sits in front of the GPU and is a CPU queue. More GPUs add capacit
 Engines, servers and orchestrators. vLLM is an engine with its own server. Triton is a server. KServe is an orchestrator.
 </details>
 
-<details><summary>4. Which machine type carries one A100 40 GB on GKE, and what was wrong with the old one?</summary>
-The `a2-highgpu-1g` type with 12 vCPUs and 85 GB of memory. The old draft used `n1-standard-32`, and the documentation says N1 machines take T4, P4 and V100 GPUs.
+<details><summary>4. Which machine type carries one A100 40 GB on GKE, and why does `n1-standard-32` not work?</summary>
+The `a2-highgpu-1g` type with 12 vCPUs and 85 GB of memory. The documentation says N1 machines such as `n1-standard-32` take T4, P4 and V100 GPUs.
 </details>
 
 <details><summary>5. What do the keys type, count and gpu-driver-version control?</summary>
@@ -821,7 +821,7 @@ The cache is reserved at start-up and vLLM preempts and recomputes requests when
 Two times 32 layers times 8 KV heads times 128 dimensions times 2 bytes is 131,072 bytes, or 128 KiB. The model shape is from its configuration. The 3 GiB of other memory in the capacity table is an assumption.
 </details>
 
-<details><summary>9. Why did the earlier draft's context cap of 16,384 fail for Llama 3 8B?</summary>
+<details><summary>9. Why does a context cap of 16,384 fail for Llama 3 8B?</summary>
 That model's configuration allows 8,192 positions, so the server refuses a larger cap. Llama 3.1 8B allows 131,072.
 </details>
 
@@ -901,7 +901,7 @@ Cross-references to other handbook chapters:
 - 16.7 for KServe, 17.4 for the DCGM exporter.
 - [20.22 Operating vLLM, Triton, Ray and TensorRT-LLM](../part-20-nebius-sre-interview/22-operating-vllm-triton-ray-and-tensorrt-llm.md) for engine operations and the versions used here. Its versions of vLLM v0.32.0, Triton v2.74.0 and TensorRT-LLM v1.2.1 were rechecked and are still the latest stable.
 
-Migrated from `nvidia-devops`. The earlier draft drew on these files. Their incident narratives could not be confirmed, so they now appear only as labelled illustrations:
+Migrated from `nvidia-devops`. The chapter drew on these files. Their incident narratives could not be confirmed, so they now appear only as labelled illustrations:
 
 - `docs/nvidia-zero-to-hero/volume-24/chapter-11-inference-serving-design.md` for the capstone scenario.
 - `docs/nvidia-zero-to-hero/volume-12/chapter-08-kv-cache-memory-and-concurrency.md`, whose `--swap-space` advice no longer applies to v0.32.0.

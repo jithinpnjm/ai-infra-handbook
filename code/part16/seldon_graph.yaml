@@ -4,19 +4,19 @@ metadata:
   name: rag-pipeline
 spec:
   predictors:
-    - name: retriever
+    - name: default
+      replicas: 1
+      componentSpecs:
+        - spec:
+            containers:
+              - name: retriever
+                image: registry.example.com/rag/retriever:1.0
+              - name: generator
+                image: registry.example.com/rag/generator:1.0
       graph:
+        name: retriever
+        type: MODEL
         children:
-          - name: query-encoder
+          - name: generator
             type: MODEL
-            modelUri: s3://models/encoder
-          - name: vector-store
-            type: MODEL
-            modelUri: s3://models/vectorstore
-        modelUri: s3://models/retriever
-    - name: generator
-      graph:
-        children:
-          - name: retrieved-context
-            type: OUTPUT_TRANSFORMER
-        modelUri: s3://models/generator
+            children: []

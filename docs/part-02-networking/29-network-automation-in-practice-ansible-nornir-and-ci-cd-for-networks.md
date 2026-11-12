@@ -481,21 +481,20 @@ Use these questions to test your understanding. Each one maps to a section of th
 
 ## Exercises
 
-You can work through these six exercises in order.
+Work through these in order. Each one has a single situation.
 
-1. Start with a comparison. Compare Ansible, Nornir, Terraform and OpenTofu, and vendor controllers such as Apstra, CloudVision and NVIDIA UFM with NetQ. Judge them on the 10 axes from section 1, which include configuration management versus provisioning, agent versus agentless, DSL versus Python, declarative versus imperative, and state management. The source for these axes is *Network Programmability and Automation*, chapter 12.
+1. A team must choose a tool for network change. Compare Ansible, Nornir, Terraform and OpenTofu on the axes from section 1, such as agent versus agentless and declarative versus imperative. The source for these axes is *Network Programmability and Automation*, chapter 12.
+2. Explain why Ansible network modules run on the control node rather than on the switch. Then list the four `ansible.netcommon` connection plugins.
+3. An 8-leaf rollout must stop when one leaf fails. Use `simulate_serial_batch_rollout()` in `code/part02/net_automation_cicd_tools.py` to show how `serial: "25%"` and `max_fail_percentage: 0` behave when `leaf2` fails its BGP post-check.
+4. Use `compute_idempotent_config_diff()` to show that running the same change twice makes no second change.
+5. Trace the Section 3 Nornir script from `InitNornir` through `nr.filter(role="leaf")`, `build`, `deploy(dry_run=True)` and `verify`, using `num_workers: 20`. Then say when you would prefer Nornir to Ansible YAML.
+6. Use `evaluate_network_ci_pipeline()` to trace a switch configuration change through the five CI/CD stages. Name what each of the middle stages checks.
+7. Compare in-place, rolling, canary and blue/green deployment for a change to the spine layer. Use chapter 13 of *Network Programmability and Automation*.
+8. Draw the six components of the network automation architecture and show how they connect. Then compare Git with a relational database such as NetBox or Nautobot as a source of truth. This follows chapter 14 of the same book.
+9. List the four stages of configuration management and the five steps of an automated network operating system upgrade, also from chapter 14.
+10. Contrast on-box scripts with off-box controllers, using chapters 26 and 27 of *Computer Networking Problems and Solutions*. Explain how DPDK, SR-IOV and BlueField DPUs overcome the limits of a software datapath.
 
-2. Next, work through how Ansible behaves on the network side. First, explain why Ansible network modules run on the control node rather than on the switch, and list the four `ansible.netcommon` connection plugins. Then use `simulate_serial_batch_rollout()` and `compute_idempotent_config_diff()` in `code/part02/net_automation_cicd_tools.py` to trace how `serial: "25%"` and `max_fail_percentage: 0` protect an 8-leaf rollout when `leaf2` fails its BGP post-check.
-
-3. Then compare Nornir with Ansible playbooks. Trace the Section 3 Nornir script, following `InitNornir`, `nr.filter(role="leaf")`, `build`, `deploy(dry_run=True)` and `verify` running over `num_workers: 20`. Finish by stating when pure Python with Nornir is preferred over Ansible YAML.
-
-4. Next, follow a change through the pipeline. Using `evaluate_network_ci_pipeline()`, trace a switch configuration change through the five CI/CD stages, which run from peer review to staged deployment. The middle stages are build, lint and Batfish, containerlab emulation, and operational, connectivity and performance validation. Then compare in-place, rolling, canary and blue/green deployment, drawing on chapter 13 of *Network Programmability and Automation*.
-
-5. Then map the architecture. Draw the six components of the network automation architecture, which are user interactions, orchestration, source of truth, automation engine, network infrastructure, and telemetry and observability, and explain how they connect. List the six dimensions of SoT data quality. Compare Git with relational databases such as NetBox and Nautobot for persistence. Finally, list the four stages of configuration management and the five steps of an automated NOS upgrade. This material is in chapter 14 of *Network Programmability and Automation*.
-
-6. Finish with the device-side view. Contrast on-box scripts with off-box controllers, using chapters 26 and 27 of *Computer Networking Problems and Solutions*. Explain virtual network functions (VNFs and CNFs) and service chaining, and show how DPDK, SR-IOV and BlueField DPUs overcome software datapath limits. Then evaluate network automation with the state, optimization and interaction-surface trade-off model from chapter 26.
-
-Pick the exercise you find hardest to explain, and write that answer first. If you get stuck, reread the section the exercise names.
+Write your answer to the exercise you find hardest first. If you get stuck, reread the section the exercise names.
 
 ## Checkpoint questions (20)
 

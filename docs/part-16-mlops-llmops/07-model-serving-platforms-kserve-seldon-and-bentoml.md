@@ -121,7 +121,7 @@ The platform gives the model team the same contract, whichever product you choos
 |---|---|---|
 | **model URI** | Where the registry-staged artefact lives (`storageUri: gs://.../model.pkl`) | Model team, declared in InferenceService |
 | **runtime** | Which inference engine runs the model (`sklearn`, `pytorch`, `tensorflow`, `triton`, `vllm`) | Model team + platform team |
-| **scaling** | min replicas, max replicas, concurrency target, GPU request | Platform team, declared in InferenceService |
+| **scaling** | min replicas, max replicas, concurrency target, GPU request | Model team writes the values in the InferenceService, and the platform team sets the limits and the autoscaler behind them |
 | **canary** | Traffic split between previous and new version, observation window | Platform team, declared via the canary system |
 | **explainer** | Optional metadata for fairness, drift, or SHAP-based explanation | Model team + platform team |
 | **transformer** | Pre/post-processing pipeline (tokenisation, normalisation, response shaping) | Model team, declared as a sidecar |
@@ -325,7 +325,7 @@ spec:
       storageUri: s3://mlflow-artifacts/churn-model/canary/model.pkl   # the NEW model
 ```
 
-KServe does not judge the canary itself. Your pipeline, or a tool such as Argo Rollouts, watches the SLO and then raises the percentage or sets it to 0. Earlier drafts of this section had the canary field layout wrong. The layout above was checked against the upstream KServe repository.
+KServe does not judge the canary itself. Your pipeline, or a tool such as Argo Rollouts, watches the SLO and then raises the percentage or sets it to 0. The layout above follows the upstream KServe repository.
 
 Seldon Core splits traffic through Istio, and BentoML uses Yatai. The mechanisms differ, but the contract stays the same.
 
@@ -361,25 +361,25 @@ metadata:
   name: rag-pipeline
 spec:
   predictors:
-    - name: retriever
+    - name: default
+      replicas: 1
+      componentSpecs:
+        - spec:
+            containers:
+              - name: retriever
+                image: registry.example.com/rag/retriever:1.0
+              - name: generator
+                image: registry.example.com/rag/generator:1.0
       graph:
+        name: retriever
+        type: MODEL
         children:
-          - name: query-encoder
+          - name: generator
             type: MODEL
-            modelUri: s3://models/encoder
-          - name: vector-store
-            type: MODEL
-            modelUri: s3://models/vectorstore
-        modelUri: s3://models/retriever
-    - name: generator
-      graph:
-        children:
-          - name: retrieved-context
-            type: OUTPUT_TRANSFORMER
-        modelUri: s3://models/generator
+            children: []
 ```
 
-This graph is a RAG pipeline. The retriever encodes the query and looks up the vector store. It then hands the retrieved context to the generator. The two predictors can run on different runtimes, and the orchestrator routes requests between them.
+This graph is a RAG pipeline. The graph has one predictor, and the generator is a child node of the retriever. Seldon passes the retriever's output to its child, so the generator receives the retrieved context. Several entries under `predictors` would not make a chain. They are alternative versions of the same deployment, such as a main predictor and a canary, and traffic is split between them. The image names are placeholders for your own containers. This manifest has not been applied to a live cluster.
 
 ### 4.3 BentoML multi-model
 

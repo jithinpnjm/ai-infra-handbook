@@ -29,7 +29,7 @@ An interviewer says "design a training cluster" and goes quiet. Candidates who s
 
 This chapter is a capstone for the whole handbook. It reuses the Slurm cluster from [19.1](./01-capstone-a-slurm-gpu-cluster.md), the Kubernetes platform from [19.2](./02-capstone-a-kubernetes-gpu-platform-with-kai-and-kueue.md), the fault-tolerant training job from [19.4](./04-capstone-multi-node-training-with-fault-tolerance.md), the fabric tests from [19.5](./05-capstone-an-nccl-tests-fabric-lab.md) and the capacity model from [19.9](./09-capstone-capacity-planning.md). It does not repeat them. It shows how to join them into one design you can speak aloud in 45 minutes.
 
-Every number in the worked design comes from a script in `code/part19/` that the tests check. Every hardware figure is either from a gem book, from an NVIDIA document or page I name, or it is labelled an assumption. The chapter does not claim what any company asks. It says what the question tests and how to answer it.
+Every number in the worked design comes from a script in `code/part19/` that the tests check. Every hardware figure is either from a gem book, from an NVIDIA document or page the chapter names, or it is labelled an assumption. The chapter does not claim what any company asks. It says what the question tests and how to answer it.
 
 ## Prerequisites and outcomes
 
@@ -46,7 +46,7 @@ After this chapter you can:
 
 ### The workload used throughout
 
-Everything below is one worked design. The inputs are my assumptions for teaching. They are not a customer's numbers.
+Everything below is one worked design. The inputs are assumptions chosen for teaching. They are not a customer's numbers.
 
 | Input | Value | Where it comes from |
 |---|---|---|
@@ -106,9 +106,9 @@ FLOPs = 6 x parameters x tokens
 GPUs  = FLOPs / (peak FLOPS x MFU x seconds available)
 ```
 
-The second line means: the more of the datasheet peak you actually use, the fewer GPUs you buy. MFU is model FLOPs per second over peak FLOPS. The same book says a well-tuned large run reaches 40 to 60 percent and shows a 70B example near 43 percent on H100. I use 40 percent because a design should not assume the best case.
+The second line means: the more of the datasheet peak you actually use, the fewer GPUs you buy. MFU is model FLOPs per second over peak FLOPS. The same book says a well-tuned large run reaches 40 to 60 percent and shows a 70B example near 43 percent on H100. The design uses 40 percent because a design should not assume the best case.
 
-`size_gpu_pool.py` also corrects for two costs the simple formula hides. A checkpoint takes time to write, and a failure throws away the work since the last checkpoint. A bigger pool fails more often, so the correction depends on the answer. The script iterates until the node count stops changing. The correction model is my reasoning, and the Young interval inside it is a first-order result that [20.17](../part-20-nebius-sre-interview/17-system-design-drill-sheet-twelve-prompts.md) checked against Aupy and co-authors.
+`size_gpu_pool.py` also corrects for two costs the simple formula hides. A checkpoint takes time to write, and a failure throws away the work since the last checkpoint. A bigger pool fails more often, so the correction depends on the answer. The script iterates until the node count stops changing. The correction model is this chapter's own reasoning, and the Young interval inside it is a first-order result that [20.17](../part-20-nebius-sre-interview/17-system-design-drill-sheet-twelve-prompts.md) checked against Aupy and co-authors.
 
 The full output of `python3 c11_worked_example.py` follows, pasted from the file `c11_worked_example_output.txt`. Later sections quote lines from it. Its last eleven lines are the design review.
 
@@ -148,7 +148,7 @@ failure_plan   PASS health check and automatic restart named
 
 Read the sizing numbers in order. The job needs 8.4e23 FLOPs, which is 360 GPUs if nothing ever failed. Checkpoint writes and failures add about 1.1 percent, so the pool becomes 46 nodes, which is 368 GPUs. Two spare nodes cover the expected nodes down during a 24 hour repair, plus one. That is 48 nodes and 384 GPUs to buy.
 
-Do not stop at compute. The training state must also fit in memory. Distributed AI Systems ch. 5 says Adam keeps two FP32 copies at 8 bytes per parameter and a FP32 master copy adds 4 more. With BF16 weights at 2 and gradients at 2, my sum is 16 bytes per parameter, so 1.12 TB for this model. Eight B200 GPUs with 192 GB each could hold that state alone. The script prints 8 as a floor because activations are not counted. At 368 GPUs sharded, state is about 3 GB per GPU. Memory is not the constraint here. Compute is.
+Do not stop at compute. The training state must also fit in memory. Distributed AI Systems ch. 5 says Adam keeps two FP32 copies at 8 bytes per parameter and a FP32 master copy adds 4 more. With BF16 weights at 2 and gradients at 2, the sum is 16 bytes per parameter, so 1.12 TB for this model. Eight B200 GPUs with 192 GB each could hold that state alone. The script prints 8 as a floor because activations are not counted. At 368 GPUs sharded, state is about 3 GB per GPU. Memory is not the constraint here. Compute is.
 
 State the cost in one sentence too. Holding 368 GPUs for 30 days at the placeholder price is about 2.25 million dollars. One more MFU point saves about 8.8 GPUs, which is about 54 thousand dollars. That is why people spend weeks tuning kernels and overlap. For the full capacity method with scenarios and forecast bands, use [19.9](./09-capstone-capacity-planning.md).
 
@@ -171,9 +171,9 @@ A DGX B200 draws up to 14.3 kW, is 10 rack units tall, and is air cooled, accord
 
 Power is provisioned as N equals 2 circuits. Each circuit must be rated for half of the rack's peak demand after breaker derating. The document's example for the two-system rack uses two 380 V three-phase 32 A circuits. Supply air should stay at or under 30 degrees Celsius for these systems, with filtration rated MERV 13 or better. The document says rear door heat exchangers and in-row coolers are not typically suitable for DGX B200.
 
-Apply that to the worked design. The 48 nodes sit in 24 racks of two. The compute alone draws 48 times 14.3, which is 686.4 kW. Switches, storage and management come on top and I have no sourced figure for them, so I do not state one. In the interview say that the number is compute only. Then offer to ask the facilities team for the rest.
+Apply that to the worked design. The 48 nodes sit in 24 racks of two. The compute alone draws 48 times 14.3, which is 686.4 kW. Switches, storage and management come on top. The documents give no sourced figure for them, so the chapter states none. In the interview say that the number is compute only. Then offer to ask the facilities team for the rest.
 
-If the interviewer picks the newer rack-scale system instead, the DGX GB300 SuperPOD reference architecture changes the picture. Its scalable unit is 8 racks, each with 72 GPUs, and the unit needs 1.2 MW of thermal design power. Hybrid cooling means GPUs and CPUs are liquid cooled and other parts are air cooled. A power shelf has six 5.5 kW supplies and delivers up to 33 kW, and each rack has eight shelves. Dividing 1.2 MW by 8 racks gives 150 kW per rack, but that is my division and the unit includes more than the racks. The document says the data center should meet Uptime Tier 3 or an equivalent class.
+If the interviewer picks the newer rack-scale system instead, the DGX GB300 SuperPOD reference architecture changes the picture. Its scalable unit is 8 racks, each with 72 GPUs, and the unit needs 1.2 MW of thermal design power. Hybrid cooling means GPUs and CPUs are liquid cooled and other parts are air cooled. A power shelf has six 5.5 kW supplies and delivers up to 33 kW, and each rack has eight shelves. Dividing 1.2 MW by 8 racks gives 150 kW per rack, but that is a division, and the unit includes more than the racks. The document says the data center should meet Uptime Tier 3 or an equivalent class.
 
 | Fact | DGX B200 | DGX GB300 |
 |---|---|---|
@@ -207,11 +207,11 @@ Now the counting. Take a switch with 64 ports of 400 Gb/s. A non-blocking leaf g
 | GB300, 2 SUs, 144-port switch | 16 leaf, 8 spine | GB300 RA Table 3 | Matches |
 | GB300, 4, 8 and 16 SUs | Table says 18, 36, 72 spines | Same table | Formula gives 16, 32, 64 |
 
-Two rows disagree with the formula and I did not hide them. The vendor tables list more spines than plain counting in the 3-SU B200 case and in the larger GB300 cases. I do not know why. A likely reason is a rail or plane balance rule that the documents do not spell out, but that is my guess. In a real design, build to the vendor table and ask the vendor.
+Two rows disagree with the formula. The vendor tables list more spines than plain counting in the 3-SU B200 case and in the larger GB300 cases. The documents do not say why. A likely reason is a rail or plane balance rule that they do not spell out, but that is a guess. In a real design, build to the vendor table and ask the vendor.
 
-For the worked design, 384 endpoints on 64-port switches need 12 leaf and 6 spine switches. That is 18 switches and 384 leaf-to-spine cables. The SuperPOD documents say to build the fabric for a full scalable unit and leave unused ports where nodes are not installed, so the real order follows the vendor pattern and not my minimum. The GB300 document says the same for non-standard sizes.
+For the worked design, 384 endpoints on 64-port switches need 12 leaf and 6 spine switches. That is 18 switches and 384 leaf-to-spine cables. The SuperPOD documents say to build the fabric for a full scalable unit and leave unused ports where nodes are not installed, so the real order follows the vendor pattern and not the plain minimum. The GB300 document says the same for non-standard sizes.
 
-Oversubscription is a choice, and the choice should come from traffic. The network book notes that some companies evaluate up to 7:1 at the super spine and warns that congestion then needs DCQCN. For a single large training job with all-reduce across the whole fabric, I design for 1:1. For many small jobs that stay inside a rail group, a higher ratio may be acceptable, but I would want measured traffic first. The GB300 document itself uses 1:3 blocking on the Ethernet compute leaves of the storage and in-band fabric, which is a separate network. That shows that the same cluster can mix ratios by purpose.
+Oversubscription is a choice, and the choice should come from traffic. The network book notes that some companies evaluate up to 7:1 at the super spine and warns that congestion then needs DCQCN. For a single large training job with all-reduce across the whole fabric, design for 1:1. For many small jobs that stay inside a rail group, a higher ratio may be acceptable, but measure the traffic first. The GB300 document itself uses 1:3 blocking on the Ethernet compute leaves of the storage and in-band fabric, which is a separate network. That shows that the same cluster can mix ratios by purpose.
 
 Scale-up and scale-out differ by a large factor. A B200 has 1.8 TB/s of NVLink bandwidth per GPU according to Distributed AI Systems ch. 2 and the GB300 document. A 400 Gb/s rail NIC is 50 GB/s. The script gives a ratio of 36. So put tensor parallelism inside the NVLink domain, which is 8 GPUs in a DGX B200 node or 72 in a GB300 rack, and let data parallel traffic cross the NICs. The details of NCCL on this fabric are in [19.5](./05-capstone-an-nccl-tests-fabric-lab.md) and [12.13](../part-12-ai-networking/13-fabric-design-topology-oversubscription-and-scale.md).
 
@@ -227,9 +227,9 @@ At 02:00 the job stalls for two minutes every half hour and the dashboard shows 
 
 Start with dataset reads, because people over-size them. The run reads 2 trillion tokens over 30 days. That is about 770,000 tokens per second. At 4 bytes per token it is 3.1 MB per second for the whole cluster. Text pre-training barely touches storage. The numbers change for multimodal data. If each sample is 500 KB and the cluster consumes 20,000 samples per second, the read rate is 10 GB per second. Use `design_storage.py` with your own sample size, and say which case you are in.
 
-Checkpoints are the heavy part. A checkpoint holds the weights and the optimizer state, not the gradients. Using Distributed AI Systems ch. 5, that is 2 bytes of BF16 weights plus 12 bytes of FP32 optimizer-side state, which is my sum of 14 bytes per parameter. For 70 billion parameters that is 980 GB per checkpoint.
+Checkpoints are the heavy part. A checkpoint holds the weights and the optimizer state, not the gradients. Using Distributed AI Systems ch. 5, that is 2 bytes of BF16 weights plus 12 bytes of FP32 optimizer-side state, which sums to 14 bytes per parameter. For 70 billion parameters that is 980 GB per checkpoint.
 
-How long does the write take? It depends on the bandwidth. The DGX GB300 reference architecture gives guidelines for one scalable unit. Table 5 lists 90 GB/s read and 45 GB/s write for a "standard" level and 280 and 140 for "enhanced". It is a different system from the B200 in my example, so I use it only as an order of magnitude. At 45 GB/s the write takes 21.8 seconds. At 10 GB/s it would take 98 seconds.
+How long does the write take? It depends on the bandwidth. The DGX GB300 reference architecture gives guidelines for one scalable unit. Table 5 lists 90 GB/s read and 45 GB/s write for a "standard" level and 280 and 140 for "enhanced". It is a different system from the B200 in the worked design, so it serves only as an order of magnitude. At 45 GB/s the write takes 21.8 seconds. At 10 GB/s it would take 98 seconds.
 
 ```text
 checkpoint size  = 70e9 x 14 bytes            = 980 GB
@@ -239,11 +239,11 @@ bandwidth needed for a 3 percent stall budget = 18.1 GB/s
 five retained checkpoints                     = 4.90 TB
 ```
 
-The 3 percent budget is my policy default, not a standard. The reading is simple: a synchronous checkpoint every 30 minutes at 45 GB/s costs 1.2 percent of the run, which is about 27 thousand dollars at the placeholder price. At 10 GB/s the stall would be 5.4 percent. The GB300 document also notes that asynchronous checkpointing lets training continue while the write happens in the background. Then the stall is only the in-memory snapshot, and the script models that with an extra argument.
+The 3 percent budget is a policy default, not a standard. The reading is simple: a synchronous checkpoint every 30 minutes at 45 GB/s costs 1.2 percent of the run, which is about 27 thousand dollars at the placeholder price. At 10 GB/s the stall would be 5.4 percent. The GB300 document also notes that asynchronous checkpointing lets training continue while the write happens in the background. Then the stall is only the in-memory snapshot, and the script models that with an extra argument.
 
 Operations matter here too. AI Systems Performance Engineering ch. 3 warns that checkpoint bursts can fill the OS page cache and cause stalls, and it describes tuning the dirty-page settings. Treat that as a reason to test a real write at full node count before launch, which is what [13.7](../part-13-ai-storage/07-checkpoint-architecture-and-recovery.md) teaches.
 
-Tiering follows from the arithmetic. A parallel file system with RDMA serves the training reads and the shared checkpoints. The GB300 document requires file storage with RDMA support, linear scaling and non-disruptive upgrades. A second tier of object storage holds older checkpoints and the raw dataset. Local NVMe on each node, four 3.84 TB drives in the GB300 compute tray, is useful for scratch and a fast first checkpoint copy. The old draft of this chapter, and NVIDIA Zero-to-Hero volume 23, describe a two-step checkpoint to local NVMe and then to remote storage. I did not verify that against a vendor source, so I present it as my reasoning and not as a standard.
+Tiering follows from the arithmetic. A parallel file system with RDMA serves the training reads and the shared checkpoints. The GB300 document requires file storage with RDMA support, linear scaling and non-disruptive upgrades. A second tier of object storage holds older checkpoints and the raw dataset. Local NVMe on each node, four 3.84 TB drives in the GB300 compute tray, is useful for scratch and a fast first checkpoint copy. The old draft of this chapter, and NVIDIA Zero-to-Hero volume 23, describe a two-step checkpoint to local NVMe and then to remote storage. That is not verified against a vendor source, so it is presented as reasoning and not as a standard.
 
 User storage is separate. The GB300 document puts home directories and logs on NFS over the in-band network with at least 100 GbE. Do not put them on the training file system.
 
@@ -267,7 +267,7 @@ Supercomputers for Linux SysAdmins ch. 13 says Kubernetes is built for scaling s
 
 The newer platforms soften the picture. The DGX GB300 reference architecture says Mission Control gives scheduler access with Slurm and with Kubernetes through Run:ai. Handbook chapters [11.13](../part-11-gpu-kubernetes/13-kai-scheduler-why-default-scheduling-is-not-enough.md) to [11.20](../part-11-gpu-kubernetes/20-scheduler-comparison-guide-kai-kueue-volcano-yunikorn-and-slurm.md) show how KAI and Kueue add gang scheduling, queues and topology awareness. [6.16](../part-06-hpc-slurm/16-slurm-on-kubernetes-slinky-and-soperator.md) covers running Slurm on Kubernetes.
 
-`choose_scheduler.py` encodes the rule. It takes eight answers and returns a choice with every reason. The weights are my judgement, and the output tells you which ones fired.
+`choose_scheduler.py` encodes the rule. It takes eight answers and returns a choice with every reason. The weights are a judgement call, and the output tells you which ones fired.
 
 | Answer | Pushes toward | Why |
 |---|---|---|
@@ -357,7 +357,7 @@ The Young interval for this cluster is 4,616 seconds, about 77 minutes, and the 
 
 Detection is the part that wastes the most time. Use a health check that runs before a job, after a job and periodically, drain a node on a hardware error, and requeue the job automatically from the last checkpoint. A hung collective needs a timeout so the job fails fast instead of waiting forever. The NCCL debugging steps are in [12.18](../part-12-ai-networking/18-nccl-debugging-hangs-timeouts-and-errors.md).
 
-Failure domains deserve a sentence each. The B200 document's pattern is N with two circuits, each rated for half of peak demand. My reading is that this gives no circuit redundancy, so losing one circuit takes down the rack's systems. Redundancy then comes from spare nodes and checkpoints. A leaf switch failure cuts one rail for the nodes behind it, which is my reasoning and not a vendor statement. A storage failure stops checkpoints, so the file system needs its own redundancy. The GB300 document states the data center should be concurrently maintainable with no single point of failure.
+Failure domains deserve a sentence each. The B200 document's pattern is N with two circuits, each rated for half of peak demand. Read plainly, this gives no circuit redundancy, so losing one circuit takes down the rack's systems. Redundancy then comes from spare nodes and checkpoints. A leaf switch failure cuts one rail for the nodes behind it, which is an inference and not a vendor statement. A storage failure stops checkpoints, so the file system needs its own redundancy. The GB300 document states the data center should be concurrently maintainable with no single point of failure.
 
 **Decision rule:** checkpoint on a round interval near the Young optimum, fail fast on hangs, drain bad nodes, and requeue automatically.
 
@@ -367,13 +367,13 @@ Failure domains deserve a sentence each. The B200 document's pattern is N with t
 
 Procurement wants a signature and the operations lead wants to know who carries the pager. A design is finished when it can pass a review that someone else runs. `design_review.py` is that review as code.
 
-It takes a design dictionary and runs eleven checks. The requirements are stated, the pool delivers the FLOPs, the state fits in memory, the fabric is not oversubscribed at the leaf, the rack stays within its power limit, the spares match the rule, the checkpoint stall is within budget, the scheduler has reasons, the five signals exist, the quotas fit the pool, and a failure plan names a health check and a restart. A missing section fails the check, it does not crash. The thresholds of 3 percent and 80 percent of HBM are my policy defaults.
+It takes a design dictionary and runs eleven checks. The requirements are stated, the pool delivers the FLOPs, the state fits in memory, the fabric is not oversubscribed at the leaf, the rack stays within its power limit, the spares match the rule, the checkpoint stall is within budget, the scheduler has reasons, the five signals exist, the quotas fit the pool, and a failure plan names a health check and a restart. A missing section fails the check, it does not crash. The thresholds of 3 percent and 80 percent of HBM are policy defaults chosen for the chapter.
 
 Run on the example design, all eleven checks print PASS, as the last lines of the output in section 2 show. The tests then plant nine separate faults, one per check, and confirm that each is caught. The power check passes with exactly 28.6 kW of 28.6 kW, which is a good case to point at: it has no margin, so ask about the circuit rating.
 
 Operations needs a few more lines in the answer. Lifecycle work, such as driver and firmware upgrades, follows [17.10](../part-17-operations/10-cluster-lifecycle-upgrades-and-change-management.md). Runbooks and game days follow [17.11](../part-17-operations/11-incident-response-and-game-days.md) and [17.15](../part-17-operations/15-on-call-runbooks.md). The NVIDIA Mission Control stack in the GB300 document is the vendor option for health checks and recovery and names Base Command Manager for provisioning and operations.
 
-Cost closes the answer. The run costs about 2.25 million dollars at the placeholder price. Say what moves it: MFU, price, spare count, and checkpoint stall. Buying instead of renting changes the shape, and [19.9](./09-capstone-capacity-planning.md) has the buy-versus-rent model. Do not quote a purchase price, because I have no sourced one.
+Cost closes the answer. The run costs about 2.25 million dollars at the placeholder price. Say what moves it: MFU, price, spare count, and checkpoint stall. Buying instead of renting changes the shape, and [19.9](./09-capstone-capacity-planning.md) has the buy-versus-rent model. Do not quote a purchase price, because the sources give none.
 
 **Decision rule:** call the design done only when an independent review runner passes it and the thresholds it used are written down.
 
@@ -428,11 +428,11 @@ Likely follow-ups and short answers:
 
 | Follow-up | Answer |
 |---|---|
-| What if the model is a mixture of experts | The 6 times rule uses active parameters, and all-to-all traffic raises the fabric stakes. I have no sourced figure here and would measure. |
+| What if the model is a mixture of experts | The 6 times rule uses active parameters, and all-to-all traffic raises the fabric stakes. There is no sourced figure here, so measure it. |
 | What if they want 10,000 GPUs | Leave two tiers at 2,048 endpoints per 64-port fabric, use three tiers or oversubscribe the top, and revisit failure rates because the cluster MTBF drops to hours. |
-| Why not Ethernet | Possible, see [12.12](../part-12-ai-networking/12-ethernet-versus-infiniband-a-design-decision-guide.md). My worked design follows the NVIDIA SuperPOD documents, which use InfiniBand for compute. |
-| Why not Kubernetes | The rule in section 6, and I would flip if services share the GPUs. |
-| How do you know MFU will hold | I do not. I measure it in the first day and resize. |
+| Why not Ethernet | Possible, see [12.12](../part-12-ai-networking/12-ethernet-versus-infiniband-a-design-decision-guide.md). The worked design follows the NVIDIA SuperPOD documents, which use InfiniBand for compute. |
+| Why not Kubernetes | The rule in section 6, and flip the choice if services share the GPUs. |
+| How do you know MFU will hold | You do not know yet. Measure it on the first day and resize. |
 
 Mistakes to avoid:
 
@@ -460,7 +460,7 @@ Mistakes to avoid:
 FLOPs equal six times parameters times tokens. GPUs equal FLOPs divided by peak FLOPS times MFU times the seconds available.
 </details>
 
-<details><summary>2. Why do I use an MFU of 40 percent?</summary>
+<details><summary>2. Why does the design use an MFU of 40 percent?</summary>
 
 It is the low end of the 40 to 60 percent range given in Distributed AI Systems ch. 2. A design should survive a poor first month.
 </details>
@@ -482,7 +482,7 @@ Up to 14.3 kW per system, and two per rack at 28.6 kW, according to the DGX B200
 
 <details><summary>6. Why is the 686 kW figure incomplete?</summary>
 
-It covers the 48 compute nodes only. I have no sourced figure for switches, storage or management, so I do not state one.
+It covers the 48 compute nodes only. There is no sourced figure for switches, storage or management, so none is stated.
 </details>
 
 <details><summary>7. What does a rail-optimised design mean?</summary>
@@ -574,14 +574,14 @@ A design that cannot answer a question has not passed it. The runner reports FAI
 
 ### Migrated from `nvidia-devops`
 
-- `docs/nvidia-zero-to-hero/volume-23/chapter-10-system-design-training-cluster.md`: its interview-phase structure and its idea of a two-step checkpoint informed the layout. I skimmed headings only and kept none of its numbers.
-- Volume 8 (system design) was cited by the old draft and not re-read.
+- `docs/nvidia-zero-to-hero/volume-23/chapter-10-system-design-training-cluster.md`: its interview-phase structure and its idea of a two-step checkpoint informed the layout. Only its headings were used, and none of its numbers.
+- Volume 8 (system design) is cited in the chapter's lineage but was not re-read.
 
 ### Explicitly labelled inferences
 
-- The checkpoint and failure inflation model, the N+1 spare rule, the 3 percent stall budget, the 80 percent HBM rule and the scheduler weights are my reasoning.
-- The 14 and 16 bytes per parameter are my sums of statements in Distributed AI Systems.
-- The 150 kW per GB300 rack is my division and includes more than racks.
+- The checkpoint and failure inflation model, the N+1 spare rule, the 3 percent stall budget, the 80 percent HBM rule and the scheduler weights are reasoning, not sourced figures.
+- The 14 and 16 bytes per parameter are sums of statements in Distributed AI Systems.
+- The 150 kW per GB300 rack is a division that includes more than the racks.
 - A rail or plane balance rule as the reason for extra spines is a guess.
 - The two-step checkpoint to local NVMe and then remote storage is not verified.
 
@@ -591,7 +591,7 @@ A design that cannot answer a question has not passed it. The runner reports FAI
 - Per-GPU MTBF, restart time, repair time, bytes per token and the price are assumptions.
 - Young's formula is a first-order result confirmed through [20.17](../part-20-nebius-sre-interview/17-system-design-drill-sheet-twelve-prompts.md), not re-derived here.
 - The GB300 storage table is for a different system than the worked B200 design.
-- I did not source power for switches, storage or management.
+- Power for switches, storage and management is not sourced.
 
 ### Verification log
 

@@ -106,11 +106,11 @@ Two combinations are documented. MPS runs on top of MIG with a lower client limi
 
 A planner on the platform team writes "split every H100 into two halves" in a design document. A reviewer asks which profile that is, and nobody can say whether it is 3g.40gb or 4g.40gb. The two profiles differ in compute, and the hardware allows different combinations of each. The names carry the answer, so it pays to read them properly.
 
-A MIG-capable GPU is described by two kinds of slice. The guide says a GPU memory slice is roughly one eighth of the memory resources, including capacity and bandwidth. A GPU SM slice is roughly one seventh of the SMs when the GPU is in MIG mode. A GPU instance combines some memory slices with some SM slices. The profile name `Ng.Mgb` means N SM slices and about M gigabytes of memory.
+A MIG-capable GPU is described by two kinds of slice. The MIG User Guide says a GPU memory slice is roughly one eighth of the memory resources, including capacity and bandwidth. A GPU SM slice is roughly one seventh of the SMs when the GPU is in MIG mode. A GPU instance combines some memory slices with some SM slices. The profile name `Ng.Mgb` means N SM slices and about M gigabytes of memory.
 
 A GPU instance can be divided into compute instances that share its memory but have their own SMs. This chapter uses one compute instance per GPU instance, which is what `-C` and mig-parted create.
 
-The guide's "Supported MIG Profiles" page has one table per product. The H100 80 GB table is the one this chapter uses. Its columns for hardware units and copy engines are in the data file, and the first columns are shown here.
+The MIG User Guide's "Supported MIG Profiles" page has one table per product. The H100 80 GB table is the one this chapter uses. Its columns for hardware units and copy engines are in the data file, and the first columns are shown here.
 
 | Profile | Fraction of memory | Fraction of SMs | Instances per GPU |
 |---|---|---|---|
@@ -122,17 +122,17 @@ The guide's "Supported MIG Profiles" page has one table per product. The H100 80
 | 4g.40gb | 4/8 | 4/7 | 1 |
 | 7g.80gb | Full | 7/7 | 1 |
 
-The profile names follow the memory, so they change between products. The guide says the A100 80 GB names are 1g.10gb, 1g.20gb, 2g.20gb, 3g.40gb, 4g.40gb and 7g.80gb, which are the same names as the H100. The 40 GB A100 uses 1g.5gb, 1g.10gb, 2g.10gb, 3g.20gb, 4g.20gb and 7g.40gb. The H200 uses 1g.18gb, 1g.35gb, 2g.35gb, 3g.71gb, 4g.71gb and 7g.141gb. The B200 uses 1g.23gb, 1g.45gb, 2g.45gb, 3g.90gb, 4g.90gb and 7g.180gb. All of them share the same fractions, so a layout designed in slices carries across products even though the gigabyte labels change.
+The profile names follow the memory, so they change between products. The MIG User Guide says the A100 80 GB names are 1g.10gb, 1g.20gb, 2g.20gb, 3g.40gb, 4g.40gb and 7g.80gb, which are the same names as the H100. The 40 GB A100 uses 1g.5gb, 1g.10gb, 2g.10gb, 3g.20gb, 4g.20gb and 7g.40gb. The H200 uses 1g.18gb, 1g.35gb, 2g.35gb, 3g.71gb, 4g.71gb and 7g.141gb. The B200 uses 1g.23gb, 1g.45gb, 2g.45gb, 3g.90gb, 4g.90gb and 7g.180gb. All of them share the same fractions, so a layout designed in slices carries across products even though the gigabyte labels change.
 
 The `+me` profile adds media engines, and only one such 1g instance fits per GPU. The A30, the RTX PRO cards and the Thor iGPU have four or two slices, so the planner refuses them.
 
-The guide gives SM counts only for the A100 40 GB listing: 14 for a 1g slice, 42 for 3g, 56 for 4g and 98 for 7g. The GPU Operator guide prints H100 labels of 16, 32 and 60 multiprocessors for 1g.10gb, 2g.20gb and 3g.40gb. This chapter does not extrapolate SM counts, because the guide does not publish them.
+The MIG User Guide gives SM counts only for the A100 40 GB listing: 14 for a 1g slice, 42 for 3g, 56 for 4g and 98 for 7g. The GPU Operator guide prints H100 labels of 16, 32 and 60 multiprocessors for 1g.10gb, 2g.20gb and 3g.40gb. This chapter does not extrapolate SM counts, because the MIG User Guide does not publish them.
 
-The guide lists minimum drivers: R450 for the A100, R525 for the H100, R550 for the H200 and R570 for the B200. From Hopper on, enabling MIG mode needs no GPU reset, and the mode does not persist across a driver reload. Created instances never survive a reboot, so MIG Manager or mig-parted must recreate them.
+The MIG User Guide lists minimum drivers: R450 for the A100, R525 for the H100, R550 for the H200 and R570 for the B200. From Hopper on, enabling MIG mode needs no GPU reset, and the mode does not persist across a driver reload. Created instances never survive a reboot, so MIG Manager or mig-parted must recreate them.
 
 The full table is data: `code/part19/c08_mig_profiles.json` holds all 99 rows from 14 tables with source page and dates, and a test counts them. Two oddities are kept as printed: the H100 1g.20gb row shows memory 1/4 but L2 1/8, and copy engines are 7 for the A100 7g.40gb and 8 for the H100 7g.80gb.
 
-**Decision rule:** Design layouts in slices of one eighth memory and one seventh SM, then translate to profile names per product, and take every number from the guide's table for that exact GPU.
+**Decision rule:** Design layouts in slices of one eighth memory and one seventh SM, then translate to profile names per product, and take every number from the MIG User Guide's table for that exact GPU.
 
 **In one minute:** A profile name is a pair of slice counts plus a rounded memory size. The slice fractions are the same on every seven-slice GPU, and the names change with memory. The data file holds the whole NVIDIA table.
 
@@ -142,7 +142,7 @@ The full table is data: `code/part19/c08_mig_profiles.json` holds all 99 rows fr
 
 The chat team needs four copies of a model with a peak of about 30 GB. Search needs ten small embedding servers, notebooks need six medium slices, fine-tuning needs two large ones and a nightly batch job wants a whole GPU. An engineer counts 49 of the 56 slices on an eight-GPU node and declares that it fits. It does not, and the reason is geometry.
 
-A GPU instance cannot start just anywhere. The guide shows the legal start positions with `nvidia-smi mig -lgipp` for the A100 40 GB. A start position is counted in memory slices from 0 to 7. The 1g.5gb profile can start at any of positions 0 to 6. The 1g.10gb profile can start at 0, 2, 4 or 6. The 2g.10gb profile can start at 0, 2 or 4. The 3g.20gb profile can start at 0 or 4, the 4g.20gb profile only at 0, and the 7g.40gb profile only at 0.
+A GPU instance cannot start just anywhere. The MIG User Guide shows the legal start positions with `nvidia-smi mig -lgipp` for the A100 40 GB. A start position is counted in memory slices from 0 to 7. The 1g.5gb profile can start at any of positions 0 to 6. The 1g.10gb profile can start at 0, 2, 4 or 6. The 2g.10gb profile can start at 0, 2 or 4. The 3g.20gb profile can start at 0 or 4, the 4g.20gb profile only at 0, and the 7g.40gb profile only at 0.
 
 Three consequences follow from those positions, and each one explains a failure that surprises new operators.
 
@@ -150,9 +150,9 @@ Three consequences follow from those positions, and each one explains a failure 
 2. Two 3g instances fill all eight memory slices, so nothing else fits beside them. They use 6 of the 7 SM slices, so one SM slice is stranded.
 3. Seven 1g instances use all seven SM slices but only seven of the eight memory slices. One memory slice is stranded, which is why seven 1g.10gb slices give 70 GB of an 80 GB card.
 
-The guide also shows that creation order matters. Asking for 3g.20gb last fails with "Insufficient Resources" and asking first succeeds, so the planner prints the largest profile first. mig-parted retries orderings itself.
+The MIG User Guide also shows that creation order matters. Asking for 3g.20gb last fails with "Insufficient Resources" and asking first succeeds, so the planner prints the largest profile first. mig-parted retries orderings itself.
 
-Does the same table hold for the H100 and later GPUs? The guide prints the listing only for the A100 40 GB and draws other products as figures. The planner reuses the A100 positions for every seven-slice GPU, and a test checks that against the H100 figure of 19 valid configurations: every figure row is feasible and every maximal mix the planner finds is in the figure. It is still an inference, so confirm with `nvidia-smi mig -lgipp` on the real GPU.
+Does the same table hold for the H100 and later GPUs? The MIG User Guide prints the listing only for the A100 40 GB and draws other products as figures. The planner reuses the A100 positions for every seven-slice GPU, and a test checks that against the H100 figure of 19 valid configurations: every figure row is feasible and every maximal mix the planner finds is in the figure. It is still an inference, so confirm with `nvidia-smi mig -lgipp` on the real GPU.
 
 The planner packs the largest profiles first, putting each instance on the first GPU where an exact search over start positions still succeeds, and it reports anything that fits nowhere. Here is the tenant mix from the story on H100 80 GB, produced by `python3 code/part19/c08_mig_planner.py`.
 
@@ -281,7 +281,7 @@ GKE differs. It partitions per node pool with `gpu-partition-size`, every GPU in
 
 On Thursday the platform team relabels node 3 from "balanced" to "all-3g.40gb" for a new tenant. MIG Manager starts and the pods on the node stop. The batch team's run dies at hour nine. The change was correct, and the damage came from treating a layout change as a label edit.
 
-Applying a layout is disruptive. The GPU Operator guide says MIG Manager sets `nvidia.com/mig.config.state`, terminates all GPU pods on the node, and moves the state from `pending` to `success`, or to `rebooting` with the reboot option. A daemon holding a driver handle, such as DCGM or NVSM, can also block enabling MIG with "In use by another client", and the guide's remedy is to stop it first. The BCM administration manual adds that only one MIG management tool may configure a node at a time, whether that is BCM, the DGX service or the GPU Operator's MIG Manager.
+Applying a layout is disruptive. The GPU Operator guide says MIG Manager sets `nvidia.com/mig.config.state`, terminates all GPU pods on the node, and moves the state from `pending` to `success`, or to `rebooting` with the reboot option. A daemon holding a driver handle, such as DCGM or NVSM, can also block enabling MIG with "In use by another client", and the MIG User Guide's remedy is to stop it first. The BCM administration manual adds that only one MIG management tool may configure a node at a time, whether that is BCM, the DGX service or the GPU Operator's MIG Manager.
 
 Six failure modes of a sliced fleet are worth knowing. The table lists the symptom, the cause and the first check.
 
@@ -294,13 +294,13 @@ Six failure modes of a sliced fleet are worth knowing. The table lists the sympt
 | Layout lost after reboot | MIG devices are not persistent, and on Hopper the mode is not either | Confirm MIG Manager reapplied the config and the state label is `success` |
 | Workload admitted by Kueue but Pending in the scheduler | Quota is larger than what the node really offers | Compare ClusterQueue quota with node allocatable |
 
-Stranded slices come in two kinds. The first is built into the layout: two 3g profiles always strand one SM slice and seven 1g profiles always strand one memory slice. The second comes from history, because the guide notes that as instances are created and destroyed, fragmentation occurs.
+Stranded slices come in two kinds. The first is built into the layout: two 3g profiles always strand one SM slice and seven 1g profiles always strand one memory slice. The second comes from history, because the MIG User Guide says that fragmentation occurs as instances are created and destroyed.
 
 The planner shows the second kind with instances that cannot move. With two 1g.10gb instances at starts 0 and 4, six memory slices are free, but 4g.40gb needs start 0 and 3g.40gb needs 0 or 4. Only a 2g.20gb still starts, so fragmentation is 0.667. A planner that may move instances finds room for the 3g.40gb. That gap is the difference between paper and a live node, and tests cover both.
 
 One process sees little. CUDA enumerates one compute instance per GPU instance and at most 64 MIG instances across all GPUs, so a script expecting eight MIG devices will not get them. A pod needing two slices also stays Pending if no single node supplies both.
 
-A reconfiguration window needs a procedure. This one is my reasoning from documented behaviour.
+A reconfiguration window needs a procedure. This one is derived from the documented behaviour, and NVIDIA does not publish it as a procedure.
 
 1. Cordon the node and let its Kueue workloads finish or be preempted.
 2. Lower the ClusterQueue quotas for the affected profiles, so Kueue stops admitting to slices about to disappear.
@@ -323,7 +323,7 @@ The Kueue source refuses a pod that requests a resource the ClusterQueue does no
 
 The design has one ClusterQueue per tenant plus a queue holding the six spare 1g.10gb slices, all in one cohort. Each tenant holds its own profile and lends nothing. The spare queue lends its slices and search may borrow up to six, so no tenant's reserved slices can be taken.
 
-The file is validated against the Kueue v0.20.5 CRDs with `check_crd_yaml.py`, which rejects unknown fields. The earlier draft used `flavorQuotas` and the old `cohort` field, and the checker rejected them. The current API is `v1beta2` and names the field `cohortName`.
+The file is validated against the Kueue v0.20.5 CRDs with `check_crd_yaml.py`, which rejects unknown fields. The current API is `v1beta2`. It names the cohort field `cohortName`, and the checker rejects the older field names `flavorQuotas` and `cohort`.
 
 ```yaml
 # Kueue objects for the MIG tenant mix (Chapter 19.8).
@@ -625,7 +625,7 @@ spec:
               nvidia.com/mig-3g.40gb: 1
 ```
 
-Now the price. The rule must be additive, so shares on one GPU never exceed the GPU. My design choice, not NVIDIA's: a slice's weight is the average of its memory share and SM share. A 7g.80gb slice weighs 1, a 3g.40gb slice weighs 0.4643 and a 4g.40gb slice weighs 0.5357, so those two together make one GPU.
+Now the price. The rule must be additive, so shares on one GPU never exceed the GPU. This is a design choice, not NVIDIA's: a slice's weight is the average of its memory share and SM share. A 7g.80gb slice weighs 1, a 3g.40gb slice weighs 0.4643 and a 4g.40gb slice weighs 0.5357, so those two together make one GPU.
 
 Memory alone would charge a 3g.40gb and a 4g.40gb the same, although the 4g tenant gets a third more SMs. SM alone would undercharge the 1g.20gb slice. Teams with strong views can change one function.
 
@@ -666,11 +666,11 @@ Documented limits and controls:
 - GPUDirect RDMA works from GPU instances. Graphics APIs work only on `+gfx` profiles of some Blackwell cards.
 - Profiling of shared GPU resources is unsupported.
 
-What stays shared is my reasoning, since the guide is silent. One driver serves all instances, so a bad driver update is node-wide. The board has one power budget and one firmware, and a GPU reset affects the whole GPU. Chapter 11.24 lists the same shared items.
+What stays shared is inferred, since the MIG User Guide is silent. One driver serves all instances, so a bad driver update is node-wide. The board has one power budget and one firmware, and a GPU reset affects the whole GPU. Chapter 11.24 lists the same shared items.
 
 Kubernetes isolation is outside MIG. Namespaces, RBAC, network policies and storage credentials keep tenant A from tenant B's secrets. Production Kubernetes chapter 12 separates soft multitenancy, where tenants share some trust, from hard multitenancy, where they are treated as adversaries, and notes that requests and limits are weaker than a hypervisor.
 
-GKE's page says multi-instance GPUs are not recommended for untrusted workloads. For adversarial tenants, MIG is one layer, to combine with Chapter 18.5 and separate node pools. Older book advice that NCCL does not work with MIG is superseded by the guide, which now gives experimental support from NCCL 2.31 with conditions.
+GKE's page says multi-instance GPUs are not recommended for untrusted workloads. For adversarial tenants, MIG is one layer, to combine with Chapter 18.5 and separate node pools. Older book advice that NCCL does not work with MIG is superseded by the MIG User Guide, which now gives experimental support from NCCL 2.31 with conditions.
 
 **Decision rule:** Tell reviewers that MIG isolates the SMs, memory paths and errors of each instance, and that the driver, board, host and Kubernetes layers are separate controls that you must provide.
 
@@ -682,7 +682,7 @@ GKE's page says multi-instance GPUs are not recommended for untrusted workloads.
 
 On Friday the notebooks tenant reports slow cells. The node dashboard shows the GPU 40 percent busy and the memory looks fine. The engineer needs to know whether that tenant's slice is the busy one, and the GPU-level view cannot say.
 
-On Ampere, NVML and `nvidia-smi` do not attribute utilisation to MIG devices and show N/A. The guide recommends DCGM, v3 or later. GKE says GPU utilisation metrics such as `duty_cycle` are not available for multi-instance GPUs.
+On Ampere, NVML and `nvidia-smi` do not attribute utilisation to MIG devices and show N/A. The MIG User Guide recommends DCGM, v3 or later. GKE says GPU utilisation metrics such as `duty_cycle` are not available for multi-instance GPUs.
 
 The DCGM exporter 4.9.0 repository documents what is reported per instance. On a MIG GPU, fields DCGM declares at GPU level are read once per GPU without `GPU_I_ID`, `GPU_I_PROFILE` or `GPU_CI_ID` labels. Fields declared at instance level carry the MIG labels. In the default metric file they are:
 
@@ -868,7 +868,7 @@ It has 3 of 7 SM slices and about 40 GB of memory, which is 4 of the 8 memory sl
 </details>
 
 <details><summary>2. Why can an H100 hold only one 4g.40gb instance?</summary>
-The profile has one legal start position, 0, in the A100 listing the guide prints. A second instance would need the same start.
+The profile has one legal start position, 0, in the A100 listing the MIG User Guide prints. A second instance would need the same start.
 </details>
 
 <details><summary>3. Why do two 3g.40gb instances leave one SM slice unused?</summary>
@@ -884,7 +884,7 @@ When all tenants share one trust domain or the GPU has no MIG support. The GPU O
 </details>
 
 <details><summary>6. Why should multi-node training not use MIG?</summary>
-The guide lists no peer-to-peer between instances on different GPUs, no CUDA IPC across GPU instances, and only experimental NCCL support. Training also wants whole GPUs and their interconnects.
+The MIG User Guide lists no peer-to-peer between instances on different GPUs, no CUDA IPC across GPU instances, and only experimental NCCL support. Training also wants whole GPUs and their interconnects.
 </details>
 
 <details><summary>7. What is the difference between the single and mixed strategies?</summary>
@@ -896,11 +896,11 @@ MIG Manager sets the state label, terminates the GPU pods on the node and then a
 </details>
 
 <details><summary>9. Why can a DCGM agent block enabling MIG mode?</summary>
-A process holding a driver handle can stop the GPU reset. The guide reports "In use by another client" and says to stop services such as DCGM first.
+A process holding a driver handle can stop the GPU reset. The MIG User Guide reports "In use by another client" and says to stop services such as DCGM first.
 </details>
 
 <details><summary>10. Do MIG instances survive a reboot?</summary>
-No. The guide says created instances are not persistent, and on Hopper and later the mode itself does not persist across a driver reload. MIG Manager or mig-parted recreates the layout.
+No. The MIG User Guide says created instances are not persistent, and on Hopper and later the mode itself does not persist across a driver reload. MIG Manager or mig-parted recreates the layout.
 </details>
 
 <details><summary>11. Why does the ClusterQueue list cpu and memory beside the MIG resource?</summary>
@@ -971,9 +971,9 @@ Chapters 11.4, 11.5, 11.8, 11.24, 11.25, 11.26, 11.29, 16.14, 17.4, 18.5, 19.1, 
 ### Explicitly labelled inferences
 
 - The planner reuses the A100 40 GB start positions for every seven-slice GPU. A test checks it against the H100 figure.
-- The blended weight, the idle and layout-loss split, and the fully loaded policy are my design.
+- The blended weight, the idle and layout-loss split, and the fully loaded policy are this chapter's design.
 - The price of 4.00 USD per GPU-hour, the cpu and memory quotas, and the alert thresholds are placeholders.
-- That the driver, board power and firmware stay shared, and the reconfiguration procedure, are my reasoning.
+- That the driver, board power and firmware stay shared, and the reconfiguration procedure, are inferred, not documented.
 
 ### Not verified or not run, and why
 
@@ -982,7 +982,7 @@ Chapters 11.4, 11.5, 11.8, 11.24, 11.25, 11.26, 11.29, 16.14, 17.4, 18.5, 19.1, 
 - The `resource` label value of `kueue_cluster_queue_resource_reservation` comes from the metrics documentation and was not seen in a real scrape.
 - Whether MIG Manager builds the five-profile mix in one pass is untested. mig-parted retries orderings, which is visible in its source.
 - The GKE variant is documentation only, with no manifest.
-- The `nvidia-smi` output formats in the guide come from older drivers.
+- The `nvidia-smi` output formats in the MIG User Guide come from older drivers.
 
 ### Verification log
 
