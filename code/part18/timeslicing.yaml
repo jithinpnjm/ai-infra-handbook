@@ -4,7 +4,9 @@ metadata:
   name: gpu-device-plugin-config
 data:
   time-slicing-config.yaml: |
+    version: v1
     sharing:
-      timeSlicingConfig:
-        interval: 5
-        timeout: 10
+      timeSlicing:
+        resources:
+          - name: nvidia.com/gpu
+            replicas: 4

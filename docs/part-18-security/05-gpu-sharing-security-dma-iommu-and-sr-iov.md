@@ -23,615 +23,342 @@ lab_venue: "GCP / GKE"
 | Coverage file | `planning/coverage/chapters/18-05.md` |
 | Claim & number ledger | `planning/ledgers/18-05.md` |
 
-## GPU sharing security at a glance
+## Where this chapter starts: a container image that reached the host
 
-Suppose two teams share one GPU server. What stops the training job from reading the serving team's data? Three hardware layers answer that, as the diagram shows.
+In September 2024, researchers at Wiz showed that a container image built by an attacker could get out of its container and reach the file system of the node it ran on. The flaw was in the NVIDIA Container Toolkit, the software that gives a container access to the GPU. It was tracked as CVE-2024-0132. NVIDIA rated it 9.0 out of 10 and fixed it in Container Toolkit 1.16.2 and GPU Operator 24.6.2.
 
-```mermaid
-flowchart TB
-    subgraph Host["Host"]
-        CPU[CPU]
-        MEM[System memory]
-    end
+Nothing in that attack needed a clever trick inside the GPU. The attacker used the plumbing around it. That is the first lesson of GPU sharing security: before you ask whether one tenant can read another tenant's GPU memory, ask how many other paths lead from a tenant's container to the host.
 
-    subgraph Isolation["Isolation layers"]
-        IOMMU[IOMMU<br/>DMA translation]
-        MIG[NVIDIA MIG<br/>hardware partition]
-        SRIOV[SR-IOV<br/>PCIe partition]
-    end
+This chapter lists the threats that exist when several tenants share GPU nodes, and it names the control that stops each one. It does not repeat how to configure MIG, time-slicing or vGPU. Chapters 11.21 to 11.26 own those mechanics, and Chapter 11.26 owns the decision between them.
 
-    subgraph Tenant["Tenant workload"]
-        GPU[GPU kernel]
-        DATA[GPU memory]
-    end
-
-    CPU -->|DMA| IOMMU
-    IOMMU -->|allow mapped| GPU
-    IOMMU -->|refuse unmapped| BLOCK[Blocked]
-    MIG -->|spatial partition| GPU
-    SRIOV -->|PCIe partition| GPU
-```
-
-The IOMMU checks the memory addresses devices use for DMA. MIG splits the GPU itself, and SR-IOV splits access at the PCIe level.
-
-## Why this matters for AI infrastructure
-
-Chapter 18.4 checked who can reach the cluster. This chapter checks what a workload can reach once it is running on a GPU. A GPU reads system memory directly through DMA, which stands for Direct Memory Access. When two tenants share a GPU, that direct access is the path you have to contain.
-
-Three mechanisms draw the boundary between tenants. The IOMMU governs memory addresses, MIG governs the GPU's internal resources, and SR-IOV governs PCIe access. Your job as the platform team is to configure all three correctly. A mistake in any one of them can leave one tenant's memory open to another.
-
-Sharing is what makes a multi-tenant GPU cluster affordable. Without it, every tenant needs a card of its own, and many cards sit idle. With it, several tenants use one card, and the cost per tenant falls. The saving is only safe when hardware enforces the boundary, not software alone.
-
-The figures in the block below are example values for planning a budget. They are not measured costs, so replace them with your own numbers.
-
-```text
-Why GPU sharing security is on the critical path (background reading: NVIDIA Zero-to-Hero volume 18; NVIDIA Zero-to-Hero volume 11; the figures below are examples, not quotations):
-- A typical mature AI platform runs 50-200 GPU nodes. Each node has 8 GPUs.
-  Each GPU costs $3-5/hour, so 400-1,600 GPUs cost about $1.2k-8k/hour.
-  GPU sharing reduces the cluster cost by 2-4x; the cost saving is millions
-  of dollars per year.
-- GPU sharing without hardware-enforced isolation is a security risk. A
-  tenant can read another tenant's GPU memory via DMA. The platform team's
-  job is to enable hardware-enforced isolation (MIG, SR-IOV, IOMMU).
-- The IOMMU is the foundation of the GPU sharing security. Without the IOMMU,
-  the GPU can DMA any system memory; the GPU can read any tenant's data. With
-  the IOMMU, the GPU can only DMA the memory the IOMMU has mapped for the
-  tenant.
-```
-
-Three operational realities make this a platform-team concern, not only a data-science concern.
-
-1. The GPU reads system memory through DMA. Without the IOMMU, it can read any part of that memory, so the platform team must turn the IOMMU on and enforce the DMA boundaries.
-2. The GPU is the most expensive shared resource. Sharing it cuts cost, but it also opens a DMA attack surface, so you must weigh the saving against the risk.
-3. Each sharing mode has different security properties. Time-slicing takes turns on the GPU, MIG splits it in hardware, and SR-IOV virtualizes it at the PCIe level. Choose the mode for each workload.
-
-Production Kubernetes, chapter 12, describes multitenancy as a spectrum rather than a yes-or-no choice. At the hard end, tenants are treated as possible adversaries, and that is the assumption a GPU shared across teams should be built for.
-
-**Before a team can claim its AI factory is multi-tenant, it must configure this security.** The IOMMU must be on, the MIG partitions must be enforced, and the SR-IOV virtual functions must be isolated. A team that skips this has not enforced the tenant boundary on its most expensive resource.
+Sharing is worth the effort because it is cheaper. In the planning example below, a cluster of 50 to 200 nodes with 8 GPUs each has 400 to 1,600 GPUs. At 3 to 5 dollars per GPU hour that is about 1.2 to 8 thousand dollars an hour. A sharing scheme that cuts the bill by two to four times saves a great deal of money, and that is exactly why teams accept its risks. These figures are planning examples, not measured costs.
 
 ## Prerequisites and outcomes
 
 ### Prerequisites
 
-Start with the chapters that give you the context for this one. Chapter 18.1 covers the threat model, and Chapter 18.4 covers the cluster access controls. Chapters 11.24 to 11.27 explain the MIG and time-slicing modes you will configure here. You also need a working knowledge of DMA, IOMMU, SR-IOV, and NVIDIA MIG.
+Chapter 18.1 gives the threat-modeling method used here. Chapter 18.4 covers who can reach the cluster. Chapters 11.21 to 11.26 explain IOMMU, SR-IOV, vGPU, MIG and time-slicing. You should know what a container runtime and a device plugin do.
 
 ### Outcomes
 
-After completing this chapter you will be able to:
+After this chapter you will be able to:
 
-1. Enable the IOMMU on every GPU node and check that it governs the DMA boundaries.
-2. Configure NVIDIA MIG partitions and confirm that they enforce the partition boundaries.
-3. Configure SR-IOV virtual functions and confirm that they isolate PCIe-level GPU access.
-4. Choose the right GPU sharing mode for each workload, weighing cost against security.
-5. Detect and respond to GPU memory scraping attacks.
-6. Run the GPU sharing security on GKE with continuous verification, MIG enforcement, and incident response.
-
----
-
-## 1. The IOMMU
-
-### 1.1 What the IOMMU does
-
-Picture a GPU that writes to a memory page it was never given. Without a check, that write could land in another tenant's data. The IOMMU, or Input-Output Memory Management Unit, is the hardware check that stops it. It is a hardware chip that translates the addresses devices use for DMA.
-
-The IOMMU maps each device's DMA addresses to physical addresses and enforces that mapping. It also refuses any DMA access the mapping does not allow.
-
-```text
-IOMMU functions:
-- Address translation: maps device DMA addresses to physical addresses
-- Access control: enforces read/write permissions per mapping
-- Isolation: each device sees only its mapped memory
-- Audit: logs DMA accesses for forensics
-```
-
-### 1.2 The IOMMU on the GPU node
-
-Before you rely on the IOMMU, confirm that the node actually has it on. Three things must be true. The IOMMU is enabled in the BIOS, the kernel configures it, and the GPU driver uses it. The commands below check the kernel log and the GPU's IOMMU entry.
-
-```bash
-# Verify the IOMMU is enabled
-dmesg | grep -i iommu
-# expected: "DMAR: IOMMU enabled" appears in the kernel log
-
-# Verify the IOMMU is in use by the GPU
-cat /sys/class/iommu/*/devices/* | grep -i nvidia
-# expected: the NVIDIA GPU device is listed under the IOMMU
-```
-
-If the expected line does not match what you see, do not assume the IOMMU is off. Read the full kernel log for your hardware before you decide.
-
-### 1.3 The IOMMU in production
-
-Do not assume the IOMMU is on just because the hardware supports it. Many servers ship with it off in the BIOS or leave the kernel option unset. So the real work is verifying it on every node, watching its translations, and responding when faults appear. A page fault is a signal to investigate, not noise to ignore.
-
-```bash
-# Monitor the IOMMU translations
-perf stat -e iommu.io_page_walk.cycles,iommu.io_page_fault.cycles
-# expected: the IOMMU page walks are tracked; the IOMMU page faults are tracked
-```
-
-The event names in the command depend on the CPU and the kernel, so list the events your system offers with `perf list` first. Alert on IOMMU page faults, and make sure the on-call engineer knows to investigate each one. Check the IOMMU state on each node before you admit it to the GPU pool.
+1. Name five threats to a shared GPU node and the control that stops each one.
+2. Explain why the IOMMU protects host memory and not one tenant's GPU memory from another.
+3. Patch and configure the NVIDIA Container Toolkit so a tenant image cannot reach the host.
+4. Choose a sharing mode by what it separates and what it still shares.
+5. Decide when a tenant needs a whole GPU, or a whole GPU in confidential computing mode.
 
 ---
 
-## 2. NVIDIA MIG (Multi-Instance GPU)
+## 1. Five threats and the control for each
 
-### 2.1 What MIG does
+A threat table is the fastest way to see the whole problem. Read each row as a story: who the attacker is, what they try, and what actually stops them. The sections after the table explain the rows.
 
-Suppose two teams each need only a small slice of a GPU. Without MIG, they must share the whole card and trust software to keep them apart. MIG, which stands for Multi-Instance GPU, divides one GPU into separate instances. Each instance gets its own compute, memory, and bandwidth, and the instances cannot read each other's memory.
-
-The layout below shows example partition profiles. A GPU has seven compute slices, and every instance uses some of them, so the instances you create must fit inside that budget. Check the profiles your GPU model supports with `nvidia-smi mig -lgip` before you configure anything.
-
-```text
-MIG partitioning:
-- A100 80GB: up to 7 instances, for example seven 1g.10gb instances
-  or one 3g.40gb instance plus three 1g.10gb instances
-- H100 80GB: up to 7 instances, with similar profile names
-- Each instance has dedicated compute, memory, bandwidth
-- Instances are hardware-isolated
+```mermaid
+flowchart LR
+    T1[Read another tenant's GPU memory] --> C1[Separate address space per CUDA context, MIG for hardware partitions]
+    T2[Escape to the host through the container runtime] --> C2[Patch the toolkit, use CDI, restrict who can create pods]
+    T3[Device DMA into host memory] --> C3[IOMMU]
+    T4[Noisy neighbour or shared fault domain] --> C4[MIG, or one GPU per tenant]
+    T5[Leftover data and side channels] --> C5[Whole GPU per tenant, reset between tenants, confidential computing]
 ```
 
-### 2.2 The MIG configuration
-
-Configuring MIG takes three steps: turn MIG mode on, create the instances, and list them to confirm. Each step depends on the one before it. The partitions are set up at boot, and workloads are then assigned to them.
-
-```bash
-# Enable MIG mode
-nvidia-smi -mig 1
-# expected: the GPU enters MIG mode; the GPU is partitioned
-
-# Create MIG instances
-nvidia-smi mig -cgi 0,1,2,3,4,5,6 -C
-# expected: the MIG instances are created; the instances are listed
-
-# List the MIG instances
-nvidia-smi -L
-# expected: the MIG instances are listed; each instance has a unique ID
-```
-
-The numbers after `-cgi` are profile IDs, and the IDs differ between GPU models. List them with `nvidia-smi mig -lgip` and substitute the ones for your plan. Compare the final listing with the layout you planned before any workload starts.
-
-### 2.3 The MIG in Kubernetes
-
-Imagine a churn model that needs one small slice of a GPU, not the whole card. You request that slice in the Pod spec, and the scheduler finds a node that offers it. The device plugin exposes one resource name per partition, so the Pod asks for the partition by that name.
-
-```yaml
-# code/part18/mig_workload.yaml
-apiVersion: v1
-kind: Pod
-metadata:
-  name: churn-model
-spec:
-  containers:
-    - name: model
-      image: my-model:v1
-      resources:
-        limits:
-          nvidia.com/mig-1g.5gb: 1
-```
-
-The cluster schedules the Pod onto a node that has that partition, and the workload runs inside it. The profile name in the example belongs to a 40 GB card. An 80 GB card names its smallest slice `1g.10gb`. Request the smallest partition that fits the workload, and check the resource name against what the node advertises.
-
----
-
-## 3. SR-IOV
-
-### 3.1 What SR-IOV does
-
-Think of SR-IOV, which stands for Single Root I/O Virtualization, as a way to cut one PCIe device into several smaller devices. The Physical Function, or PF, is the full device. Each Virtual Function, or VF, is a lightweight partition that the system treats as its own device.
-
-```text
-SR-IOV components:
-- Physical Function (PF): the full PCIe device
-- Virtual Function (VF): the lightweight partition
-- Each VF has its own PCIe config space
-- Each VF has its own BARs and interrupts
-- The VFs share the underlying hardware with the PF
-```
-
-The PF is the parent, and the VFs are its children. Each VF is hardware-isolated from the others. The VFs still share the hardware's bandwidth, so one busy VF can affect the rest.
-
-### 3.2 The SR-IOV for GPUs
-
-NVIDIA applies the same idea to GPUs through vGPU. Each tenant gets a virtual GPU that its workload sees as a separate device. The partitions are created once, at boot, and the GPU device plugin then hands them to workloads.
-
-```bash
-# Enable SR-IOV on the GPU
-nvidia-smi -vgpu 1
-# expected: the GPU enters vGPU mode; the vGPU partitions are created
-
-# List the vGPU partitions
-nvidia-smi -L
-# expected: the vGPU partitions are listed; each partition has a unique ID
-```
-
-Run the listing command to confirm that the partitions exist. The enable step for vGPU depends on the vGPU manager release installed on the host, and the command above has not been tested here. If it fails on your driver, follow the vGPU manager documentation rather than guessing at flags.
-
-### 3.3 The SR-IOV vs MIG
-
-MIG and SR-IOV both isolate tenants in hardware, but they work at different levels. MIG divides the GPU inside the chip, while SR-IOV divides access at the PCIe level. The table compares them on the points that matter when you choose one.
-
-| Feature | MIG | SR-IOV (vGPU) |
-|---|---|---|
-| Isolation | Hardware (GPU-internal) | Hardware (PCIe-level) |
-| Sharing | Spatial (concurrent) | Spatial (concurrent) |
-| Performance | Near-native | Near-native |
-| Use case | Inference; training; HPC | VDI; multi-tenant cloud |
-| Management | NVIDIA driver | NVIDIA vGPU manager |
-
-The use-case row is the simplest guide. MIG suits inference, training, and HPC, while SR-IOV suits VDI and multi-tenant cloud. Match the mode to the use case before you pick one for a workload.
-
----
-
-## 4. Time-slicing security implications
-
-### 4.1 What time-slicing does
-
-Picture two inference services on one GPU. The GPU runs the first service for a moment, switches to the second, and then repeats the cycle. That is time-slicing. The workloads take turns on the card instead of running at the same instant.
-
-```text
-Time-slicing:
-- GPU runs tenant A's kernel
-- GPU preempts tenant A's kernel
-- GPU runs tenant B's kernel
-- GPU preempts tenant B's kernel
-- Cycle continues
-```
-
-The GPU is shared in turns, not at the same time. The turns separate the tenants in time only. They do not give each tenant its own protected memory, and the table below shows what that costs.
-
-### 4.2 The security implications
-
-Time-slicing offers weaker security than MIG or SR-IOV. The table compares the three modes on memory, compute, predictability, and side-channel risk. Use it to decide which workloads can accept the weaker mode.
-
-| Property | Time-slicing | MIG | SR-IOV |
+| Threat | What the attacker does | Control that stops it | What it does not stop |
 |---|---|---|---|
-| Memory isolation | None (processes share GPU memory) | Strong (hardware) | Strong (hardware) |
-| Compute isolation | Weak (shared bandwidth) | Strong (spatial) | Strong (spatial) |
-| Performance predictability | Low | High | High |
-| Side-channel risk | High | Low | Low |
+| Cross-tenant GPU memory read | A process on a shared GPU tries to read memory that belongs to another process | Each CUDA context has its own address space. MIG gives each instance dedicated memory | Time-slicing adds no separation beyond the contexts themselves |
+| Host escape through the container toolkit | A crafted image or a hook abuse gives the container access to the host | Patched toolkit and device plugin, CDI mode, admission policy on who may create pods | A fully patched toolkit does not help against the next flaw |
+| Device DMA into host memory | A device, or a VM that owns a device, writes to host memory it was not given | The IOMMU, with devices assigned in IOMMU groups | The IOMMU does not separate two processes sharing one GPU |
+| Noisy neighbour or shared failure | One tenant fills memory, crashes the GPU or starves the others | MIG gives memory bandwidth and error isolation. Time-slicing and MPS do not | MIG slices still share some engines and the physical card |
+| Leftover data and side channels | A later or concurrent tenant reads data the first tenant left, or measures timing | Whole GPU per tenant, a reset between tenants, confidential computing mode | Physical attacks and many side channels remain outside the model |
 
-Time-slicing suits workloads that do not share state. MIG and SR-IOV suit workloads that need strong isolation. Production Kubernetes, chapter 12, makes a similar point about container limits. They isolate tenants less strictly than a hypervisor does, so noisy-neighbor effects can remain.
-
-### 4.3 The time-slicing configuration
-
-The GPU device plugin configures time-slicing. You set the slice interval and the timeout in a ConfigMap, and the plugin assigns the slices to workloads. The values in the block below are examples. Choose your own after you measure your workload.
-
-```yaml
-# code/part18/timeslicing.yaml
-apiVersion: v1
-kind: ConfigMap
-metadata:
-  name: gpu-device-plugin-config
-data:
-  time-slicing-config.yaml: |
-    sharing:
-      timeSlicingConfig:
-        interval: 5
-        timeout: 10
-```
+**The control that stops a threat depends on which memory is under attack.** The IOMMU guards host memory against devices. A separate address space and MIG guard GPU memory against other GPU users. A patched toolkit guards the host against the container. Mixing these up is the most common mistake in this area.
 
 ---
 
-## 5. GPU memory scraping attacks
+## 2. Cross-tenant GPU memory read and the IOMMU
 
-### 5.1 What is GPU memory scraping
+### 2.1 Two different memories
 
-Consider a tenant that wants another tenant's model weights or inference inputs. If the GPU memory is not isolated, the tenant can simply read them. That is GPU memory scraping. The attack works around software isolation by reading memory through DMA.
+A GPU node has two memories. Host memory is the node's ordinary RAM, which the operating system and every container share. GPU memory is the high-bandwidth memory on the card. A tenant worries about both, but different hardware protects each.
 
-```text
-GPU memory scraping attack:
-- Tenant A's workload runs on the GPU
-- Tenant A's workload uses DMA to read GPU memory
-- Tenant A's workload reads GPU memory that contains Tenant B's data
-- Tenant A's workload exfiltrates Tenant B's data
-```
+A CUDA context is the container for everything one process does on a GPU. The CUDA programming guide says a context is analogous to a CPU process and that each context has its own distinct address space. A pointer from one context therefore means nothing in another. This is the base separation between two processes that share a GPU, and it exists whether or not MIG is on.
 
-Application code cannot stop this kind of read, which is why the hardware boundaries matter.
+### 2.2 What the IOMMU does
 
-### 5.2 The defence: IOMMU + MIG + SR-IOV
+DMA means a device reads or writes host memory without the CPU copying the data. That is how a GPU or a network card moves data fast. The risk is that a device with unrestricted DMA can touch any page. The Linux kernel documentation for VFIO calls this the greatest risk to system integrity when a device gets read-write access to system memory.
 
-The defence combines the IOMMU, MIG, and SR-IOV. Each one blocks a different path, so the table below lists what each layer contributes.
+The IOMMU, short for input-output memory management unit, sits between devices and host memory. It translates the addresses a device uses and refuses accesses that were not mapped for that device. The kernel documentation says modern IOMMUs let devices be isolated from each other and from arbitrary memory access.
 
-| Defence | What it does |
-|---|---|
-| IOMMU | Translates DMA addresses and refuses unauthorised DMA |
-| MIG | Hardware-isolates GPU memory, with each partition holding its own memory |
-| SR-IOV | Hardware-isolates PCIe-level access, with each VF holding its own config space |
+The IOMMU works on a unit called an IOMMU group. The VFIO documentation defines a group as a set of devices that can be isolated from all other devices, and says the group is the smallest unit that can be safely handed to a user. It also warns that a PCIe-to-PCI bridge, or a bridge without ACS support, can let traffic redirect without reaching the IOMMU. When you give a whole GPU to a VM, the whole IOMMU group moves with it.
 
-### 5.3 The detection
-
-Detection is the step teams most often skip. Watch GPU memory use over time, and alert when the pattern looks wrong. The command below prints memory use once per second.
+Check that the node has IOMMU groups before it joins a tenant pool.
 
 ```bash
-# Monitor the GPU memory access patterns
-nvidia-smi --query-gpu=memory.used,memory.total --format=csv -l 1
-# expected: the memory usage is monitored; the anomalous patterns are visible
+ls /sys/kernel/iommu_groups | wc -l
+lspci -nn -d 10de:
 ```
 
-Memory-use numbers alone do not prove a scraping attempt. Treat them as a starting point, and check them against other signals before you act.
+The first command counts the groups, and zero means the IOMMU is not active. The second lists NVIDIA devices, which have vendor ID 10de. For each GPU, check which devices share its group under `/sys/kernel/iommu_groups`.
+
+Notice what this does not protect. Two containers sharing one GPU are not separated by the IOMMU. Both reach the GPU through the same driver on the same host. They are separated by the contexts in section 2.1 or by MIG in section 4.
 
 ---
 
-## 6. Operating GPU sharing security on GKE
+## 3. Host escape through the container runtime
 
-### 6.1 The components
+### 3.1 Why this is the realistic threat
 
-Five components have to keep working on every GPU node. Each one has a backing store and a target state. The table lists them.
+Sharing a GPU does not give a tenant any way into the node by itself. The container runtime does. To give a container a GPU, a toolkit runs code on the host when the container starts. That code is a target.
 
-| Component | Where it runs | Backing store | SLO |
-|---|---|---|---|
-| IOMMU | Every GPU node | BIOS and kernel settings | IOMMU enabled |
-| MIG | Every GPU node | GPU driver | MIG partitions enforced |
-| SR-IOV | Every GPU node | GPU driver | VFs isolated |
-| Time-slicing | Every GPU node | GPU device plugin | Time-slicing configured |
-| GPU memory monitoring | Every GPU node | Prometheus | Memory metrics scraped |
+NVIDIA's security bulletins record two flaws of this kind.
 
-The SLO column names the target state for each component. Those targets are examples for your team to set and measure against.
-
-### 6.2 IAM and the GPU sharing security
-
-Access to GPU sharing settings needs its own roles. The pattern has three of them. Readers can see the MIG and SR-IOV settings, writers change them, and the admin approves partitions and virtual functions.
-
-| Role | Who | What they can do |
+| CVE | What it is | Fixed in |
 |---|---|---|
-| `gpusharing.reader` | The platform team and the security team | Read the MIG and SR-IOV configuration |
-| `gpusharing.writer` | The platform team | Configure MIG and SR-IOV |
-| `gpusharing.admin` | The platform team lead | Approve MIG partitions and SR-IOV virtual functions |
+| CVE-2024-0132 | A time-of-check time-of-use flaw in the default configuration. A crafted image could reach the host file system. NVIDIA states it does not affect use cases where CDI is used | Container Toolkit 1.16.2, GPU Operator 24.6.2 |
+| CVE-2025-23266 | A flaw in hooks the toolkit uses to initialize containers. It allows arbitrary code with elevated permissions. It is rated 9.0 and is classified as CWE-426. Systems using crun as the low-level runtime are not affected | Container Toolkit 1.17.8, device plugin 0.17.3, MIG Manager 0.12.2, GPU Operator 25.3.2 |
 
-A written role model only helps if people follow it and someone checks. A quarterly review is a reasonable starting point. Pick the review schedule your team can keep.
+The bulletin for CVE-2025-23266 lists affected versions up to and including Container Toolkit 1.17.7. For the exact affected CDI configurations, read the bulletin itself, because the conditions differ by product.
 
-### 6.3 Observability
+### 3.2 Controls
 
-Five metrics show whether the boundaries still hold. Each row explains why its metric matters and what alert it should raise. The alert thresholds in the table are example values. Set your own after you see a baseline on your fleet.
+Patching is the first control, and it must be a process, not an event. The platform team needs an inventory of the toolkit, device plugin and GPU Operator version on every node, and an alert when one falls behind a security fix. Chapter 18.2 describes the same inventory for firmware.
 
-| Metric | Why it matters | Alert |
+Next, limit who can create pods that reach the runtime. A tenant who can submit any image can try the crafted image. Chapter 18.4 covers admission policy, namespaces and service accounts. Use image provenance checks from Chapter 18.3 so that only approved images run on shared GPU nodes.
+
+Last, keep the privileged components small. A device plugin runs privileged and mounts the kubelet device-plugin directory, as the Kubernetes documentation says. Tenants must never get that level. Chapter 18.4 explains how to keep tenant namespaces at the Restricted level.
+
+---
+
+## 4. Noisy neighbours and the sharing modes
+
+Sharing modes differ in what they separate. The table summarises the vendor documentation. The mechanics are in Chapters 11.24 and 11.25.
+
+| Mode | What is separated | What is still shared |
 |---|---|---|
-| IOMMU enabled rate | IOMMU enforcement | < 100% |
-| MIG partition enforcement rate | MIG isolation | < 100% |
-| SR-IOV VF isolation rate | SR-IOV isolation | < 100% |
-| GPU memory anomalies | Memory scraping detection | > 0 |
-| GPU sharing mode (time-slicing/MIG/SR-IOV) | Sharing configuration | Wrong mode |
+| Time-slicing through the device plugin | Time on the GPU | Memory, with no limit per workload, and the fault domain |
+| MPS | Memory and compute can be partitioned by limits | Memory bandwidth, caches and capacity, and no error isolation between clients |
+| MIG | Dedicated SMs, memory, memory bandwidth and cache, and error isolation | The physical card, and some engines inside a GPU instance |
+| vGPU, time-sliced | Each VM gets a share of GPU time | The GPU's processing cycles are shared by scheduling policy |
+| vGPU, MIG-backed | Each VM gets a MIG instance | As for MIG |
 
-The GPU memory anomalies alert matters most. An anomalous pattern can mean one workload is reading another tenant's memory, so this alert should page the on-call engineer right away.
+The device plugin README says that for time-slicing nothing special is done to isolate workloads that are granted replicas from the same GPU, and that each workload has access to the GPU memory and runs in the same fault domain as the others. Read this sentence as a statement about limits and failures. One workload can use all the memory, and one crash can hit all of them. The README does not claim that processes read each other's data.
 
----
+The MIG user guide says MIG gives each instance dedicated compute and memory resources, with memory bandwidth quality of service and error isolation, which MPS and streams lack. MIG profiles also list peer-to-peer as No, so a MIG instance does not talk to its neighbours over NVLink peer access.
 
-## 7. How it fails
+Non-MIG vGPU is time-sliced. NVIDIA's vGPU documentation lists the best effort, equal share and fixed share schedulers, which divide GPU processing cycles among running vGPUs. On Ampere and later GPUs the virtual functions are enabled with NVIDIA's `sriov-manage` script, and the guide warns to use no other means. The enabled functions are lost after a reboot or a driver reload.
 
-Six failure modes come up again and again. Start from the symptom you see, then find the matching section below.
-
-### 7.1 "The IOMMU is disabled"
-
-A node with the IOMMU off lets the GPU read any system memory, including another tenant's data. The usual cause is a BIOS setting that nobody turned on, so the platform's policy is not enforced. Enable the IOMMU in the BIOS, verify that the kernel uses it, and alert on any node where it is off.
-
-### 7.2 "The MIG is not configured"
-
-Suppose a GPU runs with no MIG partitions. Every tenant on it shares the full card memory and can read each other's data. MIG mode was never enabled, or the instances were never created. Enable MIG, create the partitions, and check that they are enforced.
-
-### 7.3 "The SR-IOV is not configured"
-
-When SR-IOV is off, the tenants that were meant to get separate virtual functions share one device. The virtual functions were never created, so the PCIe-level boundary does not exist. Enable SR-IOV, create the VFs, and verify that they are isolated.
-
-### 7.4 "The GPU memory scraping is detected"
-
-Here the memory monitor flags an anomalous pattern and the on-call engineer is paged. The workload may be reading another tenant's memory, which would mean it is compromised. Cordon the workload, investigate it, notify the other tenants, and run your incident response.
-
-### 7.5 "The time-slicing is not configured"
-
-A GPU without time-slicing settings has no defined schedule, so tenants can interfere with each other. Either the time-slicing configuration was never applied, or the GPU device plugin is misconfigured. Configure time-slicing, confirm that it is in effect, and alert on any GPU that lacks it.
-
-### 7.6 "The GPU sharing mode is wrong for the workload"
-
-A workload may run on time-slicing when it needs MIG, or on MIG when time-slicing would do. In both cases its isolation does not match its needs. The cause is usually that nobody wrote down the workload's isolation requirements, so the mode was picked ad hoc. Write the requirements down, choose the mode from them, and review the choice on a schedule.
-
-Most of these failures trace back to a setting nobody wrote down. When you start an investigation, check the configuration against the plan first.
+The decision rule is short. If a tenant must not be able to slow down or crash another tenant, use MIG or a separate GPU. If tenants trust each other, as colleagues running notebooks do, time-slicing is acceptable, and you accept the shared memory and fault domain.
 
 ---
 
-## 8. Hands-on lab
+## 5. Leftover data and side channels
 
-Before you trust a GPU node with tenants, you need proof that every boundary is on. This lab checks them one by one. The lab is **untested** in this repository.
+### 5.1 What stays behind
 
-### 8.1 Prerequisites
+When a process frees GPU memory, the next user of that memory may find old bytes in it. Public research shows this is real on some GPUs. In January 2024 Trail of Bits and academic researchers disclosed LeftoverLocals, CVE-2023-4969. A kernel on affected AMD, Apple and Qualcomm GPUs could read values left in local memory by another kernel, and the researchers used it to read another user's LLM answers across process boundaries. Local memory is not cleared between kernel runs on those GPUs.
 
-- A GPU node with IOMMU, MIG, and SR-IOV support.
-- Access to the node's BIOS.
-- Access to the node's operating system.
+Trail of Bits reported that NVIDIA confirmed its GPUs were not impacted, and that its own tests saw only zeros in NVIDIA local memory. The same write-up cites earlier academic work in which NVIDIA GPUs leaked memory across processes through several memory regions. This handbook found no NVIDIA statement that freed GPU memory is zeroed between processes in ordinary operation, so do not assume it. The sharing guidance below follows from that.
 
-### 8.2 Step 1: verify the IOMMU
+### 5.2 Controls
 
-Start with the IOMMU. The kernel log should show that it is enabled.
+The strongest control is to avoid sharing between tenants who distrust each other. Give such tenants whole GPUs, or MIG instances, and reset the device when ownership changes.
+
+Confidential computing mode adds a documented answer. NVIDIA's threat model says session keys are ephemeral and that GPU reset and teardown mechanisms clear protected state. It also says that stopping a workload is not a substitute for the supported reset and reassignment lifecycle. In that configuration, each GPU is assigned whole to one confidential VM, and MIG, MPS and GPUDirect RDMA are not supported. Chapter 18.6 explains what confidential computing does and does not protect.
+
+Time-slicing and MPS give no separation that is strong enough for tenants who distrust each other, as the table in section 4 shows. Side-channel measurements, such as timing, remain outside the guarantees of every mode in this chapter. NVIDIA's confidential computing documentation says timing, cache and power side channels are outside its protection.
+
+---
+
+## 6. How it fails
+
+Each case starts from the symptom.
+
+### 6.1 A tenant image has host access
+
+A node shows a process with root files from outside its container. The toolkit version is older than the fix for CVE-2024-0132 or CVE-2025-23266. Cordon the node, preserve its logs, patch the toolkit, and rebuild any node that ran an untrusted image on the old version. Treat every secret on that node as exposed.
+
+### 6.2 A tenant crashes its neighbours
+
+Several inference pods on one GPU fail at the same time with a GPU error. They share a time-sliced GPU and one fault domain. Move critical tenants to MIG instances or separate GPUs, as in section 4.
+
+### 6.3 A node has no IOMMU groups
+
+The directory `/sys/kernel/iommu_groups` is empty on a node that hosts VM-based tenants. The IOMMU is off in firmware or the kernel. Do not admit passthrough VMs to this node. Turn the IOMMU on and recheck.
+
+### 6.4 A tenant claims the MIG instance is not isolated
+
+First confirm what the instance list shows, using `nvidia-smi -L` on the node, and compare it with the plan. MIG instances do not share SMs, memory or cache. If the tenant reports slowdown, the cause may be a shared engine or the card's power and thermal state, which MIG does not separate.
+
+### 6.5 A confidential VM exposes more than expected
+
+A team assumes confidential computing removes the need for any other control. NVIDIA's documentation says attestation does not prove the guest software is free of vulnerabilities and that network and storage paths need separate protection. Add encryption and access control for those paths.
+
+---
+
+## 7. Hands-on lab
+
+These steps use only commands that appear in the vendor or kernel documentation cited below. They have not been run on a live GKE cluster here, so confirm each flag against your driver version.
+
+1. Count IOMMU groups.
 
 ```bash
-dmesg | grep -i iommu
-# expected: "DMAR: IOMMU enabled" appears in the log
+ls /sys/kernel/iommu_groups | wc -l
 ```
 
-### 8.3 Step 2: enable MIG
+Expected: a number above zero on a node that supports device passthrough.
 
-Turn on MIG mode, then create the instances.
-
-```bash
-nvidia-smi -mig 1
-# expected: the GPU enters MIG mode
-nvidia-smi mig -cgi 0,1,2,3,4,5,6 -C
-# expected: the MIG instances are created
-```
-
-### 8.4 Step 3: enable SR-IOV
-
-Enable vGPU mode, then list the partitions.
+2. List the MIG profiles your GPU supports, then the instances that exist.
 
 ```bash
-nvidia-smi -vgpu 1
-# expected: the GPU enters vGPU mode
+nvidia-smi mig -lgip
 nvidia-smi -L
-# expected: the vGPU partitions are listed
 ```
 
-### 8.5 Step 4: configure time-slicing
+Expected: the profile table, and one line per MIG device, which you compare with the layout you planned.
 
-Apply the time-slicing configuration.
+3. Read the version of the container toolkit on a node and compare it with the fixed versions in section 3.1.
 
 ```bash
-kubectl apply -f code/part18/timeslicing.yaml
-# expected: the time-slicing is configured
+nvidia-ctk --version
 ```
 
-### 8.6 Step 5: monitor GPU memory
-
-Watch memory use on the GPU.
-
-```bash
-nvidia-smi --query-gpu=memory.used,memory.total --format=csv -l 1
-# expected: the memory usage is monitored
-```
-
-### 8.7 Step 6: deploy a workload to a MIG partition
-
-Deploy the workload and confirm that it runs inside its partition.
+4. Apply the MIG workload from the repository and check that the pod schedules.
 
 ```bash
 kubectl apply -f code/part18/mig_workload.yaml
-# expected: the workload runs in the MIG partition; the partition is isolated
+kubectl get pod churn-model
 ```
 
-### 8.8 What to record
+The pod requests `nvidia.com/mig-1g.5gb`. An 80 GB card names its smallest slice `1g.10gb`, so a request for 1g.5gb stays Pending on such a node. Compare the resource name with what the node advertises.
 
-After the lab, you should be able to answer five questions quickly:
+5. Apply the time-slicing example. It advertises each GPU as four shared replicas, using the device plugin schema `sharing.timeSlicing.resources` with `replicas`. Remember that the replicas share memory and the fault domain.
 
-1. What is the current IOMMU enabled rate?
-2. What is the current MIG partition enforcement rate?
-3. What is the current SR-IOV VF isolation rate?
-4. What is the current GPU memory anomalies count?
-5. What is the current GPU sharing mode per workload?
+```bash
+kubectl apply -f code/part18/timeslicing.yaml
+```
 
-Use five seconds per answer and 30 seconds in total as example limits. Set the limits your own on-call process can meet. If your team cannot answer within that limit, the GPU sharing security is not yet a production service. The lab is **untested** against a live GKE cluster.
+Record what you learned: the toolkit version, the IOMMU group count, and the mode of each GPU.
 
 ---
 
 ## Exercises
 
-Try each exercise yourself before you read its solution sketch. Each one uses a different layer of the chapter.
-
-1. A node is about to join the GPU pool. Write a shell check that fails when the kernel log has no IOMMU line, or when `/sys/kernel/iommu_groups` is empty. *Solution sketch:* test `dmesg | grep -i iommu` and count the entries in the groups directory. Exit non-zero if either test fails, and run it before the node is labelled for tenants.
-2. One 80 GB GPU must serve a team that needs 40 GB and three teams that need 10 GB each. Choose MIG profiles for them. *Solution sketch:* one 3g.40gb instance plus three 1g.10gb instances uses six of the seven compute slices. Confirm the placement with `nvidia-smi mig -lgip` before you create anything.
-3. You host a trusted team's notebooks, an inference service for two paying customers, and virtual desktops for staff. Pick a sharing mode for each and give one reason. *Solution sketch:* time-slicing is acceptable for the notebooks, because the users trust each other. MIG suits the two customers, who need memory isolation. SR-IOV through vGPU suits the desktops.
-4. Assume an exporter publishes a metric `node_iommu_enabled` that is 1 when the IOMMU is on. Write a Prometheus alert rule that fires when any GPU node reports 0 for five minutes. *Solution sketch:* the rule compares the metric with 0 and uses a `for: 5m` clause, with a label that names the node.
-5. A Pod that asks for `nvidia.com/mig-1g.5gb` stays Pending on an 80 GB node. Explain why and what you would check. *Solution sketch:* that node advertises `1g.10gb`, not `1g.5gb`, so no resource matches. Run `kubectl describe node` and read the allocatable resources, then fix the request.
-6. The memory monitor shows one tenant's pod reading far more GPU memory than its limit allows. Put the first five response actions in order, and say which evidence you must keep. *Solution sketch:* cordon the node, keep the pod and its logs instead of deleting them, notify the other tenants on that GPU, and escalate to the security team. Record the memory samples and the IOMMU state at that moment.
+1. A node is about to join the GPU pool for VM tenants. Write a shell check that fails when `/sys/kernel/iommu_groups` is empty. *Solution sketch:* count the entries with `ls` and `wc -l`, exit non-zero when the count is zero, and run the check before the node gets its tenant label.
+2. One 80 GB GPU must serve a team that needs 40 GB and three teams that need 10 GB each, and tenants distrust each other. Choose a layout. *Solution sketch:* one 3g.40gb instance plus three 1g.10gb instances uses six of seven compute slices. Confirm placement with `nvidia-smi mig -lgip` before creating anything.
+3. Three tenant types share the platform: colleagues running notebooks, two paying customers running inference, and a regulated model with patient data. Pick a sharing mode for each and give one reason. *Solution sketch:* time-slicing for the colleagues, MIG for the customers, and a whole GPU in confidential computing mode for the regulated model.
+4. Your fleet runs Container Toolkit 1.17.5 on some nodes. Which of the two CVEs in section 3.1 still applies, and what do you do? *Solution sketch:* 1.17.5 is above the fix for CVE-2024-0132 and below the fix for CVE-2025-23266, which needs 1.17.8. Check the bulletin for your CDI configuration, then upgrade.
+5. Several pods fail together on a time-sliced GPU after one of them hits an out-of-memory error. Explain why, and what you change. *Solution sketch:* the pods share memory with no per-workload limit and share a fault domain, so move them to MIG instances or set a memory limit with MPS.
+6. A cluster has 50 nodes with 8 GPUs each at 3 dollars per GPU hour. What does it cost per day, and what would a two times saving from sharing be worth per year? *Solution sketch:* 400 GPUs times 3 dollars is 1,200 dollars an hour, which is 28,800 dollars a day. Half of that, saved over 365 days, is 5,256,000 dollars. These are planning figures, not measured costs.
 
 ---
 
 ## Checkpoint questions
 
-<details><summary>1. The GPU memory monitor flags an anomalous pattern and the on-call engineer is paged. What do you do?</summary>
-The workload may be reading another tenant's memory, which means it could be compromised. Cordon the workload, investigate it, notify the other tenants, and run your incident response. Memory numbers alone do not prove scraping, so check them against other signals as you investigate.
+<details><summary>1. A security reviewer says the IOMMU already stops tenant A from reading tenant B's GPU memory on a shared GPU. What is wrong with that claim?</summary>
+The IOMMU stops a device from reaching host memory it was not given. Two processes on one GPU are separated by their own CUDA address spaces, or by MIG. The IOMMU is not the control for that threat.
 </details>
 
-<details><summary>2. A GPU on a shared node can read system memory that belongs to another tenant. What is the likely cause and the fix?</summary>
-The IOMMU is disabled in the BIOS, so the platform's policy is not enforced. Enable the IOMMU in the BIOS, verify that it is in use, and alert on any node where it is off.
+<details><summary>2. A pod on a shared node runs a crafted image and later a root-owned file appears on the node. What do you check first and what do you do?</summary>
+Check the Container Toolkit and GPU Operator versions against the fixes for CVE-2024-0132 and CVE-2025-23266. Cordon the node, keep its logs, patch, and treat secrets on it as exposed. Rebuild the node if the image ran on an unpatched version.
 </details>
 
-<details><summary>3. Two tenants share a GPU and can read each other's data. MIG is not in use. What do you do?</summary>
-MIG was never enabled or the partitions were never created. Enable MIG, create the partitions, and verify that they are enforced. List the instances with `nvidia-smi -L` and compare the listing with the layout you planned before any workload starts.
+<details><summary>3. Your node runs Container Toolkit 1.16.1 in CDI mode. Does CVE-2024-0132 apply?</summary>
+NVIDIA states the flaw does not affect use cases where CDI is used. Still plan to upgrade to 1.16.2 or later, and read the bulletin for CVE-2025-23266, whose conditions differ.
 </details>
 
-<details><summary>4. A workload runs on time-slicing but needs strong isolation. Why did this happen and what do you change?</summary>
-The workload's isolation needs were never written down, so the mode was picked ad hoc. Write down each workload's isolation needs, choose the sharing mode for it, and review the choice on a schedule. The chapter calls a quarterly review a reasonable starting point, but your team should pick a schedule it can keep.
+<details><summary>4. A node hosts VM tenants and the directory /sys/kernel/iommu_groups is empty. What is the risk and the fix?</summary>
+Without an active IOMMU, a device assigned to a VM can use DMA on host memory without the mapping check. Turn the IOMMU on in firmware and the kernel, reboot, and confirm that groups appear before admitting VM tenants.
 </details>
 
-<details><summary>5. `dmesg | grep -i iommu` does not show the expected line on a node. Is the IOMMU off?</summary>
-Do not assume so. The chapter says to read the full kernel log for your hardware before you decide. Three things must be true. The IOMMU is enabled in the BIOS, the kernel configures it, and the GPU driver uses it.
+<details><summary>5. Three inference pods share one time-sliced GPU and all fail when one of them crashes the GPU. Why, and what is the fix?</summary>
+The device plugin README says time-sliced workloads share the GPU memory and run in the same fault domain. Move the pods to MIG instances, which have error isolation, or to separate GPUs.
 </details>
 
 <details><summary>6. A team says its cluster is multi-tenant because every GPU uses time-slicing. What is missing?</summary>
-Time-slicing has no memory isolation, because processes share GPU memory. Its compute isolation is weak and its side-channel risk is high. A multi-tenant claim needs the IOMMU on, MIG partitions enforced, and SR-IOV virtual functions isolated. Time-slicing alone does not enforce the tenant boundary.
+Time-slicing separates time only. It sets no memory limit per workload and keeps one fault domain. For tenants who distrust each other, use MIG or whole GPUs, patch the container toolkit, and keep the IOMMU on for any device assigned to a VM.
 </details>
 
-<details><summary>7. Why does sharing a GPU open a DMA attack surface?</summary>
-A GPU reads system memory directly through DMA. Without the IOMMU the GPU can DMA any system memory, so it can read any tenant's data. With the IOMMU the GPU can only DMA the memory the IOMMU has mapped for that tenant.
+<details><summary>7. A pod requests nvidia.com/mig-1g.5gb and stays Pending on an 80 GB node. Why?</summary>
+That node advertises 1g.10gb for its smallest slice, so no resource matches the request. Read the node's allocatable resources and change the request.
 </details>
 
-<details><summary>8. Why can application code not stop GPU memory scraping?</summary>
-The attack works around software isolation by reading memory through DMA. The read does not pass through the controls that application code can set. Only the hardware boundaries from the IOMMU, MIG, and SR-IOV stop it.
+<details><summary>8. A tenant on a MIG instance reports a slowdown while its neighbour is busy. Is MIG broken?</summary>
+Not necessarily. MIG gives dedicated SMs, memory, bandwidth and cache, but the instances still live on one card with shared power and thermal limits. Compare with a run while the neighbour is idle, and check clocks before concluding anything.
 </details>
 
-<details><summary>9. Why can one MIG instance not read another instance's memory?</summary>
-MIG divides one GPU into separate instances inside the chip. Each instance gets its own compute, memory, and bandwidth. The hardware keeps the instances apart, so a tenant in one instance has no path to the memory of another.
+<details><summary>9. A vendor tells you its GPUs were not affected by LeftoverLocals. Does that prove freed memory is zeroed on your NVIDIA nodes?</summary>
+No. It says that attack did not work on them. Earlier academic work cited by Trail of Bits found cross-process leaks on NVIDIA GPUs, and this handbook found no NVIDIA statement that freed memory is zeroed. Treat leftover data as possible when tenants distrust each other.
 </details>
 
-<details><summary>10. SR-IOV isolates virtual functions in hardware. Why can one busy VF still affect the others?</summary>
-Each VF has its own PCIe config space, BARs, and interrupts. The VFs still share the underlying hardware with the physical function. That shared hardware includes bandwidth, so one busy VF can affect the rest.
+<details><summary>10. A tenant needs a regulated model on a shared cluster. Why is a MIG instance not the answer in confidential computing mode?</summary>
+NVIDIA's confidential VM threat model assigns each GPU whole to one confidential VM and lists MIG, MPS and GPUDirect RDMA as unsupported in those configurations. Use a whole GPU in confidential computing mode.
 </details>
 
-<details><summary>11. Why is time-slicing weaker than MIG or SR-IOV for isolating tenants?</summary>
-The workloads take turns on the same GPU instead of running in separate partitions. The chapter's table gives no memory isolation, weak compute isolation, low predictability, and high side-channel risk. Production Kubernetes chapter 12 makes a similar point about container limits, which isolate less strictly than a hypervisor, so noisy-neighbor effects can remain.
+<details><summary>11. Why do ordinary vGPU profiles not give the same isolation as MIG-backed vGPU?</summary>
+Non-MIG vGPU shares the GPU by time-slicing schedulers: best effort, equal share or fixed share. MIG-backed vGPU gives each VM a MIG instance with dedicated memory and compute.
 </details>
 
-<details><summary>12. When would you accept time-slicing and when would you require MIG, and what do you give up?</summary>
-Time-slicing suits workloads that do not share state. MIG suits workloads that need strong isolation, with hardware-enforced memory and compute and near-native performance. By accepting time-slicing you give up memory isolation, predictable performance, and low side-channel risk. By choosing MIG you give up the simplest sharing setup.
+<details><summary>12. When would you accept time-slicing for a team, and what do you give up?</summary>
+Accept it when tenants trust each other, such as colleagues running notebooks. You give up a memory limit per workload and a separate fault domain, and you accept that one crash affects all users of the GPU.
 </details>
 
-<details><summary>13. When would you choose SR-IOV over MIG and how does management differ?</summary>
-The use-case row is the simplest guide. MIG suits inference, training, and HPC, while SR-IOV suits VDI and multi-tenant cloud. MIG is managed by the NVIDIA driver and SR-IOV by the NVIDIA vGPU manager. Both give hardware isolation and near-native performance.
+<details><summary>13. You enabled SR-IOV virtual functions with sriov-manage and, after a reboot, the vGPUs are gone. What happened?</summary>
+NVIDIA's guide says the virtual functions in sysfs are disabled after a host reboot or a driver reload or upgrade. Re-enable them at boot with NVIDIA's script, and do not enable them by other means.
 </details>
 
-<details><summary>14. Sharing a GPU can cut the cluster cost by 2 to 4 times in the chapter's example. When would you share and what do you give up?</summary>
-Share when hardware enforces the boundary, because the saving is only safe then. Without sharing every tenant needs a card of its own and many cards sit idle. What you give up is a DMA attack surface that you must then contain with the IOMMU, MIG, and SR-IOV. The 2 to 4 times is an example, not a measured figure.
+<details><summary>14. A manager says sharing cuts the bill two to four times and asks you to skip isolation work. What do you answer?</summary>
+Sharing saves money only if the boundary holds. The Container Toolkit flaws let a tenant image reach the host, which defeats every tenant boundary at once. Spend part of the saving on patching, MIG for tenants who distrust each other, and admission control.
 </details>
 
-<details><summary>15. The memory anomaly alert fires. When would you cordon at once and when would you check other signals first?</summary>
-The alert can page the on-call engineer right away, because an anomaly can mean one workload is reading another tenant's memory. Memory numbers alone do not prove a scraping attempt, so check them against other signals before you act. Cordoning at once protects the other tenants but may disrupt a workload that is behaving normally. Waiting leaves the possible read open longer.
+<details><summary>15. A tenant asks for confidential computing so the cloud operator cannot read its data. What does it still not protect?</summary>
+NVIDIA's documentation says it does not protect against a malicious guest, physical or side-channel attacks, or unprotected network and storage paths, and attestation does not prove the approved code is free of vulnerabilities. The operator can also stop the VM.
 </details>
 
-<details><summary>16. In the chapter's example, one node has 8 GPUs and each GPU costs $3 to $5 per hour. What does one node cost per hour?</summary>
-At $3 per GPU, the node costs 8 × 3 = $24 per hour. At $5 per GPU, it costs 8 × 5 = $40 per hour. The range is $24 to $40. These are example prices, so use your own.
+<details><summary>16. A node costs 24 dollars an hour. Sharing halves the cost. What is the yearly saving?</summary>
+A year has 8,760 hours. 24 times 8,760 is 210,240 dollars, so halving saves 105,120 dollars a year. These are planning numbers.
 </details>
 
-<details><summary>17. A node costs $24 per hour with no sharing. What does it cost per year, and what would a 2 times reduction from sharing leave?</summary>
-A year has 24 × 365 = 8,760 hours. The node costs 24 × 8,760 = $210,240 per year. A 2 times reduction leaves $210,240 / 2 = $105,120. The 2 times figure is the low end of the chapter's example range.
+<details><summary>17. The lab shows Container Toolkit 1.17.6 on a node. Which fix are you missing?</summary>
+The fix for CVE-2025-23266 needs Container Toolkit 1.17.8, because affected versions run up to and including 1.17.7. Upgrade the toolkit and the device plugin and MIG Manager listed in the bulletin.
 </details>
 
-<details><summary>18. You split one GPU into 7 MIG instances of equal size and give each tenant one. If the GPU costs $3 per hour, what is each tenant's share?</summary>
-Each tenant's share is $3 / 7, which is about $0.43 per hour. Real MIG layouts are not always equal, so check the profiles your GPU supports. The chapter's example layout mixes instance sizes.
+<details><summary>18. You split a 3 dollar per hour GPU into seven equal MIG instances. What does each tenant pay, and what caveat applies?</summary>
+About 0.43 dollars per hour, which is 3 divided by 7. Real layouts are not always equal, so check the profiles your GPU supports.
 </details>
 
-<details><summary>19. You are about to admit a new GPU node to the pool. In what order do you check the boundaries, and why?</summary>
-Check the IOMMU first, because the chapter calls it the foundation of GPU sharing security. Then check the MIG partitions with `nvidia-smi -L` against your plan. Then check the SR-IOV virtual functions. After that confirm the time-slicing configuration and that memory metrics are scraped.
+<details><summary>19. In what order do you check a new GPU node before it takes tenants?</summary>
+First the IOMMU groups, then the toolkit and device plugin versions against the bulletins, then the MIG layout against your plan, then the sharing mode for each GPU. Patch level comes before layout because a host escape defeats the layout.
 </details>
 
-<details><summary>20. Memory usage on a shared GPU looks odd. What do you do, in order?</summary>
-First watch the memory use over time with the `nvidia-smi --query-gpu` command, since one reading proves nothing. Second check the pattern against other signals. Third, if it still looks like scraping, cordon the workload, investigate, notify the other tenants, and run your incident response.
+<details><summary>20. Memory use on a shared GPU looks strange. What do you do, and what does a reading of memory used prove?</summary>
+A single reading proves nothing, so compare it over time with the tenant's own jobs. Check which tenants share the GPU and its sharing mode. If you suspect one tenant is reading another, cordon the node and escalate, keeping logs.
 </details>
 
 ---
 
 ## Sources and review notes
 
-- NVIDIA Zero-to-Hero Volume 18 (`chapter-06-gpu-sharing-security.md`, `chapter-07-iommu-and-sr-iov.md`). Source for the IOMMU, MIG, SR-IOV, and time-slicing patterns. The wording has been rewritten in the handbook's voice.
-- NVIDIA Zero-to-Hero Volume 11 (`chapter-21-gpu-device-plugin.md`). Source for the GPU device plugin patterns and the MIG configuration.
+- NVIDIA security bulletin 5582 (published 25 September 2024): CVE-2024-0132 and CVE-2024-0133, Container Toolkit up to 1.16.1 and GPU Operator up to 24.6.1, fixed in 1.16.2 and 24.6.2. Fetched 2026-11-12.
+- NVIDIA security bulletin 5659 (first released 15 July 2025, revised 12 August 2025, page updated 18 November 2025): CVE-2025-23266, CVSS 9.0, CWE-426, fixed versions for Container Toolkit, device plugin, MIG Manager and GPU Operator. Fetched 2026-11-12.
+- NVIDIA CUDA Programming Guide, driver API section: contexts and per-context address spaces. Fetched 2026-11-12.
+- Linux kernel documentation, VFIO: IOMMU groups, DMA risk, ACS. Fetched 2026-11-12.
+- NVIDIA MIG User Guide, concepts, getting started and supported profiles pages: isolation, error isolation, profile table with P2P column, `nvidia-smi mig -lgip`. Fetched 2026-11-12.
+- NVIDIA k8s-device-plugin README: time-slicing schema and the statement about memory and fault domain. Fetched 2026-11-12.
+- NVIDIA vGPU software user guide: `sriov-manage` and the scheduling policies. Fetched 2026-11-12.
+- Kubernetes documentation, device plugins: the plugin runs privileged and mounts the device-plugin directory. Fetched 2026-11-12.
+- NVIDIA Confidential Computing documentation, virtual machine threat model and supported platforms. Fetched 2026-11-12.
+- Trail of Bits, LeftoverLocals write-up (16 January 2024), CVE-2023-4969. Fetched 2026-11-12.
+- *Production Kubernetes*, chapter 12 on multitenancy, for the idea that tenants are a spectrum of trust.
 
-### Cross-references to other handbook chapters
+### Corrections made in this rework
 
-- Chapter 18.1 for the threat-model context.
-- Chapter 18.4 for the Kubernetes access controls.
-- Chapter 11.24-11.27 for the MIG and time-slicing patterns.
-- Chapter 10.20 for the profiling tools.
+- The earlier text said a tenant reads another tenant's GPU memory through DMA and that the IOMMU stops it. That mixed up host memory and GPU memory. The chapter now says what each control protects.
+- Removed invented commands (`nvidia-smi -vgpu 1`, `perf stat` IOMMU events, a listing under `/sys/class/iommu`), the time-slicing fields `interval` and `timeout`, and the `gpusharing.*` IAM roles. None appears in vendor documentation.
+- The old comparison called non-MIG vGPU spatial sharing. NVIDIA's documentation shows time-sliced and MIG-backed vGPU.
 
-### Migrated from `nvidia-devops`
+### Open items
 
-The GPU sharing security operational patterns draw on Volume 18 chapters 6-7 and Volume 11 chapter 21. The wording has been rewritten in the handbook's voice.
-
-### Explicitly labelled inferences
-
-- The IOMMU is the foundation; specific IOMMU configurations depend on the hardware.
-- The MIG partitions are hardware-isolated; specific MIG partition sizes depend on the GPU model.
-- The GPU sharing mode (time-slicing, MIG, SR-IOV) is per-workload; specific modes depend on the workload's isolation requirements.
-
-### Not verified on live hardware
-
-- The lab in Section 8 is **untested** against a live GKE cluster in this repository.
-- The IOMMU verification commands assume a node with IOMMU support; production deployments may vary.
-- The MIG and SR-IOV configurations assume hardware that supports these features.
+- The exact CDI conditions in the CVE-2025-23266 bulletin are summarised, not restated.
+- No NVIDIA source was found for zeroing freed GPU memory in non-confidential mode.
+- `code/part18/timeslicing.yaml` was rewritten to the device plugin schema (`sharing.timeSlicing.resources[].replicas`).

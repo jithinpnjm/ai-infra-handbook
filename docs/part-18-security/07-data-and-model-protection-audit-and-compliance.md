@@ -25,215 +25,127 @@ lab_venue: "GCP / GKE"
 
 ## Why this matters for AI infrastructure
 
-Chapters 18.2-18.6 covered firmware, the supply chain, access control, GPU sharing, and the high-assurance stack. This chapter covers the data and the models, which are the assets the AI factory exists to protect. Every byte in the cluster carries a security requirement. Every model in the registry carries an intellectual property requirement. Every audit log entry carries a compliance requirement.
+A team downloads a fine-tuned model from a public hub, loads it on a GPU node that holds production credentials, and calls the loader. The file turns out to be a Python pickle. Python's own documentation warns that unpickling can execute arbitrary code, and that you should never unpickle data from an untrusted source. The job that was meant to load numbers has just run the attacker's program with the node's permissions.
 
-Data and model protection is the last line of defence. Suppose an attacker compromises the firmware, gets past the access controls, and breaks the GPU sharing. The data on disk is still encrypted, and that encryption is what saves the customer's data. The audit log then shows the regulator that the controls worked.
+Model weights are both an asset and an attack surface. They are expensive to produce, so they are worth stealing. They are also code-adjacent, so a tampered file can attack the machine that loads it. This chapter covers the controls that protect weights across their life: the file format, the signature that says who made them, the encryption that protects them at rest, and the audit trail that shows who touched them.
 
-```text
-Why data and model protection is on the critical path (background reading: NVIDIA Zero-to-Hero volume 18; NVIDIA Zero-to-Hero volume 8; Engineering AI Systems; the figures below are examples, not quotations):
-- A typical AI factory stores terabytes of training data and petabytes of
-  inference logs. Every byte is a compliance exposure. The platform team's
-  job is to encrypt the bytes; the platform team's job is to audit the
-  accesses; the platform team's job is to prove the bytes were protected.
-- The model is the platform's IP. The platform's competitive advantage is
-  the model. The platform team's job is to watermark the model; the platform
-  team's job is to sign the model; the platform team's job is to verify
-  the model is unmodified.
-- The audit log is the regulatory evidence. The regulator does not care
-  about the controls in the abstract; the regulator cares about the evidence
-  that the controls were working. The audit log is the evidence; the platform
-  team's job is to make the audit log tamper-evident and auditable.
-```
-
-Three operational realities make this a platform team concern, not only a data science concern.
-
-1. Encryption is the last line of defence. When every other control fails, encryption at rest is what keeps the customer's data unreadable. The platform team enforces encryption at rest and in transit, and it manages the keys. Keys are the part teams most often get wrong, so give them an owner from the start.
-
-2. The model is the platform's intellectual property, so it needs a watermark. A watermark lets you prove that a model came from your platform. It also helps you detect a stolen copy. The platform team applies the watermark, verifies it, and checks for theft.
-
-3. The audit log is the evidence a regulator asks for. A regulator does not accept a description of controls on paper. It wants records that show the controls worked. The platform team makes the log tamper-evident and easy to audit. If the log fails that test, the controls it records cannot be defended.
-
-**Before you call the AI factory compliant, confirm data is encrypted at rest and in transit, models are watermarked, the audit log is tamper-evident, and lineage is auditable.**
+It also covers the evidence a regulator asks for: which data trained which model, and proof that nobody changed the record afterwards. Chapters 16.13 and 18.1 give the regulatory and threat context. Rules such as GDPR, HIPAA or the EU AI Act are not summarised here, because this handbook does not give legal advice.
 
 ## Prerequisites and outcomes
 
 ### Prerequisites
 
-Read these chapters first. Each one covers a piece of the platform that this chapter depends on. The controls below assume you already know the threat context, the regulatory rules, the storage primitives, and the audit log.
-
-- Chapter 18.1 (Threat modeling) for the threat context.
-- Chapter 16.13 (Governance, privacy, compliance) for the regulatory context.
-- Chapter 13 (AI storage) for the storage primitives.
-- Chapter 17 (Operations) for the audit log.
+Chapter 18.1 for the threat model, Chapter 18.3 for artifact signing in container images, Chapter 13 for storage, and Chapter 18.6 for protecting weights while they run.
 
 ### Outcomes
 
-When you finish this chapter, you should be able to do six things.
+After this chapter you will be able to:
 
-1. Encrypt every byte in the cluster at rest and in transit, and manage the keys in a KMS.
-2. Watermark your models, verify the watermark, and detect model theft.
-3. Set up data loss prevention so training data and inference logs do not leave the cluster.
-4. Build a tamper-evident audit log with object lock and immutable storage.
-5. Build a lineage graph that meets the GDPR, CCPA, HIPAA, and EU AI Act requirements.
-6. Run all of this on GKE with continuous checks, key rotation, and incident response.
-
----
-
-## 1. Encryption at rest and in transit
-
-### 1.1 Encryption at rest
-
-Picture a disk that leaves a data center without permission. With encryption at rest, the disk holds only scrambled bytes, so the training data on it stays unreadable. Encryption at rest covers data that is stored, not data that is moving. It guards against stolen disks and unauthorised physical access. Production Kubernetes, chapter 7, makes the same recommendation: treat encryption at rest as the default, even if you trust your cloud provider.
-
-```bash
-# Enable encryption at rest on a GCS bucket
-gsutil encryption set -k projects/${PROJECT_ID}/locations/us/keyRings/default/cryptoKeys/default gs://my-bucket
-# expected: the bucket is encrypted with the customer-managed key
-```
-
-### 1.2 Encryption in transit
-
-Data also moves. A request from a client to the model API, or from one service to another, can be read by anyone on the network path. Encryption in transit wraps that traffic in TLS, which keeps the contents private and stops an attacker who tries to sit in the middle.
-
-```bash
-# Allow ingress to the model API only on its TLS port (a NetworkPolicy cannot enforce the TLS version)
-kubectl apply -f code/part18/networkpolicy_tls.yaml
-# expected: traffic to app=model-api is accepted only on TCP 8443
-```
-
-Set the minimum TLS version at the ingress or the service mesh, because a NetworkPolicy cannot enforce it. Every certificate should come from a trusted certificate authority, and rotation should happen automatically.
-
-### 1.3 Key management
-
-Encryption is only as strong as its keys. If the key sits next to the data, the lock protects nothing. A key management service (KMS) keeps keys apart from the data, rotates them, and keeps a record you can audit.
-
-Kubernetes applies the same idea to Secrets inside the cluster. Production Kubernetes, chapter 7, explains that the API server can encrypt Secret objects before they reach etcd. Kubernetes 1.10 and later can also use a KMS plug-in for envelope encryption, where a key stored in the KMS protects the data keys. The book warns that KMS plug-ins are still immature, so start with the built-in options first.
-
-```bash
-# Rotate a key in Cloud KMS
-gcloud kms keys rotate \
-  --key my-key \
-  --keyring my-keyring \
-  --location us
-# expected: the key is rotated; the new version is active; the old version is disabled
-```
+1. Choose a file format that cannot run code on load, and load it safely.
+2. Sign a model and verify it before deployment.
+3. Encrypt weights at rest with a customer-managed key, and protect Kubernetes Secrets.
+4. Turn on the audit logs that record who read the weights.
+5. Build an append-only audit trail and a lineage record that answers a regulator's question.
 
 ---
 
-## 2. Model watermarking
+## 1. The file format decides whether loading is safe
 
-### 2.1 What watermarking does
+### 1.1 Pickle
 
-Imagine a competitor ships a model that looks a lot like yours. You need evidence that it came from your platform. A watermark is a signature embedded in the model's weights or outputs. It links a copy back to you, and it is one way to spot a stolen model.
+PyTorch checkpoints have traditionally been saved with pickle. Pickle rebuilds Python objects, and a malicious file can make it call any function. The Python documentation says the pickle module is not secure and that only trusted data should be unpickled.
 
-```text
-Watermarking properties:
-- Imperceptible: the watermark does not affect the model's accuracy
-- Robust: the watermark survives fine-tuning and pruning
-- Unforgeable: the watermark cannot be removed without significant degradation
-- Verifiable: the watermark can be detected with a simple query
-```
+PyTorch has tightened its loader. The `torch.load` documentation lists `weights_only=True` as the default, which restricts the unpickler to tensors, primitive types, dictionaries and types you add as safe globals. The same page still says never to load data from an untrusted source. Treat the default as a safety net, not as permission.
 
-Treat these properties as the goals for your watermark scheme. Test each one on your own model before you rely on it.
+### 1.2 Safetensors
 
-### 2.2 The watermarking implementation
+Safetensors is a format made for storing tensors. The project describes pickle as unsafe because it runs arbitrary code and designs the format to avoid it. A file holds an 8-byte header size, a JSON header, then raw tensor bytes. The header is capped at 100 MB, tensor addresses cannot overlap, and the byte buffer cannot contain holes.
 
-The example uses a placeholder library called torchmark to show the shape of the calls. It is not a library that was verified for this book, so replace it with the watermarking tool your team has chosen. Swap in another library if your team prefers one. The embed function returns the model with the signature added. The verify function returns a yes or no answer.
+The format has limits. It does not check tensor values, so a file can hold NaN or infinity. It tells you nothing about who produced the file. A safe format removes the code-execution risk, not the provenance risk.
 
 ```python
-# code/part18/snippets/model_watermark.py
-import torchmark
+from safetensors import safe_open
 
-def embed_watermark(model, signature: str) -> model:
-    """Embed a watermark signature in the model."""
-    return torchmark.embed(model, signature=signature)
-
-def verify_watermark(model, signature: str) -> bool:
-    """Verify the watermark signature in the model."""
-    return torchmark.verify(model, signature=signature)
+tensors = {}
+with safe_open("model.safetensors", framework="pt", device=0) as f:
+    for name in f.keys():
+        tensors[name] = f.get_tensor(name)
 ```
 
-### 2.3 The watermarking in production
+Set a policy that production services load only safetensors files, and block pickle-based checkpoints at the gate that admits models into your registry. When a pickle file is the only form available, convert it inside an isolated sandbox with no credentials and no network, never on a production node.
 
-Apply the watermark to every production model, and verify it before deployment. Check it again on a schedule, so that a model changed after release does not slip through unnoticed.
+---
+
+## 2. Signing: who made these weights
+
+A format cannot say who produced a file. A signature can. The OpenSSF model signing project, which lives in the Sigstore organisation, signs a model directory and records the result as a Sigstore bundle. The bundle holds a statement listing each file path and its digest, plus a signature over it.
 
 ```bash
-# Embed the watermark
-python code/part18/snippets/model_watermark.py \
-  --model churn-model-v6 \
-  --signature "platform=acme;team=data-science;date=2024-03-15"
-# expected: the watermark is embedded; the watermark is verifiable
+model_signing sign bert-base-uncased --signature model.sig
+model_signing verify bert-base-uncased --signature model.sig --identity IDENTITY --identity-provider OIDC_PROVIDER
+```
 
-# Verify the watermark
-python code/part18/snippets/model_watermark.py \
-  --model churn-model-v6 \
-  --verify \
-  --signature "platform=acme;team=data-science;date=2024-03-15"
-# expected: the watermark is verified; the audit log records the verification
+The commands come from the project's README. Signing with Sigstore opens an OIDC flow to get a short-lived certificate, and verification must reuse the identity and provider. The project also supports signing with your own key pair and with PKCS 11 devices.
+
+Verification recomputes the file hashes and compares them with the signed ones, then checks the signature. If one byte changes, verification fails.
+
+What it proves is narrow, and the project says so. It proves the files match what was signed and that the signature came from an identity you can check. It does not prove the signer is trustworthy, and it says nothing about whether the model is free of malicious behavior. The log makes signing events visible, but unexpected events are caught only if someone watches it.
+
+Run verification in the deployment path, before weights reach a GPU node, and fail the deployment when it fails.
+
+---
+
+## 3. Encryption at rest and key management
+
+### 3.1 Why keys matter more than ciphers
+
+Encrypted weights on a disk are only as safe as the key. A key stored beside the data protects nothing. A key management service keeps keys apart from the data, controls who can use them, and records each use.
+
+Google Cloud encrypts content at rest by default with envelope encryption, where a data key encrypts the content and a key encryption key wraps the data key. If you want your own control, you can use Cloud KMS as the central keystore. A customer-managed key lets you decide who can use it and when it rotates.
+
+```bash
+gcloud storage buckets update gs://my-bucket --default-encryption-key=KMS_KEY_RESOURCE
+```
+
+The documented flag sets the default key for a bucket. Replace the placeholder with the full Cloud KMS key resource name. Google recommends periodic, automatic rotation of symmetric keys. Set a rotation schedule on the key in Cloud KMS, and check the current Cloud KMS documentation for the exact flags.
+
+### 3.2 Secrets inside the cluster
+
+The Kubernetes documentation says that by default the API server stores resources in etcd as plain text, with no encryption at rest. Encryption is enabled by passing `--encryption-provider-config` to the API server. If the first provider in the list is `identity`, you do not have encryption at rest, even if the flag is set. Resources written before encryption was enabled stay plain text until they are written again.
+
+For envelope encryption with an external key manager, use KMS v2. The documentation says KMS v1 has been deprecated since Kubernetes 1.28 and disabled by default since 1.29, and that KMS v2 has been stable since 1.29. In KMS v2 a data key is derived per encryption, and the seed rotates when the key encryption key rotates.
+
+On GKE, application-layer secrets encryption is a managed option, and the platform sets up the control plane. Check your platform's documentation before you edit control plane flags yourself.
+
+### 3.3 In transit
+
+Traffic to a model API needs TLS. A NetworkPolicy works at the IP and port layer and cannot require a TLS version. The repository example limits traffic to port 8443. Set the minimum TLS version at the ingress or the service mesh.
+
+```bash
+kubectl apply -f code/part18/networkpolicy_tls.yaml
 ```
 
 ---
 
-## 3. Data loss prevention (DLP)
+## 4. Who read the weights: audit logs
 
-### 3.1 What DLP does
+### 4.1 Turn the logs on
 
-Data leaves a cluster in ways nobody planned. A misconfigured job might copy a training set into an outside bucket. DLP watches the data flows, blocks the ones that break policy, and raises an alert on the ones that look wrong.
+Cloud Storage audit logging has two parts. Admin Activity logs are always on and cover changes such as setting bucket permissions. Data Access logs, which record reads of object data, are disabled by default and are not written unless you enable them. Without them, Cloud Audit Logs does not record who read an object. Reads through allUsers or allAuthenticatedUsers are not tracked there even when Data Access logs are on.
 
-```text
-DLP rules:
-- Detect PII in inference logs
-- Block large data downloads from object storage
-- Alert on unusual access patterns
-- Enforce data residency (data stays in the region)
-```
+So the first audit control for weights is simple: enable Data Access logs on the bucket that holds them, and route the logs to a store the weight owners cannot edit. For the Kubernetes API, the audit policy decides which events are recorded. Turn it on in production so you can explain what happened.
 
-Use these rules as a checklist. If you own the pipeline, ask which rule would have caught your last leak. Give each rule a named owner and a way to test it.
+### 4.2 Make the log hard to change
 
-### 3.2 The DLP for object storage
-
-Object storage is a common place for large leaks, so watch its access patterns closely. Look for large downloads, unusual access patterns, and reads from another region. The command below enforces public access prevention on the bucket.
+An attacker who gets into the cluster wants to erase their trail. Cloud Storage retention policies and Bucket Lock make logs durable. The documentation says objects under a retention policy can be deleted or replaced only once their age exceeds the retention period. Locking the policy is irreversible. It cannot be removed and the period cannot be shortened, though it can be lengthened.
 
 ```bash
-# Enforce public access prevention on a GCS bucket (this is not DLP; DLP is a separate Google service)
-gsutil pap set enforced gs://my-bucket
-# expected: the public access prevention is enforced
+gcloud storage buckets update gs://audit-log-bucket --retention-period=90d
 ```
 
-Give every bucket its own DLP rules, monitor its access, and alert on anything suspicious.
+That is a retention policy. Locking it is a separate step, and you cannot undo it, so confirm the period with your compliance team before you lock. The 90 days here is a starting value. Use the period your policy and regulator require.
 
-### 3.3 The DLP for the audit log
-
-An audit log is only useful if nobody can change it. Lock the bucket so entries cannot be deleted or overwritten during the retention period. The bucket should also alert on any attempt to modify it.
-
-```bash
-# Set a retention policy, then lock it (GCS calls this a retention policy and Bucket Lock; Object Lock is the S3 name)
-gsutil retention set 90d gs://audit-log-bucket
-gsutil retention lock gs://audit-log-bucket
-# expected: the bucket has a 90-day retention; the retention is locked
-```
-
-The 90-day period in this example is a starting value. Set the retention your own policy and regulator require.
-
----
-
-## 4. Tamper-evident audit log
-
-### 4.1 What tamper-evident means
-
-Imagine an attacker who gets into the cluster and wants to erase their trail. If they can edit the log, the evidence is gone. Tamper-evident means that any change leaves a trace you can detect. Production Kubernetes, chapter 9, makes the same case for the Kubernetes API server. Its audit logs record who did what, and you want them turned on in production so you can explain what went wrong.
-
-```text
-Tamper-evident properties:
-- Append-only: entries can be added but not modified
-- Signed: each entry is signed by a trusted key
-- Replicated: the log is replicated across multiple regions
-- Auditable: the log can be verified by an independent auditor
-```
-
-### 4.2 The audit log implementation
-
-The implementation below writes each entry as its own file. It creates each file exclusively, so a second write to the same name fails instead of overwriting the first. That models an object-lock bucket, where an entry can be added but never replaced. Each entry also stores a SHA-256 hash of its event, which `verify_entry` recomputes. That check catches an edited event, but it does not catch an attacker who rewrites both the event and its hash. The bucket lock does the real protection here.
+The sketch below models the append-only idea locally. Each entry is a separate file created exclusively, so a second write to the same name fails. Each entry also stores a SHA-256 hash of its event. That catches an edited event but not an attacker who rewrites both the event and its hash. The bucket lock does the real protection.
 
 ```python
 # code/part18/audit_log.py
@@ -260,27 +172,11 @@ def verify_entry(path) -> bool:
     e = json.loads(Path(path).read_text()); return hashlib.sha256(json.dumps(e["event"], sort_keys=True).encode()).hexdigest() == e["hash"]
 ```
 
-### 4.3 The audit log in production
-
-The security team, the regulator, and the post-mortem team all query the audit log. Production Kubernetes, chapter 9, advises restricting who can read these logs, because not everyone should see them. Start with a narrow query, such as one user's recent events.
-
-```bash
-# Query the audit log
-bq query --use_legacy_sql=false \
-  "SELECT timestamp, event
-   FROM \`${PROJECT_ID}.audit.events\`
-   WHERE event.user = 'alice'
-   ORDER BY timestamp DESC LIMIT 100"
-# expected: the events are listed; the events are tamper-evident
-```
-
 ---
 
-## 5. Lineage for compliance
+## 5. Lineage: which data trained this model
 
-### 5.1 What lineage proves
-
-A regulator may ask one question: which data trained the model that decided on this customer? Lineage answers it by linking data, models, and customers in a chain. The chain has three links. Data feeds the model, the model serves the customer, and every step writes to the audit log. Lineage proves the chain itself. The audit log proves nobody changed the record.
+A regulator may ask which data trained the model that decided on a customer. Lineage links data, models and customers so the question can be answered by walking a graph. The audit log shows the record was not changed.
 
 ```mermaid
 flowchart LR
@@ -292,337 +188,170 @@ flowchart LR
     C -->|audit| Audit
 ```
 
-### 5.2 The lineage graph
-
-Store the chain as a graph, so a question about one customer can walk back to the data in a few steps. When you build it, test one customer end to end. The graph has three kinds of node: data, models, and customers. Its edges name the relationship between them. Record every edge in the audit log, so the graph itself can be checked later.
-
-```text
-Lineage graph schema:
-- nodes: data, model, customer
-- edges: derived_from, trained_on, served_to
-- metadata: timestamp, version, hash
-- audit: every edge is recorded in the audit log
-```
-
-### 5.3 The lineage in production
-
-The platform team builds the lineage. The security team and the regulator query it. Keep the query simple enough to run during an audit, not after one. If you answer the regulator, you need this query ready before the question arrives.
+Each edge carries a timestamp, a version and a hash. Test one customer end to end before an audit, not during one.
 
 ```bash
-# Query the lineage graph
-bq query --use_legacy_sql=false \
-  "SELECT source, target, relationship
-   FROM \`${PROJECT_ID}.lineage.edges\`
-   WHERE target = 'churn-model-v6'"
-# expected: the lineage edges are listed; the customer can be traced back to the data
+python code/part18/lineage_graph.py --model churn-model-v6 --dataset churn-v3 --output lineage.yaml
 ```
 
 ---
 
-## 6. Operating data and model protection on GKE
+## 6. How it fails
 
-### 6.1 The components
+### 6.1 A pickle checkpoint reached a production node
 
-Six components work together, and each one has a backing store. The SLO column holds example targets, not values from a standard. Choose your own targets with your security and compliance teams, and measure them from the first day.
+The loader ran code from a downloaded file. Rotate every credential on that node, rebuild it, and add the registry gate that rejects pickle checkpoints.
 
-| Component | Where it runs | Backing store | SLO |
-|---|---|---|---|
-| Encryption at rest | Object storage; disks | KMS | 100% of data encrypted |
-| Encryption in transit | Every service | TLS | TLS 1.3 enforced |
-| Model watermarking | Every model | Model registry | 100% of models watermarked |
-| DLP | Object storage; egress | (monitoring) | DLP rules enforced |
-| Audit log | Object storage with object-lock | KMS | Audit log tamper-evident |
-| Lineage graph | BigQuery; Atlas | KMS | Lineage queryable |
+### 6.2 A signature verifies but the model misbehaves
 
-### 6.2 IAM and the data and model protection
+The signature proved who produced the file and that it was not changed. It did not prove the model is safe. Add evaluation and red-team checks before approval.
 
-Give each group only the access its job needs. Security reads the rules and the logs. The platform team manages keys and DLP rules. The CISO's office approves the policies. The role names below are placeholders, so map them to the roles your organisation already uses.
+### 6.3 Nobody can say who downloaded the weights
 
-| Role | Who | What they can do |
-|---|---|---|
-| `dataprotection.reader` | The security team | Read the DLP rules; read the audit log |
-| `dataprotection.writer` | The platform team | Manage the encryption keys; manage the DLP rules |
-| `dataprotection.admin` | The CISO's office | Approve the encryption policy; approve the watermarking policy |
+Data Access logs were off. Enable them now. Past reads cannot be recovered from logs that were never written.
 
-Production Kubernetes, chapter 10, suggests a per-team pattern: one group per team, a view role, and a separate admin user. The book says this removes much of the risk of costly mistakes. The security team owns this discipline. Document it, enforce it, and review it on a regular schedule, such as quarterly.
+### 6.4 Secrets in etcd are readable
 
-### 6.3 Observability
+The first provider in the encryption configuration is `identity`, or the flag was never set. Reorder the providers, restart the API servers, and rewrite existing secrets so they are stored encrypted.
 
-Each metric below shows whether one control is still working. The alert thresholds in the table are examples. Pick the level your own policy requires.
+### 6.5 The key was rotated and a job cannot read the data
 
-| Metric | Why it matters | Alert |
-|---|---|---|
-| Encryption at rest rate | Data protection | < 100% |
-| Encryption in transit rate | Data protection | < 100% |
-| Model watermarking rate | IP protection | < 100% |
-| Audit log tamper-evident rate | Compliance | < 100% |
-| Lineage queryability rate | Compliance | < 100% |
+A job holds a pinned key version. Check which key version encrypted the data and whether the job's identity may use it.
 
-The audit log tamper-evident rate matters most. A log that is not tamper-evident is one the regulator cannot trust. Its alert should page the on-call engineer right away.
+### 6.6 The lineage query is slow or incomplete
+
+Edges are missing or the graph is stale. Record edges at training time, not after the fact, and rehearse the query.
 
 ---
 
-## 7. How it fails
+## 7. Hands-on lab
 
-Six failure modes come up again and again. When something breaks, match the symptom you see to one of these six patterns.
+These steps use commands from the vendor documentation cited below. They have not been run against a live GKE cluster here.
 
-### 7.1 "Encryption at rest is not enabled"
+1. Convert a small pickle checkpoint to safetensors in a sandbox with no network, and load it with `safe_open`.
+2. Sign the directory with `model_signing sign`, change one byte in a copy, and show that `model_signing verify` fails on the copy.
+3. Set a default customer-managed key on a test bucket with `gcloud storage buckets update --default-encryption-key`.
+4. Enable Data Access audit logs for Cloud Storage on the test project, read an object, and find the entry.
+5. Set a retention policy on a test log bucket. Do not lock it unless you are sure.
+6. Run the lineage script for one model and trace it back to its dataset.
 
-**Symptom:** A bucket or disk is unencrypted, so anyone who gets the disk can read the data.
-
-**Diagnosis:** The encryption setting was never applied, so the platform policy did not take effect.
-
-**Fix:** Turn on encryption at rest for every bucket and disk. Verify it is in place, and alert on any resource that is not encrypted.
-
-### 7.2 "Encryption in transit is not enforced"
-
-**Symptom:** A service answers over plain HTTP, so anyone on the network path can read the traffic.
-
-**Diagnosis:** The TLS configuration is missing, or the NetworkPolicy is misconfigured.
-
-**Fix:** Set the minimum TLS version at the ingress or service mesh. This chapter uses TLS 1.3 as its example, but your policy may set a different version. Use a NetworkPolicy to limit traffic to the TLS port, and alert on any HTTP-only endpoint.
-
-### 7.3 "The model is not watermarked"
-
-**Symptom:** A model goes live without a watermark, so a stolen copy cannot be traced back to you.
-
-**Diagnosis:** The watermark step was skipped, and the CI/CD pipeline does not require it.
-
-**Fix:** Add the watermark step to the CI/CD pipeline. Verify the mark before deployment, and alert on any model that lacks one.
-
-### 7.4 "The audit log is not tamper-evident"
-
-**Symptom:** The audit log can be changed or deleted, so the regulator cannot trust it.
-
-**Diagnosis:** Object lock is off, the retention is not locked, or the bucket policy is wrong.
-
-**Fix:** Turn on object lock for the audit log bucket and lock the retention. Then confirm the log really is tamper-evident.
-
-### 7.5 "The DLP is not configured"
-
-**Symptom:** Sensitive data is leaving the cluster, and nothing catches it.
-
-**Diagnosis:** The DLP rules were never written, or DLP is not watching the data flows.
-
-**Fix:** Write the DLP rules and confirm they watch the flows. Alert on any suspected exfiltration.
-
-### 7.6 "The lineage is not queryable"
-
-**Symptom:** A regulator asks which data trained the model that decided on a customer, and the team cannot answer quickly.
-
-**Diagnosis:** The lineage graph is not kept up to date, the edges are not recorded, or the query is slow.
-
-**Fix:** Build the lineage graph and record every edge. Test that the query returns fast enough to use during an audit.
-
----
-
-## 8. Hands-on lab
-
-In this lab you put the six protections in place on GKE: encryption, watermarking, DLP, the audit log, and lineage. The lab is **untested** in this repository, so treat each expected output as a claim to check.
-
-### 8.1 Prerequisites
-
-- A GKE Autopilot or Standard cluster (1.27+).
-- A Cloud KMS keyring.
-- A model registry (MLflow, Vertex AI).
-- A BigQuery dataset for the lineage.
-
-### 8.2 Step 1: enable encryption at rest
-
-Start with the bucket. Point its encryption at your customer-managed key.
-
-```bash
-gsutil encryption set -k projects/${PROJECT_ID}/locations/us/keyRings/default/cryptoKeys/default gs://my-bucket
-# expected: the bucket is encrypted with the customer-managed key
-```
-
-### 8.3 Step 2: enforce encryption in transit
-
-Apply the policy that limits the model API to its TLS port.
-
-```bash
-kubectl apply -f code/part18/networkpolicy_tls.yaml
-# expected: traffic to app=model-api is accepted only on TCP 8443 (the TLS version itself is set at the ingress or mesh)
-```
-
-### 8.4 Step 3: watermark the model
-
-Embed the watermark, then check that you can verify it.
-
-```bash
-python code/part18/snippets/model_watermark.py \
-  --model churn-model-v6 \
-  --signature "platform=acme;team=data-science;date=2024-03-15"
-# expected: the watermark is embedded; the watermark is verifiable
-```
-
-### 8.5 Step 4: configure DLP
-
-Enforce public access prevention on the bucket.
-
-```bash
-gsutil pap set enforced gs://my-bucket
-# expected: the public access prevention is enforced
-```
-
-### 8.6 Step 5: configure the tamper-evident audit log
-
-Set and lock the retention on the audit log bucket.
-
-```bash
-gsutil retention set gs://audit-log-bucket 90d
-gsutil retention lock gs://audit-log-bucket
-# expected: the bucket has a 90-day retention; the retention is locked
-```
-
-### 8.7 Step 6: build the lineage graph
-
-Generate the graph for the model and its dataset.
-
-```bash
-python code/part18/lineage_graph.py \
-  --model churn-model-v6 \
-  --dataset churn-v3 \
-  --output lineage.yaml
-# expected: the lineage graph is generated; the graph is auditable
-```
-
-### 8.8 What to record
-
-After the lab, you should be able to answer five questions. Time yourself, because the answers should come quickly.
-
-1. What is the current encryption at rest rate?
-2. What is the current encryption in transit rate?
-3. What is the current model watermarking rate?
-4. What is the current audit log tamper-evident rate?
-5. What is the current lineage queryability rate?
-
-The five-second and 30-second figures here are examples. Set your own target. If an answer takes longer than your target, the protection is not yet ready to run as a production service. The lab is **untested** against a live GKE cluster.
+Record the time it takes to answer: which file format does each production model use, and who last read it?
 
 ---
 
 ## Exercises
 
-Each exercise asks you to add one alert. Build it, then break the control on purpose in a test environment to confirm the alert fires. If the alert stays silent when the control is broken, fix the alert before you trust it.
-
-1. **Add an encryption at rest alert.** Configure an alert that fires when encryption is not enabled on any object storage bucket. *Solution sketch:* a Prometheus exporter for the bucket state, and an alert that fires when the state is not "encrypted".
-2. **Add an encryption in transit alert.** Configure an alert that fires when TLS 1.3 is not enforced on any service. *Solution sketch:* a Prometheus exporter for the TLS state, and an alert that fires when the state is not "TLS 1.3 enforced".
-3. **Add a model watermarking alert.** Configure an alert that fires when a model is not watermarked. *Solution sketch:* a Prometheus exporter for the watermark state, and an alert that fires when the state is not "watermarked".
-4. **Add an audit log tamper-evident alert.** Configure an alert that fires when the audit log is not tamper-evident. *Solution sketch:* a Prometheus exporter for the audit log state, and an alert that fires when the state is not "tamper-evident".
-5. **Add a DLP alert.** Configure an alert that fires when DLP rules are not enforced. *Solution sketch:* a Prometheus exporter for the DLP state, and an alert that fires when the state is not "DLP enforced".
-6. **Add a lineage queryability alert.** Configure an alert that fires when the lineage graph is not queryable. *Solution sketch:* a Prometheus exporter for the lineage state, and an alert that fires when the state is not "queryable".
+1. A model file named weights.bin arrives from a partner. How do you decide whether it is safe to load? *Solution sketch:* find out the format. If it is pickle, convert it in a sandbox without credentials or network, then verify the signature of the converted file against the partner's identity.
+2. Show that signature verification catches a changed file. *Solution sketch:* sign a directory, flip one byte in a copy, run verify on the copy, and expect failure.
+3. A security review asks who read the weights bucket last month, and Data Access logs were never enabled. What do you tell them and what do you do? *Solution sketch:* reads were not recorded and cannot be reconstructed. Enable the logs now and route them to a bucket with a retention policy.
+4. Check whether Kubernetes Secrets are encrypted at rest on your cluster. *Solution sketch:* read the encryption configuration, confirm the first provider is not `identity`, then read a Secret directly from etcd to see that it is not plain text.
+5. An audit entry is written on 1 November under a locked 90-day retention. When can it first be deleted? *Solution sketch:* 90 days later is 30 January.
+6. Explain why a SHA-256 hash stored beside an audit entry does not stop an attacker who can edit the file. *Solution sketch:* the attacker rewrites both the event and its hash, so verification still passes. The bucket lock provides the real protection.
 
 ---
 
 ## Checkpoint questions
 
-<details><summary>1. A regulator asks which data trained the model that decided on a customer and the team cannot answer quickly. What is the likely cause and the fix?</summary>
-The lineage graph is not kept up to date, the edges are not recorded, or the query is slow. Build the graph and record every edge. Test that the query returns fast enough to use during an audit, and have it ready before the question arrives.
+<details><summary>1. A training job downloads a checkpoint from a public hub and calls torch.load. What risk remains with the default weights_only setting?</summary>
+The default restricts unpickling to safe types, but the PyTorch documentation still says never to load data from an untrusted source. Prefer safetensors, and verify the source with a signature.
 </details>
 
-<details><summary>2. You find that the audit log can be changed or deleted. What is the likely cause and the fix?</summary>
-Object lock is off, the retention is not locked, or the bucket policy is wrong. Turn on object lock for the audit log bucket and lock the retention. Then confirm the log really is tamper-evident. A log that can be edited cannot be trusted by the regulator.
+<details><summary>2. What does safetensors remove, and what does it leave open?</summary>
+It removes code execution on load, because the format is a JSON header plus raw tensor bytes. It leaves provenance open and does not check tensor values, so NaN or infinity can appear.
 </details>
 
-<details><summary>3. A service answers over plain HTTP. What are the likely causes and what do you set?</summary>
-The TLS configuration is missing or the NetworkPolicy is misconfigured. Set the minimum TLS version at the ingress or service mesh. Use a NetworkPolicy to limit traffic to the TLS port and alert on any HTTP-only endpoint.
+<details><summary>3. A signature on a model verifies. A colleague says the model is therefore safe. What do you answer?</summary>
+Signing proves the files match what was signed and that the signer's identity can be checked. It does not prove the signer is trustworthy or the model is free of malicious behavior.
 </details>
 
-<details><summary>4. A model went live without a watermark and a copy appears elsewhere. Why can you not trace it, and what do you change?</summary>
-The watermark step was skipped and the CI/CD pipeline does not require it. Without the mark a stolen copy cannot be traced back to you. Add the watermark step to the pipeline, verify the mark before deployment, and alert on any model that lacks one.
+<details><summary>4. Verification fails for a model directory after a copy to a new bucket. What do you check?</summary>
+Whether any file changed, was added or was removed, because the signature covers a list of file paths and digests. Also check that you pass the same identity and provider that were used to sign.
 </details>
 
-<details><summary>5. Sensitive data is leaving the cluster and nothing catches it. What is the likely cause and the fix?</summary>
-The DLP rules were never written or DLP is not watching the data flows. Write the rules, confirm they watch the flows, and alert on any suspected exfiltration. Give each rule a named owner and a way to test it.
+<details><summary>5. Why must the model signing verification step run before weights reach the GPU node?</summary>
+Once a tampered file is loaded, the damage may already be done. Verifying in the deployment path stops it before it runs.
 </details>
 
-<details><summary>6. An attacker defeats the firmware, the access controls, and the GPU sharing. What still protects the customer's data, and what shows the regulator that controls worked?</summary>
-Encryption at rest keeps the data on disk unreadable, so it is the last line of defence. The audit log is the evidence that the controls worked. This only holds when the keys are managed well, which is the part teams most often get wrong.
+<details><summary>6. Your cluster stores Secrets in etcd. How do you know they are encrypted?</summary>
+Check the encryption configuration. If the first provider is identity, there is no encryption at rest even if the flag is set. Secrets written before encryption was enabled stay plain text until rewritten.
 </details>
 
-<details><summary>7. Why does creating each audit entry as a new file with O_EXCL model an object-lock bucket?</summary>
-A second write to the same name fails instead of overwriting the first. So an entry can be added but never replaced, which is what an object-lock bucket does. The local code is a model of the bucket, not a replacement for it.
+<details><summary>7. Why prefer KMS v2 over v1 for Kubernetes envelope encryption?</summary>
+KMS v1 has been deprecated since Kubernetes 1.28 and disabled by default since 1.29, while KMS v2 has been stable since 1.29 and derives a new data key per encryption.
 </details>
 
-<details><summary>8. Each audit entry stores a hash of its event. Why does that not stop an attacker who can edit the file?</summary>
-`verify_entry` recomputes the hash, so it catches an edited event. It does not catch an attacker who rewrites both the event and its hash. The bucket lock does the real protection.
+<details><summary>8. What is envelope encryption, in one sentence?</summary>
+A data key encrypts the content and a key encryption key held in a key manager encrypts the data key.
 </details>
 
-<details><summary>9. Why can a NetworkPolicy not give you TLS 1.3?</summary>
-A NetworkPolicy can only limit traffic to a port, for example TCP 8443 for the model API. It cannot enforce the TLS version. Set the minimum version at the ingress or the service mesh instead.
+<details><summary>9. Why is a key stored next to the encrypted data a problem?</summary>
+Anyone who can read the data can read the key. A key management service keeps them apart, controls who may use the key, and records each use.
 </details>
 
-<details><summary>10. Why does a KMS matter if the data is already encrypted?</summary>
-Encryption is only as strong as its keys. If the key sits next to the data, the lock protects nothing. A KMS keeps keys apart from the data, rotates them, and keeps a record you can audit.
+<details><summary>10. Why can a NetworkPolicy not give you TLS 1.3?</summary>
+It works at the IP and port layer. It can limit traffic to a port such as 8443 but cannot see or require a TLS version, which belongs to the ingress or service mesh.
 </details>
 
-<details><summary>11. Why do you need both lineage and the audit log for compliance?</summary>
-Lineage proves the chain from data to model to customer. The audit log proves that nobody changed the record. Every edge in the graph is recorded in the audit log, so the graph can be checked later.
+<details><summary>11. An incident review needs the list of principals that read a weights object last week. What must have been true?</summary>
+Data Access audit logs were enabled for the bucket before the reads. Without them Cloud Audit Logs does not record who read data.
 </details>
 
-<details><summary>12. You need to protect Kubernetes Secrets in etcd. When would you start with the built-in encryption and when with a KMS plug-in?</summary>
-Production Kubernetes chapter 7 says the API server can encrypt Secret objects before they reach etcd. A KMS plug-in adds envelope encryption, where a key stored in the KMS protects the data keys. The book warns that KMS plug-ins are still immature, so start with the built-in options. You give up the KMS-held key until the plug-in matures.
+<details><summary>12. Why is locking a retention policy a decision to make carefully?</summary>
+The documentation says locking is irreversible. The policy cannot be removed and the period cannot be shortened, though it can be lengthened.
 </details>
 
-<details><summary>13. Several teams want to read the audit log. When would you restrict access and what do you give up?</summary>
-The security team, the regulator, and the post-mortem team all query the log. Production Kubernetes chapter 9 advises restricting who can read these logs because not everyone should see them. You give up easy self-service reading. Start each person with a narrow query such as one user's recent events.
+<details><summary>13. Each audit entry stores a hash of its event. What attack does that not stop?</summary>
+An attacker who edits the event and rewrites its hash. The retention lock provides the real protection.
 </details>
 
-<details><summary>14. Your cloud provider is trusted. Why still use a customer-managed key for encryption at rest?</summary>
-Production Kubernetes chapter 7 recommends treating encryption at rest as the default, even if you trust your cloud provider. A customer-managed key in KMS lets you rotate the key and audit its use yourself. The cost is that you must own the key lifecycle.
+<details><summary>14. Why is O_EXCL used when writing each audit entry file?</summary>
+A second write to the same name fails instead of overwriting, which models an object that can be added but never replaced.
 </details>
 
-<details><summary>15. Access control already limits who can read a bucket. Why also add DLP?</summary>
-Access control decides who can do what. A legitimate job with correct access can still copy a training set into an outside bucket by mistake. DLP watches the data flows and blocks or alerts on what leaves the cluster. You need both, one for inbound access and one for outbound flows.
+<details><summary>15. A regulator asks which data trained the model that decided on a customer. What do you need ready?</summary>
+A lineage graph linking data, model and customer, with each edge recorded in the audit log, and a query you have already tested.
 </details>
 
-<details><summary>16. An audit entry is written on 1 November under the example 90-day locked retention. When can it first be deleted?</summary>
-Count 90 days. 1 November plus 30 days is 1 December, plus 60 days is 31 December, and plus 90 days is 30 January. The retention is a starting value, so use the period your policy and regulator require.
+<details><summary>16. A retention period of 90 days is set on an entry written on 1 November. When can it first be deleted?</summary>
+On 30 January, because 90 days after 1 November lands there.
 </details>
 
-<details><summary>17. You check 40 buckets and 38 are encrypted at rest. What is the rate and does the example alert fire?</summary>
-The rate is 38 / 40 = 95 percent. The example alert fires below 100 percent, so it fires. Two buckets hold data that anyone who gets the disk can read.
+<details><summary>17. You check 40 buckets and 38 have the required default key. What is the rate and what next?</summary>
+38 divided by 40 is 95 percent. Fix the two buckets and alert on any bucket without the key.
 </details>
 
-<details><summary>18. The lineage diagram follows one customer. How many edges does it draw in total and how many of them go to the audit log?</summary>
-It draws Warehouse to Dataset, Dataset to Model, and Model to Customer, which is 3 edges. It also draws Dataset, Model, and Customer each to the audit log, which is 3 more. The total is 3 + 3 = 6 edges, and 3 go to the audit log.
+<details><summary>18. A partner sends only a pickle checkpoint. What do you do?</summary>
+Convert it in a sandbox with no credentials and no network, then verify and sign the converted file. Do not load the original on a production node.
 </details>
 
-<details><summary>19. The lineage query cannot answer a regulator's question in time. What do you check, in order?</summary>
-First check whether the graph is kept up to date. Second check whether every edge is recorded. Third check whether the query is slow, and test that it returns fast enough to use during an audit.
+<details><summary>19. Signing events appear in a transparency log. Who notices an unexpected one?</summary>
+Only someone who monitors the log. The project says the log makes events discoverable, and signers must watch for events they did not make.
 </details>
 
-<details><summary>20. The audit log is found not to be tamper-evident. What do you check, in order?</summary>
-First check whether object lock is on. Second check whether the retention is locked. Third check the bucket policy. After the fix, confirm that the log really is tamper-evident.
+<details><summary>20. Audit logs show a read of the weights by an unknown principal. What do you do, in order?</summary>
+Preserve the logs, identify the principal and the source address, revoke the credential, check what else it read, and review the bucket permissions.
 </details>
 
 ---
 
 ## Sources and review notes
 
-- NVIDIA Zero-to-Hero Volume 18 (`chapter-10-data-and-model-protection.md`, `chapter-11-audit-and-compliance.md`). Source for the encryption, watermarking, DLP, audit log, and lineage patterns. The wording has been rewritten in the handbook's voice.
-- NVIDIA Zero-to-Hero Volume 8 (`chapter-03-platform-security-and-trust.md`). Source for the platform security and trust patterns.
-- *Engineering AI Systems* (`engineering-ai-systems-architecture-and-devops-essentials`, Chapters 9, 10). Source for the security patterns and the privacy and fairness considerations.
+- Python documentation, pickle module: security warning. Fetched 2026-11-12.
+- PyTorch documentation, `torch.load` (version 2.15 page): `weights_only` default and untrusted-source warning. Fetched 2026-11-12.
+- Safetensors project documentation and repository: format layout, 100 MB header cap, limits. Fetched 2026-11-12.
+- Sigstore model-transparency repository (OpenSSF model signing): signing, verification, what it proves and does not. Fetched 2026-11-12.
+- Kubernetes documentation: encrypting confidential data at rest, and using a KMS provider (KMS v1 deprecated 1.28, disabled 1.29; KMS v2 stable 1.29). Fetched 2026-11-12.
+- Google Cloud documentation: envelope encryption, Cloud Storage customer-managed keys, Cloud Storage audit logging, Bucket Lock. Fetched 2026-11-12.
+- *Production Kubernetes*, chapters 7, 9 and 10, for secrets, audit logging and per-team access patterns.
 
-### Cross-references to other handbook chapters
+### Corrections made in this rework
 
-- Chapter 18.1 for the threat-model context.
-- Chapter 16.13 for the governance and compliance context.
-- Chapter 13 for the AI storage.
-- Chapter 17 for the operations and audit log.
+- Removed model watermarking. The `torchmark` library in the earlier text does not exist as shown, and no source was found for watermarking robustness claims.
+- Removed the `gcloud kms keys rotate` command, which is not a Cloud KMS command, and the data loss prevention section, which mixed public access prevention with DLP.
+- Replaced `gsutil encryption set -k` with the documented `gcloud storage buckets update --default-encryption-key`.
+- Removed IAM roles named `dataprotection.*` and the alert-only exercises.
 
-### Migrated from `nvidia-devops`
+### Open items
 
-The data and model protection operational patterns draw on Volume 18 chapters 10-11 and Volume 8 chapter 3. The wording has been rewritten in the handbook's voice.
-
-### Explicitly labelled inferences
-
-- The encryption key rotation frequency (90 days) is a starting point; specific frequencies depend on the regulatory regime.
-- The model watermark implementation (torchmark or similar) is a starting point; specific implementations depend on the team's preference.
-- The audit log retention (7 years for regulated industries) is a starting point; specific retention depends on the regulatory regime.
-
-### Not verified on live hardware
-
-- The lab in Section 8 is **untested** against a live GKE cluster in this repository.
-- The encryption commands assume a Cloud KMS keyring is configured.
-- The watermark commands assume the model is in a compatible format.
+- The `watermark` helper in `code/part18/snippets/model_watermark.py` is no longer referenced by the chapter and should be reviewed.
+- Compliance law is not covered. Take legal advice for GDPR, HIPAA and EU AI Act obligations.
