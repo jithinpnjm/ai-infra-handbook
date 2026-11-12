@@ -45,16 +45,16 @@ If any of those chapters is unfamiliar, go back to it before you touch the bundl
 
 "Air-gapped" means the cluster has no direct connection to the internet, usually on purpose, to protect it. For BCM, the cut-off raises four questions, and you need an answer to each before you start.
 
-1. **Where do OS and BCM packages come from?** You build local repositories from the install media (9.6.3 of the Administrator Manual), or you point at internal mirrors.
+1. **Where do OS and BCM packages come from?** You build local repositories from the install media, or you point at internal mirrors.
 2. **Where do container images come from?** From a **local registry** on the head node (chapter 8.10).
 3. **Where do Helm charts and CRDs come from?** From the same bundle, pushed into that registry. CRDs are the Kubernetes definitions that add new object types to the cluster.
 4. **How do you move things in?** Through a connected "initial host" and removable media.
 
 Write down where each of the four answers comes from before you touch the connected host. Every later step depends on those answers.
 
-## 2. The reference scenario (Appendix B)
+## 2. The reference scenario
 
-The chapter follows one reference setup from Appendix B of the manual. The cluster is air-gapped, runs Kubernetes 1.34.7 with BCM 11.33.0 or 11.33.1, and runs on Ubuntu 22.04 or 24.04, or on Rocky Linux 9 or RHEL 9.
+The chapter follows one reference setup from the BCM 11 Containerization Manual. The cluster is air-gapped, runs Kubernetes 1.34.7 with BCM 11.33.0 or 11.33.1, and runs on Ubuntu 22.04 or 24.04, or on Rocky Linux 9 or RHEL 9.
 
 The initial host still has internet access, and it must match the cluster's operating system and architecture: Ubuntu 22.04, 24.04 or 26.04, Rocky 9 or RHEL 9. **The bundle supports one architecture at a time.** A cluster with x86-64 head nodes and ARM64 control plane nodes needs a more customized approach.
 
@@ -88,11 +88,11 @@ None of these choices can be made after the cut-off, so settle every one of them
 
 Everything the cluster needs must be downloaded on the connected host first. Once the cut-off happens, a missing or wrong-version download cannot be fixed from inside. Work through these steps in order.
 
-1. **OS match.** The BCM repository files must come from a working cluster that runs the same OS. On Ubuntu, copy `cm-*.list` and `ubuntu.sources` from `/etc/apt/sources.list.d/`. On RHEL, copy `cm.repo` and `epel.repo` from `/etc/yum.repos.d/`. The manual lists 11.33 fixes for the architecture lines: `Architectures: amd64` or `arm64` in `ubuntu.sources`, and `arch=` in the CUDA and `cm.list` files. The problem is fixed from 11.34 onward.
-2. **Tools.** Use Helm 3.x, not 4.x, which was the case at the manual's date. The script `download_helm_binary.sh` installs it. Install Skopeo only on the connected host. The air-gapped head gets its own Skopeo from the bundle. Do not install it there from a distribution repository, because no such repository exists on that network.
+1. **OS match.** The BCM repository files must come from a working cluster that runs the same OS. On Ubuntu, copy `cm-*.list` and `ubuntu.sources` from `/etc/apt/sources.list.d/`. On RHEL, copy `cm.repo` and `epel.repo` from `/etc/yum.repos.d/`. BCM 11.33 needs small fixes to the architecture lines: `Architectures: amd64` or `arm64` in `ubuntu.sources`, and `arch=` in the CUDA and `cm.list` files. The problem is fixed from 11.34 onward.
+2. **Tools.** Use Helm 3.x, not 4.x, which was the case when the manual was written. The script `download_helm_binary.sh` installs it. Install Skopeo only on the connected host. The air-gapped head gets its own Skopeo from the bundle. Do not install it there from a distribution repository, because no such repository exists on that network.
 3. **Docker Hub limits.** Unauthenticated pulls are limited to **100 per 6 hours**. Authenticated pulls get **200 per 6 hours**. Sign up for any account, then run `skopeo login docker.io`. The credentials are not put in the bundle.
 4. **Scripts.** The scripts live in `$K8S_AG_SCRIPTS`, which points at the `airgap-scripts` directory of the `cm-setup` package. Add that directory to `PATH`. The four scripts are `download_ubuntu_packages.sh` (or `download_r9_packages.sh`), `download_container_images.sh`, `download_helm_charts.sh` and `download_crds.sh`. **Pass `--kube-version=1.34` to the first three explicitly.** Otherwise each one uses its own default version. You can also read the version from a `cm-kubernetes-setup.conf` file with `-c`. Run the scripts in sequence, inside `screen` or `tmux`, because the container images take about 15 times longer than everything else. Apt warnings about `_apt` and `/root` are expected and harmless.
-5. **Size.** Without Run:ai, the bundle is about **8.6 GB**, and **8.1 GB** of that is images. Run:ai adds **13 to 14 GB**. Add the two together and you get about 21.6 to 22.6 GB, which is why the manual advises that you plan **upwards of 20 GB** of working space.
+5. **Size.** Without Run:ai, the bundle is about **8.6 GB**, and **8.1 GB** of that is images. Run:ai adds **13 to 14 GB**. Add the two together and you get about 21.6 to 22.6 GB, which is why NVIDIA advises that you plan **upwards of 20 GB** of working space.
 6. **Run:ai** (optional). Get the air-gapped package from NGC. You need an NGC API key, and version 2.23.60 or later for multi-arch. The `cm-setup-runai-bcm11` package is published **only as a `.deb`**, so air-gapped Run:ai on RHEL is not supported in this release. Verify the download with `sha256sum -c`. The `.sha256` file holds only the checksum, so append the file name on the same line first. Do not install if the check is not OK.
 7. **Completeness check.** Run `find packages packages-head packages-non-dgx packages-cuda k8s-images helm-charts crds -type f`. **Every category must print files.** A directory or subdirectory that exists but is empty means that download did not finish. Re-run that download before you make the tarball.
 8. Create the tarball with `tar -cvzf airgapped.tgz airgapped`. Include **all architectures** the Kubernetes nodes use, and carry the file to the **active** head node.
@@ -103,7 +103,7 @@ Run the completeness check before you copy the bundle anywhere, because an empty
 
 ## 5. Installing on the air-gapped head node
 
-The install runs in a fixed order, and the order matters more than any single command. Each step assumes the step before it has finished. The manual's order, as the lab's `STEPS` list records it, has 13 steps. The numbered list below follows that order.
+The install runs in a fixed order, and the order matters more than any single command. Each step assumes the step before it has finished. The documented order, as the lab's `STEPS` list records it, has 13 steps. The numbered list below follows that order.
 
 1. **Generate the configuration** while you can still run the wizard. Run `cm-kubernetes-setup --airgap-registry master.cm.cluster:5000 --airgap-registry-as-helm`, go through the wizard, and at the summary choose **save, do not deploy**. If you plan to use Run:ai, select its dependency operators now. These are GPU Operator, Grafana Operator, Kgateway, Knative, Kubeflow Training, Metrics Server, MPI Operator, State Metrics, LeaderWorkerSet, MetalLB, Prometheus Adapter and Operator Stack. The Network and NIM Operators are optional.
 2. **Extract** the bundle. On **Ubuntu, extract it somewhere APT can write, such as `/tmp`.** APT runs as `_apt`, and `_apt` cannot read under `/root`. On Rocky and RHEL you can extract in place.
@@ -119,7 +119,7 @@ The lab's `order_problems` check flags the dependency mistakes. Those include pu
 
 If the wizard reports a version mismatch, fix the bundle before you deploy anything.
 
-## 6. Upgrading Kubernetes air-gapped (Appendix C)
+## 6. Upgrading Kubernetes air-gapped
 
 The principles match the install in chapter 8.9. A few differences matter here, and they are the ones this section covers.
 
@@ -137,7 +137,7 @@ The principles match the install in chapter 8.9. A few differences matter here, 
        ```bash
        root@controlplane01:~# kubeadm upgrade plan --kubeconfig=/root/.kube/config-default
        ```
-       In the manual's `v1.32.10` session, `kubeadm upgrade plan` suggests the latest patch in the current minor, `v1.32.11`. The skew policy, however, lets you jump to the next minor, `v1.33.6`, once you have checked the Kubernetes changelogs. So apply the target version directly on the **first** control-plane node:
+       In NVIDIA's `v1.32.10` example session, `kubeadm upgrade plan` suggests the latest patch in the current minor, `v1.32.11`. The skew policy, however, lets you jump to the next minor, `v1.33.6`, once you have checked the Kubernetes changelogs. So apply the target version directly on the **first** control-plane node:
        ```bash
        root@controlplane01:~# kubeadm upgrade apply v1.33.6 --kubeconfig=/root/.kube/config-default
        ```
@@ -173,7 +173,7 @@ Not every part of BCM needs the internet, but each part needs a source you can r
 
 | Need | Offline option |
 |---|---|
-| Distribution and BCM packages for the head or an image | A local repository from the install media: mount the ISO (`mount -o loop`), `bind` mount it into the image, a repo file such as `/etc/yum.repos.d/cm11.0-dvd.repo` with `baseurl=file:///mnt1/data/packages/11.0-<subminor>`. For Ubuntu an APT list for the ISO; the BCM line needs no `trusted=yes` (the `cm-config-apt` package imports the BCM keyring), and the second line for the base Ubuntu packages on the ISO uses `trusted=yes`, which the manual calls a **deliberate risk acceptance for local, physically controlled media, not a default to copy to a network-hosted repository** |
+| Distribution and BCM packages for the head or an image | A local repository from the install media: mount the ISO (`mount -o loop`), `bind` mount it into the image, a repo file such as `/etc/yum.repos.d/cm11.0-dvd.repo` with `baseurl=file:///mnt1/data/packages/11.0-<subminor>`. For Ubuntu an APT list for the ISO; the BCM line needs no `trusted=yes` (the `cm-config-apt` package imports the BCM keyring), and the second line for the base Ubuntu packages on the ISO uses `trusted=yes`, which NVIDIA describes as a **deliberate risk acceptance for local, physically controlled media, not a default to copy to a network-hosted repository** |
 | RHEL or SLES base repositories | copy the vendor ISOs into the image (`/root/repo1`) and add `file://` repos (9.6.3) |
 | A custom image offline | `cm-create-image ... -e -s` with the local repository (9.6.4); `--air-gapped` exists in the image-creation options |
 | Mellanox/DOCA OFED | `cm-doca-ofed-install.sh -v <version> -h --cmdvd` installs from a BCM install medium (BCM 11 media carry DOCA OFED) |
@@ -216,34 +216,19 @@ Most failed air-gapped installs come down to a short list of mistakes. The ten b
 
 Picture a connected cluster that is missing an RPM package or a Helm chart. An administrator fixes it in ten seconds with `apt install` or `helm install`. Now picture the same gap inside an air-gapped facility, behind a one-way data diode or a physical media escort. A single missing dependency found in the middle of a change window means you abort the window and wait days for a new media transfer approval.
 
-Running an air-gapped AI factory in a defence, sovereign-cloud or financial data centre is therefore a **supply-chain engineering discipline**. To make installations and upgrades predictable on the first try, organize the work around three isolated zones.
+Running an air-gapped AI factory in a defence, sovereign-cloud or financial data centre is therefore a supply-chain discipline. The work falls into three places, and each has its own checks.
 
-1. **Zone 1: The Connected Staging Host (Internet-facing lab).**
-   - Keep a dedicated virtual machine or bare-metal host whose **OS distribution, minor version and CPU architecture (`x86_64` or `aarch64`) match your air-gapped head node**.
-   - Copy `/etc/apt/sources.list.d/cm-*.list` and `ubuntu.sources` (or `/etc/yum.repos.d/cm.repo` and `epel.repo`) from your cluster. That way the staging host pulls the exact BCM point-release packages your head node expects.
-   - Log Skopeo in to Docker Hub with `skopeo login docker.io`, and to NGC with `skopeo login nvcr.io`, before you run `$K8S_AG_SCRIPTS/download_container_images.sh`. That way you never hit the `100`-pull unauthenticated Docker Hub rate limit partway through downloading two hundred container layers.
-   - Always pass `--kube-version=<major.minor>`, or `-c cm-kubernetes-setup.conf`, explicitly to `download_ubuntu_packages.sh` or `download_r9_packages.sh`, to `download_container_images.sh` and to `download_helm_charts.sh`. Run `download_crds.sh` as well.
-2. **Zone 2: Pre-Transfer Verification and Cryptographic Manifest Gate.**
-   - Before you write `airgapped.tgz` to encrypted removable media, or push it across a DMZ diode, run the seven-directory completeness check: `find packages packages-head packages-non-dgx packages-cuda k8s-images helm-charts crds -type f`. Every directory must contain files. An empty one means a script exited early, usually because of a network blip.
-   - Run `ls helm-charts/` and record the exact version strings of the downloaded **NVIDIA GPU Operator**, **Network Operator** and **Run:ai** charts. The wizard on the inside **must** select those exact chart versions, even when its menu marks a different version with an NVAIE certification asterisk (`*`).
-   - Generate a `SHA256SUMS` manifest that covers `airgapped.tgz`, the BCM DVD ISO (which carries `--cmdvd` DOCA OFED packages and base OS repos), and any `.fwpkg` firmware bundles.
-3. **Zone 3: The Air-Gapped Active Head Node.**
-   - Run `sha256sum -c SHA256SUMS` right after you copy the files onto the **Active** head node. Never run setup scripts on the Passive head node.
-   - On Ubuntu head nodes, extract `airgapped.tgz` under **`/tmp/airgap`**, or under `/var/tmp/airgap` with world-readable directory permissions, rather than under `/root`. That lets the unprivileged `_apt` sandbox user read the `.deb` archives during `--airgap-install-system-packages`.
-   - Follow the strict order that `code/part08/airgap_lab.py` enforces. Step 1 generates the config with `--airgap-registry master.cm.cluster:5000 --airgap-registry-as-helm`, and you save without deploying. Step 2 runs `--airgap-install-system-packages`, which installs `skopeo` from the bundle. Step 3 deploys the local Docker Registry with `cm-container-registry-setup --skip-packages`, then copies its `<host>:5000-ca.crt` into `/usr/local/share/ca-certificates/` and runs `update-ca-certificates`. Step 4 pushes the images with `--airgap-push-container-images`. Step 5 pushes the Helm charts with `--airgap-push-helm-charts`. Step 6 extracts the CRDs with `extract_crds.sh`. Step 7 deploys with `cm-kubernetes-setup -c ...`.
+**On the connected staging host.** Keep a dedicated machine whose OS distribution, minor version and CPU architecture (`x86_64` or `aarch64`) match your air-gapped head node. This matching rule is the one that cannot be bent. Copy the BCM repository files from your cluster, `cm-*.list` and `ubuntu.sources` on Ubuntu or `cm.repo` and `epel.repo` on RHEL, so that the staging host pulls the exact BCM point-release packages your head node expects. Log Skopeo in to Docker Hub with `skopeo login docker.io`, and to NGC with `skopeo login nvcr.io`, before you run `download_container_images.sh`. That way you do not hit the unauthenticated Docker Hub limit of 100 pulls partway through hundreds of container layers. Pass `--kube-version=<major.minor>`, or `-c cm-kubernetes-setup.conf`, explicitly to the package, image and chart download scripts, and run `download_crds.sh` as well.
 
-Treat the verification gate in zone 2 as a hard stop. A file that is missing on the inside costs you a change window and a new media transfer.
+**At the verification gate, before the media leaves.** Before you write `airgapped.tgz` to encrypted removable media or push it across a DMZ diode, run the seven-directory completeness check from section 4. An empty directory means a script exited early, usually because of a network blip. Run `ls helm-charts/` and record the exact versions of the downloaded GPU Operator, Network Operator and Run:ai charts. The wizard on the inside must select those exact versions, even when its menu marks another version with the certification asterisk. Then generate a `SHA256SUMS` file that covers `airgapped.tgz`, the BCM installation ISO, which carries the `--cmdvd` DOCA OFED packages and base OS repositories, and any firmware bundles. Treat this gate as a hard stop, because a file missing on the inside costs a change window and a new media transfer.
+
+**On the air-gapped active head node.** Run `sha256sum -c SHA256SUMS` right after the copy, and never run setup scripts on the passive head node. On Ubuntu, extract the bundle under `/tmp/airgap`, or under `/var/tmp/airgap` with world-readable directory permissions, not under `/root`, so that the unprivileged `_apt` user can read the `.deb` archives. Then follow the order that `code/part08/airgap_lab.py` enforces. Generate the configuration with the air-gap flags and save without deploying. Install the system packages, which brings in `skopeo` from the bundle. Deploy the local registry and trust its CA. Push the images and then the Helm charts, extract the CRDs, and deploy with `cm-kubernetes-setup -c ...`.
 
 ### 9.2 Planning multi-hop air-gapped Kubernetes upgrades under the skew policy
 
-Suppose the air-gapped cluster sits on 1.33 and must reach 1.35. The skew policy will not let you jump there in one step. Upstream Kubernetes and BCM enforce a strict limit of two adjacent minor versions, and they forbid skipping minor releases. So the path from `1.33` to `1.35` needs two separate air-gapped bundles, `airgapped-1.34.tgz` and `airgapped-1.35.tgz`, both prepared on the connected staging host.
+Suppose the air-gapped cluster sits on 1.33 and must reach 1.35. The skew policy will not let you jump there in one step. Kubernetes and BCM allow at most two adjacent minor versions in a cluster and forbid skipping minors. The path from `1.33` to `1.35` therefore needs two separate bundles, one for 1.34 and one for 1.35, both prepared on the connected staging host.
 
-Each minor hop follows the node-by-node order from section 6.
-
-- **Control-plane nodes first, one at a time.** Push the updated binaries into the node from the software image with `imageupdate -w controlplane01 --wait`. On the **first** control-plane node, run `kubeadm upgrade plan`, then `kubeadm upgrade apply v<target> --kubeconfig=/root/.kube/config-default`. Verify that `kube-apiserver` runs from `master.cm.cluster:5000/kube-apiserver:v<target>`. On each remaining control-plane node, run `kubeadm upgrade node`, with no `apply` and no version argument.
-- **Worker nodes in drained batches.** From the head node, run `kubectl drain $host --ignore-daemonsets` and then `imageupdate -w --wait`. On the worker, run `kubeadm upgrade node`, `systemctl daemon-reload` and `systemctl restart kubelet`. Only then run `kubectl uncordon $host`.
-
-Load the `1.35` bundle and begin the second hop only after every control-plane and worker node has completed the `1.34` hop and passed its health checks.
+Each hop follows the node-by-node order from section 6: control-plane nodes first, one at a time, with `kubeadm upgrade apply` on the first and `kubeadm upgrade node` on the others, then the workers in drained batches. Load the 1.35 bundle and begin the second hop only after every node has completed the 1.34 hop and passed its health checks.
 
 ### 9.3 Building offline software images and local OS mirrors (`--cmdvd` and `file://` repos)
 
@@ -260,7 +245,7 @@ Set up the local repositories before you build any image, so that the build neve
 
 A stalled install inside a secure facility is hard to fix, because you cannot search the internet for an answer. The table below maps each symptom to its root cause and to a fix you can make from inside the environment.
 
-| Air-Gapped Failure Symptom | Root Cause | Remediation Inside the Air-Gapped Environment |
+| Symptom | Root cause | Fix from inside the environment |
 |---|---|---|
 | `--airgap-install-system-packages` fails on Ubuntu with `Permission denied` reading `.deb` files | `airgapped.tgz` was extracted under `/root` (`0700`), which the unprivileged `_apt` user cannot traverse | Move or re-extract the bundle under **`/tmp`** (or `/var/tmp` with `0755` permissions) and re-run `--airgap-install-system-packages`. |
 | Helm chart push or operator install fails with `x509: certificate signed by unknown authority` | The head node's OS trust store does not trust the local Docker Registry's self-signed CA certificate | Copy `/cm/local/apps/docker-registry/var/etc/<host>:5000-ca.crt` to **`/usr/local/share/ca-certificates/`**, run **`update-ca-certificates`**, and retry the push. |
@@ -281,7 +266,7 @@ Each exercise checks a different part of the chapter. Work through them in order
 5. Draw the order of steps for adding a new operator to a cluster that is already air-gapped. What must already be on the connected host?
 6. Explain to a security officer how you will verify each file that enters the cluster.
 
-## 11. Interview angles
+## 10. Interview angles
 
 Interviewers ask these questions to see whether you understand the whole workflow, not just one command. Practise each answer out loud, in your own words.
 
@@ -410,9 +395,9 @@ At most **two adjacent minor versions** can coexist in the cluster at any time, 
 </details>
 
 <details>
-<summary>19. Why does the manual allow `trusted=yes` on the base Ubuntu APT line when mounting a local ISO loop image, while warning against copying that flag to network repositories?</summary>
+<summary>19. Why does NVIDIA allow `trusted=yes` on the base Ubuntu APT line when mounting a local ISO loop image, while warning against copying that flag to network repositories?</summary>
 
-The mounted ISO is local, physically controlled installation media, and its checksum was already verified. Setting `trusted=yes` on a network-hosted APT repository, by contrast, turns off GPG signature verification over the network. That is why the manual warns against copying the flag there.
+The mounted ISO is local, physically controlled installation media, and its checksum was already verified. Setting `trusted=yes` on a network-hosted APT repository, by contrast, turns off GPG signature verification over the network. That is why NVIDIA warns against copying the flag there.
 </details>
 
 <details>
@@ -428,6 +413,6 @@ Re-read any answer you cannot explain in your own words before you move on to th
 - **BCM 11 Containerization Manual:** appendix A (self-signed server certificate pair for testing, covered in 8.10 and checked here), appendix B (installation: host preparation, head node preparation, registry, Docker for Run:ai, pushing content, CRDs, deployment, decoupled Run:ai) and appendix C in full (upgrade prerequisites, preparation, head node steps, and C.4 step-by-step `kubeadm upgrade plan` / `upgrade apply` / `upgrade node` sessions for the first control-plane node, subsequent control-plane nodes, and drained workers). (Run:ai chapter 6.11 is covered in chapter 8.16.)
 - **BCM 11 Administrator Manual:** 9.6.3 and 9.6.4 (local repositories and offline images), 14.12 (offline MySQL).
 - **BCM 11 Installation Manual:** chapter 3 (the RHEL air-gapped installer settings) and chapter 10 (`--cmdvd`).
-- **Run here:** `airgap_lab.py` (34 checks): version prerequisites, skew rules, bundle completeness, sizes, Docker Hub windows, architecture, the 13-step order, extraction and passive head rules, GPU operator availability, Run:ai checks, offline repository and option summaries, plus (`added in the gap pass`) C.4 step-by-step upgrade commands (`upgrade apply <version>` on the first control plane vs `upgrade node` on subsequent control planes and workers, worker drain/imageupdate/daemon-reload/restart/uncordon sequence, and air-gapped `kube-apiserver` image check).
-- **My own choices, not the manual's:** the dependency map in `order_problems` (derived from the manual's order and statements, not a documented dependency graph); the 22 GB planning number for Run:ai (the manual says upwards of 20); the summary table in section 7, which gathers separate statements; and all of section 8 (operating an air-gapped cluster), which is general advice and not from the manuals.
+- **Run here:** `airgap_lab.py` (34 checks): version prerequisites, skew rules, bundle completeness, sizes, Docker Hub windows, architecture, the 13-step order, extraction and passive head rules, GPU operator availability, Run:ai checks, offline repository and option summaries, plus the C.4 step-by-step upgrade commands (`upgrade apply <version>` on the first control plane vs `upgrade node` on subsequent control planes and workers, worker drain/imageupdate/daemon-reload/restart/uncordon sequence, and air-gapped `kube-apiserver` image check).
+- **Choices made by this handbook, not by NVIDIA:** the dependency map in `order_problems` (derived from the manual's order and statements, not a documented dependency graph); the 22 GB planning number for Run:ai (the manual says upwards of 20); the summary table in section 7, which gathers separate statements; and all of section 8 (operating an air-gapped cluster), which is general advice and not from the vendor manuals.
 - **Not verified:** everything about a real BCM system. Package names, script options and the exact set of artifacts change between releases; read the release notes for your version.

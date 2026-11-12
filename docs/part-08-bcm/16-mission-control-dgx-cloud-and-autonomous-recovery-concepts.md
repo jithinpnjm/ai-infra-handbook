@@ -73,7 +73,7 @@ Mission Control is built as a five-layer software stack. It runs from foundation
 | **Telemetry and Observability layer** | System insights (explicitly named as a layer in the prose) | Uses proprietary diagnostic tools and health checks to surface cluster-wide telemetry |
 | **Validation and Diagnostics layer** | Failure recovery (explicitly named as a layer in the prose) | Supports the built-in **autonomous recovery engine** for rapid failure recovery and system restoration |
 | **Cluster management operations (with BCM and NMX Manager)** | Provisioning and fabric control | Handles deployment optimization and cooperates with **NVIDIA Base Command Manager (BCM)** to coordinate cluster provisioning and operations; includes **Network Manager eXperience Manager (NMX Manager)** to monitor and control NVLink switch trays |
-| **Workload orchestration (Slurm, Kubernetes, Run:ai)** | Scheduler access (my inference that this is the fifth of the five layers) | Works with BCM and **NVIDIA Run:ai** to provide scheduler access with **Slurm** and **Kubernetes** for AI and HPC workloads |
+| **Workload orchestration (Slurm, Kubernetes, Run:ai)** | Scheduler access (treated here as the fifth layer; see the review notes) | Works with BCM and **NVIDIA Run:ai** to provide scheduler access with **Slurm** and **Kubernetes** for AI and HPC workloads |
 
 ```mermaid
 flowchart TB
@@ -126,7 +126,7 @@ Several BCM features either require an active Mission Control license or hand th
 | `powershelfoverview` and power shelf configuration | Displays per-PSU input and rail power, current, voltage, fan speed, and temperature for a DGX power shelf |
 | Keycloak LDAP federation (`cm-setup-keycloak.py`) | Available from BCM 11.34 on Ubuntu 24.04 or 26.04 head nodes (not supported on RHEL or Rocky; needs ports `9443` HTTPS and `9999` HTTP free). Mission Control can federate its own LDAP into this Keycloak instance with no extra BCM-side setup: give Mission Control the URL `https://<head-fqdn>:9443`, realm name, admin credentials, and Keycloak TLS certificate, and open port `9443/tcp` in the head node firewall if Mission Control is not running on the head node |
 | Blackwell Workload Power Profile Settings (WPPS) | Supported on NVIDIA Blackwell GPUs (users can be granted access via `allowgpuworkloadpowerprofiles`) |
-| Base View firmware flashing for GB200, GB300 and DGX | **Flashing fails without an active NVIDIA Mission Control license**, and the error returned states this. Only one firmware package can be selected at a time. In BCM 11.34.0, the `Dry Run` button does not work correctly on these platforms (fixed in 11.35.0; use `Flash` directly). Base View also cannot narrow a flash to named component targets (`--targets`); that requires `cmsh firmware` |
+| Base View firmware flashing for GB200, GB300 and DGX | **Flashing fails without an active NVIDIA Mission Control license**, and the error returned states this. Only one firmware package can be selected at a time. Version-specific problems with `Dry Run` are listed under known issues at the end of this chapter. Base View also cannot narrow a flash to named component targets (`--targets`); that requires `cmsh firmware` |
 | Extra GB200 GPU and DGX Redfish measurables | Adds GB200 GPU measurables and DGX Redfish metrics, enums, and health checks on top of the standard V100/A100 tables |
 
 Before you schedule rack or firmware work, confirm which items need a Mission Control license.
@@ -155,7 +155,7 @@ Every management operation against CMDaemon requires a client X509v3 certificate
 | `autonomous-hardware-recovery` | `autonomous hardware recovery tasks` | `yes` |
 | `autonomous-job-recovery` | `autonomous job recovery tasks` | `yes` |
 
-The two descriptions in `cmsh` are only summaries of the token sets. On a live cluster, you can inspect the exact tokens with `cmsh` profile commands, which are untested here. Anything more specific about which hardware or job actions the tokens permit is my inference, not something the profile table states. In particular, I infer that they let Mission Control recovery services trigger node power or scheduler operations through CMDaemon.
+The two descriptions in `cmsh` are only summaries of the token sets. On a live cluster, you can inspect the exact tokens with `cmsh` profile commands, which were not run on a live cluster. The profile table does not say which hardware or job actions the tokens permit. A reasonable reading is that they let Mission Control recovery services trigger node power or scheduler operations through CMDaemon, but treat that as an inference.
 
 Two strict rules govern both recovery profiles.
 
@@ -168,12 +168,12 @@ Two strict rules govern both recovery profiles.
   bootstrap, cmhealth, cmpam, litenode, monitoringpush, mqtt, node, power, prs
 - nonuser = no  (3 profiles):  admin, readonly, portal
 - CMDaemon management port: 8081
-- Inspect tokens on a live cluster (untested):
+- Inspect tokens on a live cluster (not run here):
   cmsh -c "profile; get autonomous-hardware-recovery tokens"
   cmsh -c "profile; get autonomous-job-recovery tokens"
 ```
 
-You can verify the nonuser flag across all profiles on a head node with one command. That command is untested here.
+You can verify the nonuser flag across all profiles on a head node with one command. It was not run on a live cluster.
 
 ```bash
 [root@basecm11 ~]# cmsh -c "profile; foreach * (get name; get nonuser)" | paste - -
@@ -188,7 +188,7 @@ When an active BCM head node fails over to the passive head node, administrators
 BCM head-node high availability (`cmha-setup`) runs MySQL in master-slave replication between the active and passive head nodes. If extra services store state in MySQL on the head node, you must account for three database replication rules.
 
 - **Default MySQL replication scope.** By default, head-node MySQL HA clones and replicates only the `cmdaemon` and `slurm_acct_db` databases to the secondary head node.
-- **Third-party application databases are omitted by default.** A third-party application database that is not listed in `extradbclone.xml` is not cloned by default. The manual's `AJR` database example, for instance, is missing from the new active head node after a default failover.
+- **Third-party application databases are omitted by default.** A third-party application database that is not listed in `extradbclone.xml` is not cloned by default. An `AJR` example database, for instance, is missing from the new active head node after a default failover.
 - **Two methods include extra databases across a failover.** First, list the named databases in `extradbclone.xml`, so MySQL HA clones and replicates them. Second, starting in BCM 11.34.0, `cmha-setup` asks whether to replicate all non-system MySQL databases. In express mode, you can pass `--replicate-all-databases` instead. Answering yes clones and replicates all non-system databases, along with MySQL users and grants. Built-in MySQL system schemas are never replicated.
 
 ```text
@@ -334,7 +334,7 @@ Check the CA setting and the Helm custom CA flag together, because the wizard ab
 
 ### 3.4 Saving the configuration, deploying, verifying, and post-installation
 
-A long cluster installer run over an unstable SSH session can stop halfway. The BCM 11.33 single-run wizard bug can do the same. On Multi-Node NVLink platforms such as GB200 and GB300, stopping after the base wizard also leaves multi-node GPU memory exchange non-functional. It stays that way until the Dynamic Resource Allocation driver is installed.
+A long cluster installer run over an unstable SSH session can stop halfway. A known issue in BCM 11.33, listed in the box at the end of this chapter, can do the same. On Multi-Node NVLink platforms such as GB200 and GB300, stopping after the base wizard also leaves multi-node GPU memory exchange non-functional. It stays that way until the Dynamic Resource Allocation driver is installed.
 
 Run `cm-runai-setup` inside a persistent terminal multiplexer such as screen or tmux. At the final summary screen, the wizard offers two configuration styles, `minimal config` or `config`. It also has a Save and Exit option that writes `/root/cm-runai-setup.conf` without deploying. In BCM 11.33, choose Save and Exit first, because a wizard bug prevents deploying in a single run. The saved file holds sensitive credentials, so restrict its permissions. Delete it after you confirm the deployment. The commands below are untested here.
 
@@ -402,7 +402,7 @@ Instead of trusting the prose alone, you can check the rules in code. The compan
 |---|---|---|
 | **GB300 five-layer prose check** | 4 checks | Verifies that 5 roles are tracked, only 2 (`telemetry_and_observability`, `validation_and_diagnostics`) carry the literal word "layer" in the prose while 3 are described indirectly, that `validation_and_diagnostics` is paired with the autonomous recovery engine, and that the 4 business-value claims match the text |
 | **Recovery and security profiles** | 5 checks | Checks all 14 preconfigured profiles, verifies the exact task strings for `autonomous-hardware-recovery` and `autonomous-job-recovery`, and confirms that modifying, disabling, or assigning either nonuser profile to a human user raises `MissionControlError` while assigning `readonly` succeeds |
-| **HA MySQL replication** | 4 checks | Checks that default HA replicates only `cmdaemon` and `slurm_acct_db` (leaving a third-party database such as the manual's `ajr` example missing after failover), that adding it to `extradbclone.xml` preserves it, that `replicate_all_non_system=True` (from BCM 11.34.0) replicates all non-system databases while excluding system schemas (`mysql`, `sys`), and that `replicate_all_non_system` is rejected before 11.34.0 |
+| **HA MySQL replication** | 4 checks | Checks that default HA replicates only `cmdaemon` and `slurm_acct_db` (leaving a third-party database such as an `ajr` example database missing after failover), that adding it to `extradbclone.xml` preserves it, that `replicate_all_non_system=True` (from BCM 11.34.0) replicates all non-system databases while excluding system schemas (`mysql`, `sys`), and that `replicate_all_non_system` is rejected before 11.34.0 |
 | **Keycloak, firmware license, and leak detection** | 4 checks | Checks Keycloak federation requirements for Mission Control (BCM 11.34+, Ubuntu 24.04/26.04, `https://<head-fqdn>:9443`, port `9443/tcp` open when Mission Control is off-head), Base View firmware flashing rules on GB200/GB300/DGX (Mission Control license required, 1 package at a time, 11.34.0 `Dry Run` bug fixed in 11.35.0, no `--targets` in Base View), and the `leak:disabled` status suffix rule |
 | **Run:ai workflow and wizard validations** | 12 checks | Checks the BCM 11.33 decoupling from `cm-kubernetes-setup` to `cm-runai-setup`, the `cm-setup` versus `cm-setup-runai-bcm11` plugin rule, the 12 required and 2 optional dependency operators, SaaS and self-hosted wizard validations, the Tenants Manager password policy (`>=8` chars, digit, uppercase, special), the 9 air-gapped Run:ai pre-flight failure conditions, and the `nvidia-dra-driver-gpu` requirement on Multi-Node NVLink systems (`B200`, `GB200`, `B300`, `GB300`) |
 | **AWS Topograph and checkpoint math** | 2 checks | Checks AWS Topograph requirements (`p5.48xlarge` used by DGX Cloud, nodes running, `ec2:DescribeInstanceTopology`, `Pass cloud credentials = yes`) and reproduces the worked example of a failure at step `5243` with a `500`-step checkpoint interval |
@@ -415,19 +415,27 @@ Run the script from the repository root. Treat any failing check as a rule you m
 python3 code/part08/mission_control_lab.py
 ```
 
+## Known issues and scope, as of November 2026
+
+These notes tie to specific releases and will age. Check the current release notes before you rely on them.
+
+- **BCM 11.33, Run:ai wizard.** The wizard cannot deploy in a single run. Choose Save and Exit, then finish with `cm-runai-setup -c /root/cm-runai-setup.conf`.
+- **BCM 11.34.0, Base View firmware flashing.** The `Dry Run` button does not work correctly on GB200, GB300 and DGX. The documentation says it is fixed in 11.35.0. Until then, use `Flash` directly.
+- **Scope of Mission Control.** NVIDIA's Mission Control 2.3 documentation describes an Autonomous Recovery Engine that combines autonomous hardware recovery and autonomous job recovery. Hardware recovery is installed through the BCM wizard `cm-mission-control-setup`, and job recovery integrates with Slurm. Which platforms each feature supports changes between Mission Control releases, with DGX B300 and GB300 NVL72 support added over time. Check the feature support matrix for your version before you plan around a feature.
+
 ## Common first mistakes
 
 New SuperPOD and BCM administrators often run into ten preventable configuration mistakes with Mission Control and Run:ai. Each one below costs time, and most are easy to avoid once you know the rule behind it.
 
 - **Editing or assigning the recovery profiles.** Both `autonomous-hardware-recovery` and `autonomous-job-recovery` are nonuser profiles that BCM components and clients use. Never modify them, and never assign them to human users.
 - **Assuming the setup binary means Run:ai is ready to install.** `cm-runai-setup` is part of `cm-setup` on every head node. Its implementation, though, lives in the separate `cm-setup-runai-bcm11` package. By contrast, `cluster-tools` is where `cm-setup-keycloak.py` lives.
-- **Forgetting third-party MySQL databases during head-node HA setup.** By default, `cmha-setup` replicates only `cmdaemon` and `slurm_acct_db`. A third-party database such as the manual's AJR example is lost on failover unless you list it in `extradbclone.xml`. On BCM 11.34.0 or later, `--replicate-all-databases` also keeps it.
+- **Forgetting third-party MySQL databases during head-node HA setup.** By default, `cmha-setup` replicates only `cmdaemon` and `slurm_acct_db`. A third-party database such as an `AJR` example database is lost on failover unless you list it in `extradbclone.xml`. On BCM 11.34.0 or later, `--replicate-all-databases` also keeps it.
 - **Mismatching the local CA path and the Helm custom CA flag.** Starting in BCM 11.25.08, `cm-runai-setup` aborts if a local CA file is supplied without custom CA enabled in the Helm values. It also aborts in the reverse case.
 - **Pre-allocating the three Run:ai IPs into a MetalLB pool beforehand.** `cm-runai-setup` creates its own MetalLB address pools. The three reserved IPs, for the BCM gateway, the Run:ai control plane ingress, and Kourier inference, must stay free before you run it. They must still fall inside the overall MetalLB range from `cm-kubernetes-setup`.
 - **Reusing the Kubernetes FQDN for the Run:ai control plane.** The Run:ai control plane FQDN must be distinct from the Kubernetes cluster FQDN.
 - **Deploying air-gapped Run:ai in a single run on BCM 11.33, or skipping the secondary head node.** On BCM 11.33, choose Save and Exit first, then run `cm-runai-setup --skip-packages -c /root/cm-runai-setup.conf`. On an HA pair, install `cm-setup-runai-bcm11` on both head nodes. Run `cm-runai-setup` on the active head only.
 - **Skipping the NVIDIA DRA driver on Blackwell Multi-Node NVLink systems.** Clusters with B200, GB200, B300, or GB300 GPUs that run Run:ai need `nvidia-dra-driver-gpu`. They also need the `GPUNetworkAccelerationEnabled` patch on `runaiconfig` for secure Internode Memory Exchange.
-- **Using Base View Dry Run on BCM 11.34.0, or flashing without a Mission Control license.** Base View firmware flashing on GB200, GB300, and DGX fails without an active Mission Control license. Dry Run is also broken on those platforms in version 11.34.0.
+- **Flashing without a Mission Control license.** Base View firmware flashing on GB200, GB300, and DGX fails without an active Mission Control license.
 - **Searching the BCM Administrator Manual for Mission Control procedures.** Rack power shelves, CDU and BMS MQTT integration, the rack-level leak overview, NMX Manager, and Mission Control LDAP federation all live in the separate *NVIDIA Mission Control Manual*.
 
 Read this list before your first Run:ai install, not after the installer has already stopped.
@@ -449,7 +457,7 @@ These questions test whether you can keep Mission Control, BCM, and Run:ai apart
 
 - **How do NVIDIA Mission Control, Base Command Manager, and Run:ai fit together on a DGX SuperPOD?** In the GB300 Reference Architecture, Mission Control is the full-stack operations suite. It works with BCM for bare-metal provisioning and cluster operations, and it uses NMX Manager for NVLink switches. It also includes a validation and diagnostics layer with an autonomous recovery engine. For workload orchestration, it uses Slurm and Kubernetes with Run:ai.
 - **We ran `which cm-runai-setup` on our air-gapped BCM head node and the binary is there. Can we deploy Run:ai?** Not necessarily. `cm-runai-setup` ships with `cm-setup` on every head node, but the plugin that implements it lives in `cm-setup-runai-bcm11`. That Debian package must be downloaded before you air-gap, then installed on both head nodes. Air-gapped Run:ai on RHEL is unsupported in this release, because the package is Debian-only.
-- **What happens to a third-party application database on the BCM head node if the active head node fails over to the passive head node?** By default, BCM MySQL HA replicates only cmdaemon and `slurm_acct_db`. A third-party database, such as the manual's AJR example, is missing on the new active head. The exceptions are a database you added to `extradbclone.xml`, or `--replicate-all-databases` enabled in cmha-setup on BCM 11.34.0 or later.
+- **What happens to a third-party application database on the BCM head node if the active head node fails over to the passive head node?** By default, BCM MySQL HA replicates only cmdaemon and `slurm_acct_db`. A third-party database, such as an `AJR` example database, is missing on the new active head. The exceptions are a database you added to `extradbclone.xml`, or `--replicate-all-databases` enabled in cmha-setup on BCM 11.34.0 or later.
 - **Should an administrator tune the tokens in `autonomous-hardware-recovery` or `autonomous-job-recovery`?** No. Both are nonuser profiles used by cluster manager clients. Administrators must never modify nonuser profiles or assign them to human users.
 - **What changes when deploying Run:ai on a Multi-Node NVLink system such as GB200 or GB300, compared with an H100 cluster?** After `cm-runai-setup` finishes, install the `nvidia-dra-driver-gpu` Helm chart. Then patch `runaiconfig` to enable `GPUNetworkAccelerationEnabled`. The NVIDIA DRA driver is required for secure Internode Memory Exchange on B200, GB200, B300, and GB300 systems.
 
@@ -500,7 +508,7 @@ The three profiles are `admin`, `readonly`, and `portal`. Those are the only pre
 </details>
 
 <details>
-<summary>**8. Why is a third-party application database (such as the manual's `AJR` example) missing after a default BCM head-node failover, and what two methods fix this?**</summary>
+<summary>**8. Why is a third-party application database (such as an `AJR` example) missing after a default BCM head-node failover, and what two methods fix this?**</summary>
 
 A default failover clones and replicates only `cmdaemon` and `slurm_acct_db`, so a third-party database such as `AJR` is left behind. You can keep extra non-system databases in two ways. List them in `extradbclone.xml`, or enable `--replicate-all-databases` in `cmha-setup` on BCM 11.34.0 or later.
 </details>
@@ -518,9 +526,9 @@ The four system schemas are `mysql`, `information_schema`, `performance_schema`,
 </details>
 
 <details>
-<summary>**11. What happens if you try to flash GB200, GB300, or DGX firmware from Base View without an active NVIDIA Mission Control license, or use `Dry Run` on BCM 11.34.0?**</summary>
+<summary>**11. What happens if you try to flash GB200, GB300, or DGX firmware from Base View without an active NVIDIA Mission Control license?**</summary>
 
-Without an active Mission Control license, firmware flashing from Base View fails on GB200, GB300, and DGX, and the error says the license is required. On BCM 11.34.0, the Dry Run button does not work properly on these platforms. Flash directly instead, or move to BCM 11.35.0.
+Without an active Mission Control license, firmware flashing from Base View fails on GB200, GB300, and DGX, and the error says the license is required. Separately, the Dry Run button had a defect on BCM 11.34.0, covered in the known issues box.
 </details>
 
 <details>
@@ -562,7 +570,7 @@ Reserve three unused IP addresses inside the MetalLB range. One goes to the BCM 
 <details>
 <summary>**18. What is the minimum Run:ai version required for an air-gapped tarball (and why), and why must you select Save & Exit at the `cm-runai-setup` summary screen on BCM 11.33?**</summary>
 
-The minimum tarball version is 2.23.60, the release where multi-architecture support was added. On BCM 11.33, choose Save and Exit first, because a wizard bug blocks deploying in a single run. That writes `/root/cm-runai-setup.conf`. You then run `cm-runai-setup -c /root/cm-runai-setup.conf` to finish the installation.
+The minimum tarball version is 2.23.60, the release where multi-architecture support was added. On BCM 11.33, choose Save and Exit first, because of a known wizard issue that blocks deploying in a single run. That writes `/root/cm-runai-setup.conf`. You then run `cm-runai-setup -c /root/cm-runai-setup.conf` to finish the installation.
 </details>
 
 <details>
@@ -641,5 +649,6 @@ Sources read in full for Chapter 8.16:
 - **Not read or not in the corpus.** The *NVIDIA Mission Control Manual* and the *NVIDIA Mission Control System Administration Guide* are not in the corpus. Internal autonomous recovery engine rules, the exact tokens inside `autonomous-hardware-recovery` and `autonomous-job-recovery`, and in-memory checkpointing configuration are marked unknown here.
 - **Corrections to earlier drafts.** None are needed for Volume 21, which does not make BCM-specific claims. An earlier draft of this chapter wrongly stated that `cm-runai-setup` came from `cluster-tools` rather than `cm-setup` with `cm-setup-runai-bcm11`. It also invented a strict top-to-bottom ordering for the five Mission Control layers and treated the nonuser recovery profiles as administrator-tunable, and all three are corrected here.
 - **Executed verification lab.** We ran `code/part08/mission_control_lab.py`, which passed all 31 checks testing `code/part08/bcm_mission_control.py`.
-- **Labelled inferences.** First, treating Workload orchestration with Slurm, Kubernetes, and Run:ai as the fifth of the five layers in the GB300 Reference Architecture prose is my inference. Only two layers carry the literal word "layer" in the prose and Figure 17 was not read. Second, inferring that the tokens inside `autonomous-hardware-recovery` and `autonomous-job-recovery` authorize Mission Control's recovery clients to call CMDaemon is my inference. The summary table in Section 6.5 lists only the two high-level task strings.
+- **Labelled inferences.** First, treating Workload orchestration with Slurm, Kubernetes, and Run:ai as the fifth of the five layers in the GB300 Reference Architecture prose is an inference of this handbook. Only two layers carry the literal word "layer" in the prose and Figure 17 was not read. Second, inferring that the tokens inside `autonomous-hardware-recovery` and `autonomous-job-recovery` authorize Mission Control's recovery clients to call CMDaemon is also an inference of this handbook. The summary table in Section 6.5 lists only the two high-level task strings.
 - **Not verified on live hardware.** Every cluster command (`cmsh`, `cm-runai-setup`, `cm-kubernetes-setup`, `cmha-setup`, `helm`, `kubectl`, and `verify-license`, including `try/except` error handling in `cm-setup-keycloak.py`, `32`/`33`/`128`/`250`-node and `8390`-GPU scale examples, cross-referenced with Chapter `11.19` and `planning/MIGRATION_MAP.md`) and every GUI path comes from the manuals. None of them were run on a live BCM, Run:ai, or Mission Control system.
+- **Scope check, November 2026.** The Mission Control scope note above was checked against search results for NVIDIA's Mission Control 2.3 documentation at docs.nvidia.com/mission-control. Only search summaries were read, not the full pages, so confirm platform support against the version you run.

@@ -18,7 +18,7 @@ lab_venue: "GCP / GKE"
 | Priority tier | 2 |
 | Lab venue | VMs (OpenLDAP or 389-ds or FreeIPA, plus an SSSD client) |
 | Part | Part 6: HPC and Slurm |
-| Status | Drafted. `code/part06/identity_gen.py` was run on a valid and an invalid user list (outputs shown); its LDIF and `sacctmgr` command forms follow standard schemas and the Slurm man page but were **not** loaded into a real LDAP server or Slurm. SSSD/PAM/OpenLDAP configuration is from general knowledge and the SCL book (chapters 11 and 28), unverified here. Labs **untested** |
+| Status | Drafted. `code/part06/identity_gen.py` was run on a valid and an invalid user list (outputs shown); its LDIF and `sacctmgr` command forms follow standard schemas and the Slurm man page but were **not** loaded into a real LDAP server or Slurm. SSSD/PAM/OpenLDAP configuration is from general knowledge and the *Supercomputers for Linux Sysadmins* book (chapters 11 and 28), unverified here. Labs **untested** |
 
 ## Why this matters for AI infrastructure
 
@@ -47,14 +47,14 @@ flowchart LR
   LDAP -->|"LDAPS + SSSD Cache (5400s)"| Nodes["Login & Compute Nodes<br/>NSS, PAM, sss_ssh_authorizedkeys"]
 ```
 
-The Supercomputers for Linux Sysadmins book (chapter 11) states the issue plainly: "account management becomes a challenge in a supercomputer environment." Its most important requirement is account synchronisation between all nodes. You can meet that requirement in one of two ways. You can use a single data source over the network, such as LDAP or NIS+. Or you can run periodic or event-driven synchronisation of static information.
+Account management gets harder as the cluster grows, and the first requirement is that every node agrees on every account. You can meet it in one of two ways. You can point all nodes at a single data source over the network, such as LDAP. Or you can copy the account files to every node, either on a schedule or when something changes.
 
-Basic data, such as uid, gid, home directory and shell, must match everywhere. Quotas, access limits and similar information can be stored and synchronised separately, and they may legitimately differ by node type. The book gives a pointed example. CPU time limits should not apply on compute nodes, but they may apply on login nodes. Users generally should not log in to service nodes, such as backup servers. Those service nodes still need to know who the users are, because file ownership depends on it.
+Basic data, such as uid, gid, home directory and shell, must match everywhere. Quotas, access limits and similar information can be stored and synchronised separately, and they may legitimately differ by node type. For example, CPU time limits should not apply on compute nodes, but they may apply on login nodes. Users generally should not log in to service nodes, such as backup servers. Those service nodes still need to know who the users are, because file ownership depends on it.
 
 | Method | How | Status and notes |
 |---|---|---|
 | **Local files pushed by config management** (Ansible/Puppet/BCM) | `/etc/passwd`, `/etc/group`, `/etc/shadow` generated centrally and copied | Simple, no network dependency at login, fine for small and medium clusters; no instant propagation; drift risk if edited locally |
-| **NIS / NIS+** | Sun-era directory (YP). NIS is plaintext and weak; NIS+ added security and was deprecated by Sun | Historical; the book covers install steps. Do not choose for new clusters |
+| **NIS / NIS+** | Sun-era directory (YP). NIS is plaintext and weak; NIS+ added security and was deprecated by Sun | Historical. Do not choose for new clusters |
 | **LDAP (OpenLDAP, 389 Directory Server)** | Hierarchical directory with the RFC 2307/2307bis POSIX schema (`posixAccount`, `posixGroup`, `shadowAccount`) | The long-standing standard; clients via `nss_ldap`/`pam_ldap` (old) or **SSSD** (modern) |
 | **FreeIPA / Red Hat IdM** | LDAP + Kerberos + DNS + CA + sudo rules + SSH key distribution + host-based access control as one product | Common in enterprises and larger clusters; strong policy features; adds Kerberos and PKI to operate |
 | **Active Directory / Entra ID** (via SSSD `ad` provider, Samba/winbind) | Corporate directory as identity source | Common when the company mandates it; mapping UID/GID from AD attributes (RFC2307 attributes) or algorithmically (SSSD `ldap_id_mapping`) |
@@ -62,13 +62,14 @@ Basic data, such as uid, gid, home directory and shell, must match everywhere. Q
 
 The table compares the options side by side. In practice, teams mix these approaches. The corporate identity provider (IdP) stays the authority for people. The cluster keeps its own LDAP or IPA tree, or uses SSSD mapping, to supply POSIX attributes and groups. Local system and service accounts stay in local files, with UIDs below a reserved range.
 
-### Pull-based file synchronization and timeout wrappers
+### Pull-based file synchronisation and timeout wrappers
 
-Suppose you sync `/etc/passwd`, `/etc/shadow` and `/etc/group` directly, without running a network directory. The book recommends a pull model rather than pushing blindly from the master node. Each compute node runs a local script at boot, and it runs the same script on demand when the master triggers it. A node that was replaced or offline therefore catches up as soon as it boots. In the book's example, `/usr/sbin/master-sync` on each node pulls the three files over `rsync` and SSH (untested here):
+Suppose you copy `/etc/passwd`, `/etc/shadow` and `/etc/group` to the nodes instead of running a directory. Pushing from the head node fails quietly for any node that is off or being replaced. A pull model avoids that. Each compute node runs a small script at boot, and the head node can trigger the same script on demand. A node that was offline catches up as soon as it boots.
+
+The script on each node, saved as `/usr/sbin/master-sync`, pulls the three files over `rsync` and SSH. The listing is a sketch and was not run on a cluster:
 
 ```bash
 #!/usr/bin/env bash
-# (untested here)
 SYNC="rsync -e 'ssh -i /root/secret_key'"
 SRC_ADDR=root@master.cluster
 $SYNC $SRC_ADDR:/etc/passwd /etc/passwd
@@ -76,11 +77,10 @@ $SYNC $SRC_ADDR:/etc/shadow /etc/shadow
 $SYNC $SRC_ADDR:/etc/group /etc/group
 ```
 
-After a batch of account edits, the master must trigger `/usr/sbin/master-sync` across the cluster. The trigger must not overload the network, and it must not hang indefinitely on a dead node. The book's wrapper spaces the nodes out by `0.1` to `0.5` seconds, or you can use `pdsh` or `clush` instead. It also sets a self-targeted `ALRM` timer (untested here):
+After a batch of account edits, the head node runs the script on every node. Two things must not happen. The trigger must not flood the network, and it must not hang on a dead node. The wrapper below waits a tenth of a second between nodes, which you can replace with `pdsh` or `clush`. It also arms a timer that sends `ALRM` to the script itself:
 
 ```bash
 #!/usr/bin/env bash
-# (untested here)
 TIMEOUT=600
 CT=3
 # exit the script after getting ALRM signal
@@ -96,57 +96,11 @@ done
 echo
 ```
 
-The `connecttimeout=3` option keeps SSH from waiting on unreachable hosts. The background subshell is the safety net. After `600` seconds it sends `SIGALRM` to the script's own PID (`$$`), and the `trap 'exit' ALRM` handler then ends the whole run.
+The option `connecttimeout=3` keeps SSH from waiting on unreachable hosts. The background timer is the safety net: after 600 seconds it signals the script's own process ID, and the `trap` handler ends the run.
 
-### Legacy NIS / NIS+ architecture and setup
+### NIS and NIS+, for the record
 
-NIS, the Network Information System, began as Sun Yellow Pages, which is why its commands start with `yp`. Its successor, NIS+, is protocol-incompatible with the original NIS, even though the utility names match. Both distribute account and host tables over RPC. A single NIS server starts to struggle once it serves more than `30–40` clients, because of concurrent RPC load. NIS and NIS+ also lack modern security. You may still meet them on older, small clusters.
-
-Three server daemons run on the master. A fourth, `ypbind`, is the client daemon:
-
-- `ypserv` is the main NIS and NIS+ query server.
-- `yppasswdd` processes user password updates.
-- `ypxfrd` transfers updated database maps to secondary (slave) servers.
-- `ypbind` binds a node to a server in the NIS domain.
-
-The book's 8-step setup, which matches the Chapter 28 recipe, goes like this (untested here):
-
-1. Configure `rpcbind` (or `portmap`), `ypserv`, `yppasswdd`, and `ypxfrd` to start at boot (`systemctl enable rpcbind ypserv yppasswdd ypxfrd`).
-2. Open the firewall for `rpcbind`, `portmap`, `ypserv`, `yppasswdd`, and `ypxfrd`.
-3. Set the NIS domain name (`NISDOMAIN="MYCLUSTER"` in `/etc/sysconfig/network` on Red Hat systems, `NISSERVER=master` in `/etc/default/nis` on Debian systems, and `MYCLUSTER` in `/etc/defaultdomain` on both server and clients).
-4. Configure `/etc/ypserv.conf` and `/etc/sysconfig/ypserv` with the database directory (`/var/yp`) and client subnet rules.
-5. Create the `/var/yp/Makefile` and restrict allowed client subnets in `/etc/ypserv.securenets` (for example `255.255.255.0 192.168.123.0` and `host 192.168.111.222`). Then initialise the master database with `/usr/lib/yp/ypinit -m` (untested here).
-6. On each client, set the domain in `/etc/defaultdomain` and point `/etc/yp.conf` to the server (`domain MYCLUSTER my-nis-server-ip-address`).
-7. Start `ypbind` on the clients, and on the master node if it also resolves cluster users via NIS.
-8. Add `nis` or `nis+` to `/etc/nsswitch.conf` (`passwd: compat nis`, `group: compat nis`, `shadow: compat nis`, `hosts: files dns nis`). Whenever `/etc/passwd`, `/etc/shadow` or `/etc/group` changes on the master, run `cd /var/yp; make` (untested here) to rebuild and push the maps.
-
-### NIS start-up commands and access rules
-
-The NIS master must run four daemons, and each one must start again after a reboot. The book gives several command sets, one for each family of init system. On a systemd host, you start the daemons and enable them in one pass (untested here):
-
-```bash
-systemctl start rpcbind ypserv yppasswdd ypxfrd
-systemctl enable rpcbind ypserv yppasswdd ypxfrd
-```
-
-On older SysV-style hosts, the book starts the services with `service` and enables them with `chkconfig` (untested here):
-
-```bash
-service nis start
-service portmap restart
-chkconfig ypserv on
-chkconfig yppasswdd on
-chkconfig ypxfrd on
-```
-
-On Debian-like hosts, the book uses `update-rc.d nis enable` instead. Access control comes from `/etc/ypserv.securenets`. The book starts by removing access from everywhere. Then it adds only the internal network and any single hosts that must connect:
-
-```text
-255.255.255.0 192.168.123.0  # format: MASK SUBNET
-host 192.168.111.222         # individual host
-```
-
-Before you test a new client, confirm that its subnet is in this file. Then build the maps with `cd /var/yp; make`, as in the setup list above.
+NIS, the Network Information System, began as Sun Yellow Pages, which is why its commands start with `yp`. It distributes account and host tables over RPC with no encryption and weak authentication. Its successor NIS+ added security, is not protocol-compatible with NIS, and was deprecated by Sun. A single NIS server also starts to struggle beyond roughly 30 to 40 clients, because of concurrent RPC load. You may still meet NIS on an old, small cluster. Do not build a new one. The directory and SSSD design in the next sections replaces it, and the exercises do not ask you to set NIS up.
 
 ## 2. UID/GID design
 
@@ -218,59 +172,19 @@ ERROR bob: duplicate user
 ERROR bob: uid 10002 already used by bob
 ```
 
-Real directories need more than this. You need a password or credential policy, or Kerberos or SSO instead of passwords. You also need `memberOf` overlays, and indexes on `uid`, `uidNumber`, `gidNumber`, `memberUid`, `cn`. Add access control lists, replication (multi-master or provider-consumer), backups (`slapcat`), TLS (LDAPS or StartTLS with a private CA), and audit logging. The book's chapter 28 lists the OpenLDAP install steps for Red Hat family systems in a "do one, two, three" style. Use the vendor or distribution documentation for current commands. Many sites use 389 Directory Server or FreeIPA instead of hand-built OpenLDAP.
+Real directories need more than this. You need a password or credential policy, or Kerberos or SSO instead of passwords. You also need `memberOf` overlays, and indexes on `uid`, `uidNumber`, `gidNumber`, `memberUid`, `cn`. Add access control lists, replication (multi-master or provider-consumer), backups (`slapcat`), TLS (LDAPS or StartTLS with a private CA), and audit logging. Use the vendor or distribution documentation for current install commands. Many sites use 389 Directory Server or FreeIPA instead of hand-built OpenLDAP.
 
-### OpenLDAP setup and flat-file migration recipe
+### Standing up the directory
 
-The chapter 28 recipe for Red Hat-based systems installs `openldap-servers`, `openldap-clients` and `nss_ldap`. You start by generating an administrator password hash with `slappasswd` (untested here):
+The server side has more moving parts than the generator shows, and the commands change between releases, so follow the current OpenLDAP, 389 Directory Server or FreeIPA documentation for your distribution. Three details help you read older guides. Current OpenLDAP keeps its configuration in a `cn=config` tree, and the single `slapd.conf` file that older recipes edit is deprecated. The Berkeley DB backends, `bdb` and `hdb`, have been removed, and `mdb` is the backend to use. Older clients used `nss_ldap` and `pam_ldap`, and SSSD replaced them.
 
-```bash
-# (untested here)
-slappasswd
-# >>> {SSHA}ABCDEF1234567890
-```
-
-The book's example `/etc/openldap/slapd.conf` sets the database backend (`bdb`), the directory suffix, the administrator DN (`rootdn`), the password hash (`rootpw`) and the schema files (untested here):
-
-```text
-database bdb
-suffix "dc=ldap,dc=server,dc=org"
-rootdn "cn=Manager,dc=ldap,dc=server,dc=org"
-rootpw {SSHA}ABCDEF1234567890
-
-include /etc/openldap/schema/core.schema
-include /etc/openldap/schema/cosine.schema
-include /etc/openldap/schema/inetorgperson.schema
-include /etc/openldap/schema/nis.schema
-include /etc/openldap/schema/redhat/autofs.schema
-include /etc/openldap/schema/openldap.schema
-include /etc/openldap/schema/misc.schema
-```
-
-Next, copy `/etc/openldap/DB_CONFIG.example` to `/var/lib/ldap/DB_CONFIG`, owned by `ldap:ldap` with mode `600`. Set `BASE dc=ldap, dc=server, dc=org` in `/etc/openldap/ldap.conf`, and start the daemon. Then load the base entry and the `Manager` role from `/etc/openldap/ldap-init.ldif` with `/usr/bin/ldapadd -a -x -D 'cn=Manager,dc=ldap,dc=server,dc=org' -W -f ldap-init.ldif` (untested here). Verify the result with `ldapsearch -h 127.0.0.1 -x -b "dc=ldap,dc=server,dc=org"`.
-
-To move existing `/etc/passwd` and `/etc/group` entries into OpenLDAP, edit `/usr/share/migrationtools/migrate_common.ph` first. Set `$DEFAULT_MAIL_DOMAIN = "ldap.server.org";` and `$DEFAULT_BASE = "dc=ldap,dc=server,dc=org";` there. Then run the two migration scripts and load their output (untested here):
-
-```bash
-# (untested here)
-/usr/share/migrationtools/migrate_passwd.pl /etc/passwd people.ldif
-ldapadd -x -W -D "cn=Manager,dc=ldap,dc=server,dc=org" -f people.ldif
-
-/usr/share/migrationtools/migrate_group.pl /etc/group group.ldif
-ldapadd -x -W -D "cn=Manager,dc=ldap,dc=server,dc=org" -f group.ldif
-```
-
-Older `nss_ldap` and `pam_ldap` clients, which predate SSSD, need their own setup. The book's recipe configures `/etc/openldap/ldap.conf` with `base`, `rootbinddn`, `port 389`, `scope sub`, `pam_filter objectclass=posixAccount`, `pam_login_attribute uid`, `nss_base_passwd`, `nss_base_shadow`, `nss_base_group` and `pam_password SSHA`. It stores the bind secret in `/etc/ldap.secret`, with `chmod 600` and `chown root:root`. It sets `files ldap` in `/etc/nsswitch.conf`. Then it appends `pam_ldap.so` lines to `/etc/pam.d/system-auth`: `auth sufficient /lib/security/pam_ldap.so use_first_pass`, `account sufficient`, `password sufficient ... use_authtok` and `session optional`. The local Unix PAM entries stay in place, so `root` can still log in during network outages.
-
-### Loading the base entries and checking the directory
-
-A new OpenLDAP server is running, but it is empty. The book fills it with an LDIF file, `/etc/openldap/ldap-init.ldif`, that creates the base entry and the `Manager` role. The `dc` values and the `Manager` name must match the `suffix` and `rootdn` you set earlier. The directory name does not have to match the server's DNS name.
+Whatever you install, a new server is empty. You first load a base entry and an administrator role from an LDIF file, then your people and groups. The base entry looks like this, with names that match the suffix you chose:
 
 ```text
 dn: dc=ldap,dc=server,dc=org
 objectclass: dcObject
 objectclass: organization
-o: Servidor LDAP ldap
+o: Example cluster
 dc: ldap
 
 dn: cn=Manager,dc=ldap,dc=server,dc=org
@@ -278,30 +192,18 @@ objectclass: organizationalRole
 cn: Manager
 ```
 
-Load the file with `ldapadd`. It asks for the password you hashed with `slappasswd`. The book's command is:
+Load it with `ldapadd`, which asks for the administrator password, and search from the server itself to confirm two entries came back:
 
 ```bash
-/usr/bin/ldapadd -a -x \
-  -D 'cn=Manager,dc=ldap,dc=server,dc=org' \
-  -W -f ldap-init.ldif
+ldapadd -a -x -D 'cn=Manager,dc=ldap,dc=server,dc=org' -W -f ldap-init.ldif
+ldapsearch -x -H ldap://127.0.0.1 -b "dc=ldap,dc=server,dc=org"
 ```
 
-Then search the directory from the server itself. The book expects two entries and a result code of `0`, which means success:
+The search should report `numEntries: 2`. If it does not, re-check the LDIF file before you load any users.
 
-```bash
-ldapsearch -h 127.0.0.1 -x -b "dc=ldap,dc=server,dc=org"
-```
+To bring existing local accounts into the directory, generate LDIF from one validated source, as `identity_gen.py` does, rather than converting `/etc/passwd` by hand. An older route is the `migrate_passwd.pl` and `migrate_group.pl` scripts from the MigrationTools package, which convert the flat files to LDIF for `ldapadd`.
 
-The search should report `numEntries: 2`, with the `dc=ldap` root and the `cn=Manager` role. If the counts differ, re-check the LDIF file before you move on.
-
-The client side reads `/etc/openldap/ldap.conf`. The book's example sets the search base and the server URI:
-
-```text
-BASE  dc=ldap, dc=server, dc=org
-URI   ldaps://ldap.server.ru:636/
-```
-
-The book turns encryption off on clients with `ssl no` in the client file, and it calls this a shortcut. Turn encryption on later, once you have certificates and matching settings. The `pam_password` value must use the same hash method that `slappasswd` produced.
+Clients should talk to the directory over TLS. An LDAP client file such as `/etc/openldap/ldap.conf` sets a search base and a server URI beginning `ldaps://`. Turning encryption off on clients is a shortcut for first tests only. Once certificates exist, switch it on.
 
 ## 4. SSSD, nsswitch and PAM on the nodes
 
@@ -358,17 +260,17 @@ Stateless nodes (6.22) should come up with SSSD already configured in the image,
 
 ### Restricting and blocking user access
 
-When you need to block a user, or restrict access during maintenance (chapter 12 of the book), four host-level mechanisms are common. Use them alongside SSSD `access_provider` and scheduler-level blocks.
+When you need to block a user, or restrict access during maintenance four host-level mechanisms are common. Use them alongside SSSD `access_provider` and scheduler-level blocks.
 
-1. OpenSSH `DenyUsers` or `AllowUsers`. Add `DenyUsers user1,user2` to `/etc/ssh/sshd_config`, or use `AllowUsers` during maintenance windows, then reload `sshd` (untested here). Existing sessions stay open until terminated. Do not mix `AllowUsers` and `DenyUsers` in the same scope, because only one of them takes effect.
-2. PAM `pam_access.so`. Insert `account required pam_access.so` at the top of `/etc/pam.d/sshd` or `/etc/pam.d/system-auth`. Then define sequential rules in `/etc/security/access.conf`, using the format `permission:users/groups:origins`. A `+` allows, a `-` denies, `@group` names a group, `EXCEPT` handles exclusions, and `ALL`, `LOCAL`, an IP or subnet, or a TTY name are origins. The book recommends placing administrator access first and a catch-all deny last (untested here):
+1. OpenSSH `DenyUsers` or `AllowUsers`. Add `DenyUsers user1,user2` to `/etc/ssh/sshd_config`, or use `AllowUsers` during maintenance windows, then reload `sshd`. Existing sessions stay open until terminated. Do not mix `AllowUsers` and `DenyUsers` in the same scope, because only one of them takes effect.
+2. PAM `pam_access.so`. Insert `account required pam_access.so` at the top of `/etc/pam.d/sshd` or `/etc/pam.d/system-auth`. Then define sequential rules in `/etc/security/access.conf`, using the format `permission:users/groups:origins`. A `+` allows, a `-` denies, `@group` names a group, `EXCEPT` handles exclusions, and `ALL`, `LOCAL`, an IP or subnet, or a TTY name are origins. Place administrator access first and a catch-all deny last:
    ```text
    +:@admins:ALL
    # ... other access rules
    -:ALL:ALL
    ```
-3. Login shell replacement with `chsh`. Change the user's shell to a non-interactive binary such as `/sbin/nologin` or `/bin/false`. For example, `chsh -s /bin/false user1` (untested here), with `/bin/false` listed in `/etc/shells`. SSH runs remote commands through the user's login shell, so this blocks both interactive logins and `ssh remotehost command`.
-4. A file-transfer-only shell, `scponly`. When a user must copy files with `scp` or `sftp` but never needs a shell, install the `scponly` package and set the user's shell to `/usr/bin/scponly` (untested here).
+3. Login shell replacement with `chsh`. Change the user's shell to a non-interactive binary such as `/sbin/nologin` or `/bin/false`. For example, `chsh -s /bin/false user1`, with `/bin/false` listed in `/etc/shells`. SSH runs remote commands through the user's login shell, so this blocks both interactive logins and `ssh remotehost command`.
+4. A file-transfer-only shell, `scponly`. When a user must copy files with `scp` or `sftp` but never needs a shell, install the `scponly` package and set the user's shell to `/usr/bin/scponly`.
 
 Before you trust the setup, run the `getent` and `id` checks on every node type.
 
@@ -378,15 +280,15 @@ Home directories are created at onboarding. A script on the file server runs `in
 
 Storage quotas apply per user and per project, on each file system that matters. For Lustre, use `lfs setquota -u USER -b SOFT -B HARD -i ISOFT -I IHARD /lustre`, and use project quotas for directories (6.19). Other systems have their own tools: GPFS fileset quotas, XFS project quotas on NFS servers (`xfs_quota -x -c 'limit -p bhard=1t projname'`), ZFS dataset quotas, and object-store bucket quotas. The generator's `homes.sh` emits the `lfs setquota` line as a comment. In this example, the soft limit sits at 90 percent of the hard limit.
 
-If you run traditional local ext3 or ext4 file systems, or NFS servers running `rpc.rquotad`, the book outlines a longer path. Mount with `usrquota` and `grpquota` in `/etc/fstab`. Build the quota database in read-only or single-user mode, with `quotacheck -vugc /dev/sda6` or `quotacheck -a -M`. Enable enforcement with `quotaon -va`. Then manage block and inode soft and hard limits, and grace periods, with `setquota`, `edquota`, and `setquota -p foo -u bar -a`, which copies user `foo`'s quota to `bar`. Report with `repquota -s` (untested here).
+On a small local file system or an NFS server, the classic Linux quota tools still apply: mount with the `usrquota` and `grpquota` options, set limits with `setquota` or `edquota`, and report with `repquota -s`. They are a poor fit for the shared parallel file systems that GPU clusters use, so this chapter does not walk through them.
 
 Inode quotas matter as much as byte quotas, especially with millions of tiny files (6.18).
 
 CPU and memory limits on login nodes work differently. `pam_limits` reads `/etc/security/limits.conf`, which can set `nproc`, `cpu`, `as`, `memlock`, `nofile`, `stack` and `maxlogins`. systemd `user-.slice` resource controls (`UserTasksMax`, `CPUQuota`, `MemoryMax` in `user-*.slice.d/`) do a similar job, so one user cannot saturate a shared login node (6.2). Compute nodes are different. Slurm cgroups apply there (6.8), and `nofile` (open file descriptors for SSH and MPI sockets) and `memlock` (locked RAM for RDMA buffers) must be raised.
 
-Chapter 12 of the Supercomputers for Linux Sysadmins book shows the default shell limits from `ulimit -a`. They often look like this: core file size (blocks, -c) 0, data seg size (kbytes, -d) unlimited, scheduling priority (-e) 0, file size (blocks, -f) unlimited, pending signals (-i) 63616, max locked memory (kbytes, -l) 64, max memory size (kbytes, -m) unlimited, and open files (-n) 1024. Two of these are badly wrong for GPU work. A `max locked memory` of `64` KB is far too small for InfiniBand or RDMA on compute nodes, which need `unlimited`. An `open files` limit of `1024` is too small for a large multi-rank job.
+The default shell limits from `ulimit -a` often look like this on a stock Linux install: core file size (blocks, -c) 0, data seg size (kbytes, -d) unlimited, scheduling priority (-e) 0, file size (blocks, -f) unlimited, pending signals (-i) 63616, max locked memory (kbytes, -l) 64, max memory size (kbytes, -m) unlimited, and open files (-n) 1024. Two of these are badly wrong for GPU work. A `max locked memory` of `64` KB is far too small for InfiniBand or RDMA on compute nodes, which need `unlimited`. An `open files` limit of `1024` is too small for a large multi-rank job.
 
-On login nodes, the book's example limits ordinary users to `50` to `100` processes. That stops a fork bomb from taking the node down. It also sets a `cpu` time limit, such as `100` seconds of processor time, which stops accidental calculations on the head node.
+On login nodes, a common choice limits ordinary users to `50` to `100` processes. That stops a fork bomb from taking the node down. It can also set a `cpu` time limit, such as `100` seconds of processor time, which stops accidental calculations on the head node.
 
 Watch the `cpu` limit closely. If the hard `cpu` limit in `/etc/security/limits.conf` is set too small on login nodes, large `scp` or `sftp` transfers die mid-copy. The SSH and sftp process uses CPU time while it encrypts and checksums the data. Once that process accumulates the limit's worth of CPU time, the transfer is killed.
 
@@ -448,15 +350,15 @@ Containers run under the invoking user's numeric UID. That holds for enroot/pyxi
 
 ## 10. Lab
 
-Start with the self-checking Python lab, which you run locally. It checks `validate()`, `ldif()`, `slurm()` and `homes()` in `code/part06/identity_gen.py` against a valid 3-user list. It checks for `gidNumber: 20000`, the `posixAccount` and `ldapPublicKey` LDIF records, the `sacctmgr` account and user commands, and home directories created with `0700`, plus the `90%` soft and `100%` hard Lustre quota lines. It also rejects a broken list with all 5 expected errors: `uid < 10000`, a relative shell path, a non-integer quota, a duplicate user and a duplicate UID. Finally, it checks the Chapter 11 and 12 parameters of the Supercomputers for Linux Sysadmins book: the `30–40` NIS client limit, `ulimit -l 64` KB for `memlock`, `-n 1024` for `nofile`, `-i 63616` for `pending signals`, and the `5400` s SSSD cache timeout.
+Start with the self-checking Python lab, which you run locally. It checks `validate()`, `ldif()`, `slurm()` and `homes()` in `code/part06/identity_gen.py` against a valid 3-user list. It checks for `gidNumber: 20000`, the `posixAccount` and `ldapPublicKey` LDIF records, the `sacctmgr` account and user commands, and home directories created with `0700`, plus the `90%` soft and `100%` hard Lustre quota lines. It also rejects a broken list with all 5 expected errors: `uid < 10000`, a relative shell path, a non-integer quota, a duplicate user and a duplicate UID. Finally, it checks the reference values quoted in this chapter: the `30–40` NIS client limit, `ulimit -l 64` KB for `memlock`, `-n 1024` for `nofile`, `-i 63616` for `pending signals`, and the `5400` s SSSD cache timeout.
 
 ```bash
 python3 code/part06/identity_gen_lab.py
 ```
 
-The tested steps come next, and you can run them today. 1) Run `identity_gen.py` on a ten-user list with two projects, and read the three outputs. 2) Break the list in each rule, and confirm the error message. 3) Extend the script to read an existing UID allocation file, so that UIDs and GIDs stay stable.
+The first three steps run on your own machine. 1) Run `identity_gen.py` on a ten-user list with two projects, and read the three outputs. 2) Break the list in each rule, and confirm the error message. 3) Extend the script to read an existing UID allocation file, so that UIDs and GIDs stay stable.
 
-The untested steps need VMs. 4) Install OpenLDAP or 389-ds, load `users.ldif`, and query it with `ldapsearch`. 5) Configure an SSSD client, then verify `id`, `getent`, and SSH login with a key from LDAP. 6) Stop the LDAP server and observe the cached logins, then set short and long cache timeouts. 7) Run `slurm_accounts.sh` on a test Slurm system, and verify the result with `sacctmgr show assoc`. 8) Create project quotas on an XFS or Lustre test file system. 9) Measure login time with `enumerate = true` and with `enumerate = false`, and again with a dead primary LDAP URI.
+The remaining steps need VMs and were not run on live systems. 4) Install OpenLDAP or 389-ds, load `users.ldif`, and query it with `ldapsearch`. 5) Configure an SSSD client, then verify `id`, `getent`, and SSH login with a key from LDAP. 6) Stop the LDAP server and observe the cached logins, then set short and long cache timeouts. 7) Run `slurm_accounts.sh` on a test Slurm system, and verify the result with `sacctmgr show assoc`. 8) Create project quotas on an XFS or Lustre test file system. 9) Measure login time with `enumerate = true` and with `enumerate = false`, and again with a dead primary LDAP URI.
 
 ## 11. Interview angles
 
@@ -479,14 +381,14 @@ Work through these in order. You will need a test environment for the steps that
 1. **Generate the unified LDIF, Slurm associations and home quotas (`code/part06/identity_gen.py` and `identity_gen_lab.py`).** Run `python3 code/part06/identity_gen_lab.py`. Then explain the five checks that `validate()` enforces: `uid >= 10000`, a unique username, a unique UID, an absolute shell path, and an integer `quota_gb`. Finally, confirm how `identity_gen.py` derives each output. `users.ldif` gets a `posixGroup` at `gidNumber: 20000` and `posixAccount` and `ldapPublicKey` entries. `slurm_accounts.sh` uses `sacctmgr -i add account` and `add user`. `homes.sh` uses `install -d -m 0700` and sets the `lfs setquota` at `90%` soft and `100%` hard.
 2. **Write a pull-based static account sync with a `SIGALRM` timeout.** Write the `/usr/sbin/master-sync` pull script, which uses `rsync -e 'ssh -i /root/secret_key'`. Then write the master trigger wrapper. It should use `trap 'exit' ALRM`, the background timer `(sleep 600 && kill -ALRM "$$") &`, `ssh -o connecttimeout=3` and `sleep 0.1`. Explain why a pull-based sync beats a blind push from the master when compute nodes are rebooting or being replaced.
 3. **Configure SSSD, `nsswitch.conf` and LDAP SSH key lookup.** Write `/etc/sssd/sssd.conf` with mode `0600` for an `ldaps://` pair, `ldap1` and `ldap2`. Set `cache_credentials = true`, `enumerate = false`, `entry_cache_timeout = 5400`, `ldap_user_ssh_public_key = sshPublicKey`, and `access_provider = simple`, with `simple_allow_groups = research, platform`. Then add the two `/etc/ssh/sshd_config` lines, `AuthorizedKeysCommand /usr/bin/sss_ssh_authorizedkeys` and `AuthorizedKeysCommandUser nobody`.
-4. **Compare legacy NIS+ with the OpenLDAP migration.** Put the 8-step NIS and NIS+ setup side by side with the OpenLDAP workflow. For NIS, cover the daemons `ypserv`, `yppasswdd`, `ypxfrd` and `ypbind`, the file `/etc/ypserv.securenets`, the command `/usr/lib/yp/ypinit -m`, and `cd /var/yp; make`. Also explain why NIS struggles above `30–40` clients. For OpenLDAP, cover `slappasswd`, `/etc/openldap/slapd.conf`, `ldap-init.ldif`, `migrate_passwd.pl` and `migrate_group.pl`. Note that the NIS steps come from Chapters 11 and 28 of the Supercomputers for Linux Sysadmins book.
-5. **Tune `ulimit` on login nodes and compute nodes, and block access.** Compare `/etc/security/limits.conf` on a shared login node with the same file on a GPU compute node. The login node gets `nproc` set to `50–100`, and a `cpu` time limit. Be ready to explain why a small `cpu` limit kills large `scp` and `sftp` transfers. The compute node needs `memlock unlimited` instead of the default `64` KB, and `nofile 65536` instead of `1024`. Then compare the four user-blocking methods from Chapter 12: `DenyUsers`, `pam_access.so` with `/etc/security/access.conf`, `chsh -s /bin/false`, and `scponly`.
+4. **Retire an old NIS setup.** A small cluster still serves accounts over NIS. List what you would stand up in its place, from the directory to the SSSD client settings, and say why NIS is the weaker choice. Cover plaintext transport, weak authentication and the limit near 30 to 40 clients.
+5. **Tune `ulimit` on login nodes and compute nodes, and block access.** Compare `/etc/security/limits.conf` on a shared login node with the same file on a GPU compute node. The login node gets `nproc` set to `50–100`, and a `cpu` time limit. Be ready to explain why a small `cpu` limit kills large `scp` and `sftp` transfers. The compute node needs `memlock unlimited` instead of the default `64` KB, and `nofile 65536` instead of `1024`. Then compare four user-blocking methods: `DenyUsers`, `pam_access.so` with `/etc/security/access.conf`, `chsh -s /bin/false`, and `scponly`.
 6. **Design an automated onboarding, offboarding and nightly reconciliation workflow.** Write the exact steps for offboarding a departing researcher. The steps must not break shared project files or the historical Slurm accounting in `slurmdbd`. Then specify what a nightly reconciliation script checks across LDAP, `sacctmgr`, `/home` and the Lustre project quotas.
 
 ## Checkpoint
 
 <details>
-<summary>1. Why must every user and service account have the exact same numeric `UID` and `GID` across all login, compute, storage, and service nodes (Supercomputers for Linux Sysadmins, chapter 11)?</summary>
+<summary>1. Why must every user and service account have the exact same numeric `UID` and `GID` across all login, compute, storage, and service nodes?</summary>
 
 POSIX filesystems such as NFS, Lustre and GPFS check file ownership with **numeric UIDs and GIDs**, not usernames. Suppose you check `alice` and find UID `10001` on the login nodes and `10005` on the compute nodes. Jobs then cannot read or write her files on shared storage. The same problem hits `munge` and `slurm`. If their UIDs differ across nodes, Munge credential verification and Slurm job launches fail.
 </details>
@@ -503,20 +405,15 @@ Never reuse a UID after a user leaves. Otherwise the new user inherits ownership
 </details>
 
 <details>
-<summary>3. In Chapter 11 of the Supercomputers for Linux Sysadmins book, the static file-synchronization pattern (`/usr/sbin/master-sync`): why do compute nodes pull `/etc/passwd`, `/etc/shadow`, and `/etc/group` at boot, and how does the master trigger script avoid hanging?</summary>
+<summary>3. In the static file-synchronisation pattern (`/usr/sbin/master-sync`): why do compute nodes pull `/etc/passwd`, `/etc/shadow`, and `/etc/group` at boot, and how does the master trigger script avoid hanging?</summary>
 
 Each compute node pulls the files at boot through `/usr/sbin/master-sync`, so you never have to push to a node that is offline. A node that was powered off, under repair, or freshly provisioned therefore syncs its account files as soon as it boots. The master triggers the same script across `/etc/nodes` with `ssh -o connecttimeout=3`, and it staggers the nodes with `sleep 0.1`. It also arms a background timer, `(sleep 600 && kill -ALRM "$$") &`, together with `trap 'exit' ALRM`. A wedged SSH session therefore cannot hang the sync script past 600 seconds.
 </details>
 
 <details>
-<summary>4. Name the four NIS/NIS+ daemons and explain why Chapter 11 of the Supercomputers for Linux Sysadmins book advises against NIS for clusters larger than `30–40` nodes.</summary>
+<summary>4. Why is NIS the wrong choice for a new cluster, and what replaces it?</summary>
 
-- `ypserv`: the main NIS query server daemon.
-- `yppasswdd`: the password update daemon.
-- `ypxfrd`: the map transfer daemon for secondary servers.
-- `ypbind`: the client binding daemon.
-
-A single NIS server struggles above `30–40` clients. The cause is uncached, synchronous RPC load, especially during parallel job startup. NIS also lacks modern encryption and authentication.
+NIS sends account data without encryption, authenticates clients weakly, and a single server struggles beyond roughly `30–40` clients because of uncached, synchronous RPC load during parallel job startup. Its four daemons are `ypserv` (query server), `yppasswdd` (password updates), `ypxfrd` (map transfer to secondary servers) and `ypbind` (client binding). A directory such as OpenLDAP, 389 Directory Server or FreeIPA, read on every node through SSSD, replaces it.
 </details>
 
 <details>
@@ -526,9 +423,9 @@ If you want a cluster user with POSIX attributes and an SSH key, you build it fr
 </details>
 
 <details>
-<summary>6. How do you migrate existing `/etc/passwd` and `/etc/group` files into OpenLDAP (Supercomputers for Linux Sysadmins, chapter 28)?</summary>
+<summary>6. How do you get existing local accounts into a new LDAP directory?</summary>
 
-Set `$DEFAULT_MAIL_DOMAIN` and `$DEFAULT_BASE` in `/usr/share/migrationtools/migrate_common.ph`. Then run `/usr/share/migrationtools/migrate_passwd.pl /etc/passwd people.ldif` and `migrate_group.pl /etc/group group.ldif`. Last, load both LDIF files with `ldapadd -x -W -D "cn=Manager,..." -f ...`.
+Generate LDIF from one validated user list, as `identity_gen.py` does, and load it with `ldapadd -x -W -D "cn=Manager,..." -f users.ldif`. An older route is the MigrationTools scripts `migrate_passwd.pl` and `migrate_group.pl`, which convert `/etc/passwd` and `/etc/group` to LDIF after you set the base DN and mail domain in `migrate_common.ph`.
 </details>
 
 <details>
@@ -558,7 +455,7 @@ When `slurmstepd` starts tasks on 2,000 nodes at once, every node calls `getpwna
 </details>
 
 <details>
-<summary>11. Compare the four host-level user access restriction mechanisms in Chapter 12 of the Supercomputers for Linux Sysadmins book (`DenyUsers`/`AllowUsers`, `pam_access.so`, `chsh -s /bin/false`, and `scponly`).</summary>
+<summary>11. Compare four host-level user access restriction mechanisms (`DenyUsers`/`AllowUsers`, `pam_access.so`, `chsh -s /bin/false`, and `scponly`).</summary>
 
 1. `DenyUsers` or `AllowUsers` in `/etc/ssh/sshd_config` blocks or whitelists SSH logins for the named users. Do not mix both in the same scope.
 2. `pam_access.so` with `/etc/security/access.conf` evaluates `permission:users/groups:origins` rules in order, for example `+:@admins:ALL` followed by `-:ALL:ALL`.
@@ -573,31 +470,26 @@ If `pam_mkhomedir` is enabled on compute nodes, and `/home` is mounted with `roo
 </details>
 
 <details>
-<summary>13. What is the 6-step workflow for enabling and managing traditional Linux filesystem quotas (Supercomputers for Linux Sysadmins, chapter 12)?</summary>
+<summary>13. Which commands set and report storage quotas on the file systems this chapter uses?</summary>
 
-1. Add `usrquota,grpquota` to the filesystem's options in `/etc/fstab`, and remount.
-2. Build the quota database files, `aquota.user` and `aquota.group`, with `quotacheck -vugc /dev/sdX` or `quotacheck -a -M`.
-3. Enable enforcement with `quotaon -va`.
-4. Set block and inode soft and hard limits with `edquota -u user`, or with `setquota -u user bsoft bhard isoft ihard /mount`.
-5. Clone a template user's quota with `setquota -p foo -u bar -a`.
-6. Audit usage across users with `repquota -va` or `repquota -s`, and run `rpc.rquotad` on NFS servers.
+On Lustre, set limits with `lfs setquota -u USER -b SOFT -B HARD -i ISOFT -I IHARD /lustre`, use project quotas for directories, and report with `lfs quota`. On an XFS server, `xfs_quota -x -c 'limit -p bhard=1t projname'` sets a project limit. On a small local or NFS file system, the classic `usrquota` and `grpquota` mount options with `setquota`, `edquota` and `repquota` apply. Set inode limits as well as byte limits, and alert at 80 percent.
 </details>
 
 <details>
-<summary>14. Why must `/etc/security/limits.conf` (`ulimit`) differ between login nodes and GPU compute nodes (Supercomputers for Linux Sysadmins, chapter 12)?</summary>
+<summary>14. Why must `/etc/security/limits.conf` (`ulimit`) differ between login nodes and GPU compute nodes?</summary>
 
 - On login nodes, restrict `nproc` to `50–100` processes, and limit memory and CPU through `pam_limits` or the systemd `user-.slice`. That way one user's compile or script cannot starve the others.
-- On GPU compute nodes, the default limits break things. `max locked memory` of `64` KB and `open files` of `1024` are the defaults in Chapter 12. InfiniBand RDMA verbs such as `ibv_reg_mr` need **`memlock unlimited`**, and multi-rank PyTorch or NCCL sockets need **`nofile 65536+`**. CPU and RAM isolation is handled per job by Slurm cgroups.
+- On GPU compute nodes, the default limits break things. `max locked memory` of `64` KB and `open files` of `1024` are common defaults. InfiniBand RDMA verbs such as `ibv_reg_mr` need **`memlock unlimited`**, and multi-rank PyTorch or NCCL sockets need **`nofile 65536+`**. CPU and RAM isolation is handled per job by Slurm cgroups.
 </details>
 
 <details>
-<summary>15. Why does Chapter 12 of the Supercomputers for Linux Sysadmins book warn against setting a very small hard `cpu` time limit in `/etc/security/limits.conf` on login or data-transfer nodes?</summary>
+<summary>15. Why should you avoid setting a very small hard `cpu` time limit in `/etc/security/limits.conf` on login or data-transfer nodes?</summary>
 
 `scp`, `sftp` and `rsync` over SSH encrypt and checksum every byte on the CPU. If a login node sets a low hard `cpu` limit, such as `100` CPU seconds, the kernel sends `SIGKILL` to the user's `sshd` or `sftp-server` process partway through a large transfer. A multi-gigabyte dataset or checkpoint is one example.
 </details>
 
 <details>
-<summary>16. How do POSIX **set-gid directories (`chmod 2770`)** and **default ACLs (`setfacl -d`)** simplify shared project directories (Supercomputers for Linux Sysadmins, chapter 12)?</summary>
+<summary>16. How do POSIX **set-gid directories (`chmod 2770`)** and **default ACLs (`setfacl -d`)** simplify shared project directories?</summary>
 
 Setting the setgid bit, with `chmod g+s` or mode `2770`, on `/scratch/proj_llm` makes every new file and subdirectory inherit the project group, `proj_llm`, instead of the creator's primary group. Default POSIX ACLs, set with `setfacl -d -m g:proj_llm:rwx /scratch/proj_llm`, keep new files group-writable even when a user's `umask` is restrictive.
 </details>
@@ -634,10 +526,11 @@ Enroot, Pyxis and Apptainer run container processes under the invoking user's ho
 
 ## Sources and review notes
 
-- Book source (`supercomputers-for-linux-sysadmins-managing-modern-hpc-clusters-and-supercomputers-from-software-to-hardware`, `SCL`):
+- Book source (`supercomputers-for-linux-sysadmins-managing-modern-hpc-clusters-and-supercomputers-from-software-to-hardware`, *Supercomputers for Linux Sysadmins*):
   - Chapter 11 ("11. Users – Accounting Management", read in full): pull-based `/usr/sbin/master-sync` over `rsync`/SSH, `trap 'exit' ALRM` timeout wrapper loop, NIS/NIS+ daemon roles (`ypserv`, `yppasswdd`, `ypxfrd`, `ypbind`), `30–40` client RPC load limit, and 8-step NIS+ setup.
   - Chapter 12 ("12. Users – Quotas and Access Rights", read in full): traditional Linux file system quotas (`usrquota`/`grpquota`, `quotacheck`, `quotaon`, `setquota`, `edquota`, `repquota`, `rpc.rquotad`), `ulimit -a` (`core file size 0`, `pending signals 63616`, `max locked memory 64`, `open files 1024`) and `/etc/security/limits.conf` (`50–100` processes and `100` seconds CPU time on login nodes, and why a small `cpu` limit kills large `scp`/`sftp` transfers), POSIX ACLs (`setfacl`/`getfacl`), and user blocking methods (`DenyUsers`/`AllowUsers`, `pam_access.so` with `/etc/security/access.conf`, `chsh -s /bin/false`, and `scponly`).
   - Chapter 28 ("28. One-Two-Three Instructions", read in full): NIS+ server/client recipes (`ypinit -m`, `/etc/ypserv.securenets`, `/var/yp/Makefile`) and OpenLDAP server/client setup (`slappasswd`, `/etc/openldap/slapd.conf`, `ldap-init.ldif`, `migrate_passwd.pl`, `migrate_group.pl`, `/etc/ldap.secret`, and `pam_ldap.so`).
 - Run here: `code/part06/identity_gen.py` and `python3 code/part06/identity_gen_lab.py` (3 passed, 0 failed).
 - Explicitly labelled inferences: `GOOD_USERS` and `BAD_USERS` in `code/part06/identity_gen_lab.py` are deterministic test fixtures verifying `identity_gen.py`.
-- Not verified on live hardware: SSSD/LDAP/PAM/NIS+ live daemon configuration, `/usr/sbin/master-sync` and wrapper scripts on a multi-node cluster, `enable_nss_slurm` semantics across Slurm releases, FreeIPA/AD live joins, and ext3/XFS/ZFS/Lustre quota commands (`untested here`).
+- Not verified on live hardware: SSSD/LDAP/PAM/NIS+ live daemon configuration, `/usr/sbin/master-sync` and wrapper scripts on a multi-node cluster, `enable_nss_slurm` semantics across Slurm releases, FreeIPA/AD live joins, and XFS and Lustre quota commands.
+- Corrections made in the 2026-11 rework: the chapter no longer gives NIS setup steps or ext3 quota commands. The `slapd.conf` and `bdb` recipe was replaced by a pointer to current OpenLDAP documentation, which describes `cn=config` and the `mdb` backend. This is from general knowledge of OpenLDAP 2.5 and later and was not re-fetched here.

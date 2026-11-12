@@ -52,9 +52,9 @@ Ansible is **idempotent by design**. Run a playbook twice and you get the same e
 
 Ansible also comes with batteries included. Thousands of modules ship in collections, covering packages, services, users, files, templates, cloud providers, Kubernetes, network devices, databases, containers, BMC and Redfish, and monitoring. Playbooks are plain YAML with Jinja2 templating, so they double as documentation and you can review them in Git. The same tool scales down to a one-liner on a laptop and up to parallel runs over thousands of hosts, using forks, strategies, pull mode, AWX and AAP.
 
-Finally, Ansible is extensible and embeddable. You can write custom modules in any language that emits JSON, and add plugins for inventory, lookups, filters, callbacks and connections. Roles and collections make it easy to share the work. You can also call Ansible straight from a Python service with **`ansible-runner`**: `r = ansible_runner.run(private_data_dir='./playbooks', playbook='playbook.yml'); print(r.status, r.rc, r.stats)`. The example is from *Ansible: Up and Running*, chapter 1.
+Finally, Ansible is extensible and embeddable. You can write custom modules in any language that emits JSON, and add plugins for inventory, lookups, filters, callbacks and connections. Roles and collections make it easy to share the work. You can also call Ansible straight from a Python service with **`ansible-runner`**: `r = ansible_runner.run(private_data_dir='./playbooks', playbook='playbook.yml'); print(r.status, r.rc, r.stats)`.
 
-The name has a story behind it. Bas Meijer, Lorin Hochstein and René Moser note in *Ansible: Up and Running*, chapter 1, that an *ansible* is a fictional faster-than-light communication device. Ursula K. Le Guin coined it in *Rocannon's World* (1966). Orson Scott Card later used it in *Ender's Game* (1985) to command fleets of remote ships at once across vast distances. Cofounder Michael DeHaan borrowed that metaphor for controlling many remote servers at the same time.
+The name has a story behind it. An *ansible* is a fictional faster-than-light communication device. Ursula K. Le Guin coined it in *Rocannon's World* (1966). Orson Scott Card later used it in *Ender's Game* (1985) to command fleets of remote ships at once across vast distances. Cofounder Michael DeHaan borrowed that metaphor for controlling many remote servers at the same time.
 
 The **system abstraction** is the reason to prefer modules over shell scripts. Creating a secure directory in a shell script takes three imperative commands: `mkdir -p /etc/skel/.ssh && chown root:root /etc/skel/.ssh && chmod go-wrx /etc/skel/.ssh`. In Ansible, one declarative `file` task does the same job: `path: /etc/skel/.ssh`, `mode: '0700'`, `owner: root`, `group: root`, `state: directory`. It enforces the state in one step. A `package` task works the same way across distributions. Its `name: nginx` abstracts `apt`, `dnf` and `yum` alike.
 
@@ -130,13 +130,13 @@ The **ansible** community package is ansible-core plus a curated bundle of colle
 
 Check the Ansible release and support matrix before you upgrade. A core upgrade can change module behaviour and deprecate features.
 
-To manage thousands of modules and more than 20,000 community roles, the project split its content into three tiers. Core components are `ansible-core` itself, created by the Ansible team. Certified content is created and supported by Red Hat and its partners through Automation Hub. Community content is shared on Ansible Galaxy. The source for this split is *Ansible: Up and Running*, chapter 1.
+To manage thousands of modules and more than 20,000 community roles, the project split its content into three tiers. Core components are `ansible-core` itself, created by the Ansible team. Certified content is created and supported by Red Hat and its partners through Automation Hub. Community content is shared on Ansible Galaxy.
 
-Some plugins and modules have loose Python dependencies, which is the next thing to watch. Managing Windows hosts or Docker containers, for example, requires `pip3 install pywinrm docker` inside your virtualenv. If you test bleeding-edge Ansible from `git clone https://github.com/ansible/ansible.git --recursive`, activate it with `source ./hacking/env-setup`. The chapter on *Ansible: Up and Running*, chapter 2, covers the same setup patterns.
+Some plugins and modules have loose Python dependencies, which is the next thing to watch. Managing Windows hosts or Docker containers, for example, requires `pip3 install pywinrm docker` inside your virtualenv. If you test bleeding-edge Ansible from `git clone https://github.com/ansible/ansible.git --recursive`, activate it with `source ./hacking/env-setup`.
 
-### Setting up a local test environment with Vagrant (`AUR` Chapter 2)
+### Setting up a local test environment with Vagrant
 
-In *Ansible: Up and Running*, chapter 2, the authors use Vagrant with VirtualBox to boot disposable Linux VMs on a laptop. They do this before touching cloud or bare-metal servers. The boxes they use are `ubuntu/focal64` and `centos/stream8`.
+Vagrant with VirtualBox boots disposable Linux VMs on a laptop, so you can practise before touching cloud or bare-metal servers. Two common boxes are `ubuntu/focal64` and `centos/stream8`.
 
 Start with `vagrant init ubuntu/focal64 && vagrant up`. That imports the base box, attaches a NAT adapter that forwards host port `2222` to guest port `22` (`127.0.0.1:2222`), and mounts the current directory at `/vagrant`. Ansible connects with the standard OpenSSH client, not with `vagrant ssh`. So run **`vagrant ssh-config`** to see the exact connection parameters: `HostName 127.0.0.1`, `User vagrant`, `Port 2222` and `IdentityFile .vagrant/machines/default/virtualbox/private_key`. These map directly onto `inventory/vagrant.ini`:
 
@@ -151,7 +151,7 @@ Start with `vagrant init ubuntu/focal64 && vagrant up`. That imports the base bo
 
 Note that since Vagrant 1.7, Vagrant generates a unique private key for each VM, rather than sharing `$HOME/.vagrant.d/insecure_private_key`.
 
-A `Vagrantfile` is executable **Ruby** code, so you can shape the VM with it. Forward web ports with `config.vm.network :forwarded_port, host: 8080, guest: 80` and `host: 8443, guest: 443`. Assign a host-accessible IP with `config.vm.network "private_network", ip: "192.168.33.10"`. Enable SSH agent forwarding with `config.ssh.forward_agent = true`, and the VM can `git clone` private repositories using your laptop's SSH agent. Plugins such as `vagrant-hostmanager`, which manages `/etc/hosts` across VMs, and `vagrant-vbguest` extend the setup further. You can also loop over a `config.json` array with `f = JSON.parse(File.read('config.json')); f.each do |g| ...` to define 15 Linux distributions. Then start them with `vagrant up focal` or `vagrant up centos8`. Examples 2-3 to 2-6 in the book cover these features.
+A `Vagrantfile` is executable **Ruby** code, so you can shape the VM with it. Forward web ports with `config.vm.network :forwarded_port, host: 8080, guest: 80` and `host: 8443, guest: 443`. Assign a host-accessible IP with `config.vm.network "private_network", ip: "192.168.33.10"`. Enable SSH agent forwarding with `config.ssh.forward_agent = true`, and the VM can `git clone` private repositories using your laptop's SSH agent. Plugins such as `vagrant-hostmanager`, which manages `/etc/hosts` across VMs, and `vagrant-vbguest` extend the setup further. You can also loop over a `config.json` array with `f = JSON.parse(File.read('config.json')); f.each do |g| ...` to define 15 Linux distributions. Then start them with `vagrant up focal` or `vagrant up centos8`.
 
 Vagrant has two built-in Ansible provisioners. **`config.vm.provision "ansible"`** runs Ansible from your host machine. **`config.vm.provision "ansible_local"`** installs and runs Ansible inside the guest VM itself. That helps when the host is Windows without WSL2. You re-run provisioning on demand with `vagrant provision`, `vagrant reload --provision` or `vagrant up --no-provision`. Tear the VMs down cleanly with `vagrant destroy -f`, the *"Kill Your Darlings"* step.
 
@@ -239,9 +239,13 @@ Read the example as a set of decisions. It names the inventory and the remote us
 
 Escalation fails in a few predictable ways. A missing tty shows up as `requiretty`. Password prompts appear when you leave out `--ask-become-pass`. An unprivileged `become_user` can run into temp file permission problems. You can set `allow_world_readable_tmpfiles`, but only if you understand the risk, or you can install `acl`. Sudo rules may also refuse the module path.
 
-As *Ansible: Up and Running*, chapter 2, explains, command-specific `sudoers` allow-lists and restricted shells (`rbash`) do not work with Ansible. Ansible uploads each module to a temporary directory with a random name, such as `~/.ansible/tmp/ansible-tmp-.../AnsiballZ_...py`, and runs Python on that changing path. A static command rule cannot match that path, so `sudo` cannot match it either.
+Command-specific `sudoers` allow-lists and restricted shells (`rbash`) do not work with Ansible. Ansible uploads each module to a temporary directory with a random name, such as `~/.ansible/tmp/ansible-tmp-.../AnsiballZ_...py`, and runs Python on that changing path. A static command rule cannot match that path, so `sudo` cannot match it either.
 
-Instead, grant the dedicated automation group full sudo. Use `%ansible ALL=(ALL) ALL`, or `NOPASSWD: ALL` in `/etc/sudoers.d/ansible`, and validate the file with `visudo -cf`. Then move change control into Git peer review, staging environments and Ansible Automation Controller RBAC. Ansible also logs every executed module and its arguments, such as `ansible-command Invoked with _raw_params=...`, to `/var/log/syslog` or `journald` on the target host. That helps with auditability.
+Instead, grant a dedicated automation group full sudo. Use `%ansible ALL=(ALL) ALL`, or `NOPASSWD: ALL` in `/etc/sudoers.d/ansible`, and validate the file with `visudo -cf`.
+
+`NOPASSWD: ALL` is broad: anyone who can log in as that account is root on every host it reaches. It is only reasonable under three conditions. The account is dedicated to automation and used by nothing else. Interactive logins are blocked for it, so only key-based SSH from the control node works, and the private key is protected. Its use is audited, through the controller's job log and the target's `journald`. If you cannot meet those conditions, keep the password prompt with `%ansible ALL=(ALL) ALL` and supply the password through Ansible Vault.
+
+Then move change control into Git peer review, staging environments and Ansible Automation Controller RBAC. Ansible also logs every executed module and its arguments, such as `ansible-command Invoked with _raw_params=...`, to `/var/log/syslog` or `journald` on the target host. That helps with auditability.
 
 Keep root to the minimum. Scope `become` to the tasks that need it, and leave the rest of the play unescalated.
 
@@ -392,13 +396,13 @@ Before you apply a change, run `--check --diff`. Test on a canary host by using 
 
 ## 10. Lab
 
-Start on your own machine. The self-checking Python lab, `code/part04/ansible_foundations_lab.py`, checks the four-level discovery order for `ansible.cfg`. It confirms that the guard refuses a world-writable working directory (`resolve_ansible_cfg_path`). It also checks host pattern matching: union (`:`), intersection (`:&`), exclusion (`:!`) and regex (`~`), through `match_host_pattern`. Last, it checks that the `file` module is idempotent and that the `--check` dry-run mode works (`simulate_idempotent_file_module`). These patterns come from *Ansible: Up and Running*, chapters 1 and 2.
+Start on your own machine. The self-checking Python lab, `code/part04/ansible_foundations_lab.py`, checks the four-level discovery order for `ansible.cfg`. It confirms that the guard refuses a world-writable working directory (`resolve_ansible_cfg_path`). It also checks host pattern matching: union (`:`), intersection (`:&`), exclusion (`:!`) and regex (`~`), through `match_host_pattern`. Last, it checks that the `file` module is idempotent and that the `--check` dry-run mode works (`simulate_idempotent_file_module`).
 
 ```bash
 python3 code/part04/ansible_foundations_lab.py
 ```
 
-Next, move to a control node with 2–3 Linux targets. The interactive steps below are `untested here`, so expect to adjust them on your own setup. Work through the exercises in order.
+Next, move to a control node with 2–3 Linux targets. The interactive steps below were not run on live hardware, so expect to adjust them on your own setup. Work through the exercises in order.
 
 1. Bring up three Linux targets with Vagrant, Multipass, or Docker containers running sshd with Python. Then create an automation user that uses key authentication and passwordless sudo.
 2. Create a venv and install `ansible-core` and `ansible-lint`. Write `requirements.yml` and install the collections. Run `ansible --version` to read the config path and the Python in use.
@@ -438,9 +442,9 @@ Be ready to explain inventory, play, task, module, role, collection and handler.
 
 Each item below asks you to work through one part of the chapter. Note what you find, so you can compare it with the answer later.
 
-1. Ansible architecture, agentless execution with `AnsiballZ`, and push versus pull convergence. The source is *Ansible: Up and Running*, chapter 1. In part (a), trace the 6 runtime steps when the control node runs a task on a target: the `AnsiballZ` payload, `~/.ansible/tmp`, remote Python, the JSON return, cleanup, and the syslog audit entry. In part (b), compare Ansible's agentless, top-to-bottom push model with Puppet, Chef and CFEngine pull-based convergence, and with Terraform's stateful resource graph. Then explain how `ansible-pull` and `ansible_runner.run()` work.
-2. Packaging tiers, Vagrant testbeds, and the sources in *Ansible: Up and Running*, chapters 1 and 2. In part (a), contrast `ansible-core` (`2.16`–`2.18`), the community `ansible` package, collections (`requirements.yml`, FQCN `ansible.builtin.copy`), and execution environments (`ansible-builder` / `ansible-navigator`). In part (b), show how `vagrant ssh-config` maps to `inventory/vagrant.ini` (`ansible_port=2222`, `ansible_host=127.0.0.1`, `ansible_private_key_file`). Then explain the difference between Vagrant's `ansible` and `ansible_local` provisioners.
-3. `ansible.cfg` discovery precedence, SSH multiplexing with `ControlPersist`, pipelining, and sudo rules for `become`. Source: *Ansible: Up and Running*, chapter 2. Using `resolve_ansible_cfg_path()` in `code/part04/ansible_foundations.py`, explain the 4-level search order for `ansible.cfg`, and why `./ansible.cfg` is ignored when it is world-writable. Then explain how `ControlMaster=auto -o ControlPersist=60s` and `pipelining = True` speed up SSH execution, and why `pipelining` requires disabling `requiretty`. Last, explain why command-specific `sudoers` rules and `rbash` fail with Ansible.
+1. Ansible architecture, agentless execution with `AnsiballZ`, and push versus pull convergence. In part (a), trace the 6 runtime steps when the control node runs a task on a target: the `AnsiballZ` payload, `~/.ansible/tmp`, remote Python, the JSON return, cleanup, and the syslog audit entry. In part (b), compare Ansible's agentless, top-to-bottom push model with Puppet, Chef and CFEngine pull-based convergence, and with Terraform's stateful resource graph. Then explain how `ansible-pull` and `ansible_runner.run()` work.
+2. Packaging tiers and Vagrant testbeds. In part (a), contrast `ansible-core` (`2.16`–`2.18`), the community `ansible` package, collections (`requirements.yml`, FQCN `ansible.builtin.copy`), and execution environments (`ansible-builder` / `ansible-navigator`). In part (b), show how `vagrant ssh-config` maps to `inventory/vagrant.ini` (`ansible_port=2222`, `ansible_host=127.0.0.1`, `ansible_private_key_file`). Then explain the difference between Vagrant's `ansible` and `ansible_local` provisioners.
+3. `ansible.cfg` discovery precedence, SSH multiplexing with `ControlPersist`, pipelining, and sudo rules for `become`. Using `resolve_ansible_cfg_path()` in `code/part04/ansible_foundations.py`, explain the 4-level search order for `ansible.cfg`, and why `./ansible.cfg` is ignored when it is world-writable. Then explain how `ControlMaster=auto -o ControlPersist=60s` and `pipelining = True` speed up SSH execution, and why `pipelining` requires disabling `requiretty`. Last, explain why command-specific `sudoers` rules and `rbash` fail with Ansible.
 4. Inventory basics and host-pattern set operations, using `match_host_pattern()` in `code/part04/ansible_foundations.py`. Evaluate `gpu:login` (union), `gpu:&rack1` (intersection), `gpu:!gpu02` (exclusion) and `~gpu0[1-4]` (regex). Then explain how `ansible-inventory --graph/--list/--host` and `--limit` stop a change from reaching the whole fleet by accident.
 5. Ad-hoc commands and idempotency, using `simulate_idempotent_file_module()`. Compare `command` (the default module, with no shell expansion), `shell` (pipes and redirects through `/bin/sh`), and `raw` (no remote Python required). Then explain how the `file` task (`path=/etc/skel/.ssh mode=0700`) reaches idempotency, with `changed=True` on the first run and `changed=False` on the second. Compare that with raw shell commands that rely on `creates:`/`removes:` and `changed_when`.
 6. Writing, dry-running and troubleshooting the first playbook, `site.yml`. Trace how `ansible-playbook site.yml --syntax-check`, `--check --diff` and `--limit gpu01 -v` check the playbook before you apply it. Interpret the `PLAY RECAP` counters: `ok`, `changed`, `unreachable`, `failed`, `skipped`, `rescued` and `ignored`. Finally, diagnose `Permission denied (publickey)`, `Missing sudo password`, `/bin/sh: python: not found`, and slow fact gathering.
@@ -459,7 +463,7 @@ Each item below asks you to work through one part of the chapter. Note what you 
 </details>
 
 <details>
-<summary>2. Where does the name "Ansible" come from, and how does Ansible's execution model differ from CFEngine/Puppet convergence and Terraform (*Ansible: Up and Running*, Chapter 1)?</summary>
+<summary>2. Where does the name "Ansible" come from, and how does Ansible's execution model differ from CFEngine/Puppet convergence and Terraform?</summary>
 
 - **Origin of the name:** Ursula K. Le Guin coined the word in *Rocannon's World* (1966), and Orson Scott Card used it in *Ender's Game* (1985). In those books, an *ansible* is a fictional faster-than-light device for commanding many remote ships at once across vast distances. Ansible creator Michael DeHaan borrowed the idea as a metaphor for controlling fleets of servers.
 - **Versus CFEngine and Puppet convergence:** Pull-based agent systems rely on eventual convergence across several periodic runs. Ansible is push-based instead. It runs tasks top to bottom in a single run, and it runs each task in parallel across hosts, up to `forks` at a time. It waits for every host to finish before it starts the next task. That makes multi-tier orchestration natural, such as monitoring, then load balancer, then database, then web servers.
@@ -476,7 +480,7 @@ Each item below asks you to work through one part of the chapter. Note what you 
 </details>
 
 <details>
-<summary>4. What is the exact 4-step search order for `ansible.cfg`, why is `./ansible.cfg` ignored in world-writable directories, and how do you inspect active settings (*Ansible: Up and Running*, Chapter 2)?</summary>
+<summary>4. What is the exact 4-step search order for `ansible.cfg`, why is `./ansible.cfg` ignored in world-writable directories, and how do you inspect active settings ?</summary>
 
 Ansible uses the **first file it finds**. It does *not* merge several files. It checks these locations in order:
 1. The file named by the **`ANSIBLE_CONFIG`** environment variable.
@@ -495,13 +499,13 @@ If the current working directory is **world-writable**, Ansible ignores `./ansib
 </details>
 
 <details>
-<summary>6. Why do command-specific `sudoers` rules and restricted shells (`rbash`) fail with Ansible (*Ansible: Up and Running*, Chapter 2)?</summary>
+<summary>6. Why do command-specific `sudoers` rules and restricted shells (`rbash`) fail with Ansible ?</summary>
 
 When pipelining is off, or when a module needs files, Ansible creates a temporary directory with a **random name**. An example path is `~/.ansible/tmp/ansible-tmp-1710000000.12-98765/AnsiballZ_package.py`. Ansible then runs `/usr/bin/python3` on that temporary path through `sudo`. The script path changes on every task, so a traditional `sudoers` rule that allows only fixed binaries, such as `/usr/bin/apt-get` or `/bin/systemctl`, cannot match the command. Restricted shells (`rbash`) block directory and path operations, so they fail as well. Grant the dedicated automation account full `sudo`. Put `%ansible ALL=(ALL) NOPASSWD: ALL` in `/etc/sudoers.d/ansible`, and check the file with `visudo -cf`. Then enforce change control in Git and AWX/AAP.
 </details>
 
 <details>
-<summary>7. How does `vagrant ssh-config` help you build an Ansible inventory for local test VMs, and how do Vagrant's `ansible` and `ansible_local` provisioners differ (*Ansible: Up and Running*, Chapter 2)?</summary>
+<summary>7. How does `vagrant ssh-config` help you build an Ansible inventory for local test VMs, and how do Vagrant's `ansible` and `ansible_local` provisioners differ ?</summary>
 
 Running `vagrant ssh-config` prints the localhost NAT port and the private key that Vagrant generates for each VM. The output shows `HostName 127.0.0.1`, `User vagrant`, `Port 2222`, and `IdentityFile .vagrant/machines/default/virtualbox/private_key`. You can map these values directly to `ansible_host=127.0.0.1`, `ansible_port=2222`, `ansible_user=vagrant`, and `ansible_private_key_file=...` in `inventory/vagrant.ini`. Alternatively, you can use `config.vm.network "private_network", ip: "192.168.33.10"`.
 - **`config.vm.provision "ansible"`:** Runs `ansible-playbook` on your **host machine**, over SSH into the guest VM.
@@ -537,7 +541,7 @@ Despite its name, `ansible.builtin.ping` does **not** send ICMP Echo Request pac
 </details>
 
 <details>
-<summary>11. Why is `ansible.builtin.file` (or `package` / `service`) preferred over `command` / `shell`, and how do you make `command` idempotent when no module exists (*Ansible: Up and Running*, Chapter 1)?</summary>
+<summary>11. Why is `ansible.builtin.file` (or `package` / `service`) preferred over `command` / `shell`, and how do you make `command` idempotent when no module exists?</summary>
 
 Declarative modules such as `file`, `package`, and `service` check the current state first. They change something only when a change is needed. They report an accurate `ok` or `changed` status, and they support `--check` and `--diff`. A `file` task looks like this: `path: /etc/skel/.ssh, mode: '0700', owner: root, group: root, state: directory`. That one task replaces `mkdir -p` followed by `chown` and `chmod`. By contrast, `command` and `shell` run blindly on every play, and they always report `CHANGED`.
 
