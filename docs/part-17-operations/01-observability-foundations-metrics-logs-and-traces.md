@@ -18,7 +18,6 @@ lab_venue: "GCP / GKE"
 | Priority tier | 2 |
 | Lab venue | GCP / GKE |
 | Part | Part 17: Observability, performance and operations |
-| Primary sources | *Production Kubernetes* (`production-kubernetes`, Chapter 9); *Engineering AI Systems* (`engineering-ai-systems-architecture-and-devops-essentials`, Chapter 11); NVIDIA Zero-to-Hero Volume 16 (`chapter-01-observability-foundations.md`, `chapter-02-metrics-logs-and-traces.md`); NVIDIA Zero-to-Hero Volume 7 (`chapter-01-observability-stack-overview.md`) |
 | Cross-references | Chapter 1.23 (Performance methodology); Chapter 16.10 (Monitoring and drift); Chapter 16.14 (Platform design); Chapter 17.2 (Prometheus and Grafana) |
 | Coverage file | `planning/coverage/chapters/17-01.md` |
 | Claim & number ledger | `planning/ledgers/17-01.md` |

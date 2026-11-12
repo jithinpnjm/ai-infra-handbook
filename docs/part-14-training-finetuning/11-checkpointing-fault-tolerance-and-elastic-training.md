@@ -18,7 +18,6 @@ lab_venue: "Nebius GPU"
 | Priority tier | 2 |
 | Lab venue | Nebius GPU + Local Python Verification Lab |
 | Part | Part 14: Distributed training and fine-tuning |
-| Primary sources | NVIDIA Zero-to-Hero Volume 13 (`chapter-09-checkpointing-and-recovery.md`, `chapter-01-why-distributed-training-exists.md`, `chapter-08-nccl-collectives-and-communication-paths.md`, `chapter-12-volume-13-summary.md`, `index.md`, `labs/lab-01..04`); Volume 21 (`chapter-04-storage-infrastructure-for-ai-pipelines.md`, `chapter-07-multi-node-distributed-training.md`); *Distributed AI Systems* (`distributed-ai-systems`, Chapters 3, 4, 8, and 11) |
 | Cross-references | Chapter 6.12 (Slurm workload manager); Chapter 12.17 (`nccl-tests` and fabric benchmarking); Chapters 14.4–14.7 (DDP, FSDP, ZeRO, Megatron-LM); Chapter 14.10 (Multi-node training architecture) |
 | Code | `code/part14/checkpoint_fault_tolerance.py`, `code/part14/checkpoint_fault_tolerance_lab.py` |
 | Coverage file | `planning/coverage/chapters/14-11.md` |

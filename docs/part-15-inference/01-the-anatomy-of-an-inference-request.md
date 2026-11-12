@@ -18,7 +18,6 @@ lab_venue: "GCP / GKE"
 | Priority tier | 1 |
 | Lab venue | GCP / GKE + Local Python Verification Lab |
 | Part | Part 15: LLM inference and serving |
-| Primary sources | *Hands-On LLM Serving and Optimization* (`hands-on-llm-serving-and-optimization`, Chapters 2, 3, 5, 8); *AI Engineering* (`ai-engineering`, Chapter 9); *Distributed AI Systems* (`distributed-ai-systems`, Chapters 1, 6, 10); *AI Systems Performance Engineering* (`ai-systems-performance-engineering`, Chapters 1, 2, 12, 15); *LLMs in Production* (`llms-in-production`, Chapters 2, 6); NVIDIA Zero-to-Hero Volume 12 (`chapter-01-why-inference-infrastructure-is-different.md`, `chapter-02-the-end-to-end-inference-request-path.md`), Volume 01 (`chapter-04-what-happens-when-chatgpt-answers.md`, `04-nvidia-ecosystem-overview.md`), and Volume 05 (`02-llm-inference-serving-masterclass.md`) |
 | Cross-references | Chapter 14.2 (Transformers and LLM architecture); Chapter 14.3 (Training memory and compute anatomy); Chapter 15.2 (Batching, the KV cache and quantization fundamentals); Chapter 15.3 (vLLM in depth); Chapter 15.5 (TensorRT and TensorRT-LLM); Chapter 15.6 (Triton Inference Server) |
 | Code | `code/part15/inference_request_anatomy.py`, `code/part15/inference_request_anatomy_lab.py` |
 | Coverage file | `planning/coverage/chapters/15-01.md` |

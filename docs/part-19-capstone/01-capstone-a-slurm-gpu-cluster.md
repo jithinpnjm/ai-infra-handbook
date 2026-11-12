@@ -18,7 +18,6 @@ lab_venue: "On-prem"
 | Priority tier | 1 |
 | Lab venue | On-prem |
 | Part | Part 19: Capstones, design and interview readiness |
-| Primary sources | *Supercomputers for Linux Sysadmins* Ch. 15 (Slurm); Slurm official documentation; nvidia-devops Zero-to-Hero Volume 19 (production operations), Volume 24 (capstone projects 4–6), Volume 16 and Volume 20 (observability and troubleshooting); handbook Part 6 (6.7–6.15) and Part 17 |
 | Cross-references | Chapter 6.7 (architecture); 6.8 (configuration); 6.9 (QoS and fairshare); 6.10 (GPU scheduling); 6.11 (job submission); 6.14 (operations); 6.15 (HA and upgrades); 6.31 (local capstone); 17.4 (DCGM exporter); 17.11 (incident response) |
 | Coverage file | `planning/coverage/chapters/19-01.md` |
 | Claim & number ledger | `planning/ledgers/19-01.md` |

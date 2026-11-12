@@ -241,7 +241,7 @@ Pick two of these and answer them out loud before you start the Exercises.
 Each exercise asks you to explain a number or a design choice from this chapter, and you should be able to answer it without looking at the answer. Start with exercise 1, since it needs only the Python lab.
 
 1. Compare erasure coding efficiency across parallel file systems. Run `python3 code/part06/parallel_fs_compare_lab.py`. Using `erasure_coding_efficiency(d, p)`, compare usable raw-to-effective capacity across RAID-1 or buddy mirroring (1+1 = 50.0%), standard 8+2 RAID-6 or EC (80.0%), 16+2 distributed EC (88.89%), and VAST-style wide 146+4 stripes (97.33%). Then explain the trade-off in failure domain size and rebuild network traffic.
-2. Quantify GPUDirect Storage (`GDS`) against host page-cache bounce buffering, using the lab in Volume 15. Trace the GPUDirect Storage difference in host DRAM copies. Use `pcie_host_dram_copies(100.0, use_gds)` in `code/part06/parallel_fs_compare_lab.py`. Explain why reading 100.0 GB of checkpoint or dataset tensors through traditional POSIX buffered I/O generates 200.0 GB of host DRAM read and write traffic and 2 PCIe root-complex crossings. Then explain why `cuFileRead` with `nvidia-fs.ko` makes one direct peer-to-peer DMA transfer into GPU BAR1 memory, with 0.0 GB of host DRAM bounce traffic.
+2. Quantify GPUDirect Storage (`GDS`) against host page-cache bounce buffering, using the lab. Trace the GPUDirect Storage difference in host DRAM copies. Use `pcie_host_dram_copies(100.0, use_gds)` in `code/part06/parallel_fs_compare_lab.py`. Explain why reading 100.0 GB of checkpoint or dataset tensors through traditional POSIX buffered I/O generates 200.0 GB of host DRAM read and write traffic and 2 PCIe root-complex crossings. Then explain why `cuFileRead` with `nvidia-fs.ko` makes one direct peer-to-peer DMA transfer into GPU BAR1 memory, with 0.0 GB of host DRAM bounce traffic.
 3. Configure BeeGFS striping, RDMA transport and BeeOND ephemeral scratch. Write the `beegfs-ctl --setpattern --chunksize=1m --numtargets=4 /mnt/beegfs/dir` command. Explain the role of `sysMgmtdHost`, of `storeMetaDirectory` with `storeUseExtendedAttribs = true`, of `storeStorageDirectory`, of `connUseRDMA = true`, of `connTCPFallbackEnabled = true` and of `connAuthFile = /etc/beegfs/conn.auth`. Finally, explain how BeeOND aggregates the local NVMe drives of compute nodes into a per-Slurm-job parallel scratch file system.
 4. Contrast the metadata and high-availability models of IBM Storage Scale (GPFS) and Lustre, using chapter 9 of *Supercomputers for Linux SysAdmins*. For GPFS, cover NSDs, distributed metadata with directory indexing, the token lock manager, quorum and heartbeat that survive a subnet split, online disk rebalancing, per-server and per-client licensing, and the 9,300-node and 16,386-client scale. For Lustre, cover MGS, dedicated MDS and MDTs with DNE, OSS and OSTs, and open-source kernel modules. Then explain how the two structures differ.
 5. Compare how PanFS, WEKA and VAST Data handle metadata scaling and node failures. For PanFS, cover Directors plus object storage nodes, RAID-1 for small files and RAID-5 for large files, and client-side RAID checksum offload. For WEKA, cover user-space DPDK and SPDK cores on clients and backends, distributed metadata and data, active-file-first rebuilds, and S3 tiering. For VAST Data, cover DASE stateless CNodes over NVMe-oF to shared-everything DBoxes, plus multipath NFS-RDMA and S3.
@@ -336,14 +336,14 @@ Compute nodes don't need a custom proprietary kernel file system module such as 
 </details>
 
 <details>
-<summary>13. Compare the legacy buffered storage read path with GPUDirect Storage (`GDS`, `cuFile`, `nvidia-fs.ko`), from chapter 4 of Volume 15.</summary>
+<summary>13. Compare the legacy buffered storage read path with GPUDirect Storage (`GDS`, `cuFile`, `nvidia-fs.ko`).</summary>
 
 - Legacy buffered read: data goes from the storage NIC or NVMe through PCIe into the Linux kernel page cache in host DRAM. The CPU copies it to a user buffer, and `cudaMemcpy` carries it over PCIe to GPU HBM. The path makes 2 PCIe root crossings and generates 200 GB of host DRAM traffic per 100 GB payload.
 - GPUDirect Storage (`GDS`): the NIC or NVMe sends data by peer-to-peer DMA, through `nvidia-fs.ko` and `cuFileRead`, straight into GPU `BAR1` HBM. It crosses PCIe once and generates **0.0 GB** of host DRAM bounce traffic.
 </details>
 
 <details>
-<summary>14. Which tools verify that GPUDirect Storage (`GDS`) is installed correctly and measure its throughput, from Volume 15 Lab 3?</summary>
+<summary>14. Which tools verify that GPUDirect Storage (`GDS`) is installed correctly and measure its throughput?</summary>
 
 - Configuration and driver check: `/usr/local/cuda/gds/tools/gdscheck -p` verifies `nvidia-fs.ko`, the IOMMU and ACS settings, and the registered file systems.
 - Throughput and IOPS benchmark: `/usr/local/cuda/gds/tools/gdsio` compares `-x 0`, the GDS direct mode, against `-x 1` and `-x 2`, the CPU bounce modes.

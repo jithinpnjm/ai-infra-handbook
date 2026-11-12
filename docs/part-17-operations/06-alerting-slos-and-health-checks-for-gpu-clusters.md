@@ -18,7 +18,6 @@ lab_venue: "GCP / GKE"
 | Priority tier | 2 |
 | Lab venue | GCP / GKE |
 | Part | Part 17: Observability, performance and operations |
-| Primary sources | NVIDIA Zero-to-Hero Volume 16 (`chapter-09-alerting-slos-and-health-checks.md`); NVIDIA Zero-to-Hero Volume 10 (`chapter-09-on-call-and-runbooks.md`); *Production Kubernetes* (`production-kubernetes`, Chapters 9, 14) |
 | Cross-references | Chapter 17.2 (Prometheus and Grafana); Chapter 17.4 (DCGM exporter); Chapter 17.5 (Distributed observability and profiling); Chapter 16.14 (Platform design: SLOs) |
 | Coverage file | `planning/coverage/chapters/17-06.md` |
 | Claim & number ledger | `planning/ledgers/17-06.md` |

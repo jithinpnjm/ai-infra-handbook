@@ -18,7 +18,6 @@ lab_venue: "GCP / GKE"
 | Priority tier | 2 |
 | Lab venue | GCP / GKE |
 | Part | Part 17: Observability, performance and operations |
-| Primary sources | *AI Systems Performance Engineering* (`ai-systems-performance-engineering`, Chapter 20); *Distributed AI Systems* (`distributed-ai-systems`, Chapter 11); *LLMOps* (`llmops`, Chapter 10); NVIDIA Zero-to-Hero Volume 8 (`chapter-03-ai-assisted-operations.md`) |
 | Cross-references | Chapter 17.6 (Alerting and SLOs); Chapter 17.7 (Failure modes); Chapter 17.13 (Reliability engineering); Chapter 16.9 (LLM evaluation); Chapter 11.16 (KAI gang scheduling) |
 | Coverage file | `planning/coverage/chapters/17-16.md` |
 | Claim & number ledger | `planning/ledgers/17-16.md` |

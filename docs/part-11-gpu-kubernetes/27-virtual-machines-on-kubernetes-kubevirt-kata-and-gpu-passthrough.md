@@ -18,7 +18,6 @@ lab_venue: "GCP / GKE"
 | Priority tier | 1 |
 | Lab venue | GCP / GKE (plus local Python 3 simulation lab) |
 | Part | Part 11: GPUs on Kubernetes, scheduling and virtualization |
-| Sources used | Josh Rosso et al., *Production Kubernetes* (`production-kubernetes`, O'Reilly, 2021, Ch. 3 *Container Runtime*); Brendan Gregg, *Systems Performance: Enterprise and the Cloud*, 2nd Edition (`systems-performance-2nd-edition`, Addison-Wesley, 2020, Ch. 11 *Cloud Computing*); `nvidia-zero-to-hero/volume-18/chapter-06-gpu-sharing-security.md`; `nvidia-zero-to-hero/volume-18/chapter-09-confidential-computing-and-attestation.md` |
 | Coverage file | `planning/coverage/chapters/11-27.md` |
 
 ## Why this matters for AI infrastructure

@@ -18,7 +18,6 @@ lab_venue: "GCP / GKE"
 | Priority tier | 2 |
 | Lab venue | GCP / GKE + Local Python Verification Lab |
 | Part | Part 15: LLM inference and serving |
-| Primary sources | *AI Engineering* Chapter 9; *Hands-On LLM Serving and Optimization* Chapters 5 and 9; *AI Systems Performance Engineering* Chapters 1, 16, 17, 18, and 19; *Distributed AI Systems* Chapter 9; *LLMOps* Chapter 9; NVIDIA Zero-to-Hero Volume 12 (`chapter-01..12`, `index.md`, `labs/lab-01..04`) and Volume 19 (`chapter-01..12`, `index.md`) |
 | Cross-references | Chapter 15.1 (Inference request anatomy); Chapter 15.3 (vLLM & PagedAttention); Chapter 15.6 (Batching, KV cache & quantization); Chapters 15.8–15.10 (NVIDIA Dynamo & Prefill/Decode disaggregation); Chapter 15.12 (Dynamic & adaptive inference optimizations) |
 | Code | `code/part15/inference_cost_capacity.py`, `code/part15/inference_cost_capacity_lab.py` |
 | Coverage file | `planning/coverage/chapters/15-18.md` |

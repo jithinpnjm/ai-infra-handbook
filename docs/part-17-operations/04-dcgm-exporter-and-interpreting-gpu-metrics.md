@@ -18,7 +18,6 @@ lab_venue: "GCP / GKE"
 | Priority tier | 2 |
 | Lab venue | GCP / GKE |
 | Part | Part 17: Observability, performance and operations |
-| Primary sources | NVIDIA Zero-to-Hero Volume 16 (`chapter-03-dcgm-exporter.md`, `chapter-04-interpreting-gpu-metrics.md`); NVIDIA Zero-to-Hero Volume 7 (`chapter-02-dcgm-and-gpu-metrics.md`); *Generative AI on Kubernetes* (`generative-ai-on-kubernetes`, Chapter 5); DCGM and DCGM exporter official documentation |
 | Cross-references | Chapter 10.21 (GPU health: DCGM, ECC, Xid); Chapter 16.10 (Monitoring and drift); Chapter 17.2 (Prometheus and Grafana); Chapter 11 (GPU Kubernetes) |
 | Coverage file | `planning/coverage/chapters/17-04.md` |
 | Claim & number ledger | `planning/ledgers/17-04.md` |

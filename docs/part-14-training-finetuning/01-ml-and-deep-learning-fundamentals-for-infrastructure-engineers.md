@@ -18,8 +18,6 @@ lab_venue: "Nebius GPU"
 | Priority tier | 2 |
 | Lab venue | Nebius GPU + Local Python Verification Lab (`code/part14/ml_dl_fundamentals_lab.py`) |
 | Part | Part 14: Distributed training and fine-tuning |
-| Primary sources | *Designing Machine Learning Systems* (`designing-machine-learning-systems`, Ch. 1, Ch. 2, Ch. 6); *Engineering AI Systems: Architecture and DevOps Essentials* (`engineering-ai-systems-architecture-and-devops-essentials`, Ch. 3); NVIDIA Zero-to-Hero Volume 13 (`chapter-01-why-distributed-training-exists.md`, `chapter-02-training-memory-and-compute-anatomy.md`) and Volume 21 (`chapter-07-multi-node-distributed-training.md`) |
-
 ## Why this matters for AI infrastructure
 
 A team asks for 64 GPUs to train a 7B model. The request looks reasonable, because the checkpoint file is only 14 GB. Then the first training step fails with an out-of-memory error. The same team later doubles the GPU count and finds that the loss curve improves no faster than before. Both surprises come from treating the training loop as a black box.

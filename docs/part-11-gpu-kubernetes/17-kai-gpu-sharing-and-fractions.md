@@ -18,7 +18,6 @@ lab_venue: "GCP / GKE"
 | Priority tier | 1 |
 | Lab venue | GCP / GKE (plus local Python 3 simulation lab) |
 | Part | Part 11: GPUs on Kubernetes, scheduling and virtualization |
-| Sources used | Roland Huß et al., *Generative AI on Kubernetes* (O'Reilly, 2026, Ch. 3, Ch. 7); `nvidia-zero-to-hero/volume-11/chapter-04-time-slicing-and-oversubscription.md`; `nvidia-zero-to-hero/volume-11/chapter-06-comparing-mig-time-slicing-and-vgpu.md`; `nvidia-zero-to-hero/volume-24/chapter-06-mig-configuration-multi-tenant.md`; *Kubernetes for Generative AI Solutions* (Packt, 2025, Ch. 10) |
 | Coverage file | `planning/coverage/chapters/11-17.md` |
 
 ## Why this matters for AI infrastructure

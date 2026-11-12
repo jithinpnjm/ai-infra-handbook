@@ -18,7 +18,6 @@ lab_venue: "GCP / GKE"
 | Priority tier | 1 |
 | Lab venue | GCP / GKE + Local Python Verification Lab |
 | Part | Part 15: LLM inference and serving |
-| Primary sources | *AI Systems Performance Engineering* Chapters 18, 17, 19, 16, 4, 5, 2; *Hands-On LLM Serving and Optimization* Chapters 6 & 7; *Distributed AI Systems* Chapters 6 & 9; NVIDIA Zero-to-Hero Volume 12 (`chapter-05-tensorrt-llm-and-llm-execution.md`, `chapter-07-continuous-and-dynamic-batching.md`, `chapter-08-kv-cache-memory-and-concurrency.md`, `chapter-09-scaling-multi-gpu-and-multi-node-inference.md`) |
 | Cross-references | Chapter 10.5 (Roofline model); Chapter 12.19 (GPUDirect RDMA & GDS); Chapters 15.2–15.5 (Batching, KV cache, quantization, vLLM, SGLang, TensorRT-LLM); Chapters 15.8 & 15.10 (NVIDIA Dynamo, llm-d, and prefill-decode disaggregation) |
 | Code | `code/part15/advanced_kv_cache_tuning.py`, `code/part15/advanced_kv_cache_tuning_lab.py` |
 | Coverage file | `planning/coverage/chapters/15-11.md` |
@@ -742,7 +741,7 @@ At a 512-token budget, each prefill chunk runs for only 8 ms alongside a 2 ms de
 </details>
 
 <details>
-<summary>8. Why did enabling chunked prefill cause prefix-cache hit rates to drop from 45 percent to 8 percent in Volume 12 Chapter 8, and how do you fix it?</summary>
+<summary>8. Why did enabling chunked prefill cause prefix-cache hit rates to drop from 45 percent to 8 percent, and how do you fix it?</summary>
 
 The engine computed prefix-cache hashes over complete prompt sequences. Slicing prompts into partial prefill chunks caused hash lookups to miss the fragmented cache structure. Computing prefix hashes at fixed PagedAttention block or chunk boundaries, or using SGLang RadixAttention, restores the 45 percent hit rate.
 </details>

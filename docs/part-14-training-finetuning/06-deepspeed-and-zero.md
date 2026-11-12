@@ -18,8 +18,6 @@ lab_venue: "Nebius GPU"
 | Priority tier | 2 |
 | Lab venue | Nebius GPU + Local Python Verification Lab (`code/part14/deepspeed_zero_lab.py`) |
 | Part | Part 14: Distributed training and fine-tuning |
-| Primary sources | *Distributed AI Systems* (`distributed-ai-systems`, Ch. 5); NVIDIA Zero-to-Hero Volume 13 (`chapter-05-deepspeed-and-zero.md`, `chapter-01-why-distributed-training-exists.md`, `chapter-08-nccl-collectives-and-communication-paths.md`, `chapter-12-volume-13-summary.md`, `index.md`, `labs/lab-01..04`); *AI Systems Performance Engineering* (`ai-systems-performance-engineering`, Ch. 13) |
-
 ## Why this matters for AI infrastructure
 
 A team launches a 30B model with standard DistributedDataParallel on 80 GB GPUs. Every GPU keeps a full copy of the weights, gradients and AdamW states, so the job fails at initialization. Microsoft Research built the Zero Redundancy Optimizer, called ZeRO, and the DeepSpeed engine to remove that duplication. PyTorch FSDP2 later offered the same idea natively, and `fully_shard()` matches ZeRO Stage 3 on GPU memory. DeepSpeed stays in wide use because it adds offload tiers, communication compression and long-context support.

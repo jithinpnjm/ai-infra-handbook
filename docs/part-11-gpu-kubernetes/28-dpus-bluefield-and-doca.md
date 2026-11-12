@@ -18,7 +18,6 @@ lab_venue: "GCP / GKE"
 | Priority tier | 2 |
 | Lab venue | GCP / GKE (plus local Python 3 simulation lab) |
 | Part | Part 11: GPUs on Kubernetes, scheduling and virtualization |
-| Sources used | `nvidia-zero-to-hero/volume-09/chapter-09-bluefield-dpus-and-doca.md`; `nvidia-zero-to-hero/volume-18/chapter-08-bluefield-and-doca-security.md`; `nvidia-zero-to-hero/volume-18/chapter-12-incident-response-and-troubleshooting.md`; `nvidia-zero-to-hero/volume-18/chapter-12-volume-18-summary.md`; `nvidia-zero-to-hero/volume-18/index.md` |
 | Coverage file | `planning/coverage/chapters/11-28.md` |
 
 ## Why this matters for AI infrastructure

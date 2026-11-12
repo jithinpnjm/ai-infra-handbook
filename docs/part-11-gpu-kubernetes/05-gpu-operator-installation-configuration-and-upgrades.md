@@ -18,7 +18,6 @@ lab_venue: "GCP / GKE"
 | Priority tier | 1 |
 | Lab venue | GCP / GKE (plus local Python 3 simulation lab) |
 | Part | Part 11: GPUs on Kubernetes, scheduling and virtualization |
-| Sources used | `nvidia-zero-to-hero/volume-10/chapter-10-production-installation-and-configuration.md`; `nvidia-zero-to-hero/volume-10/chapter-11-upgrades-and-production-troubleshooting.md`; `nvidia-zero-to-hero/volume-10/chapter-12-volume-10-summary.md`; `nvidia-zero-to-hero/volume-10/labs/lab-04-perform-a-controlled-gpu-platform-upgrade.md`; `volume-04/02-gpu-software-operator-masterclass.md`; *NVIDIA Base Command Manager 11 Containerization Manual* (`bcm11-containerization`, Ch. 6); Roland Huß et al., *Generative AI on Kubernetes* (O'Reilly, 2026, Ch. 3) |
 | Coverage file | `planning/coverage/chapters/11-05.md` |
 
 ## Why this matters for AI infrastructure

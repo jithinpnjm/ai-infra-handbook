@@ -18,7 +18,6 @@ lab_venue: "Nebius GPU"
 | Priority tier | 1 |
 | Lab venue | Nebius GPU |
 | Part | Part 10: The GPU and CUDA |
-| Sources used | `nvidia-devops` Volume 20 and `src/data/troubleshooting.ts` incident runbooks; *AI Systems Performance Engineering* (`ai-systems-performance-engineering`, Chris Fregly) |
 | Code | `code/part10/gpu_troubleshooting_scenarios.py`, `code/part10/gpu_troubleshooting_scenarios_lab.py` |
 | Coverage file | `planning/coverage/chapters/10-22.md` |
 

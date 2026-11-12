@@ -18,7 +18,6 @@ lab_venue: "Nebius GPU"
 | Priority tier | 2 |
 | Lab venue | Nebius GPU + Local Python Verification Lab |
 | Part | Part 14: Distributed training and fine-tuning |
-| Primary sources | NVIDIA Zero-to-Hero Volume 14 (`chapter-05-nemo-framework-and-model-customization.md`, `chapter-06-nemo-guardrails-and-enterprise-controls.md`, `chapter-02-platform-architecture-and-support-boundary.md`, `chapter-12-volume-14-summary.md`, `index.md`, `labs/lab-03-build-a-nemo-customization-workflow.md`), Volume 13 (`chapter-07-megatron-lm-architecture.md`), Volume 05 (`01-ai-workloads-training-masterclass.md`), Volume 09 (`01-hardware-ecosystem-gauntlet.md`); *AI Systems Performance Engineering* Chapter 5; *Generative AI on Kubernetes* Chapters 5 & 6; *Distributed AI Systems* Chapters 5 & 8 |
 | Cross-references | Chapter 13.6 (Data loading and small files); Chapter 14.7 (Tensor, pipeline and expert parallelism: Megatron); Chapter 14.10 (Multi-node training architecture); Chapter 14.13 (Fine-tuning: SFT, LoRA and QLoRA, preference alignment); Chapter 14.14 (Dataset engineering for fine-tuning); Chapter 16.12 (NeMo and enterprise customisation workflows) |
 | Code | `code/part14/nemo_framework_customisation.py`, `code/part14/nemo_framework_customisation_lab.py` |
 | Coverage file | `planning/coverage/chapters/14-16.md` |

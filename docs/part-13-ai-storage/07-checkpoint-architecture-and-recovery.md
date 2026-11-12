@@ -18,7 +18,6 @@ lab_venue: "GCP / GKE"
 | Priority tier | 2 |
 | Lab venue | GCP / GKE + Local Python Verification Lab |
 | Part | Part 13: AI storage |
-| Primary sources | NVIDIA Zero-to-Hero Volume 15 and Volume 13; *AI Systems Performance Engineering*; *NVIDIA DGX SuperPOD with DGX GB300 Reference Architecture* |
 | Coverage file | `planning/coverage/chapters/13-07.md` |
 | Claim & number ledger | `planning/ledgers/13-07.md` |
 

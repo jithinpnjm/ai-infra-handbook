@@ -18,7 +18,6 @@ lab_venue: "GCP / GKE"
 | Priority tier | 1 |
 | Lab venue | GCP / GKE + Local Python Verification Lab |
 | Part | Part 15: LLM inference and serving |
-| Primary sources | NVIDIA Zero-to-Hero Volume 14 (`chapter-03-nvidia-nim-architecture.md`, `chapter-04-deploying-and-operating-nim-services.md`, `chapter-01-why-nvidia-ai-enterprise-exists.md`, `chapter-02-platform-architecture-and-support-boundary.md`, `chapter-05-nemo-framework-and-model-customization.md`, `chapter-06-nemo-guardrails-and-enterprise-controls.md`, `chapter-07-ngc-catalog-containers-and-artifacts.md`, `chapter-08-licensing-and-entitlement-operations.md`, `chapter-09-lifecycle-compatibility-and-upgrades.md`, `labs/lab-01..04`); Volume 12 (`chapter-03-triton-inference-server-architecture.md`, `chapter-05-tensorrt-llm-and-llm-execution.md`); *Generative AI on Kubernetes* Chapters 1, 3, 4; *Hands-On LLM Serving and Optimization* Chapters 3, 8 |
 | Cross-references | Chapter 11.4 (NVIDIA GPU Operator); Chapter 15.3 (vLLM in depth); Chapter 15.5 (TensorRT and TensorRT-LLM); Chapter 15.6 (Triton Inference Server); Chapter 15.10 (Kubernetes inference with KServe) |
 | Code | `code/part15/nvidia_nim_operator.py`, `code/part15/nvidia_nim_operator_lab.py` |
 
@@ -212,7 +211,7 @@ docker run --rm --gpus all \
 
 Why does NIM prefer pre-built TensorRT-LLM engines? Volume 12 Chapter 5 measured Llama-3-70B on eight H100 GPUs at 150 concurrent sessions. A compiled TensorRT-LLM engine cut inter-token latency from 115.0 ms per token to 18.4 ms per token, a **6.25x speedup**, and doubled token throughput. An FP8 KV cache also halves the KV memory per token, from 320 KB to 160 KB. For a 4,096-token session, that shrinks the KV footprint from 1.31 GB to 0.65 GB.
 
-Before scheduling a NIM pod, check the target GPU node against the profile's memory and throughput needs with the sizing model from Volume 14 Lab 01.
+Before scheduling a NIM pod, check the target GPU node against the profile's memory and throughput needs with the sizing model.
 
 ```text
 GPU Memory and Replica Sizing Model (Volume 14 Lab 01 & Lab 02 — 7B/8B BF16 Model on A100 40GB):
@@ -590,7 +589,7 @@ Before you escalate a NIM readiness failure, read the pod logs for the readiness
 ### 7.1 Lab Venue and Environment Note
 
 - Primary venue: a Google Cloud GKE cluster with NVIDIA A100, L40S, or H100 GPUs, NVIDIA GPU Operator 24.3.0 or later, and the Kubernetes NIM Operator. A local Python verification suite accompanies it.
-- Verification status: all 25 deterministic self-checks in `code/part15/nvidia_nim_operator_lab.py` ran locally and passed. The kubectl commands in Section 7.3 are adapted from Volume 14 Labs 01, 02, and 04. They have not been run on a live GPU cluster.
+- Verification status: all 25 deterministic self-checks in `code/part15/nvidia_nim_operator_lab.py` ran locally and passed. The kubectl commands in Section 7.3 are adapted. They have not been run on a live GPU cluster.
 
 ### 7.2 Part A: Run the Local Deterministic Python Verification Suite
 
@@ -694,7 +693,7 @@ The compiled TensorRT-LLM engine reduces inter-token latency from 115.0 ms per t
 </details>
 
 <details>
-<summary>6. Using the GPU sizing model from Volume 14 Lab 01, how much GPU memory is required to deploy a 7B or 8B BF16 model on a 40 GB A100 GPU, and how many replicas are needed for 100 requests per second?</summary>
+<summary>6. Using the GPU sizing model, how much GPU memory is required to deploy a 7B or 8B BF16 model on a 40 GB A100 GPU, and how many replicas are needed for 100 requests per second?</summary>
 
 The deployment needs 14 GB for weights, 2 GB for framework overhead, 4 GB for activations, and 2 GB for safety headroom. That totals 22 GB and leaves an 18 GB margin on a 40 GB A100. At 50 requests per second per GPU, a target of 100 requests per second needs 2 replicas on 2 GPUs.
 </details>

@@ -18,7 +18,6 @@ lab_venue: "GCP / GKE"
 | Priority tier | 2 |
 | Lab venue | GCP / GKE (and local Python verification in `code/part13/ai_data_path_lab.py`) |
 | Part | Part 13: AI storage |
-| Sources used | `nvidia-devops` Volume 15 (`index.md`, `chapter-01-why-ai-storage-is-different.md`, `chapter-02-the-ai-data-path-from-storage-to-gpu.md`, `chapter-12-volume-15-summary.md`, `labs/lab-01-baseline-an-ai-storage-path.md`) and Legacy Volume 06 (`03-ai-storage-data-pipelines-masterclass.md`); *AI Systems Performance Engineering* (`ai-systems-performance-engineering`); *AI Data Center Network Design and Technologies* (`ai-data-center-network-design-and-technologies`, `ADCN`) |
 | Coverage file | `planning/coverage/chapters/13-01.md` |
 | Claim ledger | `planning/ledgers/13-01.md` |
 

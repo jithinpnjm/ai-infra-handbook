@@ -18,7 +18,6 @@ lab_venue: "On-prem"
 | Priority tier | 1 |
 | Lab venue | On-prem (runs on any laptop, no GPU needed) |
 | Part | Part 19: Capstones, design and interview readiness |
-| Primary sources | The handbook chapters each question links to, `nvidia-devops-core-interview` (Consolidated Core Interview Questions), `planning/INTERVIEW_TOPICS.md` and `planning/JD_MAPPING.md` |
 | Cross-references | Volume 20 (Nebius SRE interview), Chapter 19.15 (interview cheat sheet), every chapter named in the bank |
 | Coverage file | `planning/coverage/chapters/19-14.md` |
 | Claim & number ledger | `planning/ledgers/19-14.md` |
@@ -123,11 +122,11 @@ You have two weeks before a loop and a job description that mentions Slurm, Kube
 
 Topic weights should follow the job description. `planning/JD_MAPPING.md` states that GPU-cloud roles treat Slurm, InfiniBand and NCCL as hard requirements, and that Kubernetes and inference roles lean on GPU Operator, DCGM, vLLM, Triton and KServe. So a candidate for the first family should draw more from slurm_hpc_hardware, ai_networking and gpu_cuda, and a candidate for the second family should draw more from gpu_on_kubernetes, inference and mlops. The walkthrough runner accepts repeated `--topic` filters for this.
 
-Some topics point outward. Linux triage, network debugging, estimation, serving failure, SLO design, autoscaling, request routing, Terraform and incident drills already exist as company-specific questions in Volume 20. Do those drills there. This bank links to them and does not copy them: chapters 20.3 to 20.28.
+Some topics point outward. Linux triage, network debugging, estimation, serving failure, SLO design, autoscaling, request routing, Terraform and incident drills already exist as company-specific questions. Do those drills there. This bank links to them and does not copy them: chapters 20.3 to 20.28.
 
 Some topic chapters have not yet been through the same source check as the other parts. Parts 16, 17 and 18 and some chapters of Part 19 are in that group. Entries linked to them carry a note in the `basis` field, and their thresholds should be read as chapter examples.
 
-**Decision rule:** Weight your practice by the job description, and do company-specific drills in Volume 20.
+**Decision rule:** Weight your practice by the job description, and do company-specific drills.
 
 **In one minute:** There are 176 questions linked to 90 chapters. Topics map to parts of the handbook, and the weight you give each topic should follow the role. Volume 20 holds the Nebius drills.
 

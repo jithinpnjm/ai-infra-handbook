@@ -18,7 +18,6 @@ lab_venue: "GCP / GKE"
 | Priority tier | 2 |
 | Lab venue | GCP / GKE |
 | Part | Part 18: Security |
-| Primary sources | NVIDIA Zero-to-Hero Volume 18 (`chapter-06-gpu-sharing-security.md`, `chapter-07-iommu-and-sr-iov.md`); NVIDIA Zero-to-Hero Volume 11 (`chapter-21-gpu-device-plugin.md`) |
 | Cross-references | Chapter 18.1 (Threat modeling); Chapter 18.4 (Kubernetes access control); Chapter 11.24-11.27 (MIG, time-slicing); Chapter 10.20 (Profiling tools) |
 | Coverage file | `planning/coverage/chapters/18-05.md` |
 | Claim & number ledger | `planning/ledgers/18-05.md` |

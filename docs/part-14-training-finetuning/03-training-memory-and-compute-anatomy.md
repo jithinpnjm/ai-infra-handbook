@@ -18,7 +18,6 @@ lab_venue: "Nebius GPU"
 | Priority tier | 2 |
 | Lab venue | Nebius GPU + Local Python Verification Lab (`code/part14/training_memory_compute_lab.py`) |
 | Part | Part 14: Distributed training and fine-tuning |
-| Primary sources | NVIDIA Zero-to-Hero Volume 13 (`chapter-01-why-distributed-training-exists.md`, `chapter-02-training-memory-and-compute-anatomy.md`, `chapter-08-nccl-collectives-and-communication-paths.md`, `chapter-12-volume-13-summary.md`, `index.md`, `labs/lab-01..04`); Legacy Volume 05 (`01-ai-workloads-training-masterclass.md`); *Distributed AI Systems* (`distributed-ai-systems`, Ch. 1); *AI Systems Performance Engineering* (`ai-systems-performance-engineering`, Ch. 13) |
 | Coverage file | `planning/coverage/chapters/14-03.md` |
 | Claim & number ledger | `planning/ledgers/14-03.md` |
 

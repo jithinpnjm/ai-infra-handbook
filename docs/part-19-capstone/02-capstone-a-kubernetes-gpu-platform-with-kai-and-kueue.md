@@ -18,7 +18,6 @@ lab_venue: "GCP / GKE"
 | Priority tier | 1 |
 | Lab venue | GCP / GKE (needs H100 quota; not run here) |
 | Part | Part 19: Capstones, design and interview readiness |
-| Primary sources | Gem books: *Generative AI on Kubernetes* ch. 7; *Kubernetes for Generative AI Solutions* ch. 10; *Production Kubernetes* ch. 12. Upstream docs and CRDs for Kueue, KAI Scheduler, NVIDIA GPU Operator, DCGM exporter, GKE. nvidia-devops Volumes 10 and 24. |
 | Cross-references | 5.34 (GKE node pools); 11.1 to 11.9 (platform layer, Kueue, JobSet); 11.13 to 11.18 (KAI); 11.20 (scheduler comparison); 16.14 (tenancy and chargeback); 17.4 (DCGM exporter); 17.11 (incidents); 19.1 (Slurm capstone); 19.3 (inference on GKE) |
 | Code | `code/part19/c02_*` (manifests, scripts, `c02_queue_math.py` and its tests) |
 | Coverage file | `planning/coverage/chapters/19-02.md` |

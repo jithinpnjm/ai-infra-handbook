@@ -18,7 +18,6 @@ lab_venue: "GCP / GKE"
 | Priority tier | 1 |
 | Lab venue | GCP / GKE |
 | Part | Part 11: GPUs on Kubernetes, scheduling and virtualization |
-| Sources used | `nvidia-devops` Volume 10 (`index.md`, `chapter-01-why-kubernetes-needs-a-gpu-platform-layer.md`, `chapter-02-gpu-software-lifecycle-in-kubernetes.md`); *Generative AI on Kubernetes* (`generative-ai-on-kubernetes`, Chapter 3); *Kubernetes for Generative AI Solutions* (`kubernetes-for-generative-ai-solutions`, Chapters 2 & 10); *Scalable Kubernetes Infrastructure for AI Platforms* (`scalable-kubernetes-infrastructure-for-ai-platforms`, Chapters 1 & 2); *AI Systems Performance Engineering* (`ai-systems-performance-engineering`, Chapter 3) |
 | Code | `code/part11/gpu_platform_layer.py`, `code/part11/gpu_platform_layer_lab.py` |
 | Coverage file | `planning/coverage/chapters/11-01.md` |
 

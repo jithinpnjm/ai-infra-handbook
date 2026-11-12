@@ -18,7 +18,6 @@ lab_venue: "GCP / GKE"
 | Priority tier | 2 |
 | Lab venue | GCP / GKE + Local Python Verification Lab (`code/part13/lustre_for_ai_lab.py`) |
 | Part | Part 13: AI storage |
-| Primary sources | NVIDIA Zero-to-Hero Volume 15 (`chapter-05-lustre-for-ai-and-hpc.md`); *AI Systems Performance Engineering* (`ai-systems-performance-engineering`); *Supercomputers for Linux SysAdmins* (`supercomputers-for-linux-sysadmins-managing-modern-hpc-clusters-and-supercomputers-from-software-to`); NVIDIA DGX SuperPOD Reference Architectures (`superpod-gb300-ra`, `superpod-b200-dc`) |
 | Coverage file | `planning/coverage/chapters/13-04.md` |
 | Claim & number ledger | `planning/ledgers/13-04.md` |
 

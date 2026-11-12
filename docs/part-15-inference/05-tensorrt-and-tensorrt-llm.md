@@ -18,7 +18,6 @@ lab_venue: "GCP / GKE"
 | Priority tier | 1 |
 | Lab venue | GCP / GKE + Local Python Verification Lab |
 | Part | Part 15: LLM inference and serving |
-| Primary sources | NVIDIA Zero-to-Hero Volume 12 (`chapter-04-tensorrt-optimization-and-engine-lifecycle.md`, `chapter-05-tensorrt-llm-and-llm-execution.md`, `index.md`, `chapter-12-volume-12-summary.md`); *Hands-On LLM Serving and Optimization* Chapters 6 & 8; *AI Systems Performance Engineering* Chapters 8, 9, 16, & 19 |
 | Cross-references | Chapter 10.5 (Roofline model); Chapters 12.15–12.17 (NCCL collectives); Chapters 15.1–15.4 (Inference request path, batching/KV cache/quantization, vLLM, SGLang); Chapters 15.6–15.8 (Triton Inference Server, NVIDIA NIM, NVIDIA Dynamo) |
 | Code | `code/part15/tensorrt_llm_engine.py`, `code/part15/tensorrt_llm_engine_lab.py` |
 | Coverage file | `planning/coverage/chapters/15-05.md` |

@@ -18,7 +18,6 @@ lab_venue: "Nebius GPU"
 | Priority tier | 1 |
 | Lab venue | Nebius GPU |
 | Part | Part 10: The GPU and CUDA |
-| Sources used | `nvidia-devops` Volume 16, Volume 20, and Masterclass Volume 04 Chapter 3 (`volume-04/03-gpu-sharing-telemetry-masterclass.md`); *AI Systems Performance Engineering* (`ai-systems-performance-engineering`, Chris Fregly) |
 | Code | `code/part10/gpu_health_dcgm_xid.py`, `code/part10/gpu_health_dcgm_xid_lab.py` |
 | Coverage file | `planning/coverage/chapters/10-21.md` |
 

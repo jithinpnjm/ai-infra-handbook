@@ -18,7 +18,6 @@ lab_venue: "GCP / GKE"
 | Priority tier | 1 |
 | Lab venue | GCP / GKE |
 | Part | Part 16: MLOps and LLMOps tools and platforms |
-| Primary sources | *Production Kubernetes* (`production-kubernetes`, Chapter 12); *Machine Learning Platform Engineering* (`machine-learning-platform-engineering`, Chapters 9, 12); *AI Engineering* (`ai-engineering`, Chapter 10); *LLMOps* (`llmops`, Chapter 9); NVIDIA Zero-to-Hero Volume 21 (`chapter-01-platform-overview.md`, `chapter-02-chargeback.md`, `chapter-03-resource-pools.md`, `chapter-04-onboarding.md`) |
 | Cross-references | Chapter 16.1 (MLOps foundations); Chapter 16.7 (Serving platforms); Chapter 11 (GPU Kubernetes); Chapter 5.22 (Multitenancy and platform services) |
 | Coverage file | `planning/coverage/chapters/16-14.md` |
 | Claim & number ledger | `planning/ledgers/16-14.md` |

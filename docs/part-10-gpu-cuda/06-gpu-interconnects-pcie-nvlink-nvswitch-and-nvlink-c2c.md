@@ -18,7 +18,6 @@ lab_venue: "Nebius GPU"
 | Priority tier | 2 |
 | Lab venue | Nebius GPU |
 | Part | Part 10: The GPU and CUDA |
-| Sources used | `nvidia-devops` Volume 7 Chapters 2 and 3 and Labs 01 and 02; Volume 2 Chapter 10 and Lab 04; *AI Systems Performance Engineering* Chapter 2; *AI Data Center Network Design and Technologies* Chapter 13 |
 | Coverage file | `planning/coverage/chapters/10-06.md` |
 | Claim ledger | `planning/ledgers/10-06.md` |
 
@@ -141,7 +140,7 @@ Never guess how a server is wired or trust logical GPU indices such as GPU 0 thr
 | NODE | Traverses interconnect between PCIe Host Bridges within one NUMA node | Yes | No | Weak; hits CPU host bridges and often disables GDR |
 | SYS | Traverses PCIe plus the inter-socket link (Intel UPI or AMD xGMI) | Yes | Yes | Worst on host; avoid for collectives and RDMA |
 
-The worked calculation from Volume 2 Chapter 10, implemented in `compare_peer_transfer_time` in `code/part10/gpu_interconnects.py`, shows how severely a single `SYS` hop inflates collective step time.
+The worked calculation, implemented in `compare_peer_transfer_time` in `code/part10/gpu_interconnects.py`, shows how severely a single `SYS` hop inflates collective step time.
 
 ```text
 Payload: 500 MB (0.5 GB) gradient buffer exchanged between two GPUs
@@ -426,7 +425,7 @@ Summary: 25 passed, 0 failed (total 25)
 3. Why MIG breaks `simpleP2P` on an NV18 baseboard: Two H100 SXM5 GPUs on an HGX baseboard show NV18 in `nvidia-smi topo -m`, yet `nvidia-smi topo -p2p r` prints CNS and `./simpleP2P` waives the test. Write the `nvidia-smi` query that proves why Peer-to-Peer access is blocked and the command to restore it.
 4. Hardware cache coherence across the four interconnect tiers: A teammate claims that because GB200 NVL72 connects 36 Grace CPUs and 72 Blackwell GPUs with NVLink, all 72 GPUs and 36 CPUs share hardware cache-coherent L1 and L2 caches across the entire rack. Correct their mental model by stating the exact hardware cache-coherence boundary for NV-HBI, NVLink-C2C, and board or rack NVLink 5.
 5. Diagnosing a single degraded pair inside an NV18 mesh: During node commissioning, `p2pBandwidthLatencyTest` shows healthy self-copy and peer bandwidth for every GPU pair except GPU 0 and GPU 3. That pair drops to 312.4 GB/s even though `nvidia-smi topo -m` still shows NV18. Write the two `nvidia-smi nvlink` commands you run next and explain what high Replay and CRC errors on Link 4 mean.
-6. Designing a three-profile placement policy: Consider the four-GPU, two-NIC dual-socket host from Volume 2 Lab 04. In that server, GPU 0, GPU 1, and NIC 0 sit on NUMA 0 with an NV4 bridge, while GPU 2, GPU 3, and NIC 1 sit on NUMA 1 with an NV4 bridge. Write the placement rules for `single_gpu_inference`, `multi_gpu_training`, and `distributed_training`, and explain how kubelet `topologyManagerPolicy: single-numa-node` enforces the distributed rule on Kubernetes.
+6. Designing a three-profile placement policy: Consider the four-GPU, two-NIC dual-socket host. In that server, GPU 0, GPU 1, and NIC 0 sit on NUMA 0 with an NV4 bridge, while GPU 2, GPU 3, and NIC 1 sit on NUMA 1 with an NV4 bridge. Write the placement rules for `single_gpu_inference`, `multi_gpu_training`, and `distributed_training`, and explain how kubelet `topologyManagerPolicy: single-numa-node` enforces the distributed rule on Kubernetes.
 
 ---
 

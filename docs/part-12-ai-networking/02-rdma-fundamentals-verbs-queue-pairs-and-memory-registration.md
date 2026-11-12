@@ -18,7 +18,6 @@ lab_venue: "Nebius GPU"
 | Priority tier | 1 |
 | Lab venue | Nebius GPU |
 | Part | Part 12: Complete AI networking |
-| Sources used | `nvidia-devops` Volume 08 Ch 3, Ch 12, `index.md` & Labs 01–04; Volume 07 Ch 4; Volume 09 Ch 3; Legacy Volume 06 Ch 1; *AI Data Center Network Design and Technologies* Ch 1 & Ch 7; *Supercomputers for Linux SysAdmins* Ch 5 & Ch 24; *NVIDIA Base Command Manager 11 Installation & Administrator Manuals* |
 | Coverage file | `planning/coverage/chapters/12-02.md` |
 | Claim ledger | `planning/ledgers/12-02.md` |
 

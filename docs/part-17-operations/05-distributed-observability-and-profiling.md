@@ -18,7 +18,6 @@ lab_venue: "GCP / GKE"
 | Priority tier | 2 |
 | Lab venue | GCP / GKE |
 | Part | Part 17: Observability, performance and operations |
-| Primary sources | NVIDIA Zero-to-Hero Volume 16 (`chapter-06-distributed-observability.md`, `chapter-07-profiling.md`); NVIDIA Zero-to-Hero Volume 7 (`chapter-02-distributed-tracing-and-profiling.md`); *AI Systems Performance Engineering* (`ai-systems-performance-engineering`, Chapters 13, 14, 15) |
 | Cross-references | Chapter 10.20 (Profiling tools); Chapter 17.1 (Observability foundations); Chapter 17.3 (Logging with Loki and tracing with OpenTelemetry); Chapter 17.4 (DCGM exporter) |
 | Coverage file | `planning/coverage/chapters/17-05.md` |
 | Claim & number ledger | `planning/ledgers/17-05.md` |

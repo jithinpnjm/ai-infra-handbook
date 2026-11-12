@@ -18,7 +18,6 @@ lab_venue: "GCP / GKE"
 | Priority tier | 2 |
 | Lab venue | GCP / GKE |
 | Part | Part 17: Observability, performance and operations |
-| Primary sources | Grafana Loki and OpenTelemetry official documentation; NVIDIA Zero-to-Hero Volume 16 (`chapter-06-loki-logging.md`, `chapter-07-opentelemetry-tracing.md`); *Production Kubernetes* (`production-kubernetes`, Chapter 9) |
 | Cross-references | Chapter 17.1 (Observability foundations); Chapter 17.2 (Prometheus and Grafana); Chapter 15.16 (Production serving stack); Chapter 16.7 (Serving platforms) |
 | Coverage file | `planning/coverage/chapters/17-03.md` |
 | Claim & number ledger | `planning/ledgers/17-03.md` |

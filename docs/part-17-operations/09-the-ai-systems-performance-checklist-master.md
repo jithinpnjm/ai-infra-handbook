@@ -18,7 +18,6 @@ lab_venue: "GCP / GKE"
 | Priority tier | 1 |
 | Lab venue | GCP / GKE |
 | Part | Part 17: Observability, performance and operations |
-| Primary sources | *AI Systems Performance Engineering* (`ai-systems-performance-engineering`, Appendix); NVIDIA Zero-to-Hero Volume 17 (chapter-XX-master-checklist.md) |
 | Cross-references | Chapter 1.23 (Performance methodology); Chapter 1.25 (Benchmarking correctly); Chapter 17.8 (Performance engineering methodology); Chapter 10 (GPU and CUDA); Chapter 11 (GPU Kubernetes); Chapter 14 (Distributed training); Chapter 15 (Inference) |
 | Coverage file | `planning/coverage/chapters/17-09.md` |
 | Claim & number ledger | `planning/ledgers/17-09.md` |

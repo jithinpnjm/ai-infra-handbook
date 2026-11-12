@@ -18,7 +18,6 @@ lab_venue: "GCP / GKE"
 | Priority tier | 2 |
 | Lab venue | GCP / GKE |
 | Part | Part 18: Security |
-| Primary sources | NVIDIA Zero-to-Hero Volume 18 (`chapter-03-containers-and-the-software-supply-chain.md`); *Production Kubernetes* (`production-kubernetes`, Chapter 15) |
 | Cross-references | Chapter 18.1 (Threat modeling); Chapter 18.2 (Hardware and firmware trust); Chapter 11 (GPU Kubernetes); Chapter 5 (Kubernetes) |
 | Coverage file | `planning/coverage/chapters/18-03.md` |
 | Claim & number ledger | `planning/ledgers/18-03.md` |

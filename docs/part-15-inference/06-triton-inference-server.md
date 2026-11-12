@@ -18,7 +18,6 @@ lab_venue: "GCP / GKE"
 | Priority tier | 1 |
 | Lab venue | GCP / GKE + Local Python Verification Lab |
 | Part | Part 15: LLM inference and serving |
-| Primary sources | NVIDIA Zero-to-Hero Volume 12 (`chapter-03-triton-inference-server-architecture.md`, `chapter-02-the-end-to-end-inference-request-path.md`, `chapter-05-tensorrt-llm-and-llm-execution.md`, `chapter-07-continuous-and-dynamic-batching.md`, `chapter-10-performance-metrics-and-benchmarking.md`, `labs/lab-01-deploy-and-validate-triton.md`, `labs/lab-02-benchmark-dynamic-batching.md`); *Hands-On LLM Serving and Optimization* Chapters 1, 3, 8; *AI Systems Performance Engineering* Chapters 16, 19 |
 | Cross-references | Chapter 15.1 (Anatomy of an inference request); Chapter 15.2 (Batching, KV cache, and quantization); Chapter 15.3 (vLLM in depth); Chapter 15.5 (TensorRT and TensorRT-LLM); Chapter 15.14 (Benchmarking with GenAI-Perf) |
 | Code | `code/part15/triton_inference_server.py`, `code/part15/triton_inference_server_lab.py` |
 | Coverage file | `planning/coverage/chapters/15-06.md` |
@@ -597,7 +596,7 @@ Always check queue duration versus compute infer duration on port 8002 first whe
 ### 7.1 Lab Venue and Environment Note
 
 - **Primary venue:** Google Cloud Platform (GCP / GKE) GPU node with an A100, L40S, or H100 GPU. Requires NVIDIA Driver 535.104.05 or newer, Docker, NVIDIA Container Toolkit, and the Triton containers, paired with the local Python verification suite.
-- **Verification status:** The 25 deterministic self-checks in `code/part15/triton_inference_server_lab.py` were executed and verified locally (`Summary: 25 passed, 0 failed`). The multi-container GPU Docker and `perf_analyzer` commands below are adapted from Volume 12 Labs 01 and 02. Those GPU container commands have not been executed on live GPU hardware in this local build environment (`untested` on live hardware).
+- **Verification status:** The 25 deterministic self-checks in `code/part15/triton_inference_server_lab.py` were executed and verified locally (`Summary: 25 passed, 0 failed`). The multi-container GPU Docker and `perf_analyzer` commands below are adapted. Those GPU container commands have not been executed on live GPU hardware in this local build environment (`untested` on live hardware).
 
 ### 7.2 Part A: Run the Local Deterministic Python Verification Suite
 

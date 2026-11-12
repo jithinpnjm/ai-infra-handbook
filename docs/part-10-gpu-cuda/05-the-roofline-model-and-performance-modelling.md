@@ -19,8 +19,6 @@ lab_venue: "Nebius GPU"
 | Priority tier | 2 |
 | Lab venue | Nebius GPU and self-checking Python model in `code/part10/roofline_model_lab.py` |
 | Part | Part 10: The GPU and CUDA |
-| Sources used | *AI Systems Performance Engineering* Chapters 6, 7, and 9; *Parallel and High Performance Computing* Chapters 3 and 9; `nvidia-devops` Volume 17 Chapter 3 and Volume 2 Chapters 11 and 12 |
-
 ## Why this matters for AI infrastructure
 
 An engineering leader can easily waste $500,000 upgrading an A100 cluster to H100 GPUs for a real-time inference service. Even though the H100 offers three times higher Tensor Core compute, a single-stream service spends almost all its time waiting on memory reads. Adding more GPUs to an overloaded large language model decode service also fails to lower single-request token latency. Every worker is already waiting on memory bandwidth.

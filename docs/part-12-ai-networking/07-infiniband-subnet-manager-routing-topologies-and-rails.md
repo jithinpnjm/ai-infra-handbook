@@ -18,7 +18,6 @@ lab_venue: "Nebius GPU"
 | Priority tier | 1 |
 | Lab venue | Nebius GPU |
 | Part | Part 12: Complete AI networking |
-| Sources | `nvidia-devops` V8 Ch. 5–6, Ch. 12, Index & Labs 01–04; `supercomputers-for-linux-sysadmins-managing-modern-hpc-clusters-and-supercomputers-from-software-to` Ch. 5; `ai-data-center-network-design-and-technologies` Ch. 3 & Ch. 8; `bcm11-admin` §3.6.3 & §7.5 |
 | Code | `code/part12/infiniband_sm_routing.py`, `code/part12/infiniband_sm_routing_lab.py` |
 | Coverage file | `planning/coverage/chapters/12-07.md` |
 

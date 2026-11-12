@@ -18,7 +18,6 @@ lab_venue: "GCP / GKE"
 | Priority tier | 1 |
 | Lab venue | GCP / GKE + Local Python Verification Lab |
 | Part | Part 15: LLM inference and serving |
-| Primary sources | *AI Systems Performance Engineering* (`ai-systems-performance-engineering`) Chapters 4, 15, 17, 18; *Generative AI on Kubernetes* (`generative-ai-on-kubernetes`) Chapter 4; *Distributed AI Systems* (`distributed-ai-systems`) Chapter 9; *Hands-On LLM Serving and Optimization* (`hands-on-llm-serving-and-optimization`) Chapter 7; NVIDIA Zero-to-Hero Volume 12 (`chapter-01-why-inference-infrastructure-is-different.md`, `chapter-08-kv-cache-memory-and-concurrency.md`, `chapter-09-scaling-multi-gpu-and-multi-node-inference.md`) |
 | Cross-references | Chapter 15.1 (Anatomy of an inference request); Chapter 15.3 (vLLM in depth); Chapter 15.4 (SGLang and RadixAttention); Chapter 15.5 (TensorRT-LLM); Chapters 15.10–15.11 (Prefill and decode disaggregation and advanced KV tuning) |
 | Code | `code/part15/dynamo_disaggregated_serving.py`, `code/part15/dynamo_disaggregated_serving_lab.py` |
 

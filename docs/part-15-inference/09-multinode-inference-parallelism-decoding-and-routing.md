@@ -18,7 +18,6 @@ lab_venue: "GCP / GKE"
 | Priority tier | 1 |
 | Lab venue | GCP / GKE + Local Python Verification Lab |
 | Part | Part 15: LLM inference and serving |
-| Primary sources | *AI Systems Performance Engineering* (`ai-systems-performance-engineering`, Chapters 1, 2, 15, 19); *Hands-On LLM Serving and Optimization* (`hands-on-llm-serving-and-optimization`, Chapters 5, 6, 7); *Generative AI on Kubernetes* (`generative-ai-on-kubernetes`, Chapters 3, 7); *Distributed AI Systems* (`distributed-ai-systems`, Chapters 6, 7, 11); NVIDIA Zero-to-Hero Volume 12 (`chapter-09-scaling-multi-gpu-and-multi-node-inference.md`, `chapter-05-tensorrt-llm-and-llm-execution.md`, `chapter-08-kv-cache-memory-and-concurrency.md`, `chapter-12-volume-12-summary.md`) |
 | Cross-references | Chapter 11.7 on Kubernetes gang scheduling; Chapter 12.15 on NCCL collectives; Chapter 14.10 on multi-node training; Chapters 15.3 and 15.4 on vLLM and SGLang; Chapters 15.8 and 15.10 on disaggregated serving |
 | Code | `code/part15/multinode_inference_parallelism.py`, `code/part15/multinode_inference_parallelism_lab.py` |
 | Coverage file | `planning/coverage/chapters/15-09.md` |

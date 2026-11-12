@@ -18,7 +18,6 @@ lab_venue: "GCP / GKE"
 | Priority tier | 2 |
 | Lab venue | GCP / GKE |
 | Part | Part 17: Observability, performance and operations |
-| Primary sources | NVIDIA Zero-to-Hero Volume 19 (`chapter-10-disaster-recovery.md`); *Production Kubernetes* (`production-kubernetes`, Chapter 14) |
 | Cross-references | Chapter 17.11 (Incident response); Chapter 17.13 (Reliability engineering); Chapter 17.6 (Alerting and SLOs); Chapter 13 (AI storage) |
 | Coverage file | `planning/coverage/chapters/17-14.md` |
 | Claim & number ledger | `planning/ledgers/17-14.md` |

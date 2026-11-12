@@ -18,7 +18,6 @@ lab_venue: "Nebius GPU"
 | Priority tier | 1 |
 | Lab venue | Nebius GPU + Local Python Verification Lab (`code/part12/ai_networking_troubleshooting_lab.py`) |
 | Part | Part 12: Complete AI networking |
-| Primary sources | NVIDIA Zero-to-Hero Volume 08 (`chapter-10`, `chapter-12`, `index`, `labs/lab-01..04`); Volume 09 (`chapter-11`, `labs/lab-01..04`); Volume 20 (`index`, `chapter-01..12`, `labs/lab-01..04`); *AI Data Center Network Design and Technologies*; *AI Systems Performance Engineering* |
 | Coverage file | `planning/coverage/chapters/12-24.md` |
 | Claim & number ledger | `planning/ledgers/12-24.md` |
 

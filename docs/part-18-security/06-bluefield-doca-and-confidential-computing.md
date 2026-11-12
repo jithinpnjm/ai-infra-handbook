@@ -18,7 +18,6 @@ lab_venue: "GCP / GKE"
 | Priority tier | 2 |
 | Lab venue | GCP / GKE |
 | Part | Part 18: Security |
-| Primary sources | NVIDIA Zero-to-Hero Volume 18 (`chapter-08-bluefield-and-doca.md`, `chapter-09-confidential-computing.md`); NVIDIA Zero-to-Hero Volume 11 (`chapter-29-bluefield-and-doca.md`) |
 | Cross-references | Chapter 18.1 (Threat modeling); Chapter 18.2 (Hardware and firmware trust); Chapter 18.4 (Kubernetes access control); Chapter 18.5 (GPU sharing security); Chapter 11 (GPU Kubernetes) |
 | Coverage file | `planning/coverage/chapters/18-06.md` |
 | Claim & number ledger | `planning/ledgers/18-06.md` |

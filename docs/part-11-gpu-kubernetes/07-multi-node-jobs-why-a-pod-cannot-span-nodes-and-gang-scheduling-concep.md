@@ -18,7 +18,6 @@ lab_venue: "GCP / GKE"
 | Priority tier | 1 |
 | Lab venue | GCP / GKE and local Python 3 simulation lab |
 | Part | Part 11: GPUs on Kubernetes, scheduling and virtualization |
-| Sources used | `volume-06/04-distributed-orchestration-masterclass.md`; Roland Huß et al., *Generative AI on Kubernetes* (O'Reilly, 2026, Ch. 3, Ch. 7); *Kubernetes for Generative AI Solutions* (Packt, 2025, Ch. 10); Chris Fregly, *AI Systems Performance Engineering* (O'Reilly, 2025, Ch. 3) |
 | Coverage file | `planning/coverage/chapters/11-07.md` |
 
 ## Why this matters for AI infrastructure

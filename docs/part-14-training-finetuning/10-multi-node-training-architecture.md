@@ -18,7 +18,6 @@ lab_venue: "Nebius GPU"
 | Priority tier | 2 |
 | Lab venue | Nebius GPU + Local Python Verification Lab |
 | Part | Part 14: Distributed training and fine-tuning |
-| Primary sources | *Distributed AI Systems* Chapter 8; NVIDIA Zero-to-Hero Volume 13 (`chapter-10-multi-node-training-architecture.md`, `chapter-01-why-distributed-training-exists.md`, `chapter-08-nccl-collectives-and-communication-paths.md`, `chapter-12-volume-13-summary.md`, `index.md`, `labs/lab-01..04`) |
 | Cross-references | Chapter 6.12 (Slurm workload manager); Chapters 11.7–11.9 (Kubernetes gang scheduling, Volcano/Kueue, `PyTorchJob` & `JobSet`); Chapters 12.15–12.17 (NCCL collectives & fabrics) |
 | Code | `code/part14/multinode_training_arch.py`, `code/part14/multinode_training_arch_lab.py` |
 | Coverage file | `planning/coverage/chapters/14-10.md` |

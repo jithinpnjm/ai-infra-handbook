@@ -18,7 +18,6 @@ lab_venue: "GCP / GKE"
 | Priority tier | 1 |
 | Lab venue | GCP / GKE + Local Python Verification Lab |
 | Part | Part 15: LLM inference and serving |
-| Primary sources | *AI Systems Performance Engineering* Chapters 4, 12, 13, 15, 16, 19; *Hands-On LLM Serving and Optimization* Chapters 2, 5, 10; *Distributed AI Systems* Chapters 6, 7, 10; *AI Engineering* Chapter 9; NVIDIA Zero-to-Hero Volume 12 (`chapter-01..12`, `labs/lab-04-troubleshoot-a-slow-inference-pipeline.md`, `index.md`) |
 | Cross-references | Chapter 10.18 (CUDA Graphs); Chapter 10.20 (PyTorch profiling and memory allocators); Chapters 15.2–15.5 (Batching, vLLM, SGLang, TensorRT-LLM); Chapters 15.8–15.12 (Disaggregated serving, multi-node inference, adaptive engine optimizations) |
 | Code | `code/part15/profiling_debugging_inference.py`, `code/part15/profiling_debugging_inference_lab.py` |
 | Coverage file | `planning/coverage/chapters/15-13.md` |

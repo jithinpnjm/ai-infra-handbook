@@ -18,7 +18,6 @@ lab_venue: "GCP / GKE"
 | Priority tier | 1 |
 | Lab venue | GCP / GKE + Local Python Verification Lab |
 | Part | Part 15: LLM inference and serving |
-| Primary sources | *AI Systems Performance Engineering* (`ai-systems-performance-engineering`, Chapters 4, 15, 17, 18); *Hands-On LLM Serving and Optimization* (`hands-on-llm-serving-and-optimization`, Chapter 7); *Distributed AI Systems* (`distributed-ai-systems`, Chapter 7); NVIDIA Zero-to-Hero Volume 12 (`chapter-01-why-inference-infrastructure-is-different.md`, `chapter-02-the-end-to-end-inference-request-path.md`, `chapter-07-continuous-and-dynamic-batching.md`, `chapter-08-kv-cache-memory-and-concurrency.md`, `chapter-09-scaling-multi-gpu-and-multi-node-inference.md`, `chapter-10-performance-metrics-and-benchmarking.md`) |
 | Cross-references | Chapter 10.5 (Roofline model); Chapters 12.15–12.17 (NCCL and RDMA fabrics); Chapters 15.1–15.4 (Request anatomy, batching and KV cache, vLLM, SGLang); Chapters 15.8–15.9 (NVIDIA Dynamo, llm-d, multinode inference); Chapter 15.11 (Advanced prefill-decode and KV cache tuning) |
 | Code | `code/part15/prefill_decode_disaggregation.py`, `code/part15/prefill_decode_disaggregation_lab.py` |
 | Coverage file | `planning/coverage/chapters/15-10.md` |

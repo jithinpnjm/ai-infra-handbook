@@ -18,8 +18,6 @@ lab_venue: "Nebius GPU"
 | Priority tier | 2 |
 | Lab venue | Nebius GPU + Local Python Verification Lab (`code/part14/fsdp_parameter_sharding_lab.py`) |
 | Part | Part 14: Distributed training and fine-tuning |
-| Primary sources | *Distributed AI Systems* (`distributed-ai-systems`, Ch. 4); NVIDIA Zero-to-Hero Volume 13 (`chapter-04-fsdp-and-parameter-sharding.md`, `chapter-01-why-distributed-training-exists.md`, `chapter-08-nccl-collectives-and-communication-paths.md`, `chapter-12-volume-13-summary.md`, `index.md`, `labs/lab-01..04`); *AI Systems Performance Engineering* (`ai-systems-performance-engineering`, Ch. 13) |
-
 ## Why this matters for AI infrastructure
 
 In Chapter 14.4, DistributedDataParallel scaled training throughput by giving every GPU an identical copy of the model. Each worker then synchronized gradients through a single AllReduce operation per step. That replication-first design hits a hard physical wall as soon as model state outgrows a single accelerator's HBM capacity. Even a 7B parameter model trained with AdamW in mixed precision exceeds an 80 GB A100 or H100 GPU. At 70B parameters, a single 80 GB GPU holds less than ten percent of the required training state.

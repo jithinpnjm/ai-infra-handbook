@@ -18,7 +18,6 @@ lab_venue: "Nebius GPU"
 | Priority tier | 1 |
 | Lab venue | Nebius GPU (plus local Python 3 simulation lab) |
 | Part | Part 12: Complete AI networking |
-| Sources used | `ai-data-center-network-design-and-technologies` (Ch 1, Ch 7); `nvidia-zero-to-hero/volume-09/chapter-03-rocev2-and-rdma-over-ethernet.md`; `nvidia-zero-to-hero/volume-09/labs/lab-01-inventory-an-ai-ethernet-path.md` through `lab-04-troubleshoot-a-roce-path.md`; `volume-06/01-ai-networking-rdma-masterclass.md`; `bcm11-admin` |
 | Coverage file | `planning/coverage/chapters/12-03.md` |
 
 ## Why this matters for AI infrastructure
@@ -381,7 +380,7 @@ Network dashboards that alert only on interface packet drops miss RoCEv2 congest
 
 Consider a controlled contention test where two senders drive a 400 Gbps RoCEv2 receiver on Priority 3 for 60 seconds. Physical drop counters stay at zero, yet `rx_ecn_marked_prio3` jumps by 47,829 packets, and `rx_pfc_prio3` increments by 412 frames. Those feedback signals converge both senders to fair rates near 88 Gbps apiece. Similarly, a 1-second `mlnx_perf` sample during a slow training job may show zero buffer drops alongside 118 priority-3 congestion events per second. That counter proves that CNP throttling is inflating tail latency.
 
-When throughput drops or retries spike on a single rail, walk the five-layer evidence ladder from physical optics up to GPU locality. Always stop at the first layer that diverges from baseline. In Lab 04 of Volume 09, a benchmark dropped from 392 Gb/s to 156 Gb/s. It also logged 24 retry errors, because the command invoked `-d mlx5_1` on a cross-socket rail instead of `-d mlx5_0`. Walking the ladder caught the wrong device at Layer 3 and restored 392 Gb/s in 2.1 seconds, without touching switch ECN or PFC settings.
+When throughput drops or retries spike on a single rail, walk the five-layer evidence ladder from physical optics up to GPU locality. Always stop at the first layer that diverges from baseline. In Lab 04, a benchmark dropped from 392 Gb/s to 156 Gb/s. It also logged 24 retry errors, because the command invoked `-d mlx5_1` on a cross-socket rail instead of `-d mlx5_0`. Walking the ladder caught the wrong device at Layer 3 and restored 392 Gb/s in 2.1 seconds, without touching switch ECN or PFC settings.
 
 The block below shows the counter deltas from that contention test and the 1-second live sample.
 

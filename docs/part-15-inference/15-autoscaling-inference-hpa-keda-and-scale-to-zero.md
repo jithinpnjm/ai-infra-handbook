@@ -18,7 +18,6 @@ lab_venue: "GCP / GKE"
 | Priority tier | 1 |
 | Lab venue | GCP / GKE + Local Python Verification Lab |
 | Part | Part 15: LLM inference and serving |
-| Primary sources | *Generative AI on Kubernetes* Chapters 1–5; *Kubernetes for Generative AI Solutions* Chapters 6, 7, 10, 12; *LLMs in Production* Chapter 6; *Hands-On LLM Serving and Optimization* Chapters 2–5, 8, 9; *Distributed AI Systems* Chapter 9; *Scalable Kubernetes Infrastructure for AI Platforms* Chapter 4; *Production Kubernetes* Chapter 13; NVIDIA DevOps Volume 5 (`volume-05/03-ai-autoscaling-rag-masterclass.md`) and Volume 12 (`chapter-08` through `chapter-12`) |
 | Cross-references | Chapter 11.6 (Kubernetes GPU Operator & DRA); Chapter 15.3 (vLLM PagedAttention); Chapter 15.6 (Triton Inference Server); Chapter 15.8 (Disaggregated prefill and decode); Chapter 15.14 (Inference benchmarking & SLOs); Chapter 15.16 (Production reliability & health probes) |
 | Code | `code/part15/autoscaling_inference_keda.py`, `code/part15/autoscaling_inference_keda_lab.py` |
 | Coverage file | `planning/coverage/chapters/15-15.md` |

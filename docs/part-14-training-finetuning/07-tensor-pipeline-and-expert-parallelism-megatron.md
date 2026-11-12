@@ -18,8 +18,6 @@ lab_venue: "Nebius GPU"
 | Priority tier | 2 |
 | Lab venue | Nebius GPU + Local Python Verification Lab (`code/part14/tp_pp_ep_megatron_lab.py`) |
 | Part | Part 14: Distributed training and fine-tuning |
-| Primary sources | *Distributed AI Systems* (`distributed-ai-systems`, Ch. 2 & Ch. 5); NVIDIA Zero-to-Hero Volume 13 (`chapter-06-tensor-pipeline-and-expert-parallelism.md`, `chapter-07-megatron-lm-architecture.md`, `chapter-01-why-distributed-training-exists.md`, `chapter-08-nccl-collectives-and-communication-paths.md`, `chapter-12-volume-13-summary.md`, `index.md`, `labs/lab-01..04`); *AI Systems Performance Engineering* (`ai-systems-performance-engineering`, Ch. 1 & Ch. 13) |
-
 ## Why this matters for AI infrastructure
 
 A team trains a 175B model on a thousand GPUs with FSDP2 alone. Memory per GPU looks fine on paper, yet the job stalls on the network or runs out of memory inside a single layer. State sharding such as FSDP2 and DeepSpeed ZeRO splits the weights, gradients and optimizer states across the cluster. It still assumes that, after an AllGather rebuilds one layer, a single GPU can hold and run that whole layer. At frontier scale the assumption fails in four ways.
@@ -872,7 +870,7 @@ Every Transformer layer executes **4 AllReduce operations per training step**. T
 </details>
 
 <details>
-<summary>**6. Quantify why setting TP = 32 across two 16-GPU nodes caused a 16.7x slowdown in Volume 13 Chapter 6.**</summary>
+<summary>**6. Quantify why setting TP = 32 across two 16-GPU nodes caused a 16.7x slowdown.**</summary>
 
 Stretching TP across nodes moved every 219 MB collective shard from intra-node NVLink to inter-node InfiniBand, making each AllReduce 36x slower. Constraining TP to 8 inside each node and using PP=4 across nodes restored throughput by 15x.
 

@@ -18,7 +18,6 @@ lab_venue: "GCP / GKE"
 | Priority tier | 1 |
 | Lab venue | GCP / GKE |
 | Part | Part 16: MLOps and LLMOps tools and platforms |
-| Primary sources | Ray, KubeRay, Kubeflow Training Operator, and Kubeflow Katib official documentation; *Machine Learning Platform Engineering* (`machine-learning-platform-engineering`, Chapters 5, 6); *Practical MLOps* (`practical-mlops`, Chapter 5); *Generative AI on Kubernetes* (`generative-ai-on-kubernetes`, Chapter 7); NVIDIA Zero-to-Hero Volume 25 (`chapter-08-scaling-to-multi-node-distributed-training.md`) |
 | Cross-references | Chapter 14.4 (DDP); Chapter 14.5 (FSDP); Chapter 14.6 (DeepSpeed and ZeRO); Chapter 14.7 (Tensor, pipeline and expert parallelism); Chapter 11.16 (KAI gang scheduling); Chapter 12.15 (NCCL collectives) |
 | Coverage file | `planning/coverage/chapters/16-05.md` |
 | Claim & number ledger | `planning/ledgers/16-05.md` |

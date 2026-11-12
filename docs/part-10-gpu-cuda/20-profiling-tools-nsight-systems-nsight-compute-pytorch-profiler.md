@@ -18,7 +18,6 @@ lab_venue: "Nebius GPU"
 | Priority tier | 2 |
 | Lab venue | Nebius GPU |
 | Part | Part 10: The GPU and CUDA |
-| Sources used | *AI Systems Performance Engineering* (`ai-systems-performance-engineering`, Chris Fregly), Chapter 13 (*Profiling, Tuning, and Scaling PyTorch*); `nvidia-devops` Volume 17, Chapter 2 (`nvidia-zero-to-hero/volume-17/chapter-02-profiling-tools-landscape.md`) |
 | Code | `code/part10/profiling_tools.py`, `code/part10/profiling_tools_lab.py` |
 | Coverage file | `planning/coverage/chapters/10-20.md` |
 

@@ -18,7 +18,6 @@ lab_venue: "Nebius GPU"
 | Priority tier | 1 |
 | Lab venue | Nebius GPU + Local Python Verification Lab |
 | Part | Part 14: Distributed training and fine-tuning |
-| Primary sources | *Generative AI on Kubernetes* (`generative-ai-on-kubernetes`, Ch. 6 & Ch. 7); *Kubernetes for Generative AI Solutions* (`kubernetes-for-generative-ai-solutions`, Ch. 4, 5, 7, 10); *AI Engineering* (`ai-engineering`, Ch. 7); *LLM Engineer's Handbook* (`llm-engineers-handbook`, Ch. 5 & Ch. 6); *LLMOps* (`llmops`, Ch. 5 & Ch. 9); NVIDIA Zero-to-Hero Volumes 04, 11, 13, 19, 21, 22, and 23 |
 | Cross-references | Chapter 10.7 (GPU product lines & PCIe vs SXM); Chapter 11.9 (JobSet, PyTorchJob, Kubeflow Trainer); Chapter 11.29 (Multi-tenancy & FinOps on GPU clusters); Chapters 14.3–14.6 (Training memory anatomy, FSDP, and DeepSpeed ZeRO) |
 | Code | `code/part14/finetuning_infra_cost.py`, `code/part14/finetuning_infra_cost_lab.py` |
 | Coverage file | `planning/coverage/chapters/14-15.md` |

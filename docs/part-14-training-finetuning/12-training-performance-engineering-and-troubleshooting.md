@@ -18,7 +18,6 @@ lab_venue: "Nebius GPU"
 | Priority tier | 2 |
 | Lab venue | Nebius GPU + Local Python Verification Lab |
 | Part | Part 14: Distributed training and fine-tuning |
-| Primary sources | *AI Systems Performance Engineering* Chapters 1, 4, and 13; *Distributed AI Systems* Chapters 3, 4, 8, and 10; NVIDIA Zero-to-Hero Volume 13 (`chapter-11-performance-engineering-and-troubleshooting.md`, `chapter-01-why-distributed-training-exists.md`, `chapter-08-nccl-collectives-and-communication-paths.md`, `chapter-12-volume-13-summary.md`, `index.md`, `labs/lab-01..04`) |
 | Cross-references | Chapter 10.20 (Nsight Systems & Nsight Compute); Chapters 12.15–12.17 (NCCL collectives & `nccl-tests`); Chapters 14.8–14.11 (PyTorch performance, multi-node architecture, and checkpointing) |
 | Code | `code/part14/training_performance_troubleshooting.py`, `code/part14/training_performance_troubleshooting_lab.py` |
 | Coverage file | `planning/coverage/chapters/14-12.md` |

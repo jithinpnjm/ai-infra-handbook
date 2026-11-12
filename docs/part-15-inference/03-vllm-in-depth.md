@@ -18,7 +18,6 @@ lab_venue: "GCP / GKE"
 | Priority tier | 1 |
 | Lab venue | GCP / GKE + Local Python Verification Lab |
 | Part | Part 15: LLM inference and serving |
-| Primary sources | *Distributed AI Systems* Chapter 6; *Hands-On LLM Serving and Optimization* Chapters 6, 7, 8, 10; *AI Systems Performance Engineering* Chapters 13, 17, 18; *LLMs in Production* Chapter 6; *Generative AI on Kubernetes* Chapters 4, 5, 6; NVIDIA Zero-to-Hero Volume 12 (`chapter-06-vllm-tgi-sglang-and-lmdeploy.md`, `chapter-07-continuous-and-dynamic-batching.md`, `chapter-08-kv-cache-memory-and-concurrency.md`, `chapter-09-scaling-multi-gpu-and-multi-node-inference.md`, `labs/lab-03-deploy-an-llm-with-vllm.md`) |
 | Cross-references | Chapter 14.7 (Tensor, Pipeline, and Expert Parallelism); Chapter 14.10 (Multi-node training architecture); Chapter 15.1 (Anatomy of an inference request); Chapter 15.2 (Batching, KV cache, and quantization); Chapter 15.4 (SGLang and cross-request optimization) |
 | Code | `code/part15/vllm_paged_attention.py`, `code/part15/vllm_paged_attention_lab.py` |
 | Coverage file | `planning/coverage/chapters/15-03.md` |

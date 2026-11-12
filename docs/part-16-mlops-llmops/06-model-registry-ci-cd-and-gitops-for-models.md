@@ -18,7 +18,6 @@ lab_venue: "GCP / GKE"
 | Priority tier | 1 |
 | Lab venue | GCP / GKE |
 | Part | Part 16: MLOps and LLMOps tools and platforms |
-| Primary sources | *Practical MLOps* (`practical-mlops`, Chapters 3, 4); *Designing Machine Learning Systems* (`designing-machine-learning-systems`, Chapter 9); *Machine Learning Platform Engineering* (`machine-learning-platform-engineering`, Chapters 5, 6); *Production Kubernetes* (`production-kubernetes`, Chapters 11, 16); NVIDIA Zero-to-Hero Volume 25 (`chapter-09-the-model-promotion-gate-governance-before-the-registry.md`) |
 | Cross-references | Chapter 16.1 (MLOps foundations); Chapter 16.2 (Experiment tracking); Chapter 16.3 (Data pipelines); Chapter 16.4 (Pipeline orchestration); Chapter 15.6 (Triton Inference Server); Chapter 5.29 (Extending Kubernetes with CRDs and operators) |
 | Coverage file | `planning/coverage/chapters/16-06.md` |
 | Claim & number ledger | `planning/ledgers/16-06.md` |

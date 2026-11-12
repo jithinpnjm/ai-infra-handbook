@@ -18,7 +18,6 @@ lab_venue: "GCP / GKE"
 | Priority tier | 1 |
 | Lab venue | GCP / GKE + Local Python Verification Lab |
 | Part | Part 15: LLM inference and serving |
-| Primary sources | *Distributed AI Systems* Chapter 9; NVIDIA Zero-to-Hero Volume 12 (`chapter-11-production-reliability-and-troubleshooting.md`, `chapter-01..03`, `chapter-06`, `chapter-08`, `chapter-12`, `labs/lab-01..04`) and Volume 14 (`chapter-04`, `chapter-06`); *Hands-On LLM Serving and Optimization* Chapters 1, 4, 10; *Generative AI on Kubernetes* Chapters 4, 5; *AI Systems Performance Engineering* Chapter 16; *LLMOps* Chapters 2, 7; *Designing Machine Learning Systems* Chapter 7; *AI Engineering* Chapter 9 |
 | Cross-references | Chapters 15.3–15.8 (vLLM, SGLang, TensorRT-LLM, Triton, NIM, Dynamo & llm-d); Chapter 15.14 (genai-perf, now being replaced by AIPerf, benchmarking & goodput); Chapter 15.15 (HPA, KEDA & scale-to-zero) |
 | Code | `code/part15/production_serving_reliability.py`, `code/part15/production_serving_reliability_lab.py` |
 | Coverage file | `planning/coverage/chapters/15-16.md` |

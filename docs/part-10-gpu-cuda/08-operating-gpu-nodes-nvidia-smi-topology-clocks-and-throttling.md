@@ -18,7 +18,6 @@ lab_venue: "Nebius GPU"
 | Priority tier | 1 |
 | Lab venue | Nebius GPU |
 | Part | Part 10: The GPU and CUDA |
-| Sources used | `nvidia-devops` V16 Ch 1–3; V2 Labs 01–02; V20 Ch 2, 6, 8, 9, 10; V19 Ch 4; *AI Systems Performance Engineering* Ch 3; *Systems Performance* Ch 2 & 4 |
 | Coverage file | `planning/coverage/chapters/10-08.md` |
 | Claim ledger | `planning/ledgers/10-08.md` |
 

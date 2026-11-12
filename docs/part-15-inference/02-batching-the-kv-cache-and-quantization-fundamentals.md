@@ -18,7 +18,6 @@ lab_venue: "GCP / GKE"
 | Priority tier | 1 |
 | Lab venue | GCP / GKE + Local Python Verification Lab |
 | Part | Part 15: LLM inference and serving |
-| Primary sources | *Hands-On LLM Serving and Optimization* Chapters 1–7; *AI Engineering* Chapters 7 & 9; *LLMs in Production* Chapter 6; *LLM Engineer's Handbook* Chapter 8; *Distributed AI Systems* Chapter 6; *Generative AI on Kubernetes* Chapter 4; *AI Systems Performance Engineering* Chapters 18 & 19; NVIDIA DevOps Legacy Volume 5 (`volume-05/02-llm-inference-serving-masterclass.md`) & Zero-to-Hero Volume 12 (`chapter-04` through `chapter-08`, `labs/lab-02..03`) |
 | Cross-references | Chapter 10.4 (Tensor Cores and precision formats); Chapter 10.5 (Roofline model); Chapter 15.1 (Anatomy of an inference request); Chapter 15.3 (vLLM and PagedAttention); Chapter 15.5 (TensorRT-LLM); Chapter 15.6 (Triton Inference Server) |
 | Code | `code/part15/batching_kv_quantization.py`, `code/part15/batching_kv_quantization_lab.py` |
 | Coverage file | `planning/coverage/chapters/15-02.md` |
@@ -634,7 +633,7 @@ Summary: 25 passed, 0 failed
 
 ### Part B: Live GPU Benchmarking on GCP / GKE (Untested in Sandbox)
 
-The live container commands below are adapted from Volume 12 Labs 02 and 03. They have not been executed on live GPU hardware in this local build environment and are marked `untested`.
+The live container commands below are adapted. They have not been executed on live GPU hardware in this local build environment and are marked `untested`.
 
 ```bash
 # 1. Launch vLLM with PagedAttention, Chunked Prefill, and bounded KV cache on GPU 0

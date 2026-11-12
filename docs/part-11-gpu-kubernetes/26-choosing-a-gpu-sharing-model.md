@@ -18,7 +18,6 @@ lab_venue: "GCP / GKE"
 | Priority tier | 1 |
 | Lab venue | GCP / GKE and local Python 3 simulation lab |
 | Part | Part 11: GPUs on Kubernetes, scheduling and virtualization |
-| Sources used | `nvidia-zero-to-hero/volume-11/chapter-06-comparing-mig-time-slicing-and-vgpu.md`; `nvidia-zero-to-hero/volume-11/chapter-09-capacity-planning-and-chargeback.md`; `volume-04/03-gpu-sharing-telemetry-masterclass.md`; `nvidia-zero-to-hero/volume-11/chapter-01-why-gpu-sharing-exists.md`; `nvidia-zero-to-hero/volume-11/chapter-07-kubernetes-scheduling-for-shared-gpus.md`; `nvidia-zero-to-hero/volume-11/chapter-11-production-troubleshooting.md`; `nvidia-zero-to-hero/volume-11/chapter-12-volume-11-summary.md`; `nvidia-zero-to-hero/volume-11/index.md`; `nvidia-zero-to-hero/volume-11/labs/lab-01-configure-and-validate-mig.md`; `nvidia-zero-to-hero/volume-11/labs/lab-02-configure-kubernetes-gpu-time-slicing.md`; `nvidia-zero-to-hero/volume-11/labs/lab-03-compare-sharing-performance-and-isolation.md`; `nvidia-zero-to-hero/volume-11/labs/lab-04-troubleshoot-a-multi-tenant-gpu-node.md` |
 | Coverage file | `planning/coverage/chapters/11-26.md` |
 
 ## Why this matters for AI infrastructure
@@ -486,7 +485,7 @@ On the host worker node, you run `nvidia-smi mig -lgi` to look for active GPU In
 </details>
 
 <details>
-<summary>**4. What is the difference between Allocation Efficiency and Delivered Efficiency in Volume 11 Chapter 6?**</summary>
+<summary>**4. What is the difference between Allocation Efficiency and Delivered Efficiency?**</summary>
 
 Allocation efficiency is the share of logical GPU tokens or slices that look assigned to workloads in the Kubernetes scheduler. Delivered efficiency is the useful work that finishes within its documented latency, throughput and error-rate targets. A cluster can show high allocation and still have low delivered efficiency. That happens when long queues, retries or tail-latency timeouts pile up.
 </details>
@@ -528,13 +527,13 @@ Physical inventory fails when teams count a failed, drained, unsupported or main
 </details>
 
 <details>
-<summary>**11. Write the conservative node sizing formula from Volume 11 Chapter 9, define each variable (D, F, A, H, N), and compute N for D=70, F=6, A=5, and H=0.20.**</summary>
+<summary>**11. Write the conservative node sizing formula, define each variable (D, F, A, H, N), and compute N for D=70, F=6, A=5, and H=0.20.**</summary>
 
 The formula is `N = ceil((D + F) / (A * (1 - H)))`. Here `D` is the required concurrent allocations, and `F` is the expected allocation loss from geometry fragmentation. `A` is the usable allocations per standard node. `H` is the planned non-sellable headroom fraction, and `N` is the required number of physical nodes. You substitute seventy for `D`, six for `F`, five for `A` and `0.20` for `H`. That gives seventy-six divided by four sellable slots per node, so you need nineteen physical nodes.
 </details>
 
 <details>
-<summary>**12. What are the five Named Reserves that make up headroom (H) in Volume 11 Chapter 9?**</summary>
+<summary>**12. What are the five Named Reserves that make up headroom (H)?**</summary>
 
 The Node-failure reserve protects committed workloads when a node or failure domain goes down. The Maintenance reserve lets you drain a node pool for planned host, driver or MIG layout updates. The Rollout reserve keeps a healthy comparison canary pool during staged upgrades. The Demand-variance reserve absorbs forecast error, burst windows and seasonal spikes. Last, the Fragmentation reserve covers physically unused profile geometry that cannot legally host the next requested shape.
 </details>
@@ -546,19 +545,19 @@ For example, a tenant who requests a `MIG 3g.40gb` profile, or a dedicated GPU, 
 </details>
 
 <details>
-<summary>**14. What is the difference between Showback and Chargeback in Volume 11 Chapter 9, and why should a platform start with Showback first?**</summary>
+<summary>**14. What is the difference between Showback and Chargeback, and why should a platform start with Showback first?**</summary>
 
 Showback reports consumption and cost attribution to engineering teams without issuing an internal invoice. Chargeback applies actual budget transfers and invoices. Starting with Showback lets you check that tenant ownership labels in kube-state-metrics, allocation intervals and billable units are accurate. Only then should the team attach financial penalties.
 </details>
 
 <details>
-<summary>**15. State the defensible primary billable unit for each of the four service models in Volume 11 Chapter 9.**</summary>
+<summary>**15. State the defensible primary billable unit for each of the four service models.**</summary>
 
 A reserved whole GPU is billed by reserved GPU-hour, or by committed capacity period. A standard MIG profile is billed by allocated profile-hour, naming the exact profile and service tier. A best-effort time-sliced pool is billed by access-hour, queue class or agreed workload outcome. Last, an NVIDIA vGPU service is billed by assigned vGPU/VM-hour or named workstation session tier.
 </details>
 
 <details>
-<summary>**16. What are the eight questions in the Rate-Card Review Checklist in Volume 11 Chapter 9?**</summary>
+<summary>**16. What are the eight questions in the Rate-Card Review Checklist?**</summary>
 
 The first three questions ask which workload outcome the tier protects. They ask whether the allocation is dedicated, partitioned, oversubscribed or virtualized. They also ask which physical and scheduler constraints limit it. The next three ask what reserve is included and who may use it. They ask which events earn a service credit or incident review, and which data settles consumption and disputes. The last two ask which upgrades or layout changes can disrupt the tier, and what is explicitly not guaranteed.
 </details>

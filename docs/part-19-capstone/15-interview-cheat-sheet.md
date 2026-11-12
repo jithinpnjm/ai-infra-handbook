@@ -18,7 +18,6 @@ lab_venue: "Laptop"
 | Priority tier | 1 |
 | Lab venue | Laptop, no GPU |
 | Part | Part 19: Capstones, design and interview readiness |
-| Primary sources | Handbook chapters listed per row in the sheet. Gem books: *AI Systems Performance Engineering* ch. 2 and 4, `nvidia-devops-core-interview`, *Systems Performance* 2nd ed. ch. 2 and 4 |
 | Cross-references | 19.14 (question bank), 20.29 (the Nebius SRE cheat sheet) |
 | Code | `code/part19/c15_interview_cheat_sheet.md`, `c15_sheet_validator.py`, `c15_numbers.py`, `c15_simulate_interview.py`, `c15_walkthrough.py` |
 | Coverage file | `planning/coverage/chapters/19-15.md` |

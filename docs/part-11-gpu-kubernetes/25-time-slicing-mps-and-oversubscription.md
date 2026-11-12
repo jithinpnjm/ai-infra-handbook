@@ -18,7 +18,6 @@ lab_venue: "GCP / GKE"
 | Priority tier | 1 |
 | Lab venue | GCP / GKE and local Python 3 simulation lab |
 | Part | Part 11: GPUs on Kubernetes, scheduling and virtualization |
-| Sources used | `nvidia-zero-to-hero/volume-11/chapter-04-time-slicing-and-oversubscription.md`; `volume-04/03-gpu-sharing-telemetry-masterclass.md`; `nvidia-zero-to-hero/volume-11/chapter-01-why-gpu-sharing-exists.md`; `nvidia-zero-to-hero/volume-11/chapter-07-kubernetes-scheduling-for-shared-gpus.md`; `nvidia-zero-to-hero/volume-11/chapter-11-production-troubleshooting.md`; `nvidia-zero-to-hero/volume-11/chapter-12-volume-11-summary.md`; `nvidia-zero-to-hero/volume-11/index.md`; `nvidia-zero-to-hero/volume-11/labs/lab-01-configure-and-validate-mig.md`; `nvidia-zero-to-hero/volume-11/labs/lab-02-configure-kubernetes-gpu-time-slicing.md`; `nvidia-zero-to-hero/volume-11/labs/lab-03-compare-sharing-performance-and-isolation.md`; `nvidia-zero-to-hero/volume-11/labs/lab-04-troubleshoot-a-multi-tenant-gpu-node.md`; Roland Huß et al., *Generative AI on Kubernetes* (O'Reilly, 2026, Ch. 3) |
 | Coverage file | `planning/coverage/chapters/11-25.md` |
 
 ## Why this matters for AI infrastructure
@@ -471,7 +470,7 @@ If you see this on-call, the three causes below explain the gap.
 </details>
 
 <details>
-<summary>**7. List the five test phases for measuring a safe time-slicing replica ratio in Volume 11 Chapter 4.**</summary>
+<summary>**7. List the five test phases for measuring a safe time-slicing replica ratio.**</summary>
 
 You work through the five phases in order.
 
@@ -508,7 +507,7 @@ Use all six controls together, since each one covers a different gap.
 </details>
 
 <details>
-<summary>**10. Walk through the six steps of the Safe Rollout Sequence for time-slicing in Volume 11 Chapter 4.**</summary>
+<summary>**10. Walk through the six steps of the Safe Rollout Sequence for time-slicing.**</summary>
 
 You work through the six steps in order.
 
@@ -534,7 +533,7 @@ With device-plugin time-slicing on, `dcgm-exporter` cannot tie GPU-level metrics
 </details>
 
 <details>
-<summary>**13. For each of the five Kubernetes primitives in Volume 11 Chapter 4, state what it contributes and what it cannot do for shared GPUs.**</summary>
+<summary>**13. For each of the five Kubernetes primitives, state what it contributes and what it cannot do for shared GPUs.**</summary>
 
 - Resource requests and limits reserve a logical allocation token. They do not divide physical GPU memory.
 - Node selectors and affinity target the intended node pool. They do not validate workload memory or latency behavior.
@@ -556,7 +555,7 @@ After an upgrade, you check these five things.
 </details>
 
 <details>
-<summary>**15. List the eight time-correlated items in the Contention Evidence Package in Volume 11 Chapter 4.**</summary>
+<summary>**15. List the eight time-correlated items in the Contention Evidence Package.**</summary>
 
 1. Workload version and request rate.
 2. Latency percentiles p50, p95 and p99, alongside queue depth.
@@ -569,7 +568,7 @@ After an upgrade, you check these five things.
 </details>
 
 <details>
-<summary>**16. List the ten fields of the Shared-Pool Operating Policy Template in Volume 11 Chapter 4.**</summary>
+<summary>**16. List the ten fields of the Shared-Pool Operating Policy Template.**</summary>
 
 Every shared pool you publish needs these ten fields.
 

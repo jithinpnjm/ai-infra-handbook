@@ -18,7 +18,6 @@ lab_venue: "GCP / GKE"
 | Priority tier | 2 |
 | Lab venue | GCP / GKE |
 | Part | Part 17: Observability, performance and operations |
-| Primary sources | NVIDIA Zero-to-Hero Volume 19 (`chapter-03-capacity-planning.md`, `chapter-06-cost-optimisation.md`); *AI Factory* (`ai-factory`, Chapter 8); NVIDIA Zero-to-Hero Volume 21 (AI factory overview); *Scalable Kubernetes Infrastructure for AI Platforms* (`scalable-kubernetes-infrastructure-for-ai-platforms`, Chapter 2); NVIDIA Zero-to-Hero Volume 8 (`chapter-02-cost-optimisation.md`) |
 | Cross-references | Chapter 16.14 (Platform design: FinOps); Chapter 17.8 (Performance engineering); Chapter 17.11 (Incident response); Chapter 11 (GPU Kubernetes) |
 | Coverage file | `planning/coverage/chapters/17-12.md` |
 | Claim & number ledger | `planning/ledgers/17-12.md` |

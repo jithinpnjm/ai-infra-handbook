@@ -18,7 +18,6 @@ lab_venue: "GCP / GKE"
 | Priority tier | 1 |
 | Lab venue | GCP / GKE |
 | Part | Part 16: MLOps and LLMOps tools and platforms |
-| Primary sources | *Practical MLOps* (`practical-mlops`, Chapters 1, 2, 6); *Machine Learning Platform Engineering* (`machine-learning-platform-engineering`, Chapters 1, 2, 3, 4); *Designing Machine Learning Systems* (`designing-machine-learning-systems`, Chapters 2, 3); NVIDIA Zero-to-Hero Volume 25 (`chapter-03-data-versioning-with-dvc.md`, `chapter-04-experiment-tracking-with-mlflow.md`) |
 | Cross-references | Chapter 16.1 (MLOps foundations and lifecycle); Chapter 16.3 (Data pipelines and feature stores); Chapter 16.6 (Model registry, CI/CD and GitOps for models); Chapter 14.11 (Checkpointing, fault tolerance and elastic training) |
 | Coverage file | `planning/coverage/chapters/16-02.md` |
 | Claim & number ledger | `planning/ledgers/16-02.md` |

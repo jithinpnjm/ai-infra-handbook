@@ -19,7 +19,6 @@ lab_venue: "GCP / GKE"
 | Lab venue | GCP / GKE (the parts that run here need only Docker and a CPU) |
 | Part | Part 19: Capstones, design and interview readiness |
 | Pinned versions | PyTorch 2.15 documentation and 2.15.0 CPU wheel; Slurm documentation 26.05; JobSet v0.13.0 CRD; Kubeflow Training Operator v1.9.4 CRD; NCCL 2.32.3 documentation. All fetched 2026-11-10. |
-| Primary sources | Distributed AI Systems (Ch. 4, 8); AI Systems Performance Engineering (Ch. 4); Supercomputers for Linux SysAdmins (Ch. 15); upstream PyTorch, Slurm, JobSet and Kubeflow documentation; nvidia-devops Zero-to-Hero Volume 24, Chapter 3 |
 | Cross-references | Chapters 14.5, 14.10, 14.11, 12.16, 12.18, 11.9, 6.12, 6.14, 13.7, 16.5, 17.7, 17.11 |
 | Code | `code/part19/c04_*` and `code/part19/test_c04_*` |
 | Coverage file | `planning/coverage/chapters/19-04.md` |

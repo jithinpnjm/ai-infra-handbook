@@ -18,7 +18,6 @@ lab_venue: "GCP / GKE"
 | Priority tier | 1 |
 | Lab venue | GCP / GKE (cluster steps not run here; rules, routing, policy model and operator tests were run on a Mac) |
 | Part | Part 19: Capstones, design and interview readiness |
-| Primary sources | NVIDIA dcgm-exporter 4.9.0 and DCGM documentation; NVIDIA Xid catalog; Kubernetes documentation; books Production Kubernetes, Kubernetes Programming with Go, Supercomputers for Linux SysAdmins, Systems Performance 2nd edition, AI Factory; nvidia-devops volumes 16, 20 and 24 |
 | Cross-references | Chapters 5.32, 10.21, 11.3, 11.4, 17.4, 17.6, 17.7, 17.11, 19.1 and 20.16 |
 | Code | `code/part19/c06_*` and `code/gpuhealth/` |
 | Claim and number ledger | `planning/ledgers/19-06.md` |

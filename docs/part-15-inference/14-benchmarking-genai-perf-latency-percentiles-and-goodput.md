@@ -18,7 +18,6 @@ lab_venue: "GCP / GKE"
 | Priority tier | 1 |
 | Lab venue | GCP / GKE + Local Python Verification Lab |
 | Part | Part 15: LLM inference and serving |
-| Primary sources | NVIDIA Zero-to-Hero Volume 12 (`chapter-10-performance-metrics-and-benchmarking.md`, `chapter-12-volume-12-summary.md`, `labs/lab-02-benchmark-dynamic-batching.md`, `labs/lab-03-deploy-an-llm-with-vllm.md`, `labs/lab-04-troubleshoot-a-slow-inference-pipeline.md`); *Distributed AI Systems* Chapter 10; *Hands-On LLM Serving and Optimization* Chapter 9; *LLMs in Production* Chapters 4, 6; *AI Systems Performance Engineering* Chapters 1, 17; *AI Engineering* Chapters 4, 9 |
 | Cross-references | Chapter 10.1 (AI systems performance and Goodput); Chapter 12.17 (nccl-tests and fabric benchmarking); Chapters 15.1–15.6 (Request anatomy, batching and KV cache, vLLM, SGLang, TensorRT-LLM, Triton); Chapters 15.10–15.13 (Prefill-decode disaggregation, adaptive tuning, profiling) |
 | Code | `code/part15/benchmarking_genai_perf_goodput.py`, `code/part15/benchmarking_genai_perf_goodput_lab.py` |
 | Coverage file | `planning/coverage/chapters/15-14.md` |
@@ -412,7 +411,7 @@ Select `genai-perf` or `vllm bench serve` for engine-level token streaming bench
 
 In *AI Systems Performance Engineering* Chapters 1 and 17, Chris Fregly draws a sharp boundary between raw throughput and **Goodput**. Raw throughput counts every token or request a GPU emits per second regardless of how long the user waited. **Goodput** measures the sustainable rate of completed requests or generated tokens per GPU that simultaneously satisfy both the Time to First Token Service Level Objective and the Inter-Token Latency Service Level Objective.
 
-To see why raw throughput fails as a production north star, inspect the high-throughput troubleshooting scenario from Volume 12 Chapter 10. A serving cluster configured with an aggressive maximum batch size of 128 sequences achieves 180 tokens per second, easily meeting its raw throughput target. Yet users report severe lag because P99 TTFT hits 1,200 milliseconds against a 200-millisecond SLO, and P99 ITL hits 85 milliseconds against a 25-millisecond SLO. Scraping the Prometheus histograms reveals that only 800 out of 4,000 requests finish prefill within 200 milliseconds. Worse still, only 300 out of 3,900 decode steps finish within 25 milliseconds. Despite 180 tokens per second of raw output, cluster-level SLO-compliant Goodput is zero.
+To see why raw throughput fails as a production north star, inspect the high-throughput troubleshooting scenario. A serving cluster configured with an aggressive maximum batch size of 128 sequences achieves 180 tokens per second, easily meeting its raw throughput target. Yet users report severe lag because P99 TTFT hits 1,200 milliseconds against a 200-millisecond SLO, and P99 ITL hits 85 milliseconds against a 25-millisecond SLO. Scraping the Prometheus histograms reveals that only 800 out of 4,000 requests finish prefill within 200 milliseconds. Worse still, only 300 out of 3,900 decode steps finish within 25 milliseconds. Despite 180 tokens per second of raw output, cluster-level SLO-compliant Goodput is zero.
 
 ```text
 Goodput and DistServe Pareto Frontier Equations (ASP Chapter 17 Figure 17-2, Volume 12 Chapter 10):
@@ -640,7 +639,7 @@ Pair every benchmark sign-off with continuous Prometheus `histogram_quantile` al
 ### 7.1 Lab Venue and Scope
 
 - **Venue.** Local Python Verification Lab plus GCP and GKE production reference commands (`genai-perf`, `perf_analyzer`, `vllm bench serve`). The local Python lab runs deterministically on any workstation or CI runner without requiring live GPUs.
-- **Verification note.** The GPU serving commands in Sections 3, 5, and 6 are production reference configurations from Volume 12 Chapter 10, Volume 12 Labs 02–04, and *Hands-On LLM Serving and Optimization* Chapter 9. They have not been executed on live hardware during this build (`untested` on live GPUs). All mathematical models, percentile distributions, Little's Law queueing curves, and Pareto Goodput frontiers are verified deterministically by `code/part15/benchmarking_genai_perf_goodput_lab.py`.
+- **Verification note.** The GPU serving commands in Sections 3, 5, and 6 are production reference configurations, Volume 12 Labs 02–04, and *Hands-On LLM Serving and Optimization* Chapter 9. They have not been executed on live hardware during this build (`untested` on live GPUs). All mathematical models, percentile distributions, Little's Law queueing curves, and Pareto Goodput frontiers are verified deterministically by `code/part15/benchmarking_genai_perf_goodput_lab.py`.
 
 ### 7.2 Running the 25-Check Verification Suite
 
@@ -805,7 +804,7 @@ Aggressive optimizations such as INT8 or INT4 quantization, speculative decoding
 1. **Latency Decomposition, Throughput Math, and Little's Law Queueing.** Use the parameters in the block below to compute the four throughput metrics, mean residency time, and Little's Law concurrency for the Llama-3-70B ShareGPT run. Then compute the M/M/1 open-loop queueing delays across the three arrival rates and contrast them against a closed-loop test.
 2. **Goodput vs Raw Throughput and the Pareto Frontier.** Compute the colocated Goodput per GPU, total cluster Goodput, and disaggregated 2P1D Goodput per GPU from the DistServe parameters below. Next, identify the Pareto-optimal Goodput operating point from Section 4.2 and calculate the over-batched token throughput at maximum concurrency.
 3. **Quantization, Prefix Caching, and Multi-GPU Scaling Trade-offs.** From the Qwen3-14B L40S numbers below, calculate the Key-Value cache token capacity multiplier, the Prefix Repetition speedup, the AWQ ShareGPT throughput speedup, and the AWQ TTFT reduction percentage. Then calculate the multi-GPU scaling efficiencies and the Amdahl's Law speedup limit.
-4. **Diagnosing and Remediating Production Benchmarking Failures.** Compute the exact percentage changes in request rate, P95 TTFT, P95 ITL, and VRAM between the short synthetic test and the long-context RAG workload in Failure Scenario 1. State the remediating vLLM flags, and calculate the throughput speedup and P99 latency reduction achieved by `ProcessPoolExecutor` in Volume 12 Lab 04.
+4. **Diagnosing and Remediating Production Benchmarking Failures.** Compute the exact percentage changes in request rate, P95 TTFT, P95 ITL, and VRAM between the short synthetic test and the long-context RAG workload in Failure Scenario 1. State the remediating vLLM flags, and calculate the throughput speedup and P99 latency reduction achieved by `ProcessPoolExecutor`.
 
 ```text
 Exercise Input Parameters and Verification Targets (code/part15/benchmarking_genai_perf_goodput_lab.py):

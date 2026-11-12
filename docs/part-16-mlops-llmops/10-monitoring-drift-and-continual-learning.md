@@ -18,7 +18,6 @@ lab_venue: "GCP / GKE"
 | Priority tier | 1 |
 | Lab venue | GCP / GKE |
 | Part | Part 16: MLOps and LLMOps tools and platforms |
-| Primary sources | *Designing Machine Learning Systems* (`designing-machine-learning-systems`, Chapters 8, 9); *Practical MLOps* (`practical-mlops`, Chapter 6); NVIDIA Zero-to-Hero Volume 25 (`chapter-12-end-to-end-case-study-banknifty-big-move-prediction-pipeline.md`) |
 | Cross-references | Chapter 16.1 (MLOps foundations); Chapter 16.2 (Experiment tracking); Chapter 16.3 (Data pipelines); Chapter 16.6 (Model registry); Chapter 16.7 (Serving platforms); Chapter 16.9 (LLM evaluation) |
 | Coverage file | `planning/coverage/chapters/16-10.md` |
 | Claim & number ledger | `planning/ledgers/16-10.md` |

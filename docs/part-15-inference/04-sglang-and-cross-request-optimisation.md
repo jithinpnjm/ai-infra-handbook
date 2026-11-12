@@ -18,7 +18,6 @@ lab_venue: "GCP / GKE"
 | Priority tier | 1 |
 | Lab venue | GCP / GKE + Local Python Verification Lab |
 | Part | Part 15: LLM inference and serving |
-| Primary sources | *Distributed AI Systems* (`distributed-ai-systems`, Chapters 7, 10, 11); *Hands-On LLM Serving and Optimization* (`hands-on-llm-serving-and-optimization`, Chapters 6, 8); *AI Systems Performance Engineering* (`ai-systems-performance-engineering`, Chapters 15, 18, 19); *Generative AI on Kubernetes* (`generative-ai-on-kubernetes`, Chapter 1); NVIDIA Zero-to-Hero Volume 12 (`chapter-06-vllm-tgi-sglang-and-lmdeploy.md`, `chapter-08-kv-cache-memory-and-concurrency.md`, `chapter-12-volume-12-summary.md`) |
 | Cross-references | Chapter 15.2 (KV cache & batching); Chapter 15.3 (vLLM in depth); Chapter 15.8 (NVIDIA Dynamo & llm-d); Chapter 15.10 (Prefill & decode disaggregation) |
 | Code | `code/part15/sglang_cross_request.py`, `code/part15/sglang_cross_request_lab.py` |
 | Coverage file | `planning/coverage/chapters/15-04.md` |

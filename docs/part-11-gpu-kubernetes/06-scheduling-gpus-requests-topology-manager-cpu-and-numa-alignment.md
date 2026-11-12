@@ -18,7 +18,6 @@ lab_venue: "GCP / GKE"
 | Priority tier | 1 |
 | Lab venue | GCP / GKE (plus local Python 3 simulation lab) |
 | Part | Part 11: GPUs on Kubernetes, scheduling and virtualization |
-| Sources used | `nvidia-zero-to-hero/volume-10/chapter-08-gpu-scheduling-and-topology.md`; `nvidia-zero-to-hero/volume-07/chapter-08-topology-aware-placement.md`; `nvidia-zero-to-hero/volume-07/chapter-02-pcie-numa-and-host-data-paths.md`; `volume-04/02-gpu-software-operator-masterclass.md`; Chris Fregly, *AI Systems Performance Engineering* (O'Reilly, 2025, Ch. 3); Roland Huß et al., *Generative AI on Kubernetes* (O'Reilly, 2026, Ch. 3); *Kubernetes for Generative AI Solutions* (Packt, 2025, Ch. 10); *Scalable Kubernetes Infrastructure for AI Platforms* (O'Reilly, 2026, Ch. 1–2) |
 | Coverage file | `planning/coverage/chapters/11-06.md` |
 
 ## Why this matters for AI infrastructure

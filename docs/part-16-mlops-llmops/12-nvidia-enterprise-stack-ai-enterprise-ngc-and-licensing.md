@@ -18,7 +18,6 @@ lab_venue: "GCP / GKE"
 | Priority tier | 1b (NVIDIA-specific) |
 | Lab venue | GCP / GKE |
 | Part | Part 16: MLOps and LLMOps tools and platforms |
-| Primary sources | NVIDIA AI Enterprise (NVAIE) documentation; NVIDIA NGC catalog; NVIDIA NIM documentation; NVIDIA NeMo framework documentation; NVIDIA Zero-to-Hero Volume 14 (`chapter-01-introduction.md`, `chapter-02-licensing.md`, `chapter-03-ngc.md`, `chapter-04-nim.md`, `chapter-05-nemo.md`, `chapter-06-rapids.md`) |
 | Cross-references | Chapter 10.9 (NVIDIA software stack); Chapter 15.7 (NVIDIA NIM and NIM Operator); Chapter 16.5 (Distributed compute); Chapter 16.7 (Serving platforms); Chapter 16.6 (Model registry) |
 | Coverage file | `planning/coverage/chapters/16-12.md` |
 | Claim & number ledger | `planning/ledgers/16-12.md` |
