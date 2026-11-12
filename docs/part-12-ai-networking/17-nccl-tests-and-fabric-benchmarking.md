@@ -48,7 +48,7 @@ Here is the cost in one picture. A 64-GPU job at 52% scaling efficiency keeps on
 
 ### Prerequisites
 
-Before you start, finish Chapter 12.14 on GPUDirect RDMA and GPUDirect Storage. It explains BAR1 peer memory, `nvidia_peermem`, PCIe Access Control Services, and PIX versus SYS NUMA locality. You also need Chapters 12.15 and 12.16. Those chapters cover the Ring, Tree, CollNet/SHARP, NVLS and PAT algorithms, and how NCCL picks a transport among P2P, SHM, NET/IB and NET/Socket.
+Before you start, finish Chapter 12.19 on GPUDirect RDMA and GPUDirect Storage. It explains BAR1 peer memory, `nvidia_peermem`, PCIe Access Control Services, and PIX versus SYS NUMA locality. You also need Chapters 12.15 and 12.16. Those chapters cover the Ring, Tree, CollNet/SHARP, NVLS and PAT algorithms, and how NCCL picks a transport among P2P, SHM, NET/IB and NET/Socket.
 
 ### Expected learning outcomes
 

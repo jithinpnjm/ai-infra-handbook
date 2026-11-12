@@ -46,7 +46,7 @@ Coordinated RoCEv2 Congestion Control Architecture:
      - Reserves flight-time headroom buffer for cable + transceiver + ASIC pipeline delay
 ```
 
-This chapter builds on the QoS concepts from Chapter 2.19 and the RoCEv2 transport architecture from Chapter 12.3. If you know the ECN and PFC basics, you can move straight into the math. We derive exact frame formats, quanta timing equations and cable flight-time headroom. We also work through Weighted Random Early Detection marking curves, DCQCN Reaction Point rate-cut and recovery equations, and PFC Watchdog state machines. Finally, we compare next-generation Source Flow Control and Congestion Signaling, and walk through production diagnostic workflows.
+This chapter builds on the QoS concepts from Chapter 2.19 and the RoCEv2 transport architecture from Chapter 12.3. If you already know the ECN and PFC basics, you can go straight to the math. The chapter derives the PFC frame format, the pause timing, and the buffer headroom a cable needs. It then follows the ECN marking curve and the DCQCN rate-cut and recovery steps, and ends with the PFC Watchdog, the newer signaling standards, and a production diagnostic workflow.
 
 Keep both mechanisms in mind as you read, since the rest of the chapter treats them as one design.
 
@@ -110,11 +110,11 @@ Notice that most of these points come down to many flows converging on one port.
 
 ### Why neither ECN alone nor PFC alone suffices
 
-A common architecture question is why AI Ethernet fabrics run both ECN and PFC rather than picking one. If you rely on ECN alone, the fabric stays open to packet drops during fast microbursts. If you rely on PFC alone, you get head-of-line blocking and fabric-wide pause trees that freeze innocent GPU jobs.
+A common architecture question is why AI Ethernet fabrics run both ECN and PFC rather than picking one. If you rely on ECN alone, the fabric stays open to packet drops during fast microbursts. If you rely on PFC alone, you get head-of-line blocking and fabric-wide pause trees that freeze unrelated GPU jobs.
 
 ECN is an end-to-end control loop, and that loop takes time. When SpineA marks a packet on its congested link to LeafD, the packet must first finish the forward path through LeafD to the destination server. The destination adapter then generates a CNP, and that CNP must travel the reverse path back to the sender before transmission slows down. During that round trip, a sudden incast burst can fill the rest of the switch buffer and drop packets. A queue with only ECN enabled can still drop packets during fast transients, so it counts as a lossy queue.
 
-PFC acts at once, but only across one link at a time. You can think of it as a local brake. It pauses transmission hop by hop before a queue overflows, which keeps the queue lossless. However, PFC has no concept of an individual flow or Queue Pair. It stops all traffic mapped to the congested priority class on that link. If one congested flow triggers PFC on Priority 3, every innocent flow sharing Priority 3 on that link is blocked through head-of-line blocking. Sustained pauses then spread backward into a fabric-wide PFC pause tree.
+PFC acts at once, but only across one link at a time. You can think of it as a local brake. It pauses transmission hop by hop before a queue overflows, which keeps the queue lossless. However, PFC has no concept of an individual flow or Queue Pair. It stops all traffic mapped to the congested priority class on that link. If one congested flow triggers PFC on Priority 3, every unrelated flow sharing Priority 3 on that link is blocked through head-of-line blocking. Sustained pauses then spread backward into a fabric-wide PFC pause tree.
 
 DCQCN resolves this tension by combining both mechanisms over DSCP. ECN acts first, at a lower buffer threshold, to throttle only the offending sender Queue Pairs end to end. PFC sits higher in the buffer as a last-resort safety net. It absorbs microbursts before any packet drop occurs.
 
@@ -148,13 +148,15 @@ The table below breaks the frame into its fields, so you can match each byte in 
 | **Time (`time[0]..time[7]`)** | 16 octets (8 x 2 octets) | C3 = 65535 (`0xFFFF`) for XOFF; C3 = 0 (`0x0000`) for XON | Pause duration in 512-bit quanta (0..65,535) for each of the 8 classes (C0..C7) |
 | **Padding + FCS (CRC-32)** | 26 + 4 octets | Zero-padded to 60 B + 4 B CRC | Brings total wire frame length to 64 bytes |
 
-The lifecycle for Class 3 shows up in two captures. The first is the XOFF pause. It fires when the receiver's Priority 3 ingress buffer crosses the XOFF threshold. The port then transmits a 64-byte frame with Class Enable Vector `0x0008` and a Class 3 pause time of 65,535 quanta. The other seven class timers stay at zero. If congestion persists, each subsequent packet that crosses XOFF sends a fresh XOFF frame, which resets the upstream pause timer. The second is the XON un-pause. It fires once the congested queue drains below the XON threshold, before the pause timer expires. The receiver sends an identical 64-byte frame with the Class 3 pause time set to 0. That tells the upstream neighbor to resume Priority 3 transmission immediately.
+A congested port sends a pause in two steps. First comes the XOFF pause. It fires when the Priority 3 ingress buffer crosses the XOFF threshold, and it tells the upstream neighbor to stop Priority 3 and nothing else. In the frame, the Class Enable Vector is `0x0008` and the Class 3 pause time is 65,535 quanta. The other seven class timers stay at zero. While congestion lasts, every packet that crosses XOFF sends a fresh XOFF frame and resets the upstream pause timer.
+
+Then comes the XON un-pause. It fires once the queue drains below the XON threshold, before the pause timer expires. The receiver sends an identical frame with the Class 3 pause time set to 0, and the upstream neighbor resumes Priority 3 at once.
 
 ### 2.3 Exact PFC pause duration math across 100G, 200G, 400G, and 800G
 
 As you move AI fabrics from 100 Gbps to 400 Gbps and 800 Gbps rails, single-frame pause times shrink in proportion. If you assume a fixed microsecond pause window, you will misread pause storm telemetry on the faster links.
 
-In IEEE 802.1Qbb, each pause quantum equals 512 bit-times at the negotiated link speed. Because 1 Gbps equals 1 bit per nanosecond, the pause duration for a 16-bit quanta value $Q$ depends on the link rate $R_\{\text`{Gbps}`}$.
+In IEEE 802.1Qbb, each pause quantum equals 512 bit-times at the negotiated link speed. Because 1 Gbps equals 1 bit per nanosecond, the pause duration for a 16-bit quanta value $Q$ depends on the link rate $R_{\text{Gbps}}$.
 
 ```text
 IEEE 802.1Qbb Quanta Pause Duration Equations:
@@ -165,7 +167,7 @@ IEEE 802.1Qbb Quanta Pause Duration Equations:
 
 The table divides the maximum pause of 65,535 quanta by the link speed of each generation.
 
-| Link speed ($R_\{\text`{Gbps}`}$) | Quanta ($Q$) | Total bit-times ($Q \times 512$) | Pause duration (ns) | Pause duration (µs) | Operational note |
+| Link speed ($R_{\text{Gbps}}$) | Quanta ($Q$) | Total bit-times ($Q \times 512$) | Pause duration (ns) | Pause duration (µs) | Operational note |
 |---|---|---|---|---|---|
 | **100 Gbps** | 65,535 | 33,553,920 | 335,539.2 ns | **335.5392 µs** | Legacy 100G RoCEv2 leaf-server link |
 | **200 Gbps** | 65,535 | 33,553,920 | 167,769.6 ns | **167.7696 µs** | ConnectX-6 / HDR-era Ethernet rail |
@@ -228,7 +230,7 @@ When you read that output, check the headroom and hysteresis figures before you 
 
 ### 3.1 IP header DSCP + ECN bits and CNP packet format
 
-If a congested switch drops packets to signal congestion, RoCEv2 performance collapses under Go-Back-N retransmissions. If the switch uses PFC alone, innocent flows freeze behind class-wide pauses. So the fabric needs a way to mark individual congested flows in flight. It also has to carry that signal back to the exact sending Queue Pair without being delayed by the congestion itself.
+If a congested switch drops packets to signal congestion, RoCEv2 performance collapses under Go-Back-N retransmissions. If the switch uses PFC alone, unrelated flows freeze behind class-wide pauses. So the fabric needs a way to mark individual congested flows in flight. It also has to carry that signal back to the exact sending Queue Pair without being delayed by the congestion itself.
 
 In the IPv4 Type of Service byte, or the IPv6 Traffic Class byte, the upper 6 bits hold the Differentiated Services Code Point. QoS uses that code point to classify traffic into queues. The lower 2 bits hold the ECN field, which RFC 3168 defines. The two ECN bits form four codepoints, and the table shows how each one is treated under congestion.
 
@@ -257,7 +259,7 @@ The CNP travels on Queue 6, which is why it stays clear of the congested Queue 3
 
 Consider a switch that waits for one static buffer cutoff before it marks ECN. Every active sender then receives the congestion signal at the same moment, and every sender cuts its rate in lockstep. That synchronized sawtooth oscillation leaves the link underutilized. Furthermore, if the ECN thresholds sit above the PFC XOFF threshold, PFC fires first, and ECN never prevents pause storms.
 
-Production AI switches apply Weighted Random Early Detection, or WRED, to mark ECN bits with a probability. The marking probability rises linearly as queue occupancy $q$ climbs between a minimum threshold $K_`{\min}`$ and a maximum threshold $K_`{\max}`$. The maximum marking probability is $P_`{\max}`$.
+Production AI switches apply Weighted Random Early Detection, or WRED, to mark ECN bits with a probability. The marking probability rises linearly as queue occupancy $q$ climbs between a minimum threshold $K_{\min}$ and a maximum threshold $K_{\max}$. The maximum marking probability is $P_{\max}$.
 
 ```text
 WRED Probabilistic ECN Marking Function P_mark(q):
@@ -266,17 +268,17 @@ WRED Probabilistic ECN Marking Function P_mark(q):
   - Red Zone (q >= K_max):           P_mark(q) = 1.0 (100% ECN Marking)
 ```
 
-Take a standard high-speed switch profile with $K_`{\min}`$ at 150 KB and $K_`{\max}`$ at 1,500 KB. The table shows the marking probability at five queue levels.
+Take a standard high-speed switch profile with $K_{\min}$ at 150 KB and $K_{\max}$ at 1,500 KB. The table shows the marking probability at five queue levels.
 
-| Queue occupancy ($q$) | Queue zone | WRED calculation | Marking probability ($P_\{\text`{mark}`}$) | Switch action |
+| Queue occupancy ($q$) | Queue zone | WRED calculation | Marking probability ($P_{\text{mark}}$) | Switch action |
 |---|---|---|---|---|
-| **100 KB** (`< 150 KB`) | **Green Zone** | $q < K_`{\min}`$ | **0.0 (0%)** | Forward packets unmarked at full line rate |
+| **100 KB** (`< 150 KB`) | **Green Zone** | $q < K_{\min}$ | **0.0 (0%)** | Forward packets unmarked at full line rate |
 | **487.5 KB** (25% of span) | **Yellow Zone** | $(487.5 - 150) / (1500 - 150) = 337.5 / 1350$ | **0.25 (25%)** | Mark 1 in 4 packets with ECN = 11 (CE) |
 | **825 KB** (midpoint) | **Yellow Zone** | $(825 - 150) / (1500 - 150) = 675 / 1350$ | **0.50 (50%)** | Mark 1 in 2 packets with ECN = 11 (CE) |
-| **1,600 KB** (`>= 1,500 KB`) | **Red Zone** | $q \ge K_`{\max}`$ | **1.0 (100%)** | Mark 100% of packets with CE (`< XOFF`, no PFC yet) |
-| **`>= 2,000 KB`** (`>= XOFF`) | **PFC Safety Net** | $q \ge \text`{XOFF}`$ | **1.0 + PFC XOFF** | Emit 802.1Qbb pause frame to upstream hop |
+| **1,600 KB** (`>= 1,500 KB`) | **Red Zone** | $q \ge K_{\max}$ | **1.0 (100%)** | Mark 100% of packets with CE (`< XOFF`, no PFC yet) |
+| **`>= 2,000 KB`** (`>= XOFF`) | **PFC Safety Net** | $q \ge \text{XOFF}$ | **1.0 + PFC XOFF** | Emit 802.1Qbb pause frame to upstream hop |
 
-Read the table as a gradual ramp rather than a switch. Marking stays at zero below 150 KB, then rises in a straight line until it reaches 1.0 at 1,500 KB. At 487.5 KB, the queue sits 337.5 KB above $K_`{\min}`$. That is a quarter of the 1,350 KB span, so one packet in four gets marked.
+Read the table as a gradual ramp rather than a switch. Marking stays at zero below 150 KB, then rises in a straight line until it reaches 1.0 at 1,500 KB. At 487.5 KB, the queue sits 337.5 KB above $K_{\min}$. That is a quarter of the 1,350 KB span, so one packet in four gets marked.
 
 For DCQCN to prevent PFC storms, the thresholds on every lossless queue must strictly satisfy the ordering rule below.
 
@@ -287,7 +289,7 @@ DCQCN Threshold Ordering Invariant (ADC Ch 7 Fig 7-16):
   - Broken Profile:   Setting K_max = 55,000 B above XOFF = 49,152 B violates K_max < XOFF, firing PFC pauses before ECN reaches 100%
 ```
 
-If $K_`{\max}`$ is set at or above XOFF, the switch fires hop-by-hop PFC pauses before ECN marking reaches 100 percent. That misconfiguration makes PFC the primary congestion mechanism, and it starves innocent flows.
+If $K_{\max}$ is set at or above XOFF, the switch fires hop-by-hop PFC pauses before ECN marking reaches 100 percent. That misconfiguration makes PFC the primary congestion mechanism, and it starves unrelated flows.
 
 ### 3.3 The DCQCN three-actor state machine (CP, NP, RP)
 
@@ -326,7 +328,7 @@ You can follow one congestion event through the five-step loop in the table. Eac
 | Loop component | Actor & hardware location | Trigger condition | Action taken | Key verification counter |
 |---|---|---|---|---|
 | **1. Forward data** | Sender NIC (RP) | Application posts RDMA verb | Emits UDP 4791 packet with DSCP 26 (Prio 3) and ECN = 01 or 10 | `tx_prio3_packets` |
-| **2a. ECN marking** | Switch egress queue (CP) | Queue depth $q \ge K_`{\min}`$ (WRED) | Rewrites IP ECN bits to 11 (CE) and forwards packet normally | `rx_ecn_marked_prio3` |
+| **2a. ECN marking** | Switch egress queue (CP) | Queue depth $q \ge K_{\min}$ (WRED) | Rewrites IP ECN bits to 11 (CE) and forwards packet normally | `rx_ecn_marked_prio3` |
 | **2b. PFC backstop** | Switch ingress/egress (CP) | Ingress buffer crosses XOFF (49,152 B) | Sends 64 B `0x8808` XOFF (65,535 quanta) to link partner | `tx_pfc_prio3` / `rx_pfc_prio3` |
 | **3. CNP feedback** | Receiver NIC (NP) | Receives RoCEv2 packet with ECN = 11 | Sends CNP (BTH opcode 129 / `0x81`, ECN 01, DSCP 48) to sender | `np_ecn_marked_roce_packets` |
 | **4. Rate cut & recovery** | Sender NIC (RP) | Receives CNP or recovery timer fires | Cuts $R_c \leftarrow R_c(1 - \alpha/2)$, then runs Fast / AI / HAI recovery | `np_cnp_handled`, `rp_current_rate`, `rp_byte_reset` |
@@ -339,9 +341,9 @@ Before you change any marking threshold, check that the sender's counters show i
 
 ### 4.1 The 5-step hop-by-hop PFC propagation chain
 
-When DCQCN cannot drain a congested downstream link fast enough, or when a receiver adapter hangs, PFC propagates backward across the fabric. That backpressure builds a pause tree. The tree freezes upstream spine and leaf queues, and it halts innocent GPU jobs that share those transit links.
+When DCQCN cannot drain a congested downstream link fast enough, or when a receiver adapter hangs, PFC propagates backward across the fabric. That backpressure builds a pause tree. The tree freezes upstream spine and leaf queues, and it halts unrelated GPU jobs that share those transit links.
 
-PFC moves backward through a strict five-step hardware chain. First, a transit switch such as SpineA receives a PFC XOFF frame on its egress interface facing LeafC or LeafD. Second, SpineA pauses transmission on that egress Queue 3 for the requested quanta duration. Third, packets from LeafA and LeafB keep arriving at SpineA for that paused queue. So SpineA's own ingress buffer for Priority 3 fills and breaches its XOFF threshold. Fourth, that ingress port sends a new PFC XOFF frame upstream toward LeafA and LeafB. Fifth, the chain repeats hop by hop until LeafA pauses the source server GPU101. That pause freezes all Priority 3 traffic on the affected branch, including innocent flows from GPU103 on LeafB.
+PFC moves backward through a strict five-step hardware chain. First, a transit switch such as SpineA receives a PFC XOFF frame on its egress interface facing LeafC or LeafD. Second, SpineA pauses transmission on that egress Queue 3 for the requested quanta duration. Third, packets from LeafA and LeafB keep arriving at SpineA for that paused queue. So SpineA's own ingress buffer for Priority 3 fills and breaches its XOFF threshold. Fourth, that ingress port sends a new PFC XOFF frame upstream toward LeafA and LeafB. Fifth, the chain repeats hop by hop until LeafA pauses the source server GPU101. That pause freezes all Priority 3 traffic on the affected branch, including unrelated flows from GPU103 on LeafB.
 
 When you trace a pause tree, follow the chain one hop at a time, since the freeze spreads along that same path. Suppose you see a pause on one hop. The next step is to check the hop upstream of it.
 
@@ -364,10 +366,10 @@ The table lists what triggers each stage and what it does to the rest of the fab
 
 | Watchdog stage | Trigger condition | Switch hardware actions | Impact on upstream fabric (LeafA, LeafB, GPU101, GPU103) |
 |---|---|---|---|
-| **1. Detection** | Port/queue remains paused by incoming XOFF frames for $\ge T_\{\text`{detect}`}$ (e.g., 100 ms; storm tested at 150 ms) | Marks the port on SpineA facing LeafC as experiencing an abnormal PFC storm and increments watchdog storm counters | Identifies the stuck branch before upstream ingress buffers lock the entire spine tier |
+| **1. Detection** | Port/queue remains paused by incoming XOFF frames for $\ge T_{\text{detect}}$ (e.g., 100 ms; storm tested at 150 ms) | Marks the port on SpineA facing LeafC as experiencing an abnormal PFC storm and increments watchdog storm counters | Identifies the stuck branch before upstream ingress buffers lock the entire spine tier |
 | **2a. Mitigation (Drop mode — most common)** | Watchdog storm state active on queue | **(1)** Discards all packets already queued in the output queue; **(2)** discards new packets arriving for that output queue; **(3)** discards incoming pause frames from the same priority group | **Stops upstream pause propagation:** SpineA clears its buffer and never sends XOFF to LeafA or LeafB, isolating the blast radius to the broken LeafC -> GPU102 sink |
 | **2b. Mitigation (Forward mode)** | Watchdog storm state active when configured for forward | Ignores received PFC frames on the port and forcefully forwards both queued and newly arriving packets downstream | Drains SpineA's buffer without pausing upstream hops, pushing packets toward LeafC |
-| **3. Restoration** | Received PFC pause frames remain below threshold for $\ge T_\{\text`{restore}`}$ (e.g., 200 ms quiet window; tested at 250 ms) | Lifts mitigation drops, un-pauses the queue, and restores normal IEEE 802.1Qbb lossless behavior | Fabric seamlessly returns to lossless RoCEv2 operation once the downstream fault clears |
+| **3. Restoration** | Received PFC pause frames remain below threshold for $\ge T_{\text{restore}}$ (e.g., 200 ms quiet window; tested at 250 ms) | Lifts mitigation drops, un-pauses the queue, and restores normal IEEE 802.1Qbb lossless behavior | Fabric seamlessly returns to lossless RoCEv2 operation once the downstream fault clears |
 
 You can read the table row by row, and each stage hands off to the next. Drop mode is the most common mitigation. It contains the damage, because SpineA never sends XOFF to LeafA or LeafB. Forward mode works differently. It keeps packets moving toward LeafC and never pauses the upstream hops.
 
@@ -519,7 +521,7 @@ Each remedy points at one layer, so you can fix that layer and leave the others 
 
 You can run this lab on a local workstation or on a Nebius GPU node. It uses our self-checking Python simulator, so no live switch hardware is required. The commands for live switches and adapters in the previous section are marked `(untested here)`.
 
-Run the Chapter 12.4 verification lab, `code/part12/pfc_ecn_dcqcn_lab.py`. It executes 28 deterministic checks against the protocol model in `code/part12/pfc_ecn_dcqcn.py`.
+Run the Chapter 12.4 verification lab, `code/part12/pfc_ecn_dcqcn_lab.py`. It executes 28 checks against the protocol model in `code/part12/pfc_ecn_dcqcn.py`.
 
 ```bash
 python3 code/part12/pfc_ecn_dcqcn_lab.py
@@ -569,7 +571,7 @@ Each PASS line names the rule it checks, so you can find the matching section of
 
 1. **Reading rising PFC counters as proof that the fabric is healthy.** PFC is a reactive, last-resort safety net. Sustained `rx_pfc_prio3` or `tx_pfc_prio3` activity means something failed to drain the queue before XOFF. That failure may sit in the ECN and DCQCN loop, in the routing, or in the destination capacity.
 2. **Enabling PFC on several priorities, or on Priority 0.** When PFC is enabled on Priority 0, SSH, BGP and Kubernetes control traffic sits inside a pause domain. Keep PFC restricted to the dedicated lossless RoCE priority, Priority 3, and you keep management traffic out of the pause domain.
-3. **Setting $K_`{\max}`$ at or above XOFF, or setting XOFF equal to BufferMax.** If $K_`{\max}`$ is at or above XOFF, PFC pauses fire before WRED ECN marking reaches 100 percent. If XOFF equals the priority buffer size, there is zero headroom. In-flight cable bytes then overflow the queue after XOFF is sent.
+3. **Setting $K_{\max}$ at or above XOFF, or setting XOFF equal to BufferMax.** If $K_{\max}$ is at or above XOFF, PFC pauses fire before WRED ECN marking reaches 100 percent. If XOFF equals the priority buffer size, there is zero headroom. In-flight cable bytes then overflow the queue after XOFF is sent.
 4. **Assuming switch ECN marks prove that senders are slowing down.** A switch that increments `rx_ecn_marked_prio3` has only proven that the Congestion Point marked the packet. To confirm the reverse CNP loop, verify `np_ecn_marked_roce_packets` on the receiver. Then check `np_cnp_handled` and `rp_current_rate` on the sender.
 5. **Tuning ECN or PFC thresholds after ECN marks drop to zero, or after one job slows down.** A drop of ECN marks to zero often means a QoS classification bug moved RoCEv2 traffic into a lossy best-effort queue. A single-process throughput drop with `RETRY_EXC_ERR` completions is frequently a wrong local RDMA device or GID binding.
 
@@ -579,21 +581,14 @@ Before you touch a threshold, confirm that traffic lands in the right queue and 
 
 ## Exercises
 
-Each exercise tests one part of the chapter, and you can check your work against the matching section. Keep your units straight, since bytes, bit-times and nanoseconds all appear in these exercises. The first exercise covers the frame layout and the quanta timing. The second covers headroom sizing and the buffer audit. The third covers WRED zones and threshold ordering. The fourth covers the Reaction Point, and the fifth covers the Watchdog and the newer standards. The last exercise asks you to read production telemetry.
+Each exercise covers one part of the chapter, and you can check your work against the matching section. Keep your units straight, because bytes, bit-times, and nanoseconds all appear. Exercises 1 through 4 are arithmetic, so the tables and equations in Sections 2 and 3 let you check each answer.
 
-1. Decode a maximum-pause PFC XOFF frame and calculate its timing. A congested switch port sends an 802.1Qbb XOFF frame for Priority 3 with the maximum pause value of 65,535 quanta. State the exact wire frame size, destination MAC, EtherType, control opcode, 16-bit Class Enable Vector in hex, and Time field size in octets. Then calculate the total bit-times and the exact pause duration in microseconds across 100 Gbps to 800 Gbps links. Finally, state the pause time value an explicit XON frame carries.
-
-2. Work out the flight-time headroom and audit the buffer. Using `calculate_flight_headroom_bytes`, compute the minimum flight-time headroom in bytes at 400 Gbps for a 2 m DAC cable and for a 500 m optical fiber. Then audit the output of `mlnx_qos -i swp12` and calculate the exact headroom and hysteresis, in bytes and in percentages. Finally, explain what fails when headroom or hysteresis is zero.
-
-3. Compute the WRED probability curve and check the threshold ordering. A switch queue has $K_`{\min}`$ at 150 KB, $K_`{\max}`$ at 1,500 KB, $P_`{\max}`$ at 1.0 and XOFF at 2,000 KB. Calculate the exact WRED marking probability and zone at 100 KB, 487.5 KB, 825 KB and 1,600 KB. Then explain why setting $K_`{\max}`$ to 55,000 B, on a queue where XOFF is 49,152 B, breaks DCQCN.
-
-4. Trace a DCQCN rate cut and its recovery. A 400.0 Gbps RoCEv2 sender receives a CNP on UDP port 4791. Compute the new current rate $R_c$, target rate $R_t$ and updated $\alpha$, first with an initial $\alpha$ of 1.0 and then with 0.5. Finally, trace Fast Recovery at step 1, Additive Increase at step 6 and Hyper-Additive Increase at step 9.
-
-5. Trace the PFC Watchdog and compare the newer signaling. Trace the three-stage PFC Watchdog on SpineA while a downstream host floods XOFF frames. Contrast the three Drop-mode actions with Forward mode. Then compare how Source Flow Control and Congestion Signaling improve on ECN and hop-by-hop PFC.
-
-6. Diagnose the production telemetry. Diagnose the four production telemetry snapshots in our failure table. Compare `swp3` with `swp7`, `swp9`'s weak RP throttling with its synchronized rate oscillation, Lab 03's bounded contention, and Lab 04's rail misselection.
-
-Exercises 1 through 4 are arithmetic, so you can check each answer against the tables and equations in Sections 2 and 3.
+1. Read a maximum-pause XOFF frame. A congested switch port sends an 802.1Qbb XOFF frame for Priority 3 with a pause value of 65,535 quanta. Give the destination MAC, the EtherType, and the control opcode. Give the Class Enable Vector in hex. Then calculate the pause duration in microseconds at 100 Gbps and at 800 Gbps, and say what pause value an XON frame carries.
+2. Size the headroom. Use `calculate_flight_headroom_bytes` to compute the minimum flight-time headroom at 400 Gbps for a 2 m DAC cable. Do the same for a 500 m fiber. Then read the output of `mlnx_qos -i swp12` and work out the headroom and hysteresis, first in bytes and then as percentages. Finally, say what fails when either one is zero.
+3. Check the WRED marking curve. A switch queue has K_min at 150 KB, K_max at 1,500 KB, P_max at 1.0, and XOFF at 2,000 KB. Calculate the marking probability and the zone at 100 KB, 487.5 KB, 825 KB, and 1,600 KB. Then explain why a K_max of 55,000 B breaks DCQCN on a queue whose XOFF is 49,152 B.
+4. Trace a DCQCN rate cut. A 400.0 Gbps RoCEv2 sender receives a CNP on UDP port 4791. Compute the new current rate R_c, the target rate R_t, and the updated alpha, starting from an alpha of 1.0. Repeat with an alpha of 0.5. Then trace Fast Recovery at step 1, Additive Increase at step 6, and Hyper-Additive Increase at step 9.
+5. Trace the PFC Watchdog. A downstream host floods SpineA with XOFF frames. Trace the three stages of the PFC Watchdog on SpineA. Then contrast the three Drop-mode actions with Forward mode, and say how Source Flow Control and Congestion Signaling improve on hop-by-hop PFC.
+6. Read the production telemetry. Compare the two switch ports `swp3` and `swp7` in the failure table. Then compare `swp9`, where the Reaction Point throttles weakly and the rate oscillates in sync. Finish with the bounded contention in Lab 03 and the wrong rail in Lab 04.
 
 ---
 
@@ -698,7 +693,7 @@ Red Zone (q >= 1,500 KB, e.g., 1,600 KB):    P_mark = 1.0 (100% of packets marke
 
 <details><summary>**10. Why must DCQCN thresholds strictly obey `XON < K_min < K_max < XOFF < BufferMax`?**</summary>
 
-Keeping $K_`{\min}` < K_`{\max}` < \text`{XOFF}`$ lets WRED ECN marking start early and reach 100 percent before the buffer hits XOFF. That gives the DCQCN loop time to slow the offending Queue Pairs without firing class-wide PFC pauses. Keeping $\text`{XOFF}` < \text`{BufferMax}`$ preserves lossless flight-time headroom, and $\text`{XON}` < \text`{XOFF}`$ provides drain hysteresis.
+Keeping $K_{\min} < K_{\max} < \text{XOFF}$ lets WRED ECN marking start early and reach 100 percent before the buffer hits XOFF. That gives the DCQCN loop time to slow the offending Queue Pairs without firing class-wide PFC pauses. Keeping $\text{XOFF} < \text{BufferMax}$ preserves lossless flight-time headroom, and $\text{XON} < \text{XOFF}$ provides drain hysteresis.
 </details>
 
 <details><summary>**11. How does a DCQCN Reaction Point cut its transmission rate upon receiving a CNP, and what is the maximum single-step cut?**</summary>
@@ -730,9 +725,9 @@ Suppose a transit switch receives a PFC XOFF frame on an egress port. You can fo
 
 <details><summary>**14. What are the three stages of the PFC Watchdog, and what three actions does Drop mitigation perform?**</summary>
 
-1. **Detection:** The Watchdog monitors the pause duration per port. If the port stays paused for at least $T_\{\text`{detect}`}$, such as 100 ms, it flags a PFC storm.
+1. **Detection:** The Watchdog monitors the pause duration per port. If the port stays paused for at least $T_{\text{detect}}$, such as 100 ms, it flags a PFC storm.
 2. **Mitigation:** In Drop mode, the switch discards all packets already in the output queue, and it discards new packets arriving for that queue. It also discards incoming pause frames for that priority group, so pauses do not propagate upstream. In Forward mode, the switch ignores received PFC frames and forwards packets.
-3. **Restoration:** Once received PFC frames stay below the threshold for at least $T_\{\text`{restore}`}$, such as 200 ms, the queue is un-paused and lossless Ethernet resumes.
+3. **Restoration:** Once received PFC frames stay below the threshold for at least $T_{\text{restore}}$, such as 200 ms, the queue is un-paused and lossless Ethernet resumes.
 </details>
 
 <details><summary>**15. How does Source Flow Control (SFC, IEEE 802.1Qdw) differ from both ECN and traditional hop-by-hop PFC?**</summary>
@@ -777,7 +772,7 @@ All primary textbook and Volume 09 sources mapped to Chapter 12.4 were read in f
 Primary Sources & Mapped Files (brief.py 12.4 & check_coverage.py 12.4):
   1. Book Sources (TOON-RAG Corpus):
      - AI Data Center Network Design and Technologies (ai-data-center-network-design-and-technologies), Chapter 7 (ADC 7):
-       * 7. RoCEv2 Transport and Congestion Management (/var/folders/5k/hkmswyf95w5b0y7_xc87ddf80000gn/T/opencode/adc7.txt)
+       * 7. RoCEv2 Transport and Congestion Management
        * Figures 7-1..7-6: All 6 Clos congestion points (CP1..CP6)
        * Table 7-1 & Figures 7-7..7-9: ECN bits 00/01/10/11, RoCEv2 UDP port 4791, CNP frame with ECN 01 and IB BTH opcode 129 / 10000001 / 0x81
        * Figures 7-10..7-14: IEEE 802.1Qbb PFC 64 B frame, dst 01:80:c2:00:00:01, src 10:0e:7e:b7:a7:1b, EtherType 0x8808, opcode 0x0101, Class 3 vector 0x0008, 65535 XOFF vs 0 XON
@@ -808,8 +803,8 @@ Primary Sources & Mapped Files (brief.py 12.4 & check_coverage.py 12.4):
 ### Explicitly labelled inferences
 
 - The flight-time headroom comparison of 49,064 B for a 2 m DAC cable versus 298,064 B for a 500 m optical fiber at 400 Gbps applies the standard IEEE 802.1Qbb propagation formula from Chapter 2.19 and `code/part12/pfc_ecn_dcqcn.py`.
-- The WRED numerical example with $K_`{\min}`$ at 150 KB and $K_`{\max}`$ at 1,500 KB uses the Spectrum-X and ConnectX threshold pair from Volume 06 Chapter 1 to make the Green, Yellow, and Red zones concrete.
+- The WRED numerical example with $K_{\min}$ at 150 KB and $K_{\max}$ at 1,500 KB uses the Spectrum-X and ConnectX threshold pair from Volume 06 Chapter 1 to make the Green, Yellow, and Red zones concrete.
 
 ### Not verified on live hardware
 
-- All `mlnx_qos`, `ethtool -S` (`LINK_UP`, `Spine1`, `EWMA`, `half-RTT`, `PLB`, `rx_pfc_prio3=41823`, `tx_pfc_prio3=41810`, `rx_ecn_marked_prio3=190`, `tx_pfc_prio3=0`, `rx_ecn_marked_prio3=2200`, `rp_current_rate=98Gbps`, and `10.0Gbps`, `40.0Gbps`, `200.0Gbps`, `280.0Gbps`, `300.0Gbps`, `335.0Gbps`, `400.0Gbps`, `18000` metrics), `mlx5_cnp_stats`, `rdma link`, `ibv_devinfo`, and `ib_write_bw` commands are marked `(untested here)` and were not executed on live switch or ConnectX hardware in this environment.
+- None of the `mlnx_qos`, `ethtool -S`, `mlx5_cnp_stats`, `rdma link`, `ibv_devinfo`, or `ib_write_bw` commands in this chapter were executed on live switch or ConnectX hardware. They are marked `(untested here)`. The counter values shown, such as `rx_pfc_prio3=41823` and `rp_current_rate=98Gbps`, are sample figures from the source notes.

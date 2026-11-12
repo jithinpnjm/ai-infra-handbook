@@ -142,7 +142,7 @@ Those few hundred nanoseconds matter less than they seem. When the network is on
 
 In AI training, both types are often used together. Local storage can run a file system that is backed by an NVMe-oF system. Parallel file systems let many nodes share the same files, and they keep extra metadata. That metadata helps during training and when regular snapshots of a training job are taken. If you run both, you need to know where each file lives.
 
-Putting the front-end LAN to work for storage would cut infrastructure cost. The book notes that AI data centers rarely do this. They deploy dedicated front-end and backend storage systems and storage networks instead. Keep the LAN for users, and give training data its own network.
+Putting the front-end LAN to work for storage would cut infrastructure cost. *AI Data Center Network Design and Technologies* notes that AI data centers rarely do this. They deploy dedicated front-end and backend storage systems and storage networks instead. Keep the LAN for users, and give training data its own network.
 
 ### 1.4 Checkpoints and Fast Writes During Training
 
@@ -152,7 +152,7 @@ Storage work should not steal time from the GPUs. As you plan a cluster, keep th
 
 ### 1.5 Redundancy, Path Diversity, and Inter-Site Replication
 
-Storage needs the same care as the compute network. Each storage network must offer node and link redundancy. Active storage A and backup storage B should form two paths to the same data. If path A fails, path B must carry the full load without losing IOPS, bandwidth, or latency. The book calls this path diversity. When you audit a design, check each path on its own.
+Storage needs the same care as the compute network. Each storage network must offer node and link redundancy. Active storage A and backup storage B should form two paths to the same data. If path A fails, path B must carry the full load without losing IOPS, bandwidth, or latency. This is called path diversity. When you audit a design, check each path on its own.
 
 Replication across sites follows the same rule. Both storage domains need local site-level redundancy, plus inter-site replication after each read or write. Inter-site traffic often uses a different transport. When Fibre Channel storage runs inside a site, Fibre Channel over IP, or FCoIP, is a common choice for replication. Dedicated site-to-site replication gateways still play a role.
 
@@ -164,17 +164,19 @@ NVMe over TCP takes a different path for long-distance replication. It can run o
 
 Physical separation uses two independent sets of switches, and the cost is high. Logical separation keeps one physical fabric and splits it into two paths. In a physical design, each ToR switch connects to only NIC A or only NIC B. In a logical design, leaves 1 and 2 carry separate dark and light gray fabric connections. The storage SSD controllers follow the same split, either physically or logically. When you draw the design, show both versions on one page so the difference is visible.
 
-Logical separation usually runs an EVPN-VXLAN overlay. Fabric A and fabric B control traffic can use two separate RT5 EVPN instances. The same bridging domain can also carry two separate MAC-VRF instances. Each instance gets its own IP address at the VXLAN tunnel termination point. Separate underlay paths carry each instance, shown as dark gray and light gray. Replication between sites can use the same idea, with a Path A and a Path B through controlled overlay-to-underlay paths.
+Logical separation usually runs an EVPN-VXLAN overlay. Fabric A and fabric B control traffic can use two separate RT5 EVPN instances. The same bridging domain can also carry two separate MAC-VRF instances. Each instance gets its own IP address at the VXLAN tunnel termination point, and a separate underlay path carries each one. Replication between sites can use the same idea, with a Path A and a Path B through controlled overlay-to-underlay paths.
 
 ### 1.7 Hot and Cold Data Across On-Premises Storage and Object Storage
 
-Not all data is accessed the same way. The book splits it into hot data and cold data. In a hybrid design, hot data stays on on-premises backend servers. Those servers connect to a storage IP fabric or an InfiniBand fabric. Cold data sits off-premises in object storage. You decide which tier a dataset belongs in, based on how often you read it.
+Not all data is accessed the same way, so the source book splits it into hot data and cold data. In a hybrid design, hot data stays on on-premises backend servers. Those servers connect to a storage IP fabric or an InfiniBand fabric. Cold data sits off-premises in object storage. You decide which tier a dataset belongs in by how often you read it.
 
 Applications reach both tiers with S3 calls over an HTTPS API. In hybrid deployments, that means TLS over HTTP using the S3 REST API. A framework such as TensorFlow or PyTorch still uses plain POSIX file calls. The parallel file system understands those calls. It moves files between the fast local SSD flash tier, which uses NVMe-o-PCIe, and a scale-optimized tier in the cloud. The ML developer does not need to change the code. For example, a training script keeps the same POSIX calls whichever tier holds the file.
 
-Figure 9-8 shows this hybrid layout. At the bottom, an artificial intelligence server has storage network interface cards A and B. Network interface card A connects to leaf1, and network interface card B connects to leaf2. Both connections support read and write operations. Two fabrics carry the on-premises traffic. Fabric A holds leaves 1 and 2 and connects to spine 1 and spine 2. Fabric B holds spines 3 and 4, with leaves 3 and 4 to on-premises storage arrays. Leaves 5 and 6 reach a firewall cluster. Two data center gateways then connect to cloud1 and cloud2 storage. Fabric B also carries spine3 and spine4, with leaf3 and leaf4 connected to both. Cloud-based replication keeps snapshots of the local training cluster from being lost.
+Figure 9-8 shows a hybrid layout. Each AI server has two storage network interface cards. Card A connects to leaf1 and card B connects to leaf2, so a failed leaf does not cut the server off from storage. Both connections carry reads and writes.
 
-The cloud path is not the same as the local path. Access goes through the firewall cluster, so an extra security tunnel is needed. The book names IPsec or HTTPS for that tunnel. Plan for that extra layer before you rely on the cloud copy.
+On the on-premises side, Fabric A holds leaves 1 and 2 and connects to spines 1 and 2. Fabric B holds spines 3 and 4, with leaves 3 and 4 leading to the storage arrays. Leaves 5 and 6 reach a firewall cluster, and two data center gateways connect on to cloud1 and cloud2 storage. Replication to the cloud keeps snapshots of the local training cluster from being lost.
+
+The cloud path is not the same as the local path. Access goes through the firewall cluster, so an extra security tunnel is needed. *AI Data Center Network Design and Technologies* names IPsec or HTTPS for that tunnel. Plan for that extra layer before you rely on the cloud copy.
 
 ---
 
@@ -543,7 +545,7 @@ Most UEC IP fabrics keep a high port radix from leaf to spine. Those switches mu
 
 Existing 400 Gbps and 800 Gbps switches with enough Ethernet and IP ports can therefore carry UEC, at least for the AI Base profile. UEC-ready switches are mostly Ethernet switches that parse deep enough to read some UEC fields for load balancing. With JobID or Resource Index in the packet, the source UDP port must join the load-balancing hash. RoCEv2's QPair-based balancing no longer works, because the BTH is gone. So when you move a RoCEv2 fabric to UET, you must change the hash configuration too.
 
-Most networks will keep leaf-spine-super spine designs with more 800 Gbps, 1.6 Tbps, and 3.2 Tbps ports. The book expects architectures to move toward DragonFly, DragonFly+, and Torus. It also expects a shift toward scale-up systems rather than scale-out. The change is mostly in switch software features, not in the design itself.
+Most networks will keep leaf-spine-super spine designs with more 800 Gbps, 1.6 Tbps, and 3.2 Tbps ports. *AI Data Center Network Design and Technologies* expects architectures to move toward DragonFly, DragonFly+, and Torus. It also expects a shift toward scale-up systems rather than scale-out. The change is mostly in switch software features, not in the design itself.
 
 The first UEC networks will likely share the fabric with existing RoCEv2 servers. The same ToR may serve UEC-ready servers and RoCEv2 GPU servers. RoCEv2 servers keep the lossless approach. UEC-ready servers can use best-effort delivery and rely on end-to-end control through RCCC or NSCC. You can run both kinds of server on one ToR, but you must plan the queues.
 
@@ -1014,12 +1016,12 @@ Exercise Input Parameters Reference:
 - Exercise 6: UALink 1.0 8 stations x 4 lanes x 200 Gbps = 32 lanes = 6,400 Gbps (6.4 Tbps); 4B TL sector, 32B half-flit, 64B TL flit, 640B DL flit (10 TL flits + 8B CRC), 680B wire unit (+ 40B FEC) in RS(544, 514) 10-bit PCS codeword; GVA -> NPA (10-bit ACC-ID) -> SPA
 ```
 
-1. **Packing NVMe-o-TCP PDUs into a jumbo frame, then tracing the NVMe-o-RDMA bring-up.** Use `calculate_nvme_tcp_pdu_packing()` and `trace_nvme_of_session()` in `code/part12/storage_uec_scaleup.py`. First, work out the byte size of one NVMe-o-TCP in-capsule write PDU. Then count how many of those PDUs fit inside one MTU 9000 TCP segment. Last, list the three ordered L4 ports and the `RDMA_PRTYPE` values that the NVMe-o-RDMA session passes through during bring-up.
-2. **Sizing InfiniBand storage by LID and CBFC credits.** Look at the 32,000-node and 60,000-node storage clusters from the table above, and judge native InfiniBand for each. Find the bit width of an LRH LID, and decide which cluster needs inter-subnet routing through the GRH. Then calculate the exact number of 64-byte LLH CBFC credits that one 4,096-byte block needs, and state the maximum VLs per port.
-3. **Comparing UET-over-UDP with UET-over-IP, and Go-Back-N with selective retry.** Put the two encapsulations side by side. Compare their outer IP protocol numbers, their UDP destination ports, their entropy carrier fields, and their switch packet-parse depth. Then count how many packets get retransmitted when packet 1 of a 64-packet window is lost, first under RoCEv2 Go-Back-N and then under UET selective retry.
-4. **Sizing RCCC credits and CBFC virtual channels.** For the 64 KiB RCCC payload above, calculate how many 256-byte RCCC credits the receiver grants in its 24-bit ACK field. Then compute the largest window those 24 bits can represent. Finally, state how many Virtual Channels a UEC CBFC port supports compared with InfiniBand VLs, and name the PCS message that carries the credit updates.
-5. **Measuring SUE-T header efficiency and mapping the AXI channels.** Use `evaluate_suet_scaleup_fabric()` to work out the total frame size and payload efficiency of a 256-byte payload. Do it once for a single-hop frame and once for a two-hop frame. Then explain how SUE-T maps the 5 ARM AXI 4.0 channels onto `VC0` and `VC1`, and how that differs from the FIFO interface.
-6. **Following one UALink 1.0 transfer from lanes to address translation.** Take an accelerator with 8 UALink 1.0 stations. Calculate its total lanes and its aggregate bandwidth per xPU. Give the exact byte sizes of a TL sector, a TL half-flit, a TL flit, a DL flit, and the on-wire unit with FEC. Then trace the address translation from GVA to NPA to SPA.
+1. Jumbo-frame packing, then session bring-up. Use `calculate_nvme_tcp_pdu_packing()` and `trace_nvme_of_session()` in `code/part12/storage_uec_scaleup.py`. Work out the byte size of one NVMe-o-TCP in-capsule write PDU. Count how many of them fit in one MTU 9000 TCP segment. Then list the three L4 ports, in order, that an NVMe-o-RDMA session passes through during bring-up.
+2. InfiniBand storage at 32,000 and 60,000 nodes. Take the two clusters from the parameter block and judge native InfiniBand for each. Find the bit width of an LRH LID, and decide which cluster needs routing between subnets through the GRH. Then calculate how many 64-byte LLH CBFC credits one 4,096-byte block needs, and state the maximum number of VLs per port.
+3. UET over UDP against UET over IP. Compare the two encapsulations by their outer IP protocol number, UDP destination port, entropy field, and switch parse depth. Then count the packets retransmitted when packet 1 of a 64-packet window is lost. Do it once under RoCEv2 Go-Back-N and once under UET selective retry.
+4. Credits and virtual channels. For the 64 KiB RCCC payload, calculate how many 256-byte credits the receiver grants in its 24-bit ACK field. Then compute the largest window those 24 bits can represent. Finally, state how many Virtual Channels a UEC CBFC port supports compared with InfiniBand VLs, and name the PCS message that carries the credit updates.
+5. SUE-T header cost. Use `evaluate_suet_scaleup_fabric()` on a 256-byte payload. Give the total frame size and the payload efficiency for a single-hop frame. Repeat for a two-hop frame. Then explain how SUE-T maps the 5 ARM AXI 4.0 channels onto `VC0` and `VC1`, and how that differs from the FIFO interface.
+6. One UALink 1.0 transfer. An accelerator has 8 UALink 1.0 stations. Calculate its total lanes and its bandwidth per xPU. Give the byte size of a TL sector, a TL half-flit, a TL flit, a DL flit, and the wire unit with FEC. Then trace the address translation from GVA to NPA to SPA.
 
 ---
 
@@ -1182,5 +1184,5 @@ Primary Book Sources and Verification Notes for Chapter 12.21:
 2. Verification and honest-scope note:
    - Companion simulation and 25 self-checks (code/part12/storage_uec_scaleup.py and code/part12/storage_uec_scaleup_lab.py) verified locally (25 passed, 0 failed)
    - Cluster nvme, tcpdump, fi_info, ibstat, and gdscheck commands marked (untested here)
-   - Naming note: the book calls the middle UEC profile AI Advanced in its working-group discussion and AI Full elsewhere. This chapter uses AI Full.
+   - Naming note: the source book calls the middle UEC profile AI Advanced in its working-group discussion and AI Full elsewhere. This chapter uses AI Full.
 ```

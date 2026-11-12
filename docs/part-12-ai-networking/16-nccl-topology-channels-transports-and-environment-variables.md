@@ -61,7 +61,13 @@ Before you start here, read Chapter 12.15 on NCCL collectives and algorithms. Th
 
 ### Outcomes
 
-When you finish this chapter, you will be able to follow NCCL's topology discovery through its three phases. You will also read the distance labels that `nvidia-smi topo -m` prints, which tell you how far apart two GPUs sit. You will know how to write and audit `NCCL_TOPO_DUMP_FILE` and `NCCL_TOPO_FILE` XML overrides for virtualized or multi-root servers. The chapter also works through the arithmetic: channel counts, subring parallelism, thread-block occupancy on each Streaming Multiprocessor, `NCCL_BUFFSIZE` memory footprints, and the savings from zero-copy registration. Finally, you will predict which transport NCCL picks among P2P, SHM, NET/IB, NET/Socket, NVLS, and CollNet, apply the interface filter grammar, and stop Kubernetes pods from being rejected with `TopologyAffinityError`.
+When you finish this chapter, you will be able to do the following.
+
+- Follow NCCL's topology discovery through its three phases, and read the distance labels that `nvidia-smi topo -m` prints.
+- Write and audit `NCCL_TOPO_DUMP_FILE` and `NCCL_TOPO_FILE` XML overrides for virtualized or multi-root servers.
+- Work out channel counts, subring parallelism, the thread blocks each channel takes on a Streaming Multiprocessor, the memory `NCCL_BUFFSIZE` reserves, and the savings from zero-copy registration.
+- Predict which transport NCCL picks among P2P, SHM, NET/IB, NET/Socket, NVLS, and CollNet, and apply the interface filter grammar.
+- Stop Kubernetes pods from being rejected with `TopologyAffinityError`.
 
 If the prerequisites feel shaky, go back to Chapter 12.15 before you start the topology work.
 
@@ -91,7 +97,7 @@ Each row in the table is one of the seven checks. The last column lists what NCC
 
 A collective planner needs a way to measure distance. Without one, it cannot tell whether two devices share a dedicated PCIe switch or sit on opposite CPU sockets. Both `nvidia-smi topo -m` and the internal NCCL graph solver (`ncclTopoGetSystem` and `ncclTopoComputePaths`) solve this problem. They sort every GPU-to-GPU and GPU-to-NIC path into seven ordered distance tiers. Each hop gets a bandwidth-weighted cost, so the graph search always prefers edges that are cheap and fast:
 
-$$\text`{Cost}`(\text`{LOC}`) < \text`{Cost}`(\text`{NVL}`) < \text`{Cost}`(\text`{C2C}`) < \text`{Cost}`(\text`{PIX}`) < \text`{Cost}`(\text`{PXB}`) < \text`{Cost}`(\text`{PHB}`) < \text`{Cost}`(\text`{SYS}`)$$
+$$\text{Cost}(\text{LOC}) < \text{Cost}(\text{NVL}) < \text{Cost}(\text{C2C}) < \text{Cost}(\text{PIX}) < \text{Cost}(\text{PXB}) < \text{Cost}(\text{PHB}) < \text{Cost}(\text{SYS})$$
 
 Read that chain from left to right. Each tier costs more than the one before it. The diagram below shows a two-socket server, with its GPUs, NICs, and the links between them.
 
@@ -224,17 +230,17 @@ Treat the channel count as an SM budget you spend carefully. Change it only when
 
 When engineers raise channel counts or buffer sizes blindly across several process groups, jobs often crash with out-of-memory errors. Three environment variables control channel parallelism and per-channel staging memory. The variables `NCCL_MIN_NCHANNELS` and `NCCL_MAX_NCHANNELS` clamp how many channels NCCL allocates per communicator:
 
-$$C_\{\text`{active}`} = \max\!\left(\text`{NCCL\_MIN\_NCHANNELS}`,\; \min\!\left(\text`{NCCL\_MAX\_NCHANNELS}`,\; C_\{\text`{auto}`}\right)\right)$$
+$$C_{\text{active}} = \max\!\left(\text{NCCL\_MIN\_NCHANNELS},\; \min\!\left(\text{NCCL\_MAX\_NCHANNELS},\; C_{\text{auto}}\right)\right)$$
 
-Read the formula from the inside out. The automatic count is first capped at the maximum. If the result falls below the minimum, it is raised to the minimum. On NVSwitch systems, NCCL tunes $C_\{\text`{auto}`}$ on its own, based on topology and message size. Leave the bounds at their defaults unless a profile shows either under-used links or compute SMs starving during overlapped execution.
+Read the formula from the inside out. The automatic count is first capped at the maximum. If the result falls below the minimum, it is raised to the minimum. On NVSwitch systems, NCCL tunes $C_{\text{auto}}$ on its own, based on topology and message size. Leave the bounds at their defaults unless a profile shows either under-used links or compute SMs starving during overlapped execution.
 
-The variable `NCCL_BUFFSIZE` sets the size in bytes of the internal FIFO communication buffer. NCCL allocates that buffer in GPU HBM, once for each peer slot in each channel. A ring communicator gives every channel $P_\{\text`{peers}`} = 2$ peer buffer slots. Those two slots are the send neighbor and the receive neighbor on the ring. The total channel buffer HBM per communicator is therefore:
+The variable `NCCL_BUFFSIZE` sets the size in bytes of the internal FIFO communication buffer. NCCL allocates that buffer in GPU HBM, once for each peer slot in each channel. A ring communicator gives every channel $P_{\text{peers}} = 2$ peer buffer slots. Those two slots are the send neighbor and the receive neighbor on the ring. The total channel buffer HBM per communicator is therefore:
 
-$$\text`{Memory}`_\{\text`{channels}`} = C_\{\text`{active}`} \times P_\{\text`{peers}`} \times \text`{NCCL\_BUFFSIZE}`$$
+$$\text{Memory}_{\text{channels}} = C_{\text{active}} \times P_{\text{peers}} \times \text{NCCL\_BUFFSIZE}$$
 
 The table works this formula for four configurations on an H100. Read across a row: the channel count, times 2 peer slots, times the buffer size gives the HBM each communicator reserves.
 
-| Configuration Scenario | Active Channels ($C_\{\text`{active}`}$) | `NCCL_BUFFSIZE` (Bytes / MiB) | Peer Slots ($P_\{\text`{peers}`}$) | Total Channel HBM per Communicator | H100 (`132` SMs) SM Blocks Used (`%`) |
+| Configuration Scenario | Active Channels ($C_{\text{active}}$) | `NCCL_BUFFSIZE` (Bytes / MiB) | Peer Slots ($P_{\text{peers}}$) | Total Channel HBM per Communicator | H100 (`132` SMs) SM Blocks Used (`%`) |
 |---|---|---|---|---|---|
 | Default 16-Channel Ring (`4 MiB` start) | `16` | `4,194,304 B` (`4.0 MiB`) | `2` | `134,217,728 B` (**`128.0 MiB`**) | `16` SMs (**`12.12%`**) |
 | Clamped 8-Channel Ring (`8 MiB` tuned) | `8` (`MIN=4, MAX=8`) | `8,388,608 B` (`8.0 MiB`) | `2` | `134,217,728 B` (**`128.0 MiB`**) | `8` SMs (**`6.06%`**) |
@@ -405,7 +411,7 @@ On InfiniBand or RoCEv2 with NET/IB, `NCCL_IB_HCA` and `NCCL_IB_QPS_PER_CONNECTI
 
 For NET/Socket, NCCL starts `NCCL_SOCKET_NTHREADS` CPU proxy threads per interface. Each thread opens `NCCL_NSOCKS_PERTHREAD` parallel TCP sockets. NCCL enforces a built-in maximum of **64 total TCP sockets per communicator**, and the product of the two settings must stay within it:
 
-$$\text`{NCCL\_SOCKET\_NTHREADS}` \times \text`{NCCL\_NSOCKS\_PERTHREAD}` \le 64$$
+$$\text{NCCL\_SOCKET\_NTHREADS} \times \text{NCCL\_NSOCKS\_PERTHREAD} \le 64$$
 
 That product is the total socket count per communicator. Going above the ceiling wastes CPU cycles on lock contention and uses up OS file descriptors. It does not open any extra collective streams. Raise these values one step at a time, and only when NET/Socket is carrying collective payloads.
 
@@ -709,12 +715,12 @@ Read these five against your own manifests, and remove any habit you find in the
 
 The six exercises below share one set of parameters, which appears in the block at the end of this section. Each exercise names the lab function to call, so you can check your reasoning against the code.
 
-1. This one covers path scoring and the NVLink versus SYS step penalty. Using the `nvidia-smi topo -m` matrix in Section 1.2 and the parameters below, rank the seven NCCL topology levels from lowest cost to highest cost. Then compute the transfer time in milliseconds for a 500 MB tensor over NV4 and over SYS, along with the slowdown multiplier. Finally, state the SM utilization and iteration time before and after you switch to a topology-aware overlapped schedule.
-2. This one asks you to read an XML topology graph. Using `parse_nccl_topo_xml` on the dual-socket XML hierarchy below, find the exact NCCL path level for each of the four GPU-to-NIC pairs. Then say which pairs qualify for GPUDirect RDMA when `NCCL_NET_GDR_LEVEL` is set to PIX, and which qualify when it is set to PXB.
-3. This one is about channels, SM occupancy, and buffer memory. Using `evaluate_channels_and_buffers` on the 132-SM H100 configurations below, calculate the CUDA SM thread blocks used by the default 16-channel ring. Also compute the percentage of H100 SMs that it occupies, and the total channel buffer memory in MiB. Then repeat the calculation for the clamped 8-channel ring and for the zero-copy registered NVLS configuration.
-4. This one tests transport selection under environment overrides. Using `select_nccl_transport`, state the exact selected transport, the log prefix, and the GPUDirect RDMA boolean for each of the five scenarios below.
-5. This one covers interface and HCA filters and the 64-socket rule. Using `evaluate_nccl_filter` and `evaluate_socket_transport_limits`, write the exact list of matched interfaces and HCAs for each filter expression below. Then compute the total sockets for the three thread-and-socket pairs, and check each one against the 64-socket ceiling. Last, calculate the aggregate bandwidth in Tbps for two and for four 800 Gbps NICs.
-6. This one works through the Kubernetes single-NUMA-node failure. Using `evaluate_k8s_numa_pod_scheduling` on the 128-core, 8-GPU server below, show why 8 pods requesting 16 CPU cores and 1 GPU each hit `TopologyAffinityError`. State the exact free cores and free GPUs that remain on each NUMA node. Then give the maximum integer CPU core request per pod that admits all 8 pods, and explain why `NCCL_IGNORE_CPU_AFFINITY=1` is needed.
+1. How much does a slow path cost? Use the `nvidia-smi topo -m` matrix in Section 1.2 and the parameters below. Rank the seven NCCL topology levels from lowest cost to highest. Then compute the transfer time for a 500 MB tensor over NV4 and over SYS, and the slowdown between them. Finally, give the SM utilization and iteration time before and after a topology-aware overlapped schedule.
+2. Which GPU and NIC pairs can use GPUDirect RDMA? Run `parse_nccl_topo_xml` on the dual-socket XML below. Find the NCCL path level for each of the four GPU-to-NIC pairs. Then say which pairs qualify when `NCCL_NET_GDR_LEVEL` is PIX, and which when it is PXB.
+3. What does a channel cost? Run `evaluate_channels_and_buffers` on the 132-SM H100 configurations below. For the default 16-channel ring, calculate the thread blocks used, the share of H100 SMs they occupy, and the channel buffer memory in MiB. Then repeat the calculation for the clamped 8-channel ring and for the zero-copy registered NVLS configuration.
+4. Which transport will NCCL pick? Run `select_nccl_transport` on each of the five scenarios below. For each one, give the selected transport, the log prefix, and whether GPUDirect RDMA is on.
+5. Which interfaces will a filter match? Run `evaluate_nccl_filter` on each filter expression below and list the interfaces and HCAs it matches. Then run `evaluate_socket_transport_limits` on the three thread-and-socket pairs, and check each total against the 64-socket ceiling. Last, calculate the aggregate bandwidth in Tbps for two and for four 800 Gbps NICs.
+6. Why are pods rejected on a 128-core server? Run `evaluate_k8s_numa_pod_scheduling` on the 8-GPU server below. Show why 8 pods requesting 16 CPU cores and 1 GPU each hit `TopologyAffinityError`, and give the free cores and free GPUs left on each NUMA node. Then find the largest whole-number CPU request per pod that admits all 8 pods. Finally, explain why `NCCL_IGNORE_CPU_AFFINITY=1` is needed.
 
 ```text
 Exercise Input Parameters and Reference Specifications:
@@ -805,7 +811,7 @@ Zero-copy registration lets NVLS and NCCL work directly on the registered user t
 <details>
 <summary>**8. What is the recommended starting value for NCCL_BUFFSIZE, and how do you calculate the per-communicator GPU HBM footprint of channel buffers?**</summary>
 
-The default and recommended starting value is **4 MB** (`4 MiB` = `4,194,304` bytes). To get the per-communicator footprint, multiply the active channels, the peer slots, and the buffer size: $C_\{\text`{active}`} \times P_\{\text`{peers}`} \times \text`{NCCL\_BUFFSIZE}`$. For 16 channels with 2 peers each at 4 MiB, that comes to 128.0 MiB.
+The default and recommended starting value is **4 MB** (`4 MiB` = `4,194,304` bytes). To get the per-communicator footprint, multiply the active channels, the peer slots, and the buffer size: $C_{\text{active}} \times P_{\text{peers}} \times \text{NCCL\_BUFFSIZE}$. For 16 channels with 2 peers each at 4 MiB, that comes to 128.0 MiB.
 </details>
 
 <details>
@@ -860,7 +866,7 @@ Each line shows what one filter matches against that interface list.
 <details>
 <summary>**16. What is the hard upper limit on NCCL_NSOCKS_PERTHREAD * NCCL_SOCKET_NTHREADS, and which transport do those variables affect?**</summary>
 
-The product must stay at or below **64**: $\text`{NCCL\_SOCKET\_NTHREADS}` \times \text`{NCCL\_NSOCKS\_PERTHREAD}` \le 64$. That is NCCL's built-in per-communicator TCP socket limit. These two variables tune **only** the NET/Socket TCP transport. They do not touch NET/IB RDMA data paths.
+The product must stay at or below **64**: $\text{NCCL\_SOCKET\_NTHREADS} \times \text{NCCL\_NSOCKS\_PERTHREAD} \le 64$. That is NCCL's built-in per-communicator TCP socket limit. These two variables tune **only** the NET/Socket TCP transport. They do not touch NET/IB RDMA data paths.
 </details>
 
 <details>
@@ -910,7 +916,7 @@ Primary Sources Read in Full and Cited:
      2-3 minutes vs 2-3 seconds), Table 4-4 Llama 3 405B 419 interruptions (7 / 1.7% NCCL watchdog timeouts, 35 / 8.4% switch/cable,
      7 / 1.7% NIC), and NCCL_PROFILER_PLUGIN (5 callbacks, 32-bit event activation mask).
    - Distributed AI Systems (distributed-ai-systems), Chapter 2: GPU Hardware, Networking, and Parallelism Strategies
-     (/tmp/w/dai-ch2.txt). Cited for: nvidia-smi topo -m (NV18/NV12/NV4 vs PIX/PXB/PHB/SYS), numactl, and PCIe Gen4/Gen5 x16
+    . Cited for: nvidia-smi topo -m (NV18/NV12/NV4 vs PIX/PXB/PHB/SYS), numactl, and PCIe Gen4/Gen5 x16
      (31.5-64 GB/s) vs NVLink (600-1,800 GB/s).
 
 2. nvidia-devops Source Chapters Read in Full and Cited:
@@ -930,8 +936,8 @@ Primary Sources Read in Full and Cited:
      NCCL_IB_QPS_PER_CONNECTION=4, NCCL_TOPO_DUMP_FILE / NCCL_TOPO_FILE <system version="1"> XML schema (speed="400000", gdr="1"),
      and NVIDIA Network Operator (NicClusterPolicy, Multus macvlan, SriovNetworkNodePolicy numVfs: 8, mtu: 9000, vlan: 100,
      intel_iommu=on iommu=pt).
-   - Volume 02 Chapter 10 (GPU Topology, Peer Access, and Data Paths, /var/folders/5k/hkmswyf95w5b0y7_xc87ddf80000gn/T/opencode/v2_topo.txt)
-     and Volume 13 Chapter 8 (NCCL Collectives and Communication Paths, /var/folders/5k/hkmswyf95w5b0y7_xc87ddf80000gn/T/opencode/v13_ch8.txt):
+   - Volume 02 Chapter 10 (GPU Topology, Peer Access, and Data Paths)
+     and Volume 13 Chapter 8 (NCCL Collectives and Communication Paths):
      nvidia-smi topo -m 4-GPU NV4 vs SYS matrix, 500 MB (0.5 GB) transfer over NVLink (900 GB/s = 0.56 ms) vs SYS (28 GB/s = 17.86 ms /
      ~18 ms, 32.14x / > 30x slower), and post-reboot nvidia-fabricmanager failure (950 -> 310 tokens/sec, 800 GB/s -> 90 GB/s PCIe fallback).
 ```

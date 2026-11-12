@@ -23,17 +23,19 @@ lab_venue: "Nebius GPU"
 
 ## Why this matters for AI infrastructure
 
-Picture a training job where every GPU server looks healthy, yet the job keeps slowing down. To find out why, you need to know how those servers exchange data. RDMA over Converged Ethernet version 2, or RoCEv2, is the dominant transport protocol on Ethernet AI fabrics. It keeps gradient, activation, and weight buffers in sync across distributed GPU servers at line rate.
+A training job can look healthy on every GPU server and still run slower than it should. The cause is often in how the servers exchange data. RDMA over Converged Ethernet version 2, or RoCEv2, is the transport most Ethernet AI fabrics use to keep gradient, activation, and weight buffers in sync across GPU servers at line rate.
 
 RoCEv2 works by encapsulation, which means wrapping one set of headers inside another. It places InfiniBand transport headers inside connectionless UDP and IP frames, using UDP destination port 4791. Direct Memory Access then moves data straight between GPU or host memory and the ConnectX or BlueField network adapter. Because the transfer bypasses the server CPU and operating system kernel, RoCEv2 scales to thousands of parallel collective sessions far better than TCP transports.
 
-Layering a lossless RDMA transport on top of standard lossy Ethernet creates four operational failure modes. Left unchecked, these four modes routinely stall multi-thousand-GPU training jobs. The first is straggler amplification, which collapses overall Job Completion Time during synchronous collectives such as AllReduce, AllGather, ReduceScatter, and AllToAll. In a parallel collective, every worker waits at the barrier for the slowest thread. Take one congested flow that stalls for 1 second. Every other GPU thread then sits idle for 999 ms.
+Running a lossless RDMA transport on top of lossy Ethernet creates four ways for a training job to stall. Each one has its own symptom.
 
-The second is a wrong Global Identifier index. It can break RDMA connections even when ICMP `ping` and SSH succeed over the kernel routing table. After a VLAN or interface change, hard-coded GID indices can bind one node to an untagged interface. At the same time, its peer may bind to a VLAN sub-interface. A GID index is a local table position discovered at boot rather than a portable cluster identity.
+The first is the straggler. In a synchronous collective such as AllReduce, every worker waits at a barrier for the slowest one. If one congested flow stalls for 1 second, every other GPU thread sits idle for 999 ms, and the job completion time collapses.
 
-The third is congestion at the fabric itself. Synchronized elephant flows, meaning large, long-lived transfers, with low entropy collide at six distinct Clos fabric congestion points. This happens even when the switch topology has a 1:1 non-oversubscribed ratio. When a switch buffer overflows and drops a single packet on a high-bandwidth link, classic Go-Back-N error recovery discards the entire in-flight window. The sender must then retransmit hundreds of intact packets, which multiplies fabric load at the worst possible moment.
+The second is a wrong Global Identifier index. It can break RDMA connections even when ICMP `ping` and SSH succeed over the kernel routing table. After a VLAN or interface change, a hard-coded GID index can bind one node to an untagged interface while its peer binds to a VLAN sub-interface. A GID index is a local table position discovered at boot, not a portable cluster identity.
 
-The fourth is misordered congestion thresholds. They trigger Priority Flow Control pause storms and head-of-line blocking across innocent workloads. Explicit Congestion Notification marks packets end-to-end, so the receiver returns a Congestion Notification Packet. However, the round-trip delay leaves an ECN-only queue lossy under microbursts. Priority Flow Control prevents drops with hop-by-hop pause frames, yet it freezes all flows sharing that traffic class. Without ordered DCQCN thresholds and a PFC Watchdog, a pause wave can deadlock the entire fabric.
+The third is congestion inside the fabric. Elephant flows are large, long-lived transfers. When several of them with low entropy collide, they congest six distinct points of a Clos fabric, even when the topology is 1:1 non-oversubscribed. If a switch buffer then overflows and drops one packet on a fast link, classic Go-Back-N error recovery discards the entire in-flight window. The sender must retransmit hundreds of intact packets, which adds load at the worst possible moment.
+
+The fourth is congestion thresholds set in the wrong order. Explicit Congestion Notification marks packets end to end, and the receiver returns a Congestion Notification Packet. That round trip takes time, so a queue protected only by ECN still loses packets under microbursts. Priority Flow Control prevents drops with hop-by-hop pause frames, but it freezes every flow that shares the traffic class, including flows from unrelated jobs. Without ordered DCQCN thresholds and a PFC Watchdog, a pause wave can deadlock the whole fabric.
 
 The table below lists each failure mode with its mechanism and the evidence that shows it, so you can match a symptom to its cause.
 
@@ -49,7 +51,7 @@ Notice that each row pairs a failure with the evidence that reveals it. If your 
 ## Prerequisites and outcomes
 
 ### Prerequisites
-Before you start, finish Chapter 12.1, which covers Ethernet architecture and Clos fabric topologies for AI. You should also have completed Chapter 12.2 on RDMA fundamentals, including Verbs, Queue Pairs, Memory Regions, and Completion Queues. You will need to read IPv4 and IPv6 headers, UDP ports, and IEEE 802.1Q VLAN tagging without trouble. Working knowledge of the Linux networking tools `iproute2`, `ethtool`, and `rdma-core` is also expected.
+Before you start, finish Chapter 12.1, which covers Ethernet architecture and Clos fabric topologies for AI. Chapter 12.2 on RDMA fundamentals should also be behind you: Verbs, Queue Pairs, Memory Regions, and Completion Queues. You will need to read IPv4 and IPv6 headers, UDP ports, and IEEE 802.1Q VLAN tagging without trouble. You should also be comfortable with the Linux commands `ip` and `ethtool` and with the `rdma-core` package.
 
 ### Outcomes
 By the end of this chapter, you will be able to do the following:
@@ -137,7 +139,7 @@ Use the Phase and step numbers as a checklist when you read a capture, so you kn
 
 ## 2. Addressing, GID tables, MTU, and end-to-end QoS trust boundaries
 
-A classic trap appears right after a host network reconfiguration or VLAN change. You check that ICMP `ping` and SSH work between two GPU nodes. Then you launch a distributed job or `ib_write_bw`, and it fails right away. Standard kernel utilities only test the operating system routing table with small packets. They completely bypass the RDMA Global Identifier table, the 9000-byte jumbo MTU requirement, and the switch QoS trust boundary.
+A common trap appears right after a host network reconfiguration or VLAN change. You check that ICMP `ping` and SSH work between two GPU nodes. Then you launch a distributed job or `ib_write_bw`, and it fails right away. Standard kernel utilities only test the operating system routing table with small packets. They never touch the RDMA Global Identifier table, the 9000-byte jumbo MTU requirement, or the switch QoS trust boundary.
 
 ### 2.1 Why the GID index is a local table position, not a portable identity
 
@@ -153,7 +155,11 @@ mlx5_0  1       2       0000:0000:0000:0000:0000:ffff:0a14:040f 10.20.4.15      
 mlx5_0  1       3       fe80:0000:0000:0000:...                 n/a             v1      eth0.100
 ```
 
-Three rules govern GID selection on GPU clusters. First, an IPv4 address is encoded into the lower 32 bits of an IPv4-mapped IPv6 GID, using hexadecimal octets. For example, the address `10.20.4.15` ends in `0a14:040f`. Second, two GID indices can show the exact same IPv4 address and RoCEv2 version while binding to different Layer 2 interfaces. In the output above, index 1 binds to untagged `eth0`, whereas index 2 binds to VLAN-tagged `eth0.100`. The Linux kernel populates the GID table in the order interfaces come up at boot. Hard-coding `NCCL_IB_GID_INDEX=2` or `-x 2` across nodes can therefore bind one peer to `eth0.100` and the other to a `v1` entry, failing with `Failed to modify QP to RTR`.
+Reading this table correctly takes three rules.
+
+The first rule is about encoding. An IPv4 address sits in the lower 32 bits of an IPv4-mapped IPv6 GID, written in hexadecimal. The address `10.20.4.15` ends in `0a14:040f`.
+
+The second rule is that one address can appear twice. Two GID indices can show the same IPv4 address and RoCEv2 version while binding to different Layer 2 interfaces. In the output above, index 1 binds to untagged `eth0` and index 2 binds to VLAN-tagged `eth0.100`. The Linux kernel fills the table in the order interfaces come up at boot. Hard-coding `NCCL_IB_GID_INDEX=2` or `-x 2` across nodes can therefore bind one peer to `eth0.100` and the other to a `v1` entry. The connection then fails with `Failed to modify QP to RTR`.
 
 Third, Completion Queue status codes tell you who owns an RDMA failure. Only `IBV_WC_SUCCESS` proves that an end-to-end RDMA transfer completed. Every non-zero work completion error points to a specific fault domain. That distinction separates fabric packet loss from remote memory permission bugs and local buffer sizing mistakes.
 
@@ -222,7 +228,7 @@ Notice that load balancing handles some of these points but not all. For example
 
 ### 3.2 Explicit Congestion Notification and Congestion Notification Packets
 
-When a switch egress queue starts to fill at any of those six points, dropping packets would trigger massive RDMA retransmission stalls. The network needs a way to tell the sending GPU NIC to slow down before the buffer overflows. Explicit Congestion Notification provides that end-to-end, flow-aware feedback across routed IP fabrics, using the lower 2 bits of the IP ToS byte.
+When a switch egress queue starts to fill at any of those six points, dropping packets would cause long RDMA retransmission stalls. The network needs a way to tell the sending GPU NIC to slow down before the buffer overflows. Explicit Congestion Notification provides that end-to-end, flow-aware feedback across routed IP fabrics, using the lower 2 bits of the IP ToS byte.
 
 Suppose a server on `LeafA` transmits RoCEv2 packets toward `LeafD`. It marks the ECN bits as ECN-capable, so you can follow the marking from the sender onward. If the `SpineA` to `LeafD` egress queue crosses its Weighted Random Early Detection marking threshold, `SpineA` rewrites the ECN bits to Congestion Experienced and forwards the packet normally. When the destination RDMA NIC on `LeafD` receives that marked packet, it generates a Congestion Notification Packet back to the sender on `LeafA`. On receiving the CNP, the sender NIC throttles the injection rate for only that congested Queue Pair.
 
@@ -553,12 +559,12 @@ These five slips are easy to make at the start, so watch for them as you work th
 
 The reference block after the six exercises gives every function signature, input parameter, and target verification output. Check it when you want to confirm an expected value.
 
-1. Work through RoCEv1 vs RoCEv2 Wire Overhead and Payload Efficiency. Calculate the total non-payload bytes, the wire frame size, and the payload efficiency for RoCEv1, RoCEv2-IPv4, and RoCEv2-IPv6, at both 1024-byte and 4096-byte payloads. Then explain why RoCEv2-IPv4 saves 12 bytes per packet compared with RoCEv1, while still adding full Layer 3 IP routability.
-2. Work through Semantic GID Resolution and QP State Failures. Examine the four-row `show_gids` table for `mlx5_0` port 1, with base interface `eth0` and VLAN interface `eth0.100`. Compute the exact 128-bit IPv4-mapped RoCEv2 GID string. Then explain why `ib_write_bw` with a hard-coded `-x 2` flag failed to move the Queue Pair to the Ready to Receive state after a VLAN change.
-3. Work through DSCP + ECN Byte Encoding and DCQCN Threshold Ordering. Compute the hexadecimal IP ToS byte for DSCP 26 with normal ECN-capable marking, and again with Congestion Experienced marking. State the BTH opcode and ECN bits of the resulting CNP. Then determine the switch queue action at 40 KB, 500 KB, and 3200 KB buffer occupancy under the standard DCQCN profile.
-4. Work through Mapping the Six Clos Congestion Points and PFC Watchdog. List all six Clos congestion points, and explain why spine load balancing cannot prevent local leaf south-facing congestion or leaf-to-server egress incast. Then trace the three functional blocks of the PFC Watchdog when a downstream GPU port triggers a pause storm that exceeds 50 milliseconds.
-5. Work through Go-Back-N vs Selective Repeat Amplification and JCT Straggler Math. Prove why a single dropped 4096-byte packet on a 400 Gbps path with a 20.48 microsecond RTT forces 250 packets to be retransmitted under Go-Back-N. Compare that with the single packet retransmitted under Selective Repeat. Next, compute both the serial and parallel Job Completion Time when one of ten 1-millisecond tasks stalls for 1 second.
-6. Work through Next-Generation SFC and CSIG Signaling. Calculate the notification speedup of Source Flow Control over ECN plus CNP across the sample fabric hop delays. Explain how SFC avoids both round-trip delay and class-level Head-of-Line blocking. Finally, list the three CSIG signal types and the four bottleneck locator metadata fields.
+1. Header overhead. Take a 4096-byte payload and calculate the non-payload bytes, the wire frame size, and the payload efficiency for RoCEv1, RoCEv2 over IPv4, and RoCEv2 over IPv6. Repeat the calculation at 1024 bytes. Then explain why RoCEv2 over IPv4 saves 12 bytes per packet compared with RoCEv1 while adding full Layer 3 routability.
+2. A GID index after a VLAN change. A host shows four `show_gids` rows for `mlx5_0` port 1, from base interface `eth0` and VLAN interface `eth0.100`. Write out the 128-bit IPv4-mapped RoCEv2 GID for the host address. Then explain why `ib_write_bw` with a hard-coded `-x 2` failed to move the Queue Pair to the Ready to Receive state.
+3. The ToS byte and the buffer thresholds. Compute the hexadecimal IP ToS byte for DSCP 26 with ECN-capable marking, and again with Congestion Experienced marking. Give the BTH opcode and the ECN bits of the resulting CNP. Then say what the switch queue does at 40 KB, 500 KB, and 3200 KB of occupancy under the standard DCQCN profile.
+4. Six congestion points and a pause storm. List the six Clos congestion points. Explain why spine load balancing cannot help with local leaf congestion or with incast at the destination server. Then trace the three blocks of the PFC Watchdog when a downstream GPU port starts a pause storm lasting more than 50 milliseconds.
+5. One dropped packet and one slow task. Show why a single dropped 4096-byte packet on a 400 Gbps path with a 20.48 microsecond round-trip time makes Go-Back-N retransmit 250 packets, and how many Selective Repeat retransmits. Then compute the serial and the parallel job completion time when one of ten 1-millisecond tasks stalls for 1 second.
+6. Faster congestion signals. Calculate how much faster Source Flow Control notifies the sender than ECN plus CNP, using the sample hop delays. Explain why SFC avoids both the round-trip delay and class-wide Head-of-Line blocking. Finally, name the three CSIG signal types and the four bottleneck locator fields.
 
 The block lists the target values to check your answers against. If your answer differs, you can trace the difference back to the step where your arithmetic changed.
 
@@ -729,4 +735,4 @@ The primary book chapters, lab notes, and reference manuals read in full for thi
 - The Go-Back-N versus Selective Repeat bandwidth-delay product calculation and the Source Flow Control versus ECN round-trip latency comparison are arithmetic derivations. Both are implemented in `code/part12/rocev2_transport.py` to illustrate the protocol mechanics from *AI Data Center Network Design and Technologies* Chapter 7.
 
 ### Not verified on live hardware
-- All host `ip`, `rdma`, `ibv_devinfo`, `ibstat`, `show_gids` (`NCCL_IB_GID_INDEX=1`, `RoCE/Device/GID`), `ethtool`, `mlnx_perf`, `ib_write_bw`, `tcpdump`, `perfquery`, and `ibdiagnet` commands (`IBTA`, `BGP`, `OSPF`, `EVPN`, `NVMe/TCP`, `000` / `024` / `192` addresses, mapped in `planning/MIGRATION_MAP.md` alongside `volume-09/labs/lab-02-validate-roce-addressing-and-mtu.md`, `volume-09/labs/lab-03-observe-pfc-and-ecn-under-load.md`, and `volume-09/labs/lab-04-troubleshoot-a-roce-path.md`) are reference patterns. They and the Mellanox Onyx switch CLI blocks are marked untested here and were not executed on live GPU or switch hardware during this build.
+- None of the host `ip`, `rdma`, `ibv_devinfo`, `ibstat`, `show_gids`, `ethtool`, `mlnx_perf`, `ib_write_bw`, `tcpdump`, `perfquery`, or `ibdiagnet` commands, nor the Mellanox Onyx switch CLI blocks, were executed on live GPU or switch hardware during this build. Treat them as reference patterns. The source notes for them are mapped in `planning/MIGRATION_MAP.md`.

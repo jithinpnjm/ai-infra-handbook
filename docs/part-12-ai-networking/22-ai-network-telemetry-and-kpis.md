@@ -24,7 +24,7 @@ lab_venue: "Nebius GPU"
 
 ## Why this matters for AI infrastructure
 
-Suppose a multi-day training run is getting slower each day, and nothing on the status dashboards is red. Every port says it is up. An AI data center network does not exist to pass `ping` checks or show green port icons on a legacy SNMP dashboard. Its main job is to minimize Job Completion Time and time-to-train for distributed training runs. It must also keep tail latency tight enough for real-time inference.
+A multi-day training run is getting slower each day, and no status dashboard is red. Every port says it is up. That is the problem this chapter addresses. An AI data center network is not there to pass `ping` checks or to show green port icons on a legacy SNMP dashboard. Its job is to keep Job Completion Time and time-to-train as low as possible for distributed training, and to keep tail latency tight enough for real-time inference.
 
 Synchronous collectives such as AllReduce, AllGather, ReduceScatter, and AllToAll lock every GPU to the slowest participating rank on each step. A single slow link therefore sets the pace for the whole cluster. One brief microburst, or one degraded optical lane on one rail, can throttle every GPU in the job.
 
@@ -48,7 +48,7 @@ Production failure signatures captured in this chapter:
 
 Notice the first signature. Every port still reads `Active` and `LinkUp`, yet the error counter climbs from one day to the next. A status check alone would never flag it.
 
-This chapter connects two disciplines of AI fabric performance engineering. First, it defines the standard AI data center KPIs and the MLCommons and MLPerf benchmarking lifecycle across training, inference, and storage. Second, it builds a high-resolution telemetry architecture from streaming gNMI, In-Band Flow Analyzer packet cloning, Mirror-on-Drop, counter correlation, and closed-loop corrective actions.
+This chapter covers two related topics. The first is the set of standard AI data center KPIs, together with the MLCommons and MLPerf benchmarking lifecycle for training, inference, and storage. The second is a high-resolution telemetry design. It uses streaming gNMI, In-Band Flow Analyzer packet cloning, Mirror-on-Drop, counter correlation, and closed-loop corrective actions.
 
 Before you change any threshold, decide which of these three signatures your current dashboards could miss.
 
@@ -601,14 +601,14 @@ If you fix only one habit from this list, start with the counter rule. Measure d
 
 ## Exercises
 
-Work the exercises in order, because later ones reuse ideas from earlier ones. You will need your own notes for each answer. Each one names the function to use from the chapter's code. The inputs for all six are collected in the block at the end of this section, so use them exactly as written.
+Work the exercises in order, because later ones reuse ideas from earlier ones. Each one names the function to use from the chapter's code. The inputs for all six are in the block at the end of this section, so use them exactly as written.
 
-1. Exercise 1 asks how a tail stall inflates Job Completion Time. Use `compute_jct_and_tail_latency_impact` with the inputs below. First calculate the ideal step time, the communication fraction, and the total Job Completion Time in hours. Then compute the degraded step time, the communication fraction, the degraded JCT, the slowdown ratio, and the wasted GPU-hours under the spine microburst.
-2. Exercise 2 compares scaling efficiency with power efficiency. Use `compute_strong_and_weak_scaling` and `compute_power_and_efficiency_kpis` with the parameters below. Find the strong speedup, the strong efficiency, and the weak efficiency. Then calculate PUE, GFLOPS per watt, TPW, and QPW for the Scalable Unit.
-3. Exercise 3 traces one packet through a three-stage fabric. Use `analyze_ifa_flow_trace` on the trace below. Compute the fixed IFA header bytes, the metadata stack bytes, the total overhead, and the tagged packet size. Then find each hop's residence time, the total residence time, the wire time, the end-to-end latency, the bottleneck device ID, and the export protocol.
-4. Exercise 4 triages four InfiniBand switch ports. Use `evaluate_infiniband_port_telemetry` and `evaluate_symbol_error_acceleration` to classify the health state, alert severity, and remediation for each port below. Then compute the daily symbol error rate across both three-day windows, and the acceleration factor for switch port 12.
-5. Exercise 5 triages five RoCEv2 interfaces. Use `evaluate_rocev2_congestion_and_fec`, and classify the operational state and required fix for each interface in the input block.
-6. Exercise 6 looks at rail skew and telemetry cardinality, the kind of check you would run before you turn on flow labels. Use `evaluate_rail_bandwidth_skew` and `estimate_telemetry_scale_and_cardinality` with the parameters below. Compute the max/min rail skew ratio and explain the `> 5e9` bytes/s PromQL floor clause. Then calculate the active time-series count and the sample ingestion rate, with and without the 5-tuple flow labels.
+1. How much does a tail stall cost? A training job hits a spine microburst. Use `compute_jct_and_tail_latency_impact` with the inputs below. Calculate the ideal step time, the communication fraction, and the Job Completion Time in hours. Then calculate the same three values under the microburst. Finish with the slowdown ratio and the wasted GPU-hours.
+2. Scaling and power. Use `compute_strong_and_weak_scaling` with the parameters below to find the strong speedup, the strong efficiency, and the weak efficiency. Then use `compute_power_and_efficiency_kpis` to calculate PUE and GFLOPS per watt for the Scalable Unit. Finish with its TPW and QPW.
+3. One packet through three stages. Use `analyze_ifa_flow_trace` on the trace below. First compute the fixed IFA header bytes and the metadata stack bytes. From those, give the total overhead and the tagged packet size. Then find the residence time at each hop and the total. Finally, name the bottleneck device ID and the export protocol.
+4. Four sick InfiniBand ports. Use `evaluate_infiniband_port_telemetry` to give the health state, alert severity, and remediation for each port below. Then use `evaluate_symbol_error_acceleration` on switch port 12. Compute the daily symbol error rate for each three-day window, and the acceleration factor between them.
+5. Five RoCEv2 interfaces. Use `evaluate_rocev2_congestion_and_fec` on the input block. For each interface, state the operational state and the fix it needs.
+6. Rail skew and series count. Use `evaluate_rail_bandwidth_skew` on the eight rails below. Compute the max/min skew ratio, and explain the `> 5e9` bytes/s floor in the PromQL rule. Then use `estimate_telemetry_scale_and_cardinality` to count the active time series and the sample ingestion rate. Do it once without flow labels and once with the 5-tuple flow labels.
 
 ```text
 Exercise Input Parameters and Telemetry Evidence Reference:
