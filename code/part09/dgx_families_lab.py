@@ -39,19 +39,19 @@ def run_checks() -> int:
 
     # 1. KV cache & workload VRAM checks (V4 Ch 1, Ch 2, Lab 01)
     kv_1_user = estimate_kv_cache_gb(
-        num_layers=80, num_heads=128, bytes_per_element=8, seq_len=8192, concurrent_users=1
+        num_layers=80, num_kv_heads=8, head_dim=128, bytes_per_element=2, seq_len=4096, concurrent_users=1
     )
     check(
-        "V4 Ch1 70B 8k-context KV cache for 1 user == 1.34 GB",
+        "Llama-3-70B GQA 4k-context KV cache for 1 user == 1.34 GB",
         kv_1_user == 1.34,
         f"got {kv_1_user}",
     )
 
     kv_64_users = estimate_kv_cache_gb(
-        num_layers=80, num_heads=128, bytes_per_element=8, seq_len=8192, concurrent_users=64
+        num_layers=80, num_kv_heads=8, head_dim=128, bytes_per_element=2, seq_len=4096, concurrent_users=64
     )
     check(
-        "V4 Ch1 70B 8k-context KV cache for 64 users == 85.90 GB",
+        "Llama-3-70B GQA 4k-context KV cache for 64 users == 85.90 GB",
         kv_64_users == 85.9,
         f"got {kv_64_users}",
     )
@@ -214,7 +214,7 @@ def run_checks() -> int:
     # 4. DGX system family catalog & rack power/cooling checks (V5 Ch 2, 4, 7; SPB200; SPGB300)
     dgx_h100 = DGX_SYSTEM_CATALOG["DGX-H100"]
     check(
-        "DGX H100 is 8U, 8x H100, 640 GB HBM3, 10.2 kW, 370 lbs, 4 NVSwitches",
+        "DGX H100 is 8U, 8x H100, 640 GB HBM3, 10.2 kW, 4 NVSwitches",
         dgx_h100.rack_units == 8
         and dgx_h100.total_gpu_memory_gb == 640
         and dgx_h100.max_power_kw == 10.2
@@ -374,7 +374,7 @@ def run_checks() -> int:
     )
 
     try:
-        estimate_kv_cache_gb(0, 128, 8, 8192, 1)
+        estimate_kv_cache_gb(0, 8, 128, 2, 4096, 1)
         check("Rejects non-positive KV cache parameters", False, "did not raise ValueError")
     except ValueError:
         check("Rejects non-positive KV cache parameters", True)

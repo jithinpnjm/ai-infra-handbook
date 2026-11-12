@@ -25,11 +25,7 @@ lab_venue: "none (design / reading)"
 
 A team owns a SuperPOD, and a training deadline arrives that needs twice the GPUs. Building more capacity takes months of construction and a utility power contract, so the team rents GPUs in the cloud. The first multi-node job runs far slower than it did at home. The scheduler could not see which racks the instances landed on, so the job spread across distant switches. The RDMA traffic also went through a hypervisor virtual switch.
 
-Renting GPUs differs from renting ordinary CPU virtual machines for exactly these two reasons. Topology and the network path both decide the training speed. This chapter looks at three kinds of cloud GPU platform: NVIDIA DGX Cloud, GPU-native neoclouds such as CoreWeave and Nebius AI Cloud, and Google Cloud GPU machine families. It also shows what these platforms offer to bring bare-metal speed to a cloud cluster. The pieces are PCIe passthrough, BCM Topograph topology discovery, and multi-NIC RDMA networks.
-
-:::info Corpus scope note
-The chapter does not use vendor pricing pages or provider API reference manuals for DGX Cloud, CoreWeave, Nebius AI Cloud, or Google Cloud Compute Engine. The BCM Topograph cloud topology rules come from the NVIDIA Base Command Manager 11 Administrator Manual. The SR-IOV, IOMMU, and DGX Cloud concepts come from the hardware and infrastructure volumes. The GCP, Nebius, and CoreWeave resource models follow Chapter 4 of this handbook. Check machine-type and provider attribute names against the provider's current documentation before using them in production.
-:::
+Renting GPUs differs from renting CPU virtual machines for exactly these two reasons: topology and the network path decide the training speed. This chapter looks at three kinds of cloud GPU platform: NVIDIA DGX Cloud, GPU-native neoclouds such as CoreWeave and Nebius AI Cloud, and Google Cloud GPU machine families. It also shows how they bring bare-metal speed to a cloud cluster, with PCIe passthrough, BCM Topograph topology discovery and multi-NIC RDMA networks. Provider machine types and attribute names change, so check them against the provider's current documentation before production use.
 
 ## Prerequisites and outcomes
 
@@ -44,17 +40,15 @@ The chapter does not use vendor pricing pages or provider API reference manuals 
 
 ---
 
-## Concepts: basics → intermediate → advanced
+## 1. Why cloud networking needs SR-IOV, and three kinds of cloud GPU platform
 
-## 1. Cloud GPU virtualization physics and the three cloud platform archetypes
+### 1.1 Why ordinary VM networking slows training, and how SR-IOV fixes it
 
-### 1.1 Why traditional VM networking ruins AI training and how SR-IOV and IOMMU fix it
+A guest virtual machine on a legacy cloud sends a network packet. The guest writes to a virtual driver such as `virtio`, and the hypervisor traps the write, translates the memory address in software and copies the packet through a virtual switch to the physical card.
 
-A guest virtual machine on a legacy cloud sends a network packet. The guest operating system writes to a virtual network driver such as `virtio`, and the hypervisor traps that write. The hypervisor translates the memory address in software and copies the packet through a virtual switch to the physical card.
+At 1 Gbps of web traffic nobody notices the CPU cost. During an NCCL AllReduce over eight 400 Gbps links, the same path adds latency, uses host CPU cores and breaks GPUDirect RDMA.
 
-At 1 Gbps of web traffic, nobody notices the CPU cost. During an NCCL AllReduce across eight 400 Gbps links, the same software path adds latency, uses up host CPU cores, and breaks GPUDirect RDMA.
-
-Cloud GPU providers deliver bare-metal GPU and RDMA performance inside multi-tenant clouds by bypassing the software switch altogether. They combine full-node allocations with Single Root I/O Virtualization and the Input-Output Memory Management Unit.
+Cloud GPU providers get bare-metal speed inside multi-tenant clouds by bypassing the software switch. They give you whole nodes and combine Single Root I/O Virtualization (SR-IOV) with the Input-Output Memory Management Unit (IOMMU).
 
 ```mermaid
 flowchart LR
@@ -68,42 +62,39 @@ flowchart LR
     end
 ```
 
-1. **Physical Function versus Virtual Function:** SR-IOV is a PCI Express standard that lets a single physical network card or BlueField DPU partition itself in hardware. It exposes one Physical Function owned by the host hypervisor or DPU control plane for configuration and security policies. It also creates multiple lightweight Virtual Functions, each with dedicated hardware queues mapped directly into a guest VM.
-2. **IOMMU Direct Memory Translation:** Each Virtual Function and each SXM GPU is mapped directly into the guest VM address space through PCIe passthrough. The hardware IOMMU, known as Intel VT-d or AMD-Vi, translates guest DMA addresses to host physical addresses at wire speed. It isolates memory regions, so a compromised VM cannot read or overwrite another tenant's host RAM. This architecture removes virtual switch overhead and enables full GPUDirect RDMA between guest GPUs and the physical fabric.
+SR-IOV is a PCI Express standard that lets one physical network card or BlueField DPU split itself in hardware. It exposes one Physical Function, owned by the host or the DPU control plane, for configuration and security policy. It also creates many light Virtual Functions, each with its own hardware queues mapped straight into a guest VM.
+
+Each Virtual Function and each SXM GPU is mapped into the guest's address space by PCIe passthrough. The hardware IOMMU, called Intel VT-d or AMD-Vi, translates guest DMA addresses to host physical addresses at wire speed and isolates memory regions, so a compromised VM cannot read another tenant's RAM. This removes the virtual switch overhead and allows full GPUDirect RDMA between guest GPUs and the physical fabric.
 
 ### 1.2 The three cloud GPU platform archetypes
 
-Cloud GPU offerings fall into three models. Sorting the four platforms named in the chapter title into these three groups is this chapter's own summary of Chapter 4, the BCM 11 manual, and the platform notes.
+Cloud GPU offerings fall into three models. Sorting the platforms in the chapter title into these three groups is this handbook's own summary.
 
-| Attribute | 1. Managed SuperPOD-as-a-Service (`NVIDIA DGX Cloud`) | 2. GPU-Native Neoclouds (`CoreWeave`, `Nebius AI Cloud`) | 3. Hyperscaler AI Supercomputers (`GCP G2, A2, A3, A3 Ultra, A4, A4X`) |
-|---|---|---|---|
-| **Core Value Proposition** | Turnkey, NVIDIA-operated multi-node SuperPOD hosted inside major CSPs (AWS, Azure, GCP, OCI) | Purpose-built bare-metal/K8s GPU clouds with native InfiniBand fabrics, parallel storage, and fast provisioning | Deep integration with hyperscaler IAM, global VPCs, GKE, BigQuery/GCS data lakes, and enterprise commitments |
-| **Control Plane & Scheduler** | **NVIDIA Base Command / Mission Control**, **Run:ai**, and **Slurm** (with **BCM `Topograph`** topology discovery) | **CoreWeave:** K8s-native (`Kueue`, `Volcano`, `KAI`, `Run:ai`, `SUNK` Slurm-on-K8s)<br/>**Nebius:** Managed K8s, `Soperator` Slurm-on-K8s, or VM Slurm | **GKE** (`Dataplane V2`, `Kueue` + `DWS ProvisioningRequest`), or **Cluster Toolkit** Slurm on Compute Engine VMs |
-| **Scale-Out GPU Interconnect** | Cloud-hosted **InfiniBand / RoCE / EFA** (`p5.48xlarge`, OCI BM, GCP A3/A4) mapped into Slurm via `Topograph` | **Lossless InfiniBand RDMA** (`Quantum-2 400G NDR` / `Quantum-X800 800G XDR`) exposed via `gpu_cluster` or K8s node labels | **Multi-NIC VPCs (`MTU 8896`):** `GPUDirect-TCPX` (`A3` H100) and **`GPUDirect-RDMA` over RoCEv2 VPCs** (`A3 Ultra` H200, `A4` B200, `A4X` NVL72) |
+**Managed SuperPOD-as-a-service, NVIDIA DGX Cloud.** NVIDIA operates a turnkey multi-node SuperPOD hosted inside a major cloud provider (AWS, Azure, Google Cloud or Oracle Cloud Infrastructure). The control plane is Base Command and Mission Control with Run:ai and Slurm, and BCM Topograph discovers the topology. The scale-out network is the cloud provider's InfiniBand, RoCE or EFA fabric, for example on `p5.48xlarge` instances, mapped into Slurm by Topograph.
+
+**GPU-native neoclouds, CoreWeave and Nebius AI Cloud.** These are bare-metal or Kubernetes GPU clouds built around InfiniBand, parallel storage and fast provisioning. CoreWeave is Kubernetes-native and uses Kueue, Volcano, KAI, Run:ai and SUNK, its Slurm on Kubernetes. Nebius offers managed Kubernetes, Soperator for Slurm on Kubernetes, or Slurm on virtual machines. The scale-out network is lossless InfiniBand, Quantum-2 400G NDR or Quantum-X800 800G XDR, exposed through a `gpu_cluster` object or Kubernetes node labels.
+
+**Hyperscaler AI machine families, Google Cloud G2, A2, A3, A3 Ultra, A4 and A4X.** These integrate with the provider's identity system, global networks, GKE and data lakes. The control plane is GKE with Dataplane V2, Kueue and the Dynamic Workload Scheduler, or Cluster Toolkit Slurm on Compute Engine. The scale-out network is a set of multi-NIC VPCs with an MTU of 8896: GPUDirect-TCPX on A3 with H100, and GPUDirect-RDMA over RoCEv2 on A3 Ultra, A4 and A4X.
+
+Pick DGX Cloud for a turnkey NVIDIA-managed stack, a neocloud for raw InfiniBand and Kubernetes agility, and Google Cloud for deep integration with existing data lakes and identity.
 
 > **Update, November 2026:** The Run:ai platform named in this table is now also open source. NVIDIA released it under Apache 2.0 on 13 October 2026, and a supported commercial release still exists. See [11.31](../part-11-gpu-kubernetes/31-nvidias-open-source-ai-factory-kubernetes-stack.md).
 
-:::tip In one minute
-- Cloud GPU instances achieve bare-metal RDMA speed by bypassing hypervisor virtual switches through SR-IOV and hardware IOMMU PCIe passthrough.
-- Choose between Managed SuperPOD-as-a-Service on DGX Cloud, GPU-native neoclouds like CoreWeave and Nebius, and hyperscaler GPU families on GCP based on your operational needs.
-- Pick DGX Cloud for a turnkey NVIDIA-managed stack, neoclouds for raw InfiniBand and Kubernetes agility, or GCP for deep integration with existing cloud data lakes and IAM.
-:::
-
 ---
 
-## 2. NVIDIA DGX Cloud and the BCM Topograph cloud topology engine
+## 2. NVIDIA DGX Cloud and BCM Topograph
 
-### 2.1 How DGX Cloud delivers serverless SuperPODs across cloud providers
+### 2.1 How DGX Cloud delivers a SuperPOD inside a cloud provider
 
-A dedicated SuperPOD needs long hardware lead times and data hall engineering. NVIDIA DGX Cloud skips that wait. NVIDIA designs multi-node DGX SuperPOD clusters and hosts them inside the major cloud providers: AWS, Microsoft Azure, Google Cloud, and Oracle Cloud Infrastructure.
+A dedicated SuperPOD needs long hardware lead times and data hall engineering. NVIDIA DGX Cloud skips that wait. NVIDIA designs multi-node DGX clusters and hosts them inside the major providers: AWS, Microsoft Azure, Google Cloud and Oracle Cloud Infrastructure.
 
-On AWS, for example, the BCM 11 manual notes that DGX Cloud uses 8-GPU H100 instances with the `p5.48xlarge` flavor. Enterprises rent dedicated multi-node clusters through an operational expenditure model without managing physical data halls. Every cluster arrives pre-loaded with Base Command Manager, NVIDIA Mission Control, NVIDIA Run:ai, and NVIDIA AI Enterprise.
+On AWS, DGX Cloud uses 8-GPU H100 instances of the `p5.48xlarge` type. Enterprises rent dedicated multi-node clusters as an operating expense, without managing data halls. Each cluster arrives with Base Command Manager, NVIDIA Mission Control, NVIDIA Run:ai and NVIDIA AI Enterprise.
 
 ### 2.2 The cloud topology problem and how BCM Topograph solves it
 
-In your own data center, you know which physical leaf switch connects to each server. In AWS, OCI, or GCP, the provider hands out instances from a large shared pool, and a BCM-managed Slurm cluster does not know where they sit. If Slurm cannot tell which instances share a rail or a leaf switch, it schedules a multi-node job across distant switches. The traffic then crosses the spine, collectives slow down, and GPU hours are wasted.
+In your own data center you know which leaf switch connects to each server. In AWS, OCI or GCP the provider hands out instances from a large shared pool, and a BCM-managed Slurm cluster does not know where they sit. If Slurm cannot tell which instances share a leaf switch, it schedules a multi-node job across distant switches. The traffic crosses the spine, collectives slow down and GPU hours are wasted.
 
-Base Command Manager answers this with the Topograph system service. Its configuration parameters and cloud rules are verified by `validate_bcm_topograph_cloud_config` in our chapter Python model.
+Base Command Manager answers with the Topograph service. The function `validate_bcm_topograph_cloud_config` in the chapter's Python model checks its configuration parameters and cloud rules.
 
 ```mermaid
 flowchart LR
@@ -150,18 +141,11 @@ flowchart LR
      ```
    - **Google Cloud:** The VM placement policy must be set to `COMPACT`.
 
-:::tip In one minute
-- NVIDIA DGX Cloud delivers turnkey, NVIDIA-managed multi-node SuperPODs hosted inside AWS, Azure, GCP, and OCI.
-- BCM Topograph queries cloud topology APIs over HTTPS port 49021 to generate Slurm `topology.conf` files for tree or block plugins.
-- Topograph requires `ec2:DescribeInstanceTopology` on AWS, five dynamic-group `inspect` policies on OCI, and `COMPACT` placement on GCP.
-- Upgrading to `topograph4` requires both replacing the OS package with a systemd reload and setting `version4` to true in `cmsh`.
-:::
-
 ---
 
 ## 3. GPU-native neoclouds: Nebius AI Cloud and CoreWeave
 
-Hyperscalers grew out of web hosting and enterprise CPU virtual machines. An AI team that runs a large distributed job on their generic building blocks can hit hidden network oversubscription and slow storage. CoreWeave and Nebius AI Cloud were built for GPUs from the start. They are based on bare-metal HGX, DGX, and NVL72 clusters with lossless InfiniBand fabrics.
+Hyperscalers grew out of web hosting and enterprise CPU virtual machines. An AI team that runs a large distributed job on those generic building blocks can hit hidden network oversubscription and slow storage. CoreWeave and Nebius AI Cloud were built for GPUs from the start, on bare-metal HGX, DGX and NVL72 clusters with lossless InfiniBand.
 
 ### 3.1 The Nebius AI Cloud resource model and InfiniBand GPU cluster membership
 
@@ -175,29 +159,25 @@ A team launches multi-node GPU virtual machines on Nebius without linking them t
 | **Shared Storage** | Shared filesystems & S3 object storage | High-throughput shared filesystems for datasets and scripts plus S3-compatible object storage for durable checkpoints |
 | **Workload Orchestration** | Managed K8s, Soperator, or VM Slurm | Supports Managed Kubernetes GPU node groups, Soperator Slurm-on-Kubernetes pods with `mlx5_*` RDMA, or VM Slurm |
 
-1. **Tenancy and identity:** Projects live inside a tenant and bind to a geographic region. Always authenticate automation with service account keys or workload federation rather than hard-coded credentials.
-2. **Explicit multi-node InfiniBand fabric:** Every GPU instance participating in a multi-node job must reference the exact same `nebius_compute_v1_gpu_cluster` resource. This membership ensures that NCCL collectives run over lossless InfiniBand RDMA interfaces rather than falling back to VPC Ethernet. Because changing fabric membership can force instance recreation, always define your GPU cluster resource before launching compute nodes.
-3. **Storage and orchestration:** Shared filesystems mount across all project instances for fast dataset access, while S3-compatible buckets store checkpoints. Teams can run Managed Kubernetes, deploy Soperator to run Slurm controllers and workers as Kubernetes pods with full InfiniBand access, or build VM-based Slurm clusters.
+Projects live inside a tenant and bind to a region. Authenticate automation with service account keys or workload federation, not hard-coded credentials.
+
+Every GPU instance in a multi-node job must reference the same `nebius_compute_v1_gpu_cluster` resource. That membership makes NCCL use the lossless InfiniBand interfaces instead of falling back to VPC Ethernet. Changing fabric membership can force instances to be recreated, so define the GPU cluster resource before you launch compute nodes.
+
+Shared filesystems mount across the project's instances for datasets, and S3-compatible buckets hold checkpoints. You can run Managed Kubernetes, deploy Soperator to run Slurm controllers and workers as Kubernetes pods with full InfiniBand access, or build Slurm on virtual machines.
 
 ### 3.2 The CoreWeave Kubernetes-native bare-metal model
 
 A team whose whole software stack already runs in containers gains little from an extra virtual machine layer, and the layer adds operational work. CoreWeave built a Kubernetes-native GPU cloud to remove that layer.
 
-- **Bare-metal Kubernetes nodes:** Physical 8-GPU HGX nodes and NVL72 racks join a managed Kubernetes control plane directly, or use bare-metal-speed SR-IOV and IOMMU passthrough where virtualized.
-- **Topology-aware node labels:** Each worker node exposes its physical GPU model, NVLink domain, and InfiniBand leaf or rail switch identity directly as standard Kubernetes node labels.
-- **Cloud-native batch scheduling:** Engineers provision namespaces, RBAC, and quotas using standard Kubernetes and Helm providers. Training and inference workloads are gang-scheduled with leaf-switch locality using Kueue, Volcano, KAI Scheduler, NVIDIA Run:ai, or SUNK for Slurm on Kubernetes.
+Physical 8-GPU HGX nodes and NVL72 racks join a managed Kubernetes control plane directly, or use SR-IOV and IOMMU passthrough where they are virtualized. Each worker node exposes its GPU model, NVLink domain and InfiniBand leaf or rail switch as standard Kubernetes node labels. Engineers provision namespaces, RBAC and quotas with standard Kubernetes and Helm tooling. Training and inference are gang-scheduled with leaf-switch locality by Kueue, Volcano, KAI Scheduler, NVIDIA Run:ai or SUNK, which is Slurm on Kubernetes.
 
-:::tip In one minute
-- On Nebius AI Cloud, every multi-node GPU instance must join the same `nebius_compute_v1_gpu_cluster` InfiniBand fabric so NCCL runs over lossless RDMA.
-- CoreWeave exposes bare-metal GPU nodes and InfiniBand leaf-switch topology directly through Kubernetes node labels.
-- Schedulers like Kueue, Volcano, KAI Scheduler, Run:ai, Soperator, and SUNK use those topology labels to place distributed jobs on adjacent switches.
-:::
+When you pick a neocloud, ask whether the scheduler can see the leaf switch of every node.
 
 ---
 
-## 4. Google Cloud GPU machine families: G2, A2, A3, A3 Ultra, A4, and A4X
+## 4. Google Cloud GPU machine families
 
-A team deploys multi-node training on Google Cloud with default single-NIC virtual machines, and the network stalls the GPUs at once. Google Cloud responds with fixed Compute Engine and GKE machine families. Each family bundles NVIDIA accelerators, host CPUs, local NVMe SSDs, and multi-NIC high-speed networking.
+A team deploys multi-node training on Google Cloud with default single-NIC virtual machines, and the network stalls the GPUs at once. Google Cloud offers fixed Compute Engine and GKE machine families instead. Each bundles NVIDIA accelerators, host CPUs, local NVMe SSDs and multi-NIC high-speed networking.
 
 ```mermaid
 flowchart TD
@@ -206,7 +186,7 @@ flowchart TD
         A2["A2 Family (a2-highgpu-* / megagpu)<br/>1–16x NVIDIA A100 (40/80 GB SXM4)<br/>NVLink 3 Inside Node"]
         A3["A3 Family (a3-highgpu-8g / megagpu-8g)<br/>8x NVIDIA H100 (80 GB SXM5, NVSwitch)<br/>Multi-NIC VPCs (MTU 8896) + GPUDirect-TCPX"]
         A3U["A3 Ultra (a3-ultragpu-8g)<br/>8x NVIDIA H200 (141 GB HBM3e SXM)<br/>Multi-NIC RoCEv2 VPCs + GPUDirect-RDMA"]
-        A4["A4 Family (a4-highgpu-8g)<br/>8x NVIDIA Blackwell B200 (SXM6)<br/>Multi-NIC RoCEv2 VPCs + GPUDirect-RDMA"]
+        A4["A4 Family (a4-highgpu-8g)<br/>8x NVIDIA Blackwell B200 (SXM)<br/>Multi-NIC RoCEv2 VPCs + GPUDirect-RDMA"]
         A4X["A4X Family (Rack-Scale)<br/>NVIDIA GB200 NVL72 (72 B200 + 36 Grace)<br/>1.8 TB/s Multi-Node NVLink 5 + GPUDirect-RDMA"]
         G2 & A2 --> A3 --> A3U --> A4 --> A4X
     end
@@ -218,34 +198,24 @@ flowchart TD
 |---|---|---|---|---|---|
 | **`G2`** | `g2-standard-8` (`1x L4`) to `g2-standard-96` (`8x L4`) | **NVIDIA L4** (`24 GB GDDR6`, PCIe, `72W`) | PCIe Gen4 (no NVLink) | Standard `gVNIC` TCP/UDP | **No** (single VPC NIC sufficient; ideal for inference & low-cost labs) |
 | **`A2`** | `a2-highgpu-8g`, `a2-ultragpu-8g` | **NVIDIA A100** (`40 GB` HBM2 or `80 GB` HBM2e SXM4) | NVLink 3 (`600 GB/s`) via NVSwitch | Standard `gVNIC` | Optional jumbo `MTU 8896` |
-| **`A3`** | `a3-highgpu-8g`, `a3-megagpu-8g` | **8x NVIDIA H100** (`80 GB` HBM3 SXM5) | NVLink 4 (`900 GB/s`) via 4x NVSwitch | **GPUDirect-TCPX** (zero-copy GPU-to-NIC payload split with NCCL TCPX plugin) | **Yes:** 1 primary NIC + multiple dedicated GPU NICs, each in its own VPC with **jumbo `MTU 8244 / 8896`** |
+| **`A3`** | `a3-highgpu-8g`, `a3-megagpu-8g` | **8x NVIDIA H100** (`80 GB` HBM3 SXM5) | NVLink 4 (`900 GB/s`) via 4x NVSwitch | **GPUDirect-TCPX** on `a3-highgpu-8g`; `a3-megagpu-8g` uses its offload variant, TCPXO | **Yes:** 1 primary NIC + multiple dedicated GPU NICs, each in its own VPC with **jumbo `MTU 8244 / 8896`** |
 | **`A3 Ultra`** | `a3-ultragpu-8g` | **8x NVIDIA H200** (`141 GB` HBM3e SXM) | NVLink 4 (`900 GB/s`) via 4x NVSwitch | **GPUDirect-RDMA over RoCEv2 VPCs** | **Yes:** Dedicated multi-NIC RoCEv2 GPU VPCs + jumbo `MTU 8896` |
-| **`A4`** | `a4-highgpu-8g` | **8x NVIDIA Blackwell B200** (`180–192 GB` HBM3e SXM6) | NVLink 5 (`1.8 TB/s`) via NVSwitch | **GPUDirect-RDMA over RoCEv2 VPCs** | **Yes:** Dedicated multi-NIC RoCEv2 GPU VPCs + jumbo `MTU 8896` |
+| **`A4`** | `a4-highgpu-8g` | **8x NVIDIA Blackwell B200** (`180–192 GB` HBM3e) | NVLink 5 (`1.8 TB/s`) via NVSwitch | **GPUDirect-RDMA over RoCEv2 VPCs** | **Yes:** Dedicated multi-NIC RoCEv2 GPU VPCs + jumbo `MTU 8896` |
 | **`A4X`** | `a4x-*` (NVL72 rack) | **72x Blackwell B200 + 36x Grace CPUs** (`GB200 NVL72`) | **Multi-Node NVLink 5 (`1.8 TB/s` per GPU, `130 TB/s`/rack)** | Intra-rack NVLink 5 + inter-rack **GPUDirect-RDMA** | **Yes:** Rack-scale NVLink domain + RoCEv2 scale-out VPCs |
 
 ### 4.2 Five non-negotiable GCP and GKE operational rules for GPU clusters
 
-On GCP, one wrong default in Terraform or GKE can block instance creation or freeze a cluster upgrade. The auditor in `code/part09/cloud_gpu_platforms.py` checks five platform rules from Chapter 4 for A3, A3 Ultra, A4, and G2 fleets.
+On GCP, one wrong default in Terraform or GKE can block instance creation or freeze a cluster upgrade. The auditor in `code/part09/cloud_gpu_platforms.py` checks five platform rules, taken from Chapter 4, for A3, A3 Ultra, A4 and G2 fleets.
 
-| Operational Rule | Required Terraform or GKE Setting | What Goes Wrong If Omitted |
-|---|---|---|
-| **1. Host Maintenance Policy** | `on_host_maintenance = "TERMINATE"` | GPU VMs cannot live-migrate; setting `MIGRATE` causes VM creation to fail validation |
-| **2. Compact Collocation** | `collocation = "COLLOCATED"` (`COMPACT` policy) | Multi-node VMs land on distant switches, increasing latency and breaking BCM Topograph on GCP |
-| **3. Atomic Capacity Acquisition** | `google_compute_reservation` or `DWS` (`ProvisioningRequest`) | Partial multi-node allocations sit idle burning budget while waiting for remaining GPUs |
-| **4. GKE Upgrade Guardrail** | `max_surge = 0, max_unavailable = 1`, `auto_upgrade = false` | Default `max_surge = 1` hangs indefinitely when GPU quota or reservation has zero spare GPUs |
-| **5. Single Driver Manager** | GKE `gpu_driver_installation_config` OR GPU Operator (`driver.enabled`) | Enabling both driver installers on the same node pool causes kernel module conflicts |
+**Host maintenance.** GPU virtual machines cannot live-migrate during host maintenance. Set `on_host_maintenance = "TERMINATE"`, because `MIGRATE` fails validation, and rely on your scheduler and checkpoints to restart interrupted jobs.
 
-1. **Host maintenance termination:** Compute Engine VMs with attached GPUs cannot live-migrate during physical host maintenance events. You must set `on_host_maintenance = "TERMINATE"` and rely on your scheduler and checkpoints to restart interrupted jobs.
-2. **Compact collocation placement:** Attach a `google_compute_resource_policy` with `collocation = "COLLOCATED"` to multi-node training pools. This policy places VMs on adjacent physical switches and satisfies the GCP requirement for BCM Topograph.
-3. **Capacity acquisition modes:** Use `google_compute_reservation` with `SPECIFIC_RESERVATION` affinity for guaranteed continuous capacity. For queued batch jobs on GKE, integrate Dynamic Workload Scheduler with Kueue `ProvisioningRequest` in Flex-Start or Calendar mode so all nodes of a job allocate atomically at once.
-4. **GKE node pool upgrade guardrail:** Default GKE surge upgrades try to boot an extra GPU node before draining an existing one. When your quota or reservation is completely full, the upgrade hangs forever. Always set `max_surge = 0` and `max_unavailable = 1` with `auto_upgrade = false` so GKE drains and upgrades nodes in place during maintenance windows.
-5. **Single driver manager rule:** Let GKE install the NVIDIA driver and set `driver.enabled=false` in the NVIDIA GPU Operator, or disable the GKE installer and let the GPU Operator manage `nvidia.ko`. Never enable both driver managers on the same node pool.
+**Compact placement.** Attach a `google_compute_resource_policy` with `collocation = "COLLOCATED"` to multi-node training pools. It places the VMs on adjacent switches, and BCM Topograph on GCP requires it. Without it, multi-node VMs land on distant switches.
 
-:::tip In one minute
-- On GCP, G2 serves L4 inference, A3 uses multi-NIC GPUDirect-TCPX for H100, A3 Ultra and A4 use multi-NIC GPUDirect-RDMA over RoCEv2 VPCs, and A4X exposes 72-GPU GB200 NVL72 racks.
-- Always configure `on_host_maintenance = "TERMINATE"`, `COLLOCATED` compact placement, GKE `max_surge = 0` upgrades, and a single driver installer.
-- Pair Kueue with Dynamic Workload Scheduler `ProvisioningRequest` objects to acquire multi-node GPU capacity atomically.
-:::
+**Atomic capacity.** Use `google_compute_reservation` with `SPECIFIC_RESERVATION` affinity for guaranteed capacity. For queued batch jobs on GKE, use the Dynamic Workload Scheduler with a Kueue `ProvisioningRequest` in Flex-Start or Calendar mode, so that all nodes of a job are allocated at once. Otherwise partial allocations sit idle and burn budget.
+
+**Upgrade guardrail.** Default GKE surge upgrades boot an extra GPU node before draining an old one. When your quota or reservation is full, the upgrade hangs forever. Set `max_surge = 0`, `max_unavailable = 1` and `auto_upgrade = false`, so that GKE upgrades nodes in place during maintenance windows.
+
+**One driver manager.** Either let GKE install the NVIDIA driver and set `driver.enabled=false` in the GPU Operator, or disable the GKE installer and let the GPU Operator manage `nvidia.ko`. Enabling both on one node pool causes kernel module conflicts.
 
 ---
 
@@ -304,13 +274,45 @@ python3 -B code/part09/cloud_gpu_platforms_lab.py
 
 ## How it fails
 
-| Failure mode | Symptom | Root cause | Diagnosis & fix |
-|---|---|---|---|
-| **1. `Topograph` service fails to start after installing `topograph4` (`BCM 11.34+`)** | `systemctl status topograph` shows failed, or `topology print` returns empty/stale `topology.conf` after upgrading to Topograph 4. | The admin installed the `topograph4` package without setting `version4 = true` in `cmsh` `topographsettings` (or set `version4 = true` while `topograph` v3 was still installed), or forgot to run `systemctl daemon-reload` after the package replaced the systemd unit. | Complete **both** steps on every head node running Topograph: (1) remove `topograph` and install `topograph4` + run `sudo systemctl daemon-reload`, and (2) set `set -e version4 true` in `cmsh` `topographsettings` and restart the service. |
-| **2. Cloud nodes placed under a `fake switch` or `fake block` in `topology.conf`** | Multi-node Slurm jobs on AWS (`p5.48xlarge`), OCI, or GCP suffer high cross-switch latency, and `/cm/shared/apps/slurm/etc/<cluster>/topology.conf` lists nodes under a generic fake switch/block. | Either the cloud instances were **stopped** when Topograph ran, or the cloud provider topology API check failed (missing `ec2:DescribeInstanceTopology` / `AmazonEC2ReadOnlyAccess` on AWS, missing the 5 dynamic-group `inspect` policies on OCI, or missing a `COMPACT` placement policy on GCP). | Ensure cloud compute nodes are **running** during topology generation, attach `AmazonEC2ReadOnlyAccess` (AWS) or the 5 `inspect` dynamic-group policies (OCI) or `COMPACT` placement (GCP), and run `cmsh -c "wlm use slurm; topology update"` while watching `journalctl -u topograph -f`. |
-| **3. Nebius multi-node `nccl-tests` running at 10–25 Gbps TCP speed instead of 400G/800G IB** | `nvidia-smi` shows 8 healthy SXM GPUs on each Nebius VM, but multi-node `all_reduce_perf` crawls at `< 5 GB/s` bus bandwidth. | The `nebius_compute_v1_instance` resources were created without attaching them to a shared **`nebius_compute_v1_gpu_cluster` (`infiniband_fabric`)** (or were placed in different `gpu_cluster` IDs), forcing NCCL to fall back to the VPC Ethernet interface. | Define a single `nebius_compute_v1_gpu_cluster` resource on the target `infiniband_fabric` and pass `gpu_cluster = { id = nebius_compute_v1_gpu_cluster.fabric.id }` to every instance in the training pool. |
-| **4. GKE GPU node pool upgrade hangs forever (`Quota exceeded` / `Reservation exhausted`)** | Triggering a node image upgrade on a GKE `A3` or `A4` node pool leaves the upgrade stuck at 0% for hours. | The node pool used the default `max_surge = 1` upgrade strategy, which tries to provision an *extra* 8-GPU VM before draining an existing node—failing when your GPU quota or `google_compute_reservation` has zero spare capacity. | Set `auto_upgrade = false` and configure `upgrade_settings { strategy = "SURGE", max_surge = 0, max_unavailable = 1 }` so GKE drains and upgrades 1 existing node at a time within your fixed reservation. |
-| **5. `A3` / `A4` multi-node training achieves only 15% of expected network throughput on GCP** | An 8-node `a3-highgpu-8g` or `a4-highgpu-8g` job boots cleanly, but inter-node `AllReduce` is bottlenecked on `eth0`. | The VMs were launched with only the single default VPC network interface (`MTU 1460`), omitting the **additional GPU NIC VPC networks**, **jumbo `MTU 8244 / 8896`**, **`COLLOCATED` compact placement policy**, or the required **GPUDirect-TCPX / GPUDirect-RDMA** daemonset/plugin. | Provision all dedicated GPU NIC VPCs with `mtu = 8896`, attach the `COLLOCATED` compact `resource_policies`, deploy the matching `GPUDirect-TCPX` (`A3`) or `GPUDirect-RDMA RoCE` (`A3 Ultra` / `A4`) plugin, and verify jumbo frames across all GPU NICs. |
+### 1. `Topograph` service fails to start after installing `topograph4` (`BCM 11.34+`)
+
+Symptom: `systemctl status topograph` shows failed, or `topology print` returns empty/stale `topology.conf` after upgrading to Topograph 4.
+
+Cause: The admin installed the `topograph4` package without setting `version4 = true` in `cmsh` `topographsettings` (or set `version4 = true` while `topograph` v3 was still installed), or forgot to run `systemctl daemon-reload` after the package replaced the systemd unit.
+
+Fix: Complete both steps on every head node running Topograph: (1) remove `topograph` and install `topograph4` + run `sudo systemctl daemon-reload`, and (2) set `set -e version4 true` in `cmsh` `topographsettings` and restart the service.
+
+### 2. Cloud nodes placed under a `fake switch` or `fake block` in `topology.conf`
+
+Symptom: Multi-node Slurm jobs on AWS (`p5.48xlarge`), OCI, or GCP suffer high cross-switch latency, and `/cm/shared/apps/slurm/etc/<cluster>/topology.conf` lists nodes under a generic fake switch/block.
+
+Cause: Either the cloud instances were stopped when Topograph ran, or the cloud provider topology API check failed (missing `ec2:DescribeInstanceTopology` / `AmazonEC2ReadOnlyAccess` on AWS, missing the 5 dynamic-group `inspect` policies on OCI, or missing a `COMPACT` placement policy on GCP).
+
+Fix: Ensure cloud compute nodes are running during topology generation, attach `AmazonEC2ReadOnlyAccess` (AWS) or the 5 `inspect` dynamic-group policies (OCI) or `COMPACT` placement (GCP), and run `cmsh -c "wlm use slurm; topology update"` while watching `journalctl -u topograph -f`.
+
+### 3. Nebius multi-node `nccl-tests` running at 10–25 Gbps TCP speed instead of 400G/800G IB
+
+Symptom: `nvidia-smi` shows 8 healthy SXM GPUs on each Nebius VM, but multi-node `all_reduce_perf` crawls at `< 5 GB/s` bus bandwidth.
+
+Cause: The `nebius_compute_v1_instance` resources were created without attaching them to a shared `nebius_compute_v1_gpu_cluster` (`infiniband_fabric`) (or were placed in different `gpu_cluster` IDs), forcing NCCL to fall back to the VPC Ethernet interface.
+
+Fix: Define a single `nebius_compute_v1_gpu_cluster` resource on the target `infiniband_fabric` and pass `gpu_cluster = { id = nebius_compute_v1_gpu_cluster.fabric.id }` to every instance in the training pool.
+
+### 4. GKE GPU node pool upgrade hangs forever (`Quota exceeded` / `Reservation exhausted`)
+
+Symptom: Triggering a node image upgrade on a GKE `A3` or `A4` node pool leaves the upgrade stuck at 0% for hours.
+
+Cause: The node pool used the default `max_surge = 1` upgrade strategy, which tries to provision an *extra* 8-GPU VM before draining an existing node—failing when your GPU quota or `google_compute_reservation` has zero spare capacity.
+
+Fix: Set `auto_upgrade = false` and configure `upgrade_settings { strategy = "SURGE", max_surge = 0, max_unavailable = 1 }` so GKE drains and upgrades 1 existing node at a time within your fixed reservation.
+
+### 5. `A3` / `A4` multi-node training achieves only 15% of expected network throughput on GCP
+
+Symptom: An 8-node `a3-highgpu-8g` or `a4-highgpu-8g` job boots cleanly, but inter-node `AllReduce` is bottlenecked on `eth0`.
+
+Cause: The VMs were launched with only the single default VPC network interface (`MTU 1460`), omitting the additional GPU NIC VPC networks, jumbo `MTU 8244 / 8896`, `COLLOCATED` compact placement policy, or the required GPUDirect-TCPX / GPUDirect-RDMA daemonset/plugin.
+
+Fix: Provision all dedicated GPU NIC VPCs with `mtu = 8896`, attach the `COLLOCATED` compact `resource_policies`, deploy the matching `GPUDirect-TCPX` (`A3`) or `GPUDirect-RDMA RoCE` (`A3 Ultra` / `A4`) plugin, and verify jumbo frames across all GPU NICs.
 
 ---
 
@@ -399,7 +401,7 @@ Every multi-node GPU instance must reference the same `nebius_compute_v1_gpu_clu
 - **A2:** 1 to 16 NVIDIA A100 SXM4 GPUs with standard gVNIC networking.
 - **A3:** 8 NVIDIA H100 SXM5 GPUs using multi-NIC VPCs with MTU 8896 and GPUDirect-TCPX.
 - **A3 Ultra:** 8 NVIDIA H200 SXM GPUs using multi-NIC RoCEv2 VPCs with MTU 8896 and GPUDirect-RDMA.
-- **A4:** 8 NVIDIA Blackwell B200 SXM6 GPUs using multi-NIC RoCEv2 VPCs with MTU 8896 and GPUDirect-RDMA.
+- **A4:** 8 NVIDIA Blackwell B200 SXM GPUs using multi-NIC RoCEv2 VPCs with MTU 8896 and GPUDirect-RDMA.
 - **A4X:** NVIDIA GB200 NVL72 racks combining 72 B200 GPUs and 36 Grace CPUs over Multi-Node NVLink 5 and GPUDirect-RDMA.
 </details>
 
@@ -500,13 +502,16 @@ Run `ping` with the don't-fragment flag and a jumbo payload size across the GPU 
 | Handbook Chapter `4.24` (`docs/part-04-automation/24-terraform-on-gcp-and-nebius-networks-gpu-vms-and-gke.md`) | Sections 1–7 (4,211 words) | GCP landing zone, jumbo `MTU 8896`, multi-NIC GPU VPCs (`GPUDirect-TCPX` on `A3`, `GPUDirect-RDMA` RoCE on `A3 Ultra` / `A4`), `G2`/`A2`/`A3`/`A3 Ultra`/`A4`/`A4X` machine families, `on_host_maintenance = "TERMINATE"`, `COMPACT` (`COLLOCATED`) policy, `Reservations` / `DWS` / `Spot`, GKE `max_surge = 0, max_unavailable = 1`, single driver manager rule, `Cluster Toolkit`, Nebius `nebius_compute_v1_gpu_cluster` `infiniband_fabric`, `Soperator`, CoreWeave K8s topology labels |
 | `nvidia-devops` Notes & *Generative AI on Kubernetes* (`generative-ai-on-kubernetes`) | Volume 01 Ch. 8 (`05-enterprise-ai-platforms.md` §§4 & 6), Volume 09 (`02 - K8s & Virtualization Gauntlet` Q2), *Generative AI on Kubernetes* Ch. 3 & Ch. 7 | DGX Cloud serverless SuperPOD overview, MIG vs vGPU, SR-IOV (`PF` + `VF`) + IOMMU (`VT-d` / `AMD-Vi`) direct DMA passthrough, and Kueue + Volcano / KAI Scheduler topology-aware scheduling |
 
+### Notes from the 2026-11 rework
+- The "SXM6" module name was removed because the sources do not state it. The A3 row now separates `a3-highgpu-8g` (GPUDirect-TCPX) from `a3-megagpu-8g` (TCPXO) from Google's A3 documentation as I recall it; this was not re-fetched, so treat it as unresolved until checked against the current Google Cloud page. The BCM Topograph port, defaults, `topograph4` upgrade steps and the AWS and OCI prerequisites were rechecked against the BCM 11 manual and match.
+
 ### Not in the corpus (flagged for verification before publishing)
 - Live cloud provider API schemas, regional availability tables, and current machine-type or Terraform attribute names for DGX Cloud, CoreWeave, Nebius AI Cloud, and GCP evolve rapidly and must be verified against current provider documentation before production use.
 
 ### Run here
 - Running `python3 -B code/part09/cloud_gpu_platforms_lab.py` passes all 25 verification checks with 0 failures.
 
-### My own choices and inferences, labelled in the text
+### Choices and inferences, labelled in the text
 - Grouping the four named platforms in the chapter title into three architectural models in Section 1.2 is this chapter's own inference synthesizing our enterprise platform notes, Chapter 4, and the BCM 11 manual.
 
 ### Not verified on live hardware

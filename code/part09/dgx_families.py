@@ -223,7 +223,7 @@ DGX_SYSTEM_CATALOG: Dict[str, DGXSystemSpec] = {
         compute_nic_speed_gbps=400,
         max_power_kw=10.2,
         cooling="air",
-        weight_lbs=370.0,
+        weight_lbs=287.6,  # nearly 300 lbs (130 kg) per the DGX hardware notes
     ),
     "DGX-H200": DGXSystemSpec(
         model="DGX-H200",
@@ -241,7 +241,7 @@ DGX_SYSTEM_CATALOG: Dict[str, DGXSystemSpec] = {
         compute_nic_speed_gbps=400,
         max_power_kw=10.2,
         cooling="air",
-        weight_lbs=370.0,
+        weight_lbs=287.6,  # nearly 300 lbs (130 kg) per the DGX hardware notes
     ),
     "DGX-B200": DGXSystemSpec(
         model="DGX-B200",
@@ -302,23 +302,24 @@ DGX_SYSTEM_CATALOG: Dict[str, DGXSystemSpec] = {
 
 def estimate_kv_cache_gb(
     num_layers: int,
-    num_heads: int,
+    num_kv_heads: int,
+    head_dim: int,
     bytes_per_element: int,
     seq_len: int,
     concurrent_users: int,
 ) -> float:
-    """Calculate KV-cache footprint using the Volume 04 Chapter 1 formula.
+    """Calculate the KV-cache footprint in decimal GB.
 
-    Source: nvidia-devops Volume 04 Chapter 1 ("Memory Capacity"):
-    bytes = bytes_per_element * 2 (K and V) * num_layers * num_heads * seq_len
-    per user, then multiplied by concurrent_users and divided by 1e9 (decimal GB)
-    or GiB. In V4 Ch 1: 8 bytes/token * 2 * 80 * 128 * 8192 = 1,342,177,280 B
-    (~1.34 GB per user), and 64 users = ~85.9 GB.
+    Per token, each layer stores one key vector and one value vector per KV head:
+    bytes_per_token = 2 (K and V) * num_layers * num_kv_heads * head_dim * bytes_per_element.
+    Llama-3-70B uses grouped-query attention (80 layers, 8 KV heads, head_dim 128):
+    FP16 gives 327,680 bytes per token, so 4,096 tokens take 1.34 GB per user
+    and 64 users take about 85.9 GB.
     """
-    if num_layers <= 0 or num_heads <= 0 or bytes_per_element <= 0 or seq_len <= 0 or concurrent_users <= 0:
+    if min(num_layers, num_kv_heads, head_dim, bytes_per_element, seq_len, concurrent_users) <= 0:
         raise ValueError("All KV cache parameters must be positive integers.")
-    bytes_per_user = bytes_per_element * 2 * num_layers * num_heads * seq_len
-    total_bytes = bytes_per_user * concurrent_users
+    bytes_per_token = 2 * num_layers * num_kv_heads * head_dim * bytes_per_element
+    total_bytes = bytes_per_token * seq_len * concurrent_users
     return round(total_bytes / 1_000_000_000, 2)
 
 

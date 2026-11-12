@@ -23,24 +23,20 @@ lab_venue: "none (design / reading)"
 
 ## Why this matters for AI infrastructure
 
-Most enterprise teams do not start with a massive data center facility built for a multi-unit SuperPOD. Instead, organizations usually buy a single eight-GPU server for a data science team or a smaller departmental pod of two to sixteen nodes. When engineers treat a small pod like a single workstation or overbuild it like a massive cloud cluster, the project stalls. Either expensive GPUs sit idle behind single-GPU scripts, or a missing commissioning check crashes a two-week training job on day three.
+Most enterprise teams do not start with a data center built for a multi-unit SuperPOD. They buy one eight-GPU server for a data science team, or a small departmental pod of two to sixteen nodes. If engineers treat a small pod like a workstation, or overbuild it like a cloud cluster, the project stalls. Either seven of eight GPUs sit idle behind single-GPU scripts, or a missing commissioning check crashes a two-week training job on day three.
 
-Designing and onboarding these smaller deployments requires three distinct architectural choices. First, you can eliminate the spine switch layer altogether when your node count fits inside a single layer of rail leaf switches. That leaf-only topology cuts optical transceiver and switch costs. It also keeps same-rail latency to a single switch hop.
+Three choices matter for smaller deployments. First, you can drop the spine switch layer when your nodes fit inside one layer of rail leaf switches. That saves transceivers and switches and keeps same-rail traffic to one switch hop.
 
-Second, you must partition expensive GPUs safely across multiple users and jobs. Administrators need clear rules for choosing Multi-Instance GPU hardware isolation versus Multi-Process Service spatial sharing or simple time-slicing. Using a software sharing mode across untrusted tenants exposes shared physical memory. One faulty kernel can then crash every neighbor on the device.
+Second, you must share expensive GPUs safely among users and jobs. Choose between Multi-Instance GPU (MIG) hardware isolation, Multi-Process Service (MPS) sharing and simple time-slicing. A software sharing mode across untrusted tenants exposes shared physical memory, and one faulty kernel can crash every neighbour on the device.
 
-Third, you must execute a rigorous six-stage commissioning and acceptance gate before handing the cluster to researchers. Walking through physical, server, network, storage, cluster, and operational checks catches marginal transceivers, post-maintenance slot swaps, and missing rack blanking panels before production runs begin.
+Third, run a six-stage commissioning and acceptance gate before you hand the cluster to researchers. Physical, server, network, storage, cluster and operational checks catch marginal transceivers, parts swapped into the wrong slot after maintenance, and missing blanking panels before production runs begin.
 
 ```text
-Enterprise AI Deployment Scales and Primary Engineering Focus (V21 Ch 2, Ch 13, Module 4 Q14):
+Deployment scales and the main engineering focus at each:
   - Single DGX Node:     1 node (8 GPUs)                  -> Internal NVSwitch only; MIG/MPS/containers to prevent 7 of 8 GPUs sitting idle
   - DGX BasePOD / Pod:   2 to 16 nodes (16 to 128 GPUs)   -> Leaf-only rail-optimized fabric (0 spines), 3-fabric split, shared flash storage, 6-stage acceptance
   - DGX SuperPOD:        32+ nodes (256 to 9,216+ GPUs)   -> Multi-tier leaf-spine Clos, 1.2 MW to 19.2 MW facility power/CDU cooling, UFM, Mission Control recovery
 ```
-
-:::info Corpus scope note
-Vendor-specific NVIDIA DGX BasePOD reference architecture PDFs for NetApp, WEKA, VAST, DDN, or IBM Storage Scale are not in the local book corpus. In this chapter, the Single-Node versus BasePOD versus SuperPOD onboarding framework, GPU sharing rules, the leaf-only 16-node reference blueprint, the multi-pool startup design, and the six-stage commissioning protocol are drawn from the `nvidia-devops` Volume 21 notes and interview modules listed in the sources section.
-:::
 
 ## Prerequisites and outcomes
 
@@ -54,19 +50,11 @@ Vendor-specific NVIDIA DGX BasePOD reference architecture PDFs for NetApp, WEKA,
 
 ---
 
-## Concepts: basics → intermediate → advanced
+## 1. Three tiers: one node, a BasePOD and a SuperPOD
 
-## 1. The three tiers of AI deployments: Single Node vs BasePOD vs SuperPOD
+A team that buys one eight-GPU server has a utilization problem. Data scientists run single-GPU scripts and seven GPUs sit idle. When the same team grows to four or sixteen nodes, single-server habits break. Without separate compute and storage networks, golden-image provisioning and a cluster scheduler, multi-node jobs stall on storage contention and configuration drift.
 
-When an enterprise buys its first GPU system, the infrastructure team often underestimates how rapidly operational complexity changes with scale. A team operating a single eight-GPU server faces a utilization problem, where data scientists run single-GPU scripts that leave seven GPUs idle. Once that team grows to four or sixteen nodes, however, single-server habits break down completely. Without separate compute and storage networks, golden-image boot management, and cluster scheduling, multi-node jobs stall on storage contention and configuration drift.
-
-A customer buying a single eight-GPU DGX node has fundamentally different architectural needs from an enterprise deploying an eight-node DGX BasePOD. Both differ again from a cloud provider building a 64-node DGX SuperPOD.
-
-Think of the three tiers like aviation operations. A single DGX node is like operating one twin-engine corporate aircraft. Every transfer happens inside one fuselage over the internal NVSwitch baseboard, and your primary job is keeping the seats full using containers and GPU partitioning.
-
-A DGX BasePOD of two to sixteen nodes is like operating a regional airport inside existing enterprise hangars. It introduces a single control tower running Base Command Manager with Slurm or Kubernetes. It also uses a single runway layer of leaf-only switches and a shared fuel depot of centralized flash storage.
-
-A DGX SuperPOD of 32 or more nodes is like building an international hub airport from bare ground. It requires dedicated utility substations, liquid-cooling distribution units, and multi-tier leaf-spine air-traffic control with UFM and NMX-M. It also needs automated recovery software because hardware faults occur daily at thousand-GPU scale.
+The three tiers need different designs. On a single DGX node, every transfer stays inside the NVSwitch baseboard, and the main job is keeping the GPUs busy with containers and GPU partitioning. A BasePOD of two to sixteen nodes adds one cluster manager, Base Command Manager with Slurm or Kubernetes, one layer of leaf switches and shared flash storage. A SuperPOD of 32 or more nodes needs its own power and liquid-cooling infrastructure and a multi-tier leaf-spine fabric managed with UFM and NMX-M. It also needs automated recovery software, because hardware faults happen daily at a thousand GPUs.
 
 ```mermaid
 flowchart LR
@@ -80,32 +68,26 @@ flowchart LR
 | 2. BasePOD / leaf-only pod | 2 to 16 air-cooled DGX nodes (16 to 128 GPUs) | Single-tier (leaf-only) IB NDR or RoCEv2; 3 fabrics: compute, storage, management | Shared all-flash storage (VAST, WEKA, NetApp) | BCM golden images, Slurm or Kubernetes operators |
 | 3. SuperPOD | 32+ nodes or 8+ NVL72 racks (256 to 9,216+ GPUs) | Multi-tier non-blocking fat-tree (leaf and spine) | Dedicated high-performance storage | UFM, NMX-M, Mission Control auto-recovery; facility power and liquid cooling (CDUs) |
 
-### 1.1 Comparing Single Node, BasePOD, and SuperPOD side by side
+### 1.1 The three tiers side by side
 
-Treating two to sixteen nodes as the practical envelope of a spine-less BasePOD or leaf-only pod before transitioning to a multi-tier SuperPOD in `select_deployment_archetype` is my inference. It combines the two-to-eight node BasePOD onboarding range in the interview guide with the eight-to-sixteen node leaf-only pod architecture in Volume 21.
+The two-to-sixteen node range for a spine-less pod is this chapter's own choice, used in `select_deployment_archetype`. It joins a two-to-eight node BasePOD onboarding range with a sixteen-node leaf-only pod design. Treat it as a planning rule, not an NVIDIA limit.
 
-| Architectural Dimension | Tier 1: Single DGX System | Tier 2: DGX BasePOD & Smaller Pods | Tier 3: DGX SuperPOD |
+| Dimension | Tier 1: single DGX | Tier 2: BasePOD and smaller pods | Tier 3: SuperPOD |
 |---|---|---|---|
-| **Typical Scale** | **1 node** (**8 GPUs**) | **2 to 16 nodes** (**16 to 128 GPUs**) | **32+ nodes** (`1–64 SUs`) or **8–128 NVL72 racks** (**248 to 9,216+ GPUs**) |
-| **Target Users & Workloads** | Data science teams, PoCs, single-node fine-tuning, multi-model inference | Mid-size enterprises, departmental AI, LoRA/full fine-tuning, RAG, 70B LLM training | CSPs, sovereign AI, frontier foundation model pre-training and reasoning |
-| **Compute Network Topology** | **Internal NVSwitch only** (no external GPU-to-GPU fabric needed) | **Single-tier (Leaf-Only) Rail-Optimized** NDR InfiniBand or lossless RoCEv2 (`1 hop` intra-rail, `0` spines) | **Multi-tier non-blocking Fat-Tree / Clos** (`Leaf + Spine`) with `UFM Enterprise` & `NMX-M` |
-| **Storage Architecture** | Internal `30 TB` `/raid` NVMe cache + existing enterprise NAS | Centralized **certified all-flash storage** (WEKA, VAST, NetApp, DDN, IBM Storage Scale) over dedicated 100–400G Storage Fabric | Dedicated **High-Performance Storage** (`90–280 GB/s` per SU over 400G RoCEv2) + separate **NFS User Storage** |
-| **Provisioning & Orchestration** | Standalone **DGX OS**, Docker / containerd, **NVIDIA Container Toolkit**, **NGC**, Jupyter | **Base Command Manager (`BCM`)** golden-image PXE boot + **Slurm** or **Kubernetes** (`GPU Operator` + `Network Operator`) | **NVIDIA Mission Control** + **BCM** + **Run:ai** / **Slurm** + autonomous hardware/job recovery |
-| **Key Onboarding Focus & Trap** | **Trap:** Running monolithic single-GPU Python scripts leaving 7 of 8 GPUs idle. **Fix:** Teach `MIG`, `torchrun` DDP, and NGC containers. | **Trap:** Mixing storage and compute on one switch or skipping multi-node burn-in. **Fix:** Enforce **3-fabric separation** (`Compute`, `Storage`, `Mgmt`) and 6-stage acceptance. | **Trap:** Treating SuperPOD as "just a big BasePOD." **Fix:** Bridge data center facilities (`HVAC/CDU/Power`) with MLOps straggler & checkpoint automation. |
-
-:::tip In one minute
-- A Single-Node DGX with eight GPUs focuses on single-box utilization using DGX OS, NGC containers, and MIG or MPS partitioning.
-- A BasePOD of two to sixteen nodes introduces three separate networks for compute, storage, and management, centralized flash storage, Base Command Manager golden images, and a leaf-only switch fabric.
-- Never treat a SuperPOD of 32 or more nodes as just a big BasePOD. SuperPOD scale requires multi-tier leaf-spine fabrics, facility-scale power and liquid cooling, and automated straggler and checkpoint recovery.
-:::
+| **Scale** | 1 node, 8 GPUs | 2 to 16 nodes, 16 to 128 GPUs | 32+ nodes or 8 to 128 NVL72 racks, 248 to 9,216+ GPUs |
+| **Users** | Data science teams, proofs of concept | Departmental AI, fine-tuning, RAG, 70B training | Cloud providers, sovereign AI, frontier pre-training |
+| **Compute network** | NVSwitch only | Leaf-only rail-optimized NDR InfiniBand or RoCEv2, no spines | Multi-tier non-blocking fat-tree with `UFM Enterprise` and `NMX-M` |
+| **Storage** | Local `/raid` plus existing NAS | Certified all-flash storage on a dedicated 100 to 400G fabric | High-Performance Storage (90 to 280 GB/s per unit) plus NFS user storage |
+| **Software** | DGX OS, containers, NGC | `BCM` golden images with Slurm or Kubernetes | Mission Control, BCM, Run:ai or Slurm, automatic recovery |
+| **Main risk** | Single-GPU scripts leave 7 of 8 GPUs idle | Storage and compute on one switch, or no multi-node burn-in | Treating a SuperPOD as a big BasePOD |
 
 ---
 
-## 2. Sharing smaller deployments safely: MIG versus MPS versus Time-Slicing
+## 2. Sharing a GPU safely: MIG, MPS and time-slicing
 
-On a single DGX node or a four-node departmental BasePOD, rarely does every developer or inference microservice need an entire high-memory GPU. A small embedding model or interactive notebook may use only a fraction of the compute cores and memory on an H100, H200, or B200 accelerator. However, if an administrator shares that GPU across multiple teams using the wrong mechanism, one user's out-of-memory error or illegal memory access will crash every other workload on the card. Even worse, sharing physical memory across separate business units or regulated datasets violates strict security boundaries.
+On a single DGX node or a four-node departmental pod, few developers or inference services need a whole high-memory GPU. A small embedding model or a notebook uses a fraction of an H100, H200 or B200. If an administrator shares the GPU with the wrong mechanism, one user's out-of-memory error or illegal memory access crashes every other workload on the card. Sharing physical memory between business units or regulated datasets also breaks security boundaries.
 
-NVIDIA provides three distinct mechanisms to share a GPU across multiple workloads. Selecting the right mechanism depends on whether your workloads belong to separate untrusted tenants or a single trusted tenant.
+NVIDIA offers three ways to share a GPU. The right one depends on whether the workloads belong to separate untrusted tenants or to one trusted tenant.
 
 ```mermaid
 flowchart TD
@@ -117,40 +99,34 @@ flowchart TD
 ```
 
 ```text
-GPU Sharing Hardware and Capacity Reference (Module 1.1, Security Governance Masterclass):
+GPU sharing limits:
   - Full GPU VRAM Baselines:  80 GB (H100), 141 GB (H200), 180 GB (B200)
   - MIG Partition Limit:      Up to 7 hardware instances per GPU on A100, H100, H200, and B200
   - MPS Client Limit:         Up to 48 client connections per GPU (shared VRAM and L2 cache)
   - Time-Slicing Replicas:    Configurable (typically 2 to 16+ replicas in Kubernetes Device Plugin)
 ```
 
-### 2.1 Comparing the three GPU sharing mechanisms
+### 2.1 The three mechanisms compared
 
-| Attribute | 1. Multi-Instance GPU (`MIG`) | 2. Multi-Process Service (`MPS`) | 3. GPU Time-Slicing |
+| Attribute | Multi-Instance GPU (`MIG`) | Multi-Process Service (`MPS`) | Time-slicing |
 |---|---|---|---|
-| **Partitioning Layer** | **Physical hardware engines** (requires reconfiguring GPU mode) | **CUDA runtime / spatial SM scheduler** | **OS / driver temporal context switcher** |
-| **Max Partitions per GPU** | **Up to 7 hardware instances** (on `A100`, `H100`, `H200`, `B200`) | Up to 48 client connections (architectural limit) | Configurable (e.g., 2 to 16+ replicas in K8s Device Plugin) |
-| **SM Compute Cores** | **Dedicated physical SM slices** (runs truly in parallel) | **Shared SMs spatially** (kernels from different processes run simultaneously) | **Shared SMs temporally** (processes take turns via time-quanta preemption) |
-| **VRAM & Memory Bandwidth** | **Hardware-isolated HBM capacity, memory controllers & crossbars** | **Shared VRAM** (no hardware memory boundary between clients) | **Shared VRAM** (one OOM process can starve neighbors) |
-| **L2 Cache** | **Dedicated L2 cache slices** | **Shared L2 cache** (noisy neighbor cache thrashing possible) | **Shared L2 cache** |
-| **Fault & Security Isolation** | **Strict hardware isolation** (an Xid fault or memory bug stays inside the slice; **mandatory for multi-tenant & classified data**) | **Zero fault isolation** (a fatal memory fault in one client terminates *all* MPS clients on that GPU) | **Zero memory protection** (shared physical VRAM; unsuitable for classified multi-tenant workloads) |
-| **Best Use Case** | Multi-tenant Kubernetes inference, interactive Jupyter notebooks, classified workloads, strict P99 latency SLAs | Single-tenant MPI ranks or small inference models whose kernels are too narrow to fill all SMs alone | Over-subscribing best-effort dev/test pods for a single friendly team |
-
-:::tip In one minute
-- Use Multi-Instance GPU with up to seven hardware slices whenever you need hardware memory protection, fault isolation, or deterministic tail-latency quality of service across multiple tenants or classified workloads.
-- Use Multi-Process Service only when a single trusted tenant runs multiple small kernels concurrently to boost streaming multiprocessor occupancy without hardware repartitioning.
-- Never use time-slicing or Multi-Process Service to isolate untrusted tenants processing sensitive data, because both share physical memory and L2 cache.
-:::
+| **Partitioning** | Hardware engines; GPU must be reconfigured | CUDA runtime, spatial sharing | Driver, taking turns |
+| **Maximum per GPU** | Up to 7 instances (A100, H100, H200, B200) | Up to 48 clients | Configurable, for example 2 to 16 replicas |
+| **Compute cores** | Dedicated slices, truly parallel | Shared, kernels run at the same time | Shared, processes take turns |
+| **Memory** | Isolated capacity and bandwidth | Shared, no hardware boundary | Shared; one out-of-memory process can starve neighbours |
+| **L2 cache** | Dedicated slices | Shared; noisy neighbours possible | Shared |
+| **Fault and security isolation** | Hardware isolation; needed for multi-tenant and classified data | None; a fatal fault in one client ends all MPS clients on that GPU | None; shared memory, unsuitable for classified work |
+| **Best use** | Multi-tenant inference, notebooks, classified workloads, strict latency targets | One tenant's MPI ranks or small inference kernels that cannot fill the GPU alone | Best-effort dev and test pods for one friendly team |
 
 ---
 
-## 3. Leaf-only BasePOD networking and the 16-Node (128-GPU) reference blueprint
+## 3. Leaf-only networking and a 16-node reference pod
 
-When organizations step up from a single server to a multi-node pod, they often assume they must immediately buy a two-tier leaf-and-spine switch fabric. On a small cluster of two to sixteen nodes, adding a spine tier wastes hundreds of thousands of dollars on extra switches and optical transceivers while adding an extra switching hop to cross-switch traffic.
+Teams stepping up from one server to a multi-node pod often assume they must buy a two-tier leaf-and-spine fabric at once. On two to sixteen nodes, a spine tier costs hundreds of thousands of dollars in switches and optics and adds a hop to cross-switch traffic.
 
-### 3.1 Why a 2-to-16 Node BasePOD needs zero Spine switches
+### 3.1 Why two to sixteen nodes need no spine switches
 
-In Chapters 9.6 through 9.9, we saw that a multi-unit SuperPOD uses a two-tier leaf-and-spine fat-tree. A smaller BasePOD of two to sixteen nodes can omit the spine switch layer completely because all nodes fit within the port budget of a single layer of rail leaf switches.
+Chapters 9.6 to 9.9 showed that a multi-unit SuperPOD uses a two-tier leaf-and-spine fat-tree. A BasePOD of two to sixteen nodes can omit the spines, because all the nodes fit within the ports of one layer of rail leaf switches.
 
 ```mermaid
 flowchart TD
@@ -172,12 +148,12 @@ flowchart TD
     N1 & N16 <--> OOB_SW
 ```
 
-In a leaf-only rail-optimized topology, each eight-GPU node has eight compute network cards operating at 400 Gbps NDR. You deploy eight leaf switches, one for each rail, such as the 64-port Quantum-2 QM9700. Network card `k` of every node plugs directly into leaf switch `k`. For very small two-to-four node pods, administrators can also partition rail domains across one or two physical switches.
+Each eight-GPU node has eight compute NICs at 400 Gbps NDR. You deploy eight leaf switches, one per rail, such as the 64-port Quantum-2 QM9700. NIC `k` of every node plugs into leaf `k`. For a very small pod of two to four nodes, you can also split the rail domains across one or two physical switches.
 
-Because all sixteen nodes connect their rail `k` network cards to the exact same physical leaf switch `k`, they use only 16 downlinks out of 64 available switch ports. Every same-rail GPU-to-GPU transfer across all sixteen nodes completes in a single switch hop with zero spine switches required. Cross-rail transfers happen inside each node over the high-speed internal NVSwitch baseboard.
+All sixteen nodes plug their rail `k` NIC into the same leaf `k`, so each leaf uses only 16 of its 64 ports. Every same-rail transfer between any two nodes takes one switch hop, with no spine. Cross-rail transfers happen inside each node over the NVSwitch baseboard.
 
 ```text
-Leaf-Only Rail-Optimized Pod Parameters and Trade-Offs (V21 Ch 2, Ch 13):
+Leaf-only rail-optimized pod, parameters and trade-offs:
   - Node Injection Bandwidth:  8 NICs x 400 Gbps NDR = 3.2 Tbps per node
   - Intra-Rail Hop Count:      1 switch hop across all 2 to 16 nodes (16 downlinks used per 64-port QM9700 leaf)
   - Intra-Node Cross-Rail:     900 to 1,800 GB/s internal NVSwitch baseboard
@@ -185,11 +161,11 @@ Leaf-Only Rail-Optimized Pod Parameters and Trade-Offs (V21 Ch 2, Ch 13):
   - Operational Constraint:    All 8 rail switches must stay healthy; scaling beyond leaf port count requires adding spines
 ```
 
-### 3.2 Complete 16-Node (128-GPU H100 SXM5) Training Pod Blueprint and 8-Week Rollout
+### 3.2 A 16-node training pod and its eight-week rollout
 
-From Volume 21 Chapter 13, the table below presents the complete engineering blueprint and capital cost breakdown for a 16-node H100 SXM5 training pod designed to train and refresh 70B-class language models.
+The table gives an illustrative blueprint and capital cost for a 16-node H100 SXM5 pod that trains and refreshes 70B-class language models. The prices are planning figures, not quotes.
 
-| Subsystem | 16-Node (`128-GPU`) Pod Specification | Illustrative CAPEX & Sizing Math |
+| Subsystem | Specification | Illustrative cost |
 |---|---|---|
 | **Compute Nodes (`16x`)** | `16 × DGX H100-class` nodes = **128x H100 80 GB SXM5 GPUs** (`126,592` dense BF16 TFLOPS peak), dual Xeon Platinum 8480C (`112 cores/node`), `2 TB DDR5/node`, `8 × 3.84 TB NVMe` (`~30 TB/node` local cache) | `16 × $285,000 = $4,560,000` (`$4.56M`) |
 | **Compute Fabric** | **8x Rail-Optimized NDR 400G Leaf Switches** (`16 downlinks/switch`, DAC for short runs, AOC otherwise) | `~$400,000` (switches, optics, cables) |
@@ -197,10 +173,10 @@ From Volume 21 Chapter 13, the table below presents the complete engineering blu
 | **Racks, Power & Cooling** | **4 Compute Racks** (`4 nodes/rack × 10.2 kW = ~40.8 kW/rack`), **~163.2 kW (`~163 kW`) total IT load**, A+B feeds, hot/cold aisle containment, UPS on network/storage/mgmt | `~$200,000` (racks, PDUs, cooling) + `~$100,000` installation & testing |
 | **Total Pod CAPEX & TCO** | **Total CAPEX = `$5,460,000` (`~$5.5M`)** (`~$42,656 / ~$43K` per GPU; `~$43` per dense BF16 TFLOP) | Plus `~$644K/year` OPEX = **`~$7.4M` 3-Year TCO** (`~$2.14 / GPU-hour`) |
 
-Rolling out this 16-node training pod follows an eight-week engineering schedule with strict recovery targets.
+The rollout follows an eight-week schedule with recovery targets.
 
 ```text
-8-Week Pod Deployment Schedule and MTTR Targets (V21 Ch 13):
+Eight-week deployment schedule and recovery targets:
   - Weeks 1-2 (Site Preparation):       Install 41 kW/rack A+B PDUs, breakers, chillers/containment, racks, cable trays; test UPS failover
   - Weeks 3-4 (Hardware Installation):  Unpack, inventory, run 8-hour GPU burn-in per node; rack 16 nodes (8 hours); verify ibstat Active / 400G on 128 ports
   - Weeks 5-6 (Software & Config):      Provision DGX OS via BCM golden images; pin driver/CUDA/cuDNN/NCCL; run nccl-tests all_reduce_perf across all 128 GPUs
@@ -209,25 +185,20 @@ Rolling out this 16-node training pod follows an eight-week engineering schedule
   - Operational MTTR Targets:           GPU fault <= 15 min, IB link flap <= 5 min, checkpoint failover <= 10 min, brief power blip < 1 min via UPS
 ```
 
-:::tip In one minute
-- A pod of two to sixteen nodes can use a leaf-only rail-optimized fabric with eight rail leaf switches and zero spines, achieving single-hop intra-rail latency across all nodes.
-- The reference 16-node H100 training pod packs four nodes per rack across four racks for a total IT load of 163.2 kW and rolls out in eight weeks.
-:::
-
 ---
 
-## 4. Designing a multi-pool departmental AI cluster ($20M Year-1 startup case study)
+## 4. A multi-pool cluster: a first-year budget case
 
-Real enterprise and startup deployments rarely run just one workload. If you put periodic pre-training jobs, low-latency production inference APIs, and dozens of customer fine-tuning jobs into a single queue, workloads collide. Training bursts will starve production API latency or leave expensive interconnect fabrics idle during small adapter jobs.
+Real deployments rarely run one workload. Put periodic pre-training, low-latency production inference and dozens of customer fine-tuning jobs in one queue, and they collide. Training bursts starve the inference API, or an expensive interconnect sits idle during small adapter jobs.
 
-Walk through the multi-pool sizing architecture from Volume 21 Lab 01. A Series B company has a 20 million dollar Year-1 budget covering both capital and operating expenses. It must support three simultaneous workloads. First, it runs a quarterly 70B language model continued pre-training refresh on 100 billion new tokens every three months. Second, it serves a production Llama-70B online inference API handling 500 queries per second at peak under a 99.5 percent availability target. Third, it runs an enterprise customer LoRA fine-tuning service supporting 100 concurrent adapter jobs on an 8B base model.
+Consider a Series B company with a 20 million dollar first-year budget for capital and operating cost. It has three workloads. It refreshes a 70B model quarterly with 100 billion new tokens. It serves a Llama-70B inference API at 500 queries per second at peak, with a 99.5 percent availability target. It also runs a customer LoRA fine-tuning service with 100 concurrent adapter jobs on an 8B base model.
 
-### 4.1 Step-by-step pool sizing and Year-1 TCO math
+### 4.1 Pool sizing and first-year cost
 
-Separating the cluster into three dedicated hardware pools matches each workload to the right GPU generation and interconnect topology. Pool 1 uses sixteen H100 SXM5 nodes with a rail-optimized InfiniBand fabric for the quarterly 70B training refresh. Pool 2 uses nine H100 SXM5 nodes including one full spare node to serve 500 queries per second of 70B FP8 inference with high availability. Pool 3 uses two A100 80 GB nodes to bin-pack up to 128 concurrent 8B LoRA fine-tuning jobs where multi-node InfiniBand is unnecessary.
+Three dedicated pools match each workload to the right GPU generation and network. Pool 1 is sixteen H100 SXM5 nodes on a rail-optimized InfiniBand fabric for the quarterly refresh. Pool 2 is nine H100 SXM5 nodes, one of them a full spare, serving 500 queries per second of 70B FP8 inference with high availability. Pool 3 is two A100 80 GB nodes that pack up to 128 concurrent 8B LoRA jobs, where multi-node InfiniBand is not needed.
 
 ```text
-Multi-Pool Startup Cluster Sizing and Year-1 TCO Math (V21 Lab 01):
+Pool sizing and first-year cost arithmetic:
   1. Pool 1 — 16-Node (128-GPU H100 SXM5) Training Pod ($4.96M compute + fabric):
      - Training FLOPs per refresh:  FLOPs = 6 x Parameters x Tokens = 6 x (70 x 10^9) x (100 x 10^9) = 4.2 x 10^22 FLOPs
      - Sustained cluster throughput: 128 GPUs x 989 TFLOPS (BF16 dense) x 0.40 MFU = 50,636.8 TFLOPS (50.6 PFLOPS)
@@ -251,32 +222,74 @@ Multi-Pool Startup Cluster Sizing and Year-1 TCO Math (V21 Lab 01):
      - Combined Year-1 Spend:       $8.9M CAPEX + $0.82M OPEX = ~$9.7M (leaves ~$10.3M of the $20M budget for a second region or expansion)
 ```
 
-:::tip In one minute
-- Size training pods directly from the six-times parameters-by-tokens FLOPs formula. Refreshing a 70B model on 100B tokens across 128 H100 GPUs at 40 percent MFU takes 9.6 days.
-- Adding one full spare node to the nine-node inference pool guarantees 99.5 percent availability while keeping total Year-1 spend across all 27 nodes at 9.7 million dollars.
-:::
-
 ---
 
-## 5. The Six-Stage AI Factory Commissioning and Acceptance Framework
+## 5. Six stages of commissioning and acceptance
 
-Passing `nvidia-smi` and a thirty-second smoke test does not mean a new BasePOD or 128-GPU cluster is ready for production. Most multi-week training postmortems trace back to a physical or operational defect that existed on day one. Common day-one defects include a missing blanking panel causing hot-aisle recirculation, a GPU reseated into the wrong PCIe slot after an RMA, or a single rail landing on an oversubscribed uplink. Other clusters fail when an intermittent bus drop triggers after two days of heat soak, or when a Prometheus alert rule contains a misspelled metric name.
+Passing `nvidia-smi` and a thirty-second smoke test does not mean a new BasePOD is ready for production. Many multi-week training failures trace back to a defect that existed on day one. Examples are a missing blanking panel that lets hot exhaust recirculate, a GPU reseated into the wrong slot after a return, and one rail landing on an oversubscribed uplink. Others show up only after two days of heat soak, or because an alert rule has a misspelled metric name.
 
-Before signing off on any new GPU pod, execute all six sequential acceptance stages modeled in `evaluate_six_stage_acceptance` and archive the required sign-off evidence.
+Before you sign off a new pod, run all six acceptance stages in order, as modeled in `evaluate_six_stage_acceptance`, and keep the evidence.
 
-| Stage | Required Acceptance Checks & Thresholds | Required Sign-Off Evidence | Real-World Failure Triage Example |
-|---|---|---|---|
-| **Stage 1: Physical Acceptance** | • PDU load balanced across phases, **breaker headroom `> 20%`**<br/>• Rack inlet temperature **`< 27°C`** under load (thermal camera walk)<br/>• All cables labeled, bend radius respected, DAC/AOC within spec<br/>• Zero optical RX/TX power warnings (`ethtool` / switch CLI)<br/>• Every node's BMC reachable + Redfish power-cycle verified | Signed physical checklist + **thermal camera photos** + 100% green BMC table | **Symptom:** Thermal camera shows `Node 7` inlet at `34°C` while neighbors read `24°C`.<br/>**Triage:** Check for a blocked front filter or a **missing rack blanking panel** allowing hot-aisle exhaust recirculation (a 10-minute fix) before blaming the room chillers. |
-| **Stage 2: Server Acceptance** | • **Zero firmware drift** (`BIOS, BMC, GPU VBIOS, NIC, BlueField DPU`)<br/>• `nvidia-smi -L` matches SKU count; zero `Xid` or ECC errors<br/>• All DIMM channels populated at rated speed (`dmidecode`)<br/>• **`nvidia-smi topo -m` matches fleet matrix** (`NV18` + `PIX`)<br/>• `nvidia-smi nvlink -s` & `ibstat` (`Active / LinkUp / 400G`) all green | Zero-delta firmware diff report + archived `topo -m` & NVLink tables per node | **Symptom:** One node's `nvidia-smi topo -m` shows a GPU-NIC pair on `NODE`/`SYS` instead of `PIX`.<br/>**Triage:** Node was reassembled after an RMA with NICs/GPUs in the wrong slots. Physically move the card back to the right slot; never mask it in software. |
-| **Stage 3: Network Acceptance** | • Switch **LLDP neighbor table** matches cabling diagram (`0` crossed rails)<br/>• Every port `UP` at full negotiated speed<br/>• Point-to-point `ib_write_bw` / `nccl-tests` **`≥ 90%` of line rate on every individual rail**<br/>• `ib_write_lat` in low single-digit µs<br/>• Full-scale `all_reduce_perf` with **zero PFC pause storms** | Full all-pairs, **per-rail** bandwidth/latency matrix + full-scale `nccl-tests` report | **Symptom:** `Rail 3` across all 16 nodes runs 15% slower than `Rails 0–2, 4–7`.<br/>**Triage:** Don't swap 16 optical cables. Check `Leaf Switch 3`'s uplink group or QoS config—a single shared switch misconfiguration explains a whole-rail drop. |
-| **Stage 4: Storage Acceptance** | • **Concurrent all-node** `fio` sequential read/write meets target (**`≥ 100 MB/s per GPU`** aggregate)<br/>• Random small-file read IOPS meets shuffled-dataset target<br/>• **`mdtest`** file create/stat/delete rates validated for thousands of shard files<br/>• Timed **full-scale 128-GPU checkpoint save & restore** within MTTR budget | Concurrent all-node `fio` + `mdtest` logs + timed full-cluster checkpoint save/restore log | **Symptom:** 16-node concurrent read hits only 60% of the single-node benchmark.<br/>**Triage:** Check the **storage switch uplinks** between compute leaves and the storage array before blaming the SSDs. |
-| **Stage 5: Cluster Acceptance** | • Full-cluster **`HPL / GPU-Linpack`** sustained FLOPS check (`0` node drops)<br/>• Full-scale `nccl-tests` (`all_reduce_perf`, `all_gather_perf`)<br/>• **NVIDIA `ClusterKit`** coordinated multi-node diagnostic sweep<br/>• **24-to-72-hour continuous burn-in** (`0` unplanned node drops)<br/>• End-to-end **representative customer workload** + checkpoint restore | HPL report + `ClusterKit` output + **24–72h burn-in log** + customer proxy run log | **Symptom:** At hour 48 of burn-in, `Node 11` throws `Xid 79 (Fallen off the bus)` and drops.<br/>**Triage:** Pull the node, run diagnostics, and RMA. **Never just restart the job and sign off**—catching 48-hour thermal/power infant mortality is the entire purpose of Stage 5. |
-| **Stage 6: Operational Acceptance** | • **Live alert-fire injection** (simulate GPU temp/node kill and confirm page reaches on-call)<br/>• **CMDB reconciliation** (exact serials, asset tags, rack RU slots)<br/>• **Live executed rollback drill** (revert a firmware/image update end-to-end)<br/>• Clean node drain/cordon and rejoin test<br/>• Runbooks accessible **outside** the cluster + test vendor support ticket | Alert-fire delivery log + reconciled CMDB export + executed rollback log + test ticket ID | **Symptom:** Simulated GPU temperature spike never pages on-call.<br/>**Triage:** Check the Prometheus scrape target and **DCGM metric name** in the alert rule (e.g., referencing a non-existent metric name) before assuming the GPU didn't heat up. |
+### Stage 1: Physical Acceptance
 
-:::tip In one minute
-- Never hand off a new BasePOD or training cluster after a five-minute smoke test.
-- Require signed evidence across all six acceptance stages: physical, server, network, storage, cluster burn-in, and operational readiness.
-:::
+Checks: PDU load balanced across phases, breaker headroom `> 20%`. Rack inlet temperature `< 27°C` under load (thermal camera walk). All cables labeled, bend radius respected, DAC/AOC within spec. Zero optical RX/TX power warnings (`ethtool` / switch CLI). Every node's BMC reachable + Redfish power-cycle verified.
+
+Evidence to keep: Signed physical checklist + thermal camera photos + 100% green BMC table.
+
+Example symptom: Thermal camera shows `Node 7` inlet at `34°C` while neighbors read `24°C`.
+
+Example triage: Check for a blocked front filter or a missing rack blanking panel allowing hot-aisle exhaust recirculation (a 10-minute fix) before blaming the room chillers.
+
+### Stage 2: Server Acceptance
+
+Checks: Zero firmware drift (`BIOS, BMC, GPU VBIOS, NIC, BlueField DPU`). `nvidia-smi -L` matches SKU count. Zero `Xid` or ECC errors. All DIMM channels populated at rated speed (`dmidecode`). `nvidia-smi topo -m` matches fleet matrix (`NV18` + `PIX`). `nvidia-smi nvlink -s` & `ibstat` (`Active / LinkUp / 400G`) all green.
+
+Evidence to keep: Zero-delta firmware diff report + archived `topo -m` & NVLink tables per node.
+
+Example symptom: One node's `nvidia-smi topo -m` shows a GPU-NIC pair on `NODE`/`SYS` instead of `PIX`.
+
+Example triage: Node was reassembled after an RMA with NICs/GPUs in the wrong slots. Physically move the card back to the right slot; never mask it in software.
+
+### Stage 3: Network Acceptance
+
+Checks: Switch LLDP neighbor table matches cabling diagram (`0` crossed rails). Every port `UP` at full negotiated speed. Point-to-point `ib_write_bw` / `nccl-tests` `≥ 90%` of line rate on every individual rail. `ib_write_lat` in low single-digit µs. Full-scale `all_reduce_perf` with zero PFC pause storms.
+
+Evidence to keep: Full all-pairs, per-rail bandwidth/latency matrix + full-scale `nccl-tests` report.
+
+Example symptom: `Rail 3` across all 16 nodes runs 15% slower than `Rails 0–2, 4–7`.
+
+Example triage: Don't swap 16 optical cables. Check `Leaf Switch 3`'s uplink group or QoS config—a single shared switch misconfiguration explains a whole-rail drop.
+
+### Stage 4: Storage Acceptance
+
+Checks: Concurrent all-node `fio` sequential read/write meets target (`≥ 100 MB/s per GPU` aggregate). Random small-file read IOPS meets shuffled-dataset target. `mdtest` file create/stat/delete rates validated for thousands of shard files. Timed full-scale 128-GPU checkpoint save & restore within MTTR budget.
+
+Evidence to keep: Concurrent all-node `fio` + `mdtest` logs + timed full-cluster checkpoint save/restore log.
+
+Example symptom: 16-node concurrent read hits only 60% of the single-node benchmark.
+
+Example triage: Check the storage switch uplinks between compute leaves and the storage array before blaming the SSDs.
+
+### Stage 5: Cluster Acceptance
+
+Checks: Full-cluster `HPL / GPU-Linpack` sustained FLOPS check (`0` node drops). Full-scale `nccl-tests` (`all_reduce_perf`, `all_gather_perf`). NVIDIA `ClusterKit` coordinated multi-node diagnostic sweep. 24-to-72-hour continuous burn-in (`0` unplanned node drops). End-to-end representative customer workload + checkpoint restore.
+
+Evidence to keep: HPL report + `ClusterKit` output + 24–72h burn-in log + customer proxy run log.
+
+Example symptom: At hour 48 of burn-in, `Node 11` throws `Xid 79 (Fallen off the bus)` and drops.
+
+Example triage: Pull the node, run diagnostics, and RMA. Never just restart the job and sign off—catching 48-hour thermal/power infant mortality is the entire purpose of Stage 5.
+
+### Stage 6: Operational Acceptance
+
+Checks: Live alert-fire injection (simulate GPU temp/node kill and confirm page reaches on-call). CMDB reconciliation (exact serials, asset tags, rack RU slots). Live executed rollback drill (revert a firmware/image update end-to-end). Clean node drain/cordon and rejoin test. Runbooks accessible outside the cluster + test vendor support ticket.
+
+Evidence to keep: Alert-fire delivery log + reconciled CMDB export + executed rollback log + test ticket ID.
+
+Example symptom: Simulated GPU temperature spike never pages on-call.
+
+Example triage: Check the Prometheus scrape target and DCGM metric name in the alert rule (e.g., referencing a non-existent metric name) before assuming the GPU didn't heat up.
+
 
 ---
 
@@ -352,13 +365,45 @@ mpirun -np 128 --map-by ppr:8:node mdtest -n 1000 -i 3 -d /mnt/SharedPFS/mdtest_
 
 ## How it fails
 
-| Failure mode | Symptom | Root cause | Diagnosis & fix |
-|---|---|---|---|
-| **1. Using Time-Slicing or MPS for untrusted multi-tenant or classified workloads** | A tenant's buggy CUDA kernel triggers an illegal memory access and crashes every other tenant's pod on the same GPU—or a security audit flags shared physical VRAM across classified tenants. | **Time-Slicing** and **MPS** share the same physical HBM address space and L2 cache with zero hardware memory protection or fault isolation. | Enable **Multi-Instance GPU (`MIG`)** (`nvidia-smi -mig 1`, or via the Kubernetes GPU Operator `mig.strategy=single\|mixed`), which physically partitions SMs, L2 cache, and memory controllers into up to **7 hardware-isolated instances**. |
-| **2. Updating drivers on a BCM BasePOD via ad-hoc `apt/yum` instead of image cloning** | After an in-place driver update across 16 nodes, 3 nodes fail to boot and the remaining 13 get overwritten back to the old driver on their next reboot. | BCM provisions compute nodes from **golden software images** stored on the head node. In-place package edits on compute nodes are wiped on reboot, and editing the live image without cloning or running `createramdisk` leaves no rollback path. | Clone the software image in `cmsh` (`clone old new`), update packages inside `cm-chroot-sw-img /cm/images/<new>`, run **`createramdisk`** inside `cmsh`, canary-test one node, and switch the category image assignment. |
-| **3. Hot-aisle recirculation (`34°C` inlet) on one node from a missing blanking panel (Stage 1)** | During Stage 1/5 acceptance, `Node 7` thermal-throttles with a `34°C` inlet reading while `Node 6` and `Node 8` in the same rack read `24°C`. | An empty 2U–4U gap above `Node 7` was left without a **rack blanking panel**, allowing `50°C+` rear exhaust air to get sucked directly back into `Node 7`'s front intake fans. | Walk the cold aisle with a **thermal camera** during Stage 1 Physical Acceptance and install snap-in **blanking panels** in every unused rack unit (`RU`) plus brush grommets on all cable openings. |
-| **4. Post-RMA PCIe slot swap turning a repaired node into a permanent straggler (Stage 2)** | After a field technician replaces a motherboard or riser on `Node 4`, `nvidia-smi` shows all 8 GPUs healthy, but 16-node training jobs run 20% slower whenever `Node 4` is included. | During reassembly, a ConnectX-7 NIC was plugged into a riser on the wrong PCIe root complex/switch (`NODE` or `SYS` instead of `PIX` in `nvidia-smi topo -m`). NCCL still runs, but that rail's traffic bounces through the CPU/UPI link. | Always re-run **Stage 2 Server Acceptance (`nvidia-smi topo -m` diffed against the fleet golden matrix)** whenever a node returns from hardware maintenance, and physically move the card back to its designated PCIe switch slot. |
-| **5. Signing off on a cluster after a 10-minute test and hitting `Xid 79` on Day 3 (Stage 5)** | A newly delivered 16-node cluster passes quick `nvidia-smi` and 1-minute `nccl-tests` checks, gets handed to researchers, and crashes 48 hours into a flagship training run with `Xid 79 (GPU has fallen off the bus)`. | Infant-mortality hardware defects (marginal SXM socket contact, PCIe retimer thermal drift, or PSU voltage droop) only manifest after **24 to 72 hours of continuous thermal soak**. | Never waive **Stage 5 Cluster Acceptance**: run `HPL`, `ClusterKit`, and a **mandatory 24-to-72-hour continuous burn-in** (plus a full proxy job with checkpoint save/restore). Any node that drops during the 72-hour burn-in is pulled and RMA'd before customer handoff. |
+### 1. Using Time-Slicing or MPS for untrusted multi-tenant or classified workloads
+
+Symptom: A tenant's buggy CUDA kernel triggers an illegal memory access and crashes every other tenant's pod on the same GPU—or a security audit flags shared physical VRAM across classified tenants.
+
+Cause: Time-Slicing and MPS share the same physical HBM address space and L2 cache with zero hardware memory protection or fault isolation.
+
+Fix: Enable Multi-Instance GPU (`MIG`) (`nvidia-smi -mig 1`, or via the Kubernetes GPU Operator `mig.strategy=single|mixed`), which physically partitions SMs, L2 cache, and memory controllers into up to 7 hardware-isolated instances.
+
+### 2. Updating drivers on a BCM BasePOD via ad-hoc `apt/yum` instead of image cloning
+
+Symptom: After an in-place driver update across 16 nodes, 3 nodes fail to boot and the remaining 13 get overwritten back to the old driver on their next reboot.
+
+Cause: BCM provisions compute nodes from golden software images stored on the head node. In-place package edits on compute nodes are wiped on reboot, and editing the live image without cloning or running `createramdisk` leaves no rollback path.
+
+Fix: Clone the software image in `cmsh` (`clone old new`), update packages inside `cm-chroot-sw-img /cm/images/<new>`, run `createramdisk` inside `cmsh`, canary-test one node, and switch the category image assignment.
+
+### 3. Hot-aisle recirculation (`34°C` inlet) on one node from a missing blanking panel (Stage 1)
+
+Symptom: During Stage 1/5 acceptance, `Node 7` thermal-throttles with a `34°C` inlet reading while `Node 6` and `Node 8` in the same rack read `24°C`.
+
+Cause: An empty 2U–4U gap above `Node 7` was left without a rack blanking panel, allowing `50°C+` rear exhaust air to get sucked directly back into `Node 7`'s front intake fans.
+
+Fix: Walk the cold aisle with a thermal camera during Stage 1 Physical Acceptance and install snap-in blanking panels in every unused rack unit (`RU`) plus brush grommets on all cable openings.
+
+### 4. Post-RMA PCIe slot swap turning a repaired node into a permanent straggler (Stage 2)
+
+Symptom: After a field technician replaces a motherboard or riser on `Node 4`, `nvidia-smi` shows all 8 GPUs healthy, but 16-node training jobs run 20% slower whenever `Node 4` is included.
+
+Cause: During reassembly, a ConnectX-7 NIC was plugged into a riser on the wrong PCIe root complex/switch (`NODE` or `SYS` instead of `PIX` in `nvidia-smi topo -m`). NCCL still runs, but that rail's traffic bounces through the CPU/UPI link.
+
+Fix: Always re-run Stage 2 Server Acceptance (`nvidia-smi topo -m` diffed against the fleet golden matrix) whenever a node returns from hardware maintenance, and physically move the card back to its designated PCIe switch slot.
+
+### 5. Signing off on a cluster after a 10-minute test and hitting `Xid 79` on Day 3 (Stage 5)
+
+Symptom: A newly delivered 16-node cluster passes quick `nvidia-smi` and 1-minute `nccl-tests` checks, gets handed to researchers, and crashes 48 hours into a flagship training run with `Xid 79 (GPU has fallen off the bus)`.
+
+Cause: Infant-mortality hardware defects (marginal SXM socket contact, PCIe retimer thermal drift, or PSU voltage droop) only manifest after 24 to 72 hours of continuous thermal soak.
+
+Fix: Never waive Stage 5 Cluster Acceptance: run `HPL`, `ClusterKit`, and a mandatory 24-to-72-hour continuous burn-in (plus a full proxy job with checkpoint save/restore). Any node that drops during the 72-hour burn-in is pulled and RMA'd before customer handoff.
 
 ---
 
@@ -555,12 +600,15 @@ Infant-mortality hardware faults such as marginal socket contact or thermal drif
 1. **Author's `nvidia-devops` Notes (Volume 21 — *AI Factory: Building Large-Scale Production Systems*):**
    - `chapter-02-gpu-compute-cluster-design.md` (`nvidia-zero-to-hero/volume-21/chapter-02-gpu-compute-cluster-design.md`, 4,137 words): Single-node Configurations A (8× H100 SXM5, $285K) and B (8× H100 PCIe, $215K), and Topology 1 (Single-Pod, Leaf Only up to 8–16 nodes / 64–128 GPUs).
    - `chapter-13-reference-architecture-100-gpu-training-cluster.md` (`nvidia-zero-to-hero/volume-21/chapter-13-reference-architecture-100-gpu-training-cluster.md`, 3,583 words): Complete 16-node (128-GPU H100 SXM5) training pod blueprint (4 racks × 4 nodes = 40.8 kW / ~41 kW per rack, 163.2 kW / ~163 kW total IT load, 8 rail-aligned NDR leaf switches, 16 × $285,000 = $4,560,000 / $4.56M compute + $400,000 IB + $200,000 storage + $200,000 racks/PDUs/cooling + $100,000 install = $5,460,000 / $5.46M / ~$5.5M CAPEX, $42,656 / ~$43K per GPU, ~$43 per BF16 TFLOP, ~$644K/year OPEX, ~$7.4M 3-year TCO, ~$2.14/GPU-hr, 8-week deployment schedule, MTTR targets, and Six-Stage Commissioning and Acceptance Framework including `HPL/Linpack`, `ClusterKit`, and 24–72 hour burn-in).
-   - `nvidia-zero-to-hero/volume-21/labs/lab-01-cluster-design-workshop.md` (1,403 words): $20M Series B multi-pool cluster sizing (16 H100 training nodes = $4.96M compute+fabric, 6 × 70 × 10^9 × 100 × 10^9 = 4.2 × 10^22 FLOPs, 128 × 989 × 0.40 = 50,636.8 TFLOPS / 5.06368 × 10^16 / 5.064 × 10^16 FLOP/s, 829,436 seconds / 8.29 × 10^5 seconds = 9.6 days at ~120,000 tokens/s, ~$46K/run; 9 H100 inference nodes = $2.57M, 500 / 15.2 = 32.9 -> 33 replicas + 1 spare node = 72 GPUs / 36 replicas = 547.2 / 547 QPS at 99.5% SLA; 2 A100 80 GB LoRA nodes = $0.40M; 27 nodes total = $8.93M / ~$8.9M CAPEX + $0.82M OPEX = ~$9.7M Year 1, leaving ~$10.3M).
+   - `nvidia-zero-to-hero/volume-21/labs/lab-01-cluster-design-workshop.md` (1,403 words): the Series B multi-pool sizing. Pool 1 is 16 H100 training nodes at $4.96M including fabric, and the refresh takes 4.2 x 10^22 FLOPs, which is 9.6 days at 40 percent MFU. Pool 2 is 9 H100 inference nodes at $2.57M, 33 replicas plus one spare node, 547.2 QPS. Pool 3 is 2 A100 nodes at $0.40M. The 27 nodes cost $8.93M plus $0.82M operating cost, about $9.7M in year one.
 2. **Interview & Legacy Modules (`nvidia-devops-core-interview` & `nvidia-devops-legacy-v09`):**
    - Module 4 Q14 (Customer Education & Onboarding: Single DGX Node vs BasePOD vs SuperPOD, 1.2 MW to 19.2 MW SuperPOD scale, 90–280 GB/s storage)
    - `01 - Hardware & Ecosystem Gauntlet` (Module 1.1: MIG up to 7 hardware-isolated slices on 80 GB H100 / 141 GB H200 / 180 GB B200 vs MPS up to 48 clients vs Time-Slicing)
    - `03 - Security Governance Masterclass` (Multi-tenant GPU isolation rules for classified workloads)
    - `05 - Linux, Networking, and IaC Gauntlet` (Q16: BCM golden-image cloning `clone old-img new-img`, `cm-chroot-sw-img`, and `createramdisk` workflow)
+
+### Notes from the 2026-11 rework
+- The vendor-specific BasePOD reference architecture PDFs for NetApp, WEKA, VAST, DDN and IBM Storage Scale are not in the corpus. The pod sizes, the 2 to 16 node envelope, the prices and the rollout schedule therefore come from course notes. They are planning figures, not NVIDIA specifications. Arithmetic checked: 128 x 989 = 126,592 TFLOPS, 4 x 4 x 10.2 = 163.2 kW, 4.2e22 FLOPs = 9.6 days at 40 percent MFU, 500 / 15.2 = 33 replicas, and $8.93M plus $0.82M is about $9.7M. The MIG limit of seven instances and the MPS limit of 48 clients were not rechecked against current NVIDIA documentation.
 
 ### Not in the corpus
 - Vendor-specific NVIDIA DGX BasePOD reference architecture PDFs for NetApp, WEKA, VAST, DDN, or IBM Storage Scale are not in the local book corpus.
@@ -569,7 +617,7 @@ Infant-mortality hardware faults such as marginal socket contact or thermal drif
 - `python3 -B code/part09/basepod_deployments_lab.py` passes all 28 checks with 0 failures.
 
 ### My own choices and inferences, labelled in the text
-- Combining the two-to-eight node BasePOD onboarding example in Module 4 Q14 with the eight-to-sixteen node leaf-only pod architecture in Volume 21 Chapters 2 and 13 into a unified two-to-sixteen node range in `select_deployment_archetype` is my inference.
+- The two-to-sixteen node range joins a two-to-eight node BasePOD onboarding example with an eight-to-sixteen node leaf-only pod design from the course notes. It is the chapter's own planning rule.
 
 ### Not verified on live hardware
 - The `cm-chroot-sw-img`, `nvidia-smi mig -cgi`, `ib_write_bw`, `mdtest`, and `ClusterKit` commands were not executed on live BasePOD hardware in this authoring environment.

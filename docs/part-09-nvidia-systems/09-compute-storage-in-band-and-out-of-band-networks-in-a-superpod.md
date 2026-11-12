@@ -23,17 +23,9 @@ lab_venue: "none (design / reading)"
 
 ## Why this matters for AI infrastructure
 
-In an ordinary enterprise data center, a server sends all its traffic through two bonded ports to one oversubscribed Top-of-Rack switch. Web requests, database queries, NFS mounts, Prometheus scrapes, and SSH logins share that pipe. Run a thousand-GPU cluster on a network like that, and a single checkpoint burst starves the Kubernetes control plane. A container image pull can also block packets in the middle of an `ncclAllReduce`.
+In an ordinary data center, a server sends all its traffic through two bonded ports to one oversubscribed Top-of-Rack switch. Web requests, database queries, NFS mounts, Prometheus scrapes and SSH logins share that pipe. Run a thousand-GPU cluster on a network like that, and one checkpoint burst starves the Kubernetes control plane. A container image pull can block packets in the middle of an `ncclAllReduce`.
 
-An NVIDIA DGX SuperPOD keeps these kinds of traffic apart. It carries five logical network segments over four separate switch fabrics.
-1. **The Scale-Up Multi-Node NVLink Fabric.** This fabric carries intra-rack GPU-to-GPU memory access at line rate across blind-mate copper backplanes.
-2. **The Scale-Out Compute Fabric.** This non-blocking, rail-optimized InfiniBand fabric is dedicated exclusively to inter-node GPU collectives.
-3. **The Storage and In-Band Ethernet Fabric.** Built on Spectrum-4 SN5600D switches, this fabric uses two separate, unbonded ports on each node's BlueField-3 DPU. One port carries lossless RoCEv2 storage while the second carries In-Band management and border eBGP uplinks.
-4. **The Out-of-Band Management Network.** Physically isolated copper SN2201 switches roll up via VXLAN to dedicated OOB aggregation spines for BMCs, switch trays, and smart PDUs.
-
-:::info Corpus scope note
-This chapter does not use the NVIDIA Quantum-X800 and Spectrum-4 switch configuration guides or the NVIDIA Cumulus Linux and NVOS user manuals. The fabric segmentation, rail topologies, leaf placement trade-offs, and Clos scaling math come from the GB300 Reference Architecture and the DGX B200 Data Center Best Practices guide. The RoCEv2 load balancing, congestion control, and border designs come from those two guides and *AI Data Center Network Design and Technologies* Chapters 2 and 3.
-:::
+An NVIDIA DGX SuperPOD keeps these kinds of traffic apart. It carries five network segments over four separate switch fabrics. The first is the multi-node NVLink fabric, which carries GPU memory traffic inside a rack over copper backplanes. The second is the compute InfiniBand fabric, a non-blocking, rail-optimized network used only for collectives between nodes. The third is the storage and in-band Ethernet fabric on Spectrum-4 SN5600D switches, which gives each node two separate BlueField-3 ports, one for RoCEv2 storage and one for in-band management. The fourth is the out-of-band network of isolated copper SN2201 switches for BMCs, switch trays and smart PDUs.
 
 ## Prerequisites and outcomes
 
@@ -48,41 +40,31 @@ This chapter does not use the NVIDIA Quantum-X800 and Spectrum-4 switch configur
 
 ---
 
-## Concepts: basics → intermediate → advanced
+## 1. The map: five segments on four fabrics
 
-## 1. Master map: the five logical segments across four physical fabrics
+A background container download stalls a multi-rack training job. The download shared a link with latency-sensitive collectives, and the collectives lost packets and heartbeats. Give each class of traffic its own switch plane or its own host port, and every subsystem gets a predictable share of bandwidth.
 
-A background container download stalls a multi-rack training job. The download shared a link with latency-sensitive GPU collectives, and the collectives lost packets and heartbeats. Giving each class of traffic its own switch plane or its own host port gives every subsystem a predictable share of bandwidth.
+Fabric 1, multi-node NVLink, carries tensors inside the rack at 1.8 TB/s per GPU and never leaves the rack. Fabric 2, compute InfiniBand, is reserved for NCCL collectives between nodes and is managed by UFM Enterprise. Fabric 3, storage and in-band Ethernet, is built around Spectrum-4 SN5600D spines. One unbonded BlueField-3 port carries 400G RoCEv2 storage, and the other carries in-band management and NFS. Fabric 4 is the out-of-band 1 GbE copper network on SN2201 switches. IPMI, Redfish and NVOS reach every tray over it even when the main fabrics are down.
 
-The four fabrics divide the work as follows.
-
-1. Fabric 1 is the Multi-Node NVLink fabric. It carries tensors inside the rack at 1.8 TB/s per GPU and never leaves the rack.
-2. Fabric 2 is the Compute InfiniBand fabric. It is reserved for inter-node NCCL collectives, and UFM Enterprise manages it.
-3. Fabric 3 is the Storage and In-Band Ethernet fabric, built around Spectrum-4 SN5600D spines. One BlueField-3 port, unbonded, carries 400G RoCEv2 storage. The second BlueField-3 port carries In-Band Management and NFS.
-4. Fabric 4 is the Out-of-Band 1 GbE copper network on SN2201 switches. IPMI, Redfish, and NVOS reach every tray over it even when the main fabrics are down.
-
-| Logical Segment (`5 Total`) | Physical Fabric (`4 Total`) | Node / Tray Interface | Switch Hardware & Topology | Control Plane & Traffic Carried |
+| Segment | Fabric | Tray interface | Switches | Carries |
 |---|---|---|---|---|
-| **1. NVLink 5** | **Fabric 1: Multi-Node NVLink (`MN-NVL`)** | Rear blind-mate copper (`18 NVL5 links/GPU`) | **9x NVLink Switch Trays / rack** (`18 ASICs`, 1-stage non-blocking crossbar) | Managed by **`NMX-M`**. Carries intra-rack GPU-to-GPU P2P, `NVLS` reductions, and `NCCL` / `NVSHMEM`. |
-| **2. Compute Network** | **Fabric 2: Compute InfiniBand Fabric** | **8x ConnectX-7 (`400G NDR`)** on H100/B200; **4x ConnectX-8 (`800G XDR`)** per tray on GB300 | **`QM9700` (`64x400G`)** or **`Q3400-RD` (`144x800G`)**, `8 leaves/SU`, **1:1 non-blocking** Rail-Optimized Fat-Tree | Managed by **`UFM Enterprise`**. Carries inter-node/inter-rack `NCCL` collectives (`SHARPv3`, `AR`, `SHIELD`). |
-| **3. Storage Network** | **Fabric 3: Storage & In-Band Ethernet Fabric** *(Shared Spine, Dedicated Host Port & Storage Leaves)* | **BlueField-3 Port 1 (`400 GbE` dedicated, unbonded)** | **`Spectrum-4 SN5600D`** (`4 compute leaves/SU` at `1:3` blocking; `2–8 storage leaves` at `72×400G` **1:1 non-blocking**) | Lossless **RoCEv2 (`UDP 4791`)** + **GPUDirect Storage (`GDS`)** to certified High-Performance Storage (`90–280 GB/s` per SU). |
-| **4. In-Band Management Network** | **Fabric 3: Storage & In-Band Ethernet Fabric** *(Shared Spine, Dedicated Host Port & Mgmt Leaves)* | **BlueField-3 Port 2 (`≥ 200 GbE` dedicated / bonded)** | **`Spectrum-4 SN5600D`** (`4 compute leaves/SU` + **`2 management leaves`** at `24×400G` uplinks) | **BCM** provisioning, **NFS User Storage** (`≥100G DR1`), Slurm/K8s/Run:ai control plane, NGC pulls, and **`≥2x 100GbE DR1` eBGP** customer edge + **BMS** (untrusted). |
-| **5. Out-of-Band (`OOB`) Management Network** | **Fabric 4: Out-of-Band Network** | **1 GbE RJ45** ports on compute trays, BlueField-3, switch trays (`BMC` + `COMe`), storage, and rPDUs | **`SN2201` (`48x 1GbE` copper)** rolled up per SU via **VXLAN** to **`2 OOB Aggregation Spines`** | Physically isolated **IPMI / Redfish**, NVSwitch **`NVOS` (`COMe`)**, IB/NVLink switch management, and smart PDU telemetry. |
+| **1. NVLink 5** | **Fabric 1: Multi-Node NVLink (`MN-NVL`)** | Rear blind-mate copper, 18 links per GPU | 9 NVLink switch trays per rack, 18 chips, non-blocking | GPU-to-GPU traffic in the rack; managed by `NMX-M` |
+| **2. Compute Network** | **Fabric 2: Compute InfiniBand Fabric** | 8 ConnectX-7 (400G NDR) on H100 and B200; 4 ConnectX-8 (800G XDR) per tray on GB300 | `QM9700` (64 x 400G) or `Q3400-RD` (144 x 800G), 8 leaves per unit, non-blocking | NCCL collectives between nodes; managed by `UFM Enterprise` |
+| **3. Storage Network** | **Fabric 3: Storage & In-Band Ethernet Fabric** *(Shared Spine, Dedicated Host Port & Storage Leaves)* | BlueField-3 port 1, 400 GbE, unbonded | `Spectrum-4 SN5600D`: 4 compute leaves per unit at 1:3, 2 to 8 storage leaves at 1:1 | Lossless RoCEv2 (`UDP 4791`) and GPUDirect Storage to certified storage, 90 to 280 GB/s per unit |
+| **4. In-Band Management Network** | **Fabric 3: Storage & In-Band Ethernet Fabric** *(Shared Spine, Dedicated Host Port & Mgmt Leaves)* | BlueField-3 port 2, 200 GbE or more | `Spectrum-4 SN5600D`: 4 compute leaves plus 2 management leaves with 24 x 400G uplinks | BCM provisioning, NFS user storage, Slurm and Kubernetes control planes, NGC pulls, and the eBGP customer edge with the building system |
+| **5. Out-of-Band (`OOB`) Management Network** | **Fabric 4: Out-of-Band Network** | 1 GbE RJ45 on trays, BlueField-3, switch trays, storage and rPDUs | `SN2201` (48 x 1GbE), rolled up per unit by VXLAN to 2 OOB aggregation spines | IPMI, Redfish, NVOS, switch management, PDU telemetry |
 
-:::tip In one minute
-- A SuperPOD maps five logical network segments onto four physical switch fabrics.
-- Fabric 3 uses Spectrum-4 SN5600D switches to carry both the Storage and In-Band segments, but keeps them strictly separated on unbonded physical ports of the BlueField-3 DPU.
-:::
+Keep the five segments apart on the wire, and you can size each of them on its own.
 
 ---
 
-## 2. The Compute Network: rail topologies, leaf placement, and Clos scaling
+## 2. The compute network: rails, leaf placement and Clos scaling
 
-A server has all eight compute NICs plugged into one Top-of-Rack switch, as a web server would be. The switch reboots, and the whole server drops out of the training job. That layout also wastes the NVLink locality inside the node. AI factories wire NICs by rail instead of by rack, and the reason is how GPUs inside a node work with GPUs in other nodes.
+A server has all eight compute NICs plugged into one Top-of-Rack switch, as a web server would be. The switch reboots, and the whole server drops out of the training job. AI factories wire NICs by rail instead of by rack, because of how GPUs in one node talk to GPUs in other nodes.
 
-### 2.1 Rail-Optimized vs Rail-Only vs Rail-Unified designs
+### 2.1 Rail-optimized, rail-only and rail-unified wiring
 
-In *AI Data Center Network Design and Technologies* Chapter 3, three GPU-to-leaf wiring architectures are contrasted.
+There are three ways to wire GPUs to leaf switches.
 
 ```mermaid
 flowchart TD
@@ -99,13 +81,15 @@ flowchart TD
     end
 ```
 
-1. **Rail-Optimized Design.** ROD is the NVIDIA SuperPOD standard. In this layout, NIC 1 of every server in the Scalable Unit connects to Leaf Switch 1 on Rail 1, and NIC 2 connects to Leaf Switch 2 on Rail 2. The same pattern continues across all rails. Any GPU on Server A can exchange tensors with the same-indexed GPU on Server B in a single leaf-switch hop with minimum latency. If GPU 1 on Server A needs to talk to GPU 5 on Server B, it has two fast options. It can route across the internal high-speed NVSwitch inside Server A to GPU 5 and exit on Rail 5 in one network hop, or traverse the spine layer in two network hops.
-2. **Rail-Only Design.** This layout is identical to ROD at the leaf layer, except there are no spine connections between different rails. Spines only connect Rail 1 of Stripe A to Rail 1 of Stripe B. It saves switch budget and isolates faults strictly within a single rail. As a result, all cross-rail traffic must traverse the internal GPU NVSwitch inside the servers.
-3. **Rail-Unified Design.** RUD connects all eight NICs of a server to a single local ToR leaf switch, or four NICs to each of two local leaves. This approach simplifies intra-rack cabling with short copper DAC or AEC cables and gives single-hop latency across the four servers sharing that leaf. However, if that single leaf switch fails, the entire multi-GPU server is completely isolated from the cluster. In addition, switches must implement deterministic path forwarding to segregate rail traffic.
+**Rail-optimized** is the SuperPOD standard. NIC 1 of every server in the unit goes to leaf 1 on rail 1, NIC 2 to leaf 2 on rail 2, and so on. A GPU on server A reaches the same-numbered GPU on server B through one leaf switch. If GPU 1 on server A must reach GPU 5 on server B, it can cross the NVSwitch inside server A to GPU 5 and leave on rail 5. It can also go through the spine layer.
+
+**Rail-only** is the same at the leaf layer, but the spines join only the same rail of different groups. It saves switches and keeps a fault inside one rail. The cost is that all cross-rail traffic must cross the NVSwitch inside the servers.
+
+**Rail-unified** plugs all eight NICs of a server into one local leaf, or four into each of two leaves. Cabling inside the rack is simple, with short copper cables, and the servers sharing a leaf are one hop apart. If that leaf fails, the whole server is cut off, and the switches must use deterministic path forwarding to keep the rails apart.
 
 ### 2.2 Physical placement of Compute Leaf switches: ToR vs MoR vs EoR
 
-In a Rail-Optimized row of eight compute racks, every server must run cables to all eight rail leaf switches. Where you physically mount those leaf switches changes your rack power budget and maximum cable length. If you place the leaf switches at the far end of a long row, optical cables from the furthest compute rack can exceed the maximum allowable cable run.
+In a rail-optimized row of eight compute racks, every server runs cables to all eight rail leaf switches. Where you mount those switches changes the rack power budget and the longest cable. Put them at the far end of a long row, and the cables from the farthest rack can exceed the allowed length.
 
 | Design Criterion | Top-of-Rack (`ToR`) | Middle-of-Row (`MoR`) | End-of-Row (`EoR`) |
 |---|---|---|---|
@@ -115,18 +99,23 @@ In a Rail-Optimized row of eight compute racks, every server must run cables to 
 | **Cabling Within Compute Rack** | Varying lengths to the local ToR switch | **None** (all compute cables exit to row tray) | **None** (all compute cables exit to row tray) |
 | **Maximum Cable Span** | Spans up to **8 racks** | Spans a maximum of **6 racks** (**Shortest.**) | Spans up to **10 racks** (**Longest.**) |
 
-Notice why Middle-of-Row is the standard layout for high-density SuperPOD rows. Placing the dedicated network and management racks in the center of the compute row cuts the maximum server-to-leaf cable span to at most six racks. That short span keeps AOC cables well below the 27.0 m limit while removing switch power and heat from the high-density compute racks.
+Middle-of-Row is the usual layout for high-density SuperPOD rows. Network and management racks in the center of the row cut the longest server-to-leaf span to six racks. That keeps active optical cables well under the 27 m limit and keeps switch power and heat out of the compute racks.
 
-### 2.3 Scaling from 3-Stage Clos to 5-Stage Clos, Scheduled Fabrics, and Dragonfly
+When you plan a row, add up the longest cable path first, then decide where the leaf switches go.
 
-As a cluster grows from hundreds to tens of thousands of GPUs, a two-tier Leaf-Spine fabric eventually runs out of switch ports. Adding a third tier of Super-Spine switches extends cluster scale, but introduces extra optical hops and potential oversubscription bottlenecks if not sized carefully.
+### 2.3 From three-stage to five-stage Clos, and other large fabrics
 
-The switch port radix sets the non-blocking ceiling of a two-tier Leaf-Spine or three-stage Clos fabric. The function `calculate_clos_fabric_scale()` in `code/part09/superpod_networks.py` computes it. Applying the half-down, half-up port split to both 64-port and 144-port switches is this chapter's own step. It joins *AI Data Center Network Design and Technologies* Chapter 3 with Table 3 of the GB300 Reference Architecture.
+As a cluster grows from hundreds to tens of thousands of GPUs, a two-tier leaf-spine fabric runs out of switch ports. A third tier of super-spine switches extends the scale, but it adds optical hops and can add oversubscription if it is not sized carefully.
 
-1. **Three-Stage Clos with 64-port 400 Gbps switches.** Each leaf dedicates 32 ports down to servers and 32 ports up to spines. A single row or SU supports 256 GPUs across eight leaves and four spines. Eight rows reach the maximum non-blocking three-stage scale of 2,048 GPUs.
-2. **Three-Stage Clos with 144-port 800 Gbps Q3400-RD switches.** Raising the switch radix from 64 to 144 ports increases the two-layer non-blocking ceiling by four and a half times. That higher radix scales a DGX GB300 SuperPOD to sixteen SUs and 9,216 GPUs without a Super-Spine tier.
-3. **Five-Stage Clos for 2,048 to 14,336 or more GPUs.** Beyond 2,048 GPUs on 64-port switches, four rows of 1,024 GPUs are grouped into one Block or Brick. Multiple Blocks are then interconnected by a Super-Spine layer or high-radix 256-port chassis spines. With a fixed pool of 32 Super-Spine switches, scaling the number of 1,024-GPU Blocks trades Super-Spine oversubscription for total GPU count as shown in the table below.
-4. **Alternative ultra-scale fabrics.** A Scheduled Fabric splits incoming packets at the ingress leaf into fixed 64-, 128-, or 256-byte cells. It sprays those cells uniformly across all spine backplane links using Virtual Output Queueing. Each input port maintains a dedicated virtual queue per egress port to eliminate head-of-line blocking before reassembling packets at the egress leaf. A Dragonfly topology connects three-stage Clos groups directly to each other in a full inter-group mesh. That direct mesh reduces hop count, network diameter, and optical cable cost while relying on Adaptive Routing to steer around inter-group congestion.
+The number of ports per switch sets the non-blocking limit of a two-tier, or three-stage Clos, fabric. The function `calculate_clos_fabric_scale()` in `code/part09/superpod_networks.py` computes it. Splitting the ports half down and half up, for both 64-port and 144-port switches, is the chapter's own step. It joins a published Clos design for 64-port switches with the GB300 reference architecture's switch table.
+
+With 64-port 400 Gbps switches, each leaf has 32 ports down to servers and 32 up to spines. One row, or one unit, holds 256 GPUs on eight leaves and four spines. Eight rows reach the three-stage limit of 2,048 GPUs.
+
+With 144-port 800 Gbps Q3400-RD switches, the two-layer limit is four and a half times higher. A GB300 SuperPOD reaches sixteen units and 9,216 GPUs without a super-spine tier.
+
+Beyond 2,048 GPUs on 64-port switches, four rows of 1,024 GPUs form one block. Blocks are joined by a super-spine layer or by high-radix 256-port chassis spines. With a fixed pool of 32 super-spines, adding blocks trades oversubscription for GPU count, as the table shows.
+
+Two other designs exist for very large fabrics. A scheduled fabric cuts each packet at the ingress leaf into fixed cells of 64, 128 or 256 bytes and sprays them over all spine links. Virtual output queues remove head-of-line blocking, and the egress leaf reassembles the packets. A Dragonfly joins three-stage Clos groups to each other in a full mesh. It lowers hop count and optical cost and relies on adaptive routing to avoid congested links between groups.
 
 | Clos Fabric Architecture | Switch Radix & Speed | Scale Milestone | Total GPUs | Leaf Switches | Spine Switches | Super-Spine Switches & Ratio |
 |---|---|---|---:|---:|---:|---|
@@ -147,21 +136,15 @@ Clos Building Block Reference Notes:
 - Compute rack power range in MoR analysis: 57.2 kW to 150 kW per compute rack; intra-server NVSwitch bandwidth: 900 to 1,800 GB/s.
 ```
 
-:::tip In one minute
-- Rail-Optimized Design wires NIC `k` of every node to Leaf Switch `k`. Rail-Unified Design instead wires all NICs of a server to one or two local leaves and risks full-server isolation if a leaf fails.
-- Middle-of-Row leaf placement achieves the shortest maximum cable span of six racks while keeping switch heat out of compute racks.
-- A two-tier Clos fabric maxes out at 2,048 GPUs with 64-port switches and 9,216 GPUs with 144-port Q3400-RD switches. Larger clusters use a five-stage Clos or Dragonfly.
-:::
-
 ---
 
-## 3. The Storage Network: RoCEv2, low-entropy elephant flows, load balancing, and DCQCN
+## 3. The storage network: RoCEv2, elephant flows and congestion control
 
-A storage graph shows one spine uplink at 100 percent and dropping packets, while three neighboring uplinks sit nearly idle. Training checkpoints stall. The cause is high-speed RDMA storage running over Ethernet switches that still use the default TCP-style hashing. Switches tuned for low-entropy elephant flows, with hardware congestion control on, keep RoCEv2 storage lossless at line rate.
+A storage graph shows one spine uplink at 100 percent and dropping packets, while three neighbouring uplinks sit nearly idle, and checkpoints stall. The cause is high-speed RDMA storage running over Ethernet switches that still use TCP-style hashing. Switches tuned for a few very large flows, with hardware congestion control on, keep RoCEv2 storage lossless at line rate.
 
-In a DGX GB300 SuperPOD, High-Performance Storage is accessed over RoCEv2, which is RDMA over Converged Ethernet version 2, at 400 Gbps across Spectrum-4 SN5600D switches. RDMA means one machine reads or writes another machine's memory directly. Each compute tray connects to this storage fabric using Port 1 of its BlueField-3 DPU. The same RoCEv2 physics also apply when an organization builds an Ethernet-based backend compute fabric.
+In a DGX GB300 SuperPOD, High-Performance Storage is reached over RoCEv2 at 400 Gbps through Spectrum-4 SN5600D switches. RoCEv2 is RDMA over Converged Ethernet version 2, and RDMA lets one machine read or write another machine's memory directly. Each compute tray uses port 1 of its BlueField-3 for this. The same behaviour applies if you build an Ethernet-based compute fabric.
 
-### 3.1 Why AI and Storage RoCEv2 breaks traditional 5-tuple ECMP hashing
+### 3.1 Why five-tuple hashing fails for RoCEv2
 
 In a traditional cloud web network, thousands of servers open millions of short TCP connections with randomized source and destination IP addresses and ephemeral ports. Because of that high entropy, simple Static Load Balancing using a five-tuple hash spreads traffic evenly across Equal-Cost Multi-Path spine links.
 
@@ -169,9 +152,9 @@ AI storage and collective traffic on RoCEv2 behaves the other way around. It is 
 1. **Low network-layer entropy.** Communication often occurs one-to-one between a specific GPU or DPU IP address and a specific storage target or peer GPU IP address.
 2. **Low transport-layer entropy on UDP 4791.** Every RoCEv2 packet uses UDP destination port 4791, which indicates that the payload begins with the InfiniBand Base Transport Header. The Queue Pair number and packet sequence number change inside the Base Transport Header, but standard Ethernet switches hashing only the outer five-tuple never inspect that inner header. Those switches may even group simultaneous or sequential low-entropy flowlets onto the exact same spine link. That hash collision leaves three of four spine links idle while one link drops packets.
 
-### 3.2 Proactive Load Balancing and Reactive Congestion Control
+### 3.2 Load balancing and congestion control
 
-To make RoCEv2 lossless and congestion-free across the SN5600D fabric, AI Ethernet switches combine proactive load balancing with reactive DCQCN congestion control.
+To keep RoCEv2 lossless across the SN5600D fabric, the switches combine proactive load balancing with reactive congestion control called DCQCN.
 
 ```mermaid
 flowchart LR
@@ -202,46 +185,35 @@ flowchart LR
 | **ECN + CNP (`DCQCN` Loop)** | Reactive End-to-End | Switch marks IP ECN `11` (`Steps 1–3`) -> Receiver returns `CNP` (`01`, `Step 4`) | Source NIC throttles Queue Pair injection rate (`Step 5`) |
 | **PFC Pause (`IEEE 802.1Qbb`)** | Reactive Link-by-Link | Per-priority pause frame with pause quanta (`Steps 3–5`) | Halts upstream hop before buffer overflow can drop packets |
 
-:::tip In one minute
-- RoCEv2 encapsulates the InfiniBand Base Transport Header in UDP port 4791, producing low-entropy elephant flows that break static five-tuple ECMP.
-- Use Dynamic, Global, or Selective load balancing proactively, backed up reactively by DCQCN ECN marking, CNP return packets, and link-level PFC pause frames.
-- On the SN5600D Ethernet fabric, compute leaves run at a 1:3 blocking ratio, while storage leaves run 1:1 non-blocking.
-:::
-
 ---
 
-## 4. The In-Band Management Network and Customer Edge routing
+## 4. The in-band management network and the customer edge
 
-A spike in user logins or container downloads raises storage latency, because provisioning, home directories, and external container registries share one interface with the RDMA storage. The cluster needs a separate management path for boots, schedulers, and external routing, one that never touches the lossless storage port.
+A spike in user logins or container downloads raises storage latency when provisioning, home directories and external registries share one interface with the RDMA storage. The cluster needs a separate management path for boots, schedulers and external routing, one that never touches the lossless storage port.
 
-While Port 1 of each compute tray's BlueField-3 BF3240 DPU is dedicated to 400 Gbps lossless RoCEv2 storage, Port 2 connects at 200 Gbps or higher to the In-Band Management Network segment on the Spectrum-4 SN5600D fabric.
+Port 1 of each tray's BlueField-3 BF3240 is dedicated to 400 Gbps lossless RoCEv2 storage. Port 2 connects at 200 Gbps or more to the in-band management network on the same Spectrum-4 fabric.
 
-### 4.1 Four core functions of the In-Band Management Network
+### 4.1 What the in-band network carries
 
 1. **Cluster control-plane services.** The In-Band network connects NVIDIA Mission Control, Base Command Manager PXE and HTTP boot provisioning, Slurm controller daemons such as `slurmctld` and `slurmd`, and Kubernetes or Run:ai API servers across all compute trays and management servers.
 2. **Access to the NFS User Storage tier.** It provides Ethernet connectivity of at least 100 GbE DR1 to the enterprise NFS User Storage tier. That tier hosts user `/home` directories, Slurm job scripts, centralized system logs, and shared High Availability state for Mission Control and BCM.
 3. **Border uplink to external registries and data sources.** It connects via the pair of SN5600D management leaf switches and the dedicated border VTEP using at least two 100 GbE DR1 single-mode optics with eBGP peering. This uplink reaches external services outside the SuperPOD, including the NVIDIA NGC registry, Git code repositories, and enterprise data lakes.
 4. **End-user interactive and API access.** It carries authenticated user SSH sessions to Slurm login and head nodes alongside HTTPS requests to Kubernetes and Run:ai ingress endpoints.
 
-### 4.2 Why Storage and In-Band sit on separate BlueField-3 ports
+### 4.2 Why storage and in-band use separate ports
 
 Putting the 400 Gbps Storage Network on Port 1 and the In-Band Management Network on Port 2 of the BlueField-3 has three benefits.
 - **Zero TCP interference on RoCEv2.** Heavy container image pulls from NGC or multi-gigabyte log flushes over the In-Band network can never consume buffer headroom on the lossless RoCEv2 storage port.
 - **Zero complex host policy routing.** Each physical interface sits in its own subnet and VLAN without fragile source-based routing rules on the host operating system.
 - **Future High Availability via HBN.** Dedicating one physical port to Storage and one to In-Band removes LACP link bonding on a single segment. To restore multi-path resilience, NVIDIA's roadmap enables Host-Based Networking on the BlueField-3 DPUs so the DPU hardware switch can provide failover across both ports without host LACP complexity.
 
-:::tip In one minute
-- The In-Band Management Network on BlueField-3 Port 2 and the two SN5600D management leaves carries BCM provisioning, NFS User Storage, Slurm and Kubernetes control planes, and border eBGP uplinks.
-- Keeping Storage on Port 1 and In-Band on Port 2 unbonded prevents TCP bursts from disturbing RoCEv2 storage traffic, with future BlueField HBN providing DPU-level port failover.
-:::
-
 ---
 
 ## 5. The Out-of-Band Management Network
 
-A bad kernel update or a wrong firewall rule locks up the host operating system on a compute tray. SSH and the monitoring agents go dark. The on-call engineer still has to power-cycle the tray, read its thermal sensors, and flash switch firmware, even with the compute and storage fabrics down. The Out-of-Band Management Network exists for this. It is a physically isolated 1 GbE copper network, and a non-privileged user should never have direct access to it.
+A bad kernel update or a wrong firewall rule locks up the host operating system on a compute tray. SSH and the monitoring agents go dark. The on-call engineer still has to power-cycle the tray, read its thermal sensors and flash switch firmware, even with the compute and storage fabrics down. The out-of-band network exists for this. It is a physically isolated 1 GbE copper network, and a non-privileged user should never reach it directly.
 
-### 5.1 Every endpoint connected to the SN2201 OOB fabric
+### 5.1 What connects to the OOB switches
 
 Every rack in a DGX SuperPOD contains NVIDIA SN2201 48-port 1 GbE RJ45 copper switches. They connect the management port of every hardware component listed in the table. Management traffic stays on its own network, apart from the data fabrics.
 
@@ -253,14 +225,9 @@ Every rack in a DGX SuperPOD contains NVIDIA SN2201 48-port 1 GbE RJ45 copper sw
 | Power shelves and smart rack PDUs | Each of the eight power shelves per GB300 rack connects its front 1 GbE RJ45 BMC port and its rear RJ45 power-brake management ports. The smart rack PDUs connect as well. |
 | Fabric switches, servers, and storage | InfiniBand Q3400-RD or QM9700 switches, Ethernet SN5600D switches, the management servers for BCM, UFM, and Mission Control, and partner storage controller BMCs. |
 
-### 5.2 VXLAN rollup to OOB Aggregation Spines and Customer OOB handover
+### 5.2 VXLAN rollup and handover to the customer
 
-To avoid a sprawling flat Layer-2 broadcast domain across eight to 128 racks, each Scalable Unit's SN2201 OOB switches roll up as a dedicated VXLAN. That VXLAN terminates on a pair of OOB Aggregation Spine switches. As detailed in Chapter 9.8, Section 4.3, the OOB fabric hands over to the customer's corporate OOB network in one of two ways. The default handover uses the last pair of SN2201 switches as dedicated OOB edge ToR uplinks, while the alternative leaks routes through the SN5600D In-Band spine layer across the eBGP border VTEP.
-
-:::tip In one minute
-- The Out-of-Band Network uses SN2201 48-port 1 GbE copper switches to connect all compute BMCs, BlueField BMCs, NVSwitch BMC and COMe ports, power shelves, smart rPDUs, and fabric switch management ports.
-- OOB traffic rolls up per SU as a dedicated VXLAN to a pair of OOB aggregation spines. It hands over to the customer via either a dedicated OOB edge ToR pair by default or route leaking through the SN5600D In-Band spines.
-:::
+To avoid one flat Layer-2 broadcast domain across eight to 128 racks, each unit's SN2201 switches roll up as a dedicated VXLAN that ends on a pair of OOB aggregation spines. Chapter 9.8, section 4.3, describes the two ways the OOB network reaches the customer. By default the last pair of SN2201 switches is the OOB edge uplink. The alternative leaks routes through the SN5600D in-band spines across the eBGP border VTEP.
 
 ---
 
@@ -301,15 +268,47 @@ nv show vrf default router bgp neighbor
 
 ## How it fails
 
-A wrong load-balancing setting, a badly placed leaf switch, a missing flow-control watchdog, or a missing management cable can take down compute and storage across a whole Scalable Unit. The table lists five failure modes and their fixes.
+A wrong load-balancing setting, a badly placed leaf switch, a missing flow-control watchdog, or a missing management cable can take down compute and storage across a whole Scalable Unit. These are five common failure modes and their fixes.
 
-| Failure mode | Symptom | Root cause | Diagnosis & fix |
-|---|---|---|---|
-| **1. Elephant-flow spine collision under Static 5-Tuple ECMP (`SLB`)** | On a RoCEv2 Storage or Compute Ethernet fabric, one `SN5600D` spine uplink saturates at 100% (`tx_pause` / `rx_ecn_mark` climbing rapidly) while three parallel spine uplinks sit at `< 15%` utilization. | All RoCEv2 packets share **UDP destination port `4791`** (`BTH` header inside) and `1:1` IP pairs have **low entropy**, causing traditional Static Load Balancing (`SLB` 5-tuple hash) to hash multiple 400 Gbps elephant flows onto the exact same spine link. | Enable adaptive load balancing on the Spectrum-4 switches—**Dynamic Load Balancing (`DLB`)**, **Global Load Balancing (`GLB` with Next-to-Next-Hop awareness)**, or **Selective DLB (`sDLB` matching BTH opcodes for per-packet spraying)**—alongside **DCQCN (`ECN + PFC`)**. |
-| **2. Single leaf switch failure isolating an entire 8-GPU node (`RUD` trap)** | A Top-of-Rack leaf switch reboots for a firmware upgrade, and four 8-GPU servers connected to that switch lose 100% of their cluster compute connectivity (`0/8` NICs reachable). | The cluster was cabled using **Rail-Unified Design (`RUD`)**, plugging all 8 NICs of a server into a single local ToR leaf switch instead of **Rail-Optimized Design (`ROD`)**. | Cable compute fabrics using **Rail-Optimized Design (`ROD`)** (`NIC k` → `Leaf Switch k`). In `ROD`, losing one leaf switch affects only 1 of the 8 rails (or 1 of 8 leaves per SU), allowing NCCL and UFM to route traffic across the remaining healthy rails. |
-| **3. Exceeding `27.0 m` AOC cable limit in an End-of-Row (`EoR`) layout** | Outer compute racks in an 8-rack row cannot reach the InfiniBand leaf switches with standard 30 m AOC cables once vertical tray drops and bend radiuses are included (`> 27.0 m` / `90%` limit). | The leaf switches were placed in an **End-of-Row (`EoR`)** rack at Rack 9–10 (**10-rack cable span**) instead of a **Middle-of-Row (`MoR`)** rack between Racks 4 and 5 (**6-rack maximum cable span**). | Place network and management racks in the **Middle-of-Row (`MoR`)** so the maximum server-to-leaf horizontal span is cut from 10 racks down to **6 racks**, keeping all AOC runs well under `27.0 m`. |
-| **4. PFC Pause Storm freezing the storage fabric** | High-Performance Storage reads/writes grind to a halt across an entire SU, and switch counters show millions of continuous `rx_pause` / `tx_pause` frames cascading from a storage leaf back to compute leaves. | Either **ECN (`RED` marking at `11` and `CNP` generation)** was disabled—forcing link-level **PFC** to trigger constantly without end-to-end DCQCN rate backoff—or a dead/hung NIC held a lossless priority queue paused indefinitely. | Verify **DCQCN** is active end-to-end so **ECN (`11` marking + `CNP`)** throttles senders *before* buffers hit the **PFC** threshold (`nv show qos roce`), and configure a **PFC watchdog timer** on the switches to drop/drain stuck lossless queues after a few hundred milliseconds rather than propagating a fabric-wide pause storm. |
-| **5. Out-of-Band switch management cutoff for NVLink Switch Trays** | `cmsh` `firmware status` and `NMX-M` lose contact with all 9 NVLink switch trays (`switch001..009`) in a GB300 rack even though each switch tray's 1x BMC RJ45 port still answers ping. | Each NVLink switch tray has **three** RJ45 ports on the front: **1x BMC RJ45 port** and **2x `COMe` RJ45 ports for `NVOS`**. The cabling team plugged in only the BMC port and left the `COMe` (`NVOS`) ports unplugged from the `SN2201` OOB switch. | Connect **both the BMC RJ45 port and the `COMe` (`NVOS`) RJ45 ports** of every NVLink switch tray to the `SN2201` OOB management fabric, as required by the GB300 SuperPOD OOB architecture. |
+### 1. Elephant-flow spine collision under Static 5-Tuple ECMP (`SLB`)
+
+Symptom: On a RoCEv2 Storage or Compute Ethernet fabric, one `SN5600D` spine uplink saturates at 100% (`tx_pause` / `rx_ecn_mark` climbing rapidly) while three parallel spine uplinks sit at `< 15%` utilization.
+
+Cause: All RoCEv2 packets share UDP destination port `4791` (`BTH` header inside) and `1:1` IP pairs have low entropy, causing traditional Static Load Balancing (`SLB` 5-tuple hash) to hash multiple 400 Gbps elephant flows onto the exact same spine link.
+
+Fix: Enable adaptive load balancing on the Spectrum-4 switches—Dynamic Load Balancing (`DLB`), Global Load Balancing (`GLB` with Next-to-Next-Hop awareness), or Selective DLB (`sDLB` matching BTH opcodes for per-packet spraying)—alongside DCQCN (`ECN + PFC`).
+
+### 2. Single leaf switch failure isolating an entire 8-GPU node (`RUD` trap)
+
+Symptom: A Top-of-Rack leaf switch reboots for a firmware upgrade, and four 8-GPU servers connected to that switch lose 100% of their cluster compute connectivity (`0/8` NICs reachable).
+
+Cause: The cluster was cabled using Rail-Unified Design (`RUD`), plugging all 8 NICs of a server into a single local ToR leaf switch instead of Rail-Optimized Design (`ROD`).
+
+Fix: Cable compute fabrics using Rail-Optimized Design (`ROD`) (`NIC k` → `Leaf Switch k`). In `ROD`, losing one leaf switch affects only 1 of the 8 rails (or 1 of 8 leaves per SU), allowing NCCL and UFM to route traffic across the remaining healthy rails.
+
+### 3. Exceeding `27.0 m` AOC cable limit in an End-of-Row (`EoR`) layout
+
+Symptom: Outer compute racks in an 8-rack row cannot reach the InfiniBand leaf switches with standard 30 m AOC cables once vertical tray drops and bend radiuses are included (`> 27.0 m` / `90%` limit).
+
+Cause: The leaf switches were placed in an End-of-Row (`EoR`) rack at Rack 9–10 (10-rack cable span) instead of a Middle-of-Row (`MoR`) rack between Racks 4 and 5 (6-rack maximum cable span).
+
+Fix: Place network and management racks in the Middle-of-Row (`MoR`) so the maximum server-to-leaf horizontal span is cut from 10 racks down to 6 racks, keeping all AOC runs well under `27.0 m`.
+
+### 4. PFC Pause Storm freezing the storage fabric
+
+Symptom: High-Performance Storage reads/writes grind to a halt across an entire SU, and switch counters show millions of continuous `rx_pause` / `tx_pause` frames cascading from a storage leaf back to compute leaves.
+
+Cause: Either ECN (`RED` marking at `11` and `CNP` generation) was disabled—forcing link-level PFC to trigger constantly without end-to-end DCQCN rate backoff—or a dead/hung NIC held a lossless priority queue paused indefinitely.
+
+Fix: Verify DCQCN is active end-to-end so ECN (`11` marking + `CNP`) throttles senders *before* buffers hit the PFC threshold (`nv show qos roce`), and configure a PFC watchdog timer on the switches to drop/drain stuck lossless queues after a few hundred milliseconds rather than propagating a fabric-wide pause storm.
+
+### 5. Out-of-Band switch management cutoff for NVLink Switch Trays
+
+Symptom: `cmsh` `firmware status` and `NMX-M` lose contact with all 9 NVLink switch trays (`switch001..009`) in a GB300 rack even though each switch tray's 1x BMC RJ45 port still answers ping.
+
+Cause: Each NVLink switch tray has three RJ45 ports on the front: 1x BMC RJ45 port and 2x `COMe` RJ45 ports for `NVOS`. The cabling team plugged in only the BMC port and left the `COMe` (`NVOS`) ports unplugged from the `SN2201` OOB switch.
+
+Fix: Connect both the BMC RJ45 port and the `COMe` (`NVOS`) RJ45 ports of every NVLink switch tray to the `SN2201` OOB management fabric, as required by the GB300 SuperPOD OOB architecture.
 
 ---
 
@@ -507,6 +506,9 @@ The BMC port provides hardware telemetry. The two COMe ports run NVOS, which NMX
 | Steven Hambruch & Dennis O'Brien, *Data Center Best Practices with DGX B200* (`superpod-b200-dc`, pp. 5, 19–23) | 1–4 SU InfiniBand leaf/spine switch counts, compute+UFM cable counts, spine-leaf cable counts, and DAC/AOC cabling rules (`27.0 m` / `90%` limit). |
 | *AI Data Center Network Design and Technologies* (`ai-data-center-network-design-and-technologies`, Ch. 2, lines 1–120, read in full) | Training vs Inference networks, InfiniBand vs Ethernet trade-offs, RoCEv2 UDP port `4791` Base Transport Header (`BTH`), low entropy, simultaneous and sequential flowlets, elephant flows, proactive load balancing pyramid (`SLB` -> `DLB` -> `GLB` (`NNH`) -> `sDLB` (`BTH` opcode matching)), and reactive DCQCN (`ECN = 11` marking + `CNP` (`01`) return + `PFC` pause frames). |
 | *AI Data Center Network Design and Technologies* (`ai-data-center-network-design-and-technologies`, Ch. 3, lines 1–220, read in full) | Rail-Optimized Design (`ROD`) vs Rail-Only Design vs Rail-Unified Design (`RUD`); `Table 3-1` Leaf Placement Comparison (`ToR` 8-rack span vs `MoR` 6-rack span vs `EoR` 10-rack span); 3-stage Clos (`64 × 400G` max 2,048 GPUs) vs 5-stage Clos (`1,024-GPU` Blocks/Bricks with 32 Super-Spines from `1:1` / 2,048 GPUs to `7:1` / 14,336 GPUs, plus `256 × 400G` chassis spines); Scheduled Fabric (`64/128/256-byte` cells + Virtual Output Queueing `VOQ`); Dragonfly (`DF`/`DF+`) topologies. |
+
+### Notes from the 2026-11 rework
+- The Clos switch counts, the 4.5 times ceiling and the GB300 leaf and storage figures were rechecked against the GB300 reference architecture and the B200 deck and match. The DCQCN signal values (ECN 11 on the marked packet, 01 on the congestion notification packet) come from the network design book and were not independently verified. The rail-only and rail-unified descriptions also come from that book only.
 
 ### Not in the corpus
 - Standalone *NVIDIA Quantum-X800 / Spectrum-4 Switch Configuration Guides* and *NVIDIA Cumulus Linux / NVOS User Manuals* are not in `~/Desktop/books-toon-rag/`.

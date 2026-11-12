@@ -23,29 +23,11 @@ lab_venue: "none (design / reading)"
 
 ## Why this matters for AI infrastructure
 
-A researcher launches an ordinary single-process Python script on a cluster of thousands of GPUs. The job runs on one CPU core, and the rest of the cluster sits idle. In another case, one node of a multi-node job boots with an older kernel driver, and the whole run stalls. A third team submits a plain Kubernetes job, and every pod is placed except one. The job hangs until a communication timeout kills it thirty minutes later.
+A researcher launches an ordinary single-process Python script on a cluster of thousands of GPUs. The job runs on one CPU core and the rest of the cluster sits idle. In another case, one node of a multi-node job boots with an older kernel driver and the whole run stalls. A third team submits a plain Kubernetes job and every pod is placed except one. The job hangs until a timeout kills it thirty minutes later.
 
-None of these is a hardware fault. Each one is a gap in the software stack that sits between the bare metal and the user's code. Five layers make up that stack, and the chapter covers one layer per section.
+None of these is a hardware fault. Each is a gap in the software between the bare metal and the user's code. That software has five layers, and each section of this chapter covers one.
 
-1. Provisioning, firmware, and fabric management keep every compute tray and switch on the same golden image and firmware set. NVIDIA Mission Control and Base Command Manager lead this layer.
-2. Driver and container alignment matches the host kernel driver to the CUDA libraries inside the container. NVIDIA NGC containers are the usual way to get a validated set.
-3. The distributed training layer splits model state across worker processes. `torchrun` starts one process per GPU, and a sharding library such as DeepSpeed ZeRO divides the state.
-4. Gang-scheduled orchestration starts all the processes of a multi-node job together, or none of them. Slurm and NVIDIA Run:ai do this.
-5. Observability and incident response use DCGM, Prometheus, and Grafana. They page an on-call engineer before a thermal slowdown or a straggler breaks a service commitment.
-
-The table in Section 1 lists the products in each layer.
-
-:::info Corpus scope note
-The chapter does not use the *NVIDIA Mission Control Administration Manual* or the *NVIDIA AI Enterprise Sizing and Licensing Guide*. Its software stack integration rules, CUDA compatibility boundaries, `torchrun` DDP and DeepSpeed ZeRO Stage 3 configurations, Kubernetes gang-scheduling patterns, and Prometheus and DCGM SLO alerting rules come from the sources below.
-
-```text
-Primary sources used in this chapter:
-- nvidia-devops Volume 21 Chapter 6 and Chapter 10
-- nvidia-devops-legacy-v10 Chapter 1
-- superpod-gb300-ra (pages 13-14, 32-34)
-- bcm11-admin (Sections 3.16, 6.5, 9, and 14.5)
-```
-:::
+The first layer is provisioning, firmware and fabric management, which keeps every tray and switch on the same golden image and firmware set. The second matches the host kernel driver to the CUDA libraries inside the container. The third splits model state across worker processes, with `torchrun` starting one process per GPU. The fourth is gang-scheduled orchestration, where Slurm or NVIDIA Run:ai starts every process of a multi-node job together or none of them. The fifth is observability with DCGM, Prometheus and Grafana, which pages an engineer before a slowdown breaks a service commitment. The table in Section 1 lists the products in each layer.
 
 ## Prerequisites and outcomes
 
@@ -61,13 +43,11 @@ Primary sources used in this chapter:
 
 ---
 
-## Concepts: basics → intermediate → advanced
+## 1. The software stack: from golden images to Mission Control
 
-## 1. The AI factory software pyramid: from BCM and fabric managers to Mission Control
+A multi-rack training job fails to start, or loses a node halfway through, and operators spend hours guessing which control plane owns the fault. The bare-metal provisioner, the InfiniBand subnet manager, the NVLink switch manager and the scheduler must share what they know. If they do not, a broken node keeps receiving new jobs and fails again before its firmware or links are repaired.
 
-A multi-rack training job fails to start, or loses a node halfway through. Operators spend hours guessing which control plane owns the fault. The bare-metal provisioner, the InfiniBand subnet manager, the NVLink switch manager, and the workload scheduler must share what they know. If they do not, a broken node keeps receiving new jobs, and it fails again before its firmware or fabric links are repaired.
-
-The stack avoids this by giving each task one owner. Base Command Manager and `cm-nvfwupd` put the same golden OS image and firmware bundle on every compute tray and NVSwitch tray. UFM Enterprise and NMX-M manage the InfiniBand and NVLink fabrics. NVIDIA Mission Control, together with Slurm or Run:ai, assigns each worker its rank and starts the job through gang scheduling. It also swaps in a spare node, using in-memory checkpointing, if hardware fails mid-run.
+The stack avoids this by giving each task one owner. Base Command Manager and `cm-nvfwupd` put the same golden OS image and firmware bundle on every compute tray and NVSwitch tray. UFM Enterprise and NMX-M manage the InfiniBand and NVLink fabrics. NVIDIA Mission Control, with Slurm or Run:ai, assigns each worker its rank and starts the job by gang scheduling, and it swaps in a spare node using in-memory checkpointing if hardware fails mid-run.
 
 ```mermaid
 flowchart TD
@@ -87,68 +67,61 @@ flowchart TD
 | 2. Provisioning, fabric, recovery | NVIDIA Mission Control (five-layer operations and autonomous recovery) on top of Base Command Manager (golden images, `cmsh`, node draining) and the fabric managers UFM Enterprise (Quantum IB) and NMX-M (NVLink switch trays, NVOS) |
 | 1. Hardware | DGX compute trays (Redfish), NVLink switch trays (NVOS REST), power shelves and BMS |
 
-### 1.1 How Mission Control, BCM, UFM, NMX-M, and Run:ai divide responsibilities
+### 1.1 Who owns what
 
-A modern SuperPOD, such as the DGX GB300 SuperPOD in Chapter 9.8, runs six management platforms. Each has its own job.
+A modern SuperPOD, such as the DGX GB300 SuperPOD in Chapter 9.8, runs six management platforms, each with its own job.
 
-1. NVIDIA Base Command Manager is the bare-metal foundation built around CMDaemon and `cmsh`. It provisions compute nodes from immutable golden software images under `/cm/images/<image>` and tracks physical rack and chassis slot coordinates. It also flashes compute-tray and switch-tray firmware via `cm-nvfwupd` version 2.1.2 and executes autonomous recovery by draining unhealthy nodes and requeuing interrupted jobs, as covered in Chapters 8.5 and 8.16.
-2. NVIDIA Unified Fabric Manager Enterprise is the appliance that manages the scale-out Compute InfiniBand Fabric on Quantum-2 NDR or Quantum-X800 Q3400-RD XDR switches. It configures Subnet Manager partitions, Adaptive Routing, SHARPv3 trees, SHIELD self-healing, and predictive cable or transceiver failure analytics.
-3. NVIDIA Network Manager eXperience manages the scale-up Multi-Node NVLink switch trays running NVOS. It provides real-time NVLink telemetry and partition control across the 72-GPU rack domain.
-4. NVIDIA Mission Control is the unified five-layer operations umbrella built on top of BCM, UFM, NMX-M, and the facility Building Management System. It delivers automated failure detection, self-recovery, workload migration, unified infrastructure and application diagnostics, and in-memory checkpointing.
-5. Slurm and NVIDIA Run:ai provide the two workload scheduling paradigms. Slurm handles batch multi-node training. NVIDIA Run:ai provides cloud-native Kubernetes GPU orchestration across the user-space and administrative Kubernetes clusters described in Chapter 9.8 Section 6.1.
-6. NVIDIA AI Enterprise and NGC provide the commercial enterprise support boundary and pre-tested NGC framework containers such as `nvcr.io/nvidia/pytorch:*`. They also include NeMo and Megatron-Core for 3D-parallel training alongside NVIDIA NIM microservices for production inference.
+Base Command Manager is the bare-metal foundation, built around CMDaemon and `cmsh`. It provisions nodes from golden images under `/cm/images/<image>`, tracks rack and chassis slot positions, flashes tray firmware with `cm-nvfwupd` version 2.1.2, and drains unhealthy nodes and requeues their jobs. Chapters 8.5 and 8.16 cover it.
 
-:::tip In one minute
-- Base Command Manager owns bare-metal golden-image provisioning, rack and chassis inventory, firmware flashing via `cm-nvfwupd`, and node draining. UFM Enterprise owns the InfiniBand fabric, NMX-M owns the NVLink switch trays, and NVIDIA Mission Control unifies them with BMS telemetry, autonomous recovery, and in-memory checkpointing.
-- Workload scheduling runs through Slurm for batch HPC and training or NVIDIA Run:ai for dynamic Kubernetes scheduling split across user-space and administrative clusters.
-:::
+Unified Fabric Manager Enterprise manages the compute InfiniBand fabric on Quantum-2 NDR or Quantum-X800 Q3400-RD XDR switches. It configures Subnet Manager partitions, Adaptive Routing, SHARPv3 trees and SHIELD self-healing, and it predicts cable and transceiver failures. Network Manager eXperience (NMX-M) manages the NVLink switch trays that run NVOS, with live telemetry and partition control across the 72-GPU rack.
+
+Mission Control sits on top of BCM, UFM, NMX-M and the building management system. It detects failures, recovers, migrates workloads, correlates infrastructure and application diagnostics, and keeps in-memory checkpoints.
+
+Slurm and Run:ai are the two schedulers. Slurm handles batch multi-node training. Run:ai provides Kubernetes GPU orchestration across the user-space and administrative clusters described in Chapter 9.8, section 6.1. NVIDIA AI Enterprise and NGC supply the supported, pre-tested framework containers such as `nvcr.io/nvidia/pytorch:*`, plus NeMo, Megatron-Core and NIM microservices for inference.
 
 ---
 
-## 2. Host driver vs container CUDA alignment and runtime memory hygiene
+## 2. Matching the host driver to the container, and three runtime settings
 
-A researcher pulls a brand-new NGC container onto a cluster whose host kernel driver is older. The job crashes before the first line of model code runs. Even when the container does start, the default device numbering can pair workers with the wrong network cards. The default memory allocation settings can cause out-of-memory errors while plenty of VRAM is still free.
+A researcher pulls a brand-new NGC container onto a cluster whose host kernel driver is older, and the job crashes before the first line of model code. Even when the container starts, the default device numbering can pair workers with the wrong network cards, and the default memory settings can cause out-of-memory errors while plenty of VRAM is free.
 
-When a container starts on a GPU node, two separate pieces of NVIDIA software must agree across the container boundary.
-1. The host kernel driver `nvidia.ko` is installed in the host OS or BCM golden image. It talks directly to the physical GPU hardware and sets the maximum CUDA version the node can support, which appears in the top-right banner of `nvidia-smi`.
-2. The user-space CUDA runtime and libraries include `libcudart.so`, cuBLAS, cuDNN, and NCCL bundled inside the container image. PyTorch and JAX link directly against these container libraries.
+Two pieces of NVIDIA software must agree across the container boundary. The host kernel driver, `nvidia.ko`, lives in the host OS or the BCM golden image. It talks to the GPU hardware and sets the highest CUDA version the node supports, which `nvidia-smi` shows in its top-right banner. The user-space CUDA runtime and libraries, such as `libcudart.so`, cuBLAS, cuDNN and NCCL, are bundled in the container image, and PyTorch and JAX link against them.
 
 ### 2.1 CUDA minor-version compatibility rules
 
-Historically, upgrading the CUDA toolkit inside a container required immediately upgrading the kernel driver on every host in the cluster. Modern CUDA releases use minor-version compatibility, which is modeled by `verify_cuda_driver_compatibility()` in `code/part09/ai_factory_software.py`.
+Once, a newer CUDA toolkit in a container meant upgrading the kernel driver on every host. Modern CUDA releases use minor-version compatibility, modeled by `verify_cuda_driver_compatibility()` in `code/part09/ai_factory_software.py`.
 
-| Container CUDA Family | Minimum Host Driver Branch | Minor-Version Compatibility Behavior | Cross-Major Upgrade Rule |
+| Container CUDA family | Minimum host driver | Within the family | Moving to the next family |
 |---|---|---|---|
-| CUDA 11.x (`11.x`) | `>= 450` (and `< 525` without cross-major compat) | Any 11.x toolkit runs on host driver branch 450 or newer | Jumping from 11.x to 12.x requires upgrading the host driver to at least branch 525 |
-| CUDA 12.x (`12.x`) | `>= 525` | Any 12.x toolkit (such as CUDA 12.6) runs cleanly on host driver branch 535 or 550 | Jumping from 12.x to 13.x requires upgrading the host driver to at least branch 580 |
-| CUDA 13.x (`13.x`) | `>= 580` | Any 13.x toolkit runs on host driver branch 580 or newer | Requires host kernel driver branch 580 or explicit forward-compatibility packages |
+| CUDA 11.x (`11.x`) | `>= 450` (and `< 525` without cross-major compat) | Any 11.x toolkit runs on driver 450 or newer | Needs driver 525 or newer |
+| CUDA 12.x (`12.x`) | `>= 525` | Any 12.x toolkit runs on driver 525 or newer | Needs driver 580 or newer |
+| CUDA 13.x (`13.x`) | `>= 580` | Any 13.x toolkit runs on driver 580 or newer | Driver 580 or the forward-compatibility package |
 
-- Within a single CUDA major family, any CUDA toolkit minor version can run on a host driver at or above that major family's minimum driver branch. Minor restrictions apply only to features introduced in newer driver branches.
-- Across CUDA major versions, moving from CUDA 11.x to 12.x or from 12.x to 13.x requires upgrading the host kernel driver to at least the new major family's minimum branch. Alternatively, an administrator can install NVIDIA's explicit CUDA forward-compatibility user-space driver package.
-- Under the Fleet Homogeneity Rule, every node participating in a distributed training job must run the exact same NGC container image digest and the exact same host driver branch. Never mix driver branches or NCCL versions across ranks in the same communicator.
+Within one CUDA major family, any toolkit minor version runs on a host driver at or above the family's minimum. Only features that need a newer driver are restricted. Across major versions, upgrade the host driver to the new family's minimum, or install NVIDIA's CUDA forward-compatibility package.
+
+Keep the fleet uniform. Every node in a distributed job must run the same NGC container image digest and the same host driver branch. Never mix driver branches or NCCL versions among the ranks of one communicator.
 
 ### 2.2 Three mandatory CUDA and PyTorch runtime settings for multi-GPU nodes
 
-Before calling any CUDA API in a distributed training script, enforce three runtime rules from Volume 21 Chapter 6 Part 1.2.
+Set three runtime rules before any CUDA call in a distributed training script.
 
-1. Enforce consistent device ordering by setting `export CUDA_DEVICE_ORDER=PCI_BUS_ID`. By default, CUDA orders GPUs using the `FASTEST_FIRST` heuristic, which can differ from the physical PCIe bus order shown in `nvidia-smi` and `nvidia-smi topo -m`. Setting PCI bus ordering ensures local ranks 0 through 7 map deterministically to physical GPUs 0 through 7 and their PIX-paired `mlx5_0` through `mlx5_7` NICs.
-2. Prevent caching-allocator fragmentation by setting `export PYTORCH_CUDA_ALLOC_CONF=expandable_segments:True` before the first CUDA allocation, or use `max_split_size_mb:256,backend:cudaMallocAsync` for variable-shape MoE workloads. This lets PyTorch's caching allocator expand existing virtual memory segments instead of throwing an out-of-memory error when free HBM is fragmented. Note that `torch.cuda.memory_reserved()` reports total memory held by the caching allocator, whereas `torch.cuda.memory_allocated()` reports memory actively occupied by tensors.
-3. Never set `CUDA_LAUNCH_BLOCKING=1` in production. Setting that flag to 1 forces the CPU to block synchronously after every single CUDA kernel launch, which destroys CPU-to-GPU pipelining and prevents CUDA Graph capture. Keep `CUDA_LAUNCH_BLOCKING=0` in production and only use 1 on a development node when pinpointing the exact line of a synchronous kernel crash.
+First, set `export CUDA_DEVICE_ORDER=PCI_BUS_ID`. By default CUDA orders GPUs with the `FASTEST_FIRST` heuristic, which can differ from the PCIe order shown in `nvidia-smi` and `nvidia-smi topo -m`. PCI bus order makes local ranks 0 to 7 map to physical GPUs 0 to 7 and to their `PIX`-paired `mlx5_0` to `mlx5_7` NICs.
 
-:::tip In one minute
-- CUDA minor-version compatibility lets any container within a CUDA major version run on a host driver meeting that family's minimum branch: 450 for CUDA 11.x, 525 for CUDA 12.x, and 580 for CUDA 13.x.
-- Always pin an identical NGC container image and host driver branch across every node. Set `CUDA_DEVICE_ORDER=PCI_BUS_ID` and `PYTORCH_CUDA_ALLOC_CONF=expandable_segments:True`, and keep `CUDA_LAUNCH_BLOCKING=0` in production.
-:::
+Second, set `export PYTORCH_CUDA_ALLOC_CONF=expandable_segments:True` before the first CUDA allocation. For variable-shape MoE workloads you can use `max_split_size_mb:256,backend:cudaMallocAsync` instead. This lets PyTorch's caching allocator grow existing memory segments and avoids out-of-memory errors when free HBM is fragmented. Note that `torch.cuda.memory_reserved()` is the memory the allocator holds, and `torch.cuda.memory_allocated()` is the memory tensors occupy. Newer PyTorch releases also accept the shorter name `PYTORCH_ALLOC_CONF`. Check the release notes for your version.
+
+Third, never set `CUDA_LAUNCH_BLOCKING=1` in production. It makes the CPU wait after every kernel launch, which destroys CPU-to-GPU pipelining and prevents CUDA Graph capture. Use it only on a development node to find the line of a failing kernel.
+
+Put the three settings in the job template, not in each user's shell.
 
 ---
 
-## 3. Distributed training glue: `torchrun` DDP, DeepSpeed ZeRO memory math, and DLPack
+## 3. Distributed training: `torchrun`, DeepSpeed ZeRO memory and DLPack
 
 Drivers and containers match, and a naive launch still fails once the model outgrows one GPU. Standard data parallelism copies the whole model state onto every GPU. Training a 70B-parameter model on 80 GB H100 GPUs then crashes with an out-of-memory error straight away.
 
-### 3.1 How `torchrun` initializes RANK, LOCAL_RANK, and WORLD_SIZE
+### 3.1 How `torchrun` sets RANK, LOCAL_RANK and WORLD_SIZE
 
-When you launch a 64-GPU training job across 8 nodes with 8 GPUs per node, you do not SSH into 8 servers and start 64 Python processes by hand. You also do not use the deprecated `torch.distributed.launch` utility. Instead, you use `torchrun` with the `c10d` rendezvous backend.
+To start a 64-GPU job on 8 nodes, you do not SSH into 8 servers and start 64 Python processes by hand. You also avoid the deprecated `torch.distributed.launch`. You use `torchrun` with the `c10d` rendezvous backend.
 
 ```bash
 # Executed on each of the 8 nodes (or launched across all 8 via Slurm srun / K8s PyTorchJob)
@@ -161,14 +134,11 @@ torchrun \
   train_script.py
 ```
 
-The `torchrun` launcher spawns 8 worker processes per node for 64 processes total and injects three environment variables into each worker.
-- The `WORLD_SIZE` variable equals 64 and gives the total number of GPU processes across the job.
-- The `RANK` variable runs from 0 to 63 and gives the global process index across the entire cluster, where Rank 0 handles logging and coordinator tasks.
-- The `LOCAL_RANK` variable runs from 0 to 7 and gives the process index on the local server. The script calls `torch.cuda.set_device(local_rank)` so each worker binds exclusively to its own physical GPU before calling `dist.init_process_group(backend="nccl", timeout=timedelta(minutes=30))`.
+`torchrun` starts 8 workers per node, 64 in all, and sets three environment variables in each. `WORLD_SIZE` is 64, the number of GPU processes in the job. `RANK` runs from 0 to 63 and is the global index, with rank 0 doing the logging. `LOCAL_RANK` runs from 0 to 7 and is the index on the local server. The script calls `torch.cuda.set_device(local_rank)` so that each worker binds to its own GPU before it calls `dist.init_process_group(backend="nccl", timeout=timedelta(minutes=30))`.
 
-### 3.2 Vanilla DDP vs DeepSpeed ZeRO Stage 1, 2, and 3 memory math
+### 3.2 Why plain DDP runs out of memory, and what ZeRO changes
 
-Why can't vanilla PyTorch DistributedDataParallel train a 70B-parameter model on 80 GB H100 GPUs? Recall from Chapter 9.6 Section 4.2 that mixed-precision AdamW training stores 16 bytes per parameter of active model state, which totals 1,120 GB for a 70B model.
+Why can PyTorch DistributedDataParallel not train a 70B model on 80 GB H100 GPUs? Chapter 9.6, section 4.2, showed that mixed-precision AdamW keeps 16 bytes of state per parameter while training, which is 1,120 GB for a 70B model.
 
 ```text
 Mixed-precision AdamW model-state breakdown (16 bytes per parameter):
@@ -178,16 +148,16 @@ Mixed-precision AdamW model-state breakdown (16 bytes per parameter):
 - Total unsharded active state:       16 B / param  -> 1,120 GB for 70B model
 ```
 
-Vanilla DDP replicates all 1,120 GB on every single GPU, causing an instant out-of-memory crash on an 80 GB H100. DeepSpeed ZeRO and PyTorch FSDP eliminate that redundancy by sharding the model state across all data-parallel ranks, as modeled by `calculate_zero_stage_memory_per_gpu()` in `code/part09/ai_factory_software.py`. The per-GPU gigabyte figures in the table are the chapter's own calculation. They combine the 16-byte-per-parameter breakdown with the ZeRO-1, ZeRO-2, and ZeRO-3 sharding formulas.
+DDP copies all 1,120 GB onto every GPU, so an 80 GB H100 fails at once. DeepSpeed ZeRO and PyTorch FSDP remove that redundancy by sharding the model state across all data-parallel ranks, as `calculate_zero_stage_memory_per_gpu()` in `code/part09/ai_factory_software.py` models. The per-GPU figures in the table are the chapter's own calculation from the 16-byte breakdown and the ZeRO sharding formulas.
 
-| Sharding Stage | What is Replicated vs Sharded Across `W` GPUs | Per-GPU Model-State Formula (`GB`) | 70B Model across `W = 64` GPUs (`80 GB` H100s) |
+| Stage | Sharded across `W` GPUs | Per-GPU formula | 70B model, `W = 64` |
 |---|---|---|---|
-| **DDP (`ZeRO-0`)** | Replicates **Weights (`2B`) + Gradients (`2B`) + Optimizer (`12B`)** on every GPU | `16 × P` | **`1,120.0 GB / GPU`** *(OOM on 80 GB H100.)* |
-| **`ZeRO Stage 1`** | Shards **Optimizer states (`12B / W`)**; replicates Weights + Gradients | `4 × P + (12 × P) / W` | `140 + 140 + (840 / 64)` = **`293.12 GB / GPU`** *(OOM on 80 GB)* |
-| **`ZeRO Stage 2`** | Shards **Optimizer + Gradients (`14B / W`)**; replicates Weights | `2 × P + (14 × P) / W` | `140 + (980 / 64)` = **`155.31 GB / GPU`** *(OOM on 80 GB)* |
-| **`ZeRO Stage 3` / `FSDP`** | Shards **Weights + Gradients + Optimizer (`16B / W`)** across all `W` GPUs | `(16 × P) / W` | `1,120 / 64` = **`17.50 GB / GPU`** *(Fits easily in 80 GB with 62.5 GB left for activations & batches.)* |
+| **DDP (`ZeRO-0`)** | Nothing | `16 × P` | **`1,120.0 GB / GPU`** *(OOM on 80 GB H100.)* |
+| **`ZeRO Stage 1`** | Optimizer states | `4 × P + (12 × P) / W` | `140 + 140 + (840 / 64)` = **`293.12 GB / GPU`** *(OOM on 80 GB)* |
+| **`ZeRO Stage 2`** | Optimizer and gradients | `2 × P + (14 × P) / W` | `140 + (980 / 64)` = **`155.31 GB / GPU`** *(OOM on 80 GB)* |
+| **`ZeRO Stage 3` / `FSDP`** | Weights, gradients and optimizer | `(16 × P) / W` | `1,120 / 64` = **`17.50 GB / GPU`** *(Fits in 80 GB, leaving 62.5 GB for activations.)* |
 
-DeepSpeed computes the Effective Global Batch Size by multiplying three numbers together.
+DeepSpeed computes the global batch size by multiplying three numbers.
 
 ```text
 Global_Batch_Size = train_micro_batch_size_per_gpu × gradient_accumulation_steps × world_size
@@ -196,50 +166,35 @@ Example (64 GPUs): 4 (micro-batch) × 8 (grad_accum) × 64 (world_size) = 2,048 
 
 ### 3.3 Zero-copy PyTorch to JAX tensor sharing with DLPack
 
-If a pipeline combines PyTorch data preprocessing with JAX and XLA model execution on the same GPU, never convert GPU tensors via `.cpu().numpy()`. That call forces an expensive Device-to-Host and Host-to-Device PCIe copy round-trip across the CPU bus. Instead, pass GPU memory pointers directly across frameworks with zero copies using DLPack via `torch.utils.dlpack.to_dlpack(t)` and `jax.dlpack.from_dlpack(dlpack_capsule)` or the native `__dlpack__` protocol.
+If a pipeline does PyTorch preprocessing and JAX model execution on the same GPU, do not move tensors with `.cpu().numpy()`. That forces a copy to the host and back across PCIe. Pass the GPU memory directly with DLPack instead, using `torch.utils.dlpack.to_dlpack(t)` and `jax.dlpack.from_dlpack(dlpack_capsule)`, or the native `__dlpack__` protocol. No data is copied.
 
-:::tip In one minute
-- Launch multi-node jobs with `torchrun --rdzv_backend=c10d` instead of the deprecated `torch.distributed.launch`, so each worker binds to its local rank before initializing NCCL.
-- For a 70B model across 64 GPUs, ZeRO Stage 3 or FSDP cuts per-GPU model state from 1,120 GB under DDP down to 17.50 GB per GPU.
-- Use DLPack for zero-copy in-VRAM tensor handoffs between PyTorch and JAX.
-:::
+Launch multi-node jobs with `torchrun --rdzv_backend=c10d`, and size the sharding stage from the memory arithmetic above.
 
 ---
 
-## 4. Kubernetes distributed training orchestration and why gang scheduling is mandatory
+## 4. Kubernetes and why training needs gang scheduling
 
-Two teams submit multi-node training jobs to a standard Kubernetes cluster at the same moment. The default scheduler places half of each job, and both jobs wait for nodes that never free up. Without all-or-nothing gang scheduling, the allocated GPUs sit idle for thirty minutes, until the rendezvous barrier times out.
+Two teams submit multi-node training jobs to a standard Kubernetes cluster at the same moment. The default scheduler places half of each job, and both wait for nodes that never free up. The allocated GPUs sit idle for thirty minutes until the rendezvous times out.
 
-### 4.1 Anatomy of an Indexed Job and Headless Service and its fatal flaw without Gang Scheduling
+### 4.1 An Indexed Job, a headless Service and the flaw without gang scheduling
 
-In Kubernetes, as covered in Volume 21 Chapter 6 Part 3.2, three low-level building blocks form a multi-node job.
-1. A Headless Service with `clusterIP: None` creates predictable DNS A-records for every pod matching the job selector. Each pod resolves at `<job-name>-<index>.<service-name>`, so Pod 0 resolves at `llama-70b-training-0.llama-train`.
-2. An Indexed Job with `completionMode: Indexed`, `parallelism: 8`, and `completions: 8` injects `JOB_COMPLETION_INDEX` from 0 to 7 into each pod. You pass this index to `torchrun --node_rank=$JOB_COMPLETION_INDEX --master_addr=llama-70b-training-0.llama-train`.
-3. Pod anti-affinity paired with `nvidia.com/gpu: 8` ensures each pod claims an entire 8-GPU node at 1 pod per node. The pod also receives RDMA and InfiniBand devices injected by the NVIDIA Network Operator.
+Three Kubernetes building blocks make up a multi-node job. A headless Service with `clusterIP: None` creates predictable DNS records for every pod that matches the job selector. Pod 0 then resolves at `llama-70b-training-0.llama-train`. An Indexed Job, with `completionMode: Indexed`, `parallelism: 8` and `completions: 8`, sets `JOB_COMPLETION_INDEX` from 0 to 7 in each pod, and you pass that to `torchrun --node_rank=$JOB_COMPLETION_INDEX --master_addr=llama-70b-training-0.llama-train`. Pod anti-affinity with `nvidia.com/gpu: 8` gives each pod a whole 8-GPU node, and the NVIDIA Network Operator adds the RDMA and InfiniBand devices.
 
-Why does a plain Kubernetes Indexed Job fail in multi-tenant production? The default Kubernetes `kube-scheduler` places pods one by one rather than as an all-or-nothing group. Suppose two researchers submit 8-node 64-GPU plain Indexed Jobs at the same time to an 8-node cluster.
-- Job A gets 4 nodes with 32 GPUs and starts `torchrun` on node ranks 0 through 3.
-- Job B gets the other 4 nodes with 32 GPUs and starts `torchrun` on node ranks 0 through 3.
-- Both jobs deadlock because neither job can ever place its remaining 4 pods. Both jobs sit burning 100% of the cluster's 64 GPUs while doing zero useful work for 30 minutes until the NCCL or `c10d` rendezvous times out.
+The default `kube-scheduler` places pods one at a time, not as a group. Suppose two researchers submit 8-node, 64-GPU Indexed Jobs at the same time to an 8-node cluster. Job A gets 4 nodes and starts `torchrun` on node ranks 0 to 3. Job B gets the other 4 nodes and does the same. Neither can ever place its remaining 4 pods. Both hold all 64 GPUs and do no useful work for 30 minutes, until the NCCL or `c10d` rendezvous times out.
 
-To prevent partial-placement deadlocks, production AI factories never submit multi-node jobs as bare Kubernetes Jobs. They enforce Gang Scheduling for all-or-nothing pod admission using Kueue, Volcano, the Kubeflow Training Operator PyTorchJob, or NVIDIA Run:ai. Alternatively, they run batch training on Slurm, which gang-schedules nodes natively.
-
-:::tip In one minute
-- On Kubernetes, multi-node `torchrun` jobs use a Headless Service with `clusterIP: None` for pod DNS discovery. They also use `JOB_COMPLETION_INDEX` for `--node_rank` and `nvidia.com/gpu: 8` with NVIDIA Network Operator RDMA access.
-- Always pair Kubernetes training workloads with a Gang Scheduler such as Kueue, Volcano, PyTorchJob, or NVIDIA Run:ai. That prevents partial pod placements from deadlocking the cluster until rendezvous timeout.
-:::
+Production clusters therefore never submit multi-node jobs as bare Kubernetes Jobs. They use gang scheduling, which admits all the pods or none, through Kueue, Volcano, the Kubeflow Training Operator PyTorchJob or NVIDIA Run:ai. Or they run batch training on Slurm, which gang-schedules nodes natively.
 
 ---
 
-## 5. AI factory observability, SLO-driven alerting, and incident response playbooks
+## 5. Observability, alerts and incident response
 
-A data scientist messages the team on Slack that training feels slow today. In a thousand-GPU cluster, the service commitment is already broken by then. The utilization dashboard may still show green at 99%, while one degraded network link stalls the whole synchronous job.
+A data scientist messages the team on Slack that training feels slow today. In a thousand-GPU cluster the service commitment is already broken by then. The utilization dashboard may still show 99 percent while one degraded network link stalls the whole synchronous job.
 
-### 5.1 What to scrape in Prometheus and why DCGM_FI_DEV_GPU_UTIL is not enough
+### 5.1 What to scrape, and why GPU utilization misleads
 
 > **dcgm-exporter 4.9.0 version note.** dcgm-exporter 4.9.0 (2026-11-06) renamed many default metrics and changed some units. For example `DCGM_FI_DEV_GPU_UTIL` (percent) became `DCGM_FI_DEV_GPU_UTIL_RATIO` (0 to 1), and `DCGM_FI_DEV_FB_USED` (MiB) became `DCGM_FI_DEV_FB_USED_BYTES`. The metric names in this chapter are the 4.8.x names. On a 4.9.0 exporter use the [full mapping in 17.4](../part-17-operations/04-dcgm-exporter-and-interpreting-gpu-metrics.md#14-what-dcgm-exporter-490-renamed), and change thresholds together with the unit.
 
-As detailed in Volume 21 Chapter 10, a production AI factory Prometheus server scrapes four exporter tiers at matched intervals.
+A production Prometheus server scrapes four exporter tiers at matched intervals.
 
 | Exporter Tier | Endpoint & Scrape Interval | Key Metrics & Operational Purpose |
 |---|---|---|
@@ -248,39 +203,35 @@ As detailed in Volume 21 Chapter 10, a production AI factory Prometheus server s
 | 3. `gpu-nodes` | `node_exporter:9100` every `30s` | Host CPU, DDR5 / LPDDR5X memory, `/dev/shm`, and NVMe `/raid` I/O latency |
 | 4. `infiniband` | `ib-exporter:9600` / UFM every `60s` | Port link state, `SymbolErrorCounter`, `PortXmitWait`, and RoCE PFC / ECN counters |
 
-Why is `DCGM_FI_DEV_GPU_UTIL`, which matches `nvidia-smi` GPU-Util, misleading for distributed training? It reports the percentage of time at least one warp was active on any Streaming Multiprocessor. A GPU stalled on a slow PCIe transfer or spinning in a single-warp NCCL polling kernel can report 100% utilization while doing almost no math. Instead, track `DCGM_FI_PROF_SM_ACTIVE` to measure the fraction of SMs actively executing warps. Pair it with `DCGM_FI_PROF_PIPE_TENSOR_ACTIVE` to measure the fraction of cycles the Tensor Core math pipes are active.
+`DCGM_FI_DEV_GPU_UTIL` matches the GPU-Util column of `nvidia-smi`, and it misleads for distributed training. It reports the share of time in which at least one warp was active on any Streaming Multiprocessor. A GPU stalled on a slow PCIe transfer, or spinning in a single-warp NCCL polling kernel, can show 100 percent while doing almost no math. Track `DCGM_FI_PROF_SM_ACTIVE`, the fraction of SMs running warps, and pair it with `DCGM_FI_PROF_PIPE_TENSOR_ACTIVE`, the fraction of cycles the Tensor Core pipes are busy. Scrape both every 10 seconds from `dcgm-exporter:9400`.
 
 ### 5.2 The five SLO-driven Prometheus alerting rules
 
-Tie every paging alert directly to an SLO breach or hardware degradation signature and include a runbook annotation, as modeled by `evaluate_ai_factory_slo_alerts()` in `code/part09/ai_factory_software.py`.
+Tie every paging alert to an SLO breach or a hardware failure signature, and add a runbook annotation. `evaluate_ai_factory_slo_alerts()` in `code/part09/ai_factory_software.py` models the five rules.
 
-| Alert Name | PromQL Condition (`V21 Ch. 10`) | Duration (`for:`) | Operational Meaning & Runbook Action |
+| Alert | PromQL condition | Duration (`for:`) | What to do |
 |---|---|---|---|
-| **1. `TrainingThroughputLow`** | `training_throughput_tokens_per_sec < 0.9 * <baseline>` | `5m` | Throughput dropped **> 10% below baseline**. Check SM activity, exposed `AllReduce` time, straggler clocks, and IB congestion. |
-| **2. `GPUTemperatureHigh`** | `DCGM_FI_DEV_GPU_TEMP > 80` *(or model slowdown temp)* | `1m` | GPU approaching thermal slowdown. Check `nvidia-smi -q -d PERFORMANCE` throttle reasons, cold-aisle temp, blanking panels, and CDU flow. |
-| **3. `InferenceLatencyP99High`** | `inference_latency_p99_ms > 500` | `3m` | P99 Time to First Token (`TTFT`) breached the **500 ms SLA**. Check regional QPS load, KV-cache pressure, and scale up inference replicas. |
-| **4. `GPUFailureDetected`** | `increase(gpu_failure_count[10m]) > 0` *(or `DCGM_FI_DEV_XID_ERRORS`)* | Immediate | Hardware `Xid` fault or fallen-off-the-bus GPU detected. Trigger the **3-Phase GPU Failure Playbook** below. |
-| **5. `CostAnomalyDetected`** | `(cluster_power_kw - cluster_power_kw_avg_7d) / cluster_power_kw_avg_7d > 0.3` | `10m` | Cluster power draw is **> 30% above its 7-day average**. Audit for runaway/zombie training jobs or hung spin-wait loops. |
+| **1. `TrainingThroughputLow`** | `training_throughput_tokens_per_sec < 0.9 * <baseline>` | `5m` | Throughput is more than 10 percent below baseline. Check SM activity, exposed `AllReduce` time, clocks and IB congestion. |
+| **2. `GPUTemperatureHigh`** | `DCGM_FI_DEV_GPU_TEMP > 80` *(or model slowdown temp)* | `1m` | GPU nearing thermal slowdown. Check throttle reasons with `nvidia-smi -q -d PERFORMANCE`, cold-aisle temperature, blanking panels and CDU flow. |
+| **3. `InferenceLatencyP99High`** | `inference_latency_p99_ms > 500` | `3m` | P99 time to first token is over the 500 ms target. Check load and KV-cache pressure, and add replicas. |
+| **4. `GPUFailureDetected`** | `increase(gpu_failure_count[10m]) > 0` *(or `DCGM_FI_DEV_XID_ERRORS`)* | Immediate | An `Xid` fault or a GPU off the bus. Start the three-phase playbook below. |
+| **5. `CostAnomalyDetected`** | `(cluster_power_kw - cluster_power_kw_avg_7d) / cluster_power_kw_avg_7d > 0.3` | `10m` | Cluster power is more than 30 percent above its 7-day average. Look for runaway jobs or hung spin loops. |
 
 ### 5.3 The three-phase GPU failure incident response playbook
 
-When `GPUFailureDetected` pages on-call during a 64-GPU training run, or when Mission Control and BCM execute recovery autonomously, follow three time-bounded phases.
+When `GPUFailureDetected` pages on-call during a 64-GPU run, or when Mission Control and BCM recover on their own, follow three time-bounded phases.
 
-| Phase | Target Window | Actions Taken |
+| Phase | Target | Actions |
 |---|---|---|
 | Phase 1: Initial Response | `<= 5 minutes` | Confirm GPU fault via `nvidia-smi`, `dmesg` Xid, or DCGM health watch; identify batch training versus online inference; terminate stalled synchronous training job immediately |
 | Phase 2: Mitigation | `<= 15 minutes` | Attempt automated GPU reset, OS reboot, or Redfish power cycle; if `dcgmi diag -r 2` passes, resume from checkpoint; if reset fails, cordon node, allocate spare, and resume |
 | Phase 3: Recovery & Post-Incident | `30-60 minutes` | Collect `nvidia-bug-report.sh`, `nvsm dump health`, and BMC logs; dispatch hardware RMA for cordoned node |
 
-1. During Phase 1 in the first 5 minutes, confirm the GPU fault and check whether the node runs batch training or online inference. Online inference traffic fails over automatically to N+1 replicas with zero user impact. For synchronous training, terminate or drain the hung job immediately because 1 dead GPU stalls all 64 GPUs at the collective barrier.
-2. During Phase 2 within 15 minutes, attempt an automated node reset via GPU reset, OS reboot, or Redfish power cycle. If the reset succeeds and `dcgmi diag -r 2` passes, resume training from the most recent sharded checkpoint. If the reset fails, cordon and drain the faulty node via `cmsh`, `scontrol update State=DRAIN`, or `kubectl cordon`, allocate a spare node from the pool, and resume training from the last checkpoint.
-3. During Phase 3 within 30 to 60 minutes, collect `nvidia-bug-report.sh` or `nvsm dump health` alongside BMC logs and dispatch an OEM or NVIDIA hardware RMA for the cordoned node. Total lost training work is bounded strictly by your checkpoint interval plus the 15-minute mitigation window.
+In the first five minutes, confirm the fault and find out whether the node runs training or inference. Inference traffic fails over to the spare replicas with no user impact. For synchronous training, stop or drain the hung job at once, because one dead GPU stalls all 64 at the collective barrier.
 
-:::tip In one minute
-- Track `DCGM_FI_PROF_SM_ACTIVE` and `DCGM_FI_PROF_PIPE_TENSOR_ACTIVE` scraped every 10 seconds from `dcgm-exporter:9400` instead of relying on `nvidia-smi` GPU-Util alone.
-- Configure the five SLO alerts for training throughput drop, high GPU temperature, P99 inference latency breach, hardware Xid failure, and 7-day cluster power anomaly.
-- Follow the three-phase GPU failure playbook across the 5-minute, 15-minute, and 60-minute windows so synchronous jobs resume quickly on spare nodes while broken hardware awaits RMA.
-:::
+Within 15 minutes, try a GPU reset, an OS reboot or a Redfish power cycle. If the node recovers and `dcgmi diag -r 2` passes, resume from the latest sharded checkpoint. If not, cordon and drain the node with `cmsh`, `scontrol update State=DRAIN` or `kubectl cordon`, take a spare from the pool and resume from the checkpoint.
+
+Within 30 to 60 minutes, collect `nvidia-bug-report.sh` or `nvsm dump health` and the BMC logs, and open a hardware return for the cordoned node. The training work you lose is bounded by the checkpoint interval plus the 15-minute mitigation window.
 
 ---
 
@@ -334,13 +285,45 @@ python3 -B code/part09/ai_factory_software_lab.py
 
 ## How it fails
 
-| Failure mode | Symptom | Root cause | Diagnosis & fix |
-|---|---|---|---|
-| **1. `RuntimeError: NCCL operation timed out` at job startup on Kubernetes** | A multi-node training job starts 6 of its 8 pods, sits at `0%` GPU compute for 30 minutes, and crashes with `NCCL operation timed out` during `dist.init_process_group()`. | Either the job was submitted as a **plain Kubernetes `Indexed` `Job` without a gang scheduler** (so 2 pods stayed `Pending` for lack of resources while 6 pods waited at the `c10d` barrier), or `MASTER_ADDR` DNS (`<job>-0.<headless-svc>`) failed to resolve. | Always schedule multi-node Kubernetes jobs through a **Gang Scheduler (`Kueue`, `Volcano`, `PyTorchJob`, or `NVIDIA Run:ai`)** so 0 pods start until all 8 nodes are reserved, and verify headless Service DNS resolution for `MASTER_ADDR`. |
-| **2. Cross-major CUDA container failure (`cudaErrorInsufficientDriver`)** | Launching a new NGC PyTorch container built on **CUDA `12.6`** (or `13.0`) fails immediately with `Error 35: CUDA driver version is insufficient for CUDA runtime version`. | The host OS kernel driver is on a legacy branch (e.g., `470.xx` for CUDA 11.x, or `535.xx` when running a CUDA 13.x container that requires **`≥ 580`**). Minor-version compatibility only works *within* the same CUDA major version (`12.x ≥ 525`, `13.x ≥ 580`). | Upgrade the BCM golden software image's host NVIDIA driver branch (`≥ 525` for CUDA 12.x; `≥ 580` for CUDA 13.x) via `cm-chroot-sw-img` + `createramdisk`, or select the NGC container tag matching your validated host driver branch. |
-| **3. Wrong GPU-to-NIC pairing because `CUDA_DEVICE_ORDER` was unset** | `nvidia-smi topo -m` shows `GPU 0` is `PIX` to `mlx5_0`, yet when `LOCAL_RANK 0` runs, NCCL routes traffic across the CPU (`NODE` / `SYS`). | Without `export CUDA_DEVICE_ORDER=PCI_BUS_ID`, the CUDA runtime ordered device ordinals using `FASTEST_FIRST`, which did not match the PCIe bus order used by `nvidia-smi` and the launcher's NIC binding script. | Set **`export CUDA_DEVICE_ORDER=PCI_BUS_ID`** globally in the container environment before initializing PyTorch or CUDA. |
-| **4. 10× slower throughput after setting `CUDA_LAUNCH_BLOCKING=1`** | A developer sets `CUDA_LAUNCH_BLOCKING=1` in a production training script thinking it helps CUDA Graphs or determinism, and step time slows down by 5× to 10×. | `CUDA_LAUNCH_BLOCKING=1` disables asynchronous kernel launches, forcing the CPU to wait for each GPU kernel to finish before launching the next one and breaking CUDA Graph capture. | Keep **`CUDA_LAUNCH_BLOCKING=0`** in production; enable CUDA Graphs via `torch.cuda.CUDAGraph()` or `torch.compile(mode="reduce-overhead")`. |
-| **5. False-green `99% GPU-Util` while training throughput drops by 50%** | Grafana shows `DCGM_FI_DEV_GPU_UTIL` at `99%`, so no utilization alert fires, even though `tokens/sec` dropped from `60,000` to `28,000` due to a network straggler. | `DCGM_FI_DEV_GPU_UTIL` (`nvidia-smi` GPU-Util) only measures whether *any* warp is resident on the GPU (including a single NCCL polling kernel spinning while waiting on a slow link). | Alert directly on **application `training_throughput_tokens_per_sec < 0.9 * baseline`** (`TrainingThroughputLow`) and track **`DCGM_FI_PROF_SM_ACTIVE`** and **`DCGM_FI_PROF_PIPE_TENSOR_ACTIVE`**. |
+### 1. `RuntimeError: NCCL operation timed out` at job startup on Kubernetes
+
+Symptom: A multi-node training job starts 6 of its 8 pods, sits at `0%` GPU compute for 30 minutes, and crashes with `NCCL operation timed out` during `dist.init_process_group()`.
+
+Cause: Either the job was submitted as a plain Kubernetes `Indexed` `Job` without a gang scheduler (so 2 pods stayed `Pending` for lack of resources while 6 pods waited at the `c10d` barrier), or `MASTER_ADDR` DNS (`<job>-0.<headless-svc>`) failed to resolve.
+
+Fix: Always schedule multi-node Kubernetes jobs through a Gang Scheduler (`Kueue`, `Volcano`, `PyTorchJob`, or `NVIDIA Run:ai`) so 0 pods start until all 8 nodes are reserved, and verify headless Service DNS resolution for `MASTER_ADDR`.
+
+### 2. Cross-major CUDA container failure (`cudaErrorInsufficientDriver`)
+
+Symptom: Launching a new NGC PyTorch container built on CUDA `12.6` (or `13.0`) fails immediately with `Error 35: CUDA driver version is insufficient for CUDA runtime version`.
+
+Cause: The host OS kernel driver is on a legacy branch (e.g., `470.xx` for CUDA 11.x, or `535.xx` when running a CUDA 13.x container that requires `≥ 580`). Minor-version compatibility only works *within* the same CUDA major version (`12.x ≥ 525`, `13.x ≥ 580`).
+
+Fix: Upgrade the BCM golden software image's host NVIDIA driver branch (`≥ 525` for CUDA 12.x; `≥ 580` for CUDA 13.x) via `cm-chroot-sw-img` + `createramdisk`, or select the NGC container tag matching your validated host driver branch.
+
+### 3. Wrong GPU-to-NIC pairing because `CUDA_DEVICE_ORDER` was unset
+
+Symptom: `nvidia-smi topo -m` shows `GPU 0` is `PIX` to `mlx5_0`, yet when `LOCAL_RANK 0` runs, NCCL routes traffic across the CPU (`NODE` / `SYS`).
+
+Cause: Without `export CUDA_DEVICE_ORDER=PCI_BUS_ID`, the CUDA runtime ordered device ordinals using `FASTEST_FIRST`, which did not match the PCIe bus order used by `nvidia-smi` and the launcher's NIC binding script.
+
+Fix: Set `export CUDA_DEVICE_ORDER=PCI_BUS_ID` globally in the container environment before initializing PyTorch or CUDA.
+
+### 4. 10× slower throughput after setting `CUDA_LAUNCH_BLOCKING=1`
+
+Symptom: A developer sets `CUDA_LAUNCH_BLOCKING=1` in a production training script thinking it helps CUDA Graphs or determinism, and step time slows down by 5× to 10×.
+
+Cause: `CUDA_LAUNCH_BLOCKING=1` disables asynchronous kernel launches, forcing the CPU to wait for each GPU kernel to finish before launching the next one and breaking CUDA Graph capture.
+
+Fix: Keep `CUDA_LAUNCH_BLOCKING=0` in production; enable CUDA Graphs via `torch.cuda.CUDAGraph()` or `torch.compile(mode="reduce-overhead")`.
+
+### 5. False-green `99% GPU-Util` while training throughput drops by 50%
+
+Symptom: Grafana shows `DCGM_FI_DEV_GPU_UTIL` at `99%`, so no utilization alert fires, even though `tokens/sec` dropped from `60,000` to `28,000` due to a network straggler.
+
+Cause: `DCGM_FI_DEV_GPU_UTIL` (`nvidia-smi` GPU-Util) only measures whether *any* warp is resident on the GPU (including a single NCCL polling kernel spinning while waiting on a slow link).
+
+Fix: Alert directly on application `training_throughput_tokens_per_sec < 0.9 * baseline` (`TrainingThroughputLow`) and track `DCGM_FI_PROF_SM_ACTIVE` and `DCGM_FI_PROF_PIPE_TENSOR_ACTIVE`.
 
 ---
 
@@ -557,7 +540,7 @@ The other 63 healthy GPUs are blocked at their NCCL collective barrier burning c
 ### Run here
 - Running `python3 -B code/part09/ai_factory_software_lab.py` passes all 26 checks with 0 failures.
 
-### My own choices and inferences, labelled in the text
+### Choices and inferences, labelled in the text
 1. Combining the 16-byte-per-parameter mixed-precision AdamW breakdown from Volume 21 Chapter 4 with the ZeRO sharding description in Volume 21 Chapter 6 Part 2.2 to write explicit per-GPU model-state memory formulas in `calculate_zero_stage_memory_per_gpu` is this chapter's own inference.
 
 ### Not verified on live hardware
