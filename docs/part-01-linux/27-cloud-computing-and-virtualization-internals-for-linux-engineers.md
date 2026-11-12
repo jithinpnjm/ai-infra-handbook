@@ -60,33 +60,15 @@ A colleague says the instance in the second zone is slow. To follow that convers
 | **Hypervisor / VMM** | Software that creates and runs hardware-virtualised VMs |
 | **Orchestrator** | Software that schedules workloads on a pool of machines (Kubernetes, Slurm, Nomad) |
 
-Notice that a tenant is the consumer of an instance, and many tenants can share one host. Providers added virtualisation in stages. Hardware VMs came first, with EC2 in 2006. OS-virtualised containers followed, from 2017 onwards, in managed container services. Lightweight microVMs arrived in 2019 with Firecracker. Clouds also offer their own services and APIs, such as autoscaling, load balancers and managed databases. Those are provider-specific, so check the vendor documentation for them.
+A tenant is the consumer of an instance, and many tenants can share one host. Providers added virtualisation in stages: hardware VMs first, then containers as a rented unit, then lightweight microVMs. Clouds also sell their own services, such as autoscaling, load balancers and managed databases. Those are provider-specific, so check the vendor documentation for them.
 
-### Why organisations move to the cloud
+The service models differ in how much you still run yourself. With software as a service you use a finished application and manage nothing below it. With platform as a service you deploy your own application onto a runtime the provider manages. With infrastructure as a service you rent virtual machines, networks and storage, and you manage the operating system and everything above it. GPU work almost always sits at the infrastructure level, or on managed Kubernetes built on it. Clouds are also public, private, hybrid or shared by a community of organisations, which changes who owns the hardware but not the performance questions in this chapter.
 
-Picture a small team with an idea for a new internet service. Without the cloud, the team has to buy servers, find room for them, pay for power and cooling, and wait for the hardware to arrive. Cloud computing turns that order around. Capacity can arrive in minutes, and the team pays only for what it uses.
+### Why organisations move to the cloud, and what it costs them
 
-The advantages fall into two groups. The first group is about how the technology behaves. A company with large batch jobs gets results as fast as its programs can scale. Resources that once took months to buy and configure can arrive within minutes. On-demand self-service means a consumer can provision server time or network storage automatically, with no person at the provider approving each request. Broad network access means the services are reached from phones, tablets, laptops and workstations.
+Without the cloud, a team that needs capacity must buy servers, find room for them and wait for delivery. In the cloud, capacity arrives in minutes through an API and is billed by use. The provider absorbs hardware failures and can serve many customers from one pool.
 
-Resource pooling means the provider serves many consumers from one pool, and reassigns storage, processing, memory and network bandwidth as demand changes. Measured service means the system meters usage at a level that suits each service, so the right amount is delivered and little capacity sits idle. Rapid elasticity means capacity is added or released, sometimes automatically, to scale out or in. To the consumer, it often looks unlimited.
-
-The second group is about money and risk. Pay-as-you-go pricing means a service can start with no upfront investment. Nothing has to be bought before the first user arrives. Resources are released when demand falls, so the provider does not have to size its capacity for the peak. That lowers operating cost. The infrastructure can also grow fast enough for a sudden rush of users, a pattern sometimes called surge computing. Web-based services can be reached from any device with an internet connection. Finally, hardware failures move to the infrastructure provider, who often has better skills for handling them.
-
-### The challenges of cloud computing
-
-Moving work into someone else's data centre removes some burdens and adds new ones. Three challenges matter most to an engineer.
-
-The first is the **untrusted host**. Data stored off-premises faces more security risks. The cloud sounds as if it lives somewhere in the sky, but the data sits in a real country and follows that country's rules. Most vendors give the customer little say over where data is stored. So encrypt the data with a key that the host does not hold. Otherwise a third party could read it without the customer knowing.
-
-The second is **replication**. Providers copy data across distant data centres, so that a failure does not lose it, and they usually do this without being asked. Ask for the details of the replication scheme. Replicated data is not a guarantee of availability.
-
-The third is **slow transmission**. A centralised cloud struggles with latency-sensitive work and with the growing flood of data. Network bandwidth is finite, and it is not improving fast enough to carry all of that data in real time. Fog and edge computing move processing closer to the data for this reason.
-
-### Cloud computing and the technologies behind it
-
-Cloud computing is not really a new technology. It joins several older ideas into one platform, and each idea contributes something different. **Web services** package each piece of software as a self-described service, and users link several services to build a complex application. **Grid computing** pools geographically spread machines. Users submit tasks to a grid portal, a broker picks resources, and results return to the user. Cloud goes further by using virtualisation at several levels to share and provision resources on the fly.
-
-**Utility computing** gives each job a utility value, which is the money a user will pay for a measurable result such as run time or throughput. Providers aim to maximise profit, while users compete on that value. **Hardware virtualisation** is the foundation. It pools computing resources from clusters of servers and assigns virtual resources to applications on demand. A virtualised server is called a virtual machine (VM). **Autonomic computing** aims at systems that manage themselves. Cloud shows some of this, such as automatic resource provisioning. Its main goal, though, is to lower the cost of resources, not to reduce the complexity of the system.
+The price is three new problems. The host is untrusted, so encrypt data with keys the provider does not hold, and remember that data lives in a real country under its rules. Replication across data centres is usually automatic, but replicated data is not a promise of availability, so ask for the details. Transmission is slow when you move large data across the wide area, which is why data gravity matters in section 4.
 
 ### Instance types
 
@@ -94,7 +76,7 @@ Providers offer **families**, such as balanced general purpose, compute optimise
 
 This change brings three practical duties. First, benchmark candidate types with your own workload. Second, record the CPU platform, because the same family may land on different silicon generations. Third, understand what the numbers mean. A vCPU is usually one hardware thread. Memory per vCPU is a ratio you should know. Network and disk performance are tied to size, and limits such as egress bandwidth and IOPS scale with size.
 
-**Accelerated families for AI** change often, so verify the names before you plan. On Google Cloud, A-series machine types (A2, A3 and later) come with attached NVIDIA GPUs such as A100, H100 and newer ones. G-series machines come with L4 or similar GPUs, and N1 and other families take attachable T4 or V100 GPUs. On AWS, P-series (P4d, P5) and G-series instances come with EFA networking. On Azure, ND-series (ND A100/H100 v4/v5) come with InfiniBand. On neoclouds, bare-metal-like HGX and DGX nodes sit on InfiniBand fabrics.
+**Accelerated families for AI** change often, so verify the names before you plan. In broad terms, hyperscalers attach NVIDIA GPUs to A-series, P-series or ND-series shapes with their own high-speed networking, and neoclouds offer bare-metal-like HGX and DGX nodes on InfiniBand fabrics.
 
 Ask the same key questions about each candidate. What GPU model is it, and how many GPUs per instance? Does it have NVLink or NVSwitch inside the instance? What host CPU and RAM does it have, and what NUMA layout? Does it have local NVMe? What network does each instance get, with its multiple 200 to 400 Gb/s NICs and its RDMA or GPUDirect technology, such as InfiniBand, RoCE, EFA or TCPX/TCPXO-style offloads? Is it a VM or bare metal? What are the placement and cluster size limits, such as compact placement groups, topology-aware scheduling and the maximum number of nodes in a fabric? Finally, what are the quota and capacity terms, including reservations, on-demand availability and spot or preemptible behaviour?
 
@@ -126,65 +108,26 @@ An instance needs storage for its OS, its software and its scratch space. **Ephe
 
 Network storage shares its network with everyone else, so its performance is less predictable than local disk. Caches and provisioned performance help. For AI, keep datasets in object storage, and stage them to local NVMe or a parallel filesystem. Write checkpoints to fast storage first, then copy them asynchronously. Avoid reading millions of small objects directly. Region co-location, egress fees and per-instance throughput limits matter as much as raw speed.
 
-### Databases and data stores in the cloud
-
-Not all data fits neatly in a table. A cloud platform holds several kinds of data stores, and each suits a different shape of data.
-
-**Relational databases** keep information in tables of rows and columns. Rows relate to each other through shared keys. The systems that run them are called relational database management systems (RDBMS), and they use SQL as the interface. Relational databases are easy to create, and you can add a new data category without changing existing applications. Their drawbacks are low performance and high storage use on large datasets. Variants include the object-oriented model and the dimensional model used in data warehouses.
-
-**NoSQL databases** (short for "not only SQL") store and retrieve data without the rules of an RDBMS. The label is recent, but the idea goes back to the late 1960s. NoSQL was built to solve the scale and big-data performance problems that relational systems were not designed for. These databases are harder to configure and less mature. Which one fits depends on the problem. Several families fall under NoSQL. **Key-value stores** are the simplest, with one value stored under each key, and each key appears only once. **Document-based stores** hold structured files, such as XML or CSV, and unstructured ones, such as PDF or Word documents. They use the structure inside each document to speed up queries. **Column-oriented databases** store columns together rather than rows, and they are the most common choice for big-data queries. **Graph-oriented databases** store nodes and the edges between them, which suits data made of many connections. **Multi-model databases** give one back end several data models. This follows the idea of polyglot persistence, which means using different tools for different problems.
-
-**NewSQL** aims to give relational systems the speed of NoSQL while keeping strong consistency and transactions. It suits applications with many short transactions on small amounts of data. Some organisations simply keep unstructured files in a directory, often because they lack the know-how to build a proper database.
-
-**Message brokers** sit between senders and receivers, and a broker can translate one messaging protocol into another. Data streams usually follow a publish and subscribe pattern. The broker forwards each published message to all its subscribers. Senders and receivers never talk directly, which adds security and makes it easier to connect different systems. The cost is an extra hop that adds overhead, and the broker can become a single point of failure.
-
-**Centralised databases** serve one site and are accessed through a database management system (DBMS). A DBMS improves data sharing, enforces security policies, gives a single view of the organisation, and answers queries quickly. It also reduces data inconsistency, although it may not remove duplication entirely. **Decentralised databases** spread logically related databases across a network. Each site has its own processor and operating system, and a distributed DBMS hides the distribution from users. Such a system is more than a folder of files on several machines, because the data must be related and reachable through one common interface.
-
-**Cloud databases** are built on the data services of a cloud provider. The provider states measures such as availability, storage capacity and required throughput, but it may not say what infrastructure lies underneath. **Data lakes** hold a large pool of raw structured and unstructured data. The data is not filtered the way a warehouse filters it. Its schema is not fixed when it is captured, and it can come from any source. **Object storage** dates from the early 1990s. It keeps huge amounts of unstructured data, such as pictures, files, songs and videos, and large consumer services use it for exactly this kind of content.
-
 ### Multitenancy
 
 Unix always shared resources among users. Cloud shares them among *entire operating systems*. Each guest is isolated and cannot observe the others, because that would be an information leak. Yet the guests share physical CPUs, caches, memory bandwidth, disks, NICs and fabrics. That is the origin of **noisy neighbours**. Another tenant's dump, backup or deliberate micro-benchmark can saturate a shared resource, and your job pays for it.
 
 The mitigations come in two groups. **Resource controls** give performance isolation, with per-tenant limits and priorities for CPU, memory, disk I/O and network. The provider's placement policy also helps. As a tenant, you can choose dedicated hosts or bare metal. You can also choose larger instance sizes that own whole sockets. Monitoring such as `%steal` and latency outliers shows you when a neighbour is hurting you. The observability you get depends on the virtualisation type, as section 6 explains.
 
+### Why a cloud GPU node behaves differently
+
+A GPU node in the cloud is not the same machine as one in your own rack, even when the GPU model matches. Four differences explain most surprises.
+
+1. **Noisy neighbours.** Other tenants share the host's CPU caches, memory bandwidth, NIC and sometimes the fabric. You see it as `%steal` and as latency outliers, and you cannot fix it from inside the guest.
+2. **Virtual topology and NUMA exposure.** The guest sees the NUMA layout, PCIe tree and NIC-to-GPU affinity that the provider chose to present. A flat or inaccurate view stops NCCL from picking the best paths. Check it with `lscpu`, `numactl -H` and `nvidia-smi topo -m`, and compare with the provider's documented layout.
+3. **Passthrough and SR-IOV.** GPUs are usually passed through whole, and fast NICs are usually SR-IOV virtual functions. That keeps the data path near native. It also means the provider sets bandwidth caps, MTU and counters, and you may see fewer NIC controls than on bare metal.
+4. **Nested virtualisation.** If you run a hypervisor, Kata or KubeVirt inside a cloud VM, each guest operation passes through two layers of exits. Many providers disable it on GPU instance types or restrict it. Check support before you design around it, and expect extra overhead where it is allowed.
+
+If a workload is slower in the cloud than on premises, check these four before you blame the software.
+
 ### Orchestration (Kubernetes)
 
-Many organisations build private clouds on Kubernetes, and every major provider offers managed Kubernetes, such as GKE, EKS and AKS. In this model, containers are deployed as **Pods**. A Pod is a set of co-located containers that share a network namespace and often IPC and volumes. A **Service** gives a stable virtual IP and DNS name to a changing set of Pods. **Nodes** are the machines that join a cluster through the API server. The scheduler places Pods using CPU and memory requests and limits, node labels, taints and tolerations, and affinity. The Horizontal Pod Autoscaler scales the replica count.
-
-Kubernetes brings its own performance issues. Scheduling quality matters, including placement relative to GPUs, NUMA and network topology. **Container networking** is handled by the CNI. Calico uses iptables and netfilter or eBPF, while Cilium uses BPF and can replace kube-proxy. The number of Services affects the kube-proxy rules. CPU limits and throttling are covered in chapter 1.18. Disk I/O contention is another risk, because older versions had no I/O limit by default. Observability gaps add to the list. Part 5 and Part 7 cover Kubernetes and GPU scheduling in depth.
-
-### Service models: SaaS, PaaS and IaaS
-
-Every cloud buyer asks one question. Which parts do I still have to run myself? The three service models answer it with different levels of control.
-
-**Software as a service (SaaS)** lets the consumer use the provider's applications through a thin client, such as a web browser, or through a program interface. The consumer does not manage the network, servers, operating systems or storage. It can change only limited, user-specific settings. Clients pay for access over time, on a pay-as-you-use basis, instead of buying software up front. The vendor handles support, patches and upgrades for every subscriber.
-
-SaaS has real limits. Data sits on the vendor's servers, which raises security questions. Hosting far away adds latency, so SaaS does not suit applications that need millisecond responses. Multi-tenant designs can limit customisation for large clients. Moving very large files to a new vendor is slow. Clients may also be forced onto new versions, which can bring training costs and more user errors. Each SaaS consumer chooses between two options. It can share the software with other consumers, which is multi-tenancy. That shares the total cost and creates economies of scale. Or it can be a single tenant, which gives more control and security but no shared savings.
-
-**Platform as a service (PaaS)** gives developers a platform and environment for building and delivering applications over the internet. The consumer controls its own applications and some hosting settings. It does not control the servers, operating systems, network or storage underneath, because the provider manages that infrastructure. The provider keeps services updated, and helps from the first idea through testing and deployment. A package can be a simple point-and-click framework, or a set of infrastructure options for advanced developers.
-
-PaaS suits new applications for the web, mobile devices and PCs. Clients pay a subscription for what they use, and they avoid buying hardware or hiring people to run it. Non-experts can build apps through a browser, and teams in different places can work on one build. The provider also supplies security, backup and recovery. PaaS has three security limits. Information processing is risky, because bulky data may be processed live on a shared server, where it can be intercepted. Stored data stays protected. Information interactivity is risky, because data crosses PCs, networks and phones on its way to users. Data storage is hard to verify, because the data always lives on shared servers.
-
-**Infrastructure as a service (IaaS)** lets the consumer provision processing, storage, networks and other basic computing resources. It can then run any software it likes on them. Offerings include virtual server space, network connections, bandwidth, IP addresses and load balancers. The hardware comes from many servers and networks spread over several data centres, all maintained by the provider. The consumer manages its own operating systems, storage and applications, and it has some control over networking.
-
-IaaS brings several benefits. The consumer chooses its operating system, database and development environment. It can grow or shrink with demand instead of buying hardware. Websites gain redundancy from a large pool of servers, and virtual data centres can be built from interconnected virtual servers. Billing follows actual use, and the service can be reached from any location with an internet connection. If one whole data centre goes offline, the service can often keep running.
-
-Several factors slow down the adoption of IaaS. Concerns about the security and confidentiality of data come first. Teams often lack the time and resources to analyse the offerings and the providers. Some doubt that providers will keep their promises, or that a shared infrastructure can be trusted. Others doubt that the provider can add capacity fast enough. Some organisations have no internal strategy for IaaS, and some lack the people to design and implement solutions. The technologies to be installed and managed are still relatively immature. Finally, the savings may not be large enough to matter.
-
-### Public, private, community and hybrid clouds
-
-Clouds come in four kinds. The difference is who owns them and who may use them. A **private cloud** is the internal data centres of one organisation, and it is not open to the public. A single organisation can serve several business units from it. The organisation, a third party or a mix can run it, on or off its premises. A **community cloud** is built for a group of organisations with shared concerns, such as mission, security needs, policy or compliance. Members or a third party can run it.
-
-A **public cloud** is open for use by the public, and it is owned by a business, an academic body, a government or a mix. It sits on the provider's premises and is elastic, so it scales readily. A **hybrid cloud** is two or more distinct clouds that keep their own identities. Standard or proprietary technology binds them, so that data and applications can move between them.
-
-A hybrid model is usually a private cloud that taps a public cloud when it needs extra capacity. Sensitive data can stay on the private side, which helps when industry or financial rules apply. The hybrid model is also the most utility-oriented choice. Adding public capacity is much easier than growing a private cloud, so a hybrid setup can deliver strong computing power without a large budget.
-
-### Cloud architecture: front end and back end
-
-Cloud computing has two halves. The **front end** is what clients see. It can be a browser, an operating system, a tablet or a phone. The **back end** is the provider's side, made of servers and storage that together are called the cloud.
-
-Before you design a cloud service, decide which of its parts you must run yourself under each service model.
+Every major provider offers managed Kubernetes, such as GKE, EKS and AKS, and many organisations build private clouds on it. The scheduler places Pods using resource requests and limits, node labels, taints and affinity. Quality of placement matters for GPUs, NUMA and network topology. Container networking, the CNI choice and the number of Services also change performance, and chapter 1.18 covers CPU limits and throttling. Parts 5 and 11 cover Kubernetes and GPU scheduling in depth.
 
 ## 2. Three ways to virtualise
 
@@ -205,23 +148,13 @@ flowchart TB
 
 The top stack has a full VM with its own kernel. The middle stack has no guest kernel at all, because every container shares the host kernel. The bottom stack keeps a guest kernel, but a minimal one behind a small hypervisor.
 
-### Hardware virtualisation (recap and cloud view)
+### Hardware virtualisation (cloud view)
 
-A hypervisor creates VMs, and each VM runs its own kernel, as chapter 1.26 explains. In the cloud, five topics drive performance. Check these first when a VM is slow.
+A hypervisor runs each VM with its own kernel, as chapter 1.26 explains. In the cloud, check five things first when a VM is slow. CPU runs near native speed for user code, with overhead from guest exits on privileged operations, timers and interrupts. Memory mapping costs an extra translation step, and every guest carries its own kernel, page tables and possibly a duplicate copy of cached data. I/O has historically been the largest overhead, because every device access was proxied. Paravirtual drivers, SR-IOV or passthrough, and hardware offload reduce it. Contention, the fifth item, is stolen CPU time, cache pollution and interrupts from neighbours you cannot see.
 
-**CPU** runs near native speed for user code. Overhead comes from guest exits, which happen on privileged operations, timers and interrupts. The vCPU allocation is fixed. **Memory mapping** uses EPT/NPT two-dimensional walks, and shadow paging is the fallback without them. **Memory size** matters because each guest runs its own kernel and each VM runs its own QEMU process. The same data can also be cached twice.
+The clouds differ in how they built their hypervisors. Xen used a privileged dom0 as the I/O proxy, as EC2 originally did. Google Compute Engine uses KVM with QEMU and vhost. Nitro is KVM-derived, with dedicated hardware for network, storage, interrupts and timers, so there is no QEMU on the data path and performance is near bare metal. Azure runs on Hyper-V.
 
-**I/O** has historically been the largest overhead, because every device access was proxied. Paravirtual drivers, SR-IOV or passthrough, and hardware offload reduce that cost. In Nitro, there is no QEMU on the data path at all. **Contention** is the fifth topic. Stolen CPU time, cache pollution and interrupts from other tenants' I/O all come from neighbours you cannot see.
-
-The clouds differ in how they built their hypervisors. Xen used a privileged dom0 and an I/O proxy, as EC2 did originally. KVM with QEMU/vhost is what Google Compute Engine uses. Nitro is KVM-derived and has dedicated hardware for network, storage, interrupts and timers. That design delivers near bare-metal performance. Hyper-V is the hypervisor behind Azure.
-
-**Resource controls for VMs.** CPU control starts with the number of vCPUs, and that setting is coarse. Finer quotas come from the hypervisor scheduler. Xen offers borrowed virtual time, SEDF and a credit scheduler with weights and caps. KVM uses the host OS instead, with cgroup CPU bandwidth, `cpuset` and `taskset`.
-
-The limit is that a guest's internal thread priorities are invisible to the hypervisor. A low-priority log-rotation job in one VM can compete equally with a critical server in another VM. With Xen's I/O proxy, work done in dom0 for a guest could escape accounting. That is why operators use isolated driver domains and debt-collecting schedulers.
-
-Cache control is possible too. Intel CAT can partition the last-level cache between guests. That prevents pollution, but it may hurt performance. Memory is a fixed size set at configuration, and ballooning can reclaim memory from running guests. If memory behaves oddly inside a guest, check `dmesg | grep -i balloon` there. Virtual volumes are sized by the host.
-
-Device I/O throttling can happen in host qdiscs or cgroups, or in external devices. Many clouds enforce disk and network quotas outside the VM. The limits therefore show up as latency or throughput caps, not as local errors.
+Resource controls are coarser than for containers. The vCPU count is a fixed allocation, and finer quotas come from the host scheduler, such as cgroup bandwidth and `cpuset` under KVM. The hypervisor cannot see a guest's internal thread priorities, so a low-priority log-rotation job in one VM competes equally with a critical server in another. Memory is fixed at configuration, and ballooning can reclaim it from running guests, so check `dmesg | grep -i balloon` when memory behaves oddly. Many clouds enforce disk and network quotas outside the VM, so limits appear as latency or throughput caps rather than local errors.
 
 ### OS virtualisation (containers)
 
@@ -256,25 +189,13 @@ Section 6 covers container observability in detail.
 
 ### Lightweight virtualisation (microVMs)
 
-Lightweight hardware virtualisation combines the isolation of VMs with the start time and density of containers. A **minimal hypervisor** with few emulated devices boots a **dedicated minimal guest kernel**. The hypervisor is KVM-based and written for server use. Several products follow this design.
+Lightweight virtualisation combines the isolation of VMs with the start time and density of containers. A minimal, KVM-based hypervisor with few emulated devices boots a dedicated minimal guest kernel. Kata Containers runs a micro VM per pod and plugs into Kubernetes through a runtime class. Firecracker, from AWS and open source, pairs KVM with a small VMM instead of QEMU. It boots in around 100 ms with a few MiB of overhead per VM, and it powers Lambda and Fargate-style services. gVisor is different: it is a user-space kernel that intercepts syscalls, so it is closer to a container, with less hardware isolation and extra cost on syscall-heavy loads. Cloud Hypervisor, crosvm and QEMU's microvm machine type are other minimal VMMs.
 
-**Intel Clear Containers** became **Kata Containers** in 2015 and 2017. Its promise is the speed of containers with the security of VMs. It runs a micro VM per pod or container, and it plugs into Kubernetes through a runtime class.
+Overhead looks like KVM with a smaller footprint. Clear Containers, the ancestor of Kata, used about 48 to 50 MB per container, and Firecracker uses under 5 MB. Resource controls come from host cgroups and qdiscs, because the VMM is a host process. From the host, a microVM looks like one process. From the guest, observability is full, because the guest has its own kernel.
 
-**Firecracker** came from AWS in 2019 and is open source. It combines KVM with a lightweight VMM instead of QEMU. That VMM has tens of thousands of lines of code, where QEMU has over a million. Firecracker boots in around 100 ms and adds a few MiB of memory overhead per VM. It powers Lambda and Fargate-style services.
+MicroVMs suit multi-tenant platforms that run untrusted code, such as notebooks, inference sandboxes and CI. Container escape risk is unacceptable there, and VM boot time is too slow. For GPUs the story is harder, because passthrough to microVMs needs vendor support. Most GPU clouds still use full VMs or bare metal for GPU tenants.
 
-**Google gVisor** is a user-space kernel written in Go. It intercepts syscalls. It is closer to containers in its characteristics, with less hardware isolation and extra overhead on syscall-heavy loads. **Cloud Hypervisor**, **crosvm** and the **QEMU microvm** machine type are other minimal VMMs.
-
-The overheads look like KVM with a smaller footprint. Clear Containers used about 48 to 50 MB per container, and Firecracker uses under 5 MB. Resource controls come from the host OS, through cgroups and qdiscs, because the VMM is a host process. From the host, observability looks like a VM, where the guest appears as one process. From the guest, observability is full, because the guest has its own kernel and BPF tools work.
-
-Lightweight virtualisation suits multi-tenant platforms that run untrusted code, such as notebooks, inference sandboxes and CI. Container escape risk is unacceptable there, and VM boot time is too slow. For GPUs the story is more complicated, with passthrough to microVMs and vendor support to consider. Most GPU clouds still use full VMs or bare metal for GPU tenants.
-
-### Other types
-
-Other models hide the server from you. In **FaaS**, or serverless functions, you submit a function. Startup time and cold starts matter, and there is no server to log in to. Performance analysis therefore relies on application timestamps and the provider's metrics. **SaaS** is high-level software, so only the provider can analyse its performance. Clients rely on client-side timing.
-
-**Unikernels** compile an application with minimal kernel pieces into one binary. That binary boots directly on a hypervisor, which makes it small and fast. Without an OS, there are no `/proc` tools. Some implementations can run as ordinary processes for analysis, and hypervisors can profile them instead.
-
-Before you choose a virtualisation type, check which layers your analysis tools can reach.
+Two further models hide the server entirely. With serverless functions you submit code and see only application timestamps and provider metrics. Unikernels compile an application and a minimal kernel into one image for a hypervisor, so there are no `/proc` tools to use. Before you choose a virtualisation type, check which layers your analysis tools can reach.
 
 ## 3. Comparing the three (performance attributes)
 
@@ -316,13 +237,13 @@ Your team has a GPU workload and must choose where it will run. Five options are
 | **MIG / vGPU slices** | Multiple small tenants on one GPU | No NCCL across MIG instances; flexibility limits; licence for vGPU | Inference, notebooks, small experiments |
 | **MicroVMs/Kata** | Strong isolation for untrusted workloads | GPU support complexity | Sandboxed code execution |
 
-Read the cons column with the same care as the pros, because each con is a limit you will live with. As *Supercomputers for Linux SysAdmins* notes in chapter 17, a provider can offer specialised HPC virtual machines with nearly transparent access to high-speed interconnects and accelerators. Even so, overall performance typically shows a `5-15%` performance drop compared to bare-metal hardware. The size of the drop depends on the provider.
+Read the cons column with the same care as the pros, because each con is a limit you will live with. A provider can offer specialised HPC virtual machines with nearly transparent access to high-speed interconnects and accelerators. Even so, overall performance typically shows a `5-15%` performance drop compared to bare-metal hardware. The size of the drop depends on the provider.
 
 ### Networking and placement
 
 Large training depends on the **fabric**. Providers offer high-speed options, such as GPUDirect-style offloads over Ethernet on some hyperscalers, Elastic Fabric Adapter on AWS, and InfiniBand on Azure ND and on neoclouds. These let NCCL bypass the kernel network stack.
 
-Check several things for each provider. Confirm the NCCL plug-in or runtime you need. Then study the **placement policy**. Compact or cluster placement makes nodes share a switch tier. *Supercomputers for Linux SysAdmins* stresses that low-latency networks restrict how many instances can connect. All nodes must sit in the same performance subnet, capacity reservation or domain. Otherwise overall performance can drop several-fold.
+Check several things for each provider. Confirm the NCCL plug-in or runtime you need. Then study the **placement policy**. Compact or cluster placement makes nodes share a switch tier. Low-latency networks restrict how many instances can connect. All nodes must sit in the same performance subnet, capacity reservation or domain. Otherwise overall performance can drop several-fold.
 
 The remaining checks are the maximum job size within one fabric and the MTU. Jumbo frames run inside a VPC, and the default is often 1460 to 1500 on some clouds. Also check bandwidth caps per instance and per flow. Single TCP flows are often limited to a small fraction of the instance bandwidth, so use multiple streams or connections. Validate with the benchmarks in chapter 1.25 (`iperf3 -P`, `nccl-tests`) before you rely on advertised numbers.
 
@@ -340,25 +261,13 @@ When you bring up a cloud Slurm cluster by hand, automate the first infrastructu
 
 Place compute where the data is. Avoid cross-region reads, and stage datasets to local NVMe or a parallel filesystem. Write checkpoints to object storage with parallel multipart uploads. Watch per-instance throughput caps and request-rate limits, and use prefix sharding for object stores. Local SSD on GPU instances is ephemeral, so treat it as a cache.
 
-A plain cloud NFS volume is rarely sufficient for coupled HPC or AI checkpointing. Providers often do not publish realistic shared-storage numbers for your I/O pattern. *Supercomputers for Linux SysAdmins* therefore recommends renting cheap instances attached to the target cloud file system. Run a simulated checkpoint benchmark before you commit. Suppose your application writes temporary or checkpoint data every `5 minutes`, with a size roughly equal to compute-node memory. Simulate that exact periodic burst pattern, and measure how long each save and reload takes.
-
-### Building an HPC cluster in the cloud
-
-Suppose you need an HPC cluster, and you cannot build one in time. Cloud HPC can fill that gap, but the checks differ from buying hardware. Start with cost. Estimate the bill carefully, because an on-premises cluster can be cheaper over the long run. The cloud is still a good playground for testing tools before production use.
-
-Check the network before you rent anything. Find out which network type the instances use, and what each instance includes. A low-latency network often limits how many instances you can connect. Place all nodes in one performance subnet, through a capacity reservation or a domain, or overall performance can drop several-fold. The placement rules for GPU fabrics are covered under Networking and placement above.
-
-Test the shared file system the same way. A plain NFS volume is rarely enough for a cluster. If the provider cannot give clean performance numbers, rent cheap instances that use the file system and run I/O tests shaped like your real work. Use the checkpoint pattern described in the storage section above, and time each save and each reload before you commit.
-
-Some providers offer a Slurm-based cluster as an option. If it covers your needs, use it. If not, build the cluster yourself. Use Terraform for the first bring-up, Ansible or another tool for the software, and a custom image when you can make one. Cluster managers such as BCM can help run it. Test that automation on cheap instances before the real build.
-
-Use the cloud API to terminate and recreate instances, or to power subsets of nodes on or off. The API may report power consumption, network counters and node health. If it does not, collect those numbers on the nodes themselves.
+A plain cloud NFS volume is rarely sufficient for coupled HPC or AI checkpointing. Providers often do not publish realistic shared-storage numbers for your I/O pattern. Rent cheap instances attached to the target cloud file system and run a simulated checkpoint benchmark before you commit. Suppose your application writes temporary or checkpoint data every `5 minutes`, with a size roughly equal to compute-node memory. Simulate that exact periodic burst pattern, and measure how long each save and reload takes.
 
 ### Observability in the cloud
 
 In the cloud you usually get four things. Cloud monitoring shows GPU metrics, through the provider agent or DCGM. It also shows cloud API metrics such as power consumption, network counters and node health, where they are exposed. You also get logs and a serial console. Hypervisor-level health events report maintenance, host errors and live migration notices. GCE exposes a metadata-server maintenance event for this. You do not get access to the host.
 
-Use the cloud API to automate replacing failed instances, powering subsets of nodes on or off, and filing health tickets. Where the provider API is silent, collect direct in-guest metrics.
+Use the cloud API to automate replacing failed instances, powering subsets of nodes on or off, and filing health tickets. The API may report power use, network counters and node health. Where it is silent, collect those numbers on the nodes themselves.
 
 Know the **metadata server**. It holds instance attributes, scheduling and preemption notices, and service-account tokens. On GCP its address is `http://metadata.google.internal/computeMetadata/v1/`, and requests must send the header `Metadata-Flavor: Google`. Other clouds have similar IMDS endpoints, which are their instance metadata services. Treat tokens as secrets, and restrict pod access to them in Kubernetes.
 
@@ -452,13 +361,13 @@ The guest sees only virtual devices, but it can run all kernel tracing tools. It
 
 ## 8. Hands-on lab: look at a cloud VM from inside
 
-Start with the self-checking Python lab. You run it locally first, with `python3 code/part01/cloud_virt_internals_lab.py`. It checks Gregg's 5-fact container CPU throttling decision rule. It confirms the CPU shares drop from `100%` to `10%`, a `10x` slowdown, once a burst meets contention. It checks the `/proc/PID/status` `NSpid` mapping from host PID `4915` to container PID `753`. Last, it checks the goodput-adjusted cost of cloud GPU training.
+Start with the self-checking Python lab. You run it locally first, with `python3 code/part01/cloud_virt_internals_lab.py`. It checks the five-fact container CPU throttling decision rule. It confirms the CPU shares drop from `100%` to `10%`, a `10x` slowdown, once a burst meets contention. It checks the `/proc/PID/status` `NSpid` mapping from host PID `4915` to container PID `753`. Last, it checks the goodput-adjusted cost of cloud GPU training.
 
 ```bash
 python3 code/part01/cloud_virt_internals_lab.py
 ```
 
-Then, on a small disposable GCP Compute Engine VM, work through the steps below. A GPU VM and a GKE cluster are optional. The interactive cloud commands below are `untested here`.
+Then, on a small disposable GCP Compute Engine VM, work through the steps below. A GPU VM and a GKE cluster are optional. The commands below were not run on live hardware.
 
 1. Start by identifying the platform. Run `sudo dmidecode -s system-product-name`, which should read "Google Compute Engine" on Compute Engine. Then run `systemd-detect-virt`, `lscpu`, `lspci`, `ls /sys/class/net` and `cat /sys/class/dmi/id/product_name`. The `lscpu` output shows the hypervisor vendor and flags, and `lspci` shows the virtio and NVMe devices.
 2. Query the metadata server with `curl -s -H 'Metadata-Flavor: Google' http://metadata.google.internal/computeMetadata/v1/instance/?recursive=true | jq .`. The output covers the machine type, zone, scheduling, network interfaces and service accounts. Also poll `.../instance/maintenance-event` and `.../instance/preempted`, the second one on spot VMs. Treat tokens as secrets.
@@ -499,10 +408,10 @@ Cost and reliability mistakes come last. Depending on spot GPUs without checkpoi
 These exercises ask you to apply the chapter's decision rules to numbers. Work each one by hand first, then check it with the functions named in the prompt.
 
 1. Start with the three virtualisation models: `KVM`/`Nitro` VMs, OS containers, and `Firecracker`/`Kata` microVMs. Compare hardware VMs, OS containers and lightweight microVMs across startup time, per-instance memory overhead (`48–50 MB` for Clear Containers and `< 5 MB` for Firecracker), security isolation boundary, host-operator observability and guest-tenant observability.
-2. Work through CPU shares versus bandwidth quotas, and the 10x "bait-and-switch" burst trap (*Systems Performance*, section 11.3.3). Suppose a host has `100` total CPU shares, and Container A is assigned `10` shares with no bandwidth quota cap (`cpu.max`). Use `compute_shares_burst_vs_contended_drop()` in `code/part01/cloud_virt_internals.py` to calculate Container A's CPU percentage in three cases. First, it is tested alone on an idle host. Second, it competes with one busy sibling holding `30` shares. Third, it competes while all `90` remaining shares on the host are busy. How do you bound this performance swing?
-3. Apply the five-fact container CPU throttling decision flow (*Systems Performance*, section 11.3.4). Use `diagnose_container_cpu_limit_cause()` to find the limiting mechanism in three cases. In the first, `throttled_usec` is rising while the host has idle CPUs. In the second, `throttled_usec` is 0, the container's `cpuset` cores are 100% busy, and other host CPUs are idle. In the third, `throttled_usec` is 0, `nonvoluntary_ctxt_switches` is rising rapidly, and neighbor containers are busy on all CPUs.
+2. Work through CPU shares versus bandwidth quotas, and the 10x "bait-and-switch" burst trap. Suppose a host has `100` total CPU shares, and Container A is assigned `10` shares with no bandwidth quota cap (`cpu.max`). Use `compute_shares_burst_vs_contended_drop()` in `code/part01/cloud_virt_internals.py` to calculate Container A's CPU percentage in three cases. First, it is tested alone on an idle host. Second, it competes with one busy sibling holding `30` shares. Third, it competes while all `90` remaining shares on the host are busy. How do you bound this performance swing?
+3. Apply the five-fact container CPU throttling decision flow. Use `diagnose_container_cpu_limit_cause()` to find the limiting mechanism in three cases. In the first, `throttled_usec` is rising while the host has idle CPUs. In the second, `throttled_usec` is 0, the container's `cpuset` cores are 100% busy, and other host CPUs are idle. In the third, `throttled_usec` is 0, `nonvoluntary_ctxt_switches` is rising rapidly, and neighbor containers are busy on all CPUs.
 4. Observe containers from the host and from the guest, using `NSpid`, `/proc/PID/root` and the question of which tools lie. First, on a container host, `/proc/4915/status` shows `NSpid: 4915 753`. Work out the host PID and the container PID with `parse_proc_status_nspid()`. Then explain how to reach the container's filesystem from the host for symbol resolution, and how `bpftrace` groups syscall counts by container. Second, inside a container, classify what `ps`, `pidstat`, `top`, `uptime`, `mpstat`, `vmstat`, `free`, `iostat`, `sar -n DEV,TCP` and `tcpdump` actually display.
-5. Think through the AI and HPC cloud realities: the `5–15%` VM overhead, placement domains, and 5-minute checkpoint testing (*Supercomputers for Linux SysAdmins*, chapter 17). First, explain why cloud HPC and GPU VMs typically show a `5–15%` performance drop compared to bare metal. Explain also why multi-node GPU jobs must be scheduled inside a single compact placement group or performance subnet. Second, describe Zhumatiy's method for pre-testing a cloud shared filesystem on cheap instances. The method uses a `5-minute` periodic checkpoint simulation before you commit to a GPU cluster.
+5. Think through the AI and HPC cloud realities: the `5–15%` VM overhead, placement domains, and 5-minute checkpoint testing. First, explain why cloud HPC and GPU VMs typically show a `5–15%` performance drop compared to bare metal. Explain also why multi-node GPU jobs must be scheduled inside a single compact placement group or performance subnet. Second, describe how to pre-test a cloud shared filesystem on cheap instances. The method uses a `5-minute` periodic checkpoint simulation before you commit to a GPU cluster.
 6. Model cloud GPU cost and goodput. A distributed training job needs `640` useful GPU-hours of forward progress on `64` GPUs, priced at `$3.00` per GPU-hour, plus `$200` in storage and egress. Use `compute_cloud_gpu_effective_cost()` to work out the paid GPU-hours, the wall-clock duration and the total USD cost, first when cluster goodput is `80%` (`0.80`), and then when it is `100%` (`1.00`). Finally, list three engineering requirements for running on Spot or preemptible GPUs.
 
 ## Checkpoint questions (20)
@@ -568,13 +477,13 @@ CPU shares (`cpu.weight`) guarantee a relative minimum under contention. They al
 </details>
 
 <details>
-<summary>11. Why does Gregg state that OS containers favour host-operator observability while hardware VMs favour end-user observability?</summary>
+<summary>11. Why do OS containers favour host-operator observability while hardware VMs favour end-user observability?</summary>
 
 On a **container** host, every container shares the host kernel. The host operator therefore sees every container process, symbol and kernel stack directly, using tools such as `top`, `perf` and `bpftrace`. The container tenant is blocked from kernel tracing, because `perf` and `bpf` are denied, and it sees misleading host-wide `/proc` counters. In a **hardware VM**, the picture reverses. The host operator sees only an opaque `qemu` process. The guest tenant owns a full kernel, so it can run `perf`, Ftrace and eBPF inside the VM.
 </details>
 
 <details>
-<summary>12. State Gregg's 5-fact decision flow for diagnosing whether a container is CPU-throttled by a quota, a `cpuset`, or CPU shares.</summary>
+<summary>12. State the five-fact decision flow for diagnosing whether a container is CPU-throttled by a quota, a `cpuset`, or CPU shares.</summary>
 
 Check five facts. First, is `throttled_usec` or `nr_throttled` in `cpu.stat` increasing? If so, the **CFS bandwidth quota cap** is binding. Second, are `nonvoluntary_ctxt_switches` in `/proc/PID/status` increasing? Third, does the host have idle CPUs? Fourth, are the container's `cpuset` CPUs 100% busy? If they are, while the host has other idle CPUs, the **`cpuset` limit** is binding. Fifth, are other tenants busy? If there is no quota throttling, no idle host CPUs, and rising involuntary switches, the cause is **CPU shares contention**.
 </details>
@@ -598,13 +507,13 @@ For synchronous events that run in process context, such as system calls, read t
 </details>
 
 <details>
-<summary>16. What performance penalty does *Supercomputers for Linux SysAdmins*, chapter 17 note for cloud HPC VMs versus bare metal, and why is placement critical for multi-node GPU jobs?</summary>
+<summary>16. What performance penalty is typical for cloud HPC VMs versus bare metal, and why is placement critical for multi-node GPU jobs?</summary>
 
 Even on specialised HPC or GPU cloud instances, virtualisation and shared fabric effects typically cause a **`5–15%` performance drop** compared to bare metal. Multi-node jobs that use MPI or NCCL must be placed inside one **compact placement group, performance subnet or capacity domain**. If nodes span distant availability zones or spine tiers, collective latency jumps. Job throughput can then drop several-fold.
 </details>
 
 <details>
-<summary>17. How should you evaluate a cloud provider's shared filesystem for AI/HPC checkpointing before migrating a cluster (*Supercomputers for Linux SysAdmins*, chapter 17)?</summary>
+<summary>17. How should you evaluate a cloud provider's shared filesystem for AI/HPC checkpointing before migrating a cluster?</summary>
 
 Do not rely on peak bandwidth numbers from marketing. Rent a set of cheap compute instances attached to the target cloud filesystem. Then run a benchmark that simulates your job's exact periodic burst. For example, dump a checkpoint equal to compute-node RAM size every **`5 minutes`**, and read it back. That shows the real save and reload stall times under contention.
 </details>
@@ -633,6 +542,7 @@ Beyond the raw `$/GPU-hour`, include four hidden costs. First, **goodput loss**:
   - `systems-performance-2nd-edition` — Brendan Gregg, *Systems Performance: Enterprise and the Cloud*, 2nd ed., **Chapter 11: Cloud Computing** (sections 11.1–11.6: instance types, scalable architecture, capacity planning, storage, multitenancy, Kubernetes orchestration; hardware virtualization implementation, overhead, resource controls, observability; OS virtualization implementation, overhead `ovl_write_iter`/`lstat`/`posix_fadvise`, resource controls CPU shares vs bandwidth quotas, observability `docker stats`/cgroup stats/`NSpid: 4915 753` mapping/`/proc/PID/root`/BPF `uts_ns->name.nodename`, the 5-fact CPU throttling decision rule, and the in-container tool visibility matrix; lightweight virtualization Clear Containers `48–50 MB` / Kata / Firecracker `< 5 MB`, `~100 ms` boot / gVisor; FaaS/SaaS/Unikernels; and the 3-way comparison table).
   - `how-linux-works-3rd-edition` — Brian Ward, *How Linux Works*, 3rd ed., **Chapter 17: Virtualization** (hypervisors, hardware in a VM, drawbacks of VMs, and containers).
   - `supercomputers-for-linux-sysadmins-managing-modern-hpc-clusters-and-supercomputers-from-software-to` — Sergey Zhumatiy, *Supercomputers for Linux SysAdmins*, **Chapter 17: Clouds** (`5–15%` cloud HPC VM performance drop range compared to bare metal, single performance subnet / capacity reservation / domain requirement for low-latency fabrics, simulating checkpoint writes of compute-node memory size every `5 minutes` on cheap instances to test cloud file systems, Terraform/Ansible/custom image/BCM deployment automation, and cloud API metrics and hidden cost checks).
+- **Review note (2026-11):** generic cloud-textbook material (database families, detailed service and deployment models, front end and back end) was cut, and a section on why a cloud GPU node behaves differently was added. The nested-virtualisation and virtual-topology points are general behaviour and should be confirmed per provider.
 - **Run here:** `python3 code/part01/cloud_virt_internals_lab.py` (14 passed, 0 failed).
 - **Explicitly labelled inferences:** The AI-cloud GPU family comparison (GCP A2/A3, AWS P4d/P5 EFA, Azure ND InfiniBand, neocloud bare metal), GCP metadata-server preemption polling, Firecracker/Kata overhead figures from 2016 to 2020 sources, and goodput-adjusted cloud training cost formula connect cloud virtualization internals to Part 5, Part 7, and Part 11 AI cloud architecture (no `nvidia-devops` file is directly mapped to `1.27`; cross-referenced with Chapters 1.18, 1.19, 1.23, 1.24, 1.25, 1.26, and 1.28, plus original study items 21, 22, 23, 24, 26, 28, and 29).
-- **Not verified on live hardware:** All interactive cloud VM, `dmidecode`, metadata `curl`, `sysbench`, `fio`, `iperf3`, Docker cgroup, Firecracker, and GKE commands are marked (untested here) and must be executed on a disposable cloud instance.
+- **Not verified on live hardware:** All interactive cloud VM, `dmidecode`, metadata `curl`, `sysbench`, `fio`, `iperf3`, Docker cgroup, Firecracker, and GKE commands were not run on live hardware and must be executed on a disposable cloud instance.

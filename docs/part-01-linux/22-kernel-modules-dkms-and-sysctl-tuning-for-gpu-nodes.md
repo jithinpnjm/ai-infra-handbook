@@ -41,7 +41,7 @@ You should treat the kernel and the drivers as one release, and test any change 
 
 Before you tackle a driver failure, you need some background. You should know the boot sequence and initramfs (1.14), systemd (1.15), memory and NUMA (1.17), `/proc` and `/sys` (1.10), the ELF/dynamic-linking basics (1.11), and the security layer (1.21, especially Secure Boot). Each of these explains one part of what happens when a module loads.
 
-By the end of this chapter, you should be able to do six things.
+By the end of this chapter, you should be able to do seven things.
 
 - Explain what a kernel module is, how it is built against a kernel, how symbols and `vermagic` make it version-specific, and where modules live.
 - Use `lsmod`, `modinfo`, `modprobe`, `insmod`, `rmmod`, `depmod`; load modules at boot; pass parameters; blacklist modules; rebuild the initramfs.
@@ -163,6 +163,8 @@ gcc --version ; cat /proc/version                  # compiler used for kernel vs
 
 Run `dkms status` first. If a build failed, the `make.log` file says why. The last two lines check the headers and the compilers, because both must match the kernel.
 
+One term appears from here on. The **kernel ABI** (application binary interface) is the set of internal functions and data layouts a module is compiled against. Kernel developers may change them in any release. Some distributions, such as RHEL and its relatives, promise a stable subset called **kABI** for the whole life of a major release. A module built against that subset keeps loading after minor kernel updates, and the kernel tooling (weak-updates) links it into each new kernel's tree. Without that promise, every new kernel needs a module build of its own.
+
 Most DKMS failures fall into six groups. They are listed roughly in order of how often they happen, and you should check for them in this order.
 
 1. **Missing or mismatched headers.** If `linux-headers-$(uname -r)` or `kernel-devel-$(uname -r)` is not installed, or is newer than the installed kernel, the build cannot start.
@@ -174,7 +176,7 @@ Most DKMS failures fall into six groups. They are listed roughly in order of how
 
 ### Why large fleets avoid compiling on nodes
 
-The project's operations notes (Volume 10) record the reasoning that large fleets use. Compile the driver **once** in CI, against a **pinned kernel**. Ship the result, and never compile on a compute node. The table compares the four common ways to deliver it.
+Large fleets follow one rule. Compile the driver **once** in CI, against a **pinned kernel**. Ship the result, and never compile on a compute node. The table compares the four common ways to deliver it.
 
 | Approach | How | Pros | Cons |
 |---|---|---|---|
@@ -182,6 +184,8 @@ The project's operations notes (Volume 10) record the reasoning that large fleet
 | **Golden image** (Packer + Ansible, or BCM image build) | Build an image with kernel, headers if needed, driver, MOFED, and tooling; test; stream/PXE it to nodes | Reproducible, rollback = previous image, fits PXE/diskless | Image pipeline needed; per-node identity (SSH host keys, machine-id) must be regenerated |
 | **GPU Operator driver container** | Driver compiled/loaded inside a privileged DaemonSet pod per node and kernel (precompiled images exist for common kernels) | Kubernetes-native lifecycle | Needs the node's kernel/headers available to the container; upgrades interact with running pods; Secure Boot and rootfs constraints |
 | **DKMS on nodes** | Hooks compile at install time | Easy on a workstation or a tiny cluster | Fragile at scale (above) |
+
+The GPU Operator driver container needs a closer look. NVIDIA publishes precompiled driver images tagged for a specific driver branch and kernel version. If the node kernel is not on that list, the operator falls back to compiling inside the pod, which brings back every DKMS problem. In practice, pin the node kernel to one the published images cover, and read NVIDIA's support matrix before each kernel bump.
 
 Each approach trades ease of setup against risk at fleet scale. DKMS on nodes is easy on one machine, but it is fragile at scale. Precompiled packages and golden images give you more control over what each node runs.
 
@@ -207,13 +211,13 @@ Read the table as a map from each device file to the component that owns it.
 | `gdrdrv` | GDRCopy driver (low-latency CPU-GPU copies) |
 | `nvidia-caps` | `/dev/nvidia-caps/*` capability nodes for MIG management |
 | Fabric Manager (`nvidia-fabricmanager`) | **User-space service** that configures the NVSwitch fabric on HGX/DGX systems (NVLink topology and routing). Its version must exactly match the driver; if it fails, multi-GPU jobs fail even though `nvidia-smi` lists GPUs |
-| `nvidia-persistenced` | Daemon (`systemctl enable nvidia-persistenced` or `nvidia-smi -pm 1`, untested here) that keeps the driver state initialised so GPUs do not tear down and re-initialise between jobs (saving `1–2 seconds` of cold driver initialization latency; consistent clocks/ECC state) |
+| `nvidia-persistenced` | Daemon (`systemctl enable nvidia-persistenced` or `nvidia-smi -pm 1`) that keeps the driver state initialised so GPUs do not tear down and re-initialise between jobs (saving `1–2 seconds` of cold driver initialization latency; consistent clocks/ECC state) |
 | DCGM / `nv-hostengine` | Health monitoring and diagnostics (`dcgmi diag -r 3`) |
 | Driver user-space | `libcuda.so.1`, `libnvidia-ml.so.1` (NVML), `nvidia-smi`, `nvidia-modprobe` (setuid helper that creates device nodes), GSP firmware under `/lib/firmware/nvidia/<version>/` |
 
 Most rows are kernel modules, but Fabric Manager and the persistence daemon are user-space services. A failed service looks different from a missing module. When you read a row, ask first whether it is a kernel module or a service.
 
-**Open versus proprietary kernel modules.** NVIDIA publishes an *open GPU kernel module* flavour. Its kernel-resident code is open source, and the heavy lifting runs in the GPU System Processor firmware. For recent data-centre GPUs, the open modules are the supported and recommended path. They apply to Turing and later GPUs, and they are required for Blackwell-class and Grace-based platforms. Older GPUs need the proprietary flavour. You choose the flavour at install time, with `nvidia-driver-XXX-open` on Ubuntu, with `nvidia-open`, or with `--kernel-module-type=open` in the `.run` installer. Check `modinfo nvidia | grep -i license` and NVIDIA's current support matrix (flag: verify before choosing).
+**Open versus proprietary kernel modules.** NVIDIA publishes an *open GPU kernel module* flavour. Its kernel-resident code is open source, and the heavy lifting runs in the GPU System Processor firmware. For recent data-centre GPUs, the open modules are the supported and recommended path. They apply to Turing and later GPUs, and they are required for Blackwell-class and Grace-based platforms. Older GPUs need the proprietary flavour. You choose the flavour at install time, with `nvidia-driver-XXX-open` on Ubuntu, with `nvidia-open`, or with `--kernel-module-type=open` in the `.run` installer. Check `modinfo nvidia | grep -i license` and NVIDIA's current support matrix, and re-check both against each driver release.
 
 ### Installation methods and pitfalls
 
@@ -221,12 +225,10 @@ Most rows are kernel modules, but Fabric Manager and the persistence daemon are 
 - **`.run` installer.** It is convenient for labs, but it bypasses the package manager, which makes it hard to track, remove and upgrade. It also builds against the running kernel. Avoid it on managed nodes, where you want the package manager to track each change.
 - **Mixing methods.** A `.run` install over an `apt` install, or two driver branches on one node, produces library and module version mismatches. The error looks like "Failed to initialize NVML: Driver/library version mismatch". After an upgrade, the loaded module is older than the user-space libraries until you reload the modules or reboot the node. Unload and reload the modules (section 2), or reboot.
 - **Blacklist nouveau and rebuild the initramfs** before the first load. Make sure no display manager grabs the GPU on compute nodes, and keep the `nvidia-persistenced` service enabled.
-- **CUDA toolkit versus driver.** The host driver must be at least as recent as the minimum driver the container's CUDA version needs. The CUDA runtime, `libcudart.so`, runs inside the container. It calls the host driver libraries `libcuda.so` and `libnvidia-ml.so`, which are injected from the host. In the book's examples, CUDA 13.x needs the Linux host driver branch `R580` or newer. CUDA 12.x needs `R525` or newer. A newer CUDA runtime on an older driver fails to initialize CUDA. The exception is the forward-compatibility packages (`cuda-compat`), which cover supported data-centre GPUs across minor and major updates.
+- **CUDA toolkit versus driver.** The host driver must be at least as recent as the minimum driver the container's CUDA version needs. The CUDA runtime, `libcudart.so`, runs inside the container. It calls the host driver libraries `libcuda.so` and `libnvidia-ml.so`, which are injected from the host. As a typical pairing, CUDA 13.x needs the Linux host driver branch `R580` or newer. CUDA 12.x needs `R525` or newer. A newer CUDA runtime on an older driver fails to initialize CUDA. The exception is the forward-compatibility packages (`cuda-compat`), which cover supported data-centre GPUs across minor and major updates.
 
-  At the device-code level, `nvcc` packs two kinds of code into a fatbinary (`fatbin`). The first is `CUBIN`, which is compiled GPU streaming assembler (`SASS`) for known SM targets, built with `-cubin`. The second is `PTX`, a virtual intermediate code. A GPU that matches a known target loads `CUBIN` directly. Newer GPUs can JIT-compile the `PTX` for forward compatibility across hardware generations.
-
-  With the NVIDIA Container Toolkit configured properly, container GPU overhead against bare metal is `< 2%`. Red Hat's `MLPerf Inference v5.0` submission on OpenShift and Kubernetes matched bare-metal efficiency and latency. Confirm current numbers in NVIDIA's compatibility tables, because they change with each release (flag).
-- **Clock locking and framework GPU memory growth.** If you compare benchmark runs, you need stable clocks. On the host, administrators or benchmark scripts can lock GPU core clocks with `nvidia-smi -lgc`. They can also lock memory and graphics application clocks with `nvidia-smi -ac <mem_clock>,<graphics_clock>` (untested here). Both prevent thermal and power boost variance across runs. Capping power slightly below TDP with `nvidia-smi -pl` is another option (untested here). In user space, PyTorch allocates GPU memory on demand and pools it through its caching allocator. You configure that with `PYTORCH_ALLOC_CONF=expandable_segments:True,max_split_size_mb:128` (formerly `PYTORCH_CUDA_ALLOC_CONF`). TensorFlow pre-allocates all available VRAM by default. Set `TF_FORCE_GPU_ALLOW_GROWTH=true` so it allocates GPU memory on demand in shared or multitenant environments.
+  Device code is a separate matter. `nvcc` packs compiled GPU code for known architectures, and a portable intermediate form called PTX, into one fatbinary. A newer GPU can compile the PTX when it first runs, which is why old binaries keep working on new hardware. Chapter 10.9 covers this in detail.
+- **Clocks and framework memory settings.** Benchmark comparisons need stable clocks, which `nvidia-smi -lgc` (core clocks) and `nvidia-smi -ac <mem_clock>,<graphics_clock>` (application clocks) provide. In PyTorch, the caching allocator is tuned with `PYTORCH_ALLOC_CONF`, for example `expandable_segments:True`. Current PyTorch documentation names that variable as the main one and keeps `PYTORCH_CUDA_ALLOC_CONF` only as a backward-compatible alias, so older releases may know only the longer name. TensorFlow pre-allocates GPU memory unless `TF_FORCE_GPU_ALLOW_GROWTH=true` is set. Chapters 10.8 and 14.8 cover clocks and PyTorch tuning. They are not driver-install topics.
 
 ### Safe driver upgrade procedure (one node)
 
@@ -262,9 +264,9 @@ keyctl list %:.platform ; sudo cat /proc/keys | head
 
 Read the output of `modinfo` and `dmesg` after each step, so you can confirm the module carries a signature the kernel accepts. When signing fails, you see `modprobe: ERROR: could not insert 'nvidia': Key was rejected by service` or `Required key not available`. The kernel can also log `Lockdown: ... unsigned module loading is restricted`.
 
-Fleet operators face three further problems. The private key is a crown jewel, so keep it in an HSM or a CI secret store. Enrolment on bare-metal nodes needs console interaction, or a firmware-level key provisioning process such as BMC or Redfish `db` updates (chapter 6.x on BCM and Redfish). And the signing step must be part of the image build. Disabling Secure Boot is the shortcut, and sometimes policy forbids it.
+Fleet operators face three further problems. The private key is a crown jewel, so keep it in an HSM or a CI secret store. Enrolment on bare-metal nodes needs console interaction, or a firmware-level key provisioning process such as BMC or Redfish `db` updates (Redfish is covered in Part 7 and Base Command Manager in Part 8). And the signing step must be part of the image build. Disabling Secure Boot is the shortcut, and sometimes policy forbids it.
 
-Automate the signing in your image build, rather than turning Secure Boot off to get past a load error.
+Distribution-signed modules can remove the enrolment step. Ubuntu, for example, ships prebuilt and signed `linux-modules-nvidia-*` packages whose signature the standard shim already trusts, so no MOK enrolment is needed. That works only for the kernels and driver branches the distribution builds. If you compile your own modules, automate the signing in your image build rather than turning Secure Boot off to get past a load error.
 
 ## 6. sysctl and kernel parameters
 
@@ -318,7 +320,7 @@ The table groups the parameters by area. Each row gives a typical setting and a 
 | | `kernel.threads-max`, `kernel.sched_*` | defaults | |
 | | `kernel.shmmax`/`shmall`, `kernel.sem` | modern defaults large | Legacy MPI/DB tuning |
 | | `kernel.core_pattern`, `fs.suid_dumpable` | `/var/crash/%e.%p.%t` or `systemd-coredump` | Keep cores for NCCL/CUDA crashes (chapter 1.21) |
-| | `kernel.yama.ptrace_scope` | 1 | MPI CMA / debuggers vs hardening |
+| | `kernel.yama.ptrace_scope` | 1 (hardened default); 0 where MPI needs it | Open MPI and UCX single-copy transfers (CMA) need 0 or the `CAP_SYS_PTRACE` capability; with 1 they fall back to slower paths. Debuggers conflict the same way |
 | | `kernel.perf_event_paranoid`, `kernel.kptr_restrict` | 1 or 2 for profiling users | Profiling needs access (1.24) |
 | | `kernel.watchdog_thresh`, `kernel.panic`, `kernel.panic_on_oops` | `panic=10` etc. | Auto-reboot nodes that panic (fleet health) |
 
@@ -326,7 +328,7 @@ Boot parameters are a separate set, and they often pair with the values above. Y
 
 Some GPU-direct paths have their own IOMMU and ACS requirements. PCIe ACS can force peer-to-peer traffic through the root complex. Follow the vendor guidance for GPUDirect RDMA, and verify it on your hardware.
 
-**Notes on contested values.** The books and operations notes disagree about THP. Disable it for latency-sensitive inference, or when compaction stalls appear. Leave it on, or set `madvise`, for throughput training. Choose by measurement, using `/proc/vmstat` `thp_*` and `compact_stall`. The same applies to `vm.swappiness=0` with no swap, compared with a small swap plus `memory.swap.max`. It also applies to IOMMU passthrough compared with full translation, which depends on your virtualisation needs.
+**Notes on contested values.** Sources disagree about THP. Disable it for latency-sensitive inference, or when compaction stalls appear. Leave it on, or set `madvise`, for throughput training. Choose by measurement, using `/proc/vmstat` `thp_*` and `compact_stall`. The same applies to `vm.swappiness=0` with no swap, compared with a small swap plus `memory.swap.max`. It also applies to IOMMU passthrough compared with full translation, which depends on your virtualisation needs.
 
 ### Applying settings as code
 
@@ -401,7 +403,7 @@ Start with the self-checking Python lab. You can run it on your own machine, and
 python3 code/part01/kernel_modules_sysctl_lab.py
 ```
 
-Next, work through the three parts below. Parts A and C run on a disposable Ubuntu VM. Part B runs on a GPU VM. All the interactive VM commands below are `untested here`, so run them on a disposable machine first.
+Next, work through the three parts below. Parts A and C run on a disposable Ubuntu VM. Part B runs on a GPU VM. The commands below were not run on live hardware, so run them on a disposable machine first.
 
 **Part A: modules without GPUs**
 
@@ -467,8 +469,8 @@ Work through these after you read the chapter. They ask you to explain how the p
 
 1. **Kernel Module Mechanics, `vermagic`, `depmod`, and `insmod` vs. `modprobe`:** (a) Where do `.ko` files live on disk for a given kernel release? What happens when `insmod` or `modprobe` encounters a `vermagic` mismatch (`validate_module_load_eligibility()`)? (b) Contrast `insmod` with `modprobe`. Then explain how `depmod -a`, `modalias`, `/etc/modules-load.d/*.conf`, and `/etc/modprobe.d/*.conf` work together.
 2. **Unloading `nvidia.ko`, Blacklisting `nouveau`, and `Driver/library version mismatch`:** (a) You need to unload `nvidia.ko` without rebooting. But `rmmod nvidia` fails with `Module nvidia is in use`. List the commands to find open file descriptors and module holders. State the exact order (`NVIDIA_MODULE_UNLOAD_ORDER`) in which the NVIDIA modules must be unloaded. (b) Why does `blacklist nouveau` require `install nouveau /bin/false` and an `initramfs` rebuild? What causes `Failed to initialize NVML: Driver/library version mismatch`?
-3. **DKMS Failure Modes vs. Precompiled `kABI` / Golden Images at Fleet Scale:** List five reasons DKMS builds fail on production GPU nodes. Then compare the four fleet driver delivery strategies (precompiled `kmod`/`kABI` packages, golden images, GPU Operator driver containers, and on-node DKMS).
-4. **The NVIDIA Driver Stack, Open vs. Proprietary Modules, and CUDA Compatibility (`ASP` Chapter 3):** (a) State the role of `nvidia`, `nvidia_uvm`, `nvidia_peermem`, `nvidia-fs`, `nvidia-fabricmanager`, and `nvidia-persistenced` (`1–2 s` cold init latency saved). (b) Check `check_cuda_driver_branch_compatibility()` for a container running CUDA `12.x` (`R525+`) or CUDA `13.x` (`R580+`) on a host with driver `R550`, with and without `cuda-compat`. Then explain how `nvcc` fatbinaries combine `CUBIN` (`SASS`) and `PTX`.
+3. **DKMS Failure Modes vs. Precompiled `kABI` / Golden Images at Fleet Scale:** List six reasons DKMS builds fail on production GPU nodes. Then compare the four fleet driver delivery strategies (precompiled `kmod`/`kABI` packages, golden images, GPU Operator driver containers, and on-node DKMS).
+4. **The NVIDIA Driver Stack, Open vs. Proprietary Modules, and CUDA Compatibility:** (a) State the role of `nvidia`, `nvidia_uvm`, `nvidia_peermem`, `nvidia-fs`, `nvidia-fabricmanager`, and `nvidia-persistenced` (`1–2 s` cold init latency saved). (b) Check `check_cuda_driver_branch_compatibility()` for a container running CUDA `12.x` (`R525+`) or CUDA `13.x` (`R580+`) on a host with driver `R550`, with and without `cuda-compat`. Then explain how `nvcc` fatbinaries combine `CUBIN` (`SASS`) and `PTX`.
 5. **UEFI Secure Boot, Kernel Lockdown, and Signing Out-of-Tree `.ko` Modules:** Write the 4-command workflow (`openssl req -new -x509`, `mokutil --import MOK.der`, `sign-file sha256 MOK.priv MOK.der nvidia.ko`, `modinfo -F signer nvidia`) to sign an out-of-tree kernel module for a UEFI Secure Boot node. State what error `modprobe` and `dmesg` print when a module is unsigned.
 6. **GPU Node `sysctl` Tuning, `DefaultLimitMEMLOCK=infinity`, and Safe Rollout:** (a) Audit a node with default settings (`vm.swappiness=60`, `vm.max_map_count=65530`, `kernel.numa_balancing=1`) using `audit_gpu_node_sysctls()`. Explain why `net.core.rmem_max` does not accelerate RDMA verbs traffic. (b) Write the 7-step safe driver/kernel rollout procedure for a 1,000-node GPU cluster.
 
@@ -509,9 +511,9 @@ Picture a training node that you must upgrade without a reboot. The kernel refus
 </details>
 
 <details>
-<summary>6. How does DKMS work, and what are the five most common reasons a DKMS build fails after a kernel update?</summary>
+<summary>6. How does DKMS work, and what are the six most common reasons a DKMS build fails after a kernel update?</summary>
 
-DKMS keeps module source under `/usr/src/<module>-<version>/`. On each kernel installation, it runs hooks that compile the `.ko` files into `/lib/modules/<kver>/updates/dkms/`. A build fails for five common reasons. First, the matching `linux-headers-<kver>` or `kernel-devel-<kver>` package is missing. Second, the system `gcc` differs from the compiler that built the kernel. Third, the new kernel changed internal C APIs that this driver version does not support, which shows up in `make.log`. Fourth, `/var` or `/boot` is full. Fifth, the compiled `.ko` is left unsigned on a Secure Boot host.
+DKMS keeps module source under `/usr/src/<module>-<version>/`. On each kernel installation, it runs hooks that compile the `.ko` files into `/lib/modules/<kver>/updates/dkms/`. A build fails for six common reasons. First, the matching `linux-headers-<kver>` or `kernel-devel-<kver>` package is missing. Second, the system `gcc` differs from the compiler that built the kernel. Third, the new kernel changed internal C APIs that this driver version does not support, which shows up in `make.log`. Fourth, the compiled `.ko` is left unsigned on a Secure Boot host. Fifth, many nodes build at once and run out of CPU, network or disk in `/usr/src` and `/var/lib/dkms`. Sixth, a partial upgrade leaves the new kernel without a driver, so the node reboots with no GPU.
 </details>
 
 <details>
@@ -551,7 +553,7 @@ Only the kernel driver, `nvidia.ko`, and the matching user-space driver library,
 </details>
 
 <details>
-<summary>13. How do `nvidia-smi -lgc`, `nvidia-smi -ac`, `PYTORCH_ALLOC_CONF`, and `TF_FORCE_GPU_ALLOW_GROWTH=true` tune GPU behavior (`ASP` Chapter 3)?</summary>
+<summary>13. How do `nvidia-smi -lgc`, `nvidia-smi -ac`, `PYTORCH_ALLOC_CONF`, and `TF_FORCE_GPU_ALLOW_GROWTH=true` tune GPU behavior?</summary>
 
 `nvidia-smi -lgc` locks the GPU core clocks. `nvidia-smi -ac <mem>,<gfx>` locks the memory and graphics clocks. Both remove the thermal and boost frequency jitter that makes benchmark runs differ. `PYTORCH_ALLOC_CONF=expandable_segments:True,max_split_size_mb:128` reduces fragmentation in the PyTorch caching allocator. `TF_FORCE_GPU_ALLOW_GROWTH=true` stops TensorFlow from pre-allocating 100% of VRAM at startup.
 </details>
@@ -602,8 +604,9 @@ Picture a node that fails `nvidia-smi` right after maintenance. First, run `lspc
 
 - **Sources read in full:**
   - `how-linux-works-3rd-edition` — Brian Ward, *How Linux Works*, 3rd ed., **Chapter 3: Devices** and **Chapter 5: How the Linux Kernel Boots** (kernel initialization, boot options, kernel parameters, and UEFI Secure Boot problems).
-  - `ai-systems-performance-engineering` — Chris Fregly, *AI Systems Performance Engineering*, **Chapter 3: OS, Docker, and Kubernetes Tuning for GPU-Based Environments** (the GPU software stack, `PTX`/`CUBIN` fatbinary compatibility, `R525` host driver branch for CUDA `12.x` and `R580` for CUDA `13.x`, `vm.swappiness`, pinned memory and `ulimit -l`, THP trade-offs, IRQ affinity, dirty-page tuning, `nvidia-persistenced` saving `1–2 seconds` initialization latency, clock locking `nvidia-smi -lgc` and `nvidia-smi -ac`, `TF_FORCE_GPU_ALLOW_GROWTH=true` and `PYTORCH_ALLOC_CONF`, and `< 2%` container overhead with Red Hat OpenShift/Kubernetes `MLPerf Inference v5.0`).
+  - `ai-systems-performance-engineering` — Chris Fregly, *AI Systems Performance Engineering*, **Chapter 3: OS, Docker, and Kubernetes Tuning for GPU-Based Environments** (the GPU software stack, `PTX`/`CUBIN` fatbinary compatibility, `R525` host driver branch for CUDA `12.x` and `R580` for CUDA `13.x`, `vm.swappiness`, pinned memory and `ulimit -l`, THP trade-offs, IRQ affinity, dirty-page tuning, `nvidia-persistenced` saving `1–2 seconds` initialization latency, clock locking `nvidia-smi -lgc` and `nvidia-smi -ac`, `TF_FORCE_GPU_ALLOW_GROWTH=true` and and `PYTORCH_ALLOC_CONF`).
   - `nvidia-devops/volume-10/03-os-provisioning-and-linux-security-hardening.md` — migrated the DKMS-versus-kABI/golden-image production reasoning, kernel and `sysctl` tuning table, UEFI Secure Boot MOK signing workflow, and Ansible `sysctl` automation (cross-referenced with Chapters 1.7, 1.10, 1.11, 1.14, 1.15, 1.17, 1.18, 1.21, 1.24, and 1.28, plus original study items 21–30).
+- **Corrections (2026-11):** DKMS failure groups are now six everywhere. The ptrace_scope row states the MPI conflict. `PYTORCH_ALLOC_CONF` is the primary name and `PYTORCH_CUDA_ALLOC_CONF` the backward-compatible alias, per the PyTorch 2.15 CUDA notes at docs.pytorch.org, read 2026-11-12. The unsourced container-overhead and MLPerf claim was removed. The Ubuntu signed-module and GPU Operator precompiled-image paragraphs rest on general vendor behaviour and should be re-checked against current Ubuntu and NVIDIA documentation.
 - **Run here:** `python3 code/part01/kernel_modules_sysctl_lab.py` (19 passed, 0 failed).
 - **Explicitly labelled inferences:** The 7-step safe fleet driver upgrade runbook, `nvidia-smi` failure decision tree, `vm.dirty_bytes`, `module.param=value` (`kernel-parameters.txt`, `module-signing`), and `modules-load.d` + `sysctl.d` ordering rules connect Linux kernel module and `sysctl` mechanics to Part 5, Part 6, and Part 8 GPU cluster operations (plus original study items 23, 24, 25, 26, 27, 28, and 29).
-- **Not verified on live hardware:** All interactive VM and GPU commands (`modprobe`, `insmod`, `rmmod`, `depmod`, `dkms`, `mokutil`, `sign-file`, `sysctl`, `nvidia-smi`, `dcgmi`, `all_reduce_perf`) are marked (untested here) and must be executed on a disposable VM or canary node.
+- **Not verified on live hardware:** All interactive VM and GPU commands (`modprobe`, `insmod`, `rmmod`, `depmod`, `dkms`, `mokutil`, `sign-file`, `sysctl`, `nvidia-smi`, `dcgmi`, `all_reduce_perf`) were not run on live hardware and must be executed on a disposable VM or canary node.

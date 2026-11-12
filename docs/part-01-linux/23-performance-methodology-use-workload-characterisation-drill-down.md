@@ -28,11 +28,11 @@ Without a method, engineers tend to reach for the first explanation that comes t
 
 With a method, the first ten minutes have a shape. You state the problem precisely. You check every resource for utilisation, saturation and errors. You characterise the load, and then you drill into the one place that explains the time.
 
-This chapter teaches the durable part of performance engineering: **how to think**. It comes before the tool chapters, 1.24 observability and 1.25 benchmarking, and before the tuning chapters, 1.28 and the GPU and network parts. It follows the introduction and methodologies chapters of Brendan Gregg's *Systems Performance*. It then adds the GPU and AI translation. You apply the USE method to GPUs, NVLink, PCIe, InfiniBand and storage. You apply RED to inference services and goodput and efficiency metrics to training. For multi-GPU scaling you use Amdahl and the Universal Scalability Law, and for batching and capacity you use queueing and Little's law.
+This chapter teaches the durable part of performance engineering: **how to think**. It comes before the tool chapters, 1.24 observability and 1.25 benchmarking, and before the tuning chapters, 1.28 and the GPU and network parts. It then applies that thinking to GPU clusters. You apply the USE method to GPUs, NVLink, PCIe, InfiniBand and storage. You apply RED to inference services and goodput and efficiency metrics to training. For multi-GPU scaling you use Amdahl and the Universal Scalability Law, and for batching and capacity you use queueing and Little's law.
 
 ## Prerequisites and outcomes
 
-You will get the most from this chapter if you already know the basics. You should be comfortable with processes, CPU scheduling, memory, disks and the observability commands from chapters 1.8, 1.12, 1.17 and 1.18. Networking details come in Part 2, and GPU specifics come in Parts 7 and 8. Here those topics appear only as examples.
+You will get the most from this chapter if you already know the basics. You should be comfortable with processes, CPU scheduling, memory, disks and the observability commands from chapters 1.8, 1.12, 1.17 and 1.18. Networking details come in Part 2, and GPU specifics come in Parts 9 and 10. Here those topics appear only as examples.
 
 By the end, you should be able to define latency, throughput, IOPS, utilisation, saturation, errors, workload and bottleneck precisely. You should also convert each metric to time, so you can compare them. A time-scale picture helps with this, running from a CPU cycle up to a cross-continent round trip, and from DRAM to NVMe to the network. Use that scale to sanity-check any result you see.
 
@@ -85,22 +85,9 @@ Latency is the best metric for that quantification. Time can be compared and sum
 
 ## 2. Vocabulary and concepts
 
-Performance talk uses a few words loosely, so pin them down before you measure. The table gives the meaning of each term this chapter uses. Read it once now, and come back to it when a word confuses you.
+Performance talk uses a few words loosely, so pin them down before you measure. This chapter uses throughput for the rate of work done, such as requests, tokens or samples per second, and IOPS for operations per second. Latency is the time an operation spends waiting before service starts, and response time is waiting plus service. Utilisation is the fraction of an interval a resource was busy. Saturation is work that cannot be serviced yet and waits in a queue. Errors are failed or retried operations, which are cheap to check and often decisive. The bottleneck is the resource that limits the whole system, and removing one reveals the next.
 
-| Term | Meaning |
-|---|---|
-| **IOPS** | I/O operations per second (reads plus writes); a throughput measure for operations, not bytes |
-| **Throughput** | Rate of work done: bytes/s, requests/s, tokens/s, samples/s. Careful: "bandwidth" is the *maximum* possible throughput |
-| **Response time** | Total time for an operation: waiting plus service |
-| **Latency** | Time spent waiting before service; sometimes used for the whole response time. Always qualify: connection latency, request latency, queue latency, time to first token |
-| **Utilisation** | *Time-based*: fraction of an interval the resource was busy (B/T). *Capacity-based*: fraction of capacity used. 100% busy does not mean 100% capacity (an elevator that is always moving can still take passengers; an NVMe with queue depth can accept more) |
-| **Saturation** | Work that cannot be serviced and queues (run-queue length, I/O wait queue, pressure). Any non-zero saturation is a latency source |
-| **Errors** | Counted failed or retried operations; often cheap to check and decisive |
-| **Bottleneck** | The resource that limits system performance; removing one reveals the next |
-| **Workload** | The input applied to the system |
-| **Cache** | Faster tier holding a subset of a slower tier; the **hit ratio** is not linear in benefit: 98% to 99% matters more than 10% to 11% |
-
-Two pairs of words cause the most confusion. Bandwidth is the maximum possible throughput, while throughput is the rate of work actually done. Latency is the time spent waiting before service, while response time is waiting plus service. Utilisation surprises people most. A device can be 100% busy and still accept more work, because busy and full are different things.
+Two points cause the most confusion. Bandwidth is the maximum possible throughput, while throughput is the rate actually achieved. Utilisation surprises people most. A device can be 100% busy and still accept more work, because busy and full are different things: an NVMe drive with a deep queue is a good example. Likewise, a cache hit ratio is not linear in benefit. Going from 98% to 99% matters far more than going from 10% to 11%.
 
 ### Latency and time scales
 
@@ -466,7 +453,7 @@ Raw utilisation numbers are weak signals on accelerators. Use the outcome metric
 | **Goodput** | fraction of wall-clock (or cluster time) spent making forward training progress, excluding restarts, failures, checkpoint stalls, stragglers, idle waiting | Cluster-level cost metric: GPU-hours of useful work ÷ GPU-hours paid |
 | **GPU idle gaps (bubbles)** | time between kernels/collectives in a timeline | Pipeline stalls, CPU launch overhead, data starvation |
 | **Inference: TTFT, TPOT, p99, tokens/s/GPU, queue time, KV-cache hit/utilisation, batch occupancy** | RED plus LLM-specific | Serving SLOs |
-| **Cost** | $/million tokens, $/training run, GPU-hours per epoch | Business translation |
+| **Cost** | USD per million tokens, USD per training run, GPU-hours per epoch | Business translation |
 
 Read the table from the top. Throughput is the primary KPI for training and inference. The step-time breakdown then tells you which component to fix first.
 
@@ -474,7 +461,7 @@ The GPU-starvation checklist helps when GPUs sit idle in the timeline. Ask each 
 
 Start with throughput and the step-time breakdown before you tune anything else.
 
-## 14. Two worked case studies (adapted)
+## 14. Two worked case studies
 
 ### Case 1: "Slow disks" becomes "slow data loading"
 
@@ -523,7 +510,7 @@ First, run the self-checking Python lab at `code/part01/perf_methodology_use_lab
 python3 code/part01/perf_methodology_use_lab.py
 ```
 
-Next, work through the steps below on a disposable Linux VM with 4 or more vCPUs. You need `stress-ng`, `sysstat`, `fio` and `iperf3`, and `bpfcc-tools` is optional. Steps 8 and 9 need a GPU VM. Every interactive VM command below is `untested here`.
+Next, work through the steps below on a disposable Linux VM with 4 or more vCPUs. You need `stress-ng`, `sysstat`, `fio` and `iperf3`, and `bpfcc-tools` is optional. Steps 8 and 9 need a GPU VM. The commands below were not run on live hardware.
 
 1. Baseline. Write `baseline.sh` to store `uptime`, `vmstat 1 5`, `mpstat -P ALL 1 3`, `iostat -sxz 1 3`, `free -m`, `sar -n DEV 1 3`, `ss -s`, `lscpu`, `cat /proc/pressure/*`, `sysctl -a`, `lspci -vv | grep -E 'LnkSta|LnkCap'`, and, on a GPU VM, `nvidia-smi -q`. Run it on an idle VM and keep the output, because you will compare against it later.
 2. Fault injection and diagnosis. Have a partner choose the faults, or randomise them yourself. The options are: (a) `stress-ng --cpu 1` pinned to one core, a single-thread bottleneck; (b) `stress-ng --vm 2 --vm-bytes 90% ` with swap on, memory saturation; (c) `fio --rw=randread --bs=4k --iodepth=32`, disk saturation; (d) `tc qdisc add dev eth0 root netem delay 50ms loss 1%`, network latency and loss; and (e) a cgroup `cpu.max` limit on a busy process, which causes throttling. Without being told which fault is active, apply the 60-second checklist and then a USE table. Name the fault and the evidence for each one.
@@ -572,6 +559,17 @@ Interviewers ask these questions to see whether you have a method. Think through
 
 "Describe a performance investigation you led: what was your method and how did you know when to stop?"
 
+### When the method itself fails
+
+A method gives you a shape, not a guarantee. Four failure modes are worth knowing before an incident teaches them to you.
+
+1. The counter does not exist. USE needs utilisation, saturation and errors for every resource, but some resources expose only some of the three. If a cell in your table is empty, mark it as a known unknown and say so in the report. Do not read an empty cell as "healthy".
+2. The interval hides the problem. A one-minute average can show a device at 80% while one-second samples show bursts to 100% with queueing. Case 1 above turned on exactly this. When a resource looks fine but the symptom is real, shorten the interval before you move on.
+3. The measurement disturbs the system. Profilers, tracers and heavy sampling use CPU and can slow the job you are studying. On a GPU node this can turn a rare stall into a constant one. Start with cheap counters, and turn on heavy tools only for a short, announced window.
+4. The first explanation feels complete. You find a real fault, fix it, and stop, but it explains only a fraction of the slowdown. Check the fix against the original problem statement. If the step time did not return to its baseline, the investigation is not finished.
+
+Also keep one trap in mind for GPUs. `GPU-Util` reports the share of time in which at least one kernel was running. It says nothing about how much of the GPU that kernel used. A node can show 100% there and still deliver a small fraction of its peak work.
+
 ## Exercises
 
 Work through these once you have read the chapter. Each one asks for a number or an explanation, so keep your answers short.
@@ -606,7 +604,7 @@ Utilisation is the fraction of time a resource was busy, or the fraction of its 
 </details>
 
 <details>
-<summary>4. Name the three anti-methods described by Brendan Gregg and how the Problem Statement + Scientific Method replace them.</summary>
+<summary>4. Name the three anti-methods and how the Problem Statement + Scientific Method replace them.</summary>
 
 The three anti-methods are the streetlight anti-method, which means running familiar tools where the light is good, random change, which means guessing and tweaking tunables until something seems faster, and blame-someone-else, which means passing the ticket to another team without evidence. Replace them by first answering the 6-question problem statement. Then apply the scientific method: `Question -> Hypothesis -> Prediction -> Test -> Analysis`. Change one variable at a time, and revert the failed tests.
 </details>
@@ -666,9 +664,9 @@ Static performance tuning audits the configured state of hardware and software a
 </details>
 
 <details>
-<summary>14. List Brendan Gregg's seven Performance Mantras in order from most effective to least effective.</summary>
+<summary>14. List the seven performance mantras in order from most effective to least effective.</summary>
 
-Brendan Gregg's seven performance mantras, from most effective to least, are these. Don't do it, which means eliminating unnecessary work. Do it, but don't do it again, which means caching results. Do it less, by coalescing, sampling or reducing frequency. Do it later, by deferring work or writing back asynchronously. Do it when they're not looking, during off-peak windows. Do it concurrently, by parallelising and overlapping compute with communication. Do it more cheaply, using faster hardware or lower precision.
+The seven performance mantras, from most effective to least, are these. Don't do it, which means eliminating unnecessary work. Do it, but don't do it again, which means caching results. Do it less, by coalescing, sampling or reducing frequency. Do it later, by deferring work or writing back asynchronously. Do it when they're not looking, during off-peak windows. Do it concurrently, by parallelising and overlapping compute with communication. Do it more cheaply, using faster hardware or lower precision.
 </details>
 
 <details>
@@ -713,4 +711,4 @@ Consider Case Study 2. The single-threaded load generator on the client saturate
   - `systems-performance-2nd-edition` — Brendan Gregg, *Systems Performance: Enterprise and the Cloud*, 2nd ed., **Chapter 1: Introduction** (systems performance roles, activities, workload vs resource perspectives, why performance is hard, latency, observability, experimentation, the Linux 60-second checklist, and the two case studies), **Chapter 2: Methodologies** (terminology, models, latency time scales, trade-offs, tuning closest to the work, when to stop, point-in-time recommendations, load vs architecture, scalability, known-unknowns, anti-methods, problem statement, scientific method, diagnosis cycle, tools method, USE method, RED method, workload characterization, drill-down and Five Whys, latency analysis, Method R, event tracing, baseline statistics, static performance tuning, cache tuning, micro-benchmarking, performance mantras, Amdahl's Law and Gunther's Universal Scalability Law USL, Little's Law and M/D/1 queueing theory, resource-limit capacity planning and factor analysis, statistics harmonic/geometric means and bimodal distributions, and visualizations), and **Chapter 4: Observability Tools** (section 4.1 tool taxonomy preview; full coverage in Chapter 1.24).
 - **Run here:** `python3 code/part01/perf_methodology_use_lab.py` (17 passed, 0 failed).
 - **Explicitly labelled inferences:** The GPU-server USE table (GPUs, HBM, NVLink/NVSwitch, PCIe, InfiniBand/RoCE, `memlock`, `NCCL`), the GPU 60-second checklist additions (`nvidia-smi dmon`, `dcgmi dmon`, `ibstat`, `perfquery`), and the AI efficiency metrics (`MFU`, `goodput`, `TTFT`, `TPOT`) translate Gregg's methodology to Part 6, Part 9, and Part 10 GPU cluster operations (no `nvidia-devops` file is directly mapped to `1.23`; cross-referenced with Chapters 1.22, 1.24, 1.25, 1.28, and original study items 21, 22, 24, 25, 26, 27, 28, and 29).
-- **Not verified on live hardware:** All interactive VM and GPU commands in the checklists and lab (`vmstat`, `mpstat`, `pidstat`, `iostat`, `sar`, `nvidia-smi`, `dcgmi`, `stress-ng`, `fio`, `tc`, `nccl-tests`) are marked (untested here) and should be executed on a disposable VM or test cluster.
+- **Not verified on live hardware:** All interactive VM and GPU commands in the checklists and lab (`vmstat`, `mpstat`, `pidstat`, `iostat`, `sar`, `nvidia-smi`, `dcgmi`, `stress-ng`, `fio`, `tc`, `nccl-tests`) were not run on live hardware and should be executed on a disposable VM or test cluster.

@@ -26,7 +26,7 @@ Almost every GPU you rent is attached to a virtual machine, and many on-premises
 
 You may never operate a hypervisor yourself, because cloud providers do that for you. You will still be asked to explain, size and troubleshoot virtualised GPU environments, and to run VMs yourself to test cluster software, images and kernels. KVM, QEMU and libvirt form the standard open-source stack. Most large clouds use it, Google Compute Engine among them.
 
-This chapter covers the machinery first: VT-x and AMD-V, VM exits, EPT and NPT, IOMMU, virtio, vhost, VFIO and SR-IOV. Then it covers the software stack: the KVM kernel module, QEMU, libvirt, `virsh`, `virt-install` and cloud-init. After that come storage and network configuration, performance tuning and observation from both host and guest, GPU passthrough and sharing, security, and a hands-on lab. Cloud architecture, including instance families, multitenancy, capacity, orchestration and comparisons, is in chapter 1.27. Containers and namespaces are in chapters 1.19 and 1.20.
+This chapter is built around one goal: giving a virtual machine a GPU safely. To get there it covers the machinery first: VT-x and AMD-V, VM exits, EPT and NPT, IOMMU, virtio, vhost, VFIO and SR-IOV. Then it covers the software stack: the KVM kernel module, QEMU, libvirt, `virsh`, `virt-install` and cloud-init. After that come storage and network configuration, performance tuning and observation from both host and guest, GPU passthrough and sharing, security, and a hands-on lab. Cloud architecture, including instance families, multitenancy, capacity, orchestration and comparisons, is in chapter 1.27. Containers and namespaces are in chapters 1.19 and 1.20.
 
 ## Prerequisites and outcomes
 
@@ -51,17 +51,17 @@ There are two ways to build a system VM. An emulator interprets every guest inst
 
 ### Hypervisor types and configurations
 
-The classical **Type 1** hypervisor runs directly on the hardware, bare metal or native. Xen, VMware ESXi and Hyper-V are examples. A **Type 2** hypervisor runs inside a host operating system, as VirtualBox and early QEMU do. Kernel modules have blurred that line. Gregg's practical split describes two configurations, shown in the diagram below.
+The classical **Type 1** hypervisor runs directly on the hardware, bare metal or native. Xen, VMware ESXi and Hyper-V are examples. A **Type 2** hypervisor runs inside a host operating system, as VirtualBox and early QEMU do. Kernel modules have blurred that line, so a more practical split is by where the hypervisor lives: either a small native hypervisor on bare metal with a privileged management VM beside the guests, or the host Linux kernel itself acting as the hypervisor through a module. The diagram shows both.
 
 ```mermaid
 flowchart TB
-  subgraph A["Config A: native hypervisor (Xen-style)"]
+  subgraph A["Native hypervisor (Xen-style)"]
     HA["Hypervisor on bare metal\nschedules vCPUs, owns hardware"]
     D0["Privileged domain (dom0)\nadministers, runs I/O proxy (QEMU)"]
     GA1["Guest VM"]; GA2["Guest VM"]
     HA --- D0; HA --- GA1; HA --- GA2
   end
-  subgraph B["Config B: kernel-module hypervisor (KVM-style)"]
+  subgraph B["Kernel-module hypervisor (KVM-style)"]
     HK["Host Linux kernel + KVM module\n(Linux scheduler schedules vCPU threads)"]
     Q1["QEMU process per VM\n(device models, I/O proxy)"]
     Q2["QEMU process per VM"]
@@ -330,7 +330,7 @@ You should decide the network mode first, because it determines whether anyone o
 
 ## 6. Performance: what costs what, and how to tune
 
-Gregg's analysis groups the sources of overhead into three areas. CPU overhead comes from guest exits, both how often they happen and how long they take, and from interrupt and timer virtualisation. Memory overhead comes from two-level page walks, from the extra kernel and QEMU memory each VM needs, and from double caching. I/O overhead has historically been the largest. Every device access caused an exit. Virtio, vhost, SR-IOV or passthrough, and hardware offload such as Nitro reduce that cost. Contention adds more, through stolen time, cache pollution from other tenants, and interrupts caused by neighbours' I/O.
+Overhead comes from three areas. CPU overhead comes from guest exits, both how often they happen and how long they take, and from interrupt and timer virtualisation. Memory overhead comes from two-level page walks, from the extra kernel and QEMU memory each VM needs, and from double caching. I/O overhead has historically been the largest. Every device access caused an exit. Virtio, vhost, SR-IOV or passthrough, and hardware offload such as Nitro reduce that cost. Contention adds more, through stolen time, cache pollution from other tenants, and interrupts caused by neighbours' I/O.
 
 CPU-bound user-space code runs at close to native speed. The workloads that suffer are the exit-heavy ones, such as lots of small I/O, timers and privileged operations. Memory-heavy work with poor TLB behaviour suffers too, and so does anything limited by unfaithful emulation.
 
@@ -360,7 +360,7 @@ sudo bpftrace -l 't:kvm:*' ; sudo bpftrace -lv t:kvm:kvm_exit                   
 # exit-reason histogram by duration: use a kvm_exit -> kvm_entry bpftrace script (e.g. kvmexits.bt) or perf script on kvm tracepoints
 ```
 
-Here is how to read the results, using Gregg's example. A mostly idle guest shows mainly `HLT` exits. Their durations look large, but they cost nothing, because the vCPU is idle. `MSR_WRITE` exits for timer programming, and `EXTERNAL_INTERRUPT` exits, are frequent but cheap. Many `IO_INSTRUCTION` or `MMIO` exits mean heavy emulated device I/O. A histogram of `EPT_VIOLATION` exits shows memory faulting. When the exit rate is high and the exit time is large, the VM is paying a heavy price. Exits that return to user space in QEMU cost more than exits the kernel handles on its own. For deeper views, attach kprobes to KVM exit handlers, such as `handle_halt`. You can also sample the guest CR3 register to see whether one guest process or many are running.
+Here is how to read the results. A mostly idle guest shows mainly `HLT` exits. Their durations look large, but they cost nothing, because the vCPU is idle. `MSR_WRITE` exits for timer programming, and `EXTERNAL_INTERRUPT` exits, are frequent but cheap. Many `IO_INSTRUCTION` or `MMIO` exits mean heavy emulated device I/O. A histogram of `EPT_VIOLATION` exits shows memory faulting. When the exit rate is high and the exit time is large, the VM is paying a heavy price. Exits that return to user space in QEMU cost more than exits the kernel handles on its own. For deeper views, attach kprobes to KVM exit handlers, such as `handle_halt`. You can also sample the guest CR3 register to see whether one guest process or many are running.
 
 **From inside the guest**, everything works as usual, including BPF, perf software events and flame graphs. The resources are virtual, though. `lscpu` shows vCPUs, so check the topology there. `mpstat -P ALL` shows only vCPUs. The `st` column in `vmstat`, and the `%steal` column in `mpstat`, show CPU time that the hypervisor gave to other tasks or throttled. Sustained steal means noisy neighbours, CPU overcommit or limits. `iostat` and `biosnoop` show virtual device latency. A limit or contention appears as latency outliers. Characterise the I/O size and pattern to see whether the outliers match the size, queue behind flushes, or show no pattern. Random outliers suggest physical contention. Hardware performance counters (PMCs) may be unavailable. Run `dmesg | grep -i balloon` to reveal ballooning, and check the clocksource and `kvm-clock`.
 
@@ -380,6 +380,12 @@ Passing a GPU to a guest gives native compute performance. The guest's NVIDIA dr
 6. **In the guest.** Install the NVIDIA driver, which follows the same kernel module story as chapter 1.22, along with CUDA and DCGM. `nvidia-smi` should see the device. For multi-GPU work, pass all the GPUs of a PCIe switch domain together with their NICs. For GPUDirect RDMA, the NIC and the GPU must share an upstream PCIe switch or root complex in the guest topology. The ATS and ACS settings must also permit peer-to-peer. Check the vendor guidance for the flags involved.
 
 Watch for these practical problems. Some GPUs and functions cannot be reset cleanly between guests, which depends on FLR support, and `vendor-reset` may help. The audio and USB functions of consumer GPUs often share the same group. Huge BARs need 64-bit MMIO windows in the guest firmware, which you configure in OVMF with `-fw_cfg name=opt/ovmf/X-PciMmio64Mb,string=262144`. Consumer GPU drivers may restrict use inside VMs. After a guest crash you may see error 43 or `NVRM: GPU has fallen off the bus`, and the host then needs a reset or a reboot. Many GPUs do not support hotplug. Live migration with passthrough is generally unsupported, though some vendors support it for specific devices.
+
+### KubeVirt: the same passthrough, driven from Kubernetes
+
+KubeVirt runs each VM inside an ordinary Kubernetes pod. A helper process in the pod starts libvirt and QEMU, so everything above still applies: the VM is a QEMU process, its vCPUs are threads, and the GPU reaches it through VFIO. What changes is who does the bookkeeping. Instead of writing `<hostdev>` XML by hand, you request a GPU as a named device resource in the VM's spec, and the scheduler places the VM on a node that has one. The node must already have the IOMMU enabled and the GPU bound to `vfio-pci`, as in the steps above. NVIDIA's GPU Operator can automate that binding on nodes labelled for VM workloads, but the exact labels and settings change between releases, so follow its current documentation.
+
+The same failure modes follow you into Kubernetes. A GPU in a shared IOMMU group still cannot be assigned cleanly, a node with the wrong kernel parameters schedules the VM and then fails to start it, and a flat PCIe topology in the guest still hurts NCCL. Part 11 covers this in depth: chapter 11.21 for PCIe, the IOMMU and VFIO, and chapter 11.27 for KubeVirt, Kata and GPU passthrough.
 
 ### NVLink/NVSwitch systems
 
@@ -437,7 +443,7 @@ Start with the self-checking Python lab, which runs on your own machine. It veri
 python3 code/part01/kvm_qemu_libvirt_lab.py
 ```
 
-Next, use a disposable Linux host with KVM enabled. Nested virtualisation is fine for steps 1–10. Step 11 needs a bare-metal GPU host. Every interactive VM command below is `untested here`, so treat the results as something to confirm on your own machine.
+Next, use a disposable Linux host with KVM enabled. Nested virtualisation is fine for steps 1–10. Step 11 needs a bare-metal GPU host. The commands below were not run on live hardware, so treat the results as something to confirm on your own machine.
 
 1. Start with a preflight check. Run `lscpu | grep -i virt`, `grep -E -c 'vmx|svm' /proc/cpuinfo`, `kvm-ok`, `virt-host-validate` and `ls /dev/kvm`. Record the CPU model, the NUMA nodes, the hugepage settings and the IOMMU status.
 2. Install the stack and start libvirtd. Then inspect `virsh net-list --all` and the `virbr0` bridge, using `ip addr` and `nft list ruleset | grep -i masq`.
@@ -483,7 +489,7 @@ Each question below tests one idea from this chapter.
 
 ## Exercises
 
-1. Compare emulation with hardware-assisted virtualisation, and Config A with Config B. (a) Contrast software emulation (QEMU TCG) with hardware-assisted virtualisation (KVM plus VT-x or AMD-V). Then contrast Gregg's Config A (native hypervisor plus dom0) with Config B (the kernel-module hypervisor KVM, where each VM is a `qemu-system-x86_64` process and each vCPU is a `CPU n/KVM` thread). (b) Use `classify_kvm_exit_reason()` in `code/part01/kvm_qemu_libvirt.py` to classify `HLT`, `MSR_WRITE` and `IO_INSTRUCTION`. For each one, decide whether it represents idle sleep or active overhead, and whether the host kernel or user-space QEMU handles it.
+1. Compare emulation with hardware-assisted virtualisation, and the native hypervisor with the kernel-module hypervisor. (a) Contrast software emulation (QEMU TCG) with hardware-assisted virtualisation (KVM plus VT-x or AMD-V). Then contrast the native hypervisor plus dom0 with the kernel-module hypervisor (KVM, where each VM is a `qemu-system-x86_64` process and each vCPU is a `CPU n/KVM` thread). (b) Use `classify_kvm_exit_reason()` in `code/part01/kvm_qemu_libvirt.py` to classify `HLT`, `MSR_WRITE` and `IO_INSTRUCTION`. For each one, decide whether it represents idle sleep or active overhead, and whether the host kernel or user-space QEMU handles it.
 2. Work through nested paging, 2D page walks and huge pages. Explain the three address spaces in a VM (Guest Virtual, Guest Physical and Host Physical), and explain why hardware nested paging (EPT or NPT) replaced shadow page tables. Then use `compute_2d_page_walk_max_reads()` to calculate the worst-case number of memory reads on a TLB miss. Compare 4-level guest and 4-level host page tables, which give 24 reads, with the case where both guest and host use 1 GiB huge pages, which gives 8 reads.
 3. Compare the I/O virtualisation spectrum and the IOMMU. Compare full device emulation, virtio (virtqueues), vhost-net or vhost-user, SR-IOV (PFs and VFs) and VFIO PCIe passthrough, looking at performance and sharing flexibility. Then explain why passthrough is unsafe without an IOMMU (VT-d or AMD-Vi).
 4. Work through VM storage and networking. (a) Explain why virtio-blk and virtio-scsi disks should use `cache='none'` (`O_DIRECT`, set as `cache=none`) and dedicated iothreads. Then explain how a thin qcow2 copy-on-write backing file works, using `qemu-img create -f qcow2 -F qcow2 -b base.img vm1.qcow2`. (b) Contrast QEMU user-mode networking (SLIRP), the libvirt `default` NAT network (`virbr0` `192.168.122.0/24`), a host L2 bridge (`br0`) and SR-IOV VFs.
@@ -499,9 +505,9 @@ A system VM, such as one built with KVM and QEMU, emulates a complete hardware m
 </details>
 
 <details>
-<summary>2. Contrast Gregg's Config A (native hypervisor) and Config B (kernel-module hypervisor) architectures.</summary>
+<summary>2. Contrast the native hypervisor and kernel-module hypervisor architectures.</summary>
 
-In Config A, a hypervisor such as Xen boots directly on bare metal and schedules the physical CPUs. A privileged management VM, called dom0, runs the management tools and the I/O proxies. In Config B, the Linux host kernel itself becomes the hypervisor through the `kvm.ko` module, with `kvm_intel.ko` or `kvm_amd.ko`. Each VM is a regular `qemu-system-x86_64` process, and each vCPU is a standard Linux thread named `CPU n/KVM`. For example, a vCPU competes for CPU time like any other Linux thread. The Linux scheduler runs those threads, and host cgroups and `numactl` control them.
+In the native design, a hypervisor such as Xen boots directly on bare metal and schedules the physical CPUs. A privileged management VM, called dom0, runs the management tools and the I/O proxies. In the kernel-module design, the Linux host kernel itself becomes the hypervisor through the `kvm.ko` module, with `kvm_intel.ko` or `kvm_amd.ko`. Each VM is a regular `qemu-system-x86_64` process, and each vCPU is a standard Linux thread named `CPU n/KVM`. For example, a vCPU competes for CPU time like any other Linux thread. The Linux scheduler runs those threads, and host cgroups and `numactl` control them.
 </details>
 
 <details>
@@ -616,9 +622,9 @@ libvirt runs each QEMU process as an unprivileged user, inside its own `machine.
 
 - **Sources read in full:**
   - `how-linux-works-3rd-edition` — Brian Ward, *How Linux Works*, 3rd ed., **Chapter 17: Virtualization** (section 17.1 virtual machines, hypervisors, hardware in a VM, CPU modes, uses, and drawbacks; container sections are covered in Chapters 1.19 and 1.20).
-  - `systems-performance-2nd-edition` — Brendan Gregg, *Systems Performance: Enterprise and the Cloud*, 2nd ed., **Chapter 11: Cloud Computing** (section 11.2 hardware virtualization: Config A native hypervisor Xen vs Config B kernel-module hypervisor KVM, binary translation 1998, paravirtualization hypercalls, hardware assist `VT-x`/`AMD-V`, VM entry/exit, shadow page tables vs `EPT`/`NPT` 2D page walks, I/O emulation vs `virtio` vs `vhost` vs VFIO vs `SR-IOV`, AWS Nitro, and observability with `xentop`, `pidstat -tp`, `perf kvm stat`, `kvmexits.bt`, and guest `%steal`; cloud instance/capacity/multitenancy sections are covered in Chapter 1.27).
+  - `systems-performance-2nd-edition` — Brendan Gregg, *Systems Performance: Enterprise and the Cloud*, 2nd ed., **Chapter 11: Cloud Computing** (section 11.2 hardware virtualization: native hypervisor Xen vs kernel-module hypervisor KVM, binary translation 1998, paravirtualization hypercalls, hardware assist `VT-x`/`AMD-V`, VM entry/exit, shadow page tables vs `EPT`/`NPT` 2D page walks, I/O emulation vs `virtio` vs `vhost` vs VFIO vs `SR-IOV`, AWS Nitro, and observability with `xentop`, `pidstat -tp`, `perf kvm stat`, `kvmexits.bt`, and guest `%steal`; cloud instance/capacity/multitenancy sections are covered in Chapter 1.27).
 - **Run here:** `python3 code/part01/kvm_qemu_libvirt_lab.py` (16 passed, 0 failed).
-- **Labelled inferences:** The `virt-install` and cloud-init workflow, the high-performance libvirt domain XML (`q35`, OVMF `X-PciMmio64Mb=262144`, `host-passthrough`, `vcpupin`, `<hugepages/><locked/>`), the `kvm:kvm_exit/kvm_entry` tracepoints, and the 6-step VFIO GPU passthrough and NVSwitch Fabric Manager notes are explicitly marked as inferences. They connect KVM and QEMU internals to Part 5 (KubeVirt and Kata) and Part 7 GPU virtualization. No nvidia-devops file maps directly to chapter 1.26. The Systems Performance sections 11.1 and 11.3 to 11.6 are covered in chapter 1.27. The chapter is cross-referenced with chapters 1.8, 1.17, 1.18, 1.19, 1.20, 1.22, 1.23, 1.24, 1.25, 1.27 and 1.28, plus original study items 21, 23, 25, 27, 28, 29 and 30.
-- **Not verified on live hardware:** All interactive VM, `qemu-system-x86_64`, `qemu-img`, `virt-install`, `virsh`, `perf kvm` and `vfio-pci` commands are marked `untested here` and must be run on a disposable test host before you rely on them.
+- **Labelled inferences:** The `virt-install` and cloud-init workflow, the high-performance libvirt domain XML (`q35`, OVMF `X-PciMmio64Mb=262144`, `host-passthrough`, `vcpupin`, `<hugepages/><locked/>`), the `kvm:kvm_exit/kvm_entry` tracepoints, and the 6-step VFIO GPU passthrough and NVSwitch Fabric Manager notes are explicitly marked as inferences. They connect KVM and QEMU internals to Part 11 (VFIO, SR-IOV, KubeVirt and Kata). No nvidia-devops file maps directly to chapter 1.26. The Systems Performance sections 11.1 and 11.3 to 11.6 are covered in chapter 1.27. The chapter is cross-referenced with chapters 1.8, 1.17, 1.18, 1.19, 1.20, 1.22, 1.23, 1.24, 1.25, 1.27 and 1.28, plus original study items 21, 23, 25, 27, 28, 29 and 30.
+- **Not verified on live hardware:** All interactive VM, `qemu-system-x86_64`, `qemu-img`, `virt-install`, `virsh`, `perf kvm` and `vfio-pci` commands were not run on live hardware and must be run on a disposable test host before you rely on them.
 
 If you want the original context for any claim, read the source named at the top of this section before you repeat it.

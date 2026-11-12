@@ -53,8 +53,8 @@ Applications care about different things. Voice and RPC need low delay and jitte
 
 1. Bursts and fan-in make congestion a statistical certainty, even when average utilisation is low.
 2. Bandwidth costs money and takes time, while needs change in milliseconds.
-3. A latency-sensitive packet stuck behind large packets suffers serialization delay, however fast the average link is. Take a 9000-byte packet on a 100 Mb/s link. It occupies the link for 0.72 ms. A 64-byte packet queued behind it waits 14 times its own serialization time, and that shows up as jitter.
-4. Adding capacity moves the bottleneck instead of removing the contention. Overprovisioning lowers the need for QoS, but it never eliminates it. Some paths, such as WAN links, interconnects and host NICs, cannot be overprovisioned economically. In AI fabrics, 1:1 overprovisioning is the baseline. The leftover contention, from incast, hash collisions and microbursts, is handled by congestion control.
+3. A latency-sensitive packet stuck behind large packets suffers serialization delay, however fast the average link is. Take a 9000-byte packet on a 100 Mb/s link. It occupies the link for 0.72 ms. A 64-byte packet needs only 5.12 µs to cross the same link, so one queued behind the large packet waits about 140 times its own serialization time (0.72 ms divided by 5.12 µs). That wait shows up as jitter.
+4. Adding capacity moves the bottleneck instead of removing the contention. Overprovisioning lowers the need for QoS, but it never eliminates it. Some paths, such as WAN links, interconnects and host NICs, cannot be overprovisioned economically. AI fabrics are normally built non-oversubscribed: every leaf has as much uplink bandwidth as downlink bandwidth, a ratio written 1:1. The leftover contention, from incast, hash collisions and microbursts, is handled by congestion control.
 
 Do not treat extra bandwidth as the fix for congestion. Plan for the contention that remains.
 
@@ -233,7 +233,15 @@ The first is ECN. It is the primary, early, flow-level signal. A switch marks pa
 
 The second is PFC. It is the last-resort safety net that prevents loss when queues keep rising.
 
-The thresholds must sit in a fixed order: XON < ECN (Kmin/Kmax) < XOFF. ECN marking starts well before PFC, so senders slow down first. Only when congestion grows faster than ECN can respond does the buffer cross XOFF, and PFC pauses the priority. If ECN clears the congestion, the other flows in the queue are unaffected. PFC fires rarely, so its side effects stay rare too. If PFC fires often, it harms throughput.
+The thresholds must sit in a fixed order: ECN marking (Kmin to Kmax) starts well below the PFC XOFF level, and XON sits below XOFF. In other words, ECN acts first and PFC is the backstop. Senders slow down first. Only when congestion grows faster than ECN can respond does the buffer cross XOFF, and PFC pauses the priority. If ECN clears the congestion, the other flows in the queue are unaffected. PFC fires rarely, so its side effects stay rare too. If PFC fires often, it harms throughput.
+
+#### Where the thresholds live
+
+The two kinds of threshold do not sit in the same queue. PFC thresholds belong to the ingress buffer of a port and priority, because the switch pauses the neighbour that is filling that buffer. ECN thresholds belong to the egress queue, because the switch marks a packet as it leaves toward a congested port. Many switch chips draw both from one shared packet buffer and size the limits dynamically: a queue may take a share of the free buffer that shrinks as the buffer fills. That share is set by a factor often called alpha. So the ordering above is a rule about when each signal fires relative to the other, not a statement that both numbers are limits on one counter. Read your vendor's buffer model before you copy numbers between chips.
+
+#### Credit-based flow control, and lossy RoCE today
+
+PFC imitates a feature that InfiniBand has natively. An InfiniBand sender may transmit only when the receiver has granted it credits for buffer space, so the buffer cannot overflow. Ethernet has no credits, so PFC pauses after the fact and needs headroom to absorb what is already in flight. Some newer RoCE NICs can recover from loss with selective retransmission instead of go-back-N. Teams that run them with good load balancing sometimes turn PFC off and keep only ECN. Do that only after measuring retransmission rates on your own NICs and traffic.
 
 Deployments differ on where PFC runs. Some configure it only on leaves and NICs, and others configure it on all nodes. Some run ECN-only, with no PFC, and rely on good load balancing and NIC loss recovery. The ECN-only option depends especially on newer NICs that tolerate loss. The right answer depends on the SLA, the hardware and your measurements.
 
@@ -243,9 +251,10 @@ NIC-side parameters are vendor-specific. They include the initial rate, the rate
 
 If you look at ECN, it takes a long loop to slow a sender, and PFC pauses whole classes. Two newer mechanisms try to fix one or the other.
 
-- Source Flow Control (SFC) is being specified as an IETF- and IEEE-style standard, known as 802.1Qdw or source PFC. Instead of pausing hop by hop, a congested switch sends the signal directly to the source. It does this by trimming the packet payload and reversing the source and destination addresses. The first-hop leaf can pause the flow's queue. It can forward the signal to the NIC if the NIC supports it, or translate it into PFC. SFC avoids the long loop of ECN, because the signal never travels to the receiver and back. It also acts on the flow rather than the class, so it avoids head-of-line blocking.
-- Congestion Signaling (CSIG) is an emerging in-band mechanism. Each hop updates a small tag in the data packet. The tag holds a signal type, such as minimum available bandwidth ratio or maximum path delay, and a quantized value. It also holds locator metadata: the capacity of the bottleneck, the stage, the device ID, and whether the port is an uplink or a downlink. The receiver reflects the aggregated signal back to the sender. The sender gets path-aware, multi-bit information rather than the single ECN bit. That signal can feed rate control and adaptive routing decisions.
-- Related work includes the Ultra Ethernet Consortium transport, with packet spraying, selective retransmission and new congestion control. It also includes in-band network telemetry (INT) and trimming, and credit-based or receiver-driven schemes such as NDP and HPCC, which uses INT. Switch-level adaptive routing and packet spraying belong here too. So does fabric-wide VOQ in scheduled fabrics (chapter 2.18).
+- Source Flow Control (SFC) is an IEEE 802.1 project, P802.1Qdw, also called source PFC. It was still under development when this chapter was written. Instead of pausing hop by hop, a congested switch sends the signal directly to the source. It does this by trimming the packet payload and reversing the source and destination addresses. The first-hop leaf can pause the flow's queue. It can forward the signal to the NIC if the NIC supports it, or translate it into PFC. SFC avoids the long loop of ECN, because the signal never travels to the receiver and back. It also acts on the flow rather than the class, so it avoids head-of-line blocking.
+- Congestion Signaling (CSIG) is an emerging in-band mechanism. Each hop updates a small tag in the data packet. The tag carries a signal type and a quantized value. Typical signals are the minimum available bandwidth ratio and the maximum path delay.
+- The tag also carries locator information: the capacity of the bottleneck, the stage, the device ID, and whether the port is an uplink or a downlink. The receiver reflects the aggregated signal back to the sender, which gets path-aware, multi-bit information rather than the single ECN mark. That signal can feed rate control and adaptive routing decisions.
+- Related work includes the Ultra Ethernet Consortium transport, with packet spraying, selective retransmission and new congestion control. Vendors also ship their own adaptive routing plus congestion control as a production alternative to DCQCN alone, for example NVIDIA Spectrum-X. It also includes in-band network telemetry (INT) and trimming, and credit-based or receiver-driven schemes such as NDP and HPCC, which uses INT. Switch-level adaptive routing and packet spraying belong here too. So does fabric-wide VOQ in scheduled fabrics (chapter 2.18).
 
 You should treat SFC and CSIG as in-progress standards. Know the idea behind each one and the problem it solves.
 
@@ -323,7 +332,7 @@ Start with the self-checking Python lab, which runs on your own machine with no 
 python3 code/part02/qos_ecn_pfc_dcqcn_lab.py
 ```
 
-Next, work through these steps on a disposable Linux VM. Step 8 also needs optional RoCE NIC and switch hardware. All interactive VM commands below are `untested here`.
+Next, work through these steps on a disposable Linux VM. Step 8 also needs optional RoCE NIC and switch hardware. The commands below were not run on live hardware.
 
 1. Watch bufferbloat happen. Join two namespaces with a veth pair. Limit the rate with `tbf` or `netem rate 50mbit`. Run a bulk `iperf3` and a `ping` at the same time, and record the latency. Then replace the qdisc with `fq_codel` or `cake` and compare.
 2. Test priority and fairness. Build an `htb` setup with a high-priority class for DSCP EF and a bulk class. Show that a latency flow stays low during saturation. Then remove the policing on the priority class and show starvation. Finally, try `drr`/`wrr` weights.
@@ -384,11 +393,11 @@ Work through these six exercises in order. Each one ties back to a section above
 2. Compare a token-bucket policer with a shaper. Then compare strict priority (LLQ) with weighted fair queueing (CBWFQ, DRR and ETS 802.1Qaz).
    a. Contrast a token-bucket policer with a shaper, and contrast strict priority (LLQ) with weighted fair queueing (CBWFQ, DRR and ETS 802.1Qaz).
    b. Explain why tail drop causes global TCP synchronization and bufferbloat. Then compare WRED with `CoDel` (RFC 8290, with a 5 ms target sojourn delay over 100 ms).
-3. List the six congestion points in a 3-stage or 5-stage Clos fabric, even at 1:1 non-oversubscribed. The source is AI Data Center Network Design and Technologies, chapter 7. Then trace the four-step ECN and CNP feedback loop in RoCEv2. Start from `UDP 4791` and `ECT(0)`, follow the switch's CE mark, then the receiver's CNP with `BTH opcode 0x81`, and end with the sender's QP rate cut. Why is an ECN-only queue still considered lossy?
+3. List the six congestion points in a 3-stage or 5-stage Clos fabric, even at 1:1 non-oversubscribed. Then trace the four-step ECN and CNP feedback loop in RoCEv2. Start from `UDP 4791` and `ECT(0)`, follow the switch's CE mark, then the receiver's CNP with `BTH opcode 0x81`, and end with the sender's QP rate cut. Why is an ECN-only queue still considered lossy?
 4. Work through PFC in two parts.
    a. Describe the IEEE 802.1Qbb PFC pause frame: `EtherType 0x8808`, opcode `0x0101`, destination `01:80:C2:00:00:01`, and `65535` quanta of `512` bit-times. Then use `compute_pfc_headroom_bytes()` to compare the headroom buffer required at `400 Gb/s` for a `10 m` DAC or AOC cable with a `500 m` optical cable.
    b. Explain the three hazards of PFC: class-level head-of-line blocking, PFC pause storms, and cyclic PFC deadlocks. Then describe the three stages of the PFC watchdog, which runs at `100–200 ms`.
-5. Check the DCQCN threshold ordering, which is XON < ECN < XOFF. Then cover SFC and CSIG.
+5. Check the DCQCN threshold ordering, which runs XON, then ECN, then XOFF, from lowest to highest. Then cover SFC and CSIG.
    a. Using `evaluate_dcqcn_queue_action()` with `XON = 50 KB, Kmin = 100 KB, Kmax = 500 KB, Pmax = 0.20, XOFF = 1000 KB`, compute the ECN marking probability and the PFC state at queue depths of `30 KB`, `300 KB`, `600 KB` and `1100 KB`. Then explain why ECN thresholds must sit strictly below XOFF.
    b. Explain how Source Flow Control (SFC, 802.1Qdw) and Congestion Signaling (CSIG) improve on ECN and PFC.
 6. Write a six-step checklist for a lossless RoCEv2 priority, with DSCP 26 mapped to priority 3 and CNP DSCP 48 mapped to priority 6. Cover ConnectX NICs and switches, using `mlnx_qos`, `ethtool -S` and SONiC where they apply. Then walk through the Section 11 diagnostic flowchart for a distributed training job that shows low collective bandwidth.
@@ -437,7 +446,7 @@ If you picture tail drop, a queue accepts packets until it is 100% full, and the
 </details>
 
 <details>
-<summary>7. Name the six congestion points in a 3-stage or 5-stage leaf-spine AI fabric (AI Data Center Network Design and Technologies Chapter 7).</summary>
+<summary>7. Name the six congestion points in a 3-stage or 5-stage leaf-spine AI fabric.</summary>
 
 Even when leaf-to-spine bandwidth is 1:1, congestion appears in six places.
 
@@ -456,7 +465,7 @@ Think about what happens when you lose one packet. RoCEv2 handles reliability in
 </details>
 
 <details>
-<summary>9. Trace the four steps of ECN + CNP congestion notification in RoCEv2 (AI Data Center Network Design and Technologies Chapter 7).</summary>
+<summary>9. Trace the four steps of ECN + CNP congestion notification in RoCEv2.</summary>
 
 First, the sending RoCE NIC marks outgoing IP headers as ECT(0), which is ECN = 10b. Second, when a transit switch's egress queue crosses its ECN threshold, between Kmin..Kmax, the switch rewrites the ECN bits to CE, Congestion Experienced, which is 11b. It forwards the packet without dropping it. Third, the receiving NIC sees the CE mark and sends a Congestion Notification Packet (CNP) back to the sender. A CNP is a RoCEv2 packet with BTH opcode 0x81 = 129. It identifies the congested QP and is marked with high priority, DSCP 48. Fourth, the sending NIC throttles the injection rate of that specific QP. It recovers the rate gradually, through timers and byte counters, once CNPs stop.
 </details>
@@ -494,19 +503,19 @@ Detection comes first, and you set the timer that drives it. The watchdog monito
 <details>
 <summary>15. How does DCQCN (SIGCOMM 2015) combine ECN and PFC, and what is the mandatory ordering of queue thresholds?</summary>
 
-DCQCN (Data Center Quantized Congestion Notification) uses ECN and CNPs as the primary, fine-grained, per-QP rate controller. PFC is only the last-resort safety net against buffer overflow. So the thresholds must be strictly ordered: XON < ECN Kmin < ECN Kmax < PFC XOFF, plus headroom. As a queue grows, it crosses the ECN Kmin..Kmax range first. Packets get marked CE, and senders throttle their QPs smoothly. PFC at XOFF fires only if an abrupt incast burst outruns the one-RTT ECN control loop.
+DCQCN (Data Center Quantized Congestion Notification) uses ECN and CNPs as the primary, fine-grained, per-QP rate controller. PFC is only the last-resort safety net against buffer overflow. So the thresholds must be strictly ordered: XON below ECN Kmin, below ECN Kmax, below PFC XOFF, plus headroom. As a queue grows, it crosses the ECN Kmin..Kmax range first. Packets get marked CE, and senders throttle their QPs smoothly. PFC at XOFF fires only if an abrupt incast burst outruns the one-RTT ECN control loop.
 </details>
 
 <details>
-<summary>16. How does Source Flow Control (SFC, IEEE 802.1Qdw) improve on both ECN and PFC (AI Data Center Network Design and Technologies Chapter 7)?</summary>
+<summary>16. How does Source Flow Control (SFC, IEEE P802.1Qdw) improve on both ECN and PFC?</summary>
 
 When a switch sees congestion on an egress link, such as from Spine A to Leaf D, SFC trims the congested packet's payload. It then reverses the source and destination addresses, and sends an SFC notification straight back toward the source, which is Leaf A or the sending NIC. ECN has to send the signal forward to the receiver and wait for a CNP to come back. SFC does not, so it cuts the reaction latency in half. PFC pauses the whole priority. SFC identifies the specific flow, by its 5-tuple or QP, so the ingress leaf or NIC pauses or throttles only the culprit flow.
 </details>
 
 <details>
-<summary>17. How does Congestion Signaling (CSIG) improve on ECN's single 2-bit flag (AI Data Center Network Design and Technologies Chapter 7)?</summary>
+<summary>17. How does Congestion Signaling (CSIG) improve on ECN's single congestion mark?</summary>
 
-ECN gives a single 1-bit CE mark, which only says that some hop was congested. CSIG carries a small in-band telemetry tag in the packet header. Each transit switch updates it with quantized, multi-bit bottleneck metrics, such as the minimum available bandwidth ratio or the maximum queue delay. It also records bottleneck locator metadata, such as the tier or stage, the switch ID, and whether the port is an uplink or a downlink. The receiver reflects the CSIG summary back to the sender. The NIC can then adjust its sending rate and its path choice in one step, in proportion to how severe the bottleneck is.
+ECN gives a single CE mark (a code point in the 2-bit ECN field), which only says that some hop was congested. CSIG carries a small in-band telemetry tag in the packet header. Each transit switch updates it with quantized, multi-bit bottleneck metrics, such as the minimum available bandwidth ratio or the maximum queue delay. It also records bottleneck locator metadata, such as the tier or stage, the switch ID, and whether the port is an uplink or a downlink. The receiver reflects the CSIG summary back to the sender. The NIC can then adjust its sending rate and its path choice in one step, in proportion to how severe the bottleneck is.
 </details>
 
 <details>
@@ -535,8 +544,9 @@ Start by checking for lossless queue drops on the switches and NICs. If you find
 ## Sources and review notes
 
 - **Sources read in full:**
-  - `computer-networking-problems-and-solutions` — Russ White and Ethan Banks, *Computer Networking Problems and Solutions*, **Chapter 8: Quality of Service** (why not just size links large enough, `9000`-byte `0.72 ms` vs `64`-byte `0.05 ms` serialization jitter on `100 Mb/s`, classification and DSCP Class Selectors `CS0`–`CS7` RFC `2474` and `EF` `46` RFC `3246`, preserving classification across tunnels, the unmarked Internet, congestion management with Low-Latency Queueing `LLQ` and Class-Based Weighted Fair Queueing `CBWFQ`, overcongestion, policing vs shaping, WRED, bufferbloat, and CoDel RFC `8290`).
+  - `computer-networking-problems-and-solutions` — Russ White and Ethan Banks, *Computer Networking Problems and Solutions*, **Chapter 8: Quality of Service** (why not just size links large enough, `9000`-byte `0.72 ms` serialization on `100 Mb/s`, classification and DSCP Class Selectors `CS0`–`CS7` RFC `2474` and `EF` `46` RFC `3246`, preserving classification across tunnels, the unmarked Internet, congestion management with Low-Latency Queueing `LLQ` and Class-Based Weighted Fair Queueing `CBWFQ`, overcongestion, policing vs shaping, WRED, bufferbloat, and CoDel RFC `8290`).
   - `ai-data-center-network-design-and-technologies` — Dinakaran Setty et al., *AI Data Center Network Design and Technologies*, **Chapter 7: RoCEv2 Transport and Congestion Management** (Clos congestion points, RoCEv2 go-back-N loss sensitivity, ECN RFC `3168` `ECT(0)`/`CE` and CNP BTH opcode `0x81` = `129`, PFC IEEE `802.1Qbb` `XOFF`/`XON` and headroom, PFC HOL blocking / storms / deadlocks / watchdog `100–200 ms`, DCQCN SIGCOMM `2015`, Source Flow Control `SFC` `802.1Qdw`, and Congestion Signaling `CSIG`).
 - **Run here:** `python3 code/part02/qos_ecn_pfc_dcqcn_lab.py` (13 passed, 0 failed).
+- **Correction (2026-11):** the 64-byte packet waits about 140 times its own serialization time (9,000 / 64 = 140.6), not 14. Non-oversubscribed (1:1) replaces the term "overprovisioning" for the fabric baseline. The threshold-placement, InfiniBand credit and lossy-RoCE paragraphs are general switch and NIC design knowledge; IEEE P802.1Qdw status should be re-checked at the IEEE 802.1 project page before relying on it.
 - **Explicitly labelled inferences:** The Linux `tc` (`fq_codel`, `cake`, `htb`, `tbf`, `red ecn`) and ConnectX/SONiC RoCEv2 verification commands (`mlnx_qos`, `rdma statistic`, `dcb pfc`, `show pfcwd stats`) and the Section 11 troubleshooting flowchart synthesize RFCs 2474, 3168, 3246, 7567, 8289, and 8290, IEEE 802.1Qbb/Qaz/Qau/Qdw, and the DCQCN paper (SIGCOMM 2015) (cross-referenced with Chapters 2.5, 2.6, 2.11, 2.12, 2.16–2.18, and 2.28–2.29, plus original study items 21, 22, 23, 24, 25, 26, 27, 28, 29, 30, 31, 32, 33, 34, 35, 36, 37, 38, 39, and 40).
-- **Not verified on live hardware:** All interactive VM, `tc`, `mlnx_qos`, `dcb`, and SONiC commands are marked (untested here) and must be executed on a disposable Linux VM or lab switch/NIC testbed.
+- **Not verified on live hardware:** All interactive VM, `tc`, `mlnx_qos`, `dcb`, and SONiC commands are not run on live hardware and must be executed on a disposable Linux VM or lab switch/NIC testbed.
