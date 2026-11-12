@@ -367,14 +367,14 @@ func newClient() (kubernetes.Interface, *rest.Config, error) {
 		cfg, err = clientcmd.NewNonInteractiveDeferredLoadingClientConfig(loading, &clientcmd.ConfigOverrides{}).ClientConfig()
 		if err != nil { return nil, nil, fmt.Errorf("load kubeconfig: %w", err) }
 	}
-	cfg.QPS, cfg.Burst = 50, 100            // default 5/10 is far too low for controllers; see 5.5 about APF
+	cfg.QPS, cfg.Burst = 50, 100            // default 5/10 is far too low for controllers; see 5.5 about API Priority and Fairness
 	cfg.UserAgent = "nodectl/0.1"
 	cs, err := kubernetes.NewForConfig(cfg)
 	return cs, cfg, err
 }
 ```
 
-The default 5/10 is far too low for controllers. See 5.5 for APF.
+The default 5/10 is far too low for controllers. See 5.5 for API Priority and Fairness, the server-side limit on request rates.
 
 The typed clientset, `kubernetes.Interface`, exposes `CoreV1()`, `AppsV1()`, `BatchV1()`, `RbacV1()` and more. The dynamic client, created with `dynamic.NewForConfig`, returns unstructured objects through `Resource(gvr).Namespace(ns).List(...)`, which suits CRDs without generated types. The discovery client lists API groups and resources, and the REST client is low-level. The metadata client returns `PartialObjectMetadata` cheaply. The scale client and generated clientsets (`client-gen`) complete the set. controller-runtime's `client.Client` adds a cache, as chapter 5.31 covers.
 
@@ -414,7 +414,7 @@ ev := &policyv1.Eviction{ObjectMeta: metav1.ObjectMeta{Name: pod.Name, Namespace
 err = cs.CoreV1().Pods(pod.Namespace).EvictV1(ctx, ev)   // returns 429 if a PDB disallows; retry later
 ```
 
-The first block pages through a filtered node list with `Limit` and `opts.Continue`. Get-modify-update is the classic trap. A full `Update` fails with a conflict when your copy is stale, so wrap the read and write in `retry.RetryOnConflict` and read again on each attempt. A merge patch needs no read, and server-side apply, with typed apply configurations, records field ownership and is idempotent.
+The first block pages through a filtered node list with `Limit` and `opts.Continue`. Get-modify-update is a common trap. A full `Update` fails with a conflict when your copy is stale, so wrap the read and write in `retry.RetryOnConflict` and read again on each attempt. A merge patch needs no read, and server-side apply, with typed apply configurations, records field ownership and is idempotent.
 
 Eviction is the preferred way to drain a pod, because it respects PDBs. `EvictV1` returns 429 when a PDB disallows the eviction, so retry later.
 
@@ -709,7 +709,7 @@ The lab also covers Chapters 6 and 7. It checks the `Lister` `DeepCopy()` cache 
 python3 code/part05/client_go_mechanics_sim_lab.py
 ```
 
-Next, with a Go toolchain (`go 1.22+`) and a `kind` cluster, you work through these exercises. Every interactive step below is `untested here`.
+Next, with a Go toolchain (`go 1.22+`) and a `kind` cluster, you work through these exercises. The cluster steps below have not been run against live hardware.
 
 1. Install Go, create the module, and add client-go dependencies that match your kind cluster version. Then build and run a program that lists nodes with GPU labels, using fake labels on the kind nodes.
 2. Implement `Classify`, a generic `Filter/Map/GroupBy`, and an `errors.Is/As` example with a custom error type. Add a bounded-concurrency prober that uses `errgroup`, and finish by running `go vet` and `go test -race`.
@@ -736,12 +736,18 @@ Next, with a Go toolchain (`go 1.22+`) and a `kind` cluster, you work through th
 
 ## Exercises
 
-1. Start with the Go type system, pointer versus value receivers, and error wrapping (`%w`, `errors.Is`/`As`, `k8s.io/apimachinery/pkg/api/errors`). Explain why optional fields in Kubernetes Go structs use pointers (`*int32`, `*bool` via `ptr.To` / `ptr.Deref`). Explain why a method with a pointer receiver (`func (r *Router) Trim()`) does not satisfy an interface when you pass it by value, as Network Programmability and Automation, Chapter 7, describes. Then show how you wrap and inspect Kubernetes API status errors with `apierrors.IsNotFound` and `apierrors.IsConflict`.
-2. For concurrency, cover `context.Context`, `errgroup.WithContext`, and race detection with `-race`. Trace the bounded-concurrency node prober from Section 3, which uses `errgroup` with `g.SetLimit(16)`. Explain how `context.Context` cancellation propagates when one worker returns an error. Then explain why you must give every goroutine an explicit exit path, and why concurrent map writes panic at runtime.
-3. For apimachinery common types and the `runtime.Scheme` and `RESTMapper`, use Kubernetes Programming with Go, Chapters 4 and 5. Cover `resource.Quantity`, `intstr.IntOrString`, `metav1.Time` and `labels.Selector`. Using `parse_k8s_quantity_milli()`, `get_scaled_value_from_int_or_percent()` and `DefaultRESTMapperSim` in `code/part05/client_go_mechanics_sim.py`, contrast `BinarySI` (`1Ki = 1024`) with `DecimalSI` (`1k = 1000`, `2500m = 2.5`). Explain how `runtime.Scheme` maps Go structs to `GVK`, and how `DefaultRESTMapper` and `DeferredDiscoveryRESTMapper` translate `GVK <-> GVR`.
-4. Cover client-go clients (`Clientset`, `Dynamic`, `Metadata`, `Discovery`), `QPS`/`Burst`, conflict-safe `RetryOnConflict`, and Server-Side Apply (`ApplyConfigurations`, Kubernetes Programming with Go, Chapter 6). Compare `Update` (with `retry.RetryOnConflict`), `Patch` (`MergePatchType`/`StrategicMergePatchType`), and typed Server-Side Apply (`applycorev1.Node(name)` with `FieldManager`). Then explain why `EvictV1` (`policyv1.Eviction`) is used instead of `Delete` when draining nodes.
-5. Look inside `SharedInformerFactory`, `Lister`s (`DeepCopy`), `Indexer`s, `workqueue.TypedRateLimitingInterface`, and leader election (Kubernetes Programming with Go, Chapter 6). Trace the Section 5 informer and work queue program through `Reflector -> DeltaFIFO -> Indexer/Store + ResourceEventHandler -> WorkQueue -> Worker`. Explain why event handlers only enqueue `"namespace/name"` keys, and why `cache.DeletedFinalStateUnknown` tombstones must be unwrapped on `DeleteFunc`. Then explain why mutating an object returned by a `Lister` without `DeepCopy()` corrupts the shared process cache.
-6. Test `client-go` applications with `fake.NewSimpleClientset`, `Actions()`, `PrependReactor`, `fakediscovery` and `envtest` (Kubernetes Programming with Go, Chapter 7). Also package static distroless binaries. Using `FakeClientsetWithCacheSim` in `code/part05/client_go_mechanics_sim.py`, show how to inject a `409 Conflict` or `500` error into a unit test with `cs.PrependReactor("patch", "nodes", ...)`. Verify the recorded client calls with `cs.Actions()`. Compare `client-go/kubernetes/fake` with `envtest`, and trace the multi-stage `CGO_ENABLED=0` distroless `Dockerfile` in Section 8.
+Each exercise is one Go skill that Kubernetes code needs. The simulators live in `code/part05/client_go_mechanics_sim.py`.
+
+1. Explain why optional fields in Kubernetes Go structs are pointers. Show how `ptr.To` and `ptr.Deref` help.
+2. Explain why a method with a pointer receiver does not satisfy an interface when you pass the value. Network Programmability and Automation, Chapter 7, shows the case.
+3. Wrap an error with `%w`, then test it with `errors.Is`. Then use `apierrors.IsNotFound` and `apierrors.IsConflict` on a Kubernetes API error.
+4. Trace the node prober in Section 3, which uses `errgroup` with `g.SetLimit(16)`. Say how context cancellation reaches the other workers when one fails. Then say why concurrent map writes panic.
+5. Run `parse_k8s_quantity_milli()` and `get_scaled_value_from_int_or_percent()`. Contrast `1Ki` at 1024 with `1k` at 1000, and say what `2500m` means. Kubernetes Programming with Go, Chapters 4 and 5, covers the types.
+6. Use `DefaultRESTMapperSim` to show how a Go struct maps to a group-version-kind and then to a group-version-resource.
+7. Compare `Update` with `RetryOnConflict`, `Patch`, and Server-Side Apply for changing a node label. Then say why draining uses an Eviction and not `Delete`. Kubernetes Programming with Go, Chapter 6, covers the clients.
+8. Trace the informer program in Section 5 from the reflector to the worker. Say why handlers enqueue only `namespace/name` keys, and why a tombstone must be unwrapped in `DeleteFunc`.
+9. Explain why changing an object from a lister without `DeepCopy()` corrupts the shared cache.
+10. Use `FakeClientsetWithCacheSim` to inject a 409 Conflict with `cs.PrependReactor("patch", "nodes", ...)`. Check the calls with `cs.Actions()`. Then compare the fake clientset with `envtest`, which Kubernetes Programming with Go, Chapter 7, covers.
 
 ## Checkpoint questions (20)
 
@@ -968,5 +974,5 @@ Only the one replica that holds the Lease starts its `OnStartedLeading` workers,
   - `kubernetes-programming-with-go-programming-kubernetes-clients-and-operators-using-go-and-the-kuberne` — Philippe Martin / Stefan Schimanski & Michael Hausenblas, *Kubernetes Programming with Go* / *Programming Kubernetes*, **Chapter 4: Using Common Types** (`pointer`/`ptr`, `resource.Quantity` `BinarySI` vs `DecimalSI`, `intstr.IntOrString` and `GetScaledValueFromIntOrPercent`, `metav1.Time`), **Chapter 5: The API Machinery** (`GVK` vs `GVR`, `runtime.Scheme`, `DefaultRESTMapper` & `DeferredDiscoveryRESTMapper`, JSON/YAML/Protobuf serializers), **Chapter 6: The Client-go Library** (`rest.Config` `QPS`/`Burst`, typed/dynamic/discovery clients, `labels.NewRequirement`, `fields`, `ApplyConfigurations`, `SharedInformerFactory`, `Lister` `DeepCopy()`, and `workqueue`), and **Chapter 7: Testing Applications Using Client-go** (`fake.NewSimpleClientset`, `Actions()`, `PrependReactor`, and `fakediscovery.FakeDiscovery`).
   - `network-programmability-and-automation-2nd-edition` — Jason Edelman, Scott S. Lowe & Matt Oswalt, *Network Programmability and Automation*, 2nd ed., **Chapter 7: Go** (read in full: Go compilation and execution, types, slices/maps, pointer vs value method receivers on interfaces, structs, goroutines/channels, `context`, `encoding/json`, `net/netip` `ParsePrefix`, and testing).
 - **Run here:** `python3 code/part05/client_go_mechanics_sim_lab.py` (3 passed, 0 failed); Go listings in Section 6 compiled and unit-tested with Go 1.23.2 / `client-go v0.31.0`.
-- **Explicitly labelled inferences:** The `parse_k8s_quantity_milli`, `get_scaled_value_from_int_or_percent`, `DefaultRESTMapperSim`, and `FakeClientsetWithCacheSim` models in `code/part05/client_go_mechanics_sim.py` and the `nodectl`, `XIDEvent`, and informer+workqueue Go programs are the author's constructions synthesizing `KPG` Chapters 4–7 and `NPA` Chapter 7 (plus original study items 21, 22, 23, 24, 25, 26, 27, 28, 29, 30, 31, 32, 33, 34, and 35).
-- **Not verified on live hardware:** Live cluster executions of `nodectl` (`go 1.22` / `1.23.2`, `client-go v0.31.0`, XIDs `79`/`74`/`13`/`999`, `g.SetLimit(16)`, `cuda:12.4.1-base-ubuntu22.04`, `100Mi`, `QPS: 50, Burst: 100` vs `5/10`, `Limit: 500`, `410 Gone`, `maxRetries = 5`, `LeaseDuration: 15s, RenewDeadline: 10s, RetryPeriod: 2s`, `USER 65532:65532`) are marked (`untested here`) where not executed by `client_go_mechanics_sim_lab.py`.
+- **Explicitly labelled inferences:** The `parse_k8s_quantity_milli`, `get_scaled_value_from_int_or_percent`, `DefaultRESTMapperSim`, and `FakeClientsetWithCacheSim` models in `code/part05/client_go_mechanics_sim.py` and the `nodectl`, `XIDEvent`, and informer+workqueue Go programs are the author's constructions synthesizing *Kubernetes Programming with Go* Chapters 4–7 and *Network Programmability and Automation* Chapter 7 (plus original study items 21, 22, 23, 24, 25, 26, 27, 28, 29, 30, 31, 32, 33, 34, and 35).
+- **Not verified on live hardware:** Live cluster executions of `nodectl` (`go 1.22` / `1.23.2`, `client-go v0.31.0`, XIDs `79`/`74`/`13`/`999`, `g.SetLimit(16)`, `cuda:12.4.1-base-ubuntu22.04`, `100Mi`, `QPS: 50, Burst: 100` vs `5/10`, `Limit: 500`, `410 Gone`, `maxRetries = 5`, `LeaseDuration: 15s, RenewDeadline: 10s, RetryPeriod: 2s`, `USER 65532:65532`) are marked (not run against live hardware here) where not executed by `client_go_mechanics_sim_lab.py`.

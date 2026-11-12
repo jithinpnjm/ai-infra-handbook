@@ -32,8 +32,8 @@ Choosing and tuning Calico, Cilium or a cloud-native CNI is a platform architect
 
 Before you start, you need chapter 5.13, plus BGP and VXLAN from Part 2 (2.15 to 2.17), and the Linux networking and eBPF material from Part 1 and Part 2. By the end of this chapter, you will be able to:
 
-- Explain how VXLAN, Geneve and IP-in-IP overlays forward pod traffic, covering FDB and route programming, encapsulation and MTU, and what each one costs and gives you.
-- Explain native routing with BGP (Calico, Cilium BGP Control Plane, kube-router), and connect pod CIDRs to ToR switches in a leaf-spine fabric using eBGP per node or rack, route reflectors, ECMP, graceful restart and BFD.
+- Explain how VXLAN, Geneve and IP-in-IP overlays forward pod traffic, covering the forwarding database (FDB) that maps pod addresses to node addresses, route programming, encapsulation and MTU, and what each one costs and gives you.
+- Explain native routing with BGP (Calico, Cilium BGP Control Plane, kube-router), and connect pod CIDRs to top-of-rack (ToR) switches in a leaf-spine fabric using eBGP per node or rack, route reflectors, ECMP, graceful restart and BFD.
 - Describe how Cilium's eBPF datapath works, including endpoint identities, policy maps, tc and XDP hooks, socket-level load balancing, kube-proxy replacement, host routing, bandwidth manager, WireGuard or IPsec encryption, Hubble flows and ClusterMesh.
 - Install and configure Calico and Cilium in each mode, and verify routing, MTU, policy, encryption and observability.
 - Compare the modes on performance, operational complexity, debuggability, policy features and kernel dependency, and choose one for GPU clusters, including how it coexists with Multus and SR-IOV.
@@ -72,7 +72,7 @@ sequenceDiagram
   participant P2 as Pod B 10.244.2.9 (Node B 192.168.0.12)
   P1->>VA: IP packet 10.244.1.5 → 10.244.2.9 (MTU 1450)
   VA->>VA: lookup: 10.244.2.0/24 is on VTEP 192.168.0.12 (FDB/route)
-  VA->>U: outer UDP 4789: 192.168.0.11 → 192.168.0.12 + VXLAN VNI + inner packet
+  VA->>U: outer UDP 4789: 192.168.0.11 → 192.168.0.12 + VXLAN VNI (network identifier) + inner packet
   U->>VB: delivered by normal routing
   VB->>P2: decapsulate → inner packet delivered to pod veth
 ```
@@ -191,7 +191,7 @@ The datapath keeps its state in BPF maps. Maps hold Service backends (`lb4_servi
 
 Cilium offers three datapath modes. Tunnel mode uses a VXLAN or Geneve overlay and is the default. Native routing, set with `routingMode: native` and `ipv4NativeRoutingCIDR`, relies on fabric or cloud routes, or on Cilium BGP or automatic direct node routes when nodes share L2. The ENI, Azure and other cloud-specific IPAM modes cover the cloud cases.
 
-kube-proxy replacement, enabled with `kubeProxyReplacement: true`, takes over ClusterIP, NodePort, LoadBalancer, externalIPs and hostPort handling. Socket-LB resolves the backend at `connect()` for in-cluster clients, so pod-to-Service traffic needs no per-packet DNAT and no conntrack. External traffic goes through eBPF NAT. The replacement also supports DSR (direct server return), Maglev hashing, session affinity, graceful backend termination, topology-aware routing and `externalTrafficPolicy`.
+kube-proxy replacement, enabled with `kubeProxyReplacement: true`, takes over ClusterIP, NodePort, LoadBalancer, externalIPs and hostPort handling. Socket-LB resolves the backend at `connect()` for in-cluster clients, so pod-to-Service traffic needs no per-packet DNAT and no conntrack. External traffic goes through eBPF NAT. The replacement also supports direct server return (DSR), which lets the backend answer the client without sending the reply back through the node that received the request, Maglev hashing, session affinity, graceful backend termination, topology-aware routing and `externalTrafficPolicy`.
 
 Host routing bypasses iptables and the host network stack for pod-to-pod and pod-to-external flows. `bpf.hostRouting=true` provides the legacy iptables bypass. Newer kernels can use netkit devices in place of veth, which lowers overhead. BIG TCP is also available. The bandwidth manager limits egress rate with EDT, using the `kubernetes.io/egress-bandwidth` annotation and an optional BBR setting, which helps share NIC bandwidth fairly.
 
@@ -361,7 +361,7 @@ Start with the self-checking Python lab, which runs locally and needs no cluster
 python3 code/part05/overlay_bgp_cilium_planner_lab.py
 ```
 
-Next, on a 3-node cluster with `calicoctl` or `cilium`/`hubble`, work through the exercises below. All interactive shell steps are `untested here`.
+Next, on a 3-node cluster with `calicoctl` or `cilium`/`hubble`, work through the exercises below. The shell steps below have not been run against live hardware.
 
 1. Start with an overlay baseline. Install Flannel (VXLAN) or Calico VXLAN on a 3-node cluster. Capture VXLAN on the underlay, compute the MTU, and run iperf3 pod-to-pod. Then view `bridge fdb` and `ip -d link show flannel.1`.
 2. Build a routed Calico setup with FRR. Create a containerlab topology with two ToRs and a spine (2.27). Run Calico with `ipipMode: Never`, `vxlanMode: Never` and `nodeToNodeMeshEnabled: false`, and peer the nodes to the ToRs. Verify the routes at the spine, run iperf3, and compare the results with the overlay. Then fail a node and a ToR link, and measure convergence with and without BFD.
@@ -405,14 +405,15 @@ Each question points back to one of the sections above.
 
 ## Exercises
 
-The six exercises below ask you to explain each mode using the helper functions in `code/part05/overlay_bgp_cilium_planner.py`.
+Each exercise uses a helper function in `code/part05/overlay_bgp_cilium_planner.py`.
 
-1. Start with overlay encapsulation and native routing, which cover VXLAN, Geneve, IPIP and WireGuard. This topic draws on Production Kubernetes chapter 5 and Networking and Kubernetes chapters 4 to 5. Trace the Section 2 sequence diagram for a packet from `Pod A` (`10.244.1.5` on `Node A` `192.168.0.11`) to `Pod B` (`10.244.2.9` on `Node B` `192.168.0.12`) over VXLAN (UDP port `4789`, 24-bit VNI, FDB/neighbor lookup). Then use `select_calico_cross_subnet_mode()` in `code/part05/overlay_bgp_cilium_planner.py` to explain how Calico `CrossSubnet` combines native intra-rack routing with cross-rack encapsulation.
-2. Next, cover routed BGP designs with Calico, which involve `Felix`, `BIRD`, `Typha`, `/26` `IPPool` blocks and BGP topologies. Using `compute_bgp_session_counts()` in `code/part05/overlay_bgp_cilium_planner.py`, calculate the total BGP session count for 500 nodes under three designs. The first is a Node-to-Node Full Mesh, which gives `124,750` sessions. The second uses 3 Route Reflectors, which gives `1,494` sessions. The third is eBGP Peering with Dual ToR Switches, which gives `1,000` sessions. Then trace the `BGPConfiguration`, `BGPPeer` and `IPPool` manifests in Section 3.
-3. Then study Cilium's eBPF datapath, covering label-based security identities, BPF maps, the `tc`, `XDP` and `cgroup` hooks, and `netkit`. Using `compare_policy_scaling_ip_vs_identity()` in `code/part05/overlay_bgp_cilium_planner.py`, explain how Cilium derives numeric Security Identities from Pod labels. Explain why identity-based BPF policy maps stay `O(label sets)`, using `2` entries instead of `500,000` IP pairs across `1,000 x 500` Pods. Then explain how `bpf.hostRouting=true` and `netkit` bypass the host `iptables` stack.
-4. Next is Cilium's `kubeProxyReplacement`, Direct Server Return (`DSR`), Maglev consistent hashing and the BGP Control Plane. Trace the two Helm installation profiles in Section 4. One is tunnel VXLAN mode. The other is native routing with the BGP Control Plane, `loadBalancer.mode=dsr` and `loadBalancer.algorithm=maglev`. Explain how DSR eliminates the return-path node hop for external `NodePort` and `LoadBalancer` traffic, and what MTU reservation DSR requires.
-5. Then look at selecting and hardening the primary CNI on multi-homed bare-metal GPU clusters. Using `select_primary_cni_node_interface()` in `code/part05/overlay_bgp_cilium_planner.py`, explain why multi-homed GPU nodes break CNI IP autodetection. These nodes have 1 management NIC, 1 storage NIC and 8 RDMA `ens1f*`/`ib*` NICs. Autodetection stays broken unless `IP_AUTODETECTION_METHOD=interface=eth0` (Calico) or `--set devices=eth0` (Cilium) and `kubelet --node-ip` are pinned explicitly.
-6. Finally, cover benchmarking, observability with `Hubble`, `Tetragon` and `calicoctl`, and safe live CNI migration. Design the Section 7 benchmark matrix with `iperf3`, `netperf TCP_RR`, `mpstat` and `ethtool -k` offloads across 100 to 10,000 Services. Then outline how to safely migrate a cluster from Flannel or Calico to Cilium without a cluster-wide outage.
+1. A packet leaves Pod A on Node A for Pod B on Node B over VXLAN. Trace it with the Section 2 diagram, using the pod addresses and the UDP port given there. Say where the 24-bit VXLAN network identifier (VNI) and the forwarding database (FDB) enter. Production Kubernetes, Chapter 5, gives the background.
+2. Run `select_calico_cross_subnet_mode()`. Explain how Calico `CrossSubnet` routes natively inside a rack and encapsulates between racks.
+3. Run `compute_bgp_session_counts()` for 500 nodes. Check the three results: 124,750 sessions for a full mesh, 1,494 with three route reflectors, and 1,000 with eBGP to dual top-of-rack switches. Then read the `BGPConfiguration`, `BGPPeer` and `IPPool` manifests in Section 3.
+4. Run `compare_policy_scaling_ip_vs_identity()`. Explain how Cilium turns pod labels into numeric security identities. Then explain why an identity-based policy map holds 2 entries where an IP-based one would need 500,000.
+5. Read the two Helm profiles in Section 4. One uses VXLAN tunnelling. The other uses native routing with BGP, Direct Server Return (DSR) and Maglev hashing. Explain what DSR removes from the return path, and what it costs in MTU.
+6. Run `select_primary_cni_node_interface()` for a GPU node with one management NIC, one storage NIC and eight RDMA NICs. Say why CNI address autodetection breaks, and how `IP_AUTODETECTION_METHOD` for Calico or `devices` for Cilium fixes it.
+7. Design the benchmark matrix from Section 7 with `iperf3`, `netperf TCP_RR` and `mpstat`. Then outline how you would move a live cluster from Flannel or Calico to Cilium without a cluster-wide outage.
 
 ## Checkpoint questions (20)
 
@@ -582,4 +583,4 @@ Check `ethtool -k <nic>` for these two groups.
   - `networking-and-kubernetes` — James Strong & Vallery Lancey, *Networking and Kubernetes*, **Chapters 4–6** (CNI plugins, Cilium `cilium-cni` and connectivity checks, Calico, and cloud VPC-native networking).
 - **Run here:** `python3 code/part05/overlay_bgp_cilium_planner_lab.py` (3 passed, 0 failed).
 - **Explicitly labelled inferences:** The `compute_bgp_session_counts`, `select_calico_cross_subnet_mode`, `compare_policy_scaling_ip_vs_identity`, and `select_primary_cni_node_interface` models in `code/part05/overlay_bgp_cilium_planner.py` and the Calico `BGPConfiguration`/`BGPPeer`/`IPPool` and Cilium Helm/`CiliumBGPPeeringPolicy` configurations are the author's constructions. They synthesize Production Kubernetes chapter 5 and Networking and Kubernetes chapters 4 to 6, plus original study items 21, 22, 23, 24, 25, 26, 27, 28, 29, 30, 31, 32, 33, 34, and 35.
-- **Not verified on live hardware:** Live `calicoctl`, `cilium`, `hubble`, `containerlab`, `iperf3`, and `netperf` executions (`UDP 4789`/`8472`/`6081`, `IPIP` proto `4`, `20`B/`50`B/`60`B overheads, ASN `65101`/`65102`/`65201`, `/26` blocks, `10.244.0.0/16`, `192.168.100.0/24`, Cilium `1.16.0`, `mtu=9000`, `holdTimeSeconds: 9, keepAliveTimeSeconds: 3`, `50-80%` line rate, `10-30 µs` latency, `8972` ping) are marked (`untested here`) where not executed by `overlay_bgp_cilium_planner_lab.py`.
+- **Not verified on live hardware:** Live `calicoctl`, `cilium`, `hubble`, `containerlab`, `iperf3`, and `netperf` executions (`UDP 4789`/`8472`/`6081`, `IPIP` proto `4`, `20`B/`50`B/`60`B overheads, ASN `65101`/`65102`/`65201`, `/26` blocks, `10.244.0.0/16`, `192.168.100.0/24`, Cilium `1.16.0`, `mtu=9000`, `holdTimeSeconds: 9, keepAliveTimeSeconds: 3`, `50-80%` line rate, `10-30 µs` latency, `8972` ping) are marked (not run against live hardware here) where not executed by `overlay_bgp_cilium_planner_lab.py`.

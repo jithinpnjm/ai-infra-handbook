@@ -129,7 +129,7 @@ The sandbox gives the pod its network, so `RunPodSandbox` builds it before any a
 
 When CNI fails, the events show `FailedCreatePodSandBox ... failed to set up sandbox container network`. The common causes are a missing CNI binary or config, an exhausted IP pool, corrupted IPAM state, MTU or route conflicts, and a CNI agent that has not started yet. Nodes stay `NotReady` until that agent runs.
 
-### How CNI `ADD`, IPAM, `readinessGates`, and `podCIDRs` Work (`NK` Chapters 3–4 & `PK` Chapter 5)
+### How CNI `ADD`, IPAM, `readinessGates`, and `podCIDRs` Work (*Networking and Kubernetes* Chapters 3–4 and *Production Kubernetes* Chapter 5)
 
 In *Networking and Kubernetes* (Chapters 3 and 4) and *Production Kubernetes* (Chapter 5), James Strong, Vallery Lancey, and Josh Rosso et al. trace the exact kernel and control-plane plumbing during `RunPodSandbox`. The first piece is the per-node Pod CIDR. When `kubeadm init --pod-network-cidr 10.244.0.0/16` sets `--cluster-cidr` on `kube-controller-manager`, and the controller runs with `--allocate-node-cidrs=true`, `--cidr-allocator-type=RangeAllocator`, `--node-cidr-mask-size-ipv4=24` and `--node-cidr-mask-size-ipv6=64`, the node IPAM controller gives each `Node` a `/24` slice. That slice appears in `spec.podCIDR` and in the dual-stack array `spec.podCIDRs`. The same flag can take `10.30.0.0/16` instead. CNI operators can also manage block allocation through CRDs. Cilium uses `CiliumNode` `spec.ipam.podCIDRs`, and Calico uses `ipPools` with `blockSize: 26`.
 
@@ -283,7 +283,7 @@ Begin with the self-checking Python lab, and run it locally. It checks the analy
 python3 code/part05/pod_lifecycle_kernel_trace_lab.py
 ```
 
-Next, move to a Linux Kubernetes node that has `crictl`, `nsenter` and `ip`. All interactive shell steps below are `untested here`. Work through these exercises in order.
+Next, move to a Linux Kubernetes node that has `crictl`, `nsenter` and `ip`. The shell steps below have not been run against live hardware. Work through these exercises in order.
 
 1. Trace a pod. While you apply a pod, tail `kubectl get events -w`, the scheduler log, the kubelet journal and the containerd journal. Then build a timeline with timestamps for each component.
 2. Inspect the kernel artefacts. For a running pod, list its namespaces and compare their inodes with the pause container. Read its cgroup files, mount info, capability masks and seccomp status. Use `nsenter` to run `ip addr`, `ss -ltn` and `mount` inside the pod. Find the host-side veth and its peer index, and list the iptables or nft rules that reference the pod IP.
@@ -329,14 +329,17 @@ Each question below maps to a stage in this chapter.
 
 ## Exercises
 
-1. Trace the 20-step pod lifecycle from `kubectl apply` to a running process, and then to `DELETE`. Use the Section 1 sequence diagram. Walk through `kube-apiserver`, `kube-scheduler`, `kubelet` (`syncPod`), `DevicePlugin` (`Allocate`), CSI (`NodeStageVolume` and `NodePublishVolume`), containerd (`RunPodSandbox`, then `PullImage`, `CreateContainer` and `StartContainer`), CNI (`ADD`), and `runc` with the kernel. Name the observable status condition or event at each boundary.
-2. You should explain how the kubelet's pod worker goroutines and PLEG drive `syncPod`. Then explain why a pod that already passed `kube-scheduler` can still be rejected at node admission with `TopologyAffinityError` or `OutOfnvidia.com/gpu`. Finish with how `/var/lib/kubelet/pods/<uid>/` works, and how CSI `NodeStageVolume` followed by `NodePublishVolume` works.
-3. This exercise draws on *Networking and Kubernetes* Chapters 3 and 4, and on *Production Kubernetes* Chapter 5. Using `verify_pod_namespace_inodes()` in `code/part05/pod_lifecycle_kernel_trace.py`, explain which namespaces an application container shares with the `pause` container (`net`, `ipc`, `uts`, `cgroup`), and which it keeps isolated (`mnt`, `pid`). Then trace how `CNI_COMMAND=ADD` wires the `veth` pair, how the IPAM JSON response comes back, how `/etc/resolv.conf` is set, and how `readinessGates` apply.
-4. Using `verify_gpu_cgroup_device_isolation()` in `code/part05/pod_lifecycle_kernel_trace.py`, you trace how the kubelet's device manager calls `Allocate` on `/var/lib/kubelet/device-plugins/`. Trace how the runtime injects `/dev/nvidia*` and `libcuda.so.*`, and how the cgroup v2 eBPF device allow-list stops a container from reaching unallocated GPUs on the same host. Cover RDMA attachment as well.
-5. For 64-node GPU jobs, use `compute_pod_startup_intervals()` in `code/part05/pod_lifecycle_kernel_trace.py` to explain how to compute `scheduling`, `initialization`, `container_start`, `readiness_probe`, and `kubelet_pod_start_sli_duration_seconds`, which excludes image pull time. Then list 6 concrete optimizations that would cut a 12-minute cold start down to under 90 seconds.
-6. Trace the 5 steps of pod termination. Start at `deletionTimestamp`. Next, `EndpointSlice` removal and `preStop` run in parallel. Then `SIGTERM`, then `SIGKILL`, then `CNI DEL` with CSI `NodeUnpublishVolume`, and finally the delete with `gracePeriod 0`. Explain why a process stuck in kernel `D` state on a dead NFS or Lustre mount ignores `SIGKILL` and keeps the pod in `Terminating`.
+Each exercise follows one stage of a pod's life. The helper functions live in `code/part05/pod_lifecycle_kernel_trace.py`.
 
-Start with the exercise that matches the stage you are weakest on.
+1. Trace a pod from `kubectl apply` to a running process, using the sequence diagram in Section 1. At each hand-off between components, name the status condition or event you would see if it stalled.
+2. Explain how the kubelet's per-pod worker drives `syncPod`. The pod lifecycle event generator (PLEG) is the part that notices container state changes on the node. Then explain how a pod that passed the scheduler can still be rejected on the node with `TopologyAffinityError` or `OutOfnvidia.com/gpu`.
+3. Run `verify_pod_namespace_inodes()`. Say which namespaces an application container shares with the `pause` container and which it keeps to itself. Networking and Kubernetes, Chapters 3 and 4, and Production Kubernetes, Chapter 5, give the background.
+4. Trace what `CNI_COMMAND=ADD` does. Cover the `veth` pair, the address the IPAM plugin returns, and the `/etc/resolv.conf` the pod receives. Then say what `readinessGates` add.
+5. Run `verify_gpu_cgroup_device_isolation()`. Say how the device manager's `Allocate` call ends with `/dev/nvidia*` inside one container, and how the cgroup v2 device filter keeps other GPUs out.
+6. Run `compute_pod_startup_intervals()` for a 64-node GPU job. Explain why `kubelet_pod_start_sli_duration_seconds` leaves out image pull time. Then list six changes that could take a 12-minute cold start to under 90 seconds.
+7. Trace the five steps of pod termination, starting at `deletionTimestamp`. Then explain why a process stuck in kernel `D` state on a dead NFS or Lustre mount ignores `SIGKILL` and leaves the pod in `Terminating`.
+
+If you are unsure where to begin, start with the exercise for the stage where your own pods stall most often.
 
 ## Checkpoint questions (20)
 
@@ -404,7 +407,7 @@ By default, `KubeletConfiguration.serializeImagePulls` is `true`. So the kubelet
 </details>
 
 <details>
-<summary>10. How does `kubelet` execute `exec` probes versus `httpGet`/`tcpSocket`/`grpc` probes, and what CNI firewall rule does this require (`NK` Chapter 4)?</summary>
+<summary>10. How does `kubelet` execute `exec` probes versus `httpGet`/`tcpSocket`/`grpc` probes, and what CNI firewall rule does this require (*Networking and Kubernetes*, Chapter 4)?</summary>
 
 - **`exec` probe:** The kubelet calls CRI `ExecSync` through `containerd`. The shim and `runc` then run the probe command inside the container's own namespaces and cgroups. Frequent, heavy `exec` probes use the container's CPU, memory and PIDs.
 - **`httpGet`, `tcpSocket`, and `grpc` probes:** The kubelet runs in the host network namespace. It opens a connection from the node's local IP to `<podIP>:<port>`. As *Networking and Kubernetes* Chapter 4 warns, every CNI plugin and `NetworkPolicy` implementation must allow traffic from the local host node into all Pods on that node. Otherwise a `default-deny-ingress` `NetworkPolicy` blocks the kubelet's own health probes, and healthy Pods fail their liveness and readiness checks.
@@ -457,7 +460,7 @@ A process in uninterruptible kernel I/O sleep (`TASK_UNINTERRUPTIBLE`, which `ps
 </details>
 
 <details>
-<summary>18. What is `spec.readinessGates` on a Pod (`NK` Chapter 4), and when is it used?</summary>
+<summary>18. What is `spec.readinessGates` on a Pod (*Networking and Kubernetes*, Chapter 4), and when is it used?</summary>
 
 Even after every container passes its `readinessProbe` (`ContainersReady=True`), an external load balancer may still need 10 to 20 seconds to register the new Pod IP and pass its health checks. An example is an AWS ALB or GCP NEG controller, which configures cloud target groups directly to Pod IPs. If you add an entry to `spec.readinessGates`, such as `conditionType: target-health.alb.ingress.k8s.aws/...`, keeps `Ready` from becoming `True`. That also stops a rolling update from terminating old Pods. `Ready` stays false until the external controller patches that custom condition to `True` in `pod.status.conditions`.
 </details>
@@ -491,4 +494,4 @@ Even after every container passes its `readinessProbe` (`ContainersReady=True`),
 - **Run here:** `python3 code/part05/pod_lifecycle_kernel_trace_lab.py` (3 passed, 0 failed).
 - **Explicitly labelled inferences:** The `compute_pod_startup_intervals`, `verify_pod_namespace_inodes`, and `verify_gpu_cgroup_device_isolation` models in `code/part05/pod_lifecycle_kernel_trace.py` and the 20-step end-to-end sequence diagram (Section 1) are the author's constructions. They synthesize *Kubernetes: Up and Running* Chapter 5, *Production Kubernetes* Chapters 3 and 5, *Networking and Kubernetes* Chapters 3 and 4, and *How Linux Works* Chapter 17. They also draw on the original study items 21, 22, 23, 24, 25, 26, 27, 28, 29, 30, 31, 32, 33, 34, 35, 36, 37, 38, 39, and 40.
 - **Check before you rely on it:** Use the sources above to check any claim in this chapter. You can run the lab yourself to confirm the parts it covers, and you should check the rest against the sources.
-- **Not verified on live hardware:** Live `crictl`, `nsenter`, `ip`, and `journalctl -u kubelet` commands (`64`-node job, `12 minutes` vs `90 seconds`, `100 to 500 ms` sandbox, `20 GB` image, `5 to 60 s` PVC attach, `ndots:5`, `100` GPU nodes, `10 s` Lease, `5 minutes` node status, `memory.available<100Mi`, `30 s` grace, exit code `137`) are marked (`untested here`) where not executed by `pod_lifecycle_kernel_trace_lab.py`.
+- **Not verified on live hardware:** Live `crictl`, `nsenter`, `ip`, and `journalctl -u kubelet` commands (`64`-node job, `12 minutes` vs `90 seconds`, `100 to 500 ms` sandbox, `20 GB` image, `5 to 60 s` PVC attach, `ndots:5`, `100` GPU nodes, `10 s` Lease, `5 minutes` node status, `memory.available<100Mi`, `30 s` grace, exit code `137`) are marked (not run against live hardware here) where not executed by `pod_lifecycle_kernel_trace_lab.py`.

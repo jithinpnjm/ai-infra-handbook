@@ -24,7 +24,7 @@ lab_venue: "GCP / GKE"
 
 Picture an inference endpoint that suddenly gets a burst of traffic. Traffic like this is bursty, and over-provisioning for it is expensive. Each replica of a 70B model occupies several GPUs and takes minutes to start, so you cannot add replicas in a hurry. Scale too late and you break your latency SLOs. Scale too early, or never scale down, and you burn thousands of dollars per day.
 
-Classic CPU-utilisation autoscaling is nearly useless for GPU model servers. The CPU stays low while the GPU saturates. Throughput depends on request queues, batch sizes and KV-cache pressure, and none of those show up in CPU load.
+CPU-utilisation autoscaling is nearly useless for GPU model servers. The CPU stays low while the GPU saturates. Throughput depends on request queues, batch sizes and KV-cache pressure, and none of those show up in CPU load.
 
 Batch and training workloads need different scaling. Queue-driven worker pools, elastic jobs and node pools that appear when jobs are admitted each solve a different part of the problem.
 
@@ -72,7 +72,7 @@ The same logic applies to predictable load. If traffic rises at the same hours e
 
 Autoscaling works best when an application is split into parts that can grow on their own. Many teams already separate a web app from its database, so the web tier can scale alone. Microservices go further. An online store can grow during a sale while a blog service stays the same size.
 
-Splitting an app also adds management work, because you now run many workloads. Automation becomes more important with each one you add. At some point it becomes essential.
+Splitting an app also adds management work, because you now run many workloads. Automation becomes more important with each one you add. At some point you cannot manage them by hand.
 
 Small, quick workloads suit autoscaling best. If a container image is small and the app starts fast, a new replica joins the pool quickly. An image over a gigabyte, paired with a startup script that runs for minutes, responds slowly to load changes. Those apps make poor autoscaling candidates, so keep this in mind when you design them.
 
@@ -405,7 +405,7 @@ Cluster overprovisioning uses placeholder pods that do three things.
 
 Because each placeholder reserves a whole node, the replica count of the overprovisioner Deployment sets how many standby nodes you hold. Preparing for a campaign or launch is as simple as raising that count.
 
-Create a priority class with a negative value, for example `value: -1` as in the book (the lab below uses `-10`; any value below zero works), and apply it to the overprovisioner Deployment. Every other workload then outranks these pods by default. When a real pod needs the room, the overprovisioner pod is evicted immediately. The evicted pod goes Pending, which triggers the Cluster Autoscaler to provision a new node to stand by.
+Create a priority class with a negative value, for example `value: -1` as in *Production Kubernetes* (the lab below uses `-10`; any value below zero works), and apply it to the overprovisioner Deployment. Every other workload then outranks these pods by default. When a real pod needs the room, the overprovisioner pod is evicted immediately. The evicted pod goes Pending, which triggers the Cluster Autoscaler to provision a new node to stand by.
 
 Figure 13-6 shows one placeholder replica, but you can run as many as the buffer requires.
 
@@ -497,7 +497,7 @@ Start on your own machine. Run the self-checking Python lab first. It checks the
 python3 code/part05/autoscaling_hpa_ca_simulator_lab.py
 ```
 
-Next, move to a `kind` or cloud cluster and work through the exercises below. The interactive shell steps are marked `untested here`.
+Next, move to a `kind` or cloud cluster and work through the exercises below. The shell steps have not been run against live hardware.
 
 1. Deploy a CPU-bound app with requests and set the HPA to 50% CPU. Generate load with `hey`, and watch the replicas, `describe hpa` and `kubectl top`. Test the tolerance band and the stabilisation by dropping the load. Then add `behavior` policies and compare the results.
 2. Remove the CPU requests and observe `<unknown>`. Then fix the requests and confirm that the metric comes back.
@@ -540,14 +540,17 @@ Next, move to a `kind` or cloud cluster and work through the exercises below. Th
 
 ## Exercises
 
-You can work through these six exercises in order, checking each answer against the code or manifest it names.
+Check each answer against the code or manifest it names. The simulator lives in `code/part05/autoscaling_hpa_ca_simulator.py`.
 
-1. Start with the HPAv2 algorithm and the metric APIs (`Resource`, `ContainerResource`, `Pods`, `Object`, `External`) and with behavior tuning (Production Kubernetes Chapter 13). Use `compute_hpa_desired_replicas()` in `code/part05/autoscaling_hpa_ca_simulator.py` to trace the `embeddings` `HorizontalPodAutoscaler` manifest in Section 2. Explain how HPA evaluates multiple metrics, and why a $\pm 10\%$ tolerance band applies. Then explain how the `scaleUp` settings (`Percent: 100` and `Pods: 4`, with `selectPolicy: Max`) and the `scaleDown` setting (`stabilizationWindowSeconds: 600`) prevent overshoot and flapping. Finish by explaining why missing `resources.requests` causes `<unknown>` utilization.
-2. Explain why CPU utilization and raw `DCGM_FI_DEV_GPU_UTIL` make poor primary autoscaling signals for LLM serving. Compare them with `vllm:num_requests_waiting` (queue depth), in-flight concurrency, and `vllm:gpu_cache_usage_perc` (KV-cache utilization). This covers the choice of signals for `vLLM`, `Triton` and `TGI`. Then trace the `prometheus-adapter` custom and external rules in Section 2.
-3. Compare the VPA update modes (`Off`, `Initial`, `Recreate`/`Auto`, `InPlaceOrRecreate`) and the components that serve them (Production Kubernetes Chapter 13). Explain why `Off` mode with Goldilocks is the safest way to right-size requests. Then explain why running VPA in `Auto` and HPA on the same CPU or memory metric causes an oscillation loop.
-4. Trace the `batch-embed` `ScaledObject`, which combines `kafka`, `prometheus` and business-hours `cron` triggers, along with the `transcribe-job` `ScaledJob`, both from Section 4. Then explain how Knative and KServe, with their activator request buffering, differ from KEDA when an inference endpoint scales from `0 -> 1`.
-5. Use `evaluate_ca_node_scale_down()` and `simulate_overprovisioning_pause_pods()` in `code/part05/autoscaling_hpa_ca_simulator.py`. Explain how the Cluster Autoscaler's scale-up expanders and scale-down checks work. Then explain how Karpenter's `NodePool` consolidation works, using `WhenEmptyOrUnderutilized` and `do-not-disrupt`. Finish by explaining, in your own words, how negative-priority `pause` pods (Production Kubernetes Chapter 13, `Figures 13-6` and `13-7`) hide the 10-minute GPU node boot delays.
-6. Explain why reactive, pod-by-pod Cluster Autoscaler scale-up fails for 16-node synchronous training jobs. Then explain how `ProvisioningRequest` (`autoscaling.x-k8s.io`) with a Kueue `AdmissionCheck` guarantees all-or-nothing node provisioning. Finally, list 5 techniques that could cut 70B model cold-start times from 12 minutes to under 60 seconds, and say which one you would try first.
+1. Run `compute_hpa_desired_replicas()` on the `embeddings` HorizontalPodAutoscaler from Section 2. Explain how HPA handles several metrics, and why a 10 percent tolerance band applies.
+2. Read the `scaleUp` and `scaleDown` settings in that manifest. Say how the 600-second stabilization window prevents flapping. Then say why missing `resources.requests` makes utilization show as `<unknown>`.
+3. Explain why CPU and raw `DCGM_FI_DEV_GPU_UTIL` make poor signals for LLM serving. Compare them with queue depth and KV-cache utilization from vLLM. Then read the `prometheus-adapter` rules in Section 2.
+4. Compare the VPA modes `Off`, `Initial`, `Recreate` and `InPlaceOrRecreate`. Explain why `Off` with Goldilocks is the safest way to right-size requests. Then explain why VPA in `Auto` and HPA on the same CPU metric fight each other.
+5. Read the `batch-embed` `ScaledObject` and the `transcribe-job` `ScaledJob` in Section 4. Then explain how Knative and KServe differ from KEDA when an endpoint scales from 0 to 1.
+6. Run `evaluate_ca_node_scale_down()` and say what blocks a scale-down. Then explain how Karpenter consolidation works with `WhenEmptyOrUnderutilized` and `do-not-disrupt`.
+7. Run `simulate_overprovisioning_pause_pods()`. Say in your own words how low-priority pause pods hide a 10-minute GPU node boot. Production Kubernetes, Chapter 13, shows the idea in Figures 13-6 and 13-7.
+8. Explain why pod-by-pod scale-up fails for a 16-node synchronous training job. Then explain how a `ProvisioningRequest` with a Kueue `AdmissionCheck` gives all-or-nothing provisioning.
+9. List five ways to cut a 70B model cold start from 12 minutes to under 60 seconds, and say which you would try first.
 
 ## Checkpoint questions (20)
 
@@ -742,4 +745,4 @@ Make two changes to any HPA- or KEDA-managed Deployment in GitOps.
   - `production-kubernetes` — Josh Rosso, Rich Lander, Alexander Brand & John Harris, *Production Kubernetes*, **Chapter 13: Autoscaling** (read in full: service decomposition for independent scaling, when NOT to autoscale, HPA algorithm and 10% tolerance band, custom metrics via `prometheus-adapter`, VPA `Recommender`/`Updater`/`Admission Controller` and `Off` vs `Recreate` mode, HPA + VPA conflict, `aws-cluster-autoscaler` `--nodes=1:10:worker-auto-scaling-group`, pod-shuffling impact, and `cluster-overprovisioner` negative-priority `pause` pods in `Figures 13-6` and `13-7`).
 - **Run here:** `python3 code/part05/autoscaling_hpa_ca_simulator_lab.py` (3 passed, 0 failed).
 - **Explicitly labelled inferences:** The `compute_hpa_desired_replicas`, `evaluate_ca_node_scale_down`, and `simulate_overprovisioning_pause_pods` models in `code/part05/autoscaling_hpa_ca_simulator.py` and the `embeddings` `HorizontalPodAutoscaler`, `prometheus-adapter` rules, `batch-embed` `ScaledObject`, `transcribe-job` `ScaledJob`, and `gpu-inference` Karpenter `NodePool` manifests are the author's constructions synthesizing Production Kubernetes Chapter 13 and upstream Kubernetes/KEDA/Karpenter documentation (plus original study items 21, 22, 23, 24, 25, 26, 27, 28, 29, 30, 31, 32, 33, 34, and 35).
-- **Not verified on live hardware:** Live `HPA`, `VPA`, `KEDA`, `Cluster Autoscaler`, and `Karpenter` executions (`70B` model, `15 s` HPA sync, `0.1` tolerance, `5 min` initialization, `minReplicas: 2, maxReplicas: 40`, `averageUtilization: 60`, `stabilizationWindowSeconds: 600`, `70-80%` KV-cache, `cooldownPeriod: 300`, `0.5` CA threshold / `10 min` unneeded time, `expireAfter: 720h`, `limits: nvidia.com/gpu: 64`) are marked (`untested here`) where not executed by `autoscaling_hpa_ca_simulator_lab.py`.
+- **Not verified on live hardware:** Live `HPA`, `VPA`, `KEDA`, `Cluster Autoscaler`, and `Karpenter` executions (`70B` model, `15 s` HPA sync, `0.1` tolerance, `5 min` initialization, `minReplicas: 2, maxReplicas: 40`, `averageUtilization: 60`, `stabilizationWindowSeconds: 600`, `70-80%` KV-cache, `cooldownPeriod: 300`, `0.5` CA threshold / `10 min` unneeded time, `expireAfter: 720h`, `limits: nvidia.com/gpu: 64`) are marked (not run against live hardware here) where not executed by `autoscaling_hpa_ca_simulator_lab.py`.

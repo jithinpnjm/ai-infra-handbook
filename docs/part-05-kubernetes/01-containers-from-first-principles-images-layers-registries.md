@@ -591,7 +591,7 @@ Most of your day with containers is spent starting them, watching them, stopping
 
 ```bash
 docker run -d --name web -p 8080:80 --restart unless-stopped --memory 512m --cpus 1 nginx:1.27
-# In the book's (*Kubernetes: Up and Running*, Chapter 2) example: cap memory + swap and set relative CPU weight with --cpu-shares (untested here)
+# Example from Kubernetes: Up and Running, Chapter 2: cap memory and swap, and set a relative CPU weight with --cpu-shares
 docker run -d --name kuard --publish 8080:8080 --memory 200m --memory-swap 1G --cpu-shares 1024 gcr.io/kuar-demo/kuard-amd64:blue
 docker ps -a; docker logs -f --tail 100 web; docker exec -it web sh
 docker stats --no-stream; docker top web; docker inspect web | jq '.[0].HostConfig'
@@ -608,7 +608,7 @@ podman run --rm -it --userns=keep-id alpine id                           # rootl
 
 The first run command starts a web container in the background, with a restart policy and memory and CPU limits. The second one comes from *Kubernetes: Up and Running*, Chapter 2. It caps memory and swap, and it sets a relative CPU weight with `--cpu-shares`. That second example has not been tested here. Notice that `docker stop` sends SIGTERM first, then SIGKILL after the grace period, which is 10 seconds by default. Use `--time` to change that wait.
 
-Two pairs of flags are easy to confuse. `--cpus` sets a hard CFS quota on CPU cores, so the container is throttled even when the host is idle. `--cpu-shares` sets a relative CPU weight, which matters only when the CPU is contended. The default share weight is `1024`, and it corresponds to Kubernetes `resources.requests.cpu`. The memory pair works the same way. `--memory` is the RAM limit, which is `200m` in the book's example. `--memory-swap` is the combined limit for RAM plus swap, which is `1G` in the same example.
+Two pairs of flags are easy to confuse. `--cpus` sets a hard CFS quota on CPU cores, so the container is throttled even when the host is idle. `--cpu-shares` sets a relative CPU weight, which matters only when the CPU is contended. The default share weight is `1024`, and it corresponds to Kubernetes `resources.requests.cpu`. The memory pair works the same way. `--memory` is the RAM limit, which is `200m` in the Chapter 2 example. `--memory-swap` is the combined limit for RAM plus swap, which is `1G` in the same example.
 
 Podman is CLI-compatible with Docker, so you can alias one as the other with `alias docker=podman`. It is daemonless and starts a process for each container. It supports pods (`podman pod`), it can generate Kubernetes YAML (`podman generate kube`), and it can generate systemd units and Quadlet files.
 
@@ -624,7 +624,7 @@ gcr.io/kuar-demo/kuard-amd64:blue
 
 The `-d` option runs the container in the background, as a daemon. The `--name kuard` option gives it a friendly name. The `--publish` option maps port 8080 on your machine to port 8080 in the container, and `-p` is the short form. The mapping is needed because each container has its own IP address. An app listening on localhost inside the container does not listen on your machine. Without the mapping, your machine cannot reach it.
 
-The book's text points you to `http://localhost:3000` in a browser, but this command publishes port 8080. Use `http://localhost:8080`, or check it from the command line with `curl http://localhost:8080`. The `kuard` app also has more features that later chapters of the book explore.
+*Kubernetes: Up and Running* points you to `http://localhost:3000` in a browser, but this command publishes port 8080. Use `http://localhost:8080`, or check it from the command line with `curl http://localhost:8080`. The `kuard` app also has more features, which later chapters use.
 
 ### Cleaning up images
 
@@ -668,7 +668,7 @@ Start with the self-checking Python lab, and run it locally. It checks three thi
 python3 code/part05/oci_image_layers_lab.py
 ```
 
-After the Python lab, you move to a Linux host with Docker or Podman. The shell steps below are untested here, so you should run them and check the results yourself. The twelve exercises follow, and you will use the commands in each one.
+After the Python lab, you move to a Linux host with Docker or Podman. The shell steps below have not been run against live hardware, so run them and check the results yourself. Twelve exercises follow, and you will use the commands in each one.
 
 1. Start with the idea that a container is a process. Run a container, then find its host PID. List `/proc/<pid>/ns`, `cgroup` and `status`, and check CapEff, NoNewPrivs and Seccomp. Use `nsenter` to enter the net and mount namespaces. Then show that `kill -STOP` on the host PID freezes the container. Finally, set a memory limit, trigger an OOM kill with a small Python allocator, and read `OOMKilled`.
 2. Build a container by hand. Create a rootfs with `debootstrap`, or from `docker export`. Use `unshare --mount --pid --net --uts --ipc --fork`, then `chroot` or `pivot_root`, mount `/proc`, and run a shell. Add a cgroup v2 directory with `memory.max` and `pids.max`, and move the process into it. Compare your result with `runc spec` and `runc run` on the same rootfs.
@@ -716,14 +716,16 @@ These questions are the kind an interviewer might ask. Each one touches a main i
 
 ## Exercises
 
-These exercises connect the chapter's ideas to what happens on a real host. Each one names the code file or function to use, or the commands to trace.
+Each exercise asks you to watch a real host or one of the chapter's helper functions. Do them in order.
 
-1. Start with the kernel. Trace what the host kernel does when `docker run -d --name demo --memory 256m --cpus 0.5 nginx:1.27` runs. You can also use `--memory 200m --memory-swap 1G --cpu-shares 1024`, from *Kubernetes: Up and Running*, Chapter 2. List all 7 namespaces. Explain how `--cpus` (a hard CFS quota) differs from `--cpu-shares` (a `1024` relative weight). Then explain how `nsenter -t $PID -n` and `nsenter -t $PID -m` let you inspect the container from the host. The mechanisms to cover are namespaces, cgroups v2, capabilities, seccomp, LSMs and `overlayfs`.
-2. Work through the image format. Use `simulate_oci_layer_sizes()` in `code/part05/oci_image_layers.py`. Explain the JSON hierarchy, from an OCI Image Index (`application/vnd.oci.image.index.v1+json`) down to the layer blobs (`sha256:...`). Explain why a tag is mutable while a digest (`@sha256:...`) is not. Then explain why deleting a 500 MB file in a later `RUN rm` layer hides the file in `overlayfs`, without reducing the image download size. The background is in *Production Kubernetes*, Chapter 3, and *Kubernetes: Up and Running*, Chapter 2.
-3. Write a fast, small, secure Dockerfile. Use `simulate_dockerfile_cache_hits()` in `code/part05/oci_image_layers.py`. Trace why copying `requirements.lock` (or `package*.json`) before `src/` keeps the build cache valid when you edit code. Then show how the multi-stage build for `kuard` in *Kubernetes: Up and Running*, Chapter 2, and the Python wheel builder in Section 3 shrink the production image. Finally, explain how `RUN --mount=type=cache` and `RUN --mount=type=secret` work.
-4. Choose a base image from `scratch`, distroless, Alpine, Debian/Ubuntu or NVIDIA NGC. Explain why Alpine, which uses `musl` libc, breaks `glibc`-compiled Python wheels and NVIDIA CUDA binaries. Explain why a shell-form `ENTRYPOINT "python app.py"` swallows SIGTERM during Kubernetes pod termination, which causes a 30-second hang followed by SIGKILL. Then say when to use `--init` or `tini`.
-5. Design a registry for a 500-node GPU cluster that pulls a 25 GB PyTorch training image at the same time. Combine a containerd `hosts.toml` pull-through mirror backed by Harbor, P2P distribution with Spegel or Dragonfly, `zstd` compression, a lazy-pulling snapshotter (eStargz, SOCI or Nydus), and shared base layers.
-6. Look under the hood of GPU containers. Use `check_cuda_driver_compatibility()` in `code/part05/oci_image_layers.py`. Explain the boundary between the host kernel driver (`nvidia.ko` and `libcuda.so`) and the container's userspace libraries (`libcudart.so` and `libnccl.so`). State the forward and backward compatibility rules. Show how CDI, with `--device nvidia.com/gpu=all`, attaches a GPU. Then explain why PyTorch DataLoaders and NCCL fail with Docker's default 64 MB `/dev/shm`.
+1. Start a container with `docker run -d --name demo --memory 256m --cpus 0.5 nginx:1.27`. Ask what the host kernel did to start it. List the namespaces it created and the cgroup limits it set. The memory and swap flags in *Kubernetes: Up and Running*, Chapter 2, give a second variant to try.
+2. Explain the difference between `--cpus` and `--cpu-shares`. One is a hard quota and the other is a relative weight that only matters under contention. Then use `nsenter -t $PID -n` and `nsenter -t $PID -m` to look at the container from the host.
+3. Run `simulate_oci_layer_sizes()` in `code/part05/oci_image_layers.py`. Follow the JSON from the image index down to the layer blobs. Say why a tag can move but a digest cannot.
+4. Suppose a later `RUN rm` deletes a 500 MB file. Explain why the file disappears from the container but the image download does not shrink. The background is in *Production Kubernetes*, Chapter 3.
+5. Run `simulate_dockerfile_cache_hits()` in the same file. Say why copying `requirements.lock` before `src/` keeps the build cache valid when you edit code. Then describe what `RUN --mount=type=cache` and `RUN --mount=type=secret` each do.
+6. Pick a base image for a Python service from `scratch`, distroless, Alpine and Debian. Explain why Alpine's `musl` libc breaks many `glibc` Python wheels and CUDA binaries. Explain also why a shell-form `ENTRYPOINT "python app.py"` ignores SIGTERM and costs a 30-second wait before SIGKILL.
+7. Design a registry path for 500 nodes pulling a 25 GB training image at once. Choose between a pull-through mirror, peer-to-peer distribution, compression and lazy pulling, and say which two you would try first.
+8. Run `check_cuda_driver_compatibility()` and say which half of CUDA lives on the host and which half lives in the image. Then explain why NCCL and PyTorch DataLoaders fail with Docker's default 64 MB `/dev/shm`.
 
 ## Checkpoint questions (20)
 
@@ -879,7 +881,7 @@ Rootless mode has limits. You cannot bind host ports below 1024 without changing
 <details>
 <summary>19. What causes `exec user process caused: exec format error` when starting a container?</summary>
 
-There are two classic causes.
+There are two common causes.
 
 1. **CPU architecture mismatch.** You try to run an `arm64` ELF binary (on Apple Silicon, AWS Graviton or NVIDIA Grace) on an `x86_64` (`amd64`) host, or the reverse. This happens when there is no multi-arch image index. Build one with `docker buildx build --platform linux/amd64,linux/arm64`.
 2. **Missing `#!` shebang line.** An `ENTRYPOINT ["/app/start.sh"]` script is marked executable with `chmod +x`, but its first line does not start with `#!/usr/bin/env bash` or `#!/bin/sh`. Or the file has Windows `CRLF` (`\r\n`) line endings.
@@ -904,5 +906,5 @@ There are two classic causes.
   - `production-kubernetes` — Josh Rosso, Rich Lander, Alexander Brand & John Harris, *Production Kubernetes*, **Chapter 3: Container Runtime** (read in full: history of containers, the Open Container Initiative `OCI` Image Specification and Runtime Specification `config.json`, `containerd`, `CRI-O`, `runc`, and VM-based runtimes like `Kata Containers`).
   - `how-linux-works-3rd-edition` — Brian Ward, *How Linux Works*, 3rd ed., **Chapter 17: Virtualization** (sections 17.2 to 17.2.5: containers and their kernel features, Docker and Podman, the Alpine `hlw_test` build, the overlay mount, and container pitfalls).
 - **Run here:** `python3 code/part05/oci_image_layers_lab.py` (3 passed, 0 failed).
-- **Explicitly labelled inferences:** The `simulate_oci_layer_sizes`, `simulate_dockerfile_cache_hits`, and `check_cuda_driver_compatibility` models in `code/part05/oci_image_layers.py`, the multi-stage FastAPI + BuildKit `Dockerfile`, and the `hosts.toml` pull-through mirror config are the author's constructions applying `KUR` Chapter 2 and `PK` Chapter 3 to AI infrastructure containers (plus original study items 21, 22, 23, 24, 25, 26, 27, 28, 29, 30, 31, 32, 33, 34, 35, 36, 37, 38, 39, and 40).
-- **Not verified on live hardware:** Live `docker`, `podman`, `skopeo`, `crane`, `dive`, `nsenter`, and `nvidia-ctk cdi generate` commands (`10 to 30 GB`, `500` nodes, `256m`, `268435456`, `1.27`, `3.12-slim`, `10001`, `8000`, `12.4.1`, `24.05-py3`, `64 MB`, `200m`, `1G`, `1024`, `168h`) are marked (`untested here`) where not executed by `oci_image_layers_lab.py`.
+- **Explicitly labelled inferences:** The `simulate_oci_layer_sizes`, `simulate_dockerfile_cache_hits`, and `check_cuda_driver_compatibility` models in `code/part05/oci_image_layers.py`, the multi-stage FastAPI + BuildKit `Dockerfile`, and the `hosts.toml` pull-through mirror config are the author's constructions applying *Kubernetes: Up and Running* Chapter 2 and *Production Kubernetes* Chapter 3 to AI infrastructure containers (plus original study items 21, 22, 23, 24, 25, 26, 27, 28, 29, 30, 31, 32, 33, 34, 35, 36, 37, 38, 39, and 40).
+- **Not verified on live hardware:** Live `docker`, `podman`, `skopeo`, `crane`, `dive`, `nsenter`, and `nvidia-ctk cdi generate` commands (`10 to 30 GB`, `500` nodes, `256m`, `268435456`, `1.27`, `3.12-slim`, `10001`, `8000`, `12.4.1`, `24.05-py3`, `64 MB`, `200m`, `1G`, `1024`, `168h`) are marked (not run against live hardware here) where not executed by `oci_image_layers_lab.py`.

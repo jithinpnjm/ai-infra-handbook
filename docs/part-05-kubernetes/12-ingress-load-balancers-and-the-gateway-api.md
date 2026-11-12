@@ -161,7 +161,7 @@ spec:
           servicePort: 80
 ```
 
-This listing keeps the book's older field names, `serviceName` and `servicePort`. Check the current Ingress reference before you copy it into a cluster.
+This listing keeps the older field names from *Kubernetes: Up and Running*, `serviceName` and `servicePort`. Check the current Ingress reference before you copy it into a cluster.
 
 A common follow-on is subdomain-based routing. You assign one domain name to the platform, and each application gets a subdomain. A travel platform could use `hotels.cluster1.useast.example.com` and `flights.cluster1.useast.example.com`. The same idea supports SaaS tenants, with names such as `tenantA.example.com` and `tenantB.example.com`. Subdomain-based routing is one of the best strategies available here.
 
@@ -217,7 +217,7 @@ If all you have is a hostname, as on AWS, run `host -t a <address>` to get an IP
 
 ### Creating three sample services
 
-Before you route anything, you need upstream services to send traffic to. The book calls these backends. The next commands create three Deployments of the same `kuard` app. Each one runs three replicas on port 8080. The images differ only by tag: `blue`, `green` and `purple`. Each Deployment also gets a Service.
+Before you route anything, you need upstream services to send traffic to. These are the backends. The next commands create three Deployments of the same `kuard` app. Each one runs three replicas on port 8080. The images differ only by tag: `blue`, `green` and `purple`. Each Deployment also gets a Service.
 
 ```
 $ kubectl create deployment be-default \
@@ -496,13 +496,13 @@ You can run the controller as an autoscaled Deployment, or as a DaemonSet that u
 
 ### Multi-team Ingress collisions and Contour's `HTTPProxy` root inclusion
 
-In a multi-tenant cluster, the standard `Ingress` API does not stop two teams in different namespaces from claiming the same `host`. The book's example uses `app.bearcanoe.com`. Depending on the controller, overlapping rules are either merged in surprising ways or rejected, and either can cause production outages. As *Production Kubernetes*, Chapter 6, describes, platform teams solve this in one of two ways.
+In a multi-tenant cluster, the standard `Ingress` API does not stop two teams in different namespaces from claiming the same `host`. The example in *Production Kubernetes* uses `app.bearcanoe.com`. Depending on the controller, overlapping rules are either merged in surprising ways or rejected, and either can cause production outages. As *Production Kubernetes*, Chapter 6, describes, platform teams solve this in one of two ways.
 
 The first way is validating admission control. An Open Policy Agent or Gatekeeper policy, for example, checks existing `Ingress` objects across the cluster and rejects duplicate hostnames.
 
 The second way is delegated routing with a custom resource such as Contour's `HTTPProxy`. Contour replaces flat `Ingress` objects with a root `HTTPProxy` custom resource that uses inclusion, set with `includes`. A platform administrator creates a root `HTTPProxy` in an administrative namespace. That root owns a domain, such as `app1.bearcanoe.com`, and delegates routing for that domain or path prefix by including `HTTPProxy` resources from the `app1` team's namespace. Only the root namespace can define top-level virtual hosts, so teams cannot collide with another team's hostname.
 
-Contour's `HTTPProxy` also supports layer 3/4 TCP proxying through TLS Server Name Indication (`SNI`). The book's example (untested here) looks like this:
+Contour's `HTTPProxy` also supports layer 3/4 TCP proxying through TLS Server Name Indication (`SNI`). The example below comes from *Production Kubernetes* and has not been run here:
 
 ```yaml
 apiVersion: projectcontour.io/v1
@@ -787,7 +787,7 @@ Start with the self-checking Python lab. You can run it locally before you touch
 python3 code/part05/gateway_llm_router_lab.py
 ```
 
-Next, move to a cluster that has a LoadBalancer implementation and Helm. All interactive shell steps below are `untested here`. You work through these exercises in order.
+Next, move to a cluster that has a LoadBalancer implementation and Helm. The shell steps below have not been run against live hardware. You work through these exercises in order.
 
 1. Install ingress-nginx and MetalLB, or a cloud LB. Deploy two echo services and create an Ingress with host and path rules. Test it with `curl --resolve`, observe the generated nginx config, and add TLS first with a self-signed cert, then with cert-manager and an internal CA.
 2. Deploy a mock SSE server that emits a token every 200 ms for 5 minutes. Observe the buffering effects with the defaults, then set timeouts and `proxy-buffering: off`. Verify with `curl -N`, test through a cloud or LB idle timeout, for example 60 s, and add keepalive comments.
@@ -829,12 +829,17 @@ Check your edge against this list before the next rollout.
 
 ## Exercises
 
-1. Contrast L4 load balancing, as in `Service type: LoadBalancer`, with L7 load balancing through `Ingress` and `Gateway API`. Explain why `bandicoot.example.com/a/` reaches the backend as `/a/` unless it is rewritten, as Kubernetes: Up and Running, Chapter 8, describes. Show how you prevent multi-team hostname collisions with OPA or Contour `HTTPProxy` root `includes`, as Production Kubernetes, Chapter 6, explains. Finally, isolate an Ingress `DaemonSet` on dedicated edge nodes using `hostNetwork: true`, `dnsPolicy: ClusterFirstWithHostNet` and `externalTrafficPolicy: Local`.
-2. Work with the Gateway API resources: GatewayClass, Gateway, HTTPRoute, GRPCRoute and ReferenceGrant. Using `evaluate_httproute_and_reference_grant()` in `code/part05/gateway_llm_router.py`, map the three Gateway API personas: Infrastructure Provider, Cluster Operator and Application Developer. Trace how an `HTTPRoute` matches on `PathPrefix` and `headers: [{name: x-model, value: llama-70b}]` with a `95/5` canary split. Then explain why cross-namespace backend references fail with `RefNotPermitted` without a `ReferenceGrant`.
-3. Trace `ClusterIssuer/letsencrypt-prod` in Section 4. Compare ACME `HTTP-01` and `DNS-01` for wildcard certificates and for private, air-gapped or VPC clusters. Explain how cert-manager renews certificates at 2/3 of their lifetime.
-4. Compare MetalLB Layer 2, which uses an `L2Advertisement` with an ARP or NDP single-node leader, with BGP, which uses `BGPAdvertisement` and ECMP across ToR switches. Place kube-vip and Cilium LB IPAM in the same comparison. Then explain how GKE Container-Native Load Balancing, with NEGs, and AWS ALB IP target mode route directly to Pod IPs. Networking and Kubernetes, Chapter 6, covers the cloud side.
-5. Using `validate_llm_streaming_gateway_config()` in `code/part05/gateway_llm_router.py`, explain why default NGINX, Envoy and cloud LB settings break LLM serving. Cover a `60s` read or idle timeout that returns a `504`, `proxy-buffering: on` that stalls SSE tokens, a `1m` body size that returns a `413`, and automatic POST retries that multiply GPU load. Then show both the `ingress-nginx` annotation block and the Envoy Gateway `BackendTrafficPolicy` that you would use.
-6. Work with `InferencePool` from the Gateway API Inference Extension. Using `pick_llm_inference_endpoint()` in `code/part05/gateway_llm_router.py`, explain why round-robin and plain least-connections perform poorly for long-context LLM prompts and LoRA adapters. Compare them with KV-prefix-cache and queue-depth routing. Then state the root cause and the diagnostic command you would run for each HTTP status at the gateway: `404`, `413`, `429`, `502`, `503` and `504`.
+Each exercise is a question about the edge of the cluster. The helper functions live in `code/part05/gateway_llm_router.py`.
+
+1. Contrast L4 load balancing through `Service type: LoadBalancer` with L7 load balancing through Ingress and Gateway API. Explain why a request for `bandicoot.example.com/a/` reaches the backend as `/a/` unless you rewrite it. Kubernetes: Up and Running, Chapter 8, describes the case.
+2. Two teams claim the same hostname on one Ingress controller. Show how Contour `HTTPProxy` root inclusion stops the collision. Production Kubernetes, Chapter 6, explains the pattern.
+3. Isolate an Ingress controller on dedicated edge nodes. Say what each of `hostNetwork: true`, `dnsPolicy: ClusterFirstWithHostNet` and `externalTrafficPolicy: Local` contributes.
+4. Run `evaluate_httproute_and_reference_grant()`. Match the three Gateway API roles to the infrastructure provider, the cluster operator and the application developer. Then explain why a cross-namespace backend reference fails with `RefNotPermitted` until a `ReferenceGrant` exists.
+5. Write an `HTTPRoute` that matches the header `x-model: llama-70b` and sends 95 percent of traffic to one backend and 5 percent to a canary.
+6. Compare ACME HTTP-01 and DNS-01 challenges for a wildcard certificate and for a private cluster. Say when cert-manager renews, which is at two thirds of the certificate lifetime.
+7. Compare MetalLB in Layer 2 mode with MetalLB in BGP mode. Then say how GKE container-native load balancing and AWS ALB IP target mode reach pods directly. Networking and Kubernetes, Chapter 6, covers the cloud side.
+8. Run `validate_llm_streaming_gateway_config()`. Say why a 60-second idle timeout returns a 504 and why proxy buffering stalls streamed tokens. Then explain why a 1 MB body limit returns a 413 and why automatic POST retries multiply GPU load.
+9. Run `pick_llm_inference_endpoint()` for an `InferencePool`. Explain why round-robin does poorly for long prompts, and how KV-prefix-cache and queue-depth routing do better. Finish with the first command you would run for each of 404, 413, 429, 502, 503 and 504.
 
 ## Checkpoint questions (20)
 
@@ -937,7 +942,7 @@ The Gateway API Inference Extension, through `InferencePool` and the Endpoint Pi
 <details>
 <summary>14. Why does rate limiting for LLM APIs require both `Requests Per Minute (RPM)` and `Tokens Per Minute (TPM)` controls?</summary>
 
-A classic L7 API gateway, such as `limit-rps: 20`, counts every HTTP request as cost `1`. But a tenant that sends 10 requests per second with 100,000 input tokens each consumes 1,000,000 prefill tokens per second. That saturates a whole H100 cluster while staying well under a `20 RPS` request limit. An AI-aware gateway layer, such as Envoy `ext_proc`, LiteLLM, Kong AI Gateway or APISIX, inspects the prompt token count before it forwards the request. It also records completion token usage from the response stream. That enforces per-tenant Tokens Per Minute (`TPM`) and concurrent-request budgets.
+A conventional L7 API gateway, such as `limit-rps: 20`, counts every HTTP request as cost `1`. But a tenant that sends 10 requests per second with 100,000 input tokens each consumes 1,000,000 prefill tokens per second. That saturates a whole H100 cluster while staying well under a `20 RPS` request limit. An AI-aware gateway layer, such as Envoy `ext_proc`, LiteLLM, Kong AI Gateway or APISIX, inspects the prompt token count before it forwards the request. It also records completion token usage from the response stream. That enforces per-tenant Tokens Per Minute (`TPM`) and concurrent-request budgets.
 </details>
 
 <details>
@@ -1003,5 +1008,5 @@ Follow the `cert-manager` resource chain from top to bottom with `kubectl descri
   - `production-kubernetes` — Josh Rosso, Rich Lander, Alexander Brand & John Harris, *Production Kubernetes*, **Chapter 6: Service Routing** (read in full: Ingress controller deployment considerations, multi-team hostname collisions, Contour `HTTPProxy` root `includes` and TCP SNI proxying, dedicated Ingress node pools with `DaemonSet` + `hostNetwork: true` + `dnsPolicy: ClusterFirstWithHostNet` + `externalTrafficPolicy: Local`).
   - `networking-and-kubernetes` — James Strong & Vallery Lancey, *Networking and Kubernetes*, **Chapter 5: Kubernetes Networking Abstractions** (`Exact` vs `Prefix` path precedence, NGINX Ingress controller, TLS Secrets) and **Chapter 6: Kubernetes and Cloud Networking** (read in full: AWS VPC/EKS with AWS Load Balancer Controller `v2.2.0` & OIDC IAM service account, GCP VPC-native GKE with Container-Native Load Balancing / NEGs / Cloud Armor / IAP, and Azure VNet/AKS).
 - **Run here:** `python3 code/part05/gateway_llm_router_lab.py` (3 passed, 0 failed).
-- **Explicitly labelled inferences:** The `evaluate_httproute_and_reference_grant`, `validate_llm_streaming_gateway_config`, and `pick_llm_inference_endpoint` models in `code/part05/gateway_llm_router.py` and the `llm-api` `Ingress`, `chat` `HTTPRoute`, `letsencrypt-prod` `ClusterIssuer`, and `llm-policy` `BackendTrafficPolicy` manifests are the author's constructions synthesizing `KUR` Chapter 8, `PK` Chapter 6, and `NK` Chapters 5 & 6 (plus original study items 21, 22, 23, 24, 25, 26, 27, 28, 29, 30, 31, 32, 33, 34, and 35).
-- **Not verified on live hardware:** Live `ingress-nginx`, `Envoy Gateway`, `Contour`, `cert-manager`, and `MetalLB` executions (`60s` / `600s` / `900s` timeouts, `64m` / `100m` body size, `limit-rps: 20`, `limit-connections: 50`, `8080`, `443`, `95/5` and `90/10` canary weights, `301`, `90`-day certs / `30`-day renewal, `350 s` AWS NLB / `60 s` ALB / `30 s` GCP timeouts, `maxPendingRequests: 200, maxParallelRequests: 400`, `404`/`413`/`429`/`502`/`503`/`504`, `200 ms` token interval) are marked (`untested here`) where not executed by `gateway_llm_router_lab.py`.
+- **Explicitly labelled inferences:** The `evaluate_httproute_and_reference_grant`, `validate_llm_streaming_gateway_config`, and `pick_llm_inference_endpoint` models in `code/part05/gateway_llm_router.py` and the `llm-api` `Ingress`, `chat` `HTTPRoute`, `letsencrypt-prod` `ClusterIssuer`, and `llm-policy` `BackendTrafficPolicy` manifests are the author's constructions synthesizing *Kubernetes: Up and Running* Chapter 8, *Production Kubernetes* Chapter 6, and *Networking and Kubernetes* Chapters 5 & 6 (plus original study items 21, 22, 23, 24, 25, 26, 27, 28, 29, 30, 31, 32, 33, 34, and 35).
+- **Not verified on live hardware:** Live `ingress-nginx`, `Envoy Gateway`, `Contour`, `cert-manager`, and `MetalLB` executions (`60s` / `600s` / `900s` timeouts, `64m` / `100m` body size, `limit-rps: 20`, `limit-connections: 50`, `8080`, `443`, `95/5` and `90/10` canary weights, `301`, `90`-day certs / `30`-day renewal, `350 s` AWS NLB / `60 s` ALB / `30 s` GCP timeouts, `maxPendingRequests: 200, maxParallelRequests: 400`, `404`/`413`/`429`/`502`/`503`/`504`, `200 ms` token interval) are marked (not run against live hardware here) where not executed by `gateway_llm_router_lab.py`.

@@ -22,7 +22,11 @@ lab_venue: "GCP / GKE"
 
 ## Why this matters for AI infrastructure
 
-Pods are ephemeral, and their IP addresses change whenever a pod is replaced. Still, everything that talks to inference servers, vector databases, parameter servers, feature stores, metrics endpoints or the control plane needs an address that stays put. Services provide that address. At small scale, a Service looks like plain load balancing. At scale, it becomes much harder. With thousands of Services and tens of thousands of endpoints, iptables rule updates take seconds and CPU. Conntrack tables fill during burst traffic from training clients or inference gateways, and long-lived gRPC/HTTP2 streams pin to a single backend. `externalTrafficPolicy` also decides whether your LLM gateway sees client IPs and balances evenly. Understanding how a ClusterIP becomes a pod IP in the kernel is essential for debugging latency spikes, connection resets, uneven load and "Service works from some nodes but not others".
+A user reports that the inference API works from one node and times out from another. The pod behind it is healthy. Pods come and go all day and their IP addresses change with every replacement, yet inference servers, vector databases, feature stores and metrics endpoints all need an address that stays put. A Service provides that address.
+
+At small scale a Service looks like plain load balancing. At large scale it gets harder. With thousands of Services and tens of thousands of endpoints, iptables rule updates take seconds and burn CPU. Conntrack tables fill during bursts from training clients or inference gateways. Long-lived gRPC streams pin to a single backend, and `externalTrafficPolicy` decides whether your LLM gateway sees client IPs and balances evenly.
+
+To debug latency spikes, connection resets and uneven load, you need to know how a ClusterIP becomes a pod IP inside the kernel. This chapter follows that translation step by step.
 
 ## Prerequisites and outcomes
 
@@ -540,7 +544,7 @@ Bare metal and GPU clouds use **MetalLB** (L2 ARP/NDP announcements or BGP), **k
 
 Change `spec.type` to `LoadBalancer` with `kubectl edit service alpaca-prod`. This builds on NodePort. It also asks the cloud to create a load balancer that points at your nodes.
 
-**Warning:** a `LoadBalancer` Service is exposed to the public internet. Before you create one, make sure it is safe for everyone in the world to reach. Chapters 9 and 20 of the book give guidance on securing an application.
+**Warning:** a `LoadBalancer` Service is exposed to the public internet. Before you create one, make sure it is safe for everyone in the world to reach. *Kubernetes: Up and Running*, Chapters 9 and 20, give guidance on securing an application.
 
 Run `kubectl get services` right away, and the `EXTERNAL-IP` column for `alpaca-prod` shows `<pending>`. Wait a bit, and the cloud assigns a public address. You can see the work Kubernetes asked for in the console of your cloud account.
 
@@ -573,7 +577,7 @@ This example comes from a cluster on Google Cloud, run through GKE. How a load b
 
 `sessionAffinity: ClientIP` pins a client IP to one backend for `timeoutSeconds`, which defaults to 10800. It works through the `recent` module in iptables, or through IPVS persistence. It breaks behind NAT, where many clients share one IP.
 
-Layer 4 balancing works per connection. HTTP/2 and gRPC multiplex many requests over one connection, so a client opens one connection and all its requests hit one pod. This is the classic uneven gRPC load problem, and it is severe for inference gateways. You have several fixes. You can use a headless Service with client-side load balancing (gRPC `round_robin`, or xDS). You can use L7 proxies such as Envoy, Istio, Linkerd or an ingress. You can set connection age limits with `MAX_CONNECTION_AGE` on servers, or use a service mesh (5.28).
+Layer 4 balancing works per connection. HTTP/2 and gRPC multiplex many requests over one connection, so a client opens one connection and all its requests hit one pod. This is the well-known uneven gRPC load problem, and it is severe for inference gateways. You have several fixes. You can use a headless Service with client-side load balancing (gRPC `round_robin`, or xDS). You can use L7 proxies such as Envoy, Istio, Linkerd or an ingress. You can set connection age limits with `MAX_CONNECTION_AGE` on servers, or use a service mesh (5.28).
 
 ### Source IP and hairpin
 
@@ -724,7 +728,7 @@ Start with the self-checking Python lab, and run it locally. Run `code/part05/ku
 python3 code/part05/kube_proxy_service_sim_lab.py
 ```
 
-Next, work through these exercises on a multi-node Kubernetes cluster. All interactive shell steps below are `untested here`.
+Next, work through these exercises on a multi-node Kubernetes cluster. The shell steps below have not been run against live hardware.
 
 1. Start with the anatomy of a Service. Create a Deployment and a ClusterIP Service, then list the EndpointSlice. Compare ready and unready endpoints by failing the readiness probe on one pod, and watch the slice change. Finally, delete the selectors' labels and see `Endpoints: <none>`.
 2. Walk the iptables rules on one node. Find the `KUBE-SVC-*` and `KUBE-SEP-*` chains for the Service, and compute the probabilities. While you curl the Service, run `conntrack -E` to watch the `NEW` and `DESTROY` events and the DNAT mapping. Use `tcpdump` on the pod veth and on the node interface to see the difference between ClusterIP and pod IP.
@@ -767,14 +771,16 @@ Interviewers use these questions to see whether you can follow a packet through 
 
 ## Exercises
 
-Work through these six exercises. Each one asks you to explain or trace a part of the chapter, using the simulator and the commands you have already seen.
+Each exercise uses the simulator in `code/part05/kube_proxy_service_sim.py` or the commands from Section 7.
 
-1. Start with the Service patterns. Compare all 6 Service patterns in Section 1: ClusterIP, NodePort, LoadBalancer, ExternalName, headless and selector-less. List the cloud annotations for internal LoadBalancers across GCP, AWS, Azure and Alibaba (Kubernetes: Up and Running, Chapter 7). Then explain why `enableServiceLinks: false` with CoreDNS is preferred over `<SVC>_SERVICE_HOST` environment variables (Production Kubernetes, Chapter 6).
-2. Work through the EndpointSlice design. Using `build_endpointslices()` in `code/part05/kube_proxy_service_sim.py`, explain why a single `Endpoints` object creates an $O(N^2)$ network/etcd amplification bottleneck at 5,000 Pods. Then explain how EndpointSlice shards endpoints into 100-endpoint objects, and how the `serving && terminating` fallback prevents connection drops when all pods are terminating.
-3. Compare the kube-proxy modes. Using `compute_iptables_sep_probabilities()` in `code/part05/kube_proxy_service_sim.py`, prove why rule $i$ in a `KUBE-SVC-*` chain uses `--probability 1 / (N - i)` (`0.25`, `0.33333`, `0.50` for 4 backends). Then compare iptables (`iptables-restore`), IPVS (`kube-ipvs0` + `ipset` + 6 schedulers `rr`/`lc`/`dh`/`sh`/`sed`/`nq`), nftables (verdict maps) and Cilium eBPF (`cgroup/connect4` socket-level translation). The comparison draws on Networking and Kubernetes, Chapters 4 and 5, and on Production Kubernetes, Chapter 6.
-4. Trace the traffic policies. Using `simulate_external_traffic_policy()` in `code/part05/kube_proxy_service_sim.py`, trace the packet path, SNAT behavior, client source IP visibility, and `healthCheckNodePort` behavior under `Cluster` and under `Local`. Then explain why L4 `ClusterIP` balancing pins all requests on a multiplexed gRPC or HTTP/2 connection to a single vLLM replica.
-5. Study conntrack. Explain which pre-NAT and post-NAT 5-tuple entries `conntrack` stores for every Service flow. Then explain what happens when `nf_conntrack_count` reaches `nf_conntrack_max` (`nf_conntrack: table full, dropping packet`). The 5-second UDP DNS race is covered in Production Kubernetes, Chapter 6. Explain why parallel UDP `A`/`AAAA` DNS queries historically suffered 5-second timeouts, and how NodeLocal DNSCache (`NOTRACK`) and eBPF solve it.
-6. Practise the four-step debugging method (`Resolve -> Endpoints -> Rules -> Datapath/Backend`). Walk through the exact commands in Section 7 to diagnose a broken `vllm` Service. Check DNS with `dig`, the EndpointSlices with `kubectl get endpointslices`, the node rules with `iptables-save`, `ipvsadm`, `nft` or `conntrack -L`, and the packets with `tcpdump -ni any`.
+1. Compare the six Service patterns in Section 1: ClusterIP, NodePort, LoadBalancer, ExternalName, headless and selector-less. For each one, say what problem it solves.
+2. Explain why `enableServiceLinks: false` plus CoreDNS is preferred over `<SVC>_SERVICE_HOST` environment variables. Production Kubernetes, Chapter 6, gives the reasons.
+3. Run `build_endpointslices()`. Explain why one `Endpoints` object becomes a bottleneck with 5,000 pods. Then say how EndpointSlice fixes it, and why the `serving && terminating` fallback keeps connections alive when every pod is terminating.
+4. Run `compute_iptables_sep_probabilities()`. Prove why rule $i$ in a `KUBE-SVC-*` chain uses the probability `1 / (N - i)`. For four backends the values are 0.25, 0.33333 and 0.50, and the last rule always matches.
+5. Compare iptables, IPVS, nftables and Cilium eBPF as kube-proxy modes. Say how each one finds a backend, and which one you would pick for a cluster with thousands of Services.
+6. Run `simulate_external_traffic_policy()` for `Cluster` and for `Local`. Say what happens to the packet path, the source IP and the health check port. Then explain why ClusterIP balancing pins a multiplexed gRPC connection to one vLLM replica.
+7. Explain what conntrack stores for every Service flow, and what happens when `nf_conntrack_count` reaches `nf_conntrack_max`. Then explain why parallel UDP `A` and `AAAA` queries once caused 5-second DNS timeouts, and how NodeLocal DNSCache removes the problem.
+8. A `vllm` Service is unreachable. Use the four steps from Section 7 in order: resolve, endpoints, rules, datapath. Name the command you would run at each step.
 
 ## Checkpoint questions (20)
 
@@ -941,5 +947,5 @@ When `trafficDistribution: PreferClose` is enabled on a Service, or `service.kub
   - `networking-and-kubernetes` — James Strong & Vallery Lancey, *Networking and Kubernetes*, **Chapter 4: Kubernetes Networking Introduction** (sequential `iptables` `--probability` rules and IPVS 6 schedulers `rr`, `lc`, `dh`, `sh`, `sed`, `nq`) and **Chapter 5: Kubernetes Networking Abstractions** (read in full: `Pod`, `Deployment`, `ReplicaSet`, `Endpoints` `.addresses` vs `.notReadyAddresses`, `ClusterIP`, `NodePort`, `LoadBalancer` with MetalLB `controller` + `speaker`, string quoting on annotations `"true"`, Ingress, and Service Mesh).
   - `production-kubernetes` — Josh Rosso, Rich Lander, Alexander Brand & John Harris, *Production Kubernetes*, **Chapter 6: Service Routing** (read in full: Service discovery via environment variables vs CoreDNS and `ndots`, `Services` and `Endpoints`, `kube-proxy` in `iptables` and `IPVS` modes with `kube-ipvs0` and `conntrack` pre-NAT/post-NAT 5-tuples, Ingress controllers, and Service Mesh).
 - **Run here:** `python3 code/part05/kube_proxy_service_sim_lab.py` (3 passed, 0 failed).
-- **Explicitly labelled inferences:** The `compute_iptables_sep_probabilities`, `build_endpointslices`, and `simulate_external_traffic_policy` models in `code/part05/kube_proxy_service_sim.py` and the `vllm` Service and `EndpointSlice` manifests are the author's constructions synthesizing `KUR` Chapter 7, `NK` Chapters 4 & 5, and `PK` Chapter 6 (plus original study items 21, 22, 23, 24, 25, 26, 27, 28, 29, 30, 31, 32, 33, 34, 35, 36, 37, 38, 39, and 40).
-- **Not verified on live hardware:** Live `iptables-save`, `ipvsadm`, `nft`, `conntrack`, `cilium`, and `metallb` executions (`10.96.0.0/12`, `30000-32767`, `100` endpoints/slice, `80` -> `8000`, `10.244.3.17`, `0.33333` / `0.50000`, `0x4000`, `5.10+` kernel, `30080`, `timeoutSeconds: 10800`, `5 days` / `24 h` / `1 h` conntrack timeouts, `10.96.12.34`, `~5,000` Services / `~25,000` endpoints) are marked (`untested here`) where not executed by `kube_proxy_service_sim_lab.py`.
+- **Explicitly labelled inferences:** The `compute_iptables_sep_probabilities`, `build_endpointslices`, and `simulate_external_traffic_policy` models in `code/part05/kube_proxy_service_sim.py` and the `vllm` Service and `EndpointSlice` manifests are the author's constructions synthesizing *Kubernetes: Up and Running* Chapter 7, *Networking and Kubernetes* Chapters 4 & 5, and *Production Kubernetes* Chapter 6 (plus original study items 21, 22, 23, 24, 25, 26, 27, 28, 29, 30, 31, 32, 33, 34, 35, 36, 37, 38, 39, and 40).
+- **Not verified on live hardware:** Live `iptables-save`, `ipvsadm`, `nft`, `conntrack`, `cilium`, and `metallb` executions (`10.96.0.0/12`, `30000-32767`, `100` endpoints/slice, `80` -> `8000`, `10.244.3.17`, `0.33333` / `0.50000`, `0x4000`, `5.10+` kernel, `30080`, `timeoutSeconds: 10800`, `5 days` / `24 h` / `1 h` conntrack timeouts, `10.96.12.34`, `~5,000` Services / `~25,000` endpoints) are marked (not run against live hardware here) where not executed by `kube_proxy_service_sim_lab.py`.

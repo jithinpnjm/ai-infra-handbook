@@ -36,7 +36,7 @@ You should have read chapters 5.4, 5.5 and 5.19 first. By the end of this chapte
 - Execute a `kubeadm` upgrade, control plane first and then nodes, and the equivalent on managed services. Include pre-flight checks (API deprecations, add-on compatibility, backups), canaries, drains and a rollback strategy.
 - Upgrade the GPU stack (drivers, toolkit, operators) safely, in step with Kubernetes.
 - Back up and restore etcd (snapshots, certificates, multi-member restore), and rebuild failed control planes.
-- Design backup and DR for workloads and data. Use GitOps as the source of truth, Velero or CSI snapshots, volume replication and object-storage durability, and define RPO and RTO for each tier.
+- Design backup and DR for workloads and data. Use GitOps as the source of truth, Velero or CSI snapshots, volume replication and object-storage durability, and define the recovery point objective (RPO, how much data you can lose) and the recovery time objective (RTO, how long recovery may take) for each tier.
 - Run DR drills and handle realistic failure scenarios, such as lost etcd quorum, corrupted data, expired certificates, accidental namespace deletion, and regional loss.
 
 ## 1. Versioning and skew
@@ -398,7 +398,7 @@ Start with the self-checking Python lab, which you can run locally to check thre
 python3 code/part05/k8s_upgrade_dr_planner_lab.py
 ```
 
-Next, build a 3-control-plane and 2-worker `kubeadm` cluster. All interactive shell steps below are `untested here`. Then you can work through these exercises.
+Next, build a 3-control-plane and 2-worker `kubeadm` cluster. The shell steps below have not been run against live hardware. Then you can work through these exercises.
 
 1. Rehearse the upgrade. Build a 1.N cluster with `kubeadm`, using 3 control-plane nodes and 2 workers. Run workloads on it, including a StatefulSet, a PDB-protected Deployment and a GPU-like fake extended resource DaemonSet. Take an etcd snapshot, then upgrade to 1.N+1 by following section 3. Record the timings and any issues, and run `kubectl get nodes` and smoke tests at each stage.
 2. Scan for deprecated APIs. Before the upgrade, apply a manifest that uses an API removed in the target version. Detect it with `pluto` or `kubent` and the API server metric, then migrate the manifest with `kubectl-convert`.
@@ -451,14 +451,17 @@ Each question maps to a section above, so use the section to check your answer.
 
 ## Exercises
 
-1. Start with the release cadence, the version skew policy and deprecated APIs. Using `validate_k8s_version_skew()` in `code/part05/k8s_upgrade_dr_planner.py`, state the exact version skew rules across HA `kube-apiserver`s, `kube-controller-manager`, `kube-scheduler`, `kubelet`, `kube-proxy` and `kubectl`. Explain why you cannot skip minor versions when upgrading the control plane. Then show how `apiserver_requested_deprecated_apis`, `pluto` and `kubent` catch removed APIs before an upgrade.
-2. Run a zero-downtime 3-control-plane `kubeadm` upgrade, and avoid the static-pod and etcd pitfalls (Production Kubernetes, chapter 2, and `bcm11-containerization` Appendix C). Trace the exact `kubeadm` commands in section 3: `kubeadm upgrade plan` -> `etcdctl snapshot save` -> `kubeadm upgrade apply` on `cp1` -> `kubeadm upgrade node` on `cp2`/`cp3` -> rolling worker drains. Explain why the manual edits you make to `/etc/kubernetes/manifests/*.yaml` are wiped during upgrade unless they are stored in `ClusterConfiguration` (`extraArgs` or `--patches`). Then use `evaluate_etcd_upgrade_quorum_safety()` to explain the Production Kubernetes chapter 2 warning against subtractive `3 -> 2 -> 3` dedicated `etcd` replacement.
-3. Upgrade the NVIDIA GPU Operator and driver stack without killing training jobs, using `ClusterPolicy.spec.driver.upgradePolicy`. Trace the 7-step GPU stack upgrade order in section 4. Explain how the GPU Operator's driver upgrade controller (`maxParallelUpgrades`, `drain`, and the pod eviction and completion policy) coordinates with training job checkpointing, and how the post-upgrade `nvidia-smi`, `dcgmi` and `nccl-tests` validation fits in.
-4. Contrast the two `etcd` recovery paths, and automate the backups. Scenario A has 1 of 3 `etcd` members dead. Run `etcdctl member remove` and then `kubeadm join --control-plane`, with no snapshot restore. Scenario B has 2 or 3 members dead. Stop `kube-apiserver` and `etcd` on all three nodes, run `etcdutl snapshot restore` on all three nodes with the same snapshot and `--initial-cluster-token=etcd-cluster-restored-1`, move the result into `/var/lib/etcd`, and restart. Then explain which artifacts you must back up alongside the `etcd` `.db` file, such as the `/etc/kubernetes/pki` CA keys and the KMS keys.
-5. Back up workloads and volumes with Velero (`Backup`, `Schedule`, `Restore`, CSI `VolumeSnapshot`s vs. `Kopia`/`Restic`). Trace the `nightly-platform` `Schedule` and `Restore` manifests in section 6. Explain how `pre` and `post` backup hooks quiesce stateful databases (`pg_Start_backup` / `fsfreeze`). Then explain why restoring into a test cluster without isolating cloud controllers and ExternalDNS can hijack production LoadBalancers and DNS records.
-6. Design DR tiers and game-day runbooks for AI training, inference and platform state. Using `evaluate_dr_rpo_rto()` in `code/part05/k8s_upgrade_dr_planner.py`, explain why DR for LLM inference (stateless replicas, replicated weights and a multi-region Gateway) differs from DR for 1,000-GPU training (async cross-region checkpoint replication, with MultiKueue or checkpoint resume). Then write the emergency recovery steps you would follow for the 8 disaster scenarios in section 8.
+Each exercise is one maintenance or recovery task. The helper functions live in `code/part05/k8s_upgrade_dr_planner.py`.
 
-Exercise 6 ties the DR tiers from section 7 to the emergency steps from section 8.
+1. Run `validate_k8s_version_skew()`. State how far apart the API servers, kubelets and `kubectl` may be. Then explain why a control plane cannot skip a minor version.
+2. Before an upgrade, find removed APIs. Say how `apiserver_requested_deprecated_apis`, `pluto` and `kubent` each help.
+3. Walk through a three-node `kubeadm` upgrade using the commands in Section 3. Name the order of steps from `kubeadm upgrade plan` to the worker drains. Production Kubernetes, Chapter 2, explains the static pod pitfalls.
+4. Explain why hand edits to `/etc/kubernetes/manifests/*.yaml` are lost during an upgrade, and where to put them instead. Then run `evaluate_etcd_upgrade_quorum_safety()` to see why replacing etcd members by going from 3 to 2 and back to 3 is risky.
+5. Upgrade the GPU Operator driver without killing training jobs. Follow the seven steps in Section 4. Say how `maxParallelUpgrades` and drain settings meet job checkpointing, and which checks you run afterwards.
+6. One etcd member of three is dead. Describe the repair, which uses `etcdctl member remove` and `kubeadm join --control-plane` and needs no snapshot restore.
+7. Two or three etcd members are dead. Describe the restore with `etcdutl snapshot restore`, and say what else you must have backed up besides the snapshot.
+8. Read the `nightly-platform` Velero `Schedule` in Section 6. Explain how backup hooks quiesce a database. Then explain why a restore into a test cluster can hijack production load balancers and DNS records.
+9. Run `evaluate_dr_rpo_rto()`. Explain why disaster recovery for inference differs from recovery for a 1,000-GPU training run. Then write the emergency steps for the eight scenarios in Section 8.
 
 ## Checkpoint questions (20)
 
@@ -672,4 +675,4 @@ Your quarterly DR Game Day must run the written runbooks hands-on. An on-call en
   - `bcm11-containerization` — *NVIDIA Base Command Manager 11 Containerization Manual*, **Chapter 4: Kubernetes** and **Appendix C: Kubernetes Upgrade On An Air-gapped BCM Cluster** (air-gapped image and package mirror preparation and upgrade sequence).
   - `nvidia-devops` (`volume-03/01-k8s-control-plane-scheduling-masterclass.md` and `volume-03/03-k8s-networking-security-ops-masterclass.md`): `etcd` backup/restore and control-plane operations.
 - **Run here:** `python3 code/part05/k8s_upgrade_dr_planner_lab.py` (3 passed, 0 failed).\n- **Explicitly labelled inferences:** The `validate_k8s_version_skew`, `evaluate_etcd_upgrade_quorum_safety`, and `evaluate_dr_rpo_rto` models in `code/part05/k8s_upgrade_dr_planner.py` and the `kubeadm upgrade`, `etcdutl snapshot restore`, and `Velero` `Schedule`/`Restore` runbooks are the author's constructions synthesizing Production Kubernetes chapter 2, Kubernetes: Up and Running chapter 3, `bcm11-containerization` Appendix C, and upstream Kubernetes/`etcd`/`Velero` documentation (plus original study items 21, 22, 23, 24, 25, 26, 27, 28, 29, 30, 31, 32, 33, 34, and 35).
-- **Not verified on live hardware:** Live `kubeadm upgrade`, `etcdctl snapshot save`, `etcdutl snapshot restore`, and `velero` executions (~4 months release cadence, 14 months support, 9 months / 3 releases deprecation, `v1.30 -> v1.31`, 5 to 10 min per node, 15 to 60 minutes snapshot interval, `10.0.0.11..13:2380`, `ttl: 720h`, 15-30 min RPO) are marked (`untested here`) where not executed by `k8s_upgrade_dr_planner_lab.py`.
+- **Not verified on live hardware:** Live `kubeadm upgrade`, `etcdctl snapshot save`, `etcdutl snapshot restore`, and `velero` executions (~4 months release cadence, 14 months support, 9 months / 3 releases deprecation, `v1.30 -> v1.31`, 5 to 10 min per node, 15 to 60 minutes snapshot interval, `10.0.0.11..13:2380`, `ttl: 720h`, 15-30 min RPO) are marked (not run against live hardware here) where not executed by `k8s_upgrade_dr_planner_lab.py`.

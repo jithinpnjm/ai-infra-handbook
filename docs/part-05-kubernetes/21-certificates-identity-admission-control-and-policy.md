@@ -22,7 +22,13 @@ lab_venue: "GCP / GKE"
 
 ## Why this matters for AI infrastructure
 
-Picture a Monday morning when a shared GPU cluster suddenly stops working. An expired certificate has silently taken down the entire control plane. A shared GPU cluster is attractive to attackers, and it is easy for users to misconfigure. A privileged container can read the host. A `hostPath` mount can expose model weights and credentials. Unbounded GPU requests can starve a team, and unsigned images can inject malware into training pipelines. Three mechanisms keep this under control. The PKI and identity layer decides who is speaking and whether they can be trusted. Admission control decides what is allowed to enter the API. Policy as code writes the organisation's rules down and enforces them. This chapter explains certificate management in Kubernetes, including rotation and failure modes. It also covers identity federation, the admission chain, Pod Security, and practical policies for AI platforms.
+Picture a Monday morning when a shared GPU cluster suddenly stops working. An expired certificate has silently taken down the entire control plane.
+
+A shared GPU cluster is also easy for users to misconfigure and attractive to attackers. A privileged container can read the host. A `hostPath` mount can expose model weights and credentials. Unbounded GPU requests can starve a team, and unsigned images can inject malware into training pipelines. Three mechanisms keep this under control.
+
+The PKI and identity layer decides who is speaking and whether they can be trusted. Admission control decides what is allowed to enter the API. Policy as code writes the organisation's rules down and enforces them.
+
+This chapter explains certificate management in Kubernetes, including rotation and failure modes. It also covers identity federation, the admission chain, Pod Security, and practical policies for AI platforms.
 
 ## Prerequisites and outcomes
 
@@ -141,7 +147,7 @@ Workload identity is an advanced topic, so start by writing down what your workl
 
 Sometimes the platform can decide who a workload is, without the workload asserting anything. Suppose every workload runs on one homogeneous platform. The platform reads metadata about each workload and issues it a credential. On AWS, an EC2 instance asks the EC2 metadata API for credentials. AWS inspects the instance's properties and returns role-specific credentials. The instance then uses them to reach a service such as an S3 bucket. The platform must still authorize the request, because authentication alone does not grant permissions.
 
-The book focuses on AWS because it is the vendor it most often sees in the field. The node-level model works well for one workload per node. It breaks down when many containers and multitenant applications share a node, and that gap is why the tools below exist. The book strongly advises against kube2iam, but it covers the tool anyway. Teams keep running into it, so you should know its limits before you adopt it.
+*Production Kubernetes* focuses on AWS because the authors most often see it in the field. The node-level model works well for one workload per node. It breaks down when many containers and multitenant applications share a node, and that gap is why the tools below exist. *Production Kubernetes* strongly advises against kube2iam, but it covers the tool anyway. Teams keep running into it, so you should know its limits before you adopt it.
 
 ### Cloud metadata proxies (`kube2iam` / `kiam`) versus `IRSA`
 
@@ -149,7 +155,7 @@ Before projected ServiceAccount tokens (PSATs) and cloud OIDC federation were av
 
 - **kube2iam** runs as a `DaemonSet` on every worker node. It inserts an `iptables` rule that redirects traffic for the EC2 metadata API to the local kube2iam proxy. Every worker node's IAM instance profile must be allowed to assume the superset of all IAM roles that any Pod in the cluster needs. As a result, a container breakout on any worker compromises every role.
 - **kiam** splits the proxy into a node `DaemonSet` agent and a kiam server. The server runs on dedicated control-plane or server nodes, so only those nodes hold role-assumption permissions. The weakness is that a user can submit a Pod with `spec.nodeName` already populated. That bypasses the scheduler and lands the Pod directly on a server node. The Pod can also start and reach the metadata endpoint before the proxy's IP-to-Pod cache and guards stop it. Either way, the Pod can gain unrestricted access to the EC2 metadata API, unless an admission webhook blocks pre-populated `spec.nodeName` fields.
-- **IRSA** removes metadata proxying entirely. A mutating webhook injects a projected ServiceAccount token with `audience: sts.amazonaws.com` and `expirationSeconds: 86400`. In the book's example, the token is mounted at `/var/run/secrets/eks.amazonaws.com/serviceaccount/token`. The webhook also sets the `AWS_ROLE_ARN` and `AWS_WEB_IDENTITY_TOKEN_FILE` environment variables. The AWS SDK then calls `sts:AssumeRoleWithWebIdentity` directly with that short-lived JWT. AWS IAM verifies the JWT against the cluster's public OIDC `.well-known` discovery endpoint and its JWKS keys.
+- **IRSA** removes metadata proxying entirely. A mutating webhook injects a projected ServiceAccount token with `audience: sts.amazonaws.com` and `expirationSeconds: 86400`. In *Production Kubernetes*, the token is mounted at `/var/run/secrets/eks.amazonaws.com/serviceaccount/token`. The webhook also sets the `AWS_ROLE_ARN` and `AWS_WEB_IDENTITY_TOKEN_FILE` environment variables. The AWS SDK then calls `sts:AssumeRoleWithWebIdentity` directly with that short-lived JWT. AWS IAM verifies the JWT against the cluster's public OIDC `.well-known` discovery endpoint and its JWKS keys.
 
 ### IRSA in practice
 
@@ -187,7 +193,7 @@ serviceaccount-Role1-UCGG6NDYZ3UE"
           path: token
 ```
 
-Kubernetes does not serve a `.well-known` OIDC endpoint natively. You must publish the cluster's discovery information at a public location, such as a static S3 bucket. AWS IAM can then verify the token against Kubernetes' public service account signing key. Once verified, IAM exchanges the PSAT for the role's credentials. The setup is clunky, but its security model is the best of the pod-role approaches, and mapping service accounts to IAM roles is easy to understand. The main downside is that IRSA is harder to deploy outside Amazon Elastic Kubernetes Service (EKS). Newer Kubernetes features, such as exposing the cluster itself as an OIDC provider, reduce that work.
+The Kubernetes API server can serve its own OIDC discovery document at `/.well-known/openid-configuration` and its signing keys at `/openid/v1/jwks`. Service account issuer discovery has been stable since Kubernetes 1.21. The catch is reachability. AWS IAM must fetch those documents over a public HTTPS URL, and most API servers are not public. So the usual setup copies the two documents to a public location, such as a static S3 bucket, and sets that address as the cluster's issuer. AWS IAM can then verify the token against the service account signing key. Once verified, IAM exchanges the PSAT for the role's credentials. The setup is clunky, but its security model is the best of the pod-role approaches, and mapping service accounts to IAM roles is easy to understand. The main downside is that IRSA is harder to deploy outside Amazon Elastic Kubernetes Service (EKS). Managed offerings and newer features that make the issuer publicly reachable reduce that work.
 
 ### Cross-platform workload identity with `SPIFFE` and `SPIRE`
 
@@ -204,7 +210,7 @@ Suppose your workloads span several clouds, bare-metal GPU clusters and virtual 
   -node
 ```
 
-2. **Workload attestation (Workload API Unix domain socket)**: workloads connect to the node-local `spire-agent` over a Unix domain socket (`unix:///run/spire/sockets/agent.sock` in the book's example). They present no initial secret, which solves the "secure introduction" problem. The `spire-agent` inspects kernel and kubelet metadata for the calling process, such as the Pod namespace, ServiceAccount, Pod labels and container image. It matches that metadata against registration entries created on `spire-server`. The book's example (untested here) looks like this:
+2. **Workload attestation (Workload API Unix domain socket)**: workloads connect to the node-local `spire-agent` over a Unix domain socket (`unix:///run/spire/sockets/agent.sock` in the *Production Kubernetes* example). They present no initial secret, which solves the "secure introduction" problem. The `spire-agent` inspects kernel and kubelet metadata for the calling process, such as the Pod namespace, ServiceAccount, Pod labels and container image. It matches that metadata against registration entries created on `spire-server`. The book's example (untested here) looks like this:
 
 ```bash
 /opt/spire/bin/spire-server entry create \
@@ -234,7 +240,7 @@ if err != nil {
 }
 ```
 
-The SPIRE agent also exposes a gRPC API for languages without an SDK. The book does not recommend direct integration for end-user applications. It ties the app to the platform, requires mounting the agent's Unix socket into the pod, and is hard to extend. Direct use fits platform teams that build tooling wrapping or extending SPIRE.
+The SPIRE agent also exposes a gRPC API for languages without an SDK. *Production Kubernetes* does not recommend direct integration for end-user applications. It ties the app to the platform, requires mounting the agent's Unix socket into the pod, and is hard to extend. Direct use fits platform teams that build tooling wrapping or extending SPIRE.
 
 **Sidecar proxy.** SPIRE supports the Envoy SDS API, so it can publish certificates to an Envoy proxy. Envoy uses the SVID for TLS and the trust bundle to verify incoming connections. You can restrict which SPIFFE IDs may connect in two ways. One is to list `verify_subject_alt_name` values in the Envoy configuration. The other is to use Envoy's External Authorization API, which delegates the decision to Open Policy Agent (OPA). The Rego policy below allows a `GET` on `/api` only from the frontend's SPIFFE ID:
 
@@ -361,7 +367,7 @@ If the Namespace is not terminating, the controller returns nothing, and the req
 
 Admission controllers were built into the core Kubernetes code for a long time. People call this the in-tree model. Many of them can be switched on or off with API server flags. That works well if you run your own control plane. It is a problem for users of cloud-managed Kubernetes, who often cannot change those flags. PodSecurityPolicy is an example. It adds strong security controls, but it is not enabled by default, so many users never benefit from it.
 
-The trend is to move this code out of the API server. The book notes that the built-in PodSecurityPolicy controller had an announced deprecation. Kubernetes has since removed it in version 1.25, and Pod Security Admission or an external policy engine took its place. More built-in controllers are expected to move out of tree over time. Mutating and validating webhooks are the first step in that direction.
+The trend is to move this code out of the API server. *Production Kubernetes* notes that the built-in PodSecurityPolicy controller had an announced deprecation. Kubernetes has since removed it in version 1.25, and Pod Security Admission or an external policy engine took its place. More built-in controllers are expected to move out of tree over time. Mutating and validating webhooks are the first step in that direction.
 
 Most built-in controllers run by default as a set of sane defaults, so check that the ones you need are on. To enable a controller that is off by default, pass `--enable-admission-plugins` to the API server. To disable a default controller, pass `--disable-admission-plugins`. Read both flags carefully, because it is easy to reach for the wrong one. Use the official Kubernetes documentation for the full list of built-in controllers. The real flexibility comes from webhooks, which the next subsections cover.
 
@@ -379,7 +385,7 @@ Validating webhooks cannot change the request. They can only admit or reject the
 
 Mutation makes the platform easier to use, but it hides complexity. The user sees a different object from the one they applied. That can confuse people who do not know a mutating controller is running, so tell your users which webhooks change their objects.
 
-A `MutatingWebhookConfiguration` tells the API server when to call a mutating webhook. Here is the annotated example from the book:
+A `MutatingWebhookConfiguration` tells the API server when to call a mutating webhook. Here is the annotated example from *Production Kubernetes*:
 
 ```yaml
 apiVersion: admissionregistration.k8s.io/v1
@@ -459,7 +465,7 @@ Scope down as far as you can, because a webhook that never sees irrelevant objec
 
 The API server calls a webhook over HTTPS only. That protects the traffic, but it means the webhook needs a certificate. The easiest source is the cluster's own certificate authority (CA), which can sign a certificate for the webhook on request. The steps are: make a private key and a certificate signing request (CSR), submit it to the cluster, approve it, and download the result.
 
-First, generate the key and the CSR. The book uses a short Go program for this. It creates a 1024-bit RSA key and writes the CSR with the webhook URL in its URI field:
+First, generate the key and the CSR. *Production Kubernetes* uses a short Go program for this. It creates a 1024-bit RSA key and writes the CSR with the webhook URL in its URI field:
 
 ```go
 package main
@@ -539,9 +545,9 @@ Run the program with the webhook URL as its argument:
 $ go run csr-gen.go <URL-for-webhook>
 ```
 
-The book says this writes `server.csr` and `server-key.pem`. The code above names the key file `server.key`, so check which name you get before you go on.
+*Production Kubernetes* says this writes `server.csr` and `server-key.pem`. The code above names the key file `server.key`, so check which name you get before you go on.
 
-Next, wrap the CSR in a Kubernetes CertificateSigningRequest. The `request` field must hold the base64-encoded CSR, so the book fills in the `REPLACEME` placeholder with a one-line `perl` command:
+Next, wrap the CSR in a Kubernetes CertificateSigningRequest. The `request` field must hold the base64-encoded CSR, so *Production Kubernetes* fills in the `REPLACEME` placeholder with a one-line `perl` command:
 
 ```
 apiVersion: certificates.k8s.io/v1beta1
@@ -850,7 +856,7 @@ systemctl restart kubelet.service
 ...
 ```
 
-Each check shows `PASS`, `WARN` or `FAIL`. The remediation section tells you what to change and how to restart the service. Here, check `4.2.6` fails. The book's fix is to set `--protect-kernel-defaults=true` on each worker node, and then restart the kubelet. Roll out a Pod Security level in `warn` and `audit` first, and enforce it only after the workloads pass.
+Each check shows `PASS`, `WARN` or `FAIL`. The remediation section tells you what to change and how to restart the service. Here, check `4.2.6` fails. The fix in *Kubernetes: Up and Running* is to set `--protect-kernel-defaults=true` on each worker node, and then restart the kubelet. Roll out a Pod Security level in `warn` and `audit` first, and enforce it only after the workloads pass.
 
 ## 5. Policy engines
 
@@ -992,7 +998,7 @@ spec:
 
 A `ConstraintTemplate` that queries `data.inventory` can enforce cross-object rules too. For example, `k8suniqueingresshost` checks `data.inventory.namespace[ns][otherapiversion]["Ingress"][name]` for duplicate hosts. The `limitnamespaceingress` template matches an `Ingress` host against a regex stored on its parent `Namespace`, by reading `data.inventory.cluster.v1.Namespace[input.review.object.metadata.namespace]`.
 
-3. **Gatekeeper `Assign` mutation (`mutations.gatekeeper.sh/v1alpha1`)**: When Gatekeeper's mutating webhook is enabled, an `Assign` resource can set default or enforced field values before the validating constraints run. In the book's example (*Kubernetes: Up and Running*, Chapter 20, untested here), an `Assign` object sets `imagePullPolicy: Always` on every container in all Pods outside the `system` namespace:
+3. **Gatekeeper `Assign` mutation (`mutations.gatekeeper.sh/v1alpha1`)**: When Gatekeeper's mutating webhook is enabled, an `Assign` resource can set default or enforced field values before the validating constraints run. In the example in *Kubernetes: Up and Running*, Chapter 20, which has not been run here, an `Assign` object sets `imagePullPolicy: Always` on every container in all Pods outside the `system` namespace:
 
 ```yaml
 apiVersion: mutations.gatekeeper.sh/v1alpha1
@@ -1020,7 +1026,7 @@ spec:
 
 ### Rego and where Gatekeeper fits
 
-Rego is the declarative language that Open Policy Agent (OPA) uses for policy. Its creators designed it to query and reason over structured data. It is not meant to be a general-purpose programming language. The syntax is lean, which makes it a little hard to read at first. This chapter does not teach Rego syntax, and the book points readers to a free online training portal for that.
+Rego is the declarative language that Open Policy Agent (OPA) uses for policy. Its creators designed it to query and reason over structured data. It is not meant to be a general-purpose programming language. The syntax is lean, which makes it a little hard to read at first. This chapter does not teach Rego syntax, and *Kubernetes: Up and Running* points readers to a free online training portal for that.
 
 OPA works on plain JSON, and it knows nothing about Kubernetes. Something has to pass Kubernetes requests to OPA and act on the answers. Gatekeeper fills that role. It runs in the cluster as an admission controller, turns Kubernetes admission requests into OPA decisions, and adds Kubernetes-native pieces, such as templates, that make policies easier to write and apply.
 
@@ -1032,7 +1038,7 @@ Gatekeeper lets a cluster operator publish policy templates as `ConstraintTempla
 
 Suppose one team's Ingress overwrites another team's. A common rule is that teams must not overwrite each other's Ingress resources. Some Ingress controllers, such as Contour, protect against this out of the box. If your controller does not, Gatekeeper can enforce the rule. The official Gatekeeper documentation keeps a library of common policies, and this scenario is one of them.
 
-This rule needs data beyond the object being applied. Gatekeeper must look up the Ingress resources that already exist, and read the metadata of the Namespace. Here the Namespace carries a regex in an annotation, and each Ingress host must match that regex. The example below is untested here, and the book's Ingress manifests use an older API version. Check the version your cluster serves before you apply them.
+This rule needs data beyond the object being applied. Gatekeeper must look up the Ingress resources that already exist, and read the metadata of the Namespace. Here the Namespace carries a regex in an annotation, and each Ingress host must match that regex. The example below has not been run here, and the Ingress manifests in *Kubernetes: Up and Running* use an older API version. Check the version your cluster serves before you apply them.
 
 Step 1 is the sync config. Gatekeeper only knows about the objects you tell it to cache. The `sync` section lists the kinds it should copy into its cache, so that policies can query them:
 
@@ -1216,7 +1222,7 @@ Start with the self-checking Python lab, `code/part05/pki_admission_policy_eval_
 python3 code/part05/pki_admission_policy_eval_lab.py
 ```
 
-Next, you need a kubeadm or kind cluster for these exercises. Work through them in order. Every interactive shell step below is untested here.
+Next, you need a kubeadm or kind cluster for these exercises. Work through them in order. The shell steps below have not been run against live hardware.
 
 1. Take a tour of the PKI so you know what each file does. List `/etc/kubernetes/pki`, decode each certificate with `openssl x509`, and draw who signs whom. Note which components present which certificates, and check the SANs on the API server certificate.
 2. Run an expiry drill in a throwaway cluster. Shorten the certificate validity, or use `faketime` or a clock jump on a lab VM, and watch the failures. Renew with `kubeadm certs renew all`, restart the static pods, and restore the kubeconfigs. Then add Prometheus alerts for expiry.
@@ -1257,12 +1263,17 @@ These are the interview questions this chapter prepares you for. Each one draws 
 
 ## Exercises
 
-1. Map the Kubernetes PKI hierarchy in `/etc/kubernetes/pki`, including the three CAs (`ca.crt`, `etcd/ca.crt`, `front-proxy-ca.crt`), the ServiceAccount keypair (`sa.key`/`sa.pub`), and every leaf certificate from Section 1. Then explain how kubelet client and serving TLS bootstrapping works (`serverTLSBootstrap`), and why X.509 client certificates cannot be revoked individually in Kubernetes. Cover the certificate renewal process and the `certificates.k8s.io/v1` CSR API along the way (*Production Kubernetes*, Chapter 10).
-2. Work through identity federation. Use `match_spire_workload_entry()` in `code/part05/pki_admission_policy_eval.py` to see how the matcher works. Then explain the architectural security flaws of kube2iam and kiam, including the `spec.nodeName` scheduler bypass, and compare them with OIDC-based IRSA (`sts:AssumeRoleWithWebIdentity`). Finally, trace the two-stage SPIFFE/SPIRE attestation flow: node attestation (`k8s_psat`) and workload attestation (`unix:///run/spire/sockets/agent.sock`).
-3. Trace the admission pipeline so you can see the order of each check. Use `evaluate_vap_and_gatekeeper_policies()` in `code/part05/pki_admission_policy_eval.py`, and follow `ValidatingAdmissionPolicy/gpu-request-limits` and `ValidatingAdmissionPolicyBinding/gpu-request-limits-prod` from Section 3. Then compare custom controller-runtime webhooks (`Handle(ctx, req)`, `PatchResponseFromRaw`, `+kubebuilder:webhook`) with in-process CEL policies. Include the built-in `NamespaceLifecycle` controller in that comparison (*Production Kubernetes*, Chapter 8).
-4. Compare the three Pod Security profiles (`privileged`, `baseline`, `restricted`), using `evaluate_pod_security_standard()` in `code/part05/pki_admission_policy_eval.py`. Show how `kubectl label --dry-run=server --overwrite ns --all pod-security.kubernetes.io/enforce=baseline` previews violations across a live cluster. Explain how you would handle `privileged` exceptions for the `gpu-operator` namespace, and how to allow `IPC_LOCK` for RDMA training Pods (*Kubernetes: Up and Running*, Chapter 19). Cover `amicontained`, `RuntimeClass` and kube-bench as well.
-5. Compare the two policy engines. Set the Kyverno `ClusterPolicy` manifests (`require-queue-and-limits` and `default-namespace-guardrails`, with the Cosign keyless `verifyImages` rule) against the OPA Gatekeeper manifests. The Gatekeeper manifests include a `Config` that syncs `Namespace`, `Pod` and `Ingress` into `data.inventory`, a `K8sAllowedRepos` constraint with `enforcementAction: dryrun`, and an `Assign` that mutates `imagePullPolicy: Always`. Cover Kyverno's `validate`, `mutate`, `generate` and `verifyImages` rules, and Gatekeeper's `Config`, `data.inventory`, `ConstraintTemplate`, `Constraint` and `Assign` resources (*Kubernetes: Up and Running*, Chapter 20, and *Production Kubernetes*, Chapter 8).
-6. Combine PSA, VAP, Kyverno or Gatekeeper, and RBAC to enforce the 15 guardrails in Section 6. You then diagnose three classic incidents from Section 7: (a) an expired webhook `caBundle`, (b) `kubectl logs` failing after enabling `serverTLSBootstrap`, and (c) invalid ServiceAccount tokens after rotating `sa.key`.
+Each exercise is one security task. The helper functions live in `code/part05/pki_admission_policy_eval.py`.
+
+1. List the files under `/etc/kubernetes/pki`. Name the three certificate authorities, the ServiceAccount key pair and the leaf certificates from Section 1.
+2. Explain how a kubelet gets its client certificate and its serving certificate. Then explain why an X.509 client certificate cannot be revoked one by one. Production Kubernetes, Chapter 10, has the details.
+3. Run `match_spire_workload_entry()` to see how SPIRE matches a workload to an identity. Then trace the two attestation stages, node and workload.
+4. Explain what is wrong with kube2iam and kiam, including the `spec.nodeName` scheduler bypass. Compare them with IRSA, which uses `sts:AssumeRoleWithWebIdentity`.
+5. Run `evaluate_vap_and_gatekeeper_policies()` on the `gpu-request-limits` policy and binding from Section 3. Compare an in-process CEL policy with a custom controller-runtime webhook. Production Kubernetes, Chapter 8, covers the webhook side.
+6. Run `evaluate_pod_security_standard()` against the `privileged`, `baseline` and `restricted` profiles. Then preview violations across a live cluster with a server-side dry run of the enforce label.
+7. Decide how the `gpu-operator` namespace gets its privileged exception. Then decide how RDMA training pods get `IPC_LOCK` without loosening every namespace. Kubernetes: Up and Running, Chapter 19, helps here.
+8. Compare Kyverno and OPA Gatekeeper on the same guardrail. Say what each one's validate, mutate and image-verification features look like. Kubernetes: Up and Running, Chapter 20, and Production Kubernetes, Chapter 8, cover both.
+9. Use Section 7 to diagnose three incidents. The first is an expired webhook `caBundle`. The second is `kubectl logs` failing after `serverTLSBootstrap` is turned on. The third is invalid ServiceAccount tokens after rotating `sa.key`.
 
 ## Checkpoint questions (20)
 
@@ -1444,7 +1455,8 @@ Make sure you always deny user-specified `spec.nodeName` with a `ValidatingAdmis
   - `kubernetes-up-and-running-3rd-edition` — Brendan Burns, Joe Beda, Kelsey Hightower & Lachlan Evenson, *Kubernetes: Up and Running*, 3rd ed., **Chapter 19: Securing Applications in Kubernetes** (read in full: `securityContext`, `amicontained` container capability/seccomp/AppArmor inspection, Pod Security Standards `privileged`/`baseline`/`restricted` and `--dry-run=server` cluster evaluation, `RuntimeClass` `firecracker`/`gvisor`, `automountServiceAccountToken: false`, kube-bench CIS benchmarks) and **Chapter 20: Policy and Governance for Kubernetes Clusters** (read in full: OPA Gatekeeper architecture, `K8sAllowedRepos` `ConstraintTemplate` and `Constraint` with `enforcementAction: dryrun`, `Assign` mutation setting `imagePullPolicy: Always`, `data.inventory` `K8sUniqueIngressHost`, and Gatekeeper Prometheus metrics).
   - `nvidia-devops` (`volume-03/03-k8s-networking-security-ops-masterclass.md`): multi-tenant RBAC, Kyverno guardrails, and mutating GPU tolerations.
 - **Run here:** `python3 code/part05/pki_admission_policy_eval_lab.py` (3 passed, 0 failed).
-- **Explicitly labelled inferences:** The `evaluate_pod_security_standard`, `evaluate_vap_and_gatekeeper_policies`, and `match_spire_workload_entry` models in `code/part05/pki_admission_policy_eval.py` and the `gpu-request-limits` `ValidatingAdmissionPolicy`, `require-queue-and-limits` / `default-namespace-guardrails` Kyverno `ClusterPolicy`, and 15-point GPU guardrail table are the author's constructions synthesizing `PK` Chapters 8 & 10, `KUR` Chapters 19 & 20, and `volume-03/03` (plus original study items 21, 22, 23, 24, 25, 26, 27, 28, 29, 30, 31, 32, 33, 34, 35, 36, 37, 38, 39, and 40).
-- **Not verified on live hardware:** Live `kubeadm certs`, `openssl`, `spire-server`, `kyverno`, `gatekeeper`, and `kube-bench` executions (`1`-year leaf certs, `10`-year CAs, `:10250`, `2048`-bit RSA, `expirationSeconds: 86400`, `timeoutSeconds <= 30` / `<= 10`, `100 ms` webhook latency, `variables.gpus <= 8`, `amicontained:v0.4.9`) are marked (`untested here`) where not executed by `pki_admission_policy_eval_lab.py`.
+- **Explicitly labelled inferences:** The `evaluate_pod_security_standard`, `evaluate_vap_and_gatekeeper_policies`, and `match_spire_workload_entry` models in `code/part05/pki_admission_policy_eval.py` and the `gpu-request-limits` `ValidatingAdmissionPolicy`, `require-queue-and-limits` / `default-namespace-guardrails` Kyverno `ClusterPolicy`, and 15-point GPU guardrail table are the author's constructions synthesizing *Production Kubernetes* Chapters 8 & 10, *Kubernetes: Up and Running* Chapters 19 & 20, and `volume-03/03` (plus original study items 21, 22, 23, 24, 25, 26, 27, 28, 29, 30, 31, 32, 33, 34, 35, 36, 37, 38, 39, and 40).
+- **Not verified on live hardware:** Live `kubeadm certs`, `openssl`, `spire-server`, `kyverno`, `gatekeeper`, and `kube-bench` executions (`1`-year leaf certs, `10`-year CAs, `:10250`, `2048`-bit RSA, `expirationSeconds: 86400`, `timeoutSeconds <= 30` / `<= 10`, `100 ms` webhook latency, `variables.gpus <= 8`, `amicontained:v0.4.9`) are marked (not run against live hardware here) where not executed by `pki_admission_policy_eval_lab.py`.
 
 corrected 2026-11-11: PodSecurityPolicy was deprecated in Kubernetes v1.21 and removed in v1.25; use Pod Security Admission (or a policy engine); source Kubernetes docs, Concepts > Security > Pod Security Policies (Removed feature).
+- **Checked against current documentation:** The Kubernetes documentation page on service accounts states that service account issuer discovery has been stable since Kubernetes 1.21. The API server publishes the OpenID Provider Configuration at `/.well-known/openid-configuration` and the key set at `/openid/v1/jwks`. The IRSA section above says so, and notes that AWS still needs those documents at a publicly reachable address.

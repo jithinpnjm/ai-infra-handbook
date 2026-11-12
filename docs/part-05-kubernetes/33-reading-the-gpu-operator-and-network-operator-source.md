@@ -110,7 +110,7 @@ As you read the diagram, you will see that a state which is not ready does not s
 
 The reconciler lists all `ClusterPolicy` objects and treats the one with the oldest creation timestamp as the active one. The name is the tiebreaker, and every other policy is marked Ignored. The rule comes from cluster state, not from anything the operator remembers, so it stays stable across restarts. That is the same property recommended in 5.31.
 
-`init` (`state_manager.go`, `ClusterPolicyController.init`) does the setup before any state runs. It discovers GPU nodes by labels and reads OS and kernel information from NFD labels. It detects the container runtime from node info and sets Pod Security labels on the operator namespace. Then it registers the states with `addState` in a fixed order: pre-requisites, operator metrics, driver, container toolkit, operator validation, device plugin, MPS control daemon, DCGM, DCGM exporter, GPU feature discovery, MIG manager and node status exporter. The vGPU, sandbox, VFIO, Kata and confidential-computing states come after those.
+`init` (`state_manager.go`, `ClusterPolicyController.init`) does the setup before any state runs. It discovers GPU nodes by labels and reads OS and kernel information from labels set by Node Feature Discovery (NFD), a separate tool that labels nodes with their hardware. It detects the container runtime from node info and sets Pod Security labels on the operator namespace. Then it registers the states with `addState` in a fixed order: pre-requisites, operator metrics, driver, container toolkit, operator validation, device plugin, MPS control daemon, DCGM, DCGM exporter, GPU feature discovery, MIG manager and node status exporter. The vGPU, sandbox, VFIO, Kata and confidential-computing states come after those.
 
 `step` runs the control functions for the current state, then advances the index. Which functions a state uses is decided once, in `resource_manager.go`. That file reads the kind of each YAML file in the asset directory: ServiceAccount, Role, RoleBinding, ClusterRole, ClusterRoleBinding, ConfigMap, DaemonSet, Deployment, Service, ServiceMonitor, SecurityContextConstraints, RuntimeClass and PrometheusRule.
 
@@ -319,14 +319,14 @@ Start with the self-checking Python lab, and run it on your own machine. It chec
 python3 code/part05/gpu_net_operator_source_sim_lab.py
 ```
 
-Next, make shallow clones of `NVIDIA/gpu-operator` and `Mellanox/network-operator`. All cluster steps below are `untested here`. You should work through these exercises:
+Next, make shallow clones of `NVIDIA/gpu-operator` and `Mellanox/network-operator`. The cluster steps below have not been run against live hardware. You should work through these exercises:
 
 1. Clone both repositories with `--depth 1`. In `state_manager.go`, list the `addState` calls. Then map each one to an `assets/` directory and to a `Transform*` function in `object_controls.go`.
 2. Trace `DaemonSet()` for the device plugin. Write down which numbered step from section 4 each code block performs, and note where the hash annotation is written.
 3. Open `assets/state-device-plugin/0500_daemonset.yaml` and find the init containers. For each one, note the exact condition it waits on. Then find where `toolkit-ready` is written in `cmd/nvidia-validator/main.go`.
 4. In `gpuStateLabels`, list the labels for `container` and for `vm-passthrough`. Then predict which DaemonSets run on a node labelled `vm-passthrough`.
 5. In the Network Operator, read `SyncState` in `pkg/state/manager.go` and `createOrUpdateObjs` in `state_skel.go`. List what happens to an object that disappears from the rendered output.
-6. Write a 10-line summary that compares the wait mechanisms. Then, as a cluster step that is untested here, install both operators on a lab cluster. Label a node `nvidia.com/gpu.deploy.operands=false` and watch the pods leave.
+6. Write a 10-line summary that compares the wait mechanisms. Then, as a cluster step that has not been run here, install both operators on a lab cluster. Label a node `nvidia.com/gpu.deploy.operands=false` and watch the pods leave.
 7. For a stretch task, read `upgrade_controller.go` and draw the node state machine from the labels it writes.
 
 Since exercise 6 is the only step that needs a live cluster, you can do the reading in exercises 1 to 5 first.
@@ -349,14 +349,16 @@ The last question brings together the node gating and debugging sections, so ans
 
 ## Exercises
 
-These exercises ask you to read the code and explain what you find in your own words. Each one names the files to open.
+Each exercise asks you to read code and explain it in your own words. The simulators live in `code/part05/gpu_net_operator_source_sim.py`.
 
-1. Apply the 7-step reading method from section 1 to the directory structure and controller files of both `NVIDIA/gpu-operator` (section 2) and `Mellanox/network-operator` (section 8). The method runs in this order: API, `SetupWithManager`, `Reconcile`, State/Operands, Readiness, Node Gating, Tests.
-2. Trace `ClusterPolicyReconciler.Reconcile`, `ClusterPolicyController.init` and `step()` in `state_manager.go` and `resource_manager.go`, using the flowchart from section 3. Explain how the GPU Operator enforces the `ClusterPolicy` singleton rule. Say what happens when no node has `feature.node.kubernetes.io/*` NFD labels, and compare that with having no GPU nodes. Then explain why `step()` keeps deploying later states even when an earlier state returns `NotReady`.
-3. Start with `DaemonSet(n ClusterPolicyController)` in `object_controls.go`, and look at the `Transform*` functions, the hash annotations and `isDaemonSetReady`. Using `is_daemonset_ready()` in `code/part05/gpu_net_operator_source_sim.py`, walk through the 8 steps of `DaemonSet()` in section 4. Explain why a hash annotation (`isDaemonsetSpecChanged`) prevents spurious API server update loops. Then explain how `isDaemonSetReady` differs between `RollingUpdate` and `OnDelete` DaemonSets.
-4. Using `compute_gpu_node_deploy_labels()` and `evaluate_node_operand_gating_and_stale_objects()` in `code/part05/gpu_net_operator_source_sim.py`, explain node gating. Cover `NodeLabelingReconciler`, `gpuStateLabels`, and how `nvidia.com/gpu.workload.config` and `nvidia.com/gpu.deploy.<operand>=false` control operand placement. Then look at the per-node init-container chain in `cmd/nvidia-validator`. The workload config can be `container`, `vm-passthrough` or `vm-vgpu`. Then trace the exact sequence of marker files written under `/run/nvidia/validations`: `driver-ready` $\rightarrow$ `toolkit-ready` $\rightarrow$ `plugin-ready` / `cuda-ready`.
-5. Explain why `NVIDIADriver` was introduced for heterogeneous multi-pool GPU clusters. Compare `ClusterPolicy.spec.driver` with the `NVIDIADriver` CRD, and explain why `ClusterPolicy` deletes its legacy driver DaemonSets with orphan propagation when `NVIDIADriver` is enabled. Then explain how `UpgradeReconciler` in `upgrade_controller.go` drives rolling kernel-driver upgrades through node state labels, and how the `OnDelete` strategy fits in.
-6. Compare the Network Operator's `NicClusterPolicy`, its `State` interface (`Sync` and `GetWatchSources`), its Go-template rendering, the stale-object deletion in `pkg/state/state_skel.go`, the `mofed.wait` labels, the secondary network CRDs, and the `network.nvidia.com/operator.mofed.wait: "false"` node-selector gating with the GPU Operator's design. Then walk through the 8 debugging recipes in section 11.
+1. Apply the seven-step reading method from Section 1 to `NVIDIA/gpu-operator` and then to `Mellanox/network-operator`. The steps run from the API through `SetupWithManager`, `Reconcile`, state and operands, readiness and node gating, to tests.
+2. Trace `ClusterPolicyReconciler.Reconcile` and `step()` with the flowchart in Section 3. Say how the singleton rule is enforced. Then explain why `step()` keeps deploying later states when an earlier one is `NotReady`.
+3. Say what happens when no node has NFD labels, and how that differs from having no GPU nodes.
+4. Run `is_daemonset_ready()` and walk through the eight steps of `DaemonSet()` in Section 4. Explain why a hash annotation prevents update loops against the API server. Then explain how readiness differs for `RollingUpdate` and `OnDelete` DaemonSets.
+5. Run `compute_gpu_node_deploy_labels()` to see how `nvidia.com/gpu.workload.config` and `nvidia.com/gpu.deploy.<operand>=false` decide operand placement. The workload config can be `container`, `vm-passthrough` or `vm-vgpu`.
+6. Trace the marker files the validator writes under `/run/nvidia/validations`, in order from `driver-ready` to `toolkit-ready` to the plugin and CUDA checks. Run `evaluate_node_operand_gating_and_stale_objects()` alongside.
+7. Explain why `NVIDIADriver` was added for clusters with different GPU pools. Say what `ClusterPolicy` does to its own driver DaemonSets when `NVIDIADriver` is on. Then say how `UpgradeReconciler` drives rolling driver upgrades through node labels.
+8. Compare the Network Operator's `State` interface, template rendering and stale-object deletion with the GPU Operator's design. Then explain the `network.nvidia.com/operator.mofed.wait: "false"` gating, and walk through the eight recipes in Section 11.
 
 ## Checkpoint questions (20)
 
@@ -556,4 +558,4 @@ Work through the five checks in order. Each one narrows the problem to a single 
   - `kubernetes-programming-with-go-programming-kubernetes-clients-and-operators-using-go-and-the-kuberne` — Philippe Martin / Stefan Schimanski & Michael Hausenblas, *Kubernetes Programming with Go* / *Programming Kubernetes* (controller and operator patterns).
 - **Run here:** `python3 code/part05/gpu_net_operator_source_sim_lab.py` (3 passed, 0 failed).
 - **Explicitly labelled inferences:** The `compute_gpu_node_deploy_labels`, `is_daemonset_ready`, and `evaluate_node_operand_gating_and_stale_objects` models in `code/part05/gpu_net_operator_source_sim.py` and the architectural diagrams and comparison tables are the author's constructions synthesizing the `NVIDIA/gpu-operator` (`0fbefd5`) and `Mellanox/network-operator` (`041bd87`) source trees and *Kubernetes Programming with Go* (plus original study items 21, 22, 23, 24, 25, 26, 27, 28, 29, and 30).
-- **Not verified on live hardware:** Live cluster installations of the GPU Operator and Network Operator (`5s` not-ready requeue, `45s` no-NFD poll, `0500_daemonset.yaml`, `pci-10de.present`, `pci-15b3.present`, `2,000`-node predicate scaling) are marked (`untested here`) where not executed by `gpu_net_operator_source_sim_lab.py`.
+- **Not verified on live hardware:** Live cluster installations of the GPU Operator and Network Operator (`5s` not-ready requeue, `45s` no-NFD poll, `0500_daemonset.yaml`, `pci-10de.present`, `pci-15b3.present`, `2,000`-node predicate scaling) are marked (not run against live hardware here) where not executed by `gpu_net_operator_source_sim_lab.py`.

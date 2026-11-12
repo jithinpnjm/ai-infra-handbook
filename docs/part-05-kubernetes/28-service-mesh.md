@@ -139,7 +139,7 @@ The trade-off is isolation. Because every service on a node shares one proxy, a 
 
 Suppose the `serving` namespace holds a `vllm` model server, and you want only the router to reach it. Istio can enforce that rule with a few custom resources.
 
-The control plane, `istiod`, covers three jobs: pilot, which sends xDS configuration, citadel, which acts as the certificate authority, and galley and injection. Ingress and egress gateways are Envoy deployments, and they are now commonly configured with the Gateway API `Gateway` and `HTTPRoute` resources. The data plane is either sidecars, which run as `istio-proxy` containers, or ambient mode, which uses a ztunnel DaemonSet and waypoints.
+The control plane is a single program, `istiod`. It sends xDS configuration to the proxies, acts as the certificate authority for mTLS, and injects sidecars. Older Istio releases ran these jobs as separate components called Pilot, Citadel and Galley. Istio merged them into `istiod` in release 1.5. Ingress and egress gateways are Envoy deployments, and they are now commonly configured with the Gateway API `Gateway` and `HTTPRoute` resources. The data plane is either sidecars, which run as `istio-proxy` containers, or ambient mode, which uses a ztunnel DaemonSet and waypoints.
 
 To install Istio, run `istioctl install --set profile=default`, or use Helm. Then turn on injection for each namespace. Use `kubectl label ns serving istio-injection=enabled` for sidecars, or `istio.io/dataplane-mode=ambient` for ambient mode.
 
@@ -213,9 +213,9 @@ Clusters get their endpoints from EDS. Envoy has no Endpoint object in the EDS A
 
 ### istiod, sidecar injection and traffic shifting
 
-Istio's control plane is a component called `istiod`. It has three parts. Pilot is the Envoy configuration server. It implements the xDS APIs and streams configuration to every sidecar. Citadel manages certificates, minting the identities and certificates that mTLS uses. Galley reads configuration from Kubernetes and translates it for the other parts.
+Istio's control plane is a single program called `istiod`. It does three jobs. It serves Envoy configuration, implementing the xDS APIs and streaming configuration to every sidecar. It acts as the certificate authority, minting the identities and certificates that mTLS uses. It also reads Istio configuration from Kubernetes and translates it for the proxies. Before Istio 1.5 these jobs ran as separate components named Pilot, Citadel and Galley, and you will still see those names in older books and posts.
 
-`istiod` also includes a mutating admission webhook. The webhook injects an Envoy sidecar into each pod that joins the mesh. Injection can be opt-in or opt-out. Adding the proxy is not enough on its own, though. Traffic must be redirected into it. So Istio adds an init container that installs `iptables` rules. Those rules capture the pod's traffic and send it to Envoy. The book shows a trimmed version of that init container:
+`istiod` also includes a mutating admission webhook. The webhook injects an Envoy sidecar into each pod that joins the mesh. Injection can be opt-in or opt-out. Adding the proxy is not enough on its own, though. Traffic must be redirected into it. So Istio adds an init container that installs `iptables` rules. Those rules capture the pod's traffic and send it to Envoy. *Kubernetes: Up and Running* shows a trimmed version of that init container:
 
 ```
 ...
@@ -246,7 +246,7 @@ Read the arguments in pairs. `--envoy-port 15001` is the port that captures all 
 
 Istio uses two resources for traffic shifting. The `VirtualService` names a service in the mesh and holds the routing rules that choose a destination. The `DestinationRule` lists the real backends as subsets, and each subset can carry its own policy, such as a load balancing setting or an mTLS mode.
 
-The book walks through a slow rollout of version 2 of a service. The `DestinationRule` defines two subsets, `v1` and `v2`. The `VirtualService` then sends 90% of traffic to `v1` and 10% to `v2`:
+*Kubernetes: Up and Running* walks through a slow rollout of version 2 of a service. The `DestinationRule` defines two subsets, `v1` and `v2`. The `VirtualService` then sends 90% of traffic to `v1` and 10% to `v2`:
 
 ```
 apiVersion: networking.istio.io/v1alpha3
@@ -282,7 +282,7 @@ spec:
       weight: 10
 ```
 
-Service metrics come for free with this design. Every service pair has a proxy between them, so the proxy can count requests without any change to application code. The metrics use the Prometheus format. The book shows one example, with some labels removed for brevity. It counts 7,183 successful requests from the `bookings` service to the `payments` service:
+Service metrics come for free with this design. Every service pair has a proxy between them, so the proxy can count requests without any change to application code. The metrics use the Prometheus format. *Kubernetes: Up and Running* shows one example, with some labels removed for brevity. It counts 7,183 successful requests from the `bookings` service to the `payments` service:
 
 ```
 istio_requests_total{
@@ -381,7 +381,7 @@ spec:
 
 In that listing, `everything` allows all requests in the `HTTPRouteGroup`. The `destination` is the Pods that use the `payments` ServiceAccount in the `payments` Namespace. The `rules` list names the `HTTPRouteGroup` that controls traffic between the two services. The `sources` list is the `flights` ServiceAccount in the `bookings` Namespace.
 
-The Traffic Metrics API handles telemetry. It differs from the others because it defines outputs rather than inputs. It sets a standard way to expose service metrics. Monitoring systems, autoscalers and dashboards can then read those metrics in one consistent format. The book shows a `TrafficMetrics` resource for traffic between two Pods:
+The Traffic Metrics API handles telemetry. It differs from the others because it defines outputs rather than inputs. It sets a standard way to expose service metrics. Monitoring systems, autoscalers and dashboards can then read those metrics in one consistent format. *Kubernetes: Up and Running* shows a `TrafficMetrics` resource for traffic between two Pods:
 
 ```
 apiVersion: metrics.smi-spec.io/v1alpha1
@@ -509,7 +509,7 @@ Start with the self-checking Python lab. You can run it locally, and it needs no
 python3 code/part05/service_mesh_policy_sim_lab.py
 ```
 
-Next comes the cluster work. Use a 3-node cluster with Istio, Linkerd or Cilium. Every interactive shell step below is `untested here`, so you should expect to adjust them on your own cluster.
+Next comes the cluster work. Use a 3-node cluster with Istio, Linkerd or Cilium. The shell steps below have not been run against live hardware, so expect to adjust them on your own cluster.
 
 1. Install Istio with the default profile, or install Linkerd. Deploy a three-tier sample of gateway, router and model-mock. Enable injection, then check the proxies, mTLS with `istioctl x describe` or `linkerd viz edges`, and the metrics in Grafana and Kiali.
 2. Start in PERMISSIVE mode and add a non-mesh client. Switch to STRICT, and watch the failures you cause. Fix them with exemptions or by including the client in the mesh. Then confirm that the traffic is encrypted with `tcpdump`.
@@ -556,12 +556,17 @@ For each question, lead with the trade-off, then support it with the mechanism.
 
 ## Exercises
 
-1. Explain why plain Kubernetes `Service`s and `Ingress` cannot give you east-west mTLS or L7 resilience (*Kubernetes: Up and Running*, Chapter 15). Then trace how `iptables` or eBPF redirection sends pod traffic through the sidecar proxy. Finally, show how `istiod` uses Envoy's xDS APIs, `LDS`, `RDS`, `CDS`, `EDS` and `SDS`, to program the proxies dynamically while they run.
-2. Use `compute_mesh_fleet_memory_overhead()` in `code/part05/service_mesh_policy_sim.py` to total the proxy memory across 5,000 pods on 200 nodes. Compare three cases. Istio Envoy sidecars come to ~390 GiB, Linkerd Rust sidecars to ~88 GiB, and Istio ambient mode, which is `ztunnel` on each node plus 10 shared waypoints, to ~8.8 GiB. Then compare their latency and blast-radius trade-offs, and decide which trade-off matters most for your workload.
-3. Using `evaluate_mesh_mtls_and_authz()` in `code/part05/service_mesh_policy_sim.py`, trace the `PeerAuthentication/default` and `AuthorizationPolicy/model-server-allow-router` manifests from Section 3. Explain why a `PERMISSIVE` migration phase comes before `STRICT`. Then explain how `principals: ["cluster.local/ns/edge/sa/router"]` enforces cryptographic SPIFFE workload identity, so you can see which caller gets through.
-4. Using `evaluate_outlier_detection_and_routing()` in `code/part05/service_mesh_policy_sim.py`, study L7 traffic management for LLM serving. Cover the `VirtualService` or Gateway API `HTTPRoute`, the `DestinationRule`, canary releases, shadow mirroring and `outlierDetection`. Trace the `vllm` `DestinationRule` and `VirtualService` manifests from Section 3. Look at `LEAST_REQUEST`, and at outlier detection that ejects replicas after $\ge 5$ consecutive 5xx errors. Then check the 95/5 canary with the `x-canary: true` header match, the 10% shadow mirroring, `timeout: 600s`, and `retries: { attempts: 0 }`.
-5. Explain why a batch `Job` in a sidecar-meshed namespace hangs forever after its main container exits. Say how native sidecars or `/quitquitquit` fix that. Then explain what `holdApplicationUntilProxyStarts` does, and what the Envoy access-log response flags `UF`, `UH`, `UO`, `NR` and `UT` mean when you see them in a log.
-6. Explain why distributed GPU training, meaning `NCCL` over RDMA or TCP, and parallel-filesystem storage traffic must never pass through a service mesh proxy. Write the exact Istio and Linkerd annotations that exclude training pods or ports. Then outline a staged adoption path: start with `Gateway API`, add `Ambient/eBPF mTLS`, and use `L7 Waypoints/Sidecars` only where you need them.
+Each exercise is one question about running a mesh. The helper functions live in `code/part05/service_mesh_policy_sim.py`.
+
+1. Explain why plain Services and Ingress cannot give you east-west mTLS or L7 retries. Kubernetes: Up and Running, Chapter 15, makes the case.
+2. Trace how iptables or eBPF redirection sends a pod's traffic through its sidecar. Then say how `istiod` programs the proxies through Envoy's xDS APIs while they run.
+3. Run `compute_mesh_fleet_memory_overhead()` for 5,000 pods on 200 nodes. Check the totals: about 390 GiB for Envoy sidecars, 88 GiB for Linkerd, and 8.8 GiB for Istio ambient mode. Say which trade-off matters most for your workload.
+4. Run `evaluate_mesh_mtls_and_authz()` on `PeerAuthentication/default` and `AuthorizationPolicy/model-server-allow-router`. Explain why a `PERMISSIVE` phase comes before `STRICT`. Then say what the principal `cluster.local/ns/edge/sa/router` proves about the caller.
+5. Run `evaluate_outlier_detection_and_routing()` on the `vllm` `DestinationRule` and `VirtualService`. Check the 95/5 canary with the `x-canary: true` header match, and the 10 percent shadow mirror. Then say why the route sets a 600-second timeout and zero retries.
+6. A batch `Job` in a meshed namespace never finishes after its main container exits. Explain why, and how native sidecars or `/quitquitquit` fix it.
+7. Explain what `holdApplicationUntilProxyStarts` does. Then say what the Envoy response flags `UF`, `UH`, `UO`, `NR` and `UT` mean in an access log.
+8. Explain why NCCL traffic and parallel filesystem traffic must bypass the mesh proxy. Write the exclusion annotations for Istio and Linkerd.
+9. Outline a staged adoption path. Start with Gateway API, add ambient or eBPF mTLS, and use waypoints or sidecars only where you need L7 features.
 
 ## Checkpoint questions (20)
 
@@ -774,5 +779,6 @@ The difference is in what the route attaches to. A north-south `Gateway` is the 
   - `production-kubernetes` — Josh Rosso, Rich Lander, Alexander Brand & John Harris, *Production Kubernetes*, **Chapter 6: Service Routing** and **Chapter 10: Identity** (Service Mesh routing, Envoy `SDS`, and SPIFFE/SPIRE).
   - `networking-and-kubernetes` — James Strong & Vallery Lancey, *Networking and Kubernetes*, **Chapters 5 and 6** (Service Mesh overview, Istio, Linkerd, and Consul).
 - **Run here:** `python3 code/part05/service_mesh_policy_sim_lab.py` (3 passed, 0 failed).
-- **Explicitly labelled inferences:** The `evaluate_mesh_mtls_and_authz`, `evaluate_outlier_detection_and_routing`, and `compute_mesh_fleet_memory_overhead` models in `code/part05/service_mesh_policy_sim.py` and the `PeerAuthentication`, `AuthorizationPolicy`, `DestinationRule`, and `VirtualService` manifests for `vllm` are the author's constructions synthesizing `KUR` Chapter 15, `PK` Chapters 6 & 10, and `NK` Chapters 5 & 6 (plus original study items 21, 22, 23, 24, 25, 26, 27, 28, 29, 30, 31, 32, 33, 34, and 35).
-- **Not verified on live hardware:** Live `istioctl`, `linkerd`, `cilium`, and `fortio` executions (`http2MaxRequests: 1000`, `idleTimeout: 3600s`, `consecutive5xxErrors: 5`, `interval: 10s, baseEjectionTime: 30s, maxEjectionPercent: 50`, `weight: 95/5`, `timeout: 600s`, `mirrorPercentage: 10.0`, `:15000`, `0.2 to 1 ms` latency, `50 to 100+ MiB` Envoy vs `10 to 20 MiB` Linkerd, `5,000` pods, ports `15001/15006/15020/15021/15090`, `5 minutes` stream idle / `15 s` route timeout) are marked (`untested here`) where not executed by `service_mesh_policy_sim_lab.py`.
+- **Explicitly labelled inferences:** The `evaluate_mesh_mtls_and_authz`, `evaluate_outlier_detection_and_routing`, and `compute_mesh_fleet_memory_overhead` models in `code/part05/service_mesh_policy_sim.py` and the `PeerAuthentication`, `AuthorizationPolicy`, `DestinationRule`, and `VirtualService` manifests for `vllm` are the author's constructions synthesizing *Kubernetes: Up and Running* Chapter 15, *Production Kubernetes* Chapters 6 & 10, and *Networking and Kubernetes* Chapters 5 & 6 (plus original study items 21, 22, 23, 24, 25, 26, 27, 28, 29, 30, 31, 32, 33, 34, and 35).
+- **Not verified on live hardware:** Live `istioctl`, `linkerd`, `cilium`, and `fortio` executions (`http2MaxRequests: 1000`, `idleTimeout: 3600s`, `consecutive5xxErrors: 5`, `interval: 10s, baseEjectionTime: 30s, maxEjectionPercent: 50`, `weight: 95/5`, `timeout: 600s`, `mirrorPercentage: 10.0`, `:15000`, `0.2 to 1 ms` latency, `50 to 100+ MiB` Envoy vs `10 to 20 MiB` Linkerd, `5,000` pods, ports `15001/15006/15020/15021/15090`, `5 minutes` stream idle / `15 s` route timeout) are marked (not run against live hardware here) where not executed by `service_mesh_policy_sim_lab.py`.
+- **Checked against current documentation:** The Istio blog post introducing istiod describes it as a single binary that consolidates Pilot, Galley, Citadel and the sidecar injector. The current Istio architecture page describes istiod as one component that handles service discovery, configuration and certificate management. The chapter names the older components only as history.
