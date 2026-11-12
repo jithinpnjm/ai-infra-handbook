@@ -46,7 +46,7 @@ Git won for four practical reasons. It is distributed: every clone is a full bac
 
 Christian Adell, Scott Lowe, Matt Oswalt and Jason Edelman tell this history in chapter 11 of *Network Programmability and Automation*. Linus Torvalds created Git in April 2005. By then, the Linux kernel community had stopped using the proprietary BitKeeper system. It needed a fast, nonlinear, fully distributed version control system that could scale to thousands of kernel contributors.
 
-### Infrastructure developer environments (`NPA` Chapter 5)
+### Infrastructure developer environments (*Network Programmability and Automation* Chapter 5)
 
 Before you touch a production fabric or a GPU cluster, you need a local developer environment. In it, code and topologies can be edited, diffed and tested in a repeatable way. Chapter 5 of *Network Programmability and Automation* describes this setup.
 
@@ -513,8 +513,8 @@ The last question ties back to the reflog section above, so review that section 
 
 ## Exercises
 
-1. Start with the object model, which you can check yourself. Using `git_hash_object()` and `build_git_commit_dag()` in `code/part04/git_infrastructure_workflow.py`, work out what the blob, tree and commit objects are doing. The material comes from `NPA` Chapter 11. Explain (a) why renaming `main.tf` to `providers.tf` creates zero new `blob` objects while it still changes the `tree` and `commit` SHA-1 hashes; (b) why a branch is a 41-byte ref file (`.git/refs/heads/main`) and what `HEAD` points to; and (c) what `git diff`, `git diff --staged` and `git diff HEAD` each compare across the Working Tree, Index and Repository.
-2. Next, walk through the daily workflow that you would follow and the remote setup. (a) Trace the 9-step operational workflow: `git fetch origin` -> `git switch -c` -> edit -> `git status` -> `git diff` -> `git add <path>` -> `git diff --staged --check` -> `git commit` -> `git push -u`. Explain why you must set `.gitignore` to exclude `*.tfstate*`, `.terraform/`, `*.tfvars` and keys, while keeping `.terraform.lock.hcl`. Then explain how `git rm --cached` untracks a file that was committed by mistake. (b) Contrast `git fetch` plus `git diff main..origin/main` with `git pull`. Explain why shared remotes (`na-shared.git`) are initialized with `git clone --bare`, and how the Vagrant and Containerlab topologies in `NPA` Chapter 5 are versioned in Git. The material comes from `NPA` Chapters 5 and 11.
+1. Start with the object model, which you can check yourself. Using `git_hash_object()` and `build_git_commit_dag()` in `code/part04/git_infrastructure_workflow.py`, work out what the blob, tree and commit objects are doing. The material comes from *Network Programmability and Automation* Chapter 11. Explain (a) why renaming `main.tf` to `providers.tf` creates zero new `blob` objects while it still changes the `tree` and `commit` SHA-1 hashes; (b) why a branch is a 41-byte ref file (`.git/refs/heads/main`) and what `HEAD` points to; and (c) what `git diff`, `git diff --staged` and `git diff HEAD` each compare across the Working Tree, Index and Repository.
+2. Next, walk through the daily workflow that you would follow and the remote setup. (a) Trace the 9-step operational workflow: `git fetch origin` -> `git switch -c` -> edit -> `git status` -> `git diff` -> `git add <path>` -> `git diff --staged --check` -> `git commit` -> `git push -u`. Explain why you must set `.gitignore` to exclude `*.tfstate*`, `.terraform/`, `*.tfvars` and keys, while keeping `.terraform.lock.hcl`. Then explain how `git rm --cached` untracks a file that was committed by mistake. (b) Contrast `git fetch` plus `git diff main..origin/main` with `git pull`. Explain why shared remotes (`na-shared.git`) are initialized with `git clone --bare`, and how the Vagrant and Containerlab topologies in *Network Programmability and Automation* Chapter 5 are versioned in Git. The material comes from *Network Programmability and Automation* Chapters 5 and 11.
 3. Next, decide on a branching strategy. (a) Explain why infrastructure teams use trunk-based development with directory-based environments (`envs/staging`, `envs/prod`) instead of long-lived `staging` and `prod` branches. (b) State the golden rule of rebase. Explain why `"ours"` and `"theirs"` swap places during a rebase compared with a merge. Show how to resolve conflicts in generated lock files (`.terraform.lock.hcl`), and how `git rebase --onto main feature-A feature-B` transplants a stacked branch.
 4. Practice undoing mistakes and hunting regressions. (a) Contrast `git revert <sha>` (and `git revert -m 1 <merge_sha>`) on a published branch with `git reset --soft/--mixed/--hard` on local history. Then show how `git reflog` recovers a commit that was lost to a bad `reset --hard`. (b) Using `simulate_git_bisect_run()` in `code/part04/git_infrastructure_workflow.py`, explain how `git bisect run ./tests/check_bandwidth.sh` finds a regression across 40 commits in 5 steps. Also explain what the exit codes `0`, `1..127` (except `125`) and `125` mean.
 5. Cover secrets, hooks and ownership, using the material from `volume-10`. (a) State the 4-step remediation order for a credential or private key that was committed to Git. Explain why rotation must come before `git filter-repo`. Then explain why the `.pre-commit-config.yaml` checks (`check-yaml`, `detect-private-key`, `gitleaks`, `terraform_fmt`, `ansible-lint`) must also run as required status checks in CI. (b) Using `resolve_codeowners()`, explain how the last-matching-pattern rules in `.github/CODEOWNERS` make domain owners approve changes in proportion to blast radius.
@@ -535,7 +535,7 @@ A blob stores only file content, and the filename lives in the enclosing tree. S
 </details>
 
 <details>
-<summary>2. Is a Git commit a diff or a snapshot, why is Git history a tamper-evident Merkle DAG, and why is creating a branch practically free (`NPA` Chapter 11)?</summary>
+<summary>2. Is a Git commit a diff or a snapshot, why is Git history a tamper-evident Merkle DAG, and why is creating a branch practically free (*Network Programmability and Automation* Chapter 11)?</summary>
 
 - **A snapshot, not a diff:** every commit points to a root `tree` that describes the complete state of all tracked files at that moment. Unchanged files share their existing `blob` and `tree` objects, and `git gc` delta-compresses packfiles later.
 - **A Merkle DAG:** each commit's hash covers its root `tree` hash and its parent commit hashes. Change one byte in any historical file, and its `blob` hash changes, then its `tree` hash, then that `commit` hash, and then the hash of every descendant commit after it. That chain is what makes the history tamper-evident.
@@ -561,7 +561,7 @@ Ignore `.terraform/`, `*.tfstate*`, and secret `*.tfvars` files. Do not ignore `
 </details>
 
 <details>
-<summary>5. What is the difference between `git fetch` and `git pull`, and why must shared central repositories be created as Bare Repositories (`git clone --bare`, `NPA` Chapter 11)?</summary>
+<summary>5. What is the difference between `git fetch` and `git pull`, and why must shared central repositories be created as Bare Repositories (`git clone --bare`, *Network Programmability and Automation* Chapter 11)?</summary>
 
 - **`git fetch` and `git pull`:** `git fetch origin` downloads new objects and updates the remote-tracking refs, such as `.git/refs/remotes/origin/main`. It leaves your local branches and working tree alone, so you can inspect incoming changes first with `git log main..origin/main`. `git pull` runs a fetch and then immediately runs a `git merge`, or a `git rebase` when `pull.rebase=true`.
 - **Bare repositories (`git init --bare` or `git clone --bare`):** a bare repository has no working tree and no checked-out branch. It holds only the Git database. If you pushed to a non-bare repository that had the target branch checked out, its working tree would fall out of sync with `HEAD`. That is why central remotes such as `origin` are always bare.
@@ -683,7 +683,7 @@ Every Git clone downloads the full history of the repository. If you commit a 10
 </details>
 
 <details>
-<summary>20. How do `Vagrant`, `Containerlab`, and `dyff` (`NPA` Chapter 5) complement Git in an infrastructure engineer's daily workflow?</summary>
+<summary>20. How do `Vagrant`, `Containerlab`, and `dyff` (*Network Programmability and Automation* Chapter 5) complement Git in an infrastructure engineer's daily workflow?</summary>
 
 - **`Vagrant` (`Vagrantfile`) and `Containerlab` (`*.clab.yaml`):** these define multi-node virtual topologies of routers, switches and servers, such as VyOS VMs, Nokia SR Linux, Arista cEOS and SONiC containers. Each definition is a small text file tracked in Git. Engineers and CI pipelines can boot the same network lab with `vagrant up` or `containerlab deploy`, run Ansible or Python automation against it, and tear it down with `containerlab destroy`.
 - **`dyff between -b before.yaml after.yaml`:** runs structure-aware AST diffs on YAML files, such as Kubernetes manifests, Ansible variables and Netplan configs. Key-order noise is ignored, so the review shows exactly which values were added, deleted or changed.

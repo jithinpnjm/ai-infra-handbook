@@ -269,7 +269,7 @@ The new claim uses the snapshot to fill its volume. Once a pod is recreated to u
 
 A snapshot is only a primitive. Scheduling and retention are your job. You might run snapshots from a CronJob, write a custom controller, or use Velero to back up Kubernetes objects and data volumes on a schedule.
 
-### Integrating External and Replicated Stateful Storage (`KUR` Chapter 16 & `PK` Chapter 4)
+### Integrating External and Replicated Stateful Storage (*Kubernetes: Up and Running* Chapter 16 & *Production Kubernetes* Chapter 4)
 
 Kubernetes: Up and Running Chapter 16 and Production Kubernetes Chapter 4 describe three patterns for connecting stateful storage to a workload. Each pattern adds more of the cluster's own machinery, so it helps to read them in order.
 
@@ -735,5 +735,5 @@ Each CSI node plugin registers its capabilities in the node's `CSINode` object, 
   - `production-kubernetes` — Josh Rosso, Rich Lander, Alexander Brand & John Harris, *Production Kubernetes*, **Chapter 4: Container Storage** (read in full: Block vs File vs Object storage Table 4-1, in-tree to out-of-tree CSI transition, `CSIDriver` and `CSINode`, `StorageClass` parameters and `Immediate` vs `WaitForFirstConsumer` binding modes, `blkid` and `ResizeFS` online volume expansion, and `VolumeSnapshot` / `VolumeSnapshotClass`).
   - `nvidia-devops` (`volume-03/02-k8s-node-storage-masterclass.md`): node and storage masterclass (CSI architecture, `StatefulSet`s, minimal CSI driver walkthrough, and production storage log analysis).
 - **Run here:** `python3 code/part05/csi_storage_simulator_lab.py` (3 passed, 0 failed).
-- **Explicitly labelled inferences:** The `evaluate_zonal_pvc_binding`, `check_csi_volume_attachment`, and `compute_checkpoint_and_weight_timings` models in `code/part05/csi_storage_simulator.py` and the `fast-nvme` `StorageClass` and `checkpoints` `PVC` manifests are the author's constructions synthesizing `KUR` Chapter 16, `PK` Chapter 4, and `volume-03/02` (plus original study items 21, 22, 23, 24, 25, 26, 27, 28, 29, 30, 31, 32, 33, 34, 35, 36, 37, 38, 39, and 40).
+- **Explicitly labelled inferences:** The `evaluate_zonal_pvc_binding`, `check_csi_volume_attachment`, and `compute_checkpoint_and_weight_timings` models in `code/part05/csi_storage_simulator.py` and the `fast-nvme` `StorageClass` and `checkpoints` `PVC` manifests are the author's constructions synthesizing *Kubernetes: Up and Running* Chapter 16, *Production Kubernetes* Chapter 4, and `volume-03/02` (plus original study items 21, 22, 23, 24, 25, 26, 27, 28, 29, 30, 31, 32, 33, 34, 35, 36, 37, 38, 39, and 40).
 - **Not verified on live hardware:** Live CSI driver, `fio`, `findmnt`, `lsblk`, and `Velero` executions (`1,000` GPUs, `30 seconds` vs `15 minutes` checkpoint, `iops: "6000", throughput: "500"`, `2Ti`, `6-minute` `maxWaitForUnmountDuration`, `140 GB at 2 GB/s = 70 s`, `80%` alert threshold, `1 million` small files, `100 GB` / `20 GB` benchmarks) are marked (`untested here`) where not executed by `csi_storage_simulator_lab.py`.

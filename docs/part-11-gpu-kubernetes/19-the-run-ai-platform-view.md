@@ -687,5 +687,5 @@ Primary sources read in full for this chapter:
 
 - Corpus coverage: Run:ai product behavior across the control plane, projects, departments, and licensing is described in the Volume notes and books at a high level. Product names, licensing, and the relationship to the open-source KAI Scheduler change over time, so verify them with NVIDIA documentation before production deployment.
 - KAI Scheduler check: this chapter's KAI details were compared with the upstream documentation as summarized in Chapter 11.14 and Chapter 11.17.
-- Validation pass: `validate_chapter.py` and `check_coverage.py` pass. The YAML manifests and commands are marked untested and were not applied to a live cluster.
+- The YAML manifests and commands are marked untested and were not applied to a live cluster.
 - Arithmetic correction preserved from Volume 23 Chapter 12 Phase 6: 200 GPUs at 400 W equals 80 kW, which over 8,760 hours at $0.15 per kWh costs $105,120 per year, yielding roughly $0.9M per year in total OpEx and $0.86 per GPU-hour at 60 percent utilization.

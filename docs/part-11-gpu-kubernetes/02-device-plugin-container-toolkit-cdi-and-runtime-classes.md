@@ -245,7 +245,7 @@ Kubernetes closes this gap through the Device Plugin Framework under `k8s.io/kub
 
 The table pairs each vendor plugin with the extended resource name that Pods request, along with the facts the source notes for it.
 
-| Accelerator Vendor Plugin | Extended Resource Name | Key Ecosystem & Performance Facts (`GAK` Ch 3 & `K8GS` Ch 10) |
+| Accelerator Vendor Plugin | Extended Resource Name | Key Ecosystem & Performance Facts (*Generative AI on Kubernetes* Ch 3 & *Kubernetes for Generative AI Solutions* Ch 10) |
 |---|---|---|
 | `nvidia-device-plugin` | `nvidia.com/gpu` or `nvidia.com/mig-1g.5gb`, `nvidia.com/mig-3g.20gb`, `nvidia.com/mig-1g.18gb` | Pairs with NVML, NVIDIA Container Toolkit, CDI, and GPU Operator. |
 | `amd-device-plugin` | `amd.com/gpu` | Exposes AMD Instinct GPUs running the ROCm stack. |

@@ -421,7 +421,7 @@ For mounting and loading the model weights themselves, five production architect
 | **2. Shared `ReadOnlyMany` PVC (NFS / Ceph / Filestore)** | Mounts `/mnt/models` directly without copying files (`pvc://llama-pvc/`) | Highest (single shared copy) | `~121 s` (`70B` single pod) | Simple for 10–20 replicas, but concurrent scale-out saturates NFS I/O (`V12` Ch. 11 cascade). |
 | **3. KServe OCI `modelcar` Sidecar** | `shareProcessNamespace: true`; sidecar symlinks `/proc/$$$$/root/models` -> `/mnt/models` (`< 10 MB` RAM) | High (shares OCI layers across LoRAs) | `~29 s` (cached OCI layers on NVMe) | Zero file copy; requires `shareProcessNamespace: true` (Incompatible with strict Istio sidecar isolation). |
 | **4. K8s Native OCI Image Volume Mount (`1.31` / `1.35`)** | Mounts OCI model artifact directly via `volumes[].image` (`subPath: models`, read-only) | High (native kubelet layer cache) | `~29 s` (cached on local NVMe) | Cleanest Kubernetes-native standard; requires CRI-O `v1.33+` or containerd `v2.2.0+`. |
-| **5. `Run:ai Model Streamer` / `Tensorizer` / `GDS`** | Multi-threaded streaming (`concurrency: 16`) or `cuFile` DMA directly from NVMe/S3 to GPU HBM | High (works with PVC, S3, or local NVMe) | **`21.5 s` (`70B`) / `6.5 s` (`8B`)** with Streamer; **`14.0 s` (`70B`)** with GDS | Fastest cold start; `runai_streamer` needs zero model repackaging (`GAK` Example 4-5). |
+| **5. `Run:ai Model Streamer` / `Tensorizer` / `GDS`** | Multi-threaded streaming (`concurrency: 16`) or `cuFile` DMA directly from NVMe/S3 to GPU HBM | High (works with PVC, S3, or local NVMe) | **`21.5 s` (`70B`) / `6.5 s` (`8B`)** with Streamer; **`14.0 s` (`70B`)** with GDS | Fastest cold start; `runai_streamer` needs zero model repackaging (*Generative AI on Kubernetes* Example 4-5). |
 
 Let us examine why **Run:ai Model Streamer** and **NVIDIA GPUDirect Storage** achieve such dramatic speedups. In standard PyTorch and vLLM loading, a single CPU thread reads `.safetensors` files sequentially into host page cache. It then copies tensors into pinned DRAM at 50 to 200 GB/s and transfers them across PCIe to GPU HBM. By passing `--load-format runai_streamer` with 16 threads, vLLM streams tensor chunks in parallel directly from local NVMe or object storage into GPU memory without repackaging the model. When paired with **GPUDirect Storage** over local NVMe drives, the `cuFile` DMA engine transfers weight blocks directly from NVMe controllers across the local PCIe Gen5 switch into GPU HBM. That path bypasses CPU bounce buffers entirely and loads a 140 GB model in 5 seconds, achieving 14.0 seconds total pod readiness.
 
@@ -480,7 +480,7 @@ Before lowering your autoscaler threshold to chase a few milliseconds of latency
 
 ## Commands and configurations that matter
 
-### 1. Production KServe `InferenceService` with KEDA and OpenTelemetry / Prometheus (`GAK` Example 4-4)
+### 1. Production KServe `InferenceService` with KEDA and OpenTelemetry / Prometheus (*Generative AI on Kubernetes* Example 4-4)
 
 ```yaml
 apiVersion: serving.kserve.io/v1beta1
@@ -527,7 +527,7 @@ spec:
               value: "4"
 ```
 
-### 2. Kubernetes Gateway API Inference Extension `InferencePool` (`GAK` Example 4-7)
+### 2. Kubernetes Gateway API Inference Extension `InferencePool` (*Generative AI on Kubernetes* Example 4-7)
 
 ```yaml
 apiVersion: inference.networking.k8s.io/v1

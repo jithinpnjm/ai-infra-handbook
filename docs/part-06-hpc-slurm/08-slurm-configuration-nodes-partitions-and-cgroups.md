@@ -72,7 +72,7 @@ Slurm uses compact bracket ranges everywhere, such as `node[1-10]`, `gpu[01-04,0
 
 ## 2. Nodes: hardware discovery (`slurmd -C`), `DEFAULT`, `NodeSet`, and states
 
-### Describing node hardware (`slurmd -C` and `SCL` Chapter 15 attributes)
+### Describing node hardware (`slurmd -C` and *Supercomputers for Linux Sysadmins* Chapter 15 attributes)
 
 Do not guess CPU counts or RAM from a server datasheet. The Linux kernel reserves several gigabytes of RAM for page tables and kernel structures, so `MemTotal` always comes in slightly below the nominal DIMM capacity. Run `slurmd -C` on each node class to print the exact hardware topology that `slurmd` detects (**untested** here).
 
@@ -90,7 +90,7 @@ NodeSet=Set1 Nodes=n[10-20],n[55,66,77]
 
 Each attribute in the table below has its own rule, so read the table before you write a node line.
 
-| Node attribute | Purpose and operational rules (`slurm.conf(5)` & `SCL` Ch. 15) |
+| Node attribute | Purpose and operational rules (`slurm.conf(5)` & *Supercomputers for Linux Sysadmins* Ch. 15) |
 |---|---|
 | `NodeName`, `NodeHostname`, `NodeAddr` | `NodeName` is Slurm's logical name; set `NodeHostname` or `NodeAddr` if the DNS hostname or management/fabric IP differs |
 | `Boards`, `Sockets` / `SocketsPerBoard`, `CoresPerSocket`, `ThreadsPerCore`, `CPUs` | Hardware CPU hierarchy; `CPUs` must equal `Boards * SocketsPerBoard * CoresPerSocket * ThreadsPerCore` (or set `CPUs` to physical cores when hiding HyperThreading; Chapter 6.2) |
@@ -109,7 +109,7 @@ When you inspect nodes with `sinfo`, you can narrow the output with `-t STATES`,
 
 `sinfo` sometimes adds one suffix symbol to a node's state, as in `idle*`, `drain$`, or `idle~`. The table below decodes all eight symbols from Table 15-4 of *Supercomputers for Linux SysAdmins*.
 
-| Suffix symbol | Meaning on node state in `sinfo` (`SCL` Chapter 15) |
+| Suffix symbol | Meaning on node state in `sinfo` (*Supercomputers for Linux Sysadmins* Chapter 15) |
 |---|---|
 | `*` | The node is currently **not responding** (`slurmd` unreachable) |
 | `$` | The node is currently in **maintenance mode** (covered by a maintenance reservation) |
@@ -134,13 +134,13 @@ What happens when a `DOWN` node finishes rebooting and its `slurmd` registers wi
 > - Run `slurmd -C` on real hardware. Never leave `RealMemory` at its default of `1` MiB, and make sure `CPUs = Boards * SocketsPerBoard * CoresPerSocket * ThreadsPerCore`.
 > - Use `NodeName=DEFAULT` and `NodeSet` to keep configs concise. Use `Gres=gpu:volta:8,fastfs:lustre:no_consume:100G` with `GresTypes`, and watch the `sinfo` state suffixes (`*`, `$`, `~`, `#`, `!`, `%`, `@`, `^`).
 
-## 3. Partitions: attributes, states, and live `scontrol` updates (`SCL` Chapter 15)
+## 3. Partitions: attributes, states, and live `scontrol` updates (*Supercomputers for Linux Sysadmins* Chapter 15)
 
 Suppose your cluster has a debug queue for quick interactive work and a batch queue for long training runs. A partition is the object that keeps them apart. It is a logical queue that wraps a set of nodes (`Nodes=...`), with its own scheduling constraints and access controls. Partitions can be nested, can share the same physical nodes, or can intersect.
 
 The attributes in the table below control who can submit, how long jobs may run, and how partitions compete with each other.
 
-| Partition attribute | Operational meaning (`SCL` Chapter 15 & `slurm.conf(5)`) |
+| Partition attribute | Operational meaning (*Supercomputers for Linux Sysadmins* Chapter 15 & `slurm.conf(5)`) |
 |---|---|
 | `Nodes` | Hostlist or `NodeSet` of nodes in this partition (`Nodes=gpu[01-32]` or `ALL`) |
 | `Default=YES` | Makes this the default partition when a user omits `-p` (**must be set on at most 1 partition**) |
@@ -241,7 +241,7 @@ Add each new node to the topology file in the same change that adds it to `slurm
 
 Some of the most useful settings in `slurm.conf` handle scale-up bottlenecks. Jobs can start before every node is ready, or the controller can be buried under a flood of submissions. At the end of Chapter 15, Zhumatiy catalogs the high-leverage parameters. They include `PropagateResourceLimits`, `HealthCheckInterval`, `HealthCheckNodeState=ALLOC,ANY,CYCLE,IDLE,NONDRAINED_IDLE,MIXED`, `PrivateData=accounts,events,jobs,nodes,partitions,reservations,usage,users`, `SlurmSchedLogFile`, and `SlurmSchedLogLevel`. Two of them, `PrologFlags` and `SchedulerParameters`, have sub-options that solve these scale-up problems. The table below lists those sub-options.
 
-| Parameter family | Sub-option (`SCL` Chapter 15) | What it does in production |
+| Parameter family | Sub-option (*Supercomputers for Linux Sysadmins* Chapter 15) | What it does in production |
 |---|---|---|
 | **`PrologFlags`** | `Alloc` | Runs `Prolog` at allocation time (even for `salloc`), rather than waiting for the first step launch; required by most other `PrologFlags` |
 | **`PrologFlags`** | `Contain` | Uses the `Proctrack` plugin (`cgroup`) to create a job container (`extern` step) on all allocated nodes at allocation time so `pam_slurm_adopt` can place direct user `ssh` sessions inside the job's cgroup |
@@ -332,7 +332,7 @@ If you omit it, `RealMemory` defaults to `1` MiB. That breaks memory-based sched
 </details>
 
 <details>
-<summary>4. How are node `Features`, `Weight`, and `NodeSet` used in `slurm.conf` (`SCL` Chapter 15)?</summary>
+<summary>4. How are node `Features`, `Weight`, and `NodeSet` used in `slurm.conf` (*Supercomputers for Linux Sysadmins* Chapter 15)?</summary>
 
 - `Features` are boolean tags on a node, such as `Features=h100,nvlink,fast_scratch`. Users request them with `sbatch -C h100&nvlink`, and partitions can refer to them through `Nodes=feature{h100}`.
 - `Weight` is the scheduling preference. Slurm allocates the lowest-weight eligible nodes first. A high-memory or multi-GPU node with a higher `Weight` therefore stays free until a job asks for its features.
@@ -340,13 +340,13 @@ If you omit it, `RealMemory` defaults to `1` MiB. That breaks memory-based sched
 </details>
 
 <details>
-<summary>5. What is the format of the `Gres` node attribute in `SCL` Chapter 15, and what does `:no_consume` mean?</summary>
+<summary>5. What is the format of the `Gres` node attribute in *Supercomputers for Linux Sysadmins* Chapter 15, and what does `:no_consume` mean?</summary>
 
 The format is `<name>[:<type>][:no_consume]:<number>[K|M|G]`. You declare `<name>` first in the global `GresTypes`. For example, `GresTypes=gpu,fastfs` lets you write `Gres=gpu:volta:8,fastfs:lustre:no_consume:100G`. The `:no_consume` flag makes Slurm check that the node has at least the requested amount of that generic resource. It does not subtract the job's request from the node's available pool.
 </details>
 
 <details>
-<summary>6. Decode the eight `sinfo` node-state suffix symbols (`*`, `$`, `~`, `#`, `!`, `%`, `@`, `^`) from `SCL` Chapter 15.</summary>
+<summary>6. Decode the eight `sinfo` node-state suffix symbols (`*`, `$`, `~`, `#`, `!`, `%`, `@`, `^`) from *Supercomputers for Linux Sysadmins* Chapter 15.</summary>
 
 A `*` means the node is not responding, so `slurmd` is unreachable. A `$` means the node is in maintenance mode, under a maintenance reservation. A `~` means the node is powered off. A `#` means it is being powered up or configured. A `!` means it is pending power down, and a `%` means it is being powered down now. A `@` means it is pending reboot. A `^` means a reboot was issued and is under way.
 </details>
@@ -360,7 +360,7 @@ A `*` means the node is not responding, so `slurmd` is unreachable. A `$` means 
 </details>
 
 <details>
-<summary>8. Compare the four Slurm partition states: `UP`, `DOWN`, `DRAIN`, and `INACTIVE` (`SCL` Chapter 15).</summary>
+<summary>8. Compare the four Slurm partition states: `UP`, `DOWN`, `DRAIN`, and `INACTIVE` (*Supercomputers for Linux Sysadmins* Chapter 15).</summary>
 
 - `UP`: Jobs can be submitted, and queued jobs start normally.
 - `DOWN`: New jobs can still be submitted, but no queued job starts. Running jobs carry on.
@@ -369,14 +369,14 @@ A `*` means the node is not responding, so `slurmd` is unreachable. A `$` means 
 </details>
 
 <details>
-<summary>9. What is the difference between `PriorityTier` and `PriorityJobFactor` on a partition (`SCL` Chapter 15)?</summary>
+<summary>9. What is the difference between `PriorityTier` and `PriorityJobFactor` on a partition (*Supercomputers for Linux Sysadmins* Chapter 15)?</summary>
 
 - `PriorityTier` sets a strict order. Every eligible job in a partition with a higher `PriorityTier` is scheduled before any job in a lower-tier partition, whatever the lower-tier job's numerical priority. It can also trigger `preempt/partition_prio` preemption.
 - `PriorityJobFactor` is a numerical weight. It is a normalized factor between 0 and 1, multiplied by `PriorityWeightPartition`, and it is added to a job's multifactor priority score alongside Age, FairShare, JobSize, and QoS.
 </details>
 
 <details>
-<summary>10. Compare the four `OverSubscribe` settings on a partition (`SCL` Chapter 15).</summary>
+<summary>10. Compare the four `OverSubscribe` settings on a partition (*Supercomputers for Linux Sysadmins* Chapter 15).</summary>
 
 - `NO`, the default, allocates nodes exclusively to one job at a time. Cores or GPUs can also be handed out whole through `cons_tres`, without oversubscribing what is allocated.
 - `YES[:N]` lets up to `N` jobs share the resources, except GRES, when users pass `--oversubscribe`.
@@ -385,7 +385,7 @@ A `*` means the node is not responding, so `slurmd` is unreachable. A `$` means 
 </details>
 
 <details>
-<summary>11. How do the `scontrol` commands for updating an existing partition versus creating a new partition differ in syntax (`SCL` Chapter 15)?</summary>
+<summary>11. How do the `scontrol` commands for updating an existing partition versus creating a new partition differ in syntax (*Supercomputers for Linux Sysadmins* Chapter 15)?</summary>
 
 - Updating an existing partition uses `partitionname=<name>` as a single token, and it supports `+=` and `-=` on `nodes`. For example: `scontrol update partitionname=main nodes=node[1-29] MaxNodes=5 MaxTime=24:00:00`
 - Creating a new partition uses `partition` and `name=<name>` as two separate tokens. For example: `scontrol create partition name=new nodes=node[30-32] allowaccounts=acc1,acc3`
@@ -412,19 +412,19 @@ Run this from inside a job step:
 </details>
 
 <details>
-<summary>15. What are the four `TopologyPlugin` types in `SCL` Chapter 15, and what happens if you add a new compute node to `slurm.conf` but forget to add it to `topology.conf`?</summary>
+<summary>15. What are the four `TopologyPlugin` types in *Supercomputers for Linux Sysadmins* Chapter 15, and what happens if you add a new compute node to `slurm.conf` but forget to add it to `topology.conf`?</summary>
 
 The four plugin types are `default` (1D), `block` with `BlockName=...`, `3d-torus`, and `tree` with `SwitchName=...`. If you add a compute node to `slurm.conf` but leave it out of `topology.conf`, the scheduler never selects that node for jobs.
 </details>
 
 <details>
-<summary>16. What problem does `TopologyParam=SwitchAsNodeRank` solve when node names are interleaved across leaf switches (`SCL` Chapter 15)?</summary>
+<summary>16. What problem does `TopologyParam=SwitchAsNodeRank` solve when node names are interleaved across leaf switches (*Supercomputers for Linux Sysadmins* Chapter 15)?</summary>
 
 Suppose even nodes, `n[0,2,4,6]`, sit on switch `s0`, and odd nodes, `n[1,3,5,7]`, sit on switch `s1`. Slurm's default alphabetical ordering puts Rank 0 on `n0`, Rank 1 on `n1`, Rank 2 on `n2`, and Rank 3 on `n3`. That alternates the switches and forces nearest-neighbor MPI traffic across the top spine switch. `TopologyParam=SwitchAsNodeRank` sorts allocated nodes by leaf switch first and then by node name, giving `n0, n2, n1, n3`. Neighboring ranks then stay on the same leaf switch.
 </details>
 
 <details>
-<summary>17. What do the `PrologFlags` options `Alloc`, `Contain`, `DeferBatch`, `RunInJob`, and `Serial` do (`SCL` Chapter 15)?</summary>
+<summary>17. What do the `PrologFlags` options `Alloc`, `Contain`, `DeferBatch`, `RunInJob`, and `Serial` do (*Supercomputers for Linux Sysadmins* Chapter 15)?</summary>
 
 - `Alloc` runs the `Prolog` script at resource allocation time, including for `salloc`, instead of waiting for the first step launch.
 - `Contain` creates an `extern` `slurmstepd` cgroup container on every allocated node at allocation time. That lets `pam_slurm_adopt` place direct SSH sessions inside the job's cgroup.
@@ -434,7 +434,7 @@ Suppose even nodes, `n[0,2,4,6]`, sit on switch `s0`, and odd nodes, `n[1,3,5,7]
 </details>
 
 <details>
-<summary>18. What do `defer` / `defer_batch`, `bf_interval`, `bf_max_job_test`, and `max_rpc_cnt` in `SchedulerParameters` control (`SCL` Chapter 15)?</summary>
+<summary>18. What do `defer` / `defer_batch`, `bf_interval`, `bf_max_job_test`, and `max_rpc_cnt` in `SchedulerParameters` control (*Supercomputers for Linux Sysadmins* Chapter 15)?</summary>
 
 - `defer` and `defer_batch` skip a scheduling pass for each individual submission during a submit storm, and batch the scheduling into passes instead. `defer_batch` still schedules interactive `salloc` and `srun` immediately.
 - `bf_interval`, default `30` s, sets how often the backfill scheduler runs. `bf_max_job_test`, default `500`, sets how many queued jobs it tests per pass.
@@ -442,13 +442,13 @@ Suppose even nodes, `n[0,2,4,6]`, sit on switch `s0`, and odd nodes, `n[1,3,5,7]
 </details>
 
 <details>
-<summary>19. What is the difference between `salloc_wait_nodes` and `sbatch_wait_nodes` in `SchedulerParameters`, and what does `nohold_on_prolog_fail` do (`SCL` Chapter 15)?</summary>
+<summary>19. What is the difference between `salloc_wait_nodes` and `sbatch_wait_nodes` in `SchedulerParameters`, and what does `nohold_on_prolog_fail` do (*Supercomputers for Linux Sysadmins* Chapter 15)?</summary>
 
 By default, `salloc` returns as soon as an allocation is made, and `sbatch` starts the batch script as soon as the first allocated node is ready. Setting `salloc_wait_nodes` and `sbatch_wait_nodes`, or passing `--wait-all-nodes`, makes both wait until all allocated nodes have finished their prolog and boot. By default, a nonzero prolog exit drains the node and requeues the job in a `HELD` state. `nohold_on_prolog_fail` requeues the job onto healthy nodes without holding it.
 </details>
 
 <details>
-<summary>20. How do you schedule a graceful node reboot in Slurm after all currently running jobs on that node finish (`SCL` Chapter 15)?</summary>
+<summary>20. How do you schedule a graceful node reboot in Slurm after all currently running jobs on that node finish (*Supercomputers for Linux Sysadmins* Chapter 15)?</summary>
 
 Run `scontrol reboot asap nextstate=resume <nodelist>`. The `asap` flag drains the node so no new job starts. It waits for the last running job on the node to finish, reboots the node, and returns it to `nextstate` (`resume` or `down`) once `slurmd` registers again.
 </details>

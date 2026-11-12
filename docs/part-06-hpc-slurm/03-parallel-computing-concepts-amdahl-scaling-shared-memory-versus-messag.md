@@ -186,7 +186,7 @@ At scale, tail latency and node variability govern job speed. Every synchronous 
 > - Real scaling stops because of serial sections, communication latency and bandwidth, load imbalance, barriers, memory-bus saturation, storage I/O stalls, OS jitter, and fabric congestion.
 > - In a synchronous 1,000-GPU job, a 10-millisecond OS jitter hiccup on one node delays all 999 other GPUs at the next AllReduce barrier.
 
-## 7. Parallel programming models and technologies (`SCL` Chapter 21)
+## 7. Parallel programming models and technologies (*Supercomputers for Linux Sysadmins* Chapter 21)
 
 ```mermaid
 flowchart TB
@@ -298,7 +298,7 @@ When you strong-scale a domain-decomposed or model-parallel job, watch the surfa
 > - In 3D domain decomposition, compute scales with subdomain volume (`d^3`) while halo-exchange communication scales with surface area (`6 * d^2`), so communication-to-compute grows as `6 / d` under strong scaling.
 > - Unequal work per rank creates synchronization bubbles until rebalanced.
 
-## 10. Parallel computing support libraries, debuggers, and profilers (`SCL` Chapter 22)
+## 10. Parallel computing support libraries, debuggers, and profilers (*Supercomputers for Linux Sysadmins* Chapter 22)
 
 You might hear that libraries are for users, not for sysadmins. Zhumatiy argues in Chapter 22 of *Supercomputers for Linux SysAdmins* that sysadmins cannot ignore them. Even if you never write a PDE solver, users will ask you to build custom versions of these libraries. They will also paste crash logs into tickets. Knowing the four core numerical libraries, ScaLAPACK, PETSc, FFTW, and Intel TBB, along with the parallel debugger and profiler ecosystem, lets you separate cluster bugs from application bugs right away.
 

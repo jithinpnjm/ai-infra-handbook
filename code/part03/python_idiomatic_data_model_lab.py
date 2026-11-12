@@ -6,9 +6,9 @@ from pathlib import Path
 
 sys.path.insert(0, str(Path(__file__).resolve().parent))
 from python_idiomatic_data_model import (
-    Card,
+    Node,
     Customer,
-    FrenchDeck,
+    NodeInventory,
     LineItem,
     Order,
     Result,
@@ -25,7 +25,7 @@ from python_idiomatic_data_model import (
     permute1,
     permute2,
     scramble1,
-    spades_high,
+    drain_order,
 )
 
 passed = 0
@@ -43,19 +43,19 @@ def check(name: str, cond: bool, detail: str = "") -> None:
 
 
 def main() -> None:
-    # 1. FP Ch. 1 FrenchDeck (__len__, __getitem__, slicing, spades_high)
-    deck = FrenchDeck()
+    # 1. NodeInventory (__len__, __getitem__, slicing, drain_order)
+    deck = NodeInventory()
     aces = deck[12::13]
-    ranked = sorted(deck, key=spades_high)
+    ranked = sorted(deck, key=drain_order)
     check(
-        "FrenchDeck has 52 cards, deck[12::13] slices all 4 Aces, and spades_high ranks 2 of clubs (0) to Ace of spades (51)",
+        "NodeInventory has 52 nodes, deck[12::13] slices slot 13 of all 4 racks, and drain_order ranks slot 01 of r1 (0) to slot 13 of r4 (51)",
         len(deck) == 52
         and len(aces) == 4
-        and all(c.rank == "A" for c in aces)
-        and ranked[0] == Card("2", "clubs")
-        and ranked[-1] == Card("A", "spades")
-        and spades_high(Card("2", "clubs")) == 0
-        and spades_high(Card("A", "spades")) == 51,
+        and all(c.slot == "13" for c in aces)
+        and ranked[0] == Node("01", "r1")
+        and ranked[-1] == Node("13", "r4")
+        and drain_order(Node("01", "r1")) == 0
+        and drain_order(Node("13", "r4")) == 51,
     )
 
     # 2. FP Ch. 2 t = (1, 2, [30, 40]); t[2] += [50, 60] puzzle

@@ -633,6 +633,6 @@ All `kubectl`, `nvidia-smi`, `numactl`, and `cpupower` commands that target mult
 The corpus does not include custom Kubernetes Scheduler Framework Go plugin code for the Filter and Score extension points. Queue and gang-scheduling controllers, such as Kueue, Volcano, and KAI Scheduler, are covered in detail in Chapters 11.7 through 11.20.
 
 ### Corrections to the author's notes
-- Validation pass 2026-10-25 confirms that `validate_chapter.py` and `check_coverage.py` pass. The YAML manifests and commands are marked untested and were not applied to a cluster. Custom resource API versions change between releases, so check them against the version you install. Console outputs quoted from the Volume notes are illustrative unless the chapter says otherwise.
+- The YAML manifests and commands are marked untested and were not applied to a cluster. Custom resource API versions change between releases, so check them against the version you install. Console outputs quoted from the Volume notes are illustrative unless the chapter says otherwise.
 - The NUMA latency figures of roughly 80 ns local and 139 ns remote were checked against AI Systems Performance Engineering Chapter 3, which describes them as one experiment. The 5% to 10% throughput gain is what the book says is possible, not a guaranteed result.
 - In AI Systems Performance Engineering Chapter 3, two `nvidia.com/mig-2g.45gb` slices allocate roughly 76 SMs and 90 GB of total HBM across the two instances. This chapter states both the 45 GB per-slice and 90 GB two-slice figures clearly.

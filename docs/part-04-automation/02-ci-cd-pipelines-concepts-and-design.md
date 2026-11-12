@@ -229,7 +229,7 @@ Treat the action versions and flags above as examples, and pin each one to a ver
 
 Other systems follow the same pattern. GitLab CI uses `stages`, `rules`, an `environment:` with `when: manual`, protected variables, and `resource_group` for locking. Jenkins uses a declarative pipeline with `input` approval steps and credential binding. Buildkite or Argo Workflows suit heavy jobs that run on your own hardware.
 
-### Self-hosted CI/CD stack and Jenkins Configuration as Code (`AUR` Chapter 22)
+### Self-hosted CI/CD stack and Jenkins Configuration as Code (*Ansible: Up and Running* Chapter 22)
 
 *Ansible: Up and Running*, Chapter 22 (*CI/CD and Ansible*), shows how Bas Meijer, Lorin Hochstein, and René Moser provision a complete self-hosted CI/CD platform with Ansible. The platform uses four servers. It is a common choice in air-gapped or regulated AI data centers.
 

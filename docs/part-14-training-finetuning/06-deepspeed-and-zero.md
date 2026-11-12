@@ -225,7 +225,7 @@ During execution, forward and backward matrix multiplications stay on the GPU to
 
 However, PCIe Gen4 and Gen5 buses are thirty to one hundred times slower than GPU HBM. When ZeRO-2 offloads only optimizer states for a moderate model with heavy per-layer compute, throughput drops by a manageable twenty to forty percent. When ZeRO-3 offloads state for a 70B model on eight A100 GPUs over PCIe Gen4, the PCIe bus saturates. Training speed plunges by twenty-one times and GPU utilization drops to twelve percent.
 
-| Offload Scenario & Interconnect | Hardware Bandwidth | Memory Footprint Breakdown | Measured Throughput & Utilization Impact (`DAI Ch. 5`, `V13 Ch. 5`) |
+| Offload Scenario & Interconnect | Hardware Bandwidth | Memory Footprint Breakdown | Measured Throughput & Utilization Impact (*Distributed AI Systems* Ch. 5, `V13 Ch. 5`) |
 |---|---|---|---|
 | **GPU HBM Baseline (No Offload)** | **`2–3 TB/s`** per GPU | `70B` needs `79 GB` GPU VRAM (when fitted) | **`8.5 tokens/sec`**, **`80–95%`** GPU utilization |
 | **Moderate Model `ZeRO-2` CPU Offload** | `PCIe Gen4 x16` (**`32 GB/s`**) or `Gen5 x16` (**`64 GB/s`**) | `354.3M` params (`0.71 GB` `FP16`) uses **`3.41–3.52 GB`** peak GPU VRAM across steps `0–10` | **`20–40%` throughput reduction** when compute overlaps optimizer transfer |
@@ -253,7 +253,7 @@ The Grace ARM CPU and the Blackwell GPU do not cross a narrow PCIe bus. They tal
 
 SuperOffload also removes the synchronization barrier between GPU backpropagation and the CPU optimizer step using Speculation-Then-Validation. In standard ZeRO-Offload, the CPU must wait until the GPU finishes checking the entire backward pass for NaN or Inf gradient norms. Speculation-Then-Validation streams gradients over NVLink-C2C and starts the CPU optimizer update concurrently with GPU backpropagation. It rolls back only on the rare step where an overflow actually occurs.
 
-Finally, SuperOffload partitions the optimizer update between GPU HBM and Grace LPDDR5X so both processors finish at the exact same instant. On the Grace CPU side, it executes GraceAdam, a custom AdamW kernel hand-vectorized for the ARM Scalable Vector Extension instruction set. Together, the fast link, Speculation-Then-Validation and GraceAdam let SuperOffload sustain over **80 percent GPU utilization**.
+Finally, SuperOffload partitions the optimizer update between GPU HBM and Grace LPDDR5X so both processors finish at the exact same instant. On the Grace CPU side, it executes GraceAdam, a custom AdamW kernel hand-vectorized for the ARM Scalable Vector Extension instruction set. Together, the fast link, Speculation-Then-Validation and GraceAdam let SuperOffload sustain over **80 percent GPU utilization**. That figure is reported by the book, not measured in this chapter.
 
 ---
 
@@ -283,7 +283,7 @@ Hierarchical Weight Partitioning (`hpZ`) eliminates cross-node traffic during th
 
 Quantized Gradients (`qgZ`) replace the flat cross-node ring ReduceScatter with a two-hop hierarchical collective. It reduces gradients inside the node first and then transmits block-quantized INT8 gradients across nodes. That hierarchy cuts cross-node gradient volume in half from 1.0M to 0.5M.
 
-| ZeRO++ Component | JSON Configuration Key | Cross-Node Byte Volume | Mechanism & Hardware Path (`DAI Ch. 5`, arXiv:`2306.10209`) |
+| ZeRO++ Component | JSON Configuration Key | Cross-Node Byte Volume | Mechanism & Hardware Path (*Distributed AI Systems* Ch. 5, arXiv:`2306.10209`) |
 |---|---|---|---|
 | **Baseline `ZeRO-3`** | `"stage": 3` | **`3.0 * M`** (`420.0 GB` for `70B` `FP16`) | `1.0 * M` Fwd `AllGather` + `1.0 * M` Bwd `AllGather` + `1.0 * M` Bwd `ReduceScatter` |
 | **1. Quantized Weights (`qwZ`)** | `"zero_quantized_weights": true` | Cuts each `AllGather` `1.0 * M -> 0.5 * M` (`0.25 * M` cross-node w/ `hpZ`; `2.0 * M` = `280.0 GB` if `qwZ` alone) | Block-based `FP16` (`2 B`) to `INT8` (`1 B`) dynamic quantization via `CUDAQuantizer` |
@@ -367,7 +367,7 @@ flowchart TD
     Q3 -->|MoE Architecture| EP["Add Expert Parallelism (EP=8, topk=2)<br/>--moe-grouped-gemm + DeepEP AllToAll"]
 ```
 
-| Model Architecture & Scale | Cluster Size | Topology (`TP`, `PP`, `CP`, `EP`, `DP`) | Key Flags, Micro-Batching & Sharding Mechanics (`DAI Ch. 5`) |
+| Model Architecture & Scale | Cluster Size | Topology (`TP`, `PP`, `CP`, `EP`, `DP`) | Key Flags, Micro-Batching & Sharding Mechanics (*Distributed AI Systems* Ch. 5) |
 |---|---|---|---|
 | **`70B` Dense (`H = 8192`, `L = 80`)** | `64` GPUs (`8` nodes x `8` GPUs) | **`TP = 4`** (intra-node `NVLink`), **`PP = 2`** (`40` layers/stage over IB), **`DP = 64 / (4 * 2) = 8`** | Each replica uses `4 * 2 = 8` GPUs; `ZeRO`/`FSDP` or `Distributed Optimizer` shards optimizer state `1/8` across `DP`, `1/4` layer compute, `1/2` depth per GPU |
 | **`LLaMA-3 8B` Long-Context (`S = 8192`, `L = 32`, `H = 4096`, `ffn = 14336`, `32` heads, `8` GQA groups)** | `8 x 80 GB` GPUs | `TP = 1`, `PP = 1`, **`CP = 2`** (`4096` tokens/GPU), **`DP = 8 / (1 * 1 * 2) = 4`** | `--global-batch-size 128 --micro-batch-size 1` -> **`32` micro-batches/step** (`128 / 4`); uses `--fp8-format hybrid` (`E4M3` fwd / `E5M2` bwd) `--fp8-param-gather --use-distributed-optimizer` |

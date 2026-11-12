@@ -349,13 +349,13 @@ sudo partprobe /dev/sdb && lsblk /dev/sdb
 
 Always verify the device name twice (`lsblk -o NAME,SIZE,MODEL,SERIAL`), and unmount anything on it. Back up the old table first (`sfdisk -d /dev/sdb > sdb.table`, `sgdisk --backup=sdb.gpt /dev/sdb`). Deleting a partition makes its data very hard to recover, so treat that step with care.
 
-### Alignment (`HLW` Section 4.1.6)
+### Alignment (*How Linux Works* Section 4.1.6)
 
 Flash drives, meaning SSDs and NVMe, read and write data in **pages**. A page is commonly 4 KiB (4,096 bytes) or 8 KiB. Flash erases in much larger blocks. If a partition does not begin on a multiple of the flash page size, a single 4 KiB read or write can straddle two physical pages on the drive. That cuts throughput.
 
 Newer partitioning tools place new partitions at proper offsets. `1 MiB` is sector `2048` for 512-byte sectors, which is a multiple of every common flash page size. The tools do not inspect or realign *existing* partitions, though. To check an existing partition, read its `start` file in `/sys/block`. That file reports the starting offset in 512-byte units.
 
-Here is a worked example from `HLW` Section 4.1.6. `cat /sys/block/sdf/sdf2/start` prints `1953126`. Divide that by `8`, because eight 512-byte sectors make one 4,096-byte page. The result is `244140.75`, which is not a whole number, with a remainder of `6`. That proves `/dev/sdf2` is **not** aligned on a 4,096-byte boundary.
+Here is a worked example from *How Linux Works* Section 4.1.6. `cat /sys/block/sdf/sdf2/start` prints `1953126`. Divide that by `8`, because eight 512-byte sectors make one 4,096-byte page. The result is `244140.75`, which is not a whole number, with a remainder of `6`. That proves `/dev/sdf2` is **not** aligned on a 4,096-byte boundary.
 
 To check with a tool instead, run `parted /dev/sdb align-check optimal 1`. A good result prints `1 aligned`. For RAID, LVM and XFS, also check the stripe unit and width (chapter 1.13).
 
@@ -401,7 +401,7 @@ sudo mkfs.ext4 -m 0 -i 65536 /dev/nvme1n1p1        # no root-reserved blocks; on
 sudo mkfs.ext4 -T small /dev/sdc1                  # many small files: more inodes (see mke2fs.conf types)
 ```
 
-**`mkfs` is a front end (`HLW` Section 4.2.2).** `mkfs` is only a wrapper for a family of filesystem creation programs named `mkfs.fs`. So when you run `mkfs -t ext4`, `mkfs` runs `mkfs.ext4`. If you inspect `/sbin/mkfs.ext4` with `ls -l /sbin/mkfs*`, you will see it is a symbolic link (or hard link) to `mke2fs`. Each filesystem has its own tools and manual page (`mke2fs(8)`, `mkfs.xfs(8)`). Defaults are sensible, so change them only with a reason.
+**`mkfs` is a front end (*How Linux Works* Section 4.2.2).** `mkfs` is only a wrapper for a family of filesystem creation programs named `mkfs.fs`. So when you run `mkfs -t ext4`, `mkfs` runs `mkfs.ext4`. If you inspect `/sbin/mkfs.ext4` with `ls -l /sbin/mkfs*`, you will see it is a symbolic link (or hard link) to `mke2fs`. Each filesystem has its own tools and manual page (`mke2fs(8)`, `mkfs.xfs(8)`). Defaults are sensible, so change them only with a reason.
 
 **Creating a filesystem destroys the previous contents.** The old data's map is gone, so do it once per new device. Record the **superblock backup locations** printed at creation (ext4), or find them later with `mkfs.ext4 -n /dev/...`. The `-n` option only simulates, so never omit `-n`.
 
@@ -591,7 +591,7 @@ ncdu -x /data                            # interactive disk-usage browser (insta
 sudo lsof +L1                            # deleted files still held open (they still use space)
 ```
 
-The numbers in `df` surprise people. The columns are `Filesystem`, `1024-blocks`, `Used`, `Available`, `Capacity` and `Mounted on` (`HLW` Section 4.2.10). `Used + Available` is always less than `1024-blocks` (`Size`). That is because **5 percent of the total capacity is hidden in reserved blocks** on ext4 by default. Only root can allocate those blocks when the filesystem starts to fill up. This keeps system daemons such as `syslogd`, `sshd` and `journald` running. They can still write logs in `/var` and `/tmp` even when an ordinary user fills the disk to 100%.
+The numbers in `df` surprise people. The columns are `Filesystem`, `1024-blocks`, `Used`, `Available`, `Capacity` and `Mounted on` (*How Linux Works* Section 4.2.10). `Used + Available` is always less than `1024-blocks` (`Size`). That is because **5 percent of the total capacity is hidden in reserved blocks** on ext4 by default. Only root can allocate those blocks when the filesystem starts to fill up. This keeps system daemons such as `syslogd`, `sshd` and `journald` running. They can still write logs in `/var` and `/tmp` even when an ordinary user fills the disk to 100%.
 
 `df` reports 1 KiB (`1024-byte`) blocks by default. Use `df -k`, or the POSIX layout with `-P`, or ask for `-h` or `-H` (powers of 1024 or 1000). `du` works differently. It walks the directory tree and sums the blocks of files it can see. So it **cannot see** files that were deleted but are still held open. It also misses mount points hidden under other mounts, and the space used by filesystem metadata and journals. A filesystem near 100% also gets slower. Finding free space takes more CPU and I/O, and free extents become small and scattered. That fragmentation is worse on copy-on-write filesystems.
 
@@ -1276,12 +1276,12 @@ cd /; sudo umount /mnt/e /mnt/x 2>/dev/null; sudo losetup -d $LOOP; rm -f /tmp/d
 
 Work these after the lab. Each one asks you to apply a single idea from the chapter.
 
-1. **Flash partition alignment (`2048` vs `1953126`):** Take an SSD with `4,096`-byte physical pages and `512`-byte logical sectors, so each page spans `8` sectors. Decide whether a partition starting at sector `2048` (`1 MiB`) is aligned. Decide the same for a partition starting at sector `1953126` (`/sys/block/sdf/sdf2/start` in `HLW` Section 4.1.6). What happens to a single 4 KiB read when a partition is misaligned? Verify your answer with `check_partition_page_alignment()` in `code/part01/disks_filesystems.py`.
+1. **Flash partition alignment (`2048` vs `1953126`):** Take an SSD with `4,096`-byte physical pages and `512`-byte logical sectors, so each page spans `8` sectors. Decide whether a partition starting at sector `2048` (`1 MiB`) is aligned. Decide the same for a partition starting at sector `1953126` (`/sys/block/sdf/sdf2/start` in *How Linux Works* Section 4.1.6). What happens to a single 4 KiB read when a partition is misaligned? Verify your answer with `check_partition_page_alignment()` in `code/part01/disks_filesystems.py`.
 2. **`ext4` reserved blocks and the five meanings of `ENOSPC`:** (a) On a `100,000`-block `ext4` filesystem with `40,000` blocks used and the default `5%` root reservation, how many blocks are reported as `Available` to non-root users? How do you lower the reservation to `0%` on a dedicated data drive? (b) List five distinct causes of `No space left on device` (`ENOSPC`), with the exact command that diagnoses each.
 3. **`O_DIRECT` alignment (`EINVAL`) and GPUDirect Storage (`GDS`) versus the page cache:** (a) State the three alignment conditions for `open(..., O_DIRECT)` on a 4 KiB logical-block NVMe drive. What `errno` comes back when `buf_addr = 0x7fff0010` or `file_offset = 512`? (b) Trace the DMA and CPU copy hops for buffered I/O, `O_DIRECT`, and GPUDirect Storage (`cuFile`). Then explain the GDS compatibility-mode trap.
 4. **Reading `iostat -xz` on NVMe SSDs (`%util` vs `aqu-sz`):** An NVMe SSD rated at `7,000 MB/s` shows `%util = 99.0%`, `aqu-sz = 1.0`, `await = 0.2 ms` and `250 MB/s` throughput. Explain why the drive is *not* saturated despite `%util = 99.0%`. Then contrast that with a reading of `aqu-sz = 64.0`, `await = 8.2 ms` and `6,500 MB/s`.
 5. **Filesystem transaction cost and 64-node checkpoint storms:** (a) A request takes `200 ms` in total and spends `180 ms` blocked in filesystem I/O (`90%`). What is the maximum speedup from eliminating filesystem latency? Compare that with a case where only `2 ms` (`1%`) is spent in filesystem I/O. (b) Checkpoint time grows from `45 s` to `8 min` as a training job scales from 16 to 64 nodes, while per-node `iostat` stays nearly idle. Why does that happen, and what are three mitigations?
-6. **6-step Linux quota setup (`SCL` Chapter 12) and `e2fsck` backup superblocks:** (a) Write the 6-step sequence that enables quotas on `/dev/sda6`: `fstab` `usrquota`, remount `ro`, `quotacheck -vugc`, remount `rw`, `quotaon -va`, and `setquota` / `repquota -a`. Then name the daemon an NFS server needs for remote quota queries. (b) How do you locate backup superblocks on an `ext4` volume without destroying data (`mke2fs -n`), and how do you pass one to `e2fsck`?
+6. **6-step Linux quota setup (*Supercomputers for Linux Sysadmins* Chapter 12) and `e2fsck` backup superblocks:** (a) Write the 6-step sequence that enables quotas on `/dev/sda6`: `fstab` `usrquota`, remount `ro`, `quotacheck -vugc`, remount `rw`, `quotaon -va`, and `setquota` / `repquota -a`. Then name the daemon an NFS server needs for remote quota queries. (b) How do you locate backup superblocks on an `ext4` volume without destroying data (`mke2fs -n`), and how do you pass one to `e2fsck`?
 
 ## Checkpoint questions (20)
 
@@ -1318,7 +1318,7 @@ MBR lives in the first 512-byte sector. It handles disks up to `2 TiB`, because 
 <details>
 <summary>6. Why must partitions be aligned on `1 MiB` boundaries (`sector 2048`) on SSDs and `512e` disks, and how do you check `/sys/block/sdf/sdf2/start`?</summary>
 
-Modern SSDs and `512e` drives use `4 KiB` physical pages, which is `8` times `512` bytes. Some use `8 KiB` pages instead. If a partition starts at a sector not divisible by `8`, a single 4 KiB read or write spans two physical pages. `1953126` in `HLW` Ch. 4 is one example, since `1953126 / 8 = 244140.75`. Aligning at `1 MiB` (`sector 2048`) divides evenly into all power-of-two page and stripe sizes. To verify, read the `start` file in `/sys/block`, which reports the offset in 512-byte units. You can also run `parted /dev/sdX align-check optimal 1`.
+Modern SSDs and `512e` drives use `4 KiB` physical pages, which is `8` times `512` bytes. Some use `8 KiB` pages instead. If a partition starts at a sector not divisible by `8`, a single 4 KiB read or write spans two physical pages. `1953126` in *How Linux Works* Ch. 4 is one example, since `1953126 / 8 = 244140.75`. Aligning at `1 MiB` (`sector 2048`) divides evenly into all power-of-two page and stripe sizes. To verify, read the `start` file in `/sys/block`, which reports the offset in 512-byte units. You can also run `parted /dev/sdX align-check optimal 1`.
 </details>
 
 <details>
@@ -1346,7 +1346,7 @@ Five causes produce `No space left on device` (`ENOSPC`), and each has a command
 </details>
 
 <details>
-<summary>11. How do inodes, directories, and link counts work inside a traditional Unix filesystem (`HLW` Section 4.5)?</summary>
+<summary>11. How do inodes, directories, and link counts work inside a traditional Unix filesystem (*How Linux Works* Section 4.5)?</summary>
 
 An inode stores the file's metadata: type, permissions, UID and GID, size, timestamps, link count, and block or extent pointers. It does **not** store the filename. A directory is a file that maps `(filename -> inode_number)` pairs, and the walk starts from the root, `inode 2` on `ext4`. The link count tracks how many directory entries point at the inode. The data blocks and the inode are freed only when the link count is zero **and** no process holds the file open.
 </details>
@@ -1364,7 +1364,7 @@ Never run a repairing `fsck` on a read-write mounted filesystem. The five `e2fsc
 </details>
 
 <details>
-<summary>14. Summarize the 6-step workflow for enabling Linux disk quotas (`SCL` Chapter 12) and how NFS quotas work.</summary>
+<summary>14. Summarize the 6-step workflow for enabling Linux disk quotas (*Supercomputers for Linux Sysadmins* Chapter 12) and how NFS quotas work.</summary>
 
 Follow six steps. (1) Add `usrquota` or `grpquota` to `/etc/fstab`. (2) Remount read-only with `mount -o remount,ro /dev/sda6`. (3) Build the accounting database with `quotacheck -vugc /dev/sda6`. (4) Unmount and mount again with the new options. (5) Enable enforcement with `quotaon -va`. (6) Set soft and hard block and inode limits, plus grace periods, with `edquota` or `setquota` (`-u`, `-t`, `-T`, `-p`). Inspect the result with `repquota -a`. On an NFS server, run `rpc.rquotad` so clients can query quotas.
 </details>

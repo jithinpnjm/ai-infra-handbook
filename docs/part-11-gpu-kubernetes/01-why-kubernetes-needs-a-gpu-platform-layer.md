@@ -130,7 +130,7 @@ Notice that the two blocks check different layers. A GPU can pass one check and 
 
 Most AI platforms eventually run more than one accelerator family. If you add AMD Instinct GPUs, Google Cloud TPUs, or AWS Trainium instances, you need to know how Kubernetes abstracts each vendor's hardware. The Device Plugin framework is a vendor-neutral gRPC contract. So every major AI accelerator plugs in through its own DaemonSet and its own extended resource name.
 
-| Vendor & Accelerator Family | Kubernetes Device Plugin DaemonSet | Extended Resource Name in Pod `resources.limits` | Software Stack & Key Operational Facts (`GAK Ch 3` & `K8GS Ch 10`) |
+| Vendor & Accelerator Family | Kubernetes Device Plugin DaemonSet | Extended Resource Name in Pod `resources.limits` | Software Stack & Key Operational Facts (*Generative AI on Kubernetes* Ch 3 & *Kubernetes for Generative AI Solutions* Ch 10) |
 |---|---|---|---|
 | **NVIDIA Data Center GPUs (B200, H200, H100, A100, L40S, L4)** | `nvidia-device-plugin` (standalone or managed by **NVIDIA GPU Operator**) | `nvidia.com/gpu: <N>` or `nvidia.com/mig-<slice>.<mem>gb: <N>` | PCI vendor **10de**, class **0302** (`feature.node.kubernetes.io/pci-0302_10de.present: "true"`). Pairs with `nvidia-container-toolkit`, GFD, MIG Manager, and `dcgm-exporter`. |
 | **AMD Instinct GPUs (MI300X, MI250X, MI100)** | `amd-device-plugin` | `amd.com/gpu: <N>` | PCI vendor **1002**, class **0302**; integrates **ROCm** user-space stack for HPC and LLM workloads. |
@@ -192,11 +192,11 @@ Units cause a second kind of trap. Hardware datasheets quote decimal gigabytes, 
 
 | Calculation Scenario | Input Parameters | Result & Operational Impact | Source |
 |---|---|---|---|
-| **Whole-GPU waste on Llama-3.2-1B** | 1.8 GB model on 1 NVIDIA L4 (24.0 GB VRAM, `g6.2xlarge`) | `24.0 - 1.8 = 22.2 GB` (**92.5%**, or **~92%**) VRAM wasted | *K8GS* Ch 10 |
-| **Time-slicing on NVIDIA L4** | `replicas: 10` configured; 5 Llama-3.2-1B Pods scheduled | `5 * 1.8 GB = 9.0 GB <= 24.0 GB` VRAM; up to **95%** price-performance gain in AWS EKS benchmarks | *K8GS* Ch 10 |
-| **70B LLM in FP32 vs 4-bit** | `70 * 10^9` params at 4 B/param (FP32) vs 0.5 B/param (4-bit) | **280.0 GB** (`280 GB` FP32, needs 4x 80 GB GPUs) vs **35.0 GB** (`35 GB` / `~35 GB` 4-bit, fits 1x 48 GB GPU; 8.0x reduction) | *GAK* Ch 3 |
-| **Decimal GB vs Binary GiB** | 40 GB (`40 * 10^9` B) and 80 GB (`80 * 10^9` B) in base-2 GiB (`2^30` B) | `40 GB == 37.25 GiB` (`40,537 MiB` on A100-40GB); `80 GB == 74.5 GiB` (`81,920 MiB` on A100-80GB) | *GAK* Ch 3 |
-| **Multi-slice MIG single-node rule** | 2x `nvidia.com/mig-2g.45gb` on 132-SM GPU; `p5.48xlarge` (8x H100) & H200 (141 GB) | `~38` SMs/slice (`~76` SMs total, `4/7` of GPU, `90 GB`) must fit on 1 node. `p5.48xlarge` yields 56 (`1g.10gb`), 24 (`2g.20gb`), 16 (`3g.40gb`), or 8 (`4g.40gb`/`7g.80gb`) slices; H200 supports 7x `1g.18gb`, 1x `1g.18gb+me`, 4x `1g.35gb`, 3x `2g.35gb`, 2x `3g.70gb`, 1x `4g.70gb`, 1x `7g.141gb` | *ASP* Ch 3 & *K8GS* Ch 10 |
+| **Whole-GPU waste on Llama-3.2-1B** | 1.8 GB model on 1 NVIDIA L4 (24.0 GB VRAM, `g6.2xlarge`) | `24.0 - 1.8 = 22.2 GB` (**92.5%**, or **~92%**) VRAM wasted | *Kubernetes for Generative AI Solutions* Ch 10 |
+| **Time-slicing on NVIDIA L4** | `replicas: 10` configured; 5 Llama-3.2-1B Pods scheduled | `5 * 1.8 GB = 9.0 GB <= 24.0 GB` VRAM; up to **95%** price-performance gain in AWS EKS benchmarks | *Kubernetes for Generative AI Solutions* Ch 10 |
+| **70B LLM in FP32 vs 4-bit** | `70 * 10^9` params at 4 B/param (FP32) vs 0.5 B/param (4-bit) | **280.0 GB** (`280 GB` FP32, needs 4x 80 GB GPUs) vs **35.0 GB** (`35 GB` / `~35 GB` 4-bit, fits 1x 48 GB GPU; 8.0x reduction) | *Generative AI on Kubernetes* Ch 3 |
+| **Decimal GB vs Binary GiB** | 40 GB (`40 * 10^9` B) and 80 GB (`80 * 10^9` B) in base-2 GiB (`2^30` B) | `40 GB == 37.25 GiB` (`40,537 MiB` on A100-40GB); `80 GB == 74.5 GiB` (`81,920 MiB` on A100-80GB) | *Generative AI on Kubernetes* Ch 3 |
+| **Multi-slice MIG single-node rule** | 2x `nvidia.com/mig-2g.45gb` on 132-SM GPU; `p5.48xlarge` (8x H100) & H200 (141 GB) | `~38` SMs/slice (`~76` SMs total, `4/7` of GPU, `90 GB`) must fit on 1 node. `p5.48xlarge` yields 56 (`1g.10gb`), 24 (`2g.20gb`), 16 (`3g.40gb`), or 8 (`4g.40gb`/`7g.80gb`) slices; H200 supports 7x `1g.18gb`, 1x `1g.18gb+me`, 4x `1g.35gb`, 3x `2g.35gb`, 2x `3g.70gb`, 1x `4g.70gb`, 1x `7g.141gb` | *AI Systems Performance Engineering* Ch 3 & *Kubernetes for Generative AI Solutions* Ch 10 |
 
 Before you choose a sharing strategy, calculate the footprint in both GB and GiB.
 
@@ -305,7 +305,7 @@ $ ssh gpu-node-22 'dmesg -T | grep -i nvidia | tail -3'
 
 Platform teams keep every new, rebooted, or upgraded GPU node tainted with `nvidia.com/gpu-unverified=true:NoSchedule`. That keeps black-hole nodes away from tenant traffic. An automated canary job must pass five ordered acceptance gates. Only then does the controller remove that onboarding taint.
 
-| Gate # | Boundary Tested | Question Answered | Concrete Pass Evidence (`V10 Ch 1, Ch 2` & `GAK Ch 3`) |
+| Gate # | Boundary Tested | Question Answered | Concrete Pass Evidence (`V10 Ch 1, Ch 2` & *Generative AI on Kubernetes* Ch 3) |
 |---:|---|---|---|
 | **Gate 1** | **Hardware & Host Driver** | Does the host enumerate all expected GPUs and load the qualified driver cleanly? | `lspci` lists all GPUs (`10de`); `lsmod` is non-empty; `nvidia-smi` reports expected `Driver Version` (`550.90.07`), `81920MiB`, and `0` Xid errors in `dmesg`. |
 | **Gate 2** | **Runtime Injection (CDI / Toolkit)** | Can containerd construct a GPU-enabled sandbox and mount `/dev/nvidia*` and driver libs? | A platform-owned minimal CUDA Pod (`nvidia/cuda:12.8.1-base-ubi9`) runs `nvidia-smi` inside the container and prints `CUDA_CHECK_OK`. |
@@ -583,6 +583,6 @@ Related source files mapped in MIGRATION_MAP.md:
 
 ### Corrections to the author's notes
 
-- Validation pass 2026-10-25: `validate_chapter.py` and `check_coverage.py` pass. The YAML manifests and commands are marked untested and were not applied to a cluster. Custom resource API versions such as `kueue.x-k8s.io/v1beta1` and `resource.k8s.io/v1` change between releases, so check them against the version you install. Console outputs quoted from the Volume notes are illustrative unless the chapter says otherwise.
+- The YAML manifests and commands are marked untested and were not applied to a cluster. Custom resource API versions such as `kueue.x-k8s.io/v1beta1` and `resource.k8s.io/v1` change between releases, so check them against the version you install. Console outputs quoted from the Volume notes are illustrative unless the chapter says otherwise.
 - In *Generative AI on Kubernetes* Chapter 3 Example 3-9, `apiVersion: batch/v1` is printed for `kind: Deployment`. Standard Kubernetes Deployment resources use `apiVersion: apps/v1` as shown in Example 3-6.
 - Manifest checked against upstream CRDs on 2026-11-11 (versions: GPU Operator v26.7.2 ClusterPolicy).

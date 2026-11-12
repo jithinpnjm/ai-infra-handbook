@@ -194,7 +194,7 @@ NVIDIA's Transformer Engine solves low-bit accuracy loss through hardware-softwa
 - **Two-level micro-scaling in NVFP4:** With only four bits per weight, a single tensor-wide scaling factor cannot prevent outlier weights from crushing normal weights to zero. NVFP4 applies two-level scaling by combining a fine-grained per-microblock scale factor shared across a local group of weights with a higher-level tensor scale factor. This preserves model accuracy at half a byte per parameter.
 - **Real-world impact on a giant MoE model:** On a Hopper H100 cluster where inter-node communication crossed InfiniBand and weights used wider formats, serving a multi-trillion-parameter MoE model was too slow for interactive chat. Moving the exact same model to a Blackwell GB200 NVL72 rack combining NVFP4, the second-generation Transformer Engine, HBM3e, and the NVLink domain raised throughput by a large factor. It also cut first-token latency by two orders of magnitude.
 
-| Metric (1.8-trillion-parameter MoE inference benchmark, ASP Ch. 2 pp. 27, 31) | Hopper H100 cluster (FP8/FP16 + InfiniBand) | Blackwell GB200 NVL72 rack (NVFP4 + 8.0 TB/s HBM3e + 1.8 TB/s NVLink 5) | Improvement |
+| Metric (1.8-trillion-parameter MoE inference benchmark, *AI Systems Performance Engineering* Ch. 2 pp. 27, 31) | Hopper H100 cluster (FP8/FP16 + InfiniBand) | Blackwell GB200 NVL72 rack (NVFP4 + 8.0 TB/s HBM3e + 1.8 TB/s NVLink 5) | Improvement |
 |---|---|---|---|
 | **Per-GPU token generation throughput** | ~3.4 tokens/sec per GPU | **~150 tokens/sec per GPU** | **~30x–44x real-time throughput leap** |
 | **Time To First Token (TTFT)** | >5,000 ms (>5 seconds) | **~50 ms** | **100x reduction in first-token latency** |
@@ -265,7 +265,7 @@ Writing a raw Blackwell `tcgen05.mma` or Hopper `wgmma` kernel by hand takes ext
 
 The table below compares a hand-tuned MMA kernel against a CUTLASS GEMM template on half-precision inputs with single-precision accumulation from *AI Systems Performance Engineering* Chapter 9.
 
-| Metric (FP16 inputs, FP32 accumulate, ASP Ch. 9 Table 9-1) | Hand-tuned MMA kernel | CUTLASS GEMM template | Operational takeaway |
+| Metric (FP16 inputs, FP32 accumulate, *AI Systems Performance Engineering* Ch. 9 Table 9-1) | Hand-tuned MMA kernel | CUTLASS GEMM template | Operational takeaway |
 |---|---|---|---|
 | **Tensor Core utilization (`ncu`)** | **98%** | **98%** | Matches hand-tuned assembly within ~0–2%. |
 | **Registers per thread (`-Xptxas=-v`)** | ~52 registers | ~60 registers | Well below the threshold that would reduce SM occupancy. |

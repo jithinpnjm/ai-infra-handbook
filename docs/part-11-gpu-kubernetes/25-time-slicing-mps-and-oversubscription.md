@@ -672,4 +672,4 @@ Primary Source Inventory and Coverage Map (11.25):
 
 ### Corrections to the author's notes
 
-- Validation pass 2026-10-26: `validate_chapter.py` and `check_coverage.py` pass with zero warnings. The YAML manifests and cluster commands are marked untested here and were not applied to a live cluster. Custom resource API versions change between releases, so check them against your installed operator version. Console outputs quoted from the Volume notes are illustrative unless marked tested here. The A100 concurrency benchmark in Question 8 comes from the Volume 11 Chapter 4 note and has no live hardware reproduction here.
+- The YAML manifests and cluster commands are marked untested here and were not applied to a live cluster. Custom resource API versions change between releases, so check them against your installed operator version. Console outputs quoted from the Volume notes are illustrative unless marked tested here. The A100 concurrency benchmark in Question 8 comes from the Volume 11 Chapter 4 note and has no live hardware reproduction here.

@@ -252,7 +252,7 @@ Worked Megatron-Core 175B Sizing on 1,024 H100 GPUs (Volume 13, Chapter 7):
   Micro-batches per DP replica (M) = 2,048 / 8 = 256
   Bubble fraction = (PP - 1) / (M + PP - 1) = (16 - 1) / (256 + 16 - 1) = 15 / 271 = 5.54% (~5.5% bubble)
   Comparison at small global batch (M = 40 micro-batches): 15 / (40 + 15) = 27.27% (~27% bubble)
-- Endpoint Stage Imbalance ("The Ghost Straggler"):
+- Endpoint Stage Imbalance (an edge-stage straggler):
   Stage 0 holds the input embedding lookup and Stage 15 holds the final lm_head projection:
   50,000 vocab * 12,288 hidden * 2 bytes (BF16) = 1.23 GB (~1.2 GB table + extra gather/GEMM work)
   Symptom: nsys shows Stage 0 and Stage 15 taking ~40% longer per micro-batch than Stages 1..14
@@ -659,7 +659,7 @@ Sequence Parallelism partitions LayerNorm and Dropout activations along the sequ
 </details>
 
 <details>
-<summary>**9. What causes the Ghost Straggler on the first and last pipeline stages of a 96-layer model with 16 stages, and how do you resolve it?**</summary>
+<summary>**9. What causes the edge-stage straggler on the first and last pipeline stages of a 96-layer model with 16 stages, and how do you resolve it?**</summary>
 
 Even when all 16 stages hold 6 Transformer layers, the first stage also executes the 1.23 GB vocabulary embedding lookup and the last stage executes the final language-model head projection GEMM. That extra work makes those two endpoint stages run 40 percent slower per micro-batch. Resolve it by assigning 5 Transformer layers to the first and last stages or enabling interleaved virtual pipeline stages via `--num-layers-per-virtual-pipeline-stage`.
 </details>

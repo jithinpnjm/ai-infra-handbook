@@ -313,6 +313,8 @@ DeepSeek Fire-Flyer File System (3FS) Cluster Benchmark vs Ceph:
   - Ceph baseline on same class:    ~1.1 TB/s (3FS delivers a 6.0x foreground read speedup over Ceph)
 ```
 
+Treat these figures with care. They are the cluster size and results as *AI Systems Performance Engineering* reports them, and they do not add up on their own terms. Two 100 Gb/s NICs give a node about 25 GB/s, so 68 nodes can move at most about 1.7 TB/s through their NICs, well below 6.6 TB/s. DeepSeek's own 3FS write-up should be checked for the real node count and NIC speed before you quote the 6.6 TB/s or the Ceph comparison.
+
 Keep one distinction in mind when you compare 3FS with enterprise storage. 3FS uses its own native RDMA client pipeline rather than nvidia-fs.ko. If you need a strict cuFile and nvidia-fs.ko path on enterprise infrastructure, pair GDS with a kernel-integrated client such as local NVMe, NVMe-oF, WekaFS, VAST Data, Lustre, BeeGFS, or IBM Storage Scale. If your hot path sits behind FUSE, move it to a kernel-native filesystem before you expect any GDS gain.
 
 ---

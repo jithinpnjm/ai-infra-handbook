@@ -494,7 +494,7 @@ Every L4 node runs **Maglev consistent hashing** on the packet's 5-tuple, over t
 </details>
 
 <details>
-<summary>7. Explain the `gRPC` / `HTTP/2` L4 Connection-Pinning problem and state three ways to solve it (`PK` Chapter 6 / `NK` Chapter 2).</summary>
+<summary>7. Explain the `gRPC` / `HTTP/2` L4 Connection-Pinning problem and state three ways to solve it (*Production Kubernetes* Chapter 6 / *Networking and Kubernetes* Chapter 2).</summary>
 
 `gRPC` runs over **`HTTP/2`**, which multiplexes hundreds of concurrent RPC calls as streams inside a **single long-lived TCP connection**. Suppose a client opens one gRPC channel through an **L4 load balancer**, such as `kube-proxy` in its default `iptables` or `IPVS` mode, `nginx stream`, or AWS NLB. The L4 balancer makes one decision at `SYN` time. From then on, **100% of the RPCs on that channel go to a single backend pod**, while sibling pods sit idle.
 
@@ -524,7 +524,7 @@ If you run **Envoy**, it updates endpoints in memory through its **`xDS` (`EDS`)
 </details>
 
 <details>
-<summary>11. Compare the three `kube-proxy` modes in Kubernetes (`iptables`, `IPVS`, and Cilium `eBPF`, `PK` Chapter 6).</summary>
+<summary>11. Compare the three `kube-proxy` modes in Kubernetes (`iptables`, `IPVS`, and Cilium `eBPF`, *Production Kubernetes* Chapter 6).</summary>
 
 - **`iptables` mode (legacy default)** programs sequential chain rules: `KUBE-SERVICES`, then `KUBE-SVC-*`, then `KUBE-SEP-*`. It uses `--mode random --probability` to pick a pod on `SYN`. Rule evaluation scales as **`O(N)`** with the number of Services, which slows packet processing above a few thousand Services. It supports only random L4 connection selection.
 - **`IPVS` mode** uses in-kernel Linux Virtual Server hash tables, which give **`O(1)`** lookup at 10,000+ Services. It supports real L4 schedulers: `rr`, `lc`, `wlc`, `sh`, and `mh` (Maglev).
@@ -532,7 +532,7 @@ If you run **Envoy**, it updates endpoints in memory through its **`xDS` (`EDS`)
 </details>
 
 <details>
-<summary>12. What does `externalTrafficPolicy: Local` vs. `Cluster` do on a Kubernetes `NodePort` or `LoadBalancer` Service (`PK` Chapter 6)?</summary>
+<summary>12. What does `externalTrafficPolicy: Local` vs. `Cluster` do on a Kubernetes `NodePort` or `LoadBalancer` Service (*Production Kubernetes* Chapter 6)?</summary>
 
 - **`Cluster` (default)**: a node that receives external traffic DNATs it to any ready pod in the cluster. That can add an extra node-to-node hop. It also SNATs the source IP to the node's own IP, so return traffic comes back to that node. The original client IP is lost.
 - **`Local`**: each node sends traffic only to pods running on that same node. That removes the extra hop and preserves the original client source IP without SNAT. A node with zero local ready pods fails the cloud load balancer's health-check probe.

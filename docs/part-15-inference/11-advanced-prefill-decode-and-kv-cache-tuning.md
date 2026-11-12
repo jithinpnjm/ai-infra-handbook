@@ -143,10 +143,10 @@ Recent model architectures and compiler stacks push decode optimization further 
 | **FlashDecoding** | Long-context MHA/GQA decode (`V12` Ch. 5) | Two-stage split-KV (`C_split = 256`) + online LSE reduction across SMs | Up to `8.0x` faster decode; raises `B=1` H100 CTA count `8 -> 128` (`96.97%` SMs) |
 | **FlashInfer** | Block-sparse PagedAttention prefill & decode (`HLS` Ch. 6) | Plan/run JIT template engine with cascade/ragged KV page tables | Default high-speed kernel on Ampere/Ada (`A100`/`L40S`) and cascade prefix reuse |
 | **TensorRT-LLM XQA** | GQA / MQA single-token decode (`V12` Ch. 5) | Packs `G = H_q / H_kv` query heads per KV head into one Tensor Core MMA tile | `8x` higher register reuse on `Llama-3-70B` (`64` Q heads / `8` KV heads) |
-| **FlashMLA** | DeepSeek-V2/V3/R1 MLA decode (`ASP` Ch. 18, `HLS` Ch. 6) | Fuses absorbed latent KV projections (`576` elements/layer = `2.25` GQA groups) | Shifts decode toward H100 compute roofline; `15x` vLLM TPS gain (`38 -> 600 TPS`) |
-| **ThunderMLA** | Variable-length MLA decode megakernel (`ASP` Ch. 18) | Fuses decode attention + dynamic work-stealing stream packing across SMs | `20%–35%` faster decode throughput over `FlashMLA` by eliminating tail idle SMs |
-| **FlexDecoding** | PyTorch custom sparse/paged decode (`ASP` Ch. 18) | `torch.compile(mode="max-autotune")` + Nested Jagged Tensors (`NJT`) + `BlockMask` | Zero-padding ragged decode + logical-to-physical `64–128` token page translation |
-| **POD-Attention** | Colocated chunked prefill + decode (`ASP` Ch. 18) | Runtime SM-aware CTA binding colocating prefill and decode CTAs on each SM | Up to `29%` attention speedup by smoothing Tensor Core and HBM traffic |
+| **FlashMLA** | DeepSeek-V2/V3/R1 MLA decode (*AI Systems Performance Engineering* Ch. 18, `HLS` Ch. 6) | Fuses absorbed latent KV projections (`576` elements/layer = `2.25` GQA groups) | Shifts decode toward H100 compute roofline; `15x` vLLM TPS gain (`38 -> 600 TPS`) |
+| **ThunderMLA** | Variable-length MLA decode megakernel (*AI Systems Performance Engineering* Ch. 18) | Fuses decode attention + dynamic work-stealing stream packing across SMs | `20%–35%` faster decode throughput over `FlashMLA` by eliminating tail idle SMs |
+| **FlexDecoding** | PyTorch custom sparse/paged decode (*AI Systems Performance Engineering* Ch. 18) | `torch.compile(mode="max-autotune")` + Nested Jagged Tensors (`NJT`) + `BlockMask` | Zero-padding ragged decode + logical-to-physical `64–128` token page translation |
+| **POD-Attention** | Colocated chunked prefill + decode (*AI Systems Performance Engineering* Ch. 18) | Runtime SM-aware CTA binding colocating prefill and decode CTAs on each SM | Up to `29%` attention speedup by smoothing Tensor Core and HBM traffic |
 
 ### 1.4 FlexDecoding in Practice: Compiled Decode Kernels Without Custom CUDA
 
@@ -561,7 +561,7 @@ Checkpointing can hurt latency, but the request can still complete. A prefill no
 
 ## 7. Commands and Configurations That Matter
 
-### 7.1 LMCache + NIXL Zero-Copy Prefill-Decode Configuration (`ASP` Ch. 18)
+### 7.1 LMCache + NIXL Zero-Copy Prefill-Decode Configuration (*AI Systems Performance Engineering* Ch. 18)
 
 ```yaml
 # 1. Prefill sender configuration (lmcache-prefiller-config.yaml)
@@ -596,7 +596,7 @@ CUDA_VISIBLE_DEVICES=1 LMCACHE_CONFIG_FILE=lmcache-decoder-config.yaml \
   python3 run_vllm_decoder.py --port 8200
 ```
 
-### 7.2 Tiered LMCache Offloading, Chunked Prefill, and GDS Verification (`HLS` Ch. 7, `V12` Ch. 7, `ASP` Ch. 5)
+### 7.2 Tiered LMCache Offloading, Chunked Prefill, and GDS Verification (`HLS` Ch. 7, `V12` Ch. 7, *AI Systems Performance Engineering* Ch. 5)
 
 ```bash
 # 1. Enable LMCache 150 GB CPU RAM + 120 GB NVMe SSD tiered KV offload on vLLM (HLS Ch. 7)
@@ -623,7 +623,7 @@ vllm serve Qwen/Qwen3-14B \
 # Expected GDS path: Total Throughput: 9.6 GB/s (+20%), Average Latency: 1.00 ms (-20%)
 ```
 
-### 7.3 Real-Time HQQ KV Cache Quantization and CUDA Stream KV Prefetching (`ASP` Ch. 19)
+### 7.3 Real-Time HQQ KV Cache Quantization and CUDA Stream KV Prefetching (*AI Systems Performance Engineering* Ch. 19)
 
 ```python
 # Dynamic INT8 -> INT4 HQQ QuantizedCache policy switching under memory pressure (ASP Ch. 19)
@@ -649,7 +649,7 @@ def select_hqq_cache_config(used_mem_ema: float, threshold: float = 0.90) -> dic
 | **2. Over-Chunking Scheduler Thrash (`V12` Ch. 7)** | With chunked prefill enabled, `p99` ITL degrades `28 ms -> 45 ms` and `TTFT` rises `180 ms -> 320 ms` | `max_num_batched_tokens=512` (`8 ms` chunk + `2 ms` decode) causes `450` context switches/sec and low SM tile efficiency | `curl -s localhost:8002/metrics \| grep -E "prefill_chunk_duration_ms\|context_switch"` | Raise `max_num_batched_tokens` to `1024` or `2048` to amortize kernel launch and stream sync overhead |
 | **3. Chunked Prefill Breaking Prefix-Cache Hits (`V12` Ch. 8)** | Prefix-cache hit ratio drops `5.6x` from `45%` to `8%` immediately after enabling chunked prefill | Whole-sequence prefix hash lookup fails when prompts are sliced into partial chunks | `curl -s localhost:8002/metrics \| grep prefix_cache_hit_ratio` | Align prefix matching to chunk/block boundaries (`16`/`64`/`512` tokens) or use `SGLang` `RadixAttention` |
 | **4. Large Block Internal Fragmentation & FP16 KV OOM (`V12` Ch. 5)** | `[TRT-LLM][ERROR] Out of memory during KVCache block allocation` above `64` sessions (`52%` effective KV util) | `tokens_per_block=128` wastes `127/256` slots (`49.61%`) on `129`-token sequences; `0.95` fraction starves workspace | `engine.kv_cache_manager.print_fragmentation_report()` | Set `tokens_per_block=32` (`19.38%` waste at `129` tokens), enable `FP8` KV cache, and set fraction to `0.85` (`64 -> 210` sessions, `91%` util) |
-| **5. Uncollated Small-Page RDMA Handoff Bottleneck (`ASP` Ch. 18)** | Disaggregated `7,500`-token KV transfer takes `20 ms` over InfiniBand RDMA, inflating `TTFT` | Posting `469` (`~470`) separate `16`-token PagedAttention RDMA writes saturates NIC WQE processing | `nsys profile --trace=cuda,nvtx,ucx` and `ucx_info -f` | Collate pages into `>= 128`-token slabs (`59` transfers -> `8 ms`), set `UCX_RNDV_THRESH=16384` and `PYTHONHASHSEED=0` |
+| **5. Uncollated Small-Page RDMA Handoff Bottleneck (*AI Systems Performance Engineering* Ch. 18)** | Disaggregated `7,500`-token KV transfer takes `20 ms` over InfiniBand RDMA, inflating `TTFT` | Posting `469` (`~470`) separate `16`-token PagedAttention RDMA writes saturates NIC WQE processing | `nsys profile --trace=cuda,nvtx,ucx` and `ucx_info -f` | Collate pages into `>= 128`-token slabs (`59` transfers -> `8 ms`), set `UCX_RNDV_THRESH=16384` and `PYTHONHASHSEED=0` |
 | **6. Synchronous PCIe Swap Thrashing Under Saturation (`V12` Ch. 7 & 8)** | `p99` ITL jumps `20 ms -> 850 ms` (`42.5x`), GPU util drops to `18%`, PCIe bus saturates at `64 GB/s` | `swap_space=32` evicts `28 GB` (`12` sequences) over PCIe (`4.2` preemptions/s) instead of async LMCache/NIXL or recompute | `curl -s localhost:8000/metrics \| grep -E "cpu_cache_usage\|num_preempted"` | Set recompute-only preemption (`--swap-space 0` on vLLM before v0.18) with `preemption_mode="recompute"` for `S < 8,192`, or use async pinned `NIXL`/`LMCache` prefetching + Mooncake early rejection |
 
 ---

@@ -472,7 +472,7 @@ Normal OS user-space memory is **pageable**, so the kernel can swap or move its 
 </details>
 
 <details>
-<summary>10. Walk through the `16 bytes per parameter` mixed-precision AdamW memory rule of thumb for a 7B model (`AIE` Chapter 7).</summary>
+<summary>10. Walk through the `16 bytes per parameter` mixed-precision AdamW memory rule of thumb for a 7B model (*AI Engineering* Chapter 7).</summary>
 
 In mixed-precision (`bf16` or `fp16`) training with Adam or AdamW, each parameter $\Psi$ needs the following:
 - **Model weights (`bf16`):** `2 bytes`

@@ -92,7 +92,7 @@ Third, Nsight Compute (`ncu`) replays individual hot kernels compiled with `-lin
 
 Every clock cycle, each of the four warp schedulers on a Hopper or Blackwell SM inspects its assigned warps. It issues one instruction, or two dual-issued instructions, from an eligible warp. Whenever a resident warp is not eligible to issue on a given cycle, Nsight Compute records the hardware stall reason.
 
-| Nsight Compute Warp Stall Reason | Hardware Meaning & Cause (*ASP* Ch 8, pp. 258–261 & Table 8-1) | Primary Optimization Remedy |
+| Nsight Compute Warp Stall Reason | Hardware Meaning & Cause (*AI Systems Performance Engineering* Ch 8, pp. 258–261 & Table 8-1) | Primary Optimization Remedy |
 |---|---|---|
 | **`Stall: Long Scoreboard`** | Warp is waiting on a long-latency global memory (`HBM` / `L2`) load or a spilled Local Memory access to arrive in registers (`~800` cycles) | Coalesce and vectorize loads, cache tiles in Shared Memory, prefetch asynchronously with `TMA` (`cuda::memcpy_async`), or raise occupancy and ILP |
 | **`Stall: Short Scoreboard`** | Warp is waiting on a variable-latency Shared Memory (`SMEM`) load (`~20–30` cycles, worsened by bank conflicts) or Special Function Unit (`SFU`) result | Eliminate shared-memory bank conflicts (`tile[32][33]` padding or swizzling) and interleave independent instructions (`ILP`) |
@@ -340,7 +340,7 @@ Third, use warp-vote intrinsics such as `__ballot_sync`, `__any_sync`, and `__al
 
 Fourth, sort or partition heterogeneous data on the host or in a preprocessing pass before launching the compute kernel so each warp receives uniform inputs. Fifth, when both conditional bodies contain hundreds of instructions, avoid predication because predication forces every thread to compute both heavy paths. Instead, compact indices and launch two separate specialized kernels.
 
-| Nsight Compute Metric (`ncu` Counter) | Before (`threshold_naive` `if/else`) | After (`threshold_predicated` `?:` / `max`) | Improvement (*ASP* Ch 8 Table 8-3, p. 280) |
+| Nsight Compute Metric (`ncu` Counter) | Before (`threshold_naive` `if/else`) | After (`threshold_predicated` `?:` / `max`) | Improvement (*AI Systems Performance Engineering* Ch 8 Table 8-3, p. 280) |
 |---|---:|---:|---|
 | **Kernel Execution Time (`gpu__time_elapsed.avg`)** | `30 ms` | **`15 ms`** | **`-50%` (`2.0x` faster)** |
 | **Dynamic Instruction Count (`smsp__inst_executed.sum`)** | `600 M` instructions | **`300 M` instructions** | **`-50%`** (single pass instead of two serial passes) |
@@ -433,7 +433,7 @@ float temp = u + 1.0f; // By the time temp issues, u has already progressed thro
 
 Loop unrolling with `#pragma unroll` and multiple independent accumulators applies the same principle to memory loads and reductions. Instead of loading one value, waiting hundreds of cycles for it to arrive, multiplying, and only then loading the next value, an unrolled four-way loop issues four independent loads back-to-back. All four HBM requests travel in parallel before the first multiply consumes the first value.
 
-| `ILP` (Independent Ops per Thread) | Active Threads per SM Required for `~100%` Utilization | Active Warps per SM Required | Required SM Occupancy (`% of 2,048 threads`) | Operational Takeaway (*ASP* Ch 8 Table 8-4, pp. 286–287) |
+| `ILP` (Independent Ops per Thread) | Active Threads per SM Required for `~100%` Utilization | Active Warps per SM Required | Required SM Occupancy (`% of 2,048 threads`) | Operational Takeaway (*AI Systems Performance Engineering* Ch 8 Table 8-4, pp. 286–287) |
 |---:|---:|---:|---:|---|
 | **`1` (No ILP)** | **`~1,536` threads** | **`48` warps** | **`75.0%`** | Requires high occupancy (`48` warps) to hide stalls across warps |
 | **`2`-Way ILP** | **`~1,024` threads** | **`32` warps** | **`50.0%`** | Each warp keeps `2` ops in flight; saturates SM at `50%` occupancy |

@@ -475,7 +475,7 @@ Tile size also changes occupancy. A bigger tile reuses data more and cuts launch
 
 Even a fused kernel cannot use a single static tile size across every request length. In self-attention, a large shared-memory tile of 256 by 128 maximizes data reuse for long prompts by loading Key and Value blocks once from HBM. However, its 128 KB shared-memory footprint restricts the Streaming Multiprocessor to 60% occupancy. For short sequences under 256 tokens, a smaller tile of 64 by 64 or a standard global-memory attention kernel avoids tiling setup overhead and reaches 85% SM occupancy.
 
-| Attention Tile Size (TILE_Q x TILE_K) | Shared Memory per Block (KB) | Achieved SM Occupancy (%) | Achieved Throughput (GOPS) | Optimal Workload Regime (ASP Table 19-3) |
+| Attention Tile Size (TILE_Q x TILE_K) | Shared Memory per Block (KB) | Achieved SM Occupancy (%) | Achieved Throughput (GOPS) | Optimal Workload Regime (*AI Systems Performance Engineering* Table 19-3) |
 |---|---|---|---|---|
 | 64 x 64 | 48 KB | 85% | 8.2 GOPS | Short sequences (L ≤ 512), latency-critical small batches |
 | 128 x 64 | 64 KB | 78% | 10.5 GOPS | Medium sequences (512 < L ≤ 2,048), balanced reuse and occupancy |
@@ -633,7 +633,7 @@ Under standard speculative rejection sampling, the target model compares its exa
 
 Running two separate models in HBM introduces deployment complexity. Both models must share the exact same tokenizer and vocabulary, and the engine must allocate separate KV cache pools for both the draft and target models. Four architectural families address this trade-off across modern serving engines.
 
-| Speculative Paradigm | Architectural Mechanism | Extra VRAM Overhead | Target Distribution Preserved? | Reported Speedup (ASP Ch. 15 & AIE Ch. 9) |
+| Speculative Paradigm | Architectural Mechanism | Extra VRAM Overhead | Target Distribution Preserved? | Reported Speedup (*AI Systems Performance Engineering* Ch. 15 & *AI Engineering* Ch. 9) |
 |---|---|---|---|---|
 | **Two-Model Draft-Target** | Distilled or smaller draft LLM (4x–10x faster, e.g., 4B for 70B) proposes K tokens; target verifies in one pass | Draft weights + draft KV cache | Yes, exact lossless sampling | 1.5x–2.5x (2.25x on Chinchilla-70B) |
 | **EAGLE-1 / EAGLE-2 / EAGLE-3** | Lightweight autoregressive head extrapolates target hidden features; EAGLE-2 adds dynamic draft trees; EAGLE-3 fuses multi-layer features | Under 2%–5% (1 transformer layer head) | Yes, exact lossless sampling | 3.5x (EAGLE-1), +20%–40% (EAGLE-2), up to 6.5x (EAGLE-3) |
@@ -782,7 +782,7 @@ Standard Transformer inference executes every layer for every token, spending th
 - **Mixture of Depths.** While per-token early exit and MDP skipping vary the number of tokens executing at each layer, Mixture of Depths enforces a fixed per-layer token capacity factor such as 0.25 or 0.50. A lightweight router scores all tokens in the sequence and routes only the top 25.0% fraction through self-attention and the MLP, while the remaining 75.0% of tokens bypass the block along the residual stream. Because the routed token count is known statically for every batch size, Mixture of Depths achieves massive FLOP reductions while preserving static tensor shapes for CUDA Graph capture.
 - **Dynamic Token Pruning with LazyLLM.** Long-context prompts contain thousands of stopwords and filler tokens that contribute almost nothing to the final answer. LazyLLM in *AI Systems Performance Engineering* Chapter 19 uses a lightweight attention-importance scoring function to selectively compute and retain KV cache entries only for high-impact tokens. Pruning low-impact tokens out of both prefill and decode achieves a **20% to 30% end-to-end latency reduction** on long-context workloads.
 
-| Adaptive Computation Technique | Granularity of Adaptation | CUDA Graph Compatibility | Reported Speedup or Reduction (ASP Ch. 19) | Key Operational Consideration |
+| Adaptive Computation Technique | Granularity of Adaptation | CUDA Graph Compatibility | Reported Speedup or Reduction (*AI Systems Performance Engineering* Ch. 19) | Key Operational Consideration |
 |---|---|---|---|---|
 | **Dynamic Early-Exit Networks** | Per-token truncation at intermediate layer | Requires state-copy or batch grouping | 30%–50% inference speedup | Must populate or mask upper-layer KV cache slots for future tokens |
 | **Input-Aware Layer Skipping (DASH)** | Per-token, per-layer MDP gating | Dynamic shape per layer unless bucketed | Skips 20%–40% of layers | Requires trained gating network per layer |
@@ -793,7 +793,7 @@ Standard Transformer inference executes every layer for every token, spending th
 
 Modern Hopper and Blackwell GPUs provide hardware Tensor Cores for 16-bit, 8-bit, and 4-bit arithmetic. Because PyTorch's native `torch.autocast` only manages FP16 and BF16, production engines use NVIDIA Transformer Engine via `fp8_autocast` and `DelayedScaling` with `Format.HYBRID`, `amax_history_len=1024`, and `amax_compute_algo="max"` to switch layer and token precision at runtime.
 
-| Precision Configuration (ASP Table 19-2) | Relative Memory Usage | Relative Compute Throughput | Typical Quality Impact (Accuracy Delta) | Recommended Runtime Role |
+| Precision Configuration (*AI Systems Performance Engineering* Table 19-2) | Relative Memory Usage | Relative Compute Throughput | Typical Quality Impact (Accuracy Delta) | Recommended Runtime Role |
 |---|---|---|---|---|
 | FP16 or BF16 (Baseline) | 1.00x (100%) | 1.0x (Baseline) | 0.0% (Full fidelity) | High-entropy reasoning tokens and sensitive early input layers |
 | FP16 Weights + FP8 Activations | ~0.50x (50%) | ~1.5x (Up to 2.0x compute-bound) | Negligible (< 0.1%) | Default steady-state precision (MXFP8 on Blackwell) |
@@ -1136,7 +1136,7 @@ Use the quantized cache features your engine provides where you can. They handle
 
 Fixing a single sharding strategy at container boot forces a painful compromise between short-prompt latency and long-context memory capacity. As summarized in *AI Systems Performance Engineering* Table 19-1, an adaptive serving platform pre-provisions logical worker pools with distinct parallelism layouts. The router then dispatches each request to the pool that matches its sequence length and concurrency profile.
 
-| Inference Traffic Pattern (ASP Table 19-1) | Recommended Parallelism Strategy | Architectural Rationale |
+| Inference Traffic Pattern (*AI Systems Performance Engineering* Table 19-1) | Recommended Parallelism Strategy | Architectural Rationale |
 |---|---|---|
 | Many short requests (< 256 tokens, high RPS) | Data Parallel (DP) / Replica Scaling | Zero inter-GPU collective overhead; each replica serves independent requests |
 | Few long requests (≥ 8K tokens, low concurrency) | Pipeline Parallelism (PP with microbatches) | Splits layers across GPUs and pipelines microbatches to hold large KV states |
@@ -1223,7 +1223,7 @@ Place an endpoint-level semantic cache and ModernBERT classifier in front of you
 
 ---
 
-### 5.3 Topology-Aware and Congestion-Aware GPU Communication (ASP Ch. 19, restored)
+### 5.3 Topology-Aware and Congestion-Aware GPU Communication (*AI Systems Performance Engineering* Ch. 19, restored)
 
 Picture a rack of 72 GPUs that can all talk to each other at once. It sounds like the problem is solved, but the fast network is still a shared road. If everyone drives to the same destination at the same minute, you get a traffic jam, and in serving the jam shows up as slow outlier responses. This section is about scheduling the traffic, not just buying the road.
 

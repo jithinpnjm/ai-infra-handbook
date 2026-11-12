@@ -270,7 +270,7 @@ Two classic books cover them in depth. The first is *Learning the vi and Vim Edi
 
 `nano` shows its key commands at the bottom of the screen. The `^O` command writes the file out, `^X` exits, and `^W` searches, where `^` means Ctrl. It needs no explanation and is fine for quick edits.
 
-`vim`, or `vi` on every server, is a modal editor. Keys mean different things in different modes: normal mode, insert mode, visual mode for selecting text, and command-line mode, entered with `:`. That confuses newcomers. The survival kit below comes from HLW, chapter 2, and from SCL, Table 7-9.
+`vim`, or `vi` on every server, is a modal editor. Keys mean different things in different modes: normal mode, insert mode, visual mode for selecting text, and command-line mode, entered with `:`. That confuses newcomers. The survival kit below comes from *How Linux Works*, chapter 2, and from *Supercomputers for Linux Sysadmins*, Table 7-9.
 
 | Key | Does |
 |---|---|

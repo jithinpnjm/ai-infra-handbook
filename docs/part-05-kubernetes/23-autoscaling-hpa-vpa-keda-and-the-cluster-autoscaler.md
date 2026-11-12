@@ -86,7 +86,7 @@ Suppose a model server slows down as traffic grows. The Horizontal Pod Autoscale
 
 The core formula is a ratio. The desired count is the current count multiplied by the current metric value divided by the target value, rounded up.
 
-`desiredReplicas = ceil( currentReplicas × currentMetricValue / targetMetricValue )`
+`desiredReplicas = ceil(currentReplicas × currentMetricValue / targetMetricValue )`
 
 When the metric sits above its target, the count goes up. When it sits below, the count comes down. The details matter as much as the formula. If you define several metrics, HPA computes each one and uses the largest result. A ±10% tolerance band (`--horizontal-pod-autoscaler-tolerance` 0.1) stops small fluctuations from causing jitter. HPA also handles pods it cannot measure conservatively. It excludes unready pods, and it treats missing metrics as 0% for scale-up and as 100% for scale-down.
 

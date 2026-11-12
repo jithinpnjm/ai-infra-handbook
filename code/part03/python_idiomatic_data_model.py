@@ -1,4 +1,4 @@
-"""Chapter 3.3 model: Python data model (FrenchDeck & spades_high, Vector),
+"""Chapter 3.3 model: Python data model (NodeInventory & drain_order, Vector),
 sequence slicing and bytecode puzzle (t[0] += [3]), dict __missing__
 (StrKeyDict0), weak references and HauntedBus/TwilightBus mutability traps,
 first-class function Strategy pattern & promo registry, closures/freevars &
@@ -8,8 +8,8 @@ yield from tree, and classic averaging coroutine).
 
 Sources modeled:
 - Luciano Ramalho, Fluent Python, 2nd ed. (fluent-python-2nd-edition, FP):
-  * Chapter 1 ("The Python Data Model"): Card namedtuple, FrenchDeck (__len__,
-    __getitem__), spades_high ranking (0 to 51), and Vector (__repr__, __abs__,
+  * Chapter 1 ("The Python Data Model"): Node namedtuple, NodeInventory (__len__,
+    __getitem__), drain_order ranking (0 to 51), and Vector (__repr__, __abs__,
     __bool__, __add__, __mul__).
   * Chapter 2 ("An Array of Sequences"): listcomps vs map/filter, Cartesian
     products, tuple records & nested unpacking (metro_areas), named slices,
@@ -48,32 +48,32 @@ import collections
 from decimal import Decimal
 from typing import Callable, Dict, Iterable, Iterator, List, NamedTuple, Optional, Sequence, Tuple
 
-Card = collections.namedtuple("Card", ["rank", "suit"])
+Node = collections.namedtuple("Node", ["slot", "rack"])
 
 
-class FrenchDeck:
-    """FP Ch. 1 Example 1-1: A deck as a sequence of playing cards."""
+class NodeInventory:
+    """A rack inventory as a sequence: it only implements __len__ and __getitem__."""
 
-    ranks = [str(n) for n in range(2, 11)] + list("JQKA")
-    suits = "spades diamonds clubs hearts".split()
+    slots = [f"{n:02d}" for n in range(1, 14)]
+    racks = "r1 r2 r3 r4".split()
 
     def __init__(self) -> None:
-        self._cards = [Card(rank, suit) for suit in self.suits for rank in self.ranks]
+        self._nodes = [Node(slot, rack) for rack in self.racks for slot in self.slots]
 
     def __len__(self) -> int:
-        return len(self._cards)
+        return len(self._nodes)
 
     def __getitem__(self, position):
-        return self._cards[position]
+        return self._nodes[position]
 
 
-SUIT_VALUES = dict(spades=3, hearts=2, diamonds=1, clubs=0)
+RACK_PRIORITY = dict(r4=3, r3=2, r2=1, r1=0)
 
 
-def spades_high(card: Card) -> int:
-    """FP Ch. 1 rank function returning 0 for 2 of clubs and 51 for Ace of spades."""
-    rank_value = FrenchDeck.ranks.index(card.rank)
-    return rank_value * len(SUIT_VALUES) + SUIT_VALUES[card.suit]
+def drain_order(node: Node) -> int:
+    """Rank returning 0 for slot 01 in rack r1 and 51 for slot 13 in rack r4."""
+    slot_value = NodeInventory.slots.index(node.slot)
+    return slot_value * len(RACK_PRIORITY) + RACK_PRIORITY[node.rack]
 
 
 def demonstrate_tuple_inplace_add_puzzle() -> Tuple[bool, Tuple[object, ...]]:

@@ -588,7 +588,6 @@ Corrections to the author's notes:
     book's Project kind). In Chapter 11.17 the example now requests gpu-fraction
     only; the upstream docs list gpu-fraction and gpu-memory as alternative ways
     to ask for a share.
-  - Validation pass 2026-10-25: validate_chapter.py and check_coverage.py pass.
     The YAML manifests and commands are marked untested and were not applied to a
     cluster. Custom resource API versions (for example kueue.x-k8s.io/v1beta1,
     resource.k8s.io/v1) change between releases, so check them against the version

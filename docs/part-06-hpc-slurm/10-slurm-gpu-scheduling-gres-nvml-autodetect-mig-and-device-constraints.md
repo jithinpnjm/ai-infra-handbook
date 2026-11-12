@@ -124,7 +124,7 @@ The first two rows cause the most confusion. `--gres=gpu:N` counts GPUs per node
 
 Defaults protect users who type only `--gres=gpu:1`. The partition settings `DefCpuPerGPU` and `DefMemPerGPU` (see 6.8) give each GPU a sensible share of CPUs and memory. Without them, a job that asks for GPUs but no CPUs can block on a node where CPUs are scarce, or it can get a starved allocation.
 
-### Portable resource allocation rules (`DAI` Chapter 8)
+### Portable resource allocation rules (*Distributed AI Systems* Chapter 8)
 
 *Distributed AI Systems* (chapter 8, *Best practices: Resource allocation*) makes a point that matters here. Relying on implicit cluster defaults is one of the most common causes of silent training failures. The failures usually appear when batch scripts move from a lab cluster to a shared production HPC system. The fix is to make every GPU batch script portable and self-documenting. You do that by naming all five core resource dimensions explicitly.
 
@@ -234,7 +234,7 @@ Rolling driver upgrades need an empty node. Use `Reason` strings and reservation
 
 Decide now who drains a node when a GPU fails. That decision is much easier before the page arrives.
 
-### Live GPU job monitoring and distributed profiling (`DAI` Chapter 8)
+### Live GPU job monitoring and distributed profiling (*Distributed AI Systems* Chapter 8)
 
 Once a multi-node GPU job is running, you need to confirm that every allocated GPU is actually computing. A GPU can look idle because it is waiting on data loading or on a hung collective. *Distributed AI Systems*, chapter 8, covers monitoring and debugging. Three approaches help.
 
@@ -453,9 +453,9 @@ Active NCCL spin-wait kernels keep the CUDA streaming multiprocessors busy while
 
 ## Sources and review notes
 
-- GRES and GPU scheduling concepts, partitions and operations: *Supercomputers for Linux SysAdmins* (`supercomputers-for-linux-sysadmins-managing-modern-hpc-clusters-and-supercomputers-from-software-to-hardware`, `SCL`) Chapter 15 ("15. Slurm": generic and trackable resources), restated in our words.
-- Distributed-training GPU resource allocation best practices (`--nodes`, `--gres`, `--cpus-per-task`, `--mem`, `--time`, `--exclusive`), live job monitoring (`srun --jobid=<job_id> nvidia-smi`, `SLURMJobMonitor` CSV polling and `<50%` util / `>95%` memory anomaly detection), distributed GPU profiling (`torch.profiler`, `ncclAllReduce`, `NCCL_DEBUG=INFO`, `NCCL_DEBUG_SUBSYS=ALL`, `TORCH_DISTRIBUTED_DEBUG=DETAIL`), and GPU allocation troubleshooting (`sinfo -N -l`, `scontrol show nodes | grep Gres`, `srun -N 1 --gres=gpu:1 nvidia-smi -L`): read in full from *Distributed AI Systems* (`distributed-ai-systems`, `DAI`) Chapter 8 ("Chapter 8: Running Distributed Training with SLURM").
+- GRES and GPU scheduling concepts, partitions and operations: *Supercomputers for Linux SysAdmins* (`supercomputers-for-linux-sysadmins-managing-modern-hpc-clusters-and-supercomputers-from-software-to-hardware`, *Supercomputers for Linux Sysadmins*) Chapter 15 ("15. Slurm": generic and trackable resources), restated in our words.
+- Distributed-training GPU resource allocation best practices (`--nodes`, `--gres`, `--cpus-per-task`, `--mem`, `--time`, `--exclusive`), live job monitoring (`srun --jobid=<job_id> nvidia-smi`, `SLURMJobMonitor` CSV polling and `<50%` util / `>95%` memory anomaly detection), distributed GPU profiling (`torch.profiler`, `ncclAllReduce`, `NCCL_DEBUG=INFO`, `NCCL_DEBUG_SUBSYS=ALL`, `TORCH_DISTRIBUTED_DEBUG=DETAIL`), and GPU allocation troubleshooting (`sinfo -N -l`, `scontrol show nodes | grep Gres`, `srun -N 1 --gres=gpu:1 nvidia-smi -L`): read in full from *Distributed AI Systems* Chapter 8 ("Chapter 8: Running Distributed Training with SLURM").
 - Parameters and semantics: Slurm man pages `gres.conf(5)`, `slurm.conf(5)`, `cgroup.conf(5)`, `sbatch(1)`, `srun(1)`, `slurmd(8)` and the `gres` documentation page (MIG, MPS, sharding), SchedMD/slurm commit `521370b`. Several AutoDetect values and shard memory enforcement belong to very recent releases.
 - Run here: `python3 code/part06/gpu_env_check.py` and `python3 code/part06/gpu_env_check_lab.py` (3 passed, 0 failed).
-- Explicitly labelled inferences: `simulate_gpu_binding_and_isolation` and `parse_nvidia_smi_csv_and_detect_anomalies` in `code/part06/gpu_env_check_lab.py` are deterministic teaching models of Slurm `ConstrainDevices=yes` remapping and `DAI` Chapter 8's `SLURMJobMonitor`.
+- Explicitly labelled inferences: `simulate_gpu_binding_and_isolation` and `parse_nvidia_smi_csv_and_detect_anomalies` in `code/part06/gpu_env_check_lab.py` are deterministic teaching models of Slurm `ConstrainDevices=yes` remapping and *Distributed AI Systems* Chapter 8's `SLURMJobMonitor`.
 - Not verified on live hardware: NVSwitch/HGX socket-to-GPU layout statement (typical, check `nvidia-smi topo -m`); the systemd/cgroup device-reset incident remark; accounting field names for GPU utilisation; all live GPU cluster behaviour (`untested here`).

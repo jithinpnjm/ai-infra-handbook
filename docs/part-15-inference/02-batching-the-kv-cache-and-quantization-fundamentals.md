@@ -113,7 +113,7 @@ An NVIDIA L40S GPU delivers 362 TFLOPS of FP16 Tensor Core compute and 864 GB/s 
 
 During single-request Decode, the GPU loads billions of weight parameters from HBM to multiply against a single token vector. Arithmetic intensity stays locked near 1.0 FLOPS per byte regardless of how long the prompt was. The only way to raise Decode arithmetic intensity toward the Roofline ridge point is to group multiple concurrent requests together. That way, the GPU computes B output tokens for every weight fetch.
 
-| Accelerator | GPU Memory | Memory Bandwidth | FP16 / BF16 Tensor Core | FP8 Tensor Core | Native FP8 | Intra-Node Interconnect | Ridge Point (FP16 FLOPS/B) |
+| Accelerator | GPU Memory | Memory Bandwidth | FP16 / BF16 Tensor Core (with sparsity for H100, H200, B200) | FP8 Tensor Core (with sparsity for H100, H200, B200) | Native FP8 | Intra-Node Interconnect | Ridge Point (FP16 FLOPS/B) |
 |---|---|---|---|---|---|---|---|
 | NVIDIA A10 | 24 GB GDDR6 | 600 GB/s (0.6 TB/s) | 125 TFLOPS | Not supported | No | PCIe Gen4 (64 GB/s) | 208.3 |
 | NVIDIA L40S | 48 GB GDDR6 | 864 GB/s (0.864 TB/s) | 362.05 TFLOPS | 733 TFLOPS | Yes | PCIe Gen4 (64 GB/s) | 419.0 |
@@ -123,6 +123,8 @@ During single-request Decode, the GPU loads billions of weight parameters from H
 | NVIDIA H100 SXM | 80 GB HBM3 | 3,350 GB/s (3.35 TB/s) | 1,979 TFLOPS | 3,958 TFLOPS | Yes | NVLink 4 / NVSwitch (900 GB/s) | 590.7 |
 | NVIDIA H200 SXM | 141 GB HBM3e | 4,800 GB/s (4.8 TB/s) | 1,979 TFLOPS | 3,958 TFLOPS | Yes | NVLink 4 / NVSwitch (900 GB/s) | 412.3 |
 | NVIDIA B200 SXM | 180 GB HBM3e | 8,000 GB/s (8.0 TB/s) | 4,500 TFLOPS | 9,000 TFLOPS | Yes (plus NVFP4) | NVLink 5 / NVSwitch (1,800 GB/s) | 562.5 |
+
+The H100, H200 and B200 rows (and H100 PCIe and NVL) show NVIDIA's with-sparsity peak figures, which need 2:4 structured sparsity. Dense peaks are half as large: H100 SXM and H200 are 989 TFLOPS BF16 and 1,979 TFLOPS FP8. The ridge point scales with it, so a dense model on an H100 SXM has a ridge near 295 FLOPS/B and on an H200 near 206. The L40S and A100 figures are dense. The lab below uses the table values as printed.
 
 ### 1.2 Static vs Dynamic vs Continuous (In-Flight) Batching
 
@@ -343,7 +345,7 @@ Doubling Tensor Parallelism from 4 to 8 GPUs does not merely double KV Cache cap
 Quantization compresses a neural network by representing its weights, activations, or KV Cache tensors in lower-bit numerical formats instead of 32-bit or 16-bit floating point. Lowering precision delivers three compounding advantages for LLM serving.
 1. **Smaller VRAM footprint:** Cutting parameter width from 16 bits to 8 bits or 4 bits shrinks a 70B model from 140 GB to 70 GB or 35 GB. That allows the model to fit on a single 80 GB GPU and frees tens of gigabytes for KV Cache blocks.
 2. **Higher decode memory bandwidth efficiency:** Because autoregressive decode is bottlenecked by HBM bandwidth, reading 4-bit or 8-bit weights moves two to four times fewer bytes per token. That directly lowers Inter-Token Latency.
-3. **Faster Tensor Core compute:** When both weights and activations are quantized to 8-bit or 4-bit formats supported by hardware Tensor Cores, peak compute throughput doubles. On an H100 SXM GPU, throughput jumps from 1,979 TFLOPS in BF16 or FP16 to 3,958 TFLOPS in FP8 or INT8.
+3. **Faster Tensor Core compute:** When both weights and activations are quantized to 8-bit or 4-bit formats supported by hardware Tensor Cores, peak compute throughput doubles. On an H100 SXM GPU, the dense peak jumps from 989 TFLOPS in BF16 or FP16 to 1,979 TFLOPS in FP8 or INT8. The larger figures, 1,979 and 3,958 TFLOPS, are the with-sparsity numbers and need 2:4 structured sparsity.
 
 Every quantization algorithm must manage two distinct sources of numerical distortion. **Rounding error** occurs when a continuous value falls between two discrete grid steps. **Clamping error**, also called clipping, occurs when an outlier exceeds the maximum representable range of the target format.
 
@@ -764,7 +766,7 @@ In BF16 precision, Llama-3-70B's static weights always require 140 GB total acro
 <details>
 <summary>12. When KV Cache blocks are exhausted under burst load, why is Recompute mathematically faster than PCIe Swap for short-to-medium contexts?</summary>
 
-Swapping a preempted sequence's KV Cache out to host DRAM and back across a 64 GB/s PCIe Gen4 bus takes 125 ms round-trip for a 4 GB cache and saturates the PCIe bus. Recomputing the prompt prefill directly on H100 GPU Tensor Cores at 989 to 1,979 TFLOPS completes in a fraction of that time for all sequence lengths below 8,192 tokens.
+Swapping a preempted sequence's KV Cache out to host DRAM and back across a 64 GB/s PCIe Gen4 bus takes 125 ms round-trip for a 4 GB cache and saturates the PCIe bus. Recomputing the prompt prefill directly on H100 GPU Tensor Cores at 989 TFLOPS (dense BF16; 1,979 with sparsity) completes in a fraction of that time for all sequence lengths below 8,192 tokens.
 </details>
 
 <details>

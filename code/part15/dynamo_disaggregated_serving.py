@@ -40,7 +40,7 @@ Models:
      Remote Shared Storage`), `250,000`-token `70B` MHA KV footprint (`328 GB` FP16 -> `100–150 GB` FP8),
      `x86 + H100` `14x` TTFT speedup, `GH200` `900 GB/s` NVLink-C2C `2x` additional speedup (`28x` vs recompute),
      and `LMCache` `3x` CPU / `50x` SSD capacity expansion (`1.0 s` vs `6.0–7.0 s` TTFT, `16x` throughput over `4,700 tok/s`).
-   - Models heterogeneous hardware (`B200` prefill + `B300` decode with `180 GB` HBM / `70 GB` weights / `122 GB` KV;
+   - Models heterogeneous hardware (`B200` prefill + `B300` decode with `288 GB` HBM / `70 GB` weights / `218 GB` left for KV;
      Splitwise `4x H100 + 4x A100` `2.35x` RPS at iso-cost/power and `1.4x` at `-20%` cost; HexGen-2 `2.0x` peak /
      `1.3x` avg or `-30%` cost; Arrow `5.6x` adaptive scaling) and `TP_p -> TP_d` KV layout transpose.
 5. `llm-d` and Kubernetes Gateway API Inference Extension (`InferencePool`, `InferenceObjective`, `EPP`):

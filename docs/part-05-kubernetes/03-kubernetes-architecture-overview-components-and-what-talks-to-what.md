@@ -115,7 +115,7 @@ Notice the `Is this ok?` prompt at the end. The script asks you to confirm befor
 
 Many clusters run kube-apiserver, kube-scheduler, and kube-controller-manager as containers. In that case, the control plane may also run a container runtime, a kubelet, and kube-proxy. Deployment choices like these come up later in this part.
 
-### Why Kubernetes Exists: Borg/Omega Heritage and Five Core Benefits (`KUR` Chapter 1)
+### Why Kubernetes Exists: Borg/Omega Heritage and Five Core Benefits (*Kubernetes: Up and Running* Chapter 1)
 
 In chapter 1 of *Kubernetes: Up and Running* (*Introduction*), Brendan Burns, Joe Beda, Kelsey Hightower and Lachlan Evenson trace Kubernetes back to Google's internal **Borg** and **Omega** cluster managers. Google open-sourced these managers in June 2014. In July 2015 they were donated as the seed technology of the Cloud Native Computing Foundation (CNCF). The authors organize the platform's value around five core benefits.
 
@@ -201,7 +201,7 @@ Every worker node runs a small set of components next to the containers. Each on
 - **CNI plugin**: attaches pod network namespaces to the cluster network. It provides pod-to-pod connectivity and, optionally, NetworkPolicy (sections 5.13 to 5.15). It usually runs as a DaemonSet agent, with binaries under `/opt/cni/bin` and config in `/etc/cni/net.d`.
 - **Node-level agents** are common in AI clusters. They include the NVIDIA device plugin or DRA driver, which advertises GPUs, and GPU Feature Discovery and NFD, which add labels. The DCGM exporter provides metrics. Others are node-problem-detector, log shippers, CSI node drivers, RDMA and SR-IOV device plugins, Multus for multiple network interfaces, and kata or sandbox runtime installers.
 
-### Inspecting Nodes (`Capacity` vs. `Allocatable` and `Conditions`) and `kube-system` (`KUR` Chapter 3)
+### Inspecting Nodes (`Capacity` vs. `Allocatable` and `Conditions`) and `kube-system` (*Kubernetes: Up and Running* Chapter 3)
 
 In chapter 3 of *Kubernetes: Up and Running* (*Deploying a Kubernetes Cluster*), Burns et al. walk through the first commands every cluster operator runs after connecting `kubectl`.
 
@@ -608,7 +608,7 @@ Always run an **odd number** of etcd members, 3 or 5, on dedicated low-latency N
 </details>
 
 <details>
-<summary>7. In `KUR` Chapter 3, what is the difference between a Node's `Capacity` and `Allocatable` in `kubectl describe node`, and why does it matter?</summary>
+<summary>7. In *Kubernetes: Up and Running* Chapter 3, what is the difference between a Node's `Capacity` and `Allocatable` in `kubectl describe node`, and why does it matter?</summary>
 
 - **`Capacity`:** The total hardware resources detected on the machine, such as `64` CPU cores, `512Gi` RAM, and `8` `nvidia.com/gpu`.
 - **`Allocatable`:** The resources the scheduler may hand out to Pods. `Allocatable = Capacity - kube-reserved - system-reserved - eviction-threshold`
@@ -690,7 +690,7 @@ While all 3 kube-apiserver instances run active-active behind a load balancer, r
 </details>
 
 <details>
-<summary>18. What is the Kubernetes Version Skew Policy (`KUR` Chapter 3), and in what order must you upgrade a cluster?</summary>
+<summary>18. What is the Kubernetes Version Skew Policy (*Kubernetes: Up and Running* Chapter 3), and in what order must you upgrade a cluster?</summary>
 
 - **Version Skew Policy:**
   - kube-apiserver instances in HA must be within **1 minor version** of each other, such as `1.30` and `1.31`.
@@ -726,5 +726,5 @@ While all 3 kube-apiserver instances run active-active behind a load balancer, r
   - `production-kubernetes` — Josh Rosso, Rich Lander, Alexander Brand & John Harris, *Production Kubernetes* (control plane and deployment models).
   - `nvidia-devops` (`volume-03/01-k8s-control-plane-scheduling-masterclass.md`, `volume-03/02-k8s-node-storage-masterclass.md`, and `volume-03/03-k8s-networking-security-ops-masterclass.md`): control plane, API machinery, etcd, node/storage, and networking/security at AI-factory scale (`150k` / `150`k pods).
 - **Run here:** `python3 code/part05/k8s_architecture_flow_lab.py` (3 passed, 0 failed).
-- **Explicitly labelled inferences:** The `validate_k8s_communication_edges`, `compute_etcd_raft_quorum`, and `compute_node_allocatable` models in `code/part05/k8s_architecture_flow.py` and the GPU/AI cluster topology diagram (Section 10) are the author's constructions synthesizing `KUR` Chapters 1 & 3 and `volume-03` (plus original study items 21, 22, 23, 24, 25, 26, 27, 28, 29, 30, 31, 32, 33, 34, 35, 36, 37, 38, 39, and 40).
+- **Explicitly labelled inferences:** The `validate_k8s_communication_edges`, `compute_etcd_raft_quorum`, and `compute_node_allocatable` models in `code/part05/k8s_architecture_flow.py` and the GPU/AI cluster topology diagram (Section 10) are the author's constructions synthesizing *Kubernetes: Up and Running* Chapters 1 & 3 and `volume-03` (plus original study items 21, 22, 23, 24, 25, 26, 27, 28, 29, 30, 31, 32, 33, 34, 35, 36, 37, 38, 39, and 40).
 - **Not verified on live hardware:** Live `kubectl`, `crictl`, and `etcdctl` commands (`6443`, `2379`, `2380`, `10250`, `10248`, `10255`, `10259`, `10257`, `10256`, `10249`, `30000-32767`, `53`, `9153`, `2 GiB`/`8 GiB`, `10 s`, `15 s`, `40 s`, `300 s` / `5 min`, `409 Conflict`, `8x400G`, `5,000` nodes, `150,000` pods, `300,000` containers, `110` pods/node, `-v=8`, `-v=6`) are marked (`untested here`) where not executed by `k8s_architecture_flow_lab.py`.

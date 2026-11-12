@@ -335,7 +335,7 @@ Engineers often panic when they run `torch._dynamo.explain()` on a distributed D
 
 Traditional eager wrappers like FSDP2 hide parameter sharding behind C++ hooks that the compiler cannot reorder. To let the compiler optimize across both compute and communication, PyTorch's TorchTitan reference architecture builds distributed parallelism directly on DTensor primitives:
 
-1. SimpleFSDP. SimpleFSDP expresses FSDP parameter sharding and selective activation checkpointing directly in a compiler-traceable DTensor graph. TorchInductor then buckets and reorders intermediate representation nodes to maximize overlap. Compared to eager FSDP2, SimpleFSDP cuts peak memory usage by up to 28 percent and boosts training throughput by up to 69 percent.
+1. SimpleFSDP. SimpleFSDP expresses FSDP parameter sharding and selective activation checkpointing directly in a compiler-traceable DTensor graph. TorchInductor then buckets and reorders intermediate representation nodes to maximize overlap. Compared to eager FSDP2, SimpleFSDP cuts peak memory usage by up to 28 percent and boosts training throughput by up to 69 percent. These are the best-case figures the SimpleFSDP authors report on Llama 3 models, not numbers to expect on your own cluster.
 2. Asynchronous Tensor Parallelism (AsyncTP). Standard Tensor Parallelism places an AllGather or ReduceScatter directly on the critical path of every layer. AsyncTP uses `torch.compile` to decompose the GEMM and collective across dual CUDA streams with an SM-wave-aware schedule. It overlaps late-arriving AllGather chunks with the next SM wave's matrix multiplications.
 3. AutoParallel. Building on the DTensor operator-strategy cost model, AutoParallel automatically searches and applies hybrid FSDP, TP, and PP sharding plans across a model graph. It selects the optimal plan using cluster memory and interconnect bandwidth constraints.
 
@@ -349,6 +349,8 @@ TorchTitan SimpleFSDP and AsyncTP Quantitative Gains:
      - Sequential TP layer time:  12.0 ms compute + 4.0 ms TP all_gather = 16.0 ms
      - Overlapped at 85% eff:     hides 0.85 x 4.0 ms = 3.4 ms -> 12.6 ms layer latency (21.25% step-time reduction)
 ```
+
+The AsyncTP figure is a worked example with an assumed 85 percent overlap efficiency, not a measured result.
 
 ### 4.3 Multi-GPU Profiling with HTA and Continuous Regression Gates (`PyTorch HUD` and `MLPerf` Step Breakdown)
 

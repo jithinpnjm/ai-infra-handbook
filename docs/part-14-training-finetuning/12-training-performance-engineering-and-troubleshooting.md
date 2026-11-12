@@ -81,7 +81,7 @@ One reason is waiting. When a rank waits at an NCCL collective for a slow neighb
 
 The other reason is memory traffic. If the model launches thousands of tiny, unfused elementwise or attention kernels, they saturate memory bandwidth, and the Tensor Cores sit idle for more than four-fifths of every step.
 
-To see whether the car is really moving, engineers compute **Model FLOPs Utilization**. It divides the mathematical operations the model needs per second by the theoretical peak floating-point rate of the hardware. The sources behind this chapter treat 40 to 50 percent as a healthy range for large language model training. A figure near 15 to 20 percent points to a severe bottleneck that starves the Tensor Cores.
+To see whether the car is really moving, engineers compute **Model FLOPs Utilization**. It divides the mathematical operations the model needs per second by the theoretical peak floating-point rate of the hardware. The sources behind this chapter treat 35 to 55 percent as the range published runs reach, with 40 to 50 percent a good target, for large language model training. A figure near 15 to 20 percent points to a severe bottleneck that starves the Tensor Cores.
 
 ### 1.2 Worked Math: Computing MFU, HFU, and Goodput
 
@@ -472,7 +472,7 @@ torchrun --nproc_per_node=4 train.py --resume-from ./checkpoints/epoch_3.pt
 
 ## Key takeaways
 
-Coarse GPU utilization misleads, and MFU and Goodput do not. A GPU can report 99 to 100 percent in `nvidia-smi` while it spins in an NCCL wait kernel or runs unfused memory-bound operations. Compute MFU, with 40 to 50 percent as the healthy range in this chapter's sources, next to cluster Goodput.
+Coarse GPU utilization misleads, and MFU and Goodput do not. A GPU can report 99 to 100 percent in `nvidia-smi` while it spins in an NCCL wait kernel or runs unfused memory-bound operations. Compute MFU, with 40 to 50 percent as a good target inside the 35 to 55 percent range that published runs report, next to cluster Goodput.
 
 Hunt bottlenecks from the macro level to the micro level. Start with Prometheus, DCGM, `nvidia-smi`, and `iostat -x 1` to separate DataLoader starvation from GPU or network trouble. Then align multi-rank timelines in Nsight Systems and Holistic Trace Analysis, and only then read per-kernel Roofline charts in Nsight Compute.
 
@@ -651,3 +651,5 @@ Early iterations incur CUDA JIT compilation, caching allocator splits, and `torc
 | Deterministic lab verification | All MFU/HFU/Goodput equations (16.99% -> 47.78% MFU, 63.70% HFU, 83.33% goodput), 64-GPU wasted cost math ($41,287.68–$51,609.60), 1-to-16 GPU step-time scaling (155.0 ms -> 33.0 ms) and Amdahl's Law (10.0x cap), 138.0 ms MoE and 24.0 ms MLPerf profile reconciliations, `PYTORCH_ALLOC_CONF` savings (768 -> 600 MB), `SimpleFSDP` (-28% mem, +69% tok/s), `AsyncTP` (16.0 -> 12.6 ms), NCCL communicator reuse (48.5 -> 0.5 ms), HTA straggler detection, and Llama 3 405B interruption statistics (419 stops, 64.0% GPU) are verified deterministically by `code/part14/training_performance_troubleshooting.py` and `code/part14/training_performance_troubleshooting_lab.py` (`25 passed, 0 failed`). |
 
 corrected 2026-11-11: Meta Llama 3 paper (arXiv 2407.21783, Table 5) counts sum to 419, so shares are computed as count over 419: faulty GPU 148 is 35.3 percent and faulty GPU plus HBM3 is 220 or 52.5 percent. The paper prints 30.1 percent for the faulty-GPU row and 58.7 percent for all GPU issues, and neither matches its own counts; the 64.0 percent for 268 GPU-category interruptions does match.
+
+The 35 to 55 percent MFU range is checked against the PaLM paper (46.2 percent) and the Llama 3 paper (38 to 43 percent for the 405B model).

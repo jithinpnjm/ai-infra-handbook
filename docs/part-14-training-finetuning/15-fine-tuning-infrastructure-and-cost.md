@@ -297,7 +297,7 @@ The table below compares real-world token volumes, GPU hours, and cloud rental c
 
 | Workload & Method | Dataset Size & Epochs (Total Tokens) | Target Hardware & Peak VRAM | Sustained Throughput (tok/s/GPU) | Wall-Clock Time (GPU-Hours) | Cloud Cost (Spot vs On-Demand) |
 |---|---|---|---|---|---|
-| **Llama-3-8B QLoRA FAQ (K8GS Ch. 4–5)** | 200 steps (batch=2, accum=1, ~0.8M tok) | 1x NVIDIA L4 24GB (`g6.2xlarge`, ~10.6 GB peak) | ~1,100 tok/s | ~12 min (0.20 GPU-hrs) | **$0.10 Spot** ($0.35 On-Demand) |
+| **Llama-3-8B QLoRA FAQ (*Kubernetes for Generative AI Solutions* Ch. 4–5)** | 200 steps (batch=2, accum=1, ~0.8M tok) | 1x NVIDIA L4 24GB (`g6.2xlarge`, ~10.6 GB peak) | ~1,100 tok/s | ~12 min (0.20 GPU-hrs) | **$0.10 Spot** ($0.35 On-Demand) |
 | **TwinLlama-3.1-8B Unsloth LoRA SFT (*LLM Engineer's Handbook*, Ch. 5)** | 13,335 packed samples x 3 epochs (~15M tok) | 1x A100 80GB (~16.5 GB peak) | ~5,000 tok/s (Unsloth 2–5x kernel speedup) | **50 min** (0.83 GPU-hrs) | **$1.00 Spot** ($2.50 On-Demand) |
 | **TwinLlama-3.1-8B Unsloth LoRA DPO (*LLM Engineer's Handbook*, Ch. 6)** | 1,467 filtered triples (from 2,970) x 1 epoch (~3M tok) | 1x A100 80GB (`ref_model=None`, ~18.9 GB peak) | ~2,500 tok/s (chosen + rejected passes) | ~20 min (0.33 GPU-hrs) | **$0.40 Spot** ($1.00 On-Demand) |
 | **Llama-2-7B Customer Chat LoRA (V22 Ch. 3)** | 50,000 convos (500M tok/ep x 3 = 1.5B tok) | 1x H100 80GB (14.0 GB INT8-LoRA footprint) | 450–500 tok/s (unpacked baseline) | 2.5–3 days (~833–926 GPU-hrs or 8x parallel) | $5,100 ($5K CapEx + $100 power) |
@@ -709,7 +709,7 @@ LoRA freezes the pre-trained weight matrix and adds a low-rank update scaled by 
 </details>
 
 <details>
-<summary>**5. In the K8GS Chapter 4 Llama-3 8B QLoRA configuration (`r=32, lora_alpha=64` across 8 target modules), how many parameters are trainable and what is the percentage reduction?**</summary>
+<summary>**5. In the *Kubernetes for Generative AI Solutions* Chapter 4 Llama-3 8B QLoRA configuration (`r=32, lora_alpha=64` across 8 target modules), how many parameters are trainable and what is the percentage reduction?**</summary>
 
 Out of 4,628,721,664 total model tensor elements in packed four-bit storage, only **88,121,344 parameters** require gradients. That represents **1.90 percent**, or roughly 2 percent of the total, reducing trainable parameters by **98 percent**, or 98.10 percent exact, with a LoRA scaling factor of 2.0.
 </details>

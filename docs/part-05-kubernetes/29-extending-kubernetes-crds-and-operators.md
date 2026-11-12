@@ -867,14 +867,14 @@ Reconciliation does pause, though. New `PyTorchJob` or `RayCluster` CRs sit unha
 </details>
 
 <details>
-<summary>15. In the Python `kubernetes` client (`KUR` Chapter 18), what is the difference between `config.load_kube_config()` and `config.load_incluster_config()`?</summary>
+<summary>15. In the Python `kubernetes` client (*Kubernetes: Up and Running* Chapter 18), what is the difference between `config.load_kube_config()` and `config.load_incluster_config()`?</summary>
 
 - **`config.load_kube_config()`** reads `$KUBECONFIG` or `~/.kube/config` on a developer laptop or an external CI runner.
 - **`config.load_incluster_config()`** is for code that runs inside a Kubernetes Pod. It reads the `KUBERNETES_SERVICE_HOST`/`PORT` environment variables, plus the Pod's mounted ServiceAccount token and `ca.crt` from `/var/run/secrets/kubernetes.io/serviceaccount/`. It needs no kubeconfig file.
 </details>
 
 <details>
-<summary>16. In the Python `kubernetes` client (`KUR` Chapter 18), how do `watch.Watch().stream()`, `stream(v1.connect_get_namespaced_pod_exec, ...)`, and `portforward()` work under the hood?</summary>
+<summary>16. In the Python `kubernetes` client (*Kubernetes: Up and Running* Chapter 18), how do `watch.Watch().stream()`, `stream(v1.connect_get_namespaced_pod_exec, ...)`, and `portforward()` work under the hood?</summary>
 
 1. `watch.Watch().stream(v1.list_namespaced_pod, "default")` opens a long-lived, chunked HTTP `GET /api/v1/namespaces/default/pods?watch=true` request. It yields events of type `ADDED`, `MODIFIED` or `DELETED`, each with a `V1Pod` object, as they arrive. That avoids a tight `while True:` polling loop.
 2. `stream(v1.connect_get_namespaced_pod_exec, ...)` and `portforward(v1.connect_get_namespaced_pod_portforward, ...)` use the exec and portforward endpoints. Because `GET/POST /pods/<name>/exec` and `/portforward` upgrade the HTTP connection to a two-way multiplexing protocol, WebSockets or SPDY, calling `v1.connect_get_namespaced_pod_exec` directly fails. The `stream(...)` wrapper negotiates the WebSocket upgrade and separates the `stdin`, `stdout` and `stderr` channels.
@@ -919,5 +919,5 @@ Store time-series telemetry in Prometheus metrics, and record discrete transitio
   - `kubernetes-programming-with-go-programming-kubernetes-clients-and-operators-using-go-and-the-kuberne` — Philippe Martin / Stefan Schimanski & Michael Hausenblas, *Kubernetes Programming with Go* / *Programming Kubernetes* (CRDs, structural schemas, subresources, conversion webhooks, and controllers).
   - `bcm11-containerization` — *NVIDIA Base Command Manager 11 Containerization Manual*, **Chapter 6: Kubernetes Operators** (GPU Operator and Network Operator architecture).
 - **Run here:** `python3 code/part05/crd_schema_conversion_sim_lab.py` (3 passed, 0 failed).
-- **Explicitly labelled inferences:** The `evaluate_crd_schema_and_cel`, `convert_crd_via_hub_and_migrate_storage`, and `reconcile_cr_with_finalizer_and_status` models in `code/part05/crd_schema_conversion_sim.py` and the `GPUHealthPolicy` CRD and instance manifests are the author's constructions synthesizing `KUR` Chapters 17 & 18, `PK` Chapters 11 & 16, `KPG`, and `bcm11-containerization` Chapter 6 (plus original study items 21, 22, 23, 24, 25, 26, 27, 28, 29, 30, 31, 32, 33, 34, and 35).
+- **Explicitly labelled inferences:** The `evaluate_crd_schema_and_cel`, `convert_crd_via_hub_and_migrate_storage`, and `reconcile_cr_with_finalizer_and_status` models in `code/part05/crd_schema_conversion_sim.py` and the `GPUHealthPolicy` CRD and instance manifests are the author's constructions synthesizing *Kubernetes: Up and Running* Chapters 17 & 18, *Production Kubernetes* Chapters 11 & 16, *Kubernetes Programming with Go*, and `bcm11-containerization` Chapter 6 (plus original study items 21, 22, 23, 24, 25, 26, 27, 28, 29, 30, 31, 32, 33, 34, and 35).
 - **Not verified on live hardware:** Live `kubectl`, `kubebuilder`, `OLM`, and `GPU Operator` executions (`minimum: 1, maximum: 200`, `windowSeconds: 600` / `300`, `codes: [48, 63, 64, 79]`, `~1.5 MiB` object limit, `5` capability levels, `--v=10`, port `8080`) are marked (`untested here`) where not executed by `crd_schema_conversion_sim_lab.py`.

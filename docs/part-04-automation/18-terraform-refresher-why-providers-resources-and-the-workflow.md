@@ -72,7 +72,7 @@ Many attribute changes force replacement. Terraform either destroys the object a
 
 Ansible and Terraform solve different problems. Terraform manages whether infrastructure objects exist and how they are configured, and it tracks them with state. Ansible configures what runs on the machines (4.16).
 
-### The Five IaC Categories and Six Trade-Off Axes from *Terraform: Up and Running* (`TUR` Chapter 1)
+### The Five IaC Categories and Six Trade-Off Axes from *Terraform: Up and Running* (Chapter 1)
 
 In *Terraform: Up and Running*, chapter 1 (*Why Terraform*), Yevgeniy Brikman sorts the whole infrastructure-as-code landscape into five tool categories. He then compares the tools along six trade-off axes. Start with the categories, because the axes make more sense once you know them.
 
@@ -487,7 +487,7 @@ This pattern, where Terraform output is rendered as an Ansible inventory, is the
 
 ## 10. Lab
 
-Start with the self-checking Python lab, `code/part04/terraform_workflow_dag_lab.py`, which you can run locally. It checks the `terraform plan` action classifier (`compute_terraform_plan_actions`). The classifier covers `+ create`, `~ update_in_place`, `-/+ replace_destroy_first`, `+/- replace_create_first` with `create_before_destroy`, `- destroy`, and `moved` address refactoring without recreation, which `TUR` (*Terraform: Up and Running*) covers in chapter 2. You can run it locally before you touch any cloud account. The lab also checks the resource dependency DAG wave planner (`build_dependency_execution_waves`) and the pessimistic version constraints (`matches_pessimistic_constraint`, comparing `~> 5.30` with `~> 5.30.1`).
+Start with the self-checking Python lab, `code/part04/terraform_workflow_dag_lab.py`, which you can run locally. It checks the `terraform plan` action classifier (`compute_terraform_plan_actions`). The classifier covers `+ create`, `~ update_in_place`, `-/+ replace_destroy_first`, `+/- replace_create_first` with `create_before_destroy`, `- destroy`, and `moved` address refactoring without recreation, which *Terraform: Up and Running* covers in chapter 2. You can run it locally before you touch any cloud account. The lab also checks the resource dependency DAG wave planner (`build_dependency_execution_waves`) and the pessimistic version constraints (`matches_pessimistic_constraint`, comparing `~> 5.30` with `~> 5.30.1`).
 
 ```bash
 python3 code/part04/terraform_workflow_dag_lab.py
@@ -542,7 +542,7 @@ These questions test the ideas in this chapter. Try to answer each one in your o
 
 Work through these on your own, and use the repository code to check your answers.
 
-1. Start by comparing ad-hoc scripts, configuration management with Ansible, server templating with Packer and Docker, orchestration with Kubernetes, and provisioning with Terraform or OpenTofu. Then use the `count = 10 -> 15 -> 5` EC2 thought experiment from `TUR` (*Terraform: Up and Running*), chapter 1, to explain why declarative, state-backed provisioning manages cloud lifecycles better than stateless procedural tasks.
+1. Start by comparing ad-hoc scripts, configuration management with Ansible, server templating with Packer and Docker, orchestration with Kubernetes, and provisioning with Terraform or OpenTofu. Then use the `count = 10 -> 15 -> 5` EC2 thought experiment from *Terraform: Up and Running*, chapter 1, to explain why declarative, state-backed provisioning manages cloud lifecycles better than stateless procedural tasks.
 2. Use `build_dependency_execution_waves()` and `matches_pessimistic_constraint()` in `code/part04/terraform_workflow_dag.py`. Explain how Terraform Core and the provider plugins interact, and why `.terraform.lock.hcl` must be committed to Git. Explain the difference between `~> 5.30` and `~> 5.30.1`. Finally, show how implicit reference edges decide the parallel execution waves, given `-parallelism=10`.
 3. State the variable precedence order, from the lowest source (`default`) to the highest (`-var` and `-var-file`). Explain why `sensitive = true` does not encrypt values in `terraform.tfstate`. Then trace how `data "google_compute_image"`, `google_compute_network` (`mtu = 8896`), `google_compute_subnetwork` and `google_compute_instance` (`on_host_maintenance = "TERMINATE"`) connect to each other.
 4. Use `compute_terraform_plan_actions()` in `code/part04/terraform_workflow_dag.py` to explain every symbol in a plan: `+`, `~`, `-/+`, `+/-`, `-` and `<=`. Explain why changing `image_id` on an `aws_launch_configuration` that an `aws_autoscaling_group` uses fails without `lifecycle { create_before_destroy = true }`. Finally, explain why production needs `terraform plan -out=tfplan` followed by `terraform apply tfplan`.
@@ -562,7 +562,7 @@ Work through these on your own, and use the repository code to check your answer
 </details>
 
 <details>
-<summary>2. How does Brikman's `count = 10 -> 15 -> 5` example (`TUR` Chapter 1) illustrate the difference between procedural configuration management and declarative stateful provisioning?</summary>
+<summary>2. How does Brikman's `count = 10 -> 15 -> 5` example (*Terraform: Up and Running* Chapter 1) illustrate the difference between procedural configuration management and declarative stateful provisioning?</summary>
 
 Suppose you deploy 10 EC2 instances (`count: 10`) and then change the number to `15`.
 - Procedural and stateless: re-running a naive `count: 15` task launches 15 instances again, leaving 25 instances running unless you add tag-based `exact_count` filters by hand. If you later reduce `count` to `5`, a stateless tool does not know which 10 to terminate.
@@ -629,7 +629,7 @@ Standard CPU VMs on Google Cloud default to `on_host_maintenance = "MIGRATE"`, w
 </details>
 
 <details>
-<summary>10. In `TUR` Chapter 2, why did replacing an `aws_launch_configuration` used by an `aws_autoscaling_group` fail until `create_before_destroy = true` was added?</summary>
+<summary>10. In *Terraform: Up and Running* Chapter 2, why did replacing an `aws_launch_configuration` used by an `aws_autoscaling_group` fail until `create_before_destroy = true` was added?</summary>
 
 An `aws_launch_configuration` is immutable. Changing its `image_id` or `user_data` forces a `-/+` replacement. With the default order, destroy comes first, so Terraform tries to delete the old launch configuration before it updates the `aws_autoscaling_group`. AWS rejects that call, because an active group still references the old configuration. Adding `lifecycle { create_before_destroy = true }` to the launch configuration and the group changes the order. Terraform creates the new launch configuration first (`+/-`), repoints the group to it, and then deletes the old one cleanly.
 </details>
@@ -707,5 +707,5 @@ After Terraform provisions GPU VMs and networks, a `local_file` resource, or `te
   - `terraform-up-and-running-3rd-edition` — Yevgeniy Brikman, *Terraform: Up and Running*, 3rd ed., **Chapter 1: Why Terraform** (read in full: the DevOps transformation, the 5 categories of IaC tools—ad-hoc scripts, configuration management, server templating VMs vs containers, orchestration, and provisioning; the 6 benefits of IaC; and comparing Chef, Puppet, Ansible, Pulumi, CloudFormation, Heat, and Terraform across 6 axes including mutable vs immutable, procedural vs declarative `count = 10 -> 15 -> 5` EC2 scaling, GPL vs DSL, master vs masterless, and agent vs agentless) and **Chapter 2: Getting Started with Terraform** (read in full: AWS account setup, deploying a single EC2 server with `user_data` `<<-EOF` and `user_data_replace_on_change = true`, `aws_security_group`, `terraform init`/`plan`/`apply`/`destroy`/`graph`, input `variable`s and `output`s, deploying a cluster with `aws_launch_configuration` + `aws_autoscaling_group` and `lifecycle { create_before_destroy = true }`, `data` sources `aws_vpc` and `aws_subnets`, and deploying an `aws_lb` Application Load Balancer with listener, target group, and listener rule).
   - `nvidia-devops` (`volume-10/05-terraform-for-infrastructure-as-code.md`): paradigm, architecture, HCL masterclass, CLI reference, import and refactoring (`import`, `moved`, `removed`), workspaces, and OSS vs HCP vs OpenTofu.
 - **Run here:** `python3 code/part04/terraform_workflow_dag_lab.py` (3 passed, 0 failed).
-- **Explicitly labelled inferences:** The `compute_terraform_plan_actions`, `build_dependency_execution_waves`, and `matches_pessimistic_constraint` models in `code/part04/terraform_workflow_dag.py` and the GCP `google_compute_network`/`google_compute_instance` and `local_file` `inventory.tftpl` examples are the author's constructions synthesizing `TUR` Chapters 1 & 2 and `volume-10/05` (plus original study items 21, 22, 23, 24, 25, 26, 27, 28, 29, 30, 31, 32, 33, 34, and 35).
+- **Explicitly labelled inferences:** The `compute_terraform_plan_actions`, `build_dependency_execution_waves`, and `matches_pessimistic_constraint` models in `code/part04/terraform_workflow_dag.py` and the GCP `google_compute_network`/`google_compute_instance` and `local_file` `inventory.tftpl` examples are the author's constructions synthesizing *Terraform: Up and Running* Chapters 1 & 2 and `volume-10/05` (plus original study items 21, 22, 23, 24, 25, 26, 27, 28, 29, 30, 31, 32, 33, 34, and 35).
 - **Not verified on live hardware:** Live `terraform` / `tofu` executions against GCP/AWS (`1.6.0`, `2.0.0`, `~> 5.30`, `~> 3.6`, `~> 2.5`, `1..64` nodes, `8896` MTU, `10.10.0.0/20`, `10.10.0.0/16`, `a2-highgpu-1g`, `200` GB, `0-65535`, `8080`, `10` parallelism, exit code `3`) are marked (`untested here`) where not executed by `terraform_workflow_dag_lab.py`.

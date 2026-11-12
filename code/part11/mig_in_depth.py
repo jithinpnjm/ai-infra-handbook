@@ -1,12 +1,12 @@
 #!/usr/bin/env python3
-"""Chapter 11.24 model: MIG in Depth (Silicon Hierarchy, Placement Geometry, Sizing & Lifecycle).
+"""Chapter 11.24 model: MIG in Depth (Hierarchy, Placement Geometry, Sizing & Lifecycle).
 
 Models:
-1. Volume 11 Chapter 2 MIG Hierarchy (Physical GPU -> GPU Instance GI -> Compute Instance CI),
-   6-Layer Validation Chain (Driver 575.10, CUDA 12.5, 42W/700W, 100MiB/10000MiB,
+1. MIG Hierarchy (Physical GPU -> GPU Instance GI -> Compute Instance CI),
+   6-Layer Validation Chain (Driver 575.57, CUDA 12.9, 42W/700W, 100MiB/10000MiB,
    status.allocatable=3, torch.cuda.device_count()=1), 6-Phase Change Workflow, and
    8-Step Node Lifecycle Sequence.
-2. Volume 11 Chapter 3 MIG Profile Sizing & 24-Node H100 Fleet Capacity Planner:
+2. MIG Profile Sizing & 24-Node H100 Fleet Capacity Planner:
    - Embedding model (cold 2GB, steady 3GB, peak 4.2GB at 100 reqs, p99 < 50ms) ->
      1g.10gb with 5.8GB headroom (4 instances/node),
    - Chat LLM (7GB weights + KV cache: cold 8GB, steady 8.5GB, peak 10.2GB at 50 seqs
@@ -15,8 +15,8 @@ Models:
    - Rejects 7x(1g.10gb) + 2x(3g.40gb) = 13 slices (>7) and 150GB (>80GB),
    - Accepts 4x(1g.10gb) + 1x(3g.40gb) = 7/7 slices and 80/80GB across 20 H100 nodes +
      4 reserved H100 nodes = 24 total H100 nodes.
-3. Volume 04 Chapter 3 GPU Sharing, DCGM Telemetry (7 custom fields on port 9400),
-   Node Drain (dcgmi dmon -e 203 -c 1 until 0% + rmmod), Known-Good Validation
+3. GPU Sharing, DCGM Telemetry (7 custom fields on port 9400),
+   Node drain (no compute process holds the GPU), Known-Good Validation
    (dcgmi diag -r 3 + all_reduce_perf 1G..8G), and XID/MPS troubleshooting.
 """
 
@@ -65,7 +65,7 @@ class MigWorkloadEnvelope:
 
 
 def select_h100_mig_profile_for_workload(env: MigWorkloadEnvelope) -> Dict[str, object]:
-    """Selects the smallest valid H100 MIG profile with positive peak headroom (Vol 11 Ch 3)."""
+    """Selects the smallest valid H100 MIG profile with positive peak headroom ."""
     candidates: List[Tuple[str, int, int]] = [
         ("1g.10gb", 1, 10),
         ("2g.20gb", 2, 20),
@@ -113,7 +113,7 @@ def validate_h100_mig_node_layout(
 
 
 def plan_vol11_ch3_h100_fleet() -> Dict[str, object]:
-    """Models the Volume 11 Chapter 3 24-node H100 MIG fleet sizing calculation."""
+    """Models the 24-node H100 MIG fleet sizing calculation."""
     embedding = select_h100_mig_profile_for_workload(
         MigWorkloadEnvelope("Embedding", 2.0, 3.0, 4.2, 100, 50)
     )

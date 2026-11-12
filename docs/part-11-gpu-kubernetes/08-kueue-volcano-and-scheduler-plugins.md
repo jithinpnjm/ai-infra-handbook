@@ -634,7 +634,7 @@ The `kubectl`, `etcdctl`, Kueue, Volcano, and APF YAML manifests were not verifi
 The corpus does not cover the Kueue MultiKueue multi-cluster federation CRDs, `MultiKueueConfig` and `MultiKueueCluster`. Multi-cluster scheduling is covered in later chapters where it applies.
 
 ### Corrections to the author's notes
-The validation pass on 2026-10-25 found that `validate_chapter.py` and `check_coverage.py` both pass. The YAML manifests and commands are marked untested, and they were not applied to a cluster. Custom resource API versions such as `kueue.x-k8s.io/v1beta2` and `resource.k8s.io/v1` change between releases, so check them against the version you install. Console outputs quoted from the Volume notes are illustrative unless the chapter says otherwise. The Kueue, Volcano, and etcd quorum figures were checked against general Kubernetes knowledge and are consistent. Three nodes tolerate 1 failure, 5 tolerate 2, and 7 tolerate 3.
+The chapter's own checks and coverage scripts pass. The YAML manifests and commands are marked untested, and they were not applied to a cluster. Custom resource API versions such as `kueue.x-k8s.io/v1beta2` and `resource.k8s.io/v1` change between releases, so check them against the version you install. Console outputs quoted from the Volume notes are illustrative unless the chapter says otherwise. The Kueue, Volcano, and etcd quorum figures were checked against general Kubernetes knowledge and are consistent. Three nodes tolerate 1 failure, 5 tolerate 2, and 7 tolerate 3.
 
 An earlier author note reads: required; all Kueue `v1beta2`, Volcano `v1alpha1`, and APF `v1` schemas match the cited sources verbatim. Check the API versions against your installed release before you copy any manifest.
 

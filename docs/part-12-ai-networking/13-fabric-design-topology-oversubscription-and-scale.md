@@ -431,7 +431,7 @@ Size the leaves from the Day 2 count, not the Day 1 count. Otherwise the first e
 
 Ignore the power and heat of switches and optical transceivers, and your rack PDUs can trip. High-speed optics can also throttle thermally above 70 degrees Celsius. Data centers use a substantial share of global electricity. Cooling is the second-largest consumer after the IT hardware itself. Cooling efficiency is measured with Power Usage Effectiveness, or PUE.
 
-$$\text`{PUE}` = \frac\{\text`{Total Data Center Facility Power}`}\{\text`{IT Computing Equipment Power}`}, \qquad \text`{Ideal PUE}` = \mathbf`{1.0}`$$
+$$\text{PUE} = \frac{\text{Total Data Center Facility Power}}{\text{IT Computing Equipment Power}}, \qquad \text{Ideal PUE} = \mathbf{1.0}$$
 
 PUE is the facility's total power divided by the power that goes to IT equipment. An ideal PUE of 1.0 means the facility adds no overhead beyond the IT load.
 

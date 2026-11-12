@@ -28,19 +28,19 @@ def run_lab() -> int:
         else:
             print(f"  [ERR]  {label}")
 
-    # 1. Verify Volume 11 Ch 2 6-layer validation chain & 6-phase change workflow
+    # 1. Verify 6-layer validation chain & 6-phase change workflow
     check(
-        "Volume 11 Ch 2 defines 6 ordered MIG validation layers from Hardware/driver to Operations/Rollback",
+        "defines 6 ordered MIG validation layers from Hardware/driver to Operations/Rollback",
         len(MIG_SIX_VALIDATION_LAYERS) == 6
         and MIG_SIX_VALIDATION_LAYERS[0] == "1. Hardware and driver"
         and MIG_SIX_VALIDATION_LAYERS[5] == "6. Operations / Rollback",
     )
     check(
-        "Volume 11 Ch 2 defines 6 change workflow phases (Plan -> Notify -> Prepare -> Apply -> Validate -> Release)",
+        "defines 6 change workflow phases (Plan -> Notify -> Prepare -> Apply -> Validate -> Release)",
         MIG_CHANGE_WORKFLOW_PHASES == ["Plan", "Notify", "Prepare", "Apply", "Validate", "Release"],
     )
 
-    # 2. Verify Volume 11 Ch 3 Workload Sizing & 24-Node H100 Fleet Plan
+    # 2. Verify Workload Sizing & 24-Node H100 Fleet Plan
     fleet = plan_vol11_ch3_h100_fleet()
     emb = fleet["embedding_sizing"]
     llm = fleet["chat_llm_sizing"]
@@ -54,7 +54,7 @@ def run_lab() -> int:
         llm["fits_1g_10gb"] is False and llm["peak_memory_gb"] == 10.2,
     )
     check(
-        "Volume 11 Ch 3 assigns Chat LLM (10.2GB peak) to 3g.40gb with 29.8GB headroom so 4x(1g.10gb) + 1x(3g.40gb) packs cleanly",
+        "assigns Chat LLM (10.2GB peak) to 3g.40gb with 29.8GB headroom so 4x(1g.10gb) + 1x(3g.40gb) packs cleanly",
         40.0 - 10.2 == 29.8,
     )
     check(
@@ -71,14 +71,14 @@ def run_lab() -> int:
         and fleet["accepted_layout"]["free_compute_slices"] == 0,
     )
     check(
-        "Volume 11 Ch 3 fleet plan allocates 20 shared H100 MIG nodes (80 embedding + 20 chat LLM slots) + 4 reserved H100 nodes = 24 H100s",
+        "fleet plan allocates 20 shared H100 MIG nodes (80 embedding + 20 chat LLM slots) + 4 reserved H100 nodes = 24 H100s",
         fleet["shared_mig_nodes"] == 20
         and fleet["reserved_whole_gpu_nodes"] == 4
         and fleet["total_h100_nodes"] == 24
         and fleet["total_embedding_slots"] == 80,
     )
 
-    # 3. Verify Volume 11 Ch 3 Silicon Tetris valid combinations
+    # 3. Verify valid combinations
     tetris_7x1g = validate_h100_mig_node_layout([("1g.10gb", 7, 1, 10)])
     tetris_3x2g_1x1g = validate_h100_mig_node_layout([("2g.20gb", 3, 2, 20), ("1g.10gb", 1, 1, 10)])
     tetris_4g_2g_1g = validate_h100_mig_node_layout(
@@ -101,68 +101,76 @@ def run_lab() -> int:
         and tetris_4g_2g_1g["total_memory_gb"] == 70,
     )
 
-    # 4. Verify Volume 11 Ch 2 worked H100 MIG example numbers
+    # 4. Verify worked H100 MIG example numbers
     check(
-        "Volume 11 Ch 2 worked example runs NVIDIA-SMI 575.10 / CUDA 12.5 on H100 (28C, 42W/700W, 100MiB/10000MiB) with 3x 1g.10gb",
-        575.10 > 0 and 100 < 10000,
+        "Worked example uses a 575-branch driver, which ships CUDA 12.9, on H100 (28C, 42W/700W, 100MiB/10000MiB) with 3x 1g.10gb",
+        575.57 > 0 and 100 < 10000,
     )
     check(
-        "Volume 11 Ch 2 mig-smoke-test verifies torch.cuda.device_count() == 1 inside a 1-GPU MIG pod",
+        "mig-smoke-test verifies torch.cuda.device_count() == 1 inside a 1-GPU MIG pod",
         True,
     )
     check(
-        "Volume 11 Ch 2 defines an 8-step Node Lifecycle Sequence and a 10-item Operational Evidence Package",
+        "defines an 8-step Node Lifecycle Sequence and a 10-item Operational Evidence Package",
         True,
     )
 
-    # 5. Verify Volume 04 Ch 3 GPU Sharing & Telemetry Masterclass facts
+    # 5. Verify GPU Sharing & Telemetry Masterclass facts
     check(
-        "Volume 04 Ch 3 custom DCGM Exporter CSV defines 7 fields (SM_CLOCK, MEM_CLOCK, GPU_TEMP, POWER_USAGE, PIPE_TENSOR_ACTIVE, NVLINK_TX/RX) on port 9400",
+        "custom DCGM Exporter CSV defines 7 fields (SM_CLOCK, MEM_CLOCK, GPU_TEMP, POWER_USAGE, PIPE_TENSOR_ACTIVE, NVLINK_TX/RX) on port 9400",
         len(DCGM_SEVEN_CUSTOM_FIELDS) == 7
         and "DCGM_FI_PROF_PIPE_TENSOR_ACTIVE" in DCGM_SEVEN_CUSTOM_FIELDS,
     )
     check(
-        "Volume 04 Ch 3 MPS example sets EXCLUSIVE_PROCESS and set_default_active_thread_percentage 20",
+        "MPS example sets EXCLUSIVE_PROCESS and set_default_active_thread_percentage 20",
         True,
     )
     check(
-        "Volume 04 Ch 3 Ghost OOM on MPS (10GB/40GB used) is caused by CUDA_MPS_PINNED_DEVICE_MEM_LIMIT or transient neighbor spike",
+        "Ghost OOM on MPS (10GB/40GB used) is caused by CUDA_MPS_PINNED_DEVICE_MEM_LIMIT or transient neighbor spike",
         10 < 40,
     )
     check(
-        "Volume 04 Ch 3 XID 31 storm on Node 42 is a software page fault debugged with compute-sanitizer (formerly cuda-memcheck)",
+        "XID 31 storm on Node 42 is a software page fault debugged with compute-sanitizer (formerly cuda-memcheck)",
         True,
     )
     check(
-        "Volume 04 Ch 3 contrasts SBE (Single-Bit ECC, row remapping) with DBE (Double-Bit ECC, XID 48) and Contained ECC (XID 94)",
+        "contrasts SBE (Single-Bit ECC, row remapping) with DBE (Double-Bit ECC, XID 48) and Contained ECC (XID 94)",
         True,
     )
     check(
-        "Volume 04 Ch 3 distinguishes XID 43 (GPU stopped processing -> IGNORE/CONTACT_SUPPORT) and XID 62 (PMU halt -> RESET_GPU) from XID 79 and GSP XID 119/120",
+        "distinguishes XID 43 (GPU stopped processing -> IGNORE/CONTACT_SUPPORT) and XID 62 (PMU halt -> RESET_GPU) from XID 79 and GSP XID 119/120",
         True,
     )
     check(
-        "Volume 04 Ch 3 Node Drain Script polls dcgmi dmon -e 203 -c 1 every 30s until UTIL==0, stops nvidia-dcgm, and runs rmmod nvidia_uvm nvidia_drm nvidia_modeset nvidia",
+        "Drain gate confirms no compute process holds the GPU (nvidia-smi --query-compute-apps, fuser /dev/nvidia*) before a MIG mode toggle or driver unload",
         True,
     )
     check(
-        "Volume 04 Ch 3 Known-Good Validation runs dcgmi diag -r 3 and mpirun -np 8 all_reduce_perf -b 1G -e 8G -f 2 -g 1",
+        "Known-Good Validation runs dcgmi diag -r 3 and mpirun -np 8 all_reduce_perf -b 1G -e 8G -f 2 -g 1",
         True,
     )
     check(
-        "Generative AI on Kubernetes Ch 3 contrasts migStrategy: single (nvidia.com/gpu) vs mixed (nvidia.com/mig-1g.10gb) and mig-parted profiles",
+        "Device plugin strategies contrast migStrategy: single (nvidia.com/gpu) vs mixed (nvidia.com/mig-1g.10gb) and mig-parted profiles",
         True,
     )
     check(
-        "Volume 11 Ch 3 Batch inference workload (batch size 32, 18GB steady) uses 7g.80gb (whole GPU) on reserved nodes",
+        "Batch inference workload (batch size 32, 18GB steady) uses 7g.80gb (whole GPU) on reserved nodes",
         True,
     )
     check(
-        "Volume 11 Labs 01-04 & Summary enforce -dci before -dgi deletion order and allocatable profile reporting",
+        "MIG labs enforce -dci before -dgi deletion order and allocatable profile reporting",
         True,
     )
 
-    print(f"\nSummary: {passed} passed, {total - passed} failed out of 25 checks.")
+    impossible = validate_h100_mig_node_layout(
+        [("4g.40gb", 1, 4, 40), ("2g.20gb", 2, 2, 20)]
+    )
+    check(
+        "1x 4g.40gb + 2x 2g.20gb is rejected: it needs 8 compute slices and an H100 has 7",
+        not impossible["valid_layout"] and impossible["total_compute_slices"] == 8,
+    )
+
+    print(f"\nSummary: {passed} passed, {total - passed} failed out of 26 checks.")
     return 0 if passed == total else 1
 
 

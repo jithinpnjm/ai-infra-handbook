@@ -119,7 +119,7 @@ Libraries are code that executables share, and they come in two kinds. Static li
 
 `/run` holds runtime data since boot: PID files, sockets, status records and logging state. On older systems this lived in `/var/run`, which is now normally a symlink to `/run`.
 
-`/usr` is pronounced "user", but it is not for individual users' personal files. It holds the bulk of the installed user-space software, and its subdirectories mirror the root, such as `/usr/bin`, `/usr/sbin` and `/usr/lib`. Three more subdirectories matter, as laid out in `HLW` Section 2.19. First, `/usr/include` holds header files (`.h`) used by the C compiler. Second, `/usr/local` is where administrators install their own software, and it mirrors `/` and `/usr`, with `/usr/local/bin` and `/usr/local/lib`. Third, `/usr/share` holds architecture-independent data, such as `man`, `info`, `dict` and `doc` directories, that works on other kinds of Unix machines with no loss of functionality.
+`/usr` is pronounced "user", but it is not for individual users' personal files. It holds the bulk of the installed user-space software, and its subdirectories mirror the root, such as `/usr/bin`, `/usr/sbin` and `/usr/lib`. Three more subdirectories matter, as laid out in *How Linux Works* Section 2.19. First, `/usr/include` holds header files (`.h`) used by the C compiler. Second, `/usr/local` is where administrators install their own software, and it mirrors `/` and `/usr`, with `/usr/local/bin` and `/usr/local/lib`. Third, `/usr/share` holds architecture-independent data, such as `man`, `info`, `dict` and `doc` directories, that works on other kinds of Unix machines with no loss of functionality.
 
 The `/usr/share` directory has a history worth knowing. Long ago, networks of machines shared this directory from one file server. Today that is rare, because disk space is no longer a tight limit on contemporary systems. You will still find `man`, `info` and `doc` subdirectories here, because this layout is an easily understood convention. The root directory also stays small for a historic reason: early systems kept its space requirements low, so most of the system lives under `/usr`.
 
@@ -340,7 +340,7 @@ find . -type f -name '*.log' -exec gzip {} +        # batch many files per comma
 find . -type f -print0 | xargs -0 ls -l             # safe with spaces; xargs in chapter 1.4
 ```
 
-Quote your patterns, such as `'*.log'`, so the shell does not expand them first. Chapter 1.2 explains why. Tests combine with an implicit AND. Use `-o` for OR, and `\( ... \)` for grouping. Always run a `find` without `-delete` first, and read the list it prints.
+Quote your patterns, such as `'*.log'`, so the shell does not expand them first. Chapter 1.2 explains why. Tests combine with an implicit AND. Use `-o` for OR, and `\(... \)` for grouping. Always run a `find` without `-delete` first, and read the list it prints.
 
 Learn the basic form until it is automatic: `find DIR -name 'PATTERN' -print`. `DIR` is where to start. `-name` matches the file name against a pattern, and `-print` prints each match. GNU `find` prints by default when no action is given, though older versions require `-print`. The pattern is single-quoted because `find`, not the shell, must interpret the `*` and `?`. Unquoted, the shell would expand the pattern against the current directory first. Reach for `-exec`, `-delete` and the other actions only once the basic form is second nature, because an action applied to the wrong set of files is how data gets lost.
 

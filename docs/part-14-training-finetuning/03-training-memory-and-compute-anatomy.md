@@ -178,7 +178,7 @@ Notice a critical architectural insight in the breakdown above. **Both pure FP32
 
 The true memory win of Automatic Mixed Precision is that forward and backward activations are cut in half while Tensor Core throughput doubles.
 
-| Model Size (`Psi`) | FP32 Weights (`4Psi`) | BF16 Weights (`2Psi`) | Pure BF16 Adam + Act (DAI Baseline) | Mixed-Precision AdamW Static (`16Psi`) | Mixed-Precision AdamW Checkpoint (`14Psi`) | BF16 Inference (`Weights + KV Cache`) |
+| Model Size (`Psi`) | FP32 Weights (`4Psi`) | BF16 Weights (`2Psi`) | Pure BF16 Adam + Act (*Distributed AI Systems* Baseline) | Mixed-Precision AdamW Static (`16Psi`) | Mixed-Precision AdamW Checkpoint (`14Psi`) | BF16 Inference (`Weights + KV Cache`) |
 |---|---|---|---|---|---|---|
 | **`1B`** | `4 GB` | `2 GB` | `~8 GB` | `16 GB` | `14 GB` | `2–4 GB` |
 | **`7B`** | `28 GB` | `14 GB` | `~60–70 GB` (`64–72 GB`) | `112 GB` | `98 GB` | `14–20 GB` |
@@ -839,7 +839,7 @@ Per layer, standard activation memory is `A_layer = s * b * h * (34 + 5 * a * s 
 </details>
 
 <details>
-<summary>**9. Walk through the memory numbers at each stage of the training loop for the DAI Ch. 1 7B pure-BF16 Adam baseline (14 GB weights, 14 GB grads, 28 GB optimizer states, 12 GB activations).**</summary>
+<summary>**9. Walk through the memory numbers at each stage of the training loop for the *Distributed AI Systems* Ch. 1 7B pure-BF16 Adam baseline (14 GB weights, 14 GB grads, 28 GB optimizer states, 12 GB activations).**</summary>
 
 1. Before forward at `zero_grad`, HBM holds 14 GB weights and 28 GB optimizer states for 42 GB. Fixed static memory is 56 GB once gradients are counted.
 2. After the forward pass, HBM holds weights, optimizer states, and 12 GB activations, totaling 54 GB.
@@ -878,7 +878,7 @@ Model FLOPs per token at 6*Psi is 420 GFLOPs, yielding `420 GFLOPs x 940 tok/s =
 </details>
 
 <details>
-<summary>**15. In the AISPE Ch. 13 MLPerf 24.0 ms training step breakdown, what percentage of the iteration is spent in forward compute, backward compute, AllReduce communication, and other overhead?**</summary>
+<summary>**15. In the *AI Systems Performance Engineering* Ch. 13 MLPerf 24.0 ms training step breakdown, what percentage of the iteration is spent in forward compute, backward compute, AllReduce communication, and other overhead?**</summary>
 
 Forward pass takes 10.5 ms, or 43.8%. Backward pass takes 9.0 ms, or 37.5%, bringing total compute to 19.5 ms or 81.3%. AllReduce gradient synchronization takes 4.0 ms, or 16.7%. Other overhead takes 0.5 ms, or 2.1%.
 </details>

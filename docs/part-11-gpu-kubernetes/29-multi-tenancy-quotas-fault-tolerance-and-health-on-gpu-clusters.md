@@ -584,6 +584,6 @@ Cloud-provider-specific Terraform modules for provisioning Thanos Receive S3 buc
 
 ### Corrections to the author's notes
 
-A validation pass on 2026-10-25 confirmed that `validate_chapter.py` and `check_coverage.py` pass. Every YAML manifest and command is still marked untested. Custom resource API versions, such as `kueue.x-k8s.io/v1beta1` or `resource.k8s.io/v1`, change across releases, so check them against your cluster version.
+The chapter's own validation and coverage scripts pass. Every YAML manifest and command is still marked untested. Custom resource API versions, such as `kueue.x-k8s.io/v1beta1` or `resource.k8s.io/v1`, change across releases, so check them against your cluster version.
 
 Copy-on-Write filesystem snapshots work out of the box on Weka and NetApp. Lustre requires ZFS-backed OST and MDT storage targets for them.

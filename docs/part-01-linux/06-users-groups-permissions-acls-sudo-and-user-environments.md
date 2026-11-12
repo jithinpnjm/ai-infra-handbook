@@ -473,7 +473,7 @@ The second mechanism is disk quotas. A filesystem can enforce **soft** and **har
 
 Before you change a login node's limits, test them with a throwaway user, because a limit that is too small will break transfers you never meant to block.
 
-## 8. Identity in a cluster: keeping the numbers consistent (`SCL` Chapter 11)
+## 8. Identity in a cluster: keeping the numbers consistent (*Supercomputers for Linux Sysadmins* Chapter 11)
 
 On a single Linux server, the local `/etc/passwd`, `/etc/shadow` and `/etc/group` files are all you need. A supercomputer or GPU cluster is different. Account management becomes an architectural problem right away, because every node must agree on every account. You can meet that need in one of two ways. You can query a single central data source over the network, such as **LDAP** or **NIS+**. Or you can run periodic, or event-driven, synchronization of the static account files.
 
@@ -600,7 +600,7 @@ A few identity and permission habits matter a great deal on GPU clusters. Each o
 
 **Shared accounts destroy accountability.** A single `ubuntu` or `ml` login used by the whole team makes it impossible to tell who did what, and it makes revocation impossible. Prefer individual accounts, with `sudo` groups, SSH certificates and audit logs.
 
-**Secrets need strict modes.** SSH private keys should be `600`, and `~/.ssh` should be `700`. Token files should be `600` and owned by the service account. For a quick audit, run `find ~ -xdev -type f \( -perm -g+r -o -perm -o+r \) -name '*key*'`.
+**Secrets need strict modes.** SSH private keys should be `600`, and `~/.ssh` should be `700`. Token files should be `600` and owned by the service account. For a quick audit, run `find ~ -xdev -type f \(-perm -g+r -o -perm -o+r \) -name '*key*'`.
 
 Before you start a new shared service on the cluster, decide which account runs it and who can read its files.
 
@@ -679,7 +679,7 @@ Work these on paper or in a scratch directory before you check your answers in t
 2. **umask Default Creation Modes (`022`, `077`, `002`):** Work out the exact octal and symbolic modes for (a) a new regular file, with base `0666`, and (b) a new directory, with base `0777`. Do this under `umask 022`, `umask 077` and `umask 002`.
 3. **Special Bits (`4000` setuid, `2000` setgid, `1000` sticky) and Shared Project Directories:** (a) When alice (`UID 1042`) runs `/usr/bin/passwd`, which is owned by root (`UID 0`) with mode `4755` (`-rwsr-xr-x`), what are the process's ruid, euid and `saved_uid`? (b) Why does the shared project directory `/data/projx` use mode `2770` (`drwxrws---`), and why does `/tmp` use mode `1777` (`drwxrwxrwt`)?
 4. **POSIX ACL Mask Capping:** An administrator runs `setfacl -m u:alice:rw,u:bob:rw mydir`, then later runs `chmod 640 mydir` (or `chmod g=r mydir`). That sets the ACL `mask::r--` (`04`). What are alice's effective permissions on `mydir`, and how does `getfacl mydir` show the discrepancy?
-5. **Pull-Based Cluster Account Synchronization (`/usr/sbin/master-sync`):** This comes from `SCL` Chapter 11. (a) Why should `/usr/sbin/master-sync` pull `/etc/passwd`, `/etc/shadow` and `/etc/group` from the master at boot, instead of relying only on the master pushing them? (b) In the master trigger loop (`TIMEOUT=600`, `CT=3`, `sleep 0.1`), how long does the stagger delay take across 100 nodes, and how does the script keep a hung node from blocking forever?
+5. **Pull-Based Cluster Account Synchronization (`/usr/sbin/master-sync`):** This comes from *Supercomputers for Linux Sysadmins* Chapter 11. (a) Why should `/usr/sbin/master-sync` pull `/etc/passwd`, `/etc/shadow` and `/etc/group` from the master at boot, instead of relying only on the master pushing them? (b) In the master trigger loop (`TIMEOUT=600`, `CT=3`, `sleep 0.1`), how long does the stagger delay take across 100 nodes, and how does the script keep a hung node from blocking forever?
 6. **NIS / NIS+ (`yp`) vs. LDAP on Compute Clusters:** (a) Why do NIS and NIS+ commands start with `yp`? What is the client limit (30 to 40 clients) before a single NIS+ server struggles, and what do `ypserv`, `yppasswdd` and `ypxfrd` do? (b) Why does a 500-node Slurm job launch cause a standalone LDAP server to drop requests, and how does SSSD solve that problem?
 
 ## Checkpoint questions (20)
@@ -775,13 +775,13 @@ If `.` is in `PATH` and you `cd` into a shared or untrusted directory, such as `
 </details>
 
 <details>
-<summary>16. In `SCL` Chapter 11, why is `/usr/sbin/master-sync` designed as a pull script on each compute node rather than a push script on the master?</summary>
+<summary>16. In *Supercomputers for Linux Sysadmins* Chapter 11, why is `/usr/sbin/master-sync` designed as a pull script on each compute node rather than a push script on the master?</summary>
 
 When each compute node pulls `/etc/passwd`, `/etc/shadow` and `/etc/group` from the master at boot, a node that was powered off during an account update, or replaced with spare hardware, syncs its user database before it joins the cluster.
 </details>
 
 <details>
-<summary>17. How does the master-node trigger loop in `SCL` Chapter 11 avoid overloading the network and hanging on dead nodes?</summary>
+<summary>17. How does the master-node trigger loop in *Supercomputers for Linux Sysadmins* Chapter 11 avoid overloading the network and hanging on dead nodes?</summary>
 
 The loop runs manually, and only after a batch of user changes is complete. It sets a 3-second SSH timeout with `-o connecttimeout=3`, and it spaces node connections by 0.1 seconds. A background subshell, `(sleep 600 && kill -ALRM "$$") &`, works with `trap 'exit' ALRM` to stop the script if it runs past 600 seconds.
 </details>

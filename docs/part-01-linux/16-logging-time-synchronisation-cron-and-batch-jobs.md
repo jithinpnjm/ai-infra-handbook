@@ -263,7 +263,7 @@ The system clock is kept by the kernel. It counts seconds, plus nanoseconds, sin
 
 The hardware clock, or real-time clock (RTC), is a battery-backed chip that keeps time while the machine is off. The kernel reads it at boot to set the system clock. `hwclock` reads and writes it. `hwclock --systohc` copies system time to the RTC, and `hwclock --hctosys` does the reverse. Keep the RTC in UTC with `timedatectl set-local-rtc 0`, which avoids zone and daylight-saving confusion. Dual-boot systems with Windows expect local time, and that is one reason to change the Windows setting instead.
 
-Both clocks drift. The kernel clock can drift by seconds per day on bad hardware, so a machine that runs for months must be disciplined by a time protocol. Do not keep fixing drift by hand with `date -s` or `hwclock`. A clock that jumps backward can lose or mangle time-based events. You could run `adjtimex` to update the system clock smoothly from the RTC, as `HLW` Section 7.5.1 describes. In practice, though, a network time daemon is the better choice. It slews the clock, speeding or slowing it slightly, for small errors, and it steps the clock only for large ones.
+Both clocks drift. The kernel clock can drift by seconds per day on bad hardware, so a machine that runs for months must be disciplined by a time protocol. Do not keep fixing drift by hand with `date -s` or `hwclock`. A clock that jumps backward can lose or mangle time-based events. You could run `adjtimex` to update the system clock smoothly from the RTC, as *How Linux Works* Section 7.5.1 describes. In practice, though, a network time daemon is the better choice. It slews the clock, speeding or slowing it slightly, for small errors, and it steps the clock only for large ones.
 
 Three clocks matter. `CLOCK_REALTIME` is wall time, and it jumps when someone sets it. `CLOCK_MONOTONIC` never jumps back, so use it to measure durations. `CLOCK_TAI` is the third. Software that measures elapsed time must use the monotonic clock. Leap seconds are handled either by smearing, as Google and many cloud providers do, or by stepping. Fleets should not mix servers that smear with servers that do not.
 
@@ -455,7 +455,7 @@ On shared clusters, ordinary users should submit work through the batch schedule
 
 Before you use `at` or cron on a shared cluster, check whether the scheduler should own the job.
 
-## 9. cron versus systemd timers (`HLW` Section 7.6.4)
+## 9. cron versus systemd timers (*How Linux Works* Section 7.6.4)
 
 The `cron` utility is one of the oldest parts of a Unix or Linux system. It predates Linux itself, and its configuration format has barely changed in decades. A tool that universal stays everywhere. Still, systemd timer units, covered in chapter 1.15, section 9, solve several old cron headaches. Both schedule recurring jobs, and each has clear strengths. Compare them in the table before you pick one.
 

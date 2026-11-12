@@ -227,7 +227,7 @@ def audit_gpu_node_operational_health(
     # 1. Persistence Mode Check
     if not persistence_mode_enabled:
         issues.append(
-            "Persistence Mode is DISABLED: driver will tear down when no CUDA processes are active, adding a start-up delay per job launch."
+            "Persistence Mode is DISABLED: the driver deinitialises the GPU when no client holds it open, so every job launch pays GPU initialisation again."
         )
 
     # 2. Temperature Check

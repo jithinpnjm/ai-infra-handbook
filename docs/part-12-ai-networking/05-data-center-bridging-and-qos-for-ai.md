@@ -206,7 +206,7 @@ IEEE 802.1Qaz Transmission Selection Algorithm (TSA) Identifiers:
 
 Engineers new to ETS often misread a configured weight. A weight of 30 percent for Storage on TC4, or 50 percent for RoCE on TC3, is not a hard partition, and it is not a hard rate ceiling. People worry that 30 percent of the link sits idle when Storage is quiet, or that Storage can never exceed 30 percent while Compute is idle.
 
-In reality, ETS under DWRR or Class-Based Weighted Fair Queueing is work-conserving. Under full contention, where every class is backlogged, the scheduler first subtracts the bandwidth that the strict-priority TSA 0 classes consume ($R_\{\text`{strict}`}$). It then divides what remains across the active DWRR classes, in proportion to their weights $w_i$. When some classes sit idle or use less than their share, the unused bandwidth moves to the remaining backlogged DWRR classes, in exact proportion to their weights.
+In reality, ETS under DWRR or Class-Based Weighted Fair Queueing is work-conserving. Under full contention, where every class is backlogged, the scheduler first subtracts the bandwidth that the strict-priority TSA 0 classes consume ($R_{\text{strict}}$). It then divides what remains across the active DWRR classes, in proportion to their weights $w_i$. When some classes sit idle or use less than their share, the unused bandwidth moves to the remaining backlogged DWRR classes, in exact proportion to their weights.
 
 ```text
 Work-Conserving ETS Bandwidth Formula & 1,024 Kbps WAN CBWFQ Example (CNPS Ch 8):
@@ -224,7 +224,7 @@ Now apply the same work-conserving ETS formula to a 400.0 Gbps AI Ethernet link 
 | Contention scenario on a 400.0 Gbps link | Offered load per TC (Gbps) | TC6 (`strict`, CNP) allocated | TC0 (10% `dwrr`, Best Effort) | TC2 (10% `dwrr`, Control) | TC3 (50% `dwrr`, RoCEv2) | TC4 (30% `dwrr`, Storage) | Operational lesson |
 |---|---|---|---|---|---|---|---|
 | **1. All 5 classes contending** | `TC6=10, TC0=100, TC2=50, TC3=400, TC4=200` | **10.0 Gbps** | **39.0 Gbps** (10% of 390G) | **39.0 Gbps** (10% of 390G) | **195.0 Gbps** (50% of 390G) | **117.0 Gbps** (30% of 390G) | TC6 takes 10G first; remaining 390G splits `10:10:50:30`; 0 classes starved |
-| **2. Only RoCE (TC3) + Storage (TC4) active** | `TC3=400, TC4=400 (TC0=TC2=TC6=0)` | 0.0 Gbps | 0.0 Gbps | 0.0 Gbps | **250.0 Gbps** ($\frac`{50}``{50+30}` \times 400$) | **150.0 Gbps** ($\frac`{30}``{50+30}` \times 400$) | Unused 20% (`TC0+TC2`) is shared in a $50:30 = 5:3$ ratio (250G vs 150G) |
+| **2. Only RoCE (TC3) + Storage (TC4) active** | `TC3=400, TC4=400 (TC0=TC2=TC6=0)` | 0.0 Gbps | 0.0 Gbps | 0.0 Gbps | **250.0 Gbps** ($\frac{50}{50+30} \times 400$) | **150.0 Gbps** ($\frac{30}{50+30} \times 400$) | Unused 20% (`TC0+TC2`) is shared in a $50:30 = 5:3$ ratio (250G vs 150G) |
 | **3. Only Storage (TC4, 30%) active** | `TC4=400 (TC0=TC2=TC3=TC6=0)` | 0.0 Gbps | 0.0 Gbps | 0.0 Gbps | 0.0 Gbps | **400.0 Gbps** (100% of link) | 30% ETS is a minimum share under contention, **not** a ceiling when the link is idle |
 | **4. Misconfigured `strict` RoCE** | `TC1 (Prio 3 RoCE) = 400 (strict), TC0 (Mgmt) = 10 (dwrr weight 5)` | N/A (`TC1 strict` takes **400.0 Gbps**) | **0.0 Gbps (STARVED)** | N/A | **400.0 Gbps** (`TC1 strict`) | N/A | Setting RoCE (`TC1`) to `strict` without a cap completely starves `dwrr` management (`TC0`); `dwrr 95:5` guarantees `TC0` **20.0 Gbps** (`TC1 = 380.0 Gbps`) |
 

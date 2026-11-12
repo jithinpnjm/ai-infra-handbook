@@ -47,7 +47,7 @@ The table below compares three scenarios from the sources. As you read it, look 
 
 | Cluster Scenario | Scale and Team Structure | Key Contention Dynamic | Utilization Impact |
 |---|---|---|---|
-| Enterprise multi-tenant cluster (`volume-23/chapter-07`) | `32` GPUs across `4` nodes (`8` GPUs/node) for `research`, `data-eng`, and `interns` | Static quotas vs dynamic borrowing across `16`, `12`, and `4` GPU shares | `60%` static node split vs `85%` shared fair-share (`+25` percentage points) |
+| Enterprise multi-tenant cluster (`volume-23/chapter-07`) | `32` GPUs across `4` nodes (`8` GPUs/node) for `research`, `data-eng`, and `interns` | Static quotas vs dynamic borrowing across `16`, `12`, and `4` GPU shares | `60%` static node split vs `85%` shared fair-share (`+25` percentage points); the author's design-note figures, not a measured benchmark |
 | Bimodal research cluster (`volume-23/chapter-12`) | `200` L40S GPUs across `25` nodes (`8` GPUs/node) shared by `50` teams | `60%` short (`< 1` hr / `5` min), `30%` medium (`1–8` hr, median `2` hr), `10%` long (`> 24` hr up to `72` hr / `3` months) | `93%` (`700 / 750` GPU-hours) with deficit scoring and `30`-second `SIGTERM` preemption |
 | Gang and interconnect placement (*Generative AI on Kubernetes* Ch. 7) | Multi-node and single-node distributed training (`8` to `64` GPUs) | `7`-of-`8` partial deadlock (`56` GPUs at `0%` compute) or scattered Ethernet placement vs `900 GB/s` NVSwitch | Full-bandwidth `900 GB/s` NVSwitch co-location and `0.25` / `0.5` fractional packing (`10 GiB` on `80 GB` card) |
 
@@ -95,7 +95,7 @@ The table below lists each namespace's PriorityClass, guaranteed share and quota
 | `research` | `1000` (`research-high`) | `16` GPUs (`50.0%` of `32` GPUs) | `64Gi` memory, `20` Pods | `80%` target, strict SLA |
 | `data-eng` | `500` (`data-eng-med`) | `12` GPUs (`37.5%` of `32` GPUs) | `48Gi` memory, `15` Pods | `70%` target, batch pipelines |
 | `interns` | `100` (`intern-low`) | `4` GPUs (`12.5%` of `32` GPUs) | `16Gi` memory, `10` Pods | Opportunistic backfill capacity |
-| **Cluster Total** | `3` tiers | `32` GPUs across `4` nodes (`8` GPUs/node) | `128Gi` memory, `45` Pods | `60%` static split vs `85%` shared fair-share (`+25` points) |
+| **Cluster Total** | `3` tiers | `32` GPUs across `4` nodes (`8` GPUs/node) | `128Gi` memory, `45` Pods | `60%` static split vs `85%` shared fair-share (`+25` points); author's design-note figures, not measured |
 
 #### Failure Mode 2: The bimodal research cluster problem
 Now picture a shared research cluster where a five-minute debugging session has to wait behind multi-day training runs. If you launch a short notebook on that cluster, you get stuck behind massive batch jobs. Long training jobs, in turn, get starved by fragments of interactive pods. Without duration-aware and history-aware scheduling, neither group gets predictable service.
@@ -448,9 +448,9 @@ The NVIDIA KAI Scheduler is the open-source version of the GPU-optimized Kuberne
 </details>
 
 <details>
-<summary>**2. In Volume 23 Chapter 7, a 32-GPU cluster serves research, data-eng, and interns. Why does giving each team dedicated nodes or rigid quotas yield only 60% utilization versus 85% with dynamic shared quotas?**</summary>
+<summary>**2. In Volume 23 Chapter 7, a 32-GPU cluster serves research, data-eng, and interns. Why does giving each team dedicated nodes or rigid quotas yield only 60% utilization versus 85% with dynamic shared quotas (as the author's notes put it)?**</summary>
 
-If you give research its 16 GPUs, data-eng its 12, and interns its 4 behind hard namespace boundaries, a waiting job in one namespace cannot use an idle GPU in another. Letting teams borrow idle GPUs, and preempting lower-priority borrowed GPUs when the owner returns, lifts average utilization from 60% to 85%.
+If you give research its 16 GPUs, data-eng its 12, and interns its 4 behind hard namespace boundaries, a waiting job in one namespace cannot use an idle GPU in another. Letting teams borrow idle GPUs, and preempting lower-priority borrowed GPUs when the owner returns, lifts average utilization from 60% to 85% in the author's design notes. Those notes do not say how the figures were measured, so treat them as an illustration of the direction of the effect, not a benchmark.
 </details>
 
 <details>
@@ -597,5 +597,5 @@ Deterministic Arithmetic Evaluations in code/part11/kai_why_default_not_enough_l
 - Internal Go package structure of `kai-scheduler` plugins is not in the local book corpus. Detailed KAI Scheduler custom resources, queues, gang placement, fractional sharing, operations, and the Run:ai platform view are covered in Chapters 11.14 through 11.19.
 
 ### Corrections to the author's notes
-- Validation pass 2026-10-25 confirmed that `validate_chapter.py` and `check_coverage.py` pass. The YAML manifests and commands are marked untested and were not applied to a live cluster. Custom resource API versions such as `kueue.x-k8s.io/v1beta1` and `resource.k8s.io/v1` change between releases, so verify them against your installed release.
+- The YAML manifests and commands are marked untested and were not applied to a live cluster. Custom resource API versions such as `kueue.x-k8s.io/v1beta1` and `resource.k8s.io/v1` change between releases, so verify them against your installed release.
 - In `volume-23/chapter-12` Phase 3, the text box labels Professor A's 600 GPU-hours used against a 500 GPU-hour quota as a -100 deficit balance, whereas the Python `score_job` method defines `deficit = (current_usage - quota) / quota` which evaluates to +0.20 when over quota and negates to `priority = -0.20`. This chapter distinguishes `balance_gpu_hours` from `deficit_ratio` so the sign convention is unambiguous.

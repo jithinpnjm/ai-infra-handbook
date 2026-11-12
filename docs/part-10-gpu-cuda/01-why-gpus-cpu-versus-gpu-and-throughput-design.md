@@ -497,7 +497,7 @@ There is public speculation that some frontier models, including OpenAI's GPT-se
 
 DeepSeek-V3 and DeepSeek-R1 are strong MoE examples. They hold about 680 billion total parameters, with about 37 billion active per input token. Each token uses 1 shared expert plus 8 selected experts. Those experts come from a pool of 256. That makes them far more resource-efficient than similarly sized dense LLMs.
 
-Memory is a second major bottleneck. A 100-trillion-parameter model needs about 200 TB of GPU memory just to load FP16 weights. That is 100 trillion parameters times 2 bytes each. The figure is roughly three orders of magnitude above the 180 GB of addressable HBM on one NVIDIA Blackwell B200.
+Memory is a second major bottleneck. A 100-trillion-parameter model needs about 200 TB of GPU memory just to load FP16 weights. That is 100 trillion parameters times 2 bytes each. The figure is roughly three orders of magnitude above the roughly 180 GB of usable HBM on one NVIDIA Blackwell B200, which has 192 GB physically.
 
 Loading only the weights takes about 1,110 B200 GPUs at 180 GB each. With 288 GB B300 GPUs, it takes about 695. Activations, optimizer states, KV cache, and serving workspace add more. A B200 node holds 8 GPUs, so loading the model takes about 125 GPU nodes. A cluster of B300 nodes, with 8 GPUs per node, takes about 86 nodes.
 

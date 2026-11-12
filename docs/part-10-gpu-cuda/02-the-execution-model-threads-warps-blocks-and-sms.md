@@ -336,7 +336,7 @@ Third, watch for register spilling above 255 registers per thread or non-zero sp
 
 Compare the two vector addition implementations on one million floats profiled with `nsys` and `ncu` in *AI Systems Performance Engineering* Chapter 6. The first kernel, `addSequential<<<1, 1>>>` or a naive Python loop, uses a single thread on one SM. The second kernel, `addParallel<<<3907, 256>>>` or vectorized PyTorch `C = A + B`, launches 3,907 blocks of 256 threads across all SMs simultaneously.
 
-| Benchmark metric (`N = 1,000,000` floats, ASP Ch 6 Table 6-6) | `add_sequential` (`<<<1, 1>>>`) | `add_parallel` (`<<<3907, 256>>>`) | Speedup / Change |
+| Benchmark metric (`N = 1,000,000` floats, *AI Systems Performance Engineering* Ch 6 Table 6-6) | `add_sequential` (`<<<1, 1>>>`) | `add_parallel` (`<<<3907, 256>>>`) | Speedup / Change |
 |---|---|---|---|
 | **Kernel execution time (ms)** | **48.21 ms** | **2.17 ms** | **22.2x faster** |
 | **Overall GPU utilization (`nsys`)** | **1.5%** | **95.0%** | **1.5% to 95.0%** |

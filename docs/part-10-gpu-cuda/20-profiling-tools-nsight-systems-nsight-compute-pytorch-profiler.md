@@ -245,7 +245,7 @@ The block below summarizes the exact hardware counter outputs on the Grace CPU a
 
 Sampling DWARF call stacks at two thousand hertz via `perf record` and `perf report` isolates the five host CPU hotspots shown in the table below.
 
-| `perf report` Symbol (`Shared Object`) | Sample Share (`%`) | Bottleneck Diagnosis | Targeted Mitigation (*ASP* Ch 13) |
+| `perf report` Symbol (`Shared Object`) | Sample Share (`%`) | Bottleneck Diagnosis | Targeted Mitigation (*AI Systems Performance Engineering* Ch 13) |
 |---|---:|---|---|
 | `py::forward` (`python` — `/src/train.py`) | `45.0%` | Python interpreter opcode dispatch and per-op launch overhead in the forward loop. | Enable `torch.compile` to fuse Python operations into compiled Triton and CUDA graphs. |
 | `aten::matmul` (`python` / C++ dispatcher) | `20.5%` | C++ operator dispatch and launch wrapper overhead across `128` expert GEMMs per step. | Fuse and compile with `torch.compile` (`mode="max-autotune"`) or grouped/custom GEMM kernels. |

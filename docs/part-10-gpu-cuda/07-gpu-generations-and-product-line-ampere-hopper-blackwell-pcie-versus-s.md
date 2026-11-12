@@ -235,7 +235,7 @@ flowchart TB
 
 The PCIe add-in card is a standard rectangular board that plugs vertically into enterprise server motherboards. An H100 PCIe or L40S card fits into almost any 2U or 4U server from Dell, HPE, Cisco, or Supermicro that has physical clearance and open x16 slots. However, the surface area of a dual-slot card and the airflow in standard servers cap heat dissipation at 350 Watts.
 
-Because the PCIe envelope restricts power to half of the SXM budget, NVIDIA runs the silicon at lower voltages and reduced clock frequencies. An H100 PCIe delivers lower compute throughput and uses slower HBM2e memory than its SXM5 counterpart. Furthermore, standard motherboards lack NVSwitch chips. NVIDIA offers physical NVLink Bridge clips that attach across the top edges of adjacent cards, but these bridges only link GPUs in isolated pairs at reduced bandwidth. Traffic between separate pairs must still cross the slow host PCIe bus.
+Because the H100 PCIe card is rated at 350 W, half the 700 W of the SXM5 module, NVIDIA runs the silicon at lower voltages and reduced clock frequencies. An H100 PCIe delivers lower compute throughput and uses slower HBM2e memory than its SXM5 counterpart. Furthermore, standard motherboards lack NVSwitch chips. NVIDIA offers physical NVLink Bridge clips that attach across the top edges of adjacent cards, but these bridges only link GPUs in isolated pairs at reduced bandwidth. Traffic between separate pairs must still cross the slow host PCIe bus.
 
 ### 3.2 The SXM form factor: Unrestricted power and all-to-all NVSwitch fabrics
 

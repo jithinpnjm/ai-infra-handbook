@@ -582,7 +582,7 @@ Primary Source Inventory & Key Technical Artifacts Migrated (Chapter 11.23):
 - Proprietary VMware vCenter and ESXi vSphere Client GUI clicks for assigning vGPU profiles are outside the corpus; this chapter uses the CLI tools `nvidia-smi vgpu`, `virsh dumpxml`, and `kubectl`.
 
 ### Corrections to the author's notes
-- Validation pass: `validate_chapter.py` and `check_coverage.py` pass. The YAML manifests and commands are marked untested and were not applied to a cluster.
+- The YAML manifests and commands are marked untested and were not applied to a cluster.
 - Custom resource API versions such as `kueue.x-k8s.io/v1beta1` and `resource.k8s.io/v1` change between releases, so check them against the version you install.
 - Console outputs quoted from the Volume notes are illustrative unless the chapter states otherwise.
 - The vGPU rule that all time-sliced vGPUs on one physical GPU must use the same profile and the NLS licensing path were verified against NVIDIA's vGPU architecture.

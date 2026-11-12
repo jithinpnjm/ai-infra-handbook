@@ -250,7 +250,7 @@ To use testinfra, set `verifier: name: testinfra` with the plugin, then run `mol
 
 *Ansible: Up and Running*, Chapter 14, covers the same ideas with a few more tools. Its Examples 14-6 and 14-7 are modeled in `code/part04/ansible_testing_molecule.py`. The authors also use Goss, which checks host state declaratively in YAML. You create a Goss scenario with `molecule init scenario -r ssh --driver-name docker --verifier-name goss goss`. The Goss spec in `molecule/goss/tests/test_sshd.yml` asserts `file: /etc/ssh/ssh_host_ed25519_key.pub: { exists: true, mode: '0644', owner: root, group: root, contains: ['ssh-ed25519 '] }`, `port: tcp:22: { listening: true }`, `service: sshd: { enabled: true, running: true }` and `user: sshd: { exists: true }`. Run it with `/usr/local/bin/goss -g test_sshd.yml v -f tap`, and the results come back as TAP, ending at `1..18`. The book also covers `ansible-later` (`.later.yml`), which runs alongside `yamllint` and `ansible-lint`.
 
-### Multi-platform and multi-host scenarios (`docker_networks` and `desired_state`, `AUR` Chapter 14)
+### Multi-platform and multi-host scenarios (`docker_networks` and `desired_state`, *Ansible: Up and Running* Chapter 14)
 
 Roles often run on more than one operating system, so test each supported OS. For example, Ubuntu 22.04 and 24.04, Rocky or RHEL 8 and 9, and even Windows Server VMs through the `vagrant` and `virtualbox` driver are all covered in *Ansible: Up and Running*, Chapter 14, Example 14-2. List each OS in the `platforms` list, or pass `MOLECULE_DISTRO` through a CI matrix.
 
@@ -485,7 +485,7 @@ It catches four kinds of bugs. The first is a `command` or `shell` task that lac
 </details>
 
 <details>
-<summary>6. Compare the three Molecule Verifiers: Ansible-Native (`verify.yml`), `Testinfra` (`test_default.py`), and `Goss` (`test_sshd.yml`, `AUR` Chapter 14).</summary>
+<summary>6. Compare the three Molecule Verifiers: Ansible-Native (`verify.yml`), `Testinfra` (`test_default.py`), and `Goss` (`test_sshd.yml`, *Ansible: Up and Running* Chapter 14).</summary>
 
 The Ansible-native verifier (`verifier: { name: ansible }`) is the default. It runs the `verify.yml` playbook with `assert`, `stat`, `slurp`, `command`, `uri` and `service_facts`, and it needs no extra test framework.
 
@@ -532,7 +532,7 @@ The hardware scenario (`molecule test -s gpu_hw`) runs nightly, or when a PR is 
 </details>
 
 <details>
-<summary>11. How do you configure a Multi-Host Molecule Scenario with static IPs and inventory groups (`AUR` Chapter 14 `Example 14-3`)?</summary>
+<summary>11. How do you configure a Multi-Host Molecule Scenario with static IPs and inventory groups (*Ansible: Up and Running* Chapter 14 `Example 14-3`)?</summary>
 
 In `molecule.yml`, define a custom Docker bridge network under `docker_networks:` (`name: redis`, `ipam_config: [{subnet: '10.16.0.0/24'}]`). Then list several entries under `platforms:`, such as `redis1_centos7` at `10.16.0.10`, `redis2_centos7` at `10.16.0.11` and `redis3_centos7` at `10.16.0.12`. Alternatively, use `slurmctl01` and `gpu01..02`.
 
@@ -540,7 +540,7 @@ Give the platforms `groups: [redis_server, redis_sentinel]`. Molecule automatica
 </details>
 
 <details>
-<summary>12. How do you test both installation (`desired_state: present`) and clean uninstallation (`desired_state: absent`) of a role (`AUR` Chapter 14)?</summary>
+<summary>12. How do you test both installation (`desired_state: present`) and clean uninstallation (`desired_state: absent`) of a role (*Ansible: Up and Running* Chapter 14)?</summary>
 
 Structure `tasks/main.yml` to dispatch with `include_tasks: "{{ desired_state }}.yml"`, which picks `present.yml` or `absent.yml`. `defaults/main.yml` sets `desired_state: present`.
 
@@ -600,7 +600,7 @@ Run these from `ansible_collections/<namespace>/<name>/`.
 </details>
 
 <details>
-<summary>19. How does `AUR` Chapter 22 map Molecule stages into a declarative `Jenkinsfile` pipeline?</summary>
+<summary>19. How does *Ansible: Up and Running* Chapter 22 map Molecule stages into a declarative `Jenkinsfile` pipeline?</summary>
 
 In *Ansible: Up and Running*, Chapter 22 (`Figure 22-1`), the role repository's `Jenkinsfile` sets `options { disableConcurrentBuilds(); ansiColor('vga') }`. It defines six sequential stages, so any failure shows up at once in the Jenkins Stage View. The stages are `stage("Build Environment")` (`python -V`, `ansible --version`, `molecule --version`), `stage("Syntax")` (`molecule syntax`), `stage("Linting")` (`molecule lint`), `stage("Playbook")` (`molecule converge`), `stage("Verification")` (`molecule verify`) and `stage("Idempotency")` (`molecule idempotence`).
 </details>

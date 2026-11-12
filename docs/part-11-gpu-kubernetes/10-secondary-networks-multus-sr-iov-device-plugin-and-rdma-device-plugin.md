@@ -147,7 +147,7 @@ The table shows three secondary network examples. Each one pairs a CNI plugin wi
 
 | Secondary Network Example | CNI Plugin and Master / VLAN | Whereabouts IPAM Range and Exclusions | Usable Secondary IPs |
 |---|---|---|---|
-| `ib-network` (GAK Example 7-10) | `type: ipoib`, `master: ib0` (`MTU 4,096`) | `range: "10.0.0.0/24"`, `exclude: ["10.0.0.1/32"]` | `253` usable IPs |
+| `ib-network` (*Generative AI on Kubernetes* Example 7-10) | `type: ipoib`, `master: ib0` (`MTU 4,096`) | `range: "10.0.0.0/24"`, `exclude: ["10.0.0.1/32"]` | `253` usable IPs |
 | `roce-sriov-network` (`volume-03/03` §2.3) | `type: sriov`, `vlan: 100`, resource `nvidia.com/hostdev` | `range: "192.168.10.0/24"`, `exclude: ["192.168.10.1/32", "192.168.10.254/32"]` | `252` usable IPs |
 | `macvlan` / `SriovNetwork` (`volume-06/02` §5.3 & §6.2) | `macvlan` (`master: eth1`, `mode: bridge`) or `sriov` (`vlan: 100`) | `192.168.100.0/24` (Macvlan) or `10.10.100.0/24` (SR-IOV `tenant-a`) | Dedicated L2 RDMA subnet per fabric or tenant |
 
@@ -605,6 +605,6 @@ Standard Ethernet defaults to MTU 1500, and overlay networks shrink that payload
 - Switch-side SONiC or Cumulus CLI commands for configuring PFC and ECN thresholds beyond the host-side `NCCL_IB_TC=106` mapping; data-center switch fabric configuration is covered in the networking parts of this handbook.
 
 ### Corrections to the author's notes
-- Validation pass 2026-10-25: `validate_chapter.py` and `check_coverage.py` pass. The YAML manifests and commands are marked untested and were not applied to a cluster. Custom resource API versions such as `kueue.x-k8s.io/v1beta1` and `resource.k8s.io/v1` change between releases, so check them against the version you install. Console outputs quoted from the Volume notes are illustrative unless the chapter says otherwise.
+- The YAML manifests and commands are marked untested and were not applied to a cluster. Custom resource API versions such as `kueue.x-k8s.io/v1beta1` and `resource.k8s.io/v1` change between releases, so check them against the version you install. Console outputs quoted from the Volume notes are illustrative unless the chapter says otherwise.
 - In *Production Kubernetes* Chapter 5, the simplified Cilium `install-cni.sh` snippet contains a typo `cp /cni/loopback /opt/cin/bin/ || true` instead of `/opt/cni/bin/`; this chapter uses the standard CNI binary directory `/opt/cni/bin/`.
 - In *Generative AI on Kubernetes* Example 7-10, the IPoIB NAD snippet prints `"type": "ipam"` in the outer config before `"master": "ib0"`; as the surrounding prose states, IPoIB NADs use the `ipoib` CNI plugin (`"type": "ipoib"`) with `whereabouts` inside the `"ipam"` block.

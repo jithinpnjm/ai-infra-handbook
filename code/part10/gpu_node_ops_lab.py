@@ -73,19 +73,19 @@ def main() -> int:
     # 2. Utilization vs Memory Bandwidth Regimes (V16 Ch 1 & Ch 3)
     regime_mem = evaluate_utilization_regime(sm_util_pct=85.0, mem_bw_util_pct=82.0, samples_per_sec=2048.0)
     check(
-        "V16 Ch3: 85% SM util + 82% mem BW util identifies healthy MEMORY_BOUND execution",
+        "85% SM util + 82% mem BW util identifies healthy MEMORY_BOUND execution",
         regime_mem["regime"] == "MEMORY_BOUND",
     )
 
     regime_compute = evaluate_utilization_regime(sm_util_pct=85.0, mem_bw_util_pct=15.0, samples_per_sec=2000.0)
     check(
-        "V16 Ch3: 85% SM util + 15% mem BW util with 2000 samples/sec identifies COMPUTE_BOUND execution",
+        "85% SM util + 15% mem BW util with 2000 samples/sec identifies COMPUTE_BOUND execution",
         regime_compute["regime"] == "COMPUTE_BOUND",
     )
 
     regime_spin = evaluate_utilization_regime(sm_util_pct=85.0, mem_bw_util_pct=2.0, samples_per_sec=0.0)
     check(
-        "V16 Ch1 & Ch3: 85% SM util + 2% mem BW util with 0 samples/sec detects SPINNING_OR_STALLED kernel bug",
+        "85% SM util + 2% mem BW util with 0 samples/sec detects SPINNING_OR_STALLED kernel bug",
         regime_spin["regime"] == "SPINNING_OR_STALLED",
     )
 
@@ -98,13 +98,13 @@ def main() -> int:
     # 3. PyTorch Memory Allocator vs Driver VRAM (V16 Ch 3)
     pyt_mem = analyze_pytorch_memory_state(total_vram_gb=40.0, allocated_gb=28.4, reserved_gb=30.2)
     check(
-        "V16 Ch3: 28.4 GB allocated of 30.2 GB reserved yields 1.8 GB reusable cache and 9.8 GB free from driver",
+        "28.4 GB allocated of 30.2 GB reserved yields 1.8 GB reusable cache and 9.8 GB free from driver",
         pyt_mem["reusable_cache_gb"] == 1.8
         and pyt_mem["free_from_driver_gb"] == 9.8
         and pyt_mem["true_available_gb"] == 11.6,
     )
     check(
-        "V16 Ch3: Reserved fraction is 75.5% and active usage ratio is 94.0%",
+        "Reserved fraction is 75.5% and active usage ratio is 94.0%",
         pyt_mem["reserved_fraction_pct"] == 75.5
         and pyt_mem["active_usage_pct"] == 94.0
         and pyt_mem["is_oom_imminent"] is False,
@@ -124,13 +124,13 @@ def main() -> int:
     temp_crit = classify_temperature_headroom(89.0)
 
     check(
-        "V16 Ch3: 55C is HEALTHY (30C headroom) and 70C is NORMAL (15C headroom)",
+        "55C is HEALTHY (30C headroom) and 70C is NORMAL (15C headroom)",
         temp_healthy["band"] == "HEALTHY"
         and temp_healthy["headroom_to_limit_c"] == 30.0
         and temp_normal["band"] == "NORMAL",
     )
     check(
-        "V16 Ch3: 80C is CAUTION (5C headroom), 84C is THROTTLE_THRESHOLD, and 89C is CRITICAL_THROTTLING",
+        "80C is CAUTION (5C headroom), 84C is THROTTLE_THRESHOLD, and 89C is CRITICAL_THROTTLING",
         temp_caution["band"] == "CAUTION"
         and temp_threshold["band"] == "THROTTLE_THRESHOLD"
         and temp_crit["band"] == "CRITICAL_THROTTLING"
@@ -162,7 +162,7 @@ def main() -> int:
         max_sm_clock_mhz=1980.0,
     )
     check(
-        "V2 Lab 02 Step 2: Flags disabled Persistence Mode (start-up delay per job launch)",
+        "Flags disabled Persistence Mode (start-up delay per job launch)",
         pm_audit["healthy"] is False
         and any("Persistence Mode is DISABLED" in issue for issue in pm_audit["issues"]),
     )
@@ -177,7 +177,7 @@ def main() -> int:
         max_sm_clock_mhz=1980.0,
     )
     check(
-        "V16 Ch3: Detects 87C temperature and SW_THERMAL_SLOWDOWN bitmask with reduced clocks",
+        "Detects 87C temperature and SW_THERMAL_SLOWDOWN bitmask with reduced clocks",
         thermal_audit["healthy"] is False
         and any("SW_THERMAL_SLOWDOWN" in issue for issue in thermal_audit["issues"]),
     )
@@ -207,7 +207,7 @@ def main() -> int:
         max_sm_clock_mhz=1980.0,
     )
     check(
-        "V2 Lab 02: Detects active SW_POWER_CAP when drawing 698W at 700W ceiling",
+        "Detects active SW_POWER_CAP when drawing 698W at 700W ceiling",
         pwr_cap_audit["healthy"] is False
         and any("Power capping active" in issue for issue in pwr_cap_audit["issues"]),
     )
@@ -223,7 +223,7 @@ def main() -> int:
         ecc_uncorrected_volatile=2,
     )
     check(
-        "V16 Ch1: Detects uncorrected volatile ECC memory errors and recommends node cordoning",
+        "Detects uncorrected volatile ECC memory errors and recommends node cordoning",
         ecc_audit["healthy"] is False
         and any("uncorrected volatile ECC" in issue for issue in ecc_audit["issues"]),
     )
@@ -239,7 +239,7 @@ def main() -> int:
         locked_clocks_range=(1500.0, 1500.0),
     )
     check(
-        "V2 Lab 02 Step 7: Flags clock frequency deviating from configured locked range [1500, 1500] MHz",
+        "Flags clock frequency deviating from configured locked range [1500, 1500] MHz",
         locked_clocks_audit["healthy"] is False
         and any("outside configured locked range" in issue for issue in locked_clocks_audit["issues"]),
     )
@@ -269,38 +269,38 @@ def main() -> int:
     except GPUOpsError:
         check("Rejects negative temperature", True)
 
-    # 7. Volume 20 / Volume 19 field-triage rules (added after review)
+    # 7. Field-triage rules (added after review)
     x79 = classify_xid(79); x92 = classify_xid(92); x45 = classify_xid(45); x13 = classify_xid(13)
-    check("V20 Ch2: Xid 79 (fell off the bus) is Tier 3 and says stop scheduling", x79["tier"] == 3 and "stop scheduling" in x79["action"])
-    check("V20 Ch2: Xid 92 and 45 are Tier 1 (informational / self-healing)", x92["tier"] == 1 and x45["tier"] == 1)
-    check("V20 Ch2: Xid 13 is Tier 2 but becomes Tier 3 when it recurs on one GPU across unrelated apps",
+    check("Xid 79 (fell off the bus) is Tier 3 and says stop scheduling", x79["tier"] == 3 and "stop scheduling" in x79["action"])
+    check("Xid 92 and 45 are Tier 1 (informational / self-healing)", x92["tier"] == 1 and x45["tier"] == 1)
+    check("Xid 13 is Tier 2 but becomes Tier 3 when it recurs on one GPU across unrelated apps",
           x13["tier"] == 2 and classify_xid(13, True)["tier"] == 3)
-    check("V20 Ch2: Xid 94 (contained ECC) is Tier 2 and Xid 95 (uncontained ECC) is Tier 3",
+    check("Xid 94 (contained ECC) is Tier 2 and Xid 95 (uncontained ECC) is Tier 3",
           classify_xid(94)["tier"] == 2 and classify_xid(95)["tier"] == 3)
-    check("V20 Ch2: Xid 74 (NVLink) has no fixed tier and an unknown code is not guessed",
+    check("Xid 74 (NVLink) has no fixed tier and an unknown code is not guessed",
           classify_xid(74)["tier"] == 0 and classify_xid(999)["tier"] is None)
     t1 = triage_slowdown(0x20, 85.0, 700.0, 700.0, True)
-    check("V20 Ch6: SW thermal slowdown reason at 85C triages as thermal", t1["cause"] == "thermal")
-    check("V20 Ch10: bare HW_SLOWDOWN (0x08) is reported as thermal-or-power, not guessed as one of them",
+    check("SW thermal slowdown reason at 85C triages as thermal", t1["cause"] == "thermal")
+    check("bare HW_SLOWDOWN (0x08) is reported as thermal-or-power, not guessed as one of them",
           triage_slowdown(0x08, 70.0, 700.0, 700.0, True)["cause"] == "hardware_slowdown_thermal_or_power")
     t2 = triage_slowdown(0x04, 70.0, 200.0, 300.0, True)
-    check("V20 Ch9: SW power cap with limit 200W below default 300W triages as power_cap and notes who set the limit",
+    check("SW power cap with limit 200W below default 300W triages as power_cap and notes who set the limit",
           t2["cause"] == "power_cap" and any("below the default" in n for n in t2["notes"]))
     t3 = triage_slowdown(0x80, 70.0, 700.0, 700.0, True)
-    check("V20 Ch9: HW power brake reason triages as power_brake", t3["cause"] == "power_brake")
+    check("HW power brake reason triages as power_brake", t3["cause"] == "power_brake")
     t4 = triage_slowdown(0x02, 65.0, 700.0, 700.0, True)
-    check("V20 Ch10: applications-clocks setting with a cool GPU triages as a leftover operator clock lock",
+    check("applications-clocks setting with a cool GPU triages as a leftover operator clock lock",
           t4["cause"] == "clock_lock_set_by_operator" and any("-rgc" in n for n in t4["notes"]))
     t5 = triage_slowdown(0x0, 65.0, 700.0, 700.0, True)
-    check("V20 Ch10: no throttle reason, 65C and clocks below max triages as workload_or_dvfs", t5["cause"] == "workload_or_dvfs")
-    check("V20 Ch10: unique-clock test: 1 and 3 values are stable, 4 is borderline, 6 is oscillating",
+    check("no throttle reason, 65C and clocks below max triages as workload_or_dvfs", t5["cause"] == "workload_or_dvfs")
+    check("unique-clock test: 1 and 3 values are stable, 4 is borderline, 6 is oscillating",
           classify_clock_stability(1) == "STABLE" and classify_clock_stability(3) == "STABLE"
           and classify_clock_stability(4) == "BORDERLINE" and classify_clock_stability(6) == "OSCILLATING")
-    check("V20 Ch9: PSU planning rule 4 x 300W x 1.3 == 1,560W", minimum_psu_watts(4, 300.0) == 1560.0)
-    check("V19 Ch4: 100% util with TENSOR_ACTIVE 5% and no throttle is a software issue; 60% means check network/dataloader",
+    check("PSU planning rule 4 x 300W x 1.3 == 1,560W", minimum_psu_watts(4, 300.0) == 1560.0)
+    check("100% util with TENSOR_ACTIVE 5% and no throttle is a software issue; 60% means check network/dataloader",
           diagnose_busy_but_slow(5.0, False) == "SOFTWARE_ISSUE_GPU_BUSY_ON_OVERHEAD"
           and diagnose_busy_but_slow(60.0, False) == "GPU_HEALTHY_CHECK_NETWORK_OR_DATALOADER")
-    check("V19 Ch4: hardware slowdown reason wins over Tensor activity", diagnose_busy_but_slow(60.0, True) == "HARDWARE_THERMAL_OR_POWER_LIMIT")
+    check("hardware slowdown reason wins over Tensor activity", diagnose_busy_but_slow(60.0, True) == "HARDWARE_THERMAL_OR_POWER_LIMIT")
     try:
         minimum_psu_watts(0, 300.0)
         check("Rejects non-positive gpu_count in PSU rule", False)

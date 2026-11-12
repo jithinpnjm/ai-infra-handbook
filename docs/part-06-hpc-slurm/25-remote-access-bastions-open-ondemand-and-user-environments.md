@@ -133,7 +133,7 @@ Use `ProxyJump` rather than agent forwarding to reach internal hosts. Agent forw
 
 For data, use `scp`, `rsync`, `sftp` or Globus. Tunnels such as `ssh -L 8888:localhost:8888` follow the same pattern. To reach a Jupyter server on a compute node through the login node, use `ssh -L 8888:gpu014:8888 login`, but only if the policy allows `AllowTcpForwarding`. Run `tmux` or `screen` on login nodes so that sessions survive a disconnect. Do not run them for compute work.
 
-### X11 and graphical tools (`SCL` Chapter 18)
+### X11 and graphical tools (*Supercomputers for Linux Sysadmins* Chapter 18)
 
 Sometimes a visualization tool has to run on the cluster, because moving multi-terabyte datasets to a workstation is not practical. Chapter 18 of *Supercomputers for Linux Sysadmins* explains how graphical access works in that case.
 
@@ -242,7 +242,7 @@ For data movement, you can use Globus endpoints, or `rclone` to reach object sto
 
 Choose which of these rules you will enforce on login nodes, and publish them where users will see them.
 
-## 5. Communicating with users (SCL chapter 27)
+## 5. Communicating with users (*Supercomputers for Linux Sysadmins* chapter 27)
 
 The book opens with a blunt point: "one of the most important components of any supercomputer is its customers, or users. Without them, it is of no use to anyone". Four themes follow from that idea, and each one translates directly into practice.
 
@@ -487,7 +487,7 @@ Picture an on-call engineer who learns that a researcher's key may be stolen. If
 
 ## Sources and review notes
 
-- Book source (`supercomputers-for-linux-sysadmins-managing-modern-hpc-clusters-and-supercomputers-from-software-to-hardware`, `SCL`):
+- Book source (`supercomputers-for-linux-sysadmins-managing-modern-hpc-clusters-and-supercomputers-from-software-to-hardware`, *Supercomputers for Linux Sysadmins*):
   - Chapter 18 ("18. Remote User Access", read in full): SSH key authentication, `ssh-keygen -i -f rfc-key.pub >> ~user/.ssh/authorized_keys`, Midnight Commander (`mc`), PuTTY (`putty-gen`, `.ppk`, `putty-agent`), WinSCP / FileZilla, FTP vs SFTP/SCP, HTTP/WWW isolation (`chroot` / `LXC` / `IDS`), X-Window (`X11` / `X.Org Server` client/server architecture, `:0`, `Kwin`/`Metacity`/`Ion`/`twm`/`Enlightenment`/`CDE`, `/etc/X11/xorg.conf`, `Xorg -configure`, `startx`, `xdm`/`gdm`/`kdm`/`lightdm`), Windows `Xming` and `xming Mesa` (`Xlaunch`, `X0.hosts` vs `xhost +` vs `xauth`), and alternatives (`TigerVNC`, `RDP`, `x2go`, `NX`, `SPICE`).
   - Chapter 27 ("27. Communicating with Users", read in full): `/etc/aliases` (`cluster-support: foo, bar, expert@supermail.org`) and `newaliases`, Thunderbird `Tools/Message Filters`, `Reply-To`/`BCC` and `support`/`support_done` folders, `Mailman` and `majordomo` in moderated mode, email quoting etiquette and direct FAQ anchor links (`http://your.server/docs/faq.html#p1.1`), ticketing systems (`RT`, `OTRS`, `Trac`, `OpenProject` vs `Bugzilla`/`Redmine`, and the two authorization/linking challenges), annual account re-registration ("actualization") with a 2–3 week window to handle "dead soul" accounts (`5%` disk space) without deleting active experiment data, and user education (Victor Eijkhout's *The Art of HPC*, `https://theartofhpc.com/`).
 - OpenSSH option semantics and defaults: `sshd_config(5)` from `openssh/openssh-portable` (commit `26b1363`).

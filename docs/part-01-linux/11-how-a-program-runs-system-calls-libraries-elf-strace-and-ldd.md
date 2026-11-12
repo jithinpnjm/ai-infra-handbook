@@ -258,7 +258,7 @@ When a program fails silently, read the last few failing calls in `strace` befor
 
 ## 5. Shared libraries in depth
 
-Chapter 1.7 covered how libraries are built and how `ld.so` searches for them. Shared libraries carry their own management costs and a tangled linking procedure. You can still bring them under control if you know four things. The source for this material is `HLW` Section 15.1.3. First, you need to list the shared libraries an executable needs, with `ldd` or `readelf -d`. Second, you need to know how the executable looks for them: `DT_RPATH`, `LD_LIBRARY_PATH`, `DT_RUNPATH`, `/etc/ld.so.cache`, `/lib` and `/usr/lib`. Third, you need to link against a library at compile time, using `-L`, `-l` and `-Wl,-rpath`. Fourth, you need to know the common pitfalls. This section covers what makes a library file name work, how a program says which version it needs, and what goes wrong.
+Chapter 1.7 covered how libraries are built and how `ld.so` searches for them. Shared libraries carry their own management costs and a tangled linking procedure. You can still bring them under control if you know four things. The source for this material is *How Linux Works* Section 15.1.3. First, you need to list the shared libraries an executable needs, with `ldd` or `readelf -d`. Second, you need to know how the executable looks for them: `DT_RPATH`, `LD_LIBRARY_PATH`, `DT_RUNPATH`, `/etc/ld.so.cache`, `/lib` and `/usr/lib`. Third, you need to link against a library at compile time, using `-L`, `-l` and `-Wl,-rpath`. Fourth, you need to know the common pitfalls. This section covers what makes a library file name work, how a program says which version it needs, and what goes wrong.
 
 ### Names: soname, real name, linker name
 

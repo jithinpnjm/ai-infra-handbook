@@ -77,7 +77,7 @@ When a node fails to boot, first decide which stage it reached, because that cho
 
 When you power up a server, the CPU runs the firmware first. The firmware performs the **Power-On Self-Test (POST)**, which tests and initialises memory and enumerates the devices. It also gives option ROMs, such as RAID and network cards, a chance to run. After that, it looks for boot code on the devices in the configured **boot order**.
 
-With a BIOS and an **MBR**-partitioned disk (`HLW` Section 5.8.1), the firmware reads the **Master Boot Record**. That is the first 512-byte sector of the disk. It holds **446 bytes of boot code**, which is `441` bytes of executable code before the 4-byte disk signature. After that come a **64-byte partition table** of four 16-byte entries, and the 2-byte magic signature `0x55AA`.
+With a BIOS and an **MBR**-partitioned disk (*How Linux Works* Section 5.8.1), the firmware reads the **Master Boot Record**. That is the first 512-byte sector of the disk. It holds **446 bytes of boot code**, which is `441` bytes of executable code before the 4-byte disk signature. After that come a **64-byte partition table** of four 16-byte entries, and the 2-byte magic signature `0x55AA`.
 
 446 bytes is too small for almost any boot loader, so BIOS boot loaders work in stages. The tiny MBR code loads more code, called `core.img`, from the unused gap between the MBR and the first partition. The traditional 1 MiB offset leaves room for it. That code understands filesystems, and it loads the rest.
 
@@ -85,7 +85,7 @@ On a BIOS system with a **GPT** disk, that gap holds the GPT entry array instead
 
 ### UEFI boot
 
-**UEFI**, the *Unified Extensible Firmware Interface*, works differently from MBR. For the most part it is easier to understand (`HLW` Section 5.8.2).
+**UEFI**, the *Unified Extensible Firmware Interface*, works differently from MBR. For the most part it is easier to understand (*How Linux Works* Section 5.8.2).
 
 The old way put executable boot code in raw sectors, outside any filesystem. UEFI replaces that with ordinary files. Every boot loader gets its own folder under `EFI`, such as `EFI/ubuntu`, `EFI/grub` or `EFI/microsoft`, and its file ends in `.efi`. You may find `grubx64.efi`, the UEFI version of GRUB, and `shimx64.efi` in those folders. An old BIOS-style loader cannot simply be copied into this partition, because it was written for the BIOS interface. For example, you must install the UEFI build of GRUB, not the BIOS build.
 
@@ -145,7 +145,7 @@ The boot loader's job sounds simple. It loads the kernel with its parameters. Th
 
 The boot loader must do four things. It must find and load the kernel image and the initramfs. It must pass **kernel parameters**. It must let you choose among kernels or edit the parameters. And it can optionally boot other operating systems.
 
-Consider the boot loaders in common use (`HLW` Section 5.3.2). **GRUB 2** is the near-universal Linux default, and it supports both BIOS and UEFI. **systemd-boot**, formerly `gummiboot`, is a simple UEFI boot manager that some distributions use. **SYSLINUX**, **EXTLINUX**, **ISOLINUX** and **PXELINUX** are modular boot loaders for FAT, ext, ISO optical media and PXE network boot. **LILO**, the Linux Loader, is historical. **coreboot**, formerly `LinuxBIOS`, is a high-performance open-source replacement for the PC BIOS, and it can include a Linux kernel payload directly. **Linux Kernel EFISTUB** is a kernel build option that lets UEFI firmware load the kernel straight from the ESP, with no separate boot loader. **efilinux** is a reference UEFI boot loader that served as a model for other UEFI loaders. **iPXE** is a scriptable network boot loader, covered in section 10.
+Consider the boot loaders in common use (*How Linux Works* Section 5.3.2). **GRUB 2** is the near-universal Linux default, and it supports both BIOS and UEFI. **systemd-boot**, formerly `gummiboot`, is a simple UEFI boot manager that some distributions use. **SYSLINUX**, **EXTLINUX**, **ISOLINUX** and **PXELINUX** are modular boot loaders for FAT, ext, ISO optical media and PXE network boot. **LILO**, the Linux Loader, is historical. **coreboot**, formerly `LinuxBIOS`, is a high-performance open-source replacement for the PC BIOS, and it can include a Linux kernel payload directly. **Linux Kernel EFISTUB** is a kernel build option that lets UEFI firmware load the kernel straight from the ESP, with no separate boot loader. **efilinux** is a reference UEFI boot loader that served as a model for other UEFI loaders. **iPXE** is a scriptable network boot loader, covered in section 10.
 
 This chapter concentrates on GRUB 2. The older "GRUB Legacy", which uses `menu.lst`, is obsolete.
 
@@ -180,7 +180,7 @@ The most confusing part is that **"root" has two meanings**. In `set root=` and 
 
 GRUB device names look like `(hd0)`, `(hd0,gpt2)` and `(hd0,msdos1)`. Each name gives the disk number, the partition table type and the partition number, in that order. The numbering can change, so entries use `search` by UUID instead. `linux` loads the kernel image and takes the parameters. `initrd` loads the initial RAM filesystem, and `boot` starts it.
 
-The **GRUB command line** is invaluable. You open it with `c` at the menu. It helps you explore devices, partitions and files (`HLW` Section 5.4.2). It also lets you boot by hand when `grub.cfg` is damaged. Here is a short session:
+The **GRUB command line** is invaluable. You open it with `c` at the menu. It helps you explore devices, partitions and files (*How Linux Works* Section 5.4.2). It also lets you boot by hand when `grub.cfg` is damaged. Here is a short session:
 
 ```text
 grub> ls                              # devices and partitions: (hd0) (hd0,gpt1) (hd0,gpt2)
@@ -264,7 +264,7 @@ dmesg | grep -iE 'Command line|iommu|nvidia|firmware|secure|ACPI|NUMA|hugepage|n
 journalctl -k | grep -E 'Run /init|Freeing unused|mounted filesystem|systemd\[1\]'    # key milestones
 ```
 
-Sample milestones from `journalctl -k` (`HLW` Section 5.1) include `microcode: microcode updated early to revision 0xd6` and `Linux version 4.15.0-112-generic ...`. You will also see `Command line: BOOT_IMAGE=/boot/vmlinuz-4.15.0-43-generic root=UUID=17f12d53-c3d7-4ab3-943e-a0a72366c9fa ro quiet splash vt.handoff=1`. Next come the CPU and memory detection lines (`NUMA`, `e820`), the PCI enumeration, and `sd 0:0:0:0: [sda] Attached SCSI disk`. Then `Freeing unused kernel memory: 2408K` and `Write protecting the kernel read-only data: 20480k` appear. Two more `Freeing unused kernel memory` lines follow, with `2008K` and `1892K`. Those lines show the kernel cleaning up initialisation memory and write-protecting its own read-only data pages. `Run /init as init process` marks the start of the initramfs. After that come `EXT4-fs (sda1): mounted filesystem with ordered data mode` and `systemd[1]: ... Detected architecture x86-64`. When you see systemd's first message, user space has started.
+Sample milestones from `journalctl -k` (*How Linux Works* Section 5.1) include `microcode: microcode updated early to revision 0xd6` and `Linux version 4.15.0-112-generic ...`. You will also see `Command line: BOOT_IMAGE=/boot/vmlinuz-4.15.0-43-generic root=UUID=17f12d53-c3d7-4ab3-943e-a0a72366c9fa ro quiet splash vt.handoff=1`. Next come the CPU and memory detection lines (`NUMA`, `e820`), the PCI enumeration, and `sd 0:0:0:0: [sda] Attached SCSI disk`. Then `Freeing unused kernel memory: 2408K` and `Write protecting the kernel read-only data: 20480k` appear. Two more `Freeing unused kernel memory` lines follow, with `2008K` and `1892K`. Those lines show the kernel cleaning up initialisation memory and write-protecting its own read-only data pages. `Run /init as init process` marks the start of the initramfs. After that come `EXT4-fs (sda1): mounted filesystem with ordered data mode` and `systemd[1]: ... Detected architecture x86-64`. When you see systemd's first message, user space has started.
 
 ### Reading the boot log
 
@@ -401,7 +401,7 @@ When `init` enters a runlevel, it runs the scripts in **`/etc/rc<N>.d/`**. Those
 
 Script headers help tools work out the order. A header begins with `### BEGIN INIT INFO` and ends with `### END INIT INFO`. Inside it you list `Provides: skeleton`, `Required-Start: $remote_fs $syslog`, `Required-Stop: $remote_fs $syslog`, `Default-Start: 2 3 4 5`, `Default-Stop: 0 1 6`, `Short-Description` and `Description`. The file `rc.local` ran last. Using it is discouraged, although systemd keeps it working for compatibility.
 
-Historically, Unix had two main styles of `init` configuration, SystemV-style and BSD-style, the latter used by Slackware. Standard SysV `init` scripts are written in shell. They are slow and hard to parse, and they start services strictly one after another. Attempts to bolt parallelism onto SysV `init` through special header comments failed. That is why **Lennart Poettering** and **Kay Sievers** created **`systemd`** (`SCL` Chapter 23). It gives you dependency-aware parallel startup, cgroup process tracking, and on-demand socket and device activation.
+Historically, Unix had two main styles of `init` configuration, SystemV-style and BSD-style, the latter used by Slackware. Standard SysV `init` scripts are written in shell. They are slow and hard to parse, and they start services strictly one after another. Attempts to bolt parallelism onto SysV `init` through special header comments failed. That is why **Lennart Poettering** and **Kay Sievers** created **`systemd`** (*Supercomputers for Linux Sysadmins* Chapter 23). It gives you dependency-aware parallel startup, cgroup process tracking, and on-demand socket and device activation.
 
 ### The `rc*.d` link farm and `init.d`
 
@@ -560,7 +560,7 @@ The subnet block sets the lease range, the router, the DNS and NTP addresses, an
 
 The interface the server listens on is set separately. Use `INTERFACESv4=` in `/etc/default/isc-dhcp-server`, or `DHCPDARGS=` in `/etc/sysconfig/dhcpd`. Restrict it to the cluster-facing interface, never the external one. After editing, run the syntax check with `dhcpd -t -cf /etc/dhcp/dhcpd.conf`, and then restart the service. Confirm on the actual hardware which architecture codes your firmware sends, and whether the options use `option architecture-type`.
 
-**Collecting MAC addresses** (`SCL` Chapter 23) matters because fixed addresses need each node's MAC. You can read the label, or query the BMC with `ipmitool lan print` or Redfish. You can also query the switch's bridge forwarding table by port with `snmpwalk`:
+**Collecting MAC addresses** (*Supercomputers for Linux Sysadmins* Chapter 23) matters because fixed addresses need each node's MAC. You can read the label, or query the BMC with `ipmitool lan print` or Redfish. You can also query the switch's bridge forwarding table by port with `snmpwalk`:
 
 ```bash
 # 1. List MAC addresses learned by the switch (dot1dTpFdbEntry.1; untested here)
@@ -732,11 +732,11 @@ Run the Python lab first, then work through the VM steps, and write down each re
 
 Use these exercises to check that the chapter has sunk in. Each one names the facts to use.
 
-1. **MBR 512-byte layout vs. UEFI ESP and Secure Boot (`HLW` Chapter 5).** Part (a) asks you to state the byte sizes of the three parts of a 512-byte Master Boot Record, `446` + `64` + `2`, with magic `0x55AA`. Then explain why BIOS boot loaders must use a multi-stage design, from `boot.img` to `core.img` in the post-MBR gap or a `BIOS boot` partition. Part (b) asks how UEFI boots from the `EFI System Partition (ESP)` at `/boot/efi`. It also asks why an unsigned DKMS `nvidia.ko` fails to load under UEFI Secure Boot unless it is signed with an enrolled `MOK`. Verify your answer with `validate_mbr_sector_layout()` in `code/part01/boot_grub_initramfs.py`.
+1. **MBR 512-byte layout vs. UEFI ESP and Secure Boot (*How Linux Works* Chapter 5).** Part (a) asks you to state the byte sizes of the three parts of a 512-byte Master Boot Record, `446` + `64` + `2`, with magic `0x55AA`. Then explain why BIOS boot loaders must use a multi-stage design, from `boot.img` to `core.img` in the post-MBR gap or a `BIOS boot` partition. Part (b) asks how UEFI boots from the `EFI System Partition (ESP)` at `/boot/efi`. It also asks why an unsigned DKMS `nvidia.ko` fails to load under UEFI Secure Boot unless it is signed with an enrolled `MOK`. Verify your answer with `validate_mbr_sector_layout()` in `code/part01/boot_grub_initramfs.py`.
 2. **GRUB `root` vs. kernel `root=`, and primary `console=` selection.** Take a GRUB entry with `set root='hd0,gpt2'` and `linux /boot/vmlinuz-5.15.0-91-generic root=UUID=8b92610e-1db7-4ba3-ac2f-30ee24b39ed0 ro quiet splash console=tty0 console=ttyS0,115200n8 intel_iommu=on iommu=pt`. Part (a) asks you to tell apart `set root='hd0,gpt2'` and `root=UUID=...`. Part (b) asks why the root filesystem is mounted `ro` at first, and which of `tty0` or `ttyS0,115200n8` becomes `/dev/console`, the primary.
 3. **initramfs lifecycle, host-only vs. generic, and rebuilds.** Part (a) asks you to trace what `/init` inside the initramfs does, from the kernel unpacking the cpio archive to `switch_root` execing `/sbin/init` (systemd). Part (b) asks why a golden image for heterogeneous cluster nodes must be built with `dracut --no-hostonly` (or `MODULES=most`). It also asks which commands list and rebuild the initramfs on Ubuntu, and which ones do the same on RHEL.
 4. **Localizing boot failures across the 7 stages.** Map each symptom to its exact boot stage (`diagnose_boot_failure_stage()`), and state the recovery action for each one. The symptoms are (a) `PXE-E53: No boot filename received`, (b) `error: unknown filesystem. grub rescue>`, (c) `Kernel panic - VFS: Unable to mount root fs` or an `(initramfs)` shell, and (d) `A start job is running for dev-disk-by-uuid-... (1min 30s)` followed by emergency mode.
-5. **PXE network boot, RFC 4578 architecture classes, and switch MAC discovery (`SCL` Chapter 23).** Part (a) asks which boot loader filename the DHCP server in section 10 returns for `PXEClient:Arch:00000`, `00007` and `00009`. The choices are `pxelinux.0`, `grubnetx64.efi` and `ipxe.efi`. Part (b) asks for the two `snmpwalk` OIDs on `dot1dTpFdbEntry` that map switch ports to node MAC addresses. That way you do not have to power nodes on one at a time.
+5. **PXE network boot, RFC 4578 architecture classes, and switch MAC discovery (*Supercomputers for Linux Sysadmins* Chapter 23).** Part (a) asks which boot loader filename the DHCP server in section 10 returns for `PXEClient:Arch:00000`, `00007` and `00009`. The choices are `pxelinux.0`, `grubnetx64.efi` and `ipxe.efi`. Part (b) asks for the two `snmpwalk` OIDs on `dot1dTpFdbEntry` that map switch ports to node MAC addresses. That way you do not have to power nodes on one at a time.
 6. **NFS-root writable overlays and cluster boot storms.** Part (a) asks how `/tmp`, `/var/run`, `/var/lock`, `/var/cache` and `/var/log` are handled when 100 diskless compute nodes share one read-only NFS root, `192.168.123.1:/noderoot,ro`. Part (b) asks for two physical or network reasons why you must stagger cluster node power-on by at least `1 to 2 seconds`.
 
 Write your answers in your own words, and check each one against the section it names.

@@ -79,7 +79,7 @@ An InfiniBand physical link carries up to 16 logical Virtual Lanes, which are mu
 Because VL15 has independent buffer space and is exempt from data-lane credit stalls, OpenSM or UFM can always query and reprogram switches. That holds even when every data lane is fully stalled by congestion. Receivers advertise their buffer space per Virtual Lane, using flow-control packets in the Link Layer Header. The unit is the Flow Control Credit Unit, and one credit equals 64 bytes of receive buffer space. Before an upstream port sends a packet on a given lane, hardware checks that the available credits cover the packet's length, rounded up to 64-byte blocks:
 
 $$
-C_\{\text`{avail}`}(v) = \left\lfloor \frac\{B_\{\text`{buf}`}(v) - B_\{\text`{occ}`}(v)}`{64}` \right\rfloor \ge \left\lceil \frac\{B_\{\text`{pkt}`}}`{64}` \right\rceil
+C_{\text{avail}}(v) = \left\lfloor \frac{B_{\text{buf}}(v) - B_{\text{occ}}(v)}{64} \right\rfloor \ge \left\lceil \frac{B_{\text{pkt}}}{64} \right\rceil
 $$
 
 When the available credits cover the packet, the port sends immediately at full wire speed. If the downstream drain slows and free credits fall short, the upstream transmitter pauses on that Virtual Lane. It does not drop the packet. Each clock tick that a lane has packets queued but too few credits, hardware increments the `PortXmitWait` counter.
@@ -215,7 +215,7 @@ If a job slows with clean links, trace the congestion tree before you replace an
 Picture a fully nonblocking fat-tree with plenty of idle spine bandwidth. Static routing can still starve a distributed training job. Under classic InfiniBand forwarding, OpenSM programs a deterministic Linear Forwarding Table (LFT) on every switch. The LFT is a flat lookup array. It is indexed by the 16-bit Destination LID, and it maps each destination to one fixed egress port:
 
 $$
-\text`{EgressPort}` = \text`{LFT}`[\text`{DLID}`]
+\text{EgressPort} = \text{LFT}[\text{DLID}]
 $$
 
 A leaf switch may have four, eight or sixteen equal-cost uplinks to the spine tier. Static forwarding still pins every packet for a given Destination LID onto one pre-assigned uplink. Suppose GPU ranks in an AllReduce or AllToAll collective exchange data with peers whose Destination LIDs hash to the same spine uplink. Those flows collide in one large queue, while the sibling uplinks sit nearly idle.
@@ -367,7 +367,7 @@ If you read the table top to bottom, you see one loop. Stage 1 marks the packet,
 The Congestion Manager in OpenSM or UFM programs each HCA with a 128-entry Congestion Control Table (CCT). It also sets four control registers for each Service Level: a minimum index, a maximum index limit, an index step increase, and a recovery timer. The standard inter-packet delay model gives the effective injection rate on a line-rate port:
 
 $$
-R_\{\text`{inj}`}(\text`{CCTI}`) = \frac\{R_\{\text`{line}`}\}\{1 + \frac\{\text`{CCTI}`}`{32}`}
+R_{\text{inj}}(\text{CCTI}) = \frac{R_{\text{line}}}{1 + \frac{\text{CCTI}}{32}}
 $$
 
 While switch queue occupancy stays below the threshold, the index stays at zero. The sender then transmits at full line rate. Each arriving BECN packet raises the index by the configured step. The extra delay between packets lets the downstream buffer drain before flow-control credits run out. After BECN notifications stop, each recovery timer expiry lowers the index by one. The Queue Pair returns smoothly to full line rate.
@@ -786,7 +786,7 @@ Median latency improved from 3.1 us to 2.4 us, but tail latency got much worse. 
 3. **Source Reaction:** When the source HCA receives `BECN = 1`, it raises its Congestion Control Table index (CCTI) by `CCTI_Increase`, up to `CCTI_Limit = 127`, to insert inter-packet delay. Without BECN, each `CCTI_Timer` expiry lowers the index by 1, down to 0.
 </details>
 
-<details><summary>**14. On a 400.0 Gbps port where injection rate is $400 / (1 + \text`{CCTI}`/32)$ and `CCTI_Increase = 16`, what is the source injection rate at CCTI = 0, 16, 32, and 127?**</summary>
+<details><summary>**14. On a 400.0 Gbps port where injection rate is $400 / (1 + \text{CCTI}/32)$ and `CCTI_Increase = 16`, what is the source injection rate at CCTI = 0, 16, 32, and 127?**</summary>
 
 ```text
 CCTI Rate-Pacing Profile on a 400.0 Gbps Port (128-entry CCT, indices 0..127):
@@ -888,7 +888,7 @@ The primary `nvidia-devops` notes and book chapters read in full and migrated in
 - `python3 -B code/part12/infiniband_ar_cc_lab.py` passes all 28 checks with 0 failures.
 
 ### Explicitly labelled inferences
-- The SHIELD and Fast Notification failover calculation. The CCTI injection-rate curve $R_\{\text`{inj}`} = R_\{\text`{line}`} / (1 + \text`{CCTI}`/32)$ in `code/part12/infiniband_ar_cc.py` are deterministic pedagogical models illustrating the IBTA 128-entry Congestion Control Table and Quantum SHIELD autonomous failover mechanisms described in `superpod-gb300-ra` and `nvidia-devops` Volume 08 Chapter 7.
+- The SHIELD and Fast Notification failover calculation. The CCTI injection-rate curve $R_{\text{inj}} = R_{\text{line}} / (1 + \text{CCTI}/32)$ in `code/part12/infiniband_ar_cc.py` are deterministic pedagogical models illustrating the IBTA 128-entry Congestion Control Table and Quantum SHIELD autonomous failover mechanisms described in `superpod-gb300-ra` and `nvidia-devops` Volume 08 Chapter 7.
 
 ### Not verified on live hardware
 - All InfiniBand diagnostic commands (`SMPs`, `LPs` link partners, `CP2`, `CP3`, `CP5` Clos congestion points, `PFC` vs CBFC, `NCCL` / `MoE` workloads, `20.0GiB`, `200.0Gbps`, `400.0Gbps` examples, and `nvidia-zero-to-hero/volume-08/chapter-02-infiniband-architecture-and-link-layers.md`) and `/etc/opensm/opensm.conf` snippets in this chapter are marked `(untested here)` and were not executed on live InfiniBand switches or ConnectX HCAs in this environment.

@@ -654,8 +654,8 @@ Because the Python HTTP server runs on the host CPU, it remained completely unaf
 
 | Failure Scenario / Symptom | Root Cause & Telemetry Signature | Production Remediation and Guardrail |
 |---|---|---|
-| `SM utilization < 50%` (`ASP` Table 16-1) | Small batch sizes, unfused elementwise kernels, or upstream CPU GIL bottleneck. | Increase batch size, enable FlashAttention / cuDNN SDPA / Triton fused kernels, and profile with `nsys --trace=cuda,nvtx`. |
-| `p95 latency > 200 ms` (`ASP` Table 16-1) | Decode-node hotspot, head-of-line prefill blocking (`340 ms` ITL), or degraded RoCEv2 link (`45,000 us` AllReduce, `TX_DROPPED: 428, RX_ERRORS: 156`). | Enable `--enable-chunked-prefill --max-num-batched-tokens 2048`, inspect router logs, enable speculative decoding, and verify `NCCL_NET_GDR_LEVEL=5` & PFC. |
+| `SM utilization < 50%` (*AI Systems Performance Engineering* Table 16-1) | Small batch sizes, unfused elementwise kernels, or upstream CPU GIL bottleneck. | Increase batch size, enable FlashAttention / cuDNN SDPA / Triton fused kernels, and profile with `nsys --trace=cuda,nvtx`. |
+| `p95 latency > 200 ms` (*AI Systems Performance Engineering* Table 16-1) | Decode-node hotspot, head-of-line prefill blocking (`340 ms` ITL), or degraded RoCEv2 link (`45,000 us` AllReduce, `TX_DROPPED: 428, RX_ERRORS: 156`). | Enable `--enable-chunked-prefill --max-num-batched-tokens 2048`, inspect router logs, enable speculative decoding, and verify `NCCL_NET_GDR_LEVEL=5` & PFC. |
 | Readiness probe `504` cascade during HPA scale-out (`V12` Ch. 11) | `timeoutSeconds: 1` on `/v1/models` times out when new pods saturate shared NFS (`1.2 s` delay). | Separate `startupProbe` (`failureThreshold: 60, periodSeconds: 10` = `600 s`), `readinessProbe` (`/health`, `timeoutSeconds: 5`), and `livenessProbe` (`/ping`), and cache weights on local NVMe. |
 | Zombie Pod `12.5%` request blackhole (`V12` Ch. 11) | GPU 3 suffers `XID 62` DB-ECC deadlock (`dmesg: NVRM: Xid 62`); TP=8 NCCL hangs while CPU HTTP server returns `200 OK`. | Deploy DCGM Exporter + Kubernetes Node Problem Detector (`Xid 62\|Xid 79\|Xid 92 -> CordonAndDrainNode`), drain node, and run `nvidia-smi --gpu-reset -i 3`. |
 | FP8 `NaN` / garbage output spikes (`V12` Ch. 11) | Out-of-range activation outliers or corrupted `scale_inv` factors in custom FP8 GEMM or AllReduce kernels. | Alert on `NaN` token rate `> 0.01%`, isolate replica, and pass `--disable-custom-all-reduce` or recalibrate scales on `1,000` representative prompts. |
@@ -752,7 +752,7 @@ Prometheus Alertmanager rules can catch many of these problems early. Configure 
 
 Once profiling confirms that your kernels are memory-bandwidth-bound on weight reads or compute-bound on Tensor Core GEMMs, **quantization** delivers the largest single-node throughput leap. Reducing precision shrinks weight storage, slashes HBM bandwidth traffic per decode step, frees HBM for larger KV cache batches, and doubles or quadruples Tensor Core math rate.
 
-| Precision & Quantization Scheme | Weight / Activation Bits | Memory Ratio vs FP16 | Throughput Speedup vs FP16 | Accuracy Retention & Calibration Mechanics (`ASP` Ch. 16 & 19) |
+| Precision & Quantization Scheme | Weight / Activation Bits | Memory Ratio vs FP16 | Throughput Speedup vs FP16 | Accuracy Retention & Calibration Mechanics (*AI Systems Performance Engineering* Ch. 16 & 19) |
 |---|---|---|---|---|
 | `FP16` / `BF16` Baseline | `16-bit` / `16-bit` | `1.00x` | `1.0x` | Full baseline accuracy (`2.0x` faster than FP32 on Tensor Cores). |
 | `FP8` (`E4M3` weights/acts, `E5M2` KV) | `8-bit` / `8-bit` | `0.50x` | `1.5x` (`2.0x` peak math) | `< 0.1%` accuracy loss; Transformer Engine static calibration or `amax` dynamic scaling. |

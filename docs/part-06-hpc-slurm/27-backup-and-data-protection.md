@@ -18,7 +18,7 @@ lab_venue: "GCP / GKE"
 | Priority tier | 2 |
 | Lab venue | Laptop (tested experiments) |
 | Part | Part 6: HPC and Slurm |
-| Status | Drafted. **Run on a macOS laptop with conda-forge builds**: rsync 3.4.4 `--link-dest` snapshots, GNU tar 1.35 `--listed-incremental`, restic 0.19.1 (init, backup, snapshots, restore, check, `--read-data` corruption detection, forget/prune); outputs shown. Bacula, tape, ZFS/Lustre snapshots, Globus and cloud tiers were **not** run; those sections are from the SCL book and general knowledge. Labs for production tools are **untested** |
+| Status | Drafted. **Run on a macOS laptop with conda-forge builds**: rsync 3.4.4 `--link-dest` snapshots, GNU tar 1.35 `--listed-incremental`, restic 0.19.1 (init, backup, snapshots, restore, check, `--read-data` corruption detection, forget/prune); outputs shown. Bacula, tape, ZFS/Lustre snapshots, Globus and cloud tiers were **not** run; those sections are from the *Supercomputers for Linux Sysadmins* book and general knowledge. Labs for production tools are **untested** |
 
 ## Why this matters for AI infrastructure
 
@@ -102,7 +102,7 @@ Monitor the backup system. Watch job success, the age of the newest backup per c
 
 The next step is to schedule a restore test, because until one succeeds, the backup is unproven.
 
-## 3. Classic tools (SCL chapter 20)
+## 3. Classic tools (*Supercomputers for Linux Sysadmins* chapter 20)
 
 Suppose you need a backup tonight and can only use tools that already ship with the system. The Supercomputers for Linux SysAdmins book, chapter 20, covers three families: `tar`, Bacula, and `rsync` "and others".
 
@@ -648,7 +648,7 @@ The first is the time since the last successful backup for each data class. It s
 
 ## Sources and review notes
 
-- Book source (`supercomputers-for-linux-sysadmins-managing-modern-hpc-clusters-and-supercomputers-from-software-to-hardware`, `SCL`):
+- Book source (`supercomputers-for-linux-sysadmins-managing-modern-hpc-clusters-and-supercomputers-from-software-to-hardware`, *Supercomputers for Linux Sysadmins*):
   - Chapter 20 ("20. Backup", read in full): `tar` eight operation modes (`Table 20-1`), `-z`/`-j`/`-I` parallel compression (`pigz`), `tar cf - data01 | (cd /db01; tar xvf -)`, `--listed-incremental=/var/log/usr.snar` / `--level=0`, `cpio` and `pax`, Bacula architecture and configuration stanzas (`bacula-sd.conf` port `9103`, `bacula-dir.conf` port `9101`, `bacula-fd.conf` port `9102`, `bconsole.conf`, `Write Bootstrap = "/var/spool/bacula/%n.bsr"`, and `Table 20-2` `bconsole` commands), `rsync` flags (`Table 20-3`), `rsync --write-batch=update` / `update.sh`, `borgbackup` (`https://www.borgbackup.org/`, `https://github.com/zhum/hpc-book-matherials`), and testing backups at least twice a year.
 - Experiments: run locally as described (tools from conda-forge: `rsync` 3.4.4, GNU `tar` 1.35, `restic` 0.19.1) and `python3 code/part06/backup_protection_lab.py` (3 passed, 0 failed).
 - Explicitly labelled inferences: `simulate_hardlink_snapshot` and `verify_pack_repository` in `code/part06/backup_protection_lab.py` are deterministic Python models of `--link-dest` inode sharing and `restic check --read-data` pack verification.

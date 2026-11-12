@@ -184,7 +184,7 @@ In a naive matrix multiplication $C = A \times B$ of size $N \times N$, each thr
 
 The table below shows the measured impact of shared-memory tiling from *AI Systems Performance Engineering* Chapter 7.
 
-| Metric (`N = 1,024` FP32 matrix multiply, ASP Ch. 7 Table 7-4) | Before (`naiveMatMul` from HBM) | After (`tiledMatMul` in Shared Memory) | Why it changed |
+| Metric (`N = 1,024` FP32 matrix multiply, *AI Systems Performance Engineering* Ch. 7 Table 7-4) | Before (`naiveMatMul` from HBM) | After (`tiledMatMul` in Shared Memory) | Why it changed |
 |---|---|---|---|
 | **Global memory load sectors (32 B each)** | 9,800 sectors | **1,200 sectors** | **8.2x fewer DRAM reads** (each tile element fetched once per block instead of 32x). |
 | **DRAM throughput (% of peak)** | 90% (wasteful redundant traffic) | **25%** (3.6x lower pressure) | Redundant off-chip HBM fetches eliminated. |
@@ -302,7 +302,7 @@ TMA double-buffering pipeline sequence (cuda::pipeline):
 
 The table below compares all five hardware-software memory optimizations from *AI Systems Performance Engineering* Chapter 7.
 
-| Optimization technique (ASP Ch. 7) | Before (Unoptimized) | After (Optimized) | Speedup & key profiler evidence (`ncu`) |
+| Optimization technique (*AI Systems Performance Engineering* Ch. 7) | Before (Unoptimized) | After (Optimized) | Speedup & key profiler evidence (`ncu`) |
 |---|---|---|---|
 | **1. Global Memory Coalescing** (`stride=2` → `stride=1`, Table 7-1) | 4.8 ms, 25% DRAM peak, 23% Load Eff, 8.0 sectors/req | **1.3 ms**, **90% DRAM peak**, **99% Load Eff**, **4.0 sectors/req** | **3.7x faster** (3.6x higher effective DRAM throughput). |
 | **2. Shared-Memory Tiling** (`32 x 32` GEMM tile, Table 7-4) | 15 GFLOPS (1.5 FLOPs/B), 90% DRAM, 9,800 sectors | **170 GFLOPS** (**8.0 FLOPs/B**), **25% DRAM**, **1,200 sectors** | **11.3x higher GFLOPS** (8.2x fewer DRAM sector reads). |

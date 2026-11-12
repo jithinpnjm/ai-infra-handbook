@@ -51,7 +51,7 @@ The loader searches five locations, in a strict order:
 
 Compilers and tools read their own variables too. Compilers consult `CPATH`, `C_INCLUDE_PATH`, `LIBRARY_PATH`, and `PKG_CONFIG_PATH`. Python consults `PYTHONPATH`, and CUDA tools consult `CUDA_HOME` and `CUDA_PATH`. A complete software stack therefore means setting several of these variables consistently. It also means reversing every change cleanly when you switch to another version.
 
-### Installing compilers and libraries on shared storage (`SCL` Chapter 24)
+### Installing compilers and libraries on shared storage (*Supercomputers for Linux Sysadmins* Chapter 24)
 
 Zhumatiy makes the point in *Supercomputers for Linux SysAdmins* Chapter 24, *Installing Compilers and Libraries*. Installing a compiler is not hard in itself. The runtime libraries that compiled programs need, however, must be available on every compute node. The standard practice is to install compilers into a shared directory on the network file system. To make those libraries visible to the dynamic linker across the cluster, you have two choices.
 
@@ -66,7 +66,7 @@ Never ask users to hand-edit `PATH` and `LD_LIBRARY_PATH` in `~/.bashrc`. Those 
 > - The shell finds binaries through `PATH`. The dynamic linker finds `.so` libraries through `RPATH`, `LD_LIBRARY_PATH`, `RUNPATH`, `/etc/ld.so.cache` (built by `ldconfig`), and `/lib64`.
 > - Updating `/etc/ld.so.conf` means running `ldconfig` on every node after each upgrade. Environment Modules switch `PATH` and `LD_LIBRARY_PATH` cleanly for each session or job.
 
-## 2. Environment Modules (Tcl) and Lmod (Lua) in depth (`SCL` Chapter 21)
+## 2. Environment Modules (Tcl) and Lmod (Lua) in depth (*Supercomputers for Linux Sysadmins* Chapter 21)
 
 ```mermaid
 flowchart TB
@@ -90,7 +90,7 @@ Most clusters want several compilers and MPI implementations installed at the sa
 
 Table 21-1 in *Supercomputers for Linux SysAdmins* Chapter 21 lists the main `module` commands. Each subcommand changes your environment in a different way, so read the meanings before you use them.
 
-| Command (`module <subcommand>`) | Meaning (`SCL` Table 21-1) |
+| Command (`module <subcommand>`) | Meaning (*Supercomputers for Linux Sysadmins* Table 21-1) |
 |---|---|
 | `add` \| `load` | Add modules to the environment |
 | `rm` \| `unload` | Uninstall modules from the environment, reversing their path changes |
@@ -182,7 +182,7 @@ The alternative project, Lua Modules (Lmod), was created at TACC to fix these pr
 > - A Tcl modulefile must start with `#%Module1.0` and print help text to `stderr`, never `stdout`, because `module` evaluates `stdout` as shell code.
 > - Lmod improves on classic Tcl Modules (3.2.10, paused from 2012 to 2017). It swaps conflicting versions automatically, marks dependent modules `inactive` when their compiler unloads, and reloads the matching build when a new compiler loads. It also provides `module spider` and sorts versions numerically, so `mkl/11.0` ranks above `mkl/4.0`.
 
-## 3. Build Systems: EasyBuild and Spack (`SCL` Chapter 21)
+## 3. Build Systems: EasyBuild and Spack (*Supercomputers for Linux Sysadmins* Chapter 21)
 
 Suppose you need a new version of a solver, and it depends on a dozen libraries. Building that whole chain by hand, one library at a time, is slow and easy to get wrong. Zhumatiy covers this problem in the *Build Systems* section of Chapter 21. Two open-source build frameworks dominate modern clusters: EasyBuild and Spack.
 
@@ -265,7 +265,7 @@ Four core Spack concepts come from the Spack documentation, at commit `29aea8a`.
 > - Install EasyBuild in a Python `venv`, register it with `eb --install-latest-eb-release --prefix /opt/easybuild`, check the configuration with `eb --show-config`, and build a toolchain stack such as `eb HPL-2.3-foss-2024a.eb`.
 > - Install Spack with `git clone -c feature.manyFiles=true --depth=2`, source `setup-env.sh`, build with `spack install`, and generate Lmod modulefiles with `spack module lmod refresh`.
 
-## 4. Node setup, minicluster staging, and the shared software tree (`SCL` Chapter 24)
+## 4. Node setup, minicluster staging, and the shared software tree (*Supercomputers for Linux Sysadmins* Chapter 24)
 
 How do you roll out operating systems, InfiniBand drivers, compilers, and shared software trees across a new cluster? You need a way to avoid cloning a broken configuration onto a hundred nodes. In *Supercomputers for Linux SysAdmins* Chapter 24, *Configuring the Control and Compute Nodes*, Zhumatiy lays out a battle-tested sequence of eleven steps for a minicluster deployment.
 
@@ -524,5 +524,5 @@ If a compute node installs its OS locally, give the OS partition 50–100 GB. Ke
   - Spack official documentation (shallow clone at commit `29aea8a`, 2026-10-23): `environments_basics`, `module_file_support`, `gpu_configuration`, and `binary_caches`.
   - `parallel-and-high-performance-computing` — Robert Robey & Yuliana Zamora, *Parallel and High Performance Computing*, Section 17.10 (environment modules and toolchain management).
 - **Run here:** `python3 code/part06/modules_spack.py` and `python3 code/part06/modules_spack_lab.py` (3 passed, 0 failed).
-- **Explicitly labelled inferences:** The `simulate_lmod_compiler_swap` (`gcc/15.1.0`, `intel/2025.0`, `clang/18.0`), `compare_module_versions_tcl_vs_lmod`, and `parse_spack_spec` (`petsc@3.21`) functions in `code/part06/modules_spack.py` and the `/opt/apps/<arch>` directory layout are deterministic models built on `SCL` Chapters 21 and 24 and the Spack documentation (`29aea8a`).
+- **Explicitly labelled inferences:** The `simulate_lmod_compiler_swap` (`gcc/15.1.0`, `intel/2025.0`, `clang/18.0`), `compare_module_versions_tcl_vs_lmod`, and `parse_spack_spec` (`petsc@3.21`) functions in `code/part06/modules_spack.py` and the `/opt/apps/<arch>` directory layout are deterministic models built on *Supercomputers for Linux Sysadmins* Chapters 21 and 24 and the Spack documentation (`29aea8a`).
 - **Not verified on live hardware:** Live execution of `module`, Lmod (`module spider`), Spack (`spack install hpl`), and EasyBuild (`eb HPL-2.3-foss-2024a.eb`) on a cluster is marked (`untested here`).

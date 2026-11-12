@@ -451,7 +451,7 @@ You can also declare the same template in YAML instead of clicking through the w
 
 *Ansible: Up and Running* chapter 23 (*Ansible Automation Platform*) traces the move from Ansible Tower to AAP 2. In AAP 2, the monolithic Tower execution engine was split apart. The Automation Controller is the control plane, with the web UI, REST API, RBAC and scheduler. Containerised Execution Environments run the jobs, and Automation Mesh dispatches them. The book also shows how to configure the entire controller as code with the `awx.awx` collection. It uses `tower_organization`, `tower_inventory`, `tower_host`, `tower_credential`, `tower_project`, `tower_job_template`, and `tower_job_launch` with `tower_job_wait`, which authenticate through `TOWER_HOST`, `TOWER_USERNAME` and `TOWER_PASSWORD`.
 
-### Architectural Best Practices and the CALMS Framework (`AUR` Chapter 24)
+### Architectural Best Practices and the CALMS Framework (*Ansible: Up and Running* Chapter 24)
 
 The closing chapter of *Ansible: Up and Running* (chapter 24, *Best Practices*) distills the principles that keep an automation platform maintainable across teams and years. Its first point is that open-source automation succeeds when components have high modularity and high option value. Co-founders Michael DeHaan and Greg DeKoenigsberg observed this. High modularity means loose coupling, so you can add custom modules and roles cleanly. High option value means composability. It works like the *Tao of HashiCorp*: you pick Terraform for cloud and hardware provisioning, and Ansible for OS and cluster configuration, then compose focused roles that each "do one thing well".
 

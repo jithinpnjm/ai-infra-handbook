@@ -113,7 +113,7 @@ The diagram shows the two designs side by side. On the sliced side, the idle mem
 | Buffer Architecture | Memory Allocation Mechanism | Behavior Under `8.0 MB` Single-Port AI Microburst (`64 MB` Total Pool across `64` Ports) | Impact on RoCEv2 & Collective Tail Latency |
 |---|---|---|---|
 | **Standard Sliced / Multi-Core Buffer** | Memory is statically partitioned per port or per ingress/egress slice (`64 MB / 64 = 1.0 MB` per port) | Port `1` exhausts its `1.0 MB` slice immediately and **drops `7.0 MB`** (or fires immediate `PFC` `XOFF` pauses) even though `63.0 MB` sits unused on Ports `2..64` | Premature `PFC` pause trees or `Go-Back-N` retransmission storms (`250x` amplification on `400G` links) |
-| **NVIDIA Spectrum Monolithic Fully Shared Buffer** | Single unified memory pool dynamically accessible by any port up to a dynamic threshold ($\alpha = 25\% \rightarrow 16.0\text`{ MB}`$) | Port `1` dynamically borrows `8.0 MB` from the shared pool (`<= 16.0 MB` cap), absorbing the entire microburst with **`0.0 MB` dropped** | Absorbs transient AI microbursts cleanly while `ECN`/telemetry-driven rate control paces senders |
+| **NVIDIA Spectrum Monolithic Fully Shared Buffer** | Single unified memory pool dynamically accessible by any port up to a dynamic threshold ($\alpha = 25\% \rightarrow 16.0\text{ MB}$) | Port `1` dynamically borrows `8.0 MB` from the shared pool (`<= 16.0 MB` cap), absorbing the entire microburst with **`0.0 MB` dropped** | Absorbs transient AI microbursts cleanly while `ECN`/telemetry-driven rate control paces senders |
 | **Hardware Microsecond Fairness** | Per-queue hardware arbitration across competing elephant and mouse flows | Prevents a `400 Gbps`/`800 Gbps` RDMA elephant flow from starving small control/collective barrier frames | All GPU ranks in a synchronous collective progress evenly without straggler skew |
 
 Notice the middle column. The sliced design drops packets, or triggers early pauses, while memory sits unused. The shared pool does neither for the same burst. Use this difference to judge any switch you evaluate.
@@ -158,7 +158,7 @@ Compare the GPU column with the storage column as you read down the table. They 
 Vendor datasheets highlight total chip throughput. A distributed job, though, only feels the narrowest bisection cut on its traffic path. So when you review any Spectrum leaf-spine topology, separate five metrics that people often mix up. They are single-port speed, port radix, aggregate switch capacity, shared-buffer behavior, and usable bisection capacity at the active traffic cut.
 
 $$
-\text`{Effective Available Capacity}` = \text`{Capacity of the relevant path cut after topology, policy, and }` N-1 \text`{ failure constraints}`
+\text{Effective Available Capacity} = \text{Capacity of the relevant path cut after topology, policy, and } N-1 \text{ failure constraints}
 $$
 
 Read the formula this way. Your real cluster bandwidth is capped by the surviving uplinks across the leaf-to-spine cut. Include maintenance drains and single-link failures when you work out that limit.
@@ -319,7 +319,7 @@ BlueField-3 SuperNICs and ConnectX-7 or ConnectX-8 adapters hide per-packet spra
 3. The SuperNIC tracks arrivals in a sliding hardware PSN bitmap. It holds back the final acknowledgment and Completion Queue Element until every delayed packet has arrived and the bitmap is contiguous.
 
 $$
-\text`{Target Address}`(\text`{PSN}`) = \text`{VA}`_\{\text`{base}`} + (\text`{PSN}` - \text`{PSN}`_\{\text`{start}`}) \times \text`{MTU}`
+\text{Target Address}(\text{PSN}) = \text{VA}_{\text{base}} + (\text{PSN} - \text{PSN}_{\text{start}}) \times \text{MTU}
 $$
 
 This equation tells the receiving NIC the exact destination byte address in GPU memory for any packet. It needs only the packet's Packet Sequence Number and the Queue Pair MTU.

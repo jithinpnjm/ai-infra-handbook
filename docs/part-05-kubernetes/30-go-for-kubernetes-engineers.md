@@ -330,13 +330,27 @@ Generated `DeepCopy()` methods exist for the API types. Never share an object an
 
 *Kubernetes Programming with Go*, Chapters 4 and 5, and *Network Programmability and Automation*, Chapter 7, by Philippe Martin and Jason Edelman et al., explain the inner mechanics of `apimachinery` and Go type conventions. Three of those mechanics are worth knowing.
 
-The first is quantities and `intstr.IntOrString` (*Kubernetes Programming with Go*, Chapter 4). `resource.Quantity`, from `k8s.io/apimachinery/pkg/api/resource`, uses exact fixed-point arithmetic, so it avoids IEEE-754 floating-point drift. It has two suffix families, binary `Ki..Ei` and decimal `n..E`. `BinarySI` uses steps of `2^(10x)`, with suffixes `Ki`, `Mi`, `Gi`, `Ti`, `Pi` and `Ei`, so `1Ki == 1024`. `DecimalSI` uses steps of `10^(3x)`, with suffixes `n`, `u`, `m`, `k`, `M`, `G`, `T`, `P` and `E`, so `1k == 1000` and `2500m == 2.5`.
+The first is quantities and `intstr.IntOrString` (*Kubernetes Programming with Go*, Chapter 4). `resource.Quantity` lives in `k8s.io/apimachinery/pkg/api/resource`. It stores numbers as exact fixed-point values, so you never get floating-point rounding errors such as `0.1 + 0.2` not equalling `0.3`. A quantity can be written in two suffix families.
+
+| Family | Step size | Suffixes | Example |
+|---|---|---|---|
+| `BinarySI` | powers of 1024 | `Ki`, `Mi`, `Gi`, `Ti`, `Pi`, `Ei` | `1Ki` is 1024 |
+| `DecimalSI` | powers of 1000 | `n`, `u`, `m`, `k`, `M`, `G`, `T`, `P`, `E` | `1k` is 1000, and `2500m` is 2.5 |
 
 `intstr.IntOrString`, from `k8s.io/apimachinery/pkg/util/intstr`, appears in `ServicePort.TargetPort`, `RollingUpdateDeployment.MaxSurge`/`MaxUnavailable` and `PodDisruptionBudget`. It holds either an `IntVal` or a `StrVal`, such as `"25%"`. You evaluate it with `intstr.GetScaledValueFromIntOrPercent(&intOrStr, totalReplicas, roundUp)`. This behaviour is modeled in `code/part05/client_go_mechanics_sim.py`.
 
 The second is the scheme and the `RESTMapper` (*Kubernetes Programming with Go*, Chapter 5). `runtime.Scheme` is an in-memory registry. It maps Go `reflect.Type` structs $\leftrightarrow$ `schema.GroupVersionKind` (`GVK`, via `AddKnownTypes`, `ObjectKinds`, `New`), and it performs defaulting (`Default`) and version conversion (`Convert`).
 
-Go code works with a `GVK`, such as `apps/v1, Kind=Deployment`, but HTTP REST endpoints use a `GVR`, such as `/apis/apps/v1/namespaces/{ns}/deployments`. A `RESTMapper` translates between the two with `RESTMapping`, `KindFor` and `ResourceFor`. It also reports whether a resource is `RESTScopeNamespace` or `RESTScopeRoot`. Two forms are worth knowing, `meta.DefaultRESTMapper` and `restmapper.NewDeferredDiscoveryRESTMapper`. The deferred form, built with `NewDeferredDiscoveryRESTMapper(memory.NewMemCacheClient(discoveryClient))`, queries `/apis` at runtime and caches discovery responses in memory.
+Go code names an object type by its group, version and kind, written `GVK`, such as `apps/v1, Kind=Deployment`. The HTTP API names the same thing by group, version and resource, written `GVR`, such as `/apis/apps/v1/namespaces/{ns}/deployments`. A `RESTMapper` converts between the two. It also tells you whether the resource lives inside a namespace or at cluster level.
+
+| Piece | What it does |
+|---|---|
+| `RESTMapping` | Gives the full mapping for one kind |
+| `KindFor` and `ResourceFor` | Convert one name into the other |
+| `meta.DefaultRESTMapper` | A mapper you fill in yourself |
+| `restmapper.NewDeferredDiscoveryRESTMapper` | Asks the API server at run time through `/apis` and caches the answers in memory |
+
+The deferred form is built with `NewDeferredDiscoveryRESTMapper(memory.NewMemCacheClient(discoveryClient))`.
 
 Serializers live in `k8s.io/apimachinery/pkg/runtime/serializer`. `json.NewSerializerWithOptions` handles both JSON and YAML. `protobuf.NewSerializer` uses `application/vnd.kubernetes.protobuf`, which suits high-throughput native core types.
 

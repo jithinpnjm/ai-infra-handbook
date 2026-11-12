@@ -351,7 +351,7 @@ Worked Sizing Across Three Canonical Production Regimes (code/part15/prefill_dec
 
 In a monolithic cluster, both phases are locked into the same parallelism degree. Disaggregation frees the architect to pick distinct parallelism strategies for prefill and decode.
 
-| Parallelism Dimension | Prefill Pool Setting (`ASP` Table 18-1) | Decode Pool Setting (`ASP` Table 18-2) | Architectural Rationale |
+| Parallelism Dimension | Prefill Pool Setting (*AI Systems Performance Engineering* Table 18-1) | Decode Pool Setting (*AI Systems Performance Engineering* Table 18-2) | Architectural Rationale |
 |---|---|---|---|
 | Tensor Parallelism | `TP_p = 2..8` | `TP_d = 1` (default) or `2..4` | Prefill amortizes AllReduce across thousands of prompt tokens to cut TTFT; decode minimizes `TP_d` to avoid 160 synchronous AllReduce barriers per token |
 | Pipeline Parallelism | `PP_p = 1..2` | `PP_d = 1` | Prefill streams prompt micro-batches through pipeline stages cleanly; single-token decode suffers severe pipeline bubbles if `PP_d > 1` |
@@ -476,10 +476,10 @@ Because prefill and decode workers live in separate pools, they do not need to u
 |---|---|---|---|
 | **Hopper Intra-Generation Split (`HLS` Ch. 7)** | H100 SXM5 (80 GB HBM3, 3.35 TB/s, 989 TFLOPS BF16 / 1,979 TFLOPS FP8) | H200 SXM (141 GB HBM3e, 4.8 TB/s, identical 989 TFLOPS BF16 / 1,979 TFLOPS FP8) | H100 delivers identical prefill FLOPS at lower CapEx; H200 gives **1.76x HBM capacity** and **1.43x HBM bandwidth** for decode |
 | **Hopper + Ada Cost-Optimized Split (`HLS` Ch. 7)** | H100 SXM5 (80 GB, 989 TFLOPS BF16) | L40S (48 GB GDDR6, 864 GB/s, lower cost/watt) | Maintains fast H100 TTFT on long prompts while offloading moderate-SLO decode streams to low-cost L40S GPUs |
-| **Splitwise Hopper + Ampere Split (`ASP` Ch. 18)** | 4x H100 (high Tensor Core TFLOPS/watt for prompt GEMMs) | 4x A100 80GB (2.0 TB/s HBM2e, lower cost/power decode) | **2.35x higher RPS** at identical cost & power vs 8-GPU homogeneous pool; **1.4x RPS at 20% lower cost**; or **6 GPUs matching 8 (25% savings)** |
-| **HexGen-2 Automated Heterogeneous Split (`ASP` Ch. 18)** | High-FLOPS prefill group with joint `TP_p`/`PP_p` optimizer | Cost-efficient decode group with asymmetric `TP_d` | Up to **2.0x peak (1.3x avg) higher throughput** at iso-price, or identical throughput at **30% lower cost** on Llama-2-70B |
-| **Blackwell Dynamo Reference Split (`ASP` Ch. 17)** | 4x B200 (180 GB HBM3e, 10 PFLOPS dense NVFP4) | 8x B300 (288 GB HBM3e, 15 PFLOPS dense NVFP4) | B300 provides **1.60x total HBM** and expands post-70B-weight KV capacity from 110 GB (122 GB reported) to **218 GB (1.98x)** |
-| **Grace Blackwell Rack & Rubin CPX (`ASP` Ch. 4, 17, 18)** | Rubin CPX (dedicated Context Processing chip) or GB200 prefill nodes | GB200 NVL72 (72 GPUs + 36 Grace CPUs, `~30 TB` unified memory, 130 TB/s NVSwitch) | Dynamo + NIXL on 72-GPU NVL72 delivers **30x higher throughput** on `~680B` MoE models and holds multi-million-token KV pools |
+| **Splitwise Hopper + Ampere Split (*AI Systems Performance Engineering* Ch. 18)** | 4x H100 (high Tensor Core TFLOPS/watt for prompt GEMMs) | 4x A100 80GB (2.0 TB/s HBM2e, lower cost/power decode) | **2.35x higher RPS** at identical cost & power vs 8-GPU homogeneous pool; **1.4x RPS at 20% lower cost**; or **6 GPUs matching 8 (25% savings)** |
+| **HexGen-2 Automated Heterogeneous Split (*AI Systems Performance Engineering* Ch. 18)** | High-FLOPS prefill group with joint `TP_p`/`PP_p` optimizer | Cost-efficient decode group with asymmetric `TP_d` | Up to **2.0x peak (1.3x avg) higher throughput** at iso-price, or identical throughput at **30% lower cost** on Llama-2-70B |
+| **Blackwell Dynamo Reference Split (*AI Systems Performance Engineering* Ch. 17)** | 4x B200 (180 GB HBM3e, 10 PFLOPS dense NVFP4) | 8x B300 (288 GB HBM3e, 15 PFLOPS dense NVFP4) | B300 provides **1.60x total HBM** and expands post-70B-weight KV capacity from 110 GB (122 GB reported) to **218 GB (1.98x)** |
+| **Grace Blackwell Rack & Rubin CPX (*AI Systems Performance Engineering* Ch. 4, 17, 18)** | Rubin CPX (dedicated Context Processing chip) or GB200 prefill nodes | GB200 NVL72 (72 GPUs + 36 Grace CPUs, `~30 TB` unified memory, 130 TB/s NVSwitch) | Dynamo + NIXL on 72-GPU NVL72 delivers **30x higher throughput** on `~680B` MoE models and holds multi-million-token KV pools |
 
 ### 5.2 Dynamic Autoscaling, Role Flipping, and QoS Admission Control
 
@@ -768,7 +768,7 @@ It computes the effective uncached prompt length `eff_len = max(0, prompt_length
 </details>
 
 <details>
-<summary>**8. Write the five-factor Smart Router `latency_cost` formula from ASP Chapter 17 and explain why a busy worker with a prefix cache hit beats an idle worker without a cache hit.**</summary>
+<summary>**8. Write the five-factor Smart Router `latency_cost` formula from *AI Systems Performance Engineering* Chapter 17 and explain why a busy worker with a prefix cache hit beats an idle worker without a cache hit.**</summary>
 
 The formula is `latency_cost = 3.0 * occupancy_percent + 1.0 * active_reqs - 10.0 * int(cache_match_flag) + 0.5 * mem_bw_percent - 1.0 * int(recent_prefix_flag)`, where lower cost is preferred. The `cache_match_flag` term carries a `-10.0` weight and `recent_prefix_flag` carries `-1.0`. As a result, a busy worker with a warm prefix match achieves a negative composite score of **-2.95**. That score easily beats an idle uncached worker that scores **+2.70**.
 </details>

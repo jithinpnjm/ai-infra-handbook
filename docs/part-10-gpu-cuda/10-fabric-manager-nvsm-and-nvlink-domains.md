@@ -107,7 +107,7 @@ On an eight-GPU HGX server, three operational mistakes routinely break the NVLin
 
 The first rule is about versions. Fabric Manager talks to the kernel NVSwitch driver through a private interface between compiled programs, called an application binary interface. The two must therefore come from the same release, so the Fabric Manager package version must equal the driver version.
 
-The second rule is about order. In the `systemd-analyze blame` example below, Fabric Manager needs 15.234 seconds to start, while `containerd` needs 10.123 and `kubelet` 5.234. The source example attributes that time to training 144 NVLink sub-links and programming four NVSwitch ASICs. In systemd, `Wants=` or `Requires=` declares a dependency but does not set startup order. Pair `Wants=` with `After=nvidia-fabricmanager.service` on both `containerd` and `kubelet`.
+The second rule is about order. In the `systemd-analyze blame` example below, Fabric Manager needs 15.234 seconds to start, while `containerd` needs 10.123 and `kubelet` 5.234. The source example attributes that time to training 144 NVLink sub-links and programming four NVSwitch ASICs. Treat 15 seconds as an illustrative figure from that example, not an NVIDIA specification. The real time varies with the system and driver version. In systemd, `Wants=` or `Requires=` declares a dependency but does not set startup order. Pair `Wants=` with `After=nvidia-fabricmanager.service` on both `containerd` and `kubelet`.
 
 The third rule is about what to replace. When `dmesg` logs Xid 74 for an NVLink error, recall from Chapter 9.3 that each SXM GPU is a bolted Field-Replaceable Unit. The four NVSwitch ASICs are soldered onto the HGX baseboard, so a failed switch ASIC means returning the whole baseboard to the vendor under a return merchandise authorization, or RMA.
 
@@ -471,7 +471,7 @@ A two-GPU PCIe bridge wires two GPUs directly together point-to-point and is ini
 <details>
 <summary>**4. Why must `systemctl edit containerd.service` and `kubelet.service` include both `After=nvidia-fabricmanager.service` and `Wants=nvidia-fabricmanager.service`?**</summary>
 
-In systemd, `Wants=` or `Requires=` declares a dependency but does not enforce startup ordering. Because Fabric Manager takes roughly 15 seconds to initialize NVSwitches while `containerd` and `kubelet` start faster, omitting `After=nvidia-fabricmanager.service` allows `kubelet` to schedule GPU pods before the NVLink mesh is ready.
+In systemd, `Wants=` or `Requires=` declares a dependency but does not enforce startup ordering. Because Fabric Manager can take many seconds to initialize NVSwitches (15 seconds in the book's example) while `containerd` and `kubelet` start faster, omitting `After=nvidia-fabricmanager.service` allows `kubelet` to schedule GPU pods before the NVLink mesh is ready.
 </details>
 
 <details>

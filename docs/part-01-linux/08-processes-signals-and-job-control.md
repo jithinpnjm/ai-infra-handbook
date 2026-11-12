@@ -248,7 +248,7 @@ ps axo stat,pid,comm | awk '$1 ~ /^D/'   # find processes in uninterruptible sle
 ps axo stat,ppid,pid,comm | awk '$1 ~ /^Z/'   # find zombies and their parents
 ```
 
-Add `w` (up to three times) to widen the command column. `VSZ` is the virtual size, and `RSS` is the resident set, which is the physical RAM the process holds right now. Chapter 1.17 explains the difference. To list threads inside a multithreaded process, such as `Xorg` or a multi-worker Python process, pass `ps m` (BSD style) or `ps m -o pid,tid,command`. See `HLW` Listings 8-1 and 8-2. Lines with a dash (`-`) in the `PID` column are individual threads of the process above them. The `tid` column shows each thread's kernel Thread ID (`TID`).
+Add `w` (up to three times) to widen the command column. `VSZ` is the virtual size, and `RSS` is the resident set, which is the physical RAM the process holds right now. Chapter 1.17 explains the difference. To list threads inside a multithreaded process, such as `Xorg` or a multi-worker Python process, pass `ps m` (BSD style) or `ps m -o pid,tid,command`. See *How Linux Works* Listings 8-1 and 8-2. Lines with a dash (`-`) in the `PID` column are individual threads of the process above them. The `tid` column shows each thread's kernel Thread ID (`TID`).
 
 ### What the default `ps` columns mean
 
@@ -690,7 +690,7 @@ ps -o pid,min_flt,maj_flt,rss,comm -p 1234 # (untested here)
 /usr/bin/time cal >/dev/null        # (untested here) e.g. 0.00user 0.00system 0:00.06elapsed ... (2major+254minor)pagefaults 0swaps
 ```
 
-When `/usr/bin/time cal > /dev/null` runs (`HLW` Section 8.5.4), it prints a summary line such as `0.00user 0.00system 0:00.06elapsed 0%CPU (0avgtext+0avgdata 3328maxresident)k 648inputs+0outputs (2major+254minor)pagefaults 0swaps`. That line shows `2` major page faults, which read from disk, and `254` minor page faults, which map pages already in RAM. When you run `free`, read the **available** figure, not **free**. Linux deliberately uses spare RAM for the page cache and gives it back on demand, so a small "free" is normal. A system is short of memory when *available* is small **and** it is swapping (`vmstat` `si`/`so`) or taking many major faults.
+When `/usr/bin/time cal > /dev/null` runs (*How Linux Works* Section 8.5.4), it prints a summary line such as `0.00user 0.00system 0:00.06elapsed 0%CPU (0avgtext+0avgdata 3328maxresident)k 648inputs+0outputs (2major+254minor)pagefaults 0swaps`. That line shows `2` major page faults, which read from disk, and `254` minor page faults, which map pages already in RAM. When you run `free`, read the **available** figure, not **free**. Linux deliberately uses spare RAM for the page cache and gives it back on demand, so a small "free" is normal. A system is short of memory when *available* is small **and** it is swapping (`vmstat` `si`/`so`) or taking many major faults.
 
 ### `vmstat`: the whole machine in one line per interval
 
@@ -704,7 +704,7 @@ procs -----------memory---------- ---swap-- -----io---- -system-- ------cpu-----
  2  0 320416 3027288 198636 1072564   0    0     0  1182  407  636  2  1 97  0  0
 ```
 
-This quiet-system output comes from *How Linux Works* (Section 8.5.4). The system has `320,416 KB` of memory swapped out (`swpd`) from some earlier pressure, and `3,027,696 KB` free. The `si` and `so` columns are both `0`, so the kernel is not swapping anything in or out right now. When a large program starts up (`HLW` Listing 8-3), `free` drops to `2861252` KB. `bi` jumps as code pages are faulted in from disk, and `us` rises from `25%` to `27%`. The `si` and `so` columns stay at `0` as long as RAM is sufficient.
+This quiet-system output comes from *How Linux Works* (Section 8.5.4). The system has `320,416 KB` of memory swapped out (`swpd`) from some earlier pressure, and `3,027,696 KB` free. The `si` and `so` columns are both `0`, so the kernel is not swapping anything in or out right now. When a large program starts up (Listing 8-3), `free` drops to `2861252` KB. `bi` jumps as code pages are faulted in from disk, and `us` rises from `25%` to `27%`. The `si` and `so` columns stay at `0` as long as RAM is sufficient.
 
 | Column | Meaning |
 |---|---|
@@ -753,7 +753,7 @@ When you open `iostat -x`, you will see that `r/s` and `w/s` are requests per se
 
 To see the I/O used by individual processes, use `iotop`. It gives a continuously updating, `top`-like display. The top lines show total and current disk read and write bandwidth. Each row is a thread (`TID`) with its `PRIO` (`be/4` is best-effort level 4, `rt` is real-time, and `idle` is idle), plus `USER`, `DISK READ`, `DISK WRITE`, `SWAPIN`, `IO>` and `COMMAND`.
 
-`pidstat` prints a scrolling trace over time, such as `pidstat -p 1329 1` (`HLW` Section 8.5.6). Its columns are `UID`, `PID`, `%usr`, `%system`, `%guest`, `%CPU`, `CPU` and `Command`. It does not overwrite the screen the way `top` does. So you can watch a process move between CPU cores, for example from `CPU 1` to `CPU 3`, second by second. The book's further topics (`HLW` Section 8.7) cover **`sar`**. It comes from `sysstat`, and a collector cron job or systemd timer feeds it. Because `sar` records statistics, you can look back. Ask what the CPU was doing at 03:10 last night with `sar -u -f /var/log/sa/sa23`, or use `sar -r` for memory. Related tools are `acct` and `psacct`, which record every process that ran and its resource use, and quotas.
+`pidstat` prints a scrolling trace over time, such as `pidstat -p 1329 1` (*How Linux Works* Section 8.5.6). Its columns are `UID`, `PID`, `%usr`, `%system`, `%guest`, `%CPU`, `CPU` and `Command`. It does not overwrite the screen the way `top` does. So you can watch a process move between CPU cores, for example from `CPU 1` to `CPU 3`, second by second. The book's further topics (*How Linux Works* Section 8.7) cover **`sar`**. It comes from `sysstat`, and a collector cron job or systemd timer feeds it. Because `sar` records statistics, you can look back. Ask what the CPU was doing at 03:10 last night with `sar -u -f /var/log/sa/sa23`, or use `sar -r` for memory. Related tools are `acct` and `psacct`, which record every process that ran and its resource use, and quotas.
 
 ### Partitions, per-process I/O and `pidstat` in detail
 
@@ -1113,7 +1113,7 @@ On Linux, the 1-, 5- and 15-minute load averages count runnable tasks (`R`) and 
 <details>
 <summary>7. How do you view individual threads of a process with `ps` and `top`?</summary>
 
-In `ps`, run `ps -eLf`, `ps m`, or `ps m -o pid,tid,command` (`HLW` Listings 8-1 and 8-2). Each thread appears under its parent `PID`, with its `TID` or `LWP`. In interactive `top`, press `H` to toggle thread view, and `1` to toggle per-CPU core rows.
+In `ps`, run `ps -eLf`, `ps m`, or `ps m -o pid,tid,command` (*How Linux Works* Listings 8-1 and 8-2). Each thread appears under its parent `PID`, with its `TID` or `LWP`. In interactive `top`, press `H` to toggle thread view, and `1` to toggle per-CPU core rows.
 </details>
 
 <details>
@@ -1201,5 +1201,5 @@ Add `#SBATCH --signal=B:USR1@180`, so that Slurm sends `SIGUSR1` to the batch sh
   - `supercomputers-for-linux-sysadmins-managing-modern-hpc-clusters-and-supercomputers-from-software-to` — Sergey Zhumatiy, *Supercomputers for Linux SysAdmins*, **Chapter 7: UNIX and Linux – the Basics** (processes: states `R`/`S`/`D`/`T`/`Z`, load average, `STOP`/`CONT`, zombies and `PPID`, `ps`, `top`/`htop`, signal table, `kill`/`pkill`, `nice`/`renice`, `ionice`) and **Chapter 12: Users – Quotas and Access Rights** (`ulimit` and `/etc/security/limits.conf` for login and compute nodes).
   - `systems-performance-2nd-edition` — Brendan Gregg, *Systems Performance*, 2nd ed., **Chapter 3: Operating Systems** (sections 3.1–3.8: terminology, monolithic vs microkernel/hybrid/unikernel/distributed OS Plan 9, kernel vs user mode, `vDSO`, system calls, interrupts top/bottom halves, `CONFIG_HZ`/`NO_HZ`/`nohz_full`, preemption, process life cycle and copy-on-write `fork()`, leaf-to-root stack traces, virtual memory and demand paging, VFS and the I/O stack, UNIX/BSD/Solaris/Linux kernel history from 48 syscalls in V7 to ~500, `systemd-analyze critical-chain`, `KPTI`/`PCID` 0.1%–6% syscall overhead, extended BPF verifier/maps/BTF, PGO/LTO/AutoFDO kernels 5%–20% Windows / Google LPC 2020, and 100% Linux on TOP500 since 2017).
 - **Run here:** `python3 code/part01/processes_signals_lab.py` (24 passed, 0 failed).
-- **Explicitly labelled inferences:** Kubernetes `terminationGracePeriodSeconds` (`30 s`), Slurm `KillWait` (`30 s`) and `--signal=B:USR1@180`, and PyTorch `DataLoader` / NCCL hang triage connect Linux process/signal/cgroup semantics to Chapters 1.9, 1.25, and Parts 5, 6, and 10 (including `vmstat` `25%` `us`, `26`–`29` `%CPU` ranges in `HLW` Listing 8-3).
+- **Explicitly labelled inferences:** Kubernetes `terminationGracePeriodSeconds` (`30 s`), Slurm `KillWait` (`30 s`) and `--signal=B:USR1@180`, and PyTorch `DataLoader` / NCCL hang triage connect Linux process/signal/cgroup semantics to Chapters 1.9, 1.25, and Parts 5, 6, and 10 (including `vmstat` `25%` `us`, `26`–`29` `%CPU` ranges in *How Linux Works* Listing 8-3).
 - **Not verified on live hardware:** All interactive VM commands (`ps`, `top`, `lsof`, `strace`, `vmstat`, `iostat`, `iotop`, `pidstat`, `systemd-run`) are marked (untested here) and should be executed on a disposable Linux VM.

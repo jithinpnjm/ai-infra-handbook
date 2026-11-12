@@ -558,7 +558,16 @@ Unlike `iptables`, which silently drops packets unless custom `LOG` rules are ad
 <details>
 <summary>18. What BPF map metrics should you monitor on a large Cilium cluster to prevent sudden connection drops?</summary>
 
-Cilium stores connection tracking, NAT and policy state in fixed-size kernel BPF maps, such as `cilium_ct4_global`, `cilium_snat_v4_external`, `cilium_lb4_services_v2` and `cilium_policy_*`. Monitor **`cilium_bpf_map_pressure`**, the ratio of current entries to maximum capacity. Also monitor **`cilium_drop_count_total{reason="CT: Map insertion failed"}`**. On high-connection-rate gateway or training nodes, enable dynamic sizing for `bpf.ctTcpMax` and `bpf.natMax` with `bpf-map-dynamic-size-ratio: 0.0025`.
+Cilium keeps connection tracking, NAT and policy state in kernel BPF maps. Each map has a fixed size, so a busy node can fill one and then fail to track new connections.
+
+| Map | What it holds |
+|---|---|
+| `cilium_ct4_global` | IPv4 connection tracking |
+| `cilium_snat_v4_external` | Source NAT entries for traffic leaving the cluster |
+| `cilium_lb4_services_v2` | Service load-balancing entries |
+| `cilium_policy_*` | Network policy entries |
+
+Watch **`cilium_bpf_map_pressure`**, which is the ratio of current entries to maximum capacity. Also watch **`cilium_drop_count_total{reason="CT: Map insertion failed"}`**. On gateway nodes or training nodes with a high connection rate, turn on dynamic sizing for `bpf.ctTcpMax` and `bpf.natMax` with `bpf-map-dynamic-size-ratio: 0.0025`.
 </details>
 
 <details>

@@ -318,7 +318,7 @@ NCCL_{{ k | upper }}={{ v }}
 
 Here the variables are `nccl_env: { debug: WARN, ib_hca: "mlx5_0,mlx5_1", socket_ifname: eth0 }`.
 
-### Network switchport templates, custom Python filters (`get_interface_speed`), and NGINX TLS templates (`NPA` Ch. 9 & `AUR` Ch. 3)
+### Network switchport templates, custom Python filters (`get_interface_speed`), and NGINX TLS templates (*Network Programmability and Automation* Ch. 9 & *Ansible: Up and Running* Ch. 3)
 
 Two classic walkthroughs from the Gem Books show how data and Jinja2 templates come together in practice. The code for both is modeled in `code/part04/yaml_jinja2_templates.py`.
 

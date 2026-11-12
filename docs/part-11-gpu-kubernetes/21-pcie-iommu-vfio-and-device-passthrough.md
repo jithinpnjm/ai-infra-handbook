@@ -570,5 +570,5 @@ Primary Sources and Review Provenance Ledger:
 
 ### Corrections to the author's notes
 - Corpus coverage: `vfio-pci` binding, IOMMU groups, and kernel parameters come from standard Linux practice and were not run on a live host.
-- Validation pass 2026-10-25: `validate_chapter.py` and `check_coverage.py` pass, and all host commands and manifests are marked untested. Custom resource API versions such as `kueue.x-k8s.io/v1beta1` and `resource.k8s.io/v1` change across releases. Console outputs quoted from the Volume notes are illustrative unless noted otherwise.
+- Provenance: the YAML manifests and host commands are marked untested here. Custom resource API versions such as `kueue.x-k8s.io/v1beta1` and `resource.k8s.io/v1` change across releases. Console outputs quoted from the Volume notes are illustrative unless noted otherwise.
 - Earlier author note: all numbers from *Systems Performance* Chapter 11, `volume-07/chapter-02`, and `volume-18/chapter-07` are preserved verbatim.

@@ -152,7 +152,7 @@ The same barrier explains why deep-buffer enterprise Ethernet switches cause tro
 
 In symbols, the job completion time is the end time minus the start time.
 
-$$\text`{JCT}` = t_\{\text`{job\_end}`} - t_\{\text`{job\_start}`}$$
+$$\text{JCT} = t_{\text{job\_end}} - t_{\text{job\_start}}$$
 
 ```text
 Tail Latency and Synchronous Cluster Efficiency Math (compute_tail_latency_jct & compute_synchronous_efficiency):
@@ -382,7 +382,7 @@ Real jobs do not always reach that ideal, because bucket size and Python code hy
 
 The two formulas below describe the serial case and the ideal overlapped case.
 
-$$t_\{\text`{serial}`} = t_\{\text`{compute}`} + t_\{\text`{comm}`}, \qquad t_\{\text`{ideal\_overlap}`} = \max(t_\{\text`{compute}`}, t_\{\text`{comm}`})$$
+$$t_{\text{serial}} = t_{\text{compute}} + t_{\text{comm}}, \qquad t_{\text{ideal\_overlap}} = \max(t_{\text{compute}}, t_{\text{comm}})$$
 
 ```text
 Compute-Communication Overlap, Bucketing, and DP vs DDP Benchmarks (ASP Ch 4 & V7 Ch 10):
@@ -419,12 +419,12 @@ The table compares the algorithms on step count, bytes per GPU, latency scaling,
 
 | Algorithm (`NCCL_ALGO`) | Step Count (`AllReduce`) | Per-GPU Bytes Transferred | Latency vs Bandwidth Scaling | Ideal Regime & Hardware Support |
 |---|---:|---:|---|---|
-| **Ring (`ReduceScatter` or `AllGather`)** | $n - 1$ steps (`7` at $n=8$) | $B \times \frac`{n - 1}``{n}`$ (`87.5 MB` for $B=100\text`{ MB}`, n=8$) | $O(N)$ latency hops; `100%` link-balanced bandwidth | Building block of Ring `AllReduce` and `FSDP` |
-| **Ring `AllReduce`** (`RS` + `AG`) | $2(n - 1)$ steps (`14` at $n=8$; `2,046` at $n=1,024$) | $2 B \times \frac`{n - 1}``{n}`$ (`175 MB` at $n=8$, chunk $B/n = 12.5\text`{ MB}`$/step) | **Bandwidth-optimal** for large tensors, but $O(N)$ hop latency hurts at `1,000+` GPUs | Large messages (`> 10s of MB`) on small-to-medium rank counts |
+| **Ring (`ReduceScatter` or `AllGather`)** | $n - 1$ steps (`7` at $n=8$) | $B \times \frac{n - 1}{n}$ (`87.5 MB` for $B=100\text{ MB}, n=8$) | $O(N)$ latency hops; `100%` link-balanced bandwidth | Building block of Ring `AllReduce` and `FSDP` |
+| **Ring `AllReduce`** (`RS` + `AG`) | $2(n - 1)$ steps (`14` at $n=8$; `2,046` at $n=1,024$) | $2 B \times \frac{n - 1}{n}$ (`175 MB` at $n=8$, chunk $B/n = 12.5\text{ MB}$/step) | **Bandwidth-optimal** for large tensors, but $O(N)$ hop latency hurts at `1,000+` GPUs | Large messages (`> 10s of MB`) on small-to-medium rank counts |
 | **Tree `AllReduce`** | $2 \lceil \log_2 n \rceil$ steps (`6` at $n=8$; `20` at $n=1,024$) | Hierarchical reduce to root + broadcast down | **$O(\log N)$ latency** (`20` steps vs `2,046` for Ring at $n=1,024$) | Small/medium latency-bound messages or massive node counts |
 | **`CollNet`** (`Direct` / `Chain`) | Local intra-node ring/tree + cross-node leader tree | Offloads inter-group reduction to switch fabric | Combines intra-node NVLink bandwidth with inter-node `SHARP` | Multi-node clusters with InfiniBand `SHARP` (`NCCL_COLLNET_ENABLE=1`) |
 | **`PAT`** (Parallel Aggregated Tree) | Interleaved round-robin chunked trees | Near-Ring bandwidth (`2B(n-1)/n`) | Bounds per-segment startup latency to **$O(\log N)$** while keeping links saturated | Medium-to-large messages across multi-node topologies (up to `~7.6x` small/medium speedup with symmetric memory) |
-| **`SHARP` / `NVLS` (`NVLSTree`)** | Switch-assisted in-network reduction + multicast | **`ReduceScatter` receive: $B / n$** (`12.5 MB` at $n=8$)<br/>**Volume ratio: $\frac`{1}``{n - 1}`$** (`1/7` at $n=8$; `1/1,023` at $n=1,024$) | Cuts endpoint traffic by $1/(n-1)$, drops overlapped `RS`+`AG` phase time by **`~1/2`**, and yields **`2x–5x` `AllReduce` speedup** | Intra-rack `NVSwitch` (`NVLS`, `72`-GPU `NVL72` at `~130 TB/s`) and `Quantum` InfiniBand switches (`SHARP`) |
+| **`SHARP` / `NVLS` (`NVLSTree`)** | Switch-assisted in-network reduction + multicast | **`ReduceScatter` receive: $B / n$** (`12.5 MB` at $n=8$)<br/>**Volume ratio: $\frac{1}{n - 1}$** (`1/7` at $n=8$; `1/1,023` at $n=1,024$) | Cuts endpoint traffic by $1/(n-1)$, drops overlapped `RS`+`AG` phase time by **`~1/2`**, and yields **`2x–5x` `AllReduce` speedup** | Intra-rack `NVSwitch` (`NVLS`, `72`-GPU `NVL72` at `~130 TB/s`) and `Quantum` InfiniBand switches (`SHARP`) |
 
 Use the table as a lookup. Tree wins on latency-bound messages, while Ring and the in-network options win when bandwidth dominates.
 
@@ -811,7 +811,7 @@ DCQCN End-to-End ECN Rate Control and Hop-by-Hop PFC Pause:
 </details>
 
 <details>
-<summary>**13. Compare serial step time versus ideal overlapped step time for 10 ms compute and 12 ms AllReduce, and state the measured DDP overlap gains from ASP Chapter 4 Tables 4-1 and 4-2.**</summary>
+<summary>**13. Compare serial step time versus ideal overlapped step time for 10 ms compute and 12 ms AllReduce, and state the measured DDP overlap gains from *AI Systems Performance Engineering* Chapter 4 Tables 4-1 and 4-2.**</summary>
 
 ```text
 Compute-Communication Overlap Results:

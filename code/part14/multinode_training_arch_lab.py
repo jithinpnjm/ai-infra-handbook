@@ -175,7 +175,7 @@ def run_lab() -> int:
     )
 
     check(
-        "17. At 16 GPUs (2 nodes) scaling efficiency exceeds 96%, while at 16,384 GPUs (2,048 nodes, 11 tree hops) exposed communication reduces efficiency to ~93.9%",
+        "17. At 16 GPUs (2 nodes) scaling efficiency exceeds 96%, while at 16,384 GPUs (2,048 nodes, 11 tree hops) exposed communication reduces efficiency to ~94.4%",
         eff_16 > 0.96 and 0.90 <= eff_16384 <= 0.95,
     )
 

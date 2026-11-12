@@ -127,7 +127,7 @@ In C++ code, uncoalesced strided access most commonly comes from storing records
 
 Converting the layout to a Structure of Arrays stores all first coordinates in one contiguous array. Separate contiguous arrays hold the remaining coordinates. When all threads in a warp read the first coordinate array, all lanes read contiguous floats in a single cache line.
 
-| Nsight Compute Metric | Before (`uncoalescedCopy`, `stride = 2`) | After (`coalescedCopy`, `stride = 1`) | Improvement Factor (*ASP* Ch 7 Table 7-1, p. 220) |
+| Nsight Compute Metric | Before (`uncoalescedCopy`, `stride = 2`) | After (`coalescedCopy`, `stride = 1`) | Improvement Factor (*AI Systems Performance Engineering* Ch 7 Table 7-1, p. 220) |
 |---|---:|---:|---|
 | **DRAM Throughput (`% of peak`)** | `25%` | **`90%`** | **`3.6x` higher** |
 | **Global Memory Load Efficiency** | `23%` | **`99%`** | **`4.3x` higher** (`100%` theoretical useful bytes) |
@@ -301,7 +301,7 @@ Second, maximum vector width doubled on Blackwell with CUDA 13. On Hopper and ea
 
 Comparing a scalar copy kernel against a 16-byte `float4` vectorized copy kernel shows how wide loads reduce instruction overhead and improve bus utilization.
 
-| Nsight Compute Metric | Before (`copyScalar`) | After (`copyVector16B` / `float4`) | Improvement Factor (*ASP* Ch 7 Table 7-2, p. 225) |
+| Nsight Compute Metric | Before (`copyScalar`) | After (`copyVector16B` / `float4`) | Improvement Factor (*AI Systems Performance Engineering* Ch 7 Table 7-2, p. 225) |
 |---|---:|---:|---|
 | **Global Memory Load Efficiency** | `28%` | **`97%`** | **`~3.5x` higher** |
 | **Average Sectors per Request** | `31.8` | **`4.0` (per `128 B` line)** | Eliminates scattered sector waste |
@@ -505,7 +505,7 @@ Shared-memory tiling partitions the input matrices into square tiles stored in f
 
 Third, every thread loops across the elements of the cached tile and accumulates products from fast on-chip shared memory instead of slow off-chip HBM. Each global memory load is reused 32 times on chip. Fourth, the block calls `__syncthreads()` a second time before advancing to load the next tile. This second barrier prevents faster threads from overwriting the shared buffer while slower threads are still reading it.
 
-| Nsight Compute Metric | Before (`naiveMatMul`) | After (`tiledMatMul` `32 × 32`) | Architectural Interpretation (*ASP* Ch 7 Table 7-4, pp. 230–231) |
+| Nsight Compute Metric | Before (`naiveMatMul`) | After (`tiledMatMul` `32 × 32`) | Architectural Interpretation (*AI Systems Performance Engineering* Ch 7 Table 7-4, pp. 230–231) |
 |---|---:|---:|---|
 | **Global Memory Load Sectors** | `9,800` | **`1,200`** | **`8.17x` (`~8x`) reduction** in 32-byte HBM sector reads from `32x` reuse |
 | **DRAM Throughput (`% of peak`)** | `90%` (wasteful) | **`25%` (`3.6x` less)** | Desirable drop because redundant HBM traffic was removed (`10 GB/s -> 21 GB/s`) |
@@ -564,7 +564,7 @@ Shared-Memory Bank Modulo Math (32 banks x 4-byte width = 128-byte wrap; analyze
   - Uniform Broadcast (tile[const_r][const_c] across 32 lanes): Same address across all lanes -> hardware single-cycle broadcast (0 bank conflicts)
 ```
 
-| Nsight Compute Metric | Before (`tile[32][32]`, no padding) | After (`tile[32][33]`, `+1` padding) | Improvement (*ASP* Ch 7 Table 7-5, p. 237) |
+| Nsight Compute Metric | Before (`tile[32][32]`, no padding) | After (`tile[32][33]`, `+1` padding) | Improvement (*AI Systems Performance Engineering* Ch 7 Table 7-5, p. 237) |
 |---|---:|---:|---|
 | **Shared-Memory Load Bank Conflicts** | `4.8 million` | **`0`** | **100% eliminated** |
 | **Shared-Memory Utilization (`% of peak`)** | `52%` | **`100%`** | Full 32-bank parallel throughput |
@@ -804,7 +804,7 @@ Inference kernels frequently perform random gather lookups into immutable tables
 
 For larger lookup tables, the GPU's L1 read-only data cache can serve scattered reads without polluting the regular read/write cache lines. However, the compiler will only emit read-only `__ldg()` loads automatically if it can prove that the table pointer is never written and never aliases another pointer. Adding `const __restrict__` to the input pointer gives the compiler that guarantee and cuts off-chip DRAM traffic by three times.
 
-| Nsight Compute Metric | Before (`const float* table`, no `__restrict__`) | After (`const float* __restrict__ table`) | Improvement (*ASP* Ch 7 Table 7-6, p. 243) |
+| Nsight Compute Metric | Before (`const float* table`, no `__restrict__`) | After (`const float* __restrict__ table`) | Improvement (*AI Systems Performance Engineering* Ch 7 Table 7-6, p. 243) |
 |---|---:|---:|---|
 | **Global Memory Load Efficiency** | `52%` | **`97%`** | Most fetched cache lines carry useful data |
 | **DRAM Throughput (`GB/s`)** | `600 GB/s` | **`200 GB/s`** | **`3.0x` less off-chip DRAM traffic** |
@@ -847,7 +847,7 @@ processTile(tiles[(nTiles - 1) & 1]);
 pipe.consumer_release();
 ```
 
-| Nsight Compute Metric | Before (No Prefetch) | After (`TMA` + `cuda::memcpy_async` Double Buffering) | Improvement (*ASP* Ch 7 Table 7-7, pp. 248–249) |
+| Nsight Compute Metric | Before (No Prefetch) | After (`TMA` + `cuda::memcpy_async` Double Buffering) | Improvement (*AI Systems Performance Engineering* Ch 7 Table 7-7, pp. 248–249) |
 |---|---:|---:|---|
 | **Global Memory Load Efficiency** | `23%` | **`99%`** | **`4.3x` higher** |
 | **Average Sectors per Request** | `6.4` | **`4.0` (optimal)** | Coalesced 128-byte TMA bulk transfers |

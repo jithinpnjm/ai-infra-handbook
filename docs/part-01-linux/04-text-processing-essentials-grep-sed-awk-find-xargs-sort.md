@@ -89,12 +89,12 @@ Most characters match themselves: letters, digits and spaces. A few characters h
 | `[abc]`, `[a-z]`, `[0-9]` | any one character from the set or range |
 | `[^abc]` | any one character **not** in the set |
 | the pipe character (`\|` in table cells), written with a leading backslash in basic regex and plain in extended | alternation: this or that (for example `error` or `fail`) |
-| `( )` | grouping and capture |
+| `()` | grouping and capture |
 | `{n,m}` | between n and m repetitions |
 | `\.` | a literal dot (a backslash removes a special meaning) |
 | `[[:digit:]]`, `[[:space:]]`, `[[:alpha:]]` | named character classes (locale-aware) |
 
-Two dialects matter, and the difference trips up many readers. Basic regular expressions, or BRE, are the default in `grep` and `sed`. In BRE, the characters `+ ? | ( ) { }` are literal unless you put a backslash in front of them. Extended regular expressions, or ERE, treat those characters as operators directly. Turn ERE on with `grep -E` or `sed -E`. `awk` already uses ERE. Use `-E` unless you have a reason not to, because the pattern is easier to read. GNU `grep -P` enables Perl-compatible expressions, such as lookaheads and `\d`. That is a GNU extension, so macOS `grep` does not provide it.
+Two dialects matter, and the difference trips up many readers. Basic regular expressions, or BRE, are the default in `grep` and `sed`. In BRE, the characters `+ ? | () { }` are literal unless you put a backslash in front of them. Extended regular expressions, or ERE, treat those characters as operators directly. Turn ERE on with `grep -E` or `sed -E`. `awk` already uses ERE. Use `-E` unless you have a reason not to, because the pattern is easier to read. GNU `grep -P` enables Perl-compatible expressions, such as lookaheads and `\d`. That is a GNU extension, so macOS `grep` does not provide it.
 
 Here are five patterns, each described in words first and then written out:
 

@@ -73,10 +73,10 @@ Every element fetched from Shared Memory into registers participates in multiple
 
 | Staging Tier or Path | Hardware Units Involved | Tile / Buffer Sizing & Bandwidth | Source Reference |
 |---|---|---|---|
-| Single-level SMEM tiling baseline | HBM DRAM → L2 → Shared Memory (`SMEM`) | `32 × 32` tile = `32` MACs per float (`1,024` total MACs/tile), lifts intensity `1.5 → 8.0 FLOPs/byte` | Chapter 10.13 & *ASP* Ch 9, p. 297 |
-| Tier 1: Macro-tile prefetch | HBM DRAM → L2 → `SMEM` via TMA / `cp.async` | `128 × 128` or `256 × 128` macro-tile in ping-pong buffers (`A0/A1`, `B0/B1`) | *ASP* Ch 9, pp. 296–298 & Fig. 9-2 |
-| Tier 2: Register microtile / TMEM | `SMEM` → Registers (`float4`, `half2`) or `256 KB` per-SM `TMEM` | `4 × 4` or `8 × 8` thread sub-tile (`single-cycle`, tens of TB/s) or `tcgen05.mma` accumulator | *ASP* Ch 9, pp. 296–298 |
-| Host-to-device Unified Memory prefetch | Grace CPU → Blackwell GPU over NVLink-C2C | `900 GB/s` NVLink-C2C overlapped via `cudaMemPrefetchAsync()` | *ASP* Ch 9, p. 298 |
+| Single-level SMEM tiling baseline | HBM DRAM → L2 → Shared Memory (`SMEM`) | `32 × 32` tile = `32` MACs per float (`1,024` total MACs/tile), lifts intensity `1.5 → 8.0 FLOPs/byte` | Chapter 10.13 & *AI Systems Performance Engineering* Ch 9, p. 297 |
+| Tier 1: Macro-tile prefetch | HBM DRAM → L2 → `SMEM` via TMA / `cp.async` | `128 × 128` or `256 × 128` macro-tile in ping-pong buffers (`A0/A1`, `B0/B1`) | *AI Systems Performance Engineering* Ch 9, pp. 296–298 & Fig. 9-2 |
+| Tier 2: Register microtile / TMEM | `SMEM` → Registers (`float4`, `half2`) or `256 KB` per-SM `TMEM` | `4 × 4` or `8 × 8` thread sub-tile (`single-cycle`, tens of TB/s) or `tcgen05.mma` accumulator | *AI Systems Performance Engineering* Ch 9, pp. 296–298 |
+| Host-to-device Unified Memory prefetch | Grace CPU → Blackwell GPU over NVLink-C2C | `900 GB/s` NVLink-C2C overlapped via `cudaMemPrefetchAsync()` | *AI Systems Performance Engineering* Ch 9, p. 298 |
 
 ### 1.2 Tiling across SMs with Thread Block Clusters and TMA multicast
 
@@ -89,9 +89,9 @@ By default, CUDA guarantees portable cluster sizes up to eight thread blocks. On
 | Cluster Configuration | CTAs per Cluster | HBM Traffic Reduction / Intensity Multiplier | Portability & API Requirement |
 |---|---|---|---|
 | Single CTA (no cluster) | `1` CTA | `1x` (baseline) | Standard `<<<grid, block>>>` launch |
-| `2 × 2` Thread Block Cluster | `4` CTAs | Up to `4x` less HBM traffic (`4x` reuse via TMA multicast into DSMEM) | Portable across Hopper and Blackwell (*ASP* Ch 9, pp. 298–299, Figs. 9-3 & 9-4) |
+| `2 × 2` Thread Block Cluster | `4` CTAs | Up to `4x` less HBM traffic (`4x` reuse via TMA multicast into DSMEM) | Portable across Hopper and Blackwell (*AI Systems Performance Engineering* Ch 9, pp. 298–299, Figs. 9-3 & 9-4) |
 | Max portable cluster | `8` CTAs | Up to `8x` reuse | Default CUDA portable cluster ceiling |
-| Blackwell non-portable cluster | `16` CTAs | Up to `16x` reuse | Requires `cudaFuncAttributeNonPortableClusterSizeAllowed` on `sm_100` (*ASP* Ch 9, p. 299) |
+| Blackwell non-portable cluster | `16` CTAs | Up to `16x` reuse | Requires `cudaFuncAttributeNonPortableClusterSizeAllowed` on `sm_100` (*AI Systems Performance Engineering* Ch 9, p. 299) |
 
 The 16-block cluster is something you opt into, not the default. Blackwell can run clusters larger than the portable limit of 8 thread blocks, but only after you set `cudaFuncAttributeNonPortableClusterSizeAllowed` on the kernel. Without that attribute, the portable ceiling still applies.
 
@@ -178,8 +178,8 @@ Recomputation applies the opposite trade-off by recalculating cheap intermediate
 
 | Technique | Pattern / Mechanism | Hardware & Batch Constraints | Effective Gain |
 |---|---|---|---|
-| Hardware 2:4 structured sparsity (`cuSPARSELt`, `to_sparse_semi_structured()`) | At least `2` of every `4` weights zeroed (`8` of every `16`-element chunk = `50%` sparsity) | Ampere, Hopper, Blackwell Sparse Tensor Cores; post-training inference with calibration; requires large batches (`batch_size = 128` or `256` vs `batch_size = 1`) | Up to `2x` Tensor Core speedup and `~2x` arithmetic intensity (*ASP* Ch 9, pp. 303–304, 310, Fig. 9-5) |
-| Recomputation vs memory (Activation Checkpointing) | Recompute `x * x`, GELU, or attention activations in registers (`~1–4` ALU cycles) instead of HBM round-trips (`~800` cycles) | Memory-bandwidth bound kernels or VRAM-capacity bound training loops | Eliminates HBM write + read traffic at minimal compute cost (*ASP* Ch 9, p. 305) |
+| Hardware 2:4 structured sparsity (`cuSPARSELt`, `to_sparse_semi_structured()`) | At least `2` of every `4` weights zeroed (`8` of every `16`-element chunk = `50%` sparsity) | Ampere, Hopper, Blackwell Sparse Tensor Cores; post-training inference with calibration; requires large batches (`batch_size = 128` or `256` vs `batch_size = 1`) | Up to `2x` Tensor Core speedup and `~2x` arithmetic intensity (*AI Systems Performance Engineering* Ch 9, pp. 303–304, 310, Fig. 9-5) |
+| Recomputation vs memory (Activation Checkpointing) | Recompute `x * x`, GELU, or attention activations in registers (`~1–4` ALU cycles) instead of HBM round-trips (`~800` cycles) | Memory-bandwidth bound kernels or VRAM-capacity bound training loops | Eliminates HBM write + read traffic at minimal compute cost (*AI Systems Performance Engineering* Ch 9, p. 305) |
 
 ### 2.3 PyTorch arithmetic intensity levers
 
@@ -191,9 +191,9 @@ Third, `torch.nested.nested_tensor` packs variable-length sequences into a singl
 
 | PyTorch Lever | API / Configuration | Workload Math / Example | Memory Traffic Saved |
 |---|---|---|---|
-| Compiler kernel fusion | `torch.compile` (TorchInductor) | Fuses pointwise + reduction op chains into single Triton/CUDA kernel | Eliminates intermediate HBM read/write passes (*ASP* Ch 9, p. 305) |
-| Explicit FlashAttention backend | `with sdpa_kernel(SDPBackend.FLASH_ATTENTION):` | Tiles `Q`, `K`, `V` in SRAM (`batch, seq, head_dim`) with online softmax | Avoids materializing `N × N` attention matrix in HBM (*ASP* Ch 9, pp. 305–306) |
-| Ragged batching (`NestedTensor`) | `torch.nested.nested_tensor(seqs, layout=torch.jagged)` | Batch lengths `[128, 512, 256, 1024]` = `1,920` real tokens vs `4 × 1,024 = 4,096` padded tokens | Saves `(4,096 - 1,920) / 4,096 = 53.1%` wasted padding traffic (*ASP* Ch 9, p. 306) |
+| Compiler kernel fusion | `torch.compile` (TorchInductor) | Fuses pointwise + reduction op chains into single Triton/CUDA kernel | Eliminates intermediate HBM read/write passes (*AI Systems Performance Engineering* Ch 9, p. 305) |
+| Explicit FlashAttention backend | `with sdpa_kernel(SDPBackend.FLASH_ATTENTION):` | Tiles `Q`, `K`, `V` in SRAM (`batch, seq, head_dim`) with online softmax | Avoids materializing `N × N` attention matrix in HBM (*AI Systems Performance Engineering* Ch 9, pp. 305–306) |
+| Ragged batching (`NestedTensor`) | `torch.nested.nested_tensor(seqs, layout=torch.jagged)` | Batch lengths `[128, 512, 256, 1024]` = `1,920` real tokens vs `4 × 1,024 = 4,096` padded tokens | Saves `(4,096 - 1,920) / 4,096 = 53.1%` wasted padding traffic (*AI Systems Performance Engineering* Ch 9, p. 306) |
 
 ```python
 from torch.nn.attention import SDPBackend, sdpa_kernel
@@ -213,7 +213,7 @@ Each step down the precision ladder raises arithmetic intensity and peak through
 
 For large-batch training and inference, 8-bit and 4-bit formats push efficiency even further. FP8 managed by Transformer Engine and INT8 accelerated by the `DP4A` dot-product instruction cut weight traffic by seventy-five percent compared to FP32. On Blackwell GPUs, two-level micro-scaled NVFP4 cuts weight bytes eightfold and raises dense Tensor Core throughput by more than two orders of magnitude over scalar FP32.
 
-| Precision Format | Bytes per Element | Relative Weight Traffic vs FP32 | Arithmetic Intensity Multiplier vs FP32 | Hardware Execution Engine & Key Rule (*ASP* Ch 9, pp. 309–312) |
+| Precision Format | Bytes per Element | Relative Weight Traffic vs FP32 | Arithmetic Intensity Multiplier vs FP32 | Hardware Execution Engine & Key Rule (*AI Systems Performance Engineering* Ch 9, pp. 309–312) |
 |---|---:|---:|---:|---|
 | FP32 (IEEE 754) | `4.0 B` | `1.0x` (baseline) | `1.0x` | Scalar CUDA cores (`~80 TFLOPS` dense on B200); used for master weights, MMA accumulators, Softmax, and LayerNorm. |
 | TF32 (`19-bit`: `8e + 10m`) | `4.0 B` (in HBM) | `1.0x` | Tensor Core speedup | Enabled via `torch.set_float32_matmul_precision('high')`; keeps 8-bit exponent while running on Tensor Cores. |
@@ -233,7 +233,7 @@ Sizing tiles to fit this dedicated Tensor Memory budget is essential. A full-pre
 | Buffer or Tile Configuration | Dimensions & Precision | Exact Byte & KiB Footprint | Share of Per-SM Memory Ceiling |
 |---|---|---|---|
 | `two_stage_pipeline.cu` (`stage_ab_tiles`, pp. 308–309) | `4` buffers (`A0, A1, B0, B1`), `tile_elems % 128 == 0` (`32 × 4` for `float4`) | `4 × tile_elems × sizeof(float)` = `16,384 B` (`16.0 KiB` for `tile_elems = 1,024`) | Fits well inside `227 KB` per-SM `SMEM` (`65,536` regs/SM untouched) |
-| Blackwell per-SM Tensor Memory (`TMEM`) capacity | Dedicated on-chip Tensor Core SRAM (`sm_100`) | `262,144 B` (`256.0 KiB` = `256 KB`) | `100%` hardware ceiling per SM (*ASP* Ch 9, pp. 307–315, Fig. 9-6) |
+| Blackwell per-SM Tensor Memory (`TMEM`) capacity | Dedicated on-chip Tensor Core SRAM (`sm_100`) | `262,144 B` (`256.0 KiB` = `256 KB`) | `100%` hardware ceiling per SM (*AI Systems Performance Engineering* Ch 9, pp. 307–315, Fig. 9-6) |
 | Wide FP16 / BF16 tile in `TMEM` | `256 × 512` at `2 B` per element | `256 × 512 × 2 B = 262,144 B` (`256.0 KiB`) | `100%` of per-SM `TMEM` |
 | Square FP32 accumulator tile in `TMEM` | `256 × 256` at `4 B` per element | `256 × 256 × 4 B = 262,144 B` (`256.0 KiB`) | `100%` of per-SM `TMEM` |
 | Square NVFP4 micro-scaled tile in `TMEM` | `256 × 256` at `0.5 B` per element | `256 × 256 × 0.5 B = 32,768 B` (`32.0 KiB`) | `12.5%` of per-SM `TMEM` (allows multiple FP4 tiles on chip) |
@@ -397,7 +397,7 @@ Instruction: ld.global.nc.l1::no_allocate.l2::256b
 Fallback Guard: DISABLE_AGGRESSIVE_PTX_INSTRS=1
 ```
 
-| Instruction Component / Flag | Hardware Behavior & Operational Role (*ASP* Ch 9, pp. 321–322) |
+| Instruction Component / Flag | Hardware Behavior & Operational Role (*AI Systems Performance Engineering* Ch 9, pp. 321–322) |
 |---|---|
 | `ld.global.nc` | Issues a non-coherent (`nc`) global memory load through the read-only/non-coherent path on H800 GPUs. |
 | `l1::no_allocate` | Prevents the hardware from allocating cache lines in L1, preserving hot L1 working sets for concurrent compute warps. |
@@ -486,7 +486,7 @@ Even well-intentioned kernel fusions and precision optimizations can degrade per
 
 | # | Failure Mode | Production / Profiler Symptom | Root Cause | Fix |
 |---|---|---|---|---|
-| 1 | Unfused multi-pass elementwise/reduction chains (`36 B` vs `12 B`) | Nsight Compute Roofline places kernels at `0.083–0.111 FLOPs/byte` with `DRAM Throughput > 85%` and low Tensor Core utilization. | Separate kernels (`square`, `reduce`, `divide`) write and re-read intermediate tensors through HBM (`36 B`/elem, *ASP* Ch 9 pp. 300–302). | Fuse vertically/horizontally (`fusedL2Norm` or `@torch.compile`), keeping intermediates in registers/SMEM (`12 B`/elem = `3x` less HBM traffic) and using `* rsqrtf(x)`. |
+| 1 | Unfused multi-pass elementwise/reduction chains (`36 B` vs `12 B`) | Nsight Compute Roofline places kernels at `0.083–0.111 FLOPs/byte` with `DRAM Throughput > 85%` and low Tensor Core utilization. | Separate kernels (`square`, `reduce`, `divide`) write and re-read intermediate tensors through HBM (`36 B`/elem, *AI Systems Performance Engineering* Ch 9 pp. 300–302). | Fuse vertically/horizontally (`fusedL2Norm` or `@torch.compile`), keeping intermediates in registers/SMEM (`12 B`/elem = `3x` less HBM traffic) and using `* rsqrtf(x)`. |
 | 2 | Over-fusion or oversized TMEM/SMEM tiles causing register spills | After fusing too many ops or choosing a `512 × 512` FP16 tile (`512 KiB > 256 KiB` TMEM), occupancy drops and Local Memory traffic spikes. | Fused kernel exceeded per-thread register budget (`> 64–128` regs/thread) or exceeded the `256 KB` per-SM TMEM / `227 KB` SMEM ceiling (pp. 299, 315). | Cap fusion scope so zero register spilling occurs in `ncu`, and size TMEM tiles within `256 KiB` (`128 × 128`, `256 × 128`, or `256 × 512` FP16 = `256 KiB`). |
 | 3 | Enabling 2:4 sparsity or FP8 on `batch_size = 1` or uncalibrated weights | `to_sparse_semi_structured()` or FP8 gives zero speedup at `batch_size = 1`, or model perplexity degrades after naive `50%` pruning. | At `batch_size = 1`, sparse index metadata and quantization scale/cast overhead are not amortized; pruning without calibration drops accuracy (pp. 304, 310). | Use 2:4 sparsity and FP8/NVFP4 on batched workloads (`batch_size >= 128`) or prefill serving, and fine-tune/calibrate weights after 2:4 pruning. |
 | 4 | Rectangular zero-padding on ragged sequence batches (`53.1%` wasted traffic) | LLM inference server with variable-length prompts (`128` to `1,024` tokens) saturates HBM bandwidth while effective tokens/sec is less than half of expectations. | Padding `[128, 512, 256, 1024]` (`1,920` real tokens) to `[4, 1024]` (`4,096` tokens) wastes `53.1%` of HBM reads and Tensor Core FLOPs on pad zeros (p. 306). | Use `torch.nested.nested_tensor` (NestedTensor jagged layout) and varlen FlashAttention (`SDPBackend.FLASH_ATTENTION`) so only real tokens are fetched. |
