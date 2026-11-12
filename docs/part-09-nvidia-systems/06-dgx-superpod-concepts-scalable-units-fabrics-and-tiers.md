@@ -23,12 +23,12 @@ lab_venue: "none (design / reading)"
 
 ## Why this matters for AI infrastructure
 
-Scaling from one 8-GPU node to thousands of GPUs exposes every flaw in custom cluster engineering. If your networking team invents a bespoke spine-to-leaf ratio, jobs stall on multi-node collective operations. If your storage team buys a generic file server without testing massive checkpoint bursts, training pauses for ten minutes at a time. When facilities technicians run fiber through patch panels, InfiniBand optical budgets fail and links drop during bring-up.
+A team grows from one 8-GPU node to a few hundred GPUs and designs every part itself. The network engineers pick their own leaf-to-spine ratio, and multi-node jobs stall on collective operations. The storage team buys a generic file server, and training freezes for ten minutes at every checkpoint. The facilities crew runs fiber through patch panels, and links drop during bring-up.
 
-To replace one-off cluster construction with repeatable industrial manufacturing, NVIDIA created the DGX SuperPOD reference architecture. A SuperPOD is a physical twin of NVIDIA's own internal research supercomputers, built from pre-engineered Scalable Units, five logical network segments carried over four physical fabrics, and certified Standard and Enhanced storage tiers. Mastering how a Scalable Unit is sized across node-based and rack-scale generations, why a management appliance displaces one compute node, why partial deployments still require the full network fabric, and how to balance storage tiers is the foundation of AI factory design.
+NVIDIA's answer is the DGX SuperPOD reference architecture, a fixed design that is built from standard pieces. The pieces are Scalable Units, five logical network segments carried over four physical fabrics, and two certified storage tiers. This chapter explains how a Scalable Unit is sized, why a management appliance takes the place of one compute node, why a partial build still needs the full network, and how to choose a storage tier.
 
 :::info Corpus scope note
-The standalone historical *NVIDIA DGX H100 SuperPOD Reference Architecture* PDF is not in `~/Desktop/books-toon-rag/`. In this chapter, DGX SuperPOD principles and exact scaling tables are drawn from *Data Center Best Practices with DGX B200* (`superpod-b200-dc`), *NVIDIA DGX SuperPOD: Next Generation Scalable Infrastructure for AI Factories Reference Architecture Featuring NVIDIA DGX GB300 Systems* (`superpod-gb300-ra`), and `nvidia-devops` Volume 21. Deep dives into DGX B200 facility design, the GB300 reference architecture, the four SuperPOD network fabrics, and BasePOD follow in the next four chapters.
+This chapter does not draw on the older *NVIDIA DGX H100 SuperPOD Reference Architecture*. Its SuperPOD principles and scaling tables come from *Data Center Best Practices with DGX B200* (`superpod-b200-dc`), *NVIDIA DGX SuperPOD: Next Generation Scalable Infrastructure for AI Factories Reference Architecture Featuring NVIDIA DGX GB300 Systems* (`superpod-gb300-ra`), and `nvidia-devops` Volume 21. The next four chapters cover DGX B200 facility design, the GB300 reference architecture, the four SuperPOD network fabrics, and BasePOD in depth.
 :::
 
 ## Prerequisites and outcomes
@@ -49,23 +49,23 @@ The standalone historical *NVIDIA DGX H100 SuperPOD Reference Architecture* PDF 
 
 ## 1. The AI Factory mindset and why SuperPOD is a "physical twin"
 
-An AI Factory is an industrial manufacturing plant whose raw material is data and whose finished product is trained model weights and real-time intelligence tokens. If an assembly plant installs a thousand robotic welding arms but feeds them with a single slow conveyor belt and a tiny loading dock, the robots sit idle most of the day. Worse, if every plant manager designs custom conveyor widths and electrical panels from scratch, commissioning a new facility takes two years instead of six weeks.
+NVIDIA calls a large GPU cluster an AI factory, because its input is data and its output is trained model weights and generated tokens. Picture a team that buys 4,000 GPUs but feeds them through one slow storage system. The GPUs sit idle most of the day. Picture a second team that designs its own cabling and power layout for every new hall. Each new cluster then takes months of commissioning instead of weeks.
 
 ### 1.1 The "Physical Twin" principle and Tier 3 facility standard
 
-When an enterprise designs a custom GPU cluster from scratch, engineers spend months debugging firmware mismatches, cabling bottlenecks, and silent collective hangs. Operations teams bear the brunt of this instability while expensive compute hardware sits unscheduled.
+A custom GPU cluster built from scratch costs its engineers months of debugging. They chase firmware mismatches, cabling bottlenecks, and collectives that hang without an error, while the expensive hardware sits unscheduled.
 
-First, every DGX SuperPOD deployed at a customer facility is a physical and logical twin of the supercomputers NVIDIA's own engineering teams run internally, such as Eos and Selene. Consequently, the NVIDIA Mission Control and Base Command Manager software stack, firmware bundles, NGC containers, and Magnum IO libraries are regression-tested at full scale by NVIDIA before reaching customer racks. The Run:ai and Slurm schedulers undergo the same validation.
+A SuperPOD removes most of that work by being a copy of what NVIDIA runs itself. Every DGX SuperPOD at a customer site is a physical and logical twin of NVIDIA's internal supercomputers, such as Eos and Selene. NVIDIA tests the Mission Control and Base Command Manager software, the firmware bundles, the NGC containers, and the Magnum IO libraries at full scale before they reach customer racks. The Run:ai and Slurm schedulers get the same testing.
 
-Second, the customer owns the on-premises hardware and integrates their Building Management System. Meanwhile, NVIDIA Enterprise Support, or NVEX, provides unified full-system support across the DGX systems, NVIDIA InfiniBand and Spectrum Ethernet fabrics, Mission Control software, and certified partner storage validated under the DGX Storage Program.
+The customer owns the hardware on premises and connects it to the site's Building Management System. NVIDIA Enterprise Support, or NVEX, supports the whole system. That covers the DGX systems, the InfiniBand and Spectrum Ethernet fabrics, Mission Control, and certified partner storage from the DGX Storage Program.
 
-Third, a multi-megawatt AI factory cannot tolerate single-point utility or cooling failures. The DGX SuperPOD reference architecture specifies that the hosting data center should meet or exceed Uptime Institute Tier 3, TIA-942-B Rated 3, or EN 50600 Availability Class 3 design standards. These standards guarantee concurrent maintainability and ensure no single point of failure exists across power and cooling distribution.
+The hall itself has to match. A multi-megawatt AI factory cannot lose a whole job to one utility or cooling failure. The reference architecture asks the data center to meet Uptime Institute Tier 3, TIA-942-B Rated 3, or EN 50600 Availability Class 3. All three mean any single power or cooling component can be serviced without shutting the hall down.
 
 ### 1.2 The five dimensions of workload characterization and three SLA tiers
 
-Sizing an AI factory by GPU count alone leads to severe bottlenecks when real workloads arrive. A cluster built for offline batch training will miss latency targets if pressed into real-time inference. Similarly, a research cluster without redundancy will violate revenue service-level agreements during routine maintenance.
+A cluster sized by GPU count alone hits bottlenecks once real workloads arrive. One built for offline batch training misses latency targets when it is pushed into real-time inference. A research cluster without redundancy breaks its revenue service-level agreement during routine maintenance.
 
-Before choosing how many Scalable Units or which storage tier to deploy, architects characterize workloads across five orthogonal dimensions. These include the model parameter tier, the execution mode, the concurrency profile, the primary resource bottleneck, and the availability SLA tier.
+Before choosing a Scalable Unit count or a storage tier, architects describe the workload along five independent dimensions. The table lists them.
 
 | Workload Dimension | Categories and Engineering Thresholds |
 |---|---|
@@ -83,9 +83,9 @@ Before choosing how many Scalable Units or which storage tier to deploy, archite
 
 ---
 
-## 2. The Scalable Unit (SU): the modular Lego brick of a SuperPOD
+## 2. The Scalable Unit (SU): the repeating block of a SuperPOD
 
-Building a multi-thousand-GPU cluster as one monolithic wiring project creates an unmaintainable hairball of cables. Instead, a DGX SuperPOD is stamped out in pre-engineered, fixed-size building blocks called Scalable Units. Adding capacity to an AI factory simply means stamping out another Scalable Unit and connecting its leaf switches to the common spine fabric.
+Wiring a multi-thousand-GPU cluster as one project produces a tangle that nobody can maintain. A DGX SuperPOD instead repeats a fixed-size block called a Scalable Unit. To add capacity, you build another Scalable Unit and connect its leaf switches to the shared spine.
 
 ```mermaid
 flowchart TD
@@ -122,7 +122,7 @@ In the DGX B200 SuperPOD deployment pattern, an NVIDIA Unified Fabric Manager ap
 
 ### 2.2 Rack-Scale Scalable Units (DGX GB200 and DGX GB300 NVL72)
 
-When the fundamental compute unit becomes a 72-GPU NVL72 rack, the Scalable Unit scales up correspondingly. One rack-scale Scalable Unit consists of 8 DGX GB300 or GB200 NVL72 racks, which equals 144 compute trays or 576 Blackwell GPUs per Scalable Unit. That stamp requires 1.2 MW of thermal design power.
+When the compute unit is a 72-GPU NVL72 rack, the Scalable Unit grows with it. One rack-scale Scalable Unit holds 8 DGX GB300 or GB200 NVL72 racks. That is 144 compute trays or 576 Blackwell GPUs, and it needs 1.2 MW of thermal design power.
 
 Because the NVIDIA Q3400-RD Quantum-X800 InfiniBand switch provides a 144-port radix at 800 Gbps XDR per port, a DGX GB300 SuperPOD scales much further without a third switch tier. It can grow from a single Scalable Unit to 16 Scalable Units using a simple two-layer leaf-spine fat-tree.
 
@@ -137,13 +137,13 @@ Rack-Scale Scalable Unit (DGX GB300 NVL72) Specifications:
 
 ### 2.3 Three non-negotiable SuperPOD physical rules
 
-Cutting corners on switch counts, rack space, or cable runs during initial deployment leads to expensive outages when the cluster expands. A partial build that shrinks the switch layer forces a full cluster re-cabling event later, while optical patch panels introduce signal reflections that drop high-speed InfiniBand links.
+A site starts with five NVL72 racks and a smaller switch layer to save money. Six months later it adds three more racks, and the whole cluster has to be re-cabled. Another site routes InfiniBand through a fiber patch panel, and its links drop during bring-up. Three rules prevent both problems.
 
-First, every deployment must follow the Partial-SU Fabric Rule. If your initial budget or power envelope only allows deploying five NVL72 racks instead of eight, you must still install all leaf switches and all leaf-to-spine cables for the full Scalable Unit. Leave the switch ports for the missing racks unused so routing remains symmetric and future racks slide in with zero network re-architecture.
+**Install the full network for the full Scalable Unit, even when you deploy fewer racks.** If budget or power allows only five NVL72 racks of eight, you still install all leaf switches and all leaf-to-spine cables. The switch ports for the missing racks stay unused. Routing stays symmetric, and the next racks slide in with no network changes. This is the Partial-SU Fabric Rule.
 
-Second, never mount unrelated IT equipment in DGX racks or in the cooling spaces between them. A DGX Scalable Unit is a thermally balanced appliance, so third-party appliances in empty rack units or inter-rack cooling gaps disrupt airflow and thermal aggregation.
+The second rule is about space. Do not mount unrelated IT equipment in DGX racks or in the cooling gaps between them. A Scalable Unit is a thermally balanced appliance, and third-party gear in empty slots disturbs the airflow.
 
-Third, never use patch panels or intermediary top-of-rack switches on InfiniBand. End-to-end signal attenuation and latency govern InfiniBand 400G NDR and 800G XDR cable reach. Structured fiber patch panels add optical loss that breaks link training, and intermediary switches ruin single-hop rail latency.
+The third rule is about cabling. Do not put patch panels or extra top-of-rack switches on InfiniBand. Signal loss and latency set the reach of 400G NDR and 800G XDR cables. A fiber patch panel adds optical loss that breaks link training, and an extra switch adds a hop to every rail.
 
 | Physical Rule | Constraint and Distance Thresholds |
 |---|---|
@@ -161,7 +161,7 @@ Third, never use patch panels or intermediary top-of-rack switches on InfiniBand
 
 ## 3. The five network segments across four physical fabrics
 
-Mixing GPU collective traffic, storage traffic, user SSH sessions, and baseboard management on a shared network causes severe head-of-line blocking. A massive checkpoint write can delay collective barriers, or a burst of container image pulls can starve storage heartbeats. In the DGX GB300 and GB200 SuperPOD reference architecture, five logical network segments are carried over four physically distinct switch fabrics so each traffic class has isolated hardware resources.
+Put GPU collectives, storage, user SSH sessions, and baseboard management on one network, and traffic blocks behind other traffic. A large checkpoint write delays a collective barrier. A burst of container image pulls starves storage heartbeats. The DGX GB300 and GB200 SuperPOD design avoids this by carrying five logical network segments over four physically separate switch fabrics. Each kind of traffic gets its own hardware.
 
 ```mermaid
 flowchart TD
@@ -200,7 +200,7 @@ On a DGX GB300 compute tray, the dual-port BlueField-3 DPU dedicates one physica
 
 ### 3.2 How the four fabrics scale across 1 to 16 Scalable Units (DGX GB300 SuperPOD)
 
-If a cluster requires a three-tier core network to scale past a few thousand GPUs, optical transceiver counts, power consumption, and hop latency jump sharply. Network architects must verify that leaf and spine switch radixes can support full bisection bandwidth in just two layers.
+A third switching tier adds optical transceivers, power draw, and a hop of latency. Architects therefore check that the leaf and spine switch radix can give full bisection bandwidth in two layers.
 
 Using the 144-port Q3400-RD Quantum-X800 InfiniBand switch and the Spectrum-4 SN5600D Ethernet switch, a GB300 SuperPOD scales from one Scalable Unit to 16 Scalable Units in two switching layers. On the InfiniBand fabric, each Scalable Unit uses eight compute leaves organized as four rails with two leaves per rail. Compute trays in the same unit and same rail are one hop apart, while cross-rack traffic traverses the spine. On the Ethernet fabric, each Scalable Unit uses four compute leaves operating at a 1:3 blocking ratio alongside non-blocking storage leaves. See chapter 9.8, sections 3 and 4 for the complete InfiniBand port proof, the Ethernet compute-leaf proof, and the full multi-SU switch tables.
 
@@ -214,7 +214,7 @@ Using the 144-port Q3400-RD Quantum-X800 InfiniBand switch and the Spectrum-4 SN
 
 ### 3.3 Collective algorithms and InfiniBand versus RoCEv2 economics
 
-Every distributed training step ends with a synchronous collective operation such as AllReduce, or AllGather and ReduceScatter in FSDP, where the slowest link paces the entire cluster. When network congestion or suboptimal algorithm selection delays that step, thousands of GPUs sit idle waiting for the last rank to finish. This synchronization delay is known as the Communication Tax.
+Every distributed training step ends with a collective operation such as AllReduce. In FSDP, which shards the model across GPUs, it is AllGather and ReduceScatter. The slowest link paces the whole cluster. If congestion or a poor algorithm choice delays that step, thousands of GPUs wait for the last rank. This waiting time is the Communication Tax.
 
 NCCL selects among three primary collective algorithms depending on message size and cluster scale. Ring AllReduce is bandwidth-optimal for large gradient buffers, but its latency grows linearly with rank count. Pipelined Double Binary Tree scales logarithmically with depth and is selected automatically at larger rank counts where ring latency grows too high. Recursive Doubling completes in logarithmic rounds and is latency-optimal for small messages, though it exchanges the full buffer each round. To hide the Communication Tax during backpropagation, PyTorch DDP and FSDP group gradients into buckets. They launch asynchronous AllReduce calls during `loss.backward()` so communication overlaps backward compute, leaving only the final bucket tail exposed.
 
@@ -242,17 +242,21 @@ Collective Algorithms & 64-GPU InfiniBand vs RoCEv2 Engineering Breakdown (V21 C
 
 ## 4. SuperPOD storage architecture: HPS vs User Storage, Standard vs Enhanced tiers, and 14-byte/param checkpoints
 
-To prevent thousands of GPUs from stalling on dataset reads or checkpoint bursts, a DGX SuperPOD separates external storage into two distinct storage systems and defines two certified performance tiers.
+A SuperPOD keeps two separate external storage systems, so that dataset reads and checkpoint bursts do not stall thousands of GPUs. It also defines two certified performance tiers for the fast one.
 
 ### 4.1 High-Performance Storage (HPS) vs User Storage, and Standard vs Enhanced tiers
 
 If user home directories, container builds, and cluster logs share the same file system as multi-terabyte model checkpoints, metadata storms from interactive users will stall training jobs. Conversely, running parallel training checkpoints over a generic enterprise NFS appliance will overwhelm its network ports and freeze the cluster.
 
-A DGX SuperPOD solves this by deploying two physically and logically separate storage systems. System 1 is High-Performance Storage, or HPS, which is a resilient, POSIX-compliant parallel file system from a certified DGX Storage Program partner such as WEKA, VAST, Lustre/DDN, or IBM Storage Scale / GPFS. Compute trays access HPS over 400 Gbps lossless RoCEv2 from each tray's dedicated BlueField-3 storage port. HPS requires native RoCEv2 RDMA, GPUDirect Storage, and explicit certification for Grace-based `aarch64` systems. It also requires transparent read and write caching across local system RAM and local E1.S or U.2 NVMe flash, along with non-disruptive upgrades.
+A SuperPOD therefore uses two storage systems that are separate in hardware and in software.
 
-System 2 is User Storage, which is an enterprise NFS share exposed over the In-Band Management Ethernet fabric with at least 100 GbE DR1 connectivity. User Storage is optimized for high metadata IOPS rather than multi-terabyte parallel streaming. It holds user `/home` directories for Slurm and interactive users, administrative scratch scripts, and centralized cluster logs. It also stores shared state for high-availability control-plane services such as NVIDIA Mission Control and Base Command Manager.
+System 1 is High-Performance Storage, or HPS. It is a parallel file system that follows the POSIX file interface and survives component failures. It comes from a partner in the DGX Storage Program, such as WEKA, VAST, DDN Lustre, or IBM Storage Scale. Each compute tray reaches HPS over its dedicated BlueField-3 storage port, a 400 Gbps lossless RoCEv2 link. RoCEv2 carries RDMA, direct memory access between machines, over Ethernet.
 
-Depending on whether your AI factory runs compute-dominated text LLMs or I/O-intensive multimodal pipelines, `superpod-gb300-ra` specifies two High-Performance Storage throughput tiers. In the table below, linear scaling per Scalable Unit is my inference generalizing the 1-SU and 4-SU rows of the reference architecture table.
+HPS must also support GPUDirect Storage and must be certified for Grace-based `aarch64` systems. It needs read and write caching across local RAM and local NVMe flash, and it must allow upgrades without downtime.
+
+System 2 is User Storage, an enterprise NFS share on the In-Band Management Ethernet fabric with at least 100 GbE DR1 connectivity. It is built for many small metadata operations, not for multi-terabyte streaming. It holds `/home` directories, administrative scripts, and cluster logs. It also holds shared state for the high-availability control-plane services in Mission Control and Base Command Manager.
+
+`superpod-gb300-ra` defines two HPS throughput tiers. Choose by whether the factory runs text LLMs, where compute dominates, or multimodal pipelines, where I/O does. The reference architecture lists the 1-SU and 4-SU rows. This chapter fills in other SU counts by linear scaling, which is the chapter's own extrapolation.
 
 | Storage Tier | Target Workload Profile | Dataset Fit | 1 SU Aggregate Read / Write | 4 SUs Aggregate Read / Write | Read : Write Ratio |
 |---|---|---|---|---|---|
@@ -261,7 +265,7 @@ Depending on whether your AI factory runs compute-dominated text LLMs or I/O-int
 
 ### 4.2 Why text LLM pre-training is checkpoint-write-bound (the 14-byte/parameter rule)
 
-Engineers new to large language model infrastructure often assume that training a 70-billion-parameter model requires massive continuous storage read bandwidth. In practice, text LLM training barely touches storage read bandwidth during normal steps, yet crashes enterprise NAS boxes every few hours when saving checkpoints.
+A new engineer assumes that training a 70-billion-parameter model needs enormous storage read bandwidth. In practice, text training barely reads from storage during normal steps. What takes down an enterprise NAS box every few hours is the checkpoint write.
 
 During steady-state text training, pre-tokenized integer IDs are tiny, so an entire 64-GPU H100 cluster reads less than a quarter of a megabyte per second of text. In contrast, training on uncompressed image or video frames requires tens of gigabytes per second of continuous read bandwidth, which demands the Enhanced Tier.
 
@@ -294,15 +298,21 @@ Text Read vs Mixed-Precision AdamW Checkpoint Math (V21 Ch 4, 70B Model on 64x H
 
 ### 5.1 The five-layer NVIDIA Mission Control and Run:ai architecture
 
-Managing thousands of GPUs, hundreds of switches, and facility cooling loops with disconnected scripts leads to slow fault recovery and wasted cluster capacity. Every DGX SuperPOD is operated through NVIDIA Mission Control, which unifies five operational layers across the AI factory.
+When a node fails at 2 a.m., a team that runs thousands of GPUs, hundreds of switches, and cooling loops from separate scripts recovers slowly and wastes capacity. Every DGX SuperPOD is run through NVIDIA Mission Control, which joins five layers into one system. The table lists them. Chapter 8.16, chapter 9.8 section 6, and chapter 9.12 section 1 cover the software in full.
 
-First, Base Command Manager handles bare-metal OS provisioning and firmware lifecycle management. Second, UFM Enterprise and NMX-M manage the InfiniBand and NVLink switch fabrics. Third, high-frequency telemetry integrates with the data center Building Management System over eBGP in the untrusted edge zone. Fourth, automated validation and autonomous hardware and job recovery coordinate with in-memory checkpointing. Fifth, Slurm and NVIDIA Run:ai provide workload orchestration, placing the Run:ai control plane on the user-space Kubernetes cluster and cluster operands on the administrative Kubernetes infrastructure. See chapter 8.16, chapter 9.8 section 6, and chapter 9.12 section 1 for the full software architecture.
+| Layer | What it does |
+|---|---|
+| Provisioning | Base Command Manager installs the OS on bare metal and manages firmware. |
+| Fabric management | UFM Enterprise manages InfiniBand, and NMX-M manages the NVLink switches. |
+| Facility telemetry | High-frequency telemetry reaches the Building Management System over eBGP in the untrusted edge zone. |
+| Recovery | Automated validation and recovery of hardware and jobs works with in-memory checkpointing. |
+| Scheduling | Slurm and NVIDIA Run:ai place workloads. The Run:ai control plane runs on the user-space Kubernetes cluster, and its cluster operands run on the administrative Kubernetes infrastructure. |
 
 ### 5.2 AI Factory TCO and Cost-per-Output discipline
 
-When presenting a SuperPOD design to executive leadership, engineers often focus on raw hardware prices or electricity rates. However, chasing cheap power while leaving GPUs idle during slow checkpoint recoveries or scheduler fragmentation destroys return on investment. Architects must translate capital and operating expenses into Cost per GPU-Hour and Cost per Million Tokens.
+An engineer presenting a SuperPOD design to executives tends to talk about hardware prices and electricity rates. But cheap power does not help when GPUs sit idle during slow checkpoint recovery or scheduler fragmentation. Capital and operating costs should be restated as Cost per GPU-Hour and Cost per Million Tokens.
 
-As the financial breakdown below demonstrates, hardware amortization and cluster utilization dominate electricity in token economics. On a 40-GPU H100 inference cluster, electricity accounts for less than a tenth of the total cost per million tokens at full utilization, and total unit cost more than doubles when utilization drops to 40%. Keeping GPUs busy via Mission Control, Run:ai bin-packing, and fast checkpoint recovery is worth far more than any electricity discount.
+The breakdown below shows that hardware amortization and cluster utilization dominate electricity in token economics. On a 40-GPU H100 inference cluster, electricity accounts for less than a tenth of the total cost per million tokens at full utilization, and total unit cost more than doubles when utilization drops to 40%. Keeping GPUs busy via Mission Control, Run:ai bin-packing, and fast checkpoint recovery is worth far more than any electricity discount.
 
 ```text
 AI Factory TCO & Token Economics Breakdown (V21 Ch 1 & Ch 2):
@@ -429,12 +439,12 @@ Summary: 30 passed, 0 failed (total 30)
 
 ## Exercises
 
-1. Run `python3 -B code/part09/superpod_concepts_lab.py`. Rebuild the 3-SU row of the DGX B200 table by hand, including nodes, GPUs, leaf switches, compute cables, spine cables, and power.
-2. A customer can only afford 5 NVL72 racks now but will grow to 8. List what you must buy and cable on day one, and what you can leave for later.
-3. Work out the checkpoint size and per-GPU shard for a 30B-parameter model trained with mixed-precision AdamW on 32 GPUs across 4 nodes. How long does the local NVMe stage take at 15 GB/s per node?
-4. Draw the five logical network segments and the four physical fabrics. Draw an arrow from each BlueField-3 port to the segment it carries.
+1. Run the lab script, then rebuild the 3-SU row of the DGX B200 table by hand. Work out nodes and GPUs first. Then work out leaf switches, cables, and power.
+2. A customer can afford 5 NVL72 racks now and will grow to 8. What must be bought and cabled on day one? What can wait?
+3. A 30B-parameter model trains with mixed-precision AdamW on 32 GPUs across 4 nodes. What is the checkpoint size? What is each GPU's shard? How long does the local NVMe stage take at 15 GB/s per node?
+4. Draw the five logical network segments and the four physical fabrics. Then draw an arrow from each BlueField-3 port to the segment it carries.
 5. A colleague wants to bond both BlueField-3 ports for extra bandwidth. Write two sentences that explain why the design keeps them apart.
-6. Using the Mission Control five-layer list, decide which layer would detect and cordon a bad node, and which layer would restart the job elsewhere.
+6. A node goes bad during a run. Which Mission Control layer detects it and cordons it? Which layer restarts the job elsewhere?
 
 ## Checkpoint questions (20)
 
@@ -586,7 +596,7 @@ On the 40-GPU H100 inference cluster generating 60,000 tokens per second, electr
 - Executed `python3 -B code/part09/superpod_concepts_lab.py` with 30 passed and 0 failed.
 
 ### My own choices and inferences, labelled in the text
-- Linear per-SU interpolation for Standard and Enhanced storage bandwidth (`GDS` GPUDirect Storage and `BCM` management across `64x400GbE` and `1024x400GbE` fabrics; `80%` capacity threshold; `457.6 kW` / `916 kW` / `1,374 kW` / `1,832 kW` across 1–4 SUs; up to `4,000` GPUs) in `size_superpod_storage_tier` inside `code/part09/superpod_concepts.py` and Section 4.1 is my inference generalizing the 1-SU and 4-SU rows of Table 5 in `superpod-gb300-ra` (cross-referenced with Chapters 8.2, 9.7, 9.9, and 9.10).
+- Linear per-SU interpolation for Standard and Enhanced storage bandwidth (`GDS` GPUDirect Storage and `BCM` management across `64x400GbE` and `1024x400GbE` fabrics; `80%` capacity threshold; `457.6 kW` / `916 kW` / `1,374 kW` / `1,832 kW` across 1–4 SUs; up to `4,000` GPUs) in `size_superpod_storage_tier` inside `code/part09/superpod_concepts.py` and Section 4.1 is this chapter's own extrapolation from the 1-SU and 4-SU rows of Table 5 in `superpod-gb300-ra` (cross-referenced with Chapters 8.2, 9.7, 9.9, and 9.10).
 
 ### Not verified on live hardware
 - The `mpirun`, `all_reduce_perf`, `ibstat`, `ibqueryerrors`, `perfquery`, and `ethtool -S` commands were not executed on a live Multi-SU DGX SuperPOD in this authoring environment.

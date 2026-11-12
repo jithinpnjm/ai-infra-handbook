@@ -23,14 +23,12 @@ lab_venue: "none (design / reading)"
 
 ## Why this matters for AI infrastructure
 
-Building an on-premises AI factory takes months of facility construction and multi-megawatt utility power contracts. Even teams that own physical SuperPODs regularly need elastic burst capacity for urgent training deadlines. As a result, infrastructure engineers spend much of their time deploying and operating workloads across cloud GPU platforms.
+A team owns a SuperPOD, and a training deadline arrives that needs twice the GPUs. Building more capacity takes months of construction and a utility power contract, so the team rents GPUs in the cloud. The first multi-node job runs far slower than it did at home. The scheduler could not see which racks the instances landed on, so the job spread across distant switches. The RDMA traffic also went through a hypervisor virtual switch.
 
-Renting GPUs in the cloud is fundamentally different from renting standard CPU virtual machines. If a cloud provider hides the physical leaf-spine switch layout from your scheduler, multi-node jobs land on distant racks. Worse, routing high-speed RDMA traffic through a hypervisor virtual switch can cut training throughput by half or more.
-
-This chapter shows how three major cloud GPU platform archetypes expose bare-metal hardware performance. You will examine NVIDIA DGX Cloud, GPU-native neoclouds like CoreWeave and Nebius AI Cloud, and Google Cloud GPU machine families. Along the way, you will learn how PCIe passthrough, BCM Topograph topology discovery, and multi-NIC RDMA fabrics keep cloud clusters running at line rate.
+Renting GPUs differs from renting ordinary CPU virtual machines for exactly these two reasons. Topology and the network path both decide the training speed. This chapter looks at three kinds of cloud GPU platform: NVIDIA DGX Cloud, GPU-native neoclouds such as CoreWeave and Nebius AI Cloud, and Google Cloud GPU machine families. It also shows what these platforms offer to bring bare-metal speed to a cloud cluster. The pieces are PCIe passthrough, BCM Topograph topology discovery, and multi-NIC RDMA networks.
 
 :::info Corpus scope note
-Live vendor pricing pages and provider API reference manuals for DGX Cloud, CoreWeave, Nebius AI Cloud, and Google Cloud Compute Engine are external to the offline book corpus. In this chapter, the BCM Topograph cloud topology rules come directly from the NVIDIA Base Command Manager 11 Administrator Manual. The SR-IOV, IOMMU, and DGX Cloud concepts come from our internal infrastructure notes, while the GCP, Nebius, and CoreWeave resource models follow Chapter 4 of this handbook. Always verify exact machine-type and provider attribute names against current cloud provider documentation before applying them in production.
+The chapter does not use vendor pricing pages or provider API reference manuals for DGX Cloud, CoreWeave, Nebius AI Cloud, or Google Cloud Compute Engine. The BCM Topograph cloud topology rules come from the NVIDIA Base Command Manager 11 Administrator Manual. The SR-IOV, IOMMU, and DGX Cloud concepts come from the hardware and infrastructure volumes. The GCP, Nebius, and CoreWeave resource models follow Chapter 4 of this handbook. Check machine-type and provider attribute names against the provider's current documentation before using them in production.
 :::
 
 ## Prerequisites and outcomes
@@ -52,9 +50,9 @@ Live vendor pricing pages and provider API reference manuals for DGX Cloud, Core
 
 ### 1.1 Why traditional VM networking ruins AI training and how SR-IOV and IOMMU fix it
 
-In a legacy cloud virtual machine, sending a network packet triggers a slow software trap-and-emulate path. The guest operating system writes to a virtual network driver such as `virtio`, and the hypervisor intercepts that trap. The hypervisor then translates the memory address in software and copies the packet through a virtual switch to the physical card.
+A guest virtual machine on a legacy cloud sends a network packet. The guest operating system writes to a virtual network driver such as `virtio`, and the hypervisor traps that write. The hypervisor translates the memory address in software and copies the packet through a virtual switch to the physical card.
 
-At 1 Gbps of web traffic, that CPU overhead is barely noticeable to application owners. During synchronous NCCL AllReduce collectives across eight 400 Gbps links, software emulation is catastrophic. It adds tens of microseconds of latency, saturates host CPU cores, and completely breaks GPUDirect RDMA.
+At 1 Gbps of web traffic, nobody notices the CPU cost. During an NCCL AllReduce across eight 400 Gbps links, the same software path adds latency, uses up host CPU cores, and breaks GPUDirect RDMA.
 
 Cloud GPU providers deliver bare-metal GPU and RDMA performance inside multi-tenant clouds by bypassing the software switch altogether. They combine full-node allocations with Single Root I/O Virtualization and the Input-Output Memory Management Unit.
 
@@ -71,11 +69,11 @@ flowchart LR
 ```
 
 1. **Physical Function versus Virtual Function:** SR-IOV is a PCI Express standard that lets a single physical network card or BlueField DPU partition itself in hardware. It exposes one Physical Function owned by the host hypervisor or DPU control plane for configuration and security policies. It also creates multiple lightweight Virtual Functions, each with dedicated hardware queues mapped directly into a guest VM.
-2. **IOMMU Direct Memory Translation:** Each Virtual Function and each SXM GPU is mapped directly into the guest VM address space through PCIe passthrough. The hardware IOMMU, known as Intel VT-d or AMD-Vi, translates guest DMA addresses to host physical addresses at wire speed. It strictly isolates memory regions so a compromised VM can never read or overwrite another tenant's host RAM. This architecture removes virtual switch overhead and enables full GPUDirect RDMA between guest GPUs and the physical fabric.
+2. **IOMMU Direct Memory Translation:** Each Virtual Function and each SXM GPU is mapped directly into the guest VM address space through PCIe passthrough. The hardware IOMMU, known as Intel VT-d or AMD-Vi, translates guest DMA addresses to host physical addresses at wire speed. It isolates memory regions, so a compromised VM cannot read or overwrite another tenant's host RAM. This architecture removes virtual switch overhead and enables full GPUDirect RDMA between guest GPUs and the physical fabric.
 
 ### 1.2 The three cloud GPU platform archetypes
 
-Modern cloud GPU offerings fall into three distinct architectural models. Grouping the four named platforms from the chapter title into these three categories is my inference, synthesizing our enterprise platform notes, Chapter 4, and the BCM 11 manual.
+Cloud GPU offerings fall into three models. Sorting the four platforms named in the chapter title into these three groups is this chapter's own summary of Chapter 4, the BCM 11 manual, and the platform notes.
 
 | Attribute | 1. Managed SuperPOD-as-a-Service (`NVIDIA DGX Cloud`) | 2. GPU-Native Neoclouds (`CoreWeave`, `Nebius AI Cloud`) | 3. Hyperscaler AI Supercomputers (`GCP G2, A2, A3, A3 Ultra, A4, A4X`) |
 |---|---|---|---|
@@ -97,15 +95,15 @@ Modern cloud GPU offerings fall into three distinct architectural models. Groupi
 
 ### 2.1 How DGX Cloud delivers serverless SuperPODs across cloud providers
 
-Building a dedicated SuperPOD from scratch requires long hardware lead times and specialized data hall engineering. NVIDIA DGX Cloud eliminates this wait by co-designing and hosting multi-node DGX SuperPOD clusters inside major cloud service providers. These hosting partners include AWS, Microsoft Azure, Google Cloud, and Oracle Cloud Infrastructure.
+A dedicated SuperPOD needs long hardware lead times and data hall engineering. NVIDIA DGX Cloud skips that wait. NVIDIA designs multi-node DGX SuperPOD clusters and hosts them inside the major cloud providers: AWS, Microsoft Azure, Google Cloud, and Oracle Cloud Infrastructure.
 
 On AWS, for example, the BCM 11 manual notes that DGX Cloud uses 8-GPU H100 instances with the `p5.48xlarge` flavor. Enterprises rent dedicated multi-node clusters through an operational expenditure model without managing physical data halls. Every cluster arrives pre-loaded with Base Command Manager, NVIDIA Mission Control, NVIDIA Run:ai, and NVIDIA AI Enterprise.
 
 ### 2.2 The cloud topology problem and how BCM Topograph solves it
 
-When you run a Slurm cluster in your own data center, you know exactly which physical leaf switch connects to each server. When you run a BCM-managed Slurm cluster in AWS, OCI, or GCP, the cloud provider allocates instances from a massive shared pool. If Slurm does not know which cloud instances share the same physical rail or leaf switch, it schedules multi-node jobs across distant switches. Cross-spine traffic then bottlenecks your collective communications and wastes expensive GPU hours.
+In your own data center, you know which physical leaf switch connects to each server. In AWS, OCI, or GCP, the provider hands out instances from a large shared pool, and a BCM-managed Slurm cluster does not know where they sit. If Slurm cannot tell which instances share a rail or a leaf switch, it schedules a multi-node job across distant switches. The traffic then crosses the spine, collectives slow down, and GPU hours are wasted.
 
-Base Command Manager solves this problem with the Topograph system service. Its configuration parameters and cloud rules are verified by `validate_bcm_topograph_cloud_config` in our chapter Python model.
+Base Command Manager answers this with the Topograph system service. Its configuration parameters and cloud rules are verified by `validate_bcm_topograph_cloud_config` in our chapter Python model.
 
 ```mermaid
 flowchart LR
@@ -163,11 +161,11 @@ flowchart LR
 
 ## 3. GPU-native neoclouds: Nebius AI Cloud and CoreWeave
 
-General-purpose hyperscalers evolved from web hosting and enterprise CPU virtual machines. When AI teams run large distributed jobs on generic cloud constructs, they often struggle with hidden network oversubscription and slow storage. GPU-native neoclouds like CoreWeave and Nebius AI Cloud were built from the ground up around bare-metal HGX, DGX, and NVL72 clusters with lossless InfiniBand fabrics.
+Hyperscalers grew out of web hosting and enterprise CPU virtual machines. An AI team that runs a large distributed job on their generic building blocks can hit hidden network oversubscription and slow storage. CoreWeave and Nebius AI Cloud were built for GPUs from the start. They are based on bare-metal HGX, DGX, and NVL72 clusters with lossless InfiniBand fabrics.
 
 ### 3.1 The Nebius AI Cloud resource model and InfiniBand GPU cluster membership
 
-If you launch multi-node GPU virtual machines on Nebius without linking them to a shared fabric resource, NCCL falls back to standard VPC Ethernet. Multi-node training throughput then drops from hundreds of gigabits per second to a fraction of line rate. Nebius prevents this by organizing compute resources around an explicit InfiniBand fabric membership object.
+A team launches multi-node GPU virtual machines on Nebius without linking them to a shared fabric resource. NCCL falls back to standard VPC Ethernet, and multi-node throughput drops from hundreds of gigabits per second to a fraction of line rate. Nebius avoids this with an explicit InfiniBand fabric membership object.
 
 | Nebius AI Cloud Layer | Resource or Pattern | Key Configuration Details |
 |---|---|---|
@@ -183,7 +181,7 @@ If you launch multi-node GPU virtual machines on Nebius without linking them to 
 
 ### 3.2 The CoreWeave Kubernetes-native bare-metal model
 
-Running an extra virtual machine layer inside a cloud provider adds operational friction when your entire software stack already runs in containers. CoreWeave pioneered the Kubernetes-native GPU cloud model to eliminate that redundant virtualization layer.
+A team whose whole software stack already runs in containers gains little from an extra virtual machine layer, and the layer adds operational work. CoreWeave built a Kubernetes-native GPU cloud to remove that layer.
 
 - **Bare-metal Kubernetes nodes:** Physical 8-GPU HGX nodes and NVL72 racks join a managed Kubernetes control plane directly, or use bare-metal-speed SR-IOV and IOMMU passthrough where virtualized.
 - **Topology-aware node labels:** Each worker node exposes its physical GPU model, NVLink domain, and InfiniBand leaf or rail switch identity directly as standard Kubernetes node labels.
@@ -199,7 +197,7 @@ Running an extra virtual machine layer inside a cloud provider adds operational 
 
 ## 4. Google Cloud GPU machine families: G2, A2, A3, A3 Ultra, A4, and A4X
 
-When teams deploy multi-node training on Google Cloud using default single-NIC virtual machines, network bottlenecks stall the GPUs immediately. Google Cloud solves this by packaging NVIDIA accelerators, host CPUs, local NVMe SSDs, and multi-NIC high-speed networking into fixed Compute Engine and GKE machine families.
+A team deploys multi-node training on Google Cloud with default single-NIC virtual machines, and the network stalls the GPUs at once. Google Cloud responds with fixed Compute Engine and GKE machine families. Each family bundles NVIDIA accelerators, host CPUs, local NVMe SSDs, and multi-NIC high-speed networking.
 
 ```mermaid
 flowchart TD
@@ -227,7 +225,7 @@ flowchart TD
 
 ### 4.2 Five non-negotiable GCP and GKE operational rules for GPU clusters
 
-When provisioning A3, A3 Ultra, A4, or G2 fleets on GCP via Terraform or GKE, a single wrong default can block instance creation or freeze cluster upgrades. Our cluster specification auditor in `code/part09/cloud_gpu_platforms.py` checks five mandatory platform rules from Chapter 4.
+On GCP, one wrong default in Terraform or GKE can block instance creation or freeze a cluster upgrade. The auditor in `code/part09/cloud_gpu_platforms.py` checks five platform rules from Chapter 4 for A3, A3 Ultra, A4, and G2 fleets.
 
 | Operational Rule | Required Terraform or GKE Setting | What Goes Wrong If Omitted |
 |---|---|---|
@@ -353,12 +351,12 @@ Summary: 25 passed, 0 failed (total 25)
 
 ## Exercises
 
-1. Run `python3 -B code/part09/cloud_gpu_platforms_lab.py`. Pick the Topograph checks for AWS, OCI, and GCP and write the specific permission or placement setting that must be present for each cloud.
-2. Write the two-step plan to upgrade a BCM 11.34 cloud cluster from `topograph` to `topograph4`. State what you check afterwards and what failure occurs if you skip one step.
-3. Sketch the SR-IOV data path of a ConnectX Virtual Function into a guest VM. Mark the Physical Function, the Virtual Functions, the IOMMU, and what a legacy `virtio` path would add.
-4. A Nebius training job runs at under 5 GB/s bus bandwidth. List the three checks you would run and the Terraform change that fixes the most likely root cause.
-5. Choose a GCP machine family for a 7B inference service, a 70B training run on H100, a 70B training run on B200, and a rack-scale NVL72 run. Name the inter-node network transport for each choice.
-6. Write the GKE node pool upgrade settings for a pool that has zero spare GPUs in its reservation, and explain each parameter.
+1. Run the lab script and find the Topograph checks for AWS, OCI, and GCP. For each cloud, which permission or placement setting must be present?
+2. Write the two-step plan to upgrade a BCM 11.34 cloud cluster from `topograph` to `topograph4`. What do you check afterwards? What fails if you skip one step?
+3. Sketch the SR-IOV data path from a ConnectX Virtual Function into a guest VM. Mark the Physical Function, the Virtual Functions, and the IOMMU. Then mark what a legacy `virtio` path would add.
+4. A Nebius training job runs at under 5 GB/s bus bandwidth. Which three checks would you run? Which Terraform change fixes the most likely cause?
+5. Choose a GCP machine family for each of four jobs: a 7B inference service, a 70B training run on H100, a 70B training run on B200, and a rack-scale NVL72 run. For each choice, name the inter-node network transport.
+6. A GKE node pool has zero spare GPUs in its reservation. Write its upgrade settings, and explain each parameter.
 
 ## Checkpoint questions (20)
 
@@ -509,7 +507,7 @@ Run `ping` with the don't-fragment flag and a jumbo payload size across the GPU 
 - Running `python3 -B code/part09/cloud_gpu_platforms_lab.py` passes all 25 verification checks with 0 failures.
 
 ### My own choices and inferences, labelled in the text
-- Grouping the four named platforms in the chapter title into three architectural models in Section 1.2 is my inference synthesizing our enterprise platform notes, Chapter 4, and the BCM 11 manual.
+- Grouping the four named platforms in the chapter title into three architectural models in Section 1.2 is this chapter's own inference synthesizing our enterprise platform notes, Chapter 4, and the BCM 11 manual.
 
 ### Not verified on live hardware
 - The `cmsh` Topograph commands (`switch01..08`, pp. `416`–`419`), SR-IOV `VFs` and `vSwitches`, `NVAIE` licensing, `19.2` MW / `28` / `50` node examples, end-to-end jumbo frame ping tests, and live cloud Terraform plans on AWS, OCI, GCP, Nebius, and CoreWeave (cross-referenced with Chapters `8.8`, `8.16`, `9.1`, and `9.9` and Volume `08`) were not executed against live cloud accounts in this authoring environment.

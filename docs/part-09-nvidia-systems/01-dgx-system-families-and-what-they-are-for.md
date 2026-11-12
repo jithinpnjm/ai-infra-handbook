@@ -23,15 +23,15 @@ lab_venue: "none (design / reading)"
 
 ## Why this matters for AI infrastructure
 
-An AI factory is not a pile of interchangeable servers with GPUs plugged into PCIe slots. When an organization buys the wrong accelerator family or bolts high-wattage GPUs into a generic whitebox chassis without co-design, the failure is immediate and expensive. Training jobs stall on PCIe switch bottlenecks, and high-concurrency inference violates latency targets because memory bandwidth was ignored on the spec sheet. Under sustained load, uncoordinated cooling quietly throttles cluster throughput in the middle of the night.
+A team buys sixteen cheap PCIe servers for a 70B chat service. In the demo, one user gets fast answers. At 64 concurrent users, the inter-token latency breaks the target, and the team learns that nobody checked memory bandwidth on the spec sheet. A different team assembles eight high-wattage GPUs in a generic chassis. Training runs, but at three in the morning the GPUs lower their clocks because the airflow was never tested for all eight at full load.
 
-To design, buy, or operate AI infrastructure, you need two mental models working together.
+Both failures come from picking hardware without a model of the workload or of the machine. This chapter gives you two models to use together.
 
-- **Workload-first accelerator selection.** You must map the four physical dimensions of a workload across compute throughput, memory capacity, memory bandwidth, and interconnect bandwidth. Those four dimensions determine whether a job belongs on an L4, an L40S, an H100, an H200, a B200, or a Grace Blackwell Superchip.
-- **Appliance-level systems engineering.** You must understand why NVIDIA builds turnkey DGX systems, ranging from air-cooled SXM nodes to liquid-cooled NVL72 rack appliances. That appliance architecture governs how internal NVMe storage, three-plane networking, out-of-band management, and facility power envelopes fit together.
+- **Workload-first accelerator selection.** Describe a job by four numbers: how much math it needs, how much memory it holds, how fast it reads that memory, and how fast GPUs must talk to each other. Those four numbers decide whether the job belongs on an L4, an H100, or a rack-scale Grace Blackwell system.
+- **Appliance-level systems engineering.** NVIDIA sells DGX systems as tested units, from air-cooled eight-GPU nodes to liquid-cooled 72-GPU racks. Knowing what is inside one tells you how storage, networking, management, and power fit together.
 
 :::info Corpus scope note
-Standalone NVIDIA DGX H100 and H200 System User Guides and NVIDIA DGX OS 6 User Guide manuals are not in the local book corpus. System internals, management commands, and facility rules in this chapter come from our hardware portfolio notes and *AI Systems Performance Engineering*. They also draw on *Data Center Best Practices with DGX B200* and the *DGX GB300 SuperPOD Reference Architecture*. Later chapters in Part 9 and Part 10 expand 8-GPU node internals, HGX platforms, Grace Superchips, NVL72 racks, facility cooling, and GPU microarchitecture.
+The chapter does not draw on the NVIDIA DGX H100 and H200 System User Guides or the DGX OS 6 User Guide. System internals, management commands, and facility rules come from the hardware portfolio volumes, *AI Systems Performance Engineering*, *Data Center Best Practices with DGX B200*, and the *DGX GB300 SuperPOD Reference Architecture*. Later chapters in Part 9 and Part 10 cover 8-GPU node internals, HGX platforms, Grace Superchips, NVL72 racks, facility cooling, and GPU microarchitecture.
 :::
 
 ## Prerequisites and outcomes
@@ -42,7 +42,7 @@ After completing this chapter, you will be able to accomplish the following five
 
 - Size VRAM capacity and memory bandwidth for training and LLM inference, and score GPU candidates against facility power ceilings and Cost per 1M Tokens.
 - Distinguish NVIDIA accelerator generations from Volta through Blackwell across PCIe cards, SXM modules, and Grace-coupled Superchips.
-- Explain the Whitebox Fallacy and contrast air-cooled SXM DGX nodes with liquid-cooled rack-scale NVLink appliances.
+- Explain why a server assembled from loose parts has not been tested as a whole, and contrast air-cooled SXM DGX nodes with liquid-cooled rack-scale NVLink appliances.
 - Trace how a DGX node separates its internal NVMe storage tiers and its three physical network planes.
 - Run a baseline DGX qualification check while avoiding ad-hoc firmware flashes and PCIe Access Control Services traps.
 
@@ -50,11 +50,11 @@ After completing this chapter, you will be able to accomplish the following five
 
 ## 1. Workload physics and why one GPU cannot rule them all
 
-When an infrastructure team selects GPUs by reading only the peak TFLOPS line on a vendor datasheet, production workloads quickly miss their latency targets. Buying a GPU with massive peak compute FLOP/s but narrow memory bandwidth to serve low-batch LLM token generation is like buying a Ferrari for a moving company. The engine has enormous horsepower, but the cargo bay is tiny and the loading doors are narrow. As a result, the vehicle spends almost all of its time waiting to load boxes.
+A team picks a GPU by the peak TFLOPS line on the datasheet and deploys it for low-batch LLM token generation. Production misses its latency target. Token generation reads every weight for each new token, so the GPU spends most of its time waiting on memory and very little time on math. Peak compute told the team nothing about that wait.
 
 ### 1.1 The four dimensions of workload physics
 
-A GPU is a specialized physics engine balanced across four hardware constraints: math throughput, memory capacity, memory bandwidth, and chip-to-chip interconnect speed. Every AI workload stresses these four hardware subsystems in different proportions.
+A GPU is limited by four things: math throughput, memory capacity, memory bandwidth, and chip-to-chip interconnect speed. Every AI workload leans on these four in different proportions.
 
 ```mermaid
 flowchart TD
@@ -106,11 +106,11 @@ Workload VRAM sizing formulas and 70B worked example (dgx_families.py):
 
 ### 1.3 The five-step selection scorecard and inference economics
 
-Teams frequently buy cheaper PCIe servers to save on capital expenditure, only to discover that each server handles very few concurrent users. As a result, their per-token serving cost doubles. Evaluating candidates with a five-step engineering workflow prevents teams from selecting hardware based on marketing headlines or hourly server price alone.
+A team buys cheaper PCIe servers to save capital, then finds that each server handles very few concurrent users. The cost of serving each token doubles. A five-step workflow keeps the choice tied to the workload instead of the hourly server price.
 
 - **Step 1: Classify the primary workload.** Identify whether the cluster will run pre-training, LoRA or full-parameter fine-tuning, real-time online inference, batch offline inference, or media and graphics rendering.
 - **Step 2: Calculate the memory footprint.** Apply the training multiplier rule or the inference KV-cache and safety-margin formula to determine total VRAM required.
-- **Step 3: Evaluate bandwidth versus compute needs.** Check whether your latency target is governed by compute-bound prefill or memory-bandwidth-bound decode. For example, an H100 SXM5 has roughly four times the memory bandwidth of an L40S. That bandwidth makes the H100 roughly four times faster during batch-constrained LLM decode despite comparable paper FP8 compute relative to price.
+- **Step 3: Evaluate bandwidth versus compute needs.** Check whether your latency target is governed by compute-bound prefill or memory-bandwidth-bound decode. For example, an H100 SXM5 has roughly four times the memory bandwidth of an L40S. That bandwidth makes the H100 roughly four times faster during batch-constrained LLM decode, even though the paper FP8 compute is comparable relative to price.
 - **Step 4: Determine interconnect requirements.** If a model does not fit on one GPU, Tensor Parallelism requires an `AllReduce` synchronization after every single transformer layer. Across PCIe Gen5, multi-GPU Tensor Parallelism spends up to forty percent of its time waiting on the bus. High-throughput multi-GPU serving and multi-node training require SXM NVLink.
 - **Step 5: Apply facility and TCO constraints.** Filter out any candidate that violates hard disqualifiers first. Common disqualifiers include exceeding the data center rack power ceiling or lacking required NVLink or native FP8 hardware support.
 
@@ -125,7 +125,7 @@ Selection scorecard weights, SLO targets, and economics (dgx_families.py):
   - SXM NVLink bandwidth: 900 GB/s per GPU on Hopper, 1.8 TB/s per GPU on Blackwell
 - Facility hard disqualifier example:
   - An 8.0 kW legacy air-cooled rack cannot power a single 10.2 kW DGX H100 node.
-- Five weighted scorecard dimensions (1-5 normalization in code/part09/dgx_families.py is my inference):
+- Five weighted scorecard dimensions (the 1-5 normalization in code/part09/dgx_families.py is a convention of this lab):
   - Compute: 20% | Memory Capacity: 25% | Memory Bandwidth: 25% | Interconnect: 15% | Power/Thermal Fit: 15%
 - Inference Cost per 1M Tokens formula:
   Cost per 1M Tokens ($) = (Hourly System Cost ($) / (Total Tokens/sec * 3,600)) * 1,000,000
@@ -142,7 +142,7 @@ For candidates that survive the hard disqualifiers, score them across the five w
 
 ## 2. Accelerator generations and form factors: PCIe, SXM, and Superchips
 
-When a team treats all GPUs with the same model number or generation name as interchangeable, workloads fail in surprising ways. A legacy Turing card silently emulates BF16 in software at a fraction of expected speed, and a PCIe Hopper card hits a power and bandwidth ceiling far below its SXM5 sibling. Once you know the physics profile of your workload, map it onto NVIDIA's hardware portfolio across architectural generation and physical form factor.
+A team moves a BF16 model onto older Turing cards and finds it running at a fraction of the expected speed, because the card emulates BF16 in software. Another team buys PCIe Hopper cards and finds them well below the SXM5 version of the same chip. Generation and form factor both matter. Once you know your workload's profile, match it to NVIDIA's portfolio on those two axes.
 
 ### 2.1 Five architectural generations: Volta to Blackwell
 
@@ -162,7 +162,7 @@ In *AI Systems Performance Engineering* and our hardware portfolio notes, the B2
 
 ### 2.2 The PCIe inference workhorses: T4, L4, and L40S
 
-Not every cluster runs multi-node frontier training. In enterprise data centers and edge sites with standard air-cooled racks, three PCIe accelerators dominate inference and multimodal pipelines. Choosing the wrong card among them can stall modern transformer deployments on missing precision formats or PCIe bus saturation.
+Most clusters do not run frontier training. Enterprise data centers and edge sites with standard air-cooled racks mostly run inference on three PCIe cards. Pick the wrong one and a modern transformer deployment stalls on a missing precision format or a saturated PCIe bus.
 
 - **NVIDIA T4.** This low-profile single-slot Turing PCIe Gen3 card draws 70W with no auxiliary power connector required. It is ideal for legacy small models like BERT, ResNet-50, Whisper, and video transcoding, but it lacks BF16 and FP8 hardware support. Running BF16 models on a T4 triggers severe software emulation slowdowns.
 - **NVIDIA L4.** This low-profile single-slot Ada Lovelace PCIe Gen4 card draws 72W as the direct drop-in successor to the T4. It increases GDDR6 capacity and adds fourth-generation Tensor Cores with native FP8. It also integrates four hardware AV1 decoders and encoders for small LLMs and dense video analytics.
@@ -199,14 +199,14 @@ In a traditional x86 server, the CPU talks to GPUs over PCIe Gen5 x16. That narr
 
 ## 3. Why DGX exists and the DGX family lineup
 
-If major OEM vendors all sell servers powered by NVIDIA GPUs, buyers naturally ask why NVIDIA manufactures and sells its own physical DGX hardware appliances. Trying to save money by assembling eight high-wattage GPUs, two CPUs, and eight network cards from separate catalogs inside a generic chassis frequently backfires. The resulting cluster throttles under load, drops GPUs off the bus, and stalls on cross-socket traffic.
+Many server vendors sell machines with NVIDIA GPUs, so buyers ask why NVIDIA also sells its own DGX systems. The answer shows up when a team assembles eight high-wattage GPUs, two CPUs, and eight network cards from separate catalogs in a generic chassis. The cluster throttles under load, GPUs drop off the bus, and traffic stalls on the link between CPU sockets.
 
-### 3.1 The Whitebox Fallacy
+### 3.1 Why a server built from loose parts underperforms
 
-Imagine buying eight Formula One engines and bolting them into a backyard kit car. Individually, each engine is a masterpiece. Together, the frame twists, the radiator boils over in two minutes, and the transmission shears off. In AI infrastructure, assembling bare components in a generic chassis without full-stack validation is known as the Whitebox Fallacy.
+A server built from loose parts has not been tested as a whole. Each GPU, NIC, and CPU may be a good part, but nobody has checked how they behave together at full load. Four problems show up again and again.
 
 - **Internal topology and NUMA bottlenecks.** A naive board layout routes GPU-to-NIC traffic across the CPU socket interconnect such as Intel UPI or AMD Infinity Fabric. This happens when the PCIe switches are not balanced one-to-one with the GPUs. Under a multi-node collective, cross-socket NUMA traffic starves GPUDirect RDMA throughput by thirty to fifty percent.
-- **Thermal throttling under synchronized load.** Eight SXM GPUs running a dense collective dissipate massive heat inside a single chassis alongside NVSwitches and optical transceivers. If chassis airflow channels and heatsinks are not aerodynamically balanced for simultaneous peak load, GPUs silently drop their clock frequencies at 3:00 AM to prevent silicon damage.
+- **Thermal throttling under synchronized load.** Eight SXM GPUs running a dense collective put out a great deal of heat in one chassis, next to the NVSwitches and optical transceivers. If chassis airflow channels and heatsinks are not aerodynamically balanced for simultaneous peak load, GPUs silently drop their clock frequencies at 3:00 AM to prevent silicon damage.
 - **Firmware matrix mismatches.** An 8-GPU accelerated server contains dozens of independent microcontrollers. These span the BMC, BIOS, motherboard CPLDs, PCIe Gen5 retimers, four NVSwitch ASICs, eight GPU VBIOSes, and ten SmartNIC or DPU firmwares. Updating one component out of lockstep with the others causes GPUs to vanish from the PCIe bus or NVLink training to fail.
 - **Multi-vendor finger-pointing.** When a distributed training job hangs inside `ncclAllReduce`, the server vendor blames the NIC firmware and the switch vendor blames the CUDA driver. Meanwhile, your cluster sits idle at thousands of dollars per hour.
 
@@ -214,7 +214,7 @@ NVIDIA created the DGX line to serve as the golden reference blueprint for an AI
 
 ### 3.2 The three DGX system archetypes and generation comparison
 
-Across generations, we can group the DGX portfolio into three operational archetypes. This three-part grouping is my inference synthesizing the system evolution across our hardware portfolio notes, *Data Center Best Practices with DGX B200*, and the *DGX GB300 SuperPOD Reference Architecture*.
+Across generations, we can group the DGX portfolio into three operational archetypes. This three-part grouping is the chapter's own summary of the hardware portfolio volumes, *Data Center Best Practices with DGX B200*, and the *DGX GB300 SuperPOD Reference Architecture*.
 
 - **Deskside development appliances.** The DGX Station family provides whisper-quiet, office-friendly systems designed for small research teams that lack a data center room. They run the exact same DGX OS and NGC container stack as full cluster nodes.
 - **8-GPU air-cooled SXM compute nodes.** Systems including DGX-1, DGX-2, DGX A100, DGX H100, DGX H200, and DGX B200 are self-contained rack servers. Eight SXM GPUs communicate over an internal NVSwitch baseboard and scale out across nodes via eight dedicated InfiniBand or RoCEv2 NICs.
@@ -247,7 +247,7 @@ Breaking the 8-GPU NVLink wall in NVL72 (dgx_families.py):
 ```
 
 :::tip In one minute
-- The Whitebox Fallacy is assuming eight high-TDP GPUs in a generic box match a co-designed appliance. Unbalanced PCIe switches, thermal throttling under synchronized load, and uncoordinated firmware matrices silently cripple cluster goodput.
+- Eight high-power GPUs in a generic box do not match a co-designed appliance. Unbalanced PCIe switches, thermal throttling under synchronized load, and mismatched firmware quietly cut cluster goodput.
 - Choose 8-GPU air-cooled DGX nodes when your facility is air-cooled and Tensor Parallelism fits within eight GPUs. Choose liquid-cooled NVL72 racks when Mixture-of-Experts or frontier models require a 72-GPU NVLink domain.
 :::
 
@@ -503,12 +503,12 @@ Summary: 38 passed, 0 failed (total 38)
 
 ## Exercises
 
-1. Work out the memory needed to serve a 13B model in FP16 for 32 users at 4,096 tokens of context. Use 40 layers, 40 heads, and 8 bytes per token element for the KV cache, along with the twenty percent safety margin. Repeat the calculation with FP8 weights and a halved KV cache, and state whether each version fits on one 80 GB H100.
-2. Run `python3 -B code/part09/dgx_families_lab.py` and read the output. Pick three checks and state in one sentence each which rule from the chapter they test.
-3. A site has racks rated at 8.0 kW. Using the facility specifications in Section 6, state which DGX systems among H100, B200, and GB300 NVL72 it can host in one rack and what must change for each of the others.
-4. Draw the three network planes of one DGX H100 on paper. Label the ports, the speed of each plane, and the kind of traffic each plane carries.
-5. Write a five-line pre-release checklist for a DGX node that has just been repaired. Use the commands from the chapter and state what result you expect from each command.
-6. Using the cost-per-million-tokens formula, compare an SXM server with a PCIe server using the workload rates in `dgx_families_lab.py`. Explain why the server with the higher hourly rate achieves a lower cost per million tokens at high concurrency.
+1. You must serve a 13B model in FP16 to 32 users at 4,096 tokens of context. How much memory does it need? Use 40 layers, 40 heads, 8 bytes per token element, and the twenty percent safety margin. Then repeat with FP8 weights and a halved KV cache. Does either version fit on one 80 GB H100?
+2. Run the lab script and read its output. Pick three checks. For each, say in one sentence which rule from the chapter it tests.
+3. A site has racks rated at 8.0 kW. Using Section 6, can it host a DGX H100, a DGX B200, or a GB300 NVL72 in one rack? For each system it cannot host, say what must change.
+4. Draw the three network planes of one DGX H100 on paper. Label each plane with its speed and the traffic it carries.
+5. A DGX node has just been repaired. Write a five-line checklist to run before it returns to the scheduler. Give the command and the expected result on each line.
+6. Use the cost-per-million-tokens formula to compare an SXM server with a PCIe server. Take the workload rates from the lab script. Why does the server with the higher hourly rate end up cheaper per million tokens at high concurrency?
 
 ## Checkpoint questions (20)
 
@@ -597,9 +597,9 @@ Cost per million tokens equals the hourly system cost divided by the tokens prod
 </details>
 
 <details>
-<summary>**15. What is the "Whitebox Fallacy"? Give two of the four problems the chapter lists.**</summary>
+<summary>**15. Why does a server assembled from loose parts often underperform a DGX? Give two of the four problems the chapter lists.**</summary>
 
-It is the belief that eight high-wattage GPUs bolted into a generic server chassis will perform like a co-designed DGX appliance. Common failures include unbalanced PCIe topologies that force GPU-to-NIC traffic across the CPU socket link, thermal throttling under synchronized load, mismatched firmware across dozens of controllers, and multi-vendor finger-pointing during hangs.
+Eight high-wattage GPUs in a generic chassis have not been validated as one system, so they rarely match a co-designed DGX. Common failures include unbalanced PCIe topologies that force GPU-to-NIC traffic across the CPU socket link, thermal throttling under synchronized load, mismatched firmware across dozens of controllers, and multi-vendor finger-pointing during hangs.
 </details>
 
 <details>
@@ -672,6 +672,6 @@ The primary books, reference architectures, and portfolio notes read in full for
 - **Not in the corpus.** Standalone *NVIDIA DGX H100 / H200 System User Guide* and *NVIDIA DGX OS 6 User Guide* PDFs are not in the local book corpus.
 - **Reconciliations and notes on the sources.** In *AI Systems Performance Engineering* Chapter 2 and Volume 04 Chapter 6, the B200 GPU die is described with eight 24 GB HBM3e stacks totaling 192 GB per GPU. That equals 384 GB for the two-GPU GB200 Superchip. The DGX B200 system table in the same chapter lists 180 GB per GPU, totaling 1,440 GB across 8 GPUs on a DGX B200 node and 13,440 GB usable HBM3e across 72 GPUs on GB200 NVL72. Both figures are preserved in Section 2 and Section 3.
 - **Executed verification lab.** We ran `python3 -B code/part09/dgx_families_lab.py`, and all 38 checks passed with 0 failures.
-- **Labelled inferences.** First, converting the qualitative 1 to 5 scoring tiers from Volume 04 Lab 01 into deterministic Python formulas inside `score_gpu_for_workload` in `code/part09/dgx_families.py` is my inference. It allows the lab to evaluate candidate GPUs deterministically. Second, grouping the DGX product family into deskside development stations, 8-GPU air-cooled SXM nodes, and rack-scale liquid-cooled NVLink appliances in Section 3.2 is my inference synthesizing Volume 05, `superpod-b200-dc`, and `superpod-gb300-ra`.
+- **Labelled inferences.** First, converting the qualitative 1 to 5 scoring tiers from Volume 04 Lab 01 into deterministic Python formulas inside `score_gpu_for_workload` in `code/part09/dgx_families.py` is this chapter's own choice. It lets the lab score candidate GPUs the same way every run. Second, grouping the DGX product family into deskside development stations, 8-GPU air-cooled SXM nodes, and rack-scale liquid-cooled NVLink appliances in Section 3.2 is the chapter's own summary of Volume 05, `superpod-b200-dc`, and `superpod-gb300-ra`.
 - **Not verified on live hardware.** Redfish `curl` commands against `/redfish/v1/Systems/DGX`, `./nvfw-dgx-h100_*.run`, `nvsm show health`, `dcgmi diag -r 3`, `nvidia-smi nvlink --status`, `ibstat`, `all_reduce_perf`, and `gdsio` come from the manuals. None of them were executed on a physical DGX system in this environment.
 

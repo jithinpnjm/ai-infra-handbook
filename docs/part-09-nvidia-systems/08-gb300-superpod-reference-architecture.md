@@ -23,11 +23,11 @@ lab_venue: "none (design / reading)"
 
 ## Why this matters for AI infrastructure
 
-Designing a liquid-cooled cluster for frontier reasoning models from scratch often leads to mismatched switch port counts and storage bottlenecks. Infrastructure engineers feel this pain when a multi-megawatt data hall sits idle because leaf switches lack uplink capacity or building telemetry cannot reach the cluster manager.
+A multi-megawatt data hall is finished, the liquid-cooled racks are in, and the cluster still cannot run. The leaf switches have too few uplinks for the traffic, and the building telemetry cannot reach the cluster manager. This happens when a liquid-cooled cluster for frontier reasoning models is designed from scratch, one decision at a time.
 
-The NVIDIA DGX GB300 SuperPOD Reference Architecture solves this problem by packaging Grace CPUs and Blackwell Ultra B300 GPUs into a repeatable factory blueprint. Earlier SuperPOD generations connected air-cooled nodes over NDR InfiniBand. The GB300 SuperPOD instead combines hybrid liquid-cooled DGX GB300 NVL72 racks with Quantum-X800 InfiniBand, Spectrum-4 Ethernet, and NVIDIA Mission Control. This modular design scales smoothly from a single Scalable Unit up to a two-layer fabric of sixteen Scalable Units.
+The NVIDIA DGX GB300 SuperPOD Reference Architecture gives a fixed blueprint instead. It is built from Grace CPUs and Blackwell Ultra B300 GPUs. Earlier SuperPOD generations connected air-cooled nodes over NDR InfiniBand. The GB300 SuperPOD uses hybrid liquid-cooled DGX GB300 NVL72 racks with Quantum-X800 InfiniBand, Spectrum-4 Ethernet, and NVIDIA Mission Control. It grows from one Scalable Unit to a two-layer fabric of sixteen.
 
-When you review or operate a GB300 SuperPOD, every switch count and port ratio in the blueprint exists for an exact mathematical reason. The summary table below captures the core architectural dimensions of the GB300 SuperPOD from a single Scalable Unit up to maximum two-layer scale.
+Every switch count and port ratio in the blueprint follows from arithmetic that this chapter works through. The table summarizes the main dimensions, from one Scalable Unit to full two-layer scale.
 
 | Architectural dimension | 1 Scalable Unit baseline | Full 2-layer Reference Architecture scale | Key hardware and software mechanism |
 |---|---|---|---|
@@ -37,7 +37,7 @@ When you review or operate a GB300 SuperPOD, every switch count and port ratio i
 | **Out-of-Band and Customer Edge** | SN2201 1GbE copper switches rolled up via VXLAN to 2 OOB aggregation spines | At least 2x 100GbE DR1 single-mode uplinks with eBGP over a dedicated VTEP | BMS isolated in the untrusted zone; Run:ai splits control plane vs cluster operands |
 
 :::info Corpus scope note
-Separate companion documents mentioned in the reference architecture summary are the *DGX GB300 Data Center Design Guide*, *Detailed Software Architecture for NVIDIA Mission Control*, and *Relevant Security Information*. Those separate guides are not in our local corpus. Every specification, component table, port ratio, multi-SU switch table, edge routing rule, storage tier, and software layer in this chapter comes from the *NVIDIA DGX SuperPOD: Next Generation Scalable Infrastructure for AI Factories Reference Architecture Featuring NVIDIA DGX GB300 Systems*.
+The reference architecture refers to three companion documents: the *DGX GB300 Data Center Design Guide*, *Detailed Software Architecture for NVIDIA Mission Control*, and *Relevant Security Information*. This chapter does not use them. Every specification, component table, port ratio, multi-SU switch table, edge routing rule, storage tier, and software layer in this chapter comes from the *NVIDIA DGX SuperPOD: Next Generation Scalable Infrastructure for AI Factories Reference Architecture Featuring NVIDIA DGX GB300 Systems*.
 :::
 
 ## Prerequisites and outcomes
@@ -57,9 +57,9 @@ Separate companion documents mentioned in the reference architecture summary are
 
 ## 1. Architectural foundation: the 8-rack, 576-GPU, 1.2 MW Scalable Unit
 
-Engineering a multi-megawatt AI cluster rack by rack introduces custom cabling errors, unpredictable cooling bottlenecks, and months of commissioning delays. Data center operators and AI platform teams experience these delays directly when custom-built rows fail burn-in tests under synchronous collective workloads. Standardizing on a pre-engineered unit of deployment eliminates custom row engineering and guarantees predictable performance from day one.
+A custom-built row of racks fails its burn-in test under a synchronous collective workload. The cause is a cabling error, and fixing it adds weeks to commissioning. A multi-megawatt cluster built rack by rack runs into problems like this one. A pre-engineered unit of deployment avoids them, because the same unit has already been built and tested.
 
-The DGX GB300 SuperPOD Reference Architecture addresses the demands of AI reasoning and frontier training. Long-chain-of-thought inference and multi-trillion-parameter models require massive intra-rack NVLink bandwidth, high-speed inter-rack InfiniBand, and tight integration with data center Operational Technology. Think of a single GB300 Scalable Unit as a pre-tested AI power block. Instead of engineering a data hall server by server, you drop in a standardized multi-rack block that is an exact physical twin of NVIDIA's own internal research cluster. This repeatable stamp reduces deployment time from months to weeks.
+The DGX GB300 SuperPOD Reference Architecture targets AI reasoning and frontier training. Long-chain-of-thought inference and multi-trillion-parameter models need high NVLink bandwidth inside a rack, fast InfiniBand between racks, and integration with the data center's operational technology. One GB300 Scalable Unit is a pre-tested block of that design, a physical twin of NVIDIA's own research cluster. You place the block instead of engineering the hall server by server. The reference architecture does not state a deployment time, so this chapter does not give one.
 
 ```mermaid
 flowchart TD
@@ -91,7 +91,7 @@ flowchart TD
 
 ### 1.1 Facility, ownership, and support model
 
-Without clear facility availability baselines and unified vendor ownership, a single cooling loop fault or switch firmware mismatch can stall an entire cluster while facility and IT teams trade blame. Cluster owners need explicit power, cooling, and support boundaries before facility construction begins.
+A cooling loop faults, or a switch firmware version does not match, and the whole cluster stalls. The facility team blames IT, and IT blames the vendor. Cluster owners avoid this by fixing the power, cooling, and support boundaries before construction begins.
 
 1. **Scalable Unit baseline.** Each SU contains eight DGX GB300 NVL72 systems and requires a Thermal Design Power of 1.2 Megawatts. Across those racks, the SU houses compute trays, Grace CPUs, Blackwell Ultra B300 GPUs, and NVLink switch trays in the exact counts listed in the table below.
 2. **Pre-tested scale and maximum RA scale.** A turnkey system is pre-tested at one SU and two SUs. The architecture scales up to sixteen SUs in two switching layers, and organizations should contact an NVIDIA representative when planning deployments of four SUs or more.
@@ -113,7 +113,7 @@ Without clear facility availability baselines and unified vendor ownership, a si
 
 ## 2. Complete hardware and software bill of materials
 
-When hardware and software components are selected piecemeal across different vendors, subtle incompatibilities between NIC firmware, switch operating systems, and job schedulers cause silent performance degradation. System architects and procurement teams need a locked, validated bill of materials so every rack, switch, storage array, and orchestrator works together as a single appliance.
+A procurement team buys NICs, switches, and a job scheduler from different vendors. The NIC firmware and the switch operating system do not quite agree, and performance drops with no error to point at. A validated bill of materials prevents this. Every rack, switch, storage array, and orchestrator in it has been tested together.
 
 Every component in a single DGX GB300 Scalable Unit is standardized across hardware and software. The two tables below list the complete hardware and software bill of materials from the reference architecture.
 
@@ -150,13 +150,11 @@ Every component in a single DGX GB300 Scalable Unit is standardized across hardw
 
 ## 3. Compute InfiniBand fabric: proving the 144-port Q3400-RD 4-rail math
 
-Scaling a traditional 64-port switch fabric past two thousand GPUs forces architects to add a third tier of core switches. That extra core tier increases optical cable cost, latency, and power consumption. Network engineers and distributed training users feel this penalty when collective operations cross extra switch hops and job completion times stretch out. Raising the switch port radix allows the GB300 SuperPOD to scale to sixteen Scalable Units in a simple two-layer leaf-spine fat-tree without needing a third core tier.
-
-The secret to this two-layer scale is the high port radix of the NVIDIA Q3400-RD Quantum-X800 XDR switch combined with a four-rail, two-leaf-per-rail SU layout.
+A 64-port switch fabric that grows past two thousand GPUs needs a third tier of core switches. The extra tier adds optical cable cost, power draw, and latency. Each extra switch hop adds latency to every all-reduce, and job completion times stretch. The Q3400-RD Quantum-X800 XDR switch has 144 ports, and a four-rail, two-leaf-per-rail layout in each Scalable Unit uses that radix well. Together they let the GB300 SuperPOD reach sixteen Scalable Units in two layers of leaf and spine switches, with no core tier.
 
 ### 3.1 Proving the 72 downlink plus 72 uplink leaf balance
 
-We can verify the exact port arithmetic for one Scalable Unit using `verify_gb300_su_ib_leaf_port_math()` in `code/part09/gb300_superpod_ra.py`. Deriving the exact downlink and uplink split per leaf switch is my inference from the switch radix, the tray count per SU, and the rail layout stated in the reference architecture.
+The function `verify_gb300_su_ib_leaf_port_math()` in `code/part09/gb300_superpod_ra.py` checks the port arithmetic for one Scalable Unit. The reference architecture gives the switch radix, the tray count per SU, and the rail layout. The downlink and uplink split per leaf is this chapter's own derivation from those three facts.
 
 ```mermaid
 flowchart TD
@@ -208,13 +206,13 @@ Intra-rack NVLink BW   = 1.8 TB/s per GPU (130 TB/s per NVL72 rack)
 
 ## 4. Ethernet, Out-of-Band, and Customer Edge architecture
 
-Combining high-speed storage reads with bursty cluster management traffic on a poorly sized Ethernet network causes checkpoint stalls and unreachable management nodes. Storage administrators and security engineers feel this impact when a multi-rack checkpoint write saturates oversubscribed switch uplinks or when unauthenticated building controllers gain direct reachability to server BMCs. Separating host ports, sizing storage leaves for non-blocking throughput, and enforcing strict border routing solves all three problems.
+A multi-rack checkpoint write saturates oversubscribed switch uplinks, and training stalls. In another site, an unauthenticated building controller can reach the server BMCs directly. Both come from an Ethernet network that mixes storage and management traffic without enough sizing or separation. Three measures fix them: separate host ports, storage leaves sized for non-blocking throughput, and strict border routing.
 
-To maximize cost-efficiency while delivering high-bandwidth RoCEv2 storage access, the DGX GB300 SuperPOD carries the Storage Network and In-Band Management Network on a two-layer NVIDIA Spectrum-4 SN5600D Ethernet fabric. It carries the Out-of-Band Management Network on dedicated SN2201 switches.
+The DGX GB300 SuperPOD carries the Storage Network and In-Band Management Network on a two-layer NVIDIA Spectrum-4 SN5600D Ethernet fabric. It carries the Out-of-Band Management Network on dedicated SN2201 switches. This keeps cost down while still giving high-bandwidth RoCEv2 storage access.
 
 ### 4.1 Proving the 1:3 compute leaf blocking ratio vs non-blocking storage leaves
 
-Inside each SU, four SN5600D compute leaf switches connect to the dual-port BlueField-3 BF3240 cards in the compute trays. You can inspect this verification in `verify_gb300_su_ethernet_leaf_blocking()` in `code/part09/gb300_superpod_ra.py`. Dividing the compute tray host ports across four leaves and comparing against the twenty-four spine uplinks per leaf is my inference explaining the reference architecture's blocking ratio statement.
+Inside each SU, four SN5600D compute leaf switches connect to the dual-port BlueField-3 BF3240 cards in the compute trays. The check is `verify_gb300_su_ethernet_leaf_blocking()` in `code/part09/gb300_superpod_ra.py`. It divides the compute tray host ports across four leaves and compares them with the twenty-four spine uplinks per leaf. That division is this chapter's own explanation of the blocking ratio the reference architecture states.
 
 1. **Compute Leaves.** Four compute leaves serve each SU at a 1:3 blocking ratio. Across all compute trays in an SU, each tray's dual-port BF3240 provides two downlink connections, yielding 72 downlinks per compute leaf. Each compute leaf connects up to the Ethernet spines via 24 uplinks, yielding an exact 1:3 blocking ratio.
 2. **Storage Leaves.** Starting at two leaves, storage leaf switches operate at a 1:1 non-blocking ratio. Dozens of compute trays read and write to shared High-Performance Storage simultaneously. The storage leaf switches therefore connect via 72 non-blocking links to the spine layer so storage arrays are never bottlenecked by leaf-to-spine oversubscription.
@@ -241,7 +239,7 @@ SN5600D Ethernet Leaf Port Math (per Scalable Unit):
 
 ### 4.3 Out-of-Band VXLAN and Customer Edge connectivity
 
-Connecting an AI factory to a corporate network and a facility Building Management System requires strict routing and security boundaries. Without dedicated border peering and untrusted-zone isolation, dataset ingestion bottlenecks at the edge or facility controllers gain unauthorized access to internal server management interfaces.
+An AI factory has to connect to the corporate network and to the facility Building Management System. With no dedicated border peering, dataset ingestion bottlenecks at the edge. With no untrusted-zone isolation, facility controllers can reach the servers' management interfaces. Strict routing and security boundaries prevent both.
 
 ```mermaid
 flowchart LR
@@ -277,7 +275,7 @@ flowchart LR
 
 ## 5. Storage architecture and performance tiers
 
-Undersizing shared storage turns every model checkpoint and multimodal dataset load into an expensive cluster-wide stall where hundreds of GPUs sit idle waiting on disk I/O. AI researchers and platform operators feel this bottleneck whenever checkpoint saves eat into training uptime or storage firmware upgrades force a maintenance window. Separating high-throughput training storage from user home directories and matching array bandwidth to workload intensity keeps GPUs saturated.
+A training run saves a checkpoint, and hundreds of GPUs sit idle until the write finishes. A storage firmware upgrade then forces a maintenance window on top of that. Undersized shared storage turns every checkpoint and dataset load into a cluster-wide stall. Keep training storage separate from user home directories, and match array bandwidth to the workload, so the GPUs stay busy.
 
 As detailed in the SuperPOD storage design, the DGX GB300 SuperPOD pairs its compute racks with two distinct storage systems: certified High-Performance Storage over RoCEv2 and User Storage over NFS. High-Performance Storage must be certified for Grace aarch64 and GPUDirect Storage, using local RAM and NVMe caching alongside non-disruptive upgrades. User Storage connects over at least 100 GbE DR1 links to serve home directories, logs, and Mission Control high-availability state.
 
@@ -295,9 +293,9 @@ As detailed in the SuperPOD storage design, the DGX GB300 SuperPOD pairs its com
 
 ## 6. Software stack decomposition: Mission Control and Run:ai split K8s placement
 
-Operating thousands of liquid-cooled GPUs manually means a single degraded tray or stuck rank can halt a multi-node training job for hours until an on-call engineer intervenes. Site reliability engineers and ML teams lose valuable compute hours when hardware telemetry, fabric alerts, and job schedulers live in disconnected silos. Automating fault isolation and placing orchestration services on the right Kubernetes clusters eliminates manual triage.
+One tray degrades, or one rank gets stuck, and a multi-node training job halts for hours until the on-call engineer notices. Hardware telemetry, fabric alerts, and the job scheduler each live in their own tool, and the engineer has to connect them by hand. Mission Control automates fault isolation, and it places the orchestration services on the right Kubernetes clusters.
 
-The DGX GB300 SuperPOD software stack is operated through NVIDIA Mission Control, which delivers four core operational capabilities:
+NVIDIA Mission Control operates the DGX GB300 SuperPOD software stack. It provides four capabilities.
 1. **Automated Failure Detection and Self-Recovery.** Mission Control continuously runs health checks such as `dcgmi` and `nvsm`. It isolates degraded trays and triggers autonomous recovery without human intervention.
 2. **Optimized Workload Migration and Resource Allocation.** The platform automatically reassigns interrupted workloads to healthy trays so GPUs never sit idle waiting for manual triage.
 3. **Unified Diagnostics for Infrastructure and Applications.** It correlates hardware and fabric telemetry from Base Command Manager, UFM, NMX-M, and the facility BMS with application-level collective and rank logs.
@@ -305,9 +303,9 @@ The DGX GB300 SuperPOD software stack is operated through NVIDIA Mission Control
 
 ### 6.1 The NVIDIA Run:ai two-cluster split on BCM-managed SuperPODs
 
-Deploying all Kubernetes management components onto a single cluster mixes user-facing API portals with low-level hardware operators. That coupling complicates multi-cluster governance and administrative upgrades. Separating the central control plane from the cluster operands keeps tenant management clean and places workload schedulers directly beside the GPUs.
+Putting every Kubernetes management component on one cluster mixes user-facing API portals with low-level hardware operators. Multi-cluster governance and administrative upgrades become harder. Splitting the central control plane from the cluster operands keeps tenant management clean and puts the schedulers beside the GPUs.
 
-Pay special attention to how NVIDIA Run:ai is deployed inside a BCM-managed DGX GB300 SuperPOD:
+NVIDIA Run:ai is deployed as follows inside a BCM-managed DGX GB300 SuperPOD.
 - Run:ai uses a distributed architecture split into two primary subsystems: the Control Plane backend and the Cluster operands.
 - The Run:ai Control Plane backend resides on the user-space Kubernetes cluster. This placement supports centralized multi-cluster management, tenant quota enforcement, and user UI or API access.
 - The Run:ai Cluster components or operands are deployed directly onto the administrative Kubernetes infrastructure close to the DGX GB300 computational resources.
@@ -321,9 +319,9 @@ Pay special attention to how NVIDIA Run:ai is deployed inside a BCM-managed DGX 
 
 ## Commands and configurations that matter
 
-Manual spreadsheet calculations for multi-SU switch counts, leaf blocking ratios, and border routing rules frequently let port mismatches slip into data center build plans. Running an automated verification script before ordering hardware or configuring border switches catches topology mistakes immediately.
+A port mismatch slips into a build plan because the switch counts for several Scalable Units were worked out in a spreadsheet. A verification script run before ordering hardware catches it.
 
-Run the self-checking GB300 SuperPOD Reference Architecture verifier to validate the Q3400-RD InfiniBand leaf port balance and the SN5600D compute leaf blocking ratio. The script also checks the multi-SU switch tables alongside the customer edge eBGP, BMS, OOB, and Run:ai placement rules.
+The self-checking verifier validates the Q3400-RD InfiniBand leaf port balance and the SN5600D compute leaf blocking ratio. It also checks the multi-SU switch tables and the rules for the customer edge eBGP, the BMS, the OOB network, and Run:ai placement.
 
 ```bash
 # Execute the 28-check GB300 SuperPOD Reference Architecture verification lab
@@ -334,7 +332,7 @@ python3 -B code/part09/gb300_superpod_ra_lab.py
 
 ## How it fails
 
-Even with a standardized reference architecture, field deployments can fail when optical transceivers, security zones, or switch ports are wired to the wrong tier. The table below maps the five most common deployment failures to their symptoms, root causes, and fixes.
+A standard design can still fail in the field when optics, security zones, or switch ports are wired to the wrong tier. The table lists five failures with their symptoms, causes, and fixes.
 
 | Failure mode | Symptom | Root cause | Diagnosis & fix |
 |---|---|---|---|
@@ -384,12 +382,12 @@ Summary: 28 passed, 0 failed (total 28)
 
 ## Exercises
 
-1. Run `python3 -B code/part09/gb300_superpod_ra_lab.py`. Pick the check for the Ethernet compute leaf and explain, in your own words, where the downlinks and uplinks come from and what the blocking ratio means.
-2. Compute, for four SUs, the number of compute racks, GPUs, compute trays, NVLink switch trays, power shelves, and compute NIC ports. Use the per-SU numbers in Section 1.
-3. A storage vendor plugs its RoCEv2 array into the compute leaves because they have free ports. Write what will go wrong and which switches should be used instead.
-4. Design the customer edge for a new SuperPOD: how many uplinks, which optics, which routing protocol, and where does the facility BMS traffic go? Then describe the two ways to reach the OOB network.
-5. Draw where the Run:ai control plane and the Run:ai cluster components live in a BCM-managed SuperPOD. Name the two Kubernetes clusters.
-6. Using the scaling tables in the chapter, list the IB leaf, IB spine, and Ethernet spine counts across the multi-SU milestones. Which count does not grow in a straight line?
+1. Run the lab script and find the check for the Ethernet compute leaf. In your own words, where do its downlinks and uplinks come from? What does the blocking ratio mean?
+2. Take four SUs and the per-SU numbers in Section 1. How many compute racks and GPUs is that? How many NVLink switch trays and power shelves? How many compute NIC ports?
+3. A storage vendor plugs its RoCEv2 array into the compute leaves because they have free ports. What goes wrong? Which switches should it use instead?
+4. You are designing the customer edge for a new SuperPOD. How many uplinks do you need, with which optics, and with which routing protocol? Where does the facility BMS traffic go? Then describe the two ways to reach the OOB network.
+5. Draw where the Run:ai control plane and the Run:ai cluster components run in a BCM-managed SuperPOD. Name the two Kubernetes clusters.
+6. Read the IB leaf, IB spine, and Ethernet spine counts from the scaling tables for each multi-SU milestone. Which count does not grow in a straight line?
 
 ## Checkpoint questions (20)
 
@@ -553,8 +551,8 @@ The *DGX GB300 Data Center Design Guide*, the *Detailed Software Architecture fo
 
 | Inference Item | How Derived |
 |---|---|
-| **Per-leaf port balance on `Q3400-RD` (`72 downlinks + 72 spine uplinks = 144 ports` in `verify_gb300_su_ib_leaf_port_math` in `code/part09/gb300_superpod_ra.py` and Section 3.1)** | Explicitly dividing `144 trays * 4 ConnectX-8 NICs = 576 compute ports per SU` across `8 leaf switches per SU` (`4 rails * 2 leaves/rail`) to show `72 downlinks + 72 spine uplinks = 144 ports` per `Q3400-RD` leaf switch is my inference explaining the non-blocking arithmetic behind p. 20 of `superpod-gb300-ra`. |
-| **Per-leaf downlink count (`72 downlinks : 24 uplinks = 1:3`) on `SN5600D` Ethernet compute leaves (`verify_gb300_su_ethernet_leaf_blocking` in `code/part09/gb300_superpod_ra.py` and Section 4.1)** | Dividing `144 trays * 2 BlueField-3 ports = 288 ports per SU` across `4 compute leaf switches per SU` (`72 downlinks/leaf`) and comparing against the stated `24 links at 400 Gbps` uplinks (`24 : 72 = 1:3`) is my inference proving the `1:3 blocking ratio` stated on p. 22 of `superpod-gb300-ra`. |
+| **Per-leaf port balance on `Q3400-RD` (`72 downlinks + 72 spine uplinks = 144 ports` in `verify_gb300_su_ib_leaf_port_math` in `code/part09/gb300_superpod_ra.py` and Section 3.1)** | Explicitly dividing `144 trays * 4 ConnectX-8 NICs = 576 compute ports per SU` across `8 leaf switches per SU` (`4 rails * 2 leaves/rail`) to show `72 downlinks + 72 spine uplinks = 144 ports` per `Q3400-RD` leaf switch is this chapter's own inference explaining the non-blocking arithmetic behind p. 20 of `superpod-gb300-ra`. |
+| **Per-leaf downlink count (`72 downlinks : 24 uplinks = 1:3`) on `SN5600D` Ethernet compute leaves (`verify_gb300_su_ethernet_leaf_blocking` in `code/part09/gb300_superpod_ra.py` and Section 4.1)** | Dividing `144 trays * 2 BlueField-3 ports = 288 ports per SU` across `4 compute leaf switches per SU` (`72 downlinks/leaf`) and comparing against the stated `24 links at 400 Gbps` uplinks (`24 : 72 = 1:3`) is this chapter's own inference proving the `1:3 blocking ratio` stated on p. 22 of `superpod-gb300-ra`. |
 
 ### Not verified on live hardware
 - Switch configurations on live Q3400-RD, SN5600D, and SN2201 switches (`dedicated_oob_edge_tor` vs `inband_spine_route_leaking`, `DLC` cooling, and `GDS` storage, cross-referenced with Chapters 9.4, 9.5, and 9.6 and the 35-page `superpod-gb300-ra` specification) were not executed in this authoring environment.

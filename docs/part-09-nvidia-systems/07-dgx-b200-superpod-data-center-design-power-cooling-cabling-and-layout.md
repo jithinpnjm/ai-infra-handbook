@@ -23,12 +23,12 @@ lab_venue: "none (design / reading)"
 
 ## Why this matters for AI infrastructure
 
-An air-cooled NVIDIA DGX B200 packs eight Blackwell SXM6 GPUs into a single ten-unit chassis drawing 14.3 kW and demanding massive cold-aisle airflow. When you deploy two or four of those nodes per rack across a full Scalable Unit, traditional data center intuition fails in ways that surprise experienced facility engineers.
+An electrician wires a rack of DGX B200 servers the way every dual-corded enterprise server is wired. Three power supplies go to PDU A and three go to PDU B. Months later, facilities takes PDU A offline for maintenance, and every server in the rack loses power at once. A DGX B200 needs at least five of its six internal power supplies energized. Losing one PDU takes out three of them on every server, so NVIDIA advises against this interleaved wiring.
 
-For example, on a traditional dual-corded enterprise server, plugging half the power supplies into PDU A and half into PDU B increases uptime. On a DGX B200, that exact same dual interleaved wiring is a serious mistake that is not recommended by NVIDIA. Because a DGX B200 requires at least five of its six internal PSUs energized to operate, losing either PDU in an interleaved rack drops three PSUs on every server and crashes the entire rack. Similarly, spacing racks farther apart to dilute a dense heat plume can push InfiniBand cable runs past the physical reach of copper or optical cables. Mastering the balance across Power, Cooling, and Space while aligning facility, IT, network, and application teams is mandatory before a single crate arrives on the loading dock.
+Cooling and space cause the same kind of surprise. Each air-cooled B200 is a ten-unit chassis that draws 14.3 kW and needs about 2,145 cubic feet of air per minute. A team that spreads the racks apart to thin out the heat can stretch the InfiniBand runs past what copper or optical cables can reach. Power, cooling, and space have to be decided together, and the facility, IT, network, and application teams have to agree before the first crate arrives.
 
 :::info Corpus scope note
-Standalone *NVIDIA DGX B200 System User Guide* and *NVIDIA DGX SuperPOD with DGX B200 Reference Architecture* whitepaper PDFs are not in `~/Desktop/books-toon-rag/`. Every specification, three-phase power-provisioning table row, PSU topology diagram, ASHRAE and ISO 14644-1 Class 8 environmental limit, and cabling FAQ in this chapter comes from the NVIDIA technical deck *Data Center Best Practices with DGX B200* (`superpod-b200-dc`) by Steven Hambruch and Dennis O'Brien, supplemented by *AI Systems Performance Engineering* Chapter 2.
+This chapter does not use the *NVIDIA DGX B200 System User Guide* or the *NVIDIA DGX SuperPOD with DGX B200 Reference Architecture* whitepaper. Every specification, power-provisioning table row, PSU topology diagram, ASHRAE and ISO 14644-1 Class 8 limit, and cabling answer comes from the NVIDIA technical deck *Data Center Best Practices with DGX B200* (`superpod-b200-dc`) by Steven Hambruch and Dennis O'Brien, supplemented by *AI Systems Performance Engineering* Chapter 2.
 :::
 
 ## Prerequisites and outcomes
@@ -48,11 +48,11 @@ Standalone *NVIDIA DGX B200 System User Guide* and *NVIDIA DGX SuperPOD with DGX
 
 ## 1. DGX B200 node physics and the economy of data center resources
 
-Deploying high-density AI infrastructure is a three-body optimization problem across three finite, tightly coupled data center resources: Power, Cooling, and Space. When a deployment team optimizes one resource in isolation, it routinely breaks another constraint during installation.
+A high-density deployment has three limited resources that pull on each other: Power, Cooling, and Space. A team that optimizes one on its own usually breaks another during installation.
 
-Think of Power, Cooling, and Space as the three corners of a stretched rubber triangle. If your data center has plenty of floor space but limited cooling per square foot, your first instinct is to spread the DGX B200 servers across twice as many racks with empty floor tiles between them. However, stretching the Space corner pulls directly on the InfiniBand cabling budget. Suddenly your outer compute racks sit more than 30 meters from the central spine switches, breaking the optical reach of the InfiniBand fabric.
+Suppose a data hall has plenty of floor space but little cooling per square foot. The first instinct is to spread the DGX B200 servers over twice as many racks, with empty tiles between them. That stretches the InfiniBand cabling. The outer compute racks end up more than 30 meters from the central spine switches, beyond the optical reach of the fabric.
 
-To prevent siloed decisions across Power, Cooling, and Space, five organizational constituencies must align before finalizing the floor plan. These groups are Data Center Facility Operations, IT Operations, the Systems Operations Center, Network Operations, and the Application Owner.
+To avoid decisions made in silos, five groups must agree on the floor plan before it is final. They are Data Center Facility Operations, IT Operations, the Systems Operations Center, Network Operations, and the Application Owner.
 
 ```mermaid
 flowchart TD
@@ -76,19 +76,19 @@ flowchart TD
 
 ### 1.1 Complete DGX B200 node physical, thermal, altitude, and acoustic specifications
 
-If facility engineers underestimate the weight, airflow, altitude derating, or acoustic output of an air-cooled DGX B200, the installation stalls on day one. Floor tiles can buckle under unrated point loads, high-altitude cold aisles can trigger thermal throttling at normal sea-level temperatures, and unmuffled fan noise can violate occupational safety limits.
+A facility team underestimates the weight, airflow, or noise of an air-cooled DGX B200, and the installation stalls on day one. Floor tiles buckle under point loads they were not rated for. A cold aisle at a high-altitude site throttles the nodes at a temperature that would be fine at sea level. Fan noise exceeds occupational limits.
 
-Before designing rack layouts, record the complete node-level envelope of the air-cooled NVIDIA DGX B200 in the table below.
+The table gives the node-level envelope to record before any rack layout is drawn.
 
 | Parameter | DGX B200 Specification | Facility Design Implication |
 |---|---|---|
 | **Estimated System Power** | **14.3 kW Max** | `2 nodes/rack = 28.6 kW`; `4 nodes/rack = 57.2 kW`; `32-node SU = 458 kW`. |
-| **Estimated System Weight** | **`> 287.6 lbs (130 kg)`** (estimated) | Mechanical server lift mandatory (`4 × 287.6 lbs` of nodes alone in a 4-node rack). |
+| **Estimated System Weight** | **`> 287.6 lbs (130 kg)`** (estimated) | A mechanical server lift is required (`4 × 287.6 lbs` of nodes alone in a 4-node rack). |
 | **Rack Units & Dimensions** | **10 Rack Units (10 RU)**<br/>Height: `17.5 in (444 mm)`<br/>Width: `19.0 in (482.2 mm)`<br/>Length: `35.3 in (897.1 mm)` | Requires EIA-310 19-inch racks at least `24" × 44" × 48U` (`600 × 1,100 mm`); **`30" × 48" × 52U` (`700 × 1,200 mm`) recommended**. |
 | **Cooling & Supply Airflow** | **Air-cooled**, **~2,145 CFM per system** at sea level (based on **150 CFM per kW**) | `4,290 CFM` for a 2-node rack; `8,580 CFM` for a 4-node rack. |
 | **Operating Temperature** | **`5°C to 30°C` (`41°F to 86°F`)** | Capped at `30°C` max supply air temperature. |
 | **Operating Altitude & Temperature Derating** | **`3,048 meters (10,000 feet)` maximum:**<br/>• `0 – 1,000 ft`: `5°C to 35°C`<br/>• `1,000 – 5,000 ft`: `5°C to 30°C`<br/>• `5,000 – 10,000 ft`: `5°C to 25°C` | High-altitude data centers above `5,000 ft` must lower maximum cold-aisle supply air to **25°C** to compensate for thinner air density. |
-| **Operating Acoustic Power (`L_WA,m`)** | • At `25°C (77°F)` inlet: **96 dB**<br/>• At `30°C (86°F)` inlet: **101 dB** | Mandatory hearing protection in the data hall; a `5°C` warmer inlet triples sound energy (`+5 dB`) as fans ramp to 100%. |
+| **Operating Acoustic Power (`L_WA,m`)** | • At `25°C (77°F)` inlet: **96 dB**<br/>• At `30°C (86°F)` inlet: **101 dB** | Hearing protection is required in the data hall. A `5°C` warmer inlet adds 5 dB, which roughly triples the sound energy, as the fans ramp to 100%. |
 
 :::tip In one minute
 - A single DGX B200 occupies 10 RU, weighs over 130 kg, draws 14.3 kW max, requires about 2,145 CFM of air at sea level, and emits 96 dB at 25°C or 101 dB at 30°C.
@@ -100,11 +100,11 @@ Before designing rack layouts, record the complete node-level envelope of the ai
 
 ## 2. Rack density patterns and the 10-row 3-phase power provisioning table
 
-When electrical engineers select branch circuit amperages that do not align with integer multiples of the node demand, the facility strands tens of kilowatts of unusable power in every rack. In a DGX B200 SuperPOD, racks are provisioned using a two-circuit power pattern where two three-phase branch circuits feed two rack PDUs. Each circuit is rated to handle half the peak demand of the rack after factoring in breaker deratings and the power factor.
+An electrical engineer picks branch circuits that do not match whole multiples of the node demand, and every rack strands tens of kilowatts of power nobody can use. A DGX B200 SuperPOD rack takes two three-phase branch circuits feeding two rack PDUs. Each circuit is rated for half the rack's peak demand, after breaker derating and power factor.
 
 ### 2.1 Standard 2-node rack (28.6 kW) vs extreme-density 4-node rack (57.2 kW)
 
-Most enterprise data halls cannot exhaust the hot air from a four-node cabinet footprint without choking airflow. Attempting to bolt on a rear-door heat exchanger or in-row cooler creates static backpressure that starves the chassis fans. Architects must choose between the standard two-node rack profile and the extreme-density four-node rack profile based on room airflow capacity.
+Most enterprise data halls cannot remove the hot air from a four-node cabinet. Adding a rear-door heat exchanger or in-row cooler makes it worse, because it creates static backpressure that starves the chassis fans. Architects choose between the two-node and four-node rack profiles according to the room's airflow capacity.
 
 | Rack Parameter | Standard Deployment (**2 DGX B200s / Rack**) | Extreme-Density Deployment (**4 DGX B200s / Rack**) |
 |---|---|---|
@@ -128,7 +128,7 @@ Stranded Capacity at Peak Demand (kW) = Unrounded Rack Capacity (kW) - (Supporte
   • 415V 63A: 68.83 kW (69 kW, 11.6 kW stranded @ 80.0%)| 86.03 kW (86 kW, 28.8 kW stranded @ 100.0%)
 ```
 
-Every distribution scheme in `superpod-b200-dc` is verified to the tenth of a kilowatt by `compute_b200_rack_circuit_row()` in `code/part09/b200_datacenter.py`. Exposing the explicit three-phase formula above is my inference explaining how the source table's rounded capacity and exact stranded capacity columns are derived.
+The function `compute_b200_rack_circuit_row()` in `code/part09/b200_datacenter.py` reproduces every row of the `superpod-b200-dc` table to the tenth of a kilowatt. The formula above is the chapter's own reconstruction of how the source's capacity and stranded-capacity columns follow from voltage, current, and derating.
 
 | Phase | Distribution Voltage (`V`) | Line Voltage (`V`) | Breaker Amps (`A`) | Breaker Derating | Max Rack Power Capacity (`kW`)* | Supported DGX B200s / Rack** | Peak Server Demand (`kW`)** | Stranded Capacity at Peak (`kW`)** |
 |---|---:|---:|---:|---:|---:|---:|---:|---:|
@@ -143,7 +143,7 @@ Every distribution scheme in `superpod-b200-dc` is verified to the tenth of a ki
 | `3Φ` | **415** | 240 | **60** | **100.0%** | **82 kW** | **4** | **57.2 kW** | **24.7 kW** |
 | `3Φ` | **415** | 240 | **63** | **100.0%** | **86 kW** | **4** | **57.2 kW** | **28.8 kW** |
 
-In the table above, a single asterisk denotes the power factor assumption, and a double asterisk denotes a two-circuit power provisioning scheme. Look closely at the Stranded Capacity column. If your facility installs two 415V 32A circuits with fully rated breakers, you can still only power two DGX B200 nodes in that cabinet. Three nodes would exceed half-circuit symmetry across the two feeds, leaving 15.1 kW of stranded capacity per rack. Matching your breaker amperage and derating to the two-node or four-node demand minimizes stranded facility power.
+In the table, a single asterisk marks the power factor assumption and a double asterisk marks a two-circuit scheme. Look at the Stranded Capacity column. A facility with two 415V 32A circuits and fully rated breakers can still power only two DGX B200 nodes in that cabinet, which leaves 15.1 kW stranded. The source table lists two nodes and does not give the reason. A likely reason is that each circuit carries whole nodes at 14.3 kW, and a third node would have to share circuits. That reading is the chapter's own. Choosing breaker amperage and derating to fit a two-node or four-node rack keeps stranded power low.
 
 :::tip In one minute
 - Standard racks hold two DGX B200 nodes on two 32A three-phase circuits, while extreme-density 52U racks hold four nodes on two 60A or 63A circuits.
@@ -155,11 +155,11 @@ In the table above, a single asterisk denotes the power factor assumption, and a
 
 ## 3. The 5-of-6 (N+1) PSU rule and the five power provisioning topologies
 
-This section covers the single most important electrical rule in a DGX B200 data center. It routinely catches experienced data center architects off guard when they assume a DGX B200 behaves like a DGX H100.
+This section covers the most important electrical rule in a DGX B200 data center. It catches experienced architects who assume a DGX B200 behaves like a DGX H100.
 
 ### 3.1 Why 5 of 6 PSUs (N+1) changes everything
 
-If an electrician wires a DGX B200 rack using standard dual-corded interleaving, taking a single PDU offline for routine maintenance will crash every server in the cabinet. Operations teams expecting seamless redundancy instead suffer an immediate full-rack blackout.
+An electrician wires a DGX B200 rack with standard dual-corded interleaving. When one PDU goes offline for routine maintenance, every server in the cabinet crashes. The operations team expected seamless redundancy and got a full-rack blackout.
 
 Recall from the earlier system overview that a DGX H100 has six internal power supplies arranged in equal three-plus-three redundancy. Because half of those supplies can carry the full node load, a DGX H100 can lose three power supplies on an entire power feed and stay running.
 
@@ -167,7 +167,7 @@ Now examine the 14.3 kW DGX B200. A DGX B200 also has six internal Power Supply 
 
 ### 3.2 Comparing all five rack power provisioning topologies (Models 1 to 5)
 
-Because five of six PSUs must stay energized at all times, how you wire the six power cords of each DGX B200 to your rack PDUs and upstream UPS sources dictates cluster survivability. Depending on the wiring model, a single PDU or UPS failure can cause a half-rack outage, a full-rack outage that is not recommended, or zero outage with true high availability.
+Five of the six PSUs must stay energized at all times, so the wiring of each server's six power cords to the rack PDUs and upstream UPS sources decides what survives a failure. Depending on the model, one PDU or UPS failure causes a half-rack outage, a full-rack outage, or no outage at all.
 
 ```mermaid
 flowchart TD
@@ -203,11 +203,11 @@ flowchart TD
 
 ## 4. Cooling optimization, ASHRAE Class A1, MERV 13 filtration, and ISO 14644-1 Class 8 cleanliness
 
-Because each DGX B200 pulls over two thousand cubic feet per minute of supply air through its heatsinks at sea level, a two-node or four-node rack moves a massive air volume. Both the temperature and humidity envelope and the particulate cleanliness of that air stream must be strictly controlled.
+Each DGX B200 pulls about 2,145 cubic feet of supply air per minute through its heatsinks at sea level. A two-node rack moves 4,290 CFM and a four-node rack 8,580 CFM. The temperature, the humidity, and the cleanliness of that air all have to stay inside limits.
 
 ### 4.1 ASHRAE environmental parameters for DGX B200
 
-If cold-aisle supply air drifts above the thermal ceiling or humidity drops too low or climbs too high, nodes suffer thermal throttling, electrostatic discharge risk, or condensation inside the chassis. Supply air entering the front of a DGX B200 must comply with ASHRAE Class A1 specifications, subject to a maximum supply air temperature of 30°C.
+If the cold aisle runs too hot, nodes throttle. If humidity falls too low, static discharge becomes a risk. If it rises too high, condensation can form inside the chassis. Supply air entering a DGX B200 must meet ASHRAE Class A1, capped at a supply temperature of 30°C.
 
 | Envelope Range | ASHRAE Class | Dry-Bulb Temperature | Non-Condensing Humidity Range | Max Dew Point (`DP`) | DGX B200 Applicability |
 |---|---|---|---|---|---|
@@ -218,9 +218,9 @@ If cold-aisle supply air drifts above the thermal ceiling or humidity drops too 
 
 ### 4.2 Air filtration (MERV 13) and ISO 14644-1 Class 8 particulate limits
 
-At high airflow per four-node rack, unfiltered dust or metallic zinc whiskers quickly coat high-fin-density heatsinks and foul optical transceivers. Even brief construction or uncrating dust inside the cold aisle can permanently contaminate optical connectors and degrade cooling efficiency.
+A four-node rack moves so much air that unfiltered dust or metallic zinc whiskers quickly coat the finely finned heatsinks and foul optical transceivers. Even a short burst of construction or uncrating dust in the cold aisle can contaminate optical connectors for good and cut cooling efficiency.
 
-Therefore, `superpod-b200-dc` mandates three air-quality rules. First, all air handlers supplying the data hall must use at least MERV 13 rated filters, or equivalent EN779-2012 or ISO 16890 filters. Second, the rack area must meet the ISO 14644-1 Class 8 cleanroom standard across all particle size thresholds. Third, sub-micron particulate excursions must never exceed the Class 8 limit for longer than 15 minutes, so teams must always unbox hardware outside the cold aisle.
+`superpod-b200-dc` therefore sets three air-quality rules. The air handlers supplying the hall use filters rated MERV 13 or better, or the equivalent EN779-2012 or ISO 16890 grade. The rack area meets ISO 14644-1 Class 8, the cleanroom standard, at every particle size. Particle counts must not exceed the Class 8 limit for longer than 15 minutes, which is why hardware is unboxed outside the cold aisle.
 
 ```text
 DGX B200 Air Filtration & ISO 14644-1 Class 8 Cleanliness Standards (superpod-b200-dc p. 17):
@@ -233,7 +233,7 @@ DGX B200 Air Filtration & ISO 14644-1 Class 8 Cleanliness Standards (superpod-b2
 
 ### 4.3 Seven airflow management best practices
 
-When hot exhaust air recirculates around the sides or through empty rack slots into the cold intake, inlet temperatures spike above 30°C and trigger thermal throttling. Because supplemental rear-door heat exchangers and in-row coolers are not typically suitable for DGX B200 racks, facility teams must prevent exhaust recirculation through room-level containment and sealing.
+Hot exhaust air leaks around the sides or through empty rack slots into the cold intake. Inlet temperatures climb above 30°C, and the nodes throttle. Rear-door heat exchangers and in-row coolers are not typically suitable for DGX B200 racks. Facility teams must therefore stop recirculation with room-level containment and sealing. Seven practices do this.
 
 1. Run Computational Fluid Dynamics modeling and analysis of the room before finalizing rack placement.
 2. Install Hot or Cold Aisle Containment Systems to isolate the node intake from the exhaust plenum.
@@ -253,11 +253,11 @@ When hot exhaust air recirculates around the sides or through empty rack slots i
 
 ## 5. Cabling, rack dimensions, smart rPDUs, and layout rules
 
-In a full four-unit DGX B200 SuperPOD, overhead pathways carry over two thousand high-speed InfiniBand cables between compute nodes, leaf switches, and spine switches. That total does not even count the storage, in-band, and out-of-band Ethernet runs.
+A full four-unit DGX B200 SuperPOD has over two thousand InfiniBand cables overhead, running between compute nodes, leaf switches, and spine switches. The storage, in-band, and out-of-band Ethernet runs come on top of that. One bad cable can be hard to find in that bundle, so the rules below matter.
 
 ### 5.1 Passive DAC vs Active Optical Cables (AOC) and the `< 90%` length rule
 
-If cable pathways are designed to the exact theoretical maximum length of copper or optical media, vertical rack elevation and bend radiuses will leave the physical cable short on installation day. Worse, crushing optical fibers under heavy copper bundles or routing links through patch panels causes link flaps across the compute fabric.
+A pathway designed to the exact maximum length of the media leaves the cable too short on installation day, once vertical rack runs and bend radii are counted. Optical fibers crushed under heavy copper bundles, or links routed through patch panels, cause link flaps across the compute fabric.
 
 | Cable Media Type | Physical Construction | Maximum Standard Distance | **`< 90%` Design Rule Limit** | Deployment Guidance |
 |---|---|---|---|---|
@@ -265,7 +265,7 @@ If cable pathways are designed to the exact theoretical maximum length of copper
 | **Passive DAC (`400G`)** | Twinaxial shielded copper with passive QSFP/OSFP ends | **Up to `3 meters`** | **`≤ 2.7 meters`** | Short in-rack/adjacent-rack InfiniBand runs. |
 | **Active Optical Cable (`AOC`)** | Multimode or single-mode fiber permanently bonded to active optical transceivers | **Up to `30 meters`** | **`≤ 27 meters`** | Rack-to-rack and leaf-to-spine InfiniBand runs across the SuperPOD row. |
 
-Calculating the exact design limits in the table above by multiplying the standard maximum distances by ninety percent is my inference applying the `< 90%` rule from `superpod-b200-dc`. To keep more than two thousand cables serviceable and error-free, follow six cabling discipline rules.
+The design limits in the table are the standard maximum distances multiplied by ninety percent. That multiplication is the chapter's own application of the `< 90%` rule in `superpod-b200-dc`. Six cabling rules keep more than two thousand cables serviceable.
 
 1. Keep all cable runs under 90% of the maximum supported distance for the media type, accounting for intra-rack vertical routing, overhead tray elevation, and minimum bend radiuses.
 2. Never use patch panels or intermediary top-of-rack switches to extend InfiniBand cables. Patch panels introduce optical attenuation and reflections that break NDR link training, while intermediary switches add hop latency.
@@ -276,7 +276,7 @@ Calculating the exact design limits in the table above by multiplying the standa
 
 ### 5.2 Cabinet dimensions, smart rPDU specs, and rack cohabitation rules
 
-Squeezing multiple ten-unit nodes, heavy power cords, and high-speed cables into a shallow, narrow cabinet blocks exhaust airflow and causes vibration-induced power disconnects. Facility planners must enforce cabinet dimensions, smart rack PDU capabilities, and strict rack cohabitation rules.
+Several ten-unit nodes, heavy power cords, and bundles of high-speed cable in a shallow, narrow cabinet block the exhaust airflow. Fan vibration can also work a power plug loose. Planners therefore fix the cabinet dimensions, the smart rack PDU features, and the rules for what else may share the rack.
 
 | Infrastructure Component | Minimum / Mandatory Requirement | NVIDIA Recommended Best Practice |
 |---|---|---|
@@ -369,12 +369,12 @@ Summary: 30 passed, 0 failed (total 30)
 
 ## Exercises
 
-1. Run `python3 -B code/part09/b200_datacenter_lab.py`. Pick two rows of the 10-row power table and re-derive the rack capacity and the stranded kW by hand using the three-phase equation.
-2. A site sits at 6,500 ft altitude with a 28°C cold aisle. Is it inside the DGX B200 limit? What setpoint would you choose and why?
-3. A rack has two DGX B200 nodes and three UPS sources. Which of the five wiring models would you pick if you can only have two sources, and what if you can have six? What fails in each case when one PDU is switched off?
-4. Check a planned run of 28 m of AOC and 2.9 m of 400G DAC against the `< 90%` rule. Which one fails, and what do you change?
-5. Write a one-page pre-delivery checklist for a 4-node DGX B200 rack covering circuits, airflow, rack size, floor load, rPDU features, and air quality.
-6. List the seven airflow practices from section 4.3 and mark which three you would implement first in an existing room.
+1. Run the lab script. Then pick two rows of the 10-row power table. Re-derive the rack capacity by hand with the three-phase equation, and then the stranded kW.
+2. A site sits at 6,500 ft with a 28°C cold aisle. Is it inside the DGX B200 limit? What setpoint would you choose, and why?
+3. A rack has two DGX B200 nodes. Which of the five wiring models would you pick if only two UPS sources are available? Which would you pick with six? In each case, what fails when one PDU is switched off?
+4. A plan has a 28 m AOC run and a 2.9 m 400G DAC run. Check both against the `< 90%` rule. Which one fails, and what do you change?
+5. Write a one-page pre-delivery checklist for a 4-node DGX B200 rack. Cover the circuits, the airflow, the rack size, the floor load, the rPDU features, and the air quality.
+6. Take the seven airflow practices from section 4.3. Which three would you apply first in an existing room, and why?
 
 ## Checkpoint questions (20)
 
@@ -446,7 +446,7 @@ One DGX B200 needs about 2,145 CFM at sea level, derived from 150 CFM per kW at 
 <details>
 <summary>**10. Why does a warmer inlet matter for noise and for staff?**</summary>
 
-Acoustic power rises from 96 dB at 25°C to 101 dB at 30°C as chassis fans ramp up. Mandatory hearing protection is required for staff working in the data hall.
+Acoustic power rises from 96 dB at 25°C to 101 dB at 30°C as chassis fans ramp up. Staff working in the data hall must wear hearing protection.
 </details>
 
 <details>
@@ -527,8 +527,8 @@ It must include a network management module with a REST API, ports for temperatu
 - Executed `python3 -B code/part09/b200_datacenter_lab.py` with 30 passed and 0 failed.
 
 ### My own choices and inferences, labelled in the text
-1. Writing out the unrounded three-phase formula (`2 × sqrt(3) × V_dist × Amps × 0.95 × Derating / 1,000`, where `sqrt(3) = 1.73205`, across `380V/400V/415V` and `32A/60A/63A` circuits with `0.80` / `0.90` derating and `N=2`, `42.9 kW` / `43.7 kW` / `29.5 kW` / `8.35 kW`, `3.3 kW` / `9.9 kW` / `10.2 kW` H100 comparison, and the 5 power topologies `dual_source_non_interleaved`, `dual_interleaved`, `dual_ups_with_sts`, `six_to_make_five`, plus `15-minute` ISO Class 8 limit and `1,020` / `1,024` / `1,150` / `1,830` / `2,000` / `2,044` / `6,000` cable/port totals across `ISLs`) in `compute_b200_rack_circuit_row` inside `code/part09/b200_datacenter.py` and Section 2.2 is my inference. It reproduces every integer-rounded rack capacity and every tenth-of-a-kilowatt stranded capacity in the provisioning table of `superpod-b200-dc`.
-2. Multiplying the standard maximum distances by ninety percent to obtain the exact design limits in `validate_ib_cable_run` inside `code/part09/b200_datacenter.py` and Section 5.1 is my inference.
+1. The unrounded three-phase formula in Section 2.2 is written out in `compute_b200_rack_circuit_row` in `code/part09/b200_datacenter.py`. It is the chapter's own reconstruction of how the source table was computed. It reproduces every rounded rack capacity and every stranded-capacity figure in the provisioning table of `superpod-b200-dc`.
+2. Multiplying the standard maximum distances by ninety percent gives the design limits in `validate_ib_cable_run` in `code/part09/b200_datacenter.py` and in Section 5.1. This application of the 90 percent rule is the chapter's own.
 
 ### Not verified on live hardware
 - Smart rPDU Redfish `/redfish/v1/PowerEquipment/RackPDUs/1` queries were not executed against a live rack PDU in this authoring environment.

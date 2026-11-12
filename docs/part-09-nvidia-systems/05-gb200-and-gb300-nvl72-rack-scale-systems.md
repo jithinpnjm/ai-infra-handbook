@@ -23,12 +23,12 @@ lab_venue: "none (design / reading)"
 
 ## Why this matters for AI infrastructure
 
-For nearly a decade, the boundary of an NVLink domain was the sheet-metal lid of an eight-GPU server. Inside that single box, GPUs exchanged tensors at ultra-high speed over an internal NVSwitch baseboard. The moment a model needed a ninth GPU in the next server, communication dropped onto slower network cards. For frontier Mixture-of-Experts and long-horizon reasoning models, that eight-GPU ceiling became a brick wall. Splitting expert-parallel and tensor-parallel groups across nine separate servers forced synchronous collectives across slower host NICs. Real-time inference Time to First Token ballooned past five seconds, and per-GPU decode throughput crawled at a few tokens per second.
+An engineer serves a 1.8-trillion-parameter Mixture-of-Experts model on H100 nodes. Inside one eight-GPU server, GPUs exchange data over NVSwitch at full NVLink speed. The model needs more than eight GPUs, so its expert-parallel and tensor-parallel groups spill onto a ninth GPU in the next server. From then on, every collective crosses the network cards. In the benchmark this chapter uses, the first token takes more than five seconds and each GPU decodes about 3.4 tokens per second.
 
-The NVIDIA GB200 NVL72 and DGX GB300 NVL72 solve that problem by changing the fundamental unit of computing. The rack, rather than the individual server, is now the computer. NVIDIA disaggregates the Grace CPUs and Blackwell GPUs across 18 compute trays. It links them through 9 NVLink switch trays over a passive rear copper backplane. That backplane delivers 130 TB/s of aggregate NVLink 5 bandwidth so the entire liquid-cooled rack operates as a single NVLink domain. On that same MoE benchmark, moving onto an NVL72 rack multiplies per-GPU throughput by more than thirty times and cuts first-token latency to 50 milliseconds.
+The GB200 NVL72 and DGX GB300 NVL72 change the unit of computing from the server to the rack. The Grace CPUs and Blackwell GPUs sit in 18 compute trays. Nine NVLink switch trays join them over a passive copper backplane in the rear. That backplane carries 130 TB/s of aggregate NVLink 5 bandwidth, so the whole liquid-cooled rack is one NVLink domain. *AI Systems Performance Engineering* reports roughly 30 times more throughput per GPU on that same benchmark, and a first token in about 50 milliseconds. Section 3.3 shows the figures behind that claim.
 
 :::info Corpus scope note
-Standalone *NVIDIA Mission Control Rack Bring-Up and Installation Guide* and *NVIDIA GB200 NVL72 Hardware User Guide* PDFs are not in the local book corpus. The rack slot map, compute-tray and switch-tray port layouts, crossbar math, power shelf specs, NVLink SHARP algorithms, and BCM firmware workflows in this chapter come from the cited corpus books and notes.
+The chapter does not draw on the *NVIDIA Mission Control Rack Bring-Up and Installation Guide* or the *NVIDIA GB200 NVL72 Hardware User Guide*. The rack slot map, tray port layouts, crossbar math, power shelf specifications, NVLink SHARP algorithms, and BCM firmware workflows come from the books and volumes listed under Sources.
 :::
 
 ## Prerequisites and outcomes
@@ -49,9 +49,9 @@ Standalone *NVIDIA Mission Control Rack Bring-Up and Installation Guide* and *NV
 
 ## 1. Breaking the 8-GPU wall: why the rack became the computer
 
-When a frontier model outgrows an eight-GPU server, engineers must split tensor-parallel or expert-parallel groups across multiple nodes. Inference users immediately feel the penalty as multi-second response pauses, while cluster operators see expensive GPUs sitting idle waiting on network packets. Inside a traditional server, GPUs talk at 600 to 1,800 GB/s over NVSwitch. Stepping outside the box drops bandwidth to 50 or 100 GB/s over 400G or 800G NICs. That 18× to 36× bandwidth cliff breaks interactive serving for trillion-parameter models.
+A model outgrows an eight-GPU server, so its tensor-parallel or expert-parallel groups must span several nodes. Users see multi-second pauses before a reply starts. Operators see expensive GPUs idle while they wait on network packets. Inside a server, GPUs talk at 600 to 1,800 GB/s over NVSwitch. Outside it, bandwidth drops to 50 or 100 GB/s over the network cards. That drop is 18 to 36 times, and it breaks interactive serving for trillion-parameter models.
 
-Think of nine 8-GPU servers connected by InfiniBand like nine separate office buildings linked by single-lane footbridges. Workers inside the same building can hand documents across a desk instantly. Collaborating across all 72 workers, however, creates a massive queue at the doors. An NVL72 rack puts all 72 workers in one tall building with 18 fast elevator shafts running straight through the middle.
+An NVL72 rack avoids the drop by keeping all 72 GPUs on one NVLink fabric. Nine separate 8-GPU servers joined by InfiniBand cannot do that.
 
 ### 1.1 From DGX GH200 to MGX and GB200 or GB300 NVL72
 
@@ -115,7 +115,7 @@ On site, the work is short. You connect the rack to facility power, attach the w
 
 In a traditional air-cooled rack, technicians weave power cords, InfiniBand fibers, and Ethernet cables together behind the servers. In a high-density liquid-cooled NVL72 rack, the rear of the cabinet is packed solid with water manifolds, high-current DC busbars, and the blind-mate NVLink copper cartridge. If network ports or NVMe drives lived on the rear panel, technicians could never reach them without draining coolant or unseating the backplane.
 
-Therefore, every tray in an NVL72 rack separates front-aisle serviceability from rear-panel blind mating. All optical or copper network cables and NVMe drives are serviced from the front cold or hot aisle, while liquid cooling, DC power, and NVLink 5 connections blind-mate automatically at the rear.
+For that reason, every tray in an NVL72 rack keeps serviceable parts at the front and blind-mating connections at the rear. All optical or copper network cables and NVMe drives are serviced from the front cold or hot aisle, while liquid cooling, DC power, and NVLink 5 connections blind-mate automatically at the rear.
 
 ### 2.1 Inside a 1U DGX GB200 or GB300 Compute Tray
 
@@ -157,7 +157,7 @@ On the front panel, each switch tray exposes two RJ45 COMe ports for NVOS. NVOS 
 
 ### 2.3 Inside a DGX Power Shelf
 
-When 72 GPUs jump from idle to full load in microseconds, drawing 130 kW to 150 kW can cause severe voltage droop or destabilize the facility utility grid. To prevent power dips, the rack incorporates eight DGX Power Shelves (`pwr-01` to `pwr-08`).
+When 72 GPUs jump from idle to full load within microseconds, the rack suddenly pulls 130 kW to 150 kW. That can drop the voltage or disturb the facility's supply. The rack therefore carries eight DGX Power Shelves, named `pwr-01` to `pwr-08`.
 
 | Power Shelf Feature | Specification | Purpose |
 |---|---|---|
@@ -202,7 +202,7 @@ If GPUs inside a rack-scale cluster had to route traffic through multiple switch
 
 ### 3.1 Proving the 1,296-port 1-stage NVLink 5 crossbar
 
-Walk through the exact port arithmetic verified by `verify_nvl72_crossbar_topology()` in `code/part09/nvl72_rack.py`.
+The port arithmetic below is checked by `verify_nvl72_crossbar_topology()` in `code/part09/nvl72_rack.py`.
 
 ```mermaid
 flowchart LR
@@ -244,12 +244,12 @@ Beyond raw point-to-point bandwidth, the 18 NVSwitch ASICs inside an NVL72 rack 
 
 ### 3.3 Why NVL72 transforms 1.8-trillion-parameter MoE inference
 
-Consider the real-world benchmark from *AI Systems Performance Engineering* Chapter 2 for serving a 1.8-trillion-parameter Mixture-of-Experts model. On 8-GPU H100 nodes over InfiniBand, the model and its active experts span multiple servers. Every token's expert-parallel `AllToAll` shuffle and tensor-parallel `AllReduce` must cross 50 GB/s InfiniBand links with high latency. That communication bottleneck makes interactive serving unusable. Moving the model inside a single GB200 NVL72 rack places all 72 GPUs inside one NVLink 5 domain with microsecond latency and FP4 Tensor Cores.
+*AI Systems Performance Engineering* Chapter 2 gives a benchmark for serving a 1.8-trillion-parameter Mixture-of-Experts model. On 8-GPU H100 nodes over InfiniBand, the model and its active experts span several servers. For every token, the expert-parallel `AllToAll` shuffle and the tensor-parallel `AllReduce` cross 50 GB/s InfiniBand links. That latency makes interactive serving unusable. In a single GB200 NVL72 rack, all 72 GPUs share one NVLink 5 domain with microsecond latency and FP4 Tensor Cores. The table compares the two setups.
 
 | Benchmark Metric (1.8T MoE Model) | 8-GPU H100 Nodes over InfiniBand | Single GB200 NVL72 Rack | Improvement Factor |
 |---|---|---|---|
 | **Inter-Node / Inter-GPU Fabric** | 50 GB/s InfiniBand (5–10+ µs latency) | 1.8 TB/s NVLink 5 (1–2 µs latency, 13.4–13.8 TB HBM3e; 20.7 TB on GB300) | 36× higher per-GPU fabric bandwidth |
-| **Per-GPU Decode Throughput** | ~3.4 tokens/second per GPU | ~150 tokens/second per GPU | `150 / 3.4 = 44.12×` exact ratio (**my inference**; book prose summarizes as "roughly 30×") |
+| **Per-GPU Decode Throughput** | ~3.4 tokens/second per GPU | ~150 tokens/second per GPU | `150 / 3.4 = 44.12×` from the two stated rates. The book itself summarizes the gain as "roughly 30×". |
 | **Time to First Token (TTFT)** | `> 5,000 ms` (over 5 seconds) | ~50 ms | 100× faster first-token response |
 
 :::tip In one minute
@@ -270,7 +270,7 @@ Looking ahead, co-packaged optics (CPO) is the next step for the network. NVIDIA
 
 ## 4. Comparing DGX GB200 NVL72 versus DGX GB300 NVL72
 
-Data center architects planning multi-rack deployments must decide between GB200 NVL72 and DGX GB300 NVL72 racks while sizing floor loading, cooling loops, and spine switches. The DGX GB300 NVL72 is powered by Grace CPUs and Blackwell Ultra B300 GPUs. It serves as a drop-in rack-scale evolution of the GB200 NVL72 with the exact same mechanical tray layout and NVLink 5 backplane. At the same time, it expands HBM3e capacity and FP4 compute throughput while doubling East-West InfiniBand bandwidth.
+An architect planning a multi-rack deployment has to choose between GB200 NVL72 and DGX GB300 NVL72 racks before sizing floor loading, cooling loops, and spine switches. The GB300 uses Grace CPUs and Blackwell Ultra B300 GPUs. Its tray layout and NVLink 5 backplane match the GB200. It adds HBM3e capacity and FP4 compute, and it doubles East-West InfiniBand bandwidth.
 
 | Rack Specification | NVIDIA GB200 NVL72 | NVIDIA DGX GB300 NVL72 | Generational Delta (GB300 vs GB200) |
 |---|---|---|---|
@@ -293,7 +293,7 @@ Data center architects planning multi-rack deployments must decide between GB200
 
 ## 5. Dual-protocol firmware management on GB200 and GB300 NVL72
 
-Administrators who try to flash an NVL72 rack the same way they flash a standard x86 server quickly hit authentication failures on the switch trays. Worse, they can leave compute trays in a half-updated state. As documented in the *NVIDIA Base Command Manager 11 Administrator Manual* Section 14.5, BCM 11.34.0 introduces `cm-nvfwupd` module version 2.1.2. Compute trays and NVLink switch trays use different management protocols, different `firmwaremanagemode` settings, and different numbers of `.fwpkg` bundles.
+An administrator flashes an NVL72 rack the way they flash an x86 server. The switch trays reject the login, and the compute trays are left half updated. The *NVIDIA Base Command Manager 11 Administrator Manual*, Section 14.5, explains why. BCM 11.34.0 introduces `cm-nvfwupd` version 2.1.2, and the two tray types differ in protocol, `firmwaremanagemode` setting, and number of `.fwpkg` bundles.
 
 ### 5.1 Compute Trays versus Switch Trays in Base Command Manager
 
@@ -329,7 +329,7 @@ Both staging folders sit under `/cm/local/apps/cmd/etc/htdocs/bios/firmware/` an
 
 ### Monitoring utilization and power in practice
 
-A rack this powerful only pays off if you keep it busy. NVIDIA's Data Center GPU Manager (DCGM) tracks per-GPU metrics such as GPU utilization, memory usage, temperature, and NVLink throughput. During a training run, you want GPUs near 100% utilization most of the time. If they sit at 50%, something is idle half the time. The cause might be a data loading bottleneck or a synchronization problem.
+A rack this powerful only pays off while it is busy. NVIDIA's Data Center GPU Manager (DCGM) tracks per-GPU metrics such as GPU utilization, memory usage, temperature, and NVLink throughput. During a training run, you want GPUs near 100% utilization most of the time. If they sit at 50%, something is idle half the time. The cause might be a data loading bottleneck or a synchronization problem.
 
 Watch the NVLink counters too. If the links saturate often, communication is probably the limit. The DPUs and NICs expose their own statistics, so you can confirm that storage links are not saturated during data reads. Power needs the same attention. At about 130 kW, a small misconfiguration wastes real money. Administrators can cap power or clocks when a job does not need full speed. Dialing down clocks can save kilowatts over weeks of training while still meeting the throughput target.
 
@@ -462,12 +462,12 @@ Summary: 30 passed, 0 failed (total 30)
 
 ## Exercises
 
-1. Run `python3 -B code/part09/nvl72_rack_lab.py`. Re-derive the 1,296 ports and the 129.6 TB/s aggregate by hand from the numbers 72 GPUs, 18 links, and 100 GB/s.
-2. Draw the 48U rack from bottom to top with RU ranges covering power shelves, 8 compute trays, 9 switch trays, 10 compute trays, and power shelves. Explain why the switch trays sit in the middle.
-3. A GPU in an NVL72 rack reports 16 of 18 NVLink links active, and so does every other GPU in the rack. Which hardware is the likely cause and how many ports does that hardware terminate?
-4. Write the `cmsh` steps that let BCM flash an NVLink switch tray. Which `firmwaremanagemode` do you set, which credentials do you add, and how many `.fwpkg` files must you flash afterwards?
-5. A developer says that NVL72 is one big GPU, so they will run one Python process on it. Write a short reply explaining what is true and what is not, using Failure Mode 3.
-6. Using the GB200 and GB300 columns of Section 4, compute the rack HBM and the rack network bandwidth for both and state the ratio of each.
+1. Run the lab script. Then work out by hand how many NVLink ports the rack backplane has. Start from 72 GPUs with 18 links each. What aggregate bandwidth follows at 100 GB/s per link?
+2. Draw the 48U rack from bottom to top and mark the RU range of each zone. Then explain why the switch trays sit in the middle.
+3. Every GPU in an NVL72 rack reports 16 of 18 NVLink links active. Which hardware is the likely cause? How many ports does one unit of it terminate?
+4. Write the `cmsh` steps that let BCM flash an NVLink switch tray. Which mode do you set, and which credentials do you add? How many `.fwpkg` files must you flash afterwards?
+5. A developer says that NVL72 is one big GPU, so they will run one Python process on it. Write a short reply. Say what is true and what is not, and use Failure Mode 3.
+6. Use the two columns of the Section 4 table. Compute the rack HBM for GB200 and for GB300, and the ratio between them. Then do the same for rack network bandwidth.
 
 ## Checkpoint questions (20)
 
@@ -625,7 +625,7 @@ A loaded rack weighs about 3,000 lbs (1.3–1.4 metric tons) on one footprint. T
 
 ## Sources and review notes
 
-- **Correction (review pass):** An earlier draft quoted a cable count of "more than 5,000". That number is not in any book or `nvidia-devops` note in the corpus, so it was removed. The ~20 kW copper-versus-optics saving comes from `nvidia-devops` Volume 05 Chapter 7.
+- **Cable count.** The chapter does not give a cable count for the backplane, because no source in the corpus states one. The ~20 kW copper-versus-optics saving comes from `nvidia-devops` Volume 05 Chapter 7.
 
 ### Sources read in full for this chapter
 
@@ -643,7 +643,7 @@ A loaded rack weighs about 3,000 lbs (1.3–1.4 metric tons) on one footprint. T
 - `python3 -B code/part09/nvl72_rack_lab.py` passes all 30 checks with 0 failures.
 
 ### My own choices and inferences, labelled in the text
-1. **Exact arithmetic ratio 44.12× for the 1.8T MoE benchmark:** Computing `150.0 / 3.4 = 44.12×` in `compare_moe_inference_h100_vs_nvl72` inside `code/part09/nvl72_rack.py` alongside the prose summary of "roughly 30×" in *AI Systems Performance Engineering* Chapter 2 is **my inference**. It lets the lab verify the exact ratio of the two stated token-per-second numbers.
+1. **Exact arithmetic ratio 44.12× for the 1.8T MoE benchmark:** The function `compare_moe_inference_h100_vs_nvl72` in `code/part09/nvl72_rack.py` computes `150.0 / 3.4 = 44.12×`. *AI Systems Performance Engineering* Chapter 2 summarizes the gain as "roughly 30×". The chapter keeps both: the lab verifies the exact ratio of the two stated token rates, and the book's wording stays attributed to the book.
 
 ### Not verified on live hardware
 - `cmsh` `rack display`, `firmware info`, `firmware status`, and `firmware flash` commands on live GB200 or GB300 NVL72 compute trays and NVOS switch trays were not executed in this authoring environment.
