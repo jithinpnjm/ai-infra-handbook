@@ -1,6 +1,6 @@
 ---
 id: "c06-01"
-title: "6.1 What a supercomputer is: TOP500, Linpack, HPC versus AI factory."
+title: "6.1 What a supercomputer is: TOP500, Linpack, HPC versus AI factory"
 sidebar_label: "6.1 What a supercomputer is: TOP500, Linpack, HPC versus AI factory"
 sidebar_position: 1
 description: "What makes a computer super: parallelism, FLOPS and precision, Rpeak versus Rmax, the TOP500, HPL, HPCG and Green500 lists, how traditional HPC differs from an AI factory, cluster types, and what the word means to the administrator."
@@ -30,7 +30,7 @@ You need Part 1 for Linux administration and Part 2 for networking basics. When 
 
 You will also explain what the TOP500, HPL, HPCG, HPL-MxP, Green500, Graph500, IO500, and MLPerf benchmarks measure, and what each one misses. You will compare a traditional HPC center with an AI factory across workloads, numerical precision, network topologies, storage bursts, scheduling, and power density. You will tell high-availability, high-productivity, and high-performance clusters apart. You will also tell custom vendor supercomputers apart from commodity clusters and Beowulf farms. Finally, you will describe the physical and operational realities of running a supercomputer at 80 to 100 percent continuous utilization, including power-on surges and command-line fleet management.
 
-## 1. What "super" means: from marketing ranks to a single synchronized complex
+## 1. What "super" means: a single synchronized complex
 
 Suppose you have just inherited a hundred Linux servers racked in a cold room. In an ordinary corporate office, nobody panics if one server loses half its memory or a network switch fails. You can swap in a cheap spare switch, or let employees print their reports on the second floor for a few days while you wait for parts. The same casual swap on a compute cluster causes real damage. Replace a broken InfiniBand switch with Gigabit Ethernet, or replace an 8 GB compute node with a 4 GB node, and every multi-node job that spans that rack slows to a crawl. Users flood your ticket queue, because a tightly coupled parallel job runs at the speed of its slowest participant.
 
@@ -40,7 +40,7 @@ There is no formal standards-body definition of a supercomputer. Engineers rely 
 2. By capability: a system whose total performance is far beyond what any single server can deliver. It gets there by running one parallel program across many processors that exchange data rapidly.
 3. By operational shape: a shared, expensive, tightly integrated complex, where overall synchronization, fabric health, storage throughput, and software consistency decide whether useful work comes out.
 
-In *Supercomputers for Linux SysAdmins*, Sergey Zhumatiy captures this third view directly. A supercomputer is not just a huge pile of expensive hardware, servers, switches, and disks. It is a single complex construction, in idea and in essence. All of its components are closely connected. Your most important task as an administrator is to understand those connections and keep them working together. Because the complex often works together on one huge task, even a slight imbalance in one component can significantly drop the performance of the whole system.
+The third view is the one that matters to an administrator. A supercomputer is not just a huge pile of expensive hardware, servers, switches, and disks. It is a single complex construction, in idea and in essence. All of its components are closely connected. Your most important task as an administrator is to understand those connections and keep them working together. Because the complex often works together on one huge task, even a slight imbalance in one component can significantly drop the performance of the whole system.
 
 Three technical properties appear in every real supercomputer:
 
@@ -83,11 +83,6 @@ Does a parallel program run faster just because it is parallel? Not necessarily.
 When a parallel program runs slowly, even though the installed MPI environment works without errors, work through this hierarchy from top to bottom. A classic root cause is a configuration error that sends MPI messages over the slow Ethernet management network instead of the fast InfiniBand fabric.
 
 **Treat a supercomputer as one synchronized machine where every memory bank, core, accelerator, and network link is balanced.** Always verify which network fabric a slow parallel job is actually using.
-
-> **In one minute:**
-> - For an administrator, "super" means overall synchronization across a tightly coupled complex of servers, storage, and fabric, not a price tag.
-> - Hardware accelerates independent work through parallel functional units and assembly-line pipelines (`K*(N-1)+S` clock cycles), backed by multi-bank RAM and DMA offload.
-> - Parallel programs can run slower than sequential ones if threads thrash CPU caches, wait on stragglers, or accidentally route MPI messages over slow management Ethernet across the nine levels of cluster parallelism.
 
 ## 2. Measuring speed: FLOPS, precision, peak and achieved
 
@@ -147,11 +142,6 @@ In AI work, the practical counterpart to HPL efficiency is MFU, which stands for
 
 **Never accept a FLOPS figure without its precision, its sparsity mode, and its efficiency ratio.**
 
-> **In one minute:**
-> - Always qualify FLOPS with precision, sparsity, and whether the figure is theoretical peak or sustained achieved performance.
-> - CPU Rpeak equals `nodes * sockets * cores * GHz * FLOPs/cycle/core`. Halving the vector width from 32 to 16 FLOPs per cycle cuts a 100-node cluster from 983.0 to 491.5 TFLOP/s.
-> - HPL efficiency and AI MFU show how much hardware capability survives memory, network, and thermal bottlenecks.
-
 ## 3. The lists and benchmarks
 
 Picture a newly built cluster being handed over from the hardware integrator to your operations team. How do you prove that all thousand nodes, cables, power supplies, and cooling loops actually work together under full load? Running `nvidia-smi` on each node only proves that the GPUs powered on. So the community relies on standardized benchmark suites. They rank the world's largest machines and burn in new clusters before users arrive.
@@ -181,11 +171,6 @@ Keep three caveats in mind when you quote public rankings in an interview:
 
 **Use HPL, HPCG, IO500, and MLPerf as burn-in acceptance tests, so that fabric, thermal, and storage flaws show up before you hand a cluster to users.**
 
-> **In one minute:**
-> - TOP500 ranks systems twice a year, in June and November, by FP64 Rmax on dense HPL. HPCG tests memory-bandwidth-bound sparse math and typically reaches only a few percent of Rpeak.
-> - HPL-MxP and MLPerf evaluate mixed-precision and end-to-end AI workloads. Green500 measures GFLOP/s per watt, and IO500 measures parallel storage.
-> - Treat standard benchmarks as acceptance and burn-in tests for your hardware, not as direct predictors of every user workload.
-
 ## 4. Traditional HPC versus the AI factory
 
 Suppose an experienced HPC systems administrator moves onto an LLM training platform team. On day one, the cluster looks familiar: liquid-cooled racks, InfiniBand switches, a Lustre or WEKA parallel file system, and Slurm scheduling batch jobs. By Friday, the differences are unmistakable. Instead of two hundred scientists running two hundred different Fortran and C++ codes across a few dozen nodes each, one foundation-model pre-training job occupies four thousand GPUs continuously for six weeks. That job hammers the fabric with giant collective operations, and it dumps multi-terabyte checkpoints every few hours.
@@ -214,14 +199,9 @@ Yet HPC and AI have more in common than the contrast suggests. If you can keep a
 
 **Bring HPC's discipline in gang scheduling, fabric hygiene, and pre-job health checks into your AI clusters.** Then add fast container delivery and automated fault recovery for multi-thousand-GPU jobs.
 
-> **In one minute:**
-> - Traditional HPC centers run diverse FP64 MPI simulations across many users, whereas AI factories run massive BF16 and FP8 NCCL training jobs and 24/7 inference services.
-> - A single AI training run can lock up thousands of GPUs for weeks. The mean time between hardware failures inside that job drops from weeks to hours, which makes fast checkpointing and automated node draining critical.
-> - An AI factory measures success as an industrial production line: useful model FLOPs and tokens produced per megawatt and per dollar.
+## 5. Kinds of clusters and custom supercomputers
 
-## 5. Kinds of clusters, custom supercomputers, and distributed models
-
-When people say "cluster," they simply mean many computers combined into a single system. In *Supercomputers for Linux SysAdmins* Chapter 2 and *AI Factory* Chapter 9, the authors show that clusters fall into distinct categories, depending on their purpose and coupling.
+When people say "cluster," they simply mean many computers combined into a single system. Clusters fall into distinct categories, depending on their purpose and coupling.
 
 ### The three classic cluster types: HA, high-productivity, and HPC
 
@@ -245,88 +225,7 @@ Does a supercomputer always mean a cluster? No. An important feature of a cluste
 
 Historically, a supercomputer was a product made of unique, proprietary components from a single vendor. Take IBM's Blue Gene series. Its architecture resembles a cluster and uses similar software tools. But you could buy a Blue Gene only from IBM or its distributors. You could not build one yourself, because its key components were never sold separately. Custom systems like this are rare today, although examples such as the NEC Tsubasa still exist. At the opposite extreme sit computing farms, which are groups of computers working on a task without transmitting data to each other, and Beowulf systems, assembled practically from improvised commodity PCs. The line between a cluster and a non-cluster is clear. Practically all modern supercomputers, however, are built as clusters, enhanced with fast networks and synchronization hardware.
 
-### Cloud, fog, and edge distributed tiers
-
-Once an AI platform reaches beyond a single data center, distributed computing spans three geographic tiers and three cloud service models. As *AI Factory* Chapter 9 frames it, cloud providers offer IaaS for raw VMs and GPUs. They offer PaaS for managed application platforms, and SaaS for turnkey software. These services run across public, private, or hybrid clouds.
-
-The cloud or core data center is the centralized tier. It holds hyperscale or on-premises AI factories with thousands of GPUs, plus parallel or object storage (File, Block, and Object stores; see Chapter 1.27). This tier handles heavy model training and high-throughput batch serving.
-
-Fog computing sits in the middle tier, close to the local network edge, such as a factory plant or a regional telecom site. Fog nodes aggregate and filter sensor streams. That reduces bandwidth backhaul and latency before data reaches the central cloud.
-
-Edge computing and cloudlets place compute directly on or beside physical devices and IoT sensors, such as autonomous vehicles or local cloudlet hotspots. Edge serves workloads where millisecond inference latency, or offline operation, rules out a round trip to the cloud.
-
-Where do Slurm and Kubernetes fit across these models? Slurm was built for the HPC cluster model. It runs a fixed pool of nodes that execute queued, finite batch jobs, with exclusive resource allocation, gang scheduling, and strict fair-share accounting. Kubernetes was built for the HA and cloud service model. It maintains continuously running desired state across pods and load-balanced services. To adapt it for tightly coupled GPU training, you add a specialized batch operator such as Kueue, Volcano, KAI Scheduler, or JobSet.
-
-### Fog computing: moving intelligence onto the local network
-
-Picture a plant that sends every sensor reading to a distant cloud and then waits for the answer. Each round trip takes time, and the plant cannot act while it waits. Fog computing solves this by placing processing closer to the devices that produce the data.
-
-Fog computing, also called fog networking or fogging, is a decentralized structure. It sits between data-producing devices, such as Internet of Things (IoT) devices, and the cloud. It extends the cloud architecture to the edge of the network, so the cloud is involved less. Moving processing units nearer the end devices makes better use of computing power, and it shortens task execution and processing time. Fog pushes intelligence down to the local network. Edge devices and gateways do the work. Data flows from the endpoints to a gateway for processing, and then flows back again.
-
-Fog computing brings several benefits:
-
-- Enhanced security and increased business agility.
-- Improved reliability and minimized latency.
-- Flexible mobility and better overall network performance, because the distance across the network is shorter.
-- Time-sensitive analysis at the network edge, instead of sending all IoT data to the cloud.
-- Fast response, measured in milliseconds.
-
-Fog has limits too. You should know that its architecture depends on many links in a chain that carries data from physical assets into the digital world, and each link can fail. Its latency and bandwidth are still limited, and it still depends on the cloud.
-
-The fog model has three layers. The cloud layer holds data centers and servers with large storage and computing power. They manage and process data that arrives from the fog layer. The fog layer holds fog nodes, which are network devices with enough processing and temporary storage. A fog node receives requests from devices, then decides whether to process each one locally or send it to the cloud. The terminal layer holds the IoT and end-user devices. They sense the physical world and send their data up to the fog layer.
-
-### Edge computing: processing at the device
-
-Edge computing places computing resources and storage at the edge of the network, close to the end user. It works together with the cloud, so you can think of it as a more localized version of fog and cloud computing. It grew out of peer-to-peer networking, distributed data, self-healing networks, and remote cloud services. It runs on small form-factor hardware with flash storage arrays. Its processors offer better hardware security and use little power.
-
-Edge computing is built on the idea of cloudlets. A cloudlet is like a Wi-Fi hotspot that offers cloud services without Wi-Fi internet connectivity. Its only rule about placement is that it sits at the edge of the network or near the user.
-
-Edge computing brings clear advantages. It reduces latency between end devices and the cloud. It uses the resources of both the cloud and the local devices, because each device both produces and consumes data. It reduces network cost and transmission delay, and it gives better control over sensitive data movements. It helps augmented and virtual reality applications, which benefit from low response times. It can keep data local, so that data stays safe if the data center is compromised. It can also hold data locally and send it to the cloud later, when enough bandwidth is free. In short, it reduces network traffic and the risk of a data bottleneck.
-
-Edge computing processes sensor data where it is produced, rather than carrying it to a central node. Devices at the edge triage their data locally, which cuts the traffic sent to the central repository. That also removes parts of the fog communication chain, and it reduces the number of possible failure points. An edge device can be any device with enough computing capacity, including switches, routers, and sensors.
-
-For IoT, edge devices collect and process the data that sensors send. Without edge computing, that data would travel back and forth to the cloud. Those round trips slow responses and waste efficiency. Because processing happens nearer the source, the data is handled faster, with lower latency, and less bandwidth is used.
-
-### Fusing data from many sensors
-
-Edge devices often collect readings from several sensors at once. When you combine those readings into one picture, the result is called data fusion. It sounds simple, but the readings rarely agree perfectly, so fusion has to handle several problems. The table lists each problem and what it means.
-
-| Problem | What it means |
-|---|---|
-| Imprecision and uncertainty | No measurement is perfect, so each reading carries some level of uncertainty. |
-| Spurious data and outliers | Data can be noisy or hard to read, and faulty or imprecise measurements can produce extreme values. |
-| Modality | The data may mix visual, auditory, and physical measurements. |
-| Conflict | Different sensors can report values that contradict each other, and these are hard to fuse. |
-| Operational timing | Different parts of the data can take different routes to the fusion point, so they arrive out of sequence. |
-| Dynamic versus static | Some values come from a phenomenon that does not change over time, while others change constantly. |
-| Dimensionality | Measurements can come in different dimensions, so they must be reduced to the needed dimensions, either at the sensor node or at the fusion center. |
-| Correlation | Nearby sensors can share the same external noise. If those shared dependencies are ignored, the result can be inconsistent. |
-| Alignment and registration | Each sensor uses its own local frame, so the data must be placed in one standard frame before fusion. |
-
-Two more terms matter here. Data association means finding meaningful relations between variables, often quite different ones, inside large databases. The processing framework decides whether fusion is centralized or decentralized. Decentralized fusion is usually preferred in wireless sensor networks, because it lowers the communication load and lets each sensor process its own data. Consider data quality from collection all the way through to fusion.
-
-### Cloud, fog and edge compared
-
-These three architectures look alike, but they meet different needs. The table below shows the main differences.
-
-| Points of difference | Cloud computing | Fog computing | Edge computing |
-|---|---|---|---|
-| Location of data processing | Central cloud server | Within an IoT gateway or fog nodes located in the LAN network | Device itself |
-| Purpose | Long-term in-depth analysis | Quick analysis and real-time response | Quick analysis and real-time response |
-| Latency | High | Low | Very low |
-| Security | Less secure | High security | High security |
-| Geographical distribution | Centralised | Distributed | Distributed |
-
-The three are not interchangeable. Time-sensitive data is processed at the edge, while data that is not time-driven goes to the cloud. Fog uses a centralized system that works with industrial gateways and embedded computers on a LAN. Edge computing does much of its processing on embedded platforms that connect directly to sensors and controllers.
-
-Organizations that rely heavily on data increasingly use cloud, fog, and edge infrastructure together. Most enterprises are moving toward fog or edge designs to make better use of their end-user and industrial IoT devices. Pairing a cloud platform with on-site fog networks or edge devices often gives the best results.
-
 **Match your orchestrator and fault-tolerance design to how tightly coupled the workload is.** Use gang scheduling and fast checkpoints for tightly coupled HPC and NCCL jobs. Use stateless failover or task retries for HA and HTC pools.
-
-> **In one minute:**
-> - HA clusters survive node failures transparently, and HTC or Grid clusters, such as Folding@home, simply retry the dead node's task. In a tightly coupled HPC or AI training job, a single node failure halts the entire job.
-> - True clusters are built from commercially available components, unlike proprietary single-vendor supercomputers such as IBM Blue Gene or NEC Tsubasa. Loose compute farms are separated from them by their low-latency fabric.
-> - Slurm naturally fits queued, tightly coupled batch jobs on a fixed node pool. Kubernetes naturally fits long-running services and adds batch queueing through operators.
 
 ## 6. What "super" means to the administrator
 
@@ -382,11 +281,6 @@ Sadly, they solve only parts of the problem. Commercial and free enterprise cons
 
 **Automate fleet checks from the command line and enforce a staggered storage-first power-on sequence.** Monitor every facility and hardware metric proactively, so users never discover failures for you.
 
-> **In one minute:**
-> - A supercomputer runs at 80–100% utilization 24/7, packs compute into less than a quarter of the total facility floor space, and treats synchronized network and storage bursts as normal everyday load.
-> - Never power on a cluster all at once. Sequence disk shelves before storage controllers to prevent starting-current spikes, rack sway, and false array rebuilds. Stagger hot-corridor racks, and pace compute node boots.
-> - Use parallel CLI tools (`pdsh` or `clush` with `grep MemTotal /proc/meminfo | awk '{print $2}'`) and flexible scripts, rather than chasing rigid all-in-one enterprise GUI consoles.
-
 ## 7. The stack at a glance
 
 The diagram shows how the pieces of a supercomputer connect, from users and login nodes down to the facility. You can use it to see where each piece sits. The table after it maps each layer to the chapters that cover it.
@@ -430,7 +324,7 @@ Watch for these five common beliefs about supercomputers.
 
 ## 9. Lab (no cluster required)
 
-Start with the self-checking Python lab, which runs on your own machine. Run `code/part06/flops_lab.py` locally. It verifies the vector pipeline cycle equation `K*(N-1)+S` from *Supercomputers for Linux SysAdmins* Chapter 2. It also checks the CPU and GPU Rpeak, HPL efficiency, and BF16 MFU calculations. Finally, it tests the fleet-wide `/proc/meminfo` `MemTotal` anomaly filter from *Supercomputers for Linux SysAdmins* Chapter 1:
+Start with the self-checking Python lab, which runs on your own machine. Run `code/part06/flops_lab.py` locally. It verifies the vector pipeline cycle equation `K*(N-1)+S` It also checks the CPU and GPU Rpeak, HPL efficiency, and BF16 MFU calculations. Finally, it tests the fleet-wide `/proc/meminfo` `MemTotal` anomaly filter:
 
 ```bash
 python3 code/part06/flops_lab.py
@@ -457,42 +351,44 @@ Use these questions to test yourself. Answer each one in your own words before y
 
 Work through these on paper first, then check your answers. You should answer before you look.
 
-1. Start with pipelining and memory banks, drawing on *Supercomputers for Linux SysAdmins* Chapter 2. Using `vector_pipeline_cycles()` in `code/part06/flops.py`, compute the clock cycles a five-stage vector adder (`S = 5`, `K = 1`) needs for `N = 100` elements, versus `500` unpipelined cycles. Then explain why populating four `8 GB` RAM modules across four independent motherboard memory banks outperforms a single `32 GB` module in one slot.
-2. Work through the nine levels of cluster parallelism from *Supercomputers for Linux SysAdmins* Chapter 2. List all seven hardware levels and both software levels. Then explain why a parallel MPI program can run slower than a sequential program. Threads may contend for CPU cache. Or MPI may route traffic over the Ethernet management network instead of InfiniBand.
+1. Start with pipelining and memory banks. Using `vector_pipeline_cycles()` in `code/part06/flops.py`, compute the clock cycles a five-stage vector adder (`S = 5`, `K = 1`) needs for `N = 100` elements, versus `500` unpipelined cycles. Then explain why populating four `8 GB` RAM modules across four independent motherboard memory banks outperforms a single `32 GB` module in one slot.
+2. Work through the nine levels of cluster parallelism List all seven hardware levels and both software levels. Then explain why a parallel MPI program can run slower than a sequential program. Threads may contend for CPU cache. Or MPI may route traffic over the Ethernet management network instead of InfiniBand.
 3. Use the functions in `code/part06/flops.py` to work out Rpeak, Rmax, HPL efficiency, and MFU. Call `rpeak_cpu()`, `gpu_cluster_peak_pflops()`, and `hpl_efficiency()`. First, compute the FP64 Rpeak of a hundred-node CPU cluster with two sockets, 64 cores per socket, and 2.4 GHz. Do this with 32 FLOPs per cycle, then with 16. Next, compute the HPL efficiency with Rmax at 38 and at 48.0 PFLOP/s. Finally, compute the 40% MFU sustained BF16 rate of an 800-GPU cluster.
-4. Contrast HA, HTC (SETI@home and Folding@home), and HPC clusters, drawing on *Supercomputers for Linux SysAdmins* Chapter 2 and *AI Factory* Chapter 9. Look at inter-node coupling and at the blast radius of a single node failure. Then distinguish a commodity COTS or Beowulf cluster from a single-vendor custom supercomputer, such as IBM Blue Gene or NEC Tsubasa. Finally, state how the Cloud, Fog, and Edge tiers divide training and low-latency inference.
-5. Drawing on *Supercomputers for Linux SysAdmins* Chapter 2, explain why compute racks often occupy less than a quarter of a supercomputer's total floor area, and why they run at 80–100% continuous utilization. Then describe the three physical startup hazards when you power on a cluster after an outage. They are electrical and network request surges, multi-rack disk shelf spin-up torque and controller ordering, and hot-corridor overheating.
+4. Contrast HA, HTC (SETI@home and Folding@home), and HPC clusters. Look at inter-node coupling and at the blast radius of a single node failure. Then distinguish a commodity COTS or Beowulf cluster from a single-vendor custom supercomputer, such as IBM Blue Gene or NEC Tsubasa. Finally, state how the Cloud, Fog, and Edge tiers divide training and low-latency inference.
+5. explain why compute racks often occupy less than a quarter of a supercomputer's total floor area, and why they run at 80–100% continuous utilization. Then describe the three physical startup hazards when you power on a cluster after an outage. They are electrical and network request surges, multi-rack disk shelf spin-up torque and controller ordering, and hot-corridor overheating.
 6. Write the `pdsh` or `clush` command that uses `grep MemTotal /proc/meminfo | awk '{print $2}'` to audit physical memory across one hundred nodes after boot. Then trace how `filter_nodes_missing_ram()` in `code/part06/flops.py` finds nodes with missing DIMMs within a two percent tolerance. Finally, explain why enterprise GUI suites such as `HP OpenView` and `Zenoss` are not a universal panacea for supercomputer administration. Use *Supercomputers for Linux SysAdmins* Chapters 1 and 2 as your sources.
 
 ## Checkpoint questions (20)
 
 <details>
-<summary>1. What are the three working definitions of a supercomputer, and what does "super" mean to the Linux administrator who operates one (*Supercomputers for Linux SysAdmins*, Chapters 1 and 2)?</summary>
+<summary>1. What are the three working definitions of a supercomputer, and what does "super" mean to the Linux administrator who operates one?</summary>
 
 There are three working definitions: by rank or cost, by capability, and by operational shape. By capability means solving one large problem through parallel execution across many processors. To the administrator, "super" means overall synchronization across one tightly integrated complex. Every server, switch, storage array, and software layer must line up and be tuned together. Even a slight imbalance on one node degrades the whole complex.
 </details>
 
 <details>
-<summary>2. What is the difference between hardware **parallelism** and **pipelining** inside a processor (*Supercomputers for Linux SysAdmins*, Chapter 2)?</summary>
+<summary>2. What is the difference between hardware **parallelism** and **pipelining** inside a processor?</summary>
 
 Parallelism means separate hardware units run different independent instructions at the same time. For example, an adder can compute `x=a+b` while a multiplier computes `y=b*c`. Hundreds of GPU cores can run the same kernel together. Pipelining is different. It splits one operation into sequential stages, such as load, normalize mantissas, add, correct, and write. The stages work like a conveyor belt, so several elements are in flight at different stages at once. AVX vector instructions work this way.
 </details>
 
 <details>
-<summary>3. Write the cycle formula for processing a vector of `N` elements through a pipeline whose slowest stage takes `K` clock cycles and whose full pipeline length is `S` cycles (*Supercomputers for Linux SysAdmins*, Chapter 2).</summary>
+<summary>3. Write the cycle formula for processing a vector of `N` elements through a pipeline whose slowest stage takes `K` clock cycles and whose full pipeline length is `S` cycles.</summary>
 
-$$\text{Total cycles} = K \times (N - 1) + S$$
+```text
+total cycles = K * (N - 1) + S
+```
 The first element finishes after `S` cycles. That wait is the pipeline acceleration time. Each later element finishes one every `K` cycles. In modern processors `K` is typically `1`. For example, with `S = 5`, `K = 1`, and `N = 100`, the total is `104` cycles.
 </details>
 
 <details>
-<summary>4. Why does populating four `8 GB` RAM modules across four motherboard memory banks perform better than installing one `32 GB` module in a single slot (*Supercomputers for Linux SysAdmins*, Chapter 2)?</summary>
+<summary>4. Why does populating four `8 GB` RAM modules across four motherboard memory banks perform better than installing one `32 GB` module in a single slot?</summary>
 
 Independent memory banks work in parallel. While one word is being written or read on the first bank, the memory controller can start the next access on a second bank at the same time. If you put all `32 GB` into a single slot, every access goes through one bank, which serializes them.
 </details>
 
 <details>
-<summary>5. List the nine levels of hardware (`[HW]`) and software (`[SW]`) parallelism in a compute cluster (*Supercomputers for Linux SysAdmins*, Chapter 2).</summary>
+<summary>5. List the nine levels of hardware (`[HW]`) and software (`[SW]`) parallelism in a compute cluster.</summary>
 
 1. `[HW]` Multiple independent memory banks.
 2. `[HW]` Multiline CPU caches.
@@ -506,7 +402,7 @@ Independent memory banks work in parallel. While one word is being written or re
 </details>
 
 <details>
-<summary>6. Why can a parallel program run **slower** than a sequential program, and what classic network misconfiguration slows down working MPI jobs (*Supercomputers for Linux SysAdmins*, Chapter 2)?</summary>
+<summary>6. Why can a parallel program run **slower** than a sequential program, and what classic network misconfiguration slows down working MPI jobs?</summary>
 
 Parallel code can run slower if you have threads on a node contending for different memory sections and thrashing the CPU cache. It can also run slower when processes spend most of their time waiting for data from the slowest process. A classic misconfiguration is MPI launching cleanly but routing inter-node messages over the slow Ethernet management network instead of the high-speed InfiniBand fabric.
 </details>
@@ -522,8 +418,10 @@ FLOPS counts floating-point operations per second. Modern GPUs put far more thro
 
 Multiply the hardware counts together. For example, the 100-node cluster works out like this.
 
-$$\text{Rpeak (GFLOP/s)} = \text{nodes} \times \text{sockets} \times \text{cores} \times \text{GHz} \times \text{FLOPs/cycle/core}$$
-For the 100-node cluster: $100 \times 2 \times 64 \times 2.4 \times 32 = 983{,}040\text{ GFLOP/s} \approx \mathbf{983.0\text{ TFLOP/s}}$.
+```text
+Rpeak (GFLOP/s) = nodes * sockets * cores * GHz * FLOPs/cycle/core
+```
+For the 100-node cluster: 100 * 2 * 64 * 2.4 * 32 = 983,040 GFLOP/s, which is about **983.0 TFLOP/s**.
 </details>
 
 <details>
@@ -537,7 +435,7 @@ For the 100-node cluster: $100 \times 2 \times 64 \times 2.4 \times 32 = 983{,}0
 <details>
 <summary>10. What does HPL measure on the TOP500 list, when is the list published, and how does HPL-MxP differ?</summary>
 
-- TOP500 / HPL: The list is published twice a year, in June at ISC and in November at SC. It ranks systems by Rmax on a dense linear system $Ax = b$, solved by LU factorization in FP64 double precision.
+- TOP500 / HPL: The list is published twice a year, in June at ISC and in November at SC. It ranks systems by Rmax on a dense linear system, written Ax = b and solved by LU factorization in FP64 double precision.
 - HPL-MxP: It solves the Linpack problem with mixed-precision, low-precision tensor factorization (FP16 or BF16), then applies FP64 iterative refinement. That reflects AI hardware capabilities.
 </details>
 
@@ -564,7 +462,7 @@ HPL performs dense matrix-matrix multiplication with high arithmetic intensity. 
 </details>
 
 <details>
-<summary>14. Compare High-Availability (HA), High-Productivity (HTC / Grid), and High-Performance (HPC) clusters when a single compute node fails (*Supercomputers for Linux SysAdmins*, Chapter 2).</summary>
+<summary>14. Compare High-Availability (HA), High-Productivity (HTC / Grid), and High-Performance (HPC) clusters when a single compute node fails.</summary>
 
 - HA cluster: Clients reconnect transparently to surviving nodes, and the service stays online.
 - HTC / Grid cluster (SETI@home, Folding@home): Only the failed node's independent task chunk is lost. That chunk is reassigned to another node while the other nodes keep working.
@@ -572,7 +470,7 @@ HPL performs dense matrix-matrix multiplication with high arithmetic intensity. 
 </details>
 
 <details>
-<summary>15. How does a commodity cluster differ from a historical single-vendor supercomputer like `IBM Blue Gene` or `NEC Tsubasa`, and what is a `Beowulf` cluster (*Supercomputers for Linux SysAdmins*, Chapter 2)?</summary>
+<summary>15. How does a commodity cluster differ from a historical single-vendor supercomputer like `IBM Blue Gene` or `NEC Tsubasa`, and what is a `Beowulf` cluster?</summary>
 
 A cluster can be assembled from commercially available off-the-shelf servers and switches sold on the open market. A Beowulf cluster is built from ordinary commodity PCs or improvised parts. A historical non-cluster supercomputer, such as IBM Blue Gene or NEC Tsubasa, uses proprietary processors, boards, and interconnects made by a single vendor. You cannot buy those parts separately to build your own machine.
 </details>
@@ -584,7 +482,7 @@ Slurm models a fixed pool of nodes that runs queued, finite batch jobs. It offer
 </details>
 
 <details>
-<summary>17. Contrast an office LAN with a supercomputer facility in terms of floor area allocation, normal node utilization, and synchronized I/O bursts (*Supercomputers for Linux SysAdmins*, Chapter 2).</summary>
+<summary>17. Contrast an office LAN with a supercomputer facility in terms of floor area allocation, normal node utilization, and synchronized I/O bursts.</summary>
 
 - Floor area: In a modern supercomputer facility, the computing racks can occupy less than a quarter of the total floor area. Cooling and power equipment take up the remaining three-quarters.
 - Utilization: An office PC sits idle 99% of the time. A supercomputer runs at `80–100%` node utilization continuously.
@@ -592,7 +490,7 @@ Slurm models a fixed pool of nodes that runs queued, finite batch jobs. It offer
 </details>
 
 <details>
-<summary>18. What are the three physical and operational hazards of powering on a supercomputer after a maintenance window (*Supercomputers for Linux SysAdmins*, Chapter 2)?</summary>
+<summary>18. What are the three physical and operational hazards of powering on a supercomputer after a maintenance window?</summary>
 
 1. Electrical inrush and boot-request storm: Turning everything on at once causes a sudden jump of dozens or thousands of kilowatts in power draw. Immediately afterward, every compute node floods storage and management servers with simultaneous requests.
 2. Multi-rack disk array spin-up torque and controller order: Disk shelves and drives must spin up in sequence to limit starting currents and keep the physical torque of spinning disks from swaying the rack. Shelves must also be online before storage controllers boot, so the controllers do not mark the array dead or start a rebuild.
@@ -600,7 +498,7 @@ Slurm models a fixed pool of nodes that runs queued, finite batch jobs. It offer
 </details>
 
 <details>
-<summary>19. How does an administrator check in seconds which compute nodes failed to detect their full physical RAM on boot (*Supercomputers for Linux SysAdmins*, Chapter 1)?</summary>
+<summary>19. How does an administrator check in seconds which compute nodes failed to detect their full physical RAM on boot?</summary>
 
 Instead of opening a GUI monitor on each machine, you run a parallel shell command across all nodes, with `pdsh` or `clush`:
 `grep MemTotal /proc/meminfo | awk '{print $2}'`.
@@ -608,7 +506,7 @@ Then compare each node's reported kilobytes against the expected benchmark, with
 </details>
 
 <details>
-<summary>20. Why does *Supercomputers for Linux SysAdmins* Chapter 2 warn against treating enterprise management suites like `HP OpenView` or `Zenoss` as a universal "panacea" for supercomputers?</summary>
+<summary>20. Why should you be careful about treating enterprise management suites like `HP OpenView` or `Zenoss` as a universal "panacea" for supercomputers?</summary>
 
 Enterprise suites such as `HP OpenView` and `Zenoss` inventory standard servers and automate routine office IT tasks. They cover only a fraction of a supercomputer's specialized fabric, scheduler, and boot requirements. Customizing them for HPC takes a massive investment of human effort, money, and time, and you must redo it whenever the cluster's architecture changes. If you build a documented, systematic workflow on flexible, extensible CLI tools and scripts, it adapts far better.
 </details>

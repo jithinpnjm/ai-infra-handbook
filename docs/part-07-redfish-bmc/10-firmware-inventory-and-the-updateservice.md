@@ -22,7 +22,7 @@ lab_venue: "GCP / GKE"
 
 ## Why this matters for AI infrastructure
 
-A 512-GPU training job slows down, and the cause turns out to be four replacement nodes. Those nodes ran an older GPU firmware. The user's notes tell this story. The firmware throttled under sustained load and cut the job's throughput by 14 percent. Treat those numbers as an illustration, not a measurement.
+A 512-GPU training job slows down, and the cause turns out to be four replacement nodes. Those nodes ran an older GPU firmware. The firmware throttled under sustained load and cut the job's throughput by 14 percent. Treat those numbers as an illustration, not a measurement.
 
 A GPU cluster is many parts that must work together. Those parts include the BIOS, the BMC, the GPU firmware, the NVSwitch firmware, the NIC firmware, the PCIe switches and more. If one node runs older firmware than the rest, it may be slower, or it may fail in odd ways. Everyone then waits for the slowest node.
 
@@ -41,7 +41,7 @@ This chapter builds on chapters 7.2 to 7.5 and 7.7, so read those first. When yo
 
 ## 1. What is "firmware" in a GPU server?
 
-Firmware is software that lives on a chip inside a part, such as a GPU or a network card. The user's notes list seven groups that an AI cluster has to keep consistent. The table below shows what each group controls and why you should care.
+Firmware is software that lives on a chip inside a part, such as a GPU or a network card. An AI cluster has to keep seven groups of firmware consistent. The table below shows what each group controls and why you should care.
 
 | Group | Why it matters |
 |---|---|
@@ -102,7 +102,7 @@ flowchart TD
     ACT_BMC & ACT_BIOS & ACT_HGX -->|"4. Re-read Version"| INV
 ```
 
-Notice that the last step returns to the inventory, so the inventory is both where you start and where you finish. My tool reads the whole inventory in one call:
+Notice that the last step returns to the inventory, so the inventory is both where you start and where you finish. The lab tool reads the whole inventory in one call:
 
 ```bash
 python3 rf_firmware.py inventory http://<bmc> <user> <password>
@@ -146,7 +146,7 @@ Several parameters decide what an update touches, so understand each one before 
 
 `@Redfish.OperationApplyTime` controls when the update applies. The `UpdateService` values are `Immediate`, `OnReset`, `AtMaintenanceWindowStart`, `InMaintenanceWindowOnReset`, `OnStartUpdateRequest` and `OnTargetReset`. With `OnStartUpdateRequest`, the update is **registered** now and starts only when you call `StartUpdate`.
 
-That last value is useful in a cluster. You can stage the same update on a whole rack, check that every request was accepted, and only then call `StartUpdate` on each node. In my lab, a staged task stays `Pending` for as long as you wait, until `StartUpdate` is called. Always pass `Targets` from your scripts, and use `OnStartUpdateRequest` when you want to stage a whole rack before starting any of it.
+That last value is useful in a cluster. You can stage the same update on a whole rack, check that every request was accepted, and only then call `StartUpdate` on each node. In the lab mock, a staged task stays `Pending` for as long as you wait, until `StartUpdate` is called. Always pass `Targets` from your scripts, and use `OnStartUpdateRequest` when you want to stage a whole rack before starting any of it.
 
 ## 4. The task and its messages
 
@@ -174,9 +174,9 @@ Some messages end the story without success, and some are not failures at all. T
 | `UpdateNotApplicable` | Warning | this image does not fit that device |
 | `AutomaticRecoveryInitiated`, `AutomaticRecoveryFailed`, `AutomaticRecoverySuccessful` | | the device tried to roll back |
 
-Your tool must read these messages. A `200` at the end of a task does **not** mean a new version is running, because a skipped update also ends in `200`. In my lab, a skipped downgrade finished with HTTP 200 and an unchanged version. So read the final message first, then re-read the inventory.
+Your tool must read these messages. A `200` at the end of a task does **not** mean a new version is running, because a skipped update also ends in `200`. In the lab mock, a skipped downgrade finished with HTTP 200 and an unchanged version. So read the final message first, then re-read the inventory.
 
-Here is what my tool printed on the mock. It did a dry run first, then a real run with `--yes`:
+Here is what the lab tool printed on the mock. It did a dry run first, then a real run with `--yes`:
 
 ```text
 PLAN  component HostBIOS_0 (System BIOS) is at version 1.20
@@ -200,16 +200,16 @@ Read that output as a story: the plan, the progress lines, then the activation a
 
 A task can report success while the inventory still shows the old version. That is expected when the firmware is written to a spare area and used only after a reset. The old firmware keeps running until then. Your task ends in `AwaitToActivate`, and the inventory keeps showing the **old** version. Which reset you need depends on the component.
 
-| Component (from the notes and the BCM manual) | What activates it |
+| Component | What activates it |
 |---|---|
-| BMC firmware | a BMC restart: the Redfish `Manager.Reset`, or `ipmitool mc reset cold` (the notes' firmware steps use it) |
+| BMC firmware | a BMC restart: the Redfish `Manager.Reset`, or `ipmitool mc reset cold` |
 | BIOS and the GPU tray (notes) | a cold reset of the system |
 | PCIe switches, retimers, ERoT, CPLDs (notes) | an **AC power cycle** |
 | DGX H100 GPU firmware (BCM manual) | an **AC power cycle**: the manual says a regular DC power cycle from `cmsh` "is not enough to initialize some of the components" |
 
-The BCM manual defines the two power-cycle terms. A **DC power cycle** is a board-level reset. An **AC power cycle** cuts every AC input to the system, which you can do by switching off the PDU outlets or by pulling the mains cables. The closest `ResetType` values are `PowerCycle` and `FullPowerCycle`. The first is closest to removing power and restoring it, and the second is closest to removing the utility power lines. Chapter 7.5 covers both. Whether the BMC's `FullPowerCycle` really removes AC power on a given DGX is something I could not check.
+The BCM manual defines the two power-cycle terms. A **DC power cycle** is a board-level reset. An **AC power cycle** cuts every AC input to the system, which you can do by switching off the PDU outlets or by pulling the mains cables. The closest `ResetType` values are `PowerCycle` and `FullPowerCycle`. The first is closest to removing power and restoring it, and the second is closest to removing the utility power lines. Chapter 7.5 covers both. Whether the BMC's `FullPowerCycle` really removes AC power on a given DGX has not been checked here.
 
-My mock models this. BMC firmware needs a `Manager.Reset`, BIOS needs a host restart, and the GPU-tray package needs a `FullPowerCycle`. The lab checks these rules, and its output shows them passing:
+The mock models this. BMC firmware needs a `Manager.Reset`, BIOS needs a host restart, and the GPU-tray package needs a `FullPowerCycle`. The lab checks these rules, and its output shows them passing:
 
 ```text
 PASS  BMC firmware is NOT activated by a host reset
@@ -221,7 +221,7 @@ PASS  a FullPowerCycle (AC power removed) activates all 30 entries
 PASS  tool: a normal restart leaves the GPU firmware NOT active and the tool says so (exit 7)
 ```
 
-The last line matters most. A tool that stops at "update finished" would leave nodes half-updated while reporting success. Instead, my tool re-reads the inventory afterwards, says `NOT ACTIVE`, and exits with code 7.
+The last line matters most. A tool that stops at "update finished" would leave nodes half-updated while reporting success. Instead, the lab tool re-reads the inventory afterwards, says `NOT ACTIVE`, and exits with code 7.
 
 One package can change many inventory items at once. The mock's GPU-tray package updates 30 entries in a single step, just as the BCM manual's single `nvfw_dgx-hgx-h100x8_...fwpkg` file does. If you want only one member changed, `Targets` lets you limit the update to it. Match each component to its reset before you schedule the window, because a wrong reset leaves the new version inactive.
 
@@ -243,16 +243,16 @@ So BCM adds package management, execution across many nodes and status tracking 
 
 ## 7. NVIDIA's own tool, `nvfwupd`
 
-The user's notes describe `nvfwupd`. It is a command-line tool from the NVIDIA Enterprise Support Portal, and it updates DGX H100 and H200 systems out-of-band. The notes also name the Redfish API as the other documented route, and the same steps and known issues apply to it. The notes show these commands:
+`nvfwupd` is a command-line tool from the NVIDIA Enterprise Support Portal, and it updates DGX H100 and H200 systems out-of-band. The Redfish API is the other documented route, and the same steps and known issues apply to it. Typical commands look like this:
 
 ```bash
 nvfwupd --target ip=<bmc-ip> user=<user> password=<password> show_version -p <package>.fwpkg
 nvfwupd -t ip=<bmc-ip> user=<user> password=<password> update_fw -p <package>.fwpkg -y -s update_bmc.json
 ```
 
-The notes make five points, and you should read each one before you run anything. First, `show_version -p` compares installed versions with a package. Second, `update_fw -s <file>.json` limits the update to the targets in that file. Third, stop GPU activity first, because `nvidia-smi` can block a VBIOS update. Fourth, add no extra load, such as jobs, diagnostics or monitoring, while the update runs. Last, downgrades follow a `ForceUpdate` procedure.
+Five points matter, and you should read each one before you run anything. First, `show_version -p` compares installed versions with a package. Second, `update_fw -s <file>.json` limits the update to the targets in that file. Third, stop GPU activity first, because `nvidia-smi` can block a VBIOS update. Fourth, add no extra load, such as jobs, diagnostics or monitoring, while the update runs. Last, downgrades follow a `ForceUpdate` procedure.
 
-**I have not run `nvfwupd`, so I cannot confirm any of these details.** The notes also say that an earlier draft described a container image and an `update_fw all --preview` command. Neither appears in NVIDIA's documentation, so this chapter does not use them. Treat these commands as a starting point to check against NVIDIA's documentation, not as a procedure you can copy.
+**`nvfwupd` was not run for this chapter, so these details are unconfirmed.** A container image and an `update_fw all --preview` command sometimes appear in informal descriptions. Neither appears in NVIDIA's documentation, so this chapter does not use them. Treat these commands as a starting point to check against NVIDIA's documentation, not as a procedure you can copy.
 
 ## 8. A safe fleet procedure
 
@@ -268,34 +268,15 @@ Suppose you must bring a rack of nodes to the same firmware in one maintenance w
 8. **Verify** by re-reading the inventory and comparing it with the baseline. Run the health checks from chapters 7.8, 7.9 and Part 10 before the node goes back.
 9. **Return the node** to the scheduler only after it passes.
 10. **Record** who ran the update, what changed, when, the versions before and after, and the task result.
-11. **Plan the rollback** before you start. Decide which package you would use, whether `ForceUpdate` applies, and what you will do if the BMC stops responding. The notes describe recovery steps for a bricked BMC, and I carry those into chapter 7.14.
+11. **Plan the rollback** before you start. Decide which package you would use, whether `ForceUpdate` applies, and what you will do if the BMC stops responding. Chapter 7.14 covers recovery steps for a bricked BMC.
 
-Why not update over SSH from the host OS? The notes in volume 5 argue that an SSH session can drop in the middle of a write. A BMC-driven update does not depend on the host OS staying healthy. The argument is reasonable, but it is not a guarantee. The vendor's guide decides how each component is updated, and some components need the host side to stay quiet during the transfer.
+Why not update over SSH from the host OS? One argument is that an SSH session can drop in the middle of a write. A BMC-driven update does not depend on the host OS staying healthy. The argument is reasonable, but it is not a guarantee. The vendor's guide decides how each component is updated, and some components need the host side to stay quiet during the transfer.
 
-### 8.1 Coordinated cross-domain rollout across storage, fabric, and compute (`volume-10/16`)
-
-In a production AI factory, a firmware refresh rarely touches compute nodes alone. It is part of a coordinated maintenance window that spans **parallel storage**, the **InfiniBand fabric** and **GPU compute nodes**. The source notes for this subsection are in `volume-10/16-senior-deep-dive-4-coordinated-firmware-driver-os-rollout-across-compute-network-storage.md`. The steps run in order:
-
-1. **Create a Slurm maintenance reservation first.** Drain the target nodes or the whole cluster cleanly, so the scheduler stops starting jobs that the window would interrupt:
-   ```bash
-   scontrol create reservation starttime=2026-11-07T22:00:00 duration=480 user=root flags=maint,ignore_jobs nodes=ALL
-   ```
-2. **Choose the order from compatibility matrices and blast radius.** A defensible default is **Storage backend first $\rightarrow$ InfiniBand Fabric second $\rightarrow$ Compute nodes last**. Validate with a canary ring at each stage, unless a new storage release needs a newer client kernel module first, or the window exists only for a compute-only bug fix.
-3. **Keep Subnet Manager (SM) high availability during fabric updates (`UFM 6.19.1`).**
-   - SM priority runs from **`0`, the lowest**, to **`15`, the highest**. The default is **`15`**. The higher priority wins mastership, and the standby SM takes over after **`4` failed polls**, which is also the default.
-   - Check the active master SM with `sminfo` or `sminfo <lid>`. **Never pass `-s`, `-p` or `-a` to `sminfo` on a production fabric.** Those flags write MAD changes, and the changes can disrupt the running SM.
-   - When you upgrade an HA **UFM Enterprise** pair, use the in-service upgrade over DRBD (`UFM 6.14.0+`). Upgrade the **standby** UFM node first, fail over mastership to the upgraded node, and then upgrade the former master. The upgrade backs up data automatically in `/opt/ufm/BACKUP`.
-   - Before you leave the fabric stage, check the link error deltas with `ibqueryerrors` and `perfquery`. Then confirm that the SM settings match across HCAs with `ibdiagnet`.
-4. **Respect the host software dependency chain, and avoid the silent GDS `compat` trap.**
-   - When you pair compute node firmware updates with host OS or driver updates, the documented GPUDirect Storage (GDS) install order is **Linux kernel (`4.15.x+`) $\rightarrow$ `MLNX_OFED` / `DOCA-Host` $\rightarrow$ NVIDIA GPU driver $\rightarrow$ `nvidia-fs` kernel module**. `DOCA-Host` replaces the inbox `ib_core`. The `mstflint` tool is unbundled from `MLNX_OFED 24.07` onward, so query the adapter PSID with `mstflint -d <device> q`. DKMS rebuilds `nvidia-fs` automatically on driver upgrades. Use `nvidia-fs 2.25.7+` to avoid the `2.25.6` P2P bug.
-   - **Why a broken `nvidia-fs` upgrade fails silently.** In `/etc/cufile.json`, `allow_compat_mode` defaults to **`true`**. The same file sets `force_compat_mode: false` and `gds_rdma_write_support: true`. If a kernel or driver update leaves `nvidia-fs.ko` unloaded, `libcufile` silently falls back to POSIX `pread`/`pwrite` bounce buffers through host CPU RAM. Your checkpoints then run several times slower, and no error is thrown.
-   - On the canary node, always run `lsmod | grep nvidia_fs` and `/usr/local/cuda/gds/tools/gdscheck.py -p`. The `gdscheck.py` output should show a direct mode such as `nvfs` or `p2pdma` alongside `compat`. Then compare `gdsio -x 0` with `gdsio -x 2`. The first is `GPUD`, direct storage-to-GPU. The second is `CPU_GPU`, a host memory bounce. Run the test on a GPU that shares a PCIe switch with the storage NIC, which `nvidia-smi topo -mp` shows. Non-optimal PCIe affinity can cut GDS throughput by `40%` and double latency.
-
-Run these checks on the canary node before any other node moves, and write the rollback plan before the window opens, not during the incident.
+Firmware windows that also touch the InfiniBand fabric and parallel storage need extra ordering and Subnet Manager care. Those steps belong with the fabric and storage chapters in Parts 12 and 13, not here.
 
 ## 9. The lab
 
-Start the lab from the chapter's code folder. The groups below show what the 46 checks cover, so you know what a failure means., and the groups below show what each one covers.
+Start the lab from the chapter's code folder. The groups below show what the 46 checks cover, so you know what a failure means.
 
 ```bash
 cd code/part07
@@ -311,18 +292,18 @@ python3 firmware_lab.py
 7. **The tool** checks a dry run, a skipped update, the failure exit code and a timeout reported as unknown. It also checks the inactive and active cases (exit 7 for the inactive one).
 8. Last, the Task with its messages and the `Updating` inventory item **validate against the official DMTF schemas**.
 
-One bug showed up on my first run, and it matters for you because real BMCs behave the same way. The update took longer than the simulated session timeout, so the client got a 401 halfway through. I then added automatic **session renewal** to my Redfish client. When it gets a 401 while holding a token, it logs in again once and repeats the request. Real BMCs time sessions out too, and a long update is exactly when that happens.
+One bug showed up on the first run, and it matters because real BMCs behave the same way. The update took longer than the simulated session timeout, so the client got a 401 halfway through. The lab's Redfish client now has automatic **session renewal**. When it gets a 401 while holding a token, it logs in again once and repeats the request. Real BMCs time sessions out too, and a long update is exactly when that happens.
 
 ## Exercises
 
-1. **Run the 46-check lifecycle suite.** Run `python3 code/part07/firmware_lab.py`, which should show `45` / `46` checks pass. Then run `python3 code/part07/rf_firmware.py inventory` against the mock. List which components need `Manager.Reset`, which need a host `ComputerSystem.Reset`, and which need `FullPowerCycle` (AC power cycle).
+1. **Run the 46-check lifecycle suite.** Run `python3 code/part07/firmware_lab.py`, which should report all 46 checks passing. Then run `python3 code/part07/rf_firmware.py inventory` against the mock. List which components need `Manager.Reset`, which need a host `ComputerSystem.Reset`, and which need `FullPowerCycle` (AC power cycle).
 2. **Audit fleet drift with `rf_firmware.py drift`.** Save a JSON baseline that matches the mock's post-update GPU tray versions (`96.00.74.00.01`). Then change one GPU's expected version on purpose, and run `rf_firmware.py drift --baseline <file>`. Check that the tool flags `DRIFT` and exits non-zero.
 3. **Check that cancelling an update cleans up.** Read how `code/part07/firmware_lab.py` cancels an update in progress, with a `DELETE` on the Task Monitor URI, so you know what the test really checks. Then confirm that the target `SoftwareInventory` item's `Status.State` goes from `"Updating"` back to `"Enabled"`.
 4. **Compare pull and push.** Write out the exact `curl` commands for updating `HostBIOS_0` in two ways. One uses `SimpleUpdate` with `ImageURI` and `Targets`. The other posts to `MultipartHttpPushUri` with `-F UpdateParameters=... -F UpdateFile=@...`. Then say which one you would choose for a `100–135 MB` `.fwpkg` bundle across 128 nodes, and why.
-5. **Design a canary rollout with a GDS check.** Combine the 11-step procedure in Section 8 with the GDS post-upgrade checks from Section 8.1, which are `gdscheck.py -p` and `gdsio -x 0` against `-x 2`. Apply them to a 128-node cluster that rolls out in this order: `1` canary node $\rightarrow$ `1` rack of `8` nodes $\rightarrow$ `1` SU of `32` nodes $\rightarrow$ remaining SUs. Write down the exact stop condition between each wave.
+5. **Design a canary rollout.** Apply the 11-step procedure in Section 8 to a 128-node cluster that rolls out in this order: `1` canary node → `1` rack of `8` nodes → `1` SU of `32` nodes → remaining SUs. Write down the exact stop condition between each wave.
 6. **Map BCM `firmware status` onto Redfish.** Compare the columns of BCM's `cmsh` `firmware status -n node001` output with the Redfish fields that hold the same information. The BCM columns are `component`, `version`, `state: current/pending/completed` and `Result: success: AC power cycle to activate`. Your answer should cover each column. The Redfish side is `SoftwareInventory` (`Id`, `Version`, `Status.State`) and `Task.Messages` (`Update.1.0.AwaitToActivate`, `Update.1.0.UpdateSuccessful`).
 
-## 11. Interview angles
+## 10. Interview angles
 
 These are the questions that come up most. For each one, lead with the short answer, then add the reason.
 
@@ -454,20 +435,20 @@ A compute tray is updated through Redfish, using `bmcsettings` and two `.fwpkg` 
 </details>
 
 <details>
-<summary>19. During a coordinated cluster refresh (`volume-10/16`), what is the documented host installation order for GPUDirect Storage (GDS), and why does a missing `nvidia-fs.ko` module cause a silent slowdown instead of a hard job error?</summary>
+<summary>19. Why is `OnStartUpdateRequest` useful when you update a whole rack?</summary>
 
-The order is Linux kernel (`4.15.x+`), then `MLNX_OFED` or `DOCA-Host`, then the NVIDIA GPU driver, then `nvidia-fs`, which DKMS rebuilds. `allow_compat_mode` in `/etc/cufile.json` defaults to **`true`**. So if `nvidia-fs.ko` fails to load after a kernel or driver update, `libcufile` quietly falls back to POSIX `pread` and `pwrite` through host CPU memory. That is `compat` mode. Checkpoints get slower, but the job does not crash. Verify with `gdscheck.py -p`, and compare `gdsio -x 0` with `gdsio -x 2`.
+You can stage the same image on every node and check that each request was accepted. Only then do you call `StartUpdate` on each node. A staged task stays `Pending` until `StartUpdate` arrives, so a rejected request is found before any node starts flashing.
 </details>
 
 <details>
-<summary>20. When upgrading InfiniBand fabric switches during a maintenance window (`volume-10/16`), how do UFM Subnet Manager (SM) priorities work, and what warning applies to `sminfo`?</summary>
+<summary>20. Why does the lab tool exit with code 7 after an update that finished with `AwaitToActivate`?</summary>
 
-SM priority runs from `0`, the lowest, to `15`, the highest. The default is `15`. The higher priority becomes master, and the standby takes over after `4` failed polls. Use `sminfo` only as a read-only query. Never pass `-s`, `-p` or `-a` on a production fabric, because those flags change live SM state through MAD packets and can destabilize routing.
+A task that ends with HTTP 200 does not mean the new version is running. The tool re-reads the inventory, sees the old version, reports `NOT ACTIVE` and exits with 7, so that a script cannot mistake a half-updated node for a finished one.
 </details>
 
 ## Sources and review notes
 
-- **Coordinated Cross-Domain Rollout (`volume-10/16-senior-deep-dive-4-coordinated-firmware-driver-os-rollout-across-compute-network-storage.md`):** Primary source for Section 8.1 (`MLNX_OFED`/`DOCA-Host` $\rightarrow$ NVIDIA driver $\rightarrow$ `nvidia-fs` DKMS dependency chain, `cufile.json` `allow_compat_mode: true` silent POSIX fallback, `gdscheck.py -p`, `gdsio -x 0` vs `-x 2`, `40%` PCIe affinity penalty, `mstflint` unbundling in `24.07`, Slurm `flags=maint,ignore_jobs` reservation, UFM 6.19.1 SM priority `0..15` and `4`-poll handover, `sminfo` read-only safety, and UFM HA DRBD standby-first upgrade).
+- **Removed section (W4 rework 2026-11-12):** an earlier section 8.1 on coordinated storage, fabric and compute rollouts was deleted from this chapter. Its claims were not carried over and were never verified: UFM Subnet Manager default priority of 15 (OpenSM's own default is 0), `mstflint` unbundling from `MLNX_OFED 24.07`, and a `nvidia-fs 2.25.6` P2P bug. Anyone restoring them in Parts 12 or 13 must check the vendor release notes first.
 
 - **Redfish Specification DSP0266 v1.21.0:** update service, SimpleUpdate and multipart push (12.6), asynchronous tasks (12.2), operation apply time (7.12), sensitive data (13.2). I read these clauses.
 - **Redfish Resource and Schema Guide DSP2046 and the official JSON Schemas and registries:** `UpdateService` v1.17 (actions, `ApplyTime`, `TransferProtocolType`, `UpdateParameters`), `SoftwareInventory` v1.15 (`VersionScheme`, properties) and the **Update message registry** 1.5.0 (all stage and failure messages above).

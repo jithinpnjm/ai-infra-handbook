@@ -1,6 +1,6 @@
 ---
 id: "c06-02"
-title: "6.2 Cluster anatomy: head, login, compute, storage and management nodes."
+title: "6.2 Cluster anatomy: head, login, compute, storage and management nodes"
 sidebar_label: "6.2 Cluster anatomy: head, login, compute, storage and management nodes"
 sidebar_position: 2
 description: "The parts of an HPC or GPU cluster and the job each does: head and control nodes, login nodes, compute nodes, service nodes, storage, the four networks, facility infrastructure, planning and documentation, and the life of a user session and a job."
@@ -24,7 +24,7 @@ lab_venue: "GCP / GKE."
 
 Every AI cluster, whether it runs Slurm, Kubernetes, or both, is built from the same handful of node roles and networks. Picture a researcher who launches a heavy preprocessing script on the head node, or a remote IDE plugin that paralyzes a shared login server. Production incidents almost always trace back to the wrong workload running on the wrong node, or across the wrong network. An NFS service co-located on a compute node starves an AllReduce collective, and a management network that shares a switch with compute traffic causes the same kind of trouble.
 
-Knowing the standard anatomy lets you read an architecture diagram in one pass, ask the right questions in a design review, and place new services where they belong. It also gives you the working vocabulary of NVIDIA Base Command Manager, Slurm, and cluster procurement specifications, which the book covers in chapters 6.7 onwards and Part 8.
+Knowing the standard anatomy lets you read an architecture diagram in one pass, ask the right questions in a design review, and place new services where they belong. It also gives you the working vocabulary of NVIDIA Base Command Manager, Slurm, and cluster procurement specifications, which chapters 6.7 onwards and Part 8 cover.
 
 ## Prerequisites and outcomes
 
@@ -39,7 +39,7 @@ Start with Chapter 6.1, Part 1 on Linux administration, and Part 2 on networking
 
 ## 1. Anatomy of a supercomputer: four layers
 
-Imagine you have been handed the budget to build a new supercomputer cluster from scratch. What do you buy first, how do the pieces connect, and which teams need to be in the room? Following Sergey Zhumatiy's framing in *Supercomputers for Linux SysAdmins*, published by Apress in 2025, a supercomputer is easiest to reason about in four big parts:
+Imagine you have been handed the budget to build a new supercomputer cluster from scratch. What do you buy first, how do the pieces connect, and which teams need to be in the room? A supercomputer is easiest to reason about in four big parts:
 
 1. Hardware infrastructure is the physical layer: the power supply, cooling systems, physical security, and the room itself. Power systems include transformers, UPS units, PDUs, and backup generators. Physical security includes cameras, door access cards, and server rack locks. A facilities team may own this layer, but the cluster administrator must know its exact limits. You need to verify available kilowatts, cooling reserve, floor loading, unloading routes, and at least 5 to 10 percent power headroom, as discussed in Chapter 6.30.
 2. Compute nodes form the compute field, the workhorse servers and compute networks where parallel tasks actually execute. Before you pick a server configuration, gather requirements from your users and their software packages. Ask whether performance depends on a low-latency interconnect, GPUs, high memory capacity, or storage IOPS. Once you define the best compute node and the trade-offs you can accept, size the compute field in modular topology blocks.
@@ -49,11 +49,6 @@ Imagine you have been handed the budget to build a new supercomputer cluster fro
 A newcomer usually fixates on layer 2, the GPU and CPU servers. Experienced operators spend most of their career engineering and protecting layers 3 and 4.
 
 **Design all four layers together before you order hardware. A bottleneck in power, cooling, shared storage, or system software will cripple the most expensive compute nodes.**
-
-> **In one minute:**
-> - Every supercomputer consists of four layers: hardware infrastructure, compute nodes, compute infrastructure, and the software stack.
-> - Include power for cooling and budget at least 5–10% electrical headroom. One real supercomputer could not be turned on past 70% capacity because the facility electricity was undersized.
-> - Choose industry-standard cluster management and batch queuing software up front rather than improvising with non-HPC tools.
 
 ## 2. Node roles: control, compute, login, service, and storage
 
@@ -104,7 +99,7 @@ Whether the node boots locally or over the network, keep its software configurat
 
 Login nodes are the front door for users. People connect with `ssh` or a web portal, covered in Chapter 6.25, to edit files, compile code, submit batch jobs with `sbatch`, check queues with `squeue`, and transfer files. Shared software trees on login and compute nodes are often served from read-mostly NFS or CVMFS, and they are exposed through environment modules, as covered in Chapter 6.6. Never share login nodes with control or core service nodes. Enforce strict per-user CPU, memory, and process limits with cgroups and `pam_limits`.
 
-As Zhumatiy notes from 2025 cluster operations, many users now run IDE plugins such as VSCode remote. These plugins look like an easy way to work with the cluster. In practice, many of them, VSCode in particular, consume large amounts of CPU and RAM, and they can paralyze a shared login node. Enforce strict per-user resource slices. When your cluster runs several OS versions or heavy software builds, give compilation to separate compilation nodes.
+Many users now run IDE plugins such as VSCode remote. These plugins look like an easy way to work with the cluster. In practice, many of them, VSCode in particular, consume large amounts of CPU and RAM, and they can paralyze a shared login node. Enforce strict per-user resource slices. When your cluster runs several OS versions or heavy software builds, give compilation to separate compilation nodes.
 
 ### Service nodes, license servers, and pre-/postprocessing nodes
 
@@ -116,12 +111,7 @@ Every server outside the compute field is a service node. Combining a compute no
 
 Keep compute nodes stripped down to essential daemons, never co-locate an NFS or management service on a compute node, cap VSCode and user processes on login nodes, and document your license server's MAC address.
 
-> **In one minute:**
-> - Keep control nodes separate from login nodes, and never let users run jobs on either. Run at least two control nodes for high availability, with `slurmctld` and provisioning on them.
-> - Never combine a compute node with a service node like an NFS server, because background service load unbalances tightly coupled parallel jobs.
-> - Enforce strict resource limits on login nodes so that VSCode remote plugins cannot paralyze the host. Provision 256 GB or more of RAM on pre- and postprocessing nodes, and record your FlexLM license server's MAC address for instant failover.
-
-## 3. The networks, Table 4-1 latencies, and fabric topologies
+## 3. The networks, latencies, and fabric topologies
 
 Picture a storage backup running at the same time as a parallel job that needs microsecond-level exchanges between its nodes. A modern HPC or GPU cluster avoids that clash by running several physically or logically separate networks. The separation keeps a storage backup or a management scan from disturbing collective communication.
 
@@ -134,19 +124,19 @@ Picture a storage backup running at the same time as a parallel job that needs m
 
 Decide the subnets for each network up front, with room to grow. Name interfaces consistently, for example `node042`, `node042-bmc`, and `node042-ib0`, so that host 042 matches across every subnet, as discussed in Chapter 2.30. Do not forget the external network. If users load a lot of data, it can easily become a bottleneck. Compute nodes, storage servers, and most service nodes have no direct access to the external network or to public IP addresses. They reach the outside world through NAT or a proxy, while administrators reach internal dashboards through port forwarding or a reverse proxy.
 
-### Network throughput, latency, and Table 4-1 comparison
+### Network throughput and latency
 
 Two basic measures describe what a network can do. Throughput measures how much information can move per second. Network equipment makers quote peak throughput, but in real applications the speed is typically 1.5–2 times lower than peak. With low bandwidth, data exchange falls behind computation, and nodes spend time waiting on the network.
 
 Latency is the net time needed to send a zero-length message. It depends on how long the network devices and the system take to prepare for sending and receiving. If a task exchanges data often over a high-latency network, the nodes spend most of their time preparing messages instead of moving data.
 
-Table 4-1 from *Supercomputers for Linux SysAdmins*, Chapter 4, summarizes common cluster networking technologies. Myrinet is historical. SlingShot is a proprietary technology from Cray, which is now part of Hewlett-Packard. A high-speed network card costs about $1,000. A switch or communicator costs $10,000 to $1,000,000 and above.
+The table below summarizes common cluster networking technologies. Myrinet is historical. SlingShot is a proprietary technology from Cray, which is now part of Hewlett-Packard. A high-speed network card costs about $1,000. A switch or communicator costs $10,000 to $1,000,000 and above.
 
-| Technology | Throughput (Table 4-1 in Supercomputers for Linux SysAdmins) | Latency ($\mu$sec) | MPI latency ($\mu$sec) |
+| Technology | Throughput | Latency (microseconds) | MPI latency (microseconds) |
 |---|---|---|---|
 | **Gigabit Ethernet** | Peak – 1000 Mbit/sec (125 MB/sec), MPI – 60–120 MB/sec | 30–100 | 50 |
 | **10-Gigabit Ethernet** | Peak – 10 Gbit/sec (1.2 GB/sec), MPI – 700–900 MB/sec | 9 | 25–30 |
-| **100-Gigabit Ethernet** | Peak – 100 Gbit/sec (1.2 GB/sec in the book's table) | 0.3–1 | 1–3 |
+| **100-Gigabit Ethernet** | Peak – 100 Gbit/sec (about 12 GB/sec) | 0.3–1 | 1–3 |
 | **Myrinet 2000, Myrinet-10G** | Peak 2 Gbit/sec (10 Gbit/sec) full duplex; TCP/IP 1.7–1.9 Gbit/sec (9.6 Gbit/sec); MPI up to 200 MB/sec (400 MB/sec duplex) | 2 | 10 |
 | **InfiniBand** | 10 to 4800 Gbit/sec or higher, implementation dependent | 0.1–0.6 | 1–3 |
 | **SlingShot** | Peak – 200 Gbit/s | 0.2–1.2 | 4–5 |
@@ -173,22 +163,13 @@ Here `[X]` is the integer part of X. Using `torus_3d_max_hops()` in `code/part06
 
 Isolate the compute, storage, control, and BMC networks, and size your fabric topology so that inter-switch uplinks never bottleneck collective traffic.
 
-> **In one minute:**
-> - Separate the compute fabric, in-band control network, storage network, out-of-band BMC network, and NATed external network. Use consistent interface names such as `node042`, `node042-bmc`, and `node042-ib0`.
-> - Real throughput is typically 1.5–2 times lower than vendor peak. MPI latency drops from 50 us on 1 GbE to 1–3 us on 100 GbE and InfiniBand.
-> - An N-D hypercube bounds path length to N hops, while an N x M x K 3D torus bounds maximum hops to `[N/2]+[M/2]+[K/2]`.
-
 ## 4. Storage access methods, RAID levels, SMP vs NUMA, and hardware features
 
-Every cluster has to keep shared software, home directories, and scratch space somewhere. Two hardware questions decide how that storage is attached and protected, and how memory and threads appear to the scheduler. Chapter 4 of *Supercomputers for Linux SysAdmins* covers both, and every cluster administrator must configure them. The first is how external storage is attached and protected. The second is how multiprocessor memory and threads are exposed to the scheduler.
+Every cluster has to keep shared software, home directories, and scratch space somewhere. Two hardware questions decide how that storage is attached and protected, and how memory and threads appear to the scheduler. The first is how external storage is attached and protected. The second is how multiprocessor memory and threads are exposed to the scheduler.
 
-### DAS, NAS, SAN, multipath, and RAID levels (`0` through `60`)
+### DAS, NAS, SAN, and RAID levels
 
-External storage holds shared software packages, user home directories, and temporary scratch space. It falls into two access categories: Direct Attached Storage, or DAS, and Network Attached Storage, or NAS. NAS servers can in turn connect to disk arrays through a dedicated Storage Area Network, or SAN.
-
-- DAS connects directly to a storage node or management node through SATA, SAS, or FibreChannel. The OS sees it as a local disk device.
-- NAS gives file-level access over a network through protocols such as NFS or SMB/CIFS. It can also spread data across several storage nodes, as Lustre does. SMB and CIFS were originally developed by IBM and used in Microsoft systems. Zhumatiy advises against CIFS on clusters because of unexpected implementation problems. NAS systems can also expose data through FTP, HTTP, or iSCSI.
-- SAN storage appears to the OS as locally attached block devices. Duplicate switches provide several routes, one primary and one or more backups. If a component on the primary route fails, multipath switches to a backup route instantly, without user impact. Some storage hardware needs nonstandard multipath drivers, though. Because a SAN exports block devices rather than a file system, you must not mount one SAN block device on more than one node at once. The exceptions are specialized heartbeat or cluster database setups.
+External storage holds shared software packages, home directories, and scratch space. Direct Attached Storage, or DAS, looks like a local disk to the operating system. Network Attached Storage, or NAS, gives file-level access over a network through protocols such as NFS, and a parallel file system such as Lustre spreads data across several storage nodes in the same way. A Storage Area Network, or SAN, exports block devices over duplicate switches with multipath, so a failed route switches to a backup. Because a SAN exports blocks rather than a file system, never mount one SAN block device on more than one node at once. Chapter 6.18 covers shared and parallel storage in detail.
 
 Storage systems use RAID to combine equal-capacity disks at the block level, for speed and fault tolerance. The table below shows what each level trades away.
 
@@ -201,7 +182,6 @@ Storage systems use RAID to combine equal-capacity disks at the block level, for
 | RAID-6 | Striped array with 2 independent checksum blocks per stripe | Survives 2 simultaneous disk failures; higher write cost |
 | RAID-10, 50, 60 | Two-level arrays (lower level first, upper level second): RAID-0 built from RAID-1, RAID-5, or RAID-6 arrays | Combines RAID-0 stripe speed with RAID-1, RAID-5, or RAID-6 redundancy |
 
-Notice that RAID-5 protects against one failed disk and makes single-block writes costlier, while RAID-6 adds a second parity block and a higher write cost.
 
 ### SMP vs NUMA, process/memory pinning, HyperThreading trick, and RDMA vs RoCE
 
@@ -209,7 +189,7 @@ Before multicore chips existed, manufacturers put several single-core processors
 
 Linux gives each active process a time slice of a few milliseconds before switching it out. An unpinned process therefore often walks across every core in the system. Core migration hurts cache efficiency on SMP systems, and it causes large cross-socket memory delays on NUMA systems. Parallel launchers, such as `numactl`, MPI, and Slurm in Chapter 6.12, enforce processor affinity, also called processor pinning, and memory affinity. They bind each parallel process to a specific NUMA node for both CPU cores and memory allocation. In production parallel runs, NUMA binding is obligatory, so job speed stays fast and repeatable.
 
-Many processors also implement HyperThreading, or HT. Each physical core then appears as two logical cores that share computational units. Parallel HPC and AI codes already use execution units efficiently, so HyperThreading rarely speeds them up and often slows them down through contention. Zhumatiy recommends a practical trick, modeled in `scheduler_declared_cores()` in `code/part06/cluster_anatomy.py`. It works in three steps:
+Many processors also implement HyperThreading, or HT. Each physical core then appears as two logical cores that share computational units. Parallel HPC and AI codes already use execution units efficiently, so HyperThreading rarely speeds them up and often slows them down through contention. A practical trick, modeled in `scheduler_declared_cores()` in `code/part06/cluster_anatomy.py`. It works in three steps:
 
 1. Enable HyperThreading in the BIOS of each compute node, which exposes 256 logical CPUs on a dual-socket 64-core server.
 2. Configure the job scheduler with the physical core count, 128 cores, as if HyperThreading were disabled.
@@ -219,14 +199,9 @@ Across nodes, Direct Memory Access, or DMA, lets a local disk or NIC read and wr
 
 Bind every parallel rank to its local NUMA cores and memory, and declare only physical cores to the scheduler when BIOS HyperThreading stays on for system daemons.
 
-> **In one minute:**
-> - Use NAS and parallel file systems for shared directories. Never mount a raw SAN block device on several nodes without a cluster file system. RAID-5 and RAID-6 use 3–5 disk stripes, while RAID-10, 50, and 60 nest RAID-0 over RAID-1, 5, and 6.
-> - Eliminate process migration jitter on NUMA servers with obligatory CPU and memory affinity, using `numactl` and MPI binding.
-> - Keep BIOS HyperThreading enabled for background OS daemons, and configure the scheduler with the physical core count. On a 256-thread node, that means declaring 128 cores.
-
 ## 5. Planning, hardware consistency, documentation, and post-build verification
 
-Suppose your vendor quote arrives with a 5-year support contract attached. Chapter 3 of *Supercomputers for Linux SysAdmins* highlights four planning rules that prevent expensive mistakes when you move from requirements to quotes and contracts.
+Suppose your vendor quote arrives with a 5-year support contract attached. Four planning rules prevent expensive mistakes when you move from requirements to quotes and contracts.
 
 1. Plan for support after the warranty. Ask management, before you sign, how the complex will be supported once the initial 5-year vendor support contract expires. A manager may answer, "we have 5 years support, don't worry, and then we'll see." Write a formal memo instead, noting that even a small hardware break can stop the entire service. State clearly that you do not approve operating without an active service contract.
 2. Insist on strict hardware and firmware consistency. Specify in the contract, and verify on delivery, that all memory modules, motherboards, firmware, BIOS versions, network cards, and GPUs are identical across similar servers. That includes exact GPU part numbers and VBIOS versions. Never listen to a salesperson claiming "this is the same model, just a bit modern part number, it is even better." Mixed hardware causes different driver and application behavior, which wastes weeks of debugging.
@@ -235,49 +210,15 @@ Suppose your vendor quote arrives with a 5-year support contract attached. Chapt
 
 Here is the arithmetic for a 32-node example, using the numbers from the lab later in this chapter. Thirty-two compute nodes at 10.0 kW each draw 320.0 kW raw. Add 10% headroom, and the budget becomes 352.0 kW.
 
-### Remote sites, network paths, and where the data lives
+### Planning checklist and scenario drills
 
-Many of the hardest problems in a cluster show up in the first week, when users cannot reach the machine or their uploads crawl. Most of them can be seen on paper during planning. Ask these questions before the contract is signed.
+Before deployment, walk through one plan that covers nineteen topics: compute hardware, power and cooling, remote access, physical security, service nodes, high availability, network topology, authentication, storage and quotas, access from internal and external networks, security policy, backups, cluster management software, scheduler software, job policy and accounting, monitoring, baseline benchmarks, user resources, and capacity planning. Many of the hardest problems show up in the first week, when users cannot reach the machine or their uploads crawl, and most of them can be seen on paper. Ask how users will reach the cluster and how data will get in, because a switch that is too small for NAT or a missing firewall rule becomes a bottleneck or a hole.
 
-If the cluster sits in a remote location, such as a data center colocation facility, start with physical access. Find out how easily your team can get inside and how remote engineers can help. Then decide which tasks they can do for you and which ones your own team must do.
-
-Next, plan the network path. Ask how your users will reach the supercomputer and how data will get in. If users must upload and download huge amounts of data, you may need a better network channel than you first assumed. A higher-class switch may be needed to carry data from outside into the storage.
-
-The external connection must carry user data in both directions. If you use NAT, which is the typical choice, the switch must be powerful enough to handle the translated traffic. Do not forget the firewall and other security features. A cluster inside the corporate network should still not be fully open, so talk to network security specialists when you are unsure.
-
-The high-performance network needs its own review. Topology matters most here, so minimize the number of hops between nodes. Remove congestion points and single points of failure too. Compare topologies with an expert, weighing strengths, weaknesses, cost, cabling complexity, and room for future growth.
-
-Finally, decide where the data lives. Plan long-term storage, scratch storage, and backups, and separate hot data from cold data. Users may also need pre- and postprocessing, so ask how quickly that data must reach the compute nodes. *Supercomputers for Linux SysAdmins* suggests reading its chapter on network file systems before you make the final storage decision.
-
-### The 19-point planning checklist and the 7 scenario drills
-
-Before deployment, review and document Zhumatiy's 19-point planning checklist.
-
-1. Compute hardware: match to tasks and expected performance.
-2. Infrastructure: power, cooling, and connectivity.
-3. Remote access: policies, special access, and MFA codes.
-4. Physical security: room access, server access, cameras, and card policies.
-5. Services and service nodes: at least a dedicated login node and file system server(s).
-6. High availability and load balancing for service nodes and services.
-7. Network topology: minimizing hops, congestion points, and single points of failure.
-8. Authentication: local directory and sync with existing corporate systems.
-9. Storage: long-term storage, scratch storage, quotas, and high availability.
-10. Access from internal and external networks.
-11. Security policies: passwords, two-factor authentication (2FA), SSH keys, local trust zones, regular file checks, vulnerability scans, security update policies, and firewalls.
-12. Backups and restore policies and hardware.
-13. Cluster management software.
-14. Computing tasks management software.
-15. Jobs policies and accounting rules (Chapter 6.9).
-16. Monitoring of hardware, facility, and tasks.
-17. Baseline benchmarking suite (Chapter 6.28).
-18. Cluster resources for users: access, tracking, and revoking.
-19. Capacity planning procedure.
-
-Next, rehearse seven typical operational scenarios, and write down how you will act in each case.
+Then rehearse seven typical operational scenarios, and write down how you will act in each case.
 
 - If you suspect a bad node, what are your exact steps to prove it is bad and replace it?
 - What are your steps if you suspect network problems?
-- What if you find that your nodes have different firmware versions that affect application performance?
+- What if your nodes have different firmware versions that affect application performance?
 - What if your management node running the job manager fails?
 - How will you transfer data to the cluster and back, and how much time does it take?
 - How do you add a user to the cluster, and how do you remove them?
@@ -287,7 +228,7 @@ Next, rehearse seven typical operational scenarios, and write down how you will 
 
 Do not put documentation off until the last minute. Keep two distinct sets: one for SysAdmins, and a collaborative wiki or portal for users, where they can ask questions and leave comments.
 
-| Documentation platform | Required contents (Supercomputers for Linux SysAdmins, Chapter 3) |
+| Documentation platform | Required contents |
 |---|---|
 | **SysAdmin documentation** | Hardware configurations of each node type; network topology and hardware; installed software, license info, and special configurations; system settings and limits; admin and maintenance logins and password access; policies to add accounts and software; backup and restore schedules; maintenance procedures; important contacts (stakeholders, suppliers, engineers, tech support, power/cooling/physical access teams); incident and maintenance journal; **temporary changes** (such as changing quotas for a month or granting temporary access to external tech support); and **HOWTOs** (close/open cluster in emergencies, change quotas, add/delete/update accounts, reboot a proprietary license server, inform users of problems, run basic tests) |
 | **User documentation** | How to submit a request for access, full process, and timing; how to get a password, generate SSH keys, log in for the first time, and take first steps; what the cluster is (hardware, software, file systems, links); how to copy data, prepare a task, and run, check, or cancel a job; policies and limits; and a growing "How to..." FAQ for unexpected user questions |
@@ -296,7 +237,7 @@ The SysAdmin row records what the admin team needs to keep running the machine. 
 
 ### Skills, post-build verification, the 5 check types, runbook schema, and node hardening
 
-To run the complex after the build, Zhumatiy recommends mastering basic networking, advanced `bash` scripting plus `awk`, an editor such as `vim`, `nano`, or `emacs`, `screen` or `tmux`, and basic Python and C++. You also need Ansible or xCAT, Lmod or Spack, and a clear understanding of how containers work under the hood. Knowing Docker commands is not enough. You must understand how the host kernel technology works, along with every hardware and software feature and limitation. When a cluster is built, set up, tuned, and verified, check at least these 11 items:
+To run the complex after the build, The skills worth mastering are basic networking, advanced `bash` scripting plus `awk`, an editor such as `vim`, `nano`, or `emacs`, `screen` or `tmux`, and basic Python and C++. You also need Ansible or xCAT, Lmod or Spack, and a clear understanding of how containers work under the hood. Knowing Docker commands is not enough. You must understand how the host kernel technology works, along with every hardware and software feature and limitation. When a cluster is built, set up, tuned, and verified, check at least these 11 items:
 
 1. DNS server.
 2. NTP sync (internal and external).
@@ -342,22 +283,9 @@ Finally, apply four operational rules across your nodes.
 
 Never open a new cluster to users until all 11 post-build checks, baseline benchmarks, SysAdmin and User docs, and molly-guard protections are in place.
 
-> **In one minute:**
-> - Enforce identical part numbers and firmware, including BIOS and VBIOS, in procurement contracts. Budget 1.5–2x server power for total facility cooling and power, with 5–10% headroom. Never operate without a post-warranty support plan.
-> - Verify all 11 post-build items, establish the 5 check types, and track every maintenance in an 8-column runbook (`phase`, `action`, `start`, `duration`, `dependency`, `owner`, `status`, `info`).
-> - Protect service nodes from accidental reboots with molly-guard, replace SSH cron storms with local `systemd` timers, and follow NIST SP 800-223.
-
-### Post-build tuning, deployment planning, and kernel hints
-
-The eleven post-build checks are the minimum, not the full list. Once they pass, review your documents and add anything still missing. Keep the benchmark numbers you measured, because you will compare against them at every maintenance window.
-
-Plan the initial software deployment before the hardware goes live. Decide how you will handle updates and upgrades too. There are many options, so choose one deliberately and document it.
-
-Tune the node and kernel settings with the same discipline. Use standard solutions when they exist, and do not multiply complex fixes. Load only the kernel modules you need. Disable security mitigations with `mitigations=off` only when that is safe for your site, and disable IPv6 when your cluster does not need it.
-
 ## 6. How a supercomputer does the job: user session, job life cycle, and what is hidden
 
-Think of a user who logs in, submits a job, and goes home for the night. Chapter 6 of *Supercomputers for Linux SysAdmins* connects the physical cluster anatomy to the software stack. That stack includes the operating system, hardware and network file system drivers, system control and monitoring software, the task queuing system, parallel libraries such as MPI and CUDA, and compilers and math libraries such as BLAS and FFT. When users develop code or run packages like VASP or NAMD, compiling directly on the target architecture lets the compiler apply hardware-specific optimizations, which maximize performance.
+Think of a user who logs in, submits a job, and goes home for the night. The physical cluster anatomy connects to a software stack. That stack includes the operating system, hardware and network file system drivers, system control and monitoring software, the task queuing system, parallel libraries such as MPI and CUDA, and compilers and math libraries such as BLAS and FFT. When users develop code or run packages like VASP or NAMD, compiling directly on the target architecture lets the compiler apply hardware-specific optimizations, which maximize performance.
 
 ### A typical user session and the job life cycle
 
@@ -374,11 +302,6 @@ Every step above is visible to the average user. Behind the scenes, though, the 
 Why does this invisible layer matter? You can build the simplest toy computing cluster on your knee. Take 2 laptops, connect them to a common network, set up passwordless `ssh`, run an NFS server on one laptop, mount it on the other, and run MPI programs. Now try 20 laptops instead of 2. Problems arise immediately. The network cannot cope with the collective load, the single NFS laptop slows down, one laptop hangs, and it takes half an hour just to work out what happened. A real supercomputer needs the disciplined node separation, fabric topology, and invisible services covered in this chapter.
 
 Make health checks, time sync, quotas, monitoring, and epilogue cleanup invisible to users when the system is healthy, and noisy to administrators the moment a component drifts.
-
-> **In one minute:**
-> - A batch job moves through five phases: queueing with `sbatch`, scheduling and allocation, `prolog` initialization, parallel startup and execution with `mpirun` or `srun`, and `epilog` cleanup and accounting.
-> - Account sync, distributed storage, quota enforcement, node and facility monitoring, emergency UPS shutdown, and backups operate invisibly behind every user session.
-> - A 2-laptop `ssh` and NFS setup breaks down at 20 nodes, because unmanaged networks, a single-node NFS server, and manual fault hunting cannot survive parallel load.
 
 ## 7. Merging roles in small clusters and mapping to Kubernetes
 
@@ -404,27 +327,9 @@ The physical anatomy of a classic Slurm HPC cluster and a Kubernetes GPU cluster
 
 In small clusters you can consolidate service roles onto VMs if you need to. Never merge a compute node with a service node, and never allow user jobs on the control plane.
 
-> **In one minute:**
-> - In small clusters (10–100 nodes), run service roles as isolated VMs on a redundant head pair rather than on compute nodes.
-> - Kubernetes Control Plane, Worker Node, NodePool, and JobSet map directly onto HPC's head node, compute node, partition, and batch job.
-
 ### Running the cluster anatomy in the cloud
 
-Suppose you need to run a large simulation next month, but you have no cluster and no room to build one. You can try to get access to an existing HPC cluster, or you can build your own in the cloud. Some providers sell special HPC instances. These are virtual machines with almost direct access to a fast network and to accelerators. Even so, performance stays below real hardware. Depending on the provider, the drop can be 5–15%, and whether that is acceptable is your call.
-
-Cost comes first. Estimate the bill carefully before you commit, because an on-premises cluster can turn out cheaper over the long run. The cloud still makes a good playground, though. You can test technologies and software there before you put them into production.
-
-Check the network before you rent. Find out which network type the instances use, and what each instance includes. A high-performance, low-latency network often limits how many instances you can connect. Keep all nodes in one performance subnet, such as a capacity reservation or a domain. Otherwise, the overall performance can be times lower.
-
-Shared storage matters just as much. A plain NFS volume is usually not what a cluster needs. If the provider cannot give clear performance numbers, rent a few cheap instances with that file system and run I/O tests. Copy your real pattern. For example, suppose your application saves temporary data every five minutes, and each save is about the size of a compute node's memory. Simulate that save and reload, then time both.
-
-Some providers offer a Slurm-based cluster as a ready option, and for simple needs that can be enough. If the option is missing, or you need features it does not include, build the cluster yourself. Start with Terraform for the initial setup. Then install the software with Ansible or another tool, ideally from a custom image that new nodes boot from. Cluster managers such as BCM can help with this. Test the whole process on cheap instances first.
-
-Use the cloud API for the routine work. You can terminate an instance and bring up a new one, or power a subset of nodes on or off. The API may also expose power consumption, network counters, and node health. Collect whatever the API does not give you directly on the nodes.
-
-The planning checklist in section 5 still applies in the cloud, although some answers shift a little. User management might connect to your corporate login system, or it might stay independent. Node checks and service tickets can often be automated through the provider API.
-
-Many HPC applications run on cloud HPC services today, and in some cases that is the cheapest route. *Supercomputers for Linux SysAdmins* names Amazon, Oracle, Google, CoreWeave, Lambda, and HyperStack as examples. Do not underestimate the management overhead or the narrower choice of hardware. Check network and storage options, traffic charges, charges for nodes that are turned off, and other hidden costs. Run a test on cheap instances, and assess the risks and performance first.
+Suppose you need a large simulation next month and have no cluster. Cloud providers sell HPC instances with near-direct access to a fast network and accelerators, and performance usually stays 5 to 15 percent below real hardware. Estimate the bill carefully, because an on-premises cluster can be cheaper over the long run. Before you rent, check which network the instances use, keep all nodes in one performance subnet such as a capacity reservation, and test shared storage with your real save and reload pattern rather than trusting a plain NFS volume. Build the cluster with Terraform, install software with Ansible from a custom image, and use the provider API for the routine work of replacing instances and powering nodes. The planning checklist in section 5 still applies. Check traffic charges and charges for nodes that are turned off before you commit.
 
 ## 8. Lab: size a 32-node GPU cluster and validate its runbook
 
@@ -445,24 +350,24 @@ Finish all three steps before you order hardware.
 ## 9. Interview angles
 
 - Walk through the node roles and networks of a 256-GPU cluster. Why is co-locating an NFS server on a compute node a serious mistake?
-- Explain the BIOS HyperThreading versus scheduler core-count trick from *Supercomputers for Linux SysAdmins*, Chapter 4. When does it help, and when must you disable HyperThreading in the BIOS instead?
+- Explain the BIOS HyperThreading versus scheduler core-count trick. When does it help, and when must you disable HyperThreading in the BIOS instead?
 - Why should you record the MAC address of your FlexLM license server, and how much RAM should pre- and postprocessing nodes have?
 - Compare the raw latency and MPI latency of 1 GbE, 10 GbE, 100 GbE, and InfiniBand, and compute the maximum hops in an N x M x K 3D torus.
 - What are the five post-build and maintenance check types, and the eight mandatory columns in a cluster maintenance runbook?
 
 ## Exercises
 
-1. Size the switch ports and power budget for 32 GPU compute nodes, each with 8 GPUs and 10.0 kW, plus 2 login nodes and 2 head nodes. Use `plan_cluster_power_and_ports()` in `code/part06/cluster_anatomy.py`, and include 10% headroom. The exercise draws on *Supercomputers for Linux SysAdmins*, Chapters 3 and 4. Why does Zhumatiy recommend multiplying raw server power by 1.5–2.0 when you estimate total facility electrical load with power engineers?
-2. Compare the raw and MPI latencies of 1 GbE (30–100 us and 50 us), 10 GbE (9 us and 25–30 us), 100 GbE (0.3–1 us and 1–3 us), InfiniBand (0.1–0.6 us and 1–3 us), and SlingShot (0.2–1.2 us and 4–5 us). Then use `torus_3d_max_hops()` to find the maximum hops in an 8 x 8 x 8 torus (12 hops) and a 5 x 7 x 9 torus (9 hops), and compare them with an N-dimensional hypercube. The exercise draws on *Supercomputers for Linux SysAdmins*, Chapter 4.
-3. Using `scheduler_declared_cores(2, 64, 2)`, explain how leaving HyperThreading enabled in the BIOS, which exposes 256 logical CPUs, while declaring 128 physical cores to Slurm, isolates compute tasks. Then explain why CPU and memory NUMA pinning are mandatory for multi-node jobs. The exercise draws on *Supercomputers for Linux SysAdmins*, Chapter 4.
-4. Give the pros and cons of local disks on compute nodes. Explain why VSCode remote plugins in 2025 can paralyze login nodes. State the recommended RAM for pre- and postprocessing nodes, which is 256 GB or more, and explain how recording a FlexLM license server's MAC address enables instant hardware replacement. The exercise draws on *Supercomputers for Linux SysAdmins*, Chapter 4.
-5. List the five check types, and validate a maintenance runbook header with `validate_runbook_schema()`. Then explain why molly-guard, ssmtp or nail, and local `systemd` timers are used on cluster nodes instead of central SSH cron jobs. The exercise draws on *Supercomputers for Linux SysAdmins*, Chapter 3.
-6. Trace a batch job from `ssh` login through queueing, scheduling, `prolog`, parallel startup (`mpirun` or `srun`), and `epilog` termination. List the background services hidden from the user. Then explain why a 2-laptop `ssh` and NFS toy cluster fails when scaled to 20 nodes. The exercise draws on *Supercomputers for Linux SysAdmins*, Chapter 6.
+1. Size the switch ports and power budget for 32 GPU compute nodes, each with 8 GPUs and 10.0 kW, plus 2 login nodes and 2 head nodes. Use `plan_cluster_power_and_ports()` in `code/part06/cluster_anatomy.py`, and include 10% headroom. Why multiply raw server power by 1.5–2.0 when you estimate total facility electrical load with power engineers?
+2. Compare the raw and MPI latencies of 1 GbE (30–100 us and 50 us), 10 GbE (9 us and 25–30 us), 100 GbE (0.3–1 us and 1–3 us), InfiniBand (0.1–0.6 us and 1–3 us), and SlingShot (0.2–1.2 us and 4–5 us). Then use `torus_3d_max_hops()` to find the maximum hops in an 8 x 8 x 8 torus (12 hops) and a 5 x 7 x 9 torus (9 hops), and compare them with an N-dimensional hypercube.
+3. Using `scheduler_declared_cores(2, 64, 2)`, explain how leaving HyperThreading enabled in the BIOS, which exposes 256 logical CPUs, while declaring 128 physical cores to Slurm, isolates compute tasks. Then explain why CPU and memory NUMA pinning are mandatory for multi-node jobs.
+4. Give the pros and cons of local disks on compute nodes. Explain why VSCode remote plugins in 2025 can paralyze login nodes. State the recommended RAM for pre- and postprocessing nodes, which is 256 GB or more, and explain how recording a FlexLM license server's MAC address enables instant hardware replacement.
+5. List the five check types, and validate a maintenance runbook header with `validate_runbook_schema()`. Then explain why molly-guard, ssmtp or nail, and local `systemd` timers are used on cluster nodes instead of central SSH cron jobs.
+6. Trace a batch job from `ssh` login through queueing, scheduling, `prolog`, parallel startup (`mpirun` or `srun`), and `epilog` termination. List the background services hidden from the user. Then explain why a 2-laptop `ssh` and NFS toy cluster fails when scaled to 20 nodes.
 
 ## Checkpoint questions (20)
 
 <details>
-<summary>1. What are the four main layers of a supercomputer's anatomy (Supercomputers for Linux SysAdmins, Chapter 3), and which layers consume most of an administrator's time?</summary>
+<summary>1. What are the four main layers of a supercomputer's anatomy, and which layers consume most of an administrator's time?</summary>
 
 1. Hardware infrastructure: power (UPS, PDUs, generators), cooling, physical security, and rack space.
 2. Compute nodes (the compute field): the servers and compute fabric where parallel tasks run.
@@ -473,57 +378,57 @@ Newcomers focus on layer 2. Administrators, however, spend most of their time on
 </details>
 
 <details>
-<summary>2. How much power headroom does Supercomputers for Linux SysAdmins, Chapter 3, require at minimum, and what rough multiplier estimates total facility power from server power?</summary>
+<summary>2. How much power headroom should you keep at minimum, and what rough multiplier estimates total facility power from server power?</summary>
 
 Always keep at least 5 to 10 percent power headroom above your calculated load. For a rough estimate of total facility power, multiply total server power by 1.5 to 2.0. That covers cooling systems, network and storage gear, and UPS conversion losses. Zhumatiy cites a real supercomputer that could never be powered on above 70%, because its facility electricity was undersized.
 </details>
 
 <details>
-<summary>3. Why are control and head nodes separated from access and login nodes, and how many control nodes should a production cluster have (Supercomputers for Linux SysAdmins, Chapter 4)?</summary>
+<summary>3. Why are control and head nodes separated from access and login nodes, and how many control nodes should a production cluster have?</summary>
 
 Keeping login nodes apart from control nodes shields critical services from direct user access and runaway user processes. Those services include slurmctld, provisioning, and the sensitive user password and accounting databases. A production cluster should have at least two control nodes in an active/passive high-availability pair, plus one or more dedicated login nodes.
 </details>
 
 <details>
-<summary>4. What are the pros and cons of installing local hard drives or NVMe SSDs in compute nodes (Supercomputers for Linux SysAdmins, Chapter 4)?</summary>
+<summary>4. What are the pros and cons of installing local hard drives or NVMe SSDs in compute nodes?</summary>
 
 - The cons are extra physical space, higher power consumption and heat dissipation, a higher component failure rate, and significant purchase and spare-stock cost. NVMe in high-density blade or GPU servers is especially costly.
 - The pros are a local copy of the OS, which simplifies boot and speeds up library loading at job launch. Local swap space and a fast local `/tmp` directory also improve memory efficiency.
 </details>
 
 <details>
-<summary>5. Which services should be removed or disabled on compute nodes, and which essential services must remain (Supercomputers for Linux SysAdmins, Chapters 3 and 4)?</summary>
+<summary>5. Which services should be removed or disabled on compute nodes, and which essential services must remain?</summary>
 
 - Remove or disable local mail servers, `cron`, `networkmanager`, `ModemManager`, `acpid`, and unneeded kernel modules. For mail, postfix is replaced by a simple smarthost forwarder such as ssmtp or nail, which relays through the head node. Use systemd timers in place of cron.
 - Keep only the essentials: `sshd`, the network file system client, the batch scheduler agent `slurmd`, the hardware and fabric drivers, and the node monitoring agent.
 </details>
 
 <details>
-<summary>6. Why must you enforce strict per-user resource limits on login nodes, especially with modern 2025 developer workflows (Supercomputers for Linux SysAdmins, Chapter 4)?</summary>
+<summary>6. Why must you enforce strict per-user resource limits on login nodes, especially with modern 2025 developer workflows?</summary>
 
 In 2025, many users connect to clusters with remote IDE plugins such as VSCode remote. These are convenient, but each user's remote IDE backend starts several heavy language-server and file-watching processes. Those processes use large amounts of CPU and RAM. Without per-user cgroup and `pam_limits` caps, they can paralyze a shared login node.
 </details>
 
 <details>
-<summary>7. Why is combining a compute node and a service node, such as an NFS server, on the same physical machine strongly discouraged (Supercomputers for Linux SysAdmins, Chapter 4)?</summary>
+<summary>7. Why is combining a compute node and a service node, such as an NFS server, on the same physical machine strongly discouraged?</summary>
 
 A shared service such as NFS on a compute node takes CPU cycles, memory bandwidth, and network interrupts from the parallel rank running on that machine. Tightly coupled parallel jobs run at the speed of their slowest rank. So the service load causes severe task imbalance, and it raises the chance of service failure under heavy compute load.
 </details>
 
 <details>
-<summary>8. Why should you host commercial software license managers (FlexLM) on a dedicated service node and record its network MAC address (Supercomputers for Linux SysAdmins, Chapter 4)?</summary>
+<summary>8. Why should you host commercial software license managers (FlexLM) on a dedicated service node and record its network MAC address?</summary>
 
 A dedicated license server keeps license files away from theft and faults. FlexLM and similar managers bind licenses to the server's network MAC address. If the hardware dies, you can set the old MAC address on the replacement server's NIC, which restores licensed software across the cluster at once. Meanwhile, you request a formal license reissue for the new hardware's real MAC address.
 </details>
 
 <details>
-<summary>9. What are pre- and postprocessing nodes and visualization nodes, and how much RAM does Supercomputers for Linux SysAdmins, Chapter 4, recommend for pre- and postprocessing nodes?</summary>
+<summary>9. What are pre- and postprocessing nodes and visualization nodes, and how much RAM should you plan for pre- and postprocessing nodes?</summary>
 
 Pre- and postprocessing nodes are dedicated servers. They prepare large simulation or training inputs, and they process output data. They need 256 GB or more of RAM. Visualization nodes add dedicated graphics cards. They render large 3D meshes or visual outputs and stream the image to remote users. They often serve as pre- and postprocessing nodes too.
 </details>
 
 <details>
-<summary>10. How do real application throughput and MPI latency compare across Gigabit Ethernet, 10-Gigabit Ethernet, 100-Gigabit Ethernet, InfiniBand, and SlingShot (Supercomputers for Linux SysAdmins, Table 4-1)?</summary>
+<summary>10. How do real application throughput and MPI latency compare across Gigabit Ethernet, 10-Gigabit Ethernet, 100-Gigabit Ethernet, InfiniBand, and SlingShot?</summary>
 
 Real application throughput is typically 1.5–2 times lower than vendor peak throughput.
 
@@ -535,7 +440,7 @@ Real application throughput is typically 1.5–2 times lower than vendor peak th
 </details>
 
 <details>
-<summary>11. Compare Tree, Fat-Tree, N-Dimensional Hypercube, 3D Torus, and Dragonfly/Dragonfly+ network topologies, and write the 3D torus maximum hop formula (Supercomputers for Linux SysAdmins, Chapter 4).</summary>
+<summary>11. Compare Tree, Fat-Tree, N-Dimensional Hypercube, 3D Torus, and Dragonfly/Dragonfly+ network topologies, and write the 3D torus maximum hop formula.</summary>
 
 - Tree (star) is the standard Ethernet hierarchy. Spanning Tree blocks parallel inter-switch links unless you configure link aggregation, such as EtherChannel, bonding, or trunking, on both switches.
 - Fat tree adds upper-level spine or root switches, so every leaf connects to several spines. The load spreads out, and the fabric survives a non-leaf switch failure.
@@ -545,13 +450,13 @@ Real application throughput is typically 1.5–2 times lower than vendor peak th
 </details>
 
 <details>
-<summary>12. Distinguish DAS, NAS, and SAN storage access methods, and state the golden rule for mounting SAN block devices (Supercomputers for Linux SysAdmins, Chapter 4).</summary>
+<summary>12. Distinguish DAS, NAS, and SAN storage access methods, and state the golden rule for mounting SAN block devices.</summary>
 
 DAS, or Direct Attached Storage, is a disk array connected directly to a host over SATA, SAS, or FibreChannel, and it appears as local disks. NAS, or Network Attached Storage, is shared file-level storage over NFS, or over CIFS or SMB, which should be avoided on HPC clusters. SAN, or Storage Area Network, is a redundant block-level network that uses multipath for instant path failover. The golden rule follows from that: a SAN exports raw block devices rather than a file system, so never mount the same SAN block device on more than one node at once. The exception is a specialized cluster-aware file system or heartbeat database.
 </details>
 
 <details>
-<summary>13. Compare RAID-0, RAID-1, RAID-5, RAID-6, and nested RAID-10, 50, and 60 (Supercomputers for Linux SysAdmins, Chapter 4).</summary>
+<summary>13. Compare RAID-0, RAID-1, RAID-5, RAID-6, and nested RAID-10, 50, and 60.</summary>
 
 - RAID-0 stripes blocks across disks. It gives the highest sequential write speed, but zero fault tolerance.
 - RAID-1 mirrors everything. It survives N-1 disk failures, at a 50% capacity cost.
@@ -561,45 +466,45 @@ DAS, or Direct Attached Storage, is a disk array connected directly to a host ov
 </details>
 
 <details>
-<summary>14. What is the difference between SMP and NUMA, and why are CPU pinning and memory affinity obligatory for parallel jobs (Supercomputers for Linux SysAdmins, Chapter 4)?</summary>
+<summary>14. What is the difference between SMP and NUMA, and why are CPU pinning and memory affinity obligatory for parallel jobs?</summary>
 
 In SMP, or Symmetric Multiprocessing, all processors share one memory bus with equal access latency. In NUMA, or Non-Uniform Memory Access, each socket has fast local RAM, and remote RAM sits across a slower inter-socket bus. Without processor affinity, also called CPU pinning, and memory affinity, set with numactl and MPI binding, the OS scheduler migrates processes across cores every few milliseconds. That invalidates caches and forces slow cross-socket memory reads.
 </details>
 
 <details>
-<summary>15. Explain Zhumatiy's HyperThreading (HT) BIOS versus scheduler core declaration trick (Supercomputers for Linux SysAdmins, Chapter 4).</summary>
+<summary>15. Explain the HyperThreading (HT) BIOS versus scheduler core declaration trick.</summary>
 
 Two compute threads sharing one physical core's execution units often slow down tightly optimized HPC and AI code. So keep HyperThreading enabled in the node BIOS, but configure Slurm with only the physical core count, as if HyperThreading were disabled. User jobs then get one rank per physical core. OS and monitoring daemons use the extra logical threads, with minimal impact on user jobs. If the scheduler auto-detects cores and you cannot override that, disable HyperThreading in the BIOS instead.
 </details>
 
 <details>
-<summary>16. Why must you insist on identical hardware part numbers and firmware (BIOS and VBIOS) within each node class during procurement (Supercomputers for Linux SysAdmins, Chapter 3)?</summary>
+<summary>16. Why must you insist on identical hardware part numbers and firmware (BIOS and VBIOS) within each node class during procurement?</summary>
 
 Salespeople often claim that a slightly newer RAM, NIC, motherboard, or GPU part number is "the same model, even better." In practice, mixed part numbers or BIOS and VBIOS revisions inside one compute pool cause different driver behavior and performance skew across nodes. That inconsistency wastes weeks of administrator debugging time.
 </details>
 
 <details>
-<summary>17. List the five standard check types and the five baseline benchmarks recommended after building or maintaining a cluster (Supercomputers for Linux SysAdmins, Chapter 3).</summary>
+<summary>17. List the five standard check types and the five baseline benchmarks recommended after building or maintaining a cluster.</summary>
 
 - The five check types are: a full cluster check after each maintenance, a performance verification after each maintenance, a node performance check after fixing or replacing a node, a node readiness check before and after each job run, and a node health check run periodically on the nodes through local timers.
 - The five baseline benchmarks are HPL for compute, NCCL-test for GPUs, InfiniBand, and NVLink, IOR for the parallel file system, STREAM for memory bandwidth, and FIO for storage I/O.
 </details>
 
 <details>
-<summary>18. What are the eight mandatory columns in a cluster maintenance runbook spreadsheet (Supercomputers for Linux SysAdmins, Chapter 3)?</summary>
+<summary>18. What are the eight mandatory columns in a cluster maintenance runbook spreadsheet?</summary>
 
 `phase`, `action`, `start`, `duration`, `dependency`, `owner`, `status`, and `info`. The `info` column holds commands to run, documentation links, and verification notes, plus an optional rollback action column.
 </details>
 
 <details>
-<summary>19. Why should you install molly-guard on service nodes and replace central SSH check cronjobs with local systemd timers (Supercomputers for Linux SysAdmins, Chapter 3)?</summary>
+<summary>19. Why should you install molly-guard on service nodes and replace central SSH check cronjobs with local systemd timers?</summary>
 
 - molly-guard intercepts interactive `reboot` and `shutdown` commands. It requires you to type the target hostname, which stops an administrator from rebooting a production head or service node in the wrong terminal window.
 - A central cronjob that SSHes into hundreds of nodes at once creates load spikes, and it hangs on unreachable nodes. Local systemd timers avoid that. Each node writes its results to shared storage, a database, or a message queue, for a service node to aggregate.
 </details>
 
 <details>
-<summary>20. Trace the phases of a batch job's life cycle, and list the invisible background services that the user never sees (Supercomputers for Linux SysAdmins, Chapter 6).</summary>
+<summary>20. Trace the phases of a batch job's life cycle, and list the invisible background services that the user never sees.</summary>
 
 - Job phases, in order: queueing with `sbatch`, scheduling and the `prolog` script, startup and running with `mpirun`, `mpiexec`, or `srun` across compute nodes, and termination with the `epilog` script, which cleans up and handles accounting.
 - Hidden services: account management, the distributed file system, quota management, remote node monitoring, statistics collection and journaling, facility and equipment monitoring, emergency notification with UPS shutdown, and backups.
@@ -612,5 +517,5 @@ Salespeople often claim that a slightly newer RAM, NIC, motherboard, or GPU part
   - `supercomputers-for-linux-sysadmins-managing-modern-hpc-clusters-and-supercomputers-from-software-to-hardware` — **Chapter 17: Clouds**, covering cloud HPC cluster framing as detailed in Chapter 1.27 and Section 7.
   - `bcm11-admin` — *NVIDIA Base Command Manager 11 Administrator Manual*. This covers the head-node `CMDaemon` and image provisioning model alongside chapters 6.6, 6.8, 6.9, 6.11, 6.12, 6.14, 6.15, 6.18, 6.20, 6.22, 6.24, 6.25, 6.26, 6.27, 6.28, and 6.30.
 - **Run here:** `python3 code/part06/cluster_anatomy.py` and `python3 code/part06/cluster_anatomy_lab.py` (3 passed, 0 failed).
-- **Explicitly labelled inferences:** The `torus_3d_max_hops` (12 hops for 8x8x8, 9 hops for 5x7x9) and `scheduler_declared_cores` (256 OS logical CPUs vs 128 physical cores on a 2x64 node) functions in `code/part06/cluster_anatomy.py` are deterministic models. The `plan_cluster_power_and_ports` (32 nodes, 256 fabric ports, 36 OOB and in-band ports, 320.0 kW raw, and 352.0 kW with 10% headroom) function is also a deterministic model. It and `validate_runbook_schema` are built on `SCL` Chapters 3 and 4, alongside original study items 21, 22, 23, and 24.
+- **Explicitly labelled inferences:** The `torus_3d_max_hops` (12 hops for 8x8x8, 9 hops for 5x7x9) and `scheduler_declared_cores` (256 OS logical CPUs vs 128 physical cores on a 2x64 node) functions in `code/part06/cluster_anatomy.py` are deterministic models. The `plan_cluster_power_and_ports` (32 nodes, 256 fabric ports, 36 OOB and in-band ports, 320.0 kW raw, and 352.0 kW with 10% headroom) function is also a deterministic model. It and `validate_runbook_schema` are built on *Supercomputers for Linux Sysadmins* Chapters 3 and 4, alongside original study items 21, 22, 23, and 24.
 - **Not verified on live hardware:** Live cluster hardware bring-up, FlexLM MAC spoofing, `molly-guard` and `auditd` deployment, and physical switch or SAN multipath failovers are marked (`untested here`).

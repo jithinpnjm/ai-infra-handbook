@@ -26,7 +26,7 @@ Suppose `slurmctld` goes down. Nothing new starts, and the queue sits idle behin
 
 Upgrades are mandatory too, for security fixes and for GPU features such as new GRES autodetect values or `MAX_TRES_GRES` billing. They carry real risk, because Slurm state and the accounting database are migrated in place and cannot be rolled back. Clusters also keep growing, to tens of thousands of GPUs and millions of short jobs for inference and evaluation.
 
-This chapter covers redundancy, the safe upgrade procedure, and scaling knobs.
+This chapter covers three things in that order: how to keep the scheduler running through a failure, how to upgrade it without losing state, and which settings keep it fast as the cluster grows.
 
 ## Prerequisites and outcomes
 
@@ -136,6 +136,7 @@ In-place upgrades are supported from the previous two major releases. With the s
 | 24.11 | 24.05, 23.11, 23.02 |
 | 25.05 | 24.11, 24.05, 23.11 |
 | 25.11 | 25.05, 24.11, 24.05 |
+| 26.05 | 25.11, 25.05, 24.11 |
 
 Each release is supported for about 18 months. The guide warns that "Upgrades from incompatible versions will fail immediately upon startup." Upgrading outside the window also kills running jobs and loses job accounting. Out-of-window upgrades must therefore go in steps, and you verify each step.
 
@@ -299,10 +300,10 @@ Mark any question you cannot yet answer, then reread the section it points to.
 
 ## Exercises
 
-1. Plan a multi-hop upgrade with `code/part06/slurm_upgrade_path.py` and `slurm_upgrade_path_lab.py`. Run `python3 code/part06/slurm_upgrade_path_lab.py`. Then explain why upgrading from `22.05` to `26.05` needs three intermediate hops (`22.05 -> 23.11 -> 25.05 -> 26.05`). Explain why `24.05` accepts only 2 prior major versions (`23.02, 23.11`), while `24.11` accepts 3 (`23.02, 23.11, 24.05`). Finally, describe what happens if you attempt an out-of-window upgrade directly.
+1. Plan a multi-hop upgrade with `code/part06/slurm_upgrade_path.py` and `slurm_upgrade_path_lab.py`. Run `python3 code/part06/slurm_upgrade_path_lab.py`. Then explain why upgrading from `22.05` to `26.05` needs three upgrade steps with two intermediate releases (`22.05 -> 23.11 -> 25.05 -> 26.05`). Explain why `24.05` accepts only 2 prior major versions (`23.02, 23.11`), while `24.11` accepts 3 (`23.02, 23.11, 24.05`). Finally, describe what happens if you attempt an out-of-window upgrade directly.
 2. Write the pre-upgrade checklist and the ordered execution plan for an HA Slurm cluster. The cluster has a `slurmdbd` pair, a `slurmctld` pair, a `slurmd` compute fleet, login nodes with `sackd`, and the `pyxis` SPANK plugin. Explain why in-place downgrades are unsupported once any daemon has started. Name the two artifacts you need to revert: a `StateSaveLocation` snapshot and a `mysqldump --single-transaction` dump.
 3. Write the `SlurmctldHost`, `SlurmctldTimeout` and `StateSaveLocation` stanzas for `slurm.conf`. Add the `AccountingStorageHost` and `AccountingStorageBackupHost` (`DbdBackupHost`) stanzas for `slurmdbd.conf`. Then explain what happens to running `slurmstepd` GPU training steps during a 3-minute `slurmctld` failover, compared with a 30-minute `slurmdbd` outage.
-4. Use `tree_fanout_nodes(16, 3)` in `code/part06/slurm_upgrade_path_lab.py` to verify why `TreeWidth=16` reaches $16 + 16^2 + 16^3 = \mathbf{4,368}$ compute nodes in 3 communication hops. Then work out how far `TreeWidth=32` reaches: $32 + 32^2 = 1,056$ nodes in 2 hops, and $32 + 1,024 + 32,768 = 33,824$ nodes in 3 hops.
+4. Use `tree_fanout_nodes(16, 3)` in `code/part06/slurm_upgrade_path_lab.py` to verify why `TreeWidth=16` reaches 16 + 256 + 4,096 = **4,368** compute nodes in 3 communication hops. Then work out how far `TreeWidth=32` reaches: 32 + 1,024 = 1,056 nodes in 2 hops, and 32 + 1,024 + 32,768 = 33,824 nodes in 3 hops.
 5. Write `/etc/sysctl.d/99-slurm-scale.conf` with `fs.file-max >= 388067`, `net.core.somaxconn = 4096`, and a `net.ipv4.ip_local_port_range` setting. Then write the `slurm.conf` settings for a cluster that handles thousands of short evaluation jobs per minute: `MinJobAge`, `JobAcctGatherFrequency=task=300`, `SchedulerParameters=defer,max_rpc_cnt=128,default_queue_depth=100`, and `munge --num-threads=10`.
 6. Explain how configless mode (`SlurmctldParameters=enable_configless`) distributes `slurm.conf`, `gres.conf` and `cgroup.conf` from `slurmctld` to `slurmd` and to login-node `sackd` daemons. Then write the `_slurmctld._tcp` DNS `SRV` records that let nodes discover `ctl1` and `ctl2` automatically.
 
@@ -413,7 +414,7 @@ Raise `/proc/sys/fs/file-max` to $\ge 388,067$ for large clusters, or to $\ge 32
 - **`SlurmdTimeout`:** Seconds before an unresponsive node is marked `DOWN` (raise to $\ge 120\text{–}300$ s at scale).
 - **`MinJobAge`:** Seconds a finished job stays in `slurmctld` memory before being purged (lower it under high throughput so `MaxJobCount` does not fill up).
 - **`EpilogMsgTime`:** Microseconds over which `slurmd` spreads `Epilog` completion messages when a massive multi-node job ends, preventing an RPC storm at `slurmctld`.
-- **`TreeWidth`:** Fan-out of hierarchical `slurmd`-to-`slurmd` message forwarding (default `16`, reaching $16 + 16^2 + 16^3 = 4,368$ nodes in 3 hops).
+- **`TreeWidth`:** Fan-out of hierarchical `slurmd`-to-`slurmd` message forwarding (default `16`, reaching 16 + 256 + 4,096 = 4,368 nodes in 3 hops).
 </details>
 
 <details>
@@ -431,7 +432,7 @@ With `SlurmctldParameters=enable_configless`, `slurmctld` serves `slurm.conf`, `
 <details>
 <summary>18. What is `slurmrestd`, how is it authenticated, and what must you check in `RELEASE_NOTES` before upgrading a cluster that uses it?</summary>
 
-`slurmrestd` is Slurm's HTTP and OpenAPI REST daemon. Web portals and workflow orchestrators use it. Authentication uses JSON Web Tokens, set with `AuthAltTypes=auth/jwt`. Before you upgrade a cluster that uses it, check `RELEASE_NOTES` for removed or versioned `data_parser` and OpenAPI schema plugins, such as `v0.0.40` $\to$ `v0.0.42`. That keeps client integrations from breaking.
+`slurmrestd` is Slurm's HTTP and OpenAPI REST daemon. Web portals and workflow orchestrators use it. Authentication uses JSON Web Tokens, set with `AuthAltTypes=auth/jwt`. Before you upgrade a cluster that uses it, check `RELEASE_NOTES` for removed or versioned `data_parser` and OpenAPI schema plugins, such as `v0.0.40` → `v0.0.42`. That keeps client integrations from breaking.
 </details>
 
 <details>
@@ -451,5 +452,6 @@ Multiple clusters make sense when a site has distinct failure domains, security 
 - HA, upgrade, large-cluster, high-throughput, configless and authentication behaviour: `slurm.conf(5)`, `slurmdbd.conf(5)` and the HTML guides (Upgrade Guide, Large Cluster Administration, High Throughput, Configless, Authentication, Federation, Power Save, Dynamic Nodes) in SchedMD/slurm commit `521370b`.
 - Operational context: read in full from *Supercomputers for Linux SysAdmins* (`supercomputers-for-linux-sysadmins-managing-modern-hpc-clusters-and-supercomputers-from-software-to-hardware`) Chapter 15 ("15. Slurm": installation, troubleshooting, advanced `slurm.conf` parameters), and migrated from `nvidia-devops` (`volume-10/06-slurm-administration-ha-accounting-and-upgrades.md` and `volume-10/14-senior-deep-dive-2-slurm-ha-and-accounting-internals.md`).
 - Run here: `code/part06/slurm_upgrade_path.py` and `python3 code/part06/slurm_upgrade_path_lab.py` (3 passed, 0 failed).
+- W4 check 2026-11-12 against slurm.schedmd.com/upgrades.html: the window rule (previous two majors, three from 24.11) and the table rows 25.05, 25.11 and 26.05 are correct. The planner output 22.05 to 23.11 to 25.05 to 26.05 is three upgrade steps, which is two intermediate releases, so the earlier wording of three intermediate hops was wrong and is fixed. The guide also warns that jobs running across an out-of-window upgrade are killed.
 - Explicitly labelled inferences: `tree_fanout_nodes` (`4,368` nodes for `TreeWidth=16` in 3 hops) and `validate_daemon_upgrade_order` in `code/part06/slurm_upgrade_path_lab.py` are deterministic teaching checks of SchedMD's Large Cluster and Upgrade guides.
 - Not verified on live hardware: exact behaviour of accounting buffering and association enforcement while `slurmdbd` is down on your version, windows for releases older than the guide's table, and live multi-thousand-node failover timings (`untested here`).
