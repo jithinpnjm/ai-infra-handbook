@@ -59,7 +59,7 @@ When you finish this chapter, you will be able to:
 - Contrast native InfiniBand framing, credit-based flow control and Subnet Manager addressing with Ethernet RoCEv2 encapsulation, Priority Flow Control and Explicit Congestion Notification.
 - Read every field of `ibstat` on InfiniBand and RoCEv2 ports, and validate line-rate bandwidth with `ib_write_bw`.
 - Deploy the NVIDIA NetQ Operator for microsecond buffer telemetry, and configure GPUDirect Storage with `nvidia-fs.ko` and `/etc/cufile.json`.
-- Benchmark AI storage tiers with `fio` and `mdtest`, and resolve Priority Flow Control deadlocks, microburst jitter, uninterruptible sleep hangs and Metadata Server small-file saturation.
+- Upgrade the Network Operator safely, read NicClusterPolicy status, and resolve Priority Flow Control deadlocks, microburst jitter, uninterruptible sleep hangs and Metadata Server small-file saturation.
 
 Work through Chapter 11.10 first if the Multus and SR-IOV pieces are new to you.
 
@@ -265,30 +265,33 @@ sudo tcpdump -i eth2 -nn -e -v udp port 4791
 ibdiagnet -c 1000
 ```
 
-### 3. Benchmarking AI Storage (`fio` Dataset Read, Checkpoint Write Burst, and `mdtest`)
+### 3. Upgrading the Network Operator and checking NicClusterPolicy
 
-A database-style test of 4 KB random I/O gives misleading numbers for an AI filesystem. It hides the bottlenecks that matter in training. Validate AI storage with three tests, and set `direct=1` on each one to bypass the Linux page cache. Start with a large-block sequential read to simulate dataset streaming. Follow it with a synchronous large-block write burst to simulate multi-node checkpointing. Finish with an MPI `mdtest` job that stresses the Metadata Server.
+An upgrade of the Network Operator touches the network stack of every GPU node, so plan it like a driver change. The operator is installed with Helm, but Helm does not normally upgrade custom resource definitions. The chart therefore ships a hook that applies the new definitions before the upgrade, and it is on by default. If your team manages definitions through its own pipeline, set `upgradeCRDs: false` in the chart values and apply them yourself.
 
-The three commands below run those tests, and each comment lists its parameters.
+The commands below follow the chart's documented path. Pull the chart for the target version, apply the definitions, then run the upgrade with a values file you have reviewed.
 
 ```bash
-# 1. Sequential Dataset Read Benchmark (2MB blocks, 500G working set, 32 workers, iodepth 128) (untested here)
-fio --name=ai_dataset_read_sim \
-    --directory=/mnt/weka/ai_datasets/benchmarks \
-    --rw=read --bs=2M --size=500G --numjobs=32 --iodepth=128 \
-    --ioengine=libaio --direct=1 --group_reporting
+helm pull nvidia/network-operator --version <VERSION> --untar --untardir network-operator-chart
 
-# 2. Synchronous Checkpoint Write Burst Benchmark (8MB blocks, 100G per node, fsync=1000) (untested here)
-fio --name=checkpoint_write_burst \
-    --directory=/mnt/lustre/checkpoints/benchmarks \
-    --rw=write --bs=8M --size=100G --numjobs=8 --iodepth=64 \
-    --ioengine=libaio --direct=1 --fsync=1000 --group_reporting
+kubectl apply -f network-operator-chart/network-operator/crds \
+              -f network-operator-chart/network-operator/charts/sriov-network-operator/crds
 
-# 3. MPI Metadata Server (MDS) Stress Test across 128 ranks (untested here)
-mpirun -np 128 mdtest -d /mnt/lustre/metadata_stress_test -i 5 -b 10 -z 3 -L -I 100000 -y -u -t
+helm show values nvidia/network-operator --version=<VERSION> > values-<VERSION>.yaml
+helm upgrade -n network-operator network-operator nvidia/network-operator \
+              --version=<VERSION> -f values-<VERSION>.yaml
 ```
 
-Notice that the first two commands use large blocks, while the third stresses metadata. Choose the test that matches the job: sequential reads for dataset streaming, bursts for checkpoints, and `mdtest` for metadata.
+The vendor chart documentation says that upgrade capabilities are limited and that a containerized OFED driver needs extra manual actions. It does not list them, so read the release notes for your target version before you touch a production pool. Upgrade one node pool first and run `ib_write_bw` between two pods before you continue.
+
+After the upgrade, read the state of the policy object. The operator acts only on a NicClusterPolicy named `nic-cluster-policy`, and it ignores any other name. Its `status.appliedStates` field lists one entry per component, and the top-level `status.state` is ready only when every component is ready. A component that your policy does not define shows the state `ignore`, which is normal.
+
+```bash
+kubectl get nicclusterpolicy nic-cluster-policy -o jsonpath='{.status.state}{"\n"}'
+kubectl get nicclusterpolicy nic-cluster-policy -o jsonpath='{range .status.appliedStates[*]}{.name}{" "}{.state}{"\n"}{end}'
+```
+
+Two failure cases are worth knowing. A policy with the wrong name never reconciles and shows no status, so check the name first. A policy stuck in a not-ready state points to one component in `appliedStates`, and the pods of that component hold the reason in their events. Before you change a component, find the one that is not ready and read its pod events.
 
 ## How it fails
 
@@ -539,6 +542,9 @@ Primary Sources Mapped to Chapter 11.11 Claims and Figures:
    - Pod networking and CNI plugin fundamentals.
 ```
 
+### Added in the Opus rework (2026-11-12)
+- Upgrade steps, the `upgradeCRDs` hook, the `nic-cluster-policy` name rule and `status.appliedStates`: NVIDIA Network Operator Helm chart README and project README, Mellanox/network-operator on GitHub, master branch, read 2026-11-12. Not verified on live hardware.
+
 ### Related source files mapped in MIGRATION_MAP.md
 - `volume-06/01-ai-networking-rdma-masterclass.md` as a primary source for this chapter.
 - `volume-06/02-gpudirect-fabric-operator-masterclass.md` as a primary source for this chapter.
@@ -565,5 +571,5 @@ Verified Arithmetic Totals (code/part11/nvidia_network_operator_lab.py):
 - The full NicClusterPolicy OpenAPI schema for every vendor CNI version is not in the local corpus. Field names evolve across releases, so you should match them to the pinned chart `values.yaml`.
 
 ### Corrections to the author's notes
-- The validation pass on 2026-10-25 confirmed that the chapter validation and coverage scripts pass. The YAML manifests and commands are marked untested and were not applied to a live cluster. Custom resource API versions change between releases, so you should verify them against the installed cluster version. Console outputs quoted from the Volume notes are illustrative unless marked tested here.
+- The chapter's own validation and coverage scripts pass. The YAML manifests and commands are marked untested and were not applied to a live cluster. Custom resource API versions change between releases, so you should verify them against the installed cluster version. Console outputs quoted from the Volume notes are illustrative unless marked tested here.
 - An earlier author note confirms that every link diagnostic, storage benchmark and system call trace figure matches Volume 06 and the Base Command Manager 11 manual word for word. If you reuse these figures, check them against the sources listed above.

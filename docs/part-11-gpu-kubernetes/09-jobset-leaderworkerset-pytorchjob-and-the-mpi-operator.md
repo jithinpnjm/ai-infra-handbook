@@ -175,17 +175,13 @@ Take the first row as an example, and you will see the arithmetic behind it. `0.
 
 Count your labeled examples first, then compare that count with the 100 to 1,000 range that LoRA needs.
 
-#### Choosing Between Prompt Engineering, RAG, PEFT, and Full Fine-Tuning
+#### When training is the right tool
 
-Platform teams should not start a multi-node training job when a lighter customization pattern satisfies the business requirement. Each technique trades training compute against per-request inference latency and KV-cache memory.
+Platform teams should not start a multi-node training job when a lighter pattern meets the requirement. The lightest option needs no job at all. A better system prompt changes no weights and uses no training GPUs, so try it before you submit a TrainJob.
 
-The lightest option needs no job at all. Writing a better system prompt changes no weights and uses no training GPUs, so try it before you submit a TrainJob. It has a cost on the serving side, though. Stuffing large documents into every prompt inflates the vLLM KV-cache memory footprint on every inference request.
+Training earns its cost when the model must learn domain rules or a fixed output format that prompts cannot hold. A compact model fine-tuned with LoRA is then the usual first step, or a smaller model distilled from a larger teacher. Multi-step alignment pipelines such as DPO, GRPO and InstructLab map directly to JobSet, because each step is a group of pods with its own start order.
 
-Retrieval-Augmented Generation embeds documents into a vector database. At request time, it queries approximate nearest neighbors using cosine similarity, then injects only the relevant chunks into the prompt. Teams can refresh rapidly changing domain data within minutes, without running a TrainJob. When a task needs both dynamic retrieval and domain-adapted reasoning, Retrieval-Augmented Fine-Tuning combines both patterns.
-
-When domain rules or JSON output schemas are static, long RAG prompts become expensive in KV-cache memory at high request volumes. Teams then fine-tune a compact Small Language Model via LoRA, or distill it from a larger teacher model. Local development can use Unsloth packaged with AIKit. Multi-step alignment pipelines, such as DPO, GRPO and InstructLab, map directly to JobSet.
-
-If you are choosing a pattern, start with the lightest one that meets the requirement, and move to training only when prompts and retrieval fall short.
+Before you submit a TrainJob, write down why a prompt change was not enough.
 
 #### End-to-End Kubeflow Ecosystem Integration
 
@@ -671,6 +667,6 @@ FlashAttention provides hardware-aware, IO-optimized attention. Liger Kernel pro
 
 ### Corrections to the author's notes
 - Corpus coverage: JobSet and LeaderWorkerSet appear in the corpus only in passing. The manifests and field names for those two APIs come from working knowledge and were not verified against the upstream docs; check them against the controller version you install.
-- Validation pass 2026-10-25: `validate_chapter.py` and `check_coverage.py` pass. The YAML manifests and commands are marked untested and were not applied to a cluster. Custom resource API versions such as `kueue.x-k8s.io/v1beta1` and `resource.k8s.io/v1` change between releases, so check them against the version you install. Console outputs quoted from the Volume notes are illustrative unless the chapter says otherwise.
+- The YAML manifests and commands are marked untested and were not applied to a cluster. Custom resource API versions such as `kueue.x-k8s.io/v1beta1` and `resource.k8s.io/v1` change between releases, so check them against the version you install. Console outputs quoted from the Volume notes are illustrative unless the chapter says otherwise.
 - Earlier author note: all PyTorchJob, TrainJob, ClusterTrainingRuntime, JobSet, LeaderWorkerSet, and MPIJob specifications match the cited sources verbatim.
 - Manifest checked against upstream CRDs on 2026-11-11 (versions: Kubeflow Trainer main at commit a742313, 2026-11-06).

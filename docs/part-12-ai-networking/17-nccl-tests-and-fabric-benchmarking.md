@@ -26,7 +26,7 @@ lab_venue: "Nebius GPU"
 
 Picture a distributed AI cluster that finishes a training job and returns answers from an inference endpoint. It may still run well below what its hardware can do. When a cluster scales poorly or suffers storage and network stalls, almost half of the rented accelerators sit idle. They spend their time waiting on collectives or data loaders. Over a multi-week training run, those idle accelerators burn tens of thousands of dollars in wasted cloud compute.
 
-Inference has its own trap. Evaluating serving engines with fixed synthetic prompts hides the real production traffic you will face. Variable prompt lengths and long-context requests push tail latency far above your service-level agreement.
+This chapter is the concept chapter for `nccl-tests`. It explains what each tool measures and how to read the numbers. The hands-on build is the [capstone lab in Chapter 19.5](../part-19-capstone/05-capstone-an-nccl-tests-fabric-lab.md), and the pass and fail policy for acceptance lives in [Chapter 12.23](23-fabric-validation-and-capacity-planning.md).
 
 ```text
 Quantitative impact of unbenchmarked training and inference clusters:
@@ -36,10 +36,6 @@ Quantitative impact of unbenchmarked training and inference clusters:
   At $4 to $5 per GPU-hour ($4.50/GPU-hr midpoint): $46,448.64 (~$50,000) burned on idle GPUs
 - Storage-starved 2-week 64-GPU incident (45% GPU utilization):
   A $50 NVMe SSD upgrade would have prevented $10,000 in wasted GPU time
-- Inference serving evaluation (vLLM vs SGLang against a 200 ms P99 SLA):
-  Fixed 100-token synthetic prompts miss real production traffic (50 to 5,000 tokens),
-  where SGLang radix attention yields 40% higher throughput on shared prefixes,
-  and unoptimized tail latency spikes to 500 ms P99 (2.5x the 200 ms P99 SLA)
 ```
 
 Here is the cost in one picture. A 64-GPU job at 52% scaling efficiency keeps only about 33 of its GPUs busy, and the rest of the fleet pays for idle time. You cannot diagnose a degraded optical transceiver, a PCIe root-complex downtrain, or a missing peer-memory kernel module from inside a full PyTorch model script. High-level frameworks mix data loading, autograd kernel launches, memory caching allocators and asynchronous CUDA stream hooks, so the fault gets buried. An infrastructure engineer therefore isolates the hardware and middleware layers from the bottom up. You validate intra-node PCIe and NVLink paths with `nvbandwidth`, and raw point-to-point RDMA wires with `perftest`. Next, you benchmark standalone GPU collectives with `nccl-tests`. Only after those three tiers pass do you profile application overlap and scaling efficiency with PyTorch Profiler, NVIDIA Nsight Systems and `genai-bench`.
@@ -141,7 +137,7 @@ The table lists the flags you will use most. Each one changes what the run measu
 | `-e <bytes>` | `--maxbytes` | `32M` | Ending tensor size in bytes (e.g., `-e 128M`, `-e 1G`, `-e 8G`, `-e 10G`). Must be large enough to amortize startup latency (`>= 256 MiB–1 GiB` on NVLink4/5 and multi-rail NDR/XDR). |
 | `-f <int>` | `--stepfactor` | `1` (disabled) | Multiplicative step factor between message sizes (typically `-f 2` to double size each row: `8M`, `16M`, `32M`, ..., `1G`). |
 | `-g <int>` | `--ngpus` | `1` | Number of GPUs managed **per process/thread**. Use `-g 8` for a single-process 8-GPU local run, or `-g 1` when launching 1 MPI/Slurm process per GPU (`--ntasks-per-node=8`). |
-| `-t <int>` | `--nthreads` | `1` | Number of CPU threads per process. Total collective ranks $n = \text\{processes\} \times \text\{threads\} \times g$. |
+| `-t <int>` | `--nthreads` | `1` | Number of CPU threads per process. Total collective ranks $n = \text{processes} \times \text{threads} \times g$. |
 | `-w <int>` | `--warmup_iters` | `5` | Untimed warmup iterations executed at each message size before starting the CUDA event timer. Increase to `10–20` on large multi-rack fabrics. |
 | `-n <int>` | `--iters` | `20` | Timed measurement iterations averaged per row (use `-n 100` for production burn-in and jitter detection). |
 | `-c <0\|1\|N>` | `--check` | `1` | Data-integrity verification iteration count (`0` disables checking for fast sweeps; `1` compares collective output against expected math and populates the `#wrong` column). |
@@ -157,7 +153,7 @@ Engineers who read nccl-tests output for the first time often compare the algori
 
 The first metric is algorithmic bandwidth, written `algbw`. It shows the apparent rate at which the logical collective tensor is processed:
 
-$$\text\{algbw\} = \frac\{S\}\{t\}$$
+$$\text{algbw} = \frac{S}{t}$$
 
 That ratio divides logical bytes by elapsed seconds. The second metric is bus bandwidth, `busbw`. It accounts for the several physical hops a collective needs across $n$ ranks. It normalizes `algbw` by the minimum per-rank data volume an optimal ring topology must move. That normalization makes `busbw` directly comparable with the hardware's rated link speed, however many GPUs take part.
 
@@ -165,16 +161,16 @@ The conversion depends on the collective. Find your collective's row, then multi
 
 | `nccl-tests` Binary | Collective Operation | Logical Input $\rightarrow$ Output | Per-Rank Bytes Transferred | Exact `busbw` Conversion Formula | Factor at $n=2$ | Factor at $n=4$ | Factor at $n=8$ | Factor at $n=64$ | Factor at $n=72$ |
 |---|---|---|---|---|---|---|---|---|---|
-| `all_reduce_perf` | AllReduce | $S$ on each rank $\rightarrow$ reduced $S$ on every rank | $\frac\{2(n - 1)\}\{n\} \cdot S$ | $\text\{busbw\} = \text\{algbw\} \cdot \frac\{2(n - 1)\}\{n\}$ | `1.0000` | `1.5000` | `1.7500` | `1.96875` | `1.972222` (`142/72`) |
-| `reduce_scatter_perf` | ReduceScatter | $S$ on each rank $\rightarrow$ reduced $S/n$ shard per rank | $\frac\{n - 1\}\{n\} \cdot S$ | $\text\{busbw\} = \text\{algbw\} \cdot \frac\{n - 1\}\{n\}$ | `0.5000` | `0.7500` | `0.8750` | `0.984375` | `0.986111` (`71/72`) |
-| `all_gather_perf` | AllGather | $S/n$ shard per rank $\rightarrow$ gathered $S$ on every rank | $\frac\{n - 1\}\{n\} \cdot S$ | $\text\{busbw\} = \text\{algbw\} \cdot \frac\{n - 1\}\{n\}$ | `0.5000` | `0.7500` | `0.8750` | `0.984375` | `0.986111` (`71/72`) |
-| `alltoall_perf` | AllToAll | $n$ distinct $S/n$ chunks exchanged with $n$ peers | $\frac\{n - 1\}\{n\} \cdot S$ | $\text\{busbw\} = \text\{algbw\} \cdot \frac\{n - 1\}\{n\}$ | `0.5000` | `0.7500` | `0.8750` | `0.984375` | `0.986111` (`71/72`) |
-| `broadcast_perf` | Broadcast | $S$ on root rank $\rightarrow$ $S$ replicated to $n-1$ ranks | $1.0 \cdot S$ | $\text\{busbw\} = \text\{algbw\} \cdot 1$ | `1.0000` | `1.0000` | `1.0000` | `1.0000` | `1.0000` |
-| `reduce_perf` | Reduce | $S$ on each rank $\rightarrow$ reduced $S$ on root rank | $1.0 \cdot S$ | $\text\{busbw\} = \text\{algbw\} \cdot 1$ | `1.0000` | `1.0000` | `1.0000` | `1.0000` | `1.0000` |
+| `all_reduce_perf` | AllReduce | $S$ on each rank $\rightarrow$ reduced $S$ on every rank | $\frac{2(n - 1)}{n} \cdot S$ | $\text{busbw} = \text{algbw} \cdot \frac{2(n - 1)}{n}$ | `1.0000` | `1.5000` | `1.7500` | `1.96875` | `1.972222` (`142/72`) |
+| `reduce_scatter_perf` | ReduceScatter | $S$ on each rank $\rightarrow$ reduced $S/n$ shard per rank | $\frac{n - 1}{n} \cdot S$ | $\text{busbw} = \text{algbw} \cdot \frac{n - 1}{n}$ | `0.5000` | `0.7500` | `0.8750` | `0.984375` | `0.986111` (`71/72`) |
+| `all_gather_perf` | AllGather | $S/n$ shard per rank $\rightarrow$ gathered $S$ on every rank | $\frac{n - 1}{n} \cdot S$ | $\text{busbw} = \text{algbw} \cdot \frac{n - 1}{n}$ | `0.5000` | `0.7500` | `0.8750` | `0.984375` | `0.986111` (`71/72`) |
+| `alltoall_perf` | AllToAll | $n$ distinct $S/n$ chunks exchanged with $n$ peers | $\frac{n - 1}{n} \cdot S$ | $\text{busbw} = \text{algbw} \cdot \frac{n - 1}{n}$ | `0.5000` | `0.7500` | `0.8750` | `0.984375` | `0.986111` (`71/72`) |
+| `broadcast_perf` | Broadcast | $S$ on root rank $\rightarrow$ $S$ replicated to $n-1$ ranks | $1.0 \cdot S$ | $\text{busbw} = \text{algbw} \cdot 1$ | `1.0000` | `1.0000` | `1.0000` | `1.0000` | `1.0000` |
+| `reduce_perf` | Reduce | $S$ on each rank $\rightarrow$ reduced $S$ on root rank | $1.0 \cdot S$ | $\text{busbw} = \text{algbw} \cdot 1$ | `1.0000` | `1.0000` | `1.0000` | `1.0000` | `1.0000` |
 
 AllReduce carries the largest factor of the rows that depend on $n$. Broadcast and Reduce stay at 1.0 whatever $n$ is.
 
-Why does AllReduce multiply by $2(n-1)/n$? A ring AllReduce runs an $(n-1)$-step ReduceScatter pass, then an $(n-1)$-step AllGather pass. Each pass moves $n-1$ chunks of size $S/n$ per GPU. Together the two passes take $2(n-1)$ steps and move $\frac\{2(n-1)\}\{n\}S$ bytes per GPU. As $n$ grows large, the multiplier approaches 2.0. That means algorithmic bandwidth can never exceed half of the physical bottleneck link bandwidth for a ring AllReduce at scale.
+Why does AllReduce multiply by $2(n-1)/n$? A ring AllReduce runs an $(n-1)$-step ReduceScatter pass, then an $(n-1)$-step AllGather pass. Each pass moves $n-1$ chunks of size $S/n$ per GPU. Together the two passes take $2(n-1)$ steps and move $\frac{2(n-1)}{n}S$ bytes per GPU. As $n$ grows large, the multiplier approaches 2.0. That means algorithmic bandwidth can never exceed half of the physical bottleneck link bandwidth for a ring AllReduce at scale.
 
 Consider a 400 MB buffer. The block below works out its `algbw` first, then shows the factor at three cluster sizes.
 
@@ -256,7 +252,7 @@ A slow training run can hide its cause if you measure only total step time. Stor
 
 The first metric is aggregate throughput, in samples per second or tokens per second across all GPUs. The second is GPU utilization, and you should not read it on its own. The `nvidia-smi` utility reports only the fraction of time at least one kernel is active on the device. A GPU that spin-waits inside `ncclKernel_AllReduce`, or runs tiny unfused kernels, still displays 98% to 100% utilization. Model FLOPs Utilization, or MFU, answers the harder question. It compares useful floating-point operations with the hardware's theoretical peak:
 
-$$\text\{MFU\} = \frac\{6 \times N_\{\text\{params\}} \times \text\{tokens/sec\}}\{\text\{Peak Theoretical FLOPs/sec\}}$$
+$$\text{MFU} = \frac{6 \times N_{\text{params}} \times \text{tokens/sec}}{\text{Peak Theoretical FLOPs/sec}}$$
 
 The equation divides your throughput by the silicon's peak rating, so it shows real efficiency rather than activity. The third metric is communication overhead as you scale across nodes. On a single GPU, communication overhead is zero. At 16 GPUs, it can easily consume more than half of each iteration. That explains why doubling the GPU count often fails to halve step time.
 
@@ -287,7 +283,7 @@ Read the 70B example as a before-and-after story. The same model and hardware re
 
 Before you add nodes to a training job, measure **scaling efficiency**, written $\eta_N$. It tells you what fraction of ideal linear speedup you keep on $N$ GPUs:
 
-$$\eta_N = \frac\{\text\{Throughput\}_N\}\{N \times \text\{Throughput\}_1\} = \frac\{\text\{Speedup\}_N}\{N\}$$
+$$\eta_N = \frac{\text{Throughput}_N}{N \times \text{Throughput}_1} = \frac{\text{Speedup}_N}{N}$$
 
 That ratio shows how much of your multi-node investment turns into useful throughput. The table turns the ratio into a rating, and each rating points to a next step.
 
@@ -302,7 +298,7 @@ A rating below 50% means you should stop expanding the job and run the 3-tier di
 
 Even with infinite network bandwidth, **Amdahl's Law** sets a hard upper bound on speedup. Let $s$ be the fraction of each iteration that is strictly serial, and let $p = 1 - s$ be the part that can run in parallel:
 
-$$\text\{Speedup\}(N) = \frac\{1\}\{s + \frac\{1 - s\}\{N\}} \xrightarrow\{N \to \infty\} \frac\{1\}\{s\}$$
+$$\text{Speedup}(N) = \frac{1}{s + \frac{1 - s}{N}} \xrightarrow{N \to \infty} \frac{1}{s}$$
 
 Even a small serial fraction caps the speedup of a whole cluster. Unoverlapped collective barriers, CPU synchronization points and non-parallelized preprocessing all add to the serial fraction $s$.
 
@@ -414,7 +410,7 @@ echo verbose status | nc localhost 28028
 
 ### Binary-search node bisection and per-rail isolation
 
-Suppose `all_reduce_perf` across $N$ nodes is slow, yet every rank enters the collective on time. One node probably has a degraded NIC, cable or PCIe switch. Testing all $N$ nodes one at a time takes far too long, and running $\binom\{N\}\{2\}$ pairwise tests is even worse. Use **binary-search bisection** instead. It isolates the bad node in logarithmic time.
+Suppose `all_reduce_perf` across $N$ nodes is slow, yet every rank enters the collective on time. One node probably has a degraded NIC, cable or PCIe switch. Testing all $N$ nodes one at a time takes far too long, and running $\binom{N}{2}$ pairwise tests is even worse. Use **binary-search bisection** instead. It isolates the bad node in logarithmic time.
 
 Split the $N$ nodes into two halves of $N/2$ nodes each, and run `all_reduce_perf` on each half. The half with the degraded `busbw` holds the straggler. The other half is proven healthy, so it becomes a known-good partner once the suspect group shrinks to a single node. Keep halving the suspect group until one node is left. That takes $\lceil \log_2 N \rceil$ split steps. Then test each InfiniBand rail on that node separately, by restricting `NCCL_IB_HCA` or by running `ib_write_bw` per rail alongside `ibdiagnet` and `perfquery`.
 
@@ -491,14 +487,14 @@ Average latency hides SLA violations in production serving. Suppose 95% of reque
 
 Autoregressive LLM inference has five metrics you need to know. **Time to First Token**, or `TTFT`, measures the time from request arrival through tokenization, compute-bound prompt prefill, first token generation and detokenization. **Inter-Token Latency**, shortened to `ITL`, is also called **Time per Output Token**, or `TPOT`. It measures the average time between consecutive generated tokens during the memory-bandwidth-bound decode phase. End-to-end request latency, `e2e_latency`, combines both phases across all generated tokens:
 
-$$\text\{e2e\_latency\} = \text\{TTFT\} + (\text\{output\_tokens\} - 1) \times \text\{ITL\}$$
+$$\text{e2e\_latency} = \text{TTFT} + (\text{output\_tokens} - 1) \times \text{ITL}$$
 
-That formula separates initial prefill responsiveness from streaming decode speed. **Tokens per Second**, or `TPS`, measures token generation throughput. **Requests per Second**, or `RPS`, measures end-to-end API request capacity. Disaggregated prefill and decode across nodes and racks, such as NVIDIA Dynamo, avoids synchronous NCCL collectives for KV cache movement. Instead, point-to-point KV cache transfers use NVIDIA NIXL over UCX, GPUDirect RDMA and IBGDA.
+That formula separates initial prefill responsiveness from streaming decode speed. This chapter keeps only the latency metrics, because they show why tail percentiles matter. Throughput metrics for serving engines and the NIXL KV-cache transfer path belong to Chapter 15.14.
 
 The block below works through the P99 comparison and the latency arithmetic.
 
 ```text
-Inference percentile SLA comparison, e2e_latency math, and NIXL benchmarks:
+Inference percentile SLA comparison and e2e_latency math:
 - Average vs P99 SLA (200.0 ms P99 SLA target):
   * System A: 100.0 ms mean, uniform 90.0-110.0 ms range (P50 = 100.0 ms, P95 = 109.0 ms, P99 = 110.0 ms) -> PASSES 200 ms SLA
   * System B: 80.0 ms mean (95% at 57.89 ms, 5% at 500.0 ms -> P50 = 57.89 ms, P95 = 57.89 ms, P99 = 500.0 ms) -> FAILS 200 ms SLA by 2.5x.
@@ -506,11 +502,6 @@ Inference percentile SLA comparison, e2e_latency math, and NIXL benchmarks:
 - e2e_latency breakdown with TTFT = 45.0 ms and ITL = 10.0 ms:
   * Short 16-token output (10-20 token regime): 45.0 + 15 * 10.0 = 195.0 ms (decode = 150.0 ms; TTFT is 23.08% of total time)
   * Long 201-token output: 45.0 + 200 * 10.0 = 2,045.0 ms (decode = 2,000.0 ms or 97.80% of total time; TTFT is 2.20%)
-- NVIDIA NIXL disaggregated KV-cache transfer API and speedups (1 MiB to 100 GB payloads):
-  * API lifecycle: nixlAgent, registerMem, trim, prepXfer, postXfer, checkXfer, releaseReqH, deregisterMem
-  * Up to 14x TTFT speedup from KV cache offloading on PCIe x86 H100 systems
-  * Additional 2x TTFT speedup on Grace Hopper (GH200) over 900 GB/s NVLink-C2C
-  * Up to 30x higher inference throughput on a ~680B LLM across a 72-GPU Blackwell GB200 NVL72 rack (130 TB/s NVSwitch, < 1 us latency)
 ```
 
 For the 16-token output, TTFT is 23.08% of the total, and decode makes up the rest. For the 201-token output, decode takes 97.80%, so the first token barely matters. Choose the metric that matches the request shape you serve.
@@ -727,7 +718,7 @@ The last line should read `Summary: 27 passed, 0 failed`. If a line shows `[FAIL
 
 Each of the six mistakes below produces a number that looks plausible, which is why it is easy to miss. Read each one as a warning sign you can check in your own results.
 
-1. Comparing algorithmic bandwidth with the hardware spec. At $n = 64$ GPUs, AllReduce `busbw` is $1.96875 \times \text\{algbw\}$. If you read an `algbw` of 183.55 GB/s and conclude that an 8x400G NDR node runs under 50% utilization, you have ignored the $2(n-1)/n$ ring multiplier. The bus bandwidth in this illustrative example is 361.36 GB/s, which would be 90.34% of line rate. The ring multiplier is the step that turns one into the other, so never skip it.
+1. Comparing algorithmic bandwidth with the hardware spec. At $n = 64$ GPUs, AllReduce `busbw` is $1.96875 \times \text{algbw}$. If you read an `algbw` of 183.55 GB/s and conclude that an 8x400G NDR node runs under 50% utilization, you have ignored the $2(n-1)/n$ ring multiplier. The bus bandwidth in this illustrative example is 361.36 GB/s, which would be 90.34% of line rate. The ring multiplier is the step that turns one into the other, so never skip it.
 
 2. Judging fabric health from small messages, or ignoring data-integrity errors. Small collectives from 8 B to 64 KiB are dominated by kernel launch and network hop latency, not by link bandwidth. The reverse trap is also real. A high bus bandwidth at 1 GiB with `#wrong > 0` means the fabric or GPU memory is corrupting tensors. A fast result with errors is a failed result, however good the bandwidth looks.
 
@@ -786,7 +777,7 @@ Use this block as your only source of inputs, so every answer traces back to a v
    `iperf3` runs through the kernel TCP/IP socket stack, which bottlenecks on single-core CPU interrupt and copy overhead well below 400 Gbps. It never tests RDMA Verbs or GPU BAR1 peer memory. So validate in three hardware-isolated tiers before you touch PyTorch. Tier 1 uses `nvbandwidth` and `nvidia-smi topo -m` to prove the intra-node PCIe Gen5 x16 copy speed and the NVLink status. Tier 2 runs `ib_write_bw` and `ib_write_lat` with and without `--use_cuda`. That proves raw 400G NDR wire speed, and it proves GPUDirect RDMA through `nvidia_peermem` on PIX-paired GPU and NIC pairs. Tier 3 runs nccl-tests with `all_reduce_perf`, which proves single-node and multi-node collective bus bandwidth with zero `#wrong` errors. Each tier starts only after the one before it passes.
 
 2. **"In `nccl-tests`, what is the mathematical difference between `algbw` and `busbw`, and why does AllReduce multiply by `2(n-1)/n` while ReduceScatter, AllGather, and AllToAll multiply by `(n-1)/n`?"**
-   Algorithmic bandwidth divides the logical tensor size $S$ by the elapsed time $t$. In a ring ReduceScatter, AllGather or AllToAll across $n$ ranks, each rank sends and receives $n - 1$ shards of size $S/n$. That moves $\frac\{n-1\}\{n\}S$ bytes over its physical links. A ring AllReduce runs a ReduceScatter followed by an AllGather, so each rank moves $\frac\{2(n-1)\}\{n\}S$ bytes. Multiplying `algbw` by that volume factor gives `busbw`, the link bandwidth each rank actually uses. You can then compare `busbw` directly with the 50 GB/s NIC or 900 GB/s NVLink spec sheet, whatever the cluster size. Keep the two factors straight, because mixing them up changes the answer by almost a factor of two.
+   Algorithmic bandwidth divides the logical tensor size $S$ by the elapsed time $t$. In a ring ReduceScatter, AllGather or AllToAll across $n$ ranks, each rank sends and receives $n - 1$ shards of size $S/n$. That moves $\frac{n-1}{n}S$ bytes over its physical links. A ring AllReduce runs a ReduceScatter followed by an AllGather, so each rank moves $\frac{2(n-1)}{n}S$ bytes. Multiplying `algbw` by that volume factor gives `busbw`, the link bandwidth each rank actually uses. You can then compare `busbw` directly with the 50 GB/s NIC or 900 GB/s NVLink spec sheet, whatever the cluster size. Keep the two factors straight, because mixing them up changes the answer by almost a factor of two.
 
 3. **"An 8-node training job is 40% slower than expected, yet `ib_write_bw` shows 400 Gbps and `all_reduce_perf -b 1G -e 1G` hits full bus bandwidth. How do you explain this to the ML team and fix it?"**
    Both `ib_write_bw` and a 1 GiB `all_reduce_perf` test large, contiguous payloads that are limited by bandwidth. Profile the PyTorch job with Nsight Systems, though, and you may see thousands of tiny, fragmented AllReduce calls, such as 256 KB payloads. For small transfers, per-collective launch and network handshake latency dominate the time spent putting data on the wire. The network is healthy, but the framework feeds it small messages. Raising DDP `bucket_cap_mb` from the 25 MB default to 50 MB merges those micro-transfers into bandwidth-bound buckets.
@@ -906,13 +897,13 @@ Bisection halves the suspect pool at each step. It needs $\lceil \log_2 64 \rcei
 <details>
 <summary>**15. What is the formula for scaling efficiency, and what does an `81.25%` scaling efficiency at `8` GPUs mean?**</summary>
 
-Scaling efficiency equals $\text\{Throughput\}_N / (N \times \text\{Throughput\}_1)$. At 81.25% efficiency on 8 GPUs, the job reaches $8 \times 0.8125 = 6.5\times$ single-GPU throughput instead of 8.0x. The remaining 18.75% of ideal linear throughput is lost to communication and synchronization overhead.
+Scaling efficiency equals $\text{Throughput}_N / (N \times \text{Throughput}_1)$. At 81.25% efficiency on 8 GPUs, the job reaches $8 \times 0.8125 = 6.5\times$ single-GPU throughput instead of 8.0x. The remaining 18.75% of ideal linear throughput is lost to communication and synchronization overhead.
 </details>
 
 <details>
 <summary>**16. According to Amdahl's Law, what is the maximum theoretical speedup on `64` GPUs and on infinite GPUs if `10%` of a training step is strictly serial?**</summary>
 
-With a serial fraction $s = 0.10$, the maximum speedup on $N = 64$ GPUs is $\frac\{1\}\{0.10 + 0.90/64\} = 8.77\times$. As $N$ grows without limit, the speedup is bounded by $\frac\{1\}\{0.10\} = 10.0\times$, no matter how many GPUs you add. Serial work is the part of each step that cannot run in parallel, so it sets the ceiling.
+With a serial fraction $s = 0.10$, the maximum speedup on $N = 64$ GPUs is $\frac{1}{0.10 + 0.90/64} = 8.77\times$. As $N$ grows without limit, the speedup is bounded by $\frac{1}{0.10} = 10.0\times$, no matter how many GPUs you add. Serial work is the part of each step that cannot run in parallel, so it sets the ceiling.
 </details>
 
 <details>
@@ -924,7 +915,7 @@ The `nvidia-smi` GPU utilization metric reports the share of sampling intervals 
 <details>
 <summary>**18. How do `TTFT` and `ITL` (`TPOT`) combine to determine end-to-end LLM inference latency (`e2e_latency`), and which dominates for short versus long outputs?**</summary>
 
-End-to-end latency equals $\text\{TTFT\} + (\text\{output\_tokens\} - 1) \times \text\{ITL\}$. Suppose your outputs are short, at 10 to 20 tokens. TTFT is then a large share of the total. It covers prompt tokenization and compute-bound prefill. For outputs of 100 tokens or more, memory-bandwidth-bound decode takes 90% to 98% of total request latency.
+End-to-end latency equals $\text{TTFT} + (\text{output\_tokens} - 1) \times \text{ITL}$. Suppose your outputs are short, at 10 to 20 tokens. TTFT is then a large share of the total. It covers prompt tokenization and compute-bound prefill. For outputs of 100 tokens or more, memory-bandwidth-bound decode takes 90% to 98% of total request latency.
 </details>
 
 <details>
